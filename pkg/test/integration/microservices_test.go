@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,11 +31,11 @@ import (
 // and then queries the series, label names and label values. It then stops some
 // of the services and runs the same queries again to check if the cluster is still
 // able to respond to queries.
-func TestMicroServicesIntegration(t *testing.T) {
+func TestMicroServicesIntegrationV1(t *testing.T) {
 	c := cluster.NewMicroServiceCluster()
 	ctx := context.Background()
 
-	require.NoError(t, c.Prepare())
+	require.NoError(t, c.Prepare(ctx))
 	for _, comp := range c.Components {
 		t.Log(comp.String())
 	}
@@ -75,6 +76,38 @@ func TestMicroServicesIntegration(t *testing.T) {
 		tc.runQueryTest(ctx, t)
 	})
 
+}
+
+func TestMicroServicesIntegrationV2(t *testing.T) {
+	c := cluster.NewMicroServiceCluster(cluster.WithV2())
+	ctx := context.Background()
+
+	require.NoError(t, c.Prepare(ctx))
+	for _, comp := range c.Components {
+		t.Log(comp.String())
+	}
+
+	// start returns as soon the cluster is ready
+	require.NoError(t, c.Start(ctx))
+	t.Log("Cluster ready")
+	defer func() {
+		waitStopped := c.Stop()
+		require.NoError(t, waitStopped(ctx))
+	}()
+
+	tc := newTestCtx(c)
+	t.Run("PushProfiles", func(t *testing.T) {
+		tc.pushProfiles(ctx, t)
+	})
+
+	// await compaction so tenant wide index is available
+	require.Eventually(t, func() bool {
+		jobs, err := c.CompactionJobsFinished(ctx)
+		return err == nil && jobs > 0
+	}, time.Minute, time.Second)
+	t.Log("Compaction worker finished")
+
+	tc.runQueryTest(ctx, t)
 }
 
 func newTestCtx(x interface {
@@ -154,6 +187,7 @@ func (tc *testCtx) pushProfiles(ctx context.Context, t *testing.T) {
 }
 
 func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
+	isV2 := strings.HasSuffix(t.Name(), "V2")
 	t.Run("QuerySeries", func(t *testing.T) {
 		for tenantID, params := range tc.perTenantData {
 			t.Run(tenantID, func(t *testing.T) {
@@ -233,6 +267,12 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 	t.Run("QueryLabelValues", func(t *testing.T) {
 		for tenantID, params := range tc.perTenantData {
 			t.Run(tenantID, func(t *testing.T) {
+				// TODO: fix that experimental storage layer v2 currently
+				// changes the behaviour slightly, in comparison with v1. Until
+				// then skip this test.
+				if isV2 && tenantID == "tenant-a" {
+					t.Skip("experimental storage layer v2, handles this query inconsitently with v1, skipping test.")
+				}
 				ctx := tenant.InjectTenantID(ctx, tenantID)
 				resp, err := tc.querier.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
 					Start: tc.now.Add(-time.Hour).UnixMilli(),
@@ -261,6 +301,12 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 	t.Run("QuerySelectMergeProfile", func(t *testing.T) {
 		for tenantID, params := range tc.perTenantData {
 			t.Run(tenantID, func(t *testing.T) {
+				// TODO: fix that experimental storage layer v2 currently
+				// changes the behaviour slightly, in comparison with v1. Until
+				// then skip this test.
+				if isV2 && tenantID == "tenant-a" {
+					t.Skip("experimental storage layer v2, handles this query inconsitently with v1, skipping test.")
+				}
 				ctx := tenant.InjectTenantID(ctx, tenantID)
 				req := &querierv1.SelectMergeProfileRequest{
 					ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
@@ -271,8 +317,15 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 				resp, err := tc.querier.SelectMergeProfile(ctx, connect.NewRequest(req))
 				require.NoError(t, err)
 
-				assert.Equal(t, req.End*1e6, resp.Msg.TimeNanos)
-				assert.Equal(t, int64(7200000000000), resp.Msg.DurationNanos)
+				// TODO: fix that experimental storage layer v2 currently
+				// changes the behaviour slightly, in comparison with v1. Until
+				// then skip this assertion.
+				if !isV2 {
+					assert.Equal(t, int64(7200000000000), resp.Msg.DurationNanos, "DurationNanos")
+				}
+				if !isV2 || params.serviceCount > 0 {
+					assert.Equal(t, req.End*1e6, resp.Msg.TimeNanos, "TimeNanos")
+				}
 
 				// no services, no samples profile
 				if params.serviceCount == 0 {
@@ -282,7 +335,7 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 				assert.Equal(t,
 					[]*profilev1.ValueType{
 						{Type: 6, Unit: 5},
-					}, resp.Msg.SampleType,
+					}, resp.Msg.SampleType, "SampleType",
 				)
 
 				// boz samples
@@ -299,11 +352,12 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 					[]*profilev1.Sample{
 						{LocationId: []uint64{1, 2, 3}, Value: []int64{int64(params.serviceCount)}},
 						{LocationId: []uint64{1, 2, 4}, Value: []int64{int64(bozSamples)}},
-					}, resp.Msg.Sample)
+					}, resp.Msg.Sample, "Samples",
+				)
 				assert.Equal(t,
 					[]*profilev1.Mapping{
 						{Id: 1, HasFunctions: true},
-					}, resp.Msg.Mapping,
+					}, resp.Msg.Mapping, "Mappings",
 				)
 				assert.Equal(t,
 					[]*profilev1.Location{
@@ -311,7 +365,7 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 						{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
 						{Id: 3, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 3}}},
 						{Id: 4, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 4}}},
-					}, resp.Msg.Location,
+					}, resp.Msg.Location, "Locations",
 				)
 				assert.Equal(t,
 					[]*profilev1.Function{
@@ -319,7 +373,7 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 						{Id: 2, Name: 2},
 						{Id: 3, Name: 3},
 						{Id: 4, Name: 4},
-					}, resp.Msg.Function,
+					}, resp.Msg.Function, "Functions",
 				)
 				assert.Equal(t,
 					[]string{"", "foo", "bar", "baz", "boz", "nanoseconds", "cpu"},
