@@ -1,7 +1,6 @@
 package symbolizer
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -81,50 +80,38 @@ func (m *memoryBuffer) Bytes() []byte {
 	return m.data
 }
 
-// detectCompression reads the beginning of the input to determine if it's compressed,
-// and if so, returns a ReaderAt that decompresses the data.
-func detectCompression(r io.Reader) (io.ReaderAt, error) {
-	br := bufio.NewReader(r)
-
-	header, err := br.Peek(4)
-	if err != nil && err != io.EOF && err != bufio.ErrBufferFull {
-		return nil, fmt.Errorf("peek header: %w", err)
-	}
-
-	if len(header) >= 2 && header[0] == 0x1f && header[1] == 0x8b { // gzip
-		gr, err := gzip.NewReader(br)
+// detectCompression checks if data is compressed and decompresses it if needed
+func detectCompression(data []byte) ([]byte, error) {
+	if len(data) >= 2 && data[0] == 0x1f && data[1] == 0x8b {
+		r, err := gzip.NewReader(bytes.NewReader(data))
 		if err != nil {
 			return nil, fmt.Errorf("create gzip reader: %w", err)
 		}
+		defer r.Close()
 
-		var decompressed bytes.Buffer
-		if _, err := decompressed.ReadFrom(gr); err != nil {
-			gr.Close()
+		decompressed, err := io.ReadAll(r)
+		if err != nil {
 			return nil, fmt.Errorf("decompress gzip data: %w", err)
 		}
-		gr.Close()
 
-		return bytes.NewReader(decompressed.Bytes()), nil
-	} else if len(header) >= 4 && header[0] == 0x28 && header[1] == 0xb5 && header[2] == 0x2f && header[3] == 0xfd { // zstd
-		zr, err := zstd.NewReader(br)
+		return decompressed, nil
+	}
+
+	// Check for zstd (magic bytes: 0x28, 0xb5, 0x2f, 0xfd)
+	if len(data) >= 4 && data[0] == 0x28 && data[1] == 0xb5 && data[2] == 0x2f && data[3] == 0xfd {
+		r, err := zstd.NewReader(bytes.NewReader(data))
 		if err != nil {
 			return nil, fmt.Errorf("create zstd reader: %w", err)
 		}
+		defer r.Close()
 
-		var decompressed bytes.Buffer
-		if _, err := decompressed.ReadFrom(zr); err != nil {
-			zr.Close()
+		decompressed, err := io.ReadAll(r)
+		if err != nil {
 			return nil, fmt.Errorf("decompress zstd data: %w", err)
 		}
-		zr.Close()
 
-		return bytes.NewReader(decompressed.Bytes()), nil
+		return decompressed, nil
 	}
 
-	var buf bytes.Buffer
-	if _, err := buf.ReadFrom(br); err != nil {
-		return nil, fmt.Errorf("read data: %w", err)
-	}
-
-	return bytes.NewReader(buf.Bytes()), nil
+	return data, nil
 }

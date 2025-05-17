@@ -14,7 +14,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	pprof "github.com/google/pprof/profile"
 	"github.com/prometheus/client_golang/prometheus"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -72,7 +71,7 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 
 	mappingsToSymbolize := make(map[uint64]bool)
 	for i, mapping := range profile.Mapping {
-		if mapping.HasFunctions && mapping.HasFilenames && mapping.HasLineNumbers {
+		if mapping.HasFunctions {
 			continue
 		}
 		mappingsToSymbolize[uint64(i+1)] = true
@@ -86,18 +85,54 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 		return fmt.Errorf("grouping locations by mapping: %w", err)
 	}
 
+	stringMap := make(map[string]int64, len(profile.StringTable))
+	for i, str := range profile.StringTable {
+		stringMap[str] = int64(i)
+	}
+
+	funcMap := make(map[funcKey]uint64)
+	maxFuncID := uint64(len(profile.Function) + 1)
+
+	var allSymbolizedLocs []symbolizedLocation
+
 	for mappingID, locations := range locationsByMapping {
-		if err := s.symbolizeLocationsForMapping(ctx, profile, mappingID, locations); err != nil {
-			return fmt.Errorf("failed to symbolize mapping ID %d: %w", mappingID, err)
+		mapping := profile.Mapping[mappingID-1]
+
+		binaryName, err := s.extractBinaryName(profile, mapping)
+		if err != nil {
+			return fmt.Errorf("extract binary name: %w", err)
+		}
+
+		buildID, err := s.extractBuildID(profile, mapping)
+		if err != nil {
+			return fmt.Errorf("extract build ID: %w", err)
+		}
+
+		if buildID == "" {
+			continue
+		}
+
+		req := s.createSymbolizationRequest(binaryName, buildID, locations)
+
+		s.symbolize(ctx, &req)
+
+		for i, loc := range locations {
+			allSymbolizedLocs = append(allSymbolizedLocs, symbolizedLocation{
+				loc:     loc,
+				symLoc:  req.locations[i],
+				mapping: mapping,
+			})
 		}
 	}
+
+	s.updateAllSymbolsInProfile(profile, allSymbolizedLocs, stringMap, funcMap, maxFuncID)
 
 	return nil
 }
 
 // groupLocationsByMapping groups locations by their mapping ID
-func (s *Symbolizer) groupLocationsByMapping(profile *googlev1.Profile, mappingsToSymbolize map[uint64]bool) (map[uint64][]locToSymbolize, error) {
-	locsByMapping := make(map[uint64][]locToSymbolize)
+func (s *Symbolizer) groupLocationsByMapping(profile *googlev1.Profile, mappingsToSymbolize map[uint64]bool) (map[uint64][]*googlev1.Location, error) {
+	locsByMapping := make(map[uint64][]*googlev1.Location)
 
 	for i, loc := range profile.Location {
 		if loc.MappingId == 0 {
@@ -113,42 +148,10 @@ func (s *Symbolizer) groupLocationsByMapping(profile *googlev1.Profile, mappings
 			continue
 		}
 
-		locsByMapping[loc.MappingId] = append(locsByMapping[loc.MappingId], locToSymbolize{
-			idx: i,
-			loc: loc,
-		})
+		locsByMapping[loc.MappingId] = append(locsByMapping[loc.MappingId], loc)
 	}
 
 	return locsByMapping, nil
-}
-
-// symbolizeLocationsForMapping symbolizes a single mapping group
-func (s *Symbolizer) symbolizeLocationsForMapping(ctx context.Context, profile *googlev1.Profile, mappingID uint64, locs []locToSymbolize) error {
-	mapping := profile.Mapping[mappingID-1]
-
-	binaryName, err := s.extractBinaryName(profile, mapping)
-	if err != nil {
-		return err
-	}
-
-	buildID, err := s.extractBuildID(profile, mapping)
-	if err != nil {
-		return err
-	}
-
-	if buildID == "" {
-		return nil
-	}
-
-	req := s.createSymbolizationRequest(binaryName, buildID, mapping, locs)
-
-	if err := s.symbolize(ctx, &req); err != nil {
-		return err
-	}
-
-	s.updateProfileWithSymbols(profile, mapping, locs, req.locations)
-
-	return nil
 }
 
 // extractBinaryName extracts the binary name from the mapping
@@ -175,7 +178,7 @@ func (s *Symbolizer) extractBuildID(profile *googlev1.Profile, mapping *googlev1
 }
 
 // createSymbolizationRequest creates a symbolization request for a mapping group
-func (s *Symbolizer) createSymbolizationRequest(binaryName, buildID string, mapping *googlev1.Mapping, locs []locToSymbolize) request {
+func (s *Symbolizer) createSymbolizationRequest(binaryName, buildID string, locs []*googlev1.Location) request {
 	req := request{
 		buildID:    buildID,
 		binaryName: binaryName,
@@ -184,41 +187,30 @@ func (s *Symbolizer) createSymbolizationRequest(binaryName, buildID string, mapp
 
 	for i, loc := range locs {
 		req.locations[i] = &location{
-			address: loc.loc.Address,
-			mapping: &pprof.Mapping{
-				Start:   mapping.MemoryStart,
-				Limit:   mapping.MemoryLimit,
-				Offset:  mapping.FileOffset,
-				BuildID: buildID,
-			},
+			address: loc.Address,
 		}
 	}
 
 	return req
 }
 
-// updateProfileWithSymbols updates the profile with symbolization results
-func (s *Symbolizer) updateProfileWithSymbols(profile *googlev1.Profile, mapping *googlev1.Mapping, locs []locToSymbolize, symLocs []*location) {
-	stringMap := make(map[string]int64, len(profile.StringTable))
-	for i, str := range profile.StringTable {
-		stringMap[str] = int64(i)
-	}
+func (s *Symbolizer) updateAllSymbolsInProfile(
+	profile *googlev1.Profile,
+	symbolizedLocs []symbolizedLocation,
+	stringMap map[string]int64,
+	funcMap map[funcKey]uint64,
+	maxFuncID uint64,
+) {
+	for _, item := range symbolizedLocs {
+		loc := item.loc
+		symLoc := item.symLoc
+		mapping := item.mapping
 
-	type funcKey struct {
-		nameIdx, filenameIdx int64
-	}
-	funcMap := make(map[funcKey]uint64)
-	maxFuncID := uint64(0)
-
-	for _, fn := range profile.Function {
-		if fn.Id > maxFuncID {
-			maxFuncID = fn.Id
+		locIdx := loc.Id - 1
+		if loc.Id <= 0 || locIdx >= uint64(len(profile.Location)) {
+			continue
 		}
-		funcMap[funcKey{fn.Name, fn.Filename}] = fn.Id
-	}
 
-	for i, symLoc := range symLocs {
-		locIdx := locs[i].idx
 		profile.Location[locIdx].Line = make([]*googlev1.Line, len(symLoc.lines))
 
 		for j, line := range symLoc.lines {
@@ -242,26 +234,22 @@ func (s *Symbolizer) updateProfileWithSymbols(profile *googlev1.Profile, mapping
 				maxFuncID++
 				funcID = maxFuncID
 				profile.Function = append(profile.Function, &googlev1.Function{
-					Id:        funcID,
-					Name:      nameIdx,
-					Filename:  filenameIdx,
-					StartLine: int64(line.LineNumber),
+					Id:   funcID,
+					Name: nameIdx,
 				})
 				funcMap[key] = funcID
 			}
 
 			profile.Location[locIdx].Line[j] = &googlev1.Line{
 				FunctionId: funcID,
-				Line:       int64(line.LineNumber),
 			}
 		}
-	}
 
-	mapping.HasFunctions = true
-	mapping.HasFilenames = true
+		mapping.HasFunctions = true
+	}
 }
 
-func (s *Symbolizer) symbolize(ctx context.Context, req *request) error {
+func (s *Symbolizer) symbolize(ctx context.Context, req *request) {
 	start := time.Now()
 	status := statusSuccess
 	defer func() {
@@ -273,29 +261,26 @@ func (s *Symbolizer) symbolize(ctx context.Context, req *request) error {
 
 	lidiaBytes, err := s.getLidiaBytes(ctx, req.buildID)
 	if err != nil {
-		var bnfErr buildIDNotFoundError
-		if errors.As(err, &bnfErr) {
-			for _, loc := range req.locations {
-				loc.lines = s.createNotFoundSymbols(req.binaryName, loc)
-			}
-			return nil
+		level.Warn(s.logger).Log("msg", "Failed to get debug info", "buildID", req.buildID, "err", err)
+		for _, loc := range req.locations {
+			loc.lines = s.createNotFoundSymbols(req.binaryName, loc)
 		}
-
-		status = statusErrorServerError
-		return err
+		return
 	}
 
 	lidiaReader := NewReaderAtCloser(lidiaBytes)
 	table, err = lidia.OpenReader(lidiaReader, lidia.WithCRC())
 	if err != nil {
-		s.metrics.debugSymbolResolution.WithLabelValues("lidia_error").Observe(0)
-		status = statusErrorServerError
-		return fmt.Errorf("open lidia file: %w", err)
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("lidia_error").Inc()
+		level.Warn(s.logger).Log("msg", "Failed to open Lidia file", "err", err)
+		for _, loc := range req.locations {
+			loc.lines = s.createNotFoundSymbols(req.binaryName, loc)
+		}
+		return
 	}
 	defer table.Close()
 
 	s.symbolizeWithTable(ctx, table, req)
-	return nil
 }
 
 func (s *Symbolizer) symbolizeWithTable(_ context.Context, table *lidia.Table, req *request) {
@@ -323,16 +308,16 @@ func (s *Symbolizer) symbolizeWithTable(_ context.Context, table *lidia.Table, r
 }
 
 func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte, error) {
+	if client, ok := s.client.(*DebuginfodHTTPClient); ok {
+		if found, _ := client.notFoundCache.Get(buildID); found {
+			return nil, buildIDNotFoundError{buildID: buildID}
+		}
+	}
+
 	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, buildID)
 	if err == nil {
 		return lidiaBytes, nil
 	}
-
-	level.Error(s.logger).Log(
-		"msg", "failed to get from object store",
-		"build_id", buildID,
-		"error", err,
-	)
 
 	lidiaBytes, err = s.fetchLidiaFromDebuginfod(ctx, buildID)
 	if err != nil {
@@ -364,9 +349,6 @@ func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID stri
 
 // fetchLidiaFromDebuginfod fetches debug info from debuginfod and converts to Lidia format
 func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID string) ([]byte, error) {
-	debuginfodStart := time.Now()
-	status := statusSuccess
-
 	debugReader, err := s.fetchFromDebuginfod(ctx, buildID)
 	if err != nil {
 		var bnfErr buildIDNotFoundError
@@ -375,7 +357,6 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 		}
 		return nil, err
 	}
-	s.metrics.debuginfodRequestDuration.WithLabelValues(status).Observe(time.Since(debuginfodStart).Seconds())
 	defer debugReader.Close()
 
 	elfData, err := io.ReadAll(debugReader)
@@ -392,20 +373,15 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 }
 
 func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (io.ReadCloser, error) {
-	debuginfodStart := time.Now()
-
 	debugReader, err := s.client.FetchDebuginfo(ctx, buildID)
 	if err != nil {
 		var bnfErr buildIDNotFoundError
 		statusCode, isHTTPError := isHTTPStatusError(err)
 
 		if errors.As(err, &bnfErr) || (isHTTPError && statusCode == http.StatusNotFound) {
-			s.metrics.debuginfodRequestDuration.WithLabelValues(statusErrorNotFound).Observe(time.Since(debuginfodStart).Seconds())
 			return nil, buildIDNotFoundError{buildID: buildID}
 		}
 
-		s.metrics.debuginfodRequestDuration.WithLabelValues(statusErrorDebuginfod).Observe(time.Since(debuginfodStart).Seconds())
-		s.metrics.debugSymbolResolution.WithLabelValues(statusErrorDebuginfod).Observe(0)
 		return nil, fmt.Errorf("fetch debuginfo: %w", err)
 	}
 
@@ -413,13 +389,17 @@ func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (i
 }
 
 func (s *Symbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
-	reader, err := detectCompression(bytes.NewReader(data))
+	decompressedData, err := detectCompression(data)
 	if err != nil {
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("compression_error").Inc()
 		return nil, fmt.Errorf("detect compression: %w", err)
 	}
 
+	reader := bytes.NewReader(decompressedData)
+
 	elfFile, err := elf.NewFile(reader)
 	if err != nil {
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("elf_parsing_error").Inc()
 		return nil, fmt.Errorf("parse ELF file: %w", err)
 	}
 	defer elfFile.Close()

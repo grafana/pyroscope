@@ -13,7 +13,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
 
 	"github.com/go-kit/log"
-	pprof "github.com/google/pprof/profile"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/mock"
@@ -74,6 +73,7 @@ func TestSymbolizePprof(t *testing.T) {
 					FileOffset:  0x0,
 				}},
 				Location: []*googlev1.Location{{
+					Id:        1,
 					MappingId: 1,
 					Address:   0x1500,
 				}},
@@ -86,7 +86,6 @@ func TestSymbolizePprof(t *testing.T) {
 			},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.True(t, p.Mapping[0].HasFunctions)
-				require.True(t, p.Mapping[0].HasFilenames)
 
 				require.Len(t, p.Location[0].Line, 1)
 
@@ -116,9 +115,9 @@ func TestSymbolizePprof(t *testing.T) {
 					FileOffset:  0x0,
 				}},
 				Location: []*googlev1.Location{
-					{MappingId: 1, Address: 0x1500},
-					{MappingId: 1, Address: 0x3b60},
-					{MappingId: 1, Address: 0x1440},
+					{Id: 1, MappingId: 1, Address: 0x1500},
+					{Id: 2, MappingId: 1, Address: 0x3b60},
+					{Id: 3, MappingId: 1, Address: 0x1440},
 				},
 				StringTable: []string{"", "build-id"},
 			},
@@ -204,18 +203,11 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 		locations: []*location{
 			{
 				address: 0x1b743d6,
-				mapping: &pprof.Mapping{
-					Start:   0x403000,
-					Limit:   0x1d75000,
-					Offset:  0x3000,
-					BuildID: buildID,
-				},
 			},
 		},
 	}
 
-	err = sym.symbolize(context.Background(), req)
-	require.NoError(t, err)
+	sym.symbolize(context.Background(), req)
 	require.NotEmpty(t, req.locations[0].lines)
 
 	// Second request should also fetch from store
@@ -225,18 +217,11 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 		locations: []*location{
 			{
 				address: 0x1b743d6,
-				mapping: &pprof.Mapping{
-					Start:   0x403000,
-					Limit:   0x1d75000,
-					Offset:  0x3000,
-					BuildID: buildID,
-				},
 			},
 		},
 	}
 
-	err = sym.symbolize(context.Background(), req2)
-	require.NoError(t, err)
+	sym.symbolize(context.Background(), req2)
 	require.NotEmpty(t, req2.locations[0].lines)
 }
 
@@ -275,8 +260,7 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 	}).Return(nil).Once()
 
 	req1 := createRequest(t, "build-id", 0x1500)
-	err = s.symbolize(context.Background(), req1)
-	require.NoError(t, err)
+	s.symbolize(context.Background(), req1)
 	require.NotEmpty(t, req1.locations[0].lines)
 	require.NotEmpty(t, capturedLidiaData)
 
@@ -286,8 +270,7 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 	).Once()
 
 	req2 := createRequest(t, "build-id", 0x1500)
-	err = s.symbolize(context.Background(), req2)
-	require.NoError(t, err)
+	s.symbolize(context.Background(), req2)
 	require.NotEmpty(t, req2.locations[0].lines)
 
 	// request 3
@@ -296,8 +279,7 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 	).Once()
 
 	req3 := createRequest(t, "build-id", 0x3c5a)
-	err = s.symbolize(context.Background(), req3)
-	require.NoError(t, err)
+	s.symbolize(context.Background(), req3)
 	require.NotEmpty(t, req3.locations[0].lines)
 
 	// request 4
@@ -314,8 +296,7 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 	}).Return(nil).Once()
 
 	req4 := createRequest(t, "different-build-id", 0x1500)
-	err = s.symbolize(context.Background(), req4)
-	require.NoError(t, err)
+	s.symbolize(context.Background(), req4)
 	require.NotEmpty(t, req4.locations[0].lines)
 	require.NotEmpty(t, capturedLidiaData2)
 
@@ -327,19 +308,17 @@ func TestSymbolizerMetrics(t *testing.T) {
 	tests := []struct {
 		name      string
 		setupMock func(*mocksymbolizer.MockDebuginfodClient, *mocksymbolizer.MockDebugInfoStore)
-		setupTest func(*Symbolizer, context.Context) error
+		setupTest func(*Symbolizer, context.Context)
 		expected  map[string]int
 	}{
 		{
 			name: "successful symbolization with cache",
 			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {
-				// Get test data for proper Lidia format
 				elfTestFile := openTestFile(t)
 				elfData, err := io.ReadAll(elfTestFile)
 				elfTestFile.Close()
 				require.NoError(t, err)
 
-				// Process the ELF data to get valid Lidia data for the cache hit
 				preProcessor := &Symbolizer{
 					logger:  log.NewNopLogger(),
 					metrics: newMetrics(nil),
@@ -360,20 +339,17 @@ func TestSymbolizerMetrics(t *testing.T) {
 					io.NopCloser(bytes.NewReader(lidiaData)), nil,
 				).Once()
 			},
-			setupTest: func(s *Symbolizer, ctx context.Context) error {
+			setupTest: func(s *Symbolizer, ctx context.Context) {
 				req1 := createRequest(t, "build-id", 0x1500)
-				err := s.symbolize(ctx, req1)
-				if err != nil {
-					return err
-				}
+				s.symbolize(ctx, req1)
 
 				req2 := createRequest(t, "build-id", 0x1500)
-				return s.symbolize(ctx, req2)
+				s.symbolize(ctx, req2)
 			},
 			expected: map[string]int{
-				"pyroscope_profile_symbolization_duration_seconds":         1,
-				"pyroscope_debug_symbol_resolution_duration_seconds":       1,
-				"pyroscope_symbolizer_debuginfod_request_duration_seconds": 1,
+				"pyroscope_profile_symbolization_duration_seconds":   1,
+				"pyroscope_debug_symbol_resolution_duration_seconds": 1,
+				"pyroscope_debug_symbol_resolution_errors_total":     0,
 			},
 		},
 		{
@@ -383,14 +359,33 @@ func TestSymbolizerMetrics(t *testing.T) {
 				mockClient.On("FetchDebuginfo", mock.Anything, "unknown-build-id").
 					Return(nil, buildIDNotFoundError{buildID: "unknown-build-id"}).Once()
 			},
-			setupTest: func(s *Symbolizer, ctx context.Context) error {
+			setupTest: func(s *Symbolizer, ctx context.Context) {
 				req := createRequest(t, "unknown-build-id", 0x1500)
-				return s.symbolize(ctx, req)
+				s.symbolize(ctx, req)
 			},
 			expected: map[string]int{
-				"pyroscope_profile_symbolization_duration_seconds":         1,
-				"pyroscope_debug_symbol_resolution_duration_seconds":       0,
-				"pyroscope_symbolizer_debuginfod_request_duration_seconds": 1,
+				"pyroscope_profile_symbolization_duration_seconds":   1,
+				"pyroscope_debug_symbol_resolution_duration_seconds": 0,
+				"pyroscope_debug_symbol_resolution_errors_total":     0,
+			},
+		},
+		{
+			name: "elf_parsing_error",
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {
+				invalidData := []byte("invalid elf data")
+
+				mockStore.On("Get", mock.Anything, "invalid-elf").Return(nil, fmt.Errorf("not found")).Once()
+				mockClient.On("FetchDebuginfo", mock.Anything, "invalid-elf").Return(
+					io.NopCloser(bytes.NewReader(invalidData)), nil,
+				).Once()
+			},
+			setupTest: func(s *Symbolizer, ctx context.Context) {
+				req := createRequest(t, "invalid-elf", 0x1500)
+				s.symbolize(ctx, req)
+			},
+			expected: map[string]int{
+				"pyroscope_profile_symbolization_duration_seconds": 1,
+				"pyroscope_debug_symbol_resolution_errors_total":   1,
 			},
 		},
 	}
@@ -410,10 +405,7 @@ func TestSymbolizerMetrics(t *testing.T) {
 				metrics: newMetrics(reg),
 			}
 
-			err := tt.setupTest(s, context.Background())
-			if err != nil {
-				t.Log("Setup error:", err)
-			}
+			tt.setupTest(s, context.Background())
 
 			for metricName, expectedCount := range tt.expected {
 				count, err := testutil.GatherAndCount(reg, metricName)
@@ -498,12 +490,6 @@ func createRequest(t *testing.T, buildID string, address uint64) *request {
 		locations: []*location{
 			{
 				address: address,
-				mapping: &pprof.Mapping{
-					Start:   0x0,
-					Limit:   0x1000000,
-					Offset:  0x0,
-					BuildID: buildID,
-				},
 			},
 		},
 	}

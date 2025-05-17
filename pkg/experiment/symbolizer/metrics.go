@@ -44,7 +44,8 @@ type metrics struct {
 	profileSymbolization *prometheus.HistogramVec
 
 	// Debug symbol resolution metrics
-	debugSymbolResolution *prometheus.HistogramVec
+	debugSymbolResolution       *prometheus.HistogramVec
+	debugSymbolResolutionErrors *prometheus.CounterVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -87,6 +88,13 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Help:    "Time spent resolving debug symbols from ELF files by status",
 			Buckets: []float64{.001, .005, .01, .05, .1, .5, 1, 5, 10},
 		}, []string{"status"}),
+		debugSymbolResolutionErrors: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "pyroscope_debug_symbol_resolution_errors_total",
+				Help: "Total number of errors encountered during debug symbol resolution by error type",
+			},
+			[]string{"error_type"},
+		),
 	}
 
 	if reg != nil {
@@ -108,6 +116,7 @@ func (m *metrics) register() {
 		m.cacheSizeBytes,
 		m.profileSymbolization,
 		m.debugSymbolResolution,
+		m.debugSymbolResolutionErrors,
 	}
 
 	for _, collector := range collectors {
