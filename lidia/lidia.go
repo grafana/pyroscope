@@ -182,13 +182,7 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 
 	rb.sort()
 
-	// Cast to *os.File to use the write method
-	outputFile, ok := output.(*os.File)
-	if !ok {
-		return fmt.Errorf("output must be an *os.File")
-	}
-
-	err = rc.write(outputFile)
+	err = rc.write(output)
 	if err != nil {
 		return fmt.Errorf("failed to write lidia file: %w", err)
 	}

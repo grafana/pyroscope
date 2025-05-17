@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/grafana/pyroscope/lidia"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/pyroscope/lidia"
 )
 
 const compressedTestBinaryFile = "testdata/test-binary.zip"
-const decompressedDir = "decompressed" // Will be created in the temp dir
+const decompressedDir = "decompressed"
 
 // TestCreateLidia tests the CreateLidia function with the test binary
 func TestCreateLidia(t *testing.T) {
