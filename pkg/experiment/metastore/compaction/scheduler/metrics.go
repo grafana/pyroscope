@@ -118,8 +118,9 @@ func (c *statsCollector) collectStats(fn func(level int, stats queueStats)) {
 }
 
 func (c *statsCollector) collectMetrics() []prometheus.Metric {
-	metrics := make([]prometheus.Metric, 0, 8*len(c.s.queue.levels))
+	var metrics []prometheus.Metric
 	c.collectStats(func(l int, stats queueStats) {
+		metrics = make([]prometheus.Metric, 0, 8*len(c.s.queue.levels))
 		level := strconv.Itoa(l)
 		metrics = append(metrics,
 			prometheus.MustNewConstMetric(c.jobs, prometheus.GaugeValue, float64(stats.assigned), level, "assigned"),

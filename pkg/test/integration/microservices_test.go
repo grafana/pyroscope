@@ -110,8 +110,8 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 					MarshalVT()
 				require.NoError(t, err)
 
-				gctx = tenant.InjectTenantID(gctx, fmt.Sprintf("dummy-tenant-%d", i))
-				_, err = tc.pusher.Push(gctx, connect.NewRequest(&pushv1.PushRequest{
+				pctx := tenant.InjectTenantID(gctx, fmt.Sprintf("dummy-tenant-%d", i))
+				_, err = tc.pusher.Push(pctx, connect.NewRequest(&pushv1.PushRequest{
 					Series: []*pushv1.RawProfileSeries{{
 						Labels:  []*typesv1.LabelPair{{Name: "service_name", Value: fmt.Sprintf("dummy-service/%d", i)}},
 						Samples: []*pushv1.RawSample{{RawProfile: p}},
