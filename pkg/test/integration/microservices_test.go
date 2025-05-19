@@ -98,6 +98,29 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 	tc := newTestCtx(c)
 	t.Run("PushProfiles", func(t *testing.T) {
 		tc.pushProfiles(ctx, t)
+		// ingest some more data to compact the rest of the data we care about
+		// TODO: This shouldn't be necessary see https://github.com/grafana/pyroscope/issues/4193.
+		g, gctx := errgroup.WithContext(ctx)
+		g.SetLimit(32)
+		for i := 0; i < 200; i++ {
+			g.Go(func() error {
+				p, err := testhelper.NewProfileBuilder(tc.now.UnixNano()).
+					CPUProfile().
+					ForStacktraceString("foo", "bar", "baz").AddSamples(1).
+					MarshalVT()
+				require.NoError(t, err)
+
+				gctx = tenant.InjectTenantID(gctx, fmt.Sprintf("dummy-tenant-%d", i))
+				_, err = tc.pusher.Push(gctx, connect.NewRequest(&pushv1.PushRequest{
+					Series: []*pushv1.RawProfileSeries{{
+						Labels:  []*typesv1.LabelPair{{Name: "service_name", Value: fmt.Sprintf("dummy-service/%d", i)}},
+						Samples: []*pushv1.RawSample{{RawProfile: p}},
+					}},
+				}))
+				return err
+			})
+		}
+		require.NoError(t, g.Wait())
 	})
 
 	// await compaction so tenant wide index is available
@@ -267,12 +290,6 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 	t.Run("QueryLabelValues", func(t *testing.T) {
 		for tenantID, params := range tc.perTenantData {
 			t.Run(tenantID, func(t *testing.T) {
-				// TODO: fix that experimental storage layer v2 currently
-				// changes the behaviour slightly, in comparison with v1. Until
-				// then skip this test.
-				if isV2 && tenantID == "tenant-a" {
-					t.Skip("experimental storage layer v2, handles this query inconsitently with v1, skipping test.")
-				}
 				ctx := tenant.InjectTenantID(ctx, tenantID)
 				resp, err := tc.querier.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
 					Start: tc.now.Add(-time.Hour).UnixMilli(),
@@ -301,12 +318,6 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 	t.Run("QuerySelectMergeProfile", func(t *testing.T) {
 		for tenantID, params := range tc.perTenantData {
 			t.Run(tenantID, func(t *testing.T) {
-				// TODO: fix that experimental storage layer v2 currently
-				// changes the behaviour slightly, in comparison with v1. Until
-				// then skip this test.
-				if isV2 && tenantID == "tenant-a" {
-					t.Skip("experimental storage layer v2, handles this query inconsitently with v1, skipping test.")
-				}
 				ctx := tenant.InjectTenantID(ctx, tenantID)
 				req := &querierv1.SelectMergeProfileRequest{
 					ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
@@ -317,20 +328,18 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 				resp, err := tc.querier.SelectMergeProfile(ctx, connect.NewRequest(req))
 				require.NoError(t, err)
 
-				// TODO: fix that experimental storage layer v2 currently
-				// changes the behaviour slightly, in comparison with v1. Until
-				// then skip this assertion.
-				if !isV2 {
-					assert.Equal(t, int64(7200000000000), resp.Msg.DurationNanos, "DurationNanos")
-				}
-				if !isV2 || params.serviceCount > 0 {
-					assert.Equal(t, req.End*1e6, resp.Msg.TimeNanos, "TimeNanos")
-				}
-
 				// no services, no samples profile
 				if params.serviceCount == 0 {
 					return
 				}
+
+				// TODO: Experimental storage layer v2 doesn't support DurationNanos yet
+				// https://github.com/grafana/pyroscope/issues/4192
+				if !isV2 {
+					assert.Equal(t, int64(7200000000000), resp.Msg.DurationNanos, "DurationNanos")
+				}
+
+				assert.Equal(t, req.End*1e6, resp.Msg.TimeNanos, "TimeNanos")
 
 				assert.Equal(t,
 					[]*profilev1.ValueType{

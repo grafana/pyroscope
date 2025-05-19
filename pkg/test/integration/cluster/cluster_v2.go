@@ -110,12 +110,25 @@ func (c *Cluster) v2Prepare(_ context.Context, memberlistJoin []string) error {
 		comp.flags = append(comp.flags,
 			"-enable-query-backend=true",
 			"-write-path=segment-writer",
-			"-segment-writer.min-ready-duration=0",
-			"-segment-writer.lifecycler.addr="+listenAddr,
-			"-segment-writer.lifecycler.ID="+comp.nodeName(),
 			"-metastore.min-ready-duration=0",
 			fmt.Sprintf("-metastore.address=%s:%d/%s", listenAddr, metastoreLeader.grpcPort, metastoreLeader.nodeName()),
 		)
+
+		if comp.Target == "segment-writer" {
+			comp.flags = append(comp.flags,
+				"-segment-writer.num-tokens=1",
+				"-segment-writer.min-ready-duration=0",
+				"-segment-writer.lifecycler.addr="+listenAddr,
+				"-segment-writer.lifecycler.ID="+comp.nodeName(),
+			)
+		}
+
+		if comp.Target == "compaction-worker" {
+			comp.flags = append(comp.flags,
+				"-compaction-worker.job-concurrency=20",
+				"-compaction-worker.job-poll-interval=1s",
+			)
+		}
 
 		// register query-backends in the frontend and themselves
 		if comp.Target == "query-frontend" || comp.Target == "query-backend" {
