@@ -120,6 +120,7 @@ func (c *Cluster) v2Prepare(_ context.Context, memberlistJoin []string) error {
 				"-segment-writer.min-ready-duration=0",
 				"-segment-writer.lifecycler.addr="+listenAddr,
 				"-segment-writer.lifecycler.ID="+comp.nodeName(),
+				"-segment-writer.heartbeat-period=1s",
 			)
 		}
 
