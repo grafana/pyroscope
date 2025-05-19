@@ -98,30 +98,35 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 	tc := newTestCtx(c)
 	t.Run("PushProfiles", func(t *testing.T) {
 		tc.pushProfiles(ctx, t)
-		// ingest some more data to compact the rest of the data we care about
-		// TODO: This shouldn't be necessary see https://github.com/grafana/pyroscope/issues/4193.
-		g, gctx := errgroup.WithContext(ctx)
-		g.SetLimit(32)
-		for i := 0; i < 200; i++ {
-			g.Go(func() error {
-				p, err := testhelper.NewProfileBuilder(tc.now.UnixNano()).
-					CPUProfile().
-					ForStacktraceString("foo", "bar", "baz").AddSamples(1).
-					MarshalVT()
-				require.NoError(t, err)
-
-				pctx := tenant.InjectTenantID(gctx, fmt.Sprintf("dummy-tenant-%d", i))
-				_, err = tc.pusher.Push(pctx, connect.NewRequest(&pushv1.PushRequest{
-					Series: []*pushv1.RawProfileSeries{{
-						Labels:  []*typesv1.LabelPair{{Name: "service_name", Value: fmt.Sprintf("dummy-service/%d", i)}},
-						Samples: []*pushv1.RawSample{{RawProfile: p}},
-					}},
-				}))
-				return err
-			})
-		}
-		require.NoError(t, g.Wait())
 	})
+
+	// ingest some more data to compact the rest of the data we care about
+	// TODO: This shouldn't be necessary see https://github.com/grafana/pyroscope/issues/4193.
+	pushCtx, pushCancel := context.WithCancel(ctx)
+	g, gctx := errgroup.WithContext(pushCtx)
+	g.SetLimit(4)
+	for i := 0; i < 200; i++ {
+		g.Go(func() error {
+			p, err := testhelper.NewProfileBuilder(tc.now.UnixNano()).
+				CPUProfile().
+				ForStacktraceString("foo", "bar", "baz").AddSamples(1).
+				MarshalVT()
+			require.NoError(t, err)
+
+			pctx := tenant.InjectTenantID(gctx, fmt.Sprintf("dummy-tenant-%d", i))
+			_, err = tc.pusher.Push(pctx, connect.NewRequest(&pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{{
+					Labels:  []*typesv1.LabelPair{{Name: "service_name", Value: fmt.Sprintf("dummy-service/%d", i)}},
+					Samples: []*pushv1.RawSample{{RawProfile: p}},
+				}},
+			}))
+			return err
+		})
+	}
+	defer func() {
+		pushCancel()
+		require.NoError(t, g.Wait())
+	}()
 
 	// await compaction so tenant wide index is available
 	require.Eventually(t, func() bool {
@@ -130,7 +135,29 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 	}, time.Minute, time.Second)
 	t.Log("Compaction worker finished")
 
+	// await until all tenants have all expected labelValues available
+	// TODO: This shouldn't be necessary see https://github.com/grafana/pyroscope/issues/4193.
+	require.Eventually(t, func() bool {
+		for tenantID := range tc.perTenantData {
+			ctx := tenant.InjectTenantID(ctx, tenantID)
+			resp, err := tc.querier.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
+				Start: tc.now.Add(-time.Hour).UnixMilli(),
+				End:   tc.now.Add(time.Hour).UnixMilli(),
+				Name:  "service_name",
+			}))
+			if err != nil {
+				return false
+			}
+			if len(resp.Msg.Names) != tc.perTenantData[tenantID].serviceCount {
+				return false
+			}
+		}
+		return true
+	}, time.Minute, time.Second)
+	t.Log("All tenants have all expected labelValues available")
+
 	tc.runQueryTest(ctx, t)
+
 }
 
 func newTestCtx(x interface {
