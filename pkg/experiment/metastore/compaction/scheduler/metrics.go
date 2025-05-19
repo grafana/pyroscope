@@ -77,9 +77,6 @@ func (c *statsCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (c *statsCollector) collectStats(fn func(level int, stats queueStats)) {
-	c.s.mu.Lock()
-	defer c.s.mu.Unlock()
-
 	for i, q := range c.s.queue.levels {
 		// Note that some levels may be empty.
 		if q == nil || q.jobs == nil {
@@ -118,9 +115,11 @@ func (c *statsCollector) collectStats(fn func(level int, stats queueStats)) {
 }
 
 func (c *statsCollector) collectMetrics() []prometheus.Metric {
-	var metrics []prometheus.Metric
+	c.s.mu.Lock()
+	defer c.s.mu.Unlock()
+
+	var metrics = make([]prometheus.Metric, 0, 8*len(c.s.queue.levels))
 	c.collectStats(func(l int, stats queueStats) {
-		metrics = make([]prometheus.Metric, 0, 8*len(c.s.queue.levels))
 		level := strconv.Itoa(l)
 		metrics = append(metrics,
 			prometheus.MustNewConstMetric(c.jobs, prometheus.GaugeValue, float64(stats.assigned), level, "assigned"),
