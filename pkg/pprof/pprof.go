@@ -1313,6 +1313,9 @@ func sanitizeProfile(p *profilev1.Profile) {
 	})
 	// Check locations again, verifying that all functions are valid.
 	p.Location = slices.RemoveInPlace(p.Location, func(x *profilev1.Location, _ int) bool {
+		if len(x.Line) == 0 && x.Address == 0 {
+			return true
+		}
 		for _, line := range x.Line {
 			if line.FunctionId = t[line.FunctionId]; line.FunctionId == 0 {
 				return true
