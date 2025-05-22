@@ -334,17 +334,7 @@ func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 	}
 
 	ctx := context.Background()
-	opts := []otlpmetrichttp.Option{otlpmetrichttp.WithEndpoint(c.OTLPUrl)}
-	if c.OTLPInsecure {
-		opts = append(opts, otlpmetrichttp.WithInsecure())
-	}
-	if c.OTLPBasicAuthUser != "" {
-		opts = append(opts, otlpmetrichttp.WithHeaders(map[string]string{
-			"Authorization": "Basic " + basicAuth(c.OTLPBasicAuthUser, c.OTLPBasicAuthPassword),
-		}))
-	}
-
-	exp, err := otlpmetrichttp.New(ctx, opts...)
+	exp, err := otlpmetrichttp.New(ctx)
 	if err != nil {
 		return nil, err
 	}
