@@ -33,8 +33,8 @@ func TestIndex_Query(t *testing.T) {
 		MaxTime:   maxT,
 		CreatedBy: 1,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 2, Name: 3, MinTime: minT, MaxTime: minT, Labels: []int32{2, 4, 3, 5, 6}},
-			{Tenant: 7, Name: 8, MinTime: maxT, MaxTime: maxT, Labels: []int32{2, 4, 8, 5, 9}},
+			{Tenant: 2, Name: 3, MinTime: minT, MaxTime: maxT, Labels: []int32{2, 4, 3, 5, 6}},
+			{Tenant: 7, Name: 8, MinTime: minT, MaxTime: maxT, Labels: []int32{2, 4, 8, 5, 9}},
 		},
 		StringTable: []string{
 			"", "ingester",
@@ -51,7 +51,7 @@ func TestIndex_Query(t *testing.T) {
 		MaxTime:   maxT,
 		CreatedBy: 2,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 1, Name: 3, MinTime: minT, MaxTime: minT, Labels: []int32{2, 4, 3, 5, 6}},
+			{Tenant: 1, Name: 3, MinTime: minT, MaxTime: maxT, Labels: []int32{2, 4, 3, 5, 6}},
 		},
 		StringTable: []string{
 			"", "tenant-a", "ingester", "dataset-a", "service_name", "__profile_type__", "1",
@@ -66,7 +66,7 @@ func TestIndex_Query(t *testing.T) {
 		MaxTime:   maxT,
 		CreatedBy: 2,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 1, Name: 3, MinTime: minT, MaxTime: minT, Labels: []int32{2, 4, 3, 5, 6}},
+			{Tenant: 1, Name: 3, MinTime: minT, MaxTime: maxT, Labels: []int32{2, 4, 3, 5, 6}},
 		},
 		StringTable: []string{
 			"", "tenant-a", "ingester", "dataset-a", "service_name", "__profile_type__", "1",
@@ -114,7 +114,7 @@ func TestIndex_Query(t *testing.T) {
 					MinTime:     minT,
 					MaxTime:     maxT,
 					CreatedBy:   1,
-					Datasets:    []*metastorev1.Dataset{{Tenant: 2, Name: 3, MinTime: minT, MaxTime: minT}},
+					Datasets:    []*metastorev1.Dataset{{Tenant: 2, Name: 3, MinTime: minT, MaxTime: maxT}},
 					StringTable: []string{"", "ingester", "tenant-a", "dataset-a"},
 				},
 				{
@@ -124,7 +124,7 @@ func TestIndex_Query(t *testing.T) {
 					MinTime:     minT,
 					MaxTime:     maxT,
 					CreatedBy:   2,
-					Datasets:    []*metastorev1.Dataset{{Tenant: 1, Name: 3, MinTime: minT, MaxTime: minT}},
+					Datasets:    []*metastorev1.Dataset{{Tenant: 1, Name: 3, MinTime: minT, MaxTime: maxT}},
 					StringTable: []string{"", "tenant-a", "ingester", "dataset-a"},
 				},
 				{
@@ -134,7 +134,7 @@ func TestIndex_Query(t *testing.T) {
 					MinTime:     minT,
 					MaxTime:     maxT,
 					CreatedBy:   2,
-					Datasets:    []*metastorev1.Dataset{{Tenant: 1, Name: 3, MinTime: minT, MaxTime: minT}},
+					Datasets:    []*metastorev1.Dataset{{Tenant: 1, Name: 3, MinTime: minT, MaxTime: maxT}},
 					StringTable: []string{"", "tenant-a", "ingester", "dataset-a"},
 				},
 			}
@@ -157,7 +157,7 @@ func TestIndex_Query(t *testing.T) {
 					MinTime:     minT,
 					MaxTime:     maxT,
 					CreatedBy:   1,
-					Datasets:    []*metastorev1.Dataset{{Tenant: 2, Name: 3, MinTime: maxT, MaxTime: maxT}},
+					Datasets:    []*metastorev1.Dataset{{Tenant: 2, Name: 3, MinTime: minT, MaxTime: maxT}},
 					StringTable: []string{"", "ingester", "tenant-b", "dataset-b"},
 				},
 			}
@@ -195,7 +195,7 @@ func TestIndex_Query(t *testing.T) {
 						Tenant:  2,
 						Name:    3,
 						MinTime: minT,
-						MaxTime: minT,
+						MaxTime: maxT,
 						Labels:  []int32{1, 4, 3},
 					}},
 					StringTable: []string{"", "ingester", "tenant-a", "dataset-a", "service_name"},
@@ -211,7 +211,7 @@ func TestIndex_Query(t *testing.T) {
 						Tenant:  1,
 						Name:    3,
 						MinTime: minT,
-						MaxTime: minT,
+						MaxTime: maxT,
 						Labels:  []int32{1, 4, 3},
 					}},
 					StringTable: []string{"", "tenant-a", "ingester", "dataset-a", "service_name"},
@@ -227,7 +227,7 @@ func TestIndex_Query(t *testing.T) {
 						Tenant:  1,
 						Name:    3,
 						MinTime: minT,
-						MaxTime: minT,
+						MaxTime: maxT,
 						Labels:  []int32{1, 4, 3},
 					}},
 					StringTable: []string{"", "tenant-a", "ingester", "dataset-a", "service_name"},
@@ -248,8 +248,8 @@ func TestIndex_Query(t *testing.T) {
 		t.Run("TimeRangeFilter", func(t *testing.T) {
 			found, err := index.QueryMetadata(tx, MetadataQuery{
 				Expr:      `{service_name=~"dataset-b"}`,
-				StartTime: time.UnixMilli(minT),
-				EndTime:   time.UnixMilli(maxT - 1),
+				StartTime: time.UnixMilli(minT - 3),
+				EndTime:   time.UnixMilli(minT - 1), // dataset-b starts at minT
 				Tenant:    []string{"tenant-b"},
 			})
 			require.NoError(t, err)
