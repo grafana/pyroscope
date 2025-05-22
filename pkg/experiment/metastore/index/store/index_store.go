@@ -293,8 +293,16 @@ func (s *Shard) Overlaps(start, end time.Time) bool {
 	if s.MinTime == 0 || s.MaxTime == 0 {
 		return true
 	}
-	// adjust by 1ms to make the check inclusive for start==s.MaxTime or end==s.MinTime
-	return start.Before(time.UnixMilli(s.MaxTime+1)) && !end.Before(time.UnixMilli(s.MinTime-1))
+
+	if start.After(time.UnixMilli(s.MaxTime)) {
+		return false
+	}
+
+	if end.Before(time.UnixMilli(s.MinTime)) {
+		return false
+	}
+
+	return true
 }
 
 type stringIterator struct {
