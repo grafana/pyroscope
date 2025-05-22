@@ -85,7 +85,15 @@ func (q *metadataQuery) buildTenantMap(tenants []string) {
 }
 
 func (q *metadataQuery) overlaps(start, end time.Time) bool {
-	return start.Before(q.endTime) && !end.Before(q.startTime)
+	if q.startTime.After(end) {
+		return false
+	}
+
+	if q.endTime.Before(start) {
+		return false
+	}
+
+	return true
 }
 
 func (q *metadataQuery) overlapsUnixMilli(start, end int64) bool {

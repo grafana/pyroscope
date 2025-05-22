@@ -249,7 +249,7 @@ func TestIndex_Query(t *testing.T) {
 			found, err := index.QueryMetadata(tx, MetadataQuery{
 				Expr:      `{service_name=~"dataset-b"}`,
 				StartTime: time.UnixMilli(minT),
-				EndTime:   time.UnixMilli(maxT),
+				EndTime:   time.UnixMilli(maxT - 1),
 				Tenant:    []string{"tenant-b"},
 			})
 			require.NoError(t, err)
@@ -287,7 +287,11 @@ func TestIndex_Query(t *testing.T) {
 				},
 			})
 			require.NoError(t, err)
-			require.Empty(t, labels)
+			require.NotEmpty(t, labels)
+			assert.Equal(t, []*typesv1.Labels{{Labels: []*typesv1.LabelPair{
+				{Name: model.LabelNameProfileType, Value: "4"},
+				{Name: model.LabelNameServiceName, Value: "dataset-b"},
+			}}}, labels)
 		})
 	}
 
