@@ -1,5 +1,6 @@
 services:
   us-east:
+    container_name: us-east
     ports:
     - 5000
     environment:
@@ -12,6 +13,7 @@ services:
     build:
       context: .
   eu-north:
+    container_name: eu-north
     ports:
     - 5000
     environment:
@@ -22,6 +24,7 @@ services:
     build:
       context: .
   ap-south:
+    container_name: ap-south
     ports:
     - 5000
     environment:
@@ -41,6 +44,8 @@ services:
       dockerfile: Dockerfile.load-generator
     environment:
     - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://prometheus:9090/api/v1/otlp/v1/metrics
   grafana:
     image: grafana/grafana:latest
     environment:
