@@ -7,7 +7,9 @@ package validation
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -53,6 +55,10 @@ var (
 
 type UsageGroupConfig struct {
 	config map[string][]*labels.Matcher
+
+	// Cache for compiled regex patterns to avoid recompilation
+	regexCache   map[string]*regexp.Regexp
+	regexCacheMu sync.RWMutex
 }
 
 func (c *UsageGroupConfig) GetUsageGroups(tenantID string, lbls phlaremodel.Labels) UsageGroupMatch {
@@ -61,8 +67,18 @@ func (c *UsageGroupConfig) GetUsageGroups(tenantID string, lbls phlaremodel.Labe
 	}
 
 	for name, matchers := range c.config {
-		if matchesAll(matchers, lbls) {
-			match.names = append(match.names, name)
+		matches, captureGroups := c.matchesAllWithCaptureGroups(matchers, lbls)
+		if matches {
+			if strings.Contains(name, "$") && len(captureGroups) > 0 {
+				dynamicName := name
+				for i, captureGroup := range captureGroups {
+					placeholder := fmt.Sprintf("$%d", i+1)
+					dynamicName = strings.ReplaceAll(dynamicName, placeholder, captureGroup)
+				}
+				match.names = append(match.names, dynamicName)
+			} else {
+				match.names = append(match.names, name)
+			}
 		}
 	}
 
@@ -136,7 +152,8 @@ func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
 	}
 
 	config := UsageGroupConfig{
-		config: make(map[string][]*labels.Matcher),
+		config:     make(map[string][]*labels.Matcher),
+		regexCache: make(map[string]*regexp.Regexp),
 	}
 
 	for name, matchersText := range m {
@@ -174,25 +191,64 @@ func (o *Overrides) DistributorUsageGroups(tenantID string) *UsageGroupConfig {
 	return config
 }
 
-func matchesAll(matchers []*labels.Matcher, lbls phlaremodel.Labels) bool {
-	if len(lbls) == 0 {
-		return false
+// getCompiledRegex returns a compiled regex from cache or compiles and caches it
+func (c *UsageGroupConfig) getCompiledRegex(pattern string) (*regexp.Regexp, error) {
+	c.regexCacheMu.RLock()
+	if re, exists := c.regexCache[pattern]; exists {
+		c.regexCacheMu.RUnlock()
+		return re, nil
 	}
+	c.regexCacheMu.RUnlock()
+
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	// check again if another goroutine cached it while we were compiling
+	c.regexCacheMu.Lock()
+	if existingRe, exists := c.regexCache[pattern]; exists {
+		c.regexCacheMu.Unlock()
+		return existingRe, nil
+	}
+
+	c.regexCache[pattern] = re
+	c.regexCacheMu.Unlock()
+
+	return re, nil
+}
+
+func (c *UsageGroupConfig) matchesAllWithCaptureGroups(matchers []*labels.Matcher, lbls phlaremodel.Labels) (bool, []string) {
+	if len(lbls) == 0 {
+		return false, nil
+	}
+
+	var captureGroups []string
 
 	for _, m := range matchers {
 		matched := false
 		for _, lbl := range lbls {
 			if lbl.Name == m.Name {
 				if !m.Matches(lbl.Value) {
-					return false
+					return false, nil
 				}
 				matched = true
+
+				if m.Type == labels.MatchRegexp {
+					re, err := c.getCompiledRegex(m.Value)
+					if err == nil {
+						submatches := re.FindStringSubmatch(lbl.Value)
+						if len(submatches) > 1 {
+							captureGroups = append(captureGroups, submatches[1:]...)
+						}
+					}
+				}
 				break
 			}
 		}
 		if !matched {
-			return false
+			return false, nil
 		}
 	}
-	return true
+	return true, captureGroups
 }
