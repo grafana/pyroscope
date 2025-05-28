@@ -33,7 +33,6 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 			s.inMemoryBucket(buf), s.obj.path, offset, size,
 			0, // Do not prefetch the footer.
 			parquet.SkipBloomFilters(true),
-			parquet.SkipPageIndex(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(4<<10))
 	} else {
@@ -41,7 +40,6 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 			s.obj.storage, s.obj.path, offset, size,
 			estimateFooterSize(size),
 			parquet.SkipBloomFilters(true),
-			parquet.SkipPageIndex(true),
 			parquet.FileReadMode(parquet.ReadModeAsync),
 			parquet.ReadBufferSize(estimateReadBufferSize(size)))
 	}
