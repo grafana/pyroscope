@@ -121,16 +121,24 @@ func (f *ParquetFile) RowReader() parquet.RowReader {
 	return parquet.NewReader(f.File, schemav1.ProfilesSchema)
 }
 
+func footerSize(buf []byte) int64 {
+	sb := buf[len(buf)-8 : len(buf)-4]
+	s := int64(binary.LittleEndian.Uint32(sb))
+	s += 8 // Include the footer size itself and the magic signature.
+	return s
+}
+
 func (f *ParquetFile) fetchFooter(ctx context.Context, buf *bufferpool.Buffer, estimatedSize int64) error {
+	if estimatedSize < 8 {
+		estimatedSize = 8
+	}
+
 	// Fetch the footer of estimated size at the estimated offset.
 	estimatedOffset := f.off + f.size - estimatedSize
 	if err := objstore.ReadRange(ctx, buf, f.path, f.storage, estimatedOffset, estimatedSize); err != nil {
 		return err
 	}
-	// Footer size is an uint32 located at size-8.
-	sb := buf.B[len(buf.B)-8 : len(buf.B)-4]
-	s := int64(binary.LittleEndian.Uint32(sb))
-	s += 8 // Include the footer size itself and the magic signature.
+	s := footerSize(buf.B)
 	if estimatedSize >= s {
 		// The footer has been fetched.
 		return nil
