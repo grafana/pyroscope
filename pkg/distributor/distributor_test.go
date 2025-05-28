@@ -599,7 +599,7 @@ func Test_IngestLimits(t *testing.T) {
 					"group-2": "{service_name=\"svc2\"}",
 				})
 				require.NoError(t, err)
-				l.DistributorUsageGroups = &usageGroupCfg
+				l.DistributorUsageGroups = usageGroupCfg
 				tenantLimits["user-1"] = l
 			}),
 			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
@@ -655,7 +655,7 @@ func Test_IngestLimits(t *testing.T) {
 					"group-1": "{service_name=\"svc\"}",
 				})
 				require.NoError(t, err)
-				l.DistributorUsageGroups = &usageGroupCfg
+				l.DistributorUsageGroups = usageGroupCfg
 				tenantLimits["user-1"] = l
 			}),
 			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
