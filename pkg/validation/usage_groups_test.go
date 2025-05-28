@@ -119,6 +119,43 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 				tenantID: "tenant1",
 			},
 		},
+		{
+			Name:     "dynamic_usage_group_names",
+			TenantID: "tenant1",
+			Config: UsageGroupConfig{
+				config: map[string][]*labels.Matcher{
+					"app/$1": testMustParseMatcher(t, `{service_name=~"(.*)"}`),
+				},
+			},
+			Labels: phlaremodel.Labels{
+				{Name: "service_name", Value: "foo"},
+			},
+			Want: UsageGroupMatch{
+				tenantID: "tenant1",
+				names: []string{
+					"app/foo",
+				},
+			},
+		},
+		{
+			Name:     "dynamic_usage_group_names_multiple_capture_groups",
+			TenantID: "tenant1",
+			Config: UsageGroupConfig{
+				config: map[string][]*labels.Matcher{
+					"$1/$2": testMustParseMatcher(t, `{namespace=~"(.*)", container=~"(.*)"}`),
+				},
+			},
+			Labels: phlaremodel.Labels{
+				{Name: "namespace", Value: "dev"},
+				{Name: "container", Value: "distributor"},
+			},
+			Want: UsageGroupMatch{
+				tenantID: "tenant1",
+				names: []string{
+					"dev/distributor",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
