@@ -43,7 +43,7 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 			parquet.SkipBloomFilters(true),
 			parquet.SkipPageIndex(true),
 			parquet.FileReadMode(parquet.ReadModeAsync),
-			parquet.ReadBufferSize(estimateReadBufferSize(size)))
+			parquet.ReadBufferSize(parquetReadBufferSize))
 	}
 	if err != nil {
 		return fmt.Errorf("opening profile parquet table: %w", err)
@@ -163,12 +163,12 @@ type profilesWriter struct {
 	profiles uint64
 }
 
-func newProfileWriter(pageBufferSize int, w io.Writer) *profilesWriter {
+func newProfileWriter(w io.Writer) *profilesWriter {
 	return &profilesWriter{
 		buf: make([]parquet.Row, 1),
 		GenericWriter: parquet.NewGenericWriter[*schemav1.Profile](w,
 			parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
-			parquet.PageBufferSize(pageBufferSize),
+			parquet.PageBufferSize(parquetPageWriteBufferSize),
 			// Note that parquet keeps ALL RG pages in memory (ColumnPageBuffers).
 			parquet.MaxRowsPerRowGroup(maxRowsPerRowGroup),
 			schemav1.ProfilesSchema,
