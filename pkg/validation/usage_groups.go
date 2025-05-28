@@ -94,10 +94,11 @@ func (c *UsageGroupConfig) UnmarshalYAML(value *yaml.Node) error {
 		return fmt.Errorf("malformed usage group config: %w", err)
 	}
 
-	*c, err = NewUsageGroupConfig(m)
+	config, err := NewUsageGroupConfig(m)
 	if err != nil {
 		return err
 	}
+	c.config = config.config
 	return nil
 }
 
@@ -108,10 +109,11 @@ func (c *UsageGroupConfig) UnmarshalJSON(bytes []byte) error {
 		return fmt.Errorf("malformed usage group config: %w", err)
 	}
 
-	*c, err = NewUsageGroupConfig(m)
+	config, err := NewUsageGroupConfig(m)
 	if err != nil {
 		return err
 	}
+	c.config = config.config
 	return nil
 }
 
@@ -146,33 +148,32 @@ func (m UsageGroupMatch) Names() []string {
 	return m.names
 }
 
-func NewUsageGroupConfig(m map[string]string) (UsageGroupConfig, error) {
+func NewUsageGroupConfig(m map[string]string) (*UsageGroupConfig, error) {
 	if len(m) > maxUsageGroups {
-		return UsageGroupConfig{}, fmt.Errorf("maximum number of usage groups is %d, got %d", maxUsageGroups, len(m))
+		return nil, fmt.Errorf("maximum number of usage groups is %d, got %d", maxUsageGroups, len(m))
 	}
 
-	config := UsageGroupConfig{
-		config:     make(map[string][]*labels.Matcher),
-		regexCache: make(map[string]*regexp.Regexp),
+	config := &UsageGroupConfig{
+		config: make(map[string][]*labels.Matcher),
 	}
 
 	for name, matchersText := range m {
 		if !utf8.ValidString(name) {
-			return UsageGroupConfig{}, fmt.Errorf("usage group name %q is not valid UTF-8", name)
+			return nil, fmt.Errorf("usage group name %q is not valid UTF-8", name)
 		}
 
 		name = strings.TrimSpace(name)
 		if name == "" {
-			return UsageGroupConfig{}, fmt.Errorf("usage group name cannot be empty")
+			return nil, fmt.Errorf("usage group name cannot be empty")
 		}
 
 		if name == noMatchName {
-			return UsageGroupConfig{}, fmt.Errorf("usage group name %q is reserved", noMatchName)
+			return nil, fmt.Errorf("usage group name %q is reserved", noMatchName)
 		}
 
 		matchers, err := parser.ParseMetricSelector(matchersText)
 		if err != nil {
-			return UsageGroupConfig{}, fmt.Errorf("failed to parse matchers for usage group %q: %w", name, err)
+			return nil, fmt.Errorf("failed to parse matchers for usage group %q: %w", name, err)
 		}
 
 		config.config[name] = matchers
@@ -212,6 +213,9 @@ func (c *UsageGroupConfig) getCompiledRegex(pattern string) (*regexp.Regexp, err
 		return existingRe, nil
 	}
 
+	if c.regexCache == nil {
+		c.regexCache = make(map[string]*regexp.Regexp)
+	}
 	c.regexCache[pattern] = re
 	c.regexCacheMu.Unlock()
 
