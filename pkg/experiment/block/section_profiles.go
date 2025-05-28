@@ -135,7 +135,11 @@ func (f *ParquetFile) fetchFooter(ctx context.Context, buf *bufferpool.Buffer, e
 		// The footer has been fetched.
 		return nil
 	}
-	// Fetch footer to buf for sure.
+
+	// reset buffer
+	buf.B = buf.B[:0]
+
+	// Fetch exact footer to buf for sure.
 	return objstore.ReadRange(ctx, buf, f.path, f.storage, f.off+f.size-s, s)
 }
 
