@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 func BenchmarkUsageGroups_Regular(b *testing.B) {
@@ -23,10 +24,11 @@ func BenchmarkUsageGroups_Regular(b *testing.B) {
 		{Name: "team", Value: "platform"},
 		{Name: "environment", Value: "production"},
 	}
+	evaluator := NewUsageGroupEvaluator(util.Logger)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = config.GetUsageGroups("tenant1", l)
+		_ = evaluator.GetMatch("tenant1", config, l)
 	}
 }
 
@@ -45,18 +47,17 @@ func BenchmarkUsageGroups_Dynamic(b *testing.B) {
 		{Name: "team", Value: "platform"},
 		{Name: "environment", Value: "production"},
 	}
+	evaluator := NewUsageGroupEvaluator(util.Logger)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = config.GetUsageGroups("tenant1", l)
+		_ = evaluator.GetMatch("tenant1", config, l)
 	}
 }
 
 func BenchmarkUsageGroups_ComplexRegex(b *testing.B) {
 	config, err := NewUsageGroupConfig(map[string]string{
-		// More complex regex with character classes
-		"complex/${labels.service_name}": `{service_name=~"[a-zA-Z]+-[0-9]+"}`,
-		// Very complex regex
+		"complex/${labels.service_name}":      `{service_name=~"[a-zA-Z]+-[0-9]+"}`,
 		"very-complex/${labels.service_name}": `{service_name=~"[a-zA-Z]+-[0-9]+\\.[a-z]{2,4}"}`,
 	})
 	require.NoError(b, err)
@@ -64,9 +65,10 @@ func BenchmarkUsageGroups_ComplexRegex(b *testing.B) {
 	l := model.Labels{
 		{Name: "service_name", Value: "frontend-123.prod"},
 	}
+	evaluator := NewUsageGroupEvaluator(util.Logger)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = config.GetUsageGroups("tenant1", l)
+		_ = evaluator.GetMatch("tenant1", config, l)
 	}
 }
