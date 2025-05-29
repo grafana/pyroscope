@@ -385,10 +385,6 @@ type blockIter struct {
 }
 
 func newBlockIter() *blockIter {
-	// Assuming that block IDs (16b ULID) are globally unique.
-	// We could achieve the same with more efficiency by marking visited
-	// batches. However, marking visited blocks seems to be more robust,
-	// and the size of the map is expected to be small.
 	visited := make(map[string]struct{}, 64)
 	visited[zeroBlockEntry.id] = struct{}{}
 	return &blockIter{visited: visited}
