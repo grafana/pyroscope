@@ -72,6 +72,11 @@ type UsageGroupConfig struct {
 	parsedEntries []usageGroupEntry
 }
 
+var (
+	dynamicLabelNamePrefix       = "${labels."
+	dynamicLabelNamePrefixLength = len(dynamicLabelNamePrefix)
+)
+
 func (c *UsageGroupConfig) GetUsageGroups(tenantID string, lbls phlaremodel.Labels) UsageGroupMatch {
 	match := UsageGroupMatch{
 		tenantID: tenantID,
@@ -208,7 +213,7 @@ func parseUsageGroupEntries(m map[string]string) ([]usageGroupEntry, map[string]
 			matchers: matchers,
 		}
 
-		if strings.Contains(name, "${labels.") {
+		if strings.Contains(name, dynamicLabelNamePrefix) {
 			template, err := parseTemplate(name)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to parse template for usage group %q: %w", name, err)
@@ -231,7 +236,7 @@ func parseTemplate(name string) ([]templatePart, error) {
 	i := 0
 
 	for i < len(name) {
-		placeholderStart := strings.Index(name[i:], "${labels.")
+		placeholderStart := strings.Index(name[i:], dynamicLabelNamePrefix)
 		if placeholderStart == -1 {
 			// no more placeholders, add the rest as literal
 			if i < len(name) {
@@ -253,13 +258,13 @@ func parseTemplate(name string) ([]templatePart, error) {
 
 		// find the end of the placeholder
 		placeholderStartPos := i + placeholderStart
-		braceStart := placeholderStartPos + 9 // len("${labels.")
-		braceEnd := strings.Index(name[braceStart:], "}")
+		labelNameStart := placeholderStartPos + dynamicLabelNamePrefixLength // len("${labels.")
+		braceEnd := strings.Index(name[labelNameStart:], "}")
 		if braceEnd == -1 {
 			return nil, fmt.Errorf("unclosed placeholder starting at position %d", placeholderStartPos)
 		}
 
-		labelName := name[braceStart : braceStart+braceEnd]
+		labelName := name[labelNameStart : labelNameStart+braceEnd]
 		if labelName == "" {
 			return nil, fmt.Errorf("empty label name in placeholder at position %d", placeholderStartPos)
 		}
@@ -269,7 +274,7 @@ func parseTemplate(name string) ([]templatePart, error) {
 			value:     labelName,
 		})
 
-		i = braceStart + braceEnd + 1 // move past the closing brace
+		i = labelNameStart + braceEnd + 1 // move past the closing brace
 	}
 
 	return parts, nil
