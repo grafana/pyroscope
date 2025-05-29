@@ -166,6 +166,10 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dennwc/varint v1.0.0 h1:kGNFFSSw8ToIy3obO/kKr8U9GZYUAxQEVuix4zfDWzE=
 github.com/dennwc/varint v1.0.0/go.mod h1:hnItb35rvZvJrbTALZtY/iQfDs48JKRG1RPpgziApxA=
+github.com/dgraph-io/ristretto/v2 v2.2.0 h1:bkY3XzJcXoMuELV8F+vS8kzNgicwQFAaGINAEJdWGOM=
+github.com/dgraph-io/ristretto/v2 v2.2.0/go.mod h1:RZrm63UmcBAaYWC1DotLYBmTvgkrs0+XhBd7Npn7/zI=
+github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da h1:aIftn67I1fkbMa512G+w+Pxci9hJPB8oMnkcP3iZF38=
+github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
 github.com/dgryski/go-groupvarint v0.0.0-20230630160417-2bfb7969fb3c h1:cHaw4wmusVzAZLEPWOCCGCfu6UvFXx9UboCHQCnjvxY=
 github.com/dgryski/go-groupvarint v0.0.0-20230630160417-2bfb7969fb3c/go.mod h1:MlkUQveSLEDbIgq2r1e++tSf0zfzU9mQpa9Qkczl+9Y=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=
@@ -375,6 +379,8 @@ github.com/grafana/pyroscope-go/godeltaprof v0.1.8 h1:iwOtYXeeVSAeYefJNaxDytgjKt
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8/go.mod h1:2+l7K7twW49Ct4wFluZD3tZ6e0SjanjcUUBPVD/UuGU=
 github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3 h1:GtwQDlBz8aJHMy2Ko28UDRGgGzi7v4Vf20+ZyXaGy7M=
 github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3/go.mod h1:nfbW6/4ke3ywlqLb+Zgr9t1z9Zv3m+2ImUp+vbkzHpc=
+github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff h1:9dI8HuAIA5L/EsPXkk3YqA3Pp5i7ECvQkWMwUepLoCY=
+github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff/go.mod h1:3f/0/CzhTk1moGlVOp2nJQKCAL+4M5GTnkfDd5hqDIk=
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc h1:GN2Lv3MGO7AS6PrRoT6yV5+wkrOpcszoIsO4+4ds248=
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
 github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 h1:UH//fgunKIs4JdUbpDl1VZCDaL56wXCB/5+wF6uHfaI=
