@@ -249,40 +249,30 @@ func parseUsageGroupEntries(m map[string]string) ([]usageGroupEntry, map[string]
 // parseTemplate parses a usage group name template into parts
 func parseTemplate(name string) ([]templatePart, error) {
 	var parts []templatePart
-	i := 0
+	remaining := name
 
-	for i < len(name) {
-		placeholderStart := strings.Index(name[i:], dynamicLabelNamePrefix)
-		if placeholderStart == -1 {
-			// no more placeholders, add the rest as literal
-			if i < len(name) {
-				parts = append(parts, templatePart{
-					isLiteral: true,
-					value:     name[i:],
-				})
-			}
-			break
-		}
+	for len(remaining) > 0 {
+		before, after, found := strings.Cut(remaining, dynamicLabelNamePrefix)
 
-		// add literal part before placeholder
-		if placeholderStart > 0 {
+		// add literal part before placeholder (if any)
+		if len(before) > 0 {
 			parts = append(parts, templatePart{
 				isLiteral: true,
-				value:     name[i : i+placeholderStart],
+				value:     before,
 			})
 		}
 
-		// find the end of the placeholder
-		placeholderStartPos := i + placeholderStart
-		labelNameStart := placeholderStartPos + dynamicLabelNamePrefixLength // len("${labels.")
-		braceEnd := strings.Index(name[labelNameStart:], "}")
-		if braceEnd == -1 {
-			return nil, fmt.Errorf("unclosed placeholder starting at position %d", placeholderStartPos)
+		if !found {
+			break
 		}
 
-		labelName := name[labelNameStart : labelNameStart+braceEnd]
+		labelName, afterBrace, foundBrace := strings.Cut(after, "}")
+		if !foundBrace {
+			return nil, fmt.Errorf("unclosed placeholder")
+		}
+
 		if labelName == "" {
-			return nil, fmt.Errorf("empty label name in placeholder at position %d", placeholderStartPos)
+			return nil, fmt.Errorf("empty label name in placeholder")
 		}
 
 		parts = append(parts, templatePart{
@@ -290,7 +280,7 @@ func parseTemplate(name string) ([]templatePart, error) {
 			value:     labelName,
 		})
 
-		i = labelNameStart + braceEnd + 1 // move past the closing brace
+		remaining = afterBrace
 	}
 
 	return parts, nil
