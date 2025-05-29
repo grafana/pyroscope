@@ -10,6 +10,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/prometheus/model/labels"
@@ -77,7 +79,17 @@ var (
 	dynamicLabelNamePrefixLength = len(dynamicLabelNamePrefix)
 )
 
-func (c *UsageGroupConfig) GetUsageGroups(tenantID string, lbls phlaremodel.Labels) UsageGroupMatch {
+type UsageGroupEvaluator struct {
+	logger log.Logger
+}
+
+func NewUsageGroupEvaluator(logger log.Logger) *UsageGroupEvaluator {
+	return &UsageGroupEvaluator{
+		logger: logger,
+	}
+}
+
+func (e *UsageGroupEvaluator) GetMatch(tenantID string, c *UsageGroupConfig, lbls phlaremodel.Labels) UsageGroupMatch {
 	match := UsageGroupMatch{
 		tenantID: tenantID,
 		names:    make([]string, 0, len(c.parsedEntries)),
@@ -88,11 +100,18 @@ func (c *UsageGroupConfig) GetUsageGroups(tenantID string, lbls phlaremodel.Labe
 			if entry.template != nil {
 				dynamicName, err := c.expandTemplate(entry.template, lbls)
 				if err != nil {
-					// TODO(aleks-p): log error
+					level.Warn(e.logger).Log(
+						"msg", "failed to expand usage group template, skipping usage group",
+						"err", err,
+						"labels", lbls,
+						"usage_group", entry.staticName)
 					continue
 				}
 				if dynamicName == "" {
-					// TODO(aleks-p): log error
+					level.Warn(e.logger).Log(
+						"msg", "usage group template expanded to empty string, skipping usage group",
+						"labels", lbls,
+						"usage_group", entry.staticName)
 					continue
 				}
 				match.names = append(match.names, dynamicName)

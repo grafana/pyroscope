@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
@@ -133,7 +134,8 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			config, err := NewUsageGroupConfig(tt.Config)
 			require.NoError(t, err)
 
-			got := config.GetUsageGroups(tt.TenantID, tt.Labels)
+			evaluator := NewUsageGroupEvaluator(util.Logger)
+			got := evaluator.GetMatch(tt.TenantID, config, tt.Labels)
 
 			slices.Sort(got.names)
 			slices.Sort(tt.Want.names)
