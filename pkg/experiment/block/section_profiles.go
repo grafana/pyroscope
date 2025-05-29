@@ -33,7 +33,6 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 			s.inMemoryBucket(buf), s.obj.path, offset, size,
 			0, // Do not prefetch the footer.
 			parquet.SkipBloomFilters(true),
-			parquet.SkipPageIndex(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(4<<10))
 	} else {
@@ -41,7 +40,6 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 			s.obj.storage, s.obj.path, offset, size,
 			estimateFooterSize(size),
 			parquet.SkipBloomFilters(true),
-			parquet.SkipPageIndex(true),
 			parquet.FileReadMode(parquet.ReadModeAsync),
 			parquet.ReadBufferSize(estimateReadBufferSize(size)))
 	}
@@ -121,21 +119,43 @@ func (f *ParquetFile) RowReader() parquet.RowReader {
 	return parquet.NewReader(f.File, schemav1.ProfilesSchema)
 }
 
+func footerSize(buf []byte) int64 {
+	sb := buf[len(buf)-8 : len(buf)-4]
+	s := int64(binary.LittleEndian.Uint32(sb))
+	s += 8 // Include the footer size itself and the magic signature.
+	return s
+}
+
 func (f *ParquetFile) fetchFooter(ctx context.Context, buf *bufferpool.Buffer, estimatedSize int64) error {
+	if f.size < 8 {
+		return fmt.Errorf("file size is too small to contain a footer")
+	}
+
+	// Ensure the footer is at least 8 bytes.
+	if estimatedSize < 8 {
+		estimatedSize = 8
+	}
+
+	// Ensure the footer is not bigger than the file.
+	if estimatedSize > f.size {
+		estimatedSize = f.size
+	}
+
 	// Fetch the footer of estimated size at the estimated offset.
 	estimatedOffset := f.off + f.size - estimatedSize
 	if err := objstore.ReadRange(ctx, buf, f.path, f.storage, estimatedOffset, estimatedSize); err != nil {
 		return err
 	}
-	// Footer size is an uint32 located at size-8.
-	sb := buf.B[len(buf.B)-8 : len(buf.B)-4]
-	s := int64(binary.LittleEndian.Uint32(sb))
-	s += 8 // Include the footer size itself and the magic signature.
+	s := footerSize(buf.B)
 	if estimatedSize >= s {
 		// The footer has been fetched.
 		return nil
 	}
-	// Fetch footer to buf for sure.
+
+	// reset buffer
+	buf.B = buf.B[:0]
+
+	// Fetch exact footer to buf for sure.
 	return objstore.ReadRange(ctx, buf, f.path, f.storage, f.off+f.size-s, s)
 }
 
