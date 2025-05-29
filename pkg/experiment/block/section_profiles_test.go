@@ -67,6 +67,9 @@ func Test_openParquetFile(t *testing.T) {
 	err := bucket.Upload(ctx, path, bytes.NewReader(buf.Bytes()))
 	require.NoError(t, err)
 
+	pathOffset := "test.offset.parquet"
+	require.NoError(t, bucket.Upload(ctx, pathOffset, bytes.NewReader(append(bytes.Repeat([]byte{0xab}, 16), buf.Bytes()...))))
+
 	opts := []parquet.FileOption{
 		parquet.SkipBloomFilters(true),
 	}
@@ -94,6 +97,12 @@ func Test_openParquetFile(t *testing.T) {
 		pf, err := openParquetFile(bucket, path, 0, int64(buf.Len()), 1, opts...)
 		require.NoError(t, err)
 
+		validateColumnIndex(t, pf.File, count)
+	})
+
+	t.Run("withOffsetAndFooterSmallerThanEstimate", func(t *testing.T) {
+		pf, err := openParquetFile(bucket, pathOffset, 16, int64(buf.Len()), actualFooterSize*2, opts...)
+		require.NoError(t, err)
 		validateColumnIndex(t, pf.File, count)
 	})
 

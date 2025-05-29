@@ -127,8 +127,18 @@ func footerSize(buf []byte) int64 {
 }
 
 func (f *ParquetFile) fetchFooter(ctx context.Context, buf *bufferpool.Buffer, estimatedSize int64) error {
+	if f.size < 8 {
+		return fmt.Errorf("file size is too small to contain a footer")
+	}
+
+	// Ensure the footer is at least 8 bytes.
 	if estimatedSize < 8 {
 		estimatedSize = 8
+	}
+
+	// Ensure the footer is not bigger than the file.
+	if estimatedSize > f.size {
+		estimatedSize = f.size
 	}
 
 	// Fetch the footer of estimated size at the estimated offset.
