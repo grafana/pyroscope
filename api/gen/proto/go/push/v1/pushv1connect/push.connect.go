@@ -9,6 +9,7 @@ import (
 	context "context"
 	errors "errors"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	v11 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	http "net/http"
 	strings "strings"
 )
@@ -35,11 +36,16 @@ const (
 const (
 	// PusherServicePushProcedure is the fully-qualified name of the PusherService's Push RPC.
 	PusherServicePushProcedure = "/push.v1.PusherService/Push"
+	// PusherServiceGetFeatureFlagsProcedure is the fully-qualified name of the PusherService's
+	// GetFeatureFlags RPC.
+	PusherServiceGetFeatureFlagsProcedure = "/push.v1.PusherService/GetFeatureFlags"
 )
 
 // PusherServiceClient is a client for the push.v1.PusherService service.
 type PusherServiceClient interface {
 	Push(context.Context, *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error)
+	// GetFeatureFlags returns the enabled backend feature flags for the current tenant
+	GetFeatureFlags(context.Context, *connect.Request[v11.GetFeatureFlagsRequest]) (*connect.Response[v11.GetFeatureFlagsResponse], error)
 }
 
 // NewPusherServiceClient constructs a client for the push.v1.PusherService service. By default, it
@@ -59,12 +65,19 @@ func NewPusherServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(pusherServiceMethods.ByName("Push")),
 			connect.WithClientOptions(opts...),
 		),
+		getFeatureFlags: connect.NewClient[v11.GetFeatureFlagsRequest, v11.GetFeatureFlagsResponse](
+			httpClient,
+			baseURL+PusherServiceGetFeatureFlagsProcedure,
+			connect.WithSchema(pusherServiceMethods.ByName("GetFeatureFlags")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // pusherServiceClient implements PusherServiceClient.
 type pusherServiceClient struct {
-	push *connect.Client[v1.PushRequest, v1.PushResponse]
+	push            *connect.Client[v1.PushRequest, v1.PushResponse]
+	getFeatureFlags *connect.Client[v11.GetFeatureFlagsRequest, v11.GetFeatureFlagsResponse]
 }
 
 // Push calls push.v1.PusherService.Push.
@@ -72,9 +85,16 @@ func (c *pusherServiceClient) Push(ctx context.Context, req *connect.Request[v1.
 	return c.push.CallUnary(ctx, req)
 }
 
+// GetFeatureFlags calls push.v1.PusherService.GetFeatureFlags.
+func (c *pusherServiceClient) GetFeatureFlags(ctx context.Context, req *connect.Request[v11.GetFeatureFlagsRequest]) (*connect.Response[v11.GetFeatureFlagsResponse], error) {
+	return c.getFeatureFlags.CallUnary(ctx, req)
+}
+
 // PusherServiceHandler is an implementation of the push.v1.PusherService service.
 type PusherServiceHandler interface {
 	Push(context.Context, *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error)
+	// GetFeatureFlags returns the enabled backend feature flags for the current tenant
+	GetFeatureFlags(context.Context, *connect.Request[v11.GetFeatureFlagsRequest]) (*connect.Response[v11.GetFeatureFlagsResponse], error)
 }
 
 // NewPusherServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -90,10 +110,18 @@ func NewPusherServiceHandler(svc PusherServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(pusherServiceMethods.ByName("Push")),
 		connect.WithHandlerOptions(opts...),
 	)
+	pusherServiceGetFeatureFlagsHandler := connect.NewUnaryHandler(
+		PusherServiceGetFeatureFlagsProcedure,
+		svc.GetFeatureFlags,
+		connect.WithSchema(pusherServiceMethods.ByName("GetFeatureFlags")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/push.v1.PusherService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case PusherServicePushProcedure:
 			pusherServicePushHandler.ServeHTTP(w, r)
+		case PusherServiceGetFeatureFlagsProcedure:
+			pusherServiceGetFeatureFlagsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -105,4 +133,8 @@ type UnimplementedPusherServiceHandler struct{}
 
 func (UnimplementedPusherServiceHandler) Push(context.Context, *connect.Request[v1.PushRequest]) (*connect.Response[v1.PushResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("push.v1.PusherService.Push is not implemented"))
+}
+
+func (UnimplementedPusherServiceHandler) GetFeatureFlags(context.Context, *connect.Request[v11.GetFeatureFlagsRequest]) (*connect.Response[v11.GetFeatureFlagsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("push.v1.PusherService.GetFeatureFlags is not implemented"))
 }

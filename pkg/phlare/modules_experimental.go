@@ -29,6 +29,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metrics"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
@@ -89,6 +90,7 @@ func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
+		f.featureFlags.HandlerForScope(featureflags.ScopeQuerierV1),
 	)
 
 	vcsService := vcs.New(
@@ -123,6 +125,7 @@ func (f *Phlare) initQueryFrontendV12() (services.Service, error) {
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
+		f.featureFlags.HandlerForScope(featureflags.ScopeQuerierV1),
 	)
 
 	handler := readpath.NewRouter(

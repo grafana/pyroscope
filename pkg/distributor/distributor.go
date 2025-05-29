@@ -40,6 +40,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
@@ -91,6 +92,7 @@ type Distributor struct {
 	limits        Limits
 	ingestersRing ring.ReadRing
 	pool          *ring_client.Pool
+	featureFlags  featureflags.Handler
 
 	// The global rate limiter requires a distributors ring to count
 	// the number of healthy instances
@@ -146,6 +148,7 @@ func New(
 	reg prometheus.Registerer,
 	logger log.Logger,
 	segwriterClient writepath.SegmentWriterClient,
+	featureFlags featureflags.Handler,
 	ingesterClientsOptions ...connect.ClientOption,
 ) (*Distributor, error) {
 	ingesterClientsOptions = append(
@@ -172,6 +175,7 @@ func New(
 		bytesReceivedTotalStats: usagestats.NewCounter("distributor_bytes_received_total"),
 		profileReceivedStats:    usagestats.NewMultiCounter("distributor_profiles_received", "lang"),
 		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
+		featureFlags:            featureFlags,
 	}
 
 	ingesterClient := writepath.IngesterFunc(d.sendRequestsToIngester)
@@ -804,6 +808,13 @@ func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groupsInReque
 	}
 
 	return nil
+}
+
+func (d *Distributor) GetFeatureFlags(
+	ctx context.Context,
+	req *connect.Request[typesv1.GetFeatureFlagsRequest],
+) (*connect.Response[typesv1.GetFeatureFlagsResponse], error) {
+	return d.featureFlags.GetFeatureFlags(ctx, req)
 }
 
 type profileTracker struct {

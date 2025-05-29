@@ -972,6 +972,24 @@
         }
       }
     },
+    "v1FeatureParameters": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Wether the feature flag is enabled or disabled."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of the feature flag."
+        },
+        "documentationUrl": {
+          "type": "string",
+          "description": "Optional URL to the documentation page of the feature flag."
+        }
+      },
+      "description": "FeatureParameters contains the per feature flag parameters."
+    },
     "v1FlameGraph": {
       "type": "object",
       "properties": {
@@ -1192,6 +1210,18 @@
             "type": "object",
             "$ref": "#/definitions/v1CommitInfo"
           }
+        }
+      }
+    },
+    "v1GetFeatureFlagsResponse": {
+      "type": "object",
+      "properties": {
+        "features": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1FeatureParameters"
+          },
+          "description": "Map containing all features, if a feature is disabled it can be omitted."
         }
       }
     },

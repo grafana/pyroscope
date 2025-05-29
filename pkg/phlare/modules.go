@@ -41,6 +41,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend"
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
@@ -84,6 +85,7 @@ const (
 	TenantSettings    string = "tenant-settings"
 	AdHocProfiles     string = "ad-hoc-profiles"
 	EmbeddedGrafana   string = "embedded-grafana"
+	FeatureFlags      string = "feature-flags"
 
 	// Experimental modules
 
@@ -250,7 +252,9 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 		Reg:             f.reg,
 		Logger:          log.With(f.logger, "component", "querier"),
 		ClientOptions:   []connect.ClientOption{f.auth},
+		FeatureFlags:    f.featureFlags.HandlerForScope(featureflags.ScopeQuerierV1),
 	}
+
 	querierSvc, err := querier.New(newQuerierParams)
 	if err != nil {
 		return nil, err
@@ -315,7 +319,17 @@ func (f *Phlare) initGRPCGateway() (services.Service, error) {
 func (f *Phlare) initDistributor() (services.Service, error) {
 	f.Cfg.Distributor.DistributorRing.ListenPort = f.Cfg.Server.HTTPListenPort
 	logger := log.With(f.logger, "component", "distributor")
-	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, f.segmentWriterClient, f.auth)
+	d, err := distributor.New(
+		f.Cfg.Distributor,
+		f.ingesterRing,
+		nil,
+		f.Overrides,
+		f.reg,
+		logger,
+		f.segmentWriterClient,
+		f.featureFlags.HandlerForScope(featureflags.ScopePusherV1),
+		f.auth,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -586,6 +600,15 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 
 func (f *Phlare) initEmbeddedGrafana() (services.Service, error) {
 	return grafana.New(f.Cfg.EmbeddedGrafana, f.logger)
+}
+
+func (f *Phlare) initFeatureFlags() (services.Service, error) {
+	ff, err := f.Cfg.getFeatureFlags()
+	if err != nil {
+		return nil, err
+	}
+	f.featureFlags = ff
+	return nil, nil
 }
 
 type statusService struct {

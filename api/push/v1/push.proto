@@ -6,6 +6,9 @@ import "types/v1/types.proto";
 
 service PusherService {
   rpc Push(PushRequest) returns (PushResponse) {}
+
+  // GetFeatureFlags returns the enabled backend feature flags for the current tenant
+  rpc GetFeatureFlags(types.v1.GetFeatureFlagsRequest) returns (types.v1.GetFeatureFlagsResponse) {}
 }
 
 message PushResponse {}

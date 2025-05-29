@@ -18,6 +18,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	queryplan "github.com/grafana/pyroscope/pkg/experiment/query_backend/query_plan"
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
@@ -35,6 +36,7 @@ type QueryFrontend struct {
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
+	featureFlags        featureflags.Handler
 }
 
 func NewQueryFrontend(
@@ -43,6 +45,7 @@ func NewQueryFrontend(
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
+	featureFlags featureflags.Handler,
 ) *QueryFrontend {
 	return &QueryFrontend{
 		logger:              logger,
@@ -50,6 +53,7 @@ func NewQueryFrontend(
 		metadataQueryClient: metadataQueryClient,
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
+		featureFlags:        featureFlags,
 	}
 }
 
