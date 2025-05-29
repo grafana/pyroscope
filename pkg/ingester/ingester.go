@@ -68,8 +68,9 @@ type Ingester struct {
 	instances    map[string]*instance
 	instancesMtx sync.RWMutex
 
-	limits Limits
-	reg    prometheus.Registerer
+	limits              Limits
+	reg                 prometheus.Registerer
+	usageGroupEvaluator *validation.UsageGroupEvaluator
 }
 
 type ingesterFlusherCompat struct {
@@ -106,6 +107,8 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 	if err != nil {
 		return nil, err
 	}
+
+	i.usageGroupEvaluator = validation.NewUsageGroupEvaluator(i.logger)
 
 	i.lifecycler, err = ring.NewLifecycler(
 		cfg.LifecyclerConfig,
@@ -335,7 +338,7 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 		usageGroups := i.limits.DistributorUsageGroups(instance.tenantID)
 
 		for _, series := range req.Msg.Series {
-			groups := usageGroups.GetUsageGroups(instance.tenantID, series.Labels)
+			groups := i.usageGroupEvaluator.GetMatch(instance.tenantID, usageGroups, series.Labels)
 
 			for _, sample := range series.Samples {
 				err := pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {

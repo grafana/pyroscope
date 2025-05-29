@@ -599,7 +599,7 @@ func Test_IngestLimits(t *testing.T) {
 					"group-2": "{service_name=\"svc2\"}",
 				})
 				require.NoError(t, err)
-				l.DistributorUsageGroups = &usageGroupCfg
+				l.DistributorUsageGroups = usageGroupCfg
 				tenantLimits["user-1"] = l
 			}),
 			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
@@ -655,7 +655,7 @@ func Test_IngestLimits(t *testing.T) {
 					"group-1": "{service_name=\"svc\"}",
 				})
 				require.NoError(t, err)
-				l.DistributorUsageGroups = &usageGroupCfg
+				l.DistributorUsageGroups = usageGroupCfg
 				tenantLimits["user-1"] = l
 			}),
 			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
@@ -698,11 +698,13 @@ func Test_SampleLabels(t *testing.T) {
 		expectBytesDropped    float64
 		expectProfilesDropped float64
 	}
+	const dummyTenantID = "tenant1"
 
 	testCases := []testCase{
 		{
 			description: "no series labels, no sample labels",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Samples: []*distributormodel.ProfileSample{
@@ -734,6 +736,7 @@ func Test_SampleLabels(t *testing.T) {
 		{
 			description: "has series labels, no sample labels",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -771,6 +774,7 @@ func Test_SampleLabels(t *testing.T) {
 		{
 			description: "no series labels, all samples have identical label set",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Samples: []*distributormodel.ProfileSample{
@@ -811,6 +815,7 @@ func Test_SampleLabels(t *testing.T) {
 		{
 			description: "has series labels, all samples have identical label set",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -855,6 +860,7 @@ func Test_SampleLabels(t *testing.T) {
 		{
 			description: "has series labels, and the only sample label name overlaps with series label, creating overlapping groups",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -905,6 +911,7 @@ func Test_SampleLabels(t *testing.T) {
 		{
 			description: "has series labels, samples have distinct label sets",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -975,6 +982,7 @@ func Test_SampleLabels(t *testing.T) {
 			description:  "has series labels that should be renamed to no longer include godeltaprof",
 			relabelRules: defaultRelabelConfigs,
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -1021,6 +1029,7 @@ func Test_SampleLabels(t *testing.T) {
 				{Action: relabel.Drop, SourceLabels: []model.LabelName{"__name__", "span_name"}, Separator: "/", Regex: relabel.MustNewRegexp("unwanted/randomness")},
 			},
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -1073,6 +1082,7 @@ func Test_SampleLabels(t *testing.T) {
 				{Action: relabel.Drop, Regex: relabel.MustNewRegexp(".*")},
 			},
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -1108,6 +1118,7 @@ func Test_SampleLabels(t *testing.T) {
 				{Action: relabel.Replace, Regex: relabel.MustNewRegexp(".*"), Replacement: "", TargetLabel: "span_name"},
 			},
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -1155,6 +1166,7 @@ func Test_SampleLabels(t *testing.T) {
 		{
 			description: "ensure only samples of same stacktraces get grouped",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -1266,10 +1278,23 @@ func Test_SampleLabels(t *testing.T) {
 		// reporting. Neither are validated by the tests, nor do they influence
 		// test behavior in any way.
 		ug := &validation.UsageGroupConfig{}
-		const dummyTenantID = "tenant1"
 
 		t.Run(tc.description, func(t *testing.T) {
-			series, actualBytesDropped, actualProfilesDropped := extractSampleSeries(tc.pushReq, dummyTenantID, ug, tc.relabelRules)
+			overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionRelabelingRules = tc.relabelRules
+				tenantLimits[dummyTenantID] = l
+			})
+			d, err := New(Config{
+				DistributorRing: ringConfig,
+			}, testhelper.NewMockRing([]ring.InstanceDesc{
+				{Addr: "foo"},
+			}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
+				return newFakeIngester(t, false), nil
+			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			require.NoError(t, err)
+
+			series, actualBytesDropped, actualProfilesDropped := d.extractSampleSeries(tc.pushReq, ug)
 			assert.Equal(t, tc.expectBytesDropped, actualBytesDropped)
 			assert.Equal(t, tc.expectProfilesDropped, actualProfilesDropped)
 			require.Len(t, series, len(tc.series))
