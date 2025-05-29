@@ -32,11 +32,11 @@ func BenchmarkUsageGroups_Regular(b *testing.B) {
 
 func BenchmarkUsageGroups_Dynamic(b *testing.B) {
 	config, err := NewUsageGroupConfig(map[string]string{
-		"app/$1":           `{service_name=~"(.*)"}`,
-		"team/$1":          `{team=~"(.*)"}`,
-		"env/$1":           `{environment=~"(.*)"}`,
-		"$1/$2":            `{service_name=~"(.*)", team=~"(.*)"}`,
-		"complex/$1-$2-$3": `{service_name=~"(.*)", team=~"(.*)", environment=~"(.*)"}`,
+		"app/${labels.service_name}":                                          `{service_name=~".*"}`,
+		"team/${labels.team}":                                                 `{team=~".*"}`,
+		"env/${labels.environment}":                                           `{environment=~".*"}`,
+		"${labels.service_name}/${labels.team}":                               `{service_name=~".*", team=~".*"}`,
+		"complex/${labels.service_name}-${labels.team}-${labels.environment}": `{service_name=~".*", team=~".*", environment=~".*"}`,
 	})
 	require.NoError(b, err)
 
@@ -55,11 +55,11 @@ func BenchmarkUsageGroups_Dynamic(b *testing.B) {
 func BenchmarkUsageGroups_ComplexRegex(b *testing.B) {
 	config, err := NewUsageGroupConfig(map[string]string{
 		// Simple regex
-		"simple/$1": `{service_name=~"(.*)"}`,
+		"simple/${labels.service_name}": `{service_name=~".*"}`,
 		// More complex regex with character classes
-		"complex/$1/$2": `{service_name=~"([a-zA-Z]+)-([0-9]+)"}`,
+		"complex/${labels.service_name}": `{service_name=~"[a-zA-Z]+-[0-9]+"}`,
 		// Very complex regex
-		"very-complex/$1/$2/$3": `{service_name=~"([a-zA-Z]+)-([0-9]+)\\.([a-z]{2,4})"}`,
+		"very-complex/${labels.service_name}": `{service_name=~"[a-zA-Z]+-[0-9]+\\.[a-z]{2,4}"}`,
 	})
 	require.NoError(b, err)
 
@@ -75,8 +75,8 @@ func BenchmarkUsageGroups_ComplexRegex(b *testing.B) {
 
 func BenchmarkUsageGroups_DynamicParallel(b *testing.B) {
 	config, err := NewUsageGroupConfig(map[string]string{
-		"app/$1":  `{service_name=~"(.*)"}`,
-		"team/$1": `{team=~"(.*)"}`,
+		"app/${labels.service_name}": `{service_name=~".*"}`,
+		"team/${labels.team}":        `{team=~".*"}`,
 	})
 	require.NoError(b, err)
 

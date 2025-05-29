@@ -19,17 +19,15 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 	tests := []struct {
 		Name     string
 		TenantID string
-		Config   *UsageGroupConfig
+		Config   map[string]string
 		Labels   phlaremodel.Labels
 		Want     UsageGroupMatch
 	}{
 		{
 			Name:     "single_usage_group_match",
 			TenantID: "tenant1",
-			Config: &UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/foo": testMustParseMatcher(t, `{service_name="foo"}`),
-				},
+			Config: map[string]string{
+				"app/foo": `{service_name="foo"}`,
 			},
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
@@ -42,11 +40,9 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 		{
 			Name:     "multiple_usage_group_matches",
 			TenantID: "tenant1",
-			Config: &UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/foo":  testMustParseMatcher(t, `{service_name="foo"}`),
-					"app/foo2": testMustParseMatcher(t, `{service_name="foo", namespace=~"bar.*"}`),
-				},
+			Config: map[string]string{
+				"app/foo":  `{service_name="foo"}`,
+				"app/foo2": `{service_name="foo", namespace=~"bar.*"}`,
 			},
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
@@ -63,25 +59,22 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 		{
 			Name:     "no_usage_group_matches",
 			TenantID: "tenant1",
-			Config: &UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/foo": testMustParseMatcher(t, `{service_name="notfound"}`),
-				},
+			Config: map[string]string{
+				"app/foo": `{service_name="notfound"}`,
 			},
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
 			},
 			Want: UsageGroupMatch{
 				tenantID: "tenant1",
+				names:    []string{},
 			},
 		},
 		{
 			Name:     "wildcard_matcher",
 			TenantID: "tenant1",
-			Config: &UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/foo": testMustParseMatcher(t, `{}`),
-				},
+			Config: map[string]string{
+				"app/foo": `{}`,
 			},
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
@@ -94,38 +87,34 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 		{
 			Name:     "no_labels",
 			TenantID: "tenant1",
-			Config: &UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/foo": testMustParseMatcher(t, `{service_name="foo"}`),
-				},
+			Config: map[string]string{
+				"app/foo": `{service_name="foo"}`,
 			},
 			Labels: phlaremodel.Labels{},
 			Want: UsageGroupMatch{
 				tenantID: "tenant1",
+				names:    []string{},
 			},
 		},
 		{
 			Name:     "disjoint_labels_do_not_match",
 			TenantID: "tenant1",
-			Config: &UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/foo": testMustParseMatcher(t, `{namespace="foo", container="bar"}`),
-				},
+			Config: map[string]string{
+				"app/foo": `{namespace="foo", container="bar"}`,
 			},
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
 			},
 			Want: UsageGroupMatch{
 				tenantID: "tenant1",
+				names:    []string{},
 			},
 		},
 		{
 			Name:     "dynamic_usage_group_names",
 			TenantID: "tenant1",
-			Config: &UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/$1": testMustParseMatcher(t, `{service_name=~"(.*)"}`),
-				},
+			Config: map[string]string{
+				"app/${labels.service_name}": `{service_name=~"(.*)"}`,
 			},
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
@@ -137,30 +126,14 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 				},
 			},
 		},
-		{
-			Name:     "dynamic_usage_group_names_multiple_capture_groups",
-			TenantID: "tenant1",
-			Config: &UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"$1/$2": testMustParseMatcher(t, `{namespace=~"(.*)", container=~"(.*)"}`),
-				},
-			},
-			Labels: phlaremodel.Labels{
-				{Name: "namespace", Value: "dev"},
-				{Name: "container", Value: "distributor"},
-			},
-			Want: UsageGroupMatch{
-				tenantID: "tenant1",
-				names: []string{
-					"dev/distributor",
-				},
-			},
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			got := tt.Config.GetUsageGroups(tt.TenantID, tt.Labels)
+			config, err := NewUsageGroupConfig(tt.Config)
+			require.NoError(t, err)
+
+			got := config.GetUsageGroups(tt.TenantID, tt.Labels)
 
 			slices.Sort(got.names)
 			slices.Sort(tt.Want.names)
