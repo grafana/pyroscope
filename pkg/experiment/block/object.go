@@ -196,6 +196,8 @@ func (obj *Object) Download(ctx context.Context) error {
 	return nil
 }
 
+func (obj *Object) Path() string { return obj.path }
+
 func (obj *Object) Metadata() *metastorev1.BlockMeta { return obj.meta }
 
 func (obj *Object) SetMetadata(md *metastorev1.BlockMeta) { obj.meta = md }
