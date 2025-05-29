@@ -42,6 +42,22 @@ func (m *Metastore) newFollowerReader(
 	)
 }
 
+// newLeaderReader creates a new leader reader – implementation of the
+// Leader Read pattern. See raftnode.StateReader for details.
+// The provided node is treated as the leader, attempt to read from
+// the local node in follower state will fail.
+func (m *Metastore) newLeaderReader(
+	node *raftnode.Node,
+	fsm *fsm.FSM,
+) *raftnode.StateReader[*bbolt.Tx] {
+	return raftnode.NewStateReader[*bbolt.Tx](
+		node,
+		&localNode{node: node, fsm: fsm},
+		m.config.Raft.LogIndexCheckInterval,
+		m.config.Raft.ReadIndexMaxDistance,
+	)
+}
+
 // leaderNode is an implementation of raftnode.Leader interface that
 // communicates with the leader using the RaftNode service client to
 // acquire its commit index (ReadIndex).
