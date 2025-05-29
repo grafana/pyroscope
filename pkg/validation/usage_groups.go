@@ -62,8 +62,8 @@ type templatePart struct {
 // usageGroupEntry represents a single usage group configuration
 type usageGroupEntry struct {
 	matchers []*labels.Matcher
-	// For static names, template is nil and staticName is used
-	staticName string
+	// For static names, template is nil and name is used
+	name string
 	// For dynamic names, template contains the parsed template parts
 	template []templatePart
 }
@@ -103,20 +103,18 @@ func (e *UsageGroupEvaluator) GetMatch(tenantID string, c *UsageGroupConfig, lbl
 					level.Warn(e.logger).Log(
 						"msg", "failed to expand usage group template, skipping usage group",
 						"err", err,
-						"labels", lbls,
-						"usage_group", entry.staticName)
+						"usage_group", entry.name)
 					continue
 				}
 				if dynamicName == "" {
 					level.Warn(e.logger).Log(
 						"msg", "usage group template expanded to empty string, skipping usage group",
-						"labels", lbls,
-						"usage_group", entry.staticName)
+						"usage_group", entry.name)
 					continue
 				}
 				match.names = append(match.names, dynamicName)
 			} else {
-				match.names = append(match.names, entry.staticName)
+				match.names = append(match.names, entry.name)
 			}
 		}
 	}
@@ -230,6 +228,7 @@ func parseUsageGroupEntries(m map[string]string) ([]usageGroupEntry, map[string]
 
 		entry := usageGroupEntry{
 			matchers: matchers,
+			name:     name,
 		}
 
 		if strings.Contains(name, dynamicLabelNamePrefix) {
@@ -238,8 +237,6 @@ func parseUsageGroupEntries(m map[string]string) ([]usageGroupEntry, map[string]
 				return nil, nil, fmt.Errorf("failed to parse template for usage group %q: %w", name, err)
 			}
 			entry.template = template
-		} else {
-			entry.staticName = name
 		}
 
 		entries = append(entries, entry)
