@@ -74,10 +74,7 @@ type UsageGroupConfig struct {
 	parsedEntries []usageGroupEntry
 }
 
-var (
-	dynamicLabelNamePrefix       = "${labels."
-	dynamicLabelNamePrefixLength = len(dynamicLabelNamePrefix)
-)
+const dynamicLabelNamePrefix = "${labels."
 
 type UsageGroupEvaluator struct {
 	logger log.Logger
