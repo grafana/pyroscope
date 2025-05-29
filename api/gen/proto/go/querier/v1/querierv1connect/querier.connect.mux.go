@@ -74,4 +74,9 @@ func RegisterQuerierServiceHandler(mux *mux.Router, svc QuerierServiceHandler, o
 		svc.AnalyzeQuery,
 		opts...,
 	))
+	mux.Handle("/querier.v1.QuerierService/GetFeatureFlags", connect.NewUnaryHandler(
+		"/querier.v1.QuerierService/GetFeatureFlags",
+		svc.GetFeatureFlags,
+		opts...,
+	))
 }

@@ -24,4 +24,9 @@ func RegisterPusherServiceHandler(mux *mux.Router, svc PusherServiceHandler, opt
 		svc.Push,
 		opts...,
 	))
+	mux.Handle("/push.v1.PusherService/GetFeatureFlags", connect.NewUnaryHandler(
+		"/push.v1.PusherService/GetFeatureFlags",
+		svc.GetFeatureFlags,
+		opts...,
+	))
 }

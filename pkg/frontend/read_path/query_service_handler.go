@@ -2,6 +2,7 @@ package read_path
 
 import (
 	"context"
+	"errors"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -194,6 +195,20 @@ func (r *Router) Diff(
 	}
 
 	return connect.NewResponse(&querierv1.DiffResponse{Flamegraph: diff}), nil
+}
+
+func (r *Router) GetFeatureFlags(
+	ctx context.Context,
+	req *connect.Request[typesv1.GetFeatureFlagsRequest],
+) (*connect.Response[typesv1.GetFeatureFlagsResponse], error) {
+	// prefer the old frontend, potentially containing the more restrictive feature flags.
+	if r.oldFrontend != nil {
+		return r.oldFrontend.GetFeatureFlags(ctx, req)
+	}
+	if r.newFrontend != nil {
+		return r.newFrontend.GetFeatureFlags(ctx, req)
+	}
+	return nil, connect.NewError(connect.CodeInternal, errors.New("no frontend available"))
 }
 
 // Stubs: these methods are not supposed to be implemented
