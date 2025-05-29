@@ -84,6 +84,7 @@ const (
 	TenantSettings    string = "tenant-settings"
 	AdHocProfiles     string = "ad-hoc-profiles"
 	EmbeddedGrafana   string = "embedded-grafana"
+	FeatureFlags      string = "feature-flags"
 
 	// Experimental modules
 
