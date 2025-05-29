@@ -86,7 +86,9 @@ type blockContext struct {
 
 func (b *blockContext) execute() error {
 	var span opentracing.Span
-	span, b.ctx = opentracing.StartSpanFromContext(b.ctx, "blockContext.execute")
+	span, b.ctx = opentracing.StartSpanFromContext(b.ctx, "blockContext.execute", opentracing.Tags{
+		"object_name": b.obj.Path(),
+	})
 	defer span.Finish()
 
 	if idx := b.datasetIndex(); idx != nil {
