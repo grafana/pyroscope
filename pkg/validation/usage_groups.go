@@ -7,9 +7,7 @@ package validation
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
-	"sync"
 	"unicode/utf8"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -53,31 +51,48 @@ var (
 	)
 )
 
+// templatePart represents a part of a parsed usage group name template
+type templatePart struct {
+	isLiteral bool
+	value     string // literal text or label name for placeholder
+}
+
+// usageGroupEntry represents a single usage group configuration
+type usageGroupEntry struct {
+	matchers []*labels.Matcher
+	// For static names, template is nil and staticName is used
+	staticName string
+	// For dynamic names, template contains the parsed template parts
+	template []templatePart
+}
+
 type UsageGroupConfig struct {
 	config map[string][]*labels.Matcher
 
-	// Cache for compiled regex patterns to avoid recompilation
-	regexCache   map[string]*regexp.Regexp
-	regexCacheMu sync.RWMutex
+	parsedEntries []usageGroupEntry
 }
 
 func (c *UsageGroupConfig) GetUsageGroups(tenantID string, lbls phlaremodel.Labels) UsageGroupMatch {
 	match := UsageGroupMatch{
 		tenantID: tenantID,
+		names:    make([]string, 0, len(c.parsedEntries)),
 	}
 
-	for name, matchers := range c.config {
-		matches, captureGroups := c.matchesAllWithCaptureGroups(matchers, lbls)
-		if matches {
-			if strings.Contains(name, "$") && len(captureGroups) > 0 {
-				dynamicName := name
-				for i, captureGroup := range captureGroups {
-					placeholder := fmt.Sprintf("$%d", i+1)
-					dynamicName = strings.ReplaceAll(dynamicName, placeholder, captureGroup)
+	for _, entry := range c.parsedEntries {
+		if c.matchesAll(entry.matchers, lbls) {
+			if entry.template != nil {
+				dynamicName, err := c.expandTemplate(entry.template, lbls)
+				if err != nil {
+					// TODO(aleks-p): log error
+					continue
+				}
+				if dynamicName == "" {
+					// TODO(aleks-p): log error
+					continue
 				}
 				match.names = append(match.names, dynamicName)
 			} else {
-				match.names = append(match.names, name)
+				match.names = append(match.names, entry.staticName)
 			}
 		}
 	}
@@ -94,11 +109,12 @@ func (c *UsageGroupConfig) UnmarshalYAML(value *yaml.Node) error {
 		return fmt.Errorf("malformed usage group config: %w", err)
 	}
 
-	config, err := NewUsageGroupConfig(m)
+	entries, rawData, err := parseUsageGroupEntries(m)
 	if err != nil {
 		return err
 	}
-	c.config = config.config
+	c.parsedEntries = entries
+	c.config = rawData
 	return nil
 }
 
@@ -109,11 +125,12 @@ func (c *UsageGroupConfig) UnmarshalJSON(bytes []byte) error {
 		return fmt.Errorf("malformed usage group config: %w", err)
 	}
 
-	config, err := NewUsageGroupConfig(m)
+	entries, rawData, err := parseUsageGroupEntries(m)
 	if err != nil {
 		return err
 	}
-	c.config = config.config
+	c.parsedEntries = entries
+	c.config = rawData
 	return nil
 }
 
@@ -149,37 +166,113 @@ func (m UsageGroupMatch) Names() []string {
 }
 
 func NewUsageGroupConfig(m map[string]string) (*UsageGroupConfig, error) {
+	entries, rawData, err := parseUsageGroupEntries(m)
+	if err != nil {
+		return nil, err
+	}
+	config := &UsageGroupConfig{
+		parsedEntries: entries,
+		config:        rawData,
+	}
+	return config, nil
+}
+
+func parseUsageGroupEntries(m map[string]string) ([]usageGroupEntry, map[string][]*labels.Matcher, error) {
 	if len(m) > maxUsageGroups {
-		return nil, fmt.Errorf("maximum number of usage groups is %d, got %d", maxUsageGroups, len(m))
+		return nil, nil, fmt.Errorf("maximum number of usage groups is %d, got %d", maxUsageGroups, len(m))
 	}
 
-	config := &UsageGroupConfig{
-		config: make(map[string][]*labels.Matcher),
-	}
+	rawData := make(map[string][]*labels.Matcher)
+	entries := make([]usageGroupEntry, 0, len(m))
 
 	for name, matchersText := range m {
 		if !utf8.ValidString(name) {
-			return nil, fmt.Errorf("usage group name %q is not valid UTF-8", name)
+			return nil, nil, fmt.Errorf("usage group name %q is not valid UTF-8", name)
 		}
 
 		name = strings.TrimSpace(name)
 		if name == "" {
-			return nil, fmt.Errorf("usage group name cannot be empty")
+			return nil, nil, fmt.Errorf("usage group name cannot be empty")
 		}
 
 		if name == noMatchName {
-			return nil, fmt.Errorf("usage group name %q is reserved", noMatchName)
+			return nil, nil, fmt.Errorf("usage group name %q is reserved", noMatchName)
 		}
 
 		matchers, err := parser.ParseMetricSelector(matchersText)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse matchers for usage group %q: %w", name, err)
+			return nil, nil, fmt.Errorf("failed to parse matchers for usage group %q: %w", name, err)
 		}
 
-		config.config[name] = matchers
+		entry := usageGroupEntry{
+			matchers: matchers,
+		}
+
+		if strings.Contains(name, "${labels.") {
+			template, err := parseTemplate(name)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to parse template for usage group %q: %w", name, err)
+			}
+			entry.template = template
+		} else {
+			entry.staticName = name
+		}
+
+		entries = append(entries, entry)
+		rawData[name] = matchers
 	}
 
-	return config, nil
+	return entries, rawData, nil
+}
+
+// parseTemplate parses a usage group name template into parts
+func parseTemplate(name string) ([]templatePart, error) {
+	var parts []templatePart
+	i := 0
+
+	for i < len(name) {
+		placeholderStart := strings.Index(name[i:], "${labels.")
+		if placeholderStart == -1 {
+			// no more placeholders, add the rest as literal
+			if i < len(name) {
+				parts = append(parts, templatePart{
+					isLiteral: true,
+					value:     name[i:],
+				})
+			}
+			break
+		}
+
+		// add literal part before placeholder
+		if placeholderStart > 0 {
+			parts = append(parts, templatePart{
+				isLiteral: true,
+				value:     name[i : i+placeholderStart],
+			})
+		}
+
+		// find the end of the placeholder
+		placeholderStartPos := i + placeholderStart
+		braceStart := placeholderStartPos + 9 // len("${labels.")
+		braceEnd := strings.Index(name[braceStart:], "}")
+		if braceEnd == -1 {
+			return nil, fmt.Errorf("unclosed placeholder starting at position %d", placeholderStartPos)
+		}
+
+		labelName := name[braceStart : braceStart+braceEnd]
+		if labelName == "" {
+			return nil, fmt.Errorf("empty label name in placeholder at position %d", placeholderStartPos)
+		}
+
+		parts = append(parts, templatePart{
+			isLiteral: false,
+			value:     labelName,
+		})
+
+		i = braceStart + braceEnd + 1 // move past the closing brace
+	}
+
+	return parts, nil
 }
 
 func (o *Overrides) DistributorUsageGroups(tenantID string) *UsageGroupConfig {
@@ -192,67 +285,38 @@ func (o *Overrides) DistributorUsageGroups(tenantID string) *UsageGroupConfig {
 	return config
 }
 
-// getCompiledRegex returns a compiled regex from cache or compiles and caches it
-func (c *UsageGroupConfig) getCompiledRegex(pattern string) (*regexp.Regexp, error) {
-	c.regexCacheMu.RLock()
-	if re, exists := c.regexCache[pattern]; exists {
-		c.regexCacheMu.RUnlock()
-		return re, nil
+func (c *UsageGroupConfig) matchesAll(matchers []*labels.Matcher, lbls phlaremodel.Labels) bool {
+	if len(lbls) == 0 && len(matchers) > 0 {
+		return false
 	}
-	c.regexCacheMu.RUnlock()
-
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		return nil, err
-	}
-
-	// check again if another goroutine cached it while we were compiling
-	c.regexCacheMu.Lock()
-	if existingRe, exists := c.regexCache[pattern]; exists {
-		c.regexCacheMu.Unlock()
-		return existingRe, nil
-	}
-
-	if c.regexCache == nil {
-		c.regexCache = make(map[string]*regexp.Regexp)
-	}
-	c.regexCache[pattern] = re
-	c.regexCacheMu.Unlock()
-
-	return re, nil
-}
-
-func (c *UsageGroupConfig) matchesAllWithCaptureGroups(matchers []*labels.Matcher, lbls phlaremodel.Labels) (bool, []string) {
-	if len(lbls) == 0 {
-		return false, nil
-	}
-
-	var captureGroups []string
 
 	for _, m := range matchers {
-		matched := false
-		for _, lbl := range lbls {
-			if lbl.Name == m.Name {
-				if !m.Matches(lbl.Value) {
-					return false, nil
-				}
-				matched = true
-
-				if m.Type == labels.MatchRegexp {
-					re, err := c.getCompiledRegex(m.Value)
-					if err == nil {
-						submatches := re.FindStringSubmatch(lbl.Value)
-						if len(submatches) > 1 {
-							captureGroups = append(captureGroups, submatches[1:]...)
-						}
-					}
-				}
-				break
+		if lbl, ok := lbls.GetLabel(m.Name); ok {
+			if !m.Matches(lbl.Value) {
+				return false
 			}
+			continue
 		}
-		if !matched {
-			return false, nil
+		return false
+	}
+	return true
+}
+
+func (c *UsageGroupConfig) expandTemplate(template []templatePart, lbls phlaremodel.Labels) (string, error) {
+	var result strings.Builder
+	result.Grow(len(template) * 8)
+
+	for _, part := range template {
+		if part.isLiteral {
+			result.WriteString(part.value)
+		} else {
+			value, found := lbls.GetLabel(part.value)
+			if !found {
+				return "", fmt.Errorf("label %q not found", part.value)
+			}
+			result.WriteString(value.Value)
 		}
 	}
-	return true, captureGroups
+
+	return result.String(), nil
 }
