@@ -79,7 +79,8 @@ func newProfileBuilder(src *otelProfile.Profile, dictionary *otelProfile.Profile
 	res.addstr("")
 	res.dst.SampleType = res.convertSampleTypesBack(src.SampleType, dictionary)
 	res.dst.PeriodType = res.convertValueTypeBack(src.PeriodType, dictionary)
-	res.dst.DefaultSampleType = res.addstr(dictionary.StringTable[0])
+	defaultSampleType := src.SampleType[src.DefaultSampleTypeIndex]
+	res.dst.DefaultSampleType = res.addstr(dictionary.StringTable[defaultSampleType.TypeStrindex])
 	if len(res.dst.SampleType) == 0 {
 		res.dst.SampleType = []*googleProfile.ValueType{{
 			Type: res.addstr("samples"),
