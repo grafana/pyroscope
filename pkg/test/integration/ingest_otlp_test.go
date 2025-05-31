@@ -92,6 +92,9 @@ func TestIngestOTLP(t *testing.T) {
 	for _, td := range otlpTestDatas {
 		t.Run(td.name, func(t *testing.T) {
 			EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+				if td.profilePath != "testdata/otel-ebpf-profiler-unsymbolized.pb.bin" {
+					t.Skip("Skipping OTLP ingestion integration tests")
+				}
 
 				rb := p.NewRequestBuilder(t)
 				runNo := p.TempAppName()

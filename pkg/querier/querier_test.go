@@ -23,6 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health/grpc_health_v1"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -624,6 +626,10 @@ type fakeQuerierIngester struct {
 
 func newFakeQuerier() *fakeQuerierIngester {
 	return &fakeQuerierIngester{}
+}
+
+func (f *fakeQuerierIngester) List(ctx context.Context, in *grpc_health_v1.HealthListRequest, opts ...grpc.CallOption) (*grpc_health_v1.HealthListResponse, error) {
+	return nil, errors.New("not implemented")
 }
 
 func (f *fakeQuerierIngester) mockMergeStacktraces(bidi *fakeBidiClientStacktraces, blocks []string, blockSelect bool) {
