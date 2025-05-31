@@ -15,8 +15,8 @@ type Client struct {
 	grpcClient queryv1.QueryBackendServiceClient
 }
 
-func New(address string, grpcClientConfig grpcclient.Config) (*Client, error) {
-	conn, err := dial(address, grpcClientConfig)
+func New(address string, grpcClientConfig grpcclient.Config, dialOpts ...grpc.DialOption) (*Client, error) {
+	conn, err := dial(address, grpcClientConfig, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +26,7 @@ func New(address string, grpcClientConfig grpcclient.Config) (*Client, error) {
 	return &c, nil
 }
 
-func dial(address string, grpcClientConfig grpcclient.Config) (*grpc.ClientConn, error) {
+func dial(address string, grpcClientConfig grpcclient.Config, dialOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	options, err := grpcClientConfig.DialOption(nil, nil)
 	if err != nil {
 		return nil, err
@@ -36,6 +36,7 @@ func dial(address string, grpcClientConfig grpcclient.Config) (*grpc.ClientConn,
 		grpc.WithDefaultServiceConfig(grpcServiceConfig),
 		grpc.WithMaxCallAttempts(500),
 	)
+	options = append(options, dialOpts...)
 	return grpc.NewClient(address, options...)
 }
 
