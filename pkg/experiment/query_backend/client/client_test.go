@@ -2,17 +2,19 @@ package querybackendclient
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/grpcclient"
-	"github.com/grafana/dskit/server"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/test/bufconn"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -54,6 +56,9 @@ func (b *multiResolverBuilder) Scheme() string {
 	return "multi"
 }
 
+// Resolves all DNS queries to a given set of IPs
+//
+// Ignores the name being resolved.
 type multiResolver struct {
 	cc      resolver.ClientConn
 	address []string
@@ -71,32 +76,40 @@ func (r *multiResolver) ResolveNow(resolver.ResolveNowOptions) {}
 
 func (r *multiResolver) Close() {}
 
+// Test_Concurrency tests the concurrent invocation of queries against multiple backend servers.
+//
+// This test sets up a simulated environment with `nServers` gRPC servers, each acting as a
+// query backend. It uses `bufconn.Listener` for in-memory gRPC communication to avoid
+// actual network I/O.
 func Test_Concurrency(t *testing.T) {
-	ports, err := test.GetFreePorts(nServers)
-	require.NoError(t, err)
-
 	addresses := make([]string, 0, nServers)
+	listeners := make(map[string]*bufconn.Listener)
+
+	// Create a separate bufconn listener to be used by each server setup below.
 	for i := 0; i < nServers; i++ {
-		addresses = append(addresses, fmt.Sprintf("localhost:%d", ports[i]))
+		address := fmt.Sprintf("localhost:%d", 10004+i)
+		addresses = append(addresses, address)
+		listeners[address] = bufconn.Listen(256 << 10)
+	}
+	// In-memory dialer for the client dials the appropriate bufconn listener.
+	dialer := func(_ context.Context, address string) (net.Conn, error) {
+		listener := listeners[address]
+		require.NotNil(t, listener)
+		return listener.Dial()
 	}
 
-	grpcClientCfg := grpcclient.Config{
-		MaxRecvMsgSize: 104857600,
-		MaxSendMsgSize: 104857600,
-	}
+	grpcClientCfg := grpcclient.Config{}
+	grpcClientCfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
 
 	resolver.Register(&multiResolverBuilder{targets: addresses})
 	backendAddress := "multi:///"
 
-	cl, err := New(backendAddress, grpcClientCfg)
+	cl, err := New(backendAddress, grpcClientCfg, grpc.WithContextDialer(dialer))
 	require.NoError(t, err)
 
 	for i := 0; i < nServers; i++ {
 		gclInterceptor, err := querybackend.CreateConcurrencyInterceptor(log.NewNopLogger())
 		require.NoError(t, err)
-
-		sConfig := createServerConfig(ports[i])
-		sConfig.GRPCMiddleware = append(sConfig.GRPCMiddleware, gclInterceptor)
 
 		b, err := querybackend.New(querybackend.Config{
 			Address:          backendAddress,
@@ -104,13 +117,16 @@ func Test_Concurrency(t *testing.T) {
 		}, test.NewTestingLogger(t), nil, cl, QueryHandler{})
 		require.NoError(t, err)
 
-		serv, err := server.New(sConfig)
+		grpcOptions := []grpc.ServerOption{
+			grpc.ChainUnaryInterceptor(gclInterceptor),
+		}
+		serv := grpc.NewServer(grpcOptions...)
 		require.NoError(t, err)
 
-		queryv1.RegisterQueryBackendServiceServer(serv.GRPC, b)
+		queryv1.RegisterQueryBackendServiceServer(serv, b)
 
 		go func() {
-			require.NoError(t, serv.Run())
+			require.NoError(t, serv.Serve(listeners[addresses[i]]))
 		}()
 	}
 
@@ -134,15 +150,4 @@ func Test_Concurrency(t *testing.T) {
 	}
 	err = g.Wait()
 	require.NoError(t, err)
-}
-
-func createServerConfig(port int) server.Config {
-	sConfig := server.Config{}
-	sConfig.GRPCListenAddress = "localhost"
-	sConfig.GRPCListenPort = port
-	sConfig.GRPCServerMaxSendMsgSize = 4 * 1024 * 1024
-	sConfig.GRPCServerMaxRecvMsgSize = 4 * 1024 * 1024
-	sConfig.Log = log.NewNopLogger()
-	sConfig.Registerer = prometheus.NewRegistry()
-	return sConfig
 }
