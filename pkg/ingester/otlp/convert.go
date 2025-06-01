@@ -22,7 +22,7 @@ type convertedProfile struct {
 func ConvertOtelToGoogle(src *otelProfile.Profile, dictionary *otelProfile.ProfilesDictionary) (map[string]convertedProfile, error) {
 	svc2Profile := make(map[string]*profileBuilder)
 	for _, sample := range src.Sample {
-		svc := serviceNameFromSample(src, sample, dictionary)
+		svc := serviceNameFromSample(sample, dictionary)
 		p, ok := svc2Profile[svc]
 		if !ok {
 			p = newProfileBuilder(src, dictionary)
@@ -169,7 +169,7 @@ func (p *profileBuilder) addfunc(s string) uint64 {
 	return idx
 }
 
-func serviceNameFromSample(p *otelProfile.Profile, sample *otelProfile.Sample, dictionary *otelProfile.ProfilesDictionary) string {
+func serviceNameFromSample(sample *otelProfile.Sample, dictionary *otelProfile.ProfilesDictionary) string {
 	for _, attributeIndex := range sample.AttributeIndices {
 		attribute := dictionary.AttributeTable[attributeIndex]
 		if attribute.Key == serviceNameKey {
