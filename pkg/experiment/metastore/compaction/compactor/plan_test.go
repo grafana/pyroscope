@@ -1,11 +1,13 @@
 package compactor
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 	"github.com/grafana/pyroscope/pkg/test"
@@ -362,4 +364,52 @@ func TestPlan_time_split(t *testing.T) {
 
 	assert.Equal(t, 2, i)
 	assert.Equal(t, 15, n)
+}
+
+func TestPlan_remove_staged_batch_corrupts_queue(t *testing.T) {
+	c := NewCompactor(testConfig, nil, nil, nil)
+
+	for i := 0; i < 3; i++ {
+		e := compaction.BlockEntry{
+			Index:  uint64(i),
+			ID:     fmt.Sprint(i),
+			Tenant: "baseline",
+			Shard:  1,
+			Level:  0,
+		}
+		c.enqueue(e)
+	}
+
+	p1 := &plan{compactor: c, blocks: newBlockIter()}
+	require.NotNil(t, p1.nextJob())
+	require.Nil(t, p1.nextJob())
+
+	// Add and blocks before they got to the compaction
+	// queue, triggering removal of the staged batch.
+	for i := 10; i < 12; i++ {
+		e := compaction.BlockEntry{
+			Index:  uint64(i + 10),
+			ID:     fmt.Sprint(i),
+			Tenant: "temp",
+			Shard:  1,
+			Level:  0,
+		}
+		c.enqueue(e)
+	}
+
+	level0 := c.queue.levels[0]
+	tempKey := compactionKey{tenant: "temp", shard: 1, level: 0}
+	if tempStaged, exists := level0.staged[tempKey]; exists {
+		tempStaged.delete("10")
+		tempStaged.delete("11")
+	} else {
+		t.Fatal("Compaction queue not found")
+	}
+
+	p2 := &plan{compactor: c, blocks: newBlockIter()}
+	if job := p2.nextJob(); job == nil {
+		t.Fatal("🐛🐛🐛: Corrupted compaction queue")
+	}
+
+	require.Nil(t, p1.nextJob(), "A single job is expected.")
 }
