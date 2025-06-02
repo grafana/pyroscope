@@ -59,10 +59,6 @@ func (noOpClient) Check(context.Context, *grpc_health_v1.HealthCheckRequest, ...
 	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
 }
 
-func (noOpClient) List(ctx context.Context, in *grpc_health_v1.HealthListRequest, opts ...grpc.CallOption) (*grpc_health_v1.HealthListResponse, error) {
-	return nil, errors.New("not implemented")
-}
-
 func (noOpClient) Watch(context.Context, *grpc_health_v1.HealthCheckRequest, ...grpc.CallOption) (grpc_health_v1.Health_WatchClient, error) {
 	return nil, errors.New("not implemented")
 }
