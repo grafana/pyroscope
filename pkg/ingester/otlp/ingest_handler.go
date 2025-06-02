@@ -85,7 +85,6 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 		}
 	}
 
-	dc := er.Dictionary
 	rps := er.ResourceProfiles
 	for i := 0; i < len(rps); i++ {
 		rp := rps[i]
@@ -99,7 +98,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 			for k := 0; k < len(sp.Profiles); k++ {
 				p := sp.Profiles[k]
 
-				pprofProfiles, err := ConvertOtelToGoogle(p, dc)
+				pprofProfiles, err := ConvertOtelToGoogle(p)
 				if err != nil {
 					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to convert otel profile: %w", err)
 				}

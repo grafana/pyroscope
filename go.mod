@@ -23,7 +23,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/gogo/status v1.1.1
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
-	github.com/google/go-cmp v0.7.0
+	github.com/google/go-cmp v0.6.0
 	github.com/google/go-github/v58 v58.0.1-0.20240111193443-e9f52699f5e5
 	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad
 	github.com/google/uuid v1.6.0
@@ -37,7 +37,7 @@ require (
 	github.com/grafana/pyroscope/api v0.4.0
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/raft v1.7.2-0.20241119084901-7e8e836fe2e8
@@ -77,22 +77,22 @@ require (
 	github.com/xlab/treeprint v1.2.0
 	go.etcd.io/bbolt v1.3.11
 	go.opentelemetry.io/otel v1.34.0
-	go.opentelemetry.io/proto/otlp v1.7.0
+	go.opentelemetry.io/proto/otlp v1.5.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/goleak v1.3.0
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	golang.org/x/mod v0.24.0
-	golang.org/x/net v0.40.0
+	golang.org/x/net v0.39.0
 	golang.org/x/oauth2 v0.27.0
-	golang.org/x/sync v0.14.0
-	golang.org/x/sys v0.33.0
-	golang.org/x/text v0.25.0
+	golang.org/x/sync v0.13.0
+	golang.org/x/sys v0.32.0
+	golang.org/x/text v0.24.0
 	golang.org/x/time v0.9.0
 	gonum.org/v1/plot v0.14.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20250528174236-200df99c418a
-	google.golang.org/grpc v1.72.2
-	google.golang.org/protobuf v1.36.6
+	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f
+	google.golang.org/grpc v1.70.0
+	google.golang.org/protobuf v1.36.5
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v3 v3.0.1
 	sigs.k8s.io/yaml v1.4.0
@@ -112,7 +112,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.3.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.3.2 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
-	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
@@ -151,6 +150,7 @@ require (
 	github.com/edsrzf/mmap-go v1.2.0 // indirect
 	github.com/efficientgo/core v1.0.0-rc.2 // indirect
 	github.com/efficientgo/e2e v0.14.1-0.20230710114240-c316eb95ae5b // indirect
+	github.com/envoyproxy/go-control-plane/envoy v1.32.3 // indirect
 	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb // indirect
 	github.com/go-fonts/liberation v0.3.3 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
@@ -257,13 +257,13 @@ require (
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
+	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/image v0.21.0 // indirect
-	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/term v0.31.0 // indirect
 	golang.org/x/tools v0.32.0 // indirect
 	google.golang.org/api v0.218.0 // indirect
 	google.golang.org/genproto v0.0.0-20240624140628-dc46fd24d27d // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/apimachinery v0.31.3 // indirect
 	k8s.io/client-go v0.31.3 // indirect
