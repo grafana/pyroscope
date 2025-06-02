@@ -384,7 +384,7 @@ func TestPlan_remove_staged_batch_corrupts_queue(t *testing.T) {
 	require.NotNil(t, p1.nextJob())
 	require.Nil(t, p1.nextJob())
 
-	// Add and blocks before they got to the compaction
+	// Add and remove blocks before they got to the compaction
 	// queue, triggering removal of the staged batch.
 	for i := 10; i < 12; i++ {
 		e := compaction.BlockEntry{
