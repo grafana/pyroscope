@@ -57,8 +57,8 @@ func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 type Scheduler struct {
 	config Config
 	store  JobStore
-	// Although the job queue is only accessed for writes
-	// synchronously, the mutex is needed to collect stats.
+	// Although the job queue is only accessed synchronously,
+	// the mutex is needed to collect stats.
 	mu    sync.Mutex
 	queue *schedulerQueue
 }
