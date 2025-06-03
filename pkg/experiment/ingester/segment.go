@@ -210,6 +210,7 @@ func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *seg
 		sshard:   sshard,
 		doneChan: make(chan struct{}),
 	}
+	s.usageGroupEvaluator = validation.NewUsageGroupEvaluator(s.logger)
 	return s
 }
 
@@ -462,8 +463,9 @@ type segment struct {
 	headsLock sync.RWMutex
 	heads     map[datasetKey]dataset
 
-	logger log.Logger
-	sw     *segmentsWriter
+	logger              log.Logger
+	sw                  *segmentsWriter
+	usageGroupEvaluator *validation.UsageGroupEvaluator
 
 	// TODO(kolesnikovae): Revisit.
 	doneChan      chan struct{}
@@ -483,7 +485,7 @@ type segment struct {
 }
 
 type segmentIngest interface {
-	ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation)
+	ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation)
 }
 
 type segmentWaitFlushed interface {
@@ -502,14 +504,14 @@ func (s *segment) waitFlushed(ctx context.Context) error {
 	}
 }
 
-func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
+func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
 	k := datasetKey{
 		tenant:  tenantID,
 		service: model.Labels(labels).Get(model.LabelNameServiceName),
 	}
 	size := p.SizeVT()
 	rules := s.sw.limits.IngestionRelabelingRules(tenantID)
-	usage := s.sw.limits.DistributorUsageGroups(tenantID).GetUsageGroups(tenantID, labels)
+	usage := s.usageGroupEvaluator.GetMatch(tenantID, s.sw.limits.DistributorUsageGroups(tenantID), labels)
 	appender := &sampleAppender{
 		head:        s.headForIngest(k),
 		profile:     p,
