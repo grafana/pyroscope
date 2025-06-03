@@ -56,7 +56,7 @@ func validateColumnIndex(t *testing.T, pf *parquet.File, count int) {
 func Test_openParquetFile(t *testing.T) {
 	path := "test.parquet"
 	ctx := context.Background()
-	bucket, _ := testutil.NewFilesystemBucket(t, ctx, "testdata")
+	bucket, _ := testutil.NewFilesystemBucket(t, ctx, t.TempDir())
 
 	buf := bytes.NewBuffer(nil)
 	count := 100
