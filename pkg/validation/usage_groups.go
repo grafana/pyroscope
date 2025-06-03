@@ -322,6 +322,9 @@ func (c *UsageGroupConfig) expandTemplate(template []templatePart, lbls phlaremo
 			if !found {
 				return "", fmt.Errorf("label %q not found", part.value)
 			}
+			if value.Value == "" {
+				return "", fmt.Errorf("label %q is empty", part.value)
+			}
 			result.WriteString(value.Value)
 		}
 	}

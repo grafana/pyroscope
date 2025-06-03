@@ -127,6 +127,34 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 				},
 			},
 		},
+		{
+			Name:     "dynamic_usage_group_names_missing_label",
+			TenantID: "tenant1",
+			Config: map[string]string{
+				"app/${labels.service_name}/${labels.env}": `{service_name=~"(.*)"}`,
+			},
+			Labels: phlaremodel.Labels{
+				{Name: "service_name", Value: "foo"},
+			},
+			Want: UsageGroupMatch{
+				tenantID: "tenant1",
+				names:    []string{},
+			},
+		},
+		{
+			Name:     "dynamic_usage_group_names_empty_label",
+			TenantID: "tenant1",
+			Config: map[string]string{
+				"app/${labels.service_name}": `{service_name=~"(.*)"}`,
+			},
+			Labels: phlaremodel.Labels{
+				{Name: "service_name", Value: ""},
+			},
+			Want: UsageGroupMatch{
+				tenantID: "tenant1",
+				names:    []string{},
+			},
+		},
 	}
 
 	for _, tt := range tests {
