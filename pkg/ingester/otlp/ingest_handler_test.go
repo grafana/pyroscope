@@ -4,8 +4,10 @@ import (
 	"context"
 	"os"
 	"sort"
-	"strings"
 	"testing"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/distributor/model"
@@ -349,11 +351,157 @@ func TestConversion(t *testing.T) {
 				assert.JSONEq(t, expectedJSON, jsonStr)
 			} else {
 				require.Error(t, err)
-				require.True(t, strings.Contains(err.Error(), td.expectedError))
+				require.Contains(t, err.Error(), td.expectedError)
 			}
 		})
 	}
 
+}
+
+func TestConversionWithMalformedData(t *testing.T) {
+	testdata := []struct {
+		name           string
+		profile        func() *otlpbuilder
+		expectedError  string
+		expectedStatus codes.Code
+	}{
+		{
+			name: "location idx out of bounds of profile.LocationIndices",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.profile.LocationIndices = []int32{0}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 1,
+					LocationsLength:     1,
+					Value:               []int64{0xef},
+				}}
+				return b
+			},
+			expectedError:  "failed to convert otel profile: could not process sample at index 0: could not access location index at index 0: index 1 out of bounds",
+			expectedStatus: codes.InvalidArgument,
+		},
+		{
+			name: "location idx out of bounds of dictionary.LocationTable",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.profile.LocationIndices = []int32{0, 1}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 1,
+					LocationsLength:     1,
+					Value:               []int64{0xef},
+				}}
+				return b
+			},
+			expectedError:  "failed to convert otel profile: could not process sample at index 0: could not access location at index 0: index 1 out of bounds",
+			expectedStatus: codes.InvalidArgument,
+		},
+		{
+			name: "mapping idx out of bounds",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.dictionary.LocationTable = []*v1experimental.Location{{
+					MappingIndex: int32ptr(0),
+					Address:      0x1e0,
+					Line:         nil,
+				}}
+				b.profile.LocationIndices = []int32{0}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 0,
+					LocationsLength:     1,
+					Value:               []int64{0xef},
+				}}
+				return b
+			},
+			expectedError:  "failed to convert otel profile: could not process sample at index 0: could not process location at index 0: could not access mapping: index 0 out of bounds",
+			expectedStatus: codes.InvalidArgument,
+		},
+		{
+			name: "function idx out of bounds",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.dictionary.MappingTable = []*v1experimental.Mapping{{
+					MemoryStart:      0x1000,
+					MemoryLimit:      0x1000,
+					FilenameStrindex: b.addstr("file1.so"),
+				}}
+				b.dictionary.LocationTable = []*v1experimental.Location{{
+					MappingIndex: int32ptr(0),
+					Address:      0x1e0,
+					Line: []*v1experimental.Line{{
+						FunctionIndex: 0,
+					}},
+				}}
+				b.profile.LocationIndices = []int32{0}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 0,
+					LocationsLength:     1,
+					Value:               []int64{0xef},
+				}}
+				return b
+			},
+			expectedError:  "failed to convert otel profile: could not process sample at index 0: could not process location at index 0: could not process line at index 0: could not access function: index 0 out of bounds",
+			expectedStatus: codes.InvalidArgument,
+		},
+		{
+			name: "function name out of bounds",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.dictionary.MappingTable = []*v1experimental.Mapping{{
+					MemoryStart:      0x1000,
+					MemoryLimit:      0x1000,
+					FilenameStrindex: b.addstr("file1.so"),
+				}}
+				b.dictionary.FunctionTable = []*v1experimental.Function{{
+					NameStrindex: 100000,
+				}}
+				b.dictionary.LocationTable = []*v1experimental.Location{{
+					MappingIndex: int32ptr(0),
+					Address:      0x1e0,
+					Line: []*v1experimental.Line{{
+						FunctionIndex: 0,
+					}},
+				}}
+				b.profile.LocationIndices = []int32{0}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 0,
+					LocationsLength:     1,
+					Value:               []int64{0xef},
+				}}
+				return b
+			},
+			expectedError:  "failed to convert otel profile: could not process sample at index 0: could not process location at index 0: could not process line at index 0: could not access function name string: index 100000 out of bounds",
+			expectedStatus: codes.InvalidArgument,
+		},
+	}
+
+	for _, td := range testdata {
+		td := td
+
+		t.Run(td.name, func(t *testing.T) {
+			svc := mockotlp.NewMockPushService(t)
+			var profiles []*model.PushRequest
+			svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+				c := (args.Get(1)).(*model.PushRequest)
+				profiles = append(profiles, c)
+			}).Return(nil, nil).Maybe()
+			b := td.profile()
+			b.profile.TimeNanos = 239
+			req := &v1experimental2.ExportProfilesServiceRequest{
+				ResourceProfiles: []*v1experimental.ResourceProfiles{{
+					ScopeProfiles: []*v1experimental.ScopeProfiles{{
+						Profiles: []*v1experimental.Profile{
+							&b.profile,
+						}}}}},
+				Dictionary: &b.dictionary}
+			logger := test.NewTestingLogger(t)
+			h := NewOTLPIngestHandler(svc, logger, false)
+			_, err := h.Export(context.Background(), req)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), td.expectedError)
+			require.Equal(t, td.expectedStatus, status.Code(err))
+		})
+	}
 }
 
 func int32ptr(i int32) *int32 { return &i }

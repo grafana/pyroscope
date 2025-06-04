@@ -29,7 +29,7 @@ func at[T any](arr []T, i int32) (T, error) {
 // ConvertOtelToGoogle converts an OpenTelemetry profile to a Google profile.
 func ConvertOtelToGoogle(src *otelProfile.Profile, dictionary *otelProfile.ProfilesDictionary) (map[string]convertedProfile, error) {
 	svc2Profile := make(map[string]*profileBuilder)
-	for _, sample := range src.Sample {
+	for sampleIdx, sample := range src.Sample {
 		svc, err := serviceNameFromSample(sample, dictionary)
 		if err != nil {
 			return make(map[string]convertedProfile), nil
@@ -44,7 +44,7 @@ func ConvertOtelToGoogle(src *otelProfile.Profile, dictionary *otelProfile.Profi
 			svc2Profile[svc] = p
 		}
 		if _, err := p.convertSampleBack(sample, dictionary); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("could not process sample at index %d: %w", sampleIdx, err)
 		}
 	}
 
@@ -369,15 +369,15 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample, dictionary *o
 	for i := os.LocationsStartIndex; i < os.LocationsStartIndex+os.LocationsLength; i++ {
 		olocIdx, err := at(p.src.LocationIndices, i)
 		if err != nil {
-			return nil, fmt.Errorf("could not access location index at index %d: %w", i, err)
+			return nil, fmt.Errorf("could not access location index at index %d: %w", i-os.LocationsStartIndex, err)
 		}
 		oloc, err := at(dictionary.LocationTable, olocIdx)
 		if err != nil {
-			return nil, fmt.Errorf("could not access location at index %d: %w", i, err)
+			return nil, fmt.Errorf("could not access location at index %d: %w", i-os.LocationsStartIndex, err)
 		}
 		loc, err := p.convertLocationBack(oloc, dictionary)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("could not process location at index %d: %w", i-os.LocationsStartIndex, err)
 		}
 		gs.LocationId = append(gs.LocationId, loc)
 	}
