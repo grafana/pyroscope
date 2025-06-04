@@ -58,7 +58,7 @@ type jobEntriesIterator struct {
 }
 
 func newJobEntriesIterator(bucket *bbolt.Bucket) *jobEntriesIterator {
-	return &jobEntriesIterator{iter: store.NewCursorIter(nil, bucket.Cursor())}
+	return &jobEntriesIterator{iter: store.NewCursorIter(bucket.Cursor())}
 }
 
 func (x *jobEntriesIterator) Next() bool {

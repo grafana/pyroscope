@@ -3,6 +3,7 @@ package query_backend
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
@@ -19,6 +21,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/test"
 )
 
@@ -34,6 +37,7 @@ type testSuite struct {
 	reader *BlockReader
 	meta   []*metastorev1.BlockMeta
 	plan   *queryv1.QueryPlan
+	tenant []string
 }
 
 func (s *testSuite) SetupSuite() {
@@ -44,13 +48,19 @@ func (s *testSuite) SetupSuite() {
 func (s *testSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.logger = test.NewTestingLogger(s.T())
-	s.reader = NewBlockReader(s.logger, &objstore.ReaderAtBucket{Bucket: s.bucket})
+	s.reader = NewBlockReader(s.logger, &objstore.ReaderAtBucket{Bucket: s.bucket}, nil)
 	s.meta = make([]*metastorev1.BlockMeta, len(s.blocks))
 	for i, b := range s.blocks {
 		s.meta[i] = b.CloneVT()
 	}
 	s.sanitizeMetadata()
 	s.plan = query_plan.Build(s.meta, 10, 10)
+	s.tenant = make([]string, 0)
+	for _, b := range s.plan.Root.Blocks {
+		for _, d := range b.Datasets {
+			s.tenant = append(s.tenant, b.StringTable[d.Tenant])
+		}
+	}
 }
 
 func (s *testSuite) loadFromDir(dir string) {
@@ -116,6 +126,7 @@ func (s *testSuite) Test_QueryTree_All() {
 			QueryType: queryv1.QueryType_QUERY_TREE,
 			Tree:      &queryv1.TreeQuery{MaxNodes: 16},
 		}},
+		Tenant: s.tenant,
 	})
 
 	s.Require().NoError(err)
@@ -139,6 +150,7 @@ func (s *testSuite) Test_QueryTree_Filter() {
 			QueryType: queryv1.QueryType_QUERY_TREE,
 			Tree:      &queryv1.TreeQuery{MaxNodes: 16},
 		}},
+		Tenant: s.tenant,
 	})
 
 	s.Require().NoError(err)
@@ -148,4 +160,127 @@ func (s *testSuite) Test_QueryTree_Filter() {
 	s.Require().NoError(err)
 
 	s.Assert().Equal(string(expected), tree.String())
+}
+
+func (s *testSuite) Test_QueryPprof_Metadata() {
+	selector := `{service_name="test-app",__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: selector,
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_PPROF,
+			Pprof:     &queryv1.PprofQuery{},
+		}},
+		Tenant: s.tenant,
+	})
+
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().Len(resp.Reports, 1)
+
+	var p profilev1.Profile
+	s.Require().NoError(pprof.Unmarshal(resp.Reports[0].Pprof.Pprof, &p))
+
+	s.Assert().Len(p.SampleType, 1)
+	s.Assert().Equal("cpu", p.StringTable[p.SampleType[0].Type])
+	s.Assert().Equal("nanoseconds", p.StringTable[p.SampleType[0].Unit])
+
+	s.Assert().NotNil(p.PeriodType)
+	s.Assert().Equal("cpu", p.StringTable[p.PeriodType.Type])
+	s.Assert().Equal("nanoseconds", p.StringTable[p.PeriodType.Unit])
+}
+
+func (s *testSuite) Test_DatasetIndex_SeriesLabels_GroupBy() {
+	selector := `{service_repository="https://github.com/grafana/pyroscope"}`
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: selector,
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_SERIES_LABELS,
+			SeriesLabels: &queryv1.SeriesLabelsQuery{
+				LabelNames: []string{"service_name", "__profile_type__"},
+			},
+		}},
+		Tenant: s.tenant,
+	})
+
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().Len(resp.Reports, 1)
+
+	expected, err := os.ReadFile("testdata/fixtures/series_labels_by.json")
+	s.Require().NoError(err)
+	actual, _ := json.Marshal(resp.Reports[0].SeriesLabels)
+	s.Assert().JSONEq(string(expected), string(actual))
+}
+
+func (s *testSuite) Test_SeriesLabels() {
+	selector := `{service_name="pyroscope"}`
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: selector,
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType:    queryv1.QueryType_QUERY_SERIES_LABELS,
+			SeriesLabels: &queryv1.SeriesLabelsQuery{},
+		}},
+		Tenant: s.tenant,
+	})
+
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().Len(resp.Reports, 1)
+
+	expected, err := os.ReadFile("testdata/fixtures/series_labels.json")
+	s.Require().NoError(err)
+	actual, _ := json.Marshal(resp.Reports[0].SeriesLabels)
+	s.Assert().JSONEq(string(expected), string(actual))
+}
+
+func (s *testSuite) Test_QueryTimeSeries() {
+	query := &queryv1.Query{
+		QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
+		TimeSeries: &queryv1.TimeSeriesQuery{
+			GroupBy: []string{"service_name"},
+			Step:    1.0, // 1 second step
+		},
+	}
+
+	req := &queryv1.InvokeRequest{
+		StartTime:     time.Now().Add(-1 * time.Hour).UnixMilli(),
+		EndTime:       time.Now().UnixMilli(),
+		Query:         []*queryv1.Query{query},
+		QueryPlan:     s.plan,
+		LabelSelector: "{}",
+		Tenant:        s.tenant,
+	}
+
+	resp, err := s.reader.Invoke(s.ctx, req)
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().Len(resp.Reports, 1)
+	s.Require().NotNil(resp.Reports[0].TimeSeries)
+}
+
+func (s *testSuite) Test_QueryTree_All_Tenant_Isolation() {
+	queryTenant := "some-tenant"
+
+	s.Require().NotContains(s.tenant, queryTenant)
+
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree:      &queryv1.TreeQuery{MaxNodes: 16},
+		}},
+		Tenant: []string{queryTenant},
+	})
+
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().Len(resp.Reports, 0)
 }

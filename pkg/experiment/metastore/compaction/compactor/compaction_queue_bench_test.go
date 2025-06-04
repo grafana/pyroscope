@@ -3,25 +3,18 @@ package compactor
 import (
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 )
 
 func BenchmarkCompactionQueue_Push(b *testing.B) {
-	s := Strategy{
-		MaxBlocksPerLevel: []uint{20, 10, 10},
-		MaxBlocksDefault:  defaultBlockBatchSize,
-		MaxBatchAge:       defaultMaxBlockBatchAge,
-	}
-
-	q := newCompactionQueue(s, nil)
 	const (
 		tenants = 1
 		levels  = 1
 		shards  = 64
 	)
 
+	q := newCompactionQueue(DefaultConfig(), nil)
 	keys := make([]compactionKey, levels*tenants*shards)
 	for i := range keys {
 		keys[i] = compactionKey{
@@ -31,28 +24,18 @@ func BenchmarkCompactionQueue_Push(b *testing.B) {
 		}
 	}
 
-	writes := make([]int64, len(keys))
-	now := time.Now().UnixNano()
-	for i := range writes {
-		writes[i] = now
-	}
-
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		for j, key := range keys {
-			q.push(compaction.BlockEntry{
-				Index:      uint64(j),
-				AppendedAt: writes[j],
-				ID:         strconv.Itoa(j),
-				Tenant:     key.tenant,
-				Shard:      key.shard,
-				Level:      key.level,
-			})
-		}
-		for j := range writes {
-			writes[j] += int64(time.Millisecond * 500)
-		}
+		k := keys[i%len(keys)]
+		q.push(compaction.BlockEntry{
+			Index:      uint64(i),
+			AppendedAt: int64(i),
+			ID:         strconv.Itoa(i),
+			Tenant:     k.tenant,
+			Shard:      k.shard,
+			Level:      k.level,
+		})
 	}
 }

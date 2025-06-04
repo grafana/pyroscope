@@ -2,11 +2,13 @@ package memdb
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/google/uuid"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 func genProfile(series uint32, timeNanos int, numSamples int) schemav1.InMemoryProfile {

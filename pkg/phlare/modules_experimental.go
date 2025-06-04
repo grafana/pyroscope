@@ -1,6 +1,7 @@
 package phlare
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/middleware"
+	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	otgrpc "github.com/opentracing-contrib/go-grpc"
@@ -27,10 +29,132 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metrics"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
+	"github.com/grafana/pyroscope/pkg/frontend"
+	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
+	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs"
 	recordingrulesclient "github.com/grafana/pyroscope/pkg/settings/recording/client"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
+
+func (f *Phlare) initQueryFrontend() (services.Service, error) {
+	var err error
+	if f.Cfg.Frontend.Addr, err = f.getFrontendAddress(); err != nil {
+		return nil, fmt.Errorf("failed to get frontend address: %w", err)
+	}
+	if f.Cfg.Frontend.Port == 0 {
+		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
+	}
+	if !f.Cfg.v2Experiment {
+		return f.initQueryFrontendV1()
+	}
+	// If the new read path is enabled globally by default,
+	// the old query frontend is not used. Tenant-specific overrides
+	// are ignored — all tenants use the new read path.
+	//
+	// If the old read path is still in use, we configure the router
+	// to use both the old and new query frontends.
+	c := f.Overrides.ReadPathOverrides(tenant.DefaultTenantID)
+	switch {
+	case !c.EnableQueryBackend:
+		return f.initQueryFrontendV1()
+	case c.EnableQueryBackend && c.EnableQueryBackendFrom.IsZero():
+		return f.initQueryFrontendV2()
+	case c.EnableQueryBackend && !c.EnableQueryBackendFrom.IsZero():
+		return f.initQueryFrontendV12()
+	default:
+		return nil, fmt.Errorf("invalid query backend configuration: %v", c)
+	}
+}
+
+func (f *Phlare) initQueryFrontendV1() (services.Service, error) {
+	var err error
+	f.frontend, err = frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg)
+	if err != nil {
+		return nil, err
+	}
+	f.API.RegisterFrontendForQuerierHandler(f.frontend)
+	f.API.RegisterQuerierServiceHandler(f.frontend)
+	f.API.RegisterPyroscopeHandlers(f.frontend)
+	f.API.RegisterVCSServiceHandler(f.frontend)
+	return f.frontend, nil
+}
+
+func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
+	queryFrontend := queryfrontend.NewQueryFrontend(
+		log.With(f.logger, "component", "query-frontend"),
+		f.Overrides,
+		f.metastoreClient,
+		f.metastoreClient,
+		f.queryBackendClient,
+	)
+
+	vcsService := vcs.New(
+		log.With(f.logger, "component", "vcs-service"),
+		f.reg,
+	)
+
+	f.API.RegisterQuerierServiceHandler(queryFrontend)
+	f.API.RegisterPyroscopeHandlers(queryFrontend)
+	f.API.RegisterVCSServiceHandler(vcsService)
+
+	// New query frontend does not have any state.
+	// For simplicity, we return a no-op service.
+	svc := services.NewIdleService(
+		func(context.Context) error { return nil },
+		func(error) error { return nil },
+	)
+
+	return svc, nil
+}
+
+func (f *Phlare) initQueryFrontendV12() (services.Service, error) {
+	var err error
+	f.frontend, err = frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg)
+	if err != nil {
+		return nil, err
+	}
+
+	newFrontend := queryfrontend.NewQueryFrontend(
+		log.With(f.logger, "component", "query-frontend"),
+		f.Overrides,
+		f.metastoreClient,
+		f.metastoreClient,
+		f.queryBackendClient,
+	)
+
+	handler := readpath.NewRouter(
+		log.With(f.logger, "component", "read-path-router"),
+		f.Overrides,
+		f.frontend,
+		newFrontend,
+	)
+
+	vcsService := vcs.New(
+		log.With(f.logger, "component", "vcs-service"),
+		f.reg,
+	)
+
+	f.API.RegisterFrontendForQuerierHandler(f.frontend)
+	f.API.RegisterQuerierServiceHandler(handler)
+	f.API.RegisterPyroscopeHandlers(handler)
+	f.API.RegisterVCSServiceHandler(vcsService)
+
+	return f.frontend, nil
+}
+
+func (f *Phlare) getFrontendAddress() (addr string, err error) {
+	addr = f.Cfg.Frontend.Addr
+	if f.Cfg.Frontend.AddrOld != "" {
+		addr = f.Cfg.Frontend.AddrOld
+	}
+	if addr != "" {
+		return addr, nil
+	}
+	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
+}
 
 func (f *Phlare) initSegmentWriterRing() (_ services.Service, err error) {
 	if err = f.Cfg.SegmentWriter.Validate(); err != nil {
@@ -205,7 +329,7 @@ func (f *Phlare) initQueryBackend() (services.Service, error) {
 		logger,
 		f.reg,
 		f.queryBackendClient,
-		querybackend.NewBlockReader(f.logger, f.storageBucket),
+		querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg),
 	)
 	if err != nil {
 		return nil, err

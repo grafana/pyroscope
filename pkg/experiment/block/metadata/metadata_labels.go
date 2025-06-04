@@ -1,17 +1,16 @@
 package metadata
 
 import (
+	goiter "iter"
 	"slices"
 	"strings"
 	"unsafe"
 
 	"github.com/prometheus/prometheus/model/labels"
-	"golang.org/x/exp/maps"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/model"
 )
 
 // TODO(kolesnikovae): LabelBuilder pool.
@@ -19,6 +18,7 @@ import (
 const (
 	LabelNameTenantDataset     = "__tenant_dataset__"
 	LabelValueDatasetTSDBIndex = "dataset_tsdb_index"
+	LabelNameUnsymbolized      = "__unsymbolized__"
 )
 
 type LabelBuilder struct {
@@ -91,14 +91,12 @@ func (lb *LabelBuilder) Build() []int32 {
 	return c
 }
 
-func FindDatasets(md *metastorev1.BlockMeta, matchers ...*labels.Matcher) (fn func(yield func(*metastorev1.Dataset) bool)) {
+func FindDatasets(md *metastorev1.BlockMeta, matchers ...*labels.Matcher) goiter.Seq[*metastorev1.Dataset] {
 	st := NewStringTable()
 	st.Import(md)
-	lm := NewLabelMatcher(st, matchers)
+	lm := NewLabelMatcher(st.Strings, matchers)
 	if !lm.IsValid() {
-		return func(func(*metastorev1.Dataset) bool) {
-			return
-		}
+		return func(func(*metastorev1.Dataset) bool) {}
 	}
 	return func(yield func(*metastorev1.Dataset) bool) {
 		for i := range md.Datasets {
@@ -155,26 +153,43 @@ type matcher struct {
 	name int32
 }
 
-func NewLabelMatcher(strings *StringTable, matchers []*labels.Matcher, keep ...string) *LabelMatcher {
+func NewLabelMatcher(strings []string, matchers []*labels.Matcher, keep ...string) *LabelMatcher {
+	s := make(map[string]int32, len(matchers)*2+len(keep))
+	for _, m := range matchers {
+		s[m.Name] = 0
+		s[m.Value] = 0
+	}
+	for _, k := range keep {
+		s[k] = 0
+	}
+	for i, x := range strings {
+		if v, ok := s[x]; ok && v == 0 {
+			s[x] = int32(i)
+		}
+	}
 	lm := &LabelMatcher{
 		eq:      make([]matcher, 0, len(matchers)),
 		neq:     make([]matcher, 0, len(matchers)),
 		keep:    make([]int32, len(keep)),
 		keepStr: keep,
 		checked: make(map[string]bool),
-		strings: strings.Strings,
+		strings: strings,
 	}
 	for _, m := range matchers {
-		n := strings.LookupString(m.Name)
-		if m.Type == labels.MatchEqual || m.Type == labels.MatchRegexp {
-			if n < 1 {
-				// No matches are possible if a label is not found
-				// in the string table or is an empty string (0).
+		if m.Name == "" {
+			continue
+		}
+		n := s[m.Name]
+		switch m.Type {
+		case labels.MatchEqual:
+			if v := s[m.Value]; m.Value != "" && (n < 1 || v < 1) {
 				lm.nomatch = true
 				return lm
 			}
 			lm.eq = append(lm.eq, matcher{Matcher: m, name: n})
-		} else {
+		case labels.MatchRegexp:
+			lm.eq = append(lm.eq, matcher{Matcher: m, name: n})
+		case labels.MatchNotEqual, labels.MatchNotRegexp:
 			lm.neq = append(lm.neq, matcher{Matcher: m, name: n})
 		}
 	}
@@ -182,7 +197,7 @@ func NewLabelMatcher(strings *StringTable, matchers []*labels.Matcher, keep ...s
 	// If the label is not found or is an empty string,
 	// it will always be an empty string at the output.
 	for i, k := range keep {
-		lm.keep[i] = strings.LookupString(k)
+		lm.keep[i] = s[k]
 	}
 	return lm
 }
@@ -307,48 +322,81 @@ func (lm *LabelMatcher) checkMatches(pairs []int32) bool {
 	return true
 }
 
-func (lm *LabelMatcher) AllMatches() []model.Labels {
-	if len(lm.keep) == 0 || lm.nomatch || len(lm.checked) == 0 {
-		return nil
-	}
-	matched := make(map[string]model.Labels, lm.matched)
-	for k, match := range lm.checked {
-		if match {
-			values := lm.values(int32s(k))
-			if _, found := matched[int32string(values)]; !found {
-				matched[strings.Clone(int32string(values))] = lm.labels(values)
-			}
-		}
-	}
-	return maps.Values(matched)
+type LabelsCollector struct {
+	strings *StringTable
+	dict    map[string]struct{}
+	tmp     []int32
+	keys    []int32
 }
 
-func (lm *LabelMatcher) values(pairs []int32) []int32 {
-	values := make([]int32, len(lm.keep))
-	for i, n := range lm.keep {
-		if n < 1 {
-			// Skip invalid keep labels.
+func NewLabelsCollector(labels ...string) *LabelsCollector {
+	s := &LabelsCollector{
+		dict:    make(map[string]struct{}),
+		strings: NewStringTable(),
+	}
+	s.keys = make([]int32, len(labels))
+	s.tmp = make([]int32, len(labels))
+	for i, k := range labels {
+		s.keys[i] = s.strings.Put(k)
+	}
+	return s
+}
+
+// CollectMatches from the given matcher.
+//
+// The matcher and collect MUST be configured to keep the same
+// set of labels, in the exact order.
+//
+// A single collector may collect labels from multiple matchers.
+func (s *LabelsCollector) CollectMatches(lm *LabelMatcher) {
+	if len(lm.keep) == 0 || lm.nomatch || len(lm.checked) == 0 {
+		return
+	}
+	for set, match := range lm.checked {
+		if !match {
 			continue
 		}
-		for k := 0; k < len(pairs); k += 2 {
-			if pairs[k] == n {
-				values[i] = pairs[k+1]
-				break
+		// Project values of the keep labels to tmp,
+		// and resolve their strings.
+		clear(s.tmp)
+		p := int32s(set)
+		// Note that we're using the matcher's keep labels
+		// and not local 'keys'.
+		for i, n := range lm.keep {
+			for k := 0; k < len(p); k += 2 {
+				if p[k] == n {
+					s.tmp[i] = p[k+1]
+					break
+				}
+			}
+		}
+		for i := range s.tmp {
+			s.tmp[i] = s.strings.Put(lm.strings[s.tmp[i]])
+		}
+		// Check if we already saw the label set.
+		x := int32string(s.tmp)
+		if _, ok := s.dict[x]; ok {
+			continue
+		}
+		s.dict[strings.Clone(x)] = struct{}{}
+	}
+}
+
+func (s *LabelsCollector) Unique() goiter.Seq[*typesv1.Labels] {
+	return func(yield func(*typesv1.Labels) bool) {
+		for k := range s.dict {
+			l := &typesv1.Labels{Labels: make([]*typesv1.LabelPair, len(s.keys))}
+			for i, v := range int32s(k) {
+				l.Labels[i] = &typesv1.LabelPair{
+					Name:  s.strings.Strings[s.keys[i]],
+					Value: s.strings.Strings[v],
+				}
+			}
+			if !yield(l) {
+				return
 			}
 		}
 	}
-	return values
-}
-
-func (lm *LabelMatcher) labels(values []int32) model.Labels {
-	ls := make(model.Labels, len(values))
-	for i, v := range values {
-		ls[i] = &typesv1.LabelPair{
-			Name:  lm.keepStr[i],
-			Value: lm.strings[v],
-		}
-	}
-	return ls
 }
 
 func int32string(data []int32) string {

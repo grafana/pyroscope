@@ -36,8 +36,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-var ErrMetastoreDLQFailed = fmt.Errorf("failed to store block metadata in DLQ")
-
 type shardKey uint32
 
 type segmentsWriter struct {
@@ -79,26 +77,34 @@ func (sh *shard) ingest(fn func(head segmentIngest)) segmentWaitFlushed {
 }
 
 func (sh *shard) loop(ctx context.Context) {
+	loopWG := new(sync.WaitGroup)
 	ticker := time.NewTicker(sh.sw.config.SegmentDuration)
-	defer ticker.Stop()
+	defer func() {
+		ticker.Stop()
+		// Blocking here to make sure no asynchronous code is executed on this shard once loop exits
+		// This is mostly needed to fix a race in our integration tests
+		loopWG.Wait()
+	}()
 	for {
 		select {
 		case <-ticker.C:
-			sh.flushSegment(context.Background())
+			sh.flushSegment(context.Background(), loopWG)
 		case <-ctx.Done():
-			sh.flushSegment(context.Background())
+			sh.flushSegment(context.Background(), loopWG)
 			return
 		}
 	}
 }
 
-func (sh *shard) flushSegment(ctx context.Context) {
+func (sh *shard) flushSegment(ctx context.Context, wg *sync.WaitGroup) {
 	sh.mu.Lock()
 	s := sh.segment
 	sh.segment = sh.sw.newSegment(sh, s.shard, sh.logger)
 	sh.mu.Unlock()
 
+	wg.Add(1)
 	go func() { // not blocking next ticks in case metastore/s3 latency is high
+		defer wg.Done()
 		t1 := time.Now()
 		s.inFlightProfiles.Wait()
 		s.debuginfo.waitInflight = time.Since(t1)
@@ -132,7 +138,7 @@ func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetri
 		shards:      make(map[shardKey]*shard),
 		metastore:   metastoreClient,
 	}
-	sw.retryLimiter = retry.NewRateLimiter(sw.config.Upload.HedgeRateMax, int(sw.config.Upload.HedgeRateBurst))
+	sw.retryLimiter = retry.NewRateLimiter(sw.config.UploadHedgeRateMax, int(sw.config.UploadHedgeRateBurst))
 	sw.ctx, sw.cancel = context.WithCancel(context.Background())
 	flushWorkers := runtime.GOMAXPROCS(-1)
 	if config.FlushConcurrency > 0 {
@@ -163,7 +169,7 @@ func (sw *segmentsWriter) ingest(shard shardKey, fn func(head segmentIngest)) (a
 	return s.ingest(fn)
 }
 
-func (sw *segmentsWriter) stop() error {
+func (sw *segmentsWriter) stop() {
 	sw.logger.Log("msg", "stopping segments writer")
 	sw.cancel()
 	sw.shardsLock.Lock()
@@ -173,7 +179,6 @@ func (sw *segmentsWriter) stop() error {
 	}
 	sw.pool.stop()
 	sw.logger.Log("msg", "segments writer stopped")
-	return nil
 }
 
 func (sw *segmentsWriter) newShard(sk shardKey) *shard {
@@ -205,6 +210,7 @@ func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *seg
 		sshard:   sshard,
 		doneChan: make(chan struct{}),
 	}
+	s.usageGroupEvaluator = validation.NewUsageGroupEvaluator(s.logger)
 	return s
 }
 
@@ -271,15 +277,11 @@ func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta
 	w := &writerOffset{Writer: blockFile}
 	for stream.Next() {
 		f := stream.At()
-		svc, err := concatSegmentHead(f, w, stringTable)
-		if err != nil {
-			level.Error(s.logger).Log("msg", "failed to concat segment head", "err", err)
-			continue
-		}
-		meta.MinTime = min(meta.MinTime, svc.MinTime)
-		meta.MaxTime = max(meta.MaxTime, svc.MaxTime)
-		meta.Datasets = append(meta.Datasets, svc)
-		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, f.head.key.tenant).Observe(float64(svc.Size))
+		ds := concatSegmentHead(f, w, stringTable)
+		meta.MinTime = min(meta.MinTime, ds.MinTime)
+		meta.MaxTime = max(meta.MaxTime, ds.MaxTime)
+		meta.Datasets = append(meta.Datasets, ds)
+		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, f.head.key.tenant).Observe(float64(ds.Size))
 	}
 
 	meta.StringTable = stringTable.Strings
@@ -303,7 +305,7 @@ func (w *writerOffset) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) (*metastorev1.Dataset, error) {
+func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) *metastorev1.Dataset {
 	tenantServiceOffset := w.offset
 
 	ptypes := f.flushed.Meta.ProfileTypeNames
@@ -339,11 +341,15 @@ func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) (
 		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, model.LabelNameProfileType, profileType)
 	}
 
+	if f.flushed.Unsymbolized {
+		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, metadata.LabelNameUnsymbolized, "true")
+	}
+
 	// Other optional labels:
 	// lb.WithLabelSet("label_name", "label_value", ...)
 	ds.Labels = lb.Build()
 
-	return ds, nil
+	return ds
 }
 
 func (s *segment) flushHeads(ctx context.Context) flushStream {
@@ -453,10 +459,13 @@ type segment struct {
 	shard            shardKey
 	sshard           string
 	inFlightProfiles sync.WaitGroup
-	heads            map[datasetKey]dataset
-	headsLock        sync.RWMutex
-	logger           log.Logger
-	sw               *segmentsWriter
+
+	headsLock sync.RWMutex
+	heads     map[datasetKey]dataset
+
+	logger              log.Logger
+	sw                  *segmentsWriter
+	usageGroupEvaluator *validation.UsageGroupEvaluator
 
 	// TODO(kolesnikovae): Revisit.
 	doneChan      chan struct{}
@@ -470,12 +479,13 @@ type segment struct {
 		flushBlockDuration time.Duration
 		storeMetaDuration  time.Duration
 	}
-	sh      *shard
-	counter int64
+
+	// TODO(kolesnikovae): Naming.
+	sh *shard
 }
 
 type segmentIngest interface {
-	ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair)
+	ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation)
 }
 
 type segmentWaitFlushed interface {
@@ -494,18 +504,19 @@ func (s *segment) waitFlushed(ctx context.Context) error {
 	}
 }
 
-func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair) {
+func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
 	k := datasetKey{
 		tenant:  tenantID,
 		service: model.Labels(labels).Get(model.LabelNameServiceName),
 	}
 	size := p.SizeVT()
 	rules := s.sw.limits.IngestionRelabelingRules(tenantID)
-	usage := s.sw.limits.DistributorUsageGroups(tenantID).GetUsageGroups(tenantID, labels)
+	usage := s.usageGroupEvaluator.GetMatch(tenantID, s.sw.limits.DistributorUsageGroups(tenantID), labels)
 	appender := &sampleAppender{
-		head:    s.headForIngest(k),
-		profile: p,
-		id:      id,
+		head:        s.headForIngest(k),
+		profile:     p,
+		id:          id,
+		annotations: annotations,
 	}
 	pprofsplit.VisitSampleSeries(p, labels, rules, appender)
 	size -= appender.discardedBytes
@@ -515,17 +526,18 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 }
 
 type sampleAppender struct {
-	id       uuid.UUID
-	head     *memdb.Head
-	profile  *profilev1.Profile
-	exporter *pprofmodel.SampleExporter
+	id          uuid.UUID
+	head        *memdb.Head
+	profile     *profilev1.Profile
+	exporter    *pprofmodel.SampleExporter
+	annotations []*typesv1.ProfileAnnotation
 
 	discardedProfiles int
 	discardedBytes    int
 }
 
 func (v *sampleAppender) VisitProfile(labels []*typesv1.LabelPair) {
-	v.head.Ingest(v.profile, v.id, labels)
+	v.head.Ingest(v.profile, v.id, labels, v.annotations)
 }
 
 func (v *sampleAppender) VisitSampleSeries(labels []*typesv1.LabelPair, samples []*profilev1.Sample) {
@@ -534,7 +546,7 @@ func (v *sampleAppender) VisitSampleSeries(labels []*typesv1.LabelPair, samples 
 	}
 	var n profilev1.Profile
 	v.exporter.ExportSamples(&n, samples)
-	v.head.Ingest(&n, v.id, labels)
+	v.head.Ingest(&n, v.id, labels, v.annotations)
 }
 
 func (v *sampleAppender) Discarded(profiles, bytes int) {
@@ -581,15 +593,21 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 		WithLabelValues(s.sshard).
 		Observe(float64(len(blockData)))
 
+	if sw.config.UploadTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, sw.config.UploadTimeout)
+		defer cancel()
+	}
+
 	// To mitigate tail latency issues, we use a hedged upload strategy:
 	// if the request is not completed within a certain time, we trigger
 	// a second upload attempt. Upload errors are retried explicitly and
 	// are included into the call duration.
 	uploadWithRetry := func(ctx context.Context, hedge bool) (any, error) {
 		retryConfig := backoff.Config{
-			MinBackoff: sw.config.Upload.MinBackoff,
-			MaxBackoff: sw.config.Upload.MaxBackoff,
-			MaxRetries: sw.config.Upload.MaxRetries,
+			MinBackoff: sw.config.UploadMinBackoff,
+			MaxBackoff: sw.config.UploadMaxBackoff,
+			MaxRetries: sw.config.UploadMaxRetries,
 		}
 		var attemptErr error
 		if hedge {
@@ -604,8 +622,8 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 		}
 		// Retry on all errors.
 		retries := backoff.New(ctx, retryConfig)
-		for retries.Ongoing() {
-			if attemptErr = sw.uploadWithTimeout(ctx, path, bytes.NewReader(blockData)); attemptErr == nil {
+		for retries.Ongoing() && ctx.Err() == nil {
+			if attemptErr = sw.bucket.Upload(ctx, path, bytes.NewReader(blockData)); attemptErr == nil {
 				break
 			}
 			retries.Wait()
@@ -615,7 +633,7 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 
 	hedgedUpload := retry.Hedged[any]{
 		Call:      uploadWithRetry,
-		Trigger:   time.After(sw.config.Upload.HedgeUploadAfter),
+		Trigger:   time.After(sw.config.UploadHedgeAfter),
 		Throttler: sw.retryLimiter,
 		FailFast:  false,
 	}
@@ -628,12 +646,6 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 	return nil
 }
 
-func (sw *segmentsWriter) uploadWithTimeout(ctx context.Context, path string, r io.Reader) error {
-	ctx, cancel := context.WithTimeout(ctx, sw.config.Upload.Timeout)
-	defer cancel()
-	return sw.bucket.Upload(ctx, path, r)
-}
-
 func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.BlockMeta, s *segment) error {
 	start := time.Now()
 	var err error
@@ -643,11 +655,23 @@ func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.B
 			Observe(time.Since(start).Seconds())
 		s.debuginfo.storeMetaDuration = time.Since(start)
 	}()
-	if _, err = sw.metastore.AddBlock(ctx, &metastorev1.AddBlockRequest{Block: meta}); err == nil {
+
+	mdCtx := ctx
+	if sw.config.MetadataUpdateTimeout > 0 {
+		var cancel context.CancelFunc
+		mdCtx, cancel = context.WithTimeout(mdCtx, sw.config.MetadataUpdateTimeout)
+		defer cancel()
+	}
+
+	if _, err = sw.metastore.AddBlock(mdCtx, &metastorev1.AddBlockRequest{Block: meta}); err == nil {
 		return nil
 	}
 
 	level.Error(s.logger).Log("msg", "failed to store meta in metastore", "err", err)
+	if !sw.config.MetadataDLQEnabled {
+		return err
+	}
+
 	defer func() {
 		sw.metrics.storeMetadataDLQ.WithLabelValues(statusLabelValue(err)).Inc()
 	}()

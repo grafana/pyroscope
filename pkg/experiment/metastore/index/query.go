@@ -14,8 +14,6 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
-	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/model"
 )
 
 type InvalidQueryError struct {
@@ -87,84 +85,86 @@ func (q *metadataQuery) buildTenantMap(tenants []string) {
 }
 
 func (q *metadataQuery) overlaps(start, end time.Time) bool {
-	return start.Before(q.endTime) && !end.Before(q.startTime)
+	if q.startTime.After(end) {
+		return false
+	}
+
+	if q.endTime.Before(start) {
+		return false
+	}
+
+	return true
 }
 
 func (q *metadataQuery) overlapsUnixMilli(start, end int64) bool {
 	return q.overlaps(time.UnixMilli(start), time.UnixMilli(end))
 }
 
-func newBlockMetadataIterator(tx *bbolt.Tx, q *metadataQuery) *blockMetadataIterator {
-	return &blockMetadataIterator{
+func newBlockMetadataQuerier(tx *bbolt.Tx, q *metadataQuery) *blockMetadataQuerier {
+	return &blockMetadataQuerier{
 		query:  q,
 		shards: newShardIterator(tx, q.index, q.startTime, q.endTime, q.tenants...),
 		metas:  make([]*metastorev1.BlockMeta, 0, 256),
 	}
 }
 
-type blockMetadataIterator struct {
+type blockMetadataQuerier struct {
 	query  *metadataQuery
-	shards iter.Iterator[*indexShard]
+	shards *shardIterator
 	metas  []*metastorev1.BlockMeta
-	cur    int
 }
 
-func (mi *blockMetadataIterator) Close() error               { return mi.shards.Close() }
-func (mi *blockMetadataIterator) Err() error                 { return mi.shards.Err() }
-func (mi *blockMetadataIterator) At() *metastorev1.BlockMeta { return mi.metas[mi.cur] }
-
-func (mi *blockMetadataIterator) Next() bool {
-	if n := mi.cur + 1; n < len(mi.metas) {
-		mi.cur = n
-		return true
-	}
-	mi.cur = 0
-	mi.metas = mi.metas[:0]
-	for mi.shards.Next() {
-		if mi.collectBlockMetadata(mi.shards.At()) {
-			break
+func (q *blockMetadataQuerier) queryBlocks() ([]*metastorev1.BlockMeta, error) {
+	for q.shards.Next() {
+		shard := q.shards.At()
+		if !shard.Overlaps(q.query.startTime, q.query.endTime) {
+			continue
 		}
+		offset := len(q.metas)
+		if err := q.collectBlockMetadata(shard); err != nil {
+			return nil, err
+		}
+		slices.SortFunc(q.metas[offset:], func(a, b *metastorev1.BlockMeta) int {
+			return strings.Compare(a.Id, b.Id)
+		})
 	}
-	return len(mi.metas) > 0
+	return q.metas, q.shards.Err()
 }
 
-func (mi *blockMetadataIterator) collectBlockMetadata(shard *indexShard) bool {
-	matcher := metadata.NewLabelMatcher(
-		shard.StringTable,
-		mi.query.matchers,
-		mi.query.labels...,
-	)
+func (q *blockMetadataQuerier) collectBlockMetadata(s *store.Shard) error {
+	matcher := metadata.NewLabelMatcher(s.StringTable.Strings, q.query.matchers, q.query.labels...)
 	if !matcher.IsValid() {
-		return false
+		return nil
 	}
-	for _, md := range shard.blocks {
-		if m := blockMetadataMatches(mi.query, shard.StringTable, matcher, md); m != nil {
-			mi.metas = append(mi.metas, m)
+	blocks := s.Blocks(q.shards.tx)
+	if blocks == nil {
+		return nil
+	}
+	for blocks.Next() {
+		md := q.shards.index.blocks.getOrCreate(s, blocks.At())
+		if m := q.collectMatched(s.StringTable, matcher, md); m != nil {
+			q.metas = append(q.metas, m)
 		}
 	}
-	slices.SortFunc(mi.metas, func(a, b *metastorev1.BlockMeta) int {
-		return strings.Compare(a.Id, b.Id)
-	})
-	return len(mi.metas) > 0
+	return nil
 }
 
-func blockMetadataMatches(
-	q *metadataQuery,
+func (q *blockMetadataQuerier) collectMatched(
 	s *metadata.StringTable,
 	m *metadata.LabelMatcher,
 	md *metastorev1.BlockMeta,
 ) *metastorev1.BlockMeta {
-	if !q.overlapsUnixMilli(md.MinTime, md.MaxTime) {
+	if !q.query.overlapsUnixMilli(md.MinTime, md.MaxTime) {
 		return nil
 	}
 	var mdCopy *metastorev1.BlockMeta
 	var ok bool
 	matches := make([]int32, 0, 8)
 	for _, ds := range md.Datasets {
-		if _, ok := q.tenantMap[s.Lookup(ds.Tenant)]; !ok {
+		if _, ok := q.query.tenantMap[s.Lookup(ds.Tenant)]; !ok {
 			continue
 		}
-		if !q.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
+		if !q.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
 			continue
 		}
 		matches = matches[:0]
@@ -188,153 +188,87 @@ func blockMetadataMatches(
 }
 
 func cloneBlockMetadataForQuery(b *metastorev1.BlockMeta) *metastorev1.BlockMeta {
-	datasets := b.Datasets
-	b.Datasets = nil
-	c := b.CloneVT()
-	b.Datasets = datasets
-	c.Datasets = make([]*metastorev1.Dataset, 0, 8)
-	return c
+	return &metastorev1.BlockMeta{
+		FormatVersion:   b.FormatVersion,
+		Id:              b.Id,
+		Tenant:          b.Tenant,
+		Shard:           b.Shard,
+		CompactionLevel: b.CompactionLevel,
+		MinTime:         b.MinTime,
+		MaxTime:         b.MaxTime,
+		CreatedBy:       b.CreatedBy,
+		MetadataOffset:  b.MetadataOffset,
+		Size:            b.Size,
+		//	Datasets:        b.Datasets,
+		//	StringTable:     b.StringTable,
+	}
 }
 
 func cloneDatasetMetadataForQuery(ds *metastorev1.Dataset) *metastorev1.Dataset {
-	ls := ds.Labels
-	ds.Labels = nil
-	c := ds.CloneVT()
-	ds.Labels = ls
-	return c
+	return &metastorev1.Dataset{
+		Format:          ds.Format,
+		Tenant:          ds.Tenant,
+		Name:            ds.Name,
+		MinTime:         ds.MinTime,
+		MaxTime:         ds.MaxTime,
+		TableOfContents: ds.TableOfContents,
+		Size:            ds.Size,
+		//	Labels:          ds.Labels,
+	}
 }
 
 func newMetadataLabelQuerier(tx *bbolt.Tx, q *metadataQuery) *metadataLabelQuerier {
 	return &metadataLabelQuerier{
 		query:  q,
 		shards: newShardIterator(tx, q.index, q.startTime, q.endTime, q.tenants...),
-		labels: model.NewLabelMerger(),
+		labels: metadata.NewLabelsCollector(q.labels...),
 	}
 }
 
 type metadataLabelQuerier struct {
 	query  *metadataQuery
-	shards iter.Iterator[*indexShard]
-	labels *model.LabelMerger
+	shards *shardIterator
+	labels *metadata.LabelsCollector
 }
 
-func (mi *metadataLabelQuerier) queryLabels() (*model.LabelMerger, error) {
-	if len(mi.query.labels) == 0 {
-		return mi.labels, nil
+func (q *metadataLabelQuerier) queryLabels() (*metadata.LabelsCollector, error) {
+	if len(q.query.labels) == 0 {
+		return q.labels, nil
 	}
-	for mi.shards.Next() {
-		mi.collectLabels(mi.shards.At())
-	}
-	if err := mi.shards.Err(); err != nil {
-		return nil, err
-	}
-	return mi.labels, nil
-}
-
-func (mi *metadataLabelQuerier) collectLabels(shard *indexShard) {
-	m := metadata.NewLabelMatcher(
-		shard.StringTable,
-		mi.query.matchers,
-		mi.query.labels...,
-	)
-	if !m.IsValid() {
-		return
-	}
-	for _, md := range shard.blocks {
-		if !mi.query.overlapsUnixMilli(md.MinTime, md.MaxTime) {
+	for q.shards.Next() {
+		shard := q.shards.At()
+		if !shard.Overlaps(q.query.startTime, q.query.endTime) {
 			continue
 		}
-		for _, ds := range md.Datasets {
-			if _, ok := mi.query.tenantMap[shard.StringTable.Lookup(ds.Tenant)]; !ok {
-				continue
-			}
-			if !mi.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
-				continue
-			}
-			m.Matches(ds.Labels)
+		if err := q.collectLabels(shard); err != nil {
+			return nil, err
 		}
 	}
-	mi.labels.MergeLabels(m.AllMatches())
+	return q.labels, q.shards.Err()
 }
 
-type shardIterator struct {
-	tx         *bbolt.Tx
-	index      *Index
-	tenants    []string
-	partitions []*store.Partition
-	shards     []*indexShard
-	cur        int
-	err        error
-}
-
-func newShardIterator(tx *bbolt.Tx, index *Index, startTime, endTime time.Time, tenants ...string) iter.Iterator[*indexShard] {
-	startTime = startTime.Add(-index.config.QueryLookaroundPeriod)
-	endTime = endTime.Add(index.config.QueryLookaroundPeriod)
-	si := shardIterator{
-		tx:         tx,
-		partitions: make([]*store.Partition, 0, len(index.partitions)),
-		tenants:    tenants,
-		index:      index,
+func (q *metadataLabelQuerier) collectLabels(s *store.Shard) error {
+	matcher := metadata.NewLabelMatcher(s.StringTable.Strings, q.query.matchers, q.query.labels...)
+	if !matcher.IsValid() {
+		return nil
 	}
-	for _, p := range index.partitions {
-		if !p.Overlaps(startTime, endTime) {
-			continue
-		}
-		for _, t := range si.tenants {
-			if p.HasTenant(t) {
-				si.partitions = append(si.partitions, p)
-				break
+	blocks := s.Blocks(q.shards.tx)
+	if blocks == nil {
+		return nil
+	}
+	for blocks.Next() {
+		md := q.shards.index.blocks.getOrCreate(s, blocks.At())
+		if q.query.overlapsUnixMilli(md.MinTime, md.MaxTime) {
+			for _, ds := range md.Datasets {
+				if _, ok := q.query.tenantMap[s.Lookup(ds.Tenant)]; !ok {
+					continue
+				}
+				if q.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
+					matcher.Matches(ds.Labels)
+				}
 			}
 		}
 	}
-	return &si
-}
-
-func (si *shardIterator) Close() error { return nil }
-
-func (si *shardIterator) Err() error { return si.err }
-
-func (si *shardIterator) At() *indexShard { return si.shards[si.cur] }
-
-func (si *shardIterator) Next() bool {
-	if n := si.cur + 1; n < len(si.shards) {
-		si.cur = n
-		return true
-	}
-	si.cur = 0
-	si.shards = si.shards[:0]
-	for len(si.shards) == 0 && len(si.partitions) > 0 {
-		si.loadShards(si.partitions[0])
-		si.partitions = si.partitions[1:]
-	}
-	return si.cur < len(si.shards)
-}
-
-func (si *shardIterator) loadShards(p *store.Partition) {
-	for _, t := range si.tenants {
-		shards := p.TenantShards[t]
-		if shards == nil {
-			continue
-		}
-		for s := range shards {
-			shard, err := si.index.getOrLoadTenantShard(si.tx, p, t, s)
-			if err != nil {
-				si.err = err
-				return
-			}
-			if shard != nil {
-				si.shards = append(si.shards, shard)
-			}
-		}
-	}
-	slices.SortFunc(si.shards, compareShards)
-	si.shards = slices.Compact(si.shards)
-}
-
-func compareShards(a, b *indexShard) int {
-	cmp := strings.Compare(a.Tenant, b.Tenant)
-	if cmp == 0 {
-		return int(a.Shard) - int(b.Shard)
-	}
-	return cmp
+	q.labels.CollectMatches(matcher)
+	return nil
 }

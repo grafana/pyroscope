@@ -25,11 +25,14 @@ func NewPartition(k PartitionKey) *Partition {
 	}
 }
 
-func (p *Partition) StartTime() time.Time { return p.Key.Timestamp }
-func (p *Partition) EndTime() time.Time   { return p.Key.Timestamp.Add(p.Key.Duration) }
+func (p *Partition) StartTime() time.Time               { return p.Key.StartTime() }
+func (p *Partition) EndTime() time.Time                 { return p.Key.EndTime() }
+func (p *Partition) Overlaps(start, end time.Time) bool { return p.Key.Overlaps(start, end) }
 
-func (p *Partition) Overlaps(start, end time.Time) bool {
-	return start.Before(p.EndTime()) && !end.Before(p.StartTime())
+func (k *PartitionKey) StartTime() time.Time { return k.Timestamp }
+func (k *PartitionKey) EndTime() time.Time   { return k.Timestamp.Add(k.Duration) }
+func (k *PartitionKey) Overlaps(start, end time.Time) bool {
+	return start.Before(k.EndTime()) && !end.Before(k.StartTime())
 }
 
 func (p *Partition) AddTenantShard(tenant string, shard uint32) {
@@ -43,6 +46,14 @@ func (p *Partition) AddTenantShard(tenant string, shard uint32) {
 
 func (p *Partition) HasTenant(t string) bool {
 	_, ok := p.TenantShards[t]
+	return ok
+}
+
+func (p *Partition) HasIndexShard(tenant string, shard uint32) bool {
+	t, ok := p.TenantShards[tenant]
+	if ok {
+		_, ok = t[shard]
+	}
 	return ok
 }
 

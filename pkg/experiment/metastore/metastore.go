@@ -33,10 +33,10 @@ import (
 type Config struct {
 	Address          string             `yaml:"address"`
 	GRPCClientConfig grpcclient.Config  `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
-	DataDir          string             `yaml:"data_dir"`
 	MinReadyDuration time.Duration      `yaml:"min_ready_duration" category:"advanced"`
 	Raft             raft.Config        `yaml:"raft"`
-	Index            index.Config       `yaml:",inline" category:"advanced"`
+	FSM              fsm.Config         `yaml:",inline" category:"advanced"`
+	Index            index.Config       `yaml:"index" category:"advanced"`
 	DLQRecovery      dlq.RecoveryConfig `yaml:",inline" category:"advanced"`
 	Compactor        compactor.Config   `yaml:",inline" category:"advanced"`
 	Scheduler        scheduler.Config   `yaml:",inline" category:"advanced"`
@@ -45,13 +45,13 @@ type Config struct {
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "metastore."
 	f.StringVar(&cfg.Address, prefix+"address", "localhost:9095", "")
-	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data-metastore/data", "")
 	f.DurationVar(&cfg.MinReadyDuration, prefix+"min-ready-duration", 15*time.Second, "Minimum duration to wait after the internal readiness checks have passed but before succeeding the readiness endpoint. This is used to slowdown deployment controllers (eg. Kubernetes) after an instance is ready and before they proceed with a rolling update, to give the rest of the cluster instances enough time to receive some (DNS?) updates.")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+"grpc-client-config", f)
 	cfg.Raft.RegisterFlagsWithPrefix(prefix+"raft.", f)
+	cfg.FSM.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Compactor.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Scheduler.RegisterFlagsWithPrefix(prefix, f)
-	cfg.Index.RegisterFlagsWithPrefix(prefix, f)
+	cfg.Index.RegisterFlagsWithPrefix(prefix+"index.", f)
 	cfg.DLQRecovery.RegisterFlagsWithPrefix(prefix, f)
 }
 
@@ -117,14 +117,12 @@ func New(
 	}
 
 	var err error
-
-	m.fsm, err = fsm.New(m.logger, m.reg, m.config.DataDir)
-	if err != nil {
+	if m.fsm, err = fsm.New(m.logger, m.reg, m.config.FSM); err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
 
 	// Initialization of the base components.
-	m.index = index.NewIndex(m.logger, index.NewStore(), &config.Index)
+	m.index = index.NewIndex(m.logger, index.NewStore(), config.Index)
 	m.tombstones = tombstones.NewTombstones(tombstones.NewStore())
 	m.compactor = compactor.NewCompactor(config.Compactor, compactor.NewStore(), m.tombstones, m.reg)
 	m.scheduler = scheduler.NewScheduler(config.Scheduler, scheduler.NewStore(), m.reg)

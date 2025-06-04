@@ -38,3 +38,22 @@ func Test_shard_allocator(t *testing.T) {
 		require.Equal(t, test.want, a.observe(test.usage, test.now), fmt.Sprint(i))
 	}
 }
+
+func Test_shard_limit(t *testing.T) {
+	a := &shardAllocator{
+		unitSize:    128 << 10,
+		min:         1,
+		max:         10,
+		burstWindow: 1e9 * 10,
+		decayWindow: 1e9 * 10 * 5,
+	}
+
+	var now int64
+	var hi int
+	for i := uint64(0); i < 100; i++ {
+		old := hi
+		hi = a.observe(2*a.unitSize*i, now)
+		require.GreaterOrEqual(t, hi, old)
+		now += 1e9 * 10
+	}
+}

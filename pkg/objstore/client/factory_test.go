@@ -12,6 +12,7 @@ import (
 	"path"
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -106,52 +107,53 @@ func TestClient_ConfigValidation(t *testing.T) {
 		name          string
 		cfg           Config
 		expectedError error
+		expectedLog   string
 	}{
 		{
-			name: "storage_prefix/valid",
-			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "helloWORLD123"},
+			name: "prefix/valid",
+			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "helloWORLD123"},
 		},
 		{
-			name: "storage_prefix/valid-subdir",
-			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "hello/world/env"},
+			name: "prefix/valid-subdir",
+			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello/world/env"},
 		},
 		{
-			name: "storage_prefix/valid-subdir-trailing-slash",
-			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "hello/world/env/"},
+			name: "prefix/valid-subdir-trailing-slash",
+			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello/world/env/"},
 		},
 		{
-			name:          "storage_prefix/invalid-directory-up",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: ".."},
+			name:          "prefix/invalid-directory-up",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: ".."},
 			expectedError: ErrStoragePrefixInvalidCharacters,
 		},
 		{
-			name:          "storage_prefix/invalid-directory",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "."},
+			name:          "prefix/invalid-directory",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "."},
 			expectedError: ErrStoragePrefixInvalidCharacters,
 		},
 		{
-			name:          "storage_prefix/invalid-absolute-path",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "/hello/world"},
+			name:          "prefix/invalid-absolute-path",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "/hello/world"},
 			expectedError: ErrStoragePrefixStartsWithSlash,
 		},
 		{
-			name:          "storage_prefix/invalid-..-in-a-path-segement",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "hello/../test"},
+			name:          "prefix/invalid-..-in-a-path-segement",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello/../test"},
 			expectedError: ErrStoragePrefixInvalidCharacters,
 		},
 		{
-			name:          "storage_prefix/invalid-empty-path-segement",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "hello//test"},
+			name:          "prefix/invalid-empty-path-segement",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello//test"},
 			expectedError: ErrStoragePrefixEmptyPathSegment,
 		},
 		{
-			name:          "storage_prefix/invalid-emoji",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "👋"},
+			name:          "prefix/invalid-emoji",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "👋"},
 			expectedError: ErrStoragePrefixInvalidCharacters,
 		},
 		{
-			name:          "storage_prefix/invalid-emoji",
-			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, StoragePrefix: "hello!world"},
+			name:          "prefix/invalid-emoji",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello!world"},
 			expectedError: ErrStoragePrefixInvalidCharacters,
 		},
 		{
@@ -159,16 +161,43 @@ func TestClient_ConfigValidation(t *testing.T) {
 			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: "flash drive"}},
 			expectedError: ErrUnsupportedStorageBackend,
 		},
+		{
+			name:        "prefix/valid-legacy-subdir-trailing-slash",
+			cfg:         Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, DeprecatedStoragePrefix: "hello/world/env/"},
+			expectedLog: "config has a deprecated storage.storage-prefix flag set",
+		},
+		{
+			name:          "prefix/invalid-emoji",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, DeprecatedStoragePrefix: "hello!world"},
+			expectedError: ErrStoragePrefixInvalidCharacters,
+			expectedLog:   "config has a deprecated storage.storage-prefix flag set",
+		},
+		{
+			name:          "prefix/invalid-both-configs",
+			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, DeprecatedStoragePrefix: "hello-world1", Prefix: "hello-world2"},
+			expectedError: ErrStoragePrefixBothFlagsSet,
+		},
 	}
+
+	logBuf := new(bytes.Buffer)
+	logger := log.NewLogfmtLogger(logBuf)
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			actualErr := tc.cfg.Validate()
+			// Reset log buffer
+			logBuf.Reset()
+
+			actualErr := tc.cfg.Validate(logger)
 			if tc.expectedError != nil {
 				assert.Equal(t, actualErr, tc.expectedError)
 			} else {
 				assert.NoError(t, actualErr)
+			}
+			if tc.expectedLog != "" {
+				assert.Contains(t, logBuf.String(), tc.expectedLog)
+			} else {
+				assert.Empty(t, logBuf.String())
 			}
 		})
 	}
@@ -185,7 +214,7 @@ func TestNewPrefixedBucketClient(t *testing.T) {
 					Directory: tempDir,
 				},
 			},
-			StoragePrefix: "prefix",
+			Prefix: "prefix",
 		}
 
 		client, err := NewBucket(ctx, cfg, "test")

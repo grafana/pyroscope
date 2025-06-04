@@ -53,7 +53,7 @@ type tombstoneEntriesIterator struct {
 }
 
 func newTombstoneEntriesIterator(bucket *bbolt.Bucket) *tombstoneEntriesIterator {
-	return &tombstoneEntriesIterator{iter: store.NewCursorIter(nil, bucket.Cursor())}
+	return &tombstoneEntriesIterator{iter: store.NewCursorIter(bucket.Cursor())}
 }
 
 func (x *tombstoneEntriesIterator) Next() bool {

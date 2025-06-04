@@ -176,17 +176,8 @@ func newTimeSeries(exportedLabels labels.Labels, recordingTime int64) *prompb.Ti
 
 func generateExportedLabels(labelsMap map[string]string, rec *recording, externalLabels labels.Labels) labels.Labels {
 	exportedLabels := make(labels.Labels, 0, len(externalLabels)+len(rec.rule.ExternalLabels)+len(rec.rule.GroupBy))
-
-	// Add observer's external labels
-	for _, label := range externalLabels {
-		exportedLabels = append(exportedLabels, label)
-	}
-
-	// Add rule's external labels
-	for _, label := range rec.rule.ExternalLabels {
-		exportedLabels = append(exportedLabels, label)
-	}
-
+	exportedLabels = append(exportedLabels, externalLabels...)
+	exportedLabels = append(exportedLabels, rec.rule.ExternalLabels...)
 	// Keep the groupBy labels if present
 	for _, label := range rec.rule.GroupBy {
 		labelValue, ok := labelsMap[label]

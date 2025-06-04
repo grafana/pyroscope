@@ -12,3 +12,16 @@ datasources:
     # basicAuthUser: '123456'
     # secureJsonData:
       # basicAuthPassword: PASSWORD
+  - uid: local-prometheus
+    type: prometheus
+    name: Prometheus
+    access: proxy
+    url: http://host.docker.internal:9099
+    basicAuth: true #username: admin, password: admin
+    basicAuthUser: admin
+    jsonData:
+      manageAlerts: true
+      prometheusType: Prometheus #Cortex | Mimir | Prometheus | Thanos
+      prometheusVersion: 2.40.0
+    secureJsonData:
+      basicAuthPassword: admin #https://grafana.com/docs/grafana/latest/administration/provisioning/#using-environment-variables

@@ -1,8 +1,7 @@
 const Pyroscope = require('@pyroscope/nodejs');
 
-module.exports = (config) => {
+module.exports = async (config) => {
   if (process.env.CI) {
-    Pyroscope.stopCpuProfiling();
-    Pyroscope.stopHeapProfiling();
+    await Pyroscope.stop();
   }
 };

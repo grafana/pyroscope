@@ -57,9 +57,9 @@ func TestValidateLabels(t *testing.T) {
 		{
 			name: "invalid metric name",
 			lbs: []*typesv1.LabelPair{
-				{Name: model.MetricNameLabel, Value: "&&"},
+				{Name: model.MetricNameLabel, Value: "\x80"},
 			},
-			expectedErr:    `invalid labels '{__name__="&&"}' with error: invalid metric name`,
+			expectedErr:    `invalid labels '{__name__="\x80"}' with error: invalid metric name`,
 			expectedReason: InvalidLabels,
 		},
 		{

@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"rideshare/bike"
 	"rideshare/car"
@@ -16,9 +18,14 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	otellogs "github.com/agoda-com/opentelemetry-logs-go"
+	sdklogs "github.com/agoda-com/opentelemetry-logs-go/sdk/logs"
 	otelpyroscope "github.com/grafana/otel-profiling-go"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	mmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
@@ -49,9 +56,11 @@ func index(w http.ResponseWriter, r *http.Request) {
 func main() {
 	config := rideshare.ReadConfig()
 
-	tp, _ := setupOTEL(config)
+	tp, lp, mp, _ := setupOTEL(config)
 	defer func() {
 		_ = tp.Shutdown(context.Background())
+		_ = lp.Shutdown(context.Background())
+		_ = mp.Shutdown(context.Background())
 	}()
 
 	p, err := rideshare.Profiler(config)
@@ -59,33 +68,84 @@ func main() {
 	if err != nil {
 		log.Fatalf("error starting pyroscope profiler: %v", err)
 	}
+
 	defer func() {
 		_ = p.Stop()
 	}()
+
+	histogram, err := otel.GetMeterProvider().Meter("histogram").Float64Histogram(
+		"handler.duration",
+		mmetric.WithDescription("The duration of handler execution."),
+		mmetric.WithUnit("s"),
+	)
+	if err != nil {
+		panic(err)
+	}
 
 	cleanup := utility.InitWorkerPool(config)
 	defer cleanup()
 
 	rideshare.Log.Print(context.Background(), "started ride-sharing app")
 
+	// Register Prometheus metrics handler
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		if err := http.ListenAndServe(":5001", nil); err != nil {
+			slog.Error("metrics server error", "error", err)
+		}
+	}()
+
 	http.Handle("/", otelhttp.NewHandler(http.HandlerFunc(index), "IndexHandler"))
-	http.Handle("/bike", otelhttp.NewHandler(http.HandlerFunc(bikeRoute), "BikeHandler"))
-	http.Handle("/scooter", otelhttp.NewHandler(http.HandlerFunc(scooterRoute), "ScooterHandler"))
-	http.Handle("/car", otelhttp.NewHandler(http.HandlerFunc(carRoute), "CarHandler"))
+
+	http.Handle("/bike", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		bikeRoute(w, r)
+		duration := time.Since(start)
+		histogram.Record(r.Context(), duration.Seconds(),
+			mmetric.WithAttributes(
+				attribute.String("vehicle", "bike"),
+				attribute.String("route", "/bike"),
+			),
+		)
+	}), "BikeHandler"))
+
+	http.Handle("/scooter", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		scooterRoute(w, r)
+		duration := time.Since(start)
+		histogram.Record(r.Context(), duration.Seconds(),
+			mmetric.WithAttributes(
+				attribute.String("vehicle", "scooter"),
+				attribute.String("route", "/scooter"),
+			),
+		)
+	}), "ScooterHandler"))
+
+	http.Handle("/car", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		carRoute(w, r)
+		duration := time.Since(start)
+		histogram.Record(r.Context(), duration.Seconds(),
+			mmetric.WithAttributes(
+				attribute.String("vehicle", "car"),
+				attribute.String("route", "/car"),
+			),
+		)
+	}), "CarHandler"))
 
 	addr := fmt.Sprintf(":%s", config.RideshareListenPort)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
-func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
+func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, lp *sdklogs.LoggerProvider, mp *sdkmetric.MeterProvider, err error) {
 	tp, err = rideshare.TracerProvider(c)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
-	lp, err := rideshare.LoggerProvider(c)
+	lp, err = rideshare.LoggerProvider(c)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	otellogs.SetLoggerProvider(lp)
 
@@ -105,5 +165,11 @@ func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
 		propagation.Baggage{},
 	))
 
-	return tp, err
+	mp, err = rideshare.MeterProvider(c)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	otel.SetMeterProvider(mp)
+
+	return tp, lp, mp, err
 }

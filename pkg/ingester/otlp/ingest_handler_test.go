@@ -11,9 +11,9 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
+	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockotlp"
 
-	"github.com/prometheus/prometheus/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -31,7 +31,21 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 		{
 			name:     "empty attributes",
 			attrs:    []*v1.KeyValue{},
-			expected: "unknown",
+			expected: phlaremodel.AttrServiceNameFallback,
+		},
+		{
+			name: "empty attributes",
+			attrs: []*v1.KeyValue{
+				{
+					Key: "process.executable.name",
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "bash",
+						},
+					},
+				},
+			},
+			expected: phlaremodel.AttrServiceNameFallback + ":bash",
 		},
 		{
 			name: "service name present",
@@ -41,6 +55,14 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "test-service",
+						},
+					},
+				},
+				{
+					Key: "process.executable.name",
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "test-executable",
 						},
 					},
 				},
@@ -58,8 +80,16 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 						},
 					},
 				},
+				{
+					Key: "process.executable.name",
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "",
+						},
+					},
+				},
 			},
-			expected: "unknown",
+			expected: phlaremodel.AttrServiceNameFallback,
 		},
 		{
 			name: "service name among other attributes",
@@ -302,7 +332,7 @@ func TestConversion(t *testing.T) {
 						Profiles: []*v1experimental.Profile{
 							&b.profile,
 						}}}}}}
-			logger := testutil.NewLogger(t)
+			logger := test.NewTestingLogger(t)
 			h := NewOTLPIngestHandler(svc, logger, false)
 			_, err := h.Export(context.Background(), req)
 
@@ -396,7 +426,7 @@ func TestSampleAttributes(t *testing.T) {
 				Profiles: []*v1experimental.Profile{
 					&otlpb.profile,
 				}}}}}}
-	logger := testutil.NewLogger(t)
+	logger := test.NewTestingLogger(t)
 	h := NewOTLPIngestHandler(svc, logger, false)
 	_, err := h.Export(context.Background(), req)
 	assert.NoError(t, err)
@@ -559,7 +589,7 @@ func TestDifferentServiceNames(t *testing.T) {
 					&otlpb.profile,
 				}}}}}}
 
-	logger := testutil.NewLogger(t)
+	logger := test.NewTestingLogger(t)
 	h := NewOTLPIngestHandler(svc, logger, false)
 	_, err := h.Export(context.Background(), req)
 	require.NoError(t, err)
@@ -568,9 +598,9 @@ func TestDifferentServiceNames(t *testing.T) {
 	require.Equal(t, 3, len(profiles[0].Series))
 
 	expectedProfiles := map[string]string{
-		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"service-a\"}": "testdata/TestDifferentServiceNames_service_a_profile.json",
-		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"service-b\"}": "testdata/TestDifferentServiceNames_service_b_profile.json",
-		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"unknown\"}":   "testdata/TestDifferentServiceNames_unknown_profile.json",
+		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"service-a\"}":       "testdata/TestDifferentServiceNames_service_a_profile.json",
+		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"service-b\"}":       "testdata/TestDifferentServiceNames_service_b_profile.json",
+		"{__delta__=\"false\", __name__=\"process_cpu\", __otel__=\"true\", service_name=\"unknown_service\"}": "testdata/TestDifferentServiceNames_unknown_profile.json",
 	}
 
 	for _, s := range profiles[0].Series {

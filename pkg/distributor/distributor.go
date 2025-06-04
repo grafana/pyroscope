@@ -101,6 +101,7 @@ type Distributor struct {
 	aggregator             *aggregator.MultiTenantAggregator[*pprof.ProfileMerge]
 	asyncRequests          sync.WaitGroup
 	ingestionLimitsSampler *ingest_limits.Sampler
+	usageGroupEvaluator    *validation.UsageGroupEvaluator
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -191,6 +192,7 @@ func New(
 	}
 
 	d.ingestionLimitsSampler = ingest_limits.NewSampler(distributorsRing)
+	d.usageGroupEvaluator = validation.NewUsageGroupEvaluator(logger)
 
 	subservices = append(subservices, distributorsLifecycler, distributorsRing, d.aggregator, d.ingestionLimitsSampler)
 
@@ -291,7 +293,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	for _, series := range req.Series {
 		serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
 		if serviceName == "" {
-			series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "unspecified"})
+			series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: phlaremodel.AttrServiceNameFallback})
 		}
 		sort.Sort(phlaremodel.Labels(series.Labels))
 	}
@@ -309,6 +311,9 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	d.calculateRequestSize(req)
 
+	// We don't support externally provided profile annotations right now.
+	// They are unfortunately part of the Push API so we explicitly clear them here.
+	req.ClearAnnotations()
 	if err := d.checkIngestLimit(tenantID, req); err != nil {
 		return nil, err
 	}
@@ -322,7 +327,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	for _, series := range req.Series {
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
 
-		groups := usageGroups.GetUsageGroups(tenantID, series.Labels)
+		groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, series.Labels)
 		if err := d.checkUsageGroupsIngestLimit(tenantID, groups.Names(), req); err != nil {
 			return nil, err
 		}
@@ -451,6 +456,7 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushR
 	// session ID: this is required to ensure fair load distribution.
 	d.asyncRequests.Add(1)
 	labels = phlaremodel.Labels(req.Series[0].Labels).Clone()
+	annotations := req.Series[0].Annotations
 	go func() {
 		defer d.asyncRequests.Done()
 		sendErr := util.RecoverPanic(func() error {
@@ -468,8 +474,9 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushR
 			aggregated := &distributormodel.PushRequest{
 				TenantID: req.TenantID,
 				Series: []*distributormodel.ProfileSeries{{
-					Labels:  labels,
-					Samples: []*distributormodel.ProfileSample{{Profile: pprof.RawFromProto(p.Profile())}},
+					Labels:      labels,
+					Samples:     []*distributormodel.ProfileSample{{Profile: pprof.RawFromProto(p.Profile())}},
+					Annotations: annotations,
 				}},
 			}
 			return d.router.Send(localCtx, aggregated)
@@ -485,7 +492,7 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushR
 func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
 	// Next we split profiles by labels and apply relabeling rules.
 	usageGroups := d.limits.DistributorUsageGroups(req.TenantID)
-	profileSeries, bytesRelabelDropped, profilesRelabelDropped := extractSampleSeries(req, req.TenantID, usageGroups, d.limits.IngestionRelabelingRules(req.TenantID))
+	profileSeries, bytesRelabelDropped, profilesRelabelDropped := d.extractSampleSeries(req, usageGroups)
 	validation.DiscardedBytes.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(bytesRelabelDropped)
 	validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(profilesRelabelDropped)
 
@@ -510,7 +517,7 @@ func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distribut
 			series.Labels = phlaremodel.Labels(series.Labels).InsertSorted(phlaremodel.LabelNameOrder, phlaremodel.LabelOrderEnforced)
 		}
 
-		groups := usageGroups.GetUsageGroups(req.TenantID, series.Labels)
+		groups := d.usageGroupEvaluator.GetMatch(req.TenantID, usageGroups, series.Labels)
 
 		if err = validation.ValidateLabels(d.limits, req.TenantID, series.Labels); err != nil {
 			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), req.TenantID).Add(float64(req.TotalProfiles))
@@ -662,8 +669,9 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 
 	for _, p := range profileTrackers {
 		series := &pushv1.RawProfileSeries{
-			Labels:  p.profile.Labels,
-			Samples: make([]*pushv1.RawSample, 0, len(p.profile.Samples)),
+			Labels:      p.profile.Labels,
+			Samples:     make([]*pushv1.RawSample, 0, len(p.profile.Samples)),
+			Annotations: p.profile.Annotations,
 		}
 		for _, sample := range p.profile.Samples {
 			series.Samples = append(series.Samples, &pushv1.RawSample{
@@ -758,6 +766,9 @@ func (d *Distributor) checkIngestLimit(tenantID string, req *distributormodel.Pu
 	if l.LimitReached {
 		// we want to allow a very small portion of the traffic after reaching the limit
 		if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
+			if err := req.MarkThrottledTenant(l); err != nil {
+				return err
+			}
 			return nil
 		}
 		limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
@@ -782,6 +793,9 @@ func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groupsInReque
 			continue
 		}
 		if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
+			if err := req.MarkThrottledUsageGroup(l, group); err != nil {
+				return err
+			}
 			return nil
 		}
 		limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
@@ -871,16 +885,15 @@ func injectMappingVersions(series []*distributormodel.ProfileSeries) error {
 	return nil
 }
 
-func extractSampleSeries(
+func (d *Distributor) extractSampleSeries(
 	req *distributormodel.PushRequest,
-	tenantID string,
 	usage *validation.UsageGroupConfig,
-	rules []*relabel.Config,
 ) (
 	result []*distributormodel.ProfileSeries,
 	bytesRelabelDropped float64,
 	profilesRelabelDropped float64,
 ) {
+	rules := d.limits.IngestionRelabelingRules(req.TenantID)
 	for _, series := range req.Series {
 		for _, p := range series.Samples {
 			v := &sampleSeriesVisitor{profile: p.Profile}
@@ -890,10 +903,13 @@ func extractSampleSeries(
 				rules,
 				v,
 			)
+			for _, vSer := range v.series {
+				vSer.Annotations = series.Annotations
+			}
 			result = append(result, v.series...)
 			bytesRelabelDropped += float64(v.discardedBytes)
 			profilesRelabelDropped += float64(v.discardedProfiles)
-			usage.GetUsageGroups(tenantID, series.Labels).
+			d.usageGroupEvaluator.GetMatch(req.TenantID, usage, series.Labels).
 				CountDiscardedBytes(string(validation.DroppedByRelabelRules), int64(v.discardedBytes))
 		}
 	}

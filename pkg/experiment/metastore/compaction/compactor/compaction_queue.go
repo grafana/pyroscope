@@ -12,6 +12,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
+const defaultBlockBatchSize = 20
+
 type compactionKey struct {
 	// Order of the fields is not important.
 	// Can be generalized.
@@ -21,14 +23,14 @@ type compactionKey struct {
 }
 
 type compactionQueue struct {
-	strategy   Strategy
+	config     Config
 	registerer prometheus.Registerer
 	levels     []*blockQueue
 }
 
 // blockQueue stages blocks as they are being added. Once a batch of blocks
-// within the compaction key reaches a certain size, it is pushed to the linked
-// list in the arrival order and to the compaction key queue.
+// within the compaction key reaches a certain size or age, it is pushed to
+// the linked list in the arrival order and to the compaction key queue.
 //
 // This allows to iterate over the blocks in the order of arrival within the
 // compaction dimension, while maintaining an ability to remove blocks from the
@@ -38,7 +40,7 @@ type compactionQueue struct {
 // the queue is through explicit removal. Batch and block iterators provide
 // the read access.
 type blockQueue struct {
-	strategy   Strategy
+	config     Config
 	registerer prometheus.Registerer
 	staged     map[compactionKey]*stagedBlocks
 	// Batches ordered by arrival.
@@ -97,11 +99,12 @@ type batch struct {
 	// Links to the local batch queue items:
 	// batches that share the same compaction key.
 	next, prev *batch
+	createdAt  int64
 }
 
-func newCompactionQueue(strategy Strategy, registerer prometheus.Registerer) *compactionQueue {
+func newCompactionQueue(config Config, registerer prometheus.Registerer) *compactionQueue {
 	return &compactionQueue{
-		strategy:   strategy,
+		config:     config,
 		registerer: registerer,
 	}
 }
@@ -125,11 +128,11 @@ func (q *compactionQueue) push(e compaction.BlockEntry) bool {
 		shard:  e.Shard,
 		level:  e.Level,
 	})
+	staged.updatedAt = e.AppendedAt
 	pushed := staged.push(blockEntry{
 		id:    e.ID,
 		index: e.Index,
 	})
-	staged.updatedAt = e.AppendedAt
 	heap.Fix(level.updates, staged.heapIndex)
 	level.flushOldest(e.AppendedAt)
 	return pushed
@@ -142,15 +145,15 @@ func (q *compactionQueue) blockQueue(l uint32) *blockQueue {
 	}
 	level := q.levels[l]
 	if level == nil {
-		level = newBlockQueue(q.strategy, q.registerer)
+		level = newBlockQueue(q.config, q.registerer)
 		q.levels[l] = level
 	}
 	return level
 }
 
-func newBlockQueue(strategy Strategy, registerer prometheus.Registerer) *blockQueue {
+func newBlockQueue(config Config, registerer prometheus.Registerer) *blockQueue {
 	return &blockQueue{
-		strategy:   strategy,
+		config:     config,
 		registerer: registerer,
 		staged:     make(map[compactionKey]*stagedBlocks),
 		updates:    new(priorityBlockQueue),
@@ -182,14 +185,8 @@ func (q *blockQueue) removeStaged(s *stagedBlocks) {
 		q.registerer.Unregister(s.collector)
 	}
 	delete(q.staged, s.key)
-	if s.heapIndex < 0 {
-		// We usually end up here since s has already been evicted
-		// from the priority queue via Pop due to its age.
-		return
-	}
-	if s.heapIndex >= q.updates.Len() {
-		// Should not be possible.
-		return
+	if s.heapIndex < 0 || s.heapIndex >= q.updates.Len() {
+		panic("bug: attempt to delete compaction queue with an invalid priority index")
 	}
 	heap.Remove(q.updates, s.heapIndex)
 }
@@ -201,27 +198,33 @@ func (s *stagedBlocks) push(block blockEntry) bool {
 	}
 	s.refs[block.id] = blockRef{batch: s.batch, index: len(s.batch.blocks)}
 	s.batch.blocks = append(s.batch.blocks, block)
+	if s.batch.size == 0 {
+		s.batch.createdAt = s.updatedAt
+	}
 	s.batch.size++
 	s.stats.blocks.Add(1)
-	if s.queue.strategy.flush(s.batch) && !s.flush() {
-		// An attempt to flush the same batch twice.
-		// Should not be possible.
-		return false
+	if s.queue.config.exceedsMaxSize(s.batch) ||
+		s.queue.config.exceedsMaxAge(s.batch, s.updatedAt) {
+		s.flush()
 	}
 	return true
 }
 
-func (s *stagedBlocks) flush() (flushed bool) {
+func (s *stagedBlocks) flush() {
+	var flushed bool
 	s.batch.flush.Do(func() {
-		s.queue.pushBatch(s.batch)
+		if !s.queue.pushBatch(s.batch) {
+			panic("bug: attempt to detach the compaction queue head")
+		}
 		flushed = true
 	})
+	if !flushed {
+		panic("bug: attempt to flush a compaction queue batch twice")
+	}
 	s.resetBatch()
-	return flushed
 }
 
 func (s *stagedBlocks) resetBatch() {
-	// TODO(kolesnikovae): get from pool.
 	s.batch = &batch{
 		blocks: make([]blockEntry, 0, defaultBlockBatchSize),
 		staged: s,
@@ -243,22 +246,54 @@ func (s *stagedBlocks) delete(block string) blockEntry {
 	ref.batch.size--
 	s.stats.blocks.Add(-1)
 	if ref.batch.size == 0 {
-		s.queue.removeBatch(ref.batch)
-		// TODO(kolesnikovae): return to pool.
+		if ref.batch != s.batch {
+			// We should never ever try to delete the staging batch from the
+			// queue: it has not been flushed and added to the queue yet.
+			//
+			// NOTE(kolesnikovae):
+			//  It caused a problem because removeBatch mistakenly interpreted
+			//  the batch as a head (s.batch.prev == nil), and detached it,
+			//  replacing a valid head with s.batch.next, which is always nil
+			//  at this point; it made the queue look empty for the reader,
+			//  because the queue is read from the head.
+			//
+			//  The only way we may end up here if blocks are removed from the
+			//  staging batch. Typically, blocks are not supposed to be removed
+			//  from there before they left the queue (i.e., flushed to the
+			//  global queue).
+			//
+			//  In practice, the compactor is distributed and has multiple
+			//  replicas: the leader instance could have already decided to
+			//  flush the blocks, and now they should be removed from all
+			//  instances. Due to a bug in time-based flushing (when it stops
+			//  working), it was possible that after the leader restarts and
+			//  recovers time-based flushing locally, it would desire to flush
+			//  the oldest batch. Consequently, the follower instances, where
+			//  the batch is still in staging, would need to do the same.
+			if !s.queue.removeBatch(ref.batch) {
+				panic("bug: attempt to remove a batch that is not in the compaction queue")
+			}
+		}
 	}
 	delete(s.refs, block)
 	if len(s.refs) == 0 {
+		// This is the last block with the given compaction key, so we want to
+		// remove the staging structure. It's fine to delete it from the queue
+		// at any point: we guarantee that it does not reference any blocks in
+		// the queue, and we do not need to flush it anymore.
 		s.queue.removeStaged(s)
 	}
 	return e
 }
 
-func (q *blockQueue) pushBatch(b *batch) {
+func (q *blockQueue) pushBatch(b *batch) bool {
 	if q.tail != nil {
 		q.tail.nextG = b
 		b.prevG = q.tail
-	} else {
+	} else if q.head == nil {
 		q.head = b
+	} else {
+		return false
 	}
 	q.tail = b
 
@@ -268,25 +303,33 @@ func (q *blockQueue) pushBatch(b *batch) {
 	if b.staged.tail != nil {
 		b.staged.tail.next = b
 		b.prev = b.staged.tail
-	} else {
+	} else if b.staged.head == nil {
 		b.staged.head = b
+	} else {
+		return false
 	}
 	b.staged.tail = b
+
 	b.staged.stats.batches.Add(1)
+	return true
 }
 
-func (q *blockQueue) removeBatch(b *batch) {
+func (q *blockQueue) removeBatch(b *batch) bool {
 	if b.prevG != nil {
 		b.prevG.nextG = b.nextG
-	} else {
+	} else if b == q.head {
 		// This is the head.
-		q.head = b.nextG
+		q.head = q.head.nextG
+	} else {
+		return false
 	}
 	if b.nextG != nil {
 		b.nextG.prevG = b.prevG
-	} else {
+	} else if b == q.tail {
 		// This is the tail.
-		q.tail = b.prevG
+		q.tail = q.tail.prevG
+	} else {
+		return false
 	}
 	b.nextG = nil
 	b.prevG = nil
@@ -296,32 +339,48 @@ func (q *blockQueue) removeBatch(b *batch) {
 
 	if b.prev != nil {
 		b.prev.next = b.next
-	} else {
+	} else if b == b.staged.head {
 		// This is the head.
-		b.staged.head = b.next
+		b.staged.head = b.staged.head.next
+	} else {
+		return false
 	}
 	if b.next != nil {
 		b.next.prev = b.prev
-	} else {
+	} else if b == b.staged.tail {
 		// This is the tail.
-		b.staged.tail = b.next
+		b.staged.tail = b.staged.tail.prev
+	} else {
+		return false
 	}
 	b.next = nil
 	b.prev = nil
+
 	b.staged.stats.batches.Add(-1)
+	return true
 }
 
 func (q *blockQueue) flushOldest(now int64) {
 	if q.updates.Len() == 0 {
-		// Should not be possible.
-		return
+		panic("bug: compaction queue has empty priority queue")
 	}
+	// Peek the oldest staging batch in the priority queue (min-heap).
 	oldest := (*q.updates)[0]
-	if !q.strategy.flushByAge(oldest.batch, now) {
+	if !q.config.exceedsMaxAge(oldest.batch, now) {
 		return
 	}
-	heap.Pop(q.updates)
-	oldest.flush()
+	// It's possible that the staging batch is empty: it's only removed
+	// from the queue when the last block with the given compaction key is
+	// removed, including ones flushed to the global queue. Therefore, we
+	// should not pop it from the queue, but update its index in the heap.
+	// Otherwise, if the staging batch has not been removed from the queue
+	// yet i.e., references some blocks in the compaction queue (it's rare
+	// but not impossible), time-based flush will stop working for it.
+	if oldest.batch.size > 0 {
+		oldest.flush()
+	}
+	oldest.updatedAt = now
+	heap.Fix(q.updates, oldest.heapIndex)
 }
 
 type priorityBlockQueue []*stagedBlocks
@@ -369,6 +428,8 @@ func (i *batchIter) next() (*batch, bool) {
 	return b, b != nil
 }
 
+func (i *batchIter) reset(b *batch) { i.batch = b }
+
 // batchIter iterates over the batches in the queue, in the order of arrival
 // within the compaction key. It's guaranteed that returned blocks are unique
 // across all batched.
@@ -393,7 +454,14 @@ func (it *blockIter) setBatch(b *batch) {
 	it.i = 0
 }
 
-func (it *blockIter) next() (string, bool) {
+func (it *blockIter) more() bool {
+	if it.batch == nil {
+		return false
+	}
+	return it.i < len(it.batch.blocks)
+}
+
+func (it *blockIter) peek() (string, bool) {
 	for it.batch != nil {
 		if it.i >= len(it.batch.blocks) {
 			it.setBatch(it.batch.next)
@@ -404,9 +472,13 @@ func (it *blockIter) next() (string, bool) {
 			it.i++
 			continue
 		}
-		it.visited[entry.id] = struct{}{}
-		it.i++
 		return entry.id, true
 	}
 	return "", false
+}
+
+func (it *blockIter) advance() {
+	entry := it.batch.blocks[it.i]
+	it.visited[entry.id] = struct{}{}
+	it.i++
 }

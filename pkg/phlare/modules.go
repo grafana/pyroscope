@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/dskit/kv/codec"
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
-	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/runtimeconfig"
 	"github.com/grafana/dskit/server"
@@ -42,10 +41,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend"
-	"github.com/grafana/pyroscope/pkg/frontend"
-	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
-	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
@@ -108,69 +103,6 @@ const (
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
-
-func (f *Phlare) initQueryFrontend() (services.Service, error) {
-	var err error
-	if f.Cfg.Frontend.Addr, err = f.getFrontendAddress(); err != nil {
-		return nil, fmt.Errorf("failed to get frontend address: %w", err)
-	}
-	if f.Cfg.Frontend.Port == 0 {
-		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
-	}
-
-	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg)
-	if err != nil {
-		return nil, err
-	}
-	f.frontend = frontendSvc
-	f.API.RegisterFrontendForQuerierHandler(frontendSvc)
-	if !f.Cfg.v2Experiment {
-		f.API.RegisterQuerierServiceHandler(frontendSvc)
-		f.API.RegisterPyroscopeHandlers(frontendSvc)
-		f.API.RegisterVCSServiceHandler(frontendSvc)
-	} else {
-		f.initReadPathRouter()
-	}
-
-	return frontendSvc, nil
-}
-
-func (f *Phlare) getFrontendAddress() (addr string, err error) {
-	addr = f.Cfg.Frontend.Addr
-	if f.Cfg.Frontend.AddrOld != "" {
-		addr = f.Cfg.Frontend.AddrOld
-	}
-	if addr != "" {
-		return addr, nil
-	}
-	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
-}
-
-func (f *Phlare) initReadPathRouter() {
-	vcsService := vcs.New(
-		log.With(f.logger, "component", "vcs-service"),
-		f.reg,
-	)
-
-	newFrontend := queryfrontend.NewQueryFrontend(
-		log.With(f.logger, "component", "query-frontend"),
-		f.Overrides,
-		f.metastoreClient,
-		f.metastoreClient,
-		f.queryBackendClient,
-	)
-
-	router := readpath.NewRouter(
-		log.With(f.logger, "component", "read-path-router"),
-		f.Overrides,
-		f.frontend,
-		newFrontend,
-	)
-
-	f.API.RegisterQuerierServiceHandler(router)
-	f.API.RegisterPyroscopeHandlers(router)
-	f.API.RegisterVCSServiceHandler(vcsService)
-}
 
 func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 	if len(f.Cfg.RuntimeConfig.LoadPath) == 0 {

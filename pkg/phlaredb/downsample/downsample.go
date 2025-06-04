@@ -38,6 +38,7 @@ type state struct {
 	profileCount        int64
 	stackTraceIds       []uint64
 	values              []int64
+	annotations         schemav1.Annotations
 	stackTraceIdToIndex *swiss.Map[uint64, int]
 }
 
@@ -195,6 +196,32 @@ func (d *Downsampler) flush(s *state, w *profilesWriter, c downsampleConfig) err
 
 	s.currentRow = append(s.currentRow, parquet.Int64Value(s.currentTime*1000*1000*1000).Level(0, 0, newCol()))
 
+	newCol()
+	if len(s.annotations.Keys) == 0 {
+		s.currentRow = append(s.currentRow, parquet.Value{}.Level(0, 0, col))
+	} else {
+		repetition = -1
+		for _, key := range s.annotations.Keys {
+			if repetition < 1 {
+				repetition++
+			}
+			s.currentRow = append(s.currentRow, parquet.ByteArrayValue([]byte(key)).Level(repetition, 1, col))
+		}
+	}
+
+	newCol()
+	if len(s.annotations.Values) == 0 {
+		s.currentRow = append(s.currentRow, parquet.Value{}.Level(0, 0, col))
+	} else {
+		repetition = -1
+		for _, value := range s.annotations.Values {
+			if repetition < 1 {
+				repetition++
+			}
+			s.currentRow = append(s.currentRow, parquet.ByteArrayValue([]byte(value)).Level(repetition, 1, col))
+		}
+	}
+
 	err := w.WriteRow(s.currentRow)
 	if err != nil {
 		return err
@@ -234,6 +261,14 @@ func (d *Downsampler) AddRow(row schemav1.ProfileRow, fp model.Fingerprint) erro
 				s.totalValue = c.aggregation.fn(s.totalValue, value)
 			}
 			sourceSampleCount = len(values)
+		})
+		row.ForAnnotations(func(keys []parquet.Value, values []parquet.Value) {
+			for i := 0; i < len(keys); i++ {
+				key := keys[i].String()
+				value := values[i].String()
+				s.annotations.Keys = append(s.annotations.Keys, key)
+				s.annotations.Values = append(s.annotations.Values, value)
+			}
 		})
 	}
 	inputSamplesHistogram.Observe(float64(sourceSampleCount))
@@ -276,6 +311,13 @@ func (s *state) init(row schemav1.ProfileRow, aggregationTime int64, fp model.Fi
 		s.stackTraceIdToIndex = swiss.NewMap[uint64, int](uint32(len(row)))
 	} else {
 		s.stackTraceIdToIndex.Clear()
+	}
+	if s.annotations.Keys == nil {
+		s.annotations.Keys = make([]string, 0)
+		s.annotations.Values = make([]string, 0)
+	} else {
+		s.annotations.Keys = s.annotations.Keys[:0]
+		s.annotations.Values = s.annotations.Values[:0]
 	}
 	var (
 		col    = -1

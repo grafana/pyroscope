@@ -2,6 +2,7 @@ package query_frontend
 
 import (
 	"context"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
@@ -38,12 +39,15 @@ func (q *QueryFrontend) SelectSeries(
 		return connect.NewResponse(&querierv1.SelectSeriesResponse{}), nil
 	}
 
+	stepMs := time.Duration(c.Msg.Step * float64(time.Second)).Milliseconds()
+	start := c.Msg.Start - stepMs
+
 	labelSelector, err := buildLabelSelectorWithProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, err
 	}
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
-		StartTime:     c.Msg.Start,
+		StartTime:     start,
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,
 		Query: []*queryv1.Query{{

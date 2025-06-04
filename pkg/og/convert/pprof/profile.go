@@ -289,9 +289,8 @@ func FixFunctionNamesForScriptingLanguages(p *pprof.Profile, md ingestion.Metada
 	for _, location := range p.Location {
 		for _, line := range location.Line {
 			fn := p.Function[funcId2Index[line.FunctionId]]
-			name := fmt.Sprintf("%s:%d - %s",
+			name := fmt.Sprintf("%s %s",
 				p.StringTable[fn.Filename],
-				line.Line,
 				p.StringTable[fn.Name])
 			newFunc, ok := newFunctions[name]
 			if !ok {

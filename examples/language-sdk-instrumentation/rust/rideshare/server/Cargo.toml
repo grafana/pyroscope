@@ -17,7 +17,7 @@ codegen-units = 4
 tokio = { version = "1", features = ["full"] }
 warp = "0.3"
 pyroscope = "^0.5.8"
-pyroscope_pprofrs = "^0.2.8"
+pyroscope_pprofrs = "^0.2.10"
 log = "0.4"
 pretty_env_logger = "0.4"
 chrono = "0.4"
