@@ -167,7 +167,7 @@ var badOtlpTestDatas = []badOtlpTestData{
 	{
 		name:                 "[OTLP 1.5.0] unsymbolized profile from otel-ebpf-profiler",
 		profilePath:          "testdata/otel-ebpf-profiler-unsymbolized-otlp1.5.0.pb.bin",
-		expectedErrorMessage: "failed to convert otel profile: missing profile metadata dictionary",
+		expectedErrorMessage: "missing profile metadata dictionary",
 	},
 }
 
