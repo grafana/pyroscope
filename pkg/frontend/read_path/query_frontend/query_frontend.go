@@ -225,6 +225,11 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 	resp *queryv1.InvokeResponse,
 	originalQueries []*queryv1.Query,
 ) error {
+	if len(originalQueries) != len(resp.Reports) {
+		return fmt.Errorf("query/report count mismatch: %d queries but %d reports",
+			len(originalQueries), len(resp.Reports))
+	}
+
 	for i, r := range resp.Reports {
 		if r.Pprof == nil || r.Pprof.Pprof == nil {
 			continue

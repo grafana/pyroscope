@@ -26,28 +26,22 @@ type DebuginfodClient interface {
 }
 
 type Config struct {
-	Enabled                  bool                 `yaml:"enabled"`
-	DebuginfodURL            string               `yaml:"debuginfod_url"`
-	PersistentDebugInfoStore DebugInfoStoreConfig `yaml:"persistent_debuginfo_store"`
+	DebuginfodURL string `yaml:"debuginfod_url"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	f.BoolVar(&cfg.Enabled, "symbolizer.enabled", false, "Enable symbolization for unsymbolized profiles")
 	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
-	cfg.PersistentDebugInfoStore.Storage.RegisterFlagsWithPrefix("symbolizer.persistent-debuginfo-store.storage.", f)
 }
 
 type Symbolizer struct {
 	logger  log.Logger
 	client  DebuginfodClient
-	store   DebugInfoStore
+	bucket  objstore.Bucket
 	metrics *metrics
 }
 
 func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*Symbolizer, error) {
 	metrics := newMetrics(reg)
-
-	store := NewObjstoreDebugInfoStore(bucket)
 
 	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics)
 	if err != nil {
@@ -57,7 +51,7 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objsto
 	return &Symbolizer{
 		logger:  logger,
 		client:  client,
-		store:   store,
+		bucket:  bucket,
 		metrics: metrics,
 	}, nil
 }
@@ -91,7 +85,13 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 	}
 
 	funcMap := make(map[funcKey]uint64)
-	maxFuncID := uint64(len(profile.Function) + 1)
+	maxFuncID := uint64(0)
+	for _, fn := range profile.Function {
+		if fn.Id > maxFuncID {
+			maxFuncID = fn.Id
+		}
+		funcMap[funcKey{fn.Name, fn.Filename}] = fn.Id
+	}
 
 	var allSymbolizedLocs []symbolizedLocation
 
@@ -250,12 +250,6 @@ func (s *Symbolizer) updateAllSymbolsInProfile(
 }
 
 func (s *Symbolizer) symbolize(ctx context.Context, req *request) {
-	start := time.Now()
-	status := statusSuccess
-	defer func() {
-		s.metrics.profileSymbolization.WithLabelValues(status).Observe(time.Since(start).Seconds())
-	}()
-
 	var table *lidia.Table
 	var err error
 
@@ -280,10 +274,10 @@ func (s *Symbolizer) symbolize(ctx context.Context, req *request) {
 	}
 	defer table.Close()
 
-	s.symbolizeWithTable(ctx, table, req)
+	s.symbolizeWithTable(table, req)
 }
 
-func (s *Symbolizer) symbolizeWithTable(_ context.Context, table *lidia.Table, req *request) {
+func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
 	var framesBuf []lidia.SourceInfoFrame
 
 	resolveStart := time.Now()
@@ -324,7 +318,7 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		return nil, err
 	}
 
-	if err := s.store.Put(ctx, buildID, bytes.NewReader(lidiaBytes)); err != nil {
+	if err := s.bucket.Upload(ctx, buildID, bytes.NewReader(lidiaBytes)); err != nil {
 		level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", buildID, "err", err)
 	}
 
@@ -333,7 +327,7 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 
 // fetchLidiaFromObjectStore retrieves Lidia data from the object store
 func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID string) ([]byte, error) {
-	objstoreReader, err := s.store.Get(ctx, buildID)
+	objstoreReader, err := s.bucket.Get(ctx, buildID)
 	if err != nil {
 		return nil, err
 	}

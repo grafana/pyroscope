@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
 
 	"github.com/go-kit/log"
@@ -31,7 +32,7 @@ func TestSymbolizePprof(t *testing.T) {
 	tests := []struct {
 		name      string
 		profile   *googlev1.Profile
-		setupMock func(*mocksymbolizer.MockDebuginfodClient, *mocksymbolizer.MockDebugInfoStore)
+		setupMock func(*mocksymbolizer.MockDebuginfodClient, *mockobjstore.MockBucket)
 		wantErr   bool
 		validate  func(*testing.T, *googlev1.Profile)
 	}{
@@ -56,7 +57,7 @@ func TestSymbolizePprof(t *testing.T) {
 				}},
 				StringTable: []string{"", "main", "main.go"},
 			},
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {},
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.True(t, p.Mapping[0].HasFunctions)
 				require.True(t, p.Mapping[0].HasFilenames)
@@ -79,10 +80,10 @@ func TestSymbolizePprof(t *testing.T) {
 				}},
 				StringTable: []string{"", "build-id"},
 			},
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
 				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
-				mockStore.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
-				mockStore.On("Put", mock.Anything, "build-id", mock.Anything).Return(nil).Once()
+				mockBucket.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Upload", mock.Anything, "build-id", mock.Anything).Return(nil).Once()
 			},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.True(t, p.Mapping[0].HasFunctions)
@@ -100,7 +101,7 @@ func TestSymbolizePprof(t *testing.T) {
 				}},
 				StringTable: []string{"", ""},
 			},
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {},
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.False(t, p.Mapping[0].HasFunctions)
 			},
@@ -121,10 +122,10 @@ func TestSymbolizePprof(t *testing.T) {
 				},
 				StringTable: []string{"", "build-id"},
 			},
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
 				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
-				mockStore.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
-				mockStore.On("Put", mock.Anything, "build-id", mock.Anything).Return(nil).Once()
+				mockBucket.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Upload", mock.Anything, "build-id", mock.Anything).Return(nil).Once()
 			},
 			validate: func(t *testing.T, p *googlev1.Profile) {
 				require.True(t, p.Mapping[0].HasFunctions)
@@ -147,15 +148,13 @@ func TestSymbolizePprof(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
-			mockStore := mocksymbolizer.NewMockDebugInfoStore(t)
-			tt.setupMock(mockClient, mockStore)
-			//mockStore.On("Get", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("not found"))
-			//mockStore.On("Put", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+			mockBucket := mockobjstore.NewMockBucket(t)
+			tt.setupMock(mockClient, mockBucket)
 
 			s := &Symbolizer{
 				logger:  log.NewNopLogger(),
 				client:  mockClient,
-				store:   mockStore,
+				bucket:  mockBucket,
 				metrics: newMetrics(nil),
 			}
 
@@ -180,20 +179,19 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, lidiaData)
 
-	store := mocksymbolizer.NewMockDebugInfoStore(t)
-
 	// Configure the mock to return the same Lidia data for both Get operations
 	getLidiaData := func() io.ReadCloser {
 		return io.NopCloser(bytes.NewReader(lidiaData))
 	}
 
-	store.On("Get", mock.Anything, buildID).Return(getLidiaData(), nil).Once()
-	store.On("Get", mock.Anything, buildID).Return(getLidiaData(), nil).Once()
+	mockBucket := mockobjstore.NewMockBucket(t)
+	mockBucket.On("Get", mock.Anything, buildID).Return(getLidiaData(), nil).Once()
+	mockBucket.On("Get", mock.Anything, buildID).Return(getLidiaData(), nil).Once()
 
 	sym := &Symbolizer{
 		logger:  log.NewNopLogger(),
 		client:  nil,
-		store:   store,
+		bucket:  mockBucket,
 		metrics: newMetrics(prometheus.NewRegistry()),
 	}
 
@@ -232,12 +230,12 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 // 4. Fourth request (different build-id): Object store miss → fetch from debuginfod → store Lidia data
 func TestSymbolizeWithObjectStore(t *testing.T) {
 	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
-	mockStore := mocksymbolizer.NewMockDebugInfoStore(t)
+	mockBucket := mockobjstore.NewMockBucket(t)
 
 	s := &Symbolizer{
 		logger:  log.NewNopLogger(),
 		client:  mockClient,
-		store:   mockStore,
+		bucket:  mockBucket,
 		metrics: newMetrics(prometheus.NewRegistry()),
 	}
 
@@ -248,9 +246,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 
 	// request 1
 	var capturedLidiaData []byte
-	mockStore.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
+	mockBucket.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
 	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(io.NopCloser(bytes.NewReader(elfData)), nil).Once()
-	mockStore.On("Put", mock.Anything, "build-id", mock.Anything).Run(func(args mock.Arguments) {
+	mockBucket.On("Upload", mock.Anything, "build-id", mock.Anything).Run(func(args mock.Arguments) {
 		reader := args.Get(2).(io.Reader)
 		var buf bytes.Buffer
 		teeReader := io.TeeReader(reader, &buf)
@@ -265,7 +263,7 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 	require.NotEmpty(t, capturedLidiaData)
 
 	// request 2
-	mockStore.On("Get", mock.Anything, "build-id").Return(
+	mockBucket.On("Get", mock.Anything, "build-id").Return(
 		io.NopCloser(bytes.NewReader(capturedLidiaData)), nil,
 	).Once()
 
@@ -274,7 +272,7 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 	require.NotEmpty(t, req2.locations[0].lines)
 
 	// request 3
-	mockStore.On("Get", mock.Anything, "build-id").Return(
+	mockBucket.On("Get", mock.Anything, "build-id").Return(
 		io.NopCloser(bytes.NewReader(capturedLidiaData)), nil,
 	).Once()
 
@@ -284,9 +282,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 
 	// request 4
 	var capturedLidiaData2 []byte
-	mockStore.On("Get", mock.Anything, "different-build-id").Return(nil, fmt.Errorf("not found")).Once()
+	mockBucket.On("Get", mock.Anything, "different-build-id").Return(nil, fmt.Errorf("not found")).Once()
 	mockClient.On("FetchDebuginfo", mock.Anything, "different-build-id").Return(io.NopCloser(bytes.NewReader(elfData)), nil).Once()
-	mockStore.On("Put", mock.Anything, "different-build-id", mock.Anything).Run(func(args mock.Arguments) {
+	mockBucket.On("Upload", mock.Anything, "different-build-id", mock.Anything).Run(func(args mock.Arguments) {
 		reader := args.Get(2).(io.Reader)
 		var buf bytes.Buffer
 		teeReader := io.TeeReader(reader, &buf)
@@ -301,19 +299,19 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 	require.NotEmpty(t, capturedLidiaData2)
 
 	mockClient.AssertExpectations(t)
-	mockStore.AssertExpectations(t)
+	mockBucket.AssertExpectations(t)
 }
 
 func TestSymbolizerMetrics(t *testing.T) {
 	tests := []struct {
 		name      string
-		setupMock func(*mocksymbolizer.MockDebuginfodClient, *mocksymbolizer.MockDebugInfoStore)
+		setupMock func(*mocksymbolizer.MockDebuginfodClient, *mockobjstore.MockBucket)
 		setupTest func(*Symbolizer, context.Context)
 		expected  map[string]int
 	}{
 		{
 			name: "successful symbolization with cache",
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
 				elfTestFile := openTestFile(t)
 				elfData, err := io.ReadAll(elfTestFile)
 				elfTestFile.Close()
@@ -327,15 +325,17 @@ func TestSymbolizerMetrics(t *testing.T) {
 				require.NoError(t, err)
 				require.NotEmpty(t, lidiaData)
 
-				// First request: Object store miss, fetch from debuginfod
-				mockStore.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("IsObjNotFoundErr", mock.Anything).Return(true).Maybe()
+				mockBucket.On("Name").Return("test-bucket").Maybe()
+
+				mockBucket.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
+
 				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(
 					io.NopCloser(bytes.NewReader(elfData)), nil,
 				).Once()
-				mockStore.On("Put", mock.Anything, "build-id", mock.Anything).Return(nil).Once()
+				mockBucket.On("Upload", mock.Anything, "build-id", mock.Anything).Return(nil).Once()
 
-				// Second request: Object store hit using valid Lidia data
-				mockStore.On("Get", mock.Anything, "build-id").Return(
+				mockBucket.On("Get", mock.Anything, "build-id").Return(
 					io.NopCloser(bytes.NewReader(lidiaData)), nil,
 				).Once()
 			},
@@ -347,15 +347,15 @@ func TestSymbolizerMetrics(t *testing.T) {
 				s.symbolize(ctx, req2)
 			},
 			expected: map[string]int{
-				"pyroscope_profile_symbolization_duration_seconds":   1,
+				"pyroscope_profile_symbolization_duration_seconds":   0,
 				"pyroscope_debug_symbol_resolution_duration_seconds": 1,
 				"pyroscope_debug_symbol_resolution_errors_total":     0,
 			},
 		},
 		{
 			name: "debuginfod error",
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {
-				mockStore.On("Get", mock.Anything, "unknown-build-id").Return(nil, fmt.Errorf("not found")).Once()
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
+				mockBucket.On("Get", mock.Anything, "unknown-build-id").Return(nil, fmt.Errorf("not found")).Once()
 				mockClient.On("FetchDebuginfo", mock.Anything, "unknown-build-id").
 					Return(nil, buildIDNotFoundError{buildID: "unknown-build-id"}).Once()
 			},
@@ -364,17 +364,17 @@ func TestSymbolizerMetrics(t *testing.T) {
 				s.symbolize(ctx, req)
 			},
 			expected: map[string]int{
-				"pyroscope_profile_symbolization_duration_seconds":   1,
+				"pyroscope_profile_symbolization_duration_seconds":   0,
 				"pyroscope_debug_symbol_resolution_duration_seconds": 0,
 				"pyroscope_debug_symbol_resolution_errors_total":     0,
 			},
 		},
 		{
 			name: "elf_parsing_error",
-			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockStore *mocksymbolizer.MockDebugInfoStore) {
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
 				invalidData := []byte("invalid elf data")
 
-				mockStore.On("Get", mock.Anything, "invalid-elf").Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Get", mock.Anything, "invalid-elf").Return(nil, fmt.Errorf("not found")).Once()
 				mockClient.On("FetchDebuginfo", mock.Anything, "invalid-elf").Return(
 					io.NopCloser(bytes.NewReader(invalidData)), nil,
 				).Once()
@@ -384,7 +384,7 @@ func TestSymbolizerMetrics(t *testing.T) {
 				s.symbolize(ctx, req)
 			},
 			expected: map[string]int{
-				"pyroscope_profile_symbolization_duration_seconds": 1,
+				"pyroscope_profile_symbolization_duration_seconds": 0,
 				"pyroscope_debug_symbol_resolution_errors_total":   1,
 			},
 		},
@@ -394,14 +394,14 @@ func TestSymbolizerMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			reg := prometheus.NewRegistry()
 
-			mockStore := mocksymbolizer.NewMockDebugInfoStore(t)
+			mockBucket := mockobjstore.NewMockBucket(t)
 			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
-			tt.setupMock(mockClient, mockStore)
+			tt.setupMock(mockClient, mockBucket)
 
 			s := &Symbolizer{
 				logger:  log.NewNopLogger(),
 				client:  mockClient,
-				store:   mockStore,
+				bucket:  mockBucket,
 				metrics: newMetrics(reg),
 			}
 
@@ -414,7 +414,7 @@ func TestSymbolizerMetrics(t *testing.T) {
 			}
 
 			mockClient.AssertExpectations(t)
-			mockStore.AssertExpectations(t)
+			mockBucket.AssertExpectations(t)
 		})
 	}
 }
