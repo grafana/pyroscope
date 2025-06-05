@@ -10,10 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/tenant"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
+
+	"github.com/grafana/pyroscope/pkg/tenant"
+	httputil "github.com/grafana/pyroscope/pkg/util/http"
 
 	"github.com/grafana/pyroscope/pkg/og/convert/speedscope"
 
