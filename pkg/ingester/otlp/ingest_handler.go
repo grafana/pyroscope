@@ -112,7 +112,9 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 
 				pprofProfiles, err := ConvertOtelToGoogle(p, dc)
 				if err != nil {
-					grpcError := status.Errorf(codes.InvalidArgument, "failed to convert otel profile: %s", err.Error())
+					errorMsg := fmt.Sprintf("failed to convert otel profile: %s", err.Error())
+					level.Error(h.log).Log("msg", errorMsg, "err", err)
+					grpcError := status.Error(codes.InvalidArgument, errorMsg)
 					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
 				}
 
