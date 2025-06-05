@@ -119,8 +119,8 @@ type Limits struct {
 	// coming from a RecordingRulesClient, that will replace any static rules defined.
 	RecordingRules RecordingRules `yaml:"recording_rules" json:"recording_rules" category:"experimental" doc:"hidden"`
 
-	// SymbolizerEnabled enables the symbolizer in the query frontend.
-	SymbolizerEnabled bool `yaml:"symbolizer_enabled" json:"symbolizer_enabled" category:"experimental" doc:"hidden"`
+	// Symbolizer.
+	Symbolizer Symbolizer `yaml:"symbolizer" json:"symbolizer" category:"experimental" doc:"hidden"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -193,8 +193,6 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&l.IngestionRelabelingDefaultRulesPosition, "distributor.ingestion-relabeling-default-rules-position", "Position of the default ingestion relabeling rules in relation to relabel rules from overrides. Valid values are 'first', 'last' or 'disabled'.")
 	_ = l.IngestionRelabelingRules.Set("[]")
 	f.Var(&l.IngestionRelabelingRules, "distributor.ingestion-relabeling-rules", "List of ingestion relabel configurations. The relabeling rules work the same way, as those of [Prometheus](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config). All rules are applied in the order they are specified. Note: In most situations, it is more effective to use relabeling directly in Grafana Alloy.")
-
-	f.BoolVar(&l.SymbolizerEnabled, "symbolizer.tenant-enabled", true, "When symbolizer.enabled is true, this controls whether symbolization is enabled for tenants by default. Can be overridden per-tenant.")
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -523,11 +521,6 @@ func (o *Overrides) getOverridesForTenant(tenantID string) *Limits {
 		}
 	}
 	return o.defaultLimits
-}
-
-// SymbolizerEnabled returns whether symbolization is enabled for the given tenant.
-func (o *Overrides) SymbolizerEnabled(tenantID string) bool {
-	return o.getOverridesForTenant(tenantID).SymbolizerEnabled
 }
 
 // OverwriteMarshalingStringMap will overwrite the src map when unmarshaling

@@ -202,10 +202,6 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.API.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
-
-	if c.v2Experiment {
-		c.Symbolizer.RegisterFlags(f)
-	}
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.
@@ -258,6 +254,8 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		c.LimitsConfig.ReadPathOverrides.RegisterFlags(throwaway)
 		c.LimitsConfig.AdaptivePlacementLimits.RegisterFlags(throwaway)
 		c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
+		c.LimitsConfig.Symbolizer.RegisterFlags(throwaway)
+		c.Symbolizer.RegisterFlags(throwaway)
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {

@@ -180,8 +180,6 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 		p.config.Metastore.Raft.Dir = t.TempDir()
 		p.config.Metastore.Raft.SnapshotsDir = t.TempDir()
 		p.config.Metastore.FSM.DataDir = t.TempDir()
-		p.config.LimitsConfig.SymbolizerEnabled = false
-		p.config.Symbolizer.Enabled = false
 	}
 	return p
 }

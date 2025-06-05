@@ -380,11 +380,6 @@ func (f *Phlare) initRecordingRulesClient() (services.Service, error) {
 }
 
 func (f *Phlare) initSymbolizer() (services.Service, error) {
-	if !f.Cfg.Symbolizer.Enabled {
-		level.Info(f.logger).Log("msg", "Symbolizer is disabled")
-		return nil, nil
-	}
-
 	prefixedBucket := phlareobj.NewPrefixedBucket(f.storageBucket, "symbolizer")
 
 	sym, err := symbolizer.New(
