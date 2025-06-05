@@ -54,24 +54,31 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sp.SetTag("tenant_id", tenantID)
 	input, err := h.parseInputMetadataFromRequest(ctx, r)
 	if err != nil {
-		_ = h.log.Log("msg", "bad request", "err", err, "orgID", tenantID)
+		msg := "failed to parse request metadata"
+		sp.LogFields(otlog.Error(err), otlog.String("msg", msg))
+		_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
 		httputil.ErrorWithStatus(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if err := readInputRawDataFromRequest(ctx, r, input); err != nil {
-		_ = h.log.Log("msg", "failed to read request body", "err", err, "orgID", tenantID)
+		msg := "failed to read request body"
+		sp.LogFields(otlog.Error(err), otlog.String("msg", msg))
+		_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
 		httputil.ErrorWithStatus(w, err, http.StatusRequestTimeout)
 		return
 	}
 
-	err = h.ingester.Ingest(r.Context(), input)
+	err = h.ingester.Ingest(ctx, input)
 	if err != nil {
-		_ = h.log.Log("msg", "pyroscope ingest", "err", err, "orgID", tenantID)
-
 		if ingestion.IsIngestionError(err) {
+			msg := "failed to convert profile"
+			sp.LogFields(otlog.Error(err), otlog.String("msg", msg))
+			_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
 			httputil.Error(w, err)
 		} else {
+			msg := "failed to ingest profile"
+			sp.LogFields(otlog.Error(err), otlog.String("msg", msg))
 			httputil.ErrorWithStatus(w, err, http.StatusUnprocessableEntity)
 		}
 	}
