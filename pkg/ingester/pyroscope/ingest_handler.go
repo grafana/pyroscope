@@ -2,6 +2,7 @@ package pyroscope
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/tenant"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 
 	"github.com/grafana/pyroscope/pkg/og/convert/speedscope"
 
@@ -43,11 +46,22 @@ func NewIngestHandler(l log.Logger, p ingestion.Ingester) http.Handler {
 }
 
 func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	tenantID, _ := tenant.ExtractTenantIDFromContext(r.Context())
-	input, err := h.ingestInputFromRequest(r)
+	ctx := r.Context()
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "ingestHandler.ServeHTTP")
+	defer sp.Finish()
+
+	tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
+	sp.SetTag("tenant_id", tenantID)
+	input, err := h.parseInputMetadataFromRequest(ctx, r)
 	if err != nil {
 		_ = h.log.Log("msg", "bad request", "err", err, "orgID", tenantID)
 		httputil.ErrorWithStatus(w, err, http.StatusBadRequest)
+		return
+	}
+
+	if err := readInputRawDataFromRequest(ctx, r, input); err != nil {
+		_ = h.log.Log("msg", "failed to read request body", "err", err, "orgID", tenantID)
+		httputil.ErrorWithStatus(w, err, http.StatusRequestTimeout)
 		return
 	}
 
@@ -63,7 +77,7 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.IngestInput, error) {
+func (h ingestHandler) parseInputMetadataFromRequest(_ context.Context, r *http.Request) (*ingestion.IngestInput, error) {
 	var (
 		q     = r.URL.Query()
 		input ingestion.IngestInput
@@ -123,13 +137,29 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 		input.Metadata.AggregationType = metadata.SumAggregationType
 	}
 
-	b, err := copyBody(r)
-	if err != nil {
-		return nil, err
+	return &input, nil
+}
+
+func readInputRawDataFromRequest(ctx context.Context, r *http.Request, input *ingestion.IngestInput) error {
+	var (
+		sp          = opentracing.SpanFromContext(ctx)
+		format      = r.URL.Query().Get("format")
+		contentType = r.Header.Get("Content-Type")
+	)
+	if sp != nil {
+		sp.SetTag("format", format)
+		sp.SetTag("content_type", contentType)
+		sp.LogFields(
+			otlog.String("msg", "reading body from request"),
+		)
 	}
 
-	format := q.Get("format")
-	contentType := r.Header.Get("Content-Type")
+	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
+	if n, err := io.Copy(buf, r.Body); err != nil {
+		return fmt.Errorf("error reading request body bytes_read %d: %w", n, err)
+	}
+	b := buf.Bytes()
+
 	switch {
 	default:
 		input.Format = ingestion.FormatGroups
@@ -172,14 +202,5 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 			RawData: b,
 		}
 	}
-
-	return &input, nil
-}
-
-func copyBody(r *http.Request) ([]byte, error) {
-	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
-	if _, err := io.Copy(buf, r.Body); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return nil
 }
