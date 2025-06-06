@@ -29,6 +29,8 @@ type schedule struct {
 }
 
 func (p *schedule) AssignJob() (*raft_log.AssignedCompactionJob, error) {
+	p.scheduler.mu.Lock()
+	defer p.scheduler.mu.Unlock()
 	state := p.nextAssignment()
 	if state == nil {
 		return nil, nil
@@ -46,6 +48,8 @@ func (p *schedule) AssignJob() (*raft_log.AssignedCompactionJob, error) {
 }
 
 func (p *schedule) UpdateJob(status *raft_log.CompactionJobStatusUpdate) *raft_log.CompactionJobState {
+	p.scheduler.mu.Lock()
+	defer p.scheduler.mu.Unlock()
 	state := p.newStateForStatusReport(status)
 	if state == nil {
 		return nil
@@ -92,6 +96,8 @@ func (p *schedule) newStateForStatusReport(status *raft_log.CompactionJobStatusU
 }
 
 func (p *schedule) EvictJob() *raft_log.CompactionJobState {
+	p.scheduler.mu.Lock()
+	defer p.scheduler.mu.Unlock()
 	limit := p.scheduler.config.MaxQueueSize
 	size := uint64(p.scheduler.queue.size() - p.evicted)
 	if limit == 0 || size <= limit {
@@ -118,6 +124,8 @@ func (p *schedule) EvictJob() *raft_log.CompactionJobState {
 // The method must be called after the last AssignJob and UpdateJob calls.
 // It returns an empty state if the queue size limit is reached.
 func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) *raft_log.CompactionJobState {
+	p.scheduler.mu.Lock()
+	defer p.scheduler.mu.Unlock()
 	if limit := p.scheduler.config.MaxQueueSize; limit > 0 {
 		if size := uint64(p.added + p.scheduler.queue.size()); size >= limit {
 			return nil

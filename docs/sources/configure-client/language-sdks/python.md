@@ -23,6 +23,25 @@ To capture and analyze profiling data, you need either a hosted Pyroscope OSS se
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 
+### Profiling on macOS
+
+macOS has a feature called System Integrity Protection (SIP) that prevents even the root user from reading memory from any binary located in system folders.
+
+The easiest way to avoid interference from SIP, is by installing a Python distribution into your home folder. This can be achieved for example by using `pyenv`:
+
+```bash
+# Setup pyenv
+brew update
+brew install pyenv
+echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.zshrc
+echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.zshrc
+echo 'eval "$(pyenv init - zsh)"' >> ~/.zshrc
+#  Restart your shell
+exec "$SHELL"
+# Install Python 3.12
+pyenv install 3.12
+```
+
 ## Add Python profiling to your application
 
 Install the `pyroscope-io` pip package:

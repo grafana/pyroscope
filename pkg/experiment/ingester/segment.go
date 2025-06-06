@@ -77,26 +77,34 @@ func (sh *shard) ingest(fn func(head segmentIngest)) segmentWaitFlushed {
 }
 
 func (sh *shard) loop(ctx context.Context) {
+	loopWG := new(sync.WaitGroup)
 	ticker := time.NewTicker(sh.sw.config.SegmentDuration)
-	defer ticker.Stop()
+	defer func() {
+		ticker.Stop()
+		// Blocking here to make sure no asynchronous code is executed on this shard once loop exits
+		// This is mostly needed to fix a race in our integration tests
+		loopWG.Wait()
+	}()
 	for {
 		select {
 		case <-ticker.C:
-			sh.flushSegment(context.Background())
+			sh.flushSegment(context.Background(), loopWG)
 		case <-ctx.Done():
-			sh.flushSegment(context.Background())
+			sh.flushSegment(context.Background(), loopWG)
 			return
 		}
 	}
 }
 
-func (sh *shard) flushSegment(ctx context.Context) {
+func (sh *shard) flushSegment(ctx context.Context, wg *sync.WaitGroup) {
 	sh.mu.Lock()
 	s := sh.segment
 	sh.segment = sh.sw.newSegment(sh, s.shard, sh.logger)
 	sh.mu.Unlock()
 
+	wg.Add(1)
 	go func() { // not blocking next ticks in case metastore/s3 latency is high
+		defer wg.Done()
 		t1 := time.Now()
 		s.inFlightProfiles.Wait()
 		s.debuginfo.waitInflight = time.Since(t1)
@@ -161,7 +169,7 @@ func (sw *segmentsWriter) ingest(shard shardKey, fn func(head segmentIngest)) (a
 	return s.ingest(fn)
 }
 
-func (sw *segmentsWriter) stop() error {
+func (sw *segmentsWriter) stop() {
 	sw.logger.Log("msg", "stopping segments writer")
 	sw.cancel()
 	sw.shardsLock.Lock()
@@ -171,7 +179,6 @@ func (sw *segmentsWriter) stop() error {
 	}
 	sw.pool.stop()
 	sw.logger.Log("msg", "segments writer stopped")
-	return nil
 }
 
 func (sw *segmentsWriter) newShard(sk shardKey) *shard {
@@ -203,6 +210,7 @@ func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *seg
 		sshard:   sshard,
 		doneChan: make(chan struct{}),
 	}
+	s.usageGroupEvaluator = validation.NewUsageGroupEvaluator(s.logger)
 	return s
 }
 
@@ -269,15 +277,11 @@ func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta
 	w := &writerOffset{Writer: blockFile}
 	for stream.Next() {
 		f := stream.At()
-		svc, err := concatSegmentHead(f, w, stringTable)
-		if err != nil {
-			level.Error(s.logger).Log("msg", "failed to concat segment head", "err", err)
-			continue
-		}
-		meta.MinTime = min(meta.MinTime, svc.MinTime)
-		meta.MaxTime = max(meta.MaxTime, svc.MaxTime)
-		meta.Datasets = append(meta.Datasets, svc)
-		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, f.head.key.tenant).Observe(float64(svc.Size))
+		ds := concatSegmentHead(f, w, stringTable)
+		meta.MinTime = min(meta.MinTime, ds.MinTime)
+		meta.MaxTime = max(meta.MaxTime, ds.MaxTime)
+		meta.Datasets = append(meta.Datasets, ds)
+		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, f.head.key.tenant).Observe(float64(ds.Size))
 	}
 
 	meta.StringTable = stringTable.Strings
@@ -301,7 +305,7 @@ func (w *writerOffset) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) (*metastorev1.Dataset, error) {
+func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) *metastorev1.Dataset {
 	tenantServiceOffset := w.offset
 
 	ptypes := f.flushed.Meta.ProfileTypeNames
@@ -337,11 +341,15 @@ func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) (
 		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, model.LabelNameProfileType, profileType)
 	}
 
+	if f.flushed.Unsymbolized {
+		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, metadata.LabelNameUnsymbolized, "true")
+	}
+
 	// Other optional labels:
 	// lb.WithLabelSet("label_name", "label_value", ...)
 	ds.Labels = lb.Build()
 
-	return ds, nil
+	return ds
 }
 
 func (s *segment) flushHeads(ctx context.Context) flushStream {
@@ -451,10 +459,13 @@ type segment struct {
 	shard            shardKey
 	sshard           string
 	inFlightProfiles sync.WaitGroup
-	heads            map[datasetKey]dataset
-	headsLock        sync.RWMutex
-	logger           log.Logger
-	sw               *segmentsWriter
+
+	headsLock sync.RWMutex
+	heads     map[datasetKey]dataset
+
+	logger              log.Logger
+	sw                  *segmentsWriter
+	usageGroupEvaluator *validation.UsageGroupEvaluator
 
 	// TODO(kolesnikovae): Revisit.
 	doneChan      chan struct{}
@@ -468,12 +479,13 @@ type segment struct {
 		flushBlockDuration time.Duration
 		storeMetaDuration  time.Duration
 	}
-	sh      *shard
-	counter int64
+
+	// TODO(kolesnikovae): Naming.
+	sh *shard
 }
 
 type segmentIngest interface {
-	ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation)
+	ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation)
 }
 
 type segmentWaitFlushed interface {
@@ -492,14 +504,14 @@ func (s *segment) waitFlushed(ctx context.Context) error {
 	}
 }
 
-func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
+func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
 	k := datasetKey{
 		tenant:  tenantID,
 		service: model.Labels(labels).Get(model.LabelNameServiceName),
 	}
 	size := p.SizeVT()
 	rules := s.sw.limits.IngestionRelabelingRules(tenantID)
-	usage := s.sw.limits.DistributorUsageGroups(tenantID).GetUsageGroups(tenantID, labels)
+	usage := s.usageGroupEvaluator.GetMatch(tenantID, s.sw.limits.DistributorUsageGroups(tenantID), labels)
 	appender := &sampleAppender{
 		head:        s.headForIngest(k),
 		profile:     p,

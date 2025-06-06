@@ -23,7 +23,6 @@ type snapshotWriter struct {
 	metrics     *metrics
 	compression string
 	rate        int
-	written     int64
 }
 
 func (s *snapshotWriter) Persist(sink raft.SnapshotSink) (err error) {

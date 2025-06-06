@@ -23,7 +23,6 @@ import (
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -67,8 +66,8 @@ func (cfg *Config) Validate() error {
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "segment-writer"
-	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix, f)
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
+	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+".grpc-client-config", f)
 	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")
 	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs, but not less than 8.")
 	f.DurationVar(&cfg.UploadTimeout, prefix+".upload-timeout", 2*time.Second, "Timeout for upload requests, including retries.")
@@ -91,11 +90,10 @@ type SegmentWriterService struct {
 	services.Service
 	segmentwriterv1.UnimplementedSegmentWriterServiceServer
 
-	config   Config
-	dbConfig phlaredb.Config
-	logger   log.Logger
-	reg      prometheus.Registerer
-	health   health.Service
+	config Config
+	logger log.Logger
+	reg    prometheus.Registerer
+	health health.Service
 
 	requests           util.InflightRequests
 	lifecycler         *ring.Lifecycler
@@ -186,7 +184,7 @@ func (i *SegmentWriterService) stopping(_ error) error {
 	errs.Add(services.StopManagerAndAwaitStopped(context.Background(), i.subservices))
 	time.Sleep(i.config.LifecyclerConfig.MinReadyDuration)
 	i.requests.Drain()
-	errs.Add(i.segmentWriter.stop())
+	i.segmentWriter.stop()
 	return errs.Err()
 }
 
@@ -212,7 +210,7 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	}
 
 	wait := i.segmentWriter.ingest(shardKey(req.Shard), func(segment segmentIngest) {
-		segment.ingest(req.TenantId, p.Profile, id, req.Labels, req.Annotations)
+		segment.ingest(ctx, req.TenantId, p.Profile, id, req.Labels, req.Annotations)
 	})
 
 	flushStarted := time.Now()

@@ -57,9 +57,9 @@ func TestValidateLabels(t *testing.T) {
 		{
 			name: "invalid metric name",
 			lbs: []*typesv1.LabelPair{
-				{Name: model.MetricNameLabel, Value: "&&"},
+				{Name: model.MetricNameLabel, Value: "\x80"},
 			},
-			expectedErr:    `invalid labels '{__name__="&&"}' with error: invalid metric name`,
+			expectedErr:    `invalid labels '{__name__="\x80"}' with error: invalid metric name`,
 			expectedReason: InvalidLabels,
 		},
 		{
@@ -223,6 +223,14 @@ func Test_ValidateRangeRequest(t *testing.T) {
 				End:   0,
 			},
 			expectedErr: NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg),
+		},
+		{
+			name: "start after end",
+			in: model.Interval{
+				Start: 1000,
+				End:   500,
+			},
+			expectedErr: NewErrorf(QueryInvalidTimeRange, QueryStartAfterEndErrorMsg),
 		},
 	} {
 		tt := tt

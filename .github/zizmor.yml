@@ -1,0 +1,11 @@
+# This is also used as the default configuration for the Zizmor reusable workflow.
+# We need this file because we allow PRs from forks, and PRs from forks
+# can't access config files from shared-workflows repo.
+# This file is copied from: https://github.com/grafana/shared-workflows/blob/main/.github/zizmor.yml
+
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        actions/*: any # trust GitHub
+        grafana/*: any # trust Grafana
