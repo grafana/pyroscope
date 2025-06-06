@@ -336,11 +336,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			return nil, err
 		}
 
-		var shouldSample bool
-		if err, shouldSample = d.checkSampling(tenantID, groups.Names(), req); err != nil {
-			return nil, err
-		}
-		if !shouldSample {
+		if sample := d.shouldSample(tenantID, groups.Names()); !sample {
 			level.Debug(d.logger).Log("msg", "skipping push request due to sampling", "tenant", tenantID)
 			validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
@@ -824,10 +820,10 @@ func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groupsInReque
 	return nil
 }
 
-func (d *Distributor) checkSampling(tenantID string, groupsInRequest []string, req *distributormodel.PushRequest) (error, bool) {
+func (d *Distributor) shouldSample(tenantID string, groupsInRequest []string) bool {
 	l := d.limits.SamplingProbability(tenantID)
 	if l == nil {
-		return nil, true
+		return true
 	}
 
 	// Determine the minimum probability among all matching usage groups.
@@ -844,14 +840,14 @@ func (d *Distributor) checkSampling(tenantID string, groupsInRequest []string, r
 
 	// If no sampling rules matched, accept the request.
 	if !matched {
-		return nil, true
+		return true
 	}
 
 	// Sample once using the minimum probability.
 	if rand.Float64() <= minProb {
-		return nil, true
+		return true
 	}
-	return nil, false
+	return false
 }
 
 type profileTracker struct {
