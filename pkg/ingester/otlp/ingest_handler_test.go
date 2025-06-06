@@ -4,8 +4,10 @@ import (
 	"context"
 	"os"
 	"sort"
-	"strings"
 	"testing"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/distributor/model"
@@ -208,12 +210,12 @@ func TestConversion(t *testing.T) {
 			expectedJsonFile: "testdata/TestSymbolizedFunctionNames.json",
 			profile: func() *otlpbuilder {
 				b := new(otlpbuilder)
-				b.profile.MappingTable = []*v1experimental.Mapping{{
+				b.dictionary.MappingTable = []*v1experimental.Mapping{{
 					MemoryStart:      0x1000,
 					MemoryLimit:      0x1000,
 					FilenameStrindex: b.addstr("file1.so"),
 				}}
-				b.profile.LocationTable = []*v1experimental.Location{{
+				b.dictionary.LocationTable = []*v1experimental.Location{{
 					MappingIndex: int32ptr(0),
 					Address:      0x1e0,
 					Line:         nil,
@@ -240,12 +242,12 @@ func TestConversion(t *testing.T) {
 					TypeStrindex: b.addstr("events"),
 					UnitStrindex: b.addstr("nanoseconds"),
 				}}
-				b.profile.MappingTable = []*v1experimental.Mapping{{
+				b.dictionary.MappingTable = []*v1experimental.Mapping{{
 					MemoryStart:      0x1000,
 					MemoryLimit:      0x1000,
 					FilenameStrindex: b.addstr("file1.so"),
 				}}
-				b.profile.LocationTable = []*v1experimental.Location{{
+				b.dictionary.LocationTable = []*v1experimental.Location{{
 					MappingIndex: int32ptr(0),
 					Address:      0x1e0,
 				}, {
@@ -277,13 +279,13 @@ func TestConversion(t *testing.T) {
 					TypeStrindex: b.addstr("wrote_type"),
 					UnitStrindex: b.addstr("wrong_unit"),
 				}}
-				b.profile.MappingTable = []*v1experimental.Mapping{{
+				b.dictionary.MappingTable = []*v1experimental.Mapping{{
 					MemoryStart:      0x1000,
 					MemoryLimit:      0x1000,
 					FilenameStrindex: b.addstr("file1.so"),
 				}}
 				var mappingIndex int32
-				b.profile.LocationTable = []*v1experimental.Location{{
+				b.dictionary.LocationTable = []*v1experimental.Location{{
 					MappingIndex: &mappingIndex,
 					Address:      0x1e0,
 				}, {
@@ -331,7 +333,8 @@ func TestConversion(t *testing.T) {
 					ScopeProfiles: []*v1experimental.ScopeProfiles{{
 						Profiles: []*v1experimental.Profile{
 							&b.profile,
-						}}}}}}
+						}}}}},
+				Dictionary: &b.dictionary}
 			logger := test.NewTestingLogger(t)
 			h := NewOTLPIngestHandler(svc, logger, false)
 			_, err := h.Export(context.Background(), req)
@@ -348,11 +351,157 @@ func TestConversion(t *testing.T) {
 				assert.JSONEq(t, expectedJSON, jsonStr)
 			} else {
 				require.Error(t, err)
-				require.True(t, strings.Contains(err.Error(), td.expectedError))
+				require.Contains(t, err.Error(), td.expectedError)
 			}
 		})
 	}
 
+}
+
+func TestConversionWithMalformedData(t *testing.T) {
+	testdata := []struct {
+		name           string
+		profile        func() *otlpbuilder
+		expectedError  string
+		expectedStatus codes.Code
+	}{
+		{
+			name: "location idx out of bounds of profile.LocationIndices",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.profile.LocationIndices = []int32{0}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 1,
+					LocationsLength:     1,
+					Value:               []int64{0xef},
+				}}
+				return b
+			},
+			expectedError:  "failed to convert otel profile: could not process sample at index 0: could not access location index at index 0: index 1 out of bounds",
+			expectedStatus: codes.InvalidArgument,
+		},
+		{
+			name: "location idx out of bounds of dictionary.LocationTable",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.profile.LocationIndices = []int32{0, 1}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 1,
+					LocationsLength:     1,
+					Value:               []int64{0xef},
+				}}
+				return b
+			},
+			expectedError:  "failed to convert otel profile: could not process sample at index 0: could not access location at index 0: index 1 out of bounds",
+			expectedStatus: codes.InvalidArgument,
+		},
+		{
+			name: "mapping idx out of bounds",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.dictionary.LocationTable = []*v1experimental.Location{{
+					MappingIndex: int32ptr(0),
+					Address:      0x1e0,
+					Line:         nil,
+				}}
+				b.profile.LocationIndices = []int32{0}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 0,
+					LocationsLength:     1,
+					Value:               []int64{0xef},
+				}}
+				return b
+			},
+			expectedError:  "failed to convert otel profile: could not process sample at index 0: could not process location at index 0: could not access mapping: index 0 out of bounds",
+			expectedStatus: codes.InvalidArgument,
+		},
+		{
+			name: "function idx out of bounds",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.dictionary.MappingTable = []*v1experimental.Mapping{{
+					MemoryStart:      0x1000,
+					MemoryLimit:      0x1000,
+					FilenameStrindex: b.addstr("file1.so"),
+				}}
+				b.dictionary.LocationTable = []*v1experimental.Location{{
+					MappingIndex: int32ptr(0),
+					Address:      0x1e0,
+					Line: []*v1experimental.Line{{
+						FunctionIndex: 0,
+					}},
+				}}
+				b.profile.LocationIndices = []int32{0}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 0,
+					LocationsLength:     1,
+					Value:               []int64{0xef},
+				}}
+				return b
+			},
+			expectedError:  "failed to convert otel profile: could not process sample at index 0: could not process location at index 0: could not process line at index 0: could not access function: index 0 out of bounds",
+			expectedStatus: codes.InvalidArgument,
+		},
+		{
+			name: "function name out of bounds",
+			profile: func() *otlpbuilder {
+				b := new(otlpbuilder)
+				b.dictionary.MappingTable = []*v1experimental.Mapping{{
+					MemoryStart:      0x1000,
+					MemoryLimit:      0x1000,
+					FilenameStrindex: b.addstr("file1.so"),
+				}}
+				b.dictionary.FunctionTable = []*v1experimental.Function{{
+					NameStrindex: 100000,
+				}}
+				b.dictionary.LocationTable = []*v1experimental.Location{{
+					MappingIndex: int32ptr(0),
+					Address:      0x1e0,
+					Line: []*v1experimental.Line{{
+						FunctionIndex: 0,
+					}},
+				}}
+				b.profile.LocationIndices = []int32{0}
+				b.profile.Sample = []*v1experimental.Sample{{
+					LocationsStartIndex: 0,
+					LocationsLength:     1,
+					Value:               []int64{0xef},
+				}}
+				return b
+			},
+			expectedError:  "failed to convert otel profile: could not process sample at index 0: could not process location at index 0: could not process line at index 0: could not access function name string: index 100000 out of bounds",
+			expectedStatus: codes.InvalidArgument,
+		},
+	}
+
+	for _, td := range testdata {
+		td := td
+
+		t.Run(td.name, func(t *testing.T) {
+			svc := mockotlp.NewMockPushService(t)
+			var profiles []*model.PushRequest
+			svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+				c := (args.Get(1)).(*model.PushRequest)
+				profiles = append(profiles, c)
+			}).Return(nil, nil).Maybe()
+			b := td.profile()
+			b.profile.TimeNanos = 239
+			req := &v1experimental2.ExportProfilesServiceRequest{
+				ResourceProfiles: []*v1experimental.ResourceProfiles{{
+					ScopeProfiles: []*v1experimental.ScopeProfiles{{
+						Profiles: []*v1experimental.Profile{
+							&b.profile,
+						}}}}},
+				Dictionary: &b.dictionary}
+			logger := test.NewTestingLogger(t)
+			h := NewOTLPIngestHandler(svc, logger, false)
+			_, err := h.Export(context.Background(), req)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), td.expectedError)
+			require.Equal(t, td.expectedStatus, status.Code(err))
+		})
+	}
 }
 
 func int32ptr(i int32) *int32 { return &i }
@@ -369,7 +518,7 @@ func TestSampleAttributes(t *testing.T) {
 	}).Return(nil, nil)
 
 	otlpb := new(otlpbuilder)
-	otlpb.profile.MappingTable = []*v1experimental.Mapping{{
+	otlpb.dictionary.MappingTable = []*v1experimental.Mapping{{
 		MemoryStart:      0x1000,
 		MemoryLimit:      0x1000,
 		FilenameStrindex: otlpb.addstr("firefox.so"),
@@ -379,7 +528,7 @@ func TestSampleAttributes(t *testing.T) {
 		FilenameStrindex: otlpb.addstr("chrome.so"),
 	}}
 
-	otlpb.profile.LocationTable = []*v1experimental.Location{{
+	otlpb.dictionary.LocationTable = []*v1experimental.Location{{
 		MappingIndex: int32ptr(0),
 		Address:      0x1e,
 	}, {
@@ -404,7 +553,7 @@ func TestSampleAttributes(t *testing.T) {
 		Value:               []int64{0xefef},
 		AttributeIndices:    []int32{1},
 	}}
-	otlpb.profile.AttributeTable = []*v1.KeyValue{{
+	otlpb.dictionary.AttributeTable = []*v1.KeyValue{{
 		Key: "process",
 		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
@@ -425,7 +574,8 @@ func TestSampleAttributes(t *testing.T) {
 			ScopeProfiles: []*v1experimental.ScopeProfiles{{
 				Profiles: []*v1experimental.Profile{
 					&otlpb.profile,
-				}}}}}}
+				}}}}},
+		Dictionary: &otlpb.dictionary}
 	logger := test.NewTestingLogger(t)
 	h := NewOTLPIngestHandler(svc, logger, false)
 	_, err := h.Export(context.Background(), req)
@@ -464,7 +614,7 @@ func TestDifferentServiceNames(t *testing.T) {
 	}).Return(nil, nil)
 
 	otlpb := new(otlpbuilder)
-	otlpb.profile.MappingTable = []*v1experimental.Mapping{{
+	otlpb.dictionary.MappingTable = []*v1experimental.Mapping{{
 		MemoryStart:      0x1000,
 		MemoryLimit:      0x2000,
 		FilenameStrindex: otlpb.addstr("service-a.so"),
@@ -478,7 +628,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		FilenameStrindex: otlpb.addstr("service-c.so"),
 	}}
 
-	otlpb.profile.LocationTable = []*v1experimental.Location{{
+	otlpb.dictionary.LocationTable = []*v1experimental.Location{{
 		MappingIndex: int32ptr(0), // service-a.so
 		Address:      0x1100,
 		Line: []*v1experimental.Line{{
@@ -515,7 +665,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		}},
 	}}
 
-	otlpb.profile.FunctionTable = []*v1experimental.Function{{
+	otlpb.dictionary.FunctionTable = []*v1experimental.Function{{
 		NameStrindex:       otlpb.addstr("serviceA_func1"),
 		SystemNameStrindex: otlpb.addstr("serviceA_func1"),
 		FilenameStrindex:   otlpb.addstr("service_a.go"),
@@ -556,7 +706,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		AttributeIndices:    []int32{},
 	}}
 
-	otlpb.profile.AttributeTable = []*v1.KeyValue{{
+	otlpb.dictionary.AttributeTable = []*v1.KeyValue{{
 		Key: "service.name",
 		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
@@ -587,7 +737,8 @@ func TestDifferentServiceNames(t *testing.T) {
 			ScopeProfiles: []*v1experimental.ScopeProfiles{{
 				Profiles: []*v1experimental.Profile{
 					&otlpb.profile,
-				}}}}}}
+				}}}}},
+		Dictionary: &otlpb.dictionary}
 
 	logger := test.NewTestingLogger(t)
 	h := NewOTLPIngestHandler(svc, logger, false)
@@ -629,8 +780,9 @@ func TestDifferentServiceNames(t *testing.T) {
 }
 
 type otlpbuilder struct {
-	profile   v1experimental.Profile
-	stringmap map[string]int32
+	profile    v1experimental.Profile
+	dictionary v1experimental.ProfilesDictionary
+	stringmap  map[string]int32
 }
 
 func (o *otlpbuilder) addstr(s string) int32 {
@@ -642,6 +794,6 @@ func (o *otlpbuilder) addstr(s string) int32 {
 	}
 	idx := int32(len(o.stringmap))
 	o.stringmap[s] = idx
-	o.profile.StringTable = append(o.profile.StringTable, s)
+	o.dictionary.StringTable = append(o.dictionary.StringTable, s)
 	return idx
 }

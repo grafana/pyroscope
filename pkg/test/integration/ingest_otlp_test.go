@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	profilesv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
@@ -92,6 +94,9 @@ func TestIngestOTLP(t *testing.T) {
 	for _, td := range otlpTestDatas {
 		t.Run(td.name, func(t *testing.T) {
 			EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+				if td.profilePath != "testdata/otel-ebpf-profiler-unsymbolized.pb.bin" {
+					t.Skip("Skipping OTLP ingestion integration tests")
+				}
 
 				rb := p.NewRequestBuilder(t)
 				runNo := p.TempAppName()
@@ -147,6 +152,41 @@ func TestIngestOTLP(t *testing.T) {
 					assert.Equal(t, string(expectedBytes), actualStr)
 				}
 				td.assertMetrics(t, p)
+			})
+		})
+	}
+}
+
+type badOtlpTestData struct {
+	name                 string
+	profilePath          string
+	expectedErrorMessage string
+}
+
+var badOtlpTestDatas = []badOtlpTestData{
+	{
+		name:                 "[OTLP 1.5.0] unsymbolized profile from otel-ebpf-profiler",
+		profilePath:          "testdata/otel-ebpf-profiler-unsymbolized-otlp1.5.0.pb.bin",
+		expectedErrorMessage: "missing profile metadata dictionary",
+	},
+}
+
+func TestIngestBadOTLP(t *testing.T) {
+	for _, td := range badOtlpTestDatas {
+		t.Run(td.name, func(t *testing.T) {
+			EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+				rb := p.NewRequestBuilder(t)
+				profileBytes, err := os.ReadFile(td.profilePath)
+				require.NoError(t, err)
+				var profile = new(profilesv1.ExportProfilesServiceRequest)
+				err = proto.Unmarshal(profileBytes, profile)
+				require.NoError(t, err)
+
+				client := rb.OtelPushClient()
+				_, err = client.Export(context.Background(), profile)
+				require.Error(t, err)
+				require.Equal(t, codes.InvalidArgument, status.Code(err))
+				require.Contains(t, err.Error(), td.expectedErrorMessage)
 			})
 		})
 	}

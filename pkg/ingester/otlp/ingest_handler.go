@@ -14,7 +14,10 @@ import (
 	pprofileotlp "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
+
+	"google.golang.org/grpc/status"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -80,9 +83,14 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 		var err error
 		_, ctx, err = user.ExtractFromGRPCRequest(ctx)
 		if err != nil {
-			level.Error(h.log).Log("msg", "failed to extract tenant ID from GRPC request", "err", err)
+			level.Error(h.log).Log("msg", "failed to extract tenant ID from gRPC request", "err", err)
 			return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to extract tenant ID from GRPC request: %w", err)
 		}
+	}
+
+	dc := er.Dictionary
+	if dc == nil {
+		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.InvalidArgument, "missing profile metadata dictionary")
 	}
 
 	rps := er.ResourceProfiles
@@ -98,9 +106,12 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 			for k := 0; k < len(sp.Profiles); k++ {
 				p := sp.Profiles[k]
 
-				pprofProfiles, err := ConvertOtelToGoogle(p)
+				pprofProfiles, err := ConvertOtelToGoogle(p, dc)
 				if err != nil {
-					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to convert otel profile: %w", err)
+					errorMsg := fmt.Sprintf("failed to convert otel profile: %s", err.Error())
+					level.Error(h.log).Log("msg", errorMsg, "err", err)
+					grpcError := status.Error(codes.InvalidArgument, errorMsg)
+					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
 				}
 
 				req := &distirbutormodel.PushRequest{
