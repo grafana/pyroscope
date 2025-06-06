@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"go.etcd.io/bbolt"
@@ -137,6 +139,28 @@ func (m *IndexStore) LoadShard(tx *bbolt.Tx, p PartitionKey, tenant string, shar
 	return s, nil
 }
 
+func (m *IndexStore) DeleteShard(tx *bbolt.Tx, p PartitionKey, tenant string, shard uint32) error {
+	if partition := getPartitionsBucket(tx).Bucket(p.Bytes()); partition != nil {
+		if shards := partition.Bucket(tenantBucketName(tenant)); shards != nil {
+			if err := shards.DeleteBucket(binary.BigEndian.AppendUint32(nil, shard)); err != nil {
+				if !errors.Is(err, bbolt.ErrBucketNotFound) {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (m *IndexStore) DeletePartition(tx *bbolt.Tx, p PartitionKey) error {
+	if err := getPartitionsBucket(tx).DeleteBucket(p.Bytes()); err != nil {
+		if !errors.Is(err, bbolt.ErrBucketNotFound) {
+			return err
+		}
+	}
+	return nil
+}
+
 func (m *IndexStore) loadTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string, shard uint32) (*Shard, error) {
 	tenantShard := getTenantShard(tx, p, tenant, shard)
 	if tenantShard == nil {
@@ -267,6 +291,18 @@ func (s *Shard) Delete(tx *bbolt.Tx, blocks ...string) error {
 		}
 	}
 	return nil
+}
+
+func (s *Shard) TombstoneName() string {
+	var b strings.Builder
+	b.WriteString(s.Partition.String())
+	b.WriteByte('-')
+	b.WriteByte('T')
+	b.WriteString(s.Tenant)
+	b.WriteByte('-')
+	b.WriteByte('S')
+	b.WriteString(strconv.FormatUint(uint64(s.Shard), 10))
+	return b.String()
 }
 
 // ShallowCopy creates a shallow copy: no deep copy of the string table.

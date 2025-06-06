@@ -15,18 +15,13 @@ type IndexReplacer interface {
 	ReplaceBlocks(*bbolt.Tx, *metastorev1.CompactedBlocks) error
 }
 
-type TombstoneDeleter interface {
-	DeleteTombstones(*bbolt.Tx, *raft.Log, ...*metastorev1.Tombstones) error
-	AddTombstones(*bbolt.Tx, *raft.Log, *metastorev1.Tombstones) error
-}
-
 type CompactionCommandHandler struct {
 	logger     log.Logger
 	index      IndexReplacer
 	compactor  compaction.Compactor
 	planner    compaction.Planner
 	scheduler  compaction.Scheduler
-	tombstones TombstoneDeleter
+	tombstones Tombstones
 }
 
 func NewCompactionCommandHandler(
@@ -35,7 +30,7 @@ func NewCompactionCommandHandler(
 	compactor compaction.Compactor,
 	planner compaction.Planner,
 	scheduler compaction.Scheduler,
-	tombstones TombstoneDeleter,
+	tombstones Tombstones,
 ) *CompactionCommandHandler {
 	return &CompactionCommandHandler{
 		logger:     logger,
