@@ -57,8 +57,8 @@ const (
 	QueryMissingTimeRange Reason = "missing_time_range"
 	QueryInvalidTimeRange Reason = "invalid_time_range"
 
-	// IngestLimitReached is a reason for discarding a request when an ingestion limit has been reached.
-	IngestLimitReached Reason = "ingest_limit_reached"
+	IngestLimitReached     Reason = "ingest_limit_reached"
+	SkippedBySamplingRules Reason = "dropped_by_sampling_rules"
 
 	// Those profiles were dropped because of relabeling rules
 	DroppedByRelabelRules Reason = "dropped_by_relabel_rules"
