@@ -29,6 +29,9 @@ service QuerierService {
   // GetProfileStats returns profile stats for the current tenant.
   rpc GetProfileStats(types.v1.GetProfileStatsRequest) returns (types.v1.GetProfileStatsResponse) {}
   rpc AnalyzeQuery(AnalyzeQueryRequest) returns (AnalyzeQueryResponse) {}
+
+  // GetFeatureFlags returns the enabled backend feature flags for the current tenant
+  rpc GetFeatureFlags(types.v1.GetFeatureFlagsRequest) returns (types.v1.GetFeatureFlagsResponse) {}
 }
 
 message ProfileTypesRequest {

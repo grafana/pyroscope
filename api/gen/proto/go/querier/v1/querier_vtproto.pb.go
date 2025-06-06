@@ -1247,6 +1247,8 @@ type QuerierServiceClient interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(ctx context.Context, in *v1.GetProfileStatsRequest, opts ...grpc.CallOption) (*v1.GetProfileStatsResponse, error)
 	AnalyzeQuery(ctx context.Context, in *AnalyzeQueryRequest, opts ...grpc.CallOption) (*AnalyzeQueryResponse, error)
+	// GetFeatureFlags returns the enabled backend feature flags for the current tenant
+	GetFeatureFlags(ctx context.Context, in *v1.GetFeatureFlagsRequest, opts ...grpc.CallOption) (*v1.GetFeatureFlagsResponse, error)
 }
 
 type querierServiceClient struct {
@@ -1356,6 +1358,15 @@ func (c *querierServiceClient) AnalyzeQuery(ctx context.Context, in *AnalyzeQuer
 	return out, nil
 }
 
+func (c *querierServiceClient) GetFeatureFlags(ctx context.Context, in *v1.GetFeatureFlagsRequest, opts ...grpc.CallOption) (*v1.GetFeatureFlagsResponse, error) {
+	out := new(v1.GetFeatureFlagsResponse)
+	err := c.cc.Invoke(ctx, "/querier.v1.QuerierService/GetFeatureFlags", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QuerierServiceServer is the server API for QuerierService service.
 // All implementations must embed UnimplementedQuerierServiceServer
 // for forward compatibility
@@ -1381,6 +1392,8 @@ type QuerierServiceServer interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *v1.GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error)
 	AnalyzeQuery(context.Context, *AnalyzeQueryRequest) (*AnalyzeQueryResponse, error)
+	// GetFeatureFlags returns the enabled backend feature flags for the current tenant
+	GetFeatureFlags(context.Context, *v1.GetFeatureFlagsRequest) (*v1.GetFeatureFlagsResponse, error)
 	mustEmbedUnimplementedQuerierServiceServer()
 }
 
@@ -1420,6 +1433,9 @@ func (UnimplementedQuerierServiceServer) GetProfileStats(context.Context, *v1.Ge
 }
 func (UnimplementedQuerierServiceServer) AnalyzeQuery(context.Context, *AnalyzeQueryRequest) (*AnalyzeQueryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AnalyzeQuery not implemented")
+}
+func (UnimplementedQuerierServiceServer) GetFeatureFlags(context.Context, *v1.GetFeatureFlagsRequest) (*v1.GetFeatureFlagsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFeatureFlags not implemented")
 }
 func (UnimplementedQuerierServiceServer) mustEmbedUnimplementedQuerierServiceServer() {}
 
@@ -1632,6 +1648,24 @@ func _QuerierService_AnalyzeQuery_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _QuerierService_GetFeatureFlags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.GetFeatureFlagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QuerierServiceServer).GetFeatureFlags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/querier.v1.QuerierService/GetFeatureFlags",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QuerierServiceServer).GetFeatureFlags(ctx, req.(*v1.GetFeatureFlagsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // QuerierService_ServiceDesc is the grpc.ServiceDesc for QuerierService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1682,6 +1716,10 @@ var QuerierService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AnalyzeQuery",
 			Handler:    _QuerierService_AnalyzeQuery_Handler,
+		},
+		{
+			MethodName: "GetFeatureFlags",
+			Handler:    _QuerierService_GetFeatureFlags_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

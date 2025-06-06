@@ -33,6 +33,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
@@ -71,7 +72,8 @@ type Querier struct {
 	storageBucket        phlareobj.Bucket
 	tenantConfigProvider phlareobj.TenantConfigProvider
 
-	limits Limits
+	limits       Limits
+	featureFlags featureflags.Handler
 }
 
 // TODO(kolesnikovae): For backwards compatibility.
@@ -92,6 +94,7 @@ type NewQuerierParams struct {
 	Reg             prometheus.Registerer
 	Logger          log.Logger
 	ClientOptions   []connect.ClientOption
+	FeatureFlags    featureflags.Handler
 }
 
 func New(params *NewQuerierParams) (*Querier, error) {
@@ -131,6 +134,7 @@ func New(params *NewQuerierParams) (*Querier, error) {
 		storageBucket:        params.StorageBucket,
 		tenantConfigProvider: params.CfgProvider,
 		limits:               params.Overrides,
+		featureFlags:         params.FeatureFlags,
 	}
 
 	svcs := []services.Service{q.ingesterQuerier.pool}
@@ -908,6 +912,10 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 	}
 
 	return merge.Profile(), nil
+}
+
+func (q *Querier) GetFeatureFlags(ctx context.Context, req *connect.Request[typesv1.GetFeatureFlagsRequest]) (*connect.Response[typesv1.GetFeatureFlagsResponse], error) {
+	return q.featureFlags.GetFeatureFlags(ctx, req)
 }
 
 func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {

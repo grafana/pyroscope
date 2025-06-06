@@ -289,6 +289,8 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PusherServiceClient interface {
 	Push(ctx context.Context, in *PushRequest, opts ...grpc.CallOption) (*PushResponse, error)
+	// GetFeatureFlags returns the enabled backend feature flags for the current tenant
+	GetFeatureFlags(ctx context.Context, in *v1.GetFeatureFlagsRequest, opts ...grpc.CallOption) (*v1.GetFeatureFlagsResponse, error)
 }
 
 type pusherServiceClient struct {
@@ -308,11 +310,22 @@ func (c *pusherServiceClient) Push(ctx context.Context, in *PushRequest, opts ..
 	return out, nil
 }
 
+func (c *pusherServiceClient) GetFeatureFlags(ctx context.Context, in *v1.GetFeatureFlagsRequest, opts ...grpc.CallOption) (*v1.GetFeatureFlagsResponse, error) {
+	out := new(v1.GetFeatureFlagsResponse)
+	err := c.cc.Invoke(ctx, "/push.v1.PusherService/GetFeatureFlags", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PusherServiceServer is the server API for PusherService service.
 // All implementations must embed UnimplementedPusherServiceServer
 // for forward compatibility
 type PusherServiceServer interface {
 	Push(context.Context, *PushRequest) (*PushResponse, error)
+	// GetFeatureFlags returns the enabled backend feature flags for the current tenant
+	GetFeatureFlags(context.Context, *v1.GetFeatureFlagsRequest) (*v1.GetFeatureFlagsResponse, error)
 	mustEmbedUnimplementedPusherServiceServer()
 }
 
@@ -322,6 +335,9 @@ type UnimplementedPusherServiceServer struct {
 
 func (UnimplementedPusherServiceServer) Push(context.Context, *PushRequest) (*PushResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Push not implemented")
+}
+func (UnimplementedPusherServiceServer) GetFeatureFlags(context.Context, *v1.GetFeatureFlagsRequest) (*v1.GetFeatureFlagsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFeatureFlags not implemented")
 }
 func (UnimplementedPusherServiceServer) mustEmbedUnimplementedPusherServiceServer() {}
 
@@ -354,6 +370,24 @@ func _PusherService_Push_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PusherService_GetFeatureFlags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.GetFeatureFlagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PusherServiceServer).GetFeatureFlags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/push.v1.PusherService/GetFeatureFlags",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PusherServiceServer).GetFeatureFlags(ctx, req.(*v1.GetFeatureFlagsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PusherService_ServiceDesc is the grpc.ServiceDesc for PusherService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -364,6 +398,10 @@ var PusherService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Push",
 			Handler:    _PusherService_Push_Handler,
+		},
+		{
+			MethodName: "GetFeatureFlags",
+			Handler:    _PusherService_GetFeatureFlags_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -111,3 +111,20 @@ message GetProfileStatsResponse {
   // Milliseconds since epoch.
   int64 newest_profile_time = 3;
 }
+
+message GetFeatureFlagsRequest {}
+
+message GetFeatureFlagsResponse {
+  // Map containing all features, if a feature is disabled it can be omitted.
+  map<string, FeatureParameters> features = 1;
+}
+
+// FeatureParameters contains the per feature flag parameters.
+message FeatureParameters {
+  // Wether the feature flag is enabled or disabled.
+  bool enabled = 1;
+  // Optional description of the feature flag.
+  optional string description = 2;
+  // Optional URL to the documentation page of the feature flag.
+  optional string documentation_url = 3;
+}
