@@ -514,6 +514,7 @@ func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Prof
 	usage := s.usageGroupEvaluator.GetMatch(tenantID, s.sw.limits.DistributorUsageGroups(tenantID), labels)
 	appender := &sampleAppender{
 		head:        s.headForIngest(k),
+		tenantID:    tenantID,
 		profile:     p,
 		id:          id,
 		annotations: annotations,
@@ -526,6 +527,7 @@ func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Prof
 }
 
 type sampleAppender struct {
+	tenantID    string
 	id          uuid.UUID
 	head        *memdb.Head
 	profile     *profilev1.Profile
@@ -537,7 +539,7 @@ type sampleAppender struct {
 }
 
 func (v *sampleAppender) VisitProfile(labels []*typesv1.LabelPair) {
-	v.head.Ingest(v.profile, v.id, labels, v.annotations)
+	v.head.Ingest(v.tenantID, v.profile, v.id, labels, v.annotations)
 }
 
 func (v *sampleAppender) VisitSampleSeries(labels []*typesv1.LabelPair, samples []*profilev1.Sample) {
@@ -546,7 +548,7 @@ func (v *sampleAppender) VisitSampleSeries(labels []*typesv1.LabelPair, samples 
 	}
 	var n profilev1.Profile
 	v.exporter.ExportSamples(&n, samples)
-	v.head.Ingest(&n, v.id, labels, v.annotations)
+	v.head.Ingest(v.tenantID, &n, v.id, labels, v.annotations)
 }
 
 func (v *sampleAppender) Discarded(profiles, bytes int) {
@@ -569,7 +571,7 @@ func (s *segment) headForIngest(k datasetKey) *memdb.Head {
 		return h.head
 	}
 
-	nh := memdb.NewHead(s.sw.headMetrics)
+	nh := memdb.NewHead(s.sw.headMetrics, s.logger, s.sw.limits)
 
 	s.heads[k] = dataset{
 		key:  k,

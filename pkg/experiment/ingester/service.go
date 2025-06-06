@@ -84,6 +84,8 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 type Limits interface {
 	IngestionRelabelingRules(tenantID string) []*relabel.Config
 	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
+
+	validation.LabelValidationLimits
 }
 
 type SegmentWriterService struct {
