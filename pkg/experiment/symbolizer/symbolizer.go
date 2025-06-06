@@ -84,15 +84,6 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 		stringMap[str] = int64(i)
 	}
 
-	funcMap := make(map[funcKey]uint64)
-	maxFuncID := uint64(0)
-	for _, fn := range profile.Function {
-		if fn.Id > maxFuncID {
-			maxFuncID = fn.Id
-		}
-		funcMap[funcKey{fn.Name, fn.Filename}] = fn.Id
-	}
-
 	var allSymbolizedLocs []symbolizedLocation
 
 	for mappingID, locations := range locationsByMapping {
@@ -125,7 +116,7 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 		}
 	}
 
-	s.updateAllSymbolsInProfile(profile, allSymbolizedLocs, stringMap, funcMap, maxFuncID)
+	s.updateAllSymbolsInProfile(profile, allSymbolizedLocs, stringMap)
 
 	return nil
 }
@@ -198,9 +189,10 @@ func (s *Symbolizer) updateAllSymbolsInProfile(
 	profile *googlev1.Profile,
 	symbolizedLocs []symbolizedLocation,
 	stringMap map[string]int64,
-	funcMap map[funcKey]uint64,
-	maxFuncID uint64,
 ) {
+	funcMap := make(map[funcKey]uint64)
+	maxFuncID := uint64(len(profile.Function))
+
 	for _, item := range symbolizedLocs {
 		loc := item.loc
 		symLoc := item.symLoc

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
 
@@ -169,6 +170,44 @@ func TestSymbolizePprof(t *testing.T) {
 			mockClient.AssertExpectations(t)
 		})
 	}
+}
+
+func TestSymbolizationKeepsSequentialFunctionIDs(t *testing.T) {
+	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
+	mockBucket := mockobjstore.NewMockBucket(t)
+
+	profile := &googlev1.Profile{
+		Mapping:     []*googlev1.Mapping{{BuildId: 1}},
+		Location:    []*googlev1.Location{{Id: 1, MappingId: 1, Address: 0x1500}},
+		Function:    []*googlev1.Function{{Id: 1, Name: 1}},
+		StringTable: []string{"", "build-id", "existing_func"},
+		Sample: []*googlev1.Sample{{
+			LocationId: []uint64{1},
+			Value:      []int64{100},
+		}},
+	}
+
+	mockBucket.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found"))
+	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil)
+	mockBucket.On("Upload", mock.Anything, "build-id", mock.Anything).Return(nil)
+
+	s := &Symbolizer{
+		logger:  log.NewNopLogger(),
+		client:  mockClient,
+		bucket:  mockBucket,
+		metrics: newMetrics(nil),
+	}
+
+	err := s.SymbolizePprof(context.Background(), profile)
+	require.NoError(t, err)
+
+	// Verify sequential function IDs
+	for i, fn := range profile.Function {
+		require.Equal(t, uint64(i+1), fn.Id)
+	}
+
+	_, err = model.TreeFromBackendProfile(profile, 1000)
+	require.NoError(t, err)
 }
 
 func TestSymbolizationWithLidiaData(t *testing.T) {
