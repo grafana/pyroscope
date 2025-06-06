@@ -447,7 +447,12 @@ get_class_name(void *cur_frame, void *code_ptr, py_offset_config *offsets, bool 
         // we are working with an instance, first we need to get type
         try_read_or_fail(ptr, ptr + offsets->PyObject_ob_type)
     }
-    // todo consider typechecking  ptr is _typeobject somehow (note: ob_type may be not `type`)
+    try_read_or_fail(ptr_ob_type, ptr + offsets->PyObject_ob_type)
+    if (ptr_ob_type != (void*)  offsets->PyType_Type) {
+        symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+        symbol->classname_type.size_codepoints = 0;
+        return 0;
+    }
 
     // https://github.com/python/cpython/blob/d73501602f863a54c872ce103cd3fa119e38bac9/Include/cpython/object.h#L106
     try_read_or_fail(ptr, ptr + offsets->PyTypeObject_tp_name);

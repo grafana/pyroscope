@@ -58,6 +58,7 @@ type PerfPyOffsetConfig struct {
 	_                             [6]byte
 	Base                          uint64
 	PyCellType                    uint64
+	PyTypeType                    uint64
 }
 
 type PerfPyPidData struct {
@@ -143,9 +144,10 @@ func LoadPerfObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type PerfSpecs struct {
 	PerfProgramSpecs
 	PerfMapSpecs
+	PerfVariableSpecs
 }
 
-// PerfSpecs contains programs before they are loaded into the kernel.
+// PerfProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type PerfProgramSpecs struct {
@@ -166,12 +168,20 @@ type PerfMapSpecs struct {
 	Stacks       *ebpf.MapSpec `ebpf:"stacks"`
 }
 
+// PerfVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type PerfVariableSpecs struct {
+	GlobalConfig *ebpf.VariableSpec `ebpf:"global_config"`
+}
+
 // PerfObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to LoadPerfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type PerfObjects struct {
 	PerfPrograms
 	PerfMaps
+	PerfVariables
 }
 
 func (o *PerfObjects) Close() error {
@@ -206,6 +216,13 @@ func (m *PerfMaps) Close() error {
 	)
 }
 
+// PerfVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to LoadPerfObjects or ebpf.CollectionSpec.LoadAndAssign.
+type PerfVariables struct {
+	GlobalConfig *ebpf.Variable `ebpf:"global_config"`
+}
+
 // PerfPrograms contains all programs after they have been loaded into the kernel.
 //
 // It can be passed to LoadPerfObjects or ebpf.CollectionSpec.LoadAndAssign.
@@ -232,5 +249,5 @@ func _PerfClose(closers ...io.Closer) error {
 
 // Do not access this directly.
 //
-//go:embed perf_bpfel_x86.o
+//go:embed perf_x86_bpfel.o
 var _PerfBytes []byte
