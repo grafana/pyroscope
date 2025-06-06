@@ -47,6 +47,8 @@ func (m *mockLimits) MaxFlameGraphNodesMax(_ string) int {
 	return 100_000
 }
 
+func (m *mockLimits) SymbolizerEnabled(s string) bool { return true }
+
 type mockRoundTripper struct {
 	callback func(ctx context.Context, req *httpgrpc.HTTPRequest) (*httpgrpc.HTTPResponse, error)
 }

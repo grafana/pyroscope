@@ -56,6 +56,7 @@ import (
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
@@ -118,6 +119,7 @@ type Config struct {
 	QueryBackend      querybackend.Config      `yaml:"query_backend"      doc:"hidden"`
 	CompactionWorker  compactionworker.Config  `yaml:"compaction_worker"  doc:"hidden"`
 	AdaptivePlacement adaptiveplacement.Config `yaml:"adaptive_placement" doc:"hidden"`
+	Symbolizer        symbolizer.Config        `yaml:"symbolizer"         doc:"hidden"`
 }
 
 func newDefaultConfig() *Config {
@@ -252,6 +254,8 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		c.LimitsConfig.ReadPathOverrides.RegisterFlags(throwaway)
 		c.LimitsConfig.AdaptivePlacementLimits.RegisterFlags(throwaway)
 		c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
+		c.LimitsConfig.Symbolizer.RegisterFlags(throwaway)
+		c.Symbolizer.RegisterFlags(throwaway)
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {
@@ -379,6 +383,7 @@ type Phlare struct {
 	compactionWorker     *compactionworker.Worker
 	healthServer         *health.Server
 	recordingRulesClient *recordingrulesclient.Client
+	symbolizer           *symbolizer.Symbolizer
 }
 
 func New(cfg Config) (*Phlare, error) {
@@ -500,13 +505,14 @@ func (f *Phlare) setupModuleManager() error {
 			SegmentWriterClient: {Overrides, API, SegmentWriterRing, PlacementAgent},
 			PlacementAgent:      {Overrides, API, Storage},
 			PlacementManager:    {Overrides, API, Storage},
+			Symbolizer:          {Overrides, Storage},
 		}
 		for k, v := range experimentalModules {
 			deps[k] = v
 		}
 
 		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend)
-		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient)
+		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient, Symbolizer)
 		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
 		deps[Server] = append(deps[Server], HealthServer)
 		deps[Admin] = append(deps[Admin], MetastoreAdmin)
@@ -515,6 +521,7 @@ func (f *Phlare) setupModuleManager() error {
 		mm.RegisterModule(Metastore, f.initMetastore)
 		mm.RegisterModule(CompactionWorker, f.initCompactionWorker)
 		mm.RegisterModule(QueryBackend, f.initQueryBackend)
+		mm.RegisterModule(Symbolizer, f.initSymbolizer)
 
 		mm.RegisterModule(SegmentWriterRing, f.initSegmentWriterRing, modules.UserInvisibleModule)
 		mm.RegisterModule(SegmentWriterClient, f.initSegmentWriterClient, modules.UserInvisibleModule)

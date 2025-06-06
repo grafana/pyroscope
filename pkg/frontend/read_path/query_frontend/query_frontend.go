@@ -2,9 +2,22 @@ package query_frontend
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"slices"
 	"sync"
+
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
+	queryplan "github.com/grafana/pyroscope/pkg/experiment/query_backend/query_plan"
+	"github.com/grafana/pyroscope/pkg/frontend"
+	"github.com/grafana/pyroscope/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/tenant"
@@ -12,20 +25,16 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
-	queryplan "github.com/grafana/pyroscope/pkg/experiment/query_backend/query_plan"
-	"github.com/grafana/pyroscope/pkg/frontend"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
 
 type QueryBackend interface {
 	Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
+}
+
+type Symbolizer interface {
+	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
 }
 
 type QueryFrontend struct {
@@ -35,6 +44,7 @@ type QueryFrontend struct {
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
+	symbolizer          Symbolizer
 }
 
 func NewQueryFrontend(
@@ -43,6 +53,7 @@ func NewQueryFrontend(
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
+	sym Symbolizer,
 ) *QueryFrontend {
 	return &QueryFrontend{
 		logger:              logger,
@@ -50,6 +61,7 @@ func NewQueryFrontend(
 		metadataQueryClient: metadataQueryClient,
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
+		symbolizer:          sym,
 	}
 }
 
@@ -84,6 +96,23 @@ func (q *QueryFrontend) Query(
 	// TODO(kolesnikovae): Should be dynamic.
 	p := queryplan.Build(blocks, 4, 20)
 
+	// Only check for symbolization if all tenants have it enabled
+	shouldSymbolize := q.shouldSymbolize(tenants, blocks)
+
+	modifiedQueries := make([]*queryv1.Query, len(req.Query))
+	for i, originalQuery := range req.Query {
+		modifiedQueries[i] = originalQuery.CloneVT()
+
+		// If we need symbolization and this is a TREE query, convert it to PPROF
+		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
+			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
+			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
+				MaxNodes: 0,
+			}
+			modifiedQueries[i].Tree = nil
+		}
+	}
+
 	resp, err := q.querybackend.Invoke(ctx, &queryv1.InvokeRequest{
 		Tenant:        tenants,
 		StartTime:     req.StartTime,
@@ -91,15 +120,24 @@ func (q *QueryFrontend) Query(
 		LabelSelector: req.LabelSelector,
 		Options:       &queryv1.InvokeOptions{},
 		QueryPlan:     p,
-		Query:         req.Query,
+		Query:         modifiedQueries,
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	if shouldSymbolize {
+		err = q.processAndSymbolizeProfiles(ctx, resp, req.Query)
+		if err != nil {
+			return nil, status.Error(codes.Internal, fmt.Sprintf("symbolizing profiles: %v", err))
+		}
+	}
+
 	// TODO(kolesnikovae): Extend diagnostics
 	if resp.Diagnostics == nil {
 		resp.Diagnostics = new(queryv1.Diagnostics)
 	}
+
 	resp.Diagnostics.QueryPlan = p
 	return &queryv1.QueryResponse{Reports: resp.Reports}, nil
 }
@@ -120,6 +158,7 @@ func (q *QueryFrontend) QueryMetadata(
 		TenantId:  tenants,
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
+		Labels:    []string{metadata.LabelNameUnsymbolized},
 	}
 
 	// Delete all matchers but service_name with strict match. If no matchers
@@ -132,7 +171,7 @@ func (q *QueryFrontend) QueryMetadata(
 		// We preserve the __tenant_dataset__= label: this is needed for the
 		// query backend to identify that the dataset is the tenant-wide index,
 		// and a dataset lookup is needed.
-		query.Labels = []string{metadata.LabelNameTenantDataset}
+		query.Labels = append(query.Labels, metadata.LabelNameTenantDataset)
 		matchers = []*labels.Matcher{{
 			Name:  metadata.LabelNameTenantDataset,
 			Value: metadata.LabelValueDatasetTSDBIndex,
@@ -147,4 +186,81 @@ func (q *QueryFrontend) QueryMetadata(
 	}
 
 	return md.Blocks, nil
+}
+
+// hasUnsymbolizedProfiles checks if a block has unsymbolized profiles
+func (q *QueryFrontend) hasUnsymbolizedProfiles(block *metastorev1.BlockMeta) bool {
+	matcher, err := labels.NewMatcher(labels.MatchEqual, metadata.LabelNameUnsymbolized, "true")
+	if err != nil {
+		return false
+	}
+
+	return len(slices.Collect(metadata.FindDatasets(block, matcher))) > 0
+}
+
+// shouldSymbolize determines if we should symbolize profiles based on tenant settings
+func (q *QueryFrontend) shouldSymbolize(tenants []string, blocks []*metastorev1.BlockMeta) bool {
+	if q.symbolizer == nil {
+		return false
+	}
+
+	for _, t := range tenants {
+		if !q.limits.SymbolizerEnabled(t) {
+			return false
+		}
+	}
+
+	for _, block := range blocks {
+		if q.hasUnsymbolizedProfiles(block) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// processAndSymbolizeProfiles handles the symbolization of profiles from the response
+func (q *QueryFrontend) processAndSymbolizeProfiles(
+	ctx context.Context,
+	resp *queryv1.InvokeResponse,
+	originalQueries []*queryv1.Query,
+) error {
+	if len(originalQueries) != len(resp.Reports) {
+		return fmt.Errorf("query/report count mismatch: %d queries but %d reports",
+			len(originalQueries), len(resp.Reports))
+	}
+
+	for i, r := range resp.Reports {
+		if r.Pprof == nil || r.Pprof.Pprof == nil {
+			continue
+		}
+
+		var prof profilev1.Profile
+		if err := pprof.Unmarshal(r.Pprof.Pprof, &prof); err != nil {
+			return fmt.Errorf("failed to unmarshal profile: %w", err)
+		}
+
+		if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
+			return fmt.Errorf("failed to symbolize profile: %w", err)
+		}
+
+		// Convert back to tree if originally a tree
+		if i < len(originalQueries) && originalQueries[i].QueryType == queryv1.QueryType_QUERY_TREE {
+			treeBytes, err := model.TreeFromBackendProfile(&prof, originalQueries[i].Tree.MaxNodes)
+			if err != nil {
+				return fmt.Errorf("failed to build tree: %w", err)
+			}
+			r.Tree = &queryv1.TreeReport{Tree: treeBytes}
+			r.ReportType = queryv1.ReportType_REPORT_TREE
+			r.Pprof = nil
+		} else {
+			symbolizedBytes, err := pprof.Marshal(&prof, true)
+			if err != nil {
+				return fmt.Errorf("failed to marshal symbolized profile: %w", err)
+			}
+			r.Pprof.Pprof = symbolizedBytes
+		}
+	}
+
+	return nil
 }

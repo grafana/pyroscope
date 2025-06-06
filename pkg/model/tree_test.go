@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )
 
 func Test_Tree(t *testing.T) {
@@ -389,4 +391,132 @@ func stackToTree(stack stacktraces) *Tree {
 	}
 	t.root = []*node{current}
 	return t
+}
+
+func Test_TreeFromBackendProfileSampleType(t *testing.T) {
+	profile := &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{Type: 1, Unit: 2},
+			{Type: 3, Unit: 4},
+		},
+		StringTable: []string{
+			"",
+			"samples",
+			"count",
+			"cpu",
+			"nanoseconds",
+			"main",
+			"foo",
+			"bar",
+		},
+		Sample: []*profilev1.Sample{
+			{
+				LocationId: []uint64{1, 2},
+				Value:      []int64{10, 20},
+			},
+			{
+				LocationId: []uint64{2, 3},
+				Value:      []int64{30, 60},
+			},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
+			{Id: 2, Line: []*profilev1.Line{{FunctionId: 2}}},
+			{Id: 3, Line: []*profilev1.Line{{FunctionId: 3}}},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 5},
+			{Id: 2, Name: 6},
+			{Id: 3, Name: 7},
+		},
+	}
+
+	t.Run("using first sample type (index 0)", func(t *testing.T) {
+		treeBytes, err := TreeFromBackendProfileSampleType(profile, -1, 0)
+		require.NoError(t, err)
+		tree := MustUnmarshalTree(treeBytes)
+		assert.Equal(t, int64(40), tree.Total())
+	})
+
+	t.Run("using second sample type (index 1)", func(t *testing.T) {
+		treeBytes, err := TreeFromBackendProfileSampleType(profile, -1, 1)
+		require.NoError(t, err)
+		tree := MustUnmarshalTree(treeBytes)
+		assert.Equal(t, int64(80), tree.Total())
+	})
+
+	t.Run("validates sample type index bounds", func(t *testing.T) {
+		_, err := TreeFromBackendProfileSampleType(profile, -1, 99)
+		require.Error(t, err)
+	})
+
+	t.Run("handles profile with no samples", func(t *testing.T) {
+		emptyProfile := &profilev1.Profile{
+			SampleType: []*profilev1.ValueType{
+				{Type: 1, Unit: 2},
+			},
+			StringTable: []string{"", "samples", "count"},
+			Sample:      []*profilev1.Sample{},
+		}
+		treeBytes, err := TreeFromBackendProfileSampleType(emptyProfile, -1, 0)
+		require.NoError(t, err)
+		tree := MustUnmarshalTree(treeBytes)
+		assert.Equal(t, int64(0), tree.Total())
+	})
+
+	t.Run("handles profile with no sample types", func(t *testing.T) {
+		noSampleTypesProfile := &profilev1.Profile{
+			SampleType:  []*profilev1.ValueType{},
+			StringTable: []string{""},
+			Sample: []*profilev1.Sample{
+				{
+					LocationId: []uint64{1},
+					Value:      []int64{10},
+				},
+			},
+		}
+		_, err := TreeFromBackendProfileSampleType(noSampleTypesProfile, -1, 0)
+		require.Error(t, err)
+	})
+
+	t.Run("handles locations without line information (using addresses)", func(t *testing.T) {
+		addressProfile := &profilev1.Profile{
+			StringTable: []string{
+				"",
+				"samples",
+				"count",
+			},
+			SampleType: []*profilev1.ValueType{
+				{Type: 1, Unit: 2},
+			},
+			Location: []*profilev1.Location{
+				{Id: 1, Address: 0x1000, Line: []*profilev1.Line{}},
+				{Id: 2, Address: 0x2000, Line: []*profilev1.Line{}},
+			},
+			Sample: []*profilev1.Sample{
+				{
+					LocationId: []uint64{1, 2}, // 0x1000 -> 0x2000
+					Value:      []int64{100},   // 100 samples
+				},
+			},
+		}
+		originalLen := len(addressProfile.StringTable)
+
+		treeBytes, err := TreeFromBackendProfileSampleType(addressProfile, -1, 0)
+		require.NoError(t, err)
+
+		tree := MustUnmarshalTree(treeBytes)
+		assert.Equal(t, int64(100), tree.Total())
+
+		assert.Greater(t, len(addressProfile.StringTable), originalLen)
+
+		// Check for specific address strings in the string table
+		foundAddresses := 0
+		for _, s := range addressProfile.StringTable {
+			if s == "1000" || s == "2000" {
+				foundAddresses++
+			}
+		}
+		assert.Equal(t, 2, foundAddresses)
+	})
 }

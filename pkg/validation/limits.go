@@ -118,6 +118,9 @@ type Limits struct {
 	// RecordingRules allow to specify static recording rules. This is not compatible with recording rules
 	// coming from a RecordingRulesClient, that will replace any static rules defined.
 	RecordingRules RecordingRules `yaml:"recording_rules" json:"recording_rules" category:"experimental" doc:"hidden"`
+
+	// Symbolizer.
+	Symbolizer Symbolizer `yaml:"symbolizer" json:"symbolizer" category:"experimental" doc:"hidden"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
