@@ -77,7 +77,6 @@ func (e *StaticExporter) Flush() {
 }
 
 func newClient(remoteUrl string, m *clientMetrics) (remote.WriteClient, error) {
-	//remoteUrl = "https://prometheus-dev-01-dev-us-central-0.grafana-dev.net/api/prom/push"
 	wURL, err := url.Parse(remoteUrl)
 	if err != nil {
 		return nil, err
@@ -90,12 +89,6 @@ func newClient(remoteUrl string, m *clientMetrics) (remote.WriteClient, error) {
 			"User-Agent": metricsExporterUserAgent,
 		},
 		RetryOnRateLimit: false,
-		/*HTTPClientConfig: config.HTTPClientConfig{
-			BasicAuth: &config.BasicAuth{
-				Username: "13097",
-				Password: "",
-			},
-		},*/
 	})
 	if err != nil {
 		return nil, err
