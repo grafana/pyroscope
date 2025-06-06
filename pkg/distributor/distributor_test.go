@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -36,6 +37,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	pprof2 "github.com/grafana/pyroscope/pkg/pprof"
 	pproftesthelper "github.com/grafana/pyroscope/pkg/pprof/testhelper"
@@ -1849,6 +1851,145 @@ func TestPush_LabelRewrites(t *testing.T) {
 			actualSeries := phlaremodel.LabelPairsString(ing.requests[0].Series[0].Labels)
 			assert.Equal(t, tc.expectedSeries, actualSeries)
 			ing.mtx.Unlock()
+		})
+	}
+}
+
+func TestDistributor_shouldSample(t *testing.T) {
+	tests := []struct {
+		name           string
+		tenantID       string
+		groups         []string
+		samplingConfig *sampling.Config
+		expected       bool
+	}{
+		{
+			name:     "no sampling config - should accept",
+			tenantID: "test-tenant",
+			groups:   []string{"group1"},
+			expected: true,
+		},
+		{
+			name:     "no matching groups - should accept",
+			tenantID: "test-tenant",
+			groups:   []string{"group1"},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"group2": {Probability: 0.5},
+				},
+			},
+			expected: true,
+		},
+		{
+			name:     "matching group with 1.0 probability - should accept",
+			tenantID: "test-tenant",
+			groups:   []string{"group1"},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"group1": {Probability: 1.0},
+				},
+			},
+			expected: true,
+		},
+		{
+			name:     "matching group with 0.0 probability - should reject",
+			tenantID: "test-tenant",
+			groups:   []string{"group1"},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"group1": {Probability: 0.0},
+				},
+			},
+			expected: false,
+		},
+		{
+			name:     "multiple matching groups - should use minimum probability",
+			tenantID: "test-tenant",
+			groups:   []string{"group1", "group2"},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"group1": {Probability: 0.5},
+					"group2": {Probability: 0.0},
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.Sampling = tt.samplingConfig
+				tenantLimits[tt.tenantID] = l
+			})
+			d := &Distributor{
+				limits: overrides,
+			}
+
+			result := d.shouldSample(tt.tenantID, tt.groups)
+			assert.Equal(t, tt.expected, result, "shouldSample should return consistent results")
+		})
+	}
+}
+
+func TestDistributor_shouldSample_Probability(t *testing.T) {
+	tests := []struct {
+		name        string
+		probability float64
+	}{
+		{
+			name:        "30% sampling rate",
+			probability: 0.3,
+		},
+		{
+			name:        "70% sampling rate",
+			probability: 0.7,
+		},
+		{
+			name:        "10% sampling rate",
+			probability: 0.1,
+		},
+	}
+
+	const iterations = 10000
+	tenantID := "test-tenant"
+	groups := []string{"test-group"}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			samplingConfig := &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"test-group": {Probability: tt.probability},
+				},
+			}
+
+			overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.Sampling = samplingConfig
+				tenantLimits[tenantID] = l
+			})
+			d := &Distributor{
+				limits: overrides,
+			}
+
+			accepted := 0
+			for i := 0; i < iterations; i++ {
+				if d.shouldSample(tenantID, groups) {
+					accepted++
+				}
+			}
+
+			actualRate := float64(accepted) / float64(iterations)
+			expectedRate := tt.probability
+			deviation := math.Abs(actualRate - expectedRate)
+
+			tolerance := 0.05
+			assert.True(t, deviation <= tolerance,
+				"Sampling rate %.3f is outside tolerance %.3f of expected rate %.3f (deviation: %.3f)",
+				actualRate, tolerance, expectedRate, deviation)
+
+			t.Logf("Expected: %.3f, Actual: %.3f, Deviation: %.3f", expectedRate, actualRate, deviation)
 		})
 	}
 }
