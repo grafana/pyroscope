@@ -94,10 +94,6 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 	}
 
 	rps := er.ResourceProfiles
-	if rps == nil {
-		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.InvalidArgument, "missing resource profiles")
-	}
-
 	for i := 0; i < len(rps); i++ {
 		rp := rps[i]
 
