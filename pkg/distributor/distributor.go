@@ -318,6 +318,9 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	// They are unfortunately part of the Push API so we explicitly clear them here.
 	req.ClearAnnotations()
 	if err := d.checkIngestLimit(tenantID, req); err != nil {
+		level.Debug(d.logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
+		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return nil, err
 	}
 
@@ -332,6 +335,9 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 		groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, series.Labels)
 		if err := d.checkUsageGroupsIngestLimit(tenantID, groups.Names(), req); err != nil {
+			level.Debug(d.logger).Log("msg", "rejecting push request due to usage group ingest limit", "tenant", tenantID)
+			validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
+			validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 			groups.CountDiscardedBytes(string(validation.IngestLimitReached), req.TotalBytesUncompressed)
 			return nil, err
 		}
@@ -784,8 +790,6 @@ func (d *Distributor) checkIngestLimit(tenantID string, req *distributormodel.Pu
 			return nil
 		}
 		limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
-		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return connect.NewError(connect.CodeResourceExhausted,
 			fmt.Errorf("limit of %s/%s reached, next reset at %s", humanize.IBytes(uint64(l.PeriodLimitMb*1024*1024)), l.PeriodType, limitResetTime))
 	}
@@ -811,8 +815,6 @@ func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groupsInReque
 			return nil
 		}
 		limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
-		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return connect.NewError(connect.CodeResourceExhausted,
 			fmt.Errorf("limit of %s/%s reached for usage group %s, next reset at %s", humanize.IBytes(uint64(limit.PeriodLimitMb*1024*1024)), l.PeriodType, group, limitResetTime))
 	}
