@@ -317,7 +317,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	// We don't support externally provided profile annotations right now.
 	// They are unfortunately part of the Push API so we explicitly clear them here.
 	req.ClearAnnotations()
-	if err := d.checkIngestLimit(tenantID, req); err != nil {
+	if err := d.checkIngestLimit(req); err != nil {
 		level.Debug(d.logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
 		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
@@ -334,7 +334,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
 
 		groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, series.Labels)
-		if err := d.checkUsageGroupsIngestLimit(tenantID, groups.Names(), req); err != nil {
+		if err := d.checkUsageGroupsIngestLimit(groups.Names(), req); err != nil {
 			level.Debug(d.logger).Log("msg", "rejecting push request due to usage group ingest limit", "tenant", tenantID)
 			validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
@@ -775,15 +775,15 @@ func (d *Distributor) calculateRequestSize(req *distributormodel.PushRequest) {
 	}
 }
 
-func (d *Distributor) checkIngestLimit(tenantID string, req *distributormodel.PushRequest) error {
-	l := d.limits.IngestionLimit(tenantID)
+func (d *Distributor) checkIngestLimit(req *distributormodel.PushRequest) error {
+	l := d.limits.IngestionLimit(req.TenantID)
 	if l == nil {
 		return nil
 	}
 
 	if l.LimitReached {
 		// we want to allow a very small portion of the traffic after reaching the limit
-		if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
+		if d.ingestionLimitsSampler.AllowRequest(req.TenantID, l.Sampling) {
 			if err := req.MarkThrottledTenant(l); err != nil {
 				return err
 			}
@@ -797,8 +797,8 @@ func (d *Distributor) checkIngestLimit(tenantID string, req *distributormodel.Pu
 	return nil
 }
 
-func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groupsInRequest []string, req *distributormodel.PushRequest) error {
-	l := d.limits.IngestionLimit(tenantID)
+func (d *Distributor) checkUsageGroupsIngestLimit(groupsInRequest []string, req *distributormodel.PushRequest) error {
+	l := d.limits.IngestionLimit(req.TenantID)
 	if l == nil || len(l.UsageGroups) == 0 {
 		return nil
 	}
@@ -808,7 +808,7 @@ func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groupsInReque
 		if !ok || !limit.LimitReached {
 			continue
 		}
-		if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
+		if d.ingestionLimitsSampler.AllowRequest(req.TenantID, l.Sampling) {
 			if err := req.MarkThrottledUsageGroup(l, group); err != nil {
 				return err
 			}
@@ -846,10 +846,7 @@ func (d *Distributor) shouldSample(tenantID string, groupsInRequest []string) bo
 	}
 
 	// Sample once using the minimum probability.
-	if rand.Float64() <= minProb {
-		return true
-	}
-	return false
+	return rand.Float64() <= minProb
 }
 
 type profileTracker struct {
