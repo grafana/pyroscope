@@ -91,6 +91,9 @@ func (o *SampleObserver) initTenantState(tenant string) {
 			state: &recordingState{},
 		})
 	}
+
+	// force a dataset reset
+	o.state.dataset = ""
 }
 
 func (o *SampleObserver) initDatasetState(dataset string) {

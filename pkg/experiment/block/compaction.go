@@ -106,7 +106,6 @@ func Compact(
 
 	compacted := make([]*metastorev1.BlockMeta, 0, len(plan))
 	for _, p := range plan {
-		// per cada tenant
 		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir, c.sampleObserver)
 		if compactionErr != nil {
 			return nil, compactionErr
@@ -221,7 +220,6 @@ func (b *CompactionPlan) Compact(
 
 	// Datasets are compacted in a strict order.
 	for i, s := range b.datasets {
-		// per cada service_name
 		b.datasetIndex.setIndex(uint32(i))
 		s.registerSampleObserver(observer)
 		if err = s.compact(ctx, w); err != nil {
