@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"hash/fnv"
+	"math/rand"
 	"net/http"
 	"sort"
 	"sync"
@@ -39,6 +40,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
 	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
@@ -121,6 +123,7 @@ type Limits interface {
 	IngestionRateBytes(tenantID string) float64
 	IngestionBurstSizeBytes(tenantID string) int
 	IngestionLimit(tenantID string) *ingest_limits.Config
+	SamplingProbability(tenantID string) *sampling.Config
 	IngestionTenantShardSize(tenantID string) int
 	MaxLabelNameLength(tenantID string) int
 	MaxLabelValueLength(tenantID string) int
@@ -329,7 +332,20 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 		groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, series.Labels)
 		if err := d.checkUsageGroupsIngestLimit(tenantID, groups.Names(), req); err != nil {
+			groups.CountDiscardedBytes(string(validation.IngestLimitReached), req.TotalBytesUncompressed)
 			return nil, err
+		}
+
+		var shouldSample bool
+		if err, shouldSample = d.checkSampling(tenantID, groups.Names(), req); err != nil {
+			return nil, err
+		}
+		if !shouldSample {
+			level.Debug(d.logger).Log("msg", "skipping push request due to sampling", "tenant", tenantID)
+			validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
+			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
+			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
+			return connect.NewResponse(&pushv1.PushResponse{}), nil
 		}
 
 		profLanguage := d.GetProfileLanguage(series)
@@ -806,6 +822,36 @@ func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groupsInReque
 	}
 
 	return nil
+}
+
+func (d *Distributor) checkSampling(tenantID string, groupsInRequest []string, req *distributormodel.PushRequest) (error, bool) {
+	l := d.limits.SamplingProbability(tenantID)
+	if l == nil {
+		return nil, true
+	}
+
+	// Determine the minimum probability among all matching usage groups.
+	minProb := 1.0
+	matched := false
+	for _, group := range groupsInRequest {
+		if probCfg, ok := l.UsageGroups[group]; ok {
+			matched = true
+			if probCfg.Probability < minProb {
+				minProb = probCfg.Probability
+			}
+		}
+	}
+
+	// If no sampling rules matched, accept the request.
+	if !matched {
+		return nil, true
+	}
+
+	// Sample once using the minimum probability.
+	if rand.Float64() <= minProb {
+		return nil, true
+	}
+	return nil, false
 }
 
 type profileTracker struct {
