@@ -72,6 +72,8 @@ type SampleObserver interface {
 	// Observe is called before the compactor appends the entry
 	// to the output block. This method must not modify the entry.
 	Observe(ProfileEntry)
+	// TODO: Find an alternative to this
+	Flush(ProfileEntry)
 }
 
 func Compact(
@@ -435,10 +437,9 @@ func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 }
 
 func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
-	/*println(r.Dataset.tenant, r.Dataset.name, r.Dataset.obj.path, r.Fingerprint)
-	reader, _ := r.Dataset.Symbols().Partition(context.Background(), r.Row.StacktracePartitionID())
-	symbols := reader.Symbols()
-	println(symbols)*/
+	if m.observer != nil {
+		m.observer.Observe(r)
+	}
 	if err = m.parent.datasetIndex.writeRow(r); err != nil {
 		return err
 	}
@@ -448,10 +449,8 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
 	}
-	/*reader, _ = r.Dataset.Symbols().Partition(context.Background(), r.Row.StacktracePartitionID())
-	symbols = reader.Symbols()*/
 	if m.observer != nil {
-		m.observer.Observe(r)
+		m.observer.Flush(r)
 	}
 	return m.profilesWriter.writeRow(r)
 }
@@ -466,9 +465,6 @@ func (m *datasetCompaction) flush() (err error) {
 		m.series = m.indexRewriter.NumSeries()
 		m.profiles = m.profilesWriter.profiles
 		err = merr.Err()
-		if m.observer != nil {
-			m.observer.FlushSymbols()
-		}
 	})
 	return err
 }

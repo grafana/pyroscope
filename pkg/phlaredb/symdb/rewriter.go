@@ -19,9 +19,9 @@ type Rewriter struct {
 }
 
 type SymbolsObserver interface {
-	// TODO DESC
-	ObserveSymbols(strings []string, functions []schemav1.InMemoryFunction, mappings []schemav1.InMemoryMapping, locations []schemav1.InMemoryLocation, stacktraceValues [][]int32, stacktraceIds []uint32)
-	FlushSymbols()
+	// ObserveSymbols is called once new symbols has been rewritten. This method must not modify the symbols.
+	ObserveSymbols(strings []string, functions []schemav1.InMemoryFunction, locations []schemav1.InMemoryLocation,
+		stacktraceValues [][]int32, stacktraceIds []uint32)
 }
 
 func NewRewriter(w *SymDB, r SymbolsReader, o SymbolsObserver) *Rewriter {
@@ -216,7 +216,7 @@ func (p *partitionRewriter) appendRewrite(stacktraces []uint32) error {
 	}
 
 	if p.observer != nil {
-		p.observer.ObserveSymbols(p.dst.strings.slice, p.dst.functions.slice, p.dst.mappings.slice, p.dst.locations.slice, p.stacktraces.values, p.stacktraces.buf)
+		p.observer.ObserveSymbols(p.dst.strings.slice, p.dst.functions.slice, p.dst.locations.slice, p.stacktraces.values, p.stacktraces.buf)
 	}
 
 	return nil

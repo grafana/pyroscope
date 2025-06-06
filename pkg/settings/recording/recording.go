@@ -99,12 +99,13 @@ func (r *RecordingRules) UpsertRecordingRule(ctx context.Context, req *connect.R
 	}
 
 	newRule := &settingsv1.RecordingRuleStore{
-		Id:             req.Msg.Id,
-		MetricName:     req.Msg.MetricName,
-		Matchers:       req.Msg.Matchers,
-		GroupBy:        req.Msg.GroupBy,
-		ExternalLabels: req.Msg.ExternalLabels,
-		Generation:     req.Msg.Generation,
+		Id:               req.Msg.Id,
+		MetricName:       req.Msg.MetricName,
+		Matchers:         req.Msg.Matchers,
+		GroupBy:          req.Msg.GroupBy,
+		ExternalLabels:   req.Msg.ExternalLabels,
+		Generation:       req.Msg.Generation,
+		StacktraceFilter: req.Msg.StacktraceFilter,
 	}
 	newRule, err = s.Upsert(ctx, newRule)
 	if err != nil {
@@ -257,13 +258,14 @@ func validateDelete(req *settingsv1.DeleteRecordingRuleRequest) error {
 
 func convertRuleToAPI(rule *settingsv1.RecordingRuleStore) *settingsv1.RecordingRule {
 	apiRule := &settingsv1.RecordingRule{
-		Id:             rule.Id,
-		MetricName:     rule.MetricName,
-		ProfileType:    "unknown",
-		Matchers:       rule.Matchers,
-		GroupBy:        rule.GroupBy,
-		ExternalLabels: rule.ExternalLabels,
-		Generation:     rule.Generation,
+		Id:               rule.Id,
+		MetricName:       rule.MetricName,
+		ProfileType:      "unknown",
+		Matchers:         rule.Matchers,
+		GroupBy:          rule.GroupBy,
+		ExternalLabels:   rule.ExternalLabels,
+		Generation:       rule.Generation,
+		StacktraceFilter: rule.StacktraceFilter,
 	}
 
 	// Try find the profile type from the matchers.
