@@ -2,7 +2,6 @@ package writepath
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"net/http"
 	"sync"
@@ -10,18 +9,14 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
-	"github.com/google/uuid"
 	"github.com/grafana/dskit/services"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/sync/errgroup"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
@@ -61,7 +56,7 @@ type Router struct {
 	metrics   *metrics
 
 	ingester  IngesterClient
-	segwriter SegmentWriterClient
+	segwriter IngesterClient
 }
 
 func NewRouter(
@@ -69,7 +64,7 @@ func NewRouter(
 	registerer prometheus.Registerer,
 	overrides Overrides,
 	ingester IngesterClient,
-	segwriter SegmentWriterClient,
+	segwriter IngesterClient,
 ) *Router {
 	r := &Router{
 		logger:    logger,
@@ -101,7 +96,7 @@ func (m *Router) Send(ctx context.Context, req *distributormodel.PushRequest) er
 	config := m.overrides.WritePathOverrides(req.TenantID)
 	switch config.WritePath {
 	case SegmentWriterPath:
-		return m.send(m.segwriterRoute(true, &config))(ctx, req)
+		return m.send(m.segwriterRoute(true))(ctx, req)
 	case CombinedPath:
 		return m.sendToBoth(ctx, req, &config)
 	default:
@@ -113,20 +108,15 @@ func (m *Router) ingesterRoute() *route {
 	return &route{
 		path:    IngesterPath,
 		primary: true, // Ingester is always the primary route.
-		send: func(ctx context.Context, request *distributormodel.PushRequest) error {
-			_, err := m.ingester.Push(ctx, request)
-			return err
-		},
+		client:  m.ingester,
 	}
 }
 
-func (m *Router) segwriterRoute(primary bool, config *Config) *route {
+func (m *Router) segwriterRoute(primary bool) *route {
 	return &route{
 		path:    SegmentWriterPath,
 		primary: primary,
-		send: func(ctx context.Context, req *distributormodel.PushRequest) error {
-			return m.sendRequestsToSegmentWriter(ctx, convertRequest(req, config.Compression))
-		},
+		client:  m.segwriter,
 	}
 }
 
@@ -149,7 +139,7 @@ func (m *Router) sendToBoth(ctx context.Context, req *distributormodel.PushReque
 		}
 	}
 	if shouldSegwriter {
-		segwriter = m.segwriterRoute(!shouldIngester, config)
+		segwriter = m.segwriterRoute(!shouldIngester)
 		if segwriter.primary && !config.AsyncIngest {
 			// The request is sent to segment-writer exclusively, and the client
 			// must block until the response returns.
@@ -167,21 +157,10 @@ func (m *Router) sendToBoth(ctx context.Context, req *distributormodel.PushReque
 	}
 
 	if segwriter != nil && ingester != nil {
-		// The request is to be sent to both asynchronously, therefore we're cloning it.
-		reqClone := req.Clone()
-		segwriterSend := segwriter.send
-		segwriter.send = func(context.Context, *distributormodel.PushRequest) error {
-			// We do not wait for the secondary request to complete.
-			// On shutdown, however, we will wait for all inflight
-			// requests to complete.
-			localCtx, cancel := context.WithTimeout(context.Background(), config.SegmentWriterTimeout)
-			localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
-			if sp := opentracing.SpanFromContext(ctx); sp != nil {
-				localCtx = opentracing.ContextWithSpan(localCtx, sp)
-			}
-			defer cancel()
-			return segwriterSend(localCtx, reqClone)
-		}
+		// The request is to be sent to both asynchronously, therefore we're
+		// cloning it. We do not wait for the secondary request to complete.
+		// On shutdown, however, we will wait for all inflight requests.
+		segwriter.client = m.sendClone(ctx, req.Clone(), segwriter.client, config)
 	}
 
 	if segwriter != nil {
@@ -204,8 +183,20 @@ type sendFunc func(context.Context, *distributormodel.PushRequest) error
 
 type route struct {
 	path    WritePath // IngesterPath | SegmentWriterPath
-	send    sendFunc
+	client  IngesterClient
 	primary bool
+}
+
+func (m *Router) sendClone(ctx context.Context, req *distributormodel.PushRequest, client IngesterClient, config *Config) IngesterFunc {
+	return func(context.Context, *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
+		localCtx, cancel := context.WithTimeout(context.Background(), config.SegmentWriterTimeout)
+		localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
+		if sp := opentracing.SpanFromContext(ctx); sp != nil {
+			localCtx = opentracing.ContextWithSpan(localCtx, sp)
+		}
+		defer cancel()
+		return client.Push(localCtx, req)
+	}
 }
 
 func (m *Router) sendAsync(ctx context.Context, req *distributormodel.PushRequest, r *route) <-chan error {
@@ -244,61 +235,7 @@ func (m *Router) send(r *route) sendFunc {
 				WithLabelValues(newDurationHistogramDims(r, code)...).
 				Observe(time.Since(start).Seconds())
 		}()
-		return r.send(ctx, req)
-	}
-}
-
-func (m *Router) sendRequestsToSegmentWriter(ctx context.Context, requests []*segmentwriterv1.PushRequest) error {
-	// In all the known cases, we only have a single profile.
-	// We should avoid batching multiple profiles into a single request:
-	// overhead of handling multiple profiles in a single request is
-	// substantial: we need to allocate memory for all profiles at once,
-	// and wait for multiple requests routed to different shards to complete
-	// is generally a bad idea because it's hard to reason about latencies,
-	// retries, and error handling.
-	if len(requests) == 1 {
-		_, err := m.segwriter.Push(ctx, requests[0])
+		_, err = r.client.Push(ctx, req)
 		return err
-	}
-	// Fallback. We should minimize probability of this branch.
-	g, ctx := errgroup.WithContext(ctx)
-	for _, r := range requests {
-		r := r
-		g.Go(func() error {
-			_, err := m.segwriter.Push(ctx, r)
-			return err
-		})
-	}
-	return g.Wait()
-}
-
-func convertRequest(req *distributormodel.PushRequest, compression Compression) []*segmentwriterv1.PushRequest {
-	r := make([]*segmentwriterv1.PushRequest, 0, len(req.Series)*2)
-	for _, s := range req.Series {
-		for _, p := range s.Samples {
-			r = append(r, convertProfile(p, s.Labels, req.TenantID, compression, s.Annotations))
-		}
-	}
-	return r
-}
-
-func convertProfile(
-	sample *distributormodel.ProfileSample,
-	labels []*typesv1.LabelPair,
-	tenantID string,
-	compression Compression,
-	annotations []*typesv1.ProfileAnnotation,
-) *segmentwriterv1.PushRequest {
-	buf, err := pprof.Marshal(sample.Profile.Profile, compression == CompressionGzip)
-	if err != nil {
-		panic(fmt.Sprintf("failed to marshal profile: %v", err))
-	}
-	profileID := uuid.New()
-	return &segmentwriterv1.PushRequest{
-		TenantId:    tenantID,
-		Labels:      labels,
-		Profile:     buf,
-		ProfileId:   profileID[:],
-		Annotations: annotations,
 	}
 }

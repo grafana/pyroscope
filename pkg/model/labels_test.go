@@ -375,3 +375,294 @@ func Test_ServiceVersionFromLabels(t *testing.T) {
 		})
 	}
 }
+
+func TestLabels_Subtract(t *testing.T) {
+	tests := []struct {
+		name     string
+		labels   Labels
+		input    Labels
+		expected Labels
+	}{
+		{
+			name:     "Empty sets",
+			labels:   Labels{},
+			input:    Labels{},
+			expected: Labels{},
+		},
+		{
+			name:   "Subtract from empty set",
+			labels: Labels{},
+			input: Labels{
+				{Name: "foo", Value: "bar"},
+				{Name: "service", Value: "api"},
+			},
+			expected: Labels{},
+		},
+		{
+			name: "Subtract empty set",
+			labels: Labels{
+				{Name: "foo", Value: "bar"},
+				{Name: "service", Value: "api"},
+			},
+			input: Labels{},
+			expected: Labels{
+				{Name: "foo", Value: "bar"},
+				{Name: "service", Value: "api"},
+			},
+		},
+		{
+			name: "No overlap",
+			labels: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "env", Value: "prod"},
+			},
+			input: Labels{
+				{Name: "service", Value: "api"},
+				{Name: "version", Value: "1.0"},
+			},
+			expected: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "env", Value: "prod"},
+			},
+		},
+		{
+			name: "Complete overlap",
+			labels: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "env", Value: "prod"},
+			},
+			input: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "env", Value: "prod"},
+			},
+			expected: Labels{},
+		},
+		{
+			name: "Partial overlap",
+			labels: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "env", Value: "prod"},
+				{Name: "version", Value: "2.0"},
+			},
+			input: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+			expected: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "version", Value: "2.0"},
+			},
+		},
+		{
+			name: "Same name different value",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "frontend"},
+			},
+			input: Labels{
+				{Name: "env", Value: "dev"},
+				{Name: "service", Value: "api"},
+			},
+			expected: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "frontend"},
+			},
+		},
+		{
+			name: "Single element sets",
+			labels: Labels{
+				{Name: "foo", Value: "bar"},
+			},
+			input: Labels{
+				{Name: "foo", Value: "bar"},
+			},
+			expected: Labels{},
+		},
+		{
+			name: "Larger set with multiple removals",
+			labels: Labels{
+				{Name: "a", Value: "1"},
+				{Name: "b", Value: "2"},
+				{Name: "c", Value: "3"},
+				{Name: "d", Value: "4"},
+				{Name: "e", Value: "5"},
+			},
+			input: Labels{
+				{Name: "b", Value: "2"},
+				{Name: "d", Value: "4"},
+				{Name: "f", Value: "6"},
+			},
+			expected: Labels{
+				{Name: "a", Value: "1"},
+				{Name: "c", Value: "3"},
+				{Name: "e", Value: "5"},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.expected, test.labels.Subtract(test.input))
+		})
+	}
+}
+
+func TestLabels_Intersect(t *testing.T) {
+	tests := []struct {
+		name     string
+		labels   Labels
+		input    Labels
+		expected Labels
+	}{
+		{
+			name:     "Empty sets",
+			labels:   Labels{},
+			input:    Labels{},
+			expected: Labels{},
+		},
+		{
+			name: "Intersect with empty set",
+			labels: Labels{
+				{Name: "foo", Value: "bar"},
+				{Name: "service", Value: "api"},
+			},
+			input:    Labels{},
+			expected: Labels{},
+		},
+		{
+			name:   "Intersect empty set",
+			labels: Labels{},
+			input: Labels{
+				{Name: "foo", Value: "bar"},
+				{Name: "service", Value: "api"},
+			},
+			expected: Labels{},
+		},
+		{
+			name: "No overlap",
+			labels: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "env", Value: "prod"},
+			},
+			input: Labels{
+				{Name: "service", Value: "api"},
+				{Name: "version", Value: "1.0"},
+			},
+			expected: Labels{},
+		},
+		{
+			name: "Complete overlap",
+			labels: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "env", Value: "prod"},
+			},
+			input: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "env", Value: "prod"},
+			},
+			expected: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "env", Value: "prod"},
+			},
+		},
+		{
+			name: "Partial overlap",
+			labels: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "env", Value: "prod"},
+				{Name: "version", Value: "2.0"},
+			},
+			input: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+			expected: Labels{
+				{Name: "env", Value: "prod"},
+			},
+		},
+		{
+			name: "Same name different value",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "frontend"},
+			},
+			input: Labels{
+				{Name: "env", Value: "dev"},
+				{Name: "service", Value: "api"},
+			},
+			expected: Labels{},
+		},
+		{
+			name: "Single element intersection",
+			labels: Labels{
+				{Name: "foo", Value: "bar"},
+			},
+			input: Labels{
+				{Name: "foo", Value: "bar"},
+			},
+			expected: Labels{
+				{Name: "foo", Value: "bar"},
+			},
+		},
+		{
+			name: "Multiple intersections",
+			labels: Labels{
+				{Name: "a", Value: "1"},
+				{Name: "b", Value: "2"},
+				{Name: "c", Value: "3"},
+				{Name: "d", Value: "4"},
+				{Name: "e", Value: "5"},
+			},
+			input: Labels{
+				{Name: "b", Value: "2"},
+				{Name: "c", Value: "3"},
+				{Name: "f", Value: "6"},
+				{Name: "g", Value: "7"},
+			},
+			expected: Labels{
+				{Name: "b", Value: "2"},
+				{Name: "c", Value: "3"},
+			},
+		},
+		{
+			name: "First set is subset of second",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "version", Value: "1.0"},
+			},
+			input: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+				{Name: "version", Value: "1.0"},
+			},
+			expected: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "version", Value: "1.0"},
+			},
+		},
+		{
+			name: "Second set is subset of first",
+			labels: Labels{
+				{Name: "app", Value: "frontend"},
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+				{Name: "version", Value: "1.0"},
+			},
+			input: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "version", Value: "1.0"},
+			},
+			expected: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "version", Value: "1.0"},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.expected, test.labels.Intersect(test.input))
+		})
+	}
+}

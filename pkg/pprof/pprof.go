@@ -14,8 +14,6 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/colega/zeropool"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/google/pprof/profile"
 	"github.com/klauspost/compress/gzip"
 	"github.com/pkg/errors"
@@ -1079,12 +1077,11 @@ var languageMatchers = map[string][]string{
 	"rust":   {"main.rs", "core.rs"},
 }
 
-func GetLanguage(profile *Profile, logger log.Logger) string {
+func GetLanguage(profile *Profile) string {
 	for _, symbol := range profile.StringTable {
 		for lang, matcherPatterns := range languageMatchers {
 			for _, pattern := range matcherPatterns {
 				if strings.HasPrefix(symbol, pattern) || strings.HasSuffix(symbol, pattern) {
-					level.Debug(logger).Log("msg", "found profile language", "lang", lang, "symbol", symbol)
 					return lang
 				}
 			}

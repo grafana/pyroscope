@@ -116,7 +116,10 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 			pctx := tenant.InjectTenantID(gctx, fmt.Sprintf("dummy-tenant-%d", i))
 			_, err = tc.pusher.Push(pctx, connect.NewRequest(&pushv1.PushRequest{
 				Series: []*pushv1.RawProfileSeries{{
-					Labels:  []*typesv1.LabelPair{{Name: "service_name", Value: fmt.Sprintf("dummy-service/%d", i)}},
+					Labels: []*typesv1.LabelPair{
+						{Name: "service_name", Value: fmt.Sprintf("dummy-service/%d", i)},
+						{Name: "__name__", Value: "process_cpu"},
+					},
 					Samples: []*pushv1.RawSample{{RawProfile: p}},
 				}},
 			}))

@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1487,7 +1486,7 @@ func Test_GetProfileLanguage_go_cpu_profile(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 
-	language := GetLanguage(p, log.NewNopLogger())
+	language := GetLanguage(p)
 	assert.Equal(t, "go", language)
 }
 
@@ -1495,7 +1494,7 @@ func Test_GetProfileLanguage_go_heap_profile(t *testing.T) {
 	p, err := OpenFile("testdata/heap")
 	require.NoError(t, err)
 
-	language := GetLanguage(p, log.NewNopLogger())
+	language := GetLanguage(p)
 	assert.Equal(t, "go", language)
 }
 
@@ -1503,7 +1502,7 @@ func Test_GetProfileLanguage_dotnet_profile(t *testing.T) {
 	p, err := OpenFile("testdata/dotnet.labels.pprof")
 	require.NoError(t, err)
 
-	language := GetLanguage(p, log.NewNopLogger())
+	language := GetLanguage(p)
 	assert.Equal(t, "dotnet", language)
 }
 
@@ -1511,7 +1510,7 @@ func Test_GetProfileLanguage_java_profile(t *testing.T) {
 	p, err := OpenFile("testdata/profile_java")
 	require.NoError(t, err)
 
-	language := GetLanguage(p, log.NewNopLogger())
+	language := GetLanguage(p)
 	assert.Equal(t, "java", language)
 }
 
@@ -1519,7 +1518,7 @@ func Test_GetProfileLanguage_python_profile(t *testing.T) {
 	p, err := OpenFile("testdata/profile_python")
 	require.NoError(t, err)
 
-	language := GetLanguage(p, log.NewNopLogger())
+	language := GetLanguage(p)
 	assert.Equal(t, "python", language)
 }
 
@@ -1527,7 +1526,7 @@ func Test_GetProfileLanguage_ruby_profile(t *testing.T) {
 	p, err := OpenFile("testdata/profile_ruby")
 	require.NoError(t, err)
 
-	language := GetLanguage(p, log.NewNopLogger())
+	language := GetLanguage(p)
 	assert.Equal(t, "ruby", language)
 }
 
@@ -1535,7 +1534,7 @@ func Test_GetProfileLanguage_nodejs_profile(t *testing.T) {
 	p, err := OpenFile("testdata/profile_nodejs")
 	require.NoError(t, err)
 
-	language := GetLanguage(p, log.NewNopLogger())
+	language := GetLanguage(p)
 	assert.Equal(t, "nodejs", language)
 }
 
@@ -1543,7 +1542,7 @@ func Test_GetProfileLanguage_rust_profile(t *testing.T) {
 	p, err := OpenFile("testdata/profile_rust")
 	require.NoError(t, err)
 
-	language := GetLanguage(p, log.NewNopLogger())
+	language := GetLanguage(p)
 	assert.Equal(t, "rust", language)
 }
 
@@ -1567,7 +1566,7 @@ func Benchmark_GetProfileLanguage(b *testing.B) {
 			b.ResetTimer()
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				language := GetLanguage(p, log.NewNopLogger())
+				language := GetLanguage(p)
 				if language == "unknown" {
 					b.Fatal()
 				}
