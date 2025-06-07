@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/build"
 )
 
-const segmentsParquetWriteBufferSize = 256 << 10
+const segmentsParquetWriteBufferSize = 32 << 10
 
 func WriteProfiles(metrics *HeadMetrics, profiles []v1.InMemoryProfile) ([]byte, error) {
 	buf := &bytes.Buffer{}

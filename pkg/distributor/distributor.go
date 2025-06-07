@@ -101,6 +101,7 @@ type Distributor struct {
 	aggregator             *aggregator.MultiTenantAggregator[*pprof.ProfileMerge]
 	asyncRequests          sync.WaitGroup
 	ingestionLimitsSampler *ingest_limits.Sampler
+	usageGroupEvaluator    *validation.UsageGroupEvaluator
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -191,6 +192,7 @@ func New(
 	}
 
 	d.ingestionLimitsSampler = ingest_limits.NewSampler(distributorsRing)
+	d.usageGroupEvaluator = validation.NewUsageGroupEvaluator(logger)
 
 	subservices = append(subservices, distributorsLifecycler, distributorsRing, d.aggregator, d.ingestionLimitsSampler)
 
@@ -325,7 +327,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	for _, series := range req.Series {
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
 
-		groups := usageGroups.GetUsageGroups(tenantID, series.Labels)
+		groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, series.Labels)
 		if err := d.checkUsageGroupsIngestLimit(tenantID, groups.Names(), req); err != nil {
 			return nil, err
 		}
@@ -490,7 +492,7 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushR
 func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
 	// Next we split profiles by labels and apply relabeling rules.
 	usageGroups := d.limits.DistributorUsageGroups(req.TenantID)
-	profileSeries, bytesRelabelDropped, profilesRelabelDropped := extractSampleSeries(req, req.TenantID, usageGroups, d.limits.IngestionRelabelingRules(req.TenantID))
+	profileSeries, bytesRelabelDropped, profilesRelabelDropped := d.extractSampleSeries(req, usageGroups)
 	validation.DiscardedBytes.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(bytesRelabelDropped)
 	validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(profilesRelabelDropped)
 
@@ -515,7 +517,7 @@ func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distribut
 			series.Labels = phlaremodel.Labels(series.Labels).InsertSorted(phlaremodel.LabelNameOrder, phlaremodel.LabelOrderEnforced)
 		}
 
-		groups := usageGroups.GetUsageGroups(req.TenantID, series.Labels)
+		groups := d.usageGroupEvaluator.GetMatch(req.TenantID, usageGroups, series.Labels)
 
 		if err = validation.ValidateLabels(d.limits, req.TenantID, series.Labels); err != nil {
 			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), req.TenantID).Add(float64(req.TotalProfiles))
@@ -883,16 +885,15 @@ func injectMappingVersions(series []*distributormodel.ProfileSeries) error {
 	return nil
 }
 
-func extractSampleSeries(
+func (d *Distributor) extractSampleSeries(
 	req *distributormodel.PushRequest,
-	tenantID string,
 	usage *validation.UsageGroupConfig,
-	rules []*relabel.Config,
 ) (
 	result []*distributormodel.ProfileSeries,
 	bytesRelabelDropped float64,
 	profilesRelabelDropped float64,
 ) {
+	rules := d.limits.IngestionRelabelingRules(req.TenantID)
 	for _, series := range req.Series {
 		for _, p := range series.Samples {
 			v := &sampleSeriesVisitor{profile: p.Profile}
@@ -908,7 +909,7 @@ func extractSampleSeries(
 			result = append(result, v.series...)
 			bytesRelabelDropped += float64(v.discardedBytes)
 			profilesRelabelDropped += float64(v.discardedProfiles)
-			usage.GetUsageGroups(tenantID, series.Labels).
+			d.usageGroupEvaluator.GetMatch(req.TenantID, usage, series.Labels).
 				CountDiscardedBytes(string(validation.DroppedByRelabelRules), int64(v.discardedBytes))
 		}
 	}

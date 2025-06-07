@@ -64,7 +64,7 @@ pyroscope:
           cpu: 20m
       initContainers:
         - name: create-bucket
-          image: minio/mc
+          image: minio/mc:RELEASE.2025-04-08T15-39-49Z
           command:
             - /bin/sh
             - -c

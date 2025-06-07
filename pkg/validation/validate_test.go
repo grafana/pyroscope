@@ -224,6 +224,14 @@ func Test_ValidateRangeRequest(t *testing.T) {
 			},
 			expectedErr: NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg),
 		},
+		{
+			name: "start after end",
+			in: model.Interval{
+				Start: 1000,
+				End:   500,
+			},
+			expectedErr: NewErrorf(QueryInvalidTimeRange, QueryStartAfterEndErrorMsg),
+		},
 	} {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {

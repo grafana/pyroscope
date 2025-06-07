@@ -13,23 +13,22 @@ import (
 	"gopkg.in/yaml.v3"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 	tests := []struct {
 		Name     string
 		TenantID string
-		Config   UsageGroupConfig
+		Config   map[string]string
 		Labels   phlaremodel.Labels
 		Want     UsageGroupMatch
 	}{
 		{
 			Name:     "single_usage_group_match",
 			TenantID: "tenant1",
-			Config: UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/foo": testMustParseMatcher(t, `{service_name="foo"}`),
-				},
+			Config: map[string]string{
+				"app/foo": `{service_name="foo"}`,
 			},
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
@@ -42,11 +41,9 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 		{
 			Name:     "multiple_usage_group_matches",
 			TenantID: "tenant1",
-			Config: UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/foo":  testMustParseMatcher(t, `{service_name="foo"}`),
-					"app/foo2": testMustParseMatcher(t, `{service_name="foo", namespace=~"bar.*"}`),
-				},
+			Config: map[string]string{
+				"app/foo":  `{service_name="foo"}`,
+				"app/foo2": `{service_name="foo", namespace=~"bar.*"}`,
 			},
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
@@ -63,25 +60,22 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 		{
 			Name:     "no_usage_group_matches",
 			TenantID: "tenant1",
-			Config: UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/foo": testMustParseMatcher(t, `{service_name="notfound"}`),
-				},
+			Config: map[string]string{
+				"app/foo": `{service_name="notfound"}`,
 			},
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
 			},
 			Want: UsageGroupMatch{
 				tenantID: "tenant1",
+				names:    []string{},
 			},
 		},
 		{
 			Name:     "wildcard_matcher",
 			TenantID: "tenant1",
-			Config: UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/foo": testMustParseMatcher(t, `{}`),
-				},
+			Config: map[string]string{
+				"app/foo": `{}`,
 			},
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
@@ -94,36 +88,82 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 		{
 			Name:     "no_labels",
 			TenantID: "tenant1",
-			Config: UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/foo": testMustParseMatcher(t, `{service_name="foo"}`),
-				},
+			Config: map[string]string{
+				"app/foo": `{service_name="foo"}`,
 			},
 			Labels: phlaremodel.Labels{},
 			Want: UsageGroupMatch{
 				tenantID: "tenant1",
+				names:    []string{},
 			},
 		},
 		{
 			Name:     "disjoint_labels_do_not_match",
 			TenantID: "tenant1",
-			Config: UsageGroupConfig{
-				config: map[string][]*labels.Matcher{
-					"app/foo": testMustParseMatcher(t, `{namespace="foo", container="bar"}`),
-				},
+			Config: map[string]string{
+				"app/foo": `{namespace="foo", container="bar"}`,
 			},
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
 			},
 			Want: UsageGroupMatch{
 				tenantID: "tenant1",
+				names:    []string{},
+			},
+		},
+		{
+			Name:     "dynamic_usage_group_names",
+			TenantID: "tenant1",
+			Config: map[string]string{
+				"app/${labels.service_name}": `{service_name=~"(.*)"}`,
+			},
+			Labels: phlaremodel.Labels{
+				{Name: "service_name", Value: "foo"},
+			},
+			Want: UsageGroupMatch{
+				tenantID: "tenant1",
+				names: []string{
+					"app/foo",
+				},
+			},
+		},
+		{
+			Name:     "dynamic_usage_group_names_missing_label",
+			TenantID: "tenant1",
+			Config: map[string]string{
+				"app/${labels.service_name}/${labels.env}": `{service_name=~"(.*)"}`,
+			},
+			Labels: phlaremodel.Labels{
+				{Name: "service_name", Value: "foo"},
+			},
+			Want: UsageGroupMatch{
+				tenantID: "tenant1",
+				names:    []string{},
+			},
+		},
+		{
+			Name:     "dynamic_usage_group_names_empty_label",
+			TenantID: "tenant1",
+			Config: map[string]string{
+				"app/${labels.service_name}": `{service_name=~"(.*)"}`,
+			},
+			Labels: phlaremodel.Labels{
+				{Name: "service_name", Value: ""},
+			},
+			Want: UsageGroupMatch{
+				tenantID: "tenant1",
+				names:    []string{},
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			got := tt.Config.GetUsageGroups(tt.TenantID, tt.Labels)
+			config, err := NewUsageGroupConfig(tt.Config)
+			require.NoError(t, err)
+
+			evaluator := NewUsageGroupEvaluator(util.Logger)
+			got := evaluator.GetMatch(tt.TenantID, config, tt.Labels)
 
 			slices.Sort(got.names)
 			slices.Sort(tt.Want.names)
@@ -290,7 +330,7 @@ func TestNewUsageGroupConfig(t *testing.T) {
 	tests := []struct {
 		Name      string
 		ConfigMap map[string]string
-		Want      UsageGroupConfig
+		Want      *UsageGroupConfig
 		WantErr   string
 	}{
 		{
@@ -298,7 +338,7 @@ func TestNewUsageGroupConfig(t *testing.T) {
 			ConfigMap: map[string]string{
 				"app/foo": `{service_name="foo"}`,
 			},
-			Want: UsageGroupConfig{
+			Want: &UsageGroupConfig{
 				config: map[string][]*labels.Matcher{
 					"app/foo": testMustParseMatcher(t, `{service_name="foo"}`),
 				},
@@ -310,7 +350,7 @@ func TestNewUsageGroupConfig(t *testing.T) {
 				"app/foo":  `{service_name="foo"}`,
 				"app/foo2": `{service_name="foo", namespace=~"bar.*"}`,
 			},
-			Want: UsageGroupConfig{
+			Want: &UsageGroupConfig{
 				config: map[string][]*labels.Matcher{
 					"app/foo":  testMustParseMatcher(t, `{service_name="foo"}`),
 					"app/foo2": testMustParseMatcher(t, `{service_name="foo", namespace=~"bar.*"}`),
@@ -320,7 +360,7 @@ func TestNewUsageGroupConfig(t *testing.T) {
 		{
 			Name:      "no_usage_groups",
 			ConfigMap: map[string]string{},
-			Want: UsageGroupConfig{
+			Want: &UsageGroupConfig{
 				config: map[string][]*labels.Matcher{},
 			},
 		},
@@ -329,7 +369,7 @@ func TestNewUsageGroupConfig(t *testing.T) {
 			ConfigMap: map[string]string{
 				"app/foo": `{}`,
 			},
-			Want: UsageGroupConfig{
+			Want: &UsageGroupConfig{
 				config: map[string][]*labels.Matcher{
 					"app/foo": testMustParseMatcher(t, `{}`),
 				},
@@ -372,7 +412,7 @@ func TestNewUsageGroupConfig(t *testing.T) {
 			ConfigMap: map[string]string{
 				"   app/foo   ": `{service_name="foo"}`,
 			},
-			Want: UsageGroupConfig{
+			Want: &UsageGroupConfig{
 				config: map[string][]*labels.Matcher{
 					"app/foo": testMustParseMatcher(t, `{service_name="foo"}`),
 				},
@@ -415,7 +455,7 @@ func TestUsageGroupConfig_UnmarshalYAML(t *testing.T) {
 	tests := []struct {
 		Name    string
 		YAML    string
-		Want    UsageGroupConfig
+		Want    *UsageGroupConfig
 		WantErr string
 	}{
 		{
@@ -423,7 +463,7 @@ func TestUsageGroupConfig_UnmarshalYAML(t *testing.T) {
 			YAML: `
 usage_groups:
   app/foo: '{service_name="foo"}'`,
-			Want: UsageGroupConfig{
+			Want: &UsageGroupConfig{
 				config: map[string][]*labels.Matcher{
 					"app/foo": testMustParseMatcher(t, `{service_name="foo"}`),
 				},
@@ -435,7 +475,7 @@ usage_groups:
 usage_groups:
   app/foo: '{service_name="foo"}'
   app/foo2: '{service_name="foo", namespace=~"bar.*"}'`,
-			Want: UsageGroupConfig{
+			Want: &UsageGroupConfig{
 				config: map[string][]*labels.Matcher{
 					"app/foo":  testMustParseMatcher(t, `{service_name="foo"}`),
 					"app/foo2": testMustParseMatcher(t, `{service_name="foo", namespace=~"bar.*"}`),
@@ -446,7 +486,7 @@ usage_groups:
 			Name: "empty_usage_groups",
 			YAML: `
 usage_groups: {}`,
-			Want: UsageGroupConfig{
+			Want: &UsageGroupConfig{
 				config: map[string][]*labels.Matcher{},
 			},
 		},
@@ -467,7 +507,7 @@ usage_groups:
 			YAML: `
 some_other_config:
   foo: bar`,
-			Want: UsageGroupConfig{},
+			Want: &UsageGroupConfig{},
 		},
 	}
 
@@ -493,7 +533,7 @@ func TestUsageGroupConfig_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		Name    string
 		JSON    string
-		Want    UsageGroupConfig
+		Want    *UsageGroupConfig
 		WantErr string
 	}{
 		{
@@ -503,7 +543,7 @@ func TestUsageGroupConfig_UnmarshalJSON(t *testing.T) {
 					"app/foo": "{service_name=\"foo\"}"
 				}
 			}`,
-			Want: UsageGroupConfig{
+			Want: &UsageGroupConfig{
 				config: map[string][]*labels.Matcher{
 					"app/foo": testMustParseMatcher(t, `{service_name="foo"}`),
 				},
@@ -517,7 +557,7 @@ func TestUsageGroupConfig_UnmarshalJSON(t *testing.T) {
 					"app/foo2": "{service_name=\"foo\", namespace=~\"bar.*\"}"
 				}
 			}`,
-			Want: UsageGroupConfig{
+			Want: &UsageGroupConfig{
 				config: map[string][]*labels.Matcher{
 					"app/foo":  testMustParseMatcher(t, `{service_name="foo"}`),
 					"app/foo2": testMustParseMatcher(t, `{service_name="foo", namespace=~"bar.*"}`),
@@ -527,7 +567,7 @@ func TestUsageGroupConfig_UnmarshalJSON(t *testing.T) {
 		{
 			Name: "empty_usage_groups",
 			JSON: `{"usage_groups": {}}`,
-			Want: UsageGroupConfig{
+			Want: &UsageGroupConfig{
 				config: map[string][]*labels.Matcher{},
 			},
 		},
@@ -544,7 +584,7 @@ func TestUsageGroupConfig_UnmarshalJSON(t *testing.T) {
 		{
 			Name: "missing_usage_groups_key_in_config",
 			JSON: `{"some_other_key": {"foo": "bar"}}`,
-			Want: UsageGroupConfig{},
+			Want: &UsageGroupConfig{},
 		},
 	}
 

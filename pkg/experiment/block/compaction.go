@@ -374,7 +374,13 @@ func (m *datasetCompaction) registerSampleObserver(observer SampleObserver) {
 }
 
 func (m *datasetCompaction) open(ctx context.Context, w io.Writer) (err error) {
-	m.profilesWriter = newProfileWriter(w)
+	var estimatedProfileTableSize int64
+	for _, ds := range m.datasets {
+		estimatedProfileTableSize += ds.sectionSize(SectionProfiles)
+	}
+	pageBufferSize := estimatePageBufferSize(estimatedProfileTableSize)
+	m.profilesWriter = newProfileWriter(pageBufferSize, w)
+
 	m.indexRewriter = newIndexRewriter()
 	m.symbolsRewriter = newSymbolsRewriter()
 

@@ -89,6 +89,12 @@ func (p *plan) nextJob() *jobPlan {
 
 		var force bool
 		for {
+			// Peek the next block in the compaction queue with the same
+			// compaction key as the current batch. If there are no blocks
+			// in the current batch, or we have already visited all of them
+			// previously, the iterator will proceed to the next batch with
+			// this compaction key. The call to peek() will return false, if
+			// only no blocks eligible for compaction are left in the queue.
 			block, found := p.blocks.peek()
 			if !found {
 				// No more blocks with this compaction key at the level.
@@ -96,6 +102,8 @@ func (p *plan) nextJob() *jobPlan {
 				// is incomplete: e.g., if the blocks remain in the queue for
 				// too long. Note that we do not check the block timestamps:
 				// we only care when the first (oldest) batch was created.
+				// We do want to check the _oldest_, not the _current_ batch
+				// here, because it could be relatively young.
 				force = p.compactor.config.exceedsMaxAge(b, p.now)
 				break
 			}
@@ -106,6 +114,9 @@ func (p *plan) nextJob() *jobPlan {
 				force = true
 				break
 			}
+			// If the block was added to the job, we advance the block iterator
+			// to the next block within the batch, remembering the current block
+			// as a visited one.
 			p.blocks.advance()
 			if job.isComplete() {
 				break
@@ -117,10 +128,24 @@ func (p *plan) nextJob() *jobPlan {
 			// but if the batch is not empty (i.e., we could not put all
 			// the blocks into the job), we must finish it first.
 			if p.blocks.more() {
-				// We need to reset the batch iterator to continue from the
-				// oldest batch that still has blocks to process. This ensures
-				// we don't skip blocks or process them out of order.
+				// There are more blocks in the current batch: p.blocks.peek()
+				// reported a block is found, but we could not add it to the job.
+				//
+				// We need to reset the batch iterator to continue from the oldest
+				// batch that still has blocks to process: basically, we want
+				// p.batches.next() to return b.
+				//
+				// This ensures we don't skip blocks or process them out of order.
 				// Block iterator ensures that each block is only accessed once.
+				//
+				// If the queue that b points to has any unvisited blocks,
+				// p.blocks.peek() will return them. Otherwise, we continue
+				// iterating over the in-order queue of batches (different
+				// compaction queues have distinct compaction keys).
+				//
+				// We assume that we can re-iterate over the batch blocks next time,
+				// skipping the ones that have already been visited (it's done by
+				// iterator internally).
 				p.batches.reset(b)
 			}
 			p.getTombstones(job)
