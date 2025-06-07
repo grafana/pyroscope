@@ -7,6 +7,7 @@ package gziphandler
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -19,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/test/bufconn"
 )
 
 const (
@@ -272,12 +274,8 @@ func TestGzipHandlerContentLength(t *testing.T) {
 	}
 
 	// httptest.NewRecorder doesn't give you access to the Content-Length
-	// header so instead, we create a server on a random port and make
-	// a request to that instead
-	ln, err := net.Listen("tcp", "127.0.0.1:")
-	if err != nil {
-		t.Fatalf("failed creating listen socket: %v", err)
-	}
+	// header so instead, we create an in-memory network connection to a server.
+	ln := bufconn.Listen(256 << 10)
 	defer ln.Close()
 	srv := &http.Server{
 		Handler: nil,
@@ -300,7 +298,13 @@ func TestGzipHandlerContentLength(t *testing.T) {
 			Close:  true,
 		}
 		req.Header.Set("Accept-Encoding", "gzip")
-		res, err := http.DefaultClient.Do(req)
+
+		client := http.Client{
+			Transport: &http.Transport{
+				DialContext: func(context.Context, string, string) (net.Conn, error) { return ln.Dial() },
+			},
+		}
+		res, err := client.Do(req)
 		if err != nil {
 			t.Fatalf("Unexpected error making http request in test iteration %d: %v", num, err)
 		}
