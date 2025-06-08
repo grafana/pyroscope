@@ -2,12 +2,9 @@ package integration
 
 import (
 	"fmt"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 	"os"
 	"testing"
 	"time"
-
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
@@ -16,8 +13,10 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
 const repoRoot = "../../../"
@@ -380,6 +379,7 @@ func TestIngestPPROFSanitizeOtelLabels(t *testing.T) {
 		assert.JSONEq(t, expected, actual)
 	})
 }
+
 func TestGodeltaprofRelabelPush(t *testing.T) {
 	const blockSize = 1024
 	const metric = "godeltaprof_memory"
