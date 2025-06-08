@@ -382,6 +382,15 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		}
 	}
 
+	removeEmptySeries(req)
+	if len(req.Series) == 0 {
+		// TODO(kolesnikovae):
+		//   Normalization may cause all profiles and series to be empty.
+		//   We should report it as an error and account for discarded data.
+		//   The check should be done after ValidateProfile and normalization.
+		return connect.NewResponse(&pushv1.PushResponse{}), nil
+	}
+
 	if err := injectMappingVersions(req.Series); err != nil {
 		_ = level.Warn(d.logger).Log("msg", "failed to inject mapping versions", "err", err)
 	}
@@ -400,9 +409,16 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
 	}
 
+	// Write path router directs the request to the ingester or segment
+	// writer, or both, depending on the configuration.
+	// The router uses sendRequestsToSegmentWriter and sendRequestsToIngester
+	// functions to send the request to the appropriate service; these are
+	// called independently, and may be called concurrently: the request is
+	// cloned in this case – the callee may modify the request safely.
 	if err = d.router.Send(ctx, req); err != nil {
 		return nil, err
 	}
+
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
 
@@ -494,6 +510,7 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushR
 	return true, nil
 }
 
+// visitSampleSeriesForIngester creates a profile per unique label set in pprof labels.
 func visitSampleSeriesForIngester(profile *profilev1.Profile, labels []*typesv1.LabelPair, rules []*relabel.Config, visitor *sampleSeriesVisitor) error {
 	return pprofsplit.VisitSampleSeries(profile, labels, rules, visitor)
 }
@@ -507,15 +524,12 @@ func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distribut
 	}
 
 	enforceLabelOrder := d.limits.EnforceLabelsOrder(req.TenantID)
-	for _, s := range req.Series {
+	keys := make([]uint32, len(req.Series))
+	for i, s := range req.Series {
 		if enforceLabelOrder {
 			s.Labels = phlaremodel.Labels(s.Labels).InsertSorted(phlaremodel.LabelNameOrder, phlaremodel.LabelOrderEnforced)
 		}
-	}
-
-	keys := make([]uint32, len(req.Series))
-	for i, series := range req.Series {
-		keys[i] = TokenFor(req.TenantID, phlaremodel.LabelPairsString(series.Labels))
+		keys[i] = TokenFor(req.TenantID, phlaremodel.LabelPairsString(s.Labels))
 	}
 
 	profiles := make([]*profileTracker, 0, len(req.Series))
@@ -580,18 +594,32 @@ func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distribut
 	}
 }
 
+// visitSampleSeriesForSegmentWriter creates a profile per service.
+// Labels that are shared by all pprof samples are used as series labels.
+// Unique sample labels (not present in series labels) are preserved:
+// pprof split takes place in segment-writers.
 func visitSampleSeriesForSegmentWriter(profile *profilev1.Profile, labels []*typesv1.LabelPair, rules []*relabel.Config, visitor *sampleSeriesVisitor) error {
 	return pprofsplit.VisitSampleSeriesBy(profile, labels, rules, visitor, phlaremodel.LabelNameServiceName)
 }
 
-func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
-	if err = d.visitSampleSeries(req, visitSampleSeriesForSegmentWriter); err != nil {
+func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
+	// NOTE(kolesnikovae): if we return early, e.g., due to a validation error,
+	//   or if there are no series, the write path router has already seen the
+	//   request, and could have already accounted for the size, latency, etc.
+	if err := d.visitSampleSeries(req, visitSampleSeriesForSegmentWriter); err != nil {
 		return nil, err
 	}
 	if len(req.Series) == 0 {
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
 	}
 
+	// TODO(kolesnikovae): Add profiles per request histogram.
+	// In most cases, we only have a single profile. We should avoid
+	// batching multiple profiles into a single request: overhead of handling
+	// multiple profiles in a single request is substantial: we need to
+	// allocate memory for all profiles at once, and wait for multiple requests
+	// routed to different shards to complete is generally a bad idea because
+	// it's hard to reason about latencies, retries, and error handling.
 	config := d.limits.WritePathOverrides(req.TenantID)
 	requests := make([]*segmentwriterv1.PushRequest, 0, len(req.Series)*2)
 	for _, s := range req.Series {
@@ -600,6 +628,9 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 			if err != nil {
 				panic(fmt.Sprintf("failed to marshal profile: %v", err))
 			}
+			// Ideally, the ID should identify the whole request, and be
+			// deterministic (e.g, based on the request hash). In practice,
+			// the API allows batches, which makes it difficult to handle.
 			profileID := uuid.New()
 			requests = append(requests, &segmentwriterv1.PushRequest{
 				TenantId:    req.TenantID,
@@ -611,14 +642,8 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 		}
 	}
 
-	// In most cases, we only have a single profile. We should avoid
-	// batching multiple profiles into a single request: overhead of handling
-	// multiple profiles in a single request is substantial: we need to
-	// allocate memory for all profiles at once, and wait for multiple requests
-	// routed to different shards to complete is generally a bad idea because
-	// it's hard to reason about latencies, retries, and error handling.
 	if len(requests) == 1 {
-		if _, err = d.segmentWriter.Push(ctx, requests[0]); err != nil {
+		if _, err := d.segmentWriter.Push(ctx, requests[0]); err != nil {
 			return nil, err
 		}
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
@@ -633,7 +658,7 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 			return pushErr
 		})
 	}
-	if err = g.Wait(); err != nil {
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
@@ -971,17 +996,20 @@ func (d *Distributor) visitSampleSeries(req *distributormodel.PushRequest, visit
 
 	validation.DiscardedBytes.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(float64(req.DiscardedBytesRelabeling))
 	validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(float64(req.DiscardedProfilesRelabeling))
-	for _, s := range result {
+	req.Series = result
+	removeEmptySeries(req)
+	return nil
+}
+
+func removeEmptySeries(req *distributormodel.PushRequest) {
+	for _, s := range req.Series {
 		s.Samples = slices.RemoveInPlace(s.Samples, func(sample *distributormodel.ProfileSample, _ int) bool {
 			return len(sample.Profile.Sample) == 0
 		})
 	}
-	result = slices.RemoveInPlace(result, func(series *distributormodel.ProfileSeries, i int) bool {
+	req.Series = slices.RemoveInPlace(req.Series, func(series *distributormodel.ProfileSeries, i int) bool {
 		return len(series.Samples) == 0
 	})
-
-	req.Series = result
-	return nil
 }
 
 type sampleSeriesVisitor struct {
