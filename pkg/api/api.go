@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/pyroscope/public"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/capabilities/v1/capabilitiesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
@@ -231,6 +232,10 @@ func (a *API) RegisterQuerierServiceHandler(svc querierv1connect.QuerierServiceH
 
 func (a *API) RegisterVCSServiceHandler(svc vcsv1connect.VCSServiceHandler) {
 	vcsv1connect.RegisterVCSServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
+}
+
+func (a *API) RegisterFeatureFlagsServiceHandler(svc capabilitiesv1connect.FeatureFlagsServiceHandler) {
+	capabilitiesv1connect.RegisterFeatureFlagsServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
 }
 
 func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient) {
