@@ -89,13 +89,13 @@ func NewUsageGroupEvaluator(logger log.Logger) *UsageGroupEvaluator {
 func (e *UsageGroupEvaluator) GetMatch(tenantID string, c *UsageGroupConfig, lbls phlaremodel.Labels) UsageGroupMatch {
 	match := UsageGroupMatch{
 		tenantID: tenantID,
-		names:    make([]string, 0, len(c.parsedEntries)),
+		names:    make([]UsageGroupMatchName, 0, len(c.parsedEntries)),
 	}
 
 	for _, entry := range c.parsedEntries {
 		if c.matchesAll(entry.matchers, lbls) {
 			if entry.template != nil {
-				dynamicName, err := c.expandTemplate(entry.template, lbls)
+				resolvedName, err := c.expandTemplate(entry.template, lbls)
 				if err != nil {
 					level.Warn(e.logger).Log(
 						"msg", "failed to expand usage group template, skipping usage group",
@@ -103,15 +103,21 @@ func (e *UsageGroupEvaluator) GetMatch(tenantID string, c *UsageGroupConfig, lbl
 						"usage_group", entry.name)
 					continue
 				}
-				if dynamicName == "" {
+				if resolvedName == "" {
 					level.Warn(e.logger).Log(
 						"msg", "usage group template expanded to empty string, skipping usage group",
 						"usage_group", entry.name)
 					continue
 				}
-				match.names = append(match.names, dynamicName)
+				match.names = append(match.names, UsageGroupMatchName{
+					ConfiguredName: entry.name,
+					ResolvedName:   resolvedName,
+				})
 			} else {
-				match.names = append(match.names, entry.name)
+				match.names = append(match.names, UsageGroupMatchName{
+					ConfiguredName: entry.name,
+					ResolvedName:   entry.name,
+				})
 			}
 		}
 	}
@@ -155,7 +161,12 @@ func (c *UsageGroupConfig) UnmarshalJSON(bytes []byte) error {
 
 type UsageGroupMatch struct {
 	tenantID string
-	names    []string
+	names    []UsageGroupMatchName
+}
+
+type UsageGroupMatchName struct {
+	ConfiguredName string
+	ResolvedName   string
 }
 
 func (m UsageGroupMatch) CountReceivedBytes(profileType string, n int64) {
@@ -165,7 +176,7 @@ func (m UsageGroupMatch) CountReceivedBytes(profileType string, n int64) {
 	}
 
 	for _, name := range m.names {
-		usageGroupReceivedDecompressedBytes.WithLabelValues(profileType, m.tenantID, name).Add(float64(n))
+		usageGroupReceivedDecompressedBytes.WithLabelValues(profileType, m.tenantID, name.ResolvedName).Add(float64(n))
 	}
 }
 
@@ -176,11 +187,11 @@ func (m UsageGroupMatch) CountDiscardedBytes(reason string, n int64) {
 	}
 
 	for _, name := range m.names {
-		usageGroupDiscardedBytes.WithLabelValues(reason, m.tenantID, name).Add(float64(n))
+		usageGroupDiscardedBytes.WithLabelValues(reason, m.tenantID, name.ResolvedName).Add(float64(n))
 	}
 }
 
-func (m UsageGroupMatch) Names() []string {
+func (m UsageGroupMatch) Names() []UsageGroupMatchName {
 	return m.names
 }
 

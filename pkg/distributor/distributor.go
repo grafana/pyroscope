@@ -334,7 +334,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
 
 		groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, series.Labels)
-		if err := d.checkUsageGroupsIngestLimit(groups.Names(), req); err != nil {
+		if err := d.checkUsageGroupsIngestLimit(req, groups.Names()); err != nil {
 			level.Debug(d.logger).Log("msg", "rejecting push request due to usage group ingest limit", "tenant", tenantID)
 			validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
@@ -797,19 +797,22 @@ func (d *Distributor) checkIngestLimit(req *distributormodel.PushRequest) error 
 	return nil
 }
 
-func (d *Distributor) checkUsageGroupsIngestLimit(groupsInRequest []string, req *distributormodel.PushRequest) error {
+func (d *Distributor) checkUsageGroupsIngestLimit(req *distributormodel.PushRequest, groupsInRequest []validation.UsageGroupMatchName) error {
 	l := d.limits.IngestionLimit(req.TenantID)
 	if l == nil || len(l.UsageGroups) == 0 {
 		return nil
 	}
 
 	for _, group := range groupsInRequest {
-		limit, ok := l.UsageGroups[group]
+		limit, ok := l.UsageGroups[group.ResolvedName]
+		if !ok {
+			limit, ok = l.UsageGroups[group.ConfiguredName]
+		}
 		if !ok || !limit.LimitReached {
 			continue
 		}
 		if d.ingestionLimitsSampler.AllowRequest(req.TenantID, l.Sampling) {
-			if err := req.MarkThrottledUsageGroup(l, group); err != nil {
+			if err := req.MarkThrottledUsageGroup(l, group.ResolvedName); err != nil {
 				return err
 			}
 			return nil
@@ -822,7 +825,7 @@ func (d *Distributor) checkUsageGroupsIngestLimit(groupsInRequest []string, req 
 	return nil
 }
 
-func (d *Distributor) shouldSample(tenantID string, groupsInRequest []string) bool {
+func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) bool {
 	l := d.limits.SamplingProbability(tenantID)
 	if l == nil {
 		return true
@@ -832,7 +835,14 @@ func (d *Distributor) shouldSample(tenantID string, groupsInRequest []string) bo
 	minProb := 1.0
 	matched := false
 	for _, group := range groupsInRequest {
-		if probCfg, ok := l.UsageGroups[group]; ok {
+		if probCfg, ok := l.UsageGroups[group.ResolvedName]; ok {
+			matched = true
+			if probCfg.Probability < minProb {
+				minProb = probCfg.Probability
+			}
+			continue
+		}
+		if probCfg, ok := l.UsageGroups[group.ConfiguredName]; ok {
 			matched = true
 			if probCfg.Probability < minProb {
 				minProb = probCfg.Probability

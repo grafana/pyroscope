@@ -18,11 +18,11 @@ import (
 
 func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 	tests := []struct {
-		Name     string
-		TenantID string
-		Config   map[string]string
-		Labels   phlaremodel.Labels
-		Want     UsageGroupMatch
+		Name        string
+		TenantID    string
+		Config      map[string]string
+		Labels      phlaremodel.Labels
+		WantedNames []string
 	}{
 		{
 			Name:     "single_usage_group_match",
@@ -33,10 +33,7 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
 			},
-			Want: UsageGroupMatch{
-				tenantID: "tenant1",
-				names:    []string{"app/foo"},
-			},
+			WantedNames: []string{"app/foo"},
 		},
 		{
 			Name:     "multiple_usage_group_matches",
@@ -49,12 +46,9 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 				{Name: "service_name", Value: "foo"},
 				{Name: "namespace", Value: "barbaz"},
 			},
-			Want: UsageGroupMatch{
-				tenantID: "tenant1",
-				names: []string{
-					"app/foo",
-					"app/foo2",
-				},
+			WantedNames: []string{
+				"app/foo",
+				"app/foo2",
 			},
 		},
 		{
@@ -66,10 +60,7 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
 			},
-			Want: UsageGroupMatch{
-				tenantID: "tenant1",
-				names:    []string{},
-			},
+			WantedNames: []string{},
 		},
 		{
 			Name:     "wildcard_matcher",
@@ -80,10 +71,7 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
 			},
-			Want: UsageGroupMatch{
-				tenantID: "tenant1",
-				names:    []string{"app/foo"},
-			},
+			WantedNames: []string{"app/foo"},
 		},
 		{
 			Name:     "no_labels",
@@ -91,11 +79,8 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			Config: map[string]string{
 				"app/foo": `{service_name="foo"}`,
 			},
-			Labels: phlaremodel.Labels{},
-			Want: UsageGroupMatch{
-				tenantID: "tenant1",
-				names:    []string{},
-			},
+			Labels:      phlaremodel.Labels{},
+			WantedNames: []string{},
 		},
 		{
 			Name:     "disjoint_labels_do_not_match",
@@ -106,10 +91,7 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
 			},
-			Want: UsageGroupMatch{
-				tenantID: "tenant1",
-				names:    []string{},
-			},
+			WantedNames: []string{},
 		},
 		{
 			Name:     "dynamic_usage_group_names",
@@ -120,11 +102,8 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
 			},
-			Want: UsageGroupMatch{
-				tenantID: "tenant1",
-				names: []string{
-					"app/foo",
-				},
+			WantedNames: []string{
+				"app/foo",
 			},
 		},
 		{
@@ -136,10 +115,7 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: "foo"},
 			},
-			Want: UsageGroupMatch{
-				tenantID: "tenant1",
-				names:    []string{},
-			},
+			WantedNames: []string{},
 		},
 		{
 			Name:     "dynamic_usage_group_names_empty_label",
@@ -150,10 +126,7 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			Labels: phlaremodel.Labels{
 				{Name: "service_name", Value: ""},
 			},
-			Want: UsageGroupMatch{
-				tenantID: "tenant1",
-				names:    []string{},
-			},
+			WantedNames: []string{},
 		},
 	}
 
@@ -165,9 +138,13 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			evaluator := NewUsageGroupEvaluator(util.Logger)
 			got := evaluator.GetMatch(tt.TenantID, config, tt.Labels)
 
-			slices.Sort(got.names)
-			slices.Sort(tt.Want.names)
-			require.Equal(t, tt.Want, got)
+			gotNames := make([]string, len(got.names))
+			for i, name := range got.names {
+				gotNames[i] = name.ResolvedName
+			}
+			slices.Sort(gotNames)
+			slices.Sort(tt.WantedNames)
+			require.Equal(t, tt.WantedNames, gotNames)
 		})
 	}
 }
@@ -183,7 +160,7 @@ func TestUsageGroupMatch_CountReceivedBytes(t *testing.T) {
 			Name: "single_usage_group_match",
 			Match: UsageGroupMatch{
 				tenantID: "tenant1",
-				names:    []string{"app/foo"},
+				names:    []UsageGroupMatchName{{ResolvedName: "app/foo"}},
 			},
 			Count: 100,
 			WantCounts: map[string]float64{
@@ -196,9 +173,9 @@ func TestUsageGroupMatch_CountReceivedBytes(t *testing.T) {
 			Name: "multiple_usage_group_matches",
 			Match: UsageGroupMatch{
 				tenantID: "tenant1",
-				names: []string{
-					"app/foo",
-					"app/foo2",
+				names: []UsageGroupMatchName{
+					{ResolvedName: "app/foo"},
+					{ResolvedName: "app/foo2"},
 				},
 			},
 			Count: 100,
@@ -212,7 +189,7 @@ func TestUsageGroupMatch_CountReceivedBytes(t *testing.T) {
 			Name: "no_usage_group_matches",
 			Match: UsageGroupMatch{
 				tenantID: "tenant1",
-				names:    []string{},
+				names:    []UsageGroupMatchName{},
 			},
 			Count: 100,
 			WantCounts: map[string]float64{
@@ -255,7 +232,7 @@ func TestUsageGroupMatch_CountDiscardedBytes(t *testing.T) {
 			Name: "single_usage_group_match",
 			Match: UsageGroupMatch{
 				tenantID: "tenant1",
-				names:    []string{"app/foo"},
+				names:    []UsageGroupMatchName{{ResolvedName: "app/foo"}},
 			},
 			Count: 100,
 			WantCounts: map[string]float64{
@@ -268,9 +245,9 @@ func TestUsageGroupMatch_CountDiscardedBytes(t *testing.T) {
 			Name: "multiple_usage_group_matches",
 			Match: UsageGroupMatch{
 				tenantID: "tenant1",
-				names: []string{
-					"app/foo",
-					"app/foo2",
+				names: []UsageGroupMatchName{
+					{ResolvedName: "app/foo"},
+					{ResolvedName: "app/foo2"},
 				},
 			},
 			Count: 100,
@@ -284,7 +261,7 @@ func TestUsageGroupMatch_CountDiscardedBytes(t *testing.T) {
 			Name: "no_usage_group_matches",
 			Match: UsageGroupMatch{
 				tenantID: "tenant1",
-				names:    []string{},
+				names:    []UsageGroupMatchName{},
 			},
 			Count: 100,
 			WantCounts: map[string]float64{

@@ -1859,20 +1859,20 @@ func TestDistributor_shouldSample(t *testing.T) {
 	tests := []struct {
 		name           string
 		tenantID       string
-		groups         []string
+		groups         []validation.UsageGroupMatchName
 		samplingConfig *sampling.Config
 		expected       bool
 	}{
 		{
 			name:     "no sampling config - should accept",
 			tenantID: "test-tenant",
-			groups:   []string{"group1"},
+			groups:   []validation.UsageGroupMatchName{},
 			expected: true,
 		},
 		{
 			name:     "no matching groups - should accept",
 			tenantID: "test-tenant",
-			groups:   []string{"group1"},
+			groups:   []validation.UsageGroupMatchName{{ConfiguredName: "group1", ResolvedName: "group1"}},
 			samplingConfig: &sampling.Config{
 				UsageGroups: map[string]sampling.UsageGroupSampling{
 					"group2": {Probability: 0.5},
@@ -1883,7 +1883,7 @@ func TestDistributor_shouldSample(t *testing.T) {
 		{
 			name:     "matching group with 1.0 probability - should accept",
 			tenantID: "test-tenant",
-			groups:   []string{"group1"},
+			groups:   []validation.UsageGroupMatchName{{ConfiguredName: "group1", ResolvedName: "group1"}},
 			samplingConfig: &sampling.Config{
 				UsageGroups: map[string]sampling.UsageGroupSampling{
 					"group1": {Probability: 1.0},
@@ -1892,9 +1892,20 @@ func TestDistributor_shouldSample(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "matching group with dynamic name - should accept",
+			tenantID: "test-tenant",
+			groups:   []validation.UsageGroupMatchName{{ConfiguredName: "configured-name", ResolvedName: "resolved-name"}},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"configured-name": {Probability: 1.0},
+				},
+			},
+			expected: true,
+		},
+		{
 			name:     "matching group with 0.0 probability - should reject",
 			tenantID: "test-tenant",
-			groups:   []string{"group1"},
+			groups:   []validation.UsageGroupMatchName{{ConfiguredName: "group1", ResolvedName: "group1"}},
 			samplingConfig: &sampling.Config{
 				UsageGroups: map[string]sampling.UsageGroupSampling{
 					"group1": {Probability: 0.0},
@@ -1905,11 +1916,29 @@ func TestDistributor_shouldSample(t *testing.T) {
 		{
 			name:     "multiple matching groups - should use minimum probability",
 			tenantID: "test-tenant",
-			groups:   []string{"group1", "group2"},
+			groups: []validation.UsageGroupMatchName{
+				{ConfiguredName: "group1", ResolvedName: "group1"},
+				{ConfiguredName: "group2", ResolvedName: "group2"},
+			},
 			samplingConfig: &sampling.Config{
 				UsageGroups: map[string]sampling.UsageGroupSampling{
-					"group1": {Probability: 0.5},
+					"group1": {Probability: 1.0},
 					"group2": {Probability: 0.0},
+				},
+			},
+			expected: false,
+		},
+		{
+			name:     "multiple matching groups - should prioritize specific group",
+			tenantID: "test-tenant",
+			groups: []validation.UsageGroupMatchName{
+				{ConfiguredName: "${labels.service_name}", ResolvedName: "test_service"},
+				{ConfiguredName: "test_service", ResolvedName: "test_service"},
+			},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"${labels.service_name}": {Probability: 1.0},
+					"test_service":           {Probability: 0.0},
 				},
 			},
 			expected: false,
@@ -1954,7 +1983,7 @@ func TestDistributor_shouldSample_Probability(t *testing.T) {
 
 	const iterations = 10000
 	tenantID := "test-tenant"
-	groups := []string{"test-group"}
+	groups := []validation.UsageGroupMatchName{{ConfiguredName: "test-group", ResolvedName: "test-group"}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
