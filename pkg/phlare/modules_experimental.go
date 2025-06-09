@@ -85,18 +85,13 @@ func (f *Phlare) initQueryFrontendV1() (services.Service, error) {
 }
 
 func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
-	var symbolizerParam queryfrontend.Symbolizer
-	if f.symbolizer != nil {
-		symbolizerParam = f.symbolizer
-	}
-
 	queryFrontend := queryfrontend.NewQueryFrontend(
 		log.With(f.logger, "component", "query-frontend"),
 		f.Overrides,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
-		symbolizerParam,
+		f.symbolizer,
 	)
 
 	vcsService := vcs.New(
