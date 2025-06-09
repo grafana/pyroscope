@@ -260,6 +260,9 @@ func (r *Reader) openIndexV12(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = o.Close()
+	}()
 	b, err := io.ReadAll(o)
 	if err != nil {
 		return err

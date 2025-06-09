@@ -2046,7 +2046,9 @@ func (q *singleBlockQuerier) openTSDBIndex(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("opening index.tsdb file: %w", err)
 	}
-
+	defer func() {
+		_ = f.Close()
+	}()
 	var buf []byte
 	var tsdbIndexFile block.File
 	for _, mf := range q.meta.Files {
