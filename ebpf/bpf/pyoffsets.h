@@ -47,6 +47,7 @@ typedef struct {
 
     uint64_t base;
     uint64_t PyCell_Type;// absolute address of PyCell_Type
+    uint64_t PyType_Type;// absolute address of PyType_Type
 } py_offset_config;
 
 #endif //PYROEBPF_PYOFFSETS_H
