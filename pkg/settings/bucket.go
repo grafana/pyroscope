@@ -165,6 +165,7 @@ func (s *bucketStore) unsafeLoad(ctx context.Context) error {
 
 	err = json.NewDecoder(reader).Decode(&s.store)
 	if err != nil {
+		reader.Close()
 		return err
 	}
 
