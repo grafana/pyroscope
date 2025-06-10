@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"hash/fnv"
+	"math/rand"
 	"net/http"
 	"sort"
 	"sync"
@@ -41,6 +42,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
 	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
@@ -124,6 +126,7 @@ type Limits interface {
 	IngestionRateBytes(tenantID string) float64
 	IngestionBurstSizeBytes(tenantID string) int
 	IngestionLimit(tenantID string) *ingest_limits.Config
+	SamplingProbability(tenantID string) *sampling.Config
 	IngestionTenantShardSize(tenantID string) int
 	MaxLabelNameLength(tenantID string) int
 	MaxLabelValueLength(tenantID string) int
@@ -319,7 +322,10 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	// We don't support externally provided profile annotations right now.
 	// They are unfortunately part of the Push API so we explicitly clear them here.
 	req.ClearAnnotations()
-	if err := d.checkIngestLimit(tenantID, req); err != nil {
+	if err := d.checkIngestLimit(req); err != nil {
+		level.Debug(d.logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
+		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return nil, err
 	}
 
@@ -333,8 +339,20 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
 
 		groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, series.Labels)
-		if err := d.checkUsageGroupsIngestLimit(tenantID, groups.Names(), req); err != nil {
+		if err := d.checkUsageGroupsIngestLimit(req, groups.Names()); err != nil {
+			level.Debug(d.logger).Log("msg", "rejecting push request due to usage group ingest limit", "tenant", tenantID)
+			validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
+			validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
+			groups.CountDiscardedBytes(string(validation.IngestLimitReached), req.TotalBytesUncompressed)
 			return nil, err
+		}
+
+		if sample := d.shouldSample(tenantID, groups.Names()); !sample {
+			level.Debug(d.logger).Log("msg", "skipping push request due to sampling", "tenant", tenantID)
+			validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
+			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
+			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
+			return connect.NewResponse(&pushv1.PushResponse{}), nil
 		}
 
 		profLanguage := d.GetProfileLanguage(series)
@@ -832,23 +850,21 @@ func (d *Distributor) calculateRequestSize(req *distributormodel.PushRequest) {
 	}
 }
 
-func (d *Distributor) checkIngestLimit(tenantID string, req *distributormodel.PushRequest) error {
-	l := d.limits.IngestionLimit(tenantID)
+func (d *Distributor) checkIngestLimit(req *distributormodel.PushRequest) error {
+	l := d.limits.IngestionLimit(req.TenantID)
 	if l == nil {
 		return nil
 	}
 
 	if l.LimitReached {
 		// we want to allow a very small portion of the traffic after reaching the limit
-		if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
+		if d.ingestionLimitsSampler.AllowRequest(req.TenantID, l.Sampling) {
 			if err := req.MarkThrottledTenant(l); err != nil {
 				return err
 			}
 			return nil
 		}
 		limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
-		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return connect.NewError(connect.CodeResourceExhausted,
 			fmt.Errorf("limit of %s/%s reached, next reset at %s", humanize.IBytes(uint64(l.PeriodLimitMb*1024*1024)), l.PeriodType, limitResetTime))
 	}
@@ -856,31 +872,66 @@ func (d *Distributor) checkIngestLimit(tenantID string, req *distributormodel.Pu
 	return nil
 }
 
-func (d *Distributor) checkUsageGroupsIngestLimit(tenantID string, groupsInRequest []string, req *distributormodel.PushRequest) error {
-	l := d.limits.IngestionLimit(tenantID)
+func (d *Distributor) checkUsageGroupsIngestLimit(req *distributormodel.PushRequest, groupsInRequest []validation.UsageGroupMatchName) error {
+	l := d.limits.IngestionLimit(req.TenantID)
 	if l == nil || len(l.UsageGroups) == 0 {
 		return nil
 	}
 
 	for _, group := range groupsInRequest {
-		limit, ok := l.UsageGroups[group]
+		limit, ok := l.UsageGroups[group.ResolvedName]
+		if !ok {
+			limit, ok = l.UsageGroups[group.ConfiguredName]
+		}
 		if !ok || !limit.LimitReached {
 			continue
 		}
-		if d.ingestionLimitsSampler.AllowRequest(tenantID, l.Sampling) {
-			if err := req.MarkThrottledUsageGroup(l, group); err != nil {
+		if d.ingestionLimitsSampler.AllowRequest(req.TenantID, l.Sampling) {
+			if err := req.MarkThrottledUsageGroup(l, group.ResolvedName); err != nil {
 				return err
 			}
 			return nil
 		}
 		limitResetTime := time.Unix(l.LimitResetTime, 0).UTC().Format(time.RFC3339)
-		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return connect.NewError(connect.CodeResourceExhausted,
 			fmt.Errorf("limit of %s/%s reached for usage group %s, next reset at %s", humanize.IBytes(uint64(limit.PeriodLimitMb*1024*1024)), l.PeriodType, group, limitResetTime))
 	}
 
 	return nil
+}
+
+func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) bool {
+	l := d.limits.SamplingProbability(tenantID)
+	if l == nil {
+		return true
+	}
+
+	// Determine the minimum probability among all matching usage groups.
+	minProb := 1.0
+	matched := false
+	for _, group := range groupsInRequest {
+		if probCfg, ok := l.UsageGroups[group.ResolvedName]; ok {
+			matched = true
+			if probCfg.Probability < minProb {
+				minProb = probCfg.Probability
+			}
+			continue
+		}
+		if probCfg, ok := l.UsageGroups[group.ConfiguredName]; ok {
+			matched = true
+			if probCfg.Probability < minProb {
+				minProb = probCfg.Probability
+			}
+		}
+	}
+
+	// If no sampling rules matched, accept the request.
+	if !matched {
+		return true
+	}
+
+	// Sample once using the minimum probability.
+	return rand.Float64() <= minProb
 }
 
 type profileTracker struct {
