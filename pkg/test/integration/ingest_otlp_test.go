@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -129,10 +130,12 @@ func TestIngestOTLP(t *testing.T) {
 					assert.NotEmpty(t, resp.Msg.Mapping)
 					assert.NotEmpty(t, resp.Msg.Location)
 
-					actualStr, err := strprofile.Stringify(resp.Msg, strprofile.Options{
+					actual := strprofile.ToCompactProfile(resp.Msg, strprofile.Options{
 						NoTime:     true,
 						NoDuration: true,
 					})
+					strprofile.SortProfileSamples(actual)
+					actualBytes, err := json.Marshal(actual)
 					assert.NoError(t, err)
 
 					pprofDumpFileName := strings.ReplaceAll(metric.expectedJsonPath, ".json", ".pprof.pb.bin") // for debugging
@@ -143,8 +146,13 @@ func TestIngestOTLP(t *testing.T) {
 
 					expectedBytes, err := os.ReadFile(metric.expectedJsonPath)
 					require.NoError(t, err)
+					var expected strprofile.CompactProfile
+					assert.NoError(t, json.Unmarshal(expectedBytes, &expected))
+					strprofile.SortProfileSamples(expected)
+					expectedBytes, err = json.Marshal(expected)
+					require.NoError(t, err)
 
-					assert.Equal(t, string(expectedBytes), actualStr)
+					assert.Equal(t, string(expectedBytes), string(actualBytes))
 				}
 				td.assertMetrics(t, p)
 			})
