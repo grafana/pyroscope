@@ -67,9 +67,13 @@ type compactionConfig struct {
 }
 
 type SampleObserver interface {
+	symdb.SymbolsObserver
+
 	// Observe is called before the compactor appends the entry
 	// to the output block. This method must not modify the entry.
 	Observe(ProfileEntry)
+	// TODO: Find an alternative to this
+	Flush(ProfileEntry)
 }
 
 func Compact(
@@ -382,7 +386,7 @@ func (m *datasetCompaction) open(ctx context.Context, w io.Writer) (err error) {
 	m.profilesWriter = newProfileWriter(pageBufferSize, w)
 
 	m.indexRewriter = newIndexRewriter()
-	m.symbolsRewriter = newSymbolsRewriter()
+	m.symbolsRewriter = newSymbolsRewriter(m.observer)
 
 	g, ctx := errgroup.WithContext(ctx)
 	for _, s := range m.datasets {
@@ -431,6 +435,9 @@ func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 }
 
 func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
+	if m.observer != nil {
+		m.observer.Observe(r)
+	}
 	if err = m.parent.datasetIndex.writeRow(r); err != nil {
 		return err
 	}
@@ -441,7 +448,7 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 		return err
 	}
 	if m.observer != nil {
-		m.observer.Observe(r)
+		m.observer.Flush(r)
 	}
 	return m.profilesWriter.writeRow(r)
 }
@@ -549,15 +556,16 @@ func (rw *indexRewriter) Flush() error {
 }
 
 type symbolsRewriter struct {
-	buf     *bytes.Buffer
-	w       *symdb.SymDB
-	rw      map[*Dataset]*symdb.Rewriter
-	samples uint64
+	buf      *bytes.Buffer
+	w        *symdb.SymDB
+	rw       map[*Dataset]*symdb.Rewriter
+	samples  uint64
+	observer SampleObserver
 
 	stacktraces []uint32
 }
 
-func newSymbolsRewriter() *symbolsRewriter {
+func newSymbolsRewriter(observer SampleObserver) *symbolsRewriter {
 	// TODO(kolesnikovae):
 	//  * Estimate size.
 	//  * Use buffer pool.
@@ -569,6 +577,7 @@ func newSymbolsRewriter() *symbolsRewriter {
 			Version: symdb.FormatV3,
 			Writer:  &nopWriteCloser{buf},
 		}),
+		observer: observer,
 	}
 }
 
@@ -594,7 +603,7 @@ func (s *symbolsRewriter) rewriteRow(e ProfileEntry) (err error) {
 func (s *symbolsRewriter) rewriterFor(x *Dataset) *symdb.Rewriter {
 	rw, ok := s.rw[x]
 	if !ok {
-		rw = symdb.NewRewriter(s.w, x.Symbols())
+		rw = symdb.NewRewriter(s.w, x.Symbols(), s.observer)
 		s.rw[x] = rw
 	}
 	return rw
