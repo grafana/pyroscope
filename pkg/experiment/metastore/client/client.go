@@ -31,6 +31,7 @@ type Client struct {
 	stopped          bool
 	logger           log.Logger
 	grpcClientConfig grpcclient.Config
+	dialOpts         []grpc.DialOption
 }
 
 type client struct {
@@ -53,7 +54,7 @@ type instance interface {
 	raftnodepb.RaftNodeServiceClient
 }
 
-func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Discovery) *Client {
+func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Discovery, dialOpts ...grpc.DialOption) *Client {
 	var c Client
 	logger = log.With(logger, "component", "metastore-client")
 	c.service = services.NewIdleService(c.starting, c.stopping)
@@ -61,6 +62,8 @@ func New(logger log.Logger, grpcClientConfig grpcclient.Config, d discovery.Disc
 	c.grpcClientConfig = grpcClientConfig
 	c.servers = make(map[raft.ServerID]*client)
 	c.discovery = d
+	c.dialOpts = dialOpts
+
 	c.discovery.Subscribe(discovery.UpdateFunc(func(servers []discovery.Server) {
 		c.updateServers(servers)
 	}))
@@ -117,7 +120,7 @@ func (c *Client) updateServers(servers []discovery.Server) {
 				continue
 			}
 		}
-		cl, err := newClient(s[0], c.grpcClientConfig, c.logger)
+		cl, err := newClient(s[0], c.grpcClientConfig, c.dialOpts...)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to create client", "err", err)
 			continue
@@ -139,12 +142,12 @@ func (c *Client) updateServers(servers []discovery.Server) {
 	c.servers = newServers
 }
 
-func newClient(s discovery.Server, config grpcclient.Config, logger log.Logger) (*client, error) {
+func newClient(s discovery.Server, config grpcclient.Config, dialOpts ...grpc.DialOption) (*client, error) {
 	address := s.Raft.Address
 	if s.ResolvedAddress != "" {
 		address = raft.ServerAddress(s.ResolvedAddress)
 	}
-	conn, err := dial(string(address), config, logger)
+	conn, err := dial(string(address), config, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -159,13 +162,14 @@ func newClient(s discovery.Server, config grpcclient.Config, logger log.Logger) 
 	}, nil
 }
 
-func dial(address string, grpcClientConfig grpcclient.Config, _ log.Logger) (*grpc.ClientConn, error) {
+func dial(address string, grpcClientConfig grpcclient.Config, dialOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	options, err := grpcClientConfig.DialOption(nil, nil)
 	if err != nil {
 		return nil, err
 	}
 	// TODO: https://github.com/grpc/grpc-proto/blob/master/grpc/service_config/service_config.proto
 	options = append(options, grpc.WithDefaultServiceConfig(grpcServiceConfig))
+	options = append(options, dialOpts...)
 	return grpc.Dial(address, options...)
 }
 
