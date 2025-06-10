@@ -7,10 +7,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gogo/status"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	profilesv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
@@ -93,6 +95,9 @@ func TestIngestOTLP(t *testing.T) {
 	for _, td := range otlpTestDatas {
 		t.Run(td.name, func(t *testing.T) {
 			EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+				if td.profilePath != "testdata/otel-ebpf-profiler-unsymbolized.pb.bin" {
+					t.Skip("Skipping OTLP ingestion integration tests")
+				}
 
 				rb := p.NewRequestBuilder(t)
 				runNo := p.TempAppName()
@@ -155,6 +160,47 @@ func TestIngestOTLP(t *testing.T) {
 					assert.Equal(t, string(expectedBytes), string(actualBytes))
 				}
 				td.assertMetrics(t, p)
+			})
+		})
+	}
+}
+
+type badOtlpTestData struct {
+	name                 string
+	profilePath          string
+	expectedErrorMessage string
+}
+
+var badOtlpTestDatas = []badOtlpTestData{
+	{
+		name:        "OTLP 1.5.0 data containing unsymbolized an profile from otel-ebpf-profiler",
+		profilePath: "testdata/otel-ebpf-profiler-unsymbolized-otlp1.5.0.pb.bin",
+	},
+	{
+		name:                 "corrupted data (function idx out of bounds)",
+		profilePath:          "testdata/async-profiler-corrupted-function-idx.pb.bin",
+		expectedErrorMessage: "failed to convert otel profile: could not access location at index 3: index 1000000000 out of bounds",
+	},
+}
+
+func TestIngestBadOTLP(t *testing.T) {
+	for _, td := range badOtlpTestDatas {
+		t.Run(td.name, func(t *testing.T) {
+			EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+				rb := p.NewRequestBuilder(t)
+				profileBytes, err := os.ReadFile(td.profilePath)
+				require.NoError(t, err)
+				var profile = new(profilesv1.ExportProfilesServiceRequest)
+				err = proto.Unmarshal(profileBytes, profile)
+				require.NoError(t, err)
+
+				client := rb.OtelPushClient()
+				_, err = client.Export(context.Background(), profile)
+				require.Error(t, err)
+				require.Equal(t, codes.InvalidArgument, status.Code(err))
+				if td.expectedErrorMessage != "" {
+					require.Contains(t, err.Error(), td.expectedErrorMessage)
+				}
 			})
 		})
 	}
