@@ -88,6 +88,7 @@ func Test_Observer_observe(t *testing.T) {
 
 	for _, entry := range entries {
 		observer.Observe(entry)
+		observer.Flush(entry)
 	}
 	observer.Close()
 
