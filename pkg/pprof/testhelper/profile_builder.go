@@ -208,6 +208,10 @@ func (m *ProfileBuilder) ForStacktraceString(stacktraces ...string) *StacktraceB
 	}
 }
 
+func (m *ProfileBuilder) AddString(s string) int64 {
+	return m.addString(s)
+}
+
 func (m *ProfileBuilder) addString(s string) int64 {
 	i, ok := m.strings[s]
 	if !ok {

@@ -24,6 +24,9 @@ type PushRequest struct {
 
 	TotalProfiles          int64
 	TotalBytesUncompressed int64
+
+	DiscardedProfilesRelabeling int64
+	DiscardedBytesRelabeling    int64
 }
 
 type ProfileSample struct {

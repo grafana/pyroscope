@@ -14,8 +14,11 @@ type SampleSeriesVisitor interface {
 	// VisitProfile is called when no sample labels are present in
 	// the profile, or if all the sample labels are identical.
 	// Provided labels are the series labels processed with relabeling rules.
-	VisitProfile([]*typesv1.LabelPair)
-	VisitSampleSeries([]*typesv1.LabelPair, []*profilev1.Sample)
+	VisitProfile(phlaremodel.Labels)
+	VisitSampleSeries(phlaremodel.Labels, []*profilev1.Sample)
+	// ValidateLabels is called to validate the labels before
+	// they are passed to the visitor.
+	ValidateLabels(phlaremodel.Labels) error
 	Discarded(profiles, bytes int)
 }
 
@@ -24,7 +27,7 @@ func VisitSampleSeries(
 	labels []*typesv1.LabelPair,
 	rules []*relabel.Config,
 	visitor SampleSeriesVisitor,
-) {
+) error {
 	var profilesDiscarded, bytesDiscarded int
 	defer func() {
 		visitor.Discarded(profilesDiscarded, bytesDiscarded)
@@ -44,13 +47,17 @@ func VisitSampleSeries(
 				// We drop the profile.
 				profilesDiscarded++
 				bytesDiscarded += profile.SizeVT()
-				return
+				return nil
 			}
 		}
 		if len(profile.Sample) > 0 {
-			visitor.VisitProfile(builder.Labels())
+			labels = builder.Labels()
+			if err := visitor.ValidateLabels(labels); err != nil {
+				return err
+			}
+			visitor.VisitProfile(labels)
 		}
-		return
+		return nil
 	}
 
 	// iterate through groups relabel them and find relevant overlapping label sets.
@@ -72,16 +79,21 @@ func VisitSampleSeries(
 	if len(groupsKept.m) == 0 {
 		// no groups kept, count the whole profile as dropped
 		profilesDiscarded++
-		return
+		return nil
 	}
 
 	for _, idx := range groupsKept.order {
 		for _, group := range groupsKept.m[idx] {
 			if len(group.sampleGroup.Samples) > 0 {
+				if err := visitor.ValidateLabels(group.labels); err != nil {
+					return err
+				}
 				visitor.VisitSampleSeries(group.labels, group.sampleGroup.Samples)
 			}
 		}
 	}
+
+	return nil
 }
 
 // addSampleLabelsToLabelsBuilder: adds sample label that don't exists yet on the profile builder. So the existing labels take precedence.

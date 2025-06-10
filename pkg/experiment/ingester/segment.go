@@ -33,7 +33,6 @@ import (
 	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
 	pprofmodel "github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/util/retry"
-	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type shardKey uint32
@@ -116,7 +115,7 @@ func (sh *shard) flushSegment(ctx context.Context, wg *sync.WaitGroup) {
 		if s.debuginfo.movedHeads > 0 {
 			_ = level.Debug(s.logger).Log("msg",
 				"writing segment block done",
-				"heads-count", len(s.heads),
+				"heads-count", len(s.datasets),
 				"heads-moved-count", s.debuginfo.movedHeads,
 				"inflight-duration", s.debuginfo.waitInflight,
 				"flush-heads-duration", s.debuginfo.flushHeadsDuration,
@@ -203,21 +202,20 @@ func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *seg
 	s := &segment{
 		logger:   log.With(sl, "segment-id", id.String()),
 		ulid:     id,
-		heads:    make(map[datasetKey]dataset),
+		datasets: make(map[datasetKey]dataset),
 		sw:       sw,
 		sh:       sh,
 		shard:    sk,
 		sshard:   sshard,
 		doneChan: make(chan struct{}),
 	}
-	s.usageGroupEvaluator = validation.NewUsageGroupEvaluator(s.logger)
 	return s
 }
 
 func (s *segment) flush(ctx context.Context) (err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "segment.flush", opentracing.Tags{
 		"block_id": s.ulid.String(),
-		"datasets": len(s.heads),
+		"datasets": len(s.datasets),
 		"shard":    s.shard,
 	})
 	defer span.Finish()
@@ -239,6 +237,7 @@ func (s *segment) flush(ctx context.Context) (err error) {
 		return nil
 	}
 
+	// TODO(kolesnikovae): Use buffer pool for blockData.
 	blockData, blockMeta, err := s.flushBlock(stream)
 	if err != nil {
 		return fmt.Errorf("failed to flush block %s: %w", s.ulid.String(), err)
@@ -271,17 +270,23 @@ func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta
 		Datasets:        make([]*metastorev1.Dataset, 0, len(stream.heads)),
 	}
 
-	// TODO(kolesnikovae): Stream upload, do not use an intermediate buffer.
 	blockFile := bytes.NewBuffer(nil)
 
 	w := &writerOffset{Writer: blockFile}
 	for stream.Next() {
 		f := stream.At()
+		// TODO(kolesnikovae): Build dataset index for the tenant.
+		//   Note that the heads are flushed concurrently, so we cannot build
+		//   during head flush. I'd prefer to delegate it to the head itself:
+		//      WriteDatasetIndex(w *memindex.Writer, idx uint32)
+		//   Tenant datasets follow sequentially; when all tenant datasets
+		//   are flushed, we can build the index and create a metadata
+		//   entry for it.
 		ds := concatSegmentHead(f, w, stringTable)
 		meta.MinTime = min(meta.MinTime, ds.MinTime)
 		meta.MaxTime = max(meta.MaxTime, ds.MaxTime)
 		meta.Datasets = append(meta.Datasets, ds)
-		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, f.head.key.tenant).Observe(float64(ds.Size))
+		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, f.dataset.key.tenant).Observe(float64(ds.Size))
 	}
 
 	meta.StringTable = stringTable.Strings
@@ -305,7 +310,7 @@ func (w *writerOffset) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) *metastorev1.Dataset {
+func concatSegmentHead(f *datasetFlush, w *writerOffset, s *metadata.StringTable) *metastorev1.Dataset {
 	tenantServiceOffset := w.offset
 
 	ptypes := f.flushed.Meta.ProfileTypeNames
@@ -324,8 +329,8 @@ func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) *
 	tenantServiceSize := w.offset - tenantServiceOffset
 
 	ds := &metastorev1.Dataset{
-		Tenant:  s.Put(f.head.key.tenant),
-		Name:    s.Put(f.head.key.service),
+		Tenant:  s.Put(f.dataset.key.tenant),
+		Name:    s.Put(f.dataset.key.service),
 		MinTime: f.flushed.Meta.MinTimeNanos / 1e6,
 		MaxTime: f.flushed.Meta.MaxTimeNanos / 1e6,
 		Size:    uint64(tenantServiceSize),
@@ -338,11 +343,11 @@ func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) *
 
 	lb := metadata.NewLabelBuilder(s)
 	for _, profileType := range ptypes {
-		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, model.LabelNameProfileType, profileType)
+		lb.WithLabelSet(model.LabelNameServiceName, f.dataset.key.service, model.LabelNameProfileType, profileType)
 	}
 
 	if f.flushed.Unsymbolized {
-		lb.WithLabelSet(model.LabelNameServiceName, f.head.key.service, metadata.LabelNameUnsymbolized, "true")
+		lb.WithLabelSet(model.LabelNameServiceName, f.dataset.key.service, metadata.LabelNameUnsymbolized, "true")
 	}
 
 	// Other optional labels:
@@ -353,21 +358,21 @@ func concatSegmentHead(f *headFlush, w *writerOffset, s *metadata.StringTable) *
 }
 
 func (s *segment) flushHeads(ctx context.Context) flushStream {
-	heads := maps.Values(s.heads)
+	heads := maps.Values(s.datasets)
 	slices.SortFunc(heads, func(a, b dataset) int {
 		return a.key.compare(b.key)
 	})
 
-	stream := make([]*headFlush, len(heads))
+	stream := make([]*datasetFlush, len(heads))
 	for i := range heads {
-		f := &headFlush{
-			head: heads[i],
-			done: make(chan struct{}),
+		f := &datasetFlush{
+			dataset: heads[i],
+			done:    make(chan struct{}),
 		}
 		stream[i] = f
 		s.sw.pool.do(func() {
 			defer close(f.done)
-			flushed, err := s.flushHead(ctx, f.head)
+			flushed, err := s.flushDataset(ctx, f.dataset)
 			if err != nil {
 				level.Error(s.logger).Log("msg", "failed to flush head", "err", err)
 				return
@@ -388,12 +393,12 @@ func (s *segment) flushHeads(ctx context.Context) flushStream {
 }
 
 type flushStream struct {
-	heads []*headFlush
-	cur   *headFlush
+	heads []*datasetFlush
+	cur   *datasetFlush
 	n     int
 }
 
-func (s *flushStream) At() *headFlush { return s.cur }
+func (s *flushStream) At() *datasetFlush { return s.cur }
 
 func (s *flushStream) Next() bool {
 	for s.n < len(s.heads) {
@@ -408,7 +413,7 @@ func (s *flushStream) Next() bool {
 	return false
 }
 
-func (s *segment) flushHead(ctx context.Context, e dataset) (*memdb.FlushedHead, error) {
+func (s *segment) flushDataset(ctx context.Context, e dataset) (*memdb.FlushedHead, error) {
 	th := time.Now()
 	flushed, err := e.head.Flush(ctx)
 	if err != nil {
@@ -447,11 +452,10 @@ type dataset struct {
 	head *memdb.Head
 }
 
-type headFlush struct {
-	head    dataset
+type datasetFlush struct {
+	dataset dataset
 	flushed *memdb.FlushedHead
-	// protects head
-	done chan struct{}
+	done    chan struct{}
 }
 
 type segment struct {
@@ -460,12 +464,11 @@ type segment struct {
 	sshard           string
 	inFlightProfiles sync.WaitGroup
 
-	headsLock sync.RWMutex
-	heads     map[datasetKey]dataset
+	datasetsLock sync.RWMutex
+	datasets     map[datasetKey]dataset
 
-	logger              log.Logger
-	sw                  *segmentsWriter
-	usageGroupEvaluator *validation.UsageGroupEvaluator
+	logger log.Logger
+	sw     *segmentsWriter
 
 	// TODO(kolesnikovae): Revisit.
 	doneChan      chan struct{}
@@ -485,7 +488,7 @@ type segment struct {
 }
 
 type segmentIngest interface {
-	ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation)
+	ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation)
 }
 
 type segmentWaitFlushed interface {
@@ -504,74 +507,73 @@ func (s *segment) waitFlushed(ctx context.Context) error {
 	}
 }
 
-func (s *segment) ingest(ctx context.Context, tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
-	k := datasetKey{
-		tenant:  tenantID,
-		service: model.Labels(labels).Get(model.LabelNameServiceName),
-	}
-	size := p.SizeVT()
-	rules := s.sw.limits.IngestionRelabelingRules(tenantID)
-	usage := s.usageGroupEvaluator.GetMatch(tenantID, s.sw.limits.DistributorUsageGroups(tenantID), labels)
-	appender := &sampleAppender{
-		head:        s.headForIngest(k),
-		profile:     p,
-		id:          id,
-		annotations: annotations,
-	}
-	pprofsplit.VisitSampleSeries(p, labels, rules, appender)
-	size -= appender.discardedBytes
-	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID).Observe(float64(size))
-	usage.CountDiscardedBytes(string(validation.DroppedByRelabelRules), int64(appender.discardedBytes))
-	// CountReceivedBytes is tracked in distributors.
+func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, labels []*typesv1.LabelPair, annotations []*typesv1.ProfileAnnotation) {
+	// TODO(kolesnikovae): Refactor: profile split should be moved inside the
+	//   dataset.Ingest: we want to do it together with / instead of creation
+	//   of the internal representation (InMemoryProfile).
+	//   symbols.WriteProfileSymbols should be replaced with something more
+	//   suitable (see comment) – we want to avoid allocating intermediate
+	//   objects that are used only temporarily.
+	//   Many sample series refer to same symbols, so we can avoid extra
+	//   processing and index symbols just once: at this point we know that
+	//   all samples are to be stored, and all the referred symbols need to
+	//   be indexed. This will require quite a bit of refactoring, but it's
+	//   worth it.
+	serviceName := model.Labels(labels).Get(model.LabelNameServiceName)
+	ds := s.datasetForIngest(datasetKey{tenant: tenantID, service: serviceName})
+	appender := &sampleAppender{dataset: ds, profile: p, id: id, annotations: annotations}
+	// Relabeling rules cannot be applied here: it should be done before the
+	// ingestion, in distributors. Otherwise, it may change the distribution
+	// key, including the "service_name" label, which we use to determine the
+	// profile target dataset.
+	// TODO: Replace with pprof.GroupSamples
+	_ = pprofsplit.VisitSampleSeries(p, labels, nil, appender)
+	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID).Observe(float64(p.SizeVT()))
 }
 
 type sampleAppender struct {
 	id          uuid.UUID
-	head        *memdb.Head
+	dataset     *memdb.Head
 	profile     *profilev1.Profile
 	exporter    *pprofmodel.SampleExporter
 	annotations []*typesv1.ProfileAnnotation
-
-	discardedProfiles int
-	discardedBytes    int
 }
 
-func (v *sampleAppender) VisitProfile(labels []*typesv1.LabelPair) {
-	v.head.Ingest(v.profile, v.id, labels, v.annotations)
+func (v *sampleAppender) VisitProfile(labels model.Labels) {
+	v.dataset.Ingest(v.profile, v.id, labels, v.annotations)
 }
 
-func (v *sampleAppender) VisitSampleSeries(labels []*typesv1.LabelPair, samples []*profilev1.Sample) {
+func (v *sampleAppender) VisitSampleSeries(labels model.Labels, samples []*profilev1.Sample) {
 	if v.exporter == nil {
 		v.exporter = pprofmodel.NewSampleExporter(v.profile)
 	}
 	var n profilev1.Profile
 	v.exporter.ExportSamples(&n, samples)
-	v.head.Ingest(&n, v.id, labels, v.annotations)
+	v.dataset.Ingest(&n, v.id, labels, v.annotations)
 }
 
-func (v *sampleAppender) Discarded(profiles, bytes int) {
-	v.discardedProfiles += profiles
-	v.discardedBytes += bytes
-}
+func (v *sampleAppender) ValidateLabels(model.Labels) error { return nil }
 
-func (s *segment) headForIngest(k datasetKey) *memdb.Head {
-	s.headsLock.RLock()
-	h, ok := s.heads[k]
-	s.headsLock.RUnlock()
+func (v *sampleAppender) Discarded(_, _ int) {}
+
+func (s *segment) datasetForIngest(k datasetKey) *memdb.Head {
+	s.datasetsLock.RLock()
+	h, ok := s.datasets[k]
+	s.datasetsLock.RUnlock()
 	if ok {
 		return h.head
 	}
 
-	s.headsLock.Lock()
-	defer s.headsLock.Unlock()
-	h, ok = s.heads[k]
+	s.datasetsLock.Lock()
+	defer s.datasetsLock.Unlock()
+	h, ok = s.datasets[k]
 	if ok {
 		return h.head
 	}
 
 	nh := memdb.NewHead(s.sw.headMetrics)
 
-	s.heads[k] = dataset{
+	s.datasets[k] = dataset{
 		key:  k,
 		head: nh,
 	}
