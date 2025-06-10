@@ -498,7 +498,7 @@ func Test_sanitizeReferences(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			sanitizeProfile(tc.profile)
+			sanitizeProfile(tc.profile, new(sanitizeStats))
 			assert.Equal(t, tc.expected, tc.profile)
 		})
 	}
@@ -525,7 +525,7 @@ func Test_sanitize_fixtures(t *testing.T) {
 			f, err := OpenFile(path)
 			require.NoError(t, err)
 			c := f.CloneVT()
-			sanitizeProfile(f.Profile)
+			sanitizeProfile(f.Profile, new(sanitizeStats))
 			assert.Equal(t, len(c.Sample), len(f.Sample))
 			assert.Equal(t, len(c.Location), len(f.Location))
 			assert.Equal(t, len(c.Function), len(f.Function))
@@ -1628,4 +1628,7 @@ func Test_pprof_zero_addr_no_line_locations(t *testing.T) {
 			t.Fatal("found location without lines and address")
 		}
 	}
+
+	expected := "samples_total=2 location_empty=1 sample_location_invalid=1"
+	assert.Equal(t, expected, b.stats.pretty())
 }

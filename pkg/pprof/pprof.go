@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -284,6 +285,7 @@ func OpenFile(path string) (*Profile, error) {
 type Profile struct {
 	*profilev1.Profile
 	hasher  SampleHasher
+	stats   sanitizeStats
 	rawSize int
 }
 
@@ -353,6 +355,8 @@ var currentTime = time.Now
 //   - Converts identifiers to indices.
 //   - Ensures that string_table[0] is "".
 func (p *Profile) Normalize() {
+	p.stats.samplesTotal = len(p.Sample)
+
 	// if the profile has no time, set it to now
 	if p.TimeNanos == 0 {
 		p.TimeNanos = currentTime().UnixNano()
@@ -371,6 +375,7 @@ func (p *Profile) Normalize() {
 		for j := 0; j < len(s.Value); j++ {
 			if s.Value[j] < 0 {
 				removedSamples = append(removedSamples, s)
+				p.stats.sampleValueNegative++
 				return true
 			}
 		}
@@ -379,6 +384,7 @@ func (p *Profile) Normalize() {
 				return false
 			}
 		}
+		p.stats.sampleValueZero++
 		removedSamples = append(removedSamples, s)
 		return true
 	})
@@ -398,6 +404,7 @@ func (p *Profile) Normalize() {
 				p.Sample[i+1].Value[j] += s.Value[j]
 			}
 			removedSamples = append(removedSamples, s)
+			p.stats.sampleDuplicate++
 			return true
 		}
 		return false
@@ -405,7 +412,7 @@ func (p *Profile) Normalize() {
 
 	// Remove references to removed samples.
 	p.clearSampleReferences(removedSamples)
-	sanitizeProfile(p.Profile)
+	sanitizeProfile(p.Profile, &p.stats)
 	p.clearAddresses()
 }
 
@@ -1192,9 +1199,12 @@ func Unmarshal(data []byte, p *profilev1.Profile) error {
 	return p.UnmarshalVT(buf.Bytes())
 }
 
-func sanitizeProfile(p *profilev1.Profile) {
+func sanitizeProfile(p *profilev1.Profile, stats *sanitizeStats) {
 	if p == nil {
 		return
+	}
+	if stats.samplesTotal == 0 {
+		stats.samplesTotal = len(p.Sample)
 	}
 	ms := int64(len(p.StringTable))
 	// Handle the case when "" is not present,
@@ -1235,6 +1245,7 @@ func sanitizeProfile(p *profilev1.Profile) {
 
 	p.SampleType = slices.RemoveInPlace(p.SampleType, func(x *profilev1.ValueType, _ int) bool {
 		if x == nil {
+			stats.sampleTypeNil++
 			return true
 		}
 		x.Type = str(x.Type)
@@ -1256,14 +1267,10 @@ func sanitizeProfile(p *profilev1.Profile) {
 	// Sanitize mappings and references to them.
 	// Locations with invalid references are removed.
 	t := make(map[uint64]uint64, len(p.Location))
-	clearMap := func() {
-		for k := range t {
-			delete(t, k)
-		}
-	}
 	j := uint64(1)
 	p.Mapping = slices.RemoveInPlace(p.Mapping, func(x *profilev1.Mapping, _ int) bool {
 		if x == nil {
+			stats.mappingNil++
 			return true
 		}
 		x.BuildId = str(x.BuildId)
@@ -1279,6 +1286,11 @@ func sanitizeProfile(p *profilev1.Profile) {
 	var mapping *profilev1.Mapping
 	p.Location = slices.RemoveInPlace(p.Location, func(x *profilev1.Location, _ int) bool {
 		if x == nil {
+			stats.locationNil++
+			return true
+		}
+		if len(x.Line) == 0 && x.Address == 0 {
+			stats.locationEmpty++
 			return true
 		}
 		if x.MappingId == 0 {
@@ -1290,15 +1302,20 @@ func sanitizeProfile(p *profilev1.Profile) {
 			return false
 		}
 		x.MappingId = t[x.MappingId]
-		return x.MappingId == 0
+		if x.MappingId == 0 {
+			stats.locationMappingInvalid++
+			return true
+		}
+		return false
 	})
 
 	// Sanitize functions and references to them.
 	// Locations with invalid references are removed.
-	clearMap()
+	clear(t)
 	j = 1
 	p.Function = slices.RemoveInPlace(p.Function, func(x *profilev1.Function, _ int) bool {
 		if x == nil {
+			stats.functionNil++
 			return true
 		}
 		x.Name = str(x.Name)
@@ -1310,11 +1327,9 @@ func sanitizeProfile(p *profilev1.Profile) {
 	})
 	// Check locations again, verifying that all functions are valid.
 	p.Location = slices.RemoveInPlace(p.Location, func(x *profilev1.Location, _ int) bool {
-		if len(x.Line) == 0 && x.Address == 0 {
-			return true
-		}
 		for _, line := range x.Line {
 			if line.FunctionId = t[line.FunctionId]; line.FunctionId == 0 {
+				stats.locationFunctionInvalid++
 				return true
 			}
 		}
@@ -1323,7 +1338,7 @@ func sanitizeProfile(p *profilev1.Profile) {
 
 	// Sanitize locations and references to them.
 	// Samples with invalid references are removed.
-	clearMap()
+	clear(t)
 	j = 1
 	for _, x := range p.Location {
 		x.Id, t[x.Id] = j, j
@@ -1333,18 +1348,22 @@ func sanitizeProfile(p *profilev1.Profile) {
 	vs := len(p.SampleType)
 	p.Sample = slices.RemoveInPlace(p.Sample, func(x *profilev1.Sample, _ int) bool {
 		if x == nil {
+			stats.sampleNil++
 			return true
 		}
 		if len(x.Value) != vs {
+			stats.sampleValueMismatch++
 			return true
 		}
 		for i := range x.LocationId {
 			if x.LocationId[i] = t[x.LocationId[i]]; x.LocationId[i] == 0 {
+				stats.sampleLocationInvalid++
 				return true
 			}
 		}
 		for _, l := range x.Label {
 			if l == nil {
+				stats.sampleLabelNil++
 				return true
 			}
 			l.Key = str(l.Key)
@@ -1353,4 +1372,53 @@ func sanitizeProfile(p *profilev1.Profile) {
 		}
 		return false
 	})
+}
+
+type sanitizeStats struct {
+	samplesTotal  int
+	sampleTypeNil int
+
+	mappingNil              int
+	functionNil             int
+	locationNil             int
+	locationEmpty           int
+	locationMappingInvalid  int
+	locationFunctionInvalid int
+
+	sampleNil             int
+	sampleLabelNil        int
+	sampleLocationInvalid int
+	sampleValueMismatch   int
+	sampleValueNegative   int
+	sampleValueZero       int
+	sampleDuplicate       int
+}
+
+func (s *sanitizeStats) pretty() string {
+	var b strings.Builder
+	b.WriteString("samples_total=")
+	b.WriteString(strconv.Itoa(s.samplesTotal))
+	put := func(k string, v int) {
+		if v > 0 {
+			b.WriteString(" ")
+			b.WriteString(k)
+			b.WriteString("=")
+			b.WriteString(strconv.Itoa(v))
+		}
+	}
+	put("sample_type_nil", s.sampleTypeNil)
+	put("mapping_nil", s.mappingNil)
+	put("function_nil", s.functionNil)
+	put("location_nil", s.locationNil)
+	put("location_empty", s.locationEmpty)
+	put("location_mapping_invalid", s.locationMappingInvalid)
+	put("location_function_invalid", s.locationFunctionInvalid)
+	put("sample_nil", s.sampleNil)
+	put("sample_label_nil", s.sampleLabelNil)
+	put("sample_location_invalid", s.sampleLocationInvalid)
+	put("sample_value_mismatch", s.sampleValueMismatch)
+	put("sample_value_negative", s.sampleValueNegative)
+	put("sample_value_zero", s.sampleValueZero)
+	put("sample_duplicate", s.sampleDuplicate)
+	return b.String()
 }

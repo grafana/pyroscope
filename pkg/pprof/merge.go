@@ -46,7 +46,8 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 		return nil
 	}
 
-	sanitizeProfile(p)
+	var stats sanitizeStats
+	sanitizeProfile(p, &stats)
 	var initial bool
 	if m.profile == nil {
 		m.init(p)
