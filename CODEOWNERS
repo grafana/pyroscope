@@ -22,7 +22,7 @@
 /pkg/phlaredb/tsdb/ @simonswine
 /pkg/querier/ @marcsanmi
 /pkg/frontend/ @marcsanmi
-/pkg/experiment/block/ @simonswine @marcsanmi
+/pkg/experiment/block/ @simonswine @marcsanmi @alsoba13
 /pkg/phlaredb/block @simonswine
 
 # area/write-path
@@ -40,8 +40,8 @@
 /pkg/phlaredb/shipper/
 
 # area/compactor
-/pkg/compactor/
-/pkg/experiment/compactor/
+/pkg/compactor/ @alsoba13
+/pkg/experiment/compactor/ @alsoba13
 /pkg/phlaredb/bucketindex/ @aleks-p
 /pkg/phlaredb/downsample/ @aleks-p
 
