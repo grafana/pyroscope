@@ -18,12 +18,12 @@
 /pkg/experiment/symbolizer/
 /pkg/storegateway/
 /pkg/scheduler/
-/pkg/phlaredb/symdb/
-/pkg/phlaredb/tsdb/
+/pkg/phlaredb/symdb/ @simonswine
+/pkg/phlaredb/tsdb/ @simonswine
 /pkg/querier/
 /pkg/frontend/
-/pkg/experiment/block/
-/pkg/phlaredb/block
+/pkg/experiment/block/ @simonswine
+/pkg/phlaredb/block @simonswine
 
 # area/write-path
 /pkg/distributor/
@@ -49,13 +49,13 @@
 /pkg/experiment/metastore/
 
 # parquet
-/pkg/objstore/parquet/
-/pkg/phlaredb/query/
-/pkg/phlaredb/schemas/v1/
-/pkg/parquet/
+/pkg/objstore/parquet/ @simonswine
+/pkg/phlaredb/query/ @simonswine
+/pkg/phlaredb/schemas/v1/ @simonswine
+/pkg/parquet/ @simonswine
 
 # api
-/api/
+/api/ @simonswine
 
 # objstore
-/pkg/objstore/
+/pkg/objstore/ @simonswine
