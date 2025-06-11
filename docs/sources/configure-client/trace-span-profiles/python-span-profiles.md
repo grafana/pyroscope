@@ -51,7 +51,7 @@ pip install pyroscope-otel
 Next, create and register the `PyroscopeSpanProcessor`:
 ```python
 # import span processor
-from pyroscope-otel import PyroscopeSpanProcessor
+from pyroscope.otel import PyroscopeSpanProcessor
 
 # obtain a OpenTelemetry tracer provider
 from opentelemetry import trace
