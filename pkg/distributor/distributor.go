@@ -126,7 +126,7 @@ type Limits interface {
 	IngestionRateBytes(tenantID string) float64
 	IngestionBurstSizeBytes(tenantID string) int
 	IngestionLimit(tenantID string) *ingest_limits.Config
-	SamplingProbability(tenantID string) *sampling.Config
+	DistributorSampling(tenantID string) *sampling.Config
 	IngestionTenantShardSize(tenantID string) int
 	MaxLabelNameLength(tenantID string) int
 	MaxLabelValueLength(tenantID string) int
@@ -901,7 +901,7 @@ func (d *Distributor) checkUsageGroupsIngestLimit(req *distributormodel.PushRequ
 }
 
 func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) bool {
-	l := d.limits.SamplingProbability(tenantID)
+	l := d.limits.DistributorSampling(tenantID)
 	if l == nil {
 		return true
 	}
