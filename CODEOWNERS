@@ -12,3 +12,50 @@
 
 # eBPF collector
 /ebpf/ @korniltsev
+
+# area/read-path
+/pkg/experiment/query_backend/
+/pkg/experiment/symbolizer/
+/pkg/storegateway/
+/pkg/scheduler/
+/pkg/phlaredb/symdb/
+/pkg/phlaredb/tsdb/
+/pkg/querier/
+/pkg/frontend/
+/pkg/experiment/block/
+/pkg/phlaredb/block
+
+# area/write-path
+/pkg/distributor/
+/pkg/experiment/distributor/
+/pkg/experiment/ingester/
+/pkg/og/convert/
+/pkg/pprof/
+/pkg/model/relabel/
+/pkg/model/
+/pkg/model/pprof_split/
+/pkg/validation/
+/pkg/ingester/otlp
+/pkg/ingester/
+/pkg/phlaredb/shipper/
+
+# area/compactor
+/pkg/compactor/
+/pkg/experiment/compactor/
+/pkg/phlaredb/bucketindex/
+/pkg/phlaredb/downsample/
+
+# area/metastore
+/pkg/experiment/metastore/
+
+# parquet
+/pkg/objstore/parquet/
+/pkg/phlaredb/query/
+/pkg/phlaredb/schemas/v1/
+/pkg/parquet/
+
+# api
+/api/
+
+# objstore
+/pkg/objstore/
