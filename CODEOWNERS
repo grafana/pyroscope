@@ -14,15 +14,15 @@
 /ebpf/ @korniltsev
 
 # area/read-path
-/pkg/experiment/query_backend/
-/pkg/experiment/symbolizer/
+/pkg/experiment/query_backend/ @marcsanmi
+/pkg/experiment/symbolizer/ @marcsanmi
 /pkg/storegateway/
 /pkg/scheduler/
 /pkg/phlaredb/symdb/ @simonswine
 /pkg/phlaredb/tsdb/ @simonswine
-/pkg/querier/
-/pkg/frontend/
-/pkg/experiment/block/ @simonswine
+/pkg/querier/ @marcsanmi
+/pkg/frontend/ @marcsanmi
+/pkg/experiment/block/ @simonswine @marcsanmi
 /pkg/phlaredb/block @simonswine
 
 # area/write-path
@@ -34,8 +34,8 @@
 /pkg/model/relabel/
 /pkg/model/
 /pkg/model/pprof_split/
-/pkg/validation/
-/pkg/ingester/otlp
+/pkg/validation/ @marcsanmi
+/pkg/ingester/otlp @marcsanmi
 /pkg/ingester/
 /pkg/phlaredb/shipper/
 
@@ -55,7 +55,7 @@
 /pkg/parquet/ @simonswine
 
 # api
-/api/ @simonswine
+/api/ @simonswine @marcsanmi
 
 # objstore
 /pkg/objstore/ @simonswine
