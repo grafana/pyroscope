@@ -99,6 +99,8 @@ func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemory
 	pi.mutex.RLock()
 	defer pi.mutex.RUnlock()
 
+	// TODO(kolesnikovae): We should reuse these series
+	//   when building dataset index.
 	pfs := make([]*profileSeries, 0, len(pi.profilesPerFP))
 	profilesSize := 0
 

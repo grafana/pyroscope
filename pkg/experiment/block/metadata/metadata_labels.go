@@ -18,6 +18,7 @@ import (
 const (
 	LabelNameTenantDataset     = "__tenant_dataset__"
 	LabelValueDatasetTSDBIndex = "dataset_tsdb_index"
+	LabelNameUnsymbolized      = "__unsymbolized__"
 )
 
 type LabelBuilder struct {
@@ -95,9 +96,7 @@ func FindDatasets(md *metastorev1.BlockMeta, matchers ...*labels.Matcher) goiter
 	st.Import(md)
 	lm := NewLabelMatcher(st.Strings, matchers)
 	if !lm.IsValid() {
-		return func(func(*metastorev1.Dataset) bool) {
-			return
-		}
+		return func(func(*metastorev1.Dataset) bool) {}
 	}
 	return func(yield func(*metastorev1.Dataset) bool) {
 		for i := range md.Datasets {

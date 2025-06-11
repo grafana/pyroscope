@@ -176,17 +176,19 @@ GEM
       stringio
     puma (5.6.8)
       nio4r (~> 2.0)
-    pyroscope (0.5.13)
+    pyroscope (0.6.4)
       ffi
-    pyroscope (0.5.13-aarch64-linux)
+    pyroscope (0.6.4-aarch64-linux)
       ffi
-    pyroscope (0.5.13-x86_64-darwin)
+    pyroscope (0.6.4-arm64-darwin)
       ffi
-    pyroscope (0.5.13-x86_64-linux)
+    pyroscope (0.6.4-x86_64-darwin)
       ffi
-    pyroscope-otel (0.1.1)
-      opentelemetry-api (~> 1.1.0)
-      pyroscope (~> 0.5.1)
+    pyroscope (0.6.4-x86_64-linux)
+      ffi
+    pyroscope-otel (0.1.4)
+      opentelemetry-api (~> 1.1)
+      pyroscope (>= 0.5.1, < 1.0)
     racc (1.7.3)
     rack (2.2.8.1)
     rack-test (2.1.0)
@@ -262,7 +264,7 @@ DEPENDENCIES
   opentelemetry-instrumentation-rails
   opentelemetry-sdk (~> 1.2.0)
   puma (~> 5.6)
-  pyroscope (= 0.5.13)
+  pyroscope (= 0.6.4)
   pyroscope-otel (~> 0.1.1)
   rails (~> 7.0.8)
   sprockets-rails

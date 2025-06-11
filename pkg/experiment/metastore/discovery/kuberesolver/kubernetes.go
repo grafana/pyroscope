@@ -1,3 +1,4 @@
+// nolint
 package kuberesolver
 
 import (

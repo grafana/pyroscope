@@ -6,9 +6,11 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -18,22 +20,25 @@ type sampleSeries struct {
 }
 
 type mockVisitor struct {
-	labels            []*typesv1.LabelPair
-	visited           []sampleSeries
+	profile           phlaremodel.Labels
+	series            []sampleSeries
 	discardedBytes    int
 	discardedProfiles int
+	err               error
 }
 
-func (m *mockVisitor) VisitProfile(labels []*typesv1.LabelPair) {
-	m.labels = labels
+func (m *mockVisitor) VisitProfile(labels phlaremodel.Labels) {
+	m.profile = labels
 }
 
-func (m *mockVisitor) VisitSampleSeries(labels []*typesv1.LabelPair, samples []*profilev1.Sample) {
-	m.visited = append(m.visited, sampleSeries{
+func (m *mockVisitor) VisitSampleSeries(labels phlaremodel.Labels, samples []*profilev1.Sample) {
+	m.series = append(m.series, sampleSeries{
 		labels:  labels,
 		samples: samples,
 	})
 }
+
+func (m *mockVisitor) ValidateLabels(phlaremodel.Labels) error { return m.err }
 
 func (m *mockVisitor) Discarded(profiles, bytes int) {
 	m.discardedBytes += bytes
@@ -51,7 +56,7 @@ func Test_VisitSampleSeries(t *testing.T) {
 
 		expected       []sampleSeries
 		expectNoSeries bool
-		expectLabels   []*typesv1.LabelPair
+		expectLabels   phlaremodel.Labels
 
 		expectBytesDropped    int
 		expectProfilesDropped int
@@ -433,23 +438,17 @@ func Test_VisitSampleSeries(t *testing.T) {
 
 		t.Run(tc.description, func(t *testing.T) {
 			v := new(mockVisitor)
-			VisitSampleSeries(
-				tc.profile,
-				tc.labels,
-				tc.rules,
-				v,
-			)
-
+			require.NoError(t, VisitSampleSeries(tc.profile, tc.labels, tc.rules, v))
 			assert.Equal(t, tc.expectBytesDropped, v.discardedBytes)
 			assert.Equal(t, tc.expectProfilesDropped, v.discardedProfiles)
 
 			if tc.expectNoSeries {
-				assert.Nil(t, v.visited)
-				assert.Equal(t, tc.expectLabels, v.labels)
+				assert.Nil(t, v.series)
+				assert.Equal(t, tc.expectLabels, v.profile)
 				return
 			}
 
-			for i, actual := range v.visited {
+			for i, actual := range v.series {
 				expected := tc.expected[i]
 				assert.Equal(t, expected.labels, actual.labels)
 				assert.Equal(t, expected.samples, actual.samples)

@@ -12,7 +12,7 @@ tools/update_examples_pr:
 	git checkout -b gh_bot_examples_update
 	git add .
 	git commit -m "chore(examples): update examples"
-	git push -f https://x-access-token:$(GITHUB_TOKEN)@github.com/$(GITHUB_REPOSITORY).git gh_bot_examples_update
+	git push -f https://x-access-token:$(GITHUB_TOKEN)@github.com/$(GITHUB_REPOSITORY).git gh_bot_examples_update 2> /dev/null
 	gh pr create --head gh_bot_examples_update --title "chore(examples): update examples" --body "make tools/update_examples" --repo $(GITHUB_REPOSITORY) || \
 	   gh pr edit gh_bot_examples_update --title "chore(examples): update examples" --body "make tools/update_examples" --repo $(GITHUB_REPOSITORY)
 

@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
-	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -29,7 +28,7 @@ type routerTestSuite struct {
 	registry  *prometheus.Registry
 	overrides *mockOverrides
 	ingester  *mockwritepath.MockIngesterClient
-	segwriter *mockwritepath.MockSegmentWriterClient
+	segwriter *mockwritepath.MockIngesterClient
 
 	request *distributormodel.PushRequest
 }
@@ -46,7 +45,7 @@ func (s *routerTestSuite) SetupTest() {
 	s.registry = prometheus.NewRegistry()
 	s.overrides = new(mockOverrides)
 	s.ingester = new(mockwritepath.MockIngesterClient)
-	s.segwriter = new(mockwritepath.MockSegmentWriterClient)
+	s.segwriter = new(mockwritepath.MockIngesterClient)
 
 	profile := &distributormodel.ProfileSample{Profile: &pprof.Profile{}}
 	s.request = &distributormodel.PushRequest{
@@ -116,7 +115,7 @@ func (s *routerTestSuite) Test_SegmentWriterPath() {
 	})
 
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
-		Return(new(segmentwriterv1.PushResponse), nil).
+		Return(new(connect.Response[pushv1.PushResponse]), nil).
 		Once()
 
 	s.Assert().NoError(s.router.Send(context.Background(), s.request))
@@ -152,9 +151,9 @@ func (s *routerTestSuite) Test_CombinedPath() {
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
 		Run(func(m mock.Arguments) {
 			sentSegwriter.Add(1)
-			m.Get(1).(*segmentwriterv1.PushRequest).Profile = nil
+			m.Get(1).(*distributormodel.PushRequest).Series = nil
 		}).
-		Return(new(segmentwriterv1.PushResponse), nil)
+		Return(new(connect.Response[pushv1.PushResponse]), nil)
 
 	for i := 0; i < w; i++ {
 		for j := 0; j < N; j++ {
@@ -197,7 +196,7 @@ func (s *routerTestSuite) Test_CombinedPath_IngesterError() {
 	})
 
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
-		Return(new(segmentwriterv1.PushResponse), nil).
+		Return(new(connect.Response[pushv1.PushResponse]), nil).
 		Once()
 
 	s.ingester.On("Push", mock.Anything, mock.Anything).
@@ -216,7 +215,7 @@ func (s *routerTestSuite) Test_CombinedPath_SegmentWriterError() {
 	})
 
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
-		Return(new(segmentwriterv1.PushResponse), context.Canceled).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
 		Once()
 
 	s.ingester.On("Push", mock.Anything, mock.Anything).
@@ -250,7 +249,7 @@ func (s *routerTestSuite) Test_CombinedPath_SegmentWriter_Exclusive_Error() {
 	})
 
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
-		Return(new(segmentwriterv1.PushResponse), context.Canceled).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
 		Once()
 
 	s.Assert().Error(s.router.Send(context.Background(), s.request), context.Canceled)
@@ -267,8 +266,8 @@ func (s *routerTestSuite) Test_SegmentWriter_MultipleProfiles() {
 	x.Samples = append(x.Samples, &distributormodel.ProfileSample{Profile: &pprof.Profile{}})
 
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
-		Return(new(segmentwriterv1.PushResponse), nil).
-		Twice()
+		Return(new(connect.Response[pushv1.PushResponse]), nil).
+		Once()
 
 	s.Assert().NoError(s.router.Send(context.Background(), s.request))
 }

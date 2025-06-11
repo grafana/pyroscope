@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/dskit/kv/codec"
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
-	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/runtimeconfig"
 	"github.com/grafana/dskit/server"
@@ -35,7 +34,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
@@ -43,10 +41,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/experiment/query_backend"
-	"github.com/grafana/pyroscope/pkg/frontend"
-	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
-	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
@@ -57,7 +51,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
-	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/build"
@@ -107,94 +100,10 @@ const (
 	PlacementManager     string = "placement-manager"
 	HealthServer         string = "health-server"
 	RecordingRulesClient string = "recording-rules-client"
+	Symbolizer           string = "symbolizer"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
-
-func (f *Phlare) initQueryFrontend() (services.Service, error) {
-	var err error
-	if f.Cfg.Frontend.Addr, err = f.getFrontendAddress(); err != nil {
-		return nil, fmt.Errorf("failed to get frontend address: %w", err)
-	}
-	if f.Cfg.Frontend.Port == 0 {
-		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
-	}
-	if f.Cfg.v2Experiment {
-		return f.initQueryFrontendV2()
-	}
-	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg)
-	if err != nil {
-		return nil, err
-	}
-	f.frontend = frontendSvc
-	f.API.RegisterFrontendForQuerierHandler(frontendSvc)
-	f.API.RegisterQuerierServiceHandler(frontendSvc)
-	f.API.RegisterPyroscopeHandlers(frontendSvc)
-	f.API.RegisterVCSServiceHandler(frontendSvc)
-	return frontendSvc, nil
-}
-
-func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
-	vcsService := vcs.New(
-		log.With(f.logger, "component", "vcs-service"),
-		f.reg,
-	)
-
-	newFrontend := queryfrontend.NewQueryFrontend(
-		log.With(f.logger, "component", "query-frontend"),
-		f.Overrides,
-		f.metastoreClient,
-		f.metastoreClient,
-		f.queryBackendClient,
-	)
-
-	// If the new read path is enabled globally by default,
-	// the old query frontend is not used. Tenant-specific overrides
-	// are ignored — all tenants use the new read path.
-	//
-	// If the old read path is still in use, we configure the router
-	// to use both the old and new query frontends.
-
-	var handler querierv1connect.QuerierServiceHandler
-	handler = newFrontend
-	if !f.isV2QueryFrontendOnly() {
-		handler = readpath.NewRouter(
-			log.With(f.logger, "component", "read-path-router"),
-			f.Overrides,
-			f.frontend,
-			newFrontend,
-		)
-	}
-
-	f.API.RegisterVCSServiceHandler(vcsService)
-	f.API.RegisterQuerierServiceHandler(handler)
-	f.API.RegisterPyroscopeHandlers(handler)
-
-	// New query frontend does not have any state.
-	// For simplicity, we return a no-op service.
-	svc := services.NewIdleService(
-		func(context.Context) error { return nil },
-		func(error) error { return nil },
-	)
-
-	return svc, nil
-}
-
-func (f *Phlare) isV2QueryFrontendOnly() bool {
-	c := f.Overrides.ReadPathOverrides(tenant.DefaultTenantID)
-	return c.EnableQueryBackend && c.EnableQueryBackendFrom.IsZero()
-}
-
-func (f *Phlare) getFrontendAddress() (addr string, err error) {
-	addr = f.Cfg.Frontend.Addr
-	if f.Cfg.Frontend.AddrOld != "" {
-		addr = f.Cfg.Frontend.AddrOld
-	}
-	if addr != "" {
-		return addr, nil
-	}
-	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
-}
 
 func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 	if len(f.Cfg.RuntimeConfig.LoadPath) == 0 {

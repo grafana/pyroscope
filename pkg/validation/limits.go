@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
@@ -35,6 +36,7 @@ type Limits struct {
 	IngestionRateMB        float64               `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
 	IngestionBurstSizeMB   float64               `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
 	IngestionLimit         *ingest_limits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
+	Sampling               *sampling.Config      `yaml:"sampling" json:"sampling" category:"advanced" doc:"hidden"`
 	MaxLabelNameLength     int                   `yaml:"max_label_name_length" json:"max_label_name_length"`
 	MaxLabelValueLength    int                   `yaml:"max_label_value_length" json:"max_label_value_length"`
 	MaxLabelNamesPerSeries int                   `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
@@ -118,6 +120,9 @@ type Limits struct {
 	// RecordingRules allow to specify static recording rules. This is not compatible with recording rules
 	// coming from a RecordingRulesClient, that will replace any static rules defined.
 	RecordingRules RecordingRules `yaml:"recording_rules" json:"recording_rules" category:"experimental" doc:"hidden"`
+
+	// Symbolizer.
+	Symbolizer Symbolizer `yaml:"symbolizer" json:"symbolizer" category:"experimental" doc:"hidden"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -285,6 +290,10 @@ func (o *Overrides) IngestionBurstSizeBytes(tenantID string) int {
 
 func (o *Overrides) IngestionLimit(tenantID string) *ingest_limits.Config {
 	return o.getOverridesForTenant(tenantID).IngestionLimit
+}
+
+func (o *Overrides) SamplingProbability(tenantID string) *sampling.Config {
+	return o.getOverridesForTenant(tenantID).Sampling
 }
 
 // IngestionTenantShardSize returns the ingesters shard size for a given user.

@@ -85,7 +85,15 @@ func (q *metadataQuery) buildTenantMap(tenants []string) {
 }
 
 func (q *metadataQuery) overlaps(start, end time.Time) bool {
-	return start.Before(q.endTime) && !end.Before(q.startTime)
+	if q.startTime.After(end) {
+		return false
+	}
+
+	if q.endTime.Before(start) {
+		return false
+	}
+
+	return true
 }
 
 func (q *metadataQuery) overlapsUnixMilli(start, end int64) bool {
@@ -252,6 +260,9 @@ func (q *metadataLabelQuerier) collectLabels(s *store.Shard) error {
 		md := q.shards.index.blocks.getOrCreate(s, blocks.At())
 		if q.query.overlapsUnixMilli(md.MinTime, md.MaxTime) {
 			for _, ds := range md.Datasets {
+				if _, ok := q.query.tenantMap[s.Lookup(ds.Tenant)]; !ok {
+					continue
+				}
 				if q.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
 					matcher.Matches(ds.Labels)
 				}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -19,6 +20,7 @@ import (
 	otellogs "github.com/agoda-com/opentelemetry-logs-go"
 	sdklogs "github.com/agoda-com/opentelemetry-logs-go/sdk/logs"
 	otelpyroscope "github.com/grafana/otel-profiling-go"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	mmetric "go.opentelemetry.io/otel/metric"
@@ -84,6 +86,14 @@ func main() {
 	defer cleanup()
 
 	rideshare.Log.Print(context.Background(), "started ride-sharing app")
+
+	// Register Prometheus metrics handler
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		if err := http.ListenAndServe(":5001", nil); err != nil {
+			slog.Error("metrics server error", "error", err)
+		}
+	}()
 
 	http.Handle("/", otelhttp.NewHandler(http.HandlerFunc(index), "IndexHandler"))
 

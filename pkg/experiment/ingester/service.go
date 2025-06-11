@@ -23,7 +23,6 @@ import (
 	metastoreclient "github.com/grafana/pyroscope/pkg/experiment/metastore/client"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -91,11 +90,10 @@ type SegmentWriterService struct {
 	services.Service
 	segmentwriterv1.UnimplementedSegmentWriterServiceServer
 
-	config   Config
-	dbConfig phlaredb.Config
-	logger   log.Logger
-	reg      prometheus.Registerer
-	health   health.Service
+	config Config
+	logger log.Logger
+	reg    prometheus.Registerer
+	health health.Service
 
 	requests           util.InflightRequests
 	lifecycler         *ring.Lifecycler
@@ -186,7 +184,7 @@ func (i *SegmentWriterService) stopping(_ error) error {
 	errs.Add(services.StopManagerAndAwaitStopped(context.Background(), i.subservices))
 	time.Sleep(i.config.LifecyclerConfig.MinReadyDuration)
 	i.requests.Drain()
-	errs.Add(i.segmentWriter.stop())
+	i.segmentWriter.stop()
 	return errs.Err()
 }
 
