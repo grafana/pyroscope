@@ -14,9 +14,9 @@
 /ebpf/ @korniltsev
 
 # area/read-path
-/pkg/experiment/query_backend/ @marcsanmi
+/pkg/experiment/query_backend/ @marcsanmi @aleks-p
 /pkg/experiment/symbolizer/ @marcsanmi
-/pkg/storegateway/
+/pkg/storegateway/ @aleks-p
 /pkg/scheduler/
 /pkg/phlaredb/symdb/ @simonswine
 /pkg/phlaredb/tsdb/ @simonswine
@@ -26,7 +26,7 @@
 /pkg/phlaredb/block @simonswine
 
 # area/write-path
-/pkg/distributor/
+/pkg/distributor/ @aleks-p
 /pkg/experiment/distributor/
 /pkg/experiment/ingester/
 /pkg/og/convert/
@@ -34,7 +34,7 @@
 /pkg/model/relabel/
 /pkg/model/
 /pkg/model/pprof_split/
-/pkg/validation/ @marcsanmi
+/pkg/validation/ @marcsanmi @aleks-p
 /pkg/ingester/otlp @marcsanmi
 /pkg/ingester/
 /pkg/phlaredb/shipper/
@@ -42,20 +42,20 @@
 # area/compactor
 /pkg/compactor/
 /pkg/experiment/compactor/
-/pkg/phlaredb/bucketindex/
-/pkg/phlaredb/downsample/
+/pkg/phlaredb/bucketindex/ @aleks-p
+/pkg/phlaredb/downsample/ @aleks-p
 
 # area/metastore
-/pkg/experiment/metastore/
+/pkg/experiment/metastore/ @aleks-p
 
 # parquet
 /pkg/objstore/parquet/ @simonswine
 /pkg/phlaredb/query/ @simonswine
-/pkg/phlaredb/schemas/v1/ @simonswine
+/pkg/phlaredb/schemas/v1/ @simonswine @aleks-p
 /pkg/parquet/ @simonswine
 
 # api
-/api/ @simonswine @marcsanmi
+/api/ @simonswine @marcsanmi @aleks-p
 
 # objstore
 /pkg/objstore/ @simonswine
