@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/middleware"
 
+	"github.com/grafana/pyroscope/pkg/util/delayhandler"
 	"github.com/grafana/pyroscope/pkg/util/gziphandler"
 )
 
@@ -86,6 +87,12 @@ func WithGzipMiddleware() RegisterOption {
 	}
 }
 
+func (a *API) WithArtificialDelayMiddleware(limits delayhandler.Limits) RegisterOption {
+	return func(r *registerParams) {
+		r.middlewares = append(r.middlewares, registerMiddleware{middleware.Func(delayhandler.NewHTTP(limits)), "artificial_delay"})
+	}
+}
+
 func (a *API) registerOptionsTenantPath() []RegisterOption {
 	return []RegisterOption{
 		a.WithAuthMiddleware(),
@@ -98,9 +105,10 @@ func (a *API) registerOptionsReadPath() []RegisterOption {
 	return a.registerOptionsTenantPath()
 }
 
-func (a *API) registerOptionsWritePath() []RegisterOption {
+func (a *API) registerOptionsWritePath(limits delayhandler.Limits) []RegisterOption {
 	return []RegisterOption{
 		a.WithAuthMiddleware(),
+		a.WithArtificialDelayMiddleware(limits), // This middleware relies on the auth middleware, to determine the user's override
 		WithGzipMiddleware(),
 		WithMethod("POST"),
 	}
