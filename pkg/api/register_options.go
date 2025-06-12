@@ -118,8 +118,9 @@ func (a *API) registerOptionsPrefixPublicAccess() []RegisterOption {
 }
 
 func (a *API) registerOptionsRingPage() []RegisterOption {
-	return append(
-		a.registerOptionsPublicAccess(),
+	return []RegisterOption{
+		WithGzipMiddleware(),
+		WithMethod("GET"),
 		WithMethod("POST"),
-	)
+	}
 }
