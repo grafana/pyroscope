@@ -1,8 +1,12 @@
 package api
 
 import (
+	"net/http"
 	"strings"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/middleware"
 
 	"github.com/grafana/pyroscope/pkg/util/gziphandler"
@@ -123,4 +127,30 @@ func (a *API) registerOptionsRingPage() []RegisterOption {
 		WithMethod("GET"),
 		WithMethod("POST"),
 	}
+}
+
+func registerRoute(logger log.Logger, mux *mux.Router, path string, handler http.Handler, registerOpts ...RegisterOption) {
+	opts := applyRegisterOptions(registerOpts...)
+
+	level.Debug(logger).Log(append([]interface{}{
+		"msg", "api: registering route"}, opts.logFields(path)...)...)
+
+	// handle path prefixing
+	route := mux.Path(path)
+	if opts.isPrefix {
+		route = mux.PathPrefix(path)
+	}
+
+	// limit the route to the given methods
+	if len(opts.methods) > 0 {
+		route = route.Methods(opts.methods...)
+	}
+
+	// registering the middlewares in reverse order (similar like middleware.Merge)
+	for idx := range opts.middlewares {
+		mw := opts.middlewares[len(opts.middlewares)-idx-1]
+		handler = mw.Wrap(handler)
+	}
+
+	route.Handler(handler)
 }
