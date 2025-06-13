@@ -320,7 +320,7 @@ func (f *Phlare) initDistributor() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.API.RegisterDistributor(d, f.Cfg.MultitenancyEnabled)
+	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.MultitenancyEnabled)
 	return d, nil
 }
 
