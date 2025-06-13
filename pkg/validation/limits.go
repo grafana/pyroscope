@@ -36,7 +36,7 @@ type Limits struct {
 	IngestionRateMB        float64               `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
 	IngestionBurstSizeMB   float64               `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
 	IngestionLimit         *ingest_limits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
-	Sampling               *sampling.Config      `yaml:"sampling" json:"sampling" category:"advanced" doc:"hidden"`
+	DistributorSampling    *sampling.Config      `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
 	MaxLabelNameLength     int                   `yaml:"max_label_name_length" json:"max_label_name_length"`
 	MaxLabelValueLength    int                   `yaml:"max_label_value_length" json:"max_label_value_length"`
 	MaxLabelNamesPerSeries int                   `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
@@ -292,8 +292,8 @@ func (o *Overrides) IngestionLimit(tenantID string) *ingest_limits.Config {
 	return o.getOverridesForTenant(tenantID).IngestionLimit
 }
 
-func (o *Overrides) SamplingProbability(tenantID string) *sampling.Config {
-	return o.getOverridesForTenant(tenantID).Sampling
+func (o *Overrides) DistributorSampling(tenantID string) *sampling.Config {
+	return o.getOverridesForTenant(tenantID).DistributorSampling
 }
 
 // IngestionTenantShardSize returns the ingesters shard size for a given user.

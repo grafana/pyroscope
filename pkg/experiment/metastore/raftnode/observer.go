@@ -1,6 +1,8 @@
 package raftnode
 
 import (
+	"sync"
+
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
@@ -18,6 +20,7 @@ type Observer struct {
 	raft     *raft.Raft
 	observer *raft.Observer
 	state    *prometheus.GaugeVec
+	mu       sync.Mutex
 	handlers []StateHandler
 	c        chan raft.Observation
 	stop     chan struct{}
@@ -45,15 +48,17 @@ func NewRaftStateObserver(logger log.Logger, r *raft.Raft, state *prometheus.Gau
 }
 
 func (o *Observer) RegisterHandler(h StateHandler) {
+	o.mu.Lock()
 	o.handlers = append(o.handlers, h)
+	o.mu.Unlock()
 	o.updateRaftState()
 }
 
 func (o *Observer) Deregister() {
-	close(o.stop)
-	<-o.done
 	level.Debug(o.logger).Log("msg", "deregistering raft observer")
 	o.raft.DeregisterObserver(o.observer)
+	close(o.stop)
+	<-o.done
 }
 
 func (o *Observer) run() {
@@ -77,7 +82,10 @@ func (o *Observer) updateRaftState() {
 		o.state.Reset()
 		o.state.WithLabelValues(state.String()).Set(1)
 	}
-	for _, h := range o.handlers {
+	o.mu.Lock()
+	handlers := o.handlers
+	o.mu.Unlock()
+	for _, h := range handlers {
 		h.Observe(state)
 	}
 }

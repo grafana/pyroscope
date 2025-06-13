@@ -580,8 +580,7 @@ func (f *Phlare) Run() error {
 	}
 	f.serviceManager = sm
 
-	f.API.RegisterRoute("/ready", f.readyHandler(sm), false, false, "GET")
-
+	f.API.RegisterReadyHandler(f.readyHandler(sm))
 	RegisterHealthServer(f.Server.HTTP, grpcutil.WithManager(sm))
 	healthy := func() {
 		level.Info(f.logger).Log("msg", "Pyroscope started", "version", version.Info())

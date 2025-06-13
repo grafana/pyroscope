@@ -2652,7 +2652,7 @@ func TestDistributor_shouldSample(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
-				l.Sampling = tt.samplingConfig
+				l.DistributorSampling = tt.samplingConfig
 				tenantLimits[tt.tenantID] = l
 			})
 			d := &Distributor{
@@ -2698,7 +2698,7 @@ func TestDistributor_shouldSample_Probability(t *testing.T) {
 
 			overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
-				l.Sampling = samplingConfig
+				l.DistributorSampling = samplingConfig
 				tenantLimits[tenantID] = l
 			})
 			d := &Distributor{
