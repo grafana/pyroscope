@@ -22,6 +22,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/thanos-io/objstore"
 	"golang.org/x/exp/maps"
+	"golang.org/x/time/rate"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -51,9 +52,9 @@ type segmentsWriter struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	metrics      *segmentMetrics
-	headMetrics  *memdb.HeadMetrics
-	retryLimiter *retry.RateLimiter
+	metrics             *segmentMetrics
+	headMetrics         *memdb.HeadMetrics
+	hedgedUploadLimiter *rate.Limiter
 }
 
 type shard struct {
@@ -137,7 +138,7 @@ func newSegmentWriter(l log.Logger, metrics *segmentMetrics, hm *memdb.HeadMetri
 		shards:      make(map[shardKey]*shard),
 		metastore:   metastoreClient,
 	}
-	sw.retryLimiter = retry.NewRateLimiter(sw.config.UploadHedgeRateMax, int(sw.config.UploadHedgeRateBurst))
+	sw.hedgedUploadLimiter = rate.NewLimiter(rate.Limit(sw.config.UploadHedgeRateMax), int(sw.config.UploadHedgeRateBurst))
 	sw.ctx, sw.cancel = context.WithCancel(context.Background())
 	flushWorkers := runtime.GOMAXPROCS(-1)
 	if config.FlushConcurrency > 0 {
@@ -605,39 +606,38 @@ func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, met
 	// if the request is not completed within a certain time, we trigger
 	// a second upload attempt. Upload errors are retried explicitly and
 	// are included into the call duration.
-	uploadWithRetry := func(ctx context.Context, hedge bool) (any, error) {
-		retryConfig := backoff.Config{
-			MinBackoff: sw.config.UploadMinBackoff,
-			MaxBackoff: sw.config.UploadMaxBackoff,
-			MaxRetries: sw.config.UploadMaxRetries,
-		}
-		var attemptErr error
-		if hedge {
-			// Hedged requests are not retried.
-			retryConfig.MaxRetries = 1
-			attemptStart := time.Now()
-			defer func() {
-				sw.metrics.segmentHedgedUploadDuration.
-					WithLabelValues(statusLabelValue(attemptErr)).
-					Observe(time.Since(attemptStart).Seconds())
-			}()
-		}
-		// Retry on all errors.
-		retries := backoff.New(ctx, retryConfig)
-		for retries.Ongoing() && ctx.Err() == nil {
-			if attemptErr = sw.bucket.Upload(ctx, path, bytes.NewReader(blockData)); attemptErr == nil {
-				break
-			}
-			retries.Wait()
-		}
-		return nil, attemptErr
-	}
-
 	hedgedUpload := retry.Hedged[any]{
-		Call:      uploadWithRetry,
-		Trigger:   time.After(sw.config.UploadHedgeAfter),
-		Throttler: sw.retryLimiter,
-		FailFast:  false,
+		Trigger: time.After(sw.config.UploadHedgeAfter),
+		Call: func(ctx context.Context, hedge bool) (any, error) {
+			retryConfig := backoff.Config{
+				MinBackoff: sw.config.UploadMinBackoff,
+				MaxBackoff: sw.config.UploadMaxBackoff,
+				MaxRetries: sw.config.UploadMaxRetries,
+			}
+			var attemptErr error
+			if hedge {
+				if limitErr := sw.hedgedUploadLimiter.Wait(ctx); limitErr != nil {
+					return nil, limitErr
+				}
+				// Hedged requests are not retried.
+				retryConfig.MaxRetries = 0
+				attemptStart := time.Now()
+				defer func() {
+					sw.metrics.segmentHedgedUploadDuration.
+						WithLabelValues(statusLabelValue(attemptErr)).
+						Observe(time.Since(attemptStart).Seconds())
+				}()
+			}
+			// Retry on all errors.
+			retries := backoff.New(ctx, retryConfig)
+			for retries.Ongoing() {
+				if attemptErr = sw.bucket.Upload(ctx, path, bytes.NewReader(blockData)); attemptErr == nil {
+					break
+				}
+				retries.Wait()
+			}
+			return nil, attemptErr
+		},
 	}
 
 	if _, err = hedgedUpload.Do(ctx); err != nil {
