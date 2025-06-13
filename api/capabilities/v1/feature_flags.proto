@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package capabilities.v1;
+
+service FeatureFlagsService {
+  // Retrieve feature flags that are enabled for a particular tenant
+  rpc GetFeatureFlags(GetFeatureFlagsRequest) returns (GetFeatureFlagsResponse) {}
+}
+
+message GetFeatureFlagsRequest {}
+
+message GetFeatureFlagsResponse {
+  // Map containing all features, also disable features are returned
+  repeated FeatureFlag feature_flags = 1;
+}
+
+// FeatureParameters contains the per feature flag parameters.
+message FeatureFlag {
+  // Name of the feature, please use lower camel case.
+  string name = 1;
+  // Wether the feature flag is enabled or disabled.
+  bool enabled = 2;
+  // Optional description of the feature flag.
+  optional string description = 3;
+  // Optional URL to the documentation page of the feature flag.
+  optional string documentation_url = 4;
+}
