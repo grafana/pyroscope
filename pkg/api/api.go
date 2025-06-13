@@ -15,7 +15,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/server"
@@ -89,27 +88,7 @@ func New(cfg Config, s *server.Server, grpcGatewayMux *grpcgw.ServeMux, logger l
 //
 // Register Options allow to filter the HTTP methods and apply middlewares.
 func (a *API) RegisterRoute(path string, handler http.Handler, registerOpts ...RegisterOption) {
-	opts := applyRegisterOptions(registerOpts...)
-
-	level.Debug(a.logger).Log(append([]interface{}{
-		"msg", "api: registering route"}, opts.logFields(path)...)...)
-
-	// handle path prefixing
-	route := a.server.HTTP.Path(path)
-	if opts.isPrefix {
-		route = a.server.HTTP.PathPrefix(path)
-	}
-
-	// limit the route to the given methods
-	if len(opts.methods) > 0 {
-		route = route.Methods(opts.methods...)
-	}
-
-	for _, middleware := range opts.middlewares {
-		handler = middleware.Wrap(handler)
-	}
-
-	route.Handler(handler)
+	registerRoute(a.logger, a.server.HTTP, path, handler, registerOpts...)
 }
 
 // RegisterAPI registers the standard endpoints associated with a running Pyroscope.
