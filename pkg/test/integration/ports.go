@@ -1,8 +1,12 @@
-package test
+package integration
 
 import "net"
 
-// GetFreePorts returns a number of free local port for the tests to listen on. Note this will make sure the returned ports do not overlap, by stopping to listen once all ports are allocated
+// GetFreePorts returns a number of free local port for the tests to listen on.
+// This will make sure the returned ports do not overlap, by stopping to listen once all ports are allocated
+//
+// Note: This function should only be used in integration tests.
+// Use in-memory network connections in unittests.
 func GetFreePorts(len int) (ports []int, err error) {
 	ports = make([]int, len)
 	for i := 0; i < len; i++ {
