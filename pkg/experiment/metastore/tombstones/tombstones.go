@@ -105,13 +105,14 @@ func (x *Tombstones) put(k tombstoneKey, v store.TombstoneEntry) bool {
 	}
 	e := &tombstones{TombstoneEntry: v}
 	x.tombstones[k] = e
+	x.queue.push(e)
 	if v.Tombstones.Blocks != nil {
-		if x.queue.push(e) {
-			x.putBlockTombstones(v.Tombstones.Blocks)
-			return true
-		}
+		// Keep track of the blocks we enqueued. This is
+		// necessary to answer if the block has already
+		// been deleted (within a limited time window).
+		x.putBlockTombstones(v.Tombstones.Blocks)
 	}
-	return false
+	return true
 }
 
 func (x *Tombstones) delete(k tombstoneKey) (t *tombstones) {

@@ -29,6 +29,7 @@ const (
 	RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA         RaftCommand = 1
 	RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE RaftCommand = 2
 	RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN     RaftCommand = 3
+	RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX             RaftCommand = 4
 )
 
 // Enum value maps for RaftCommand.
@@ -38,12 +39,14 @@ var (
 		1: "RAFT_COMMAND_ADD_BLOCK_METADATA",
 		2: "RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE",
 		3: "RAFT_COMMAND_UPDATE_COMPACTION_PLAN",
+		4: "RAFT_COMMAND_TRUNCATE_INDEX",
 	}
 	RaftCommand_value = map[string]int32{
 		"RAFT_COMMAND_UNKNOWN":                    0,
 		"RAFT_COMMAND_ADD_BLOCK_METADATA":         1,
 		"RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE": 2,
 		"RAFT_COMMAND_UPDATE_COMPACTION_PLAN":     3,
+		"RAFT_COMMAND_TRUNCATE_INDEX":             4,
 	}
 )
 
@@ -926,6 +929,94 @@ func (x *UpdateCompactionPlanResponse) GetPlanUpdate() *CompactionPlanUpdate {
 	return nil
 }
 
+type TruncateIndexRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Term          uint64                 `protobuf:"varint,1,opt,name=term,proto3" json:"term,omitempty"`
+	Tombstones    []*v1.Tombstones       `protobuf:"bytes,2,rep,name=tombstones,proto3" json:"tombstones,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TruncateIndexRequest) Reset() {
+	*x = TruncateIndexRequest{}
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TruncateIndexRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TruncateIndexRequest) ProtoMessage() {}
+
+func (x *TruncateIndexRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TruncateIndexRequest.ProtoReflect.Descriptor instead.
+func (*TruncateIndexRequest) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *TruncateIndexRequest) GetTerm() uint64 {
+	if x != nil {
+		return x.Term
+	}
+	return 0
+}
+
+func (x *TruncateIndexRequest) GetTombstones() []*v1.Tombstones {
+	if x != nil {
+		return x.Tombstones
+	}
+	return nil
+}
+
+type TruncateIndexResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TruncateIndexResponse) Reset() {
+	*x = TruncateIndexResponse{}
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TruncateIndexResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TruncateIndexResponse) ProtoMessage() {}
+
+func (x *TruncateIndexResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TruncateIndexResponse.ProtoReflect.Descriptor instead.
+func (*TruncateIndexResponse) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{16}
+}
+
 var File_metastore_v1_raft_log_raft_log_proto protoreflect.FileDescriptor
 
 var file_metastore_v1_raft_log_raft_log_proto_rawDesc = string([]byte{
@@ -1068,17 +1159,27 @@ var file_metastore_v1_raft_log_raft_log_proto_rawDesc = string([]byte{
 	0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x72, 0x61, 0x66, 0x74, 0x5f, 0x6c, 0x6f,
 	0x67, 0x2e, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x50, 0x6c, 0x61, 0x6e,
 	0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x0a, 0x70, 0x6c, 0x61, 0x6e, 0x55, 0x70, 0x64, 0x61,
-	0x74, 0x65, 0x2a, 0xa2, 0x01, 0x0a, 0x0b, 0x52, 0x61, 0x66, 0x74, 0x43, 0x6f, 0x6d, 0x6d, 0x61,
-	0x6e, 0x64, 0x12, 0x18, 0x0a, 0x14, 0x52, 0x41, 0x46, 0x54, 0x5f, 0x43, 0x4f, 0x4d, 0x4d, 0x41,
-	0x4e, 0x44, 0x5f, 0x55, 0x4e, 0x4b, 0x4e, 0x4f, 0x57, 0x4e, 0x10, 0x00, 0x12, 0x23, 0x0a, 0x1f,
-	0x52, 0x41, 0x46, 0x54, 0x5f, 0x43, 0x4f, 0x4d, 0x4d, 0x41, 0x4e, 0x44, 0x5f, 0x41, 0x44, 0x44,
-	0x5f, 0x42, 0x4c, 0x4f, 0x43, 0x4b, 0x5f, 0x4d, 0x45, 0x54, 0x41, 0x44, 0x41, 0x54, 0x41, 0x10,
-	0x01, 0x12, 0x2b, 0x0a, 0x27, 0x52, 0x41, 0x46, 0x54, 0x5f, 0x43, 0x4f, 0x4d, 0x4d, 0x41, 0x4e,
-	0x44, 0x5f, 0x47, 0x45, 0x54, 0x5f, 0x43, 0x4f, 0x4d, 0x50, 0x41, 0x43, 0x54, 0x49, 0x4f, 0x4e,
-	0x5f, 0x50, 0x4c, 0x41, 0x4e, 0x5f, 0x55, 0x50, 0x44, 0x41, 0x54, 0x45, 0x10, 0x02, 0x12, 0x27,
-	0x0a, 0x23, 0x52, 0x41, 0x46, 0x54, 0x5f, 0x43, 0x4f, 0x4d, 0x4d, 0x41, 0x4e, 0x44, 0x5f, 0x55,
-	0x50, 0x44, 0x41, 0x54, 0x45, 0x5f, 0x43, 0x4f, 0x4d, 0x50, 0x41, 0x43, 0x54, 0x49, 0x4f, 0x4e,
-	0x5f, 0x50, 0x4c, 0x41, 0x4e, 0x10, 0x03, 0x42, 0x9d, 0x01, 0x0a, 0x0c, 0x63, 0x6f, 0x6d, 0x2e,
+	0x74, 0x65, 0x22, 0x64, 0x0a, 0x14, 0x54, 0x72, 0x75, 0x6e, 0x63, 0x61, 0x74, 0x65, 0x49, 0x6e,
+	0x64, 0x65, 0x78, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x65,
+	0x72, 0x6d, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x04, 0x74, 0x65, 0x72, 0x6d, 0x12, 0x38,
+	0x0a, 0x0a, 0x74, 0x6f, 0x6d, 0x62, 0x73, 0x74, 0x6f, 0x6e, 0x65, 0x73, 0x18, 0x02, 0x20, 0x03,
+	0x28, 0x0b, 0x32, 0x18, 0x2e, 0x6d, 0x65, 0x74, 0x61, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x2e, 0x76,
+	0x31, 0x2e, 0x54, 0x6f, 0x6d, 0x62, 0x73, 0x74, 0x6f, 0x6e, 0x65, 0x73, 0x52, 0x0a, 0x74, 0x6f,
+	0x6d, 0x62, 0x73, 0x74, 0x6f, 0x6e, 0x65, 0x73, 0x22, 0x17, 0x0a, 0x15, 0x54, 0x72, 0x75, 0x6e,
+	0x63, 0x61, 0x74, 0x65, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x2a, 0xc3, 0x01, 0x0a, 0x0b, 0x52, 0x61, 0x66, 0x74, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e,
+	0x64, 0x12, 0x18, 0x0a, 0x14, 0x52, 0x41, 0x46, 0x54, 0x5f, 0x43, 0x4f, 0x4d, 0x4d, 0x41, 0x4e,
+	0x44, 0x5f, 0x55, 0x4e, 0x4b, 0x4e, 0x4f, 0x57, 0x4e, 0x10, 0x00, 0x12, 0x23, 0x0a, 0x1f, 0x52,
+	0x41, 0x46, 0x54, 0x5f, 0x43, 0x4f, 0x4d, 0x4d, 0x41, 0x4e, 0x44, 0x5f, 0x41, 0x44, 0x44, 0x5f,
+	0x42, 0x4c, 0x4f, 0x43, 0x4b, 0x5f, 0x4d, 0x45, 0x54, 0x41, 0x44, 0x41, 0x54, 0x41, 0x10, 0x01,
+	0x12, 0x2b, 0x0a, 0x27, 0x52, 0x41, 0x46, 0x54, 0x5f, 0x43, 0x4f, 0x4d, 0x4d, 0x41, 0x4e, 0x44,
+	0x5f, 0x47, 0x45, 0x54, 0x5f, 0x43, 0x4f, 0x4d, 0x50, 0x41, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f,
+	0x50, 0x4c, 0x41, 0x4e, 0x5f, 0x55, 0x50, 0x44, 0x41, 0x54, 0x45, 0x10, 0x02, 0x12, 0x27, 0x0a,
+	0x23, 0x52, 0x41, 0x46, 0x54, 0x5f, 0x43, 0x4f, 0x4d, 0x4d, 0x41, 0x4e, 0x44, 0x5f, 0x55, 0x50,
+	0x44, 0x41, 0x54, 0x45, 0x5f, 0x43, 0x4f, 0x4d, 0x50, 0x41, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f,
+	0x50, 0x4c, 0x41, 0x4e, 0x10, 0x03, 0x12, 0x1f, 0x0a, 0x1b, 0x52, 0x41, 0x46, 0x54, 0x5f, 0x43,
+	0x4f, 0x4d, 0x4d, 0x41, 0x4e, 0x44, 0x5f, 0x54, 0x52, 0x55, 0x4e, 0x43, 0x41, 0x54, 0x45, 0x5f,
+	0x49, 0x4e, 0x44, 0x45, 0x58, 0x10, 0x04, 0x42, 0x9d, 0x01, 0x0a, 0x0c, 0x63, 0x6f, 0x6d, 0x2e,
 	0x72, 0x61, 0x66, 0x74, 0x5f, 0x6c, 0x6f, 0x67, 0x42, 0x0c, 0x52, 0x61, 0x66, 0x74, 0x4c, 0x6f,
 	0x67, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x43, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
 	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x67, 0x72, 0x61, 0x66, 0x61, 0x6e, 0x61, 0x2f, 0x70, 0x79, 0x72,
@@ -1104,7 +1205,7 @@ func file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP() []byte {
 }
 
 var file_metastore_v1_raft_log_raft_log_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_metastore_v1_raft_log_raft_log_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_metastore_v1_raft_log_raft_log_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_metastore_v1_raft_log_raft_log_proto_goTypes = []any{
 	(RaftCommand)(0),                        // 0: raft_log.RaftCommand
 	(*AddBlockMetadataRequest)(nil),         // 1: raft_log.AddBlockMetadataRequest
@@ -1122,15 +1223,17 @@ var file_metastore_v1_raft_log_raft_log_proto_goTypes = []any{
 	(*CompactionJobPlan)(nil),               // 13: raft_log.CompactionJobPlan
 	(*UpdateCompactionPlanRequest)(nil),     // 14: raft_log.UpdateCompactionPlanRequest
 	(*UpdateCompactionPlanResponse)(nil),    // 15: raft_log.UpdateCompactionPlanResponse
-	(*v1.BlockMeta)(nil),                    // 16: metastore.v1.BlockMeta
-	(v1.CompactionJobStatus)(0),             // 17: metastore.v1.CompactionJobStatus
-	(*v1.CompactedBlocks)(nil),              // 18: metastore.v1.CompactedBlocks
-	(*v1.Tombstones)(nil),                   // 19: metastore.v1.Tombstones
+	(*TruncateIndexRequest)(nil),            // 16: raft_log.TruncateIndexRequest
+	(*TruncateIndexResponse)(nil),           // 17: raft_log.TruncateIndexResponse
+	(*v1.BlockMeta)(nil),                    // 18: metastore.v1.BlockMeta
+	(v1.CompactionJobStatus)(0),             // 19: metastore.v1.CompactionJobStatus
+	(*v1.CompactedBlocks)(nil),              // 20: metastore.v1.CompactedBlocks
+	(*v1.Tombstones)(nil),                   // 21: metastore.v1.Tombstones
 }
 var file_metastore_v1_raft_log_raft_log_proto_depIdxs = []int32{
-	16, // 0: raft_log.AddBlockMetadataRequest.metadata:type_name -> metastore.v1.BlockMeta
+	18, // 0: raft_log.AddBlockMetadataRequest.metadata:type_name -> metastore.v1.BlockMeta
 	4,  // 1: raft_log.GetCompactionPlanUpdateRequest.status_updates:type_name -> raft_log.CompactionJobStatusUpdate
-	17, // 2: raft_log.CompactionJobStatusUpdate.status:type_name -> metastore.v1.CompactionJobStatus
+	19, // 2: raft_log.CompactionJobStatusUpdate.status:type_name -> metastore.v1.CompactionJobStatus
 	6,  // 3: raft_log.GetCompactionPlanUpdateResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
 	7,  // 4: raft_log.CompactionPlanUpdate.new_jobs:type_name -> raft_log.NewCompactionJob
 	8,  // 5: raft_log.CompactionPlanUpdate.assigned_jobs:type_name -> raft_log.AssignedCompactionJob
@@ -1143,17 +1246,18 @@ var file_metastore_v1_raft_log_raft_log_proto_depIdxs = []int32{
 	13, // 12: raft_log.AssignedCompactionJob.plan:type_name -> raft_log.CompactionJobPlan
 	12, // 13: raft_log.UpdatedCompactionJob.state:type_name -> raft_log.CompactionJobState
 	12, // 14: raft_log.CompletedCompactionJob.state:type_name -> raft_log.CompactionJobState
-	18, // 15: raft_log.CompletedCompactionJob.compacted_blocks:type_name -> metastore.v1.CompactedBlocks
+	20, // 15: raft_log.CompletedCompactionJob.compacted_blocks:type_name -> metastore.v1.CompactedBlocks
 	12, // 16: raft_log.EvictedCompactionJob.state:type_name -> raft_log.CompactionJobState
-	17, // 17: raft_log.CompactionJobState.status:type_name -> metastore.v1.CompactionJobStatus
-	19, // 18: raft_log.CompactionJobPlan.tombstones:type_name -> metastore.v1.Tombstones
+	19, // 17: raft_log.CompactionJobState.status:type_name -> metastore.v1.CompactionJobStatus
+	21, // 18: raft_log.CompactionJobPlan.tombstones:type_name -> metastore.v1.Tombstones
 	6,  // 19: raft_log.UpdateCompactionPlanRequest.plan_update:type_name -> raft_log.CompactionPlanUpdate
 	6,  // 20: raft_log.UpdateCompactionPlanResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	21, // 21: raft_log.TruncateIndexRequest.tombstones:type_name -> metastore.v1.Tombstones
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_metastore_v1_raft_log_raft_log_proto_init() }
@@ -1167,7 +1271,7 @@ func file_metastore_v1_raft_log_raft_log_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_metastore_v1_raft_log_raft_log_proto_rawDesc), len(file_metastore_v1_raft_log_raft_log_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   15,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
