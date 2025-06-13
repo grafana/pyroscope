@@ -39,6 +39,8 @@ message UpsertRecordingRuleRequest {
   // The observed generation of this recording rule. If this value does not
   // match the generation stored in the database, this upsert will be rejected.
   int64 generation = 6;
+
+  optional StacktraceFilter stacktrace_filter = 7;
 }
 
 message UpsertRecordingRuleResponse {
@@ -79,6 +81,25 @@ message RecordingRule {
   // provided when making updates to this record, to avoid conflicting
   // concurrent updates.
   int64 generation = 7;
+
+  optional StacktraceFilter stacktrace_filter = 8;
+}
+
+message StacktraceFilter {
+  optional StacktraceFilterFunctionName function_name = 1;
+
+  // StacktraceFilterFunctionNameRegExp functionNameRegExp = 2;
+}
+
+enum MetricType {
+  TOTAL = 0;
+
+  // SELF = 1;
+}
+
+message StacktraceFilterFunctionName {
+  string function_name = 1;
+  MetricType metric_type = 2;
 }
 
 message RecordingRuleStore {
@@ -89,6 +110,7 @@ message RecordingRuleStore {
   repeated string group_by = 5;
   repeated types.v1.LabelPair external_labels = 6;
   int64 generation = 7;
+  optional StacktraceFilter stacktrace_filter = 8;
 }
 
 message RecordingRulesStore {
