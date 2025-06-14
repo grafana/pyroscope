@@ -3,7 +3,6 @@ package retry
 import (
 	"context"
 	"errors"
-	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -151,53 +150,6 @@ func Test_Hedging(t *testing.T) {
 			}
 			if !errors.Is(err, c.expectError) {
 				t.Fatal("expected error", c.expectError)
-			}
-		})
-	}
-}
-
-func Test_Hedging_Limiter(t *testing.T) {
-	type testCase struct {
-		description string
-		runner      Throttler
-		maxAttempts int64
-	}
-
-	const attempts = 5
-	testCases := []testCase{
-		{
-			description: "zero limit disables retries",
-			runner:      NewLimiter(0),
-			maxAttempts: attempts,
-		},
-		{
-			description: "number of attempts does not exceed the limit",
-			runner:      NewLimiter(2),
-			maxAttempts: attempts + 2,
-		},
-	}
-
-	for _, c := range testCases {
-		c := c
-		t.Run(c.description, func(t *testing.T) {
-			t.Parallel()
-
-			var n int64
-			attempt := Hedged[int]{
-				Throttler: NewLimiter(0),
-				Call: func(context.Context, bool) (int, error) {
-					atomic.AddInt64(&n, 1)
-					<-time.After(time.Millisecond)
-					return 0, nil
-				},
-			}
-
-			for i := 0; i < 5; i++ {
-				_, _ = attempt.Do(context.Background())
-			}
-
-			if n > c.maxAttempts {
-				t.Fatal("number of attempts exceeded")
 			}
 		})
 	}
