@@ -16,7 +16,6 @@ type indexShard struct {
 }
 
 type shardCache struct {
-	mu     sync.RWMutex
 	shards *lru.TwoQueueCache[shardCacheKey, *indexShard]
 }
 

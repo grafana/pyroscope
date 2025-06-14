@@ -324,7 +324,8 @@ func getProcessTargets() []sd.DiscoveryTarget {
 			"comm":            strings.TrimSpace(string(comm)),
 			"pid":             spid,
 			"exe":             exe,
-			"service_name":    fmt.Sprintf("%s @ %s", cmdline, cwd),
+			"service_name":    exe,
+			"cmdline":         string(cmdline),
 		}
 		res = append(res, target)
 	}

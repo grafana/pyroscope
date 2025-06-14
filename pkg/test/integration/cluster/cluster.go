@@ -2,31 +2,25 @@ package cluster
 
 import (
 	"context"
-	"errors"
-	"flag"
 	"fmt"
-	"io"
 	"log"
-	"math"
 	"math/rand"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	pm "github.com/prometheus/client_model/go"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
-	"github.com/grafana/pyroscope/pkg/cfg"
-	"github.com/grafana/pyroscope/pkg/phlare"
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
+
+const listenAddr = "127.0.0.1"
 
 func getFreeTCPPorts(address string, count int) ([]int, error) {
 	ports := make([]int, count)
@@ -58,79 +52,129 @@ func newComponent(target string) *Component {
 	}
 }
 
-func NewMicroServiceCluster() *Cluster {
-	// use custom http client to resolve dynamically to healthy components
+type testTransport struct {
+	defaultDialContext func(ctx context.Context, network, addr string) (net.Conn, error)
+	next               http.RoundTripper
+	c                  *Cluster
+}
 
-	c := &Cluster{}
-
+// use custom http transport to resolve dynamically to healthy components
+func newTestTransport(c *Cluster) http.RoundTripper {
 	defaultTransport := http.DefaultTransport.(*http.Transport)
-	transport := &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			var err error
-			switch addr {
-			case "push:80":
-				addr, err = c.pickHealthyComponent("distributor")
-				if err != nil {
-					return nil, err
-				}
-			case "querier:80":
-				addr, err = c.pickHealthyComponent("query-frontend", "querier")
-				if err != nil {
-					return nil, err
-				}
-			default:
-				return nil, fmt.Errorf("unknown addr %s", addr)
-			}
+	t := &testTransport{
+		defaultDialContext: defaultTransport.DialContext,
+		c:                  c,
+	}
+	t.next = &http.Transport{
+		Proxy:                 defaultTransport.Proxy,
+		TLSClientConfig:       defaultTransport.TLSClientConfig,
+		TLSHandshakeTimeout:   defaultTransport.TLSHandshakeTimeout,
+		ExpectContinueTimeout: defaultTransport.ExpectContinueTimeout,
+		MaxIdleConns:          defaultTransport.MaxIdleConns,
+		IdleConnTimeout:       defaultTransport.IdleConnTimeout,
+		ForceAttemptHTTP2:     defaultTransport.ForceAttemptHTTP2,
+		DialContext:           t.DialContext,
+	}
+	return t
+}
 
-			return defaultTransport.DialContext(ctx, network, addr)
-		},
+func (t *testTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(req.Context())
+	if err == nil {
+		req.Header.Set("X-Scope-OrgID", tenantID)
 	}
-	c.httpClient = &http.Client{Transport: transport}
-	c.Components = []*Component{
-		newComponent("distributor"),
-		newComponent("distributor"),
-		newComponent("querier"),
-		newComponent("querier"),
-		newComponent("ingester"),
-		newComponent("ingester"),
-		newComponent("ingester"),
-		newComponent("store-gateway"),
-		newComponent("store-gateway"),
-		newComponent("store-gateway"),
+	return t.next.RoundTrip(req)
+}
+
+func (t *testTransport) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	var err error
+	switch addr {
+	case "push:80":
+		addr, err = t.c.pickHealthyComponent("distributor")
+		if err != nil {
+			return nil, err
+		}
+	case "querier:80":
+		addr, err = t.c.pickHealthyComponent("query-frontend", "querier")
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unknown addr %s", addr)
 	}
+
+	return t.defaultDialContext(ctx, network, addr)
+}
+
+type ClusterOption func(c *Cluster)
+
+func NewMicroServiceCluster(opts ...ClusterOption) *Cluster {
+	c := &Cluster{}
+	WithV1()(c)
+
+	// apply options
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	c.httpClient = &http.Client{Transport: newTestTransport(c)}
+	c.Components = make([]*Component, len(c.expectedComponents))
+	for idx := range c.expectedComponents {
+		c.Components[idx] = newComponent(c.expectedComponents[idx])
+	}
+
+	// ensure the right mode is set in env var
+	c.envVarV2Experiment = os.Getenv(envVarV2Experiment)
+	if c.v2 {
+		os.Setenv(envVarV2Experiment, "true")
+	} else {
+		os.Setenv(envVarV2Experiment, "true")
+	}
+
 	return c
 }
 
 type Cluster struct {
 	Components []*Component
-	wg         sync.WaitGroup // components wait group
+	perTarget  map[string][]int // indexes replicas per target into Components slice
+
+	wg sync.WaitGroup // components wait group
+
+	v2                 bool     // is this a v2 cluster
+	envVarV2Experiment string   // the value of the env before this is run
+	expectedComponents []string // number of expected components
 
 	tmpDir     string
 	httpClient *http.Client
 }
 
-func nodeNameFlags(nodeName string) []string {
+func (c *Cluster) commonFlags(comp *Component) []string {
+	nodeName := comp.nodeName()
 	return []string{
-		"-memberlist.nodename=" + nodeName,
-		"-ingester.lifecycler.ID=" + nodeName,
-		"-compactor.ring.instance-id=" + nodeName,
-		"-distributor.ring.instance-id=" + nodeName,
-		"-overrides-exporter.ring.instance-id=" + nodeName,
-		"-query-scheduler.ring.instance-id=" + nodeName,
-		"-store-gateway.sharding-ring.instance-id=" + nodeName,
-	}
-}
-
-func listenAddrFlags(listenAddr string) []string {
-	return []string{
-		"-compactor.ring.instance-addr=" + listenAddr,
-		"-distributor.ring.instance-addr=" + listenAddr,
-		"-ingester.lifecycler.addr=" + listenAddr,
+		"-auth.multitenancy-enabled=true",
+		"-tracing.enabled=false", // data race
+		"-self-profiling.disable-push=true",
+		fmt.Sprintf("-pyroscopedb.data-path=%s", c.dataDir(comp)),
+		"-storage.backend=filesystem",
+		fmt.Sprintf("-storage.filesystem.dir=%s", c.dataSharedDir()),
+		fmt.Sprintf("-target=%s", comp.Target),
+		fmt.Sprintf("-memberlist.advertise-port=%d", comp.memberlistPort),
+		fmt.Sprintf("-memberlist.bind-port=%d", comp.memberlistPort),
+		fmt.Sprintf("-memberlist.bind-addr=%s", listenAddr),
+		"-memberlist.leave-timeout=1s",
 		"-memberlist.advertise-addr=" + listenAddr,
+		"-memberlist.nodename=" + nodeName,
+		fmt.Sprintf("-server.http-listen-port=%d", comp.httpPort),
+		fmt.Sprintf("-server.http-listen-address=%s", listenAddr),
+		fmt.Sprintf("-server.grpc-listen-port=%d", comp.grpcPort),
+		fmt.Sprintf("-server.grpc-listen-address=%s", listenAddr),
+		"-distributor.ring.instance-addr=" + listenAddr,
+		"-distributor.ring.instance-id=" + nodeName,
+		"-distributor.ring.heartbeat-period=1s",
 		"-overrides-exporter.ring.instance-addr=" + listenAddr,
+		"-overrides-exporter.ring.instance-id=" + nodeName,
+		"-overrides-exporter.ring.heartbeat-period=1s",
 		"-query-frontend.instance-addr=" + listenAddr,
-		"-query-scheduler.ring.instance-addr=" + listenAddr,
-		"-store-gateway.sharding-ring.instance-addr=" + listenAddr,
 	}
 }
 
@@ -140,7 +184,7 @@ func (c *Cluster) pickHealthyComponent(targets ...string) (addr string, err erro
 	for _, comp := range c.Components {
 		for i, target := range targets {
 			if comp.Target == target {
-				results[i] = append(results[i], fmt.Sprintf("%s:%d", "127.0.0.1", comp.ports[0]))
+				results[i] = append(results[i], fmt.Sprintf("%s:%d", listenAddr, comp.httpPort))
 			}
 		}
 	}
@@ -154,88 +198,68 @@ func (c *Cluster) pickHealthyComponent(targets ...string) (addr string, err erro
 
 	return "", fmt.Errorf("no healthy component found for targets %v", targets)
 }
+func (c *Cluster) dataSharedDir() string {
+	return filepath.Join(c.tmpDir, "data-shared")
+}
 
-func (c *Cluster) Prepare() (err error) {
+func (c *Cluster) dataDir(comp *Component) string {
+	return filepath.Join(c.tmpDir, comp.nodeName(), "data")
+}
+
+func (c *Cluster) Prepare(ctx context.Context) (err error) {
 	// tmp dir
 	c.tmpDir, err = os.MkdirTemp("", "pyroscope-test")
 	if err != nil {
 		return err
 	}
-	dataSharedDir := filepath.Join(c.tmpDir, "data-shared")
-	if err := os.Mkdir(dataSharedDir, 0o755); err != nil {
+	if err := os.Mkdir(c.dataSharedDir(), 0o755); err != nil {
 		return err
 	}
 
 	// allocate two tcp ports per component
 	portsPerComponent := 3
-	listenAddr := "127.0.0.1"
+	if c.v2 {
+		portsPerComponent = 4
+	}
 	ports, err := getFreeTCPPorts(listenAddr, len(c.Components)*portsPerComponent)
 	if err != nil {
 		return err
 	}
 
-	perTarget := map[string]int{}
-	for _, c := range c.Components {
-		v, ok := perTarget[c.Target]
-		if ok {
-			v += 1
-		}
-		perTarget[c.Target] = v
-		c.replica = v
-	}
-
+	// flags with all components that participate in memberlist
 	memberlistJoin := []string{}
+	c.perTarget = map[string][]int{}
+	for compidx, comp := range c.Components {
+		c.perTarget[comp.Target] = append(c.perTarget[comp.Target], compidx)
+		comp.replica = len(c.perTarget[comp.Target]) - 1
 
-	for _, comp := range c.Components {
-		comp.ports = ports[0:portsPerComponent]
-		ports = ports[3:]
-		prefix := filepath.Join(c.tmpDir, comp.nodeName())
-		dataDir := filepath.Join(prefix, "data")
-		compactorDir := filepath.Join(prefix, "data-compactor")
-		syncDir := filepath.Join(prefix, "pyroscope-sync")
+		// allocate ports
+		comp.addPorts(ports[0:portsPerComponent])
+		ports = ports[portsPerComponent:]
 
-		for _, dir := range []string{prefix, dataDir, compactorDir, syncDir} {
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return err
-			}
+		// add to memberlist join list
+		memberlistJoin = append(memberlistJoin, fmt.Sprintf("%s:%d", listenAddr, comp.memberlistPort))
+
+		if err := os.MkdirAll(c.dataDir(comp), 0o755); err != nil {
+			return err
 		}
-
-		comp.flags = append(
-			nodeNameFlags(comp.nodeName()),
-			listenAddrFlags("127.0.0.1")...)
-		comp.flags = append(comp.flags,
-			[]string{
-				"-tracing.enabled=false", // data race
-				"-distributor.replication-factor=3",
-				"-store-gateway.sharding-ring.replication-factor=3",
-				fmt.Sprintf("-target=%s", comp.Target),
-				fmt.Sprintf("-memberlist.advertise-port=%d", comp.ports[2]),
-				fmt.Sprintf("-memberlist.bind-port=%d", comp.ports[2]),
-				fmt.Sprintf("-memberlist.bind-addr=%s", listenAddr),
-				fmt.Sprintf("-server.http-listen-port=%d", comp.ports[0]),
-				fmt.Sprintf("-server.http-listen-address=%s", listenAddr),
-				fmt.Sprintf("-server.grpc-listen-port=%d", comp.ports[1]),
-				fmt.Sprintf("-server.grpc-listen-address=%s", listenAddr),
-				fmt.Sprintf("-blocks-storage.bucket-store.sync-dir=%s", syncDir),
-				fmt.Sprintf("-compactor.data-dir=%s", compactorDir),
-				fmt.Sprintf("-pyroscopedb.data-path=%s", dataDir),
-				"-storage.backend=filesystem",
-				fmt.Sprintf("-storage.filesystem.dir=%s", dataSharedDir),
-			}...)
-
-		// handle memberlist join
-		for _, m := range memberlistJoin {
-			comp.flags = append(comp.flags, fmt.Sprintf("-memberlist.join=%s", m))
-		}
-		memberlistJoin = append(memberlistJoin, fmt.Sprintf("127.0.0.1:%d", comp.ports[2]))
-
 	}
 
-	return nil
+	if c.v2 {
+		return c.v2Prepare(ctx, memberlistJoin)
+	}
+
+	return c.v1Prepare(ctx, memberlistJoin)
 }
 
 func (c *Cluster) Stop() func(context.Context) error {
-	funcWaiters := make([]func(context.Context) error, 0, len(c.Components))
+	funcWaiters := make([]func(context.Context) error, 0, len(c.Components)+1)
+
+	// reset the envVarV2Experiment variable
+	funcWaiters = append(funcWaiters, func(_ context.Context) error {
+		return os.Setenv(envVarV2Experiment, c.envVarV2Experiment)
+	})
+
 	for _, comp := range c.Components {
 		funcWaiters = append(funcWaiters, comp.Stop())
 	}
@@ -250,18 +274,12 @@ func (c *Cluster) Stop() func(context.Context) error {
 		}
 		return g.Wait()
 	}
-
 }
 
 func (c *Cluster) Start(ctx context.Context) (err error) {
-
 	notReady := make(map[*Component]error)
 
-	countPerTarget := map[string]int{}
-
 	for _, comp := range c.Components {
-		countPerTarget[comp.Target]++
-
 		p, err := comp.start(ctx)
 		if err != nil {
 			return err
@@ -292,21 +310,22 @@ func (c *Cluster) Start(ctx context.Context) (err error) {
 					ctx, cancel := context.WithTimeout(context.Background(), rate)
 					defer cancel()
 
-					if t.Target == "querier" {
-						if err := t.httpReadyCheck(ctx); err != nil {
+					var found bool
+					var err error
+
+					if c.v2 {
+						found, err = c.v2ReadyCheckComponent(ctx, t)
+					} else {
+						found, err = c.v1ReadyCheckComponent(ctx, t)
+					}
+					if found {
+						if err != nil {
 							return err
 						}
-
-						return t.querierReadyCheck(ctx, countPerTarget["ingester"], countPerTarget["store-gateway"])
-					}
-					if t.Target == "distributor" {
-						if err := t.httpReadyCheck(ctx); err != nil {
-							return err
-						}
-
-						return t.distributorReadyCheck(ctx, countPerTarget["ingester"], countPerTarget["distributor"])
+						return nil
 					}
 
+					// fallback to http ready check
 					return t.httpReadyCheck(ctx)
 				}(); err != nil {
 					notReady[t] = err
@@ -348,201 +367,4 @@ func (c *Cluster) PushClient() pushv1connect.PusherServiceClient {
 		"http://push",
 		connectapi.DefaultClientOptions()...,
 	)
-}
-
-type Component struct {
-	Target  string
-	replica int
-	ports   []int
-	flags   []string
-	cfg     phlare.Config
-	p       *phlare.Phlare
-	reg     *prometheus.Registry
-}
-
-type gatherCheck struct {
-	g          prometheus.Gatherer
-	conditions []gatherCoditions
-}
-
-//nolint:unparam
-func (c *gatherCheck) addExpectValue(value float64, metricName string, labelPairs ...string) *gatherCheck {
-	c.conditions = append(c.conditions, gatherCoditions{
-		metricName:    metricName,
-		labelPairs:    labelPairs,
-		expectedValue: value,
-	})
-	return c
-}
-
-type gatherCoditions struct {
-	metricName    string
-	labelPairs    []string
-	expectedValue float64
-}
-
-func (c *gatherCoditions) String() string {
-	b := strings.Builder{}
-	b.WriteString(c.metricName)
-	b.WriteRune('{')
-	for i := 0; i < len(c.labelPairs); i += 2 {
-		b.WriteString(c.labelPairs[i])
-		b.WriteRune('=')
-		b.WriteString(c.labelPairs[i+1])
-		b.WriteRune(',')
-	}
-	s := b.String()
-	return s[:len(s)-1] + "}"
-}
-
-func (c *gatherCoditions) matches(pairs []*pm.LabelPair) bool {
-outer:
-	for i := 0; i < len(c.labelPairs); i += 2 {
-		for _, l := range pairs {
-			if l.GetName() != c.labelPairs[i] {
-				continue
-			}
-			if l.GetValue() == c.labelPairs[i+1] {
-				continue outer // match move to next pair
-			}
-			return false // value wrong
-		}
-		return false // label not found
-	}
-	return true
-}
-
-func (comp *Component) checkMetrics() *gatherCheck {
-	return &gatherCheck{
-		g: comp.reg,
-	}
-}
-
-func (g *gatherCheck) run(ctx context.Context) error {
-	actualValues := make([]float64, len(g.conditions))
-
-	// maps from metric name to condition index
-	nameMap := make(map[string][]int)
-	for idx, c := range g.conditions {
-		// not a number
-		actualValues[idx] = math.NaN()
-		nameMap[c.metricName] = append(nameMap[c.metricName], idx)
-	}
-
-	// now gather actual metrics
-	metrics, err := g.g.Gather()
-	if err != nil {
-		return err
-	}
-
-	for _, m := range metrics {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		conditions, ok := nameMap[m.GetName()]
-		if !ok {
-			continue
-		}
-
-		// now iterate over all label pairs
-		for _, sm := range m.GetMetric() {
-			// check for each condition if it matches with he labels
-			for _, condIdx := range conditions {
-				if g.conditions[condIdx].matches(sm.Label) {
-					actualValues[condIdx] = sm.GetGauge().GetValue() // TODO: handle other types
-				}
-			}
-		}
-	}
-
-	errs := make([]error, len(actualValues))
-	for idx, actual := range actualValues {
-		cond := g.conditions[idx]
-		if math.IsNaN(actual) {
-			errs[idx] = fmt.Errorf("metric for %s not found", cond.String())
-			continue
-		}
-		if actual != cond.expectedValue {
-			errs[idx] = fmt.Errorf("unexpected value for %s: expected %f, got %f", cond.String(), cond.expectedValue, actual)
-		}
-	}
-
-	return errors.Join(errs...)
-}
-
-func (comp *Component) querierReadyCheck(ctx context.Context, expectedIngesters, expectedStoreGateways int) (err error) {
-	check := comp.checkMetrics().
-		addExpectValue(float64(expectedIngesters), "pyroscope_ring_members", "name", "ingester", "state", "ACTIVE").
-		addExpectValue(float64(expectedStoreGateways), "pyroscope_ring_members", "name", "store-gateway-client", "state", "ACTIVE")
-	return check.run(ctx)
-}
-
-func (comp *Component) distributorReadyCheck(ctx context.Context, expectedIngesters, expectedDistributors int) (err error) {
-	check := comp.checkMetrics().
-		addExpectValue(float64(expectedIngesters), "pyroscope_ring_members", "name", "ingester", "state", "ACTIVE").
-		addExpectValue(float64(expectedDistributors), "pyroscope_ring_members", "name", "distributor", "state", "ACTIVE")
-	return check.run(ctx)
-}
-
-func (comp *Component) httpReadyCheck(ctx context.Context) error {
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://127.0.0.1:%d/ready", comp.ports[0]), nil)
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode/100 == 2 {
-		return nil
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	return fmt.Errorf("status=%d msg=%s", resp.StatusCode, string(body))
-}
-
-func (comp *Component) Stop() func(context.Context) error {
-	return comp.p.Stop()
-}
-
-func (comp *Component) String() string {
-	if len(comp.ports) == 3 {
-		return fmt.Sprintf("[%s] http=%d grpc=%d memberlist=%d", comp.nodeName(), comp.ports[0], comp.ports[1], comp.ports[2])
-	}
-	return fmt.Sprintf("[%s]", comp.nodeName())
-}
-
-func (comp *Component) nodeName() string {
-	return fmt.Sprintf("%s-%d", comp.Target, comp.replica)
-}
-
-var lockRegistry sync.Mutex
-
-func (comp *Component) start(_ context.Context) (*phlare.Phlare, error) {
-	fs := flag.NewFlagSet(comp.nodeName(), flag.PanicOnError)
-	if err := cfg.DynamicUnmarshal(&comp.cfg, comp.flags, fs); err != nil {
-		return nil, err
-	}
-
-	// Hack to avoid clashing metrics, we should track down the use of globals
-	// restore oldReg := prometheus.DefaultRegisterer
-	comp.reg = prometheus.NewRegistry()
-	lockRegistry.Lock()
-	defer lockRegistry.Unlock()
-	prometheus.DefaultRegisterer = comp.reg
-	prometheus.DefaultGatherer = comp.reg
-	comp.cfg.Server.Gatherer = comp.reg
-	f, err := phlare.New(comp.cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return f, nil
 }

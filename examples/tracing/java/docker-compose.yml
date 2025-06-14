@@ -1,6 +1,6 @@
 services:
   pyroscope:
-    image: korniltsev/pyroscope:update-java-examples-0d5533778 # remove after next release
+    image: grafana/pyroscope:1.13.4
     ports:
     - "4040:4040"
 
@@ -12,6 +12,7 @@ services:
       OTLP_INSECURE: 1
       OTEL_TRACES_EXPORTER: otlp
       OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: rideshare.java.push.app
       OTEL_METRICS_EXPORTER: none
       OTEL_TRACES_SAMPLER: always_on

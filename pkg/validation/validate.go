@@ -55,9 +55,10 @@ const (
 	MalformedProfile      Reason = "malformed_profile"
 	FlameGraphLimit       Reason = "flamegraph_limit"
 	QueryMissingTimeRange Reason = "missing_time_range"
+	QueryInvalidTimeRange Reason = "invalid_time_range"
 
-	// IngestLimitReached is a reason for discarding a request when an ingestion limit has been reached.
-	IngestLimitReached Reason = "ingest_limit_reached"
+	IngestLimitReached     Reason = "ingest_limit_reached"
+	SkippedBySamplingRules Reason = "dropped_by_sampling_rules"
 
 	// Those profiles were dropped because of relabeling rules
 	DroppedByRelabelRules Reason = "dropped_by_relabel_rules"
@@ -77,6 +78,7 @@ const (
 	MaxFlameGraphNodesErrorMsg          = "max flamegraph nodes limit %d is greater than allowed %d"
 	MaxFlameGraphNodesUnlimitedErrorMsg = "max flamegraph nodes limit must be set (max allowed %d)"
 	QueryMissingTimeRangeErrorMsg       = "missing time range in the query"
+	QueryStartAfterEndErrorMsg          = "query start time is after end time"
 )
 
 var (
@@ -377,6 +379,10 @@ type ValidatedRangeRequest struct {
 func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req model.Interval, now model.Time) (ValidatedRangeRequest, error) {
 	if req.Start == 0 || req.End == 0 {
 		return ValidatedRangeRequest{}, NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg)
+	}
+
+	if req.Start > req.End {
+		return ValidatedRangeRequest{}, NewErrorf(QueryInvalidTimeRange, QueryStartAfterEndErrorMsg)
 	}
 
 	if maxQueryLookback := validation.SmallestPositiveNonZeroDurationPerTenant(tenantIDs, limits.MaxQueryLookback); maxQueryLookback > 0 {

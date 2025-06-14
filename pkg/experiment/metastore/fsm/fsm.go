@@ -236,7 +236,7 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	if cmd.Index <= fsm.appliedIndex {
 		// Skip already applied commands at WAL restore.
 		// Note that the 0 index is a noop and is never applied to FSM.
-		return Response{}
+		return Response{} // todo this may result in nil deref if client does not exepect Response.Data to be nil , for example (svc *CompactionService) PollCompactionJobs
 	}
 
 	cmdType := strconv.FormatUint(uint64(e.Type), 10)

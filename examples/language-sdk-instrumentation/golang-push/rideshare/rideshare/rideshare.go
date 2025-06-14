@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -99,7 +98,7 @@ func ReadConfig() Config {
 		PyroscopeBasicAuthUser:     os.Getenv("PYROSCOPE_BASIC_AUTH_USER"),
 		PyroscopeBasicAuthPassword: os.Getenv("PYROSCOPE_BASIC_AUTH_PASSWORD"),
 
-		OTLPUrl:               os.Getenv("OTLP_URL"),
+		OTLPUrl:               getOTLPUrl(),
 		OTLPInsecure:          os.Getenv("OTLP_INSECURE") == "1",
 		OTLPBasicAuthUser:     os.Getenv("OTLP_BASIC_AUTH_USER"),
 		OTLPBasicAuthPassword: os.Getenv("OTLP_BASIC_AUTH_PASSWORD"),
@@ -135,6 +134,14 @@ func ReadConfig() Config {
 		c.PyroscopeServerAddress = "http://localhost:4040"
 	}
 	return c
+}
+
+// getOTLPUrl returns the OTLP URL from environment variables, with OTEL_EXPORTER_OTLP_METRICS_ENDPOINT taking precedence
+func getOTLPUrl() string {
+	if url := os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"); url != "" {
+		return url
+	}
+	return os.Getenv("OTLP_URL")
 }
 
 func basicAuth(username, password string) string {
@@ -253,65 +260,24 @@ type dimension struct {
 	getNextValue func() string
 }
 
-func staticList(input []string) func() string {
-	return func() string {
-		i := rand.Intn(len(input))
-		return input[i]
-	}
-}
-
 func init() {
 	// Configure Prometheus to use UTF-8 validation for metric names
 	model.NameEscapingScheme = model.ValueEncodingEscaping
-}
 
-func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
-	// Default is 1m. Set to 3s for demonstrative purposes.
-	interval := 3 * time.Second
-
-	// Setup Prometheus metrics
-	fakeUtf8Metrics := []dimension{
-		{
-			label:        "a_legacy_label",
-			getNextValue: staticList([]string{"legacy"}),
-		},
-		{
-			label:        "label with space",
-			getNextValue: staticList([]string{"space"}),
-		},
-		{
-			label:        "label with 📈",
-			getNextValue: staticList([]string{"metrics"}),
-		},
-		{
-			label:        "label.with.spaß",
-			getNextValue: staticList([]string{"this_is_fun"}),
-		},
-		{
-			label:        "instance",
-			getNextValue: staticList([]string{"instance"}),
-		},
-		{
-			label:        "job",
-			getNextValue: staticList([]string{"job"}),
-		},
-		{
-			label:        "site",
-			getNextValue: staticList([]string{"LA-EPI"}),
-		},
-		{
-			label:        "room",
-			getNextValue: staticList([]string{`"Friends Don't Lie"`}),
-		},
-	}
-
-	dimensions := []string{}
-	for _, dim := range fakeUtf8Metrics {
-		dimensions = append(dimensions, dim.label)
+	// Initialize metrics
+	dimensions := []string{
+		"a_legacy_label",
+		"label with space",
+		"label with 📈",
+		"label.with.spaß",
+		"instance",
+		"job",
+		"site",
+		"room",
 	}
 
 	utf8Metric := promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "a.utf8.metric 🤘",
+		Name: "a_utf8_metric",
 		Help: "a utf8 metric with utf8 labels",
 	}, dimensions)
 
@@ -329,10 +295,15 @@ func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 	// Start the metrics update goroutine
 	go func() {
 		for {
-			labels := []string{}
-			for _, dim := range fakeUtf8Metrics {
-				value := dim.getNextValue()
-				labels = append(labels, value)
+			labels := []string{
+				"legacy",
+				"space",
+				"metrics",
+				"this_is_fun",
+				"instance",
+				"job",
+				"LA-EPI",
+				`"Friends Don't Lie"`,
 			}
 
 			utf8Metric.WithLabelValues(labels...).Inc()
@@ -342,6 +313,11 @@ func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 			time.Sleep(time.Second * 5)
 		}
 	}()
+}
+
+func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
+	// Default is 1m. Set to 3s for demonstrative purposes.
+	interval := 3 * time.Second
 
 	if c.UseDebugMeterer {
 		// create stdout exporter, when no OTLP url is set
@@ -363,7 +339,7 @@ func MeterProvider(c Config) (*sdkmetric.MeterProvider, error) {
 		return nil, err
 	}
 
-	// Create a new tracer provider with a batch span processor and the otlp exporter.
+	// Create a new meter provider with a periodic reader and the otlp exporter
 	mp := sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(newResource(c)),
 		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp,

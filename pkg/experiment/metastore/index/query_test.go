@@ -33,8 +33,8 @@ func TestIndex_Query(t *testing.T) {
 		MaxTime:   maxT,
 		CreatedBy: 1,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 2, Name: 3, MinTime: minT, MaxTime: minT, Labels: []int32{2, 4, 3, 5, 6}},
-			{Tenant: 7, Name: 8, MinTime: maxT, MaxTime: maxT, Labels: []int32{2, 4, 8, 5, 9}},
+			{Tenant: 2, Name: 3, MinTime: minT, MaxTime: maxT, Labels: []int32{2, 4, 3, 5, 6}},
+			{Tenant: 7, Name: 8, MinTime: minT, MaxTime: maxT, Labels: []int32{2, 4, 8, 5, 9}},
 		},
 		StringTable: []string{
 			"", "ingester",
@@ -51,7 +51,7 @@ func TestIndex_Query(t *testing.T) {
 		MaxTime:   maxT,
 		CreatedBy: 2,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 1, Name: 3, MinTime: minT, MaxTime: minT, Labels: []int32{2, 4, 3, 5, 6}},
+			{Tenant: 1, Name: 3, MinTime: minT, MaxTime: maxT, Labels: []int32{2, 4, 3, 5, 6}},
 		},
 		StringTable: []string{
 			"", "tenant-a", "ingester", "dataset-a", "service_name", "__profile_type__", "1",
@@ -66,7 +66,7 @@ func TestIndex_Query(t *testing.T) {
 		MaxTime:   maxT,
 		CreatedBy: 2,
 		Datasets: []*metastorev1.Dataset{
-			{Tenant: 1, Name: 3, MinTime: minT, MaxTime: minT, Labels: []int32{2, 4, 3, 5, 6}},
+			{Tenant: 1, Name: 3, MinTime: minT, MaxTime: maxT, Labels: []int32{2, 4, 3, 5, 6}},
 		},
 		StringTable: []string{
 			"", "tenant-a", "ingester", "dataset-a", "service_name", "__profile_type__", "1",
@@ -114,7 +114,7 @@ func TestIndex_Query(t *testing.T) {
 					MinTime:     minT,
 					MaxTime:     maxT,
 					CreatedBy:   1,
-					Datasets:    []*metastorev1.Dataset{{Tenant: 2, Name: 3, MinTime: minT, MaxTime: minT}},
+					Datasets:    []*metastorev1.Dataset{{Tenant: 2, Name: 3, MinTime: minT, MaxTime: maxT}},
 					StringTable: []string{"", "ingester", "tenant-a", "dataset-a"},
 				},
 				{
@@ -124,7 +124,7 @@ func TestIndex_Query(t *testing.T) {
 					MinTime:     minT,
 					MaxTime:     maxT,
 					CreatedBy:   2,
-					Datasets:    []*metastorev1.Dataset{{Tenant: 1, Name: 3, MinTime: minT, MaxTime: minT}},
+					Datasets:    []*metastorev1.Dataset{{Tenant: 1, Name: 3, MinTime: minT, MaxTime: maxT}},
 					StringTable: []string{"", "tenant-a", "ingester", "dataset-a"},
 				},
 				{
@@ -134,7 +134,7 @@ func TestIndex_Query(t *testing.T) {
 					MinTime:     minT,
 					MaxTime:     maxT,
 					CreatedBy:   2,
-					Datasets:    []*metastorev1.Dataset{{Tenant: 1, Name: 3, MinTime: minT, MaxTime: minT}},
+					Datasets:    []*metastorev1.Dataset{{Tenant: 1, Name: 3, MinTime: minT, MaxTime: maxT}},
 					StringTable: []string{"", "tenant-a", "ingester", "dataset-a"},
 				},
 			}
@@ -149,6 +149,40 @@ func TestIndex_Query(t *testing.T) {
 			require.Equal(t, expected, found)
 		})
 
+		t.Run("DatasetTenantFilter", func(t *testing.T) {
+			expected := []*metastorev1.BlockMeta{
+				{
+					Id:          md.Id,
+					Tenant:      0,
+					MinTime:     minT,
+					MaxTime:     maxT,
+					CreatedBy:   1,
+					Datasets:    []*metastorev1.Dataset{{Tenant: 2, Name: 3, MinTime: minT, MaxTime: maxT}},
+					StringTable: []string{"", "ingester", "tenant-b", "dataset-b"},
+				},
+			}
+
+			found, err := index.QueryMetadata(tx, MetadataQuery{
+				Expr:      `{}`,
+				StartTime: time.UnixMilli(minT),
+				EndTime:   time.UnixMilli(maxT + 1),
+				Tenant:    []string{"tenant-b"},
+			})
+			require.NoError(t, err)
+			require.Equal(t, expected, found)
+		})
+
+		t.Run("DatasetTenantFilterNotExisting", func(t *testing.T) {
+			found, err := index.QueryMetadata(tx, MetadataQuery{
+				Expr:      `{}`,
+				StartTime: time.UnixMilli(minT),
+				EndTime:   time.UnixMilli(maxT + 1),
+				Tenant:    []string{"tenant-not-found"},
+			})
+			require.NoError(t, err)
+			require.Empty(t, found)
+		})
+
 		t.Run("DatasetFilter_KeepLabels", func(t *testing.T) {
 			expected := []*metastorev1.BlockMeta{
 				{
@@ -161,7 +195,7 @@ func TestIndex_Query(t *testing.T) {
 						Tenant:  2,
 						Name:    3,
 						MinTime: minT,
-						MaxTime: minT,
+						MaxTime: maxT,
 						Labels:  []int32{1, 4, 3},
 					}},
 					StringTable: []string{"", "ingester", "tenant-a", "dataset-a", "service_name"},
@@ -177,7 +211,7 @@ func TestIndex_Query(t *testing.T) {
 						Tenant:  1,
 						Name:    3,
 						MinTime: minT,
-						MaxTime: minT,
+						MaxTime: maxT,
 						Labels:  []int32{1, 4, 3},
 					}},
 					StringTable: []string{"", "tenant-a", "ingester", "dataset-a", "service_name"},
@@ -193,7 +227,7 @@ func TestIndex_Query(t *testing.T) {
 						Tenant:  1,
 						Name:    3,
 						MinTime: minT,
-						MaxTime: minT,
+						MaxTime: maxT,
 						Labels:  []int32{1, 4, 3},
 					}},
 					StringTable: []string{"", "tenant-a", "ingester", "dataset-a", "service_name"},
@@ -214,8 +248,8 @@ func TestIndex_Query(t *testing.T) {
 		t.Run("TimeRangeFilter", func(t *testing.T) {
 			found, err := index.QueryMetadata(tx, MetadataQuery{
 				Expr:      `{service_name=~"dataset-b"}`,
-				StartTime: time.UnixMilli(minT),
-				EndTime:   time.UnixMilli(maxT),
+				StartTime: time.UnixMilli(minT - 3),
+				EndTime:   time.UnixMilli(minT - 1), // dataset-b starts at minT
 				Tenant:    []string{"tenant-b"},
 			})
 			require.NoError(t, err)
@@ -238,6 +272,25 @@ func TestIndex_Query(t *testing.T) {
 			assert.Equal(t, []*typesv1.Labels{{Labels: []*typesv1.LabelPair{
 				{Name: model.LabelNameProfileType, Value: "1"},
 				{Name: model.LabelNameServiceName, Value: "dataset-a"},
+			}}}, labels)
+		})
+
+		t.Run("LabelsTenantFilter", func(t *testing.T) {
+			labels, err := index.QueryMetadataLabels(tx, MetadataQuery{
+				Expr:      "{}",
+				StartTime: time.UnixMilli(minT),
+				EndTime:   time.UnixMilli(maxT),
+				Tenant:    []string{"tenant-b"},
+				Labels: []string{
+					model.LabelNameProfileType,
+					model.LabelNameServiceName,
+				},
+			})
+			require.NoError(t, err)
+			require.NotEmpty(t, labels)
+			assert.Equal(t, []*typesv1.Labels{{Labels: []*typesv1.LabelPair{
+				{Name: model.LabelNameProfileType, Value: "4"},
+				{Name: model.LabelNameServiceName, Value: "dataset-b"},
 			}}}, labels)
 		})
 	}

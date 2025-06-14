@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/test/bufconn"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
@@ -95,13 +96,13 @@ func (m *mockServer) PromoteToLeader(ctx context.Context, request *raftnodepb.Pr
 
 func createServers(ports []int) []discovery.Server {
 	var servers []discovery.Server
-	for i := 0; i < nServers; i++ {
+	for i, p := range ports {
 		servers = append(servers, discovery.Server{
 			Raft: raft.Server{
 				ID:      testServerId(i),
 				Address: raft.ServerAddress(fmt.Sprintf("server-%d", i)),
 			},
-			ResolvedAddress: fmt.Sprintf("127.0.0.1:%d", ports[i]),
+			ResolvedAddress: fmt.Sprintf("127.0.0.1:%d", p),
 		})
 	}
 	return servers
@@ -139,6 +140,7 @@ func (m *mockServers) InitWrongLeader() func() {
 	s := new(wrongLeaderState)
 	s.leaderIndex = -1
 
+	nServers := len(m.servers)
 	for _, srv := range m.servers {
 		srv := srv
 		errf := func() error {
@@ -196,17 +198,17 @@ func errOrT[T any](t *T, f func() error) (*T, error) {
 	return t, nil
 }
 
-func createMockServers(t *testing.T, l log.Logger, ports []int) *mockServers {
+// Returns the grpc.DialOptions needed for a client connection to the created mock servers.
+func createMockServers(t *testing.T, l log.Logger, dServers []discovery.Server) (*mockServers, []grpc.DialOption) {
 	var servers []*mockServer
-	for idx, port := range ports {
+	listeners := make(map[string]*bufconn.Listener)
+	for idx, dserv := range dServers {
 		s := newMockServer(t)
 		s.index = idx
 		s.id = testServerId(idx)
-		s.address = fmt.Sprintf(":%d", port)
-		lis, err := net.Listen("tcp", s.address)
-		if err != nil {
-			assert.NoError(t, err)
-		}
+		s.address = dserv.ResolvedAddress
+		lis := bufconn.Listen(256 << 10)
+		listeners[s.address] = lis
 		go func() {
 			if err := s.srv.Serve(lis); err != nil {
 				assert.NoError(t, err)
@@ -214,12 +216,20 @@ func createMockServers(t *testing.T, l log.Logger, ports []int) *mockServers {
 		}()
 		servers = append(servers, s)
 	}
-	return &mockServers{
+
+	ms := &mockServers{
 		servers: servers,
 		t:       t,
 		l:       l,
 	}
-
+	dialer := func(_ context.Context, address string) (net.Conn, error) {
+		el := listeners[address]
+		if el != nil {
+			return el.Dial()
+		}
+		return net.Dial("tcp", address)
+	}
+	return ms, []grpc.DialOption{grpc.WithContextDialer(dialer)}
 }
 
 func newMockServer(t *testing.T) *mockServer {

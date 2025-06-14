@@ -29,10 +29,12 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metrics"
 	querybackend "github.com/grafana/pyroscope/pkg/experiment/query_backend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/experiment/query_backend/client"
+	"github.com/grafana/pyroscope/pkg/experiment/symbolizer"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	queryfrontend "github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	recordingrulesclient "github.com/grafana/pyroscope/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -89,6 +91,7 @@ func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
+		f.symbolizer,
 	)
 
 	vcsService := vcs.New(
@@ -123,6 +126,7 @@ func (f *Phlare) initQueryFrontendV12() (services.Service, error) {
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
+		f.symbolizer,
 	)
 
 	handler := readpath.NewRouter(
@@ -329,7 +333,7 @@ func (f *Phlare) initQueryBackend() (services.Service, error) {
 		logger,
 		f.reg,
 		f.queryBackendClient,
-		querybackend.NewBlockReader(f.logger, f.storageBucket),
+		querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg),
 	)
 	if err != nil {
 		return nil, err
@@ -368,6 +372,24 @@ func (f *Phlare) initRecordingRulesClient() (services.Service, error) {
 	}
 	f.recordingRulesClient = c
 	return c.Service(), nil
+}
+
+func (f *Phlare) initSymbolizer() (services.Service, error) {
+	prefixedBucket := phlareobj.NewPrefixedBucket(f.storageBucket, "symbolizer")
+
+	sym, err := symbolizer.New(
+		f.logger,
+		f.Cfg.Symbolizer,
+		f.reg,
+		prefixedBucket,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create symbolizer: %w", err)
+	}
+
+	f.symbolizer = sym
+
+	return nil, nil
 }
 
 func (f *Phlare) initPlacementAgent() (services.Service, error) {

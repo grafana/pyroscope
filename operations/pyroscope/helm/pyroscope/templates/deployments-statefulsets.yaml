@@ -27,9 +27,15 @@ spec:
   template:
     metadata:
       annotations:
+        {{- if not (hasKey $values.podAnnotations "checksum/config")  }}
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if not (hasKey $values.podAnnotations "profiles.grafana.com/service_repository")  }}
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
+        {{- end }}
+        {{- if not (hasKey $values.podAnnotations "profiles.grafana.com/service_git_ref")  }}
         profiles.grafana.com/service_git_ref: "v{{ .Chart.AppVersion }}"
+        {{- end }}
         {{- with $values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

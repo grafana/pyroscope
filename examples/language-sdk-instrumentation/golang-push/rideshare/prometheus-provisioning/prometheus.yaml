@@ -21,3 +21,6 @@ scrape_configs:
     static_configs:
       - targets:
           - host.docker.internal:9099
+  - job_name: 'rideshare'
+    static_configs:
+      - targets: ['us-east:5000', 'eu-north:5000', 'ap-south:5000']

@@ -99,7 +99,7 @@ func (lb LoadBalancing) needsDynamicBalancing(x adaptive_placementpb.LoadBalanci
 // enough keys to distribute. However, oftentimes this is not the case.
 //
 // If at least one shard is significantly overheated, and relative standard
-// deviation withing the aggregation window is very high, which indicates
+// deviation within the aggregation window is very high, which indicates
 // that the distribution is uneven, we resort to round-robin load balancing.
 func loadBalancingStrategy(stats *adaptive_placementpb.DatasetStats, unit uint64, target int) LoadBalancing {
 	lb := FingerprintLoadBalancing

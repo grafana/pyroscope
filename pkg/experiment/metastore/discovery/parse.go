@@ -1,13 +1,15 @@
 package discovery
 
 import (
-	"github.com/go-kit/log"
-	"github.com/grafana/dskit/dns"
-	kuberesolver2 "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
-	"github.com/hashicorp/raft"
-	"github.com/prometheus/client_golang/prometheus"
 	"net"
 	"strings"
+
+	"github.com/go-kit/log"
+	"github.com/grafana/dskit/dns"
+	"github.com/hashicorp/raft"
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery/kuberesolver"
 )
 
 func NewDiscovery(l log.Logger, address string, reg prometheus.Registerer) (Discovery, error) {
@@ -21,7 +23,7 @@ func NewDiscovery(l log.Logger, address string, reg prometheus.Registerer) (Disc
 		return NewDNSDiscovery(l, address, p), nil
 	}
 	if strings.HasPrefix(address, "kubernetes:///") {
-		kubeClient, err := kuberesolver2.NewInClusterK8sClient()
+		kubeClient, err := kuberesolver.NewInClusterK8sClient()
 		if err != nil {
 			return nil, err
 		}

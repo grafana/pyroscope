@@ -99,12 +99,9 @@ func (s *segwriterClientSuite) SetupTest() {
 	}()
 
 	// Wait for the server
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	conn, err := grpc.DialContext(ctx, "",
+	conn, err := grpc.NewClient("",
 		grpc.WithContextDialer(s.dialer),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 	)
 
 	s.Require().NoError(err)

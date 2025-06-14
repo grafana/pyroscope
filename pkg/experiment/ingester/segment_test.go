@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
+
 	gprofile "github.com/google/pprof/profile"
 	"github.com/grafana/dskit/flagext"
 	model2 "github.com/prometheus/common/model"
@@ -87,14 +89,12 @@ func ingestWithMetastoreAvailable(t *testing.T, chunks []inputChunk) {
 		Run(func(args mock.Arguments) {
 			blocks <- args.Get(1).(*metastorev1.AddBlockRequest).Block
 		}).Return(new(metastorev1.AddBlockResponse), nil)
-	allBlocks := make([]*metastorev1.BlockMeta, 0, len(chunks))
 	for _, chunk := range chunks {
 		chunkBlocks := make([]*metastorev1.BlockMeta, 0, len(chunk))
 		waiterSet := sw.ingestChunk(t, chunk, false)
 		for range waiterSet {
 			meta := <-blocks
 			chunkBlocks = append(chunkBlocks, meta)
-			allBlocks = append(allBlocks, meta)
 		}
 		inputs := groupInputs(t, chunk)
 		clients := sw.createBlocksFromMetas(chunkBlocks)
@@ -302,6 +302,7 @@ func TestDatasetMinMaxTime(t *testing.T) {
 		}
 	})
 	defer res.stop()
+
 	block := <-metas
 
 	expected := [][2]int{
@@ -446,6 +447,61 @@ func TestDLQRecovery(t *testing.T) {
 	sw.queryInputs(clients, inputs)
 }
 
+func TestUnsymbolizedLabelIsSet(t *testing.T) {
+	sw := newTestSegmentWriter(t, defaultTestConfig())
+	defer sw.stop()
+	blocks := make(chan *metastorev1.BlockMeta, 1)
+
+	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			blocks <- args.Get(1).(*metastorev1.AddBlockRequest).Block
+		}).Return(new(metastorev1.AddBlockResponse), nil)
+
+	p := pprofth.NewProfileBuilder(time.Now().UnixNano()).
+		CPUProfile().
+		WithLabels(model.LabelNameServiceName, "svc1")
+
+	p.Mapping = []*profilev1.Mapping{
+		{Id: 1, HasFunctions: false},
+	}
+
+	loc := &profilev1.Location{
+		Id:        1,
+		MappingId: 1,
+		Line:      nil,
+	}
+	p.Location = append(p.Location, loc)
+
+	keyIdx := int64(len(p.StringTable))
+	p.StringTable = append(p.StringTable, "foo")
+	valIdx := int64(len(p.StringTable))
+	p.StringTable = append(p.StringTable, "bar")
+
+	sample1 := &profilev1.Sample{
+		LocationId: []uint64{1},
+		Value:      []int64{1},
+		Label: []*profilev1.Label{
+			{Key: keyIdx, Str: valIdx},
+		},
+	}
+	p.Sample = append(p.Sample, sample1)
+
+	sample2 := &profilev1.Sample{
+		LocationId: []uint64{1},
+		Value:      []int64{2},
+		Label:      nil,
+	}
+	p.Sample = append(p.Sample, sample2)
+
+	chunk := inputChunk{
+		{shard: 1, tenant: "t1", profile: p},
+	}
+	_ = sw.ingestChunk(t, chunk, false)
+	block := <-blocks
+
+	require.True(t, hasUnsymbolizedLabel(t, block))
+}
+
 type sw struct {
 	*segmentsWriter
 	bucket  *memory.InMemBucket
@@ -515,8 +571,9 @@ func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClien
 			if _, ok := res[tenant]; !ok {
 				// todo consider not using BlockQuerier for tests
 				blockBucket, err := filesystem.NewBucket(filepath.Join(dir, tenant))
-				blockQuerier := phlaredb.NewBlockQuerier(context.Background(), blockBucket)
+				require.NoError(sw.t, err)
 
+				blockQuerier := phlaredb.NewBlockQuerier(context.Background(), blockBucket)
 				err = blockQuerier.Sync(context.Background())
 				require.NoError(sw.t, err)
 
@@ -657,6 +714,7 @@ func (sw *sw) getMetadataDLQ() []*metastorev1.BlockMeta {
 	return metas
 }
 
+// nolint: unparam
 func (sw *sw) ingestChunk(t *testing.T, chunk inputChunk, expectAwaitError bool) map[segmentWaitFlushed]struct{} {
 	wg := sync.WaitGroup{}
 	waiterSet := make(map[segmentWaitFlushed]struct{})
@@ -899,7 +957,6 @@ func (g testDataGenerator) generate() []inputChunk {
 type timestampGenerator struct {
 	m map[int64]struct{}
 	r *rand.Rand
-	l sync.Mutex
 }
 
 func (g *timestampGenerator) next() int {
@@ -926,4 +983,24 @@ func isSegmentPath(p string) bool {
 		fs[0] == block.DirNameSegment &&
 		fs[2] == block.DirNameAnonTenant &&
 		fs[4] == block.FileNameDataObject
+}
+
+func hasUnsymbolizedLabel(t *testing.T, block *metastorev1.BlockMeta) bool {
+	t.Helper()
+	for _, ds := range block.Datasets {
+		i := 0
+		for i < len(ds.Labels) {
+			n := int(ds.Labels[i])
+			i++
+			for j := 0; j < n; j++ {
+				keyIdx := ds.Labels[i]
+				valIdx := ds.Labels[i+1]
+				i += 2
+				if block.StringTable[keyIdx] == metadata.LabelNameUnsymbolized && block.StringTable[valIdx] == "true" {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

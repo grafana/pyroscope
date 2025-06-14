@@ -158,6 +158,9 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get profile")
 	}
+	defer func() {
+		_ = reader.Close()
+	}()
 
 	adHocProfileBytes, err := io.ReadAll(reader)
 	if err != nil {

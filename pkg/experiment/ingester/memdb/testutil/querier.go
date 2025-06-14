@@ -1,8 +1,14 @@
 package testutil
 
 import (
-	"connectrpc.com/connect"
 	"context"
+	"net/http"
+	"testing"
+
+	"connectrpc.com/connect"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -10,10 +16,6 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/testhelper"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"net/http"
-	"testing"
 )
 
 // Copied from phlaredb, todo

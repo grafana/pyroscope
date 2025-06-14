@@ -4,6 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -65,8 +68,9 @@ type Ingester struct {
 	instances    map[string]*instance
 	instancesMtx sync.RWMutex
 
-	limits Limits
-	reg    prometheus.Registerer
+	limits              Limits
+	reg                 prometheus.Registerer
+	usageGroupEvaluator *validation.UsageGroupEvaluator
 }
 
 type ingesterFlusherCompat struct {
@@ -103,6 +107,8 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 	if err != nil {
 		return nil, err
 	}
+
+	i.usageGroupEvaluator = validation.NewUsageGroupEvaluator(i.logger)
 
 	i.lifecycler, err = ring.NewLifecycler(
 		cfg.LifecyclerConfig,
@@ -170,7 +176,7 @@ func (i *Ingester) stopping(_ error) error {
 	return errs.Err()
 }
 
-func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //nolint:revive
+func (i *Ingester) getOrCreateInstance(tenantID string) (*instance, error) {
 	inst, ok := i.getInstanceByID(tenantID)
 	if ok {
 		return inst, nil
@@ -192,6 +198,54 @@ func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //n
 	return inst, nil
 }
 
+func (i *Ingester) hasLocalBlocks(tenantID string) (bool, error) {
+	entries, err := os.ReadDir(filepath.Join(i.dbConfig.DataPath, tenantID, "local"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (i *Ingester) getOrOpenInstance(tenantID string) (*instance, error) {
+	inst, ok := i.getInstanceByID(tenantID)
+	if ok {
+		return inst, nil
+	}
+
+	i.instancesMtx.Lock()
+	defer i.instancesMtx.Unlock()
+	inst, ok = i.instances[tenantID]
+	if ok {
+		return inst, nil
+	}
+
+	hasLocalBlocks, err := i.hasLocalBlocks(tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if !hasLocalBlocks {
+		return nil, nil
+	}
+
+	limiter := NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor)
+	inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.localBucket, i.storageBucket, limiter)
+	if err != nil {
+		return nil, err
+	}
+
+	i.instances[tenantID] = inst
+	activeTenantsStats.Set(int64(len(i.instances)))
+	return inst, nil
+}
+
 func (i *Ingester) getInstanceByID(id string) (*instance, bool) {
 	i.instancesMtx.RLock()
 	defer i.instancesMtx.RUnlock()
@@ -200,30 +254,58 @@ func (i *Ingester) getInstanceByID(id string) (*instance, bool) {
 	return inst, ok
 }
 
-// forInstanceUnary executes the given function for the instance with the given tenant ID in the context.
-func forInstanceUnary[T any](ctx context.Context, i *Ingester, f func(*instance) (T, error)) (T, error) {
+func push[T any](ctx context.Context, i *Ingester, f func(*instance) (T, error)) (T, error) {
 	var res T
-	err := i.forInstance(ctx, func(inst *instance) error {
-		r, err := f(inst)
-		if err == nil {
-			res = r
-		}
-		return err
-	})
-	return res, err
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return res, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	instance, err := i.getOrCreateInstance(tenantID)
+	if err != nil {
+		return res, connect.NewError(connect.CodeInternal, err)
+	}
+	return f(instance)
 }
 
-// forInstance executes the given function for the instance with the given tenant ID in the context.
-func (i *Ingester) forInstance(ctx context.Context, f func(*instance) error) error {
+// forInstanceUnary executes the given function for the instance with the given tenant ID in the context.
+func forInstanceUnary[T any](ctx context.Context, i *Ingester, f func(*instance) (*connect.Response[T], error)) (*connect.Response[T], error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return connect.NewResponse[T](new(T)), connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	instance, err := i.getOrOpenInstance(tenantID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if instance != nil {
+		return f(instance)
+	}
+	return connect.NewResponse[T](new(T)), nil
+}
+
+func forInstanceStream[Req, Resp any](ctx context.Context, i *Ingester, stream *connect.BidiStream[Req, Resp], f func(*instance) error) error {
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	instance, err := i.GetOrCreateInstance(tenantID)
+	instance, err := i.getOrOpenInstance(tenantID)
 	if err != nil {
 		return connect.NewError(connect.CodeInternal, err)
 	}
-	return f(instance)
+	if instance != nil {
+		return f(instance)
+	}
+	// The client blocks awaiting the response.
+	if _, err = stream.Receive(); err != nil {
+		if errors.Is(err, io.EOF) {
+			return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+		}
+		return err
+	}
+	if err = stream.Send(new(Resp)); err != nil {
+		return err
+	}
+	return stream.Send(new(Resp))
 }
 
 func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) (err error) {
@@ -252,11 +334,11 @@ func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) (er
 }
 
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
+	return push(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
 		usageGroups := i.limits.DistributorUsageGroups(instance.tenantID)
 
 		for _, series := range req.Msg.Series {
-			groups := usageGroups.GetUsageGroups(instance.tenantID, series.Labels)
+			groups := i.usageGroupEvaluator.GetMatch(instance.tenantID, usageGroups, series.Labels)
 
 			for _, sample := range series.Samples {
 				err := pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
