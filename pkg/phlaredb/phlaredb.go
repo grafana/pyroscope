@@ -233,16 +233,25 @@ func (f *PhlareDB) Flush(ctx context.Context, force bool, reason string) (err er
 	// lock is release flushing heads are available for queries in the flushing array.
 	// New heads can be created and written to while the flushing heads are being flushed.
 	errs := multierror.New()
-
+	successful := make([]*Head, 0, len(f.flushing))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
 	// flush all heads and keep only successful ones
-	successful := lo.Filter(f.flushing, func(h *Head, index int) bool {
-		f.metrics.flushedBlocksReasons.WithLabelValues(reason).Inc()
-		if err := h.Flush(ctx); err != nil {
-			errs.Add(err)
-			return false
-		}
-		return true
-	})
+	for _, h := range f.flushing {
+		wg.Add(1)
+		go func(head *Head) {
+			defer wg.Done()
+			f.metrics.flushedBlocksReasons.WithLabelValues(reason).Inc()
+			if err := head.Flush(ctx); err != nil {
+				errs.Add(err)
+				return
+			}
+			mu.Lock()
+			successful = append(successful, head)
+			mu.Unlock()
+		}(h)
+	}
+	wg.Wait()
 
 	// At this point we ensure that the data has been flushed on disk.
 	// Now we need to make it "visible" to queries, and close the old
@@ -265,7 +274,7 @@ func (f *PhlareDB) Flush(ctx context.Context, force bool, reason string) (err er
 	}
 	f.flushing = nil
 	f.headLock.Unlock()
-	return err
+	return errs.Err()
 }
 
 func (f *PhlareDB) maxBlockDuration() time.Duration {
