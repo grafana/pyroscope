@@ -140,7 +140,7 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 ) (*raft_log.UpdateCompactionPlanResponse, error) {
 	if req.Term != cmd.Term || req.GetPlanUpdate() == nil {
 		level.Warn(h.logger).Log(
-			"msg", "rejecting compaction plan update",
+			"msg", "rejecting compaction plan update; term mismatch: leader has changed",
 			"current_term", cmd.Term,
 			"request_term", req.Term,
 		)

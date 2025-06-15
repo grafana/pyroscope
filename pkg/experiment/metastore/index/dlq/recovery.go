@@ -20,11 +20,11 @@ import (
 )
 
 type Config struct {
-	Period time.Duration `yaml:"dlq_recovery_check_interval"`
+	CheckInterval time.Duration `yaml:"dlq_recovery_check_interval"`
 }
 
 func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.DurationVar(&c.Period, prefix+"dlq-recovery-check-interval", 15*time.Second, "Dead Letter Queue check interval.")
+	f.DurationVar(&c.CheckInterval, prefix+"dlq-recovery-check-interval", 15*time.Second, "Dead Letter Queue check interval. 0 to disable.")
 }
 
 type Metastore interface {
@@ -52,6 +52,9 @@ func NewRecovery(logger log.Logger, config Config, metastore Metastore, bucket o
 }
 
 func (r *Recovery) Start() {
+	if r.config.CheckInterval == 0 {
+		return
+	}
 	r.m.Lock()
 	defer r.m.Unlock()
 	if r.started {
@@ -66,6 +69,9 @@ func (r *Recovery) Start() {
 }
 
 func (r *Recovery) Stop() {
+	if r.config.CheckInterval == 0 {
+		return
+	}
 	r.m.Lock()
 	defer r.m.Unlock()
 	if !r.started {
@@ -80,10 +86,7 @@ func (r *Recovery) Stop() {
 }
 
 func (r *Recovery) recoverLoop(ctx context.Context) {
-	if r.config.Period == 0 {
-		return
-	}
-	ticker := time.NewTicker(r.config.Period)
+	ticker := time.NewTicker(r.config.CheckInterval)
 	defer ticker.Stop()
 	for {
 		select {

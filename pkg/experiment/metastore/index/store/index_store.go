@@ -52,7 +52,17 @@ type Shard struct {
 	Tenant    string
 	Shard     uint32
 	*metadata.StringTable
-	ShardIndex
+	*ShardIndex
+}
+
+func NewShard(p PartitionKey, tenant string, shard uint32) *Shard {
+	return &Shard{
+		Partition:   p,
+		Tenant:      tenant,
+		Shard:       shard,
+		StringTable: metadata.NewStringTable(),
+		ShardIndex:  new(ShardIndex),
+	}
 }
 
 type IndexStore struct{}
@@ -97,10 +107,23 @@ func (m *IndexStore) ListPartitions(tx *bbolt.Tx) ([]*Partition, error) {
 		p := NewPartition(k)
 		partition := root.Bucket(partitionKey)
 		err := partition.ForEachBucket(func(tenant []byte) error {
-			shards := make(map[uint32]struct{})
-			err := partition.Bucket(tenant).ForEachBucket(func(shard []byte) error {
-				shards[binary.BigEndian.Uint32(shard)] = struct{}{}
-				// TODO: Store tenant shard index in the Partition
+			tenantBucket := partition.Bucket(tenant)
+			if tenantBucket == nil {
+				return nil
+			}
+			shards := make(map[uint32]*ShardIndex)
+			err := tenantBucket.ForEachBucket(func(shard []byte) error {
+				shardBucket := tenantBucket.Bucket(shard)
+				if shardBucket == nil {
+					return nil
+				}
+				shardIndex := new(ShardIndex)
+				if b := shardBucket.Get(tenantShardIndexKeyNameBytes); len(b) > 0 {
+					if err := shardIndex.UnmarshalBinary(b); err != nil {
+						return fmt.Errorf("failed to unmarshal shard index: %w", err)
+					}
+				}
+				shards[binary.BigEndian.Uint32(shard)] = shardIndex
 				return nil
 			})
 			if err != nil {
@@ -162,24 +185,17 @@ func (m *IndexStore) DeletePartition(tx *bbolt.Tx, p PartitionKey) error {
 }
 
 func (m *IndexStore) loadTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string, shard uint32) (*Shard, error) {
-	tenantShard := getTenantShard(tx, p, tenant, shard)
-	if tenantShard == nil {
+	shardBucket := getTenantShard(tx, p, tenant, shard)
+	if shardBucket == nil {
 		return nil, nil
 	}
 
-	s := Shard{
-		Partition:   p,
-		Tenant:      tenant,
-		Shard:       shard,
-		ShardIndex:  ShardIndex{},
-		StringTable: metadata.NewStringTable(),
+	s := NewShard(p, tenant, shard)
+	stringTable := shardBucket.Bucket(tenantShardStringsBucketNameBytes)
+	if stringTable == nil {
+		return s, nil
 	}
-
-	strings := tenantShard.Bucket(tenantShardStringsBucketNameBytes)
-	if strings == nil {
-		return &s, nil
-	}
-	stringsIter := newStringIter(store.NewCursorIter(strings.Cursor()))
+	stringsIter := newStringIter(store.NewCursorIter(stringTable.Cursor()))
 	defer func() {
 		_ = stringsIter.Close()
 	}()
@@ -188,13 +204,13 @@ func (m *IndexStore) loadTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string
 		return nil, err
 	}
 
-	if b := tenantShard.Get(tenantShardIndexKeyNameBytes); len(b) > 0 {
+	if b := shardBucket.Get(tenantShardIndexKeyNameBytes); len(b) > 0 {
 		if err = s.ShardIndex.UnmarshalBinary(b); err != nil {
 			return nil, err
 		}
 	}
 
-	return &s, nil
+	return s, nil
 }
 
 func getOrCreateTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string, shard uint32) (*bbolt.Bucket, error) {
@@ -214,20 +230,21 @@ func getOrCreateTenantShard(tx *bbolt.Tx, p PartitionKey, tenant string, shard u
 }
 
 func (s *Shard) Store(tx *bbolt.Tx, md *metastorev1.BlockMeta) error {
-	bucket, err := getOrCreateTenantShard(tx, s.Partition, s.Tenant, s.Shard)
+	shardBucket, err := getOrCreateTenantShard(tx, s.Partition, s.Tenant, s.Shard)
 	if err != nil {
 		return err
 	}
+
 	n := len(s.StringTable.Strings)
 	s.StringTable.Import(md)
 	if added := s.StringTable.Strings[n:]; len(added) > 0 {
-		strings, err := getOrCreateSubBucket(bucket, tenantShardStringsBucketNameBytes)
+		stringTable, err := getOrCreateSubBucket(shardBucket, tenantShardStringsBucketNameBytes)
 		if err != nil {
 			return err
 		}
 		k := binary.BigEndian.AppendUint32(nil, uint32(n))
 		v := encodeStrings(added)
-		if err = strings.Put(k, v); err != nil {
+		if err = stringTable.Put(k, v); err != nil {
 			return err
 		}
 	}
@@ -247,12 +264,12 @@ func (s *Shard) Store(tx *bbolt.Tx, md *metastorev1.BlockMeta) error {
 		updateIndex = true
 	}
 	if updateIndex {
-		if err = bucket.Put(tenantShardIndexKeyNameBytes, s.ShardIndex.MarshalBinary()); err != nil {
+		if err = shardBucket.Put(tenantShardIndexKeyNameBytes, s.ShardIndex.MarshalBinary()); err != nil {
 			return err
 		}
 	}
 
-	return bucket.Put([]byte(md.Id), value)
+	return shardBucket.Put([]byte(md.Id), value)
 }
 
 func (s *Shard) Find(tx *bbolt.Tx, blocks ...string) []store.KV {
@@ -307,38 +324,24 @@ func (s *Shard) TombstoneName() string {
 
 // ShallowCopy creates a shallow copy: no deep copy of the string table.
 // The copy can be accessed safely by multiple readers, and it represents
-// a snapshot of the string table at the time of the copy.
+// a snapshot of the shard including the string table.
 //
 // Strings added after the copy is made won't be visible to the reader.
 // The writer MUST invalidate the cache before access: copies in-use can
 // still be used (strings is a header copy of append-only slice).
 func (s *Shard) ShallowCopy() *Shard {
 	return &Shard{
-		Partition:  s.Partition,
-		Tenant:     s.Tenant,
-		Shard:      s.Shard,
-		ShardIndex: s.ShardIndex,
+		Partition: s.Partition,
+		Tenant:    s.Tenant,
+		Shard:     s.Shard,
+		ShardIndex: &ShardIndex{
+			MinTime: s.MinTime,
+			MaxTime: s.MaxTime,
+		},
 		StringTable: &metadata.StringTable{
 			Strings: s.StringTable.Strings,
 		},
 	}
-}
-
-func (s *Shard) Overlaps(start, end time.Time) bool {
-	// For backward compatibility.
-	if s.MinTime == 0 || s.MaxTime == 0 {
-		return true
-	}
-
-	if start.After(time.UnixMilli(s.MaxTime)) {
-		return false
-	}
-
-	if end.Before(time.UnixMilli(s.MinTime)) {
-		return false
-	}
-
-	return true
 }
 
 type stringIterator struct {
@@ -421,7 +424,7 @@ type ShardIndex struct {
 }
 
 func (i *ShardIndex) UnmarshalBinary(data []byte) error {
-	if len(data) != 16 {
+	if len(data) < 16 {
 		return ErrInvalidShardIndex
 	}
 	i.MinTime = int64(binary.BigEndian.Uint64(data[0:8]))
@@ -434,4 +437,21 @@ func (i *ShardIndex) MarshalBinary() []byte {
 	binary.BigEndian.PutUint64(b[0:8], uint64(i.MinTime))
 	binary.BigEndian.PutUint64(b[8:16], uint64(i.MaxTime))
 	return b
+}
+
+func (i *ShardIndex) Overlaps(start, end time.Time) bool {
+	// For backward compatibility.
+	if i.MinTime == 0 || i.MaxTime == 0 {
+		return true
+	}
+
+	if start.After(time.UnixMilli(i.MaxTime)) {
+		return false
+	}
+
+	if end.Before(time.UnixMilli(i.MinTime)) {
+		return false
+	}
+
+	return true
 }

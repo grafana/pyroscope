@@ -21,12 +21,12 @@ import (
 	placement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/scheduler"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/cleaner"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/dlq"
 	raft "github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/retention"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/tombstones"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
@@ -38,10 +38,8 @@ type Config struct {
 	Raft             raft.Config       `yaml:"raft"`
 	FSM              fsm.Config        `yaml:",inline" category:"advanced"`
 	Index            index.Config      `yaml:"index" category:"advanced"`
-	DLQRecovery      dlq.Config        `yaml:",inline" category:"advanced"`
 	Compactor        compactor.Config  `yaml:",inline" category:"advanced"`
 	Scheduler        scheduler.Config  `yaml:",inline" category:"advanced"`
-	Cleaner          retention.Config  `yaml:",inline" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
@@ -54,7 +52,6 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.Compactor.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Scheduler.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Index.RegisterFlagsWithPrefix(prefix+"index.", f)
-	cfg.DLQRecovery.RegisterFlagsWithPrefix(prefix, f)
 }
 
 func (cfg *Config) Validate() error {
@@ -78,10 +75,10 @@ type Metastore struct {
 	raft *raft.Node
 	fsm  *fsm.FSM
 
-	bucket      objstore.Bucket
-	placement   *placement.Manager
-	dlqRecovery *dlq.Recovery
-	cleaner     *retention.Cleaner
+	bucket    objstore.Bucket
+	placement *placement.Manager
+	recovery  *dlq.Recovery
+	cleaner   *cleaner.Cleaner
 
 	index        *index.Index
 	indexHandler *IndexCommandHandler
@@ -168,13 +165,13 @@ func New(
 	m.indexService = NewIndexService(m.logger, m.raft, m.leaderRead, m.index, m.placement)
 	m.tenantService = NewTenantService(m.logger, m.followerRead, m.index)
 	m.queryService = NewQueryService(m.logger, m.followerRead, m.index)
-	m.dlqRecovery = dlq.NewRecovery(logger, config.DLQRecovery, m.indexService, bucket)
-	m.cleaner = retention.NewCleaner(m.logger, m.config.Cleaner, m.indexService)
+	m.recovery = dlq.NewRecovery(logger, config.Index.Recovery, m.indexService, bucket)
+	m.cleaner = cleaner.NewCleaner(m.logger, config.Index.Cleaner, m.indexService)
 
 	// These are the services that only run on the raft leader.
 	// Keep in mind that the node may not be the leader at the moment the
 	// service is starting, so it should be able to handle conflicts.
-	m.raft.RunOnLeader(m.dlqRecovery)
+	m.raft.RunOnLeader(m.recovery)
 	m.raft.RunOnLeader(m.placement)
 	m.raft.RunOnLeader(m.cleaner)
 

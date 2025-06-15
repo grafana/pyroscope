@@ -2,8 +2,6 @@ package metastore
 
 import (
 	"context"
-	goiter "iter"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -16,6 +14,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	placement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/cleaner/retention"
 	indexstore "github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -30,7 +29,10 @@ type IndexBlockFinder interface {
 }
 
 type IndexPartitionLister interface {
-	Partitions() goiter.Seq[*indexstore.Partition]
+	// ListPartitions provide access to all partitions in the index.
+	// They are iterated in the order of their creation and are
+	// guaranteed to be thread-safe for reads.
+	ListPartitions(*bbolt.Tx, func(*indexstore.Partition) bool) error
 }
 
 type IndexReader interface {
@@ -125,60 +127,6 @@ func (svc *IndexService) getBlockMetadata(tx *bbolt.Tx, list *metastorev1.BlockL
 	return &metastorev1.GetBlockMetadataResponse{Blocks: found}, nil
 }
 
-func (svc *IndexService) TruncatePartitions(ctx context.Context, before time.Time, max int) error {
-	req := &raft_log.TruncateIndexRequest{Tombstones: make([]*metastorev1.Tombstones, 0, max)}
-	read := func(_ *bbolt.Tx, r raftnode.ReadIndex) {
-		req.Term = r.Term // See "ABA problem".
-		svc.createPartitionTombstones(before, req)
-	}
-	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {
-		return status.Error(codes.Unavailable, readErr.Error())
-	}
-	if len(req.Tombstones) == 0 {
-		return nil
-	}
-	if _, err := svc.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX), req); err != nil {
-		if !raftnode.IsRaftLeadershipError(err) {
-			level.Error(svc.logger).Log("msg", "failed to truncate index", "err", err)
-		}
-		return err
-	}
-	return nil
-}
-
-func (svc *IndexService) createPartitionTombstones(before time.Time, req *raft_log.TruncateIndexRequest) {
-	m := cap(req.Tombstones)
-	var shards []indexstore.Shard
-	for p := range svc.index.Partitions() {
-		// We pick all partitions that ended before the given time;
-		// the partitions cannot contain blocks created after the EndTime.
-		// However, the blocks may contain data created after the EndTime:
-		// the boundary is determined by the max time delta allowed for
-		// compaction – retention policy should include the period.
-		// TODO(kolesnikovae):
-		//  * We can rely on Max and Min time stored in shard index to
-		//    delete based on the data time.
-		//  * Tenant-level overrides.
-		if !p.EndTime().Before(before) {
-			break
-		}
-		shards = p.Shards(shards)
-		for _, shard := range shards {
-			if len(req.Tombstones) >= m {
-				break
-			}
-			req.Tombstones = append(req.Tombstones, &metastorev1.Tombstones{
-				Partition: &metastorev1.PartitionTombstone{
-					Name:      shard.TombstoneName(),
-					Timestamp: shard.Partition.Timestamp.UnixNano(),
-					Shard:     shard.Shard,
-					Tenant:    shard.Tenant,
-				},
-			})
-		}
-	}
-}
-
 func statsFromMetadata(md *metastorev1.BlockMeta) iter.Iterator[placement.Sample] {
 	return &sampleIterator{md: md}
 }
@@ -208,4 +156,33 @@ func (s *sampleIterator) At() placement.Sample {
 		ShardID:     s.md.Shard,
 		Size:        ds.Size,
 	}
+}
+
+func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy) error {
+	var req raft_log.TruncateIndexRequest
+	var err error
+	read := func(tx *bbolt.Tx, r raftnode.ReadIndex) {
+		if err = svc.index.ListPartitions(tx, rp.View); err != nil {
+			return
+		}
+		req.Tombstones = rp.Tombstones()
+		req.Term = r.Term // The leader may change after we read the index.
+	}
+	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {
+		return status.Error(codes.Unavailable, readErr.Error())
+	}
+	if err != nil {
+		level.Error(svc.logger).Log("msg", "failed to list partitions", "err", err)
+		return status.Error(codes.Internal, err.Error())
+	}
+	if len(req.Tombstones) == 0 {
+		return nil
+	}
+	if _, err = svc.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX), &req); err != nil {
+		if !raftnode.IsRaftLeadershipError(err) {
+			level.Error(svc.logger).Log("msg", "failed to truncate index", "err", err)
+		}
+		return err
+	}
+	return nil
 }

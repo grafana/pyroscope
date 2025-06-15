@@ -129,7 +129,7 @@ func TestStartStop(t *testing.T) {
 		addMeta(bucket, meta)
 	}
 
-	r := NewRecovery(test.NewTestingLogger(t), Config{Period: time.Millisecond * 10}, srv, bucket)
+	r := NewRecovery(test.NewTestingLogger(t), Config{CheckInterval: time.Millisecond * 10}, srv, bucket)
 	r.Start()
 	defer r.Stop()
 

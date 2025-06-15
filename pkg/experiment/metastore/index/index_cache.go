@@ -73,12 +73,10 @@ func (c *shardCache) delete(p store.PartitionKey, tenant string, shard uint32) {
 }
 
 func newBlockCache(rcs, wcs int) *blockCache {
-	reads, _ := lru.New2Q[blockCacheKey, *metastorev1.BlockMeta](rcs)
-	write, _ := lru.New[blockCacheKey, *metastorev1.BlockMeta](wcs)
-	return &blockCache{
-		read:  reads,
-		write: write,
-	}
+	var c blockCache
+	c.read, _ = lru.New2Q[blockCacheKey, *metastorev1.BlockMeta](rcs)
+	c.write, _ = lru.New[blockCacheKey, *metastorev1.BlockMeta](wcs)
+	return &c
 }
 
 func (c *blockCache) getOrCreate(shard *store.Shard, block kvstore.KV) *metastorev1.BlockMeta {

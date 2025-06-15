@@ -117,9 +117,6 @@ type blockMetadataQuerier struct {
 func (q *blockMetadataQuerier) queryBlocks() ([]*metastorev1.BlockMeta, error) {
 	for q.shards.Next() {
 		shard := q.shards.At()
-		if !shard.Overlaps(q.query.startTime, q.query.endTime) {
-			continue
-		}
 		offset := len(q.metas)
 		if err := q.collectBlockMetadata(shard); err != nil {
 			return nil, err
@@ -237,9 +234,6 @@ func (q *metadataLabelQuerier) queryLabels() (*metadata.LabelsCollector, error) 
 	}
 	for q.shards.Next() {
 		shard := q.shards.At()
-		if !shard.Overlaps(q.query.startTime, q.query.endTime) {
-			continue
-		}
 		if err := q.collectLabels(shard); err != nil {
 			return nil, err
 		}

@@ -3,7 +3,6 @@ package index
 import (
 	"flag"
 	"fmt"
-	goiter "iter"
 	"math"
 	"slices"
 	"strings"
@@ -14,11 +13,12 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid"
 	"go.etcd.io/bbolt"
-	"golang.org/x/exp/maps"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/cleaner"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/dlq"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
 	"github.com/grafana/pyroscope/pkg/model"
 )
@@ -29,6 +29,9 @@ type Config struct {
 	ShardCacheSize      int `yaml:"shard_cache_size"`
 	BlockWriteCacheSize int `yaml:"block_write_cache_size"`
 	BlockReadCacheSize  int `yaml:"block_read_cache_size"`
+
+	Cleaner  cleaner.Config `yaml:",inline"`
+	Recovery dlq.Config     `yaml:",inline"`
 
 	partitionDuration     time.Duration
 	queryLookaroundPeriod time.Duration
@@ -57,6 +60,8 @@ var DefaultConfig = Config{
 }
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	cfg.Recovery.RegisterFlagsWithPrefix(prefix, f)
+	cfg.Cleaner.RegisterFlagsWithPrefix(prefix, f)
 	f.IntVar(&cfg.ShardCacheSize, prefix+"shard-cache-size", DefaultConfig.ShardCacheSize, "Maximum number of shards to keep in memory")
 	f.IntVar(&cfg.BlockWriteCacheSize, prefix+"block-write-cache-size", DefaultConfig.BlockWriteCacheSize, "Maximum number of written blocks to keep in memory")
 	f.IntVar(&cfg.BlockReadCacheSize, prefix+"block-read-cache-size", DefaultConfig.BlockReadCacheSize, "Maximum number of read blocks to keep in memory")
@@ -68,17 +73,40 @@ type Store interface {
 	CreateBuckets(*bbolt.Tx) error
 	ListPartitions(*bbolt.Tx) ([]*store.Partition, error)
 	DeletePartition(tx *bbolt.Tx, p store.PartitionKey) error
+	// LoadShard attempts to load a shard from the store.
+	// If the shard does not exist, it returns nil without an error.
 	LoadShard(tx *bbolt.Tx, p store.PartitionKey, tenant string, shard uint32) (*store.Shard, error)
 	DeleteShard(tx *bbolt.Tx, p store.PartitionKey, tenant string, shard uint32) error
 }
 
 type Index struct {
-	logger     log.Logger
-	config     Config
-	store      Store
+	logger log.Logger
+	config Config
+	store  Store
+	shards *shardCache
+	blocks *blockCache
+
+	// TODO(kolesnikovae): Read partitions from the store directly
+	//   instead of maintaining the in-memory representation.
+	//
+	// This would allow us to avoid holding the lock and ensure better
+	// isolation. This would also simplify the implementation: the problem
+	// with this cache is that it's too easy to violate isolation as we may
+	// exchange data between transactions: in the worst case, the user may
+	// see a partition that has been created in a transaction that has not
+	// been committed yet, but it's very confusing. In our case, this is fine
+	// that we read uncommitted because of the Raft State Machine Safety
+	// property – we always read data commited to the Raft log.
+	//
+	// Users of the structure must be aware (and they are, at the moment) of
+	// the following invariants:
+	//  * A partition has been created in a transaction created after the
+	//    current one. In this case, the partition may be visible in-memory
+	//    before it is visible in the store.
+	//  * A partition has been removed in a transaction created after the
+	//    current one. In this case, the partition may disappear from the
+	//    memory, but still be in the store.
 	partitions []*store.Partition
-	shards     *shardCache
-	blocks     *blockCache
 	mu         sync.RWMutex
 }
 
@@ -93,6 +121,8 @@ func NewIndex(logger log.Logger, s Store, cfg Config) *Index {
 	}
 }
 
+// NewStore is a leftover. Use store.NewIndexStore directly.
+// TODO: delete the store interface, here and elsewhere.
 func NewStore() *store.IndexStore { return store.NewIndexStore() }
 
 func (i *Index) Init(tx *bbolt.Tx) error { return i.store.CreateBuckets(tx) }
@@ -121,9 +151,9 @@ func (i *Index) Restore(tx *bbolt.Tx) error {
 		)
 		if p.Key.Overlaps(low, high) {
 			level.Info(i.logger).Log("msg", "loading partition in memory")
-			var s *store.Shard
 			for tenant, shards := range p.TenantShards {
 				for shard := range shards {
+					var s *store.Shard
 					if s, err = i.store.LoadShard(tx, p.Key, tenant, shard); err != nil {
 						level.Error(i.logger).Log(
 							"msg", "failed to load tenant partition shard",
@@ -135,7 +165,14 @@ func (i *Index) Restore(tx *bbolt.Tx) error {
 						return err
 					}
 					if s != nil {
-						i.shards.put(&indexShard{Shard: s})
+						// Update the partition with the loaded shard index:
+						// it's important to ensure that the cached shard and
+						// the partition reference the same instance.
+						p.AddTenantShard(tenant, shard, s.ShardIndex)
+						i.shards.put(&indexShard{
+							Shard:    s,
+							readOnly: false,
+						})
 					}
 				}
 			}
@@ -215,16 +252,15 @@ func (i *Index) GetBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) ([]*metasto
 	return metas, nil
 }
 
-func (i *Index) Partitions() goiter.Seq[*store.Partition] {
-	return func(yield func(*store.Partition) bool) {
-		i.mu.RLock()
-		defer i.mu.RUnlock()
-		for _, p := range i.partitions {
-			if !yield(p) {
-				return
-			}
+func (i *Index) ListPartitions(_ *bbolt.Tx, fn func(*store.Partition) bool) error {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+	for _, p := range i.partitions {
+		if !fn(p) {
+			return nil
 		}
 	}
+	return nil
 }
 
 func (i *Index) DeletePartition(tx *bbolt.Tx, key store.PartitionKey, tenant string, shard uint32) error {
@@ -351,7 +387,6 @@ func (i *Index) partitionedList(list *metastorev1.BlockList) map[store.Partition
 }
 
 func (i *Index) getOrCreateShard(tx *bbolt.Tx, p *store.Partition, tenant string, shard uint32) (*store.Shard, error) {
-	p.AddTenantShard(tenant, shard)
 	x := i.shards.get(p.Key, tenant, shard)
 	if x != nil && !x.readOnly {
 		return x.Shard, nil
@@ -363,13 +398,9 @@ func (i *Index) getOrCreateShard(tx *bbolt.Tx, p *store.Partition, tenant string
 		return nil, err
 	}
 	if s == nil {
-		s = &store.Shard{
-			Partition:   p.Key,
-			Tenant:      tenant,
-			Shard:       shard,
-			StringTable: metadata.NewStringTable(),
-		}
+		s = store.NewShard(p.Key, tenant, shard)
 	}
+	p.AddTenantShard(tenant, shard, s.ShardIndex)
 	i.shards.put(&indexShard{
 		Shard:    s,
 		readOnly: false,
@@ -404,6 +435,8 @@ type shardIterator struct {
 	shards     []*store.Shard
 	cur        int
 	err        error
+	startTime  time.Time
+	endTime    time.Time
 }
 
 func newShardIterator(tx *bbolt.Tx, index *Index, startTime, endTime time.Time, tenants ...string) *shardIterator {
@@ -417,6 +450,8 @@ func newShardIterator(tx *bbolt.Tx, index *Index, startTime, endTime time.Time, 
 		partitions: make([]*store.Partition, 0, len(index.partitions)),
 		tenants:    tenants,
 		index:      index,
+		startTime:  startTime,
+		endTime:    endTime,
 	}
 	for _, p := range index.partitions {
 		if !p.Overlaps(startTime, endTime) {
@@ -459,14 +494,18 @@ func (si *shardIterator) loadPartition(p *store.Partition) {
 }
 
 func (si *shardIterator) loadShards(p *store.Partition, tenant string) {
-	si.index.mu.Lock()
-	shards := maps.Keys(p.TenantShards[tenant])
-	si.index.mu.Unlock()
+	si.index.mu.RLock()
+	shards := p.TenantShards[tenant]
+	si.index.mu.RUnlock()
 	var err error
 	var s *store.Shard
-	for _, shard := range shards {
+	for shardID, shard := range shards {
 		si.index.mu.RLock()
-		s, err = si.index.getShard(si.tx, p.Key, tenant, shard)
+		if !shard.Overlaps(si.startTime, si.endTime) {
+			si.index.mu.RUnlock()
+			continue
+		}
+		s, err = si.index.getShard(si.tx, p.Key, tenant, shardID)
 		si.index.mu.RUnlock()
 		if err != nil {
 			si.err = err

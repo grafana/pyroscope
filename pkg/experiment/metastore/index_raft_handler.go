@@ -80,7 +80,7 @@ func (m *IndexCommandHandler) AddBlock(tx *bbolt.Tx, cmd *raft.Log, req *metasto
 func (m *IndexCommandHandler) TruncateIndex(tx *bbolt.Tx, cmd *raft.Log, req *raft_log.TruncateIndexRequest) (*raft_log.TruncateIndexResponse, error) {
 	if req.Term != cmd.Term {
 		level.Warn(m.logger).Log(
-			"msg", "rejecting index truncation request",
+			"msg", "rejecting index truncation request; term mismatch: leader has changed",
 			"current_term", cmd.Term,
 			"request_term", req.Term,
 		)

@@ -9,7 +9,6 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/test"
 )
 
@@ -59,14 +58,7 @@ func TestShard_Overlaps(t *testing.T) {
 
 	// store a block
 	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-		shard := &Shard{
-			Partition:   partitionKey,
-			Tenant:      tenant,
-			Shard:       shardID,
-			StringTable: metadata.NewStringTable(),
-		}
-
-		return shard.Store(tx, blockMeta)
+		return NewShard(partitionKey, tenant, shardID).Store(tx, blockMeta)
 	}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {

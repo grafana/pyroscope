@@ -1,10 +1,8 @@
 package store
 
 import (
-	"cmp"
 	"encoding/binary"
 	"errors"
-	"slices"
 	"time"
 )
 
@@ -12,7 +10,7 @@ var ErrInvalidPartitionKey = errors.New("invalid partition key")
 
 type Partition struct {
 	Key          PartitionKey
-	TenantShards map[string]map[uint32]struct{}
+	TenantShards map[string]map[uint32]*ShardIndex
 }
 
 type PartitionKey struct {
@@ -23,7 +21,7 @@ type PartitionKey struct {
 func NewPartition(k PartitionKey) *Partition {
 	return &Partition{
 		Key:          k,
-		TenantShards: make(map[string]map[uint32]struct{}),
+		TenantShards: make(map[string]map[uint32]*ShardIndex),
 	}
 }
 
@@ -37,13 +35,13 @@ func (k *PartitionKey) Overlaps(start, end time.Time) bool {
 	return start.Before(k.EndTime()) && !end.Before(k.StartTime())
 }
 
-func (p *Partition) AddTenantShard(tenant string, shard uint32) {
+func (p *Partition) AddTenantShard(tenant string, shard uint32, s *ShardIndex) {
 	t := p.TenantShards[tenant]
 	if t == nil {
-		t = make(map[uint32]struct{})
+		t = make(map[uint32]*ShardIndex)
 		p.TenantShards[tenant] = t
 	}
-	t[shard] = struct{}{}
+	t[shard] = s
 }
 
 func (p *Partition) HasTenant(t string) bool {
@@ -64,27 +62,6 @@ func (p *Partition) Compare(other *Partition) int {
 		return 0
 	}
 	return p.Key.Timestamp.Compare(other.Key.Timestamp)
-}
-
-func (p *Partition) Shards(dst []Shard) []Shard {
-	dst = dst[:0]
-	for tenant, shards := range p.TenantShards {
-		for shard := range shards {
-			dst = append(dst, Shard{
-				Partition: p.Key,
-				Tenant:    tenant,
-				Shard:     shard,
-			})
-		}
-	}
-	slices.SortFunc(dst, func(a, b Shard) int {
-		t := cmp.Compare(a.Tenant, b.Tenant)
-		if t != 0 {
-			return cmp.Compare(a.Shard, b.Shard)
-		}
-		return t
-	})
-	return dst
 }
 
 func (p *Partition) DeleteTenantShard(tenant string, shard uint32) {
