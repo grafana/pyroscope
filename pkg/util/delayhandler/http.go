@@ -65,16 +65,15 @@ func NewHTTP(limits Limits) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := timeNow()
-			ctx := r.Context()
 
-			delay := getDelay(ctx, limits)
+			delay := getDelay(r.Context(), limits)
 			var delayRw *delayedResponseWriter
 			if delay > 0 {
 				w, delayRw = wrapResponseWriter(w, start.Add(delay))
 			}
 
 			// now run the chain after me
-			h.ServeHTTP(w, r.WithContext(ctx))
+			h.ServeHTTP(w, r)
 
 			// if we didn't delay, return immediately
 			if delayRw == nil {
