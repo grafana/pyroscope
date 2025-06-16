@@ -2,7 +2,6 @@ package delayhandler
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -274,16 +273,13 @@ func TestNewHTTP(t *testing.T) {
 }
 
 type healthMock struct {
+	grpc_health_v1.UnimplementedHealthServer
 	called bool
 }
 
 func (h *healthMock) Check(ctx context.Context, req *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
 	h.called = true
 	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
-}
-
-func (h *healthMock) Watch(*grpc_health_v1.HealthCheckRequest, grpc.ServerStreamingServer[grpc_health_v1.HealthCheckResponse]) error {
-	return errors.New("not implemented")
 }
 
 func TestGRPCHandler(t *testing.T) {
