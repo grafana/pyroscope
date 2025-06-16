@@ -3784,7 +3784,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyCompactUnicodeObjectSize:        56,
 		PyCellObject__ob_ref:              16,
 	},
-	// 3.13.0 testdata/python-arm64/3.13.0/libpython3.13.so.1.0
+	// 3.13.0 testdata/python-arm64/3.13.0a6/libpython3.13.so.1.0
 	{3, 13, 0}: {
 		PyVarObject_ob_size:               16,
 		PyObject_ob_type:                  8,
@@ -3809,8 +3809,8 @@ var pyVersions = map[Version]*UserOffsets{
 		PyInterpreterFrame_previous:       8,
 		PyInterpreterFrame_localsplus:     72,
 		PyInterpreterFrame_owner:          70,
-		PyRuntimeState_gilstate:           9880,
-		PyRuntimeState_autoTSSkey:         2160,
+		PyRuntimeState_gilstate:           3160,
+		PyRuntimeState_autoTSSkey:         1896,
 		Gilstate_runtime_state_autoTSSkey: -1,
 		PyTssT_is_initialized:             0,
 		PyTssT_key:                        4,
