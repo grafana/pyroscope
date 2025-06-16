@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/grafana/dskit/flagext"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -181,4 +184,58 @@ func TestOverwriteMarshalingStringMapYAML(t *testing.T) {
 	var back OverwriteMarshalingStringMap
 	require.Nil(t, yaml.Unmarshal(out, &back))
 	require.Equal(t, m, back)
+}
+
+func TestDistributorIngestionArtificialDelay(t *testing.T) {
+	tests := map[string]struct {
+		tenantID      string
+		defaultLimits func(*Limits)
+		tenantLimits  func(*Limits)
+		expectedDelay time.Duration
+	}{
+		"should not apply delay by default": {
+			tenantID:      "tenant-a",
+			tenantLimits:  func(*Limits) {},
+			expectedDelay: 0,
+		},
+		"should apply globally if set": {
+			tenantID: "tenant-a",
+			defaultLimits: func(l *Limits) {
+				l.IngestionArtificialDelay = model.Duration(time.Second)
+			},
+			tenantLimits:  func(*Limits) {},
+			expectedDelay: time.Second,
+		},
+		"should apply delay if a plain delay has been configured for the tenant": {
+			tenantID: "tenant-a",
+			tenantLimits: func(l *Limits) {
+				l.IngestionArtificialDelay = model.Duration(time.Second)
+			},
+			expectedDelay: time.Second,
+		},
+		"should tenant limit should override global": {
+			tenantID: "tenant-a",
+			defaultLimits: func(l *Limits) {
+				l.IngestionArtificialDelay = model.Duration(time.Second)
+			},
+			tenantLimits: func(l *Limits) {
+				l.IngestionArtificialDelay = model.Duration(0)
+			},
+			expectedDelay: 0,
+		},
+	}
+	for testName, testData := range tests {
+		t.Run(testName, func(t *testing.T) {
+			tenantLimits := &Limits{}
+			flagext.DefaultValues(tenantLimits)
+			if testData.defaultLimits != nil {
+				testData.defaultLimits(tenantLimits)
+			}
+			testData.tenantLimits(tenantLimits)
+
+			ov, err := NewOverrides(Limits{}, NewMockTenantLimits(map[string]*Limits{testData.tenantID: tenantLimits}))
+			require.NoError(t, err)
+			require.Equal(t, testData.expectedDelay, ov.IngestionArtificialDelay(testData.tenantID))
+		})
+	}
 }
