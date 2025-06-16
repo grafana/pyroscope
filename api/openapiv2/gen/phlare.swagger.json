@@ -2349,7 +2349,8 @@
       "type": "string",
       "enum": [
         "TIME_SERIES_AGGREGATION_TYPE_SUM",
-        "TIME_SERIES_AGGREGATION_TYPE_AVERAGE"
+        "TIME_SERIES_AGGREGATION_TYPE_AVERAGE",
+        "TIME_SERIES_AGGREGATION_TYPE_RATE"
       ],
       "default": "TIME_SERIES_AGGREGATION_TYPE_SUM"
     },
