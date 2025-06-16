@@ -172,6 +172,9 @@ func (o *SampleObserver) initSeriesState(row block.ProfileEntry) {
 	}
 }
 
+// ObserveSymbols will skip observation if no rule evaluated true for matchers.
+// At the end of this process we'll have a map stacktraceId -> matching rule, so later we can get stacktraces from the
+// row and quickly look up for matching rules
 func (o *SampleObserver) ObserveSymbols(strings []string, functions []schemav1.InMemoryFunction, locations []schemav1.InMemoryLocation, stacktraceValues [][]int32, stacktraceIds []uint32) {
 	if !o.state.recordSymbols {
 		return
@@ -213,11 +216,13 @@ func (o *SampleObserver) ObserveSymbols(strings []string, functions []schemav1.I
 }
 
 func (o *SampleObserver) Flush(row block.ProfileEntry) {
+	// Totals are computed as follows: for every rule that matches the series, we add the TotalValue
 	for _, rec := range o.state.targetRecordings {
 		if rec.state.matches && rec.rule.FunctionName == "" {
 			rec.state.sample.Value += float64(row.Row.TotalValue())
 		}
 	}
+	// On the other hand, functions are computed from the lookup tables only if the series hit some rule.
 	if o.state.recordSymbols {
 		row.Row.ForStacktraceIdsAndValues(func(ids []parquet.Value, values []parquet.Value) {
 			for i, id := range ids {

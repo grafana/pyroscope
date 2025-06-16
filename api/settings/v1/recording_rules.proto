@@ -82,19 +82,18 @@ message RecordingRule {
   // concurrent updates.
   int64 generation = 7;
 
+  // The stacktrace filter allows filtering on particular function names in the stacktrace.
+  // This allows recording rules to focus on specific functions and calculate their "total"
+  // resource usage.
   optional StacktraceFilter stacktrace_filter = 8;
 }
 
 message StacktraceFilter {
   optional StacktraceFilterFunctionName function_name = 1;
-
-  // StacktraceFilterFunctionNameRegExp functionNameRegExp = 2;
 }
 
 enum MetricType {
   TOTAL = 0;
-
-  // SELF = 1;
 }
 
 message StacktraceFilterFunctionName {
