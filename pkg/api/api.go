@@ -15,7 +15,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/server"
@@ -47,6 +46,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
 	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
+	"github.com/grafana/pyroscope/pkg/util/delayhandler"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
 
@@ -89,27 +89,7 @@ func New(cfg Config, s *server.Server, grpcGatewayMux *grpcgw.ServeMux, logger l
 //
 // Register Options allow to filter the HTTP methods and apply middlewares.
 func (a *API) RegisterRoute(path string, handler http.Handler, registerOpts ...RegisterOption) {
-	opts := applyRegisterOptions(registerOpts...)
-
-	level.Debug(a.logger).Log(append([]interface{}{
-		"msg", "api: registering route"}, opts.logFields(path)...)...)
-
-	// handle path prefixing
-	route := a.server.HTTP.Path(path)
-	if opts.isPrefix {
-		route = a.server.HTTP.PathPrefix(path)
-	}
-
-	// limit the route to the given methods
-	if len(opts.methods) > 0 {
-		route = route.Methods(opts.methods...)
-	}
-
-	for _, middleware := range opts.middlewares {
-		handler = middleware.Wrap(handler)
-	}
-
-	route.Handler(handler)
+	registerRoute(a.logger, a.server.HTTP, path, handler, registerOpts...)
 }
 
 // RegisterAPI registers the standard endpoints associated with a running Pyroscope.
@@ -211,19 +191,20 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 }
 
 // RegisterDistributor registers the endpoints associated with the distributor.
-func (a *API) RegisterDistributor(d *distributor.Distributor, multitenancyEnabled bool) {
+func (a *API) RegisterDistributor(d *distributor.Distributor, limits delayhandler.Limits, multitenancyEnabled bool) {
+	writePathOpts := a.registerOptionsWritePath(limits)
 	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, a.logger)
 	otlpHandler := otlp.NewOTLPIngestHandler(d, a.logger, multitenancyEnabled)
 
-	a.RegisterRoute("/ingest", pyroscopeHandler, a.registerOptionsWritePath()...)
-	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, a.registerOptionsWritePath()...)
-	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.connectOptionsAuthRecovery()...)
+	a.RegisterRoute("/ingest", pyroscopeHandler, writePathOpts...)
+	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, writePathOpts...)
+	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.connectOptionsAuthDelayRecovery(limits)...)
 	a.RegisterRoute("/distributor/ring", d, a.registerOptionsRingPage()...)
 	a.indexPage.AddLinks(defaultWeight, "Distributor", []IndexPageLink{
 		{Desc: "Ring status", Path: "/distributor/ring"},
 	})
 
-	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, a.registerOptionsWritePath()...)
+	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, writePathOpts...)
 	// TODO(@petethepig): implement http/protobuf and http/json support
 	// a.RegisterRoute("/v1/profiles", otlpHandler, true, true, "POST")
 }
