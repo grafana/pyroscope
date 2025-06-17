@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"testing"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -142,6 +143,78 @@ func TestSymbolizePprof(t *testing.T) {
 				// Third location (0x1440) - main
 				require.Len(t, p.Location[2].Line, 1)
 				assertLocationHasFunction(t, p, p.Location[2], "main", "main")
+			},
+		},
+		{
+			name: "preserve existing symbols when HasFunctions=false",
+			// This tests a defensive check against data inconsistency where a mapping has
+			// HasFunctions=false but contains locations with existing symbols.
+			// This scenario should be rare, but we maintain the check for robustness.
+			profile: &googlev1.Profile{
+				Mapping: []*googlev1.Mapping{{
+					Id:           1,
+					BuildId:      1,
+					Filename:     2,
+					MemoryStart:  0x0,
+					MemoryLimit:  0x1000000,
+					FileOffset:   0x0,
+					HasFunctions: false,
+				}},
+				Location: []*googlev1.Location{
+					{
+						Id:        1,
+						MappingId: 1,
+						Address:   0x1000,
+						Line: []*googlev1.Line{{
+							FunctionId: 1,
+							Line:       42,
+						}},
+					},
+					{
+						Id:        2,
+						MappingId: 1,
+						Address:   0x1500,
+						Line:      nil,
+					},
+				},
+				Function: []*googlev1.Function{{
+					Id:   1,
+					Name: 3,
+				}},
+				StringTable: []string{"", "build-id", "alloy", "existing_function"},
+			},
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
+				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+				mockBucket.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Upload", mock.Anything, "build-id", mock.Anything).Return(nil).Once()
+			},
+			validate: func(t *testing.T, p *googlev1.Profile) {
+				require.True(t, p.Mapping[0].HasFunctions)
+
+				require.Len(t, p.Location[0].Line, 1)
+				require.Equal(t, uint64(1), p.Location[0].Line[0].FunctionId)
+				require.Equal(t, "existing_function", p.StringTable[p.Function[0].Name])
+
+				require.Len(t, p.Location[1].Line, 1)
+				assertLocationHasFunction(t, p, p.Location[1], "main", "main")
+
+				existingFuncStillExists := false
+				for _, str := range p.StringTable {
+					if str == "existing_function" {
+						existingFuncStillExists = true
+						break
+					}
+				}
+				require.True(t, existingFuncStillExists)
+
+				placeholderFound := false
+				for _, str := range p.StringTable {
+					if strings.Contains(str, "!0x") {
+						placeholderFound = true
+						break
+					}
+				}
+				require.False(t, placeholderFound)
 			},
 		},
 	}
