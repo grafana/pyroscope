@@ -249,6 +249,11 @@ func (s *session) Update(options SessionOptions) error {
 }
 
 func (s *session) UpdateTargets(args sd.TargetsOptions) {
+	if args.DefaultTarget == nil {
+		args.DefaultTarget = sd.DiscoveryTarget(map[string]string{
+			"service_name": "pypyer_debug",
+		})
+	}
 	s.targetFinder.Update(args)
 
 	s.mutex.Lock()
@@ -324,9 +329,11 @@ func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error 
 		}
 		target := s.targetFinder.FindTarget(ck.Pid)
 		if target == nil {
+			fmt.Printf("[pydebug] target for %d not found\n", ck.Pid)
 			continue
 		}
 		if _, ok := s.pids.dead[ck.Pid]; ok {
+			fmt.Printf("[pydebug]  %d dead \n", ck.Pid)
 			continue
 		}
 
@@ -348,11 +355,15 @@ func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error 
 		stats := StackResolveStats{}
 		sb.reset()
 		sb.append(s.comm(ck.Pid))
+		ss := ""
 		if s.options.CollectUser {
 			if isPythonStack {
 				pyProc := s.pyperf.FindProc(ck.Pid)
 				if pyProc != nil {
-					s.WalkPythonStack(sb, uStack, target, pyProc, pySymbols, &stats)
+					ss = s.WalkPythonStack(sb, uStack, target, pyProc, pySymbols, &stats)
+					fmt.Printf("[pydebug] %s %d %d\n", ss, ck.Pid, value)
+				} else {
+					fmt.Printf("[pydebug] %d not found\n", ck.Pid)
 				}
 			} else {
 				proc := s.symCache.GetProcTableCached(pk)
@@ -373,6 +384,7 @@ func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error 
 			s.WalkStack(sb, kStack, s.symCache.GetKallsyms(), &stats)
 		}
 		if len(sb.stack) == 1 {
+			fmt.Printf("[pydebug] %d empty stack\n", ck.Pid)
 			continue // only comm
 		}
 		lo.Reverse(sb.stack)
@@ -904,19 +916,21 @@ func (s *session) pythonEnabled(target *sd.Target) bool {
 }
 
 func (s *session) pythonBPFDebugLogEnabled(target *sd.Target) bool {
-	enabled := s.options.PythonBPFDebugLogEnabled
-	if v, present := target.GetFlag(sd.OptionPythonBPFDebugLogEnabled); present {
-		enabled = v
-	}
-	return enabled
+	return true
+	//enabled := s.options.PythonBPFDebugLogEnabled
+	//if v, present := target.GetFlag(sd.OptionPythonBPFDebugLogEnabled); present {
+	//	enabled = v
+	//}
+	//return enabled
 }
 
 func (s *session) pythonBPFErrorLogEnabled(target *sd.Target) bool {
-	enabled := s.options.PythonBPFErrorLogEnabled
-	if v, present := target.GetFlag(sd.OptionPythonBPFErrorLogEnabled); present {
-		enabled = v
-	}
-	return enabled
+	return true
+	//enabled := s.options.PythonBPFErrorLogEnabled
+	//if v, present := target.GetFlag(sd.OptionPythonBPFErrorLogEnabled); present {
+	//	enabled = v
+	//}
+	//return enabled
 }
 
 func (s *session) printDebugInfo() {

@@ -167,9 +167,9 @@ func (s *session) GetPythonStack(stackId int64) []byte {
 	return res
 }
 
-func (s *session) WalkPythonStack(sb *stackBuilder, stack []byte, target *sd.Target, proc *python.Proc, pySymbols *python.LazySymbols, stats *StackResolveStats) {
+func (s *session) WalkPythonStack(sb *stackBuilder, stack []byte, target *sd.Target, proc *python.Proc, pySymbols *python.LazySymbols, stats *StackResolveStats) string {
 	if len(stack) == 0 {
-		return
+		return ""
 	}
 
 	svc := target.ServiceName()
@@ -212,6 +212,7 @@ func (s *session) WalkPythonStack(sb *stackBuilder, stack []byte, target *sd.Tar
 	}
 	end := len(sb.stack)
 	lo.Reverse(sb.stack[begin:end])
+	return strings.Join(sb.stack, ";")
 }
 
 func skipPythonFrame(classname string, filename string, name string) bool {

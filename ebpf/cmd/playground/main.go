@@ -325,7 +325,7 @@ func getProcessTargets() []sd.DiscoveryTarget {
 			"pid":             spid,
 			"exe":             exe,
 			"service_name":    exe,
-			"cmdline":         string(cmdline),
+			//"cmdline":         string(cmdline),
 		}
 		res = append(res, target)
 	}
