@@ -66,6 +66,7 @@ pyroscope.configure(
 Optionally, you can configure several additional parameters:
 
 ```python
+import os
 import pyroscope
 
 pyroscope.configure(
@@ -77,7 +78,7 @@ pyroscope.configure(
     gil_only            = True, # only include traces for threads that are holding on to the Global Interpreter Lock; default is True
     enable_logging      = True, # does enable logging facility; default is False
     tags                = {
-        "region": '{os.getenv("REGION")}',
+        "region": f'{os.getenv("REGION")}',
     }
 )
 ```
