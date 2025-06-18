@@ -38,9 +38,13 @@ To use the Pyroscope integration for GitHub, you need an application that emits 
 
 ### Application with profiling data requirements
 
-- A Go application which is profiled by Pyroscope
+{{< admonition type="warning" >}}
   - Applications in other languages aren't supported
-  - eBPF profiled workloads aren't supported
+  - eBPF profiled Go workloads aren't supported
+{{< /admonition >}}
+
+- A Go application which is profiled by Grafana Alloy's `pyroscope.scrape` or using the [Go Push SDK](../../configure-client/language-sdks/go_push/).
+
 
 Your Go application provides the following labels (tags):
 

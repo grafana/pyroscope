@@ -36,6 +36,9 @@ This guide walks you through setting up the GitHub integration with minimal perm
 7. Now scroll down to the **Client secrets** section and click **Generate a new client secret**
 8. **Important**: Copy the generated client secret immediately - you won't be able to see it again after closing the dialog
 
+For anything not covered in this guide, you can refer to the GitHub docs: [Registering a GitHub App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app).
+
+
 ## Configuring Pyroscope
 
 This section explains how to configure the GitHub integration in Grafana Pyroscope. The integration requires three environment variables to be set:
