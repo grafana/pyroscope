@@ -119,7 +119,7 @@ func (o *SampleObserver) initDatasetState(dataset string) {
 	}
 }
 
-// Observe manages three kind of states.
+// Evaluate manages three kind of states.
 //   - Per tenant state:
 //     Gets initialized on new tenant. It fetches tenant's rules and creates a new recording for each rule.
 //     Data of old state is flushed to the exporter.
@@ -134,7 +134,7 @@ func (o *SampleObserver) initDatasetState(dataset string) {
 //     depending on the rule.GroupBy space. More info in initState).
 //
 // This call is not thread-safe
-func (o *SampleObserver) Observe(row block.ProfileEntry) {
+func (o *SampleObserver) Evaluate(row block.ProfileEntry) func() {
 	// Detect a tenant switch
 	tenant := row.Dataset.TenantID()
 	if o.state.tenant != row.Dataset.TenantID() {
@@ -152,6 +152,9 @@ func (o *SampleObserver) Observe(row block.ProfileEntry) {
 	if o.state.fingerprint != row.Fingerprint {
 		// New series. Handle state.
 		o.initSeriesState(row)
+	}
+	return func() {
+		o.observe(row)
 	}
 }
 
@@ -215,7 +218,7 @@ func (o *SampleObserver) ObserveSymbols(strings []string, functions []schemav1.I
 	}
 }
 
-func (o *SampleObserver) Flush(row block.ProfileEntry) {
+func (o *SampleObserver) observe(row block.ProfileEntry) {
 	// Totals are computed as follows: for every rule that matches the series, we add the TotalValue
 	for _, rec := range o.state.targetRecordings {
 		if rec.state.matches && rec.rule.FunctionName == "" {

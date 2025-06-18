@@ -69,11 +69,10 @@ type compactionConfig struct {
 type SampleObserver interface {
 	symdb.SymbolsObserver
 
-	// Observe is called before the compactor appends the entry
-	// to the output block. This method must not modify the entry.
-	Observe(ProfileEntry)
-	// TODO: Find an alternative to this
-	Flush(ProfileEntry)
+	// Evaluate is called before the compactor rewrites any symbols.
+	// An "observe" callback function is returned to be called after writing the resulting blocks.
+	// This method must not modify the entry.
+	Evaluate(ProfileEntry) (observe func())
 }
 
 func Compact(
@@ -436,7 +435,8 @@ func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 
 func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	if m.observer != nil {
-		m.observer.Observe(r)
+		observe := m.observer.Evaluate(r)
+		defer observe()
 	}
 	if err = m.parent.datasetIndex.writeRow(r); err != nil {
 		return err
@@ -446,9 +446,6 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	}
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
-	}
-	if m.observer != nil {
-		m.observer.Flush(r)
 	}
 	return m.profilesWriter.writeRow(r)
 }
