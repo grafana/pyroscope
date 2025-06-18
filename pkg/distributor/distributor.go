@@ -1030,7 +1030,7 @@ func (d *Distributor) visitSampleSeries(req *distributormodel.PushRequest, visit
 				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), req.TenantID).Add(float64(req.TotalProfiles))
 				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), req.TenantID).Add(float64(req.TotalBytesUncompressed))
 				usageGroups.CountDiscardedBytes(string(validation.ReasonOf(err)), req.TotalBytesUncompressed)
-				return err
+				return connect.NewError(connect.CodeInvalidArgument, err)
 			}
 			for _, s := range visitor.series {
 				s.Annotations = series.Annotations
@@ -1045,8 +1045,13 @@ func (d *Distributor) visitSampleSeries(req *distributormodel.PushRequest, visit
 		}
 	}
 
-	validation.DiscardedBytes.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(float64(req.DiscardedBytesRelabeling))
-	validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(float64(req.DiscardedProfilesRelabeling))
+	if req.DiscardedBytesRelabeling > 0 {
+		validation.DiscardedBytes.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(float64(req.DiscardedBytesRelabeling))
+	}
+	if req.DiscardedProfilesRelabeling > 0 {
+		validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(float64(req.DiscardedProfilesRelabeling))
+	}
+
 	req.Series = result
 	removeEmptySeries(req)
 	return nil
@@ -1075,10 +1080,7 @@ type sampleSeriesVisitor struct {
 }
 
 func (v *sampleSeriesVisitor) ValidateLabels(labels phlaremodel.Labels) error {
-	if err := validation.ValidateLabels(v.limits, v.tenantID, labels); err != nil {
-		return connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	return nil
+	return validation.ValidateLabels(v.limits, v.tenantID, labels)
 }
 
 func (v *sampleSeriesVisitor) VisitProfile(labels phlaremodel.Labels) {
