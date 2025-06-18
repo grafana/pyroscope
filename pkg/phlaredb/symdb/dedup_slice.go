@@ -4,6 +4,7 @@ package symdb
 import (
 	"fmt"
 	"hash/maphash"
+	stdslices "slices"
 	"sort"
 	"sync"
 	"unsafe"
@@ -279,7 +280,7 @@ func (s *deduplicatingSlice[M, K, H]) ingest(elems []M, rewriter *rewriter) {
 	if len(missing) > 0 {
 		s.lock.Lock()
 		posSlice := int64(len(s.slice))
-		misSlice := make([]M, 0, len(missing))
+		s.slice = stdslices.Grow(s.slice, len(missing))
 		for _, pos := range missing {
 			// check again if element exists
 			k := s.helper.key(elems[pos])
@@ -289,13 +290,12 @@ func (s *deduplicatingSlice[M, K, H]) ingest(elems []M, rewriter *rewriter) {
 			}
 
 			// add element to slice/map
-			misSlice = append(misSlice, s.helper.clone(elems[pos]))
+			s.slice = append(s.slice, s.helper.clone(elems[pos]))
 			s.lookup[k] = posSlice
 			rewritingMap[int64(s.helper.setID(uint64(pos), uint64(posSlice), &elems[pos]))] = posSlice
 			posSlice++
 			s.size.Add(s.helper.size(elems[pos]))
 		}
-		s.slice = append(s.slice, misSlice...)
 		s.lock.Unlock()
 	}
 
