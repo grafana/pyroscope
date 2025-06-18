@@ -17,8 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/test"
-
 	"connectrpc.com/connect"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -109,7 +107,7 @@ func (p *PyroscopeTest) start(t *testing.T) {
 }
 
 func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
-	ports, err := test.GetFreePorts(4)
+	ports, err := GetFreePorts(4)
 	require.NoError(t, err)
 	p.httpPort = ports[0]
 	p.memberlistPort = ports[1]
