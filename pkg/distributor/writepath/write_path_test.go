@@ -236,3 +236,55 @@ func (s *routerTestSuite) Test_CombinedPath_SegmentWriter_Exclusive_Error() {
 
 	s.Assert().Error(s.router.Send(context.Background(), s.request, config), context.Canceled)
 }
+
+func (s *routerTestSuite) Test_AsyncIngest_Synchronous() {
+	config := Config{
+		WritePath:   SegmentWriterPath,
+		AsyncIngest: false,
+	}
+
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
+		Once()
+
+	err := s.router.Send(context.Background(), s.request, config)
+	s.Assert().Error(err)
+}
+
+func (s *routerTestSuite) Test_AsyncIngest_Asynchronous() {
+	config := Config{
+		WritePath:   SegmentWriterPath,
+		AsyncIngest: true,
+	}
+
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
+		Once()
+
+	err := s.router.Send(context.Background(), s.request, config)
+	s.Assert().NoError(err)
+
+	s.router.inflight.Wait()
+}
+
+func (s *routerTestSuite) Test_AsyncIngest_CombinedPath() {
+	config := Config{
+		WritePath:           CombinedPath,
+		IngesterWeight:      1,
+		SegmentWriterWeight: 1,
+		AsyncIngest:         true,
+	}
+
+	s.ingester.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
+		Once()
+
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
+		Once()
+
+	err := s.router.Send(context.Background(), s.request, config)
+	s.Assert().Error(err)
+
+	s.router.inflight.Wait()
+}
