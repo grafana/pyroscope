@@ -78,7 +78,7 @@ Refer to [Requesting a GitHub App from your organization owner](https://docs.git
 
 ### Ensure the GitHub integration is configued in Grafana Pyroscope
 
-Refer to [Configure GitHub integration](../configure-server/configuring-github-integration.md) on the steps required.
+Refer to [Configure GitHub integration](../configure-server/configuring-github-integration/) on the steps required.
 
 ### Ensure the Grafana Pyroscope data source is configued correctly
 
