@@ -3,6 +3,7 @@ package index
 import (
 	"flag"
 	"fmt"
+	goiter "iter"
 	"math"
 	"slices"
 	"strings"
@@ -66,7 +67,9 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 type Store interface {
 	CreateBuckets(*bbolt.Tx) error
 	ListPartitions(*bbolt.Tx) ([]*store.Partition, error)
-	LoadShard(*bbolt.Tx, store.PartitionKey, string, uint32) (*store.Shard, error)
+	DeletePartition(tx *bbolt.Tx, p store.PartitionKey) error
+	LoadShard(tx *bbolt.Tx, p store.PartitionKey, tenant string, shard uint32) (*store.Shard, error)
+	DeleteShard(tx *bbolt.Tx, p store.PartitionKey, tenant string, shard uint32) error
 }
 
 type Index struct {
@@ -212,6 +215,34 @@ func (i *Index) GetBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) ([]*metasto
 	return metas, nil
 }
 
+func (i *Index) Partitions() goiter.Seq[*store.Partition] {
+	return func(yield func(*store.Partition) bool) {
+		i.mu.RLock()
+		defer i.mu.RUnlock()
+		for _, p := range i.partitions {
+			if !yield(p) {
+				return
+			}
+		}
+	}
+}
+
+func (i *Index) DeletePartition(tx *bbolt.Tx, key store.PartitionKey, tenant string, shard uint32) error {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	p := i.getPartition(key)
+	p.DeleteTenantShard(tenant, shard)
+	i.shards.delete(key, tenant, shard)
+	if err := i.store.DeleteShard(tx, key, tenant, shard); err != nil {
+		return err
+	}
+	if !p.IsEmpty() {
+		return nil
+	}
+	i.deletePartition(key)
+	return i.store.DeletePartition(tx, key)
+}
+
 func (i *Index) GetTenantStats(tenant string) *metastorev1.TenantStats {
 	stats := &metastorev1.TenantStats{
 		DataIngested:      false,
@@ -293,6 +324,12 @@ func (i *Index) getPartition(key store.PartitionKey) *store.Partition {
 		}
 	}
 	return nil
+}
+
+func (i *Index) deletePartition(key store.PartitionKey) {
+	i.partitions = slices.DeleteFunc(i.partitions, func(p *store.Partition) bool {
+		return p.Key.Equal(key)
+	})
 }
 
 func (i *Index) partitionedList(list *metastorev1.BlockList) map[store.PartitionKey]*metastorev1.BlockList {
