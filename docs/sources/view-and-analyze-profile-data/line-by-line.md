@@ -132,7 +132,7 @@ For more information about GitHub applications:
 
 - [Using GitHub apps](https://docs.github.com/en/apps/using-github-apps/about-using-github-apps)
 - [Authorizing GitHub apps](https://docs.github.com/en/apps/using-github-apps/authorizing-github-apps)
-- [Differences between installing and authorizing apps](https://docs.github.com/en/apps/using-github-apps/installing-a-github-app-from-github-marketplace-for-your-organizations#difference-between-installation-and-authorization)
+- [Differences between installing and authorizing apps](https://docs.github.com/en/apps/using-github-apps/installing-a-github-app-from-a-third-party#difference-between-installation-and-authorization)
 
 ## How your GitHub code shows up in profile data queries
 
