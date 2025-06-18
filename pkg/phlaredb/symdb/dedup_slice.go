@@ -4,6 +4,7 @@ package symdb
 import (
 	"fmt"
 	"hash/maphash"
+	stdslices "slices"
 	"sort"
 	"sync"
 	"unsafe"
@@ -254,7 +255,7 @@ func (s *deduplicatingSlice[M, K, H]) Size() uint64 {
 
 func (s *deduplicatingSlice[M, K, H]) ingest(elems []M, rewriter *rewriter) {
 	var (
-		rewritingMap = make(map[int64]int64)
+		rewritingMap = make(map[int64]int64, len(elems))
 		missing      = int64SlicePool.Get()
 	)
 	missing = missing[:0]
@@ -279,6 +280,7 @@ func (s *deduplicatingSlice[M, K, H]) ingest(elems []M, rewriter *rewriter) {
 	if len(missing) > 0 {
 		s.lock.Lock()
 		posSlice := int64(len(s.slice))
+		s.slice = stdslices.Grow(s.slice, len(missing))
 		for _, pos := range missing {
 			// check again if element exists
 			k := s.helper.key(elems[pos])
