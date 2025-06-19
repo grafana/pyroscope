@@ -3,7 +3,6 @@ package test
 import (
 	"context"
 	"fmt"
-	"net"
 	"testing"
 	"time"
 
@@ -32,24 +31,20 @@ import (
 func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore.Bucket) MetastoreSet {
 	l := test.NewTestingLogger(t)
 
-	ports, err := test.GetFreePorts(2 * n)
-	addresses := make([]string, 2*n)
-	for i, port := range ports {
-		addresses[i] = fmt.Sprintf("localhost:%d", port)
-	}
-	grpcAddresses := addresses[:n]
-	raftAddresses := addresses[n:]
+	grpcAddresses := make([]string, n)
+	raftAddresses := make([]string, n)
 	raftIds := make([]string, n)
-	for i := 0; i < n; i++ {
-		raftIds[i] = fmt.Sprintf("node-%d", i)
-	}
 	bootstrapPeers := make([]string, n)
-	configs := make([]metastore.Config, n)
-	servers := make([]discovery.Server, n)
-
 	for i := 0; i < n; i++ {
+		grpcAddresses[i] = fmt.Sprintf("localhost:%d", 10500+i)
+		raftAddresses[i] = fmt.Sprintf("localhost:%d", 10500+2*i)
+		raftIds[i] = fmt.Sprintf("node-%d", i)
 		bootstrapPeers[i] = fmt.Sprintf("%s/%s", raftAddresses[i], raftIds[i])
+	}
+	l.Log("grpcAddresses", fmt.Sprintf("%+v", grpcAddresses), "raftAddresses", fmt.Sprintf("%+v", raftAddresses))
 
+	configs := make([]metastore.Config, n)
+	for i := 0; i < n; i++ {
 		icfg := *cfg
 		icfg.MinReadyDuration = 0
 		icfg.Address = grpcAddresses[i]
@@ -60,30 +55,35 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 		icfg.Raft.BindAddress = raftAddresses[i]
 		icfg.Raft.BootstrapPeers = bootstrapPeers
 		icfg.Raft.BootstrapExpectPeers = n
+		configs[i] = icfg
+	}
+
+	servers := make([]discovery.Server, n)
+	for i := 0; i < n; i++ {
 		srv := discovery.Server{
 			Raft: raft.Server{
 				ID:      raft.ServerID(raftIds[i]),
 				Address: raft.ServerAddress(raftAddresses[i]),
 			},
-			ResolvedAddress: addresses[i],
+			ResolvedAddress: grpcAddresses[i],
 		}
 		servers[i] = srv
-		configs[i] = icfg
 	}
-	require.NoError(t, err)
 
+	listeners, dialOpt := test.CreateInMemoryListeners(grpcAddresses)
 	d := MockStaticDiscovery(t, servers)
-	client := metastoreclient.New(l, cfg.GRPCClientConfig, d)
-	err = client.Service().StartAsync(context.Background())
+	client := metastoreclient.New(l, cfg.GRPCClientConfig, d, dialOpt)
+	err := client.Service().StartAsync(context.Background())
 	require.NoError(t, err)
 
-	l.Log("grpcAddresses", fmt.Sprintf("%+v", grpcAddresses), "raftAddresses", fmt.Sprintf("%+v", raftAddresses))
 	res := MetastoreSet{
 		t: t,
 	}
+
 	for i := 0; i < n; i++ {
 		options, err := cfg.GRPCClientConfig.DialOption(nil, nil)
 		require.NoError(t, err)
+		options = append(options, dialOpt)
 		cc, err := grpc.Dial(grpcAddresses[i], options...)
 		require.NoError(t, err)
 		logger := log.With(l, "idx", bootstrapPeers[i])
@@ -100,8 +100,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 		require.NoError(t, err)
 		m.Register(server)
 
-		lis, err := net.Listen("tcp", grpcAddresses[i])
-		assert.NoError(t, err)
+		lis := listeners[grpcAddresses[i]]
 		go func() {
 			err := server.Serve(lis)
 			assert.NoError(t, err)

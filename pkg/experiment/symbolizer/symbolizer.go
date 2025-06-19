@@ -139,6 +139,11 @@ func (s *Symbolizer) groupLocationsByMapping(profile *googlev1.Profile, mappings
 			continue
 		}
 
+		// Skip locations that already have symbols
+		if len(loc.Line) > 0 {
+			continue
+		}
+
 		locsByMapping[loc.MappingId] = append(locsByMapping[loc.MappingId], loc)
 	}
 

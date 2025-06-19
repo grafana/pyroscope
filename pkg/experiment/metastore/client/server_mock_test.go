@@ -3,7 +3,6 @@ package metastoreclient
 import (
 	"context"
 	"fmt"
-	"net"
 	"sync"
 	"testing"
 
@@ -19,6 +18,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockraftnodepb"
 )
@@ -201,16 +201,14 @@ func errOrT[T any](t *T, f func() error) (*T, error) {
 // Returns the grpc.DialOptions needed for a client connection to the created mock servers.
 func createMockServers(t *testing.T, l log.Logger, dServers []discovery.Server) (*mockServers, []grpc.DialOption) {
 	var servers []*mockServer
-	listeners := make(map[string]*bufconn.Listener)
+	listeners, dialOpt := createInMemoryListeners(dServers)
 	for idx, dserv := range dServers {
 		s := newMockServer(t)
 		s.index = idx
 		s.id = testServerId(idx)
 		s.address = dserv.ResolvedAddress
-		lis := bufconn.Listen(256 << 10)
-		listeners[s.address] = lis
 		go func() {
-			if err := s.srv.Serve(lis); err != nil {
+			if err := s.srv.Serve(listeners[s.address]); err != nil {
 				assert.NoError(t, err)
 			}
 		}()
@@ -222,14 +220,15 @@ func createMockServers(t *testing.T, l log.Logger, dServers []discovery.Server) 
 		t:       t,
 		l:       l,
 	}
-	dialer := func(_ context.Context, address string) (net.Conn, error) {
-		el := listeners[address]
-		if el != nil {
-			return el.Dial()
-		}
-		return net.Dial("tcp", address)
+	return ms, []grpc.DialOption{dialOpt}
+}
+
+func createInMemoryListeners(dServers []discovery.Server) (map[string]*bufconn.Listener, grpc.DialOption) {
+	addrs := make([]string, 0, len(dServers))
+	for _, ds := range dServers {
+		addrs = append(addrs, ds.ResolvedAddress)
 	}
-	return ms, []grpc.DialOption{grpc.WithContextDialer(dialer)}
+	return test.CreateInMemoryListeners(addrs)
 }
 
 func newMockServer(t *testing.T) *mockServer {
