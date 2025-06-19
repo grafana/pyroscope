@@ -69,19 +69,14 @@ type TimeSeriesAggregator interface {
 	GetTimestamp() int64
 }
 
-func NewTimeSeriesAggregator(labels []*typesv1.LabelPair, stepDurationSec float64, aggregation *typesv1.TimeSeriesAggregationType) TimeSeriesAggregator {
-	profileType := getProfileTypeName(labels)
-	profileInfo := GetProfileTypeInfo(profileType)
-
-	// If explicit aggregation type is provided, respect it for instant profiles only
-	if aggregation != nil && *aggregation == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE {
-		// For instant profiles, use average aggregation
-		if !profileInfo.IsCumulative {
-			return &avgTimeSeriesAggregator{ts: -1}
-		}
+func NewTimeSeriesAggregator(stepDurationSec float64, aggregation *typesv1.TimeSeriesAggregationType) TimeSeriesAggregator {
+	// Default to sum for backward compatibility
+	aggregationType := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
+	if aggregation != nil {
+		aggregationType = *aggregation
 	}
 
-	switch profileInfo.AggregationType {
+	switch aggregationType {
 	case typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_RATE:
 		return &rateTimeSeriesAggregator{ts: -1, stepDurationSec: stepDurationSec}
 	case typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE:
@@ -89,18 +84,8 @@ func NewTimeSeriesAggregator(labels []*typesv1.LabelPair, stepDurationSec float6
 	case typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM:
 		return &sumTimeSeriesAggregator{ts: -1}
 	default:
-		return &rateTimeSeriesAggregator{ts: -1, stepDurationSec: stepDurationSec}
+		return &sumTimeSeriesAggregator{ts: -1}
 	}
-}
-
-// getProfileTypeName extracts the profile type name from labels
-func getProfileTypeName(labels []*typesv1.LabelPair) string {
-	for _, label := range labels {
-		if label.Name == "__type__" {
-			return label.Value
-		}
-	}
-	return ""
 }
 
 type sumTimeSeriesAggregator struct {
@@ -219,7 +204,7 @@ Outer:
 			point := it.At()
 			aggregator, ok := aggregators[point.LabelsHash]
 			if !ok {
-				aggregator = NewTimeSeriesAggregator(point.Lbs, stepDurationSec, aggregation)
+				aggregator = NewTimeSeriesAggregator(stepDurationSec, aggregation)
 				aggregators[point.LabelsHash] = aggregator
 			}
 			if point.Ts > currentStep {

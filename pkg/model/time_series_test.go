@@ -163,37 +163,37 @@ func Test_RangeSeriesRateNormalization(t *testing.T) {
 	cpuLabels := NewLabelsBuilder(nil).Set("__type__", "cpu").Labels()
 
 	testData := []TimeSeriesValue{
-		{Ts: 1000, Value: 50, Lbs: cpuLabels, LabelsHash: cpuLabels.Hash()},
-		{Ts: 1000, Value: 50, Lbs: cpuLabels, LabelsHash: cpuLabels.Hash()},
+		{Ts: 0, Value: 0, Lbs: cpuLabels, LabelsHash: cpuLabels.Hash()},      // t=0: start
+		{Ts: 15000, Value: 30, Lbs: cpuLabels, LabelsHash: cpuLabels.Hash()}, // t=15s: 30s CPU
+		{Ts: 30000, Value: 0, Lbs: cpuLabels, LabelsHash: cpuLabels.Hash()},  // t=30s: reset
+		{Ts: 45000, Value: 30, Lbs: cpuLabels, LabelsHash: cpuLabels.Hash()}, // t=45s: 30s CPU again
 	}
 
-	// Test with 1 second steps (step = 1000ms)
-	in1s := iter.NewSliceIterator(testData)
-	out1s := RangeSeries(in1s, 1000, 1000, 1000, nil)
+	// Test with 15 second steps (step = 15000ms) - creates 4 bucket
+	in15s := iter.NewSliceIterator(testData)
+	rateAggregation := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_RATE
+	out15s := RangeSeries(in15s, 0, 60000, 15000, &rateAggregation)
 
-	// Test with 5 second steps (step = 5000ms)
-	in5s := iter.NewSliceIterator(testData)
-	out5s := RangeSeries(in5s, 1000, 1000, 5000, nil)
+	// Test with 30 second steps (step = 30000ms) - creates 2 buckets
+	in30s := iter.NewSliceIterator(testData)
+	out30s := RangeSeries(in30s, 0, 60000, 30000, &rateAggregation)
 
-	if len(out1s) != 1 || len(out1s[0].Points) != 1 {
-		t.Fatal("Expected 1 series with 1 point for 1s test")
-	}
-	if len(out5s) != 1 || len(out5s[0].Points) != 1 {
-		t.Fatal("Expected 1 series with 1 point for 5s test")
-	}
-
-	rate1s := out1s[0].Points[0].Value
-	rate5s := out5s[0].Points[0].Value
-
-	if rate1s <= rate5s {
-		t.Errorf("Expected 1s rate (%f) to be higher than 5s rate (%f) due to normalization", rate1s, rate5s)
+	var total15s, total30s float64
+	for _, series := range out15s {
+		for _, point := range series.Points {
+			total15s += point.Value * 15.0
+		}
 	}
 
-	expectedRate1s := 100.0 / 1.0
-	expectedRate5s := 100.0 / 5.0
+	for _, series := range out30s {
+		for _, point := range series.Points {
+			total30s += point.Value * 30.0
+		}
+	}
 
-	assert.Equal(t, expectedRate1s, rate1s)
-	assert.Equal(t, expectedRate5s, rate5s)
+	assert.Equal(t, total15s, total30s)
+	assert.Equal(t, 60.0, total15s)
+	assert.Equal(t, 60.0, total30s)
 }
 
 func Test_NewTimeSeriesAggregatorSelection(t *testing.T) {
@@ -201,78 +201,45 @@ func Test_NewTimeSeriesAggregatorSelection(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		profileType  string
+		aggregation  *typesv1.TimeSeriesAggregationType
 		expectedType string
 		description  string
 	}{
 		{
-			name:         "CPU samples uses sum aggregation",
-			profileType:  "samples",
+			name:         "No aggregation defaults to sum for backward compatibility",
+			aggregation:  nil,
 			expectedType: "sum",
-			description:  "CPU samples are count of sampling events (instant)",
 		},
 		{
-			name:         "CPU time uses rate normalization",
-			profileType:  "cpu",
-			expectedType: "rate",
-			description:  "CPU time is cumulative - actual time consumed over duration",
-		},
-		{
-			name:         "Allocated objects uses rate normalization",
-			profileType:  "alloc_objects",
-			expectedType: "rate",
-			description:  "Cumulative allocation profiles need rate normalization",
-		},
-		{
-			name:         "Contentions use sum aggregation",
-			profileType:  "contentions",
+			name:         "Explicit sum aggregation",
+			aggregation:  &[]typesv1.TimeSeriesAggregationType{typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM}[0],
 			expectedType: "sum",
-			description:  "Contention events are instant counts that should be summed",
 		},
 		{
-			name:         "Lock time uses rate normalization",
-			profileType:  "lock_time",
+			name:         "Explicit rate aggregation",
+			aggregation:  &[]typesv1.TimeSeriesAggregationType{typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_RATE}[0],
 			expectedType: "rate",
-			description:  "Lock time is cumulative duration that needs rate normalization",
 		},
 		{
-			name:         "In-use objects uses average aggregation",
-			profileType:  "inuse_objects",
+			name:         "Explicit average aggregation",
+			aggregation:  &[]typesv1.TimeSeriesAggregationType{typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE}[0],
 			expectedType: "avg",
-			description:  "Instant memory profiles should be averaged",
-		},
-		{
-			name:         "Goroutines use average aggregation",
-			profileType:  "goroutine",
-			expectedType: "avg",
-			description:  "Goroutine counts are instant values that should be averaged",
-		},
-		{
-			name:         "Unknown types default to rate normalization",
-			profileType:  "unknown_profile_type",
-			expectedType: "rate",
-			description:  "Unknown profile types default to cumulative for safety",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			labels := []*typesv1.LabelPair{
-				{Name: "__type__", Value: tt.profileType},
-			}
-
-			aggregator := NewTimeSeriesAggregator(labels, stepDuration, nil)
-			actualType := getAggregatorType(aggregator)
-
+			aggregator := NewTimeSeriesAggregator(stepDuration, tt.aggregation)
+			actualType := getAggregatorType(t, aggregator)
 			if actualType != tt.expectedType {
-				t.Errorf("Expected %s aggregator for %s, got %s. %s",
-					tt.expectedType, tt.profileType, actualType, tt.description)
+				t.Errorf("Expected %s aggregator, got %s.", tt.expectedType, actualType)
 			}
 		})
 	}
 }
 
-func getAggregatorType(agg TimeSeriesAggregator) string {
+func getAggregatorType(t *testing.T, agg TimeSeriesAggregator) string {
+	t.Helper()
 	switch agg.(type) {
 	case *sumTimeSeriesAggregator:
 		return "sum"
