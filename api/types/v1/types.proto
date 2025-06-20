@@ -76,6 +76,7 @@ message BlockCompaction {
 enum TimeSeriesAggregationType {
   TIME_SERIES_AGGREGATION_TYPE_SUM = 0;
   TIME_SERIES_AGGREGATION_TYPE_AVERAGE = 1;
+  TIME_SERIES_AGGREGATION_TYPE_RATE = 2;
 }
 
 // StackTraceSelector is used for filtering stack traces by locations.

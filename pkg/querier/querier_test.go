@@ -509,12 +509,15 @@ func TestSelectSeries(t *testing.T) {
 		{true, "WithBlockHints"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			foobarlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "bar").Labels()
+
 			req := connect.NewRequest(&querierv1.SelectSeriesRequest{
 				LabelSelector: `{app="foo"}`,
 				ProfileTypeID: "memory:inuse_space:bytes:space:byte",
 				Start:         0,
 				End:           2,
 				Step:          0.001,
+				// No aggregation specified - uses default (sum) for backward compatibility
 			})
 			bidi1 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 				{

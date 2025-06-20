@@ -65,6 +65,9 @@ func (q *QueryFrontend) SelectSeries(
 	if report == nil {
 		return connect.NewResponse(&querierv1.SelectSeriesResponse{}), nil
 	}
-	series := phlaremodel.TopSeries(report.TimeSeries.TimeSeries, int(c.Msg.GetLimit()))
+
+	it := phlaremodel.NewTimeSeriesMergeIterator(report.TimeSeries.TimeSeries)
+	aggregatedSeries := phlaremodel.RangeSeries(it, c.Msg.Start, c.Msg.End, stepMs, c.Msg.Aggregation)
+	series := phlaremodel.TopSeries(aggregatedSeries, int(c.Msg.GetLimit()))
 	return connect.NewResponse(&querierv1.SelectSeriesResponse{Series: series}), nil
 }

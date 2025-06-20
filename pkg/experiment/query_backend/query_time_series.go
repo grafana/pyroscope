@@ -3,13 +3,11 @@ package query_backend
 import (
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
@@ -111,7 +109,7 @@ func newTimeSeriesAggregator(req *queryv1.InvokeRequest) aggregator {
 func (a *timeSeriesAggregator) aggregate(report *queryv1.Report) error {
 	r := report.TimeSeries
 	a.init.Do(func() {
-		a.series = phlaremodel.NewTimeSeriesMerger(true)
+		a.series = phlaremodel.NewTimeSeriesMerger(false)
 		a.query = r.Query.CloneVT()
 	})
 	a.series.MergeTimeSeries(r.TimeSeries)
@@ -119,22 +117,10 @@ func (a *timeSeriesAggregator) aggregate(report *queryv1.Report) error {
 }
 
 func (a *timeSeriesAggregator) build() *queryv1.Report {
-	// TODO(kolesnikovae): Average aggregation should be implemented in
-	//  the way that it can be distributed (count + sum), and should be done
-	//  at "aggregate" call.
-	sum := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
-	stepMilli := time.Duration(a.query.GetStep() * float64(time.Second)).Milliseconds()
-	seriesIterator := phlaremodel.NewTimeSeriesMergeIterator(a.series.TimeSeries())
 	return &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
-			Query: a.query,
-			TimeSeries: phlaremodel.RangeSeries(
-				seriesIterator,
-				a.startTime,
-				a.endTime,
-				stepMilli,
-				&sum,
-			),
+			Query:      a.query,
+			TimeSeries: a.series.TimeSeries(),
 		},
 	}
 }
