@@ -67,9 +67,12 @@ type compactionConfig struct {
 }
 
 type SampleObserver interface {
-	// Observe is called before the compactor appends the entry
-	// to the output block. This method must not modify the entry.
-	Observe(ProfileEntry)
+	symdb.SymbolsObserver
+
+	// Evaluate is called before the compactor rewrites any symbols.
+	// An "observe" callback function is returned to be called after writing the resulting blocks.
+	// This method must not modify the entry.
+	Evaluate(ProfileEntry) (observe func())
 }
 
 func Compact(
@@ -382,7 +385,7 @@ func (m *datasetCompaction) open(ctx context.Context, w io.Writer) (err error) {
 	m.profilesWriter = newProfileWriter(pageBufferSize, w)
 
 	m.indexRewriter = newIndexRewriter()
-	m.symbolsRewriter = newSymbolsRewriter()
+	m.symbolsRewriter = newSymbolsRewriter(m.observer)
 
 	g, ctx := errgroup.WithContext(ctx)
 	for _, s := range m.datasets {
@@ -431,17 +434,14 @@ func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 }
 
 func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
-	if err = m.parent.datasetIndex.writeRow(r); err != nil {
-		return err
+	if m.observer != nil {
+		observe := m.observer.Evaluate(r)
+		defer observe()
 	}
-	if err = m.indexRewriter.rewriteRow(r); err != nil {
-		return err
-	}
+	m.parent.datasetIndex.writeRow(r)
+	m.indexRewriter.rewriteRow(r)
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
-	}
-	if m.observer != nil {
-		m.observer.Observe(r)
 	}
 	return m.profilesWriter.writeRow(r)
 }
@@ -488,7 +488,7 @@ type seriesLabels struct {
 	fingerprint model.Fingerprint
 }
 
-func (rw *indexRewriter) rewriteRow(e ProfileEntry) error {
+func (rw *indexRewriter) rewriteRow(e ProfileEntry) {
 	if rw.previousFp != e.Fingerprint || len(rw.series) == 0 {
 		series := e.Labels.Clone()
 		for _, l := range series {
@@ -508,7 +508,6 @@ func (rw *indexRewriter) rewriteRow(e ProfileEntry) error {
 	}
 	rw.chunks[len(rw.chunks)-1].MaxTime = e.Timestamp
 	e.Row.SetSeriesIndex(rw.chunks[len(rw.chunks)-1].SeriesIndex)
-	return nil
 }
 
 func (rw *indexRewriter) NumSeries() uint64 { return uint64(len(rw.series)) }
@@ -549,15 +548,16 @@ func (rw *indexRewriter) Flush() error {
 }
 
 type symbolsRewriter struct {
-	buf     *bytes.Buffer
-	w       *symdb.SymDB
-	rw      map[*Dataset]*symdb.Rewriter
-	samples uint64
+	buf      *bytes.Buffer
+	w        *symdb.SymDB
+	rw       map[*Dataset]*symdb.Rewriter
+	samples  uint64
+	observer SampleObserver
 
 	stacktraces []uint32
 }
 
-func newSymbolsRewriter() *symbolsRewriter {
+func newSymbolsRewriter(observer SampleObserver) *symbolsRewriter {
 	// TODO(kolesnikovae):
 	//  * Estimate size.
 	//  * Use buffer pool.
@@ -569,6 +569,7 @@ func newSymbolsRewriter() *symbolsRewriter {
 			Version: symdb.FormatV3,
 			Writer:  &nopWriteCloser{buf},
 		}),
+		observer: observer,
 	}
 }
 
@@ -594,7 +595,7 @@ func (s *symbolsRewriter) rewriteRow(e ProfileEntry) (err error) {
 func (s *symbolsRewriter) rewriterFor(x *Dataset) *symdb.Rewriter {
 	rw, ok := s.rw[x]
 	if !ok {
-		rw = symdb.NewRewriter(s.w, x.Symbols())
+		rw = symdb.NewRewriter(s.w, x.Symbols(), s.observer)
 		s.rw[x] = rw
 	}
 	return rw
@@ -628,7 +629,7 @@ func newDatasetIndexWriter() *datasetIndexWriter {
 
 func (rw *datasetIndexWriter) setIndex(i uint32) { rw.idx = i }
 
-func (rw *datasetIndexWriter) writeRow(e ProfileEntry) error {
+func (rw *datasetIndexWriter) writeRow(e ProfileEntry) {
 	if rw.previous != e.Fingerprint || len(rw.series) == 0 {
 		series := e.Labels.Clone()
 		for _, l := range series {
@@ -644,7 +645,6 @@ func (rw *datasetIndexWriter) writeRow(e ProfileEntry) error {
 		})
 		rw.previous = e.Fingerprint
 	}
-	return nil
 }
 
 func (rw *datasetIndexWriter) Flush() error {

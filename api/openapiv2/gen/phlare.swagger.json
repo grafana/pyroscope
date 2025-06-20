@@ -1679,6 +1679,13 @@
         }
       }
     },
+    "v1MetricType": {
+      "type": "string",
+      "enum": [
+        "TOTAL"
+      ],
+      "default": "TOTAL"
+    },
     "v1Point": {
       "type": "object",
       "properties": {
@@ -2044,6 +2051,10 @@
           "type": "string",
           "format": "int64",
           "description": "The observed generation of this recording rule. This value should be\nprovided when making updates to this record, to avoid conflicting\nconcurrent updates."
+        },
+        "stacktraceFilter": {
+          "$ref": "#/definitions/v1StacktraceFilter",
+          "description": "The stacktrace filter allows filtering on particular function names in the stacktrace.\nThis allows recording rules to focus on specific functions and calculate their \"total\"\nresource usage."
         }
       }
     },
@@ -2338,6 +2349,25 @@
         }
       },
       "description": "StackTraceSelector is used for filtering stack traces by locations."
+    },
+    "v1StacktraceFilter": {
+      "type": "object",
+      "properties": {
+        "functionName": {
+          "$ref": "#/definitions/v1StacktraceFilterFunctionName"
+        }
+      }
+    },
+    "v1StacktraceFilterFunctionName": {
+      "type": "object",
+      "properties": {
+        "functionName": {
+          "type": "string"
+        },
+        "metricType": {
+          "$ref": "#/definitions/v1MetricType"
+        }
+      }
     },
     "v1StacktraceSample": {
       "type": "object",

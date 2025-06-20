@@ -87,7 +87,9 @@ func Test_Observer_observe(t *testing.T) {
 	).Return(nil).Once()
 
 	for _, entry := range entries {
-		observer.Observe(entry)
+		observe := observer.Evaluate(entry)
+		// TODO(alsoba13): Test observeSymbols
+		observe()
 	}
 	observer.Close()
 
