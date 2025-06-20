@@ -2015,7 +2015,8 @@
           "description": "The observed generation of this recording rule. This value should be\nprovided when making updates to this record, to avoid conflicting\nconcurrent updates."
         },
         "stacktraceFilter": {
-          "$ref": "#/definitions/v1StacktraceFilter"
+          "$ref": "#/definitions/v1StacktraceFilter",
+          "description": "The stacktrace filter allows filtering on particular function names in the stacktrace.\nThis allows recording rules to focus on specific functions and calculate their \"total\"\nresource usage."
         }
       }
     },

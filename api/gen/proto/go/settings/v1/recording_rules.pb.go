@@ -478,7 +478,10 @@ type RecordingRule struct {
 	// The observed generation of this recording rule. This value should be
 	// provided when making updates to this record, to avoid conflicting
 	// concurrent updates.
-	Generation       int64             `protobuf:"varint,7,opt,name=generation,proto3" json:"generation,omitempty"`
+	Generation int64 `protobuf:"varint,7,opt,name=generation,proto3" json:"generation,omitempty"`
+	// The stacktrace filter allows filtering on particular function names in the stacktrace.
+	// This allows recording rules to focus on specific functions and calculate their "total"
+	// resource usage.
 	StacktraceFilter *StacktraceFilter `protobuf:"bytes,8,opt,name=stacktrace_filter,json=stacktraceFilter,proto3,oneof" json:"stacktrace_filter,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
