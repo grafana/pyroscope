@@ -17,6 +17,14 @@ func NewConnect(limits Limits) connect.Interceptor {
 func (i *delayInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (resp connect.AnyResponse, err error) {
 		start := timeNow()
+		delay := getDelay(ctx, i.limits)
+		delayCtx := context.Background()
+		if delay > 0 {
+			var cancel context.CancelFunc
+			delayCtx, cancel = context.WithCancel(context.Background())
+			defer cancel()
+			ctx = context.WithValue(ctx, delayCancelCtxKey{}, cancel)
+		}
 
 		// now run the chain after me
 		resp, err = next(ctx, req)
@@ -26,8 +34,10 @@ func (i *delayInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 			return resp, err
 		}
 
-		// get delay from the context
-		delay := getDelay(ctx, i.limits)
+		// The delay has been cancelled down the chain.
+		if delayCtx.Err() != nil {
+			return resp, err
+		}
 
 		// no delay, return immediately
 		if delay <= 0 {

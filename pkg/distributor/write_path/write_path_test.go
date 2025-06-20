@@ -26,24 +26,15 @@ type routerTestSuite struct {
 	router    *Router
 	logger    log.Logger
 	registry  *prometheus.Registry
-	overrides *mockOverrides
 	ingester  *mockwritepath.MockIngesterClient
 	segwriter *mockwritepath.MockIngesterClient
 
 	request *distributormodel.PushRequest
 }
 
-type mockOverrides struct{ mock.Mock }
-
-func (m *mockOverrides) WritePathOverrides(tenantID string) Config {
-	args := m.Called(tenantID)
-	return args.Get(0).(Config)
-}
-
 func (s *routerTestSuite) SetupTest() {
 	s.logger = log.NewLogfmtLogger(io.Discard)
 	s.registry = prometheus.NewRegistry()
-	s.overrides = new(mockOverrides)
 	s.ingester = new(mockwritepath.MockIngesterClient)
 	s.segwriter = new(mockwritepath.MockIngesterClient)
 
@@ -67,7 +58,6 @@ func (s *routerTestSuite) SetupTest() {
 	s.router = NewRouter(
 		s.logger,
 		s.registry,
-		s.overrides,
 		s.ingester,
 		s.segwriter,
 	)
@@ -78,10 +68,6 @@ func (s *routerTestSuite) BeforeTest(_, _ string) {
 	s.Require().NoError(svc.StartAsync(context.Background()))
 	s.Require().NoError(svc.AwaitRunning(context.Background()))
 	s.Require().Equal(services.Running, svc.State())
-
-	s.overrides.AssertExpectations(s.T())
-	s.ingester.AssertExpectations(s.T())
-	s.segwriter.AssertExpectations(s.T())
 }
 
 func (s *routerTestSuite) AfterTest(_, _ string) {
@@ -90,7 +76,6 @@ func (s *routerTestSuite) AfterTest(_, _ string) {
 	s.Require().NoError(svc.AwaitTerminated(context.Background()))
 	s.Require().Equal(services.Terminated, svc.State())
 
-	s.overrides.AssertExpectations(s.T())
 	s.ingester.AssertExpectations(s.T())
 	s.segwriter.AssertExpectations(s.T())
 }
@@ -98,27 +83,27 @@ func (s *routerTestSuite) AfterTest(_, _ string) {
 func TestRouterSuite(t *testing.T) { suite.Run(t, new(routerTestSuite)) }
 
 func (s *routerTestSuite) Test_IngesterPath() {
-	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
+	config := Config{
 		WritePath: IngesterPath,
-	})
+	}
 
 	s.ingester.On("Push", mock.Anything, s.request).
 		Return(new(connect.Response[pushv1.PushResponse]), nil).
 		Once()
 
-	s.Assert().NoError(s.router.Send(context.Background(), s.request))
+	s.Assert().NoError(s.router.Send(context.Background(), s.request, config))
 }
 
 func (s *routerTestSuite) Test_SegmentWriterPath() {
-	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
+	config := Config{
 		WritePath: SegmentWriterPath,
-	})
+	}
 
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
 		Return(new(connect.Response[pushv1.PushResponse]), nil).
 		Once()
 
-	s.Assert().NoError(s.router.Send(context.Background(), s.request))
+	s.Assert().NoError(s.router.Send(context.Background(), s.request, config))
 }
 
 func (s *routerTestSuite) Test_CombinedPath() {
@@ -129,11 +114,11 @@ func (s *routerTestSuite) Test_CombinedPath() {
 		d = 0.3 // Allowed delta: note that f is just a probability.
 	)
 
-	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
+	config := Config{
 		WritePath:           CombinedPath,
 		IngesterWeight:      1,
 		SegmentWriterWeight: f,
-	})
+	}
 
 	var sentIngester atomic.Uint32
 	s.ingester.On("Push", mock.Anything, mock.Anything).
@@ -157,7 +142,7 @@ func (s *routerTestSuite) Test_CombinedPath() {
 
 	for i := 0; i < w; i++ {
 		for j := 0; j < N; j++ {
-			s.Assert().NoError(s.router.Send(context.Background(), s.request.Clone()))
+			s.Assert().NoError(s.router.Send(context.Background(), s.request.Clone(), config))
 		}
 	}
 
@@ -170,30 +155,30 @@ func (s *routerTestSuite) Test_CombinedPath() {
 }
 
 func (s *routerTestSuite) Test_UnspecifiedWriterPath() {
-	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{})
+	config := Config{} // Default should route to ingester
 
 	s.ingester.On("Push", mock.Anything, mock.Anything).
 		Return(new(connect.Response[pushv1.PushResponse]), nil).
 		Once()
 
-	s.Assert().NoError(s.router.Send(context.Background(), s.request))
+	s.Assert().NoError(s.router.Send(context.Background(), s.request, config))
 }
 
 func (s *routerTestSuite) Test_CombinedPath_ZeroWeights() {
-	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
+	config := Config{
 		WritePath: CombinedPath,
-	})
+	}
 
-	s.Assert().NoError(s.router.Send(context.Background(), s.request))
+	s.Assert().NoError(s.router.Send(context.Background(), s.request, config))
 }
 
 func (s *routerTestSuite) Test_CombinedPath_IngesterError() {
-	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
+	config := Config{
 		WritePath: CombinedPath,
 		// We ensure that request is sent to both.
 		IngesterWeight:      1,
 		SegmentWriterWeight: 1,
-	})
+	}
 
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
 		Return(new(connect.Response[pushv1.PushResponse]), nil).
@@ -203,16 +188,16 @@ func (s *routerTestSuite) Test_CombinedPath_IngesterError() {
 		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
 		Once()
 
-	s.Assert().Error(s.router.Send(context.Background(), s.request), context.Canceled)
+	s.Assert().Error(s.router.Send(context.Background(), s.request, config), context.Canceled)
 }
 
 func (s *routerTestSuite) Test_CombinedPath_SegmentWriterError() {
-	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
+	config := Config{
 		WritePath: CombinedPath,
 		// We ensure that request is sent to both.
 		IngesterWeight:      1,
 		SegmentWriterWeight: 1,
-	})
+	}
 
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
 		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
@@ -222,45 +207,45 @@ func (s *routerTestSuite) Test_CombinedPath_SegmentWriterError() {
 		Return(new(connect.Response[pushv1.PushResponse]), nil).
 		Once()
 
-	s.Assert().NoError(s.router.Send(context.Background(), s.request))
+	s.Assert().NoError(s.router.Send(context.Background(), s.request, config))
 }
 
 func (s *routerTestSuite) Test_CombinedPath_Ingester_Exclusive_Error() {
-	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
+	config := Config{
 		WritePath: CombinedPath,
 		// The request is only sent to ingester.
 		IngesterWeight:      1,
 		SegmentWriterWeight: 0,
-	})
+	}
 
 	s.ingester.On("Push", mock.Anything, mock.Anything).
 		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
 		Once()
 
-	s.Assert().Error(s.router.Send(context.Background(), s.request), context.Canceled)
+	s.Assert().Error(s.router.Send(context.Background(), s.request, config), context.Canceled)
 }
 
 func (s *routerTestSuite) Test_CombinedPath_SegmentWriter_Exclusive_Error() {
-	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
+	config := Config{
 		WritePath: CombinedPath,
 		// The request is only sent to segment writer.
 		IngesterWeight:      0,
 		SegmentWriterWeight: 1,
-	})
+	}
 
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
 		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
 		Once()
 
-	s.Assert().Error(s.router.Send(context.Background(), s.request), context.Canceled)
+	s.Assert().Error(s.router.Send(context.Background(), s.request, config), context.Canceled)
 }
 
 func (s *routerTestSuite) Test_SegmentWriter_MultipleProfiles() {
-	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
+	config := Config{
 		WritePath:           SegmentWriterPath,
 		IngesterWeight:      0,
 		SegmentWriterWeight: 1,
-	})
+	}
 
 	x := s.request.Series[0]
 	x.Samples = append(x.Samples, &distributormodel.ProfileSample{Profile: &pprof.Profile{}})
@@ -269,5 +254,57 @@ func (s *routerTestSuite) Test_SegmentWriter_MultipleProfiles() {
 		Return(new(connect.Response[pushv1.PushResponse]), nil).
 		Once()
 
-	s.Assert().NoError(s.router.Send(context.Background(), s.request))
+	s.Assert().NoError(s.router.Send(context.Background(), s.request, config))
+}
+
+func (s *routerTestSuite) Test_AsyncIngest_Synchronous() {
+	config := Config{
+		WritePath:   SegmentWriterPath,
+		AsyncIngest: false,
+	}
+
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
+		Once()
+
+	err := s.router.Send(context.Background(), s.request, config)
+	s.Assert().Error(err)
+}
+
+func (s *routerTestSuite) Test_AsyncIngest_Asynchronous() {
+	config := Config{
+		WritePath:   SegmentWriterPath,
+		AsyncIngest: true,
+	}
+
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
+		Once()
+
+	err := s.router.Send(context.Background(), s.request, config)
+	s.Assert().NoError(err)
+
+	s.router.inflight.Wait()
+}
+
+func (s *routerTestSuite) Test_AsyncIngest_CombinedPath() {
+	config := Config{
+		WritePath:           CombinedPath,
+		IngesterWeight:      1,
+		SegmentWriterWeight: 1,
+		AsyncIngest:         true,
+	}
+
+	s.ingester.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
+		Once()
+
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
+		Once()
+
+	err := s.router.Send(context.Background(), s.request, config)
+	s.Assert().Error(err)
+
+	s.router.inflight.Wait()
 }
