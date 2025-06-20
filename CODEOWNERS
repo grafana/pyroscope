@@ -26,17 +26,17 @@
 /pkg/phlaredb/block @simonswine
 
 # area/write-path
-/pkg/distributor/ @aleks-p @korniltsev
-/pkg/experiment/distributor/ @korniltsev
-/pkg/experiment/ingester/ @korniltsev
+/pkg/distributor/ @aleks-p @alsoba13
+/pkg/experiment/distributor/ @alsoba13 @korniltsev
+/pkg/experiment/ingester/ @alsoba13 @korniltsev
 /pkg/og/convert/ @korniltsev
 /pkg/pprof/ @korniltsev
 /pkg/model/relabel/ @korniltsev
 /pkg/model/ @korniltsev
 /pkg/model/pprof_split/ @korniltsev
 /pkg/validation/ @marcsanmi @aleks-p
-/pkg/ingester/otlp @marcsanmi
-/pkg/ingester/ @korniltsev
+/pkg/ingester/otlp @marcsanmi @korniltsev
+/pkg/ingester/ @alsoba13 @korniltsev
 /pkg/phlaredb/shipper/ @korniltsev
 
 # area/compactor
