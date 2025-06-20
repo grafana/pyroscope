@@ -438,12 +438,8 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 		observe := m.observer.Evaluate(r)
 		defer observe()
 	}
-	if err = m.parent.datasetIndex.writeRow(r); err != nil {
-		return err
-	}
-	if err = m.indexRewriter.rewriteRow(r); err != nil {
-		return err
-	}
+	m.parent.datasetIndex.writeRow(r)
+	m.indexRewriter.rewriteRow(r)
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
 	}
@@ -492,7 +488,7 @@ type seriesLabels struct {
 	fingerprint model.Fingerprint
 }
 
-func (rw *indexRewriter) rewriteRow(e ProfileEntry) error {
+func (rw *indexRewriter) rewriteRow(e ProfileEntry) {
 	if rw.previousFp != e.Fingerprint || len(rw.series) == 0 {
 		series := e.Labels.Clone()
 		for _, l := range series {
@@ -512,7 +508,6 @@ func (rw *indexRewriter) rewriteRow(e ProfileEntry) error {
 	}
 	rw.chunks[len(rw.chunks)-1].MaxTime = e.Timestamp
 	e.Row.SetSeriesIndex(rw.chunks[len(rw.chunks)-1].SeriesIndex)
-	return nil
 }
 
 func (rw *indexRewriter) NumSeries() uint64 { return uint64(len(rw.series)) }
@@ -634,7 +629,7 @@ func newDatasetIndexWriter() *datasetIndexWriter {
 
 func (rw *datasetIndexWriter) setIndex(i uint32) { rw.idx = i }
 
-func (rw *datasetIndexWriter) writeRow(e ProfileEntry) error {
+func (rw *datasetIndexWriter) writeRow(e ProfileEntry) {
 	if rw.previous != e.Fingerprint || len(rw.series) == 0 {
 		series := e.Labels.Clone()
 		for _, l := range series {
@@ -650,7 +645,6 @@ func (rw *datasetIndexWriter) writeRow(e ProfileEntry) error {
 		})
 		rw.previous = e.Fingerprint
 	}
-	return nil
 }
 
 func (rw *datasetIndexWriter) Flush() error {
