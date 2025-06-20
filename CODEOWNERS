@@ -15,11 +15,11 @@
 
 # area/read-path
 /pkg/experiment/query_backend/ @marcsanmi @aleks-p
-/pkg/experiment/symbolizer/ @marcsanmi
+/pkg/experiment/symbolizer/ @marcsanmi @korniltsev
 /pkg/storegateway/ @aleks-p
-/pkg/scheduler/ @bryanhuhta
-/pkg/phlaredb/symdb/ @simonswine
-/pkg/phlaredb/tsdb/ @simonswine
+/pkg/scheduler/ @korniltsev @bryanhuhta
+/pkg/phlaredb/symdb/ @simonswine @korniltsev
+/pkg/phlaredb/tsdb/ @simonswine @korniltsev
 /pkg/querier/ @marcsanmi
 /pkg/frontend/ @marcsanmi @bryanhuhta
 /pkg/experiment/block/ @simonswine @marcsanmi @alsoba13
@@ -27,17 +27,17 @@
 
 # area/write-path
 /pkg/distributor/ @aleks-p @alsoba13
-/pkg/experiment/distributor/ @alsoba13
-/pkg/experiment/ingester/ @alsoba13
-/pkg/og/convert/ @bryanhuhta
-/pkg/pprof/ @bryanhuhta
-/pkg/model/relabel/ @bryanhuhta
-/pkg/model/ @bryanhuhta
-/pkg/model/pprof_split/ @bryanhuhta
+/pkg/experiment/distributor/ @alsoba13 @korniltsev
+/pkg/experiment/ingester/ @alsoba13 @korniltsev
+/pkg/og/convert/ @korniltsev @bryanhuhta
+/pkg/pprof/ @korniltsev @bryanhuhta
+/pkg/model/relabel/ @korniltsev @bryanhuhta
+/pkg/model/ @korniltsev @bryanhuhta
+/pkg/model/pprof_split/ @korniltsev @bryanhuhta
 /pkg/validation/ @marcsanmi @aleks-p
-/pkg/ingester/otlp @marcsanmi
-/pkg/ingester/ @alsoba13
-/pkg/phlaredb/shipper/ @bryanhuhta
+/pkg/ingester/otlp @marcsanmi @korniltsev
+/pkg/ingester/ @alsoba13 @korniltsev
+/pkg/phlaredb/shipper/ @korniltsev @bryanhuhta
 
 # area/compactor
 /pkg/compactor/ @alsoba13
