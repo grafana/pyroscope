@@ -19,7 +19,8 @@ type Rewriter struct {
 }
 
 type SymbolsObserver interface {
-	// ObserveSymbols is called once new symbols has been rewritten. This method must not modify the symbols.
+	// ObserveSymbols is called once new symbols have been rewritten. This method must not modify the symbols.
+	// When using within a SampleObserver, Evaluate should be called first
 	ObserveSymbols(strings []string, functions []schemav1.InMemoryFunction, locations []schemav1.InMemoryLocation,
 		stacktraceValues [][]int32, stacktraceIds []uint32)
 }
