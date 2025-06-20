@@ -26,9 +26,9 @@
 /pkg/phlaredb/block @simonswine
 
 # area/write-path
-/pkg/distributor/ @aleks-p
-/pkg/experiment/distributor/
-/pkg/experiment/ingester/
+/pkg/distributor/ @aleks-p @alsoba13
+/pkg/experiment/distributor/ @alsoba13
+/pkg/experiment/ingester/ @alsoba13
 /pkg/og/convert/
 /pkg/pprof/
 /pkg/model/relabel/
@@ -36,7 +36,7 @@
 /pkg/model/pprof_split/
 /pkg/validation/ @marcsanmi @aleks-p
 /pkg/ingester/otlp @marcsanmi
-/pkg/ingester/
+/pkg/ingester/ @alsoba13
 /pkg/phlaredb/shipper/
 
 # area/compactor
