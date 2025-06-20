@@ -17,11 +17,11 @@
 /pkg/experiment/query_backend/ @marcsanmi @aleks-p
 /pkg/experiment/symbolizer/ @marcsanmi
 /pkg/storegateway/ @aleks-p
-/pkg/scheduler/
+/pkg/scheduler/ @bryanhuhta
 /pkg/phlaredb/symdb/ @simonswine
 /pkg/phlaredb/tsdb/ @simonswine
 /pkg/querier/ @marcsanmi
-/pkg/frontend/ @marcsanmi
+/pkg/frontend/ @marcsanmi @bryanhuhta
 /pkg/experiment/block/ @simonswine @marcsanmi @alsoba13
 /pkg/phlaredb/block @simonswine
 
@@ -29,15 +29,15 @@
 /pkg/distributor/ @aleks-p @alsoba13
 /pkg/experiment/distributor/ @alsoba13
 /pkg/experiment/ingester/ @alsoba13
-/pkg/og/convert/
-/pkg/pprof/
-/pkg/model/relabel/
-/pkg/model/
-/pkg/model/pprof_split/
+/pkg/og/convert/ @bryanhuhta
+/pkg/pprof/ @bryanhuhta
+/pkg/model/relabel/ @bryanhuhta
+/pkg/model/ @bryanhuhta
+/pkg/model/pprof_split/ @bryanhuhta
 /pkg/validation/ @marcsanmi @aleks-p
 /pkg/ingester/otlp @marcsanmi
 /pkg/ingester/ @alsoba13
-/pkg/phlaredb/shipper/
+/pkg/phlaredb/shipper/ @bryanhuhta
 
 # area/compactor
 /pkg/compactor/ @alsoba13
