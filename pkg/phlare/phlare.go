@@ -455,6 +455,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
 	mm.RegisterModule(AdHocProfiles, f.initAdHocProfiles)
 	mm.RegisterModule(EmbeddedGrafana, f.initEmbeddedGrafana)
+	mm.RegisterModule(FeatureFlags, f.initFeatureFlags)
 
 	// Add dependencies
 	deps := map[string][]string{
@@ -474,8 +475,8 @@ func (f *Phlare) setupModuleManager() error {
 		Server:            {GRPCGateway},
 		API:               {Server},
 		Distributor:       {Overrides, IngesterRing, API, UsageReport},
-		Querier:           {Overrides, API, MemberlistKV, IngesterRing, UsageReport, Version},
-		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version},
+		Querier:           {Overrides, API, MemberlistKV, IngesterRing, UsageReport, Version, FeatureFlags},
+		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags},
 		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},
 		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport, Version},
 		StoreGateway:      {API, Storage, Overrides, MemberlistKV, UsageReport, Admin, Version},
@@ -491,6 +492,7 @@ func (f *Phlare) setupModuleManager() error {
 		TenantSettings:    {API, Storage},
 		AdHocProfiles:     {API, Overrides, Storage},
 		EmbeddedGrafana:   {API},
+		FeatureFlags:      {API},
 	}
 
 	// Experimental modules.
