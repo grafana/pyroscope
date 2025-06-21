@@ -48,10 +48,10 @@ type Entry struct {
 }
 
 type Shard struct {
-	Partition PartitionKey
-	Tenant    string
-	Shard     uint32
-	*metadata.StringTable
+	Partition   PartitionKey
+	Tenant      string
+	Shard       uint32
+	StringTable *metadata.StringTable
 	*ShardIndex
 }
 

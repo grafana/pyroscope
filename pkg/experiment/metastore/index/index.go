@@ -73,11 +73,83 @@ type Store interface {
 	CreateBuckets(*bbolt.Tx) error
 	ListPartitions(*bbolt.Tx) ([]*store.Partition, error)
 	DeletePartition(tx *bbolt.Tx, p store.PartitionKey) error
-	// LoadShard attempts to load a shard from the store.
-	// If the shard does not exist, it returns nil without an error.
+	// LoadShard attempts to load a shard from the store. If the shard does not
+	// exist, it returns nil without an error. It's caller responsibility to
+	// update the shard index in the partition.
 	LoadShard(tx *bbolt.Tx, p store.PartitionKey, tenant string, shard uint32) (*store.Shard, error)
 	DeleteShard(tx *bbolt.Tx, p store.PartitionKey, tenant string, shard uint32) error
 }
+
+// TODO(kolesnikovae): Consider avoiding memoization.
+//
+//   This would allow us to avoid holding the lock and ensure better
+//   isolation. This would also simplify the implementation: the problem
+//   with this cache is that it's too easy to violate isolation as we may
+//   exchange data between transactions: in the worst case, the user may
+//   see a partition that has been created in a transaction that has not
+//   been committed yet, which looks like a dirty read and is very confusing.
+//   In our case, this is fine that we read uncommitted because of the Raft
+//   State Machine Safety property – we always read data commited to log.
+//
+// NOTE(kolesnikovae): A few words about the caches used in this index.
+//
+// Partition list.
+//
+// Users of the structure must be aware (and they are, at the moment) of
+// the following invariants:
+//  * A partition has been created in a transaction created after the
+//    current one. In this case, the partition may be visible in-memory
+//    before it is visible in the store.
+//  * A partition has been removed in a transaction created after the
+//    current one. In this case, the partition may disappear from the
+//    memory, but still be in the store.
+//
+// Shard cache.
+//
+// The cache helps us to avoid repeatedly reading the string table from
+// the persistent store. Cached shards have a flag that indicates whether
+// the shard was loaded for reads. Any write operation should invalidate
+// the cached entry and reload it as it may violate transaction isolation.
+//
+// Writes are always sequential and never concurrent. Therefore, it's
+// guaranteed that every write operation observes the latest state of
+// the shard on disk. The cache introduces a possibility to observe
+// a stale state in the cache, because of the concurrent reads that
+// share the same cache.
+//
+// Reads are concurrent and may run in transactions that began before
+// the ongoing write transaction. If a read transaction reads the shard
+// state from the disk, its state is obsolete from the writer perspective,
+// since it corresponds to an older transaction; if such state is cached,
+// all participants may observe it. Therefore, we mark such shards as
+// read-only to let the writer know about it.
+//
+// Reads may observe a state modified "in the future", by a write
+// transaction that has started after the read transaction. This is fine,
+// as "stale reads" are resolved at the raft level. It is not fine,
+// however, if the write transaction uses the cached shard state, loaded
+// by read transaction.
+//
+// Block caches.
+//
+// Metadata entries might be large, tens of kilobytes, depending on the number
+// of datasets, labels, and other metadata. Therefore, we use block cache
+// to avoid repeatedly decoding the serialized raw bytes. The cache does not
+// require any special coordination, as it is accessed by keys, which are
+// loaded from the disk in the current transaction.
+//
+// The cache is split into two parts: read and write. This is done to prevent
+// cache pollution in case of compaction delays.
+//
+// The read cache is populated with blocks that are fully compacted and with
+// blocks queried by the user. We use 2Q cache replacement strategy to ensure
+// that the most recently read blocks are kept in memory, while frequently
+// accessed older blocks are not evicted prematurely.
+//
+// The write cache is used to store blocks that are being written to the index.
+// It is important because it's guaranteed that the block will be read soon for
+// compaction. The write cache is accessed for reads if the read cache does not
+// contain the block queried.
 
 type Index struct {
 	logger log.Logger
@@ -86,26 +158,6 @@ type Index struct {
 	shards *shardCache
 	blocks *blockCache
 
-	// TODO(kolesnikovae): Read partitions from the store directly
-	//   instead of maintaining the in-memory representation.
-	//
-	// This would allow us to avoid holding the lock and ensure better
-	// isolation. This would also simplify the implementation: the problem
-	// with this cache is that it's too easy to violate isolation as we may
-	// exchange data between transactions: in the worst case, the user may
-	// see a partition that has been created in a transaction that has not
-	// been committed yet, but it's very confusing. In our case, this is fine
-	// that we read uncommitted because of the Raft State Machine Safety
-	// property – we always read data commited to the Raft log.
-	//
-	// Users of the structure must be aware (and they are, at the moment) of
-	// the following invariants:
-	//  * A partition has been created in a transaction created after the
-	//    current one. In this case, the partition may be visible in-memory
-	//    before it is visible in the store.
-	//  * A partition has been removed in a transaction created after the
-	//    current one. In this case, the partition may disappear from the
-	//    memory, but still be in the store.
 	partitions []*store.Partition
 	mu         sync.RWMutex
 }
