@@ -3,7 +3,11 @@ package store
 import (
 	"encoding/binary"
 	"errors"
+	"strconv"
+	"strings"
 	"time"
+
+	multitenancy "github.com/grafana/pyroscope/pkg/tenant"
 )
 
 var ErrInvalidPartitionKey = errors.New("invalid partition key")
@@ -75,6 +79,22 @@ func (p *Partition) DeleteTenantShard(tenant string, shard uint32) {
 
 func (p *Partition) IsEmpty() bool {
 	return len(p.TenantShards) == 0
+}
+
+func (p *Partition) TombstoneName(tenant string, shard uint32) string {
+	var b strings.Builder
+	b.WriteString(p.Key.String())
+	b.WriteByte('-')
+	b.WriteByte('T')
+	if tenant != "" {
+		b.WriteString(tenant)
+	} else {
+		b.WriteString(multitenancy.DefaultTenantID)
+	}
+	b.WriteByte('-')
+	b.WriteByte('S')
+	b.WriteString(strconv.FormatUint(uint64(shard), 10))
+	return b.String()
 }
 
 func NewPartitionKey(timestamp time.Time, duration time.Duration) PartitionKey {

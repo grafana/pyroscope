@@ -14,42 +14,42 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 )
 
-// The maximum number of partitions to delete in one go.
-// A partition is qualified by partition key, tenant, and shard ID.
-const maxTruncatePartitions = 128
-
 type Index interface {
 	TruncateIndex(context.Context, retention.Policy) error
 }
 
 type Config struct {
-	CleanupInterval      time.Duration `yaml:"cleanup_interval"`
 	CleanupMaxPartitions int           `yaml:"cleanup_max_partitions"`
+	CleanupGracePeriod   time.Duration `yaml:"cleanup_grace_period"`
+	CleanupInterval      time.Duration `yaml:"cleanup_interval"`
 }
 
 func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&c.CleanupInterval, prefix+"cleanup-interval", 0, "Interval for index cleanup check. 0 to disable.")
-	f.IntVar(&c.CleanupMaxPartitions, prefix+"cleanup-max-partitions", maxTruncatePartitions, "Maximum number of partitions to cleanup at once. A partition is qualified by partition key, tenant, and shard.")
+	f.DurationVar(&c.CleanupGracePeriod, prefix+"cleanup-grace-period", time.Hour*6, "After a partition is eligible for deletion, it will be kept for this period before actually being evaluated. The period should cover the time difference between the block creation time and the data timestamps. Blocks are only deleted if all data in the block has passed the retention period, and the grace period delays the moment when the partition is evaluated for deletion.")
+	f.IntVar(&c.CleanupMaxPartitions, prefix+"cleanup-max-partitions", 128, "Maximum number of partitions to cleanup at once. A partition is qualified by partition key, tenant, and shard.")
 }
 
 // Cleaner is responsible for periodically cleaning up
 // the index by applying retention policies. As of now,
 // it only applies the time-based retention policy.
 type Cleaner struct {
-	logger log.Logger
-	config Config
-	index  Index
+	logger    log.Logger
+	overrides retention.Overrides
+	config    Config
+	index     Index
 
 	started bool
 	cancel  context.CancelFunc
-	m       sync.Mutex
+	mu      sync.Mutex
 }
 
-func NewCleaner(logger log.Logger, config Config, index Index) *Cleaner {
+func NewCleaner(logger log.Logger, overrides retention.Overrides, config Config, index Index) *Cleaner {
 	return &Cleaner{
-		logger: logger,
-		config: config,
-		index:  index,
+		logger:    logger,
+		overrides: overrides,
+		config:    config,
+		index:     index,
 	}
 }
 
@@ -57,8 +57,8 @@ func (c *Cleaner) Start() {
 	if c.config.CleanupInterval == 0 {
 		return
 	}
-	c.m.Lock()
-	defer c.m.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.started {
 		c.logger.Log("msg", "index cleaner already started")
 		return
@@ -74,8 +74,8 @@ func (c *Cleaner) Stop() {
 	if c.config.CleanupInterval == 0 {
 		return
 	}
-	c.m.Lock()
-	defer c.m.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if !c.started {
 		c.logger.Log("msg", "index cleaner already stopped")
 		return
@@ -95,7 +95,14 @@ func (c *Cleaner) loop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			switch err := c.index.TruncateIndex(ctx, new(retention.TimeBasedRetentionPolicy)); {
+			rp := retention.NewTimeBasedRetentionPolicy(
+				c.logger,
+				c.overrides,
+				c.config.CleanupMaxPartitions,
+				c.config.CleanupGracePeriod,
+				time.Now(),
+			)
+			switch err := c.index.TruncateIndex(ctx, rp); {
 			case err == nil:
 			case errors.Is(err, context.Canceled):
 				return

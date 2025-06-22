@@ -24,6 +24,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/cleaner"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/cleaner/retention"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/dlq"
 	raft "github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
@@ -67,10 +68,11 @@ func (cfg *Config) Validate() error {
 type Metastore struct {
 	service services.Service
 
-	config Config
-	logger log.Logger
-	reg    prometheus.Registerer
-	health health.Service
+	config    Config
+	overrides Overrides
+	logger    log.Logger
+	reg       prometheus.Registerer
+	health    health.Service
 
 	raft *raft.Node
 	fsm  *fsm.FSM
@@ -99,8 +101,13 @@ type Metastore struct {
 	readySince time.Time
 }
 
+type Overrides interface {
+	retention.Overrides
+}
+
 func New(
 	config Config,
+	overrides Overrides,
 	logger log.Logger,
 	reg prometheus.Registerer,
 	healthService health.Service,
@@ -110,6 +117,7 @@ func New(
 ) (*Metastore, error) {
 	m := &Metastore{
 		config:    config,
+		overrides: overrides,
 		logger:    logger,
 		reg:       reg,
 		health:    healthService,
@@ -166,7 +174,7 @@ func New(
 	m.tenantService = NewTenantService(m.logger, m.followerRead, m.index)
 	m.queryService = NewQueryService(m.logger, m.followerRead, m.index)
 	m.recovery = dlq.NewRecovery(logger, config.Index.Recovery, m.indexService, bucket)
-	m.cleaner = cleaner.NewCleaner(m.logger, config.Index.Cleaner, m.indexService)
+	m.cleaner = cleaner.NewCleaner(m.logger, m.overrides, config.Index.Cleaner, m.indexService)
 
 	// These are the services that only run on the raft leader.
 	// Keep in mind that the node may not be the leader at the moment the

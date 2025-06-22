@@ -2,57 +2,263 @@ package retention
 
 import (
 	"flag"
+	"iter"
+	"slices"
 	"time"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/prometheus/common/model"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	indexstore "github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
 )
 
 type Config struct {
-	RetentionPeriod time.Duration `yaml:"retention_period"`
+	RetentionPeriod model.Duration `yaml:"retention_period" doc:"hidden"`
 }
 
 type Overrides interface {
-	RetentionOverrides(tenantID string) Config
+	Retention() (defaults Config, overrides iter.Seq2[string, Config])
 }
 
-func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.DurationVar(&c.RetentionPeriod, prefix+"retention-period", 0, "Retention period for the data. 0 means data never deleted.")
+func (c *Config) RegisterFlags(f *flag.FlagSet) {
+	f.Var(&c.RetentionPeriod, "retention-period", "Retention period for the data. 0 means data never deleted.")
 }
 
-type TimeBasedRetentionPolicy struct{}
+// TimeBasedRetentionPolicy implements a retention policy based on time.
+type TimeBasedRetentionPolicy struct {
+	logger        log.Logger
+	overrides     map[string]*marker
+	gracePeriod   time.Duration
+	maxTombstones int
 
-func (p *TimeBasedRetentionPolicy) View(*indexstore.Partition) bool { return true }
+	markers       []*marker
+	defaultPeriod *marker
+	tombstones    []*metastorev1.Tombstones
+}
 
-func (p *TimeBasedRetentionPolicy) Tombstones() []*metastorev1.Tombstones {
-	// 	dst = dst[:0]
-	// 	for tenant, shards := range p.TenantShards {
-	// 		for shard := range shards {
-	// 			dst = append(dst, Shard{
-	// 				Partition: p.Key,
-	// 				Tenant:    tenant,
-	// 				Shard:     shard,
-	// 			})
-	// 		}
-	// 	}
+type marker struct {
+	tenantID  string
+	timestamp time.Time
+}
+
+func NewTimeBasedRetentionPolicy(
+	logger log.Logger,
+	overrides Overrides,
+	maxTombstones int,
+	gracePeriod time.Duration,
+	now time.Time,
+) *TimeBasedRetentionPolicy {
+	defaults, tenantOverrides := overrides.Retention()
+	rp := TimeBasedRetentionPolicy{
+		logger:        logger,
+		overrides:     make(map[string]*marker),
+		tombstones:    make([]*metastorev1.Tombstones, 0, maxTombstones),
+		maxTombstones: maxTombstones,
+		gracePeriod:   gracePeriod,
+	}
+	// Markers indicate the time before which data should be deleted
+	// for a given tenant.
+	for tenantID, config := range tenantOverrides {
+		// An override is defined for the tenant, so we need to adjust the
+		// retention period for it. By default, we assume that the retention
+		// period is not defined, i.e. is infinite.
+		var timestamp time.Time // zero value means no retention period.
+		if period := time.Duration(config.RetentionPeriod); period > 0 {
+			timestamp = now.Add(-period)
+		}
+		m := &marker{
+			tenantID:  tenantID,
+			timestamp: timestamp,
+		}
+		rp.markers = append(rp.markers, m)
+		rp.overrides[tenantID] = m
+	}
+	// The default retention period is handled separately: we won't create
+	// the marker if the retention period is not set. This allows us to avoid
+	// checking all partition tenant shards, and instead only check specific
+	// tenants that have a defined retention policy.
+	if defaults.RetentionPeriod > 0 {
+		rp.defaultPeriod = &marker{timestamp: now.Add(-time.Duration(defaults.RetentionPeriod))}
+		rp.markers = append(rp.markers, rp.defaultPeriod)
+	}
+	// It is fine if there are marker pointing to the same time: for example,
+	// if an override is set explicitly for a tenant, but it matches the
+	// default value.
+	slices.SortFunc(rp.markers, func(a, b *marker) int {
+		return a.timestamp.Compare(b.timestamp)
+	})
+
+	return &rp
+}
+
+func (rp *TimeBasedRetentionPolicy) Tombstones() []*metastorev1.Tombstones { return rp.tombstones }
+
+func (rp *TimeBasedRetentionPolicy) View(p *indexstore.Partition) bool {
+	if len(rp.markers) == 0 {
+		level.Debug(rp.logger).Log("no retention policies defined, skipping")
+		return false
+	}
+
+	// We want to find the markers that are before the partition end, i.e. the
+	// markers that indicate the time before which data should be deleted. For
+	// tenants D and E we need to inspect the partition. Otherwise, if there
+	// are no markers after the partition end, we stop.
 	//
-	// 	slices.SortFunc(dst, func(a, b Shard) int {
-	// 		t := cmp.Compare(a.Tenant, b.Tenant)
-	// 		if t != 0 {
-	// 			return cmp.Compare(a.Shard, b.Shard)
-	// 		}
-	// 		return t
-	// 	})
+	//            | partition            |
+	//            | start            end |             t
+	//  ----------|----------------------x------------->
+	//            *         *            *  *      *
+	//  markers:  A         B            C  D      E
 	//
-	//	&metastorev1.Tombstones{
-	//			Partition: &metastorev1.PartitionTombstone{
-	//				Name:      shard.TombstoneName(),
-	//				Timestamp: shard.Partition.Timestamp.UnixNano(),
-	//				Shard:     shard.Shard,
-	//				Tenant:    shard.Tenant,
-	//			},
-	//		})
-	//	}
+	// Note that we also add a grace period to the partition end time, so that
+	// we won't be checking it for this period. Since tombstones are only
+	// created after the shard max time is before the marker timestamp, and the
+	// distance between them might be large (hours), we would be wasting time
+	// if were inspecting the partition right away.
+	partitionEnd := &marker{timestamp: p.EndTime().Add(rp.gracePeriod)}
+	level.Debug(rp.logger).Log("viewing partition",
+		"partition", p.Key.String(),
+		"partition_end_marker", partitionEnd.timestamp,
+		"retention_markers", len(rp.markers),
+	)
+
+	i, _ := slices.BinarySearchFunc(rp.markers, partitionEnd, func(a, b *marker) int {
+		return a.timestamp.Compare(b.timestamp)
+	})
+	if i >= len(rp.markers) {
+		// All markers are before the partition end: it can't be deleted.
+		// We can stop here: no partitions after this one will have deletion
+		// markers that are before the partition end.
+		level.Debug(rp.logger).Log("partition has not passed the retention period, skipping")
+		return false
+	}
+
+	// The anonymous tenant is ignored here, we only collect tombstones for the
+	// specific tenants, which have a defined retention policy.
+	if rp.defaultPeriod == nil || rp.defaultPeriod.timestamp.Before(partitionEnd.timestamp) {
+		// Fast path for the case when there are markers very far in the future
+		// relatively the default marker, or no default marker at all.
+		//
+		// The default retention period has not expired yet, so we don't need
+		// to inspect all the tenants. Instead, we can just examine the markers
+		// that are after the partition end: these tenants have retention
+		// period shorter than the default one. This is useful in case if the
+		// tenant data is deleted by setting very short retention period: we
+		// won't check each and every partition tenant shard.
+		level.Debug(rp.logger).Log("creating tombstones for tenant markers", "retention_markers", len(rp.markers[i:]))
+		rp.createTombstonesForMarkers(p, rp.markers[i:])
+	} else {
+		// Otherwise, we need to inspect all the tenants in the partition.
+		// There's no point in checking the markers: either most of them
+		// will result in tombstones, or have already been deleted (e.g.,
+		// there's one tenant with an infinite retention period).
+		level.Debug(rp.logger).Log("creating tombstones for partition tenants")
+		rp.createTombstonesForTenants(p, partitionEnd)
+	}
+
+	// Finally, we need to check if the anonymous tenant has any tombstones to
+	// collect. We only delete it if there are no other tenant shards in the
+	// partition: this guarantees that we don't delete data that is still
+	// needed, as we'd have the named tenant shards otherwise. Note that the
+	// tombstones we created this far are not resulted in the deletion of
+	// shards yet, so we will only delete the anonymous tenant on a second
+	// pass.
 	//
-	return nil
+	// NOTE(kolesnikovae):
+	//
+	// The approach may result in keeping the anonymous tenant data longer than
+	// necessary, but it should not be a problem in practice, as we assume that
+	// it contains no blocks: those are removed at L0 compaction. However, the
+	// shard-level structures such as tenant-shard buckets and string tables
+	// are not removed until the shard is deleted, which may also affect the
+	// index size. Ideally, we should seal partitions (create checkpoints) at
+	// some point that would protect it from modifications; then, we could
+	// delete the anon tenant shards safely, if there's no uncompacted data.
+	//
+	// An alternative approach would be to mark anon shards as we remove blocks
+	// from them, or create tombstones. We cannot do this as a side effect, to
+	// avoid state drift between the replicas (although this is arguable – such
+	// deletion is a side effect per se, and it only concerns the local state),
+	// but we can find the marks during the cleanup job. That could be
+	// implemented as a separate retention policy.
+	rp.createTombstonesForAnonTenant(p, partitionEnd)
+	return len(rp.tombstones) >= rp.maxTombstones
+}
+
+func (rp *TimeBasedRetentionPolicy) createTombstonesForMarkers(p *indexstore.Partition, markers []*marker) {
+	for _, m := range markers {
+		if m.tenantID == "" {
+			continue
+		}
+		if !rp.createTombstones(p, m) {
+			return
+		}
+	}
+}
+
+func (rp *TimeBasedRetentionPolicy) createTombstonesForTenants(p *indexstore.Partition, partitionEnd *marker) {
+	for tenantID := range p.TenantShards {
+		if tenantID == "" {
+			continue
+		}
+		m := rp.defaultPeriod
+		if o, ok := rp.overrides[tenantID]; ok {
+			m = o
+		}
+		if m == nil {
+			// No retention policy for this tenant, and no default:
+			// we retain the data indefinitely.
+			continue
+		}
+		if m.timestamp.After(partitionEnd.timestamp) {
+			if rp.createTombstones(p, m) {
+				return
+			}
+		}
+	}
+}
+
+func (rp *TimeBasedRetentionPolicy) createTombstonesForAnonTenant(p *indexstore.Partition, partitionEnd *marker) bool {
+	if len(p.TenantShards) > 1 {
+		return true
+	}
+	anon := p.TenantShards[""]
+	if len(anon) == 0 {
+		// This is unexpected: the partition cannot have tenants,
+		// but no anonymous tenant. We ignore it for now.
+		level.Warn(rp.logger).Log("msg", "non-empty partition without anon tenant shards, ignoring", "partition", p.Key.String())
+		return true
+	}
+	// Once shard max time passes the partition end time, we can
+	// create tombstones for the anonymous tenant shard.
+	level.Debug(rp.logger).Log("creating tombstones for anonymous tenant")
+	return rp.createTombstones(p, partitionEnd)
+}
+
+func (rp *TimeBasedRetentionPolicy) createTombstones(p *indexstore.Partition, m *marker) bool {
+	for shardID, shard := range p.TenantShards[m.tenantID] {
+		if shard == nil {
+			continue
+		}
+		if len(rp.tombstones) >= rp.maxTombstones {
+			return false
+		}
+		if time.Unix(0, shard.MaxTime).Before(m.timestamp) {
+			// The shard does not contain data before the marker.
+			name := p.TombstoneName(m.tenantID, shardID)
+			level.Debug(rp.logger).Log("creating tombstone", "name", name)
+			rp.tombstones = append(rp.tombstones, &metastorev1.Tombstones{
+				Partition: &metastorev1.PartitionTombstone{
+					Name:      name,
+					Timestamp: p.Key.Timestamp.UnixNano(),
+					Duration:  p.Key.Duration.Nanoseconds(),
+					Shard:     shardID,
+					Tenant:    m.tenantID,
+				},
+			})
+		}
+	}
+	return true
 }

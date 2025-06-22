@@ -5,8 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"go.etcd.io/bbolt"
@@ -308,18 +306,6 @@ func (s *Shard) Delete(tx *bbolt.Tx, blocks ...string) error {
 		}
 	}
 	return nil
-}
-
-func (s *Shard) TombstoneName() string {
-	var b strings.Builder
-	b.WriteString(s.Partition.String())
-	b.WriteByte('-')
-	b.WriteByte('T')
-	b.WriteString(s.Tenant)
-	b.WriteByte('-')
-	b.WriteByte('S')
-	b.WriteString(strconv.FormatUint(uint64(s.Shard), 10))
-	return b.String()
 }
 
 // ShallowCopy creates a shallow copy: no deep copy of the string table.
