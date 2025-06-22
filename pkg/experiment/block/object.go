@@ -207,10 +207,10 @@ func (obj *Object) ReadMetadata(ctx context.Context) (*metastorev1.BlockMeta, er
 	if obj.meta.MetadataOffset == 0 {
 		return obj.meta, nil
 	}
-	buf := bufferpool.GetBuffer(16 << 10)
-	defer bufferpool.Put(buf)
 	offset := int64(obj.meta.MetadataOffset)
 	size := int64(obj.meta.Size) - offset
+	buf := bufferpool.GetBuffer(int(size))
+	defer bufferpool.Put(buf)
 	if err := objstore.ReadRange(ctx, buf, obj.path, obj.storage, offset, size); err != nil {
 		return nil, fmt.Errorf("reading block metadata %s: %w", obj.path, err)
 	}

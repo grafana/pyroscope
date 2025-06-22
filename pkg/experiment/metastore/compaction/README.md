@@ -46,50 +46,49 @@ sequenceDiagram
     participant W as Compaction Worker
 
     box Compaction Service
-        participant H as Handler
-        participant R as Raft Log
+        participant H as Endpoint
+        participant R as Raft
     end
-
-loop
-
-    W ->>+H: PollCompactionJobsRequest
-    H ->>R: GetCompactionPlanUpdate
-
-    critical FSM state read
-        create participant U as Plan Update
-        R ->>U: 
-        U ->>+S: Job status updates
-        Note right of U: Job ownership is protected with<br>leases with fencing token
-        S ->>-U: Job state changes
-        U ->>+S: Assign jobs
-        S ->>-U: Job state changes
-        U ->>+P: Create jobs
-        Note right of U: New jobs are created if<br>workers have enough capacity
-        P ->>P: Dequeue blocks<br>and load tombstones
-        P ->>-U: New jobs
-        U ->>+S: Add jobs
-        S ->>-U: Job state changes
-        destroy U
-        U ->>R: CompactionPlanUpdate
-        R ->>H: CompactionPlanUpdate
+    
+    loop
+        W ->>+H: PollCompactionJobsRequest
+    
+        critical
+            critical FSM state read
+                H ->>R: GetCompactionPlanUpdate
+                create participant U as Plan Update
+                    R ->>U: 
+                    U ->>+S: Job status updates
+                    Note right of U: Job ownership is protected with<br>leases with fencing token
+                    S ->>-U: Job state changes
+                    U ->>+S: Assign jobs
+                    S ->>-U: Job state changes
+                    U ->>+P: Create jobs
+                    Note right of U: New jobs are created if<br>workers have enough capacity
+                        P ->>P: Dequeue blocks<br>and load tombstones
+                    P ->>-U: New jobs
+                    U ->>+S: Add jobs
+                    S ->>-U: Job state changes
+                destroy U
+                U ->>R: CompactionPlanUpdate
+                R ->>H: CompactionPlanUpdate
+            end
+    
+            critical FSM state update
+                H ->>R: UpdateCompactionPlan
+                    R ->>S: Update schedule<br>(new, completed, assigned, reassigned jobs)
+                    R ->>P: Remove source blocks from the planner queue (new jobs)
+                    R ->>I: Replace source blocks in the index (completed jobs)<br>and create tombstones for deleted
+                        I ->>+C: Add new blocks
+                            C ->>C: Enqueue
+                        C ->>-I: 
+                    I ->>R: 
+                R ->>H: CompactionPlanUpdate
+            end
+        end
+ 
+        H ->> W: PollCompactionJobsResponse
     end
-
-    H ->>R: UpdateCompactionPlan
-
-    critical FSM state update
-        R ->>S: Update schedule<br>(new, completed, assigned, reassigned jobs)
-        R ->>P: Remove source blocks from the planner queue (new jobs)
-        R ->>I: Replace source blocks in the index (completed jobs)<br>and create tombstones for deleted
-        I ->>+C: Add new blocks
-        C ->>C: Enqueue
-        C ->>-I: 
-        I ->>R: 
-        R ->>H: CompactionPlanUpdate
-    end
-
-    H ->> W: PollCompactionJobsResponse
-
-end
 
     box FSM
         participant C as Compactor
