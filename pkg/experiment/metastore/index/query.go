@@ -1,6 +1,7 @@
 package index
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"sort"
@@ -88,11 +89,9 @@ func (q *metadataQuery) overlaps(start, end time.Time) bool {
 	if q.startTime.After(end) {
 		return false
 	}
-
 	if q.endTime.Before(start) {
 		return false
 	}
-
 	return true
 }
 
@@ -114,8 +113,8 @@ type blockMetadataQuerier struct {
 	metas  []*metastorev1.BlockMeta
 }
 
-func (q *blockMetadataQuerier) queryBlocks() ([]*metastorev1.BlockMeta, error) {
-	for q.shards.Next() {
+func (q *blockMetadataQuerier) queryBlocks(ctx context.Context) ([]*metastorev1.BlockMeta, error) {
+	for q.shards.Next() && ctx.Err() == nil {
 		shard := q.shards.At()
 		offset := len(q.metas)
 		if err := q.collectBlockMetadata(shard); err != nil {
@@ -124,6 +123,9 @@ func (q *blockMetadataQuerier) queryBlocks() ([]*metastorev1.BlockMeta, error) {
 		slices.SortFunc(q.metas[offset:], func(a, b *metastorev1.BlockMeta) int {
 			return strings.Compare(a.Id, b.Id)
 		})
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	return q.metas, q.shards.Err()
 }
@@ -228,15 +230,18 @@ type metadataLabelQuerier struct {
 	labels *metadata.LabelsCollector
 }
 
-func (q *metadataLabelQuerier) queryLabels() (*metadata.LabelsCollector, error) {
+func (q *metadataLabelQuerier) queryLabels(ctx context.Context) (*metadata.LabelsCollector, error) {
 	if len(q.query.labels) == 0 {
 		return q.labels, nil
 	}
-	for q.shards.Next() {
+	for q.shards.Next() && ctx.Err() == nil {
 		shard := q.shards.At()
 		if err := q.collectLabels(shard); err != nil {
 			return nil, err
 		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	return q.labels, q.shards.Err()
 }
@@ -265,4 +270,69 @@ func (q *metadataLabelQuerier) collectLabels(s *store.Shard) error {
 	}
 	q.labels.CollectMatches(matcher)
 	return nil
+}
+
+type shardIterator struct {
+	tx        *bbolt.Tx
+	index     *Index
+	tenants   []string
+	shards    []store.Shard
+	cur       *store.Shard
+	err       error
+	startTime time.Time
+	endTime   time.Time
+}
+
+func newShardIterator(tx *bbolt.Tx, index *Index, startTime, endTime time.Time, tenants ...string) *shardIterator {
+	// See comment in DefaultConfig.queryLookaroundPeriod.
+	startTime = startTime.Add(-index.config.queryLookaroundPeriod)
+	endTime = endTime.Add(index.config.queryLookaroundPeriod)
+	si := shardIterator{
+		tx:        tx,
+		tenants:   tenants,
+		index:     index,
+		startTime: startTime,
+		endTime:   endTime,
+	}
+	for p := range index.store.Partitions(tx) {
+		if !p.Overlaps(startTime, endTime) {
+			continue
+		}
+		q := p.Query(tx)
+		if q == nil {
+			continue
+		}
+		for _, t := range si.tenants {
+			for s := range q.Shards(t) {
+				if s.ShardIndex.Overlaps(si.startTime, si.endTime) {
+					si.shards = append(si.shards, s)
+				}
+			}
+		}
+	}
+	slices.SortFunc(si.shards, compareShards)
+	si.shards = slices.Compact(si.shards)
+	return &si
+}
+
+func (si *shardIterator) Err() error { return si.err }
+
+func (si *shardIterator) At() *store.Shard { return si.cur }
+
+func (si *shardIterator) Next() bool {
+	if si.err != nil || len(si.shards) == 0 {
+		return false
+	}
+	c := si.shards[0]
+	si.shards = si.shards[1:]
+	si.cur, si.err = si.index.shards.getForRead(si.tx, c.Partition, c.Tenant, c.Shard)
+	return si.err == nil
+}
+
+func compareShards(a, b store.Shard) int {
+	cmp := strings.Compare(a.Tenant, b.Tenant)
+	if cmp == 0 {
+		return int(a.Shard) - int(b.Shard)
+	}
+	return cmp
 }

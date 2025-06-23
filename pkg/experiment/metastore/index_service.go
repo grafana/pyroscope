@@ -2,6 +2,7 @@ package metastore
 
 import (
 	"context"
+	goiter "iter"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -29,10 +30,10 @@ type IndexBlockFinder interface {
 }
 
 type IndexPartitionLister interface {
-	// ListPartitions provide access to all partitions in the index.
+	// Partitions provide access to all partitions in the index.
 	// They are iterated in the order of their creation and are
 	// guaranteed to be thread-safe for reads.
-	ListPartitions(*bbolt.Tx, func(*indexstore.Partition) bool) error
+	Partitions(*bbolt.Tx) goiter.Seq[indexstore.Partition]
 }
 
 type IndexReader interface {
@@ -160,10 +161,11 @@ func (s *sampleIterator) At() placement.Sample {
 
 func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy) error {
 	var req raft_log.TruncateIndexRequest
-	var err error
 	read := func(tx *bbolt.Tx, r raftnode.ReadIndex) {
-		if err = svc.index.ListPartitions(tx, rp.View); err != nil {
-			return
+		for p := range svc.index.Partitions(tx) {
+			if !rp.Visit(tx, p) {
+				break
+			}
 		}
 		req.Tombstones = rp.Tombstones()
 		req.Term = r.Term // The leader may change after we read the index.
@@ -171,14 +173,10 @@ func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy)
 	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {
 		return status.Error(codes.Unavailable, readErr.Error())
 	}
-	if err != nil {
-		level.Error(svc.logger).Log("msg", "failed to list partitions", "err", err)
-		return status.Error(codes.Internal, err.Error())
-	}
 	if len(req.Tombstones) == 0 {
 		return nil
 	}
-	if _, err = svc.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX), &req); err != nil {
+	if _, err := svc.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX), &req); err != nil {
 		if !raftnode.IsRaftLeadershipError(err) {
 			level.Error(svc.logger).Log("msg", "failed to truncate index", "err", err)
 		}

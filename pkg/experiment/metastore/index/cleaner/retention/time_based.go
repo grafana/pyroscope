@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/common/model"
+	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	indexstore "github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
@@ -95,7 +96,7 @@ func NewTimeBasedRetentionPolicy(
 
 func (rp *TimeBasedRetentionPolicy) Tombstones() []*metastorev1.Tombstones { return rp.tombstones }
 
-func (rp *TimeBasedRetentionPolicy) View(p *indexstore.Partition) bool {
+func (rp *TimeBasedRetentionPolicy) Visit(tx *bbolt.Tx, p indexstore.Partition) bool {
 	if len(rp.markers) == 0 {
 		level.Debug(rp.logger).Log("no retention policies defined, skipping")
 		return false
@@ -119,7 +120,7 @@ func (rp *TimeBasedRetentionPolicy) View(p *indexstore.Partition) bool {
 	// if were inspecting the partition right away.
 	partitionEnd := &marker{timestamp: p.EndTime().Add(rp.gracePeriod)}
 	level.Debug(rp.logger).Log("viewing partition",
-		"partition", p.Key.String(),
+		"partition", p.String(),
 		"partition_end_marker", partitionEnd.timestamp,
 		"retention_markers", len(rp.markers),
 	)
@@ -135,6 +136,12 @@ func (rp *TimeBasedRetentionPolicy) View(p *indexstore.Partition) bool {
 		return false
 	}
 
+	q := p.Query(tx)
+	if q == nil {
+		level.Warn(rp.logger).Log("msg", "cannot find partition, skipping", "partition", p.String())
+		return true
+	}
+
 	// The anonymous tenant is ignored here, we only collect tombstones for the
 	// specific tenants, which have a defined retention policy.
 	if rp.defaultPeriod == nil || rp.defaultPeriod.timestamp.Before(partitionEnd.timestamp) {
@@ -148,14 +155,14 @@ func (rp *TimeBasedRetentionPolicy) View(p *indexstore.Partition) bool {
 		// tenant data is deleted by setting very short retention period: we
 		// won't check each and every partition tenant shard.
 		level.Debug(rp.logger).Log("creating tombstones for tenant markers", "retention_markers", len(rp.markers[i:]))
-		rp.createTombstonesForMarkers(p, rp.markers[i:])
+		rp.createTombstonesForMarkers(q, rp.markers[i:])
 	} else {
 		// Otherwise, we need to inspect all the tenants in the partition.
 		// There's no point in checking the markers: either most of them
 		// will result in tombstones, or have already been deleted (e.g.,
 		// there's one tenant with an infinite retention period).
 		level.Debug(rp.logger).Log("creating tombstones for partition tenants")
-		rp.createTombstonesForTenants(p, partitionEnd)
+		rp.createTombstonesForTenants(q, partitionEnd)
 	}
 
 	// Finally, we need to check if the anonymous tenant has any tombstones to
@@ -183,23 +190,23 @@ func (rp *TimeBasedRetentionPolicy) View(p *indexstore.Partition) bool {
 	// deletion is a side effect per se, and it only concerns the local state),
 	// but we can find the marks during the cleanup job. That could be
 	// implemented as a separate retention policy.
-	rp.createTombstonesForAnonTenant(p, partitionEnd)
+	rp.createTombstonesForAnonTenant(q, partitionEnd)
 	return len(rp.tombstones) >= rp.maxTombstones
 }
 
-func (rp *TimeBasedRetentionPolicy) createTombstonesForMarkers(p *indexstore.Partition, markers []*marker) {
+func (rp *TimeBasedRetentionPolicy) createTombstonesForMarkers(q *indexstore.PartitionQuery, markers []*marker) {
 	for _, m := range markers {
 		if m.tenantID == "" {
 			continue
 		}
-		if !rp.createTombstones(p, m) {
+		if !rp.createTombstones(q, m) {
 			return
 		}
 	}
 }
 
-func (rp *TimeBasedRetentionPolicy) createTombstonesForTenants(p *indexstore.Partition, partitionEnd *marker) {
-	for tenantID := range p.TenantShards {
+func (rp *TimeBasedRetentionPolicy) createTombstonesForTenants(q *indexstore.PartitionQuery, partitionEnd *marker) {
+	for tenantID := range q.Tenants() {
 		if tenantID == "" {
 			continue
 		}
@@ -213,49 +220,52 @@ func (rp *TimeBasedRetentionPolicy) createTombstonesForTenants(p *indexstore.Par
 			continue
 		}
 		if m.timestamp.After(partitionEnd.timestamp) {
-			if rp.createTombstones(p, m) {
+			if rp.createTombstones(q, m) {
 				return
 			}
 		}
 	}
 }
 
-func (rp *TimeBasedRetentionPolicy) createTombstonesForAnonTenant(p *indexstore.Partition, partitionEnd *marker) bool {
-	if len(p.TenantShards) > 1 {
-		return true
+func (rp *TimeBasedRetentionPolicy) createTombstonesForAnonTenant(q *indexstore.PartitionQuery, partitionEnd *marker) bool {
+	var c int
+	for range q.Tenants() {
+		c++
+		if c > 1 {
+			// We have at least one tenant other than the anonymous one.
+			// We cannot delete the anonymous tenant shard yet.
+			level.Debug(rp.logger).Log("partition has other tenants, skipping anon tenant tombstones")
+			return true
+		}
 	}
-	anon := p.TenantShards[""]
-	if len(anon) == 0 {
+	if q.Shards("") == nil {
 		// This is unexpected: the partition cannot have tenants,
 		// but no anonymous tenant. We ignore it for now.
-		level.Warn(rp.logger).Log("msg", "non-empty partition without anon tenant shards, ignoring", "partition", p.Key.String())
+		level.Warn(rp.logger).Log("msg", "non-empty partition without anon tenant shards, ignoring", "partition", q.Partition.String())
 		return true
 	}
 	// Once shard max time passes the partition end time, we can
 	// create tombstones for the anonymous tenant shard.
 	level.Debug(rp.logger).Log("creating tombstones for anonymous tenant")
-	return rp.createTombstones(p, partitionEnd)
+	return rp.createTombstones(q, partitionEnd)
 }
 
-func (rp *TimeBasedRetentionPolicy) createTombstones(p *indexstore.Partition, m *marker) bool {
-	for shardID, shard := range p.TenantShards[m.tenantID] {
-		if shard == nil {
-			continue
-		}
+func (rp *TimeBasedRetentionPolicy) createTombstones(q *indexstore.PartitionQuery, m *marker) bool {
+	for shard := range q.Shards(m.tenantID) {
 		if len(rp.tombstones) >= rp.maxTombstones {
 			return false
 		}
-		if time.Unix(0, shard.MaxTime).Before(m.timestamp) {
+		if time.Unix(0, shard.ShardIndex.MaxTime).Before(m.timestamp) {
 			// The shard does not contain data before the marker.
-			name := p.TombstoneName(m.tenantID, shardID)
+			name := q.Partition.TombstoneName(m.tenantID, shard.Shard)
 			level.Debug(rp.logger).Log("creating tombstone", "name", name)
 			rp.tombstones = append(rp.tombstones, &metastorev1.Tombstones{
 				Partition: &metastorev1.PartitionTombstone{
 					Name:      name,
-					Timestamp: p.Key.Timestamp.UnixNano(),
-					Duration:  p.Key.Duration.Nanoseconds(),
-					Shard:     shardID,
-					Tenant:    m.tenantID,
+					Timestamp: q.Partition.Timestamp.UnixNano(),
+					Duration:  q.Partition.Duration.Nanoseconds(),
+					Shard:     shard.Shard,
+					Tenant:    shard.Tenant,
 				},
 			})
 		}

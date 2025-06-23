@@ -18,8 +18,8 @@ import (
 )
 
 type IndexQuerier interface {
-	QueryMetadata(*bbolt.Tx, index.MetadataQuery) ([]*metastorev1.BlockMeta, error)
-	QueryMetadataLabels(*bbolt.Tx, index.MetadataQuery) ([]*typesv1.Labels, error)
+	QueryMetadata(*bbolt.Tx, context.Context, index.MetadataQuery) ([]*metastorev1.BlockMeta, error)
+	QueryMetadataLabels(*bbolt.Tx, context.Context, index.MetadataQuery) ([]*typesv1.Labels, error)
 }
 
 type QueryService struct {
@@ -56,11 +56,11 @@ func (svc *QueryService) QueryMetadata(
 }
 
 func (svc *QueryService) queryMetadata(
-	_ context.Context,
+	ctx context.Context,
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
-	metas, err := svc.index.QueryMetadata(tx, index.MetadataQuery{
+	metas, err := svc.index.QueryMetadata(tx, ctx, index.MetadataQuery{
 		Tenant:    req.TenantId,
 		StartTime: time.UnixMilli(req.StartTime),
 		EndTime:   time.UnixMilli(req.EndTime),
@@ -92,11 +92,11 @@ func (svc *QueryService) QueryMetadataLabels(
 }
 
 func (svc *QueryService) queryMetadataLabels(
-	_ context.Context,
+	ctx context.Context,
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataLabelsRequest,
 ) (*metastorev1.QueryMetadataLabelsResponse, error) {
-	labels, err := svc.index.QueryMetadataLabels(tx, index.MetadataQuery{
+	labels, err := svc.index.QueryMetadataLabels(tx, ctx, index.MetadataQuery{
 		Tenant:    req.TenantId,
 		StartTime: time.UnixMilli(req.StartTime),
 		EndTime:   time.UnixMilli(req.EndTime),

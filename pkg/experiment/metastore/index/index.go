@@ -1,12 +1,12 @@
 package index
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"iter"
 	"math"
 	"slices"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -71,85 +71,10 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 
 type Store interface {
 	CreateBuckets(*bbolt.Tx) error
-	ListPartitions(*bbolt.Tx) ([]*store.Partition, error)
-	DeletePartition(tx *bbolt.Tx, p store.PartitionKey) error
-	// LoadShard attempts to load a shard from the store. If the shard does not
-	// exist, it returns nil without an error. It's caller responsibility to
-	// update the shard index in the partition.
-	LoadShard(tx *bbolt.Tx, p store.PartitionKey, tenant string, shard uint32) (*store.Shard, error)
-	DeleteShard(tx *bbolt.Tx, p store.PartitionKey, tenant string, shard uint32) error
+	Partitions(tx *bbolt.Tx) iter.Seq[store.Partition]
+	LoadShard(tx *bbolt.Tx, p store.Partition, tenant string, shard uint32) (*store.Shard, error)
+	DeleteShard(tx *bbolt.Tx, p store.Partition, tenant string, shard uint32) error
 }
-
-// TODO(kolesnikovae): Consider avoiding memoization.
-//
-//   This would allow us to avoid holding the lock and ensure better
-//   isolation. This would also simplify the implementation: the problem
-//   with this cache is that it's too easy to violate isolation as we may
-//   exchange data between transactions: in the worst case, the user may
-//   see a partition that has been created in a transaction that has not
-//   been committed yet, which looks like a dirty read and is very confusing.
-//   In our case, this is fine that we read uncommitted because of the Raft
-//   State Machine Safety property – we always read data commited to log.
-//
-// NOTE(kolesnikovae): A few words about the caches used in this index.
-//
-// Partition list.
-//
-// Users of the structure must be aware (and they are, at the moment) of
-// the following invariants:
-//  * A partition has been created in a transaction created after the
-//    current one. In this case, the partition may be visible in-memory
-//    before it is visible in the store.
-//  * A partition has been removed in a transaction created after the
-//    current one. In this case, the partition may disappear from the
-//    memory, but still be in the store.
-//
-// Shard cache.
-//
-// The cache helps us to avoid repeatedly reading the string table from
-// the persistent store. Cached shards have a flag that indicates whether
-// the shard was loaded for reads. Any write operation should invalidate
-// the cached entry and reload it as it may violate transaction isolation.
-//
-// Writes are always sequential and never concurrent. Therefore, it's
-// guaranteed that every write operation observes the latest state of
-// the shard on disk. The cache introduces a possibility to observe
-// a stale state in the cache, because of the concurrent reads that
-// share the same cache.
-//
-// Reads are concurrent and may run in transactions that began before
-// the ongoing write transaction. If a read transaction reads the shard
-// state from the disk, its state is obsolete from the writer perspective,
-// since it corresponds to an older transaction; if such state is cached,
-// all participants may observe it. Therefore, we mark such shards as
-// read-only to let the writer know about it.
-//
-// Reads may observe a state modified "in the future", by a write
-// transaction that has started after the read transaction. This is fine,
-// as "stale reads" are resolved at the raft level. It is not fine,
-// however, if the write transaction uses the cached shard state, loaded
-// by read transaction.
-//
-// Block caches.
-//
-// Metadata entries might be large, tens of kilobytes, depending on the number
-// of datasets, labels, and other metadata. Therefore, we use block cache
-// to avoid repeatedly decoding the serialized raw bytes. The cache does not
-// require any special coordination, as it is accessed by keys, which are
-// loaded from the disk in the current transaction.
-//
-// The cache is split into two parts: read and write. This is done to prevent
-// cache pollution in case of compaction delays.
-//
-// The read cache is populated with blocks that are fully compacted and with
-// blocks queried by the user. We use 2Q cache replacement strategy to ensure
-// that the most recently read blocks are kept in memory, while frequently
-// accessed older blocks are not evicted prematurely.
-//
-// The write cache is used to store blocks that are being written to the index.
-// It is important because it's guaranteed that the block will be read soon for
-// compaction. The write cache is accessed for reads if the read cache does not
-// contain the block queried.
 
 type Index struct {
 	logger log.Logger
@@ -157,128 +82,83 @@ type Index struct {
 	store  Store
 	shards *shardCache
 	blocks *blockCache
-
-	partitions []*store.Partition
-	mu         sync.RWMutex
 }
 
 func NewIndex(logger log.Logger, s Store, cfg Config) *Index {
 	return &Index{
-		logger:     logger,
-		config:     cfg,
-		store:      s,
-		partitions: make([]*store.Partition, 0),
-		shards:     newShardCache(cfg.ShardCacheSize),
-		blocks:     newBlockCache(cfg.BlockReadCacheSize, cfg.BlockWriteCacheSize),
+		logger: logger,
+		config: cfg,
+		store:  s,
+		shards: newShardCache(cfg.ShardCacheSize, s),
+		blocks: newBlockCache(cfg.BlockReadCacheSize, cfg.BlockWriteCacheSize),
 	}
 }
 
-// NewStore is a leftover. Use store.NewIndexStore directly.
-// TODO: delete the store interface, here and elsewhere.
 func NewStore() *store.IndexStore { return store.NewIndexStore() }
 
 func (i *Index) Init(tx *bbolt.Tx) error { return i.store.CreateBuckets(tx) }
 
 func (i *Index) Restore(tx *bbolt.Tx) error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-
-	var err error
-	if i.partitions, err = i.store.ListPartitions(tx); err != nil {
-		level.Error(i.logger).Log("msg", "failed to list partitions", "err", err)
-		return err
-	}
-
 	// See comment in DefaultConfig.queryLookaroundPeriod.
 	now := time.Now()
-	high := now.Add(i.config.queryLookaroundPeriod)
-	low := now.Add(-i.config.queryLookaroundPeriod)
-
-	for _, p := range i.partitions {
-		level.Info(i.logger).Log(
-			"msg", "found metastore index partition",
-			"timestamp", p.Key.Timestamp.Format(time.RFC3339),
-			"duration", p.Key.Duration,
-			"tenants", len(p.TenantShards),
-		)
-		if p.Key.Overlaps(low, high) {
-			level.Info(i.logger).Log("msg", "loading partition in memory")
-			for tenant, shards := range p.TenantShards {
-				for shard := range shards {
-					var s *store.Shard
-					if s, err = i.store.LoadShard(tx, p.Key, tenant, shard); err != nil {
-						level.Error(i.logger).Log(
-							"msg", "failed to load tenant partition shard",
-							"partition", p.Key,
-							"tenant", tenant,
-							"shard", shard,
-							"err", err,
-						)
-						return err
-					}
-					if s != nil {
-						// Update the partition with the loaded shard index:
-						// it's important to ensure that the cached shard and
-						// the partition reference the same instance.
-						p.AddTenantShard(tenant, shard, s.ShardIndex)
-						i.shards.put(&indexShard{
-							Shard:    s,
-							readOnly: false,
-						})
-					}
+	start := now.Add(i.config.queryLookaroundPeriod)
+	end := now.Add(-i.config.queryLookaroundPeriod)
+	for p := range i.store.Partitions(tx) {
+		if !p.Overlaps(start, end) {
+			continue
+		}
+		level.Info(i.logger).Log("msg", "loading partition in memory")
+		q := p.Query(tx)
+		if q == nil {
+			continue
+		}
+		for tenant := range q.Tenants() {
+			for shard := range q.Shards(tenant) {
+				if _, err := i.shards.getForWrite(tx, p, tenant, shard.Shard); err != nil {
+					level.Error(i.logger).Log(
+						"msg", "failed to load tenant partition shard",
+						"partition", p,
+						"tenant", tenant,
+						"shard", shard,
+						"err", err,
+					)
+					return err
 				}
 			}
 		}
 	}
-
-	level.Info(i.logger).Log("msg", "loaded metastore index partitions", "count", len(i.partitions))
-	i.sortPartitions()
 	return nil
 }
 
-func (i *Index) sortPartitions() {
-	slices.SortFunc(i.partitions, func(a, b *store.Partition) int {
-		return a.Compare(b)
-	})
-}
-
 func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	p := i.getOrCreatePartitionForBlock(b)
-	s, err := i.getOrCreateShard(tx, p, metadata.Tenant(b), b.Shard)
-	if err != nil {
-		return err
-	}
-	i.blocks.put(s, b)
-	return s.Store(tx, b)
-}
-
-func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBlocks) error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	for _, b := range compacted.NewBlocks {
-		s, err := i.getOrCreateShard(tx, i.getOrCreatePartitionForBlock(b), metadata.Tenant(b), b.Shard)
-		if err != nil {
+	p := i.partitionKeyForBlock(b.Id)
+	return i.shards.update(tx, p, metadata.Tenant(b), b.Shard, func(s *store.Shard) error {
+		if err := s.Store(tx, b); err != nil {
 			return err
 		}
 		i.blocks.put(s, b)
-		if err = s.Store(tx, b); err != nil {
+		return nil
+	})
+}
+
+func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBlocks) error {
+	for _, b := range compacted.NewBlocks {
+		if err := i.InsertBlock(tx, b); err != nil {
 			return err
 		}
 	}
-	for k, list := range i.partitionedList(compacted.SourceBlocks) {
-		s, err := i.getOrCreateShard(tx, i.getPartition(k), list.Tenant, list.Shard)
-		if err != nil {
-			return err
-		}
-		if s != nil {
+	for p, list := range i.partitionedList(compacted.SourceBlocks) {
+		err := i.shards.update(tx, p, list.Tenant, list.Shard, func(s *store.Shard) error {
+			if err := s.Delete(tx, list.Blocks...); err != nil {
+				return err
+			}
 			for _, b := range list.Blocks {
 				i.blocks.delete(s, b)
 			}
-			if err = s.Delete(tx, list.Blocks...); err != nil {
-				return err
-			}
+			return nil
+		})
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -287,62 +167,45 @@ func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBloc
 func (i *Index) GetBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error) {
 	metas := make([]*metastorev1.BlockMeta, 0, len(list.Blocks))
 	for k, partitioned := range i.partitionedList(list) {
-		i.mu.RLock()
-		s, err := i.getShard(tx, k, partitioned.Tenant, partitioned.Shard)
-		i.mu.RUnlock()
+		s, err := i.shards.getForRead(tx, k, partitioned.Tenant, partitioned.Shard)
 		if err != nil {
 			return nil, err
 		}
-		if s != nil {
-			for _, kv := range s.Find(tx, partitioned.Blocks...) {
-				b := i.blocks.getOrCreate(s, kv).CloneVT()
-				s.StringTable.Export(b)
-				metas = append(metas, b)
-			}
+		for _, kv := range s.Find(tx, partitioned.Blocks...) {
+			b := i.blocks.getOrCreate(s, kv).CloneVT()
+			s.StringTable.Export(b)
+			metas = append(metas, b)
 		}
 	}
 	return metas, nil
 }
 
-func (i *Index) ListPartitions(_ *bbolt.Tx, fn func(*store.Partition) bool) error {
-	i.mu.RLock()
-	defer i.mu.RUnlock()
-	for _, p := range i.partitions {
-		if !fn(p) {
-			return nil
-		}
-	}
-	return nil
+func (i *Index) Partitions(tx *bbolt.Tx) iter.Seq[store.Partition] {
+	return i.store.Partitions(tx)
 }
 
-func (i *Index) DeletePartition(tx *bbolt.Tx, key store.PartitionKey, tenant string, shard uint32) error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	p := i.getPartition(key)
-	p.DeleteTenantShard(tenant, shard)
-	i.shards.delete(key, tenant, shard)
+func (i *Index) DeleteShard(tx *bbolt.Tx, key store.Partition, tenant string, shard uint32) error {
 	if err := i.store.DeleteShard(tx, key, tenant, shard); err != nil {
 		return err
 	}
-	if !p.IsEmpty() {
-		return nil
-	}
-	i.deletePartition(key)
-	return i.store.DeletePartition(tx, key)
+	i.shards.delete(key, tenant, shard)
+	return nil
 }
 
-func (i *Index) GetTenantStats(tenant string) *metastorev1.TenantStats {
+func (i *Index) GetTenantStats(tx *bbolt.Tx, tenant string) *metastorev1.TenantStats {
 	stats := &metastorev1.TenantStats{
 		DataIngested:      false,
 		OldestProfileTime: math.MaxInt64,
 		NewestProfileTime: math.MinInt64,
 	}
-
-	i.mu.RLock()
-	defer i.mu.RUnlock()
-
-	for _, p := range i.partitions {
-		if !p.HasTenant(tenant) {
+	for p := range i.store.Partitions(tx) {
+		q := p.Query(tx)
+		if q == nil {
+			// Partition not found.
+			continue
+		}
+		if q.Shards(tenant) == nil {
+			// No shards for this tenant in this partition.
 			continue
 		}
 		oldest := p.StartTime().UnixMilli()
@@ -358,28 +221,27 @@ func (i *Index) GetTenantStats(tenant string) *metastorev1.TenantStats {
 	if !stats.DataIngested {
 		return new(metastorev1.TenantStats)
 	}
-
 	return stats
 }
 
-func (i *Index) QueryMetadata(tx *bbolt.Tx, query MetadataQuery) ([]*metastorev1.BlockMeta, error) {
+func (i *Index) QueryMetadata(tx *bbolt.Tx, ctx context.Context, query MetadataQuery) ([]*metastorev1.BlockMeta, error) {
 	q, err := newMetadataQuery(i, query)
 	if err != nil {
 		return nil, err
 	}
-	r, err := newBlockMetadataQuerier(tx, q).queryBlocks()
+	r, err := newBlockMetadataQuerier(tx, q).queryBlocks(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return r, nil
 }
 
-func (i *Index) QueryMetadataLabels(tx *bbolt.Tx, query MetadataQuery) ([]*typesv1.Labels, error) {
+func (i *Index) QueryMetadataLabels(tx *bbolt.Tx, ctx context.Context, query MetadataQuery) ([]*typesv1.Labels, error) {
 	q, err := newMetadataQuery(i, query)
 	if err != nil {
 		return nil, err
 	}
-	c, err := newMetadataLabelQuerier(tx, q).queryLabels()
+	c, err := newMetadataLabelQuerier(tx, q).queryLabels(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -388,42 +250,10 @@ func (i *Index) QueryMetadataLabels(tx *bbolt.Tx, query MetadataQuery) ([]*types
 	return l, nil
 }
 
-func (i *Index) getOrCreatePartitionForBlock(b *metastorev1.BlockMeta) *store.Partition {
-	t := ulid.Time(ulid.MustParse(b.Id).Time())
-	k := store.NewPartitionKey(t, i.config.partitionDuration)
-	return i.getOrCreatePartition(k)
-}
-
-func (i *Index) getOrCreatePartition(k store.PartitionKey) *store.Partition {
-	if p := i.getPartition(k); p != nil {
-		return p
-	}
-	level.Debug(i.logger).Log("msg", "creating new metastore index partition", "key", k)
-	p := store.NewPartition(k)
-	i.partitions = append(i.partitions, p)
-	i.sortPartitions()
-	return p
-}
-
-func (i *Index) getPartition(key store.PartitionKey) *store.Partition {
-	for _, p := range i.partitions {
-		if p.Key.Equal(key) {
-			return p
-		}
-	}
-	return nil
-}
-
-func (i *Index) deletePartition(key store.PartitionKey) {
-	i.partitions = slices.DeleteFunc(i.partitions, func(p *store.Partition) bool {
-		return p.Key.Equal(key)
-	})
-}
-
-func (i *Index) partitionedList(list *metastorev1.BlockList) map[store.PartitionKey]*metastorev1.BlockList {
-	partitions := make(map[store.PartitionKey]*metastorev1.BlockList)
+func (i *Index) partitionedList(list *metastorev1.BlockList) map[store.Partition]*metastorev1.BlockList {
+	partitions := make(map[store.Partition]*metastorev1.BlockList)
 	for _, b := range list.Blocks {
-		k := store.NewPartitionKey(ulid.Time(ulid.MustParse(b).Time()), i.config.partitionDuration)
+		k := i.partitionKeyForBlock(b)
 		v := partitions[k]
 		if v == nil {
 			v = &metastorev1.BlockList{
@@ -438,141 +268,6 @@ func (i *Index) partitionedList(list *metastorev1.BlockList) map[store.Partition
 	return partitions
 }
 
-func (i *Index) getOrCreateShard(tx *bbolt.Tx, p *store.Partition, tenant string, shard uint32) (*store.Shard, error) {
-	x := i.shards.get(p.Key, tenant, shard)
-	if x != nil && !x.readOnly {
-		return x.Shard, nil
-	}
-	// If the shard is not found, or it is loaded for reads,
-	// reload it and invalidate the cached version.
-	s, err := i.store.LoadShard(tx, p.Key, tenant, shard)
-	if err != nil {
-		return nil, err
-	}
-	if s == nil {
-		s = store.NewShard(p.Key, tenant, shard)
-	}
-	p.AddTenantShard(tenant, shard, s.ShardIndex)
-	i.shards.put(&indexShard{
-		Shard:    s,
-		readOnly: false,
-	})
-	return s, nil
-}
-
-func (i *Index) getShard(tx *bbolt.Tx, p store.PartitionKey, tenant string, shard uint32) (*store.Shard, error) {
-	x := i.shards.get(p, tenant, shard)
-	if x != nil {
-		return x.ShallowCopy(), nil
-	}
-	s, err := i.store.LoadShard(tx, p, tenant, shard)
-	if err != nil {
-		return nil, err
-	}
-	if s == nil {
-		return nil, nil
-	}
-	i.shards.put(&indexShard{
-		Shard:    s,
-		readOnly: true,
-	})
-	return s.ShallowCopy(), nil
-}
-
-type shardIterator struct {
-	tx         *bbolt.Tx
-	index      *Index
-	tenants    []string
-	partitions []*store.Partition
-	shards     []*store.Shard
-	cur        int
-	err        error
-	startTime  time.Time
-	endTime    time.Time
-}
-
-func newShardIterator(tx *bbolt.Tx, index *Index, startTime, endTime time.Time, tenants ...string) *shardIterator {
-	// See comment in DefaultConfig.queryLookaroundPeriod.
-	startTime = startTime.Add(-index.config.queryLookaroundPeriod)
-	endTime = endTime.Add(index.config.queryLookaroundPeriod)
-	index.mu.RLock()
-	defer index.mu.RUnlock()
-	si := shardIterator{
-		tx:         tx,
-		partitions: make([]*store.Partition, 0, len(index.partitions)),
-		tenants:    tenants,
-		index:      index,
-		startTime:  startTime,
-		endTime:    endTime,
-	}
-	for _, p := range index.partitions {
-		if !p.Overlaps(startTime, endTime) {
-			continue
-		}
-		for _, t := range si.tenants {
-			if p.HasTenant(t) {
-				si.partitions = append(si.partitions, p)
-				break
-			}
-		}
-	}
-	return &si
-}
-
-func (si *shardIterator) Err() error { return si.err }
-
-func (si *shardIterator) At() *store.Shard { return si.shards[si.cur] }
-
-func (si *shardIterator) Next() bool {
-	if n := si.cur + 1; n < len(si.shards) {
-		si.cur = n
-		return true
-	}
-	si.cur = 0
-	si.shards = si.shards[:0]
-	for len(si.shards) == 0 && len(si.partitions) > 0 {
-		si.loadPartition(si.partitions[0])
-		si.partitions = si.partitions[1:]
-	}
-	return si.err == nil && si.cur < len(si.shards)
-}
-
-func (si *shardIterator) loadPartition(p *store.Partition) {
-	for _, t := range si.tenants {
-		si.loadShards(p, t)
-	}
-	slices.SortFunc(si.shards, compareShards)
-	si.shards = slices.Compact(si.shards)
-}
-
-func (si *shardIterator) loadShards(p *store.Partition, tenant string) {
-	si.index.mu.RLock()
-	shards := p.TenantShards[tenant]
-	si.index.mu.RUnlock()
-	var err error
-	var s *store.Shard
-	for shardID, shard := range shards {
-		si.index.mu.RLock()
-		if !shard.Overlaps(si.startTime, si.endTime) {
-			si.index.mu.RUnlock()
-			continue
-		}
-		s, err = si.index.getShard(si.tx, p.Key, tenant, shardID)
-		si.index.mu.RUnlock()
-		if err != nil {
-			si.err = err
-			return
-		}
-		if s != nil {
-			si.shards = append(si.shards, s)
-		}
-	}
-}
-
-func compareShards(a, b *store.Shard) int {
-	cmp := strings.Compare(a.Tenant, b.Tenant)
-	if cmp == 0 {
-		return int(a.Shard) - int(b.Shard)
-	}
-	return cmp
+func (i *Index) partitionKeyForBlock(b string) store.Partition {
+	return store.NewPartition(ulid.Time(ulid.MustParse(b).Time()), i.config.partitionDuration)
 }

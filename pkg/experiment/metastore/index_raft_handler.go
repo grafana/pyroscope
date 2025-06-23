@@ -21,7 +21,7 @@ type IndexInserter interface {
 }
 
 type IndexDeleter interface {
-	DeletePartition(tx *bbolt.Tx, partition indexstore.PartitionKey, tenant string, shard uint32) error
+	DeleteShard(tx *bbolt.Tx, partition indexstore.Partition, tenant string, shard uint32) error
 }
 
 type IndexWriter interface {
@@ -90,11 +90,11 @@ func (m *IndexCommandHandler) TruncateIndex(tx *bbolt.Tx, cmd *raft.Log, req *ra
 		// Although it's not strictly necessary, we may pass any tombstones
 		// to TruncateIndex, and the Partition member may be missing.
 		if p := tombstone.Partition; p != nil {
-			pk := indexstore.PartitionKey{
+			pk := indexstore.Partition{
 				Timestamp: time.Unix(0, p.Timestamp),
 				Duration:  time.Duration(p.Duration),
 			}
-			if err := m.index.DeletePartition(tx, pk, p.Tenant, p.Shard); err != nil {
+			if err := m.index.DeleteShard(tx, pk, p.Tenant, p.Shard); err != nil {
 				level.Error(m.logger).Log("msg", "failed to delete partition", "err", err)
 				return nil, err
 			}

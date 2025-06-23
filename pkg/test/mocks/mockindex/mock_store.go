@@ -128,7 +128,7 @@ func (_c *MockStore_ListPartitions_Call) RunAndReturn(run func(*bbolt.Tx) ([]*st
 }
 
 // LoadShard provides a mock function with given fields: _a0, _a1, _a2, _a3
-func (_m *MockStore) LoadShard(_a0 *bbolt.Tx, _a1 store.PartitionKey, _a2 string, _a3 uint32) (*store.Shard, error) {
+func (_m *MockStore) LoadShard(_a0 *bbolt.Tx, _a1 store.Partition, _a2 string, _a3 uint32) (*store.Shard, error) {
 	ret := _m.Called(_a0, _a1, _a2, _a3)
 
 	if len(ret) == 0 {
@@ -137,10 +137,10 @@ func (_m *MockStore) LoadShard(_a0 *bbolt.Tx, _a1 store.PartitionKey, _a2 string
 
 	var r0 *store.Shard
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*bbolt.Tx, store.PartitionKey, string, uint32) (*store.Shard, error)); ok {
+	if rf, ok := ret.Get(0).(func(*bbolt.Tx, store.Partition, string, uint32) (*store.Shard, error)); ok {
 		return rf(_a0, _a1, _a2, _a3)
 	}
-	if rf, ok := ret.Get(0).(func(*bbolt.Tx, store.PartitionKey, string, uint32) *store.Shard); ok {
+	if rf, ok := ret.Get(0).(func(*bbolt.Tx, store.Partition, string, uint32) *store.Shard); ok {
 		r0 = rf(_a0, _a1, _a2, _a3)
 	} else {
 		if ret.Get(0) != nil {
@@ -148,7 +148,7 @@ func (_m *MockStore) LoadShard(_a0 *bbolt.Tx, _a1 store.PartitionKey, _a2 string
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*bbolt.Tx, store.PartitionKey, string, uint32) error); ok {
+	if rf, ok := ret.Get(1).(func(*bbolt.Tx, store.Partition, string, uint32) error); ok {
 		r1 = rf(_a0, _a1, _a2, _a3)
 	} else {
 		r1 = ret.Error(1)
@@ -171,9 +171,9 @@ func (_e *MockStore_Expecter) LoadShard(_a0 interface{}, _a1 interface{}, _a2 in
 	return &MockStore_LoadShard_Call{Call: _e.mock.On("LoadShard", _a0, _a1, _a2, _a3)}
 }
 
-func (_c *MockStore_LoadShard_Call) Run(run func(_a0 *bbolt.Tx, _a1 store.PartitionKey, _a2 string, _a3 uint32)) *MockStore_LoadShard_Call {
+func (_c *MockStore_LoadShard_Call) Run(run func(_a0 *bbolt.Tx, _a1 store.Partition, _a2 string, _a3 uint32)) *MockStore_LoadShard_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*bbolt.Tx), args[1].(store.PartitionKey), args[2].(string), args[3].(uint32))
+		run(args[0].(*bbolt.Tx), args[1].(store.Partition), args[2].(string), args[3].(uint32))
 	})
 	return _c
 }
@@ -183,7 +183,7 @@ func (_c *MockStore_LoadShard_Call) Return(_a0 *store.Shard, _a1 error) *MockSto
 	return _c
 }
 
-func (_c *MockStore_LoadShard_Call) RunAndReturn(run func(*bbolt.Tx, store.PartitionKey, string, uint32) (*store.Shard, error)) *MockStore_LoadShard_Call {
+func (_c *MockStore_LoadShard_Call) RunAndReturn(run func(*bbolt.Tx, store.Partition, string, uint32) (*store.Shard, error)) *MockStore_LoadShard_Call {
 	_c.Call.Return(run)
 	return _c
 }

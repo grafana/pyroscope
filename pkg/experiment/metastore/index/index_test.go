@@ -37,31 +37,18 @@ func TestIndex_PartitionList(t *testing.T) {
 			return idx.InsertBlock(tx, blockMeta.CloneVT())
 		}))
 
-		var partition *store.Partition
-		partitionKey := store.NewPartitionKey(test.Time("2024-09-11T07:00:00.001Z"), idx.config.partitionDuration)
-
-		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-			return idx.ListPartitions(nil, func(p *store.Partition) bool {
-				if p.Key.Equal(partitionKey) {
-					partition = p
-					return false
-				}
-				return true
-			})
-		}))
-
-		require.NotNil(t, partition)
-		shardIndex := partition.TenantShards[tenant][shardID]
-		require.NotNil(t, shardIndex)
-		assert.Equal(t, blockMeta.MinTime, shardIndex.MinTime)
-		assert.Equal(t, blockMeta.MaxTime, shardIndex.MaxTime)
+		p := store.NewPartition(test.Time("2024-09-11T07:00:00.001Z"), idx.config.partitionDuration)
+		findPartition(t, db, idx, p)
+		shard := findShard(t, db, p, tenant, shardID)
+		assert.Equal(t, blockMeta.MinTime, shard.ShardIndex.MinTime)
+		assert.Equal(t, blockMeta.MaxTime, shard.ShardIndex.MaxTime)
 	})
 
 	t.Run("shard update", func(t *testing.T) {
 		db := test.BoltDB(t)
 		idx := NewIndex(util.Logger, NewStore(), DefaultConfig)
 
-		partitionKey := store.NewPartitionKey(test.Time("2024-09-11T06:00:00.000Z"), 6*time.Hour)
+		p := store.NewPartition(test.Time("2024-09-11T06:00:00.000Z"), 6*time.Hour)
 		tenant := "tenant"
 		shardID := uint32(1)
 
@@ -83,20 +70,10 @@ func TestIndex_PartitionList(t *testing.T) {
 		idx = NewIndex(util.Logger, NewStore(), DefaultConfig)
 		require.NoError(t, db.View(idx.Restore))
 
-		var partition *store.Partition
-		require.NoError(t, idx.ListPartitions(nil, func(p *store.Partition) bool {
-			if p.Key.Equal(partitionKey) {
-				partition = p
-				return false
-			}
-			return true
-		}))
-		require.NotNil(t, partition)
-
-		shardIndex := partition.TenantShards[tenant][shardID]
-		require.NotNil(t, shardIndex)
-		assert.Equal(t, blockMeta.MinTime, shardIndex.MinTime)
-		assert.Equal(t, blockMeta.MaxTime, shardIndex.MaxTime)
+		findPartition(t, db, idx, p)
+		shard := findShard(t, db, p, tenant, shardID)
+		assert.Equal(t, blockMeta.MinTime, shard.ShardIndex.MinTime)
+		assert.Equal(t, blockMeta.MaxTime, shard.ShardIndex.MaxTime)
 
 		newBlockMeta := &metastorev1.BlockMeta{
 			Id:          test.ULID("2024-09-11T08:00:00.001Z"),
@@ -112,22 +89,50 @@ func TestIndex_PartitionList(t *testing.T) {
 			return idx.InsertBlock(tx, newBlockMeta.CloneVT())
 		}))
 
-		updatedShardIndex := partition.TenantShards[tenant][shardID]
-		require.NotNil(t, updatedShardIndex)
-		assert.Equal(t, newBlockMeta.MinTime, updatedShardIndex.MinTime)
-		assert.Equal(t, newBlockMeta.MaxTime, updatedShardIndex.MaxTime)
+		updated := findShard(t, db, p, tenant, shardID)
+		assert.Equal(t, newBlockMeta.MinTime, updated.ShardIndex.MinTime)
+		assert.Equal(t, newBlockMeta.MaxTime, updated.ShardIndex.MaxTime)
 
 		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-			cachedShard, err := idx.getShard(tx, partitionKey, tenant, shardID)
+			s, err := idx.shards.getForRead(tx, p, tenant, shardID)
 			if err != nil {
 				return err
 			}
-			require.NotNil(t, cachedShard)
-			assert.Equal(t, cachedShard.MinTime, updatedShardIndex.MinTime)
-			assert.Equal(t, cachedShard.MaxTime, updatedShardIndex.MaxTime)
+			require.NotNil(t, s)
+			assert.Equal(t, s.ShardIndex.MinTime, updated.ShardIndex.MinTime)
+			assert.Equal(t, s.ShardIndex.MaxTime, updated.ShardIndex.MaxTime)
 			return nil
 		}))
 	})
+}
+
+func findPartition(t *testing.T, db *bbolt.DB, idx *Index, k store.Partition) {
+	var p *store.Partition
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		for partition := range idx.Partitions(tx) {
+			if partition.Equal(k) {
+				p = &partition
+				break
+			}
+		}
+		return nil
+	}))
+	assert.NotZero(t, p)
+}
+
+func findShard(t *testing.T, db *bbolt.DB, partition store.Partition, tenant string, shardID uint32) store.Shard {
+	var s store.Shard
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		for shard := range partition.Query(tx).Shards(tenant) {
+			if shard.Shard == shardID {
+				s = shard
+				break
+			}
+		}
+		return nil
+	}))
+	assert.NotZero(t, s)
+	return s
 }
 
 func TestIndex_RestoreTimeBasedLoading(t *testing.T) {
@@ -181,11 +186,13 @@ func TestIndex_RestoreTimeBasedLoading(t *testing.T) {
 
 	idx = NewIndex(util.Logger, NewStore(), config)
 	require.NoError(t, db.View(idx.Restore))
-
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		assert.NotNil(t, idx.shards.get(store.NewPartitionKey(t1, config.partitionDuration), tenant, 1))
-		assert.Nil(t, idx.shards.get(store.NewPartitionKey(t2, config.partitionDuration), tenant, 2))
-		assert.Nil(t, idx.shards.get(store.NewPartitionKey(t3, config.partitionDuration), tenant, 3))
+		s, _ := idx.shards.cache.Get(shardCacheKey{store.NewPartition(t1, config.partitionDuration), tenant, 1})
+		assert.NotNil(t, s)
+		s, _ = idx.shards.cache.Get(shardCacheKey{store.NewPartition(t2, config.partitionDuration), tenant, 2})
+		assert.Nil(t, s)
+		s, _ = idx.shards.cache.Get(shardCacheKey{store.NewPartition(t3, config.partitionDuration), tenant, 3})
+		assert.Nil(t, s)
 		return nil
 	}))
 }

@@ -1,11 +1,15 @@
 package store
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
+	"iter"
 	"strconv"
 	"strings"
 	"time"
+
+	"go.etcd.io/bbolt"
 
 	multitenancy "github.com/grafana/pyroscope/pkg/tenant"
 )
@@ -13,77 +17,66 @@ import (
 var ErrInvalidPartitionKey = errors.New("invalid partition key")
 
 type Partition struct {
-	Key          PartitionKey
-	TenantShards map[string]map[uint32]*ShardIndex
-}
-
-type PartitionKey struct {
 	Timestamp time.Time
 	Duration  time.Duration
 }
 
-func NewPartition(k PartitionKey) *Partition {
-	return &Partition{
-		Key:          k,
-		TenantShards: make(map[string]map[uint32]*ShardIndex),
+func NewPartition(timestamp time.Time, duration time.Duration) Partition {
+	return Partition{Timestamp: timestamp.Truncate(duration), Duration: duration}
+}
+
+func (p *Partition) Equal(x Partition) bool {
+	return p.Timestamp.Equal(x.Timestamp) && p.Duration == x.Duration
+}
+
+func (p *Partition) StartTime() time.Time { return p.Timestamp }
+
+func (p *Partition) EndTime() time.Time { return p.Timestamp.Add(p.Duration) }
+
+func (p *Partition) Overlaps(start, end time.Time) bool {
+	if start.After(p.EndTime()) {
+		return false
 	}
-}
-
-func (p *Partition) StartTime() time.Time               { return p.Key.StartTime() }
-func (p *Partition) EndTime() time.Time                 { return p.Key.EndTime() }
-func (p *Partition) Overlaps(start, end time.Time) bool { return p.Key.Overlaps(start, end) }
-
-func (k *PartitionKey) StartTime() time.Time { return k.Timestamp }
-func (k *PartitionKey) EndTime() time.Time   { return k.Timestamp.Add(k.Duration) }
-func (k *PartitionKey) Overlaps(start, end time.Time) bool {
-	return start.Before(k.EndTime()) && !end.Before(k.StartTime())
-}
-
-func (p *Partition) AddTenantShard(tenant string, shard uint32, s *ShardIndex) {
-	t := p.TenantShards[tenant]
-	if t == nil {
-		t = make(map[uint32]*ShardIndex)
-		p.TenantShards[tenant] = t
+	if end.Before(p.StartTime()) {
+		return false
 	}
-	t[shard] = s
+	return true
 }
 
-func (p *Partition) HasTenant(t string) bool {
-	_, ok := p.TenantShards[t]
-	return ok
+func (p *Partition) Bytes() []byte {
+	b, _ := p.MarshalBinary()
+	return b
 }
 
-func (p *Partition) HasIndexShard(tenant string, shard uint32) bool {
-	t, ok := p.TenantShards[tenant]
-	if ok {
-		_, ok = t[shard]
+func (p *Partition) String() string {
+	b := make([]byte, 0, 32)
+	b = p.Timestamp.UTC().AppendFormat(b, time.DateTime)
+	b = append(b, ' ')
+	b = append(b, '(')
+	b = append(b, p.Duration.String()...)
+	b = append(b, ')')
+	return string(b)
+}
+
+func (p *Partition) MarshalBinary() ([]byte, error) {
+	b := make([]byte, 12)
+	binary.BigEndian.PutUint64(b[0:8], uint64(p.Timestamp.UnixNano()))
+	binary.BigEndian.PutUint32(b[8:12], uint32(p.Duration/time.Second))
+	return b, nil
+}
+
+func (p *Partition) UnmarshalBinary(b []byte) error {
+	if len(b) != 12 {
+		return ErrInvalidPartitionKey
 	}
-	return ok
-}
-
-func (p *Partition) Compare(other *Partition) int {
-	if p == other {
-		return 0
-	}
-	return p.Key.Timestamp.Compare(other.Key.Timestamp)
-}
-
-func (p *Partition) DeleteTenantShard(tenant string, shard uint32) {
-	if t := p.TenantShards[tenant]; t != nil {
-		delete(t, shard)
-		if len(t) == 0 {
-			delete(p.TenantShards, tenant)
-		}
-	}
-}
-
-func (p *Partition) IsEmpty() bool {
-	return len(p.TenantShards) == 0
+	p.Timestamp = time.Unix(0, int64(binary.BigEndian.Uint64(b[0:8])))
+	p.Duration = time.Duration(binary.BigEndian.Uint32(b[8:12])) * time.Second
+	return nil
 }
 
 func (p *Partition) TombstoneName(tenant string, shard uint32) string {
 	var b strings.Builder
-	b.WriteString(p.Key.String())
+	b.WriteString(p.String())
 	b.WriteByte('-')
 	b.WriteByte('T')
 	if tenant != "" {
@@ -97,41 +90,88 @@ func (p *Partition) TombstoneName(tenant string, shard uint32) string {
 	return b.String()
 }
 
-func NewPartitionKey(timestamp time.Time, duration time.Duration) PartitionKey {
-	return PartitionKey{Timestamp: timestamp.Truncate(duration), Duration: duration}
-}
-
-func (k *PartitionKey) Equal(x PartitionKey) bool {
-	return k.Timestamp.Equal(x.Timestamp) && k.Duration == x.Duration
-}
-
-func (k *PartitionKey) MarshalBinary() ([]byte, error) {
-	b := make([]byte, 12)
-	binary.BigEndian.PutUint64(b[0:8], uint64(k.Timestamp.UnixNano()))
-	binary.BigEndian.PutUint32(b[8:12], uint32(k.Duration/time.Second))
-	return b, nil
-}
-
-func (k *PartitionKey) UnmarshalBinary(b []byte) error {
-	if len(b) != 12 {
-		return ErrInvalidPartitionKey
+func Partitions(tx *bbolt.Tx) iter.Seq[Partition] {
+	root := getPartitionsBucket(tx)
+	if root == nil {
+		return func(func(Partition) bool) {}
 	}
-	k.Timestamp = time.Unix(0, int64(binary.BigEndian.Uint64(b[0:8])))
-	k.Duration = time.Duration(binary.BigEndian.Uint32(b[8:12])) * time.Second
-	return nil
+	return func(yield func(Partition) bool) {
+		cursor := root.Cursor()
+		for partitionKey, _ := cursor.First(); partitionKey != nil; partitionKey, _ = cursor.Next() {
+			p := Partition{}
+			if err := p.UnmarshalBinary(partitionKey); err != nil {
+				continue
+			}
+			if !yield(p) {
+				return
+			}
+		}
+	}
 }
 
-func (k *PartitionKey) Bytes() []byte {
-	b, _ := k.MarshalBinary()
-	return b
+func (p Partition) Query(tx *bbolt.Tx) *PartitionQuery {
+	b := getPartitionsBucket(tx).Bucket(p.Bytes())
+	if b == nil {
+		return nil
+	}
+	return &PartitionQuery{
+		tx:        tx,
+		Partition: p,
+		bucket:    b,
+	}
 }
 
-func (k *PartitionKey) String() string {
-	b := make([]byte, 0, 32)
-	b = k.Timestamp.UTC().AppendFormat(b, time.DateTime)
-	b = append(b, ' ')
-	b = append(b, '(')
-	b = append(b, k.Duration.String()...)
-	b = append(b, ')')
-	return string(b)
+type PartitionQuery struct {
+	Partition
+	tx     *bbolt.Tx
+	bucket *bbolt.Bucket
+}
+
+func (q *PartitionQuery) Tenants() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		cursor := q.bucket.Cursor()
+		for tenantKey, _ := cursor.First(); tenantKey != nil; tenantKey, _ = cursor.Next() {
+			tenantBucket := q.bucket.Bucket(tenantKey)
+			if tenantBucket == nil {
+				continue
+			}
+			tenant := string(tenantKey)
+			if bytes.Equal(tenantKey, emptyTenantBucketNameBytes) {
+				tenant = ""
+			}
+			if !yield(tenant) {
+				return
+			}
+		}
+	}
+}
+
+func (q *PartitionQuery) Shards(tenant string) iter.Seq[Shard] {
+	tenantBucket := q.bucket.Bucket(tenantBucketName(tenant))
+	if tenantBucket == nil {
+		return func(func(Shard) bool) { return }
+	}
+	return func(yield func(Shard) bool) {
+		cursor := tenantBucket.Cursor()
+		for shardKey, _ := cursor.First(); shardKey != nil; shardKey, _ = cursor.Next() {
+			shardBucket := tenantBucket.Bucket(shardKey)
+			if shardBucket == nil {
+				continue
+			}
+			shard := Shard{
+				Partition:  q.Partition,
+				Tenant:     tenant,
+				Shard:      binary.BigEndian.Uint32(shardKey),
+				ShardIndex: ShardIndex{},
+			}
+			if b := shardBucket.Get(tenantShardIndexKeyNameBytes); len(b) > 0 {
+				if err := shard.ShardIndex.UnmarshalBinary(b); err != nil {
+					continue
+				}
+			}
+			if !yield(shard) {
+				return
+			}
+		}
+	}
 }

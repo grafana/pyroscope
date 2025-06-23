@@ -7,7 +7,7 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-var ErrorNotFound = errors.New("not found")
+var ErrNotFound = errors.New("not found")
 
 type KV struct {
 	Key   []byte

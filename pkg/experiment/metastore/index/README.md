@@ -88,18 +88,8 @@ Partition
 ```
 
 The index uses several caches for performance:
-- The partition list.
 - The shard cache keeps shard indexes and string tables in memory.
 - The block cache stores decoded metadata entries.
-
-The partition list is an in-memory structure that contains all partitions, their tenants, and shards.
-
-```
-Partition
-└── Tenant
-    └── Shard
-        └── .index
-```
 
 ## Index Writes
 

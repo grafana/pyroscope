@@ -29,7 +29,7 @@ func (s JobStateStore) CreateBuckets(tx *bbolt.Tx) error {
 func (s JobStateStore) GetJobState(tx *bbolt.Tx, name string) (*raft_log.CompactionJobState, error) {
 	b := tx.Bucket(s.bucketName).Get([]byte(name))
 	if b == nil {
-		return nil, fmt.Errorf("loading job state %s: %w", name, store.ErrorNotFound)
+		return nil, fmt.Errorf("loading job state %s: %w", name, store.ErrNotFound)
 	}
 	var v raft_log.CompactionJobState
 	if err := v.UnmarshalVT(b); err != nil {

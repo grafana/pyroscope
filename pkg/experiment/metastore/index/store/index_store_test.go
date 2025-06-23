@@ -20,7 +20,7 @@ func TestShard_Overlaps(t *testing.T) {
 		return store.CreateBuckets(tx)
 	}))
 
-	partitionKey := NewPartitionKey(test.Time("2024-09-11T06:00:00.000Z"), 6*time.Hour)
+	partitionKey := NewPartition(test.Time("2024-09-11T06:00:00.000Z"), 6*time.Hour)
 	tenant := "test-tenant"
 	shardID := uint32(1)
 
@@ -66,8 +66,8 @@ func TestShard_Overlaps(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, shard)
 
-		assert.Equal(t, blockMinTime, shard.MinTime)
-		assert.Equal(t, blockMaxTime, shard.MaxTime)
+		assert.Equal(t, blockMinTime, shard.ShardIndex.MinTime)
+		assert.Equal(t, blockMaxTime, shard.ShardIndex.MaxTime)
 
 		testCases := []struct {
 			name      string
@@ -133,7 +133,7 @@ func TestShard_Overlaps(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				result := shard.Overlaps(tc.startTime, tc.endTime)
+				result := shard.ShardIndex.Overlaps(tc.startTime, tc.endTime)
 				assert.Equal(t, tc.expected, result,
 					"Overlaps(%v, %v) = %v, expected %v",
 					tc.startTime, tc.endTime, result, tc.expected)
