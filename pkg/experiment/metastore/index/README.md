@@ -1,6 +1,8 @@
 # Metadata Index
 
-The metadata index stores metadata entries for objects located in the data store. It is implemented using BoltDB as the underlying key-value store, with Raft providing replication via consensus. BoltDB was chosen for its simplicity and efficiency in this use case – a single writer, concurrent readers, and ACID transactions. For better performance, the index database can be stored on an in-memory volume, as it's recovered from the Raft log and snapshot on startup, and durable storage is not required for the index itself.
+The metadata index stores metadata entries for objects located in the data store. In essence, it is a document store built on top of a key-value database.
+
+It is implemented using BoltDB as the underlying key-value store, with Raft providing replication via consensus. BoltDB was chosen for its simplicity and efficiency in this use case – a single writer, concurrent readers, and ACID transactions. For better performance, the index database can be stored on an in-memory volume, as it's recovered from the Raft log and snapshot on startup, and durable storage is not required for the index itself.
 
 ## Metadata entries
 
@@ -72,7 +74,8 @@ Every block is assigned to a shard at [data distribution](../../distributor/READ
 
 Shard-level structures:
 - To save space, strings in block metadata are deduplicated using a dictionary (`StringTable`).
-- Each shard maintains a time range index (min/max timestamps) for efficient filtering (`ShardIndex`).
+- Each shard maintains a small index for efficient filtering (`ShardIndex`).
+  * The index indicates the time range of the shard's data (min and max timestamps).
 
 ```
 Partition
@@ -142,7 +145,7 @@ If block metadata cannot be added to the index by the client, the metadata may b
 
 ## Index Queries
 
-Queries access the index through the Consistent Read API, which implements the linearizable read pattern. This ensures that the replica reflects the most recent state agreed upon by the Raft consensus at the moment of access, and any previous writes are visible to the read operation. Refer to the [implementation](../raftnode/node_read.go) for details.
+Queries access the index through the `ConsistentRead` API, which implements the _linearizable read_ pattern. This ensures that the replica reflects the most recent state agreed upon by the Raft consensus at the moment of access, and any previous writes are visible to the read operation. Refer to the [implementation](../raftnode/node_read.go) for details. The approach enables Raft _follower_ replicas to serve queries: in practice, both the leader and followers serve queries.
 
 Index queries are performed by the `query-frontend` service, which is responsible for locating data objects for a given query.
 
@@ -191,7 +194,7 @@ Example query:
 ```go
 query := MetadataQuery{
     Expr:      `{service_name="frontend"}`,
-    StartTime: time.Now().Add(-1 * time.Hour),
+    StartTime: time.Now().Add(-time.Hour),
     EndTime:   time.Now(),
     Tenant:    []string{"tenant-1"},
     Labels:    []string{"profile_type"}
@@ -210,13 +213,23 @@ When compacted blocks are added to the index, metadata entries of the source blo
 
 ### Retention Policies
 
-The cleaner runs periodically to delete old partitions based on retention policies. The cleaner generates tombstones for deleted partitions, which are then removed from the index and the storage during compaction.
+Retention policies are applied in a coarse-grained manner: individual blocks are not evaluated for deletion. Instead, entire partitions are removed when required by the retention configuration. A partition is identified by a key comprising its time range, tenant ID, and shard ID.
+
+#### Time-based Retention Policy
+
+Currently, only a time-based retention policy is implemented, which deletes partitions older than a specified duration. Retention is based on the block creation time to support data backfilling scenarios. However, data timestamps are also respected: a block is only removed if its upper boundary has passed the retention period.
+
+The time-based retention policies are tenant-specific and can be configured per tenant.
+
+### Cleanup
+
+The cleaner component, running on the Raft leader node, is responsible for enforcing the retention policies. It deletes partitions from the index and generates _tombstones_ that are handled later, during compaction.
 
 The diagram below illustrates the cleanup process:
 
 ```mermaid
 sequenceDiagram
-    participant C as Cleaner
+    participant C as cleaner
     
     box Index Service
         participant H as Endpoint
@@ -231,7 +244,7 @@ sequenceDiagram
     Note over C: Periodic cleanup trigger
     C->>+H: TruncateIndex(policy)
         critical
-            H->>MI: ListPartitions (Linearizable Read)
+            H->>MI: ListPartitions (ConsistentRead)
             Note over MI: Read state
             MI-->>H: 
             Note over H: Apply retention policy<br/>Generate tombstones
@@ -243,8 +256,6 @@ sequenceDiagram
     H-->>-C: 
 ```
 
-Retention policies are applied in a coarse-grained manner, meaning that blocks are not individually evaluated for deletion. Instead, the cleaner checks the partition list and removes entire partitions if required by the retention policies.
-
-### Time-based Retention Policy
-
-Currently, only a time-based retention policy is implemented, which deletes partitions older than a specified duration. Retention is based on the block creation time to support data backfilling scenarios. However, data timestamps are also respected: a block is only removed if its upper boundary has passed the retention period.
+This is a two-phase process:
+ 1. The cleaner lists all partitions in the index and applies the retention policy to determine which partitions should be deleted. Unlike the `QueryService`, the cleaner can only read the local state, assuming that this is the Raft leader node: it still uses the `ConsistentRead` interface, however, it can only communicate with the local node.
+ 2. The cleaner proposes a Raft command to delete the partitions and generate _tombstones_ for the data objects that need to be removed. The proposal is rejected by followers if the leader has changed since the moment of the read operation. This ensures that the proposal reflects the most recent state of the index and was created by the acting leader, eliminating the possibility of conflicts.

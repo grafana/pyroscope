@@ -39,7 +39,11 @@ downgrade.
 
 > As of now, both steps are committed to the Raft log. However, as an optimization, the first step – preparation,
 > can be implemented as a **Linearizable Read** through **Read Index** (which we already use in metadata queries)
-> to avoid unnecessary replication of the read-only operation.
+> to avoid unnecessary replication of the read-only operation. This approach is already used by the metadata index  
+> cleaner: leader read with a follow-up proposal.
+>
+> However, unlike cleanup, compaction is a more complex operation, and the serialization guarantees provided  
+> by Raft command execution flow help avoid many potential issues with concurrent read/write access.
 
 ```mermaid
 sequenceDiagram
