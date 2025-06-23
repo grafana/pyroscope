@@ -90,25 +90,6 @@ func (p *Partition) TombstoneName(tenant string, shard uint32) string {
 	return b.String()
 }
 
-func Partitions(tx *bbolt.Tx) iter.Seq[Partition] {
-	root := getPartitionsBucket(tx)
-	if root == nil {
-		return func(func(Partition) bool) {}
-	}
-	return func(yield func(Partition) bool) {
-		cursor := root.Cursor()
-		for partitionKey, _ := cursor.First(); partitionKey != nil; partitionKey, _ = cursor.Next() {
-			p := Partition{}
-			if err := p.UnmarshalBinary(partitionKey); err != nil {
-				continue
-			}
-			if !yield(p) {
-				return
-			}
-		}
-	}
-}
-
 func (p Partition) Query(tx *bbolt.Tx) *PartitionQuery {
 	b := getPartitionsBucket(tx).Bucket(p.Bytes())
 	if b == nil {
@@ -149,7 +130,7 @@ func (q *PartitionQuery) Tenants() iter.Seq[string] {
 func (q *PartitionQuery) Shards(tenant string) iter.Seq[Shard] {
 	tenantBucket := q.bucket.Bucket(tenantBucketName(tenant))
 	if tenantBucket == nil {
-		return func(func(Shard) bool) { return }
+		return func(func(Shard) bool) {}
 	}
 	return func(yield func(Shard) bool) {
 		cursor := tenantBucket.Cursor()

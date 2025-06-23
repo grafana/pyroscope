@@ -234,7 +234,7 @@ sequenceDiagram
     Note over C: Periodic cleanup trigger
     C->>+H: TruncateIndex(policy)
         critical
-            H->>MI: ListPartitions (ConsistentRead)
+            H->>MI: List partitions (ConsistentRead)
             Note over MI: Read state
             MI-->>H: 
             Note over H: Apply retention policy<br/>Generate tombstones

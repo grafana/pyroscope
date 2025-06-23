@@ -3,6 +3,7 @@ package retention
 import (
 	"flag"
 	"iter"
+	"math"
 	"slices"
 	"time"
 
@@ -190,8 +191,8 @@ func (rp *TimeBasedRetentionPolicy) Visit(tx *bbolt.Tx, p indexstore.Partition) 
 	// deletion is a side effect per se, and it only concerns the local state),
 	// but we can find the marks during the cleanup job. That could be
 	// implemented as a separate retention policy.
-	rp.createTombstonesForAnonTenant(q, partitionEnd)
-	return len(rp.tombstones) >= rp.maxTombstones
+	rp.createTombstonesForAnonTenant(q)
+	return len(rp.tombstones) < rp.maxTombstones
 }
 
 func (rp *TimeBasedRetentionPolicy) createTombstonesForMarkers(q *indexstore.PartitionQuery, markers []*marker) {
@@ -210,9 +211,12 @@ func (rp *TimeBasedRetentionPolicy) createTombstonesForTenants(q *indexstore.Par
 		if tenantID == "" {
 			continue
 		}
-		m := rp.defaultPeriod
+		var m *marker
 		if o, ok := rp.overrides[tenantID]; ok {
 			m = o
+		} else if rp.defaultPeriod != nil {
+			// Create a tenant-specific marker using the default retention period
+			m = &marker{tenantID: tenantID, timestamp: rp.defaultPeriod.timestamp}
 		}
 		if m == nil {
 			// No retention policy for this tenant, and no default:
@@ -220,34 +224,37 @@ func (rp *TimeBasedRetentionPolicy) createTombstonesForTenants(q *indexstore.Par
 			continue
 		}
 		if m.timestamp.After(partitionEnd.timestamp) {
-			if rp.createTombstones(q, m) {
+			if !rp.createTombstones(q, m) {
 				return
 			}
 		}
 	}
 }
 
-func (rp *TimeBasedRetentionPolicy) createTombstonesForAnonTenant(q *indexstore.PartitionQuery, partitionEnd *marker) bool {
-	var c int
-	for range q.Tenants() {
-		c++
-		if c > 1 {
-			// We have at least one tenant other than the anonymous one.
-			// We cannot delete the anonymous tenant shard yet.
-			level.Debug(rp.logger).Log("partition has other tenants, skipping anon tenant tombstones")
-			return true
-		}
-	}
-	if q.Shards("") == nil {
-		// This is unexpected: the partition cannot have tenants,
-		// but no anonymous tenant. We ignore it for now.
-		level.Warn(rp.logger).Log("msg", "non-empty partition without anon tenant shards, ignoring", "partition", q.Partition.String())
+func (rp *TimeBasedRetentionPolicy) createTombstonesForAnonTenant(q *indexstore.PartitionQuery) bool {
+	if rp.hasTenants(q) {
+		// We have at least one tenant other than the anonymous one.
+		// We cannot delete the anonymous tenant shard yet – continue.
 		return true
 	}
 	// Once shard max time passes the partition end time, we can
 	// create tombstones for the anonymous tenant shard.
 	level.Debug(rp.logger).Log("creating tombstones for anonymous tenant")
-	return rp.createTombstones(q, partitionEnd)
+	// We want to bypass the timestamp check for the anonymous tenant:
+	// we know that if all the other tenants have been processed, it's
+	// safe to create tombstones for the anonymous tenant.
+	return rp.createTombstones(q, &marker{timestamp: time.UnixMilli(math.MaxInt64)})
+}
+
+func (rp *TimeBasedRetentionPolicy) hasTenants(q *indexstore.PartitionQuery) bool {
+	var n int
+	for tenant := range q.Tenants() {
+		n++
+		if n > 1 || tenant != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func (rp *TimeBasedRetentionPolicy) createTombstones(q *indexstore.PartitionQuery, m *marker) bool {
@@ -255,7 +262,8 @@ func (rp *TimeBasedRetentionPolicy) createTombstones(q *indexstore.PartitionQuer
 		if len(rp.tombstones) >= rp.maxTombstones {
 			return false
 		}
-		if time.Unix(0, shard.ShardIndex.MaxTime).Before(m.timestamp) {
+		maxTime := time.Unix(0, shard.ShardIndex.MaxTime)
+		if maxTime.Before(m.timestamp) {
 			// The shard does not contain data before the marker.
 			name := q.Partition.TombstoneName(m.tenantID, shard.Shard)
 			level.Debug(rp.logger).Log("creating tombstone", "name", name)

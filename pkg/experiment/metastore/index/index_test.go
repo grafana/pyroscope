@@ -15,14 +15,14 @@ import (
 )
 
 func TestIndex_PartitionList(t *testing.T) {
+	const testTenant = "tenant"
+
 	t.Run("new shard", func(t *testing.T) {
 		db := test.BoltDB(t)
 		idx := NewIndex(util.Logger, NewStore(), DefaultConfig)
 		require.NoError(t, db.Update(idx.Init))
 
-		tenant := "tenant"
 		shardID := uint32(42)
-
 		blockMeta := &metastorev1.BlockMeta{
 			Id:          test.ULID("2024-09-11T07:00:00.001Z"),
 			Tenant:      1,
@@ -30,7 +30,7 @@ func TestIndex_PartitionList(t *testing.T) {
 			MinTime:     test.UnixMilli("2024-09-11T07:00:00.000Z"),
 			MaxTime:     test.UnixMilli("2024-09-11T09:00:00.000Z"),
 			CreatedBy:   1,
-			StringTable: []string{"", tenant, "ingester"},
+			StringTable: []string{"", testTenant, "ingester"},
 		}
 
 		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
@@ -39,7 +39,7 @@ func TestIndex_PartitionList(t *testing.T) {
 
 		p := store.NewPartition(test.Time("2024-09-11T07:00:00.001Z"), idx.config.partitionDuration)
 		findPartition(t, db, idx, p)
-		shard := findShard(t, db, p, tenant, shardID)
+		shard := findShard(t, db, p, testTenant, shardID)
 		assert.Equal(t, blockMeta.MinTime, shard.ShardIndex.MinTime)
 		assert.Equal(t, blockMeta.MaxTime, shard.ShardIndex.MaxTime)
 	})
@@ -49,7 +49,7 @@ func TestIndex_PartitionList(t *testing.T) {
 		idx := NewIndex(util.Logger, NewStore(), DefaultConfig)
 
 		p := store.NewPartition(test.Time("2024-09-11T06:00:00.000Z"), 6*time.Hour)
-		tenant := "tenant"
+		tenant := testTenant
 		shardID := uint32(1)
 
 		blockMeta := &metastorev1.BlockMeta{
@@ -107,11 +107,11 @@ func TestIndex_PartitionList(t *testing.T) {
 }
 
 func findPartition(t *testing.T, db *bbolt.DB, idx *Index, k store.Partition) {
-	var p *store.Partition
+	var p store.Partition
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
 		for partition := range idx.Partitions(tx) {
 			if partition.Equal(k) {
-				p = &partition
+				p = partition
 				break
 			}
 		}

@@ -50,7 +50,22 @@ func (m *IndexStore) CreateBuckets(tx *bbolt.Tx) error {
 }
 
 func (m *IndexStore) Partitions(tx *bbolt.Tx) goiter.Seq[Partition] {
-	return Partitions(tx)
+	root := getPartitionsBucket(tx)
+	if root == nil {
+		return func(func(Partition) bool) {}
+	}
+	return func(yield func(Partition) bool) {
+		cursor := root.Cursor()
+		for partitionKey, _ := cursor.First(); partitionKey != nil; partitionKey, _ = cursor.Next() {
+			p := Partition{}
+			if err := p.UnmarshalBinary(partitionKey); err != nil {
+				continue
+			}
+			if !yield(p) {
+				return
+			}
+		}
+	}
 }
 
 func (m *IndexStore) LoadShard(tx *bbolt.Tx, p Partition, tenant string, shard uint32) (*Shard, error) {
