@@ -63,7 +63,7 @@ func TestPlan_same_level(t *testing.T) {
 		},
 	}
 
-	p := newPlan(c, nil, 0)
+	p := &plan{compactor: c, blocks: newBlockIter()}
 	planned := make([]*jobPlan, 0, len(expected))
 	for j := p.nextJob(); j != nil; j = p.nextJob() {
 		planned = append(planned, j)
@@ -97,7 +97,7 @@ func TestPlan_same_level(t *testing.T) {
 		i++
 	}
 
-	p = newPlan(c, nil, 0)
+	p = &plan{compactor: c, blocks: newBlockIter()}
 	planned = planned[:0] // Old jobs should be re-planned.
 	for j := p.nextJob(); j != nil; j = p.nextJob() {
 		planned = append(planned, j)
@@ -136,7 +136,7 @@ func TestPlan_level_priority(t *testing.T) {
 		},
 	}
 
-	p := newPlan(c, nil, 0)
+	p := &plan{compactor: c, blocks: newBlockIter()}
 	planned := make([]*jobPlan, 0, len(expected))
 	for j := p.nextJob(); j != nil; j = p.nextJob() {
 		planned = append(planned, j)
@@ -148,7 +148,7 @@ func TestPlan_level_priority(t *testing.T) {
 func TestPlan_empty_queue(t *testing.T) {
 	c := NewCompactor(testConfig, nil, nil, nil)
 
-	p := newPlan(c, nil, 0)
+	p := &plan{compactor: c, blocks: newBlockIter()}
 	assert.Nil(t, p.nextJob())
 
 	c.enqueue(compaction.BlockEntry{
@@ -161,7 +161,7 @@ func TestPlan_empty_queue(t *testing.T) {
 
 	// L0 queue is empty.
 	// L1 queue has one block.
-	p = newPlan(c, nil, 0)
+	p = &plan{compactor: c, blocks: newBlockIter()}
 	assert.Nil(t, p.nextJob())
 
 	c.enqueue(compaction.BlockEntry{
@@ -174,7 +174,7 @@ func TestPlan_empty_queue(t *testing.T) {
 
 	// L0 queue is empty.
 	// L2 has blocks for a job.
-	p = newPlan(c, nil, 0)
+	p = &plan{compactor: c, blocks: newBlockIter()}
 	assert.NotNil(t, p.nextJob())
 }
 
@@ -219,7 +219,7 @@ func TestPlan_deleted_blocks(t *testing.T) {
 		},
 	}
 
-	p := newPlan(c, nil, 0)
+	p := &plan{compactor: c, blocks: newBlockIter()}
 	planned := make([]*jobPlan, 0, len(expected))
 	for j := p.nextJob(); j != nil; j = p.nextJob() {
 		planned = append(planned, j)
@@ -247,7 +247,7 @@ func TestPlan_deleted_blocks(t *testing.T) {
 		},
 	}, expected...)
 
-	p = newPlan(c, nil, 0)
+	p = &plan{compactor: c, blocks: newBlockIter()}
 	planned = planned[:0]
 	for j := p.nextJob(); j != nil; j = p.nextJob() {
 		planned = append(planned, j)
@@ -266,7 +266,7 @@ func TestPlan_deleted_batch(t *testing.T) {
 
 	remove(c.queue.levels[0], compactionKey{}, "0", "1", "2")
 
-	p := newPlan(c, nil, 0)
+	p := &plan{compactor: c, blocks: newBlockIter()}
 	assert.Nil(t, p.nextJob())
 }
 
@@ -301,7 +301,12 @@ func TestPlan_compact_by_time(t *testing.T) {
 		},
 	}
 
-	p := newPlan(c, nil, 40)
+	p := &plan{
+		compactor: c,
+		blocks:    newBlockIter(),
+		now:       40,
+	}
+
 	planned := make([]*jobPlan, 0, len(expected))
 	for j := p.nextJob(); j != nil; j = p.nextJob() {
 		planned = append(planned, j)
@@ -344,7 +349,12 @@ func TestPlan_time_split(t *testing.T) {
 		c.enqueue(e)
 	}
 
-	p := newPlan(c, nil, now.UnixNano())
+	p := &plan{
+		compactor: c,
+		blocks:    newBlockIter(),
+		now:       now.UnixNano(),
+	}
+
 	var i int
 	var n int
 	for j := p.nextJob(); j != nil; j = p.nextJob() {

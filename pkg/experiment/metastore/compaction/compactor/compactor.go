@@ -75,7 +75,12 @@ func (c *Compactor) NewPlan(cmd *raft.Log) compaction.Plan {
 	now := cmd.AppendedAt.UnixNano()
 	before := cmd.AppendedAt.Add(-c.config.CleanupDelay)
 	tombstones := c.tombstones.ListTombstones(before)
-	return newPlan(c, tombstones, now)
+	return &plan{
+		compactor:  c,
+		tombstones: tombstones,
+		blocks:     newBlockIter(),
+		now:        now,
+	}
 }
 
 func (c *Compactor) UpdatePlan(tx *bbolt.Tx, plan *raft_log.CompactionPlanUpdate) error {
