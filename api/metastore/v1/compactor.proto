@@ -46,8 +46,8 @@ message BlockTombstones {
 message PartitionTombstone {
   string name = 1;
   // Lower time boundary. Unix epoch in nanoseconds.
-  int64  timestamp = 2;
-  int64  duration = 3;
+  int64 timestamp = 2;
+  int64 duration = 3;
   uint32 shard = 4;
   string tenant = 5;
 }
