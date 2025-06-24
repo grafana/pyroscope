@@ -1679,6 +1679,13 @@
         }
       }
     },
+    "v1MetricType": {
+      "type": "string",
+      "enum": [
+        "TOTAL"
+      ],
+      "default": "TOTAL"
+    },
     "v1PartitionTombstone": {
       "type": "object",
       "properties": {
@@ -1702,13 +1709,6 @@
           "type": "string"
         }
       }
-    },
-    "v1MetricType": {
-      "type": "string",
-      "enum": [
-        "TOTAL"
-      ],
-      "default": "TOTAL"
     },
     "v1Point": {
       "type": "object",
