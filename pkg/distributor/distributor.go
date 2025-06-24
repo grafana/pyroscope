@@ -11,7 +11,6 @@ import (
 	"math/rand"
 	"net/http"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -1207,14 +1206,4 @@ func exportSamples(e *pprof.SampleExporter, samples []*profilev1.Sample) *pprof.
 	n := pprof.NewProfile()
 	e.ExportSamples(n.Profile, samplesCopy)
 	return n
-}
-
-func isAlloyEBPFRequest(series *distributormodel.PushRequest) bool {
-	for _, s := range series.Series {
-		serviceName := phlaremodel.Labels(s.Labels).Get(phlaremodel.LabelNameServiceName)
-		if strings.HasPrefix(serviceName, "ebpf/") {
-			return true
-		}
-	}
-	return false
 }
