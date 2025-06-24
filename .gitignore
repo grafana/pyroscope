@@ -19,6 +19,7 @@ data-metastore/
 **/dist
 
 # IDE
+.cursor
 .idea
 .vscode
 

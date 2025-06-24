@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/pyroscope/public"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/capabilities/v1/capabilitiesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
@@ -46,6 +47,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
 	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
+	"github.com/grafana/pyroscope/pkg/util/delayhandler"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
 
@@ -190,19 +192,20 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 }
 
 // RegisterDistributor registers the endpoints associated with the distributor.
-func (a *API) RegisterDistributor(d *distributor.Distributor, multitenancyEnabled bool) {
+func (a *API) RegisterDistributor(d *distributor.Distributor, limits delayhandler.Limits, multitenancyEnabled bool) {
+	writePathOpts := a.registerOptionsWritePath(limits)
 	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, a.logger)
 	otlpHandler := otlp.NewOTLPIngestHandler(d, a.logger, multitenancyEnabled)
 
-	a.RegisterRoute("/ingest", pyroscopeHandler, a.registerOptionsWritePath()...)
-	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, a.registerOptionsWritePath()...)
-	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.connectOptionsAuthRecovery()...)
+	a.RegisterRoute("/ingest", pyroscopeHandler, writePathOpts...)
+	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, writePathOpts...)
+	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.connectOptionsAuthDelayRecovery(limits)...)
 	a.RegisterRoute("/distributor/ring", d, a.registerOptionsRingPage()...)
 	a.indexPage.AddLinks(defaultWeight, "Distributor", []IndexPageLink{
 		{Desc: "Ring status", Path: "/distributor/ring"},
 	})
 
-	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, a.registerOptionsWritePath()...)
+	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, writePathOpts...)
 	// TODO(@petethepig): implement http/protobuf and http/json support
 	// a.RegisterRoute("/v1/profiles", otlpHandler, true, true, "POST")
 }
@@ -229,6 +232,10 @@ func (a *API) RegisterQuerierServiceHandler(svc querierv1connect.QuerierServiceH
 
 func (a *API) RegisterVCSServiceHandler(svc vcsv1connect.VCSServiceHandler) {
 	vcsv1connect.RegisterVCSServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
+}
+
+func (a *API) RegisterFeatureFlagsServiceHandler(svc capabilitiesv1connect.FeatureFlagsServiceHandler) {
+	capabilitiesv1connect.RegisterFeatureFlagsServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
 }
 
 func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient) {

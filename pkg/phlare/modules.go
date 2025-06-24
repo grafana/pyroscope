@@ -84,6 +84,7 @@ const (
 	TenantSettings    string = "tenant-settings"
 	AdHocProfiles     string = "ad-hoc-profiles"
 	EmbeddedGrafana   string = "embedded-grafana"
+	FeatureFlags      string = "feature-flags"
 
 	// Experimental modules
 
@@ -320,7 +321,7 @@ func (f *Phlare) initDistributor() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.API.RegisterDistributor(d, f.Cfg.MultitenancyEnabled)
+	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.MultitenancyEnabled)
 	return d, nil
 }
 

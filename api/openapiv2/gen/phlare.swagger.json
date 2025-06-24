@@ -9,6 +9,9 @@
       "name": "AdHocProfileService"
     },
     {
+      "name": "FeatureFlagsService"
+    },
+    {
       "name": "PusherService"
     },
     {
@@ -972,6 +975,28 @@
         }
       }
     },
+    "v1FeatureFlag": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the feature, please use lower camel case."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Wether the feature flag is enabled or disabled."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of the feature flag."
+        },
+        "documentationUrl": {
+          "type": "string",
+          "description": "Optional URL to the documentation page of the feature flag."
+        }
+      },
+      "description": "FeatureParameters contains the per feature flag parameters."
+    },
     "v1FlameGraph": {
       "type": "object",
       "properties": {
@@ -1192,6 +1217,19 @@
             "type": "object",
             "$ref": "#/definitions/v1CommitInfo"
           }
+        }
+      }
+    },
+    "v1GetFeatureFlagsResponse": {
+      "type": "object",
+      "properties": {
+        "featureFlags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1FeatureFlag"
+          },
+          "title": "Map containing all features, also disable features are returned"
         }
       }
     },
@@ -1665,6 +1703,13 @@
         }
       }
     },
+    "v1MetricType": {
+      "type": "string",
+      "enum": [
+        "TOTAL"
+      ],
+      "default": "TOTAL"
+    },
     "v1Point": {
       "type": "object",
       "properties": {
@@ -2030,6 +2075,10 @@
           "type": "string",
           "format": "int64",
           "description": "The observed generation of this recording rule. This value should be\nprovided when making updates to this record, to avoid conflicting\nconcurrent updates."
+        },
+        "stacktraceFilter": {
+          "$ref": "#/definitions/v1StacktraceFilter",
+          "description": "The stacktrace filter allows filtering on particular function names in the stacktrace.\nThis allows recording rules to focus on specific functions and calculate their \"total\"\nresource usage."
         }
       }
     },
@@ -2324,6 +2373,25 @@
         }
       },
       "description": "StackTraceSelector is used for filtering stack traces by locations."
+    },
+    "v1StacktraceFilter": {
+      "type": "object",
+      "properties": {
+        "functionName": {
+          "$ref": "#/definitions/v1StacktraceFilterFunctionName"
+        }
+      }
+    },
+    "v1StacktraceFilterFunctionName": {
+      "type": "object",
+      "properties": {
+        "functionName": {
+          "type": "string"
+        },
+        "metricType": {
+          "$ref": "#/definitions/v1MetricType"
+        }
+      }
     },
     "v1StacktraceSample": {
       "type": "object",

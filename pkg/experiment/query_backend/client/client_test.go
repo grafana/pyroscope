@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net"
 	"testing"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
-	"google.golang.org/grpc/test/bufconn"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -83,20 +81,12 @@ func (r *multiResolver) Close() {}
 // actual network I/O.
 func Test_Concurrency(t *testing.T) {
 	addresses := make([]string, 0, nServers)
-	listeners := make(map[string]*bufconn.Listener)
-
-	// Create a separate bufconn listener to be used by each server setup below.
 	for i := 0; i < nServers; i++ {
 		address := fmt.Sprintf("localhost:%d", 10004+i)
 		addresses = append(addresses, address)
-		listeners[address] = bufconn.Listen(256 << 10)
 	}
-	// In-memory dialer for the client dials the appropriate bufconn listener.
-	dialer := func(_ context.Context, address string) (net.Conn, error) {
-		listener := listeners[address]
-		require.NotNil(t, listener)
-		return listener.Dial()
-	}
+
+	listeners, dialOpt := test.CreateInMemoryListeners(addresses)
 
 	grpcClientCfg := grpcclient.Config{}
 	grpcClientCfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
@@ -104,7 +94,7 @@ func Test_Concurrency(t *testing.T) {
 	resolver.Register(&multiResolverBuilder{targets: addresses})
 	backendAddress := "multi:///"
 
-	cl, err := New(backendAddress, grpcClientCfg, grpc.WithContextDialer(dialer))
+	cl, err := New(backendAddress, grpcClientCfg, dialOpt)
 	require.NoError(t, err)
 
 	for i := 0; i < nServers; i++ {

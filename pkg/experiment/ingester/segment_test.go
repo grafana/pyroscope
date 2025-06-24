@@ -3,6 +3,8 @@ package ingester
 import (
 	"bytes"
 	"context"
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"math/rand"
@@ -14,15 +16,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/dlq"
-
 	gprofile "github.com/google/pprof/profile"
 	"github.com/grafana/dskit/flagext"
 	model2 "github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/time/rate"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -30,6 +30,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
+	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	testutil2 "github.com/grafana/pyroscope/pkg/experiment/ingester/memdb/testutil"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
@@ -387,8 +388,8 @@ func TestDLQRecoveryMock(t *testing.T) {
 			recoveredMetas <- meta
 		}).
 		Return(&metastorev1.AddBlockResponse{}, nil)
-	recovery := dlq.NewRecovery(test.NewTestingLogger(t), dlq.Config{
-		CheckInterval: 100 * time.Millisecond,
+	recovery := dlq.NewRecovery(test.NewTestingLogger(t), dlq.RecoveryConfig{
+		Period: 100 * time.Millisecond,
 	}, srv, sw.bucket)
 	recovery.Start()
 	defer recovery.Stop()
@@ -416,7 +417,7 @@ func TestDLQRecovery(t *testing.T) {
 
 	cfg := new(metastore.Config)
 	flagext.DefaultValues(cfg)
-	cfg.Index.Recovery.CheckInterval = 100 * time.Millisecond
+	cfg.DLQRecovery.Period = 100 * time.Millisecond
 	m := metastoretest.NewMetastoreSet(t, cfg, 3, sw.bucket)
 	defer m.Close()
 
@@ -1003,4 +1004,106 @@ func hasUnsymbolizedLabel(t *testing.T, block *metastorev1.BlockMeta) bool {
 		}
 	}
 	return false
+}
+
+type mockBucket struct {
+	*memory.InMemBucket
+	uploads atomic.Int64
+}
+
+func (m *mockBucket) Upload(ctx context.Context, _ string, _ io.Reader) error {
+	m.uploads.Add(1)
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func TestUploadBlock_HedgedUploadLimiter(t *testing.T) {
+	t.Run("disabled", func(t *testing.T) {
+		t.Parallel()
+
+		bucket := &mockBucket{InMemBucket: memory.NewInMemBucket()}
+		logger := test.NewTestingLogger(t)
+
+		var config Config
+		config.RegisterFlags(flag.NewFlagSet("test", flag.PanicOnError))
+		config.UploadTimeout = time.Millisecond * 250
+		config.UploadHedgeAfter = time.Millisecond
+		config.UploadHedgeRateMax = 0
+		config.UploadHedgeRateBurst = 0
+		config.UploadMaxRetries = 0
+
+		sw := &segmentsWriter{
+			config:              config,
+			logger:              logger,
+			bucket:              bucket,
+			hedgedUploadLimiter: rate.NewLimiter(rate.Limit(config.UploadHedgeRateMax), int(config.UploadHedgeRateBurst)),
+			metrics:             newSegmentMetrics(nil),
+		}
+
+		err := sw.uploadBlock(context.Background(), nil, new(metastorev1.BlockMeta), new(segment))
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		require.Equal(t, int64(1), bucket.uploads.Load())
+	})
+
+	t.Run("available", func(t *testing.T) {
+		t.Parallel()
+
+		bucket := &mockBucket{InMemBucket: memory.NewInMemBucket()}
+		logger := test.NewTestingLogger(t)
+
+		var config Config
+		config.RegisterFlags(flag.NewFlagSet("test", flag.PanicOnError))
+		config.UploadTimeout = time.Millisecond * 250
+		config.UploadHedgeAfter = time.Millisecond
+		config.UploadHedgeRateMax = 10
+		config.UploadHedgeRateBurst = 10
+		config.UploadMaxRetries = 0
+
+		sw := &segmentsWriter{
+			config:              config,
+			logger:              logger,
+			bucket:              bucket,
+			hedgedUploadLimiter: rate.NewLimiter(rate.Limit(config.UploadHedgeRateMax), int(config.UploadHedgeRateBurst)),
+			metrics:             newSegmentMetrics(nil),
+		}
+
+		// To avoid flakiness: there are no guarantees that the
+		// hedged request is triggered before the upload timeout
+		// expiration.
+		hedgedRequestTriggered := func() bool {
+			bucket.uploads.Store(0)
+			err := sw.uploadBlock(context.Background(), nil, new(metastorev1.BlockMeta), new(segment))
+			return errors.Is(err, context.DeadlineExceeded) && int64(2) == bucket.uploads.Load()
+		}
+
+		require.Eventually(t, hedgedRequestTriggered, time.Second*10, time.Millisecond*50)
+	})
+
+	t.Run("exhausted", func(t *testing.T) {
+		t.Parallel()
+
+		bucket := &mockBucket{InMemBucket: memory.NewInMemBucket()}
+		logger := test.NewTestingLogger(t)
+
+		var config Config
+		config.RegisterFlags(flag.NewFlagSet("test", flag.PanicOnError))
+		config.UploadTimeout = time.Millisecond * 250
+		config.UploadHedgeAfter = time.Millisecond
+		config.UploadHedgeRateMax = 0.1
+		config.UploadHedgeRateBurst = 10
+		config.UploadMaxRetries = 0
+
+		sw := &segmentsWriter{
+			config:              config,
+			logger:              logger,
+			bucket:              bucket,
+			hedgedUploadLimiter: rate.NewLimiter(rate.Limit(config.UploadHedgeRateMax), int(config.UploadHedgeRateBurst)),
+			metrics:             newSegmentMetrics(nil),
+		}
+
+		require.True(t, sw.hedgedUploadLimiter.ReserveN(time.Now(), int(config.UploadHedgeRateBurst)).OK())
+		err := sw.uploadBlock(context.Background(), nil, new(metastorev1.BlockMeta), new(segment))
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		require.Equal(t, int64(1), bucket.uploads.Load())
+	})
 }
