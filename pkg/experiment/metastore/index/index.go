@@ -101,8 +101,8 @@ func (i *Index) Init(tx *bbolt.Tx) error { return i.store.CreateBuckets(tx) }
 func (i *Index) Restore(tx *bbolt.Tx) error {
 	// See comment in DefaultConfig.queryLookaroundPeriod.
 	now := time.Now()
-	start := now.Add(i.config.queryLookaroundPeriod)
-	end := now.Add(-i.config.queryLookaroundPeriod)
+	start := now.Add(-i.config.queryLookaroundPeriod)
+	end := now.Add(i.config.queryLookaroundPeriod)
 	for p := range i.store.Partitions(tx) {
 		if !p.Overlaps(start, end) {
 			continue

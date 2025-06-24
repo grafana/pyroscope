@@ -144,7 +144,7 @@ func TestIndex_RestoreTimeBasedLoading(t *testing.T) {
 	require.NoError(t, db.Update(idx.Init))
 
 	now := time.Now()
-	tenant := "test"
+	const testTenant = "test-tenant"
 
 	t1 := now.Add(-30 * time.Minute)
 	t2 := now.Add(-25 * time.Hour)
@@ -157,7 +157,7 @@ func TestIndex_RestoreTimeBasedLoading(t *testing.T) {
 			Shard:       1,
 			MinTime:     t1.UnixMilli(),
 			MaxTime:     now.Add(time.Hour).UnixMilli(),
-			StringTable: []string{"", tenant},
+			StringTable: []string{"", testTenant},
 		},
 
 		{
@@ -166,7 +166,7 @@ func TestIndex_RestoreTimeBasedLoading(t *testing.T) {
 			Shard:       2,
 			MinTime:     t2.UnixMilli(),
 			MaxTime:     t2.Add(time.Hour).UnixMilli(),
-			StringTable: []string{"", tenant},
+			StringTable: []string{"", testTenant},
 		},
 		{
 			Id:          test.ULID(t3.Format(time.RFC3339)),
@@ -174,7 +174,7 @@ func TestIndex_RestoreTimeBasedLoading(t *testing.T) {
 			Shard:       3,
 			MinTime:     t3.UnixMilli(),
 			MaxTime:     t3.Add(time.Hour).UnixMilli(),
-			StringTable: []string{"", tenant},
+			StringTable: []string{"", testTenant},
 		},
 	}
 
@@ -185,13 +185,13 @@ func TestIndex_RestoreTimeBasedLoading(t *testing.T) {
 	}
 
 	idx = NewIndex(util.Logger, NewStore(), config)
-	require.NoError(t, db.View(idx.Restore))
+	require.NoError(t, db.Update(idx.Restore))
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		s, _ := idx.shards.cache.Get(shardCacheKey{store.NewPartition(t1, config.partitionDuration), tenant, 1})
+		s, _ := idx.shards.cache.Get(shardCacheKey{store.NewPartition(t1, config.partitionDuration), testTenant, 1})
 		assert.NotNil(t, s)
-		s, _ = idx.shards.cache.Get(shardCacheKey{store.NewPartition(t2, config.partitionDuration), tenant, 2})
+		s, _ = idx.shards.cache.Get(shardCacheKey{store.NewPartition(t2, config.partitionDuration), testTenant, 2})
 		assert.Nil(t, s)
-		s, _ = idx.shards.cache.Get(shardCacheKey{store.NewPartition(t3, config.partitionDuration), tenant, 3})
+		s, _ = idx.shards.cache.Get(shardCacheKey{store.NewPartition(t3, config.partitionDuration), testTenant, 3})
 		assert.Nil(t, s)
 		return nil
 	}))
