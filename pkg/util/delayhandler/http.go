@@ -77,7 +77,7 @@ func NewHTTP(limits Limits) func(h http.Handler) http.Handler {
 				var cancel context.CancelFunc
 				delayCtx, cancel = context.WithCancel(delayCtx)
 				defer cancel()
-				r = r.WithContext(context.WithValue(r.Context(), delayCancelCtxKey{}, cancel))
+				r = r.WithContext(WithDelayCancel(r.Context(), cancel))
 				w, delayRw = wrapResponseWriter(w, start.Add(delay))
 
 				// only add a span when delay is active

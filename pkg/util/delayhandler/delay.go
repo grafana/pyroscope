@@ -30,6 +30,10 @@ func CancelDelay(ctx context.Context) {
 	}
 }
 
+func WithDelayCancel(ctx context.Context, cancel context.CancelFunc) context.Context {
+	return context.WithValue(ctx, delayCancelCtxKey{}, cancel)
+}
+
 func addDelayHeader(h http.Header, delay time.Duration) {
 	durationInMs := strconv.FormatFloat(float64(delay)/float64(time.Millisecond), 'f', -1, 64)
 	h.Add("Server-Timing", fmt.Sprintf("artificial_delay;dur=%s", durationInMs))

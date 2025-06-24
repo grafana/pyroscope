@@ -23,7 +23,7 @@ func (i *delayInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 			var cancel context.CancelFunc
 			delayCtx, cancel = context.WithCancel(context.Background())
 			defer cancel()
-			ctx = context.WithValue(ctx, delayCancelCtxKey{}, cancel)
+			ctx = WithDelayCancel(ctx, cancel)
 		}
 
 		// now run the chain after me

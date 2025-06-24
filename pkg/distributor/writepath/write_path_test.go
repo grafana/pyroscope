@@ -19,6 +19,7 @@ import (
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockwritepath"
+	"github.com/grafana/pyroscope/pkg/util/delayhandler"
 )
 
 type routerTestSuite struct {
@@ -287,4 +288,31 @@ func (s *routerTestSuite) Test_AsyncIngest_CombinedPath() {
 	s.Assert().Error(err)
 
 	s.router.inflight.Wait()
+}
+
+func (s *routerTestSuite) Test_AsyncIngest_DelayCanceled() {
+	config := Config{
+		WritePath:           CombinedPath,
+		IngesterWeight:      1,
+		SegmentWriterWeight: 1,
+		AsyncIngest:         true,
+	}
+
+	s.ingester.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
+		Once()
+
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), context.Canceled).
+		Once()
+
+	var canceled atomic.Bool
+	ctx := delayhandler.WithDelayCancel(context.Background(), func() {
+		canceled.Store(true)
+	})
+
+	s.Assert().Error(s.router.Send(ctx, s.request, config))
+	s.router.inflight.Wait()
+
+	s.Assert().True(canceled.Load())
 }
