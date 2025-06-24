@@ -34,6 +34,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/ingester/memdb"
 	testutil2 "github.com/grafana/pyroscope/pkg/experiment/ingester/memdb/testutil"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/dlq"
 	metastoretest "github.com/grafana/pyroscope/pkg/experiment/metastore/test"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
@@ -388,8 +389,8 @@ func TestDLQRecoveryMock(t *testing.T) {
 			recoveredMetas <- meta
 		}).
 		Return(&metastorev1.AddBlockResponse{}, nil)
-	recovery := dlq.NewRecovery(test.NewTestingLogger(t), dlq.RecoveryConfig{
-		Period: 100 * time.Millisecond,
+	recovery := dlq.NewRecovery(test.NewTestingLogger(t), dlq.Config{
+		CheckInterval: 100 * time.Millisecond,
 	}, srv, sw.bucket)
 	recovery.Start()
 	defer recovery.Stop()
@@ -417,7 +418,7 @@ func TestDLQRecovery(t *testing.T) {
 
 	cfg := new(metastore.Config)
 	flagext.DefaultValues(cfg)
-	cfg.DLQRecovery.Period = 100 * time.Millisecond
+	cfg.Index.Recovery.CheckInterval = 100 * time.Millisecond
 	m := metastoretest.NewMetastoreSet(t, cfg, 3, sw.bucket)
 	defer m.Close()
 
