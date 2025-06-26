@@ -69,14 +69,23 @@ type TimeSeriesAggregator interface {
 	GetTimestamp() int64
 }
 
-func NewTimeSeriesAggregator(aggregation *typesv1.TimeSeriesAggregationType) TimeSeriesAggregator {
-	if aggregation == nil {
+func NewTimeSeriesAggregator(stepDurationSec float64, aggregation *typesv1.TimeSeriesAggregationType) TimeSeriesAggregator {
+	// Default to sum for backward compatibility
+	aggregationType := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
+	if aggregation != nil {
+		aggregationType = *aggregation
+	}
+
+	switch aggregationType {
+	case typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_RATE:
+		return &rateTimeSeriesAggregator{ts: -1, stepDurationSec: stepDurationSec}
+	case typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE:
+		return &avgTimeSeriesAggregator{ts: -1}
+	case typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM:
+		return &sumTimeSeriesAggregator{ts: -1}
+	default:
 		return &sumTimeSeriesAggregator{ts: -1}
 	}
-	if *aggregation == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE {
-		return &avgTimeSeriesAggregator{ts: -1}
-	}
-	return &sumTimeSeriesAggregator{ts: -1}
 }
 
 type sumTimeSeriesAggregator struct {
@@ -142,6 +151,39 @@ func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 func (a *avgTimeSeriesAggregator) IsEmpty() bool       { return a.ts == -1 }
 func (a *avgTimeSeriesAggregator) GetTimestamp() int64 { return a.ts }
 
+// rateTimeSeriesAggregator normalizes cumulative profile values by step duration to produce rates
+type rateTimeSeriesAggregator struct {
+	ts              int64
+	sum             float64
+	stepDurationSec float64
+	annotations     []*typesv1.ProfileAnnotation
+}
+
+func (a *rateTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
+	a.ts = ts
+	a.sum += point.Value
+	a.annotations = append(a.annotations, point.Annotations...)
+}
+
+func (a *rateTimeSeriesAggregator) GetAndReset() *typesv1.Point {
+	tsCopy := a.ts
+	// Normalize cumulative values by step duration to produce rates
+	normalizedValue := a.sum / a.stepDurationSec
+	annotationsCopy := make([]*typesv1.ProfileAnnotation, len(a.annotations))
+	copy(annotationsCopy, a.annotations)
+	a.ts = -1
+	a.sum = 0
+	a.annotations = a.annotations[:0]
+	return &typesv1.Point{
+		Timestamp:   tsCopy,
+		Value:       normalizedValue,
+		Annotations: annotationsCopy,
+	}
+}
+
+func (a *rateTimeSeriesAggregator) IsEmpty() bool       { return a.ts == -1 }
+func (a *rateTimeSeriesAggregator) GetTimestamp() int64 { return a.ts }
+
 // RangeSeries aggregates profiles into series.
 // Series contains points spaced by step from start to end.
 // Profiles from the same step are aggregated into one point.
@@ -149,6 +191,7 @@ func RangeSeries(it iter.Iterator[TimeSeriesValue], start, end, step int64, aggr
 	defer it.Close()
 	seriesMap := make(map[uint64]*typesv1.Series)
 	aggregators := make(map[uint64]TimeSeriesAggregator)
+	stepDurationSec := float64(step) / 1000.0
 
 	if !it.Next() {
 		return nil
@@ -161,7 +204,7 @@ Outer:
 			point := it.At()
 			aggregator, ok := aggregators[point.LabelsHash]
 			if !ok {
-				aggregator = NewTimeSeriesAggregator(aggregation)
+				aggregator = NewTimeSeriesAggregator(stepDurationSec, aggregation)
 				aggregators[point.LabelsHash] = aggregator
 			}
 			if point.Ts > currentStep {

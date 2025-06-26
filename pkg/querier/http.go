@@ -143,6 +143,8 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 			aggregation = typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
 		case "avg":
 			aggregation = typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE
+		case "rate":
+			aggregation = typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_RATE
 		}
 	}
 
