@@ -24,7 +24,7 @@ pyroscope:
   extraLabels: {}
 
   extraEnvVars:
-  {}
+    {}
     # The following environment variables are set by the Helm chart.
     # - name: JAEGER_AGENT_HOST
     #   value "jaeger-agent.jaeger.svc.cluster.local."
