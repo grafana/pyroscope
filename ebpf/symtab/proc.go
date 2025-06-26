@@ -22,6 +22,7 @@ type ProcTable struct {
 	options    ProcTableOptions
 	rootFS     string
 	err        error
+	perfMap    *PerfMap
 }
 
 type ProcTableDebugInfo struct {
@@ -83,6 +84,12 @@ func (p *ProcTable) Refresh() {
 	if p.err != nil {
 		_ = level.Error(p.logger).Log("err", p.err)
 	}
+
+	p.perfMap, err = NewPerfMap(p.options.Pid)
+	if err != nil {
+		level.Error(p.logger).Log("msg", "failed to read perf map file", "err", err)
+		p.err = err
+	}
 }
 
 func (p *ProcTable) Error() error {
@@ -140,6 +147,11 @@ func (p *ProcTable) getElfTable(r *elfRange) *ElfTable {
 func (p *ProcTable) Resolve(pc uint64) Symbol {
 	if pc == 0xcccccccccccccccc || pc == 0x9090909090909090 {
 		return Symbol{Start: 0, Name: "end_of_stack", Module: "[unknown]"}
+	}
+	if p.perfMap != nil {
+		if s := p.perfMap.Resolve(pc); s.Name != "" {
+			return s
+		}
 	}
 	i, found := slices.BinarySearchFunc(p.ranges, pc, binarySearchElfRange)
 	if !found {
