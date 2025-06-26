@@ -9,7 +9,6 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/test"
 )
 
@@ -21,7 +20,7 @@ func TestShard_Overlaps(t *testing.T) {
 		return store.CreateBuckets(tx)
 	}))
 
-	partitionKey := NewPartitionKey(test.Time("2024-09-11T06:00:00.000Z"), 6*time.Hour)
+	partitionKey := NewPartition(test.Time("2024-09-11T06:00:00.000Z"), 6*time.Hour)
 	tenant := "test-tenant"
 	shardID := uint32(1)
 
@@ -59,14 +58,7 @@ func TestShard_Overlaps(t *testing.T) {
 
 	// store a block
 	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-		shard := &Shard{
-			Partition:   partitionKey,
-			Tenant:      tenant,
-			Shard:       shardID,
-			StringTable: metadata.NewStringTable(),
-		}
-
-		return shard.Store(tx, blockMeta)
+		return NewShard(partitionKey, tenant, shardID).Store(tx, blockMeta)
 	}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
@@ -74,8 +66,8 @@ func TestShard_Overlaps(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, shard)
 
-		assert.Equal(t, blockMinTime, shard.MinTime)
-		assert.Equal(t, blockMaxTime, shard.MaxTime)
+		assert.Equal(t, blockMinTime, shard.ShardIndex.MinTime)
+		assert.Equal(t, blockMaxTime, shard.ShardIndex.MaxTime)
 
 		testCases := []struct {
 			name      string
@@ -141,7 +133,7 @@ func TestShard_Overlaps(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				result := shard.Overlaps(tc.startTime, tc.endTime)
+				result := shard.ShardIndex.Overlaps(tc.startTime, tc.endTime)
 				assert.Equal(t, tc.expected, result,
 					"Overlaps(%v, %v) = %v, expected %v",
 					tc.startTime, tc.endTime, result, tc.expected)

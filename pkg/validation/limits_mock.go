@@ -10,6 +10,7 @@ import "github.com/grafana/dskit/flagext"
 // mockTenantLimits exposes per-tenant limits based on a provided map
 type mockTenantLimits struct {
 	limits map[string]*Limits
+	config *RuntimeConfigValues
 }
 
 // NewMockTenantLimits creates a new mockTenantLimits that returns per-tenant limits based on
@@ -27,6 +28,8 @@ func (l *mockTenantLimits) TenantLimits(userID string) *Limits {
 func (l *mockTenantLimits) AllByTenantID() map[string]*Limits {
 	return l.limits
 }
+
+func (l *mockTenantLimits) RuntimeConfig() *RuntimeConfigValues { return l.config }
 
 func MockOverrides(customize func(defaults *Limits, tenantLimits map[string]*Limits)) *Overrides {
 	defaults := MockDefaultLimits()

@@ -13,7 +13,7 @@ import (
 )
 
 type TenantIndex interface {
-	GetTenantStats(tenant string) *metastorev1.TenantStats
+	GetTenantStats(tx *bbolt.Tx, tenant string) *metastorev1.TenantStats
 }
 
 type TenantService struct {
@@ -40,8 +40,8 @@ func (svc *TenantService) GetTenant(
 	ctx context.Context,
 	req *metastorev1.GetTenantRequest,
 ) (resp *metastorev1.GetTenantResponse, err error) {
-	read := func(*bbolt.Tx, raftnode.ReadIndex) {
-		resp = &metastorev1.GetTenantResponse{Stats: svc.index.GetTenantStats(req.TenantId)}
+	read := func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
+		resp = &metastorev1.GetTenantResponse{Stats: svc.index.GetTenantStats(tx, req.TenantId)}
 	}
 	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {
 		return nil, status.Error(codes.Unavailable, readErr.Error())

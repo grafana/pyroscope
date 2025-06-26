@@ -8,7 +8,7 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-func BoltDB(t *testing.T) *bbolt.DB {
+func BoltDB(t testing.TB) *bbolt.DB {
 	tempDir := t.TempDir()
 	opts := bbolt.Options{
 		NoGrowSync:      true,

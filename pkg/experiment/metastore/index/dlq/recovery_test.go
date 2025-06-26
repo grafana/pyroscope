@@ -51,7 +51,7 @@ func TestRecoverTick(t *testing.T) {
 		addMeta(bucket, meta)
 	}
 
-	r := NewRecovery(test.NewTestingLogger(t), RecoveryConfig{}, srv, bucket)
+	r := NewRecovery(test.NewTestingLogger(t), Config{}, srv, bucket)
 	r.recoverTick(context.Background())
 
 	expected := []*metastorev1.BlockMeta{
@@ -89,7 +89,7 @@ func TestNotRaftLeader(t *testing.T) {
 		addMeta(bucket, meta)
 	}
 
-	r := NewRecovery(test.NewTestingLogger(t), RecoveryConfig{}, srv, bucket)
+	r := NewRecovery(test.NewTestingLogger(t), Config{}, srv, bucket)
 	r.recoverTick(context.Background())
 
 	assert.Equal(t, 1, len(bucket.Objects()))
@@ -129,7 +129,7 @@ func TestStartStop(t *testing.T) {
 		addMeta(bucket, meta)
 	}
 
-	r := NewRecovery(test.NewTestingLogger(t), RecoveryConfig{Period: time.Millisecond * 10}, srv, bucket)
+	r := NewRecovery(test.NewTestingLogger(t), Config{CheckInterval: time.Millisecond * 10}, srv, bucket)
 	r.Start()
 	defer r.Stop()
 

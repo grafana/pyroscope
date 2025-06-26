@@ -253,6 +253,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		c.LimitsConfig.WritePathOverrides.RegisterFlags(throwaway)
 		c.LimitsConfig.ReadPathOverrides.RegisterFlags(throwaway)
 		c.LimitsConfig.AdaptivePlacementLimits.RegisterFlags(throwaway)
+		c.LimitsConfig.Retention.RegisterFlags(throwaway)
 		c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
 		c.LimitsConfig.Symbolizer.RegisterFlags(throwaway)
 		c.Symbolizer.RegisterFlags(throwaway)

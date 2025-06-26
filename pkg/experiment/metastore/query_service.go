@@ -18,11 +18,11 @@ import (
 )
 
 type IndexQuerier interface {
-	QueryMetadata(*bbolt.Tx, index.MetadataQuery) ([]*metastorev1.BlockMeta, error)
-	QueryMetadataLabels(*bbolt.Tx, index.MetadataQuery) ([]*typesv1.Labels, error)
+	QueryMetadata(*bbolt.Tx, context.Context, index.MetadataQuery) ([]*metastorev1.BlockMeta, error)
+	QueryMetadataLabels(*bbolt.Tx, context.Context, index.MetadataQuery) ([]*typesv1.Labels, error)
 }
 
-type MetadataQueryService struct {
+type QueryService struct {
 	metastorev1.MetadataQueryServiceServer
 
 	logger log.Logger
@@ -30,19 +30,19 @@ type MetadataQueryService struct {
 	index  IndexQuerier
 }
 
-func NewMetadataQueryService(
+func NewQueryService(
 	logger log.Logger,
 	state State,
 	index IndexQuerier,
-) *MetadataQueryService {
-	return &MetadataQueryService{
+) *QueryService {
+	return &QueryService{
 		logger: logger,
 		state:  state,
 		index:  index,
 	}
 }
 
-func (svc *MetadataQueryService) QueryMetadata(
+func (svc *QueryService) QueryMetadata(
 	ctx context.Context,
 	req *metastorev1.QueryMetadataRequest,
 ) (resp *metastorev1.QueryMetadataResponse, err error) {
@@ -55,12 +55,12 @@ func (svc *MetadataQueryService) QueryMetadata(
 	return resp, err
 }
 
-func (svc *MetadataQueryService) queryMetadata(
-	_ context.Context,
+func (svc *QueryService) queryMetadata(
+	ctx context.Context,
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataRequest,
 ) (*metastorev1.QueryMetadataResponse, error) {
-	metas, err := svc.index.QueryMetadata(tx, index.MetadataQuery{
+	metas, err := svc.index.QueryMetadata(tx, ctx, index.MetadataQuery{
 		Tenant:    req.TenantId,
 		StartTime: time.UnixMilli(req.StartTime),
 		EndTime:   time.UnixMilli(req.EndTime),
@@ -78,7 +78,7 @@ func (svc *MetadataQueryService) queryMetadata(
 	return nil, status.Error(codes.Internal, err.Error())
 }
 
-func (svc *MetadataQueryService) QueryMetadataLabels(
+func (svc *QueryService) QueryMetadataLabels(
 	ctx context.Context,
 	req *metastorev1.QueryMetadataLabelsRequest,
 ) (resp *metastorev1.QueryMetadataLabelsResponse, err error) {
@@ -91,12 +91,12 @@ func (svc *MetadataQueryService) QueryMetadataLabels(
 	return resp, err
 }
 
-func (svc *MetadataQueryService) queryMetadataLabels(
-	_ context.Context,
+func (svc *QueryService) queryMetadataLabels(
+	ctx context.Context,
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataLabelsRequest,
 ) (*metastorev1.QueryMetadataLabelsResponse, error) {
-	labels, err := svc.index.QueryMetadataLabels(tx, index.MetadataQuery{
+	labels, err := svc.index.QueryMetadataLabels(tx, ctx, index.MetadataQuery{
 		Tenant:    req.TenantId,
 		StartTime: time.UnixMilli(req.StartTime),
 		EndTime:   time.UnixMilli(req.EndTime),

@@ -85,3 +85,11 @@ func runtimeConfigHandler(runtimeCfgManager *runtimeconfig.Manager, defaultLimit
 		util.WriteYAMLResponse(w, output)
 	}
 }
+
+func (t *tenantLimitsFromRuntimeConfig) RuntimeConfig() *validation.RuntimeConfigValues {
+	cfg, ok := t.c.GetConfig().(*validation.RuntimeConfigValues)
+	if cfg != nil && ok {
+		return cfg
+	}
+	return nil
+}

@@ -12,8 +12,11 @@ type tombstoneQueue struct{ head, tail *tombstones }
 type tombstoneKey string
 
 func (k *tombstoneKey) set(t *metastorev1.Tombstones) bool {
-	if t.Blocks != nil {
+	switch {
+	case t.Blocks != nil:
 		*k = tombstoneKey(t.Blocks.Name)
+	case t.Partition != nil:
+		*k = tombstoneKey(t.Partition.Name)
 	}
 	return len(*k) > 0
 }
@@ -25,7 +28,7 @@ type tombstones struct {
 
 func newTombstoneQueue() *tombstoneQueue { return &tombstoneQueue{} }
 
-func (q *tombstoneQueue) push(e *tombstones) bool {
+func (q *tombstoneQueue) push(e *tombstones) {
 	if q.tail != nil {
 		q.tail.next = e
 		e.prev = q.tail
@@ -33,7 +36,6 @@ func (q *tombstoneQueue) push(e *tombstones) bool {
 		q.head = e
 	}
 	q.tail = e
-	return true
 }
 
 func (q *tombstoneQueue) delete(e *tombstones) *tombstones {

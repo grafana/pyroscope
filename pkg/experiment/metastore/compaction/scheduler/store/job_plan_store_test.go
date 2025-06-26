@@ -25,7 +25,7 @@ func TestJobPlanStore(t *testing.T) {
 	tx, err = db.Begin(false)
 	require.NoError(t, err)
 	state, err := s.GetJobPlan(tx, "2")
-	require.ErrorIs(t, err, store.ErrorNotFound)
+	require.ErrorIs(t, err, store.ErrNotFound)
 	require.Nil(t, state)
 	state, err = s.GetJobPlan(tx, "1")
 	require.NoError(t, err)
@@ -40,7 +40,7 @@ func TestJobPlanStore(t *testing.T) {
 	tx, err = db.Begin(false)
 	require.NoError(t, err)
 	state, err = s.GetJobPlan(tx, "1")
-	require.ErrorIs(t, err, store.ErrorNotFound)
+	require.ErrorIs(t, err, store.ErrNotFound)
 	require.Nil(t, state)
 	require.NoError(t, tx.Rollback())
 }

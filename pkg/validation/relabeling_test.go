@@ -24,6 +24,10 @@ func (w *wrappedRuntimeConfig) AllByTenantID() map[string]*Limits {
 	return w.rc.TenantLimits
 }
 
+func (w *wrappedRuntimeConfig) RuntimeConfig() *RuntimeConfigValues {
+	return w.rc
+}
+
 func newOverrides(rc *RuntimeConfigValues) (*Overrides, error) {
 	var defaultCfg Limits
 	fs := flag.NewFlagSet("test", flag.PanicOnError)
