@@ -203,7 +203,7 @@ func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *seg
 	s := &segment{
 		logger:   log.With(sl, "segment-id", id.String()),
 		ulid:     id,
-		datasets: make(map[datasetKey]dataset),
+		datasets: make(map[datasetKey]*dataset),
 		sw:       sw,
 		sh:       sh,
 		shard:    sk,
@@ -360,7 +360,7 @@ func concatSegmentHead(f *datasetFlush, w *writerOffset, s *metadata.StringTable
 
 func (s *segment) flushHeads(ctx context.Context) flushStream {
 	heads := maps.Values(s.datasets)
-	slices.SortFunc(heads, func(a, b dataset) int {
+	slices.SortFunc(heads, func(a, b *dataset) int {
 		return a.key.compare(b.key)
 	})
 
@@ -414,7 +414,7 @@ func (s *flushStream) Next() bool {
 	return false
 }
 
-func (s *segment) flushDataset(ctx context.Context, e dataset) (*memdb.FlushedHead, error) {
+func (s *segment) flushDataset(ctx context.Context, e *dataset) (*memdb.FlushedHead, error) {
 	th := time.Now()
 	flushed, err := e.head.Flush(ctx)
 	if err != nil {
@@ -450,11 +450,22 @@ func (k datasetKey) compare(x datasetKey) int {
 
 type dataset struct {
 	key  datasetKey
+	sw   *segmentsWriter
+	once sync.Once
 	head *memdb.Head
 }
 
+func newDataset(k datasetKey, sw *segmentsWriter) *dataset { return &dataset{key: k, sw: sw} }
+
+func (d *dataset) initHead() *memdb.Head {
+	d.once.Do(func() {
+		d.head = memdb.NewHead(d.sw.headMetrics)
+	})
+	return d.head
+}
+
 type datasetFlush struct {
-	dataset dataset
+	dataset *dataset
 	flushed *memdb.FlushedHead
 	done    chan struct{}
 }
@@ -465,8 +476,8 @@ type segment struct {
 	sshard           string
 	inFlightProfiles sync.WaitGroup
 
-	datasetsLock sync.RWMutex
-	datasets     map[datasetKey]dataset
+	datasetsLock sync.Mutex
+	datasets     map[datasetKey]*dataset
 
 	logger log.Logger
 	sw     *segmentsWriter
@@ -522,7 +533,7 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 	//   worth it.
 	serviceName := model.Labels(labels).Get(model.LabelNameServiceName)
 	ds := s.datasetForIngest(datasetKey{tenant: tenantID, service: serviceName})
-	appender := &sampleAppender{dataset: ds, profile: p, id: id, annotations: annotations}
+	appender := &sampleAppender{dataset: ds.initHead(), profile: p, id: id, annotations: annotations}
 	// Relabeling rules cannot be applied here: it should be done before the
 	// ingestion, in distributors. Otherwise, it may change the distribution
 	// key, including the "service_name" label, which we use to determine the
@@ -557,29 +568,15 @@ func (v *sampleAppender) ValidateLabels(model.Labels) error { return nil }
 
 func (v *sampleAppender) Discarded(_, _ int) {}
 
-func (s *segment) datasetForIngest(k datasetKey) *memdb.Head {
-	s.datasetsLock.RLock()
-	h, ok := s.datasets[k]
-	s.datasetsLock.RUnlock()
-	if ok {
-		return h.head
-	}
-
+func (s *segment) datasetForIngest(k datasetKey) *dataset {
 	s.datasetsLock.Lock()
-	defer s.datasetsLock.Unlock()
-	h, ok = s.datasets[k]
-	if ok {
-		return h.head
+	ds, ok := s.datasets[k]
+	if !ok {
+		ds = newDataset(k, s.sw)
+		s.datasets[k] = ds
 	}
-
-	nh := memdb.NewHead(s.sw.headMetrics)
-
-	s.datasets[k] = dataset{
-		key:  k,
-		head: nh,
-	}
-
-	return nh
+	s.datasetsLock.Unlock()
+	return ds
 }
 
 func (sw *segmentsWriter) uploadBlock(ctx context.Context, blockData []byte, meta *metastorev1.BlockMeta, s *segment) error {
