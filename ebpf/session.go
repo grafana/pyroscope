@@ -6,16 +6,19 @@
 package ebpfspy
 
 import (
+	"bufio"
 	_ "embed"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"golang.org/x/sys/unix"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -231,6 +234,15 @@ func (s *session) Start() error {
 	go func() {
 		defer s.wg.Done()
 		s.processPIDExecRequests(pidExecRequests)
+	}()
+	go func() {
+		s.printBpfLog()
+	}()
+	go func() {
+		for {
+			time.Sleep(5 * time.Second)
+			s.printMapsSize()
+		}
 	}()
 	return nil
 }
@@ -655,6 +667,8 @@ func (s *session) startProfilingLocked(pid uint32, target *sd.Target) {
 		return
 	}
 	typ := s.selectProfilingType(pid, target)
+	level.Debug(s.logger).Log("msg", fmt.Sprintf("startProfilingLocked %d %s = %+v", pid, target.String(), typ))
+
 	if typ.typ == pyrobpf.ProfilingTypePython {
 		go s.tryStartPythonProfiling(pid, target, typ)
 		return
@@ -787,6 +801,8 @@ func (s *session) cleanup() {
 		delete(s.pids.dead, pid)
 		delete(s.pids.unknown, pid)
 		delete(s.pids.all, pid)
+		level.Debug(s.logger).Log("msg", fmt.Sprintf("cleanin up dead pid %d ", pid))
+
 		s.symCache.RemoveDeadPID(symtab.PidKey(pid))
 		if s.pyperf != nil {
 			s.pyperf.RemoveDeadPID(pid)
@@ -800,6 +816,7 @@ func (s *session) cleanup() {
 			if !errors.Is(err, os.ErrNotExist) {
 				_ = level.Error(s.logger).Log("msg", "cleanup stat pid", "pid", pid, "err", err)
 			}
+			level.Debug(s.logger).Log("msg", fmt.Sprintf("cleanin up unknown pid %d ", pid))
 			delete(s.pids.unknown, pid)
 			delete(s.pids.all, pid)
 		}
@@ -828,6 +845,7 @@ func (s *session) checkStalePids() {
 			if !errors.Is(err, os.ErrNotExist) {
 				_ = level.Error(s.logger).Log("msg", "check stale pids", "err", err)
 			}
+			level.Debug(s.logger).Log("msg", fmt.Sprintf("deleting stale pid %d ", keys[i]))
 			if err := m.Delete(keys[i]); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
 				_ = level.Error(s.logger).Log("msg", "delete stale pid", "pid", keys[i], "err", err)
 			}
@@ -946,4 +964,108 @@ func getPIDNamespace() (dev uint64, ino uint64, err error) {
 		return st.Dev, st.Ino, nil
 	}
 	return 0, 0, fmt.Errorf("could not determine pid namespace")
+}
+
+func (s *session) printBpfLog() {
+
+	var (
+		f   *os.File
+		err error
+	)
+	fs := []string{
+		"/sys/kernel/debug/tracing/trace_pipe",
+		"/sys/kernel/tracing/trace_pipe",
+	}
+	for _, it := range fs {
+		f, err = os.Open(it)
+		if err == nil {
+			break
+		}
+		level.Error(s.logger).Log("msg", "error opening trace_pipe", "err", err, "f", it)
+	}
+	hint := func() {
+		level.Debug(s.logger).Log("msg", "trace_pipe not found. BPF log will not be printed.")
+		level.Debug(s.logger).Log("msg", "try running # mount -t debugfs nodev /sys/kernel/debug &&  mount -t tracefs nodev /sys/kernel/debug/tracing")
+	}
+	if f == nil {
+		const mountPath = "/pyroscope-tracefs"
+
+		_ = os.Mkdir(mountPath, 0700)
+		stat, _ := os.Stat(mountPath + "/trace_pipe")
+		if stat == nil {
+			level.Warn(s.logger).Log("msg", "trying to mount tracefs", "at", mountPath)
+			err = syscall.Mount("tracefs", mountPath, "tracefs", 0, "")
+			if err != nil {
+				level.Error(s.logger).Log("msg", "error mounting tracefs", "err", err)
+				hint()
+				return
+			}
+			defer func() {
+				err = syscall.Unmount(mountPath, 0)
+				if err != nil {
+					level.Error(s.logger).Log("msg", "error unmounting tracefs", "err", err)
+				}
+			}()
+		}
+		f, err = os.Open(mountPath + "/trace_pipe")
+		if err != nil {
+			level.Error(s.logger).Log("msg", "error opening trace_pipe", "err", err)
+			hint()
+			return
+		}
+	}
+	level.Debug(s.logger).Log("msg", "printing BPF log", "from", f.Name())
+	s.mutex.Lock()
+	if !s.started {
+		s.mutex.Unlock()
+		return
+	}
+	//s.bpflogFile = f
+	s.mutex.Unlock()
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		level.Debug(s.logger).Log("[trace_pipe]", scanner.Text())
+	}
+}
+
+func (s *session) printMapsSize() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.printMapsSizeLocked()
+}
+func dumpMap[K, V any](s *session, m *ebpf.Map, name string, countOnly bool) ([]K, []V) {
+	var (
+		mapSize = m.MaxEntries()
+	)
+	keys := make([]K, mapSize)
+	values := make([]V, mapSize)
+	cursor := new(ebpf.MapBatchCursor)
+	n, err := m.BatchLookup(cursor, keys, values, new(ebpf.BatchOptions))
+	keys = keys[:n]
+	values = values[:n]
+	if err != nil && !errors.Is(err, unix.ENOSPC) {
+		level.Error(s.logger).Log("err", err)
+	}
+	level.Debug(s.logger).Log("mapdump", name, "n", n)
+	if !countOnly {
+
+		for i := 0; i < n; i++ {
+			level.Debug(s.logger).Log("mapdump", name, "k", fmt.Sprintf("%+v", keys[i]), "v", fmt.Sprintf("%+v", values[i]))
+		}
+	}
+
+	return keys, values
+
+}
+func (s *session) printMapsSizeLocked() {
+	if s.bpf.Pids != nil {
+		dumpMap[uint32, pyrobpf.ProfilePidConfig](s, s.bpf.Pids, "pids", false)
+	}
+	if s.pyperf != nil && s.pyperfBpf.PyPidConfig != nil {
+		dumpMap[uint32, python.PerfPyPidData](s, s.pyperfBpf.PyPidConfig, "python_pids", false)
+		dumpMap[uint32, python.PerfPyPidData](s, s.pyperfBpf.PySymbols, "py_symbols", true)
+		dumpMap[uint32, python.PerfPyPidData](s, s.pyperfBpf.PythonStacks, "py_stacks", true)
+		dumpMap[uint32, python.PerfPyPidData](s, s.pyperfBpf.Stacks, "stacks", true)
+	}
 }

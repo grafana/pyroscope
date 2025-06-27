@@ -44,8 +44,8 @@ struct global_config_t {
 };
 
 const volatile struct global_config_t global_config;
-#define log_error(fmt, ...) if (global_config.bpf_log_err)   bpf_printk("[> error <] " fmt, ##__VA_ARGS__)
-#define log_debug(fmt, ...) if (global_config.bpf_log_debug) bpf_printk("[  debug  ] " fmt, ##__VA_ARGS__)
+#define log_error(fmt, ...) if (1)   bpf_printk("[> error <] " fmt, ##__VA_ARGS__)
+#define log_debug(fmt, ...) if (0) bpf_printk("[  debug  ] " fmt, ##__VA_ARGS__)
 
 #define try_read_or_fail(dst, src) if (bpf_probe_read_user(&(dst), sizeof((dst)), (src)))  { \
     log_error("failed to read 0x%llx %s:%d", (src),  __FILE__, __LINE__);                    \
@@ -190,7 +190,9 @@ static __always_inline int submit_sample(
     }
     u64 h = MurmurHash64A(&state->event.stack, state->event.stack_len * sizeof(state->event.stack[0]), 0);
     state->event.k.user_stack = h;
-    if (bpf_map_update_elem(&python_stacks, &h, &state->event.stack, BPF_ANY)) {
+    int err = bpf_map_update_elem(&python_stacks, &h, &state->event.stack, BPF_ANY);
+    if (err) {
+        bpf_printk("submit_sample update python_stacks err %d", err);
         return -1;
     }
     uint32_t* val = bpf_map_lookup_elem(&counts, &state->event.k);
@@ -198,7 +200,11 @@ static __always_inline int submit_sample(
         (*val)++;
     }
     else {
-        bpf_map_update_elem(&counts, &state->event.k, &one, BPF_NOEXIST);
+        err = bpf_map_update_elem(&counts, &state->event.k, &one, BPF_NOEXIST);
+        if (err) {
+            bpf_printk("submit_sample update counts err %d", err);
+            return -1;
+        }
     }
 
 
@@ -207,7 +213,7 @@ static __always_inline int submit_sample(
 
 static __always_inline int submit_error_sample(
     uint8_t err) { //todo replace with more useful log
-    log_error("pyperf_err: %d\n", err);
+    bpf_printk("pyperf_err: %d\n", err);
     return -1;
 }
 
@@ -588,10 +594,12 @@ static __always_inline int get_symbol_id(
     // the symbol is new, bump the counter
     state->symbol_counter++;
     py_symbol_id symbol_id = state->symbol_counter * PY_NUM_CPU + state->cur_cpu;
-    if (bpf_map_update_elem(&py_symbols, sym, &symbol_id, BPF_NOEXIST) == 0) {
+    int sym_res = bpf_map_update_elem(&py_symbols, sym, &symbol_id, BPF_NOEXIST);
+    if (sym_res == 0) {
         *out_symbol_id = symbol_id;
         return 0;
     }
+    bpf_printk("update py_symbols %d\n", sym_res);
     symbol_id_ptr = bpf_map_lookup_elem(&py_symbols, sym);
     if (symbol_id_ptr) {
         *out_symbol_id = *symbol_id_ptr;

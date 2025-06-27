@@ -188,7 +188,15 @@ func (tf *targetFinder) FindTarget(pid uint32) *Target {
 	defer tf.sync.Unlock()
 	res := tf.findTarget(pid)
 	if res != nil {
+		level.Debug(tf.l).Log("msg", fmt.Sprintf("FindTarget %d = %s", pid, res.String()))
 		return res
+	}
+	if tf.defaultTarget != nil {
+		level.Debug(tf.l).Log("msg", fmt.Sprintf("FindTarget %d = def %s", pid, tf.defaultTarget.String()))
+
+	} else {
+		level.Debug(tf.l).Log("msg", fmt.Sprintf("FindTarget %d = def nil", pid))
+
 	}
 	return tf.defaultTarget
 }
@@ -197,6 +205,7 @@ func (tf *targetFinder) RemoveDeadPID(pid uint32) {
 	tf.sync.Lock()
 	defer tf.sync.Unlock()
 	tf.containerIDCache.Remove(pid)
+	level.Debug(tf.l).Log("msg", fmt.Sprintf("RemoveDeadPID %d ", pid))
 	delete(tf.pid2target, pid)
 }
 
@@ -208,7 +217,8 @@ func (tf *targetFinder) Update(args TargetsOptions) {
 }
 
 func (tf *targetFinder) setTargets(opts TargetsOptions) {
-	_ = level.Debug(tf.l).Log("msg", "set targets", "count", len(opts.Targets))
+	level.Debug(tf.l).Log("msg", fmt.Sprintf("targetFinder) setTargets %+v ", opts.Targets))
+
 	containerID2Target := make(map[containerID]*Target)
 	pid2Target := make(map[uint32]*Target)
 	for _, target := range opts.Targets {

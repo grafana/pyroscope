@@ -29,11 +29,11 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
     }
     int flags = 0;
     if (pyro_bpf_core_read(&flags, sizeof(flags), &task->flags)) {
-        bpf_dbg_printk("failed to read task->flags\n");
+        bpf_printk("failed to read task->flags\n");
         return 0;
     }
     if (flags & PF_KTHREAD) {
-        bpf_dbg_printk("skipping kthread %d\n", tgid);
+//        bpf_printk("skipping kthread %d\n", tgid);
         return 0;
     }
 
@@ -45,15 +45,20 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
                 .collect_user = 0,
                 .padding_ = 0
         };
-        if (bpf_map_update_elem(&pids, &tgid, &unknown, BPF_NOEXIST)) {
-            bpf_dbg_printk("failed to update pids map. probably concurrent update\n");
+        int err = bpf_map_update_elem(&pids, &tgid, &unknown, BPF_NOEXIST);
+        if (err) {
+            bpf_printk("failed to update pids map. probably concurrent update  %d\n", err);
             return 0;
         }
         struct pid_event event = {
                 .op  = OP_REQUEST_UNKNOWN_PROCESS_INFO,
                 .pid = tgid
         };
-        bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+        err = bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+        if (err) {
+            bpf_printk("failed to bpf_perf_event_output OP_REQUEST_UNKNOWN_PROCESS_INFO %d\n", err);
+            return 0;
+        }
         return 0;
     }
 
