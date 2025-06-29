@@ -3,6 +3,7 @@ package pyroscope
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -63,6 +64,13 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := readInputRawDataFromRequest(ctx, r, input); err != nil {
+		if errors.Is(err, errSizeLimitExceeded) {
+			msg := "failed to read request body"
+			sp.LogFields(otlog.Error(err), otlog.String("msg", msg))
+			_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID, "service_name", input.Metadata.LabelSet.ServiceName())
+			httputil.ErrorWithStatus(w, err, http.StatusRequestEntityTooLarge)
+			return
+		}
 		msg := "failed to read request body"
 		sp.LogFields(otlog.Error(err), otlog.String("msg", msg))
 		_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
@@ -148,6 +156,8 @@ func (h ingestHandler) parseInputMetadataFromRequest(_ context.Context, r *http.
 	return &input, nil
 }
 
+var errSizeLimitExceeded = fmt.Errorf("request body size limit exceeded")
+
 func readInputRawDataFromRequest(ctx context.Context, r *http.Request, input *ingestion.IngestInput) error {
 	var (
 		sp          = opentracing.SpanFromContext(ctx)
@@ -162,12 +172,19 @@ func readInputRawDataFromRequest(ctx context.Context, r *http.Request, input *in
 		)
 	}
 
-	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
-	if n, err := io.Copy(buf, r.Body); err != nil {
+	// TODO: make this configurable, add proper error handling, metrics, logging, etc.
+	const sizeLimit = 64 << 20 // 64 MiB
+	body := &io.LimitedReader{R: r.Body, N: sizeLimit}
+
+	buf := bytes.NewBuffer(make([]byte, 0, 64<<10)) // 64 KiB
+	if n, err := io.Copy(buf, body); err != nil {
 		return fmt.Errorf("error reading request body bytes_read %d: %w", n, err)
 	}
-	b := buf.Bytes()
+	if body.N <= 0 {
+		return errSizeLimitExceeded
+	}
 
+	b := buf.Bytes()
 	switch {
 	default:
 		input.Format = ingestion.FormatGroups
