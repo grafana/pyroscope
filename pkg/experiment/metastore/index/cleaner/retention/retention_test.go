@@ -373,12 +373,10 @@ func TestTimeBasedRetentionPolicy(t *testing.T) {
 			}))
 
 			require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-				for partition := range store.Partitions(tx) {
-					if !policy.Visit(tx, partition) {
-						break
-					}
-				}
-				assert.Equal(t, tc.expectedTombstones, len(policy.Tombstones()))
+				// Multiple lines for better debugging.
+				partitions := store.Partitions(tx)
+				tombstones := policy.CreateTombstones(tx, partitions)
+				assert.Equal(t, tc.expectedTombstones, len(tombstones))
 				return nil
 			}))
 		})

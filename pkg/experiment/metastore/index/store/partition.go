@@ -5,13 +5,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"iter"
-	"strconv"
-	"strings"
 	"time"
 
 	"go.etcd.io/bbolt"
-
-	multitenancy "github.com/grafana/pyroscope/pkg/tenant"
 )
 
 var ErrInvalidPartitionKey = errors.New("invalid partition key")
@@ -74,30 +70,14 @@ func (p *Partition) UnmarshalBinary(b []byte) error {
 	return nil
 }
 
-func (p *Partition) TombstoneName(tenant string, shard uint32) string {
-	var b strings.Builder
-	b.WriteString(p.String())
-	b.WriteByte('-')
-	b.WriteByte('T')
-	if tenant != "" {
-		b.WriteString(tenant)
-	} else {
-		b.WriteString(multitenancy.DefaultTenantID)
-	}
-	b.WriteByte('-')
-	b.WriteByte('S')
-	b.WriteString(strconv.FormatUint(uint64(shard), 10))
-	return b.String()
-}
-
-func (p Partition) Query(tx *bbolt.Tx) *PartitionQuery {
+func (p *Partition) Query(tx *bbolt.Tx) *PartitionQuery {
 	b := getPartitionsBucket(tx).Bucket(p.Bytes())
 	if b == nil {
 		return nil
 	}
 	return &PartitionQuery{
 		tx:        tx,
-		Partition: p,
+		Partition: *p,
 		bucket:    b,
 	}
 }

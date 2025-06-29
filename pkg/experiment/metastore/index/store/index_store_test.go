@@ -12,6 +12,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/test"
 )
 
+const testTenant = "test-tenant"
+
 func TestShard_Overlaps(t *testing.T) {
 	db := test.BoltDB(t)
 
@@ -21,7 +23,6 @@ func TestShard_Overlaps(t *testing.T) {
 	}))
 
 	partitionKey := NewPartition(test.Time("2024-09-11T06:00:00.000Z"), 6*time.Hour)
-	tenant := "test-tenant"
 	shardID := uint32(1)
 
 	blockMinTime := test.UnixMilli("2024-09-11T07:00:00.000Z")
@@ -58,11 +59,11 @@ func TestShard_Overlaps(t *testing.T) {
 
 	// store a block
 	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-		return NewShard(partitionKey, tenant, shardID).Store(tx, blockMeta)
+		return NewShard(partitionKey, testTenant, shardID).Store(tx, blockMeta)
 	}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		shard, err := store.LoadShard(tx, partitionKey, tenant, shardID)
+		shard, err := store.LoadShard(tx, partitionKey, testTenant, shardID)
 		require.NoError(t, err)
 		require.NotNil(t, shard)
 
@@ -175,7 +176,7 @@ func TestIndexStore_DeleteShard(t *testing.T) {
 		}))
 	}
 
-	assertPartition := func(t *testing.T, db *bbolt.DB, store *IndexStore, p Partition, exists bool) {
+	assertPartition := func(t *testing.T, db *bbolt.DB, _ *IndexStore, p Partition, exists bool) {
 		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
 			q := p.Query(tx)
 			if exists {
@@ -193,20 +194,19 @@ func TestIndexStore_DeleteShard(t *testing.T) {
 		require.NoError(t, db.Update(store.CreateBuckets))
 
 		p := NewPartition(test.Time("2024-01-01T10:00:00.000Z"), 6*time.Hour)
-		tenant := "test-tenant"
 
-		storeBlock(t, db, p, tenant, 1, createBlock("block1", tenant, 1))
-		storeBlock(t, db, p, tenant, 2, createBlock("block2", tenant, 2))
+		storeBlock(t, db, p, testTenant, 1, createBlock("block1", testTenant, 1))
+		storeBlock(t, db, p, testTenant, 2, createBlock("block2", testTenant, 2))
 
-		assertShard(t, db, store, p, tenant, 1, true)
-		assertShard(t, db, store, p, tenant, 2, true)
+		assertShard(t, db, store, p, testTenant, 1, true)
+		assertShard(t, db, store, p, testTenant, 2, true)
 
 		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-			return store.DeleteShard(tx, p, tenant, 1)
+			return store.DeleteShard(tx, p, testTenant, 1)
 		}))
 
-		assertShard(t, db, store, p, tenant, 1, false)
-		assertShard(t, db, store, p, tenant, 2, true)
+		assertShard(t, db, store, p, testTenant, 1, false)
+		assertShard(t, db, store, p, testTenant, 2, true)
 	})
 
 	t.Run("delete non-existent shard", func(t *testing.T) {
@@ -228,18 +228,17 @@ func TestIndexStore_DeleteShard(t *testing.T) {
 		require.NoError(t, db.Update(store.CreateBuckets))
 
 		p := NewPartition(test.Time("2024-01-01T10:00:00.000Z"), 6*time.Hour)
-		tenant := "test-tenant"
 
-		storeBlock(t, db, p, tenant, 1, createBlock("block1", tenant, 1))
+		storeBlock(t, db, p, testTenant, 1, createBlock("block1", testTenant, 1))
 
-		assertShard(t, db, store, p, tenant, 1, true)
+		assertShard(t, db, store, p, testTenant, 1, true)
 		assertPartition(t, db, store, p, true)
 
 		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-			return store.DeleteShard(tx, p, tenant, 1)
+			return store.DeleteShard(tx, p, testTenant, 1)
 		}))
 
-		assertShard(t, db, store, p, tenant, 1, false)
+		assertShard(t, db, store, p, testTenant, 1, false)
 		assertPartition(t, db, store, p, false)
 	})
 
@@ -281,31 +280,30 @@ func TestIndexStore_DeleteShard(t *testing.T) {
 		require.NoError(t, db.Update(store.CreateBuckets))
 
 		p := NewPartition(test.Time("2024-01-01T10:00:00.000Z"), 6*time.Hour)
-		tenant := "test-tenant"
 
-		storeBlock(t, db, p, tenant, 1, createBlock("block1", tenant, 1))
-		storeBlock(t, db, p, tenant, 2, createBlock("block2", tenant, 2))
-		storeBlock(t, db, p, tenant, 3, createBlock("block3", tenant, 3))
+		storeBlock(t, db, p, testTenant, 1, createBlock("block1", testTenant, 1))
+		storeBlock(t, db, p, testTenant, 2, createBlock("block2", testTenant, 2))
+		storeBlock(t, db, p, testTenant, 3, createBlock("block3", testTenant, 3))
 
 		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-			return store.DeleteShard(tx, p, tenant, 2)
+			return store.DeleteShard(tx, p, testTenant, 2)
 		}))
 
-		assertShard(t, db, store, p, tenant, 1, true)
-		assertShard(t, db, store, p, tenant, 2, false)
-		assertShard(t, db, store, p, tenant, 3, true)
+		assertShard(t, db, store, p, testTenant, 1, true)
+		assertShard(t, db, store, p, testTenant, 2, false)
+		assertShard(t, db, store, p, testTenant, 3, true)
 		assertPartition(t, db, store, p, true)
 
 		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-			return store.DeleteShard(tx, p, tenant, 1)
+			return store.DeleteShard(tx, p, testTenant, 1)
 		}))
 		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-			return store.DeleteShard(tx, p, tenant, 3)
+			return store.DeleteShard(tx, p, testTenant, 3)
 		}))
 
-		assertShard(t, db, store, p, tenant, 1, false)
-		assertShard(t, db, store, p, tenant, 2, false)
-		assertShard(t, db, store, p, tenant, 3, false)
+		assertShard(t, db, store, p, testTenant, 1, false)
+		assertShard(t, db, store, p, testTenant, 2, false)
+		assertShard(t, db, store, p, testTenant, 3, false)
 		assertPartition(t, db, store, p, false)
 	})
 
@@ -316,20 +314,19 @@ func TestIndexStore_DeleteShard(t *testing.T) {
 
 		p1 := NewPartition(test.Time("2024-01-01T10:00:00.000Z"), 6*time.Hour)
 		p2 := NewPartition(test.Time("2024-01-01T16:00:00.000Z"), 6*time.Hour)
-		tenant := "test-tenant"
 
-		storeBlock(t, db, p1, tenant, 1, createBlock("block1", tenant, 1))
-		storeBlock(t, db, p2, tenant, 1, createBlock("block2", tenant, 1))
+		storeBlock(t, db, p1, testTenant, 1, createBlock("block1", testTenant, 1))
+		storeBlock(t, db, p2, testTenant, 1, createBlock("block2", testTenant, 1))
 
-		assertShard(t, db, store, p1, tenant, 1, true)
-		assertShard(t, db, store, p2, tenant, 1, true)
+		assertShard(t, db, store, p1, testTenant, 1, true)
+		assertShard(t, db, store, p2, testTenant, 1, true)
 
 		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-			return store.DeleteShard(tx, p1, tenant, 1)
+			return store.DeleteShard(tx, p1, testTenant, 1)
 		}))
 
-		assertShard(t, db, store, p1, tenant, 1, false)
-		assertShard(t, db, store, p2, tenant, 1, true)
+		assertShard(t, db, store, p1, testTenant, 1, false)
+		assertShard(t, db, store, p2, testTenant, 1, true)
 		assertPartition(t, db, store, p1, false)
 		assertPartition(t, db, store, p2, true)
 	})

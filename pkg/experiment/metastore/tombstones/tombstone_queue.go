@@ -15,8 +15,8 @@ func (k *tombstoneKey) set(t *metastorev1.Tombstones) bool {
 	switch {
 	case t.Blocks != nil:
 		*k = tombstoneKey(t.Blocks.Name)
-	case t.Partition != nil:
-		*k = tombstoneKey(t.Partition.Name)
+	case t.Shard != nil:
+		*k = tombstoneKey(t.Shard.Name)
 	}
 	return len(*k) > 0
 }

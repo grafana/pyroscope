@@ -4,12 +4,15 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/store"
+	multitenancy "github.com/grafana/pyroscope/pkg/tenant"
 )
 
 const (
@@ -129,6 +132,22 @@ func (s *Shard) Delete(tx *bbolt.Tx, blocks ...string) error {
 		}
 	}
 	return nil
+}
+
+func (s *Shard) TombstoneName() string {
+	var b strings.Builder
+	b.WriteString(s.Partition.String())
+	b.WriteByte('-')
+	b.WriteByte('T')
+	if s.Tenant != "" {
+		b.WriteString(s.Tenant)
+	} else {
+		b.WriteString(multitenancy.DefaultTenantID)
+	}
+	b.WriteByte('-')
+	b.WriteByte('S')
+	b.WriteString(strconv.FormatUint(uint64(s.Shard), 10))
+	return b.String()
 }
 
 // ShallowCopy creates a shallow copy: no deep copy of the string table.

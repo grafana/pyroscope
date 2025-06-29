@@ -115,7 +115,7 @@ func (m *Tombstones) CloneVT() *Tombstones {
 	}
 	r := new(Tombstones)
 	r.Blocks = m.Blocks.CloneVT()
-	r.Partition = m.Partition.CloneVT()
+	r.Shard = m.Shard.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -152,11 +152,11 @@ func (m *BlockTombstones) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *PartitionTombstone) CloneVT() *PartitionTombstone {
+func (m *ShardTombstone) CloneVT() *ShardTombstone {
 	if m == nil {
-		return (*PartitionTombstone)(nil)
+		return (*ShardTombstone)(nil)
 	}
-	r := new(PartitionTombstone)
+	r := new(ShardTombstone)
 	r.Name = m.Name
 	r.Timestamp = m.Timestamp
 	r.Duration = m.Duration
@@ -169,7 +169,7 @@ func (m *PartitionTombstone) CloneVT() *PartitionTombstone {
 	return r
 }
 
-func (m *PartitionTombstone) CloneMessageVT() proto.Message {
+func (m *ShardTombstone) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -385,7 +385,7 @@ func (this *Tombstones) EqualVT(that *Tombstones) bool {
 	if !this.Blocks.EqualVT(that.Blocks) {
 		return false
 	}
-	if !this.Partition.EqualVT(that.Partition) {
+	if !this.Shard.EqualVT(that.Shard) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -435,7 +435,7 @@ func (this *BlockTombstones) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *PartitionTombstone) EqualVT(that *PartitionTombstone) bool {
+func (this *ShardTombstone) EqualVT(that *ShardTombstone) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -459,8 +459,8 @@ func (this *PartitionTombstone) EqualVT(that *PartitionTombstone) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *PartitionTombstone) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*PartitionTombstone)
+func (this *ShardTombstone) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ShardTombstone)
 	if !ok {
 		return false
 	}
@@ -864,8 +864,8 @@ func (m *Tombstones) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.Partition != nil {
-		size, err := m.Partition.MarshalToSizedBufferVT(dAtA[:i])
+	if m.Shard != nil {
+		size, err := m.Shard.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
 			return 0, err
 		}
@@ -953,7 +953,7 @@ func (m *BlockTombstones) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *PartitionTombstone) MarshalVT() (dAtA []byte, err error) {
+func (m *ShardTombstone) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -966,12 +966,12 @@ func (m *PartitionTombstone) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *PartitionTombstone) MarshalToVT(dAtA []byte) (int, error) {
+func (m *ShardTombstone) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *PartitionTombstone) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *ShardTombstone) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1267,8 +1267,8 @@ func (m *Tombstones) SizeVT() (n int) {
 		l = m.Blocks.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	if m.Partition != nil {
-		l = m.Partition.SizeVT()
+	if m.Shard != nil {
+		l = m.Shard.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -1305,7 +1305,7 @@ func (m *BlockTombstones) SizeVT() (n int) {
 	return n
 }
 
-func (m *PartitionTombstone) SizeVT() (n int) {
+func (m *ShardTombstone) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1905,7 +1905,7 @@ func (m *Tombstones) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Partition", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Shard", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1932,10 +1932,10 @@ func (m *Tombstones) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Partition == nil {
-				m.Partition = &PartitionTombstone{}
+			if m.Shard == nil {
+				m.Shard = &ShardTombstone{}
 			}
-			if err := m.Partition.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.Shard.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2146,7 +2146,7 @@ func (m *BlockTombstones) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *PartitionTombstone) UnmarshalVT(dAtA []byte) error {
+func (m *ShardTombstone) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2169,10 +2169,10 @@ func (m *PartitionTombstone) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: PartitionTombstone: wiretype end group for non-group")
+			return fmt.Errorf("proto: ShardTombstone: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: PartitionTombstone: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: ShardTombstone: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

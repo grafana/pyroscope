@@ -50,8 +50,8 @@ func BenchmarkIndex_GetTenantStats(b *testing.B) {
 					Tenant:        1,
 					Shard:         uint32(shard),
 					MinTime:       ts.UnixMilli(),
-					MaxTime:       ts.Add(partitionDuration/2).UnixMilli(),
-					StringTable: []string{"", tenant},
+					MaxTime:       ts.Add(partitionDuration / 2).UnixMilli(),
+					StringTable:   []string{"", tenant},
 				}
 				err := db.Update(func(tx *bbolt.Tx) error {
 					return idx.InsertBlock(tx, md)

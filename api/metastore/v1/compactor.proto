@@ -32,7 +32,7 @@ message CompactionJob {
 // Tombstones represent objects removed from the index but still stored.
 message Tombstones {
   BlockTombstones blocks = 1;
-  PartitionTombstone partition = 2;
+  ShardTombstone shard = 2;
 }
 
 message BlockTombstones {
@@ -43,7 +43,7 @@ message BlockTombstones {
   repeated string blocks = 5;
 }
 
-message PartitionTombstone {
+message ShardTombstone {
   string name = 1;
   // Lower time boundary. Unix epoch in nanoseconds.
   int64 timestamp = 2;

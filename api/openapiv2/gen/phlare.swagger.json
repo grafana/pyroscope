@@ -1686,30 +1686,6 @@
       ],
       "default": "TOTAL"
     },
-    "v1PartitionTombstone": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "int64",
-          "description": "Lower time boundary. Unix epoch in nanoseconds."
-        },
-        "duration": {
-          "type": "string",
-          "format": "int64"
-        },
-        "shard": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "tenant": {
-          "type": "string"
-        }
-      }
-    },
     "v1Point": {
       "type": "object",
       "properties": {
@@ -2356,6 +2332,30 @@
         }
       }
     },
+    "v1ShardTombstone": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Lower time boundary. Unix epoch in nanoseconds."
+        },
+        "duration": {
+          "type": "string",
+          "format": "int64"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenant": {
+          "type": "string"
+        }
+      }
+    },
     "v1StackTraceSelector": {
       "type": "object",
       "properties": {
@@ -2485,8 +2485,8 @@
         "blocks": {
           "$ref": "#/definitions/v1BlockTombstones"
         },
-        "partition": {
-          "$ref": "#/definitions/v1PartitionTombstone"
+        "shard": {
+          "$ref": "#/definitions/v1ShardTombstone"
         }
       },
       "description": "Tombstones represent objects removed from the index but still stored."

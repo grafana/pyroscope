@@ -162,12 +162,7 @@ func (s *sampleIterator) At() placement.Sample {
 func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy) error {
 	var req raft_log.TruncateIndexRequest
 	read := func(tx *bbolt.Tx, r raftnode.ReadIndex) {
-		for p := range svc.index.Partitions(tx) {
-			if !rp.Visit(tx, p) {
-				break
-			}
-		}
-		req.Tombstones = rp.Tombstones()
+		req.Tombstones = rp.CreateTombstones(tx, svc.index.Partitions(tx))
 		req.Term = r.Term // The leader may change after we read the index.
 	}
 	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {

@@ -89,7 +89,7 @@ func (m *IndexCommandHandler) TruncateIndex(tx *bbolt.Tx, cmd *raft.Log, req *ra
 	for _, tombstone := range req.Tombstones {
 		// Although it's not strictly necessary, we may pass any tombstones
 		// to TruncateIndex, and the Partition member may be missing.
-		if p := tombstone.Partition; p != nil {
+		if p := tombstone.Shard; p != nil {
 			pk := indexstore.Partition{
 				Timestamp: time.Unix(0, p.Timestamp),
 				Duration:  time.Duration(p.Duration),
