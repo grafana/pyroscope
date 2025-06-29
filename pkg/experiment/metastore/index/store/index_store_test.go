@@ -143,3 +143,194 @@ func TestShard_Overlaps(t *testing.T) {
 		return nil
 	}))
 }
+
+func TestIndexStore_DeleteShard(t *testing.T) {
+	createBlock := func(id, tenant string, shard uint32) *metastorev1.BlockMeta {
+		return &metastorev1.BlockMeta{
+			Id:          id,
+			Tenant:      1,
+			Shard:       shard,
+			MinTime:     test.UnixMilli("2024-01-01T10:00:00.000Z"),
+			MaxTime:     test.UnixMilli("2024-01-01T11:00:00.000Z"),
+			StringTable: []string{"", tenant},
+		}
+	}
+
+	storeBlock := func(t *testing.T, db *bbolt.DB, p Partition, tenant string, shard uint32, block *metastorev1.BlockMeta) {
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return NewShard(p, tenant, shard).Store(tx, block)
+		}))
+	}
+
+	assertShard := func(t *testing.T, db *bbolt.DB, store *IndexStore, p Partition, tenant string, shard uint32, exists bool) {
+		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+			s, err := store.LoadShard(tx, p, tenant, shard)
+			if exists {
+				assert.NoError(t, err)
+				assert.NotNil(t, s)
+			} else {
+				assert.Nil(t, s)
+			}
+			return nil
+		}))
+	}
+
+	assertPartition := func(t *testing.T, db *bbolt.DB, store *IndexStore, p Partition, exists bool) {
+		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+			q := p.Query(tx)
+			if exists {
+				assert.NotNil(t, q)
+			} else {
+				assert.Nil(t, q)
+			}
+			return nil
+		}))
+	}
+
+	t.Run("basic deletion", func(t *testing.T) {
+		db := test.BoltDB(t)
+		store := NewIndexStore()
+		require.NoError(t, db.Update(store.CreateBuckets))
+
+		p := NewPartition(test.Time("2024-01-01T10:00:00.000Z"), 6*time.Hour)
+		tenant := "test-tenant"
+
+		storeBlock(t, db, p, tenant, 1, createBlock("block1", tenant, 1))
+		storeBlock(t, db, p, tenant, 2, createBlock("block2", tenant, 2))
+
+		assertShard(t, db, store, p, tenant, 1, true)
+		assertShard(t, db, store, p, tenant, 2, true)
+
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return store.DeleteShard(tx, p, tenant, 1)
+		}))
+
+		assertShard(t, db, store, p, tenant, 1, false)
+		assertShard(t, db, store, p, tenant, 2, true)
+	})
+
+	t.Run("delete non-existent shard", func(t *testing.T) {
+		db := test.BoltDB(t)
+		store := NewIndexStore()
+		require.NoError(t, db.Update(store.CreateBuckets))
+
+		p := NewPartition(test.Time("2024-01-01T10:00:00.000Z"), 6*time.Hour)
+
+		err := db.Update(func(tx *bbolt.Tx) error {
+			return store.DeleteShard(tx, p, "non-existent", 999)
+		})
+		assert.NoError(t, err)
+	})
+
+	t.Run("tenant bucket cleanup", func(t *testing.T) {
+		db := test.BoltDB(t)
+		store := NewIndexStore()
+		require.NoError(t, db.Update(store.CreateBuckets))
+
+		p := NewPartition(test.Time("2024-01-01T10:00:00.000Z"), 6*time.Hour)
+		tenant := "test-tenant"
+
+		storeBlock(t, db, p, tenant, 1, createBlock("block1", tenant, 1))
+
+		assertShard(t, db, store, p, tenant, 1, true)
+		assertPartition(t, db, store, p, true)
+
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return store.DeleteShard(tx, p, tenant, 1)
+		}))
+
+		assertShard(t, db, store, p, tenant, 1, false)
+		assertPartition(t, db, store, p, false)
+	})
+
+	t.Run("partition bucket cleanup with multiple tenants", func(t *testing.T) {
+		db := test.BoltDB(t)
+		store := NewIndexStore()
+		require.NoError(t, db.Update(store.CreateBuckets))
+
+		p := NewPartition(test.Time("2024-01-01T10:00:00.000Z"), 6*time.Hour)
+		tenant1, tenant2 := "tenant-1", "tenant-2"
+
+		storeBlock(t, db, p, tenant1, 1, createBlock("block1", tenant1, 1))
+		storeBlock(t, db, p, tenant2, 1, createBlock("block2", tenant2, 1))
+
+		assertShard(t, db, store, p, tenant1, 1, true)
+		assertShard(t, db, store, p, tenant2, 1, true)
+		assertPartition(t, db, store, p, true)
+
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return store.DeleteShard(tx, p, tenant1, 1)
+		}))
+
+		assertShard(t, db, store, p, tenant1, 1, false)
+		assertShard(t, db, store, p, tenant2, 1, true)
+		assertPartition(t, db, store, p, true)
+
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return store.DeleteShard(tx, p, tenant2, 1)
+		}))
+
+		assertShard(t, db, store, p, tenant1, 1, false)
+		assertShard(t, db, store, p, tenant2, 1, false)
+		assertPartition(t, db, store, p, false)
+	})
+
+	t.Run("multiple shards same tenant", func(t *testing.T) {
+		db := test.BoltDB(t)
+		store := NewIndexStore()
+		require.NoError(t, db.Update(store.CreateBuckets))
+
+		p := NewPartition(test.Time("2024-01-01T10:00:00.000Z"), 6*time.Hour)
+		tenant := "test-tenant"
+
+		storeBlock(t, db, p, tenant, 1, createBlock("block1", tenant, 1))
+		storeBlock(t, db, p, tenant, 2, createBlock("block2", tenant, 2))
+		storeBlock(t, db, p, tenant, 3, createBlock("block3", tenant, 3))
+
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return store.DeleteShard(tx, p, tenant, 2)
+		}))
+
+		assertShard(t, db, store, p, tenant, 1, true)
+		assertShard(t, db, store, p, tenant, 2, false)
+		assertShard(t, db, store, p, tenant, 3, true)
+		assertPartition(t, db, store, p, true)
+
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return store.DeleteShard(tx, p, tenant, 1)
+		}))
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return store.DeleteShard(tx, p, tenant, 3)
+		}))
+
+		assertShard(t, db, store, p, tenant, 1, false)
+		assertShard(t, db, store, p, tenant, 2, false)
+		assertShard(t, db, store, p, tenant, 3, false)
+		assertPartition(t, db, store, p, false)
+	})
+
+	t.Run("multiple partitions isolation", func(t *testing.T) {
+		db := test.BoltDB(t)
+		store := NewIndexStore()
+		require.NoError(t, db.Update(store.CreateBuckets))
+
+		p1 := NewPartition(test.Time("2024-01-01T10:00:00.000Z"), 6*time.Hour)
+		p2 := NewPartition(test.Time("2024-01-01T16:00:00.000Z"), 6*time.Hour)
+		tenant := "test-tenant"
+
+		storeBlock(t, db, p1, tenant, 1, createBlock("block1", tenant, 1))
+		storeBlock(t, db, p2, tenant, 1, createBlock("block2", tenant, 1))
+
+		assertShard(t, db, store, p1, tenant, 1, true)
+		assertShard(t, db, store, p2, tenant, 1, true)
+
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return store.DeleteShard(tx, p1, tenant, 1)
+		}))
+
+		assertShard(t, db, store, p1, tenant, 1, false)
+		assertShard(t, db, store, p2, tenant, 1, true)
+		assertPartition(t, db, store, p1, false)
+		assertPartition(t, db, store, p2, true)
+	})
+}

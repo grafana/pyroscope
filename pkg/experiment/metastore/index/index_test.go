@@ -253,3 +253,115 @@ func TestShardIterator_TimeFiltering(t *testing.T) {
 		})
 	}
 }
+
+func TestIndex_DeleteShard(t *testing.T) {
+	const baseTime = "2024-01-01T10:00:00.000Z"
+
+	createBlock := func(tenant string, shard uint32, offset time.Duration) *metastorev1.BlockMeta {
+		ts := test.Time(baseTime).Add(offset)
+		return &metastorev1.BlockMeta{
+			Id:          test.ULID(ts.Format(time.RFC3339)),
+			Tenant:      1,
+			Shard:       shard,
+			MinTime:     ts.UnixMilli(),
+			MaxTime:     ts.Add(time.Hour).UnixMilli(),
+			StringTable: []string{"", tenant},
+		}
+	}
+
+	insertBlocks := func(t *testing.T, db *bbolt.DB, idx *Index, blocks []*metastorev1.BlockMeta) {
+		for _, block := range blocks {
+			require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+				return idx.InsertBlock(tx, block)
+			}))
+		}
+	}
+
+	assertShard := func(t *testing.T, db *bbolt.DB, p store.Partition, tenant string, shard uint32, exists bool) {
+		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+			q := p.Query(tx)
+			if q == nil && !exists {
+				return nil
+			}
+			require.NotNil(t, q)
+
+			var found bool
+			for s := range q.Shards(tenant) {
+				if s.Shard == shard {
+					found = true
+					break
+				}
+			}
+
+			assert.Equal(t, exists, found)
+			return nil
+		}))
+	}
+
+	t.Run("basic deletion", func(t *testing.T) {
+		db := test.BoltDB(t)
+		idx := NewIndex(util.Logger, NewStore(), DefaultConfig)
+		require.NoError(t, db.Update(idx.Init))
+
+		tenant := "test-tenant"
+		blocks := []*metastorev1.BlockMeta{
+			createBlock(tenant, 1, 0),
+			createBlock(tenant, 2, 30*time.Minute),
+		}
+
+		insertBlocks(t, db, idx, blocks)
+		p := store.NewPartition(test.Time(baseTime), idx.config.partitionDuration)
+
+		assertShard(t, db, p, tenant, 1, true)
+		assertShard(t, db, p, tenant, 2, true)
+
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return idx.DeleteShard(tx, p, tenant, 1)
+		}))
+
+		assertShard(t, db, p, tenant, 1, false)
+		assertShard(t, db, p, tenant, 2, true)
+
+		k := shardCacheKey{partition: p, tenant: tenant, shard: 1}
+		cached, found := idx.shards.cache.Get(k)
+		assert.False(t, found)
+		assert.Nil(t, cached)
+	})
+
+	t.Run("delete non-existent shard", func(t *testing.T) {
+		db := test.BoltDB(t)
+		idx := NewIndex(util.Logger, NewStore(), DefaultConfig)
+		require.NoError(t, db.Update(idx.Init))
+
+		p := store.NewPartition(test.Time(baseTime), idx.config.partitionDuration)
+		err := db.Update(func(tx *bbolt.Tx) error {
+			return idx.DeleteShard(tx, p, "non-existent", 999)
+		})
+		assert.NoError(t, err)
+	})
+
+	t.Run("multiple tenants isolation", func(t *testing.T) {
+		db := test.BoltDB(t)
+		idx := NewIndex(util.Logger, NewStore(), DefaultConfig)
+		require.NoError(t, db.Update(idx.Init))
+
+		tenant1, tenant2 := "tenant-1", "tenant-2"
+		blocks := []*metastorev1.BlockMeta{
+			createBlock(tenant1, 1, 0),
+			createBlock(tenant2, 1, 30*time.Minute),
+		}
+
+		insertBlocks(t, db, idx, blocks)
+		p := store.NewPartition(test.Time(baseTime), idx.config.partitionDuration)
+
+		assertShard(t, db, p, tenant1, 1, true)
+		assertShard(t, db, p, tenant2, 1, true)
+
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return idx.DeleteShard(tx, p, tenant1, 1)
+		}))
+
+		assertShard(t, db, p, tenant1, 1, false)
+		assertShard(t, db, p, tenant2, 1, true)
+	})
+}
