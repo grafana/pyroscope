@@ -27,7 +27,7 @@ type Config struct {
 func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&c.CleanupInterval, prefix+"cleanup-interval", 0, "Interval for index cleanup check. 0 to disable.")
 	f.DurationVar(&c.CleanupGracePeriod, prefix+"cleanup-grace-period", time.Hour*6, "After a partition is eligible for deletion, it will be kept for this period before actually being evaluated. The period should cover the time difference between the block creation time and the data timestamps. Blocks are only deleted if all data in the block has passed the retention period, and the grace period delays the moment when the partition is evaluated for deletion.")
-	f.IntVar(&c.CleanupMaxPartitions, prefix+"cleanup-max-partitions", 128, "Maximum number of partitions to cleanup at once. A partition is qualified by partition key, tenant, and shard.")
+	f.IntVar(&c.CleanupMaxPartitions, prefix+"cleanup-max-partitions", 32, "Maximum number of partitions to cleanup at once. A partition is qualified by partition key, tenant, and shard.")
 }
 
 // Cleaner is responsible for periodically cleaning up

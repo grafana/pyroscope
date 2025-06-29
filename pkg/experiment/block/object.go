@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/grafana/dskit/multierror"
+	"github.com/oklog/ulid"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -75,6 +76,23 @@ func ObjectPath(md *metastorev1.BlockMeta) string {
 	return BuildObjectPath(metadata.Tenant(md), md.Shard, md.CompactionLevel, md.Id)
 }
 
+func BuildObjectDir(tenant string, shard uint32) string {
+	topLevel := DirNameBlock
+	tenantDirName := tenant
+	if tenant == "" {
+		topLevel = DirNameSegment
+		tenantDirName = DirNameAnonTenant
+	}
+	var b strings.Builder
+	b.WriteString(topLevel)
+	b.WriteByte('/')
+	b.WriteString(strconv.Itoa(int(shard)))
+	b.WriteByte('/')
+	b.WriteString(tenantDirName)
+	b.WriteByte('/')
+	return b.String()
+}
+
 func BuildObjectPath(tenant string, shard uint32, level uint32, block string) string {
 	topLevel := DirNameBlock
 	tenantDirName := tenant
@@ -111,6 +129,18 @@ func MetadataDLQObjectPath(md *metastorev1.BlockMeta) string {
 	b.WriteByte('/')
 	b.WriteString(FileNameMetadataObject)
 	return b.String()
+}
+
+func ParseBlockIDFromPath(path string) (ulid.ULID, error) {
+	tokens := strings.Split(path, "/")
+	if len(tokens) < 2 {
+		return ulid.ULID{}, fmt.Errorf("invalid path format: %s", path)
+	}
+	blockID, err := ulid.Parse(tokens[len(tokens)-2])
+	if err != nil {
+		return ulid.ULID{}, fmt.Errorf("expected ULID: %s: %w", path, err)
+	}
+	return blockID, nil
 }
 
 // Open opens the object, loading the data into memory if it's small enough.

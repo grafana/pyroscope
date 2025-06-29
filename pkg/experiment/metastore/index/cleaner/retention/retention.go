@@ -104,7 +104,7 @@ func NewTimeBasedRetentionPolicy(
 
 func (rp *TimeBasedRetentionPolicy) CreateTombstones(tx *bbolt.Tx, partitions iter.Seq[indexstore.Partition]) []*metastorev1.Tombstones {
 	if len(rp.markers) == 0 {
-		level.Debug(rp.logger).Log("no retention policies defined, skipping")
+		level.Debug(rp.logger).Log("msg", "no retention policies defined, skipping")
 		return nil
 	}
 	rp.tombstones = rp.tombstones[:0]
@@ -137,7 +137,8 @@ func (rp *TimeBasedRetentionPolicy) processPartition(tx *bbolt.Tx, p indexstore.
 	// distance between them might be large (hours), we would be wasting time
 	// if were inspecting the partition right away.
 	partitionEnd := &marker{timestamp: p.EndTime().Add(rp.gracePeriod)}
-	level.Debug(rp.logger).Log("viewing partition",
+	level.Debug(rp.logger).Log(
+		"msg", "viewing partition",
 		"partition", p.String(),
 		"partition_end_marker", partitionEnd.timestamp,
 		"retention_markers", len(rp.markers),
@@ -150,7 +151,7 @@ func (rp *TimeBasedRetentionPolicy) processPartition(tx *bbolt.Tx, p indexstore.
 		// All markers are before the partition end: it can't be deleted.
 		// We can stop here: no partitions after this one will have deletion
 		// markers that are before the partition end.
-		level.Debug(rp.logger).Log("partition has not passed the retention period, skipping")
+		level.Debug(rp.logger).Log("msg", "partition has not passed the retention period, skipping")
 		return false
 	}
 
@@ -172,14 +173,14 @@ func (rp *TimeBasedRetentionPolicy) processPartition(tx *bbolt.Tx, p indexstore.
 		// period shorter than the default one. This is useful in case if the
 		// tenant data is deleted by setting very short retention period: we
 		// won't check each and every partition tenant shard.
-		level.Debug(rp.logger).Log("creating tombstones for tenant markers", "retention_markers", len(rp.markers[i:]))
+		level.Debug(rp.logger).Log("msg", "creating tombstones for tenant markers", "retention_markers", len(rp.markers[i:]))
 		rp.createTombstonesForMarkers(q, rp.markers[i:])
 	} else {
 		// Otherwise, we need to inspect all the tenants in the partition.
 		// There's no point in checking the markers: either most of them
 		// will result in tombstones, or have already been deleted (e.g.,
 		// there's one tenant with an infinite retention period).
-		level.Debug(rp.logger).Log("creating tombstones for partition tenants")
+		level.Debug(rp.logger).Log("msg", "creating tombstones for partition tenants")
 		rp.createTombstonesForTenants(q, partitionEnd)
 	}
 
@@ -255,7 +256,7 @@ func (rp *TimeBasedRetentionPolicy) createTombstonesForAnonTenant(q *indexstore.
 	}
 	// Once shard max time passes the partition end time, we can
 	// create tombstones for the anonymous tenant shard.
-	level.Debug(rp.logger).Log("creating tombstones for anonymous tenant")
+	level.Debug(rp.logger).Log("msg", "creating tombstones for anonymous tenant")
 	// We want to bypass the timestamp check for the anonymous tenant:
 	// we know that if all the other tenants have been processed, it's
 	// safe to create tombstones for the anonymous tenant.
@@ -282,7 +283,7 @@ func (rp *TimeBasedRetentionPolicy) createTombstones(q *indexstore.PartitionQuer
 		if maxTime.Before(m.timestamp) {
 			// The shard does not contain data before the marker.
 			name := shard.TombstoneName()
-			level.Debug(rp.logger).Log("creating tombstone", "name", name)
+			level.Debug(rp.logger).Log("msg", "creating tombstone", "name", name)
 			rp.tombstones = append(rp.tombstones, &metastorev1.Tombstones{
 				Shard: &metastorev1.ShardTombstone{
 					Name:      name,

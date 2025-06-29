@@ -518,7 +518,13 @@ func (o *Overrides) Retention() (defaults retention.Config, overrides iter.Seq2[
 // The order is not deterministic.
 func GetOverride[T any](o *Overrides, fn func(string, *Limits) T) (defaults T, overrides iter.Seq2[string, T]) {
 	defaults = fn("", o.defaultLimits)
+	if o.tenantLimits == nil {
+		return defaults, func(yield func(string, T) bool) {}
+	}
 	c := o.tenantLimits.RuntimeConfig()
+	if c == nil {
+		return defaults, func(yield func(string, T) bool) {}
+	}
 	return defaults, func(yield func(string, T) bool) {
 		for tenantID, limits := range c.TenantLimits {
 			if !yield(tenantID, fn(tenantID, limits)) {

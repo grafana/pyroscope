@@ -13,6 +13,7 @@ type compactionWorkerMetrics struct {
 	jobsCompleted    *prometheus.CounterVec
 	jobDuration      *prometheus.HistogramVec
 	timeToCompaction *prometheus.HistogramVec
+	blocksDeleted    *prometheus.CounterVec
 }
 
 func newMetrics(r prometheus.Registerer) *compactionWorkerMetrics {
@@ -31,7 +32,7 @@ func newMetrics(r prometheus.Registerer) *compactionWorkerMetrics {
 			Name: "job_duration_seconds",
 			Help: "Duration of compaction job runs",
 
-			Buckets:                         prometheus.ExponentialBuckets(1, 300, 16),
+			Buckets:                         prometheus.ExponentialBuckets(1, 2, 30),
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  16,
 			NativeHistogramMinResetDuration: time.Hour,
@@ -41,11 +42,16 @@ func newMetrics(r prometheus.Registerer) *compactionWorkerMetrics {
 			Name: "time_to_compaction_seconds",
 			Help: "The time elapsed since the oldest compacted block was created.",
 
-			Buckets:                         prometheus.ExponentialBuckets(1, 3600, 16),
+			Buckets:                         prometheus.ExponentialBuckets(1, 2, 30),
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  16,
 			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"tenant", "level"}),
+
+		blocksDeleted: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "blocks_deleted_total",
+			Help: "Total number of block deletion attempts.",
+		}, []string{"status"}),
 	}
 
 	util.Register(r,
@@ -53,6 +59,7 @@ func newMetrics(r prometheus.Registerer) *compactionWorkerMetrics {
 		m.jobsCompleted,
 		m.jobDuration,
 		m.timeToCompaction,
+		m.blocksDeleted,
 	)
 
 	return m
