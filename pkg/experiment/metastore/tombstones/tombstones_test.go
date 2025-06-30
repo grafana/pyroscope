@@ -17,7 +17,7 @@ func TestTombstonesIdempotence(t *testing.T) {
 	db := test.BoltDB(t)
 	tombstoneStore := store.NewTombstoneStore()
 
-	ts := NewTombstones(tombstoneStore)
+	ts := NewTombstones(tombstoneStore, nil)
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 	require.NoError(t, ts.Init(tx))

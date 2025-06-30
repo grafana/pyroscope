@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -19,6 +20,7 @@ type TombstoneStore interface {
 }
 
 type Tombstones struct {
+	metrics    *metrics
 	tombstones map[tombstoneKey]*tombstones
 	blocks     map[tenantBlockKey]*tenantBlocks
 	queue      *tombstoneQueue
@@ -34,8 +36,9 @@ type tenantBlocks struct {
 	blocks map[string]struct{}
 }
 
-func NewTombstones(store TombstoneStore) *Tombstones {
+func NewTombstones(store TombstoneStore, reg prometheus.Registerer) *Tombstones {
 	return &Tombstones{
+		metrics:    newMetrics(reg),
 		tombstones: make(map[tombstoneKey]*tombstones),
 		blocks:     make(map[tenantBlockKey]*tenantBlocks),
 		queue:      newTombstoneQueue(),
@@ -106,6 +109,7 @@ func (x *Tombstones) put(k tombstoneKey, v store.TombstoneEntry) bool {
 	e := &tombstones{TombstoneEntry: v}
 	x.tombstones[k] = e
 	x.queue.push(e)
+	x.metrics.incrementTombstones(v.Tombstones)
 	if v.Tombstones.Blocks != nil {
 		// Keep track of the blocks we enqueued. This is
 		// necessary to answer if the block has already
@@ -121,9 +125,10 @@ func (x *Tombstones) delete(k tombstoneKey) (t *tombstones) {
 		return nil
 	}
 	delete(x.tombstones, k)
+	x.metrics.decrementTombstones(e.Tombstones)
 	if t = x.queue.delete(e); t != nil {
 		if t.Tombstones.Blocks != nil {
-			x.deleteBlockTombstones(t.Blocks)
+			x.deleteBlockTombstones(t.Tombstones.Blocks)
 		}
 	}
 	return t
@@ -166,6 +171,7 @@ func (x *Tombstones) Restore(tx *bbolt.Tx) error {
 	x.queue = newTombstoneQueue()
 	clear(x.tombstones)
 	clear(x.blocks)
+	x.metrics.tombstones.Reset()
 	entries := x.store.ListEntries(tx)
 	defer func() {
 		_ = entries.Close()

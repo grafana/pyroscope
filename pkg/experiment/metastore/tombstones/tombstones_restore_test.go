@@ -18,7 +18,7 @@ func TestTombstonesRestore(t *testing.T) {
 	db := test.BoltDB(t)
 	tombstoneStore := store.NewTombstoneStore()
 
-	ts := NewTombstones(tombstoneStore)
+	ts := NewTombstones(tombstoneStore, nil)
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 	require.NoError(t, ts.Init(tx))
@@ -65,7 +65,7 @@ func TestTombstonesRestore(t *testing.T) {
 	assert.True(t, ts.Exists("tenant-2", 2, "block-3-2"))
 	assert.Equal(t, 3, countTombstones(ts))
 
-	restored := NewTombstones(tombstoneStore)
+	restored := NewTombstones(tombstoneStore, nil)
 	tx, err = db.Begin(true)
 	require.NoError(t, err)
 	err = restored.Restore(tx)

@@ -138,7 +138,7 @@ func (rp *TimeBasedRetentionPolicy) processPartition(tx *bbolt.Tx, p indexstore.
 	// if were inspecting the partition right away.
 	partitionEnd := &marker{timestamp: p.EndTime().Add(rp.gracePeriod)}
 	level.Debug(rp.logger).Log(
-		"msg", "viewing partition",
+		"msg", "processing partition",
 		"partition", p.String(),
 		"partition_end_marker", partitionEnd.timestamp,
 		"retention_markers", len(rp.markers),

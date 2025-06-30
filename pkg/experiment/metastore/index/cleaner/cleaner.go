@@ -96,7 +96,7 @@ func (c *Cleaner) loop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			rp := retention.NewTimeBasedRetentionPolicy(
-				c.logger,
+				log.With(c.logger, "component", "index-cleaner"),
 				c.overrides,
 				c.config.CleanupMaxPartitions,
 				c.config.CleanupGracePeriod,

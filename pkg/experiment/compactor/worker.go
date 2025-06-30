@@ -63,7 +63,7 @@ type Worker struct {
 	client    MetastoreClient
 	storage   objstore.Bucket
 	compactFn compactFunc
-	metrics   *compactionWorkerMetrics
+	metrics   *workerMetrics
 
 	jobs     map[string]*compactionJob
 	queue    chan *compactionJob
@@ -565,7 +565,7 @@ type deleter struct {
 	logger  log.Logger
 	bucket  objstore.Bucket
 	pool    *deleterPool
-	metrics *compactionWorkerMetrics
+	metrics *workerMetrics
 
 	wg      sync.WaitGroup
 	ctx     context.Context
