@@ -32,8 +32,10 @@ func (q *tombstoneQueue) push(e *tombstones) {
 	if q.tail != nil {
 		q.tail.next = e
 		e.prev = q.tail
-	} else {
+	} else if q.head == nil {
 		q.head = e
+	} else {
+		panic("bug: queue has head but tail is nil")
 	}
 	q.tail = e
 }
@@ -41,15 +43,19 @@ func (q *tombstoneQueue) push(e *tombstones) {
 func (q *tombstoneQueue) delete(e *tombstones) *tombstones {
 	if e.prev != nil {
 		e.prev.next = e.next
-	} else {
+	} else if e == q.head {
 		// This is the head.
 		q.head = e.next
+	} else {
+		panic("bug: attempting to delete a tombstone that is not in the queue")
 	}
 	if e.next != nil {
 		e.next.prev = e.prev
-	} else {
+	} else if e == q.tail {
 		// This is the tail.
-		q.tail = e.next
+		q.tail = e.prev
+	} else {
+		panic("bug: attempting to delete a tombstone that is not in the queue")
 	}
 	e.next = nil
 	e.prev = nil
