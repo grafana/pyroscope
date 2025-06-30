@@ -8,7 +8,7 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/tombstones/store"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/tombstones/store"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 

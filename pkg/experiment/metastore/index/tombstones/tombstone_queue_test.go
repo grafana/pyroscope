@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/tombstones/store"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/tombstones/store"
 )
 
 func TestTombstoneIterator(t *testing.T) {

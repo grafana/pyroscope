@@ -26,9 +26,9 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/cleaner"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/cleaner/retention"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/dlq"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/tombstones"
 	raft "github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/tombstones"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
