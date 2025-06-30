@@ -17,9 +17,24 @@ var ErrInvalidTombstoneEntry = errors.New("invalid tombstone entry")
 var tombstoneBucketName = []byte("tombstones")
 
 type TombstoneEntry struct {
+	// Key the entry was stored under. This is needed for backward
+	// compatibility: if the logic for generating keys changes, we
+	// will still be able to delete old entries.
+	key        []byte
 	Index      uint64
 	AppendedAt int64
 	*metastorev1.Tombstones
+}
+
+func (e TombstoneEntry) Name() string {
+	switch {
+	case e.Tombstones.Blocks != nil:
+		return e.Tombstones.Blocks.Name
+	case e.Tombstones.Shard != nil:
+		return e.Tombstones.Shard.Name
+	default:
+		return ""
+	}
 }
 
 type TombstoneStore struct{ bucketName []byte }
@@ -83,20 +98,29 @@ func marshalTombstoneEntry(e TombstoneEntry) store.KV {
 }
 
 func marshalTombstoneEntryKey(e TombstoneEntry) []byte {
-	b := make([]byte, 16)
+	if e.key != nil {
+		b := make([]byte, len(e.key))
+		copy(b, e.key)
+		return b
+	}
+	name := e.Name()
+	b := make([]byte, 16+len(name))
 	binary.BigEndian.PutUint64(b[0:8], e.Index)
 	binary.BigEndian.PutUint64(b[8:16], uint64(e.AppendedAt))
+	copy(b[16:], name)
 	return b
 }
 
-func unmarshalTombstoneEntry(dst *TombstoneEntry, e store.KV) error {
-	if len(e.Key) < 16 {
+func unmarshalTombstoneEntry(e *TombstoneEntry, kv store.KV) error {
+	if len(kv.Key) < 16 {
 		return ErrInvalidTombstoneEntry
 	}
-	dst.Index = binary.BigEndian.Uint64(e.Key[0:8])
-	dst.AppendedAt = int64(binary.BigEndian.Uint64(e.Key[8:16]))
-	dst.Tombstones = new(metastorev1.Tombstones)
-	if err := dst.Tombstones.UnmarshalVT(e.Value); err != nil {
+	e.key = make([]byte, len(kv.Key))
+	copy(e.key, kv.Key)
+	e.Index = binary.BigEndian.Uint64(kv.Key[0:8])
+	e.AppendedAt = int64(binary.BigEndian.Uint64(kv.Key[8:16]))
+	e.Tombstones = new(metastorev1.Tombstones)
+	if err := e.Tombstones.UnmarshalVT(kv.Value); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidTombstoneEntry, err)
 	}
 	return nil

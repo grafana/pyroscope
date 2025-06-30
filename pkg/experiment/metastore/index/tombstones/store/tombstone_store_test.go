@@ -41,7 +41,12 @@ func TestBlockQueueStore_StoreEntry(t *testing.T) {
 	var i int
 	for iter.Next() {
 		assert.Less(t, i, len(entries))
-		assert.Equal(t, entries[i], iter.At())
+		actual := iter.At()
+		expected := entries[i]
+		assert.Equal(t, expected.Index, actual.Index)
+		assert.Equal(t, expected.AppendedAt, actual.AppendedAt)
+		assert.Equal(t, expected.Tombstones, actual.Tombstones)
+		assert.NotNil(t, actual.key)
 		i++
 	}
 	assert.Nil(t, iter.Err())
@@ -92,7 +97,12 @@ func TestTombstoneStore_DeleteQueuedEntries(t *testing.T) {
 			i++
 		}
 		assert.Less(t, i, len(entries))
-		assert.Equal(t, entries[i], iter.At())
+		actual := iter.At()
+		expected := entries[i]
+		assert.Equal(t, expected.Index, actual.Index)
+		assert.Equal(t, expected.AppendedAt, actual.AppendedAt)
+		assert.Equal(t, expected.Tombstones, actual.Tombstones)
+		assert.NotNil(t, actual.key)
 		i++
 	}
 	assert.Nil(t, iter.Err())

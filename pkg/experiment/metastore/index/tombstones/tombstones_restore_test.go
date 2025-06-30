@@ -24,7 +24,7 @@ func TestTombstonesRestore(t *testing.T) {
 	require.NoError(t, ts.Init(tx))
 	require.NoError(t, tx.Commit())
 
-	for i, tombstone := range []*metastorev1.Tombstones{
+	for _, tombstone := range []*metastorev1.Tombstones{
 		{
 			Blocks: &metastorev1.BlockTombstones{
 				Name:   "x-1",
@@ -52,7 +52,7 @@ func TestTombstonesRestore(t *testing.T) {
 	} {
 		tx, err := db.Begin(true)
 		require.NoError(t, err)
-		err = ts.AddTombstones(tx, &raft.Log{Index: uint64(i), AppendedAt: now}, tombstone)
+		err = ts.AddTombstones(tx, &raft.Log{Index: 1, AppendedAt: now}, tombstone)
 		require.NoError(t, err)
 		require.NoError(t, tx.Commit())
 	}
