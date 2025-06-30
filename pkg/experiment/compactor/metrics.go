@@ -32,9 +32,9 @@ func newMetrics(r prometheus.Registerer) *workerMetrics {
 			Name: "job_duration_seconds",
 			Help: "Duration of compaction job runs",
 
-			Buckets:                         prometheus.ExponentialBuckets(1, 2, 30),
+			Buckets:                         prometheus.ExponentialBucketsRange(1, 300, 16),
 			NativeHistogramBucketFactor:     1.1,
-			NativeHistogramMaxBucketNumber:  16,
+			NativeHistogramMaxBucketNumber:  50,
 			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"tenant", "level", "status"}),
 
@@ -42,9 +42,9 @@ func newMetrics(r prometheus.Registerer) *workerMetrics {
 			Name: "time_to_compaction_seconds",
 			Help: "The time elapsed since the oldest compacted block was created.",
 
-			Buckets:                         prometheus.ExponentialBuckets(1, 2, 30),
+			Buckets:                         prometheus.ExponentialBuckets(1, 3600, 16),
 			NativeHistogramBucketFactor:     1.1,
-			NativeHistogramMaxBucketNumber:  16,
+			NativeHistogramMaxBucketNumber:  50,
 			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"tenant", "level"}),
 
