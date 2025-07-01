@@ -630,7 +630,7 @@ func (d *deleter) handleShardTombstone(t *metastorev1.ShardTombstone) {
 	dir := block.BuildObjectDir(t.Tenant, t.Shard)
 
 	logger := log.With(d.logger, "tombstone_name", t.Name)
-	logger.Log("msg", "cleaning up shard", "max_time", maxTime, "dir", dir)
+	level.Info(logger).Log("msg", "cleaning up shard", "max_time", maxTime, "dir", dir)
 
 	deleteBlock := func(path string) error {
 		blockID, err := block.ParseBlockIDFromPath(path)
@@ -647,6 +647,8 @@ func (d *deleter) handleShardTombstone(t *metastorev1.ShardTombstone) {
 		// same shard are running concurrently, and the cleanup is fast.
 		blockTs := time.UnixMilli(int64(blockID.Time()))
 		if !blockTs.Before(maxTime) {
+			// NOTE: We may want to keep track of the oldest block per tenant shard
+			// as a metric (just a gauge). This, however, may cause cardinality issues.
 			level.Debug(logger).Log("msg", "reached range end, exiting", "path", path, "err", err)
 			return filepath.SkipAll
 		}

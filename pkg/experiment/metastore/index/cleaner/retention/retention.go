@@ -107,6 +107,9 @@ func (rp *TimeBasedRetentionPolicy) CreateTombstones(tx *bbolt.Tx, partitions it
 		level.Debug(rp.logger).Log("msg", "no retention policies defined, skipping")
 		return nil
 	}
+	for _, m := range rp.markers {
+		level.Debug(rp.logger).Log("msg", "found retention marker", "tenant", m.tenantID, "timestamp", m.timestamp)
+	}
 	rp.tombstones = rp.tombstones[:0]
 	for p := range partitions {
 		if len(rp.tombstones) >= rp.maxTombstones {
@@ -137,9 +140,9 @@ func (rp *TimeBasedRetentionPolicy) processPartition(tx *bbolt.Tx, p indexstore.
 	// distance between them might be large (hours), we would be wasting time
 	// if were inspecting the partition right away.
 	partitionEnd := &marker{timestamp: p.EndTime().Add(rp.gracePeriod)}
-	level.Debug(rp.logger).Log(
+	logger := log.With(rp.logger, "partition", p.String())
+	level.Debug(logger).Log(
 		"msg", "processing partition",
-		"partition", p.String(),
 		"partition_end_marker", partitionEnd.timestamp,
 		"retention_markers", len(rp.markers),
 	)
@@ -151,13 +154,13 @@ func (rp *TimeBasedRetentionPolicy) processPartition(tx *bbolt.Tx, p indexstore.
 		// All markers are before the partition end: it can't be deleted.
 		// We can stop here: no partitions after this one will have deletion
 		// markers that are before the partition end.
-		level.Debug(rp.logger).Log("msg", "partition has not passed the retention period, skipping")
+		level.Debug(logger).Log("msg", "partition has not passed the retention period, skipping")
 		return false
 	}
 
 	q := p.Query(tx)
 	if q == nil {
-		level.Warn(rp.logger).Log("msg", "cannot find partition, skipping", "partition", p.String())
+		level.Warn(logger).Log("msg", "cannot find partition, skipping")
 		return true
 	}
 
@@ -173,14 +176,14 @@ func (rp *TimeBasedRetentionPolicy) processPartition(tx *bbolt.Tx, p indexstore.
 		// period shorter than the default one. This is useful in case if the
 		// tenant data is deleted by setting very short retention period: we
 		// won't check each and every partition tenant shard.
-		level.Debug(rp.logger).Log("msg", "creating tombstones for tenant markers", "retention_markers", len(rp.markers[i:]))
+		level.Debug(logger).Log("msg", "creating tombstones for tenant markers", "retention_markers", len(rp.markers[i:]))
 		rp.createTombstonesForMarkers(q, rp.markers[i:])
 	} else {
 		// Otherwise, we need to inspect all the tenants in the partition.
 		// There's no point in checking the markers: either most of them
 		// will result in tombstones, or have already been deleted (e.g.,
 		// there's one tenant with an infinite retention period).
-		level.Debug(rp.logger).Log("msg", "creating tombstones for partition tenants")
+		level.Debug(logger).Log("msg", "creating tombstones for partition tenants")
 		rp.createTombstonesForTenants(q, partitionEnd)
 	}
 
