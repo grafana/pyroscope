@@ -49,7 +49,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&cfg.JobConcurrency, prefix+"job-concurrency", 0, "Number of concurrent jobs compaction worker will run. Defaults to the number of CPU cores.")
 	f.DurationVar(&cfg.JobPollInterval, prefix+"job-poll-interval", 5*time.Second, "Interval between job requests")
 	f.DurationVar(&cfg.RequestTimeout, prefix+"request-timeout", 5*time.Second, "Job request timeout.")
-	f.DurationVar(&cfg.CleanupMaxDuration, prefix+"cleanup-max-duration", 5*time.Second, "Maximum duration by which compaction job completion may be delayed due to cleanup operations.")
+	f.DurationVar(&cfg.CleanupMaxDuration, prefix+"cleanup-max-duration", 15*time.Second, "Maximum duration of the cleanup operations.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", os.TempDir(), "Temporary directory for compaction jobs.")
 	cfg.MetricsExporter.RegisterFlags(f)
@@ -400,9 +400,23 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	}
 
 	if len(job.Tombstones) > 0 {
-		d := w.newDeleter(logger)
-		defer d.close()
-		d.handleTombstones(job.Tombstones...)
+		// Handle tombstones asynchronously on the best effort basis:
+		// if deletion fails, leftovers will be cleaned up eventually.
+		//
+		// There are following reasons why we may not be able to delete:
+		//  1. General storage unavailability: compaction jobs will be
+		//     retried either way, and the tombstones will be handled again.
+		//  2. Permission issues. In this case, retry will not help.
+		//  3. Worker crash: jobs will be retried.
+		//
+		// A worker is given a limited time to finish the cleanup. If worker
+		// didn't finish the cleanup before shutdown and after the compaction
+		// job was finished (so no retry is expected), the data will be deleted
+		// eventually due to time-based retention policy. However, if no more
+		// tombstones are created for the shard, the data will remain in the
+		// storage. This should be handled by the index cleaner: some garbage
+		// collection should happen in the background.
+		w.handleTombstones(logger, job.Tombstones...)
 	}
 
 	if len(job.blocks) == 0 {
@@ -533,96 +547,53 @@ func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
 	return nil
 }
 
-type deleterPool struct {
-	queue chan func()
-	wg    sync.WaitGroup
-}
-
-func newDeleterPool(threads int) *deleterPool {
-	p := &deleterPool{queue: make(chan func(), threads)}
-	p.wg.Add(threads)
-	for i := 0; i < threads; i++ {
-		go func() {
-			defer p.wg.Done()
-			for fn := range p.queue {
-				fn()
-			}
-		}()
+func (w *Worker) handleTombstones(logger log.Logger, tombstones ...*metastorev1.Tombstones) {
+	for _, t := range tombstones {
+		w.deleterPool.add(w.newDeleter(logger, t), w.config.CleanupMaxDuration)
 	}
-	return p
 }
 
-func (p *deleterPool) run(fn func()) { p.queue <- fn }
-
-// It is guaranteed that no [run] calls will be made at this point.
-// We only want to destroy the pool.
-func (p *deleterPool) close() {
-	close(p.queue)
-	p.wg.Wait()
+func (w *Worker) newDeleter(logger log.Logger, tombstone *metastorev1.Tombstones) *deleter {
+	return &deleter{
+		logger:    logger,
+		bucket:    w.storage,
+		metrics:   w.metrics,
+		tombstone: tombstone,
+	}
 }
 
 type deleter struct {
-	logger  log.Logger
-	bucket  objstore.Bucket
-	pool    *deleterPool
-	metrics *workerMetrics
-
-	wg      sync.WaitGroup
-	ctx     context.Context
-	cancel  context.CancelFunc
-	timeout time.Duration
+	logger    log.Logger
+	bucket    objstore.Bucket
+	metrics   *workerMetrics
+	tombstone *metastorev1.Tombstones
+	wg        sync.WaitGroup
 }
 
-func (w *Worker) newDeleter(logger log.Logger) *deleter {
-	p := &deleter{
-		logger:  logger,
-		bucket:  w.storage,
-		pool:    w.deleterPool,
-		metrics: w.metrics,
-		timeout: w.config.CleanupMaxDuration,
+func (d *deleter) run(ctx context.Context, p *deleterPool) {
+	if t := d.tombstone.GetBlocks(); t != nil {
+		d.handleBlockTombstones(ctx, p, t)
 	}
-	p.ctx, p.cancel = context.WithCancel(context.Background())
-	return p
-}
-
-func (d *deleter) close() {
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		d.wg.Wait()
-	}()
-	select {
-	case <-done:
-	case <-time.After(d.timeout):
-		d.cancel()
-		<-done
+	if t := d.tombstone.GetShard(); t != nil {
+		d.handleShardTombstone(ctx, p, t)
 	}
 }
 
-func (d *deleter) handleTombstones(tombstones ...*metastorev1.Tombstones) {
-	for _, t := range tombstones {
-		d.wg.Add(1)
-		go func(t *metastorev1.Tombstones) {
-			defer d.wg.Done()
-			if blockTombstones := t.GetBlocks(); blockTombstones != nil {
-				d.handleBlockTombstones(blockTombstones)
-			}
-			if shardTombstone := t.GetShard(); shardTombstone != nil {
-				d.handleShardTombstone(shardTombstone)
-			}
-		}(t)
-	}
-}
+func (d *deleter) wait() { d.wg.Wait() }
 
-func (d *deleter) handleBlockTombstones(t *metastorev1.BlockTombstones) {
+func (d *deleter) handleBlockTombstones(ctx context.Context, pool *deleterPool, t *metastorev1.BlockTombstones) {
 	logger := log.With(d.logger, "tombstone_name", t.Name)
 	level.Info(logger).Log("msg", "deleting blocks", "blocks", strings.Join(t.Blocks, " "))
 	for _, b := range t.Blocks {
-		d.delete(block.BuildObjectPath(t.Tenant, t.Shard, t.CompactionLevel, b))
+		d.wg.Add(1)
+		pool.run(func() {
+			defer d.wg.Done()
+			d.delete(ctx, block.BuildObjectPath(t.Tenant, t.Shard, t.CompactionLevel, b))
+		})
 	}
 }
 
-func (d *deleter) handleShardTombstone(t *metastorev1.ShardTombstone) {
+func (d *deleter) handleShardTombstone(ctx context.Context, pool *deleterPool, t *metastorev1.ShardTombstone) {
 	// It's safe to delete blocks in the shard that are older than the
 	// maximum time specified in the tombstone.
 	minTime := time.Unix(0, t.Timestamp)
@@ -647,16 +618,18 @@ func (d *deleter) handleShardTombstone(t *metastorev1.ShardTombstone) {
 		// same shard are running concurrently, and the cleanup is fast.
 		blockTs := time.UnixMilli(int64(blockID.Time()))
 		if !blockTs.Before(maxTime) {
-			// NOTE: We may want to keep track of the oldest block per tenant shard
-			// as a metric (just a gauge). This, however, may cause cardinality issues.
-			level.Debug(logger).Log("msg", "reached range end, exiting", "path", path, "err", err)
+			level.Debug(logger).Log("msg", "reached range end, exiting", "path", path)
 			return filepath.SkipAll
 		}
-		d.delete(path)
+		d.wg.Add(1)
+		pool.run(func() {
+			defer d.wg.Done()
+			d.delete(ctx, path)
+		})
 		return nil
 	}
 
-	if err := d.bucket.Iter(d.ctx, dir, deleteBlock, thanosstore.WithRecursiveIter()); err != nil {
+	if err := d.bucket.Iter(ctx, dir, deleteBlock, thanosstore.WithRecursiveIter()); err != nil {
 		if errors.Is(err, filepath.SkipAll) {
 			// This is expected if we successfully handled the tombstone.
 			// This is logged in the deleteBlock function.
@@ -667,26 +640,112 @@ func (d *deleter) handleShardTombstone(t *metastorev1.ShardTombstone) {
 	}
 }
 
-func (d *deleter) delete(path string) {
-	d.pool.run(func() {
-		var statusName status
-		switch err := d.bucket.Delete(d.ctx, path); {
-		case err == nil:
-			statusName = statusSuccess
+func (d *deleter) delete(ctx context.Context, path string) {
+	var statusName status
+	switch err := d.bucket.Delete(ctx, path); {
+	case err == nil:
+		statusName = statusSuccess
 
-		case objstore.IsNotExist(d.bucket, err):
-			level.Info(d.logger).Log("msg", "block not found while attempting to delete it", "path", path, "err", err)
-			statusName = statusBlockNotFound
+	case objstore.IsNotExist(d.bucket, err):
+		level.Info(d.logger).Log("msg", "block not found while attempting to delete it", "path", path, "err", err)
+		statusName = statusBlockNotFound
 
-		case errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded):
-			level.Warn(d.logger).Log("msg", "block delete attempt canceled", "path", path, "err", err)
-			statusName = statusCanceled
+	case errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded):
+		level.Warn(d.logger).Log("msg", "block delete attempt canceled", "path", path, "err", err)
+		statusName = statusCanceled
 
-		default:
-			level.Error(d.logger).Log("msg", "failed to delete block", "path", path, "err", err)
-			statusName = statusFailure
+	default:
+		level.Error(d.logger).Log("msg", "failed to delete block", "path", path, "err", err)
+		statusName = statusFailure
+	}
+
+	d.metrics.blocksDeleted.WithLabelValues(string(statusName)).Inc()
+}
+
+type deleterPool struct {
+	deletersWg sync.WaitGroup
+	stop       chan struct{}
+
+	threadsWg sync.WaitGroup
+	queue     chan func()
+}
+
+func newDeleterPool(threads int) *deleterPool {
+	p := &deleterPool{
+		queue: make(chan func(), threads),
+		stop:  make(chan struct{}),
+	}
+	p.threadsWg.Add(threads)
+	for i := 0; i < threads; i++ {
+		go func() {
+			defer p.threadsWg.Done()
+			for fn := range p.queue {
+				fn()
+			}
+		}()
+	}
+	return p
+}
+
+func (p *deleterPool) deleterContext(timeout time.Duration) (ctx context.Context, cancel context.CancelFunc) {
+	ctx = context.Background()
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
+	}
+	return ctx, cancel
+}
+
+func (p *deleterPool) add(deleter *deleter, timeout time.Duration) {
+	ctx, cancel := p.deleterContext(timeout)
+	done := make(chan struct{})
+	p.deletersWg.Add(1)
+	go func() {
+		deleter.run(ctx, p)
+		deleter.wait()
+		p.deletersWg.Done()
+		// Notify the other goroutine that the deleter is done
+		// and there's no need to wait for it anymore.
+		close(done)
+	}()
+	go func() {
+		// Wait for the deleter to finish or for the stop signal, or for the
+		// timeout to expire, whichever comes first.
+		//
+		// If the timeout is set, we wait for it to expire ignoring the
+		// stop signal: we don't want to halt the deletion abruptly.
+		// If too many tombstones are created for the same tenant-shard,
+		// of if there are too many blocks to delete so a single worker
+		// does not cope up, multiple workers may end up deleting same
+		// blocks as they process the shard from the very beginning.
+		// The timeout aims to reduce the competition factor: at any time,
+		// the number of workers that cleanup the same shard is limited.
+		// This is difficult to achieve in practice, and may happen if
+		// the retention is enabled for the first time, and large number
+		// of blocks are deleted at once.
+		//
+		// Otherwise, take as much time as needed until the worker
+		// shutdown, which cancels all ongoing deletions immediately.
+		defer cancel()
+		select {
+		case <-done:
+		case <-ctx.Done():
+		case <-p.stop:
 		}
+	}()
+}
 
-		d.metrics.blocksDeleted.WithLabelValues(string(statusName)).Inc()
-	})
+func (p *deleterPool) run(fn func()) { p.queue <- fn }
+
+// It is guaranteed that no [add] calls will be made at this point:
+// all compaction jobs are done, and no new jobs can be queued.
+func (p *deleterPool) close() {
+	// Wait for all the deleters to finish.
+	close(p.stop)
+	p.deletersWg.Wait()
+	// No new deletions can be queued.
+	// We can close the queue now.
+	close(p.queue)
+	p.threadsWg.Wait()
 }
