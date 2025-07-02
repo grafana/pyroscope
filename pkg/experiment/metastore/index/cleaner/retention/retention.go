@@ -32,6 +32,7 @@ type Overrides interface {
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {
+	c.RetentionPeriod = model.Duration(time.Hour * 24 * 31)
 	f.Var(&c.RetentionPeriod, "retention-period", "Retention period for the data. 0 means data never deleted.")
 }
 

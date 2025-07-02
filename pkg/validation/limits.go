@@ -506,11 +506,7 @@ func (o *Overrides) QueryAnalysisEnabled(tenantID string) bool {
 
 func (o *Overrides) Retention() (defaults retention.Config, overrides iter.Seq2[string, retention.Config]) {
 	return GetOverride(o, func(tenantID string, limits *Limits) retention.Config {
-		r := limits.Retention
-		if limits.CompactorBlocksRetentionPeriod > 0 && uint64(limits.CompactorBlocksRetentionPeriod) > uint64(r.RetentionPeriod) {
-			r.RetentionPeriod = limits.CompactorBlocksRetentionPeriod
-		}
-		return r
+		return limits.Retention
 	})
 }
 
