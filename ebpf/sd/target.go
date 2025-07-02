@@ -188,14 +188,14 @@ func (tf *targetFinder) FindTarget(pid uint32) *Target {
 	defer tf.sync.Unlock()
 	res := tf.findTarget(pid)
 	if res != nil {
-		level.Debug(tf.l).Log("msg", fmt.Sprintf("FindTarget %d = %s", pid, res.String()))
+		//level.Debug(tf.l).Log("msg", fmt.Sprintf("FindTarget %d = %s", pid, res.String()))
 		return res
 	}
 	if tf.defaultTarget != nil {
-		level.Debug(tf.l).Log("msg", fmt.Sprintf("FindTarget %d = def %s", pid, tf.defaultTarget.String()))
+		//level.Debug(tf.l).Log("msg", fmt.Sprintf("FindTarget %d = def %s", pid, tf.defaultTarget.String()))
 
 	} else {
-		level.Debug(tf.l).Log("msg", fmt.Sprintf("FindTarget %d = def nil", pid))
+		//level.Debug(tf.l).Log("msg", fmt.Sprintf("FindTarget %d = def nil", pid))
 
 	}
 	return tf.defaultTarget

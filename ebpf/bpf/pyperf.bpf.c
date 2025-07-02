@@ -184,6 +184,8 @@ static __always_inline int get_thread_state(
 
 static __always_inline int submit_sample(
     py_sample_state_t* state) {
+        bpf_printk("submit_sample %d frames", state->event.stack_len);
+
     uint32_t one = 1;
     if (state->event.stack_len < PYTHON_STACK_MAX_LEN) {
         state->event.stack[state->event.stack_len] = 0;
@@ -267,6 +269,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
     if (!pid_data) {
         return 0;
     }
+    bpf_printk("pyperf_collect ");
 
     GET_STATE();
 
@@ -312,6 +315,8 @@ int pyperf_collect(struct bpf_perf_event_data *ctx) {
     if (pid == 0) {
         return 0;
     }
+
+
     return pyperf_collect_impl(ctx, (pid_t) pid);
 }
 

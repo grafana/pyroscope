@@ -33,7 +33,7 @@ type Proc struct { // consider merging with symtab.ProcTable
 func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, pidDataHasMap *ebpf.Map, symbolsHashMap *ebpf.Map) (*Perf, error) {
 	pidCache := make(map[uint32]*Proc)
 	res := &Perf{
-		logger:         logger,
+		logger:         log.With(logger, "component", "pyperf"),
 		pidDataHashMap: pidDataHasMap,
 		symbolsHashMp:  symbolsHashMap,
 		pidCache:       pidCache,
@@ -106,11 +106,12 @@ func (s *Perf) GetSymbols(svcReason string) (map[uint32]*PerfPySymbol, error) {
 	opts := &ebpf.BatchOptions{}
 	var cursor = new(ebpf.MapBatchCursor)
 	n, err := m.BatchLookup(cursor, keys, values, opts)
+	level.Debug(s.logger).Log(
+		"msg", "GetSymbols BatchLookup",
+		"count", n,
+		"err", err,
+	)
 	if n > 0 {
-		level.Debug(s.logger).Log(
-			"msg", "GetSymbols BatchLookup",
-			"count", n,
-		)
 		res := make(map[uint32]*PerfPySymbol, n)
 		for i := 0; i < n; i++ {
 			k := values[i]
@@ -135,6 +136,11 @@ func (s *Perf) GetSymbols(svcReason string) (map[uint32]*PerfPySymbol, error) {
 			err := it.Err()
 			if err != nil {
 				err = fmt.Errorf("map %s iteration : %w", m.String(), err)
+				level.Debug(s.logger).Log(
+					"msg", "GetSymbols  iter",
+					"count", n,
+					"err", err,
+				)
 				return nil, err
 			}
 			break

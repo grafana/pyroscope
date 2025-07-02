@@ -11,7 +11,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"golang.org/x/sys/unix"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -149,6 +148,7 @@ func NewSession(
 }
 
 func (s *session) Start() error {
+
 	s.printDebugInfo()
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -170,6 +170,7 @@ func (s *session) Start() error {
 	}
 
 	_, nsIno, err := getPIDNamespace()
+
 	// if the file does not exist, CONFIG_PID_NS is not supported, so we just ignore the error
 	if !os.IsNotExist(err) {
 		if err != nil {
@@ -306,6 +307,8 @@ func (s *session) DebugInfo() interface{} {
 }
 
 func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error {
+	s.printDebugInfo()
+
 	sb := &stackBuilder{}
 
 	keys, values, batch, err := s.getCountsMapValues()
@@ -323,6 +326,7 @@ func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error 
 	for i := range keys {
 		ck := &keys[i]
 		value := values[i]
+		dl := level.Debug(log.With(s.logger, "pid", ck.Pid))
 		isPythonStack := ck.Flags&uint32(pyrobpf.SampleKeyFlagPythonStack) != 0
 		if ck.UserStack > 0 {
 			if isPythonStack {
@@ -336,9 +340,11 @@ func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error 
 		}
 		target := s.targetFinder.FindTarget(ck.Pid)
 		if target == nil {
+			dl.Log("msg", "target not found")
 			continue
 		}
 		if _, ok := s.pids.dead[ck.Pid]; ok {
+			dl.Log("msg", " dead ")
 			continue
 		}
 
@@ -349,6 +355,7 @@ func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error 
 		if s.options.CollectUser {
 			if isPythonStack {
 				uStack = s.GetPythonStack(ck.UserStack) //todo lookup batch
+				dl.Log("python stack len", len(uStack))
 			} else {
 				uStack = s.GetStack(ck.UserStack)
 			}
@@ -365,6 +372,8 @@ func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error 
 				pyProc := s.pyperf.FindProc(ck.Pid)
 				if pyProc != nil {
 					s.WalkPythonStack(sb, uStack, target, pyProc, pySymbols, &stats)
+				} else {
+					dl.Log("msg", "proc not found")
 				}
 			} else {
 				proc := s.symCache.GetProcTableCached(pk)
@@ -385,9 +394,14 @@ func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error 
 			s.WalkStack(sb, kStack, s.symCache.GetKallsyms(), &stats)
 		}
 		if len(sb.stack) == 1 {
+			dl.Log("msg", "empty stack")
 			continue // only comm
 		}
 		lo.Reverse(sb.stack)
+		if isPythonStack {
+			sss := strings.Join(sb.stack, ";")
+			dl.Log("stack", sss)
+		}
 		cb(pprof.ProfileSample{
 			Target:      target,
 			Pid:         ck.Pid,
@@ -822,9 +836,9 @@ func (s *session) cleanup() {
 		}
 	}
 
-	if s.roundNumber%10 == 0 {
-		s.checkStalePids()
-	}
+	//if s.roundNumber%2 == 0 {
+	s.checkStalePids()
+	//}
 }
 
 // iterate over all pids and check if they are alive
@@ -979,6 +993,7 @@ func (s *session) printBpfLog() {
 	for _, it := range fs {
 		f, err = os.Open(it)
 		if err == nil {
+			level.Debug(s.logger).Log("trace_pipe", it)
 			break
 		}
 		level.Error(s.logger).Log("msg", "error opening trace_pipe", "err", err, "f", it)
@@ -1034,7 +1049,7 @@ func (s *session) printMapsSize() {
 	defer s.mutex.Unlock()
 	s.printMapsSizeLocked()
 }
-func dumpMap[K, V any](s *session, m *ebpf.Map, name string, countOnly bool) ([]K, []V) {
+func dumpMap0[K, V any](s *session, m *ebpf.Map, name string) ([]K, []V) {
 	var (
 		mapSize = m.MaxEntries()
 	)
@@ -1044,28 +1059,116 @@ func dumpMap[K, V any](s *session, m *ebpf.Map, name string, countOnly bool) ([]
 	n, err := m.BatchLookup(cursor, keys, values, new(ebpf.BatchOptions))
 	keys = keys[:n]
 	values = values[:n]
-	if err != nil && !errors.Is(err, unix.ENOSPC) {
-		level.Error(s.logger).Log("err", err)
+	if n > 0 {
+		level.Debug(s.logger).Log(
+			"mapdump", name,
+			"count", len(keys),
+		)
+		return keys, values
 	}
-	level.Debug(s.logger).Log("mapdump", name, "n", n)
-	if !countOnly {
 
+	if errors.Is(err, ebpf.ErrKeyNotExist) {
+		level.Debug(s.logger).Log(
+			"mapdump", name,
+			"count", "ErrKeyNotExist",
+		)
+		return nil, nil
+	}
+	if err != nil {
+		level.Error(s.logger).Log("mapdump", name, "err", err)
+	}
+	// try iterating if batch failed
+	resultKeys := keys[:0]
+	resultValues := values[:0]
+	it := m.Iterate()
+	var k K
+	var v V
+	for {
+		ok := it.Next(&k, &v)
+		if !ok {
+			err := it.Err()
+			if err != nil {
+				err = fmt.Errorf("map %s iteration : %w", m.String(), err)
+				level.Error(s.logger).Log("mapdump", name, "err", err)
+			}
+			break
+		}
+		resultKeys = append(resultKeys, k)
+		resultValues = append(resultValues, v)
+	}
+	level.Debug(s.logger).Log(
+		"mapdump", name,
+		"count-iter", len(keys),
+	)
+	return keys, values
+}
+func dumpMap[K, V any](s *session, m *ebpf.Map, name string, pp func(l log.Logger, name string, k K, v V)) {
+	ks, vs := dumpMap0[K, V](s, m, name)
+	n := len(ks)
+	if pp != nil {
 		for i := 0; i < n; i++ {
-			level.Debug(s.logger).Log("mapdump", name, "k", fmt.Sprintf("%+v", keys[i]), "v", fmt.Sprintf("%+v", values[i]))
+			pp(s.logger, name, ks[i], vs[i])
 		}
 	}
-
-	return keys, values
-
 }
+func pppg[K, V any](l log.Logger, name string, k K, v V) {
+	ks := fmt.Sprintf("%+v", k)
+	vs := fmt.Sprintf("%+v", v)
+	level.Debug(l).Log("mapdump", name, "k", ks, "v", vs)
+}
+
+func pppPythonStack(l log.Logger, name string, k uint32, stack [384]byte) {
+
+	ss := []string{}
+	for i := 0; i < 384; i += 4 {
+		it := stack[i : i+4]
+		sid := binary.LittleEndian.Uint32(it)
+		if sid == 0 {
+			break
+		}
+		ss = append(ss, fmt.Sprintf("%x", sid))
+	}
+	sss := fmt.Sprintf("python_stack{%s}", strings.Join(ss, ","))
+
+	ks := fmt.Sprintf("python_stack_id=%x", k)
+	vs := sss
+
+	level.Debug(l).Log("mapdump", name, "k", ks, "v", vs)
+}
+
+func pppPythonSymbol(l log.Logger, name string, k python.PerfPySymbol, v uint32) {
+	ks := fmt.Sprintf("%+v", k)
+	vs := fmt.Sprintf("%x", v)
+	level.Debug(l).Log("mapdump", name, "py_symbol", ks, "py_symbol_id", vs)
+}
+
+func pppCounts(l log.Logger, name string, k pyrobpf.ProfileSampleKey, v uint32) {
+	ks := fmt.Sprintf("%s", fmt.Sprintf("ProfileSampleKey{pid=%d, Flags=%d, Kern=%x, User=%x %x}", k.Pid, k.Flags, k.KernStack, k.UserStack, uint32(k.UserStack)))
+	vs := fmt.Sprintf("%x", v)
+	level.Debug(l).Log("mapdump", name, "k", ks, "v", vs)
+}
+
 func (s *session) printMapsSizeLocked() {
 	if s.bpf.Pids != nil {
-		dumpMap[uint32, pyrobpf.ProfilePidConfig](s, s.bpf.Pids, "pids", false)
+		dumpMap[uint32, pyrobpf.ProfilePidConfig](s, s.bpf.Pids, "pids", pppg)
 	}
 	if s.pyperf != nil && s.pyperfBpf.PyPidConfig != nil {
-		dumpMap[uint32, python.PerfPyPidData](s, s.pyperfBpf.PyPidConfig, "python_pids", false)
-		dumpMap[uint32, python.PerfPyPidData](s, s.pyperfBpf.PySymbols, "py_symbols", true)
-		dumpMap[uint32, python.PerfPyPidData](s, s.pyperfBpf.PythonStacks, "py_stacks", true)
-		dumpMap[uint32, python.PerfPyPidData](s, s.pyperfBpf.Stacks, "stacks", true)
+		dumpMap[uint32, python.PerfPyPidData](s, s.pyperfBpf.PyPidConfig, "py_pid_config", pppg)
+		dumpMap[python.PerfPySymbol, uint32](s, s.pyperfBpf.PySymbols, "py_symbols", pppPythonSymbol)
+		dumpMap[uint32, [384]byte](s, s.pyperfBpf.PythonStacks, "python_stacks", pppPythonStack)
+		//dumpMap[uint32, [127 * 8]uint8](s, s.pyperfBpf.Stacks, "stacks", true)
+		dumpMap[pyrobpf.ProfileSampleKey, uint32](s, s.pyperfBpf.Counts, "counts", pppCounts)
 	}
+}
+
+type pythonStack struct {
+	symbols [32 * 3]uint32
+}
+
+func (p *pythonStack) mapDump() string {
+	res := []string{}
+	for _, s := range p.symbols {
+		res = append(res, fmt.Sprintf("%x", s))
+	}
+	return fmt.Sprintf("python_stack{%s}", strings.Join(res, ","))
 }
