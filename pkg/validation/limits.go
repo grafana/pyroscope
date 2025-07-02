@@ -36,6 +36,7 @@ type Limits struct {
 	IngestionRateMB        float64               `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
 	IngestionBurstSizeMB   float64               `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
 	IngestionLimit         *ingest_limits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
+	IngestionBodyLimitMB   float64               `yaml:"ingestion_body_limit_mb" json:"ingestion_body_limit_mb" category:"advanced" doc:"hidden"`
 	DistributorSampling    *sampling.Config      `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
 	MaxLabelNameLength     int                   `yaml:"max_label_name_length" json:"max_label_name_length"`
 	MaxLabelValueLength    int                   `yaml:"max_label_value_length" json:"max_label_value_length"`
@@ -139,6 +140,7 @@ func (e LimitError) Error() string {
 func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Float64Var(&l.IngestionRateMB, "distributor.ingestion-rate-limit-mb", 4, "Per-tenant ingestion rate limit in sample size per second. Units in MB.")
 	f.Float64Var(&l.IngestionBurstSizeMB, "distributor.ingestion-burst-size-mb", 2, "Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request.")
+	f.Float64Var(&l.IngestionBodyLimitMB, "distributor.ingestion-body-limit-mb", 32, "Per-tenant ingestion body size limit in MB, before decompressing. 0 to disable.")
 
 	f.IntVar(&l.IngestionTenantShardSize, "distributor.ingestion-tenant-shard-size", 0, "The tenant's shard size used by shuffle-sharding. Must be set both on ingesters and distributors. 0 disables shuffle sharding.")
 
@@ -292,6 +294,10 @@ func (o *Overrides) IngestionRateBytes(tenantID string) float64 {
 // IngestionBurstSizeBytes returns the burst size for ingestion rate.
 func (o *Overrides) IngestionBurstSizeBytes(tenantID string) int {
 	return int(o.getOverridesForTenant(tenantID).IngestionBurstSizeMB * bytesInMB)
+}
+
+func (o *Overrides) IngestionBodyLimitBytes(tenantID string) int64 {
+	return int64(o.getOverridesForTenant(tenantID).IngestionBodyLimitMB * bytesInMB)
 }
 
 func (o *Overrides) IngestionLimit(tenantID string) *ingest_limits.Config {

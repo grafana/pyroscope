@@ -9,8 +9,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/middleware"
 
+	"github.com/grafana/pyroscope/pkg/util/body"
 	"github.com/grafana/pyroscope/pkg/util/delayhandler"
 	"github.com/grafana/pyroscope/pkg/util/gziphandler"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type registerMiddleware struct {
@@ -93,6 +95,12 @@ func (a *API) WithArtificialDelayMiddleware(limits delayhandler.Limits) Register
 	}
 }
 
+func (a *API) WithBodySizeLimitMiddleware(limits body.Limits) RegisterOption {
+	return func(r *registerParams) {
+		r.middlewares = append(r.middlewares, registerMiddleware{middleware.Func(body.NewSizeLimitHandler(limits)), "body_size_limit"})
+	}
+}
+
 func (a *API) registerOptionsTenantPath() []RegisterOption {
 	return []RegisterOption{
 		a.WithAuthMiddleware(),
@@ -105,10 +113,11 @@ func (a *API) registerOptionsReadPath() []RegisterOption {
 	return a.registerOptionsTenantPath()
 }
 
-func (a *API) registerOptionsWritePath(limits delayhandler.Limits) []RegisterOption {
+func (a *API) registerOptionsWritePath(limits *validation.Overrides) []RegisterOption {
 	return []RegisterOption{
 		a.WithAuthMiddleware(),
 		a.WithArtificialDelayMiddleware(limits), // This middleware relies on the auth middleware, to determine the user's override
+		a.WithBodySizeLimitMiddleware(limits),   //limits),
 		WithGzipMiddleware(),
 		WithMethod("POST"),
 	}
