@@ -69,12 +69,15 @@ func NewTimeBasedRetentionPolicy(
 	}
 	// Markers indicate the time before which data should be deleted
 	// for a given tenant.
-	for tenantID, config := range tenantOverrides {
+	for tenantID, override := range tenantOverrides {
+		if defaults.RetentionPeriod == override.RetentionPeriod {
+			continue
+		}
 		// An override is defined for the tenant, so we need to adjust the
 		// retention period for it. By default, we assume that the retention
 		// period is not defined, i.e. is infinite.
 		var timestamp time.Time // zero value means no retention period.
-		if period := time.Duration(config.RetentionPeriod); period > 0 {
+		if period := time.Duration(override.RetentionPeriod); period > 0 {
 			timestamp = now.Add(-period)
 		}
 		m := &marker{
