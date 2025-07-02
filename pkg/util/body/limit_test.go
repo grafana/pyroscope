@@ -81,6 +81,12 @@ func TestRequestBodyLimitMiddleware(t *testing.T) {
 			bodySize:      11,
 			expectedError: true,
 		},
+		{
+			name:          "no limit set",
+			bodyLimit:     0,
+			bodySize:      11,
+			expectedError: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

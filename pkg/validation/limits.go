@@ -140,7 +140,7 @@ func (e LimitError) Error() string {
 func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Float64Var(&l.IngestionRateMB, "distributor.ingestion-rate-limit-mb", 4, "Per-tenant ingestion rate limit in sample size per second. Units in MB.")
 	f.Float64Var(&l.IngestionBurstSizeMB, "distributor.ingestion-burst-size-mb", 2, "Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request.")
-	f.Float64Var(&l.IngestionBodyLimitMB, "distributor.ingestion-body-limit-mb", 32, "Per-tenant ingestion body size limit in MB, before decompressing. 0 to disable.")
+	f.Float64Var(&l.IngestionBodyLimitMB, "distributor.ingestion-body-limit-mb", 0, "Per-tenant ingestion body size limit in MB, before decompressing. 0 to disable.")
 
 	f.IntVar(&l.IngestionTenantShardSize, "distributor.ingestion-tenant-shard-size", 0, "The tenant's shard size used by shuffle-sharding. Must be set both on ingesters and distributors. 0 disables shuffle sharding.")
 

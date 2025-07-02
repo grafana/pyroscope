@@ -117,7 +117,7 @@ func (a *API) registerOptionsWritePath(limits *validation.Overrides) []RegisterO
 	return []RegisterOption{
 		a.WithAuthMiddleware(),
 		a.WithArtificialDelayMiddleware(limits), // This middleware relies on the auth middleware, to determine the user's override
-		a.WithBodySizeLimitMiddleware(limits),   //limits),
+		a.WithBodySizeLimitMiddleware(limits),
 		WithGzipMiddleware(),
 		WithMethod("POST"),
 	}
