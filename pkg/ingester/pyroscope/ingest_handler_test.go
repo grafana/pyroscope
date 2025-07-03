@@ -503,7 +503,7 @@ func TestBodySizeWithinLimit(t *testing.T) {
 
 	// Create a request with the actual profile (much smaller than limit)
 	res := httptest.NewRecorder()
-	ctx := tenant2.InjectTenantID(context.Background(), "any-tenant")
+	ctx := tenant.InjectTenantID(context.Background(), "any-tenant")
 	req := httptest.NewRequestWithContext(ctx, "POST", "/ingest?name=testapp&format=pprof", bytes.NewReader(profile))
 	req.Header.Set("Content-Type", "application/octet-stream")
 
