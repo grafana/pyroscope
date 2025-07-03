@@ -687,14 +687,19 @@ func newDeleterPool(threads int) *deleterPool {
 	return p
 }
 
-func (p *deleterPool) deleterContext(timeout time.Duration) (ctx context.Context, cancel context.CancelFunc) {
-	ctx = context.Background()
+// If too many tombstones are created for the same tenant-shard, of if there
+// are too many blocks to delete so a single worker does not cope up, multiple
+// workers may end up deleting same blocks as they process the shard from the
+// very beginning. The timeout aims to reduce the competition factor: at any
+// time, the number of workers that cleanup the same shard is limited. This is
+// difficult to achieve in practice, and may happen if the retention is enabled
+// for the first time, and large number of blocks are deleted at once.
+func (p *deleterPool) deleterContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	ctx := context.Background()
 	if timeout > 0 {
-		ctx, cancel = context.WithTimeout(ctx, timeout)
-	} else {
-		ctx, cancel = context.WithCancel(ctx)
+		return context.WithTimeout(ctx, timeout)
 	}
-	return ctx, cancel
+	return context.WithCancel(ctx)
 }
 
 func (p *deleterPool) add(deleter *deleter, timeout time.Duration) {
@@ -710,28 +715,21 @@ func (p *deleterPool) add(deleter *deleter, timeout time.Duration) {
 		close(done)
 	}()
 	go func() {
-		// Wait for the deleter to finish or for the stop signal, or for the
-		// timeout to expire, whichever comes first.
-		//
-		// If the timeout is set, we wait for it to expire ignoring the
-		// stop signal: we don't want to halt the deletion abruptly.
-		// If too many tombstones are created for the same tenant-shard,
-		// of if there are too many blocks to delete so a single worker
-		// does not cope up, multiple workers may end up deleting same
-		// blocks as they process the shard from the very beginning.
-		// The timeout aims to reduce the competition factor: at any time,
-		// the number of workers that cleanup the same shard is limited.
-		// This is difficult to achieve in practice, and may happen if
-		// the retention is enabled for the first time, and large number
-		// of blocks are deleted at once.
-		//
-		// Otherwise, take as much time as needed until the worker
-		// shutdown, which cancels all ongoing deletions immediately.
+		// Wait for the deleter to finish or for the stop signal,
+		// or for the timeout to expire, whichever comes first.
 		defer cancel()
 		select {
 		case <-done:
 		case <-ctx.Done():
 		case <-p.stop:
+			// We don't want to halt the deletion abruptly when
+			// the worker is stopped. In most cases, the deletion
+			// will be finished by the time the worker is stopped.
+			// Otherwise, we may wait up to CleanupMaxDuration.
+			select {
+			case <-done:
+			case <-ctx.Done():
+			}
 		}
 	}()
 }

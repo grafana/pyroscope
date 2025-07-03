@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
+	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
@@ -431,4 +433,95 @@ func TestWorker_ShardTombstoneHandling(t *testing.T) {
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
 
 	runWorker(w)
+}
+
+var skipCompactionFn = func(context.Context, []*metastorev1.BlockMeta, pkgobjstore.Bucket, ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
+	return nil, nil
+}
+
+func TestWorker_CleanupMaxDurationAtShutdown(t *testing.T) {
+	bucket := mockobjstore.NewMockBucket(t)
+	compactionClient := mockmetastorev1.NewMockCompactionServiceClient(t)
+	indexClient := mockmetastorev1.NewMockIndexServiceClient(t)
+	client := &MetastoreClientMock{
+		MockCompactionServiceClient: compactionClient,
+		MockIndexServiceClient:      indexClient,
+	}
+
+	config := Config{
+		JobConcurrency:     1,
+		JobPollInterval:    100 * time.Millisecond,
+		RequestTimeout:     time.Second,
+		CleanupMaxDuration: 15 * time.Second,
+		TempDir:            t.TempDir(),
+	}
+
+	worker, err := New(
+		log.NewNopLogger(),
+		config,
+		client,
+		bucket,
+		nil, // registry
+		nil, // ruler
+		nil, // exporter
+	)
+	require.NoError(t, err)
+	worker.compactFn = skipCompactionFn
+
+	job := &metastorev1.CompactionJob{Name: "test-job"}
+	assignment := &metastorev1.CompactionJobAssignment{Name: job.Name, Token: 12345}
+	job.Tombstones = []*metastorev1.Tombstones{{
+		Blocks: &metastorev1.BlockTombstones{
+			Name:            "test-tombstone",
+			Tenant:          "test-tenant",
+			Shard:           1,
+			CompactionLevel: 1,
+			Blocks:          []string{"a", "b"},
+		},
+	}}
+
+	var once sync.Once
+	done := make(chan struct{})
+	triggerShutdown := func(context.Context, *metastorev1.PollCompactionJobsRequest, ...grpc.CallOption) {
+		once.Do(func() { close(done) })
+	}
+
+	compactionClient.EXPECT().
+		PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).
+		Run(triggerShutdown).
+		Return(&metastorev1.PollCompactionJobsResponse{
+			CompactionJobs: []*metastorev1.CompactionJob{job},
+			Assignments:    []*metastorev1.CompactionJobAssignment{assignment},
+		}, nil).Once()
+
+	indexClient.EXPECT().
+		GetBlockMetadata(mock.Anything, mock.Anything, mock.Anything).
+		Return(&metastorev1.GetBlockMetadataResponse{}, nil).
+		Once()
+
+	var blocksDeleted atomic.Int32
+	bucket.EXPECT().
+		Delete(mock.Anything, mock.Anything).
+		Run(func(context.Context, string) {
+			blocksDeleted.Add(1)
+			time.Sleep(100 * time.Millisecond)
+		}).Return(nil).Times(2)
+
+	compactionClient.EXPECT().
+		PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).
+		Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	svc := worker.Service()
+	assert.NoError(t, svc.StartAsync(ctx))
+	assert.NoError(t, svc.AwaitRunning(ctx))
+
+	// Wait for the job to be polled and shutdown immediately.
+	<-done
+	svc.StopAsync()
+	assert.NoError(t, svc.AwaitTerminated(ctx))
+
+	require.Equal(t, 2, int(blocksDeleted.Load()))
 }
