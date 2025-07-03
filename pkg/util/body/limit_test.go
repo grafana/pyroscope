@@ -12,29 +12,8 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/tenant"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
-
-// Mock implementation of the Limits interface
-type mockLimits struct {
-	sizeLimits map[string]int64
-}
-
-func (m *mockLimits) IngestionBodyLimitBytes(tenantID string) int64 {
-	if sizeLimits, ok := m.sizeLimits[tenantID]; ok {
-		return sizeLimits
-	}
-	return 0
-}
-
-func newMockLimits() *mockLimits {
-	return &mockLimits{
-		sizeLimits: make(map[string]int64),
-	}
-}
-
-func (m *mockLimits) setSizeLimit(tenantID string, limit int64) {
-	m.sizeLimits[tenantID] = limit
-}
 
 // Test handler that records what happened
 type testHandler struct {
@@ -90,8 +69,9 @@ func TestRequestBodyLimitMiddleware(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			limits := newMockLimits()
-			limits.setSizeLimit(tenantID, tt.bodyLimit)
+			limits := validation.MockLimits{
+				IngestionBodyLimitBytesValue: tt.bodyLimit,
+			}
 			middleware := NewSizeLimitHandler(limits)
 
 			var handler testHandler
