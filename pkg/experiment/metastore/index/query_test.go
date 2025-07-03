@@ -1,6 +1,7 @@
 package index
 
 import (
+	"context"
 	"crypto/rand"
 	"runtime"
 	"sync"
@@ -22,6 +23,7 @@ import (
 
 func TestIndex_Query(t *testing.T) {
 	db := test.BoltDB(t)
+	ctx := context.Background()
 
 	minT := test.UnixMilli("2024-09-23T08:00:00.000Z")
 	maxT := test.UnixMilli("2024-09-23T09:00:00.000Z")
@@ -139,7 +141,7 @@ func TestIndex_Query(t *testing.T) {
 				},
 			}
 
-			found, err := index.QueryMetadata(tx, MetadataQuery{
+			found, err := index.QueryMetadata(tx, ctx, MetadataQuery{
 				Expr:      `{service_name=~"dataset-a"}`,
 				StartTime: time.UnixMilli(minT),
 				EndTime:   time.UnixMilli(maxT),
@@ -162,7 +164,7 @@ func TestIndex_Query(t *testing.T) {
 				},
 			}
 
-			found, err := index.QueryMetadata(tx, MetadataQuery{
+			found, err := index.QueryMetadata(tx, ctx, MetadataQuery{
 				Expr:      `{}`,
 				StartTime: time.UnixMilli(minT),
 				EndTime:   time.UnixMilli(maxT + 1),
@@ -173,7 +175,7 @@ func TestIndex_Query(t *testing.T) {
 		})
 
 		t.Run("DatasetTenantFilterNotExisting", func(t *testing.T) {
-			found, err := index.QueryMetadata(tx, MetadataQuery{
+			found, err := index.QueryMetadata(tx, ctx, MetadataQuery{
 				Expr:      `{}`,
 				StartTime: time.UnixMilli(minT),
 				EndTime:   time.UnixMilli(maxT + 1),
@@ -234,7 +236,7 @@ func TestIndex_Query(t *testing.T) {
 				},
 			}
 
-			found, err := index.QueryMetadata(tx, MetadataQuery{
+			found, err := index.QueryMetadata(tx, ctx, MetadataQuery{
 				Expr:      `{service_name=~"dataset-a"}`,
 				StartTime: time.UnixMilli(minT),
 				EndTime:   time.UnixMilli(maxT),
@@ -246,7 +248,7 @@ func TestIndex_Query(t *testing.T) {
 		})
 
 		t.Run("TimeRangeFilter", func(t *testing.T) {
-			found, err := index.QueryMetadata(tx, MetadataQuery{
+			found, err := index.QueryMetadata(tx, ctx, MetadataQuery{
 				Expr:      `{service_name=~"dataset-b"}`,
 				StartTime: time.UnixMilli(minT - 3),
 				EndTime:   time.UnixMilli(minT - 1), // dataset-b starts at minT
@@ -257,7 +259,7 @@ func TestIndex_Query(t *testing.T) {
 		})
 
 		t.Run("Labels", func(t *testing.T) {
-			labels, err := index.QueryMetadataLabels(tx, MetadataQuery{
+			labels, err := index.QueryMetadataLabels(tx, ctx, MetadataQuery{
 				Expr:      `{service_name=~"dataset.*"}`,
 				StartTime: time.UnixMilli(minT),
 				EndTime:   time.UnixMilli(maxT),
@@ -276,7 +278,7 @@ func TestIndex_Query(t *testing.T) {
 		})
 
 		t.Run("LabelsTenantFilter", func(t *testing.T) {
-			labels, err := index.QueryMetadataLabels(tx, MetadataQuery{
+			labels, err := index.QueryMetadataLabels(tx, ctx, MetadataQuery{
 				Expr:      "{}",
 				StartTime: time.UnixMilli(minT),
 				EndTime:   time.UnixMilli(maxT),
@@ -406,9 +408,10 @@ func (s *queryTestSuite) run(t *testing.T) {
 		}
 	}()
 
-	s.runQuery(t, s.queryBlocks)
-	s.runQuery(t, s.queryLabels)
-	s.runQuery(t, s.getBlocks)
+	ctx := context.Background()
+	s.runQuery(t, ctx, s.queryBlocks)
+	s.runQuery(t, ctx, s.queryLabels)
+	s.runQuery(t, ctx, s.getBlocks)
 
 	go func() {
 		select {
@@ -519,7 +522,7 @@ func (s *queryTestSuite) writeBlocks(t *testing.T) {
 	runtime.Gosched()
 }
 
-func (s *queryTestSuite) runQuery(t *testing.T, q func(*testing.T) int32) {
+func (s *queryTestSuite) runQuery(t *testing.T, ctx context.Context, q func(*testing.T, context.Context) int32) {
 	t.Helper()
 
 	var ret int32
@@ -534,7 +537,7 @@ func (s *queryTestSuite) runQuery(t *testing.T, q func(*testing.T) int32) {
 
 			default:
 				s.queries.Inc()
-				x := q(t)
+				x := q(t, ctx)
 				if x < 0 {
 					s.doStop()
 					return
@@ -547,11 +550,11 @@ func (s *queryTestSuite) runQuery(t *testing.T, q func(*testing.T) int32) {
 	}()
 }
 
-func (s *queryTestSuite) queryBlocks(t *testing.T) (ret int32) {
+func (s *queryTestSuite) queryBlocks(t *testing.T, ctx context.Context) (ret int32) {
 	var x []*metastorev1.BlockMeta
 	var err error
 	require.NoError(t, s.db.View(func(tx *bbolt.Tx) error {
-		x, err = s.idx.QueryMetadata(tx, MetadataQuery{
+		x, err = s.idx.QueryMetadata(tx, ctx, MetadataQuery{
 			Expr:      `{service_name="service"}`,
 			StartTime: test.Time(s.from),
 			EndTime:   test.Time(s.from).Add(2 * time.Hour),
@@ -591,11 +594,11 @@ func (s *queryTestSuite) queryBlocks(t *testing.T) (ret int32) {
 	return -1
 }
 
-func (s *queryTestSuite) queryLabels(t *testing.T) (ret int32) {
+func (s *queryTestSuite) queryLabels(t *testing.T, ctx context.Context) (ret int32) {
 	var x []*typesv1.Labels
 	var err error
 	require.NoError(t, s.db.View(func(tx *bbolt.Tx) error {
-		x, err = s.idx.QueryMetadataLabels(tx, MetadataQuery{
+		x, err = s.idx.QueryMetadataLabels(tx, ctx, MetadataQuery{
 			Expr:      `{service_name="service"}`,
 			StartTime: test.Time(s.from),
 			EndTime:   test.Time(s.from).Add(2 * time.Hour),
@@ -620,7 +623,7 @@ func (s *queryTestSuite) queryLabels(t *testing.T) (ret int32) {
 	return sourceBlocks | compactedBlocks
 }
 
-func (s *queryTestSuite) getBlocks(t *testing.T) (ret int32) {
+func (s *queryTestSuite) getBlocks(t *testing.T, _ context.Context) (ret int32) {
 	var x []*metastorev1.BlockMeta
 	var err error
 	// The writer ensures that the list is set after it finished writes.

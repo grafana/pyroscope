@@ -272,6 +272,7 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 	registerer := prometheus.WrapRegistererWithPrefix("pyroscope_metastore_", f.reg)
 	m, err := metastore.New(
 		f.Cfg.Metastore,
+		f.Overrides,
 		logger,
 		registerer,
 		healthService,

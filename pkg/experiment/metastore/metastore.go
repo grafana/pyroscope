@@ -21,25 +21,26 @@ import (
 	placement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/compactor"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction/scheduler"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/dlq"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/index"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/cleaner"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/cleaner/retention"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/dlq"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/tombstones"
 	raft "github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/tombstones"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
 type Config struct {
-	Address          string             `yaml:"address"`
-	GRPCClientConfig grpcclient.Config  `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
-	MinReadyDuration time.Duration      `yaml:"min_ready_duration" category:"advanced"`
-	Raft             raft.Config        `yaml:"raft"`
-	FSM              fsm.Config         `yaml:",inline" category:"advanced"`
-	Index            index.Config       `yaml:"index" category:"advanced"`
-	DLQRecovery      dlq.RecoveryConfig `yaml:",inline" category:"advanced"`
-	Compactor        compactor.Config   `yaml:",inline" category:"advanced"`
-	Scheduler        scheduler.Config   `yaml:",inline" category:"advanced"`
+	Address          string            `yaml:"address"`
+	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
+	MinReadyDuration time.Duration     `yaml:"min_ready_duration" category:"advanced"`
+	Raft             raft.Config       `yaml:"raft"`
+	FSM              fsm.Config        `yaml:",inline" category:"advanced"`
+	Index            index.Config      `yaml:"index" category:"advanced"`
+	Compactor        compactor.Config  `yaml:",inline" category:"advanced"`
+	Scheduler        scheduler.Config  `yaml:",inline" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
@@ -52,7 +53,6 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.Compactor.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Scheduler.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Index.RegisterFlagsWithPrefix(prefix+"index.", f)
-	cfg.DLQRecovery.RegisterFlagsWithPrefix(prefix, f)
 }
 
 func (cfg *Config) Validate() error {
@@ -68,17 +68,19 @@ func (cfg *Config) Validate() error {
 type Metastore struct {
 	service services.Service
 
-	config Config
-	logger log.Logger
-	reg    prometheus.Registerer
-	health health.Service
+	config    Config
+	overrides Overrides
+	logger    log.Logger
+	reg       prometheus.Registerer
+	health    health.Service
 
 	raft *raft.Node
 	fsm  *fsm.FSM
 
-	bucket      objstore.Bucket
-	placement   *placement.Manager
-	dlqRecovery *dlq.Recovery
+	bucket    objstore.Bucket
+	placement *placement.Manager
+	recovery  *dlq.Recovery
+	cleaner   *cleaner.Cleaner
 
 	index        *index.Index
 	indexHandler *IndexCommandHandler
@@ -90,16 +92,22 @@ type Metastore struct {
 	compactionHandler *CompactionCommandHandler
 	compactionService *CompactionService
 
-	followerRead    *raft.StateReader[*bbolt.Tx]
-	tenantService   *TenantService
-	metadataService *MetadataQueryService
+	leaderRead    *raft.StateReader[*bbolt.Tx]
+	followerRead  *raft.StateReader[*bbolt.Tx]
+	tenantService *TenantService
+	queryService  *QueryService
 
 	readyOnce  sync.Once
 	readySince time.Time
 }
 
+type Overrides interface {
+	retention.Overrides
+}
+
 func New(
 	config Config,
+	overrides Overrides,
 	logger log.Logger,
 	reg prometheus.Registerer,
 	healthService health.Service,
@@ -109,6 +117,7 @@ func New(
 ) (*Metastore, error) {
 	m := &Metastore{
 		config:    config,
+		overrides: overrides,
 		logger:    logger,
 		reg:       reg,
 		health:    healthService,
@@ -123,7 +132,7 @@ func New(
 
 	// Initialization of the base components.
 	m.index = index.NewIndex(m.logger, index.NewStore(), config.Index)
-	m.tombstones = tombstones.NewTombstones(tombstones.NewStore())
+	m.tombstones = tombstones.NewTombstones(tombstones.NewStore(), m.reg)
 	m.compactor = compactor.NewCompactor(config.Compactor, compactor.NewStore(), m.tombstones, m.reg)
 	m.scheduler = scheduler.NewScheduler(config.Scheduler, scheduler.NewStore(), m.reg)
 
@@ -132,6 +141,9 @@ func New(
 	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
 		m.indexHandler.AddBlock)
+	fsm.RegisterRaftCommandHandler(m.fsm,
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX),
+		m.indexHandler.TruncateIndex)
 
 	m.compactionHandler = NewCompactionCommandHandler(m.logger, m.index, m.compactor, m.compactor, m.scheduler, m.tombstones)
 	fsm.RegisterRaftCommandHandler(m.fsm,
@@ -151,25 +163,25 @@ func New(
 		return nil, err
 	}
 
-	// Create the read-only interface to the state.
-	// We're currently only using the Follower Read pattern, assuming that
-	// leader reads are done through the raft log. However, this should be
-	// optimized in the future to use the Leader Read pattern.
+	// Create the read-only interfaces to the state.
 	m.followerRead = m.newFollowerReader(client, m.raft, m.fsm)
+	m.leaderRead = m.newLeaderReader(m.raft, m.fsm)
 
 	// Services should be registered after FSM and Raft have been initialized.
-	// Services provide an interface to interact with the metastore.
+	// Services provide an interface to interact with the metastore components.
 	m.compactionService = NewCompactionService(m.logger, m.raft)
-	m.indexService = NewIndexService(m.logger, m.raft, m.followerRead, m.index, m.placement)
+	m.indexService = NewIndexService(m.logger, m.raft, m.leaderRead, m.index, m.placement)
 	m.tenantService = NewTenantService(m.logger, m.followerRead, m.index)
-	m.metadataService = NewMetadataQueryService(m.logger, m.followerRead, m.index)
-	m.dlqRecovery = dlq.NewRecovery(logger, config.DLQRecovery, m.indexService, bucket)
+	m.queryService = NewQueryService(m.logger, m.followerRead, m.index)
+	m.recovery = dlq.NewRecovery(logger, config.Index.Recovery, m.indexService, bucket)
+	m.cleaner = cleaner.NewCleaner(m.logger, m.overrides, config.Index.Cleaner, m.indexService)
 
 	// These are the services that only run on the raft leader.
 	// Keep in mind that the node may not be the leader at the moment the
 	// service is starting, so it should be able to handle conflicts.
-	m.raft.RunOnLeader(m.dlqRecovery)
+	m.raft.RunOnLeader(m.recovery)
 	m.raft.RunOnLeader(m.placement)
+	m.raft.RunOnLeader(m.cleaner)
 
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
@@ -219,7 +231,7 @@ func (m *Metastore) buildRaftNode() (err error) {
 func (m *Metastore) Register(server *grpc.Server) {
 	metastorev1.RegisterIndexServiceServer(server, m.indexService)
 	metastorev1.RegisterCompactionServiceServer(server, m.compactionService)
-	metastorev1.RegisterMetadataQueryServiceServer(server, m.metadataService)
+	metastorev1.RegisterMetadataQueryServiceServer(server, m.queryService)
 	metastorev1.RegisterTenantServiceServer(server, m.tenantService)
 	m.raft.Register(server)
 }

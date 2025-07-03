@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/tombstones/store"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/tombstones/store"
 	"github.com/grafana/pyroscope/pkg/test"
 )
 
@@ -17,7 +17,7 @@ func TestTombstonesIdempotence(t *testing.T) {
 	db := test.BoltDB(t)
 	tombstoneStore := store.NewTombstoneStore()
 
-	ts := NewTombstones(tombstoneStore)
+	ts := NewTombstones(tombstoneStore, nil)
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 	require.NoError(t, ts.Init(tx))

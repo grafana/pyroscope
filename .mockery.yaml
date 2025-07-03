@@ -37,12 +37,12 @@ packages:
   github.com/grafana/pyroscope/pkg/experiment/metastore/discovery:
     interfaces:
       Discovery:
-  github.com/grafana/pyroscope/pkg/experiment/metastore/dlq:
-    interfaces:
-      LocalServer:
   github.com/grafana/pyroscope/pkg/experiment/metastore/index:
     interfaces:
       Store:
+  github.com/grafana/pyroscope/pkg/experiment/metastore/index/dlq:
+    interfaces:
+      Metastore:
   github.com/grafana/pyroscope/pkg/experiment/distributor/placement:
     interfaces:
       Placement:

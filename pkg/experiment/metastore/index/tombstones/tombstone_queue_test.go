@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/tombstones/store"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/tombstones/store"
 )
 
 func TestTombstoneIterator(t *testing.T) {
@@ -108,4 +108,58 @@ func TestTombstoneIterator(t *testing.T) {
 		}
 		assert.False(t, iter.Next())
 	})
+}
+
+func TestQueueDelete(t *testing.T) {
+	queue := newTombstoneQueue()
+	now := time.Now()
+
+	entry1 := &tombstones{
+		TombstoneEntry: store.TombstoneEntry{
+			Index:      1,
+			AppendedAt: now.Add(-3 * time.Hour).UnixNano(),
+			Tombstones: &metastorev1.Tombstones{
+				Blocks: &metastorev1.BlockTombstones{Name: "tombstone-1"},
+			},
+		},
+	}
+	entry2 := &tombstones{
+		TombstoneEntry: store.TombstoneEntry{
+			Index:      2,
+			AppendedAt: now.Add(-2 * time.Hour).UnixNano(),
+			Tombstones: &metastorev1.Tombstones{
+				Blocks: &metastorev1.BlockTombstones{Name: "tombstone-2"},
+			},
+		},
+	}
+	entry3 := &tombstones{
+		TombstoneEntry: store.TombstoneEntry{
+			Index:      3,
+			AppendedAt: now.Add(-1 * time.Hour).UnixNano(),
+			Tombstones: &metastorev1.Tombstones{
+				Blocks: &metastorev1.BlockTombstones{Name: "tombstone-3"},
+			},
+		},
+	}
+
+	queue.push(entry1)
+	queue.push(entry2)
+	queue.push(entry3)
+
+	assert.Equal(t, entry1, queue.head)
+	assert.Equal(t, entry3, queue.tail)
+
+	deleted := queue.delete(entry3)
+	assert.Equal(t, entry3, deleted)
+
+	assert.NotNil(t, queue.tail)
+	assert.Equal(t, entry2, queue.tail)
+
+	var count int
+	iter := &tombstoneIter{head: queue.head, before: now.UnixNano()}
+	for iter.Next() {
+		count++
+	}
+
+	assert.Equal(t, 2, count)
 }

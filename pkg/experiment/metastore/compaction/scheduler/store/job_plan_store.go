@@ -33,7 +33,7 @@ func (s JobPlanStore) StoreJobPlan(tx *bbolt.Tx, plan *raft_log.CompactionJobPla
 func (s JobPlanStore) GetJobPlan(tx *bbolt.Tx, name string) (*raft_log.CompactionJobPlan, error) {
 	b := tx.Bucket(s.bucketName).Get([]byte(name))
 	if b == nil {
-		return nil, fmt.Errorf("loading job plan %s: %w", name, store.ErrorNotFound)
+		return nil, fmt.Errorf("loading job plan %s: %w", name, store.ErrNotFound)
 	}
 	var v raft_log.CompactionJobPlan
 	if err := v.UnmarshalVT(b); err != nil {

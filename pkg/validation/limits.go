@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"iter"
 	"time"
 
 	"github.com/pkg/errors"
@@ -14,6 +15,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
 	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/cleaner/retention"
 	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -114,6 +116,9 @@ type Limits struct {
 
 	// Write path overrides used in query-frontend.
 	ReadPathOverrides readpath.Config `yaml:",inline" json:",inline"`
+
+	// Data retention configuration.
+	Retention retention.Config `yaml:",inline" json:",inline"`
 
 	// Adaptive placement limits used in distributors and in the metastore.
 	// Distributors use these limits to determine how many shards to allocate
@@ -260,6 +265,8 @@ type TenantLimits interface {
 	TenantLimits(tenantID string) *Limits
 	// AllByTenantID gets a mapping of all tenant IDs and limits for that tenant
 	AllByTenantID() map[string]*Limits
+	// RuntimeConfig returns the runtime config values, if available, and nil otherwise.
+	RuntimeConfig() *RuntimeConfigValues
 }
 
 // Overrides periodically fetch a set of per-tenant overrides, and provides convenience
@@ -495,6 +502,32 @@ func (o *Overrides) RejectOlderThan(tenantID string) time.Duration {
 // QueryAnalysisEnabled can be used to disable the query analysis endpoint in the query frontend.
 func (o *Overrides) QueryAnalysisEnabled(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).QueryAnalysisEnabled
+}
+
+func (o *Overrides) Retention() (defaults retention.Config, overrides iter.Seq2[string, retention.Config]) {
+	return GetOverride(o, func(tenantID string, limits *Limits) retention.Config {
+		return limits.Retention
+	})
+}
+
+// GetOverride is a convenience function to get an override value for all tenants.
+// The order is not deterministic.
+func GetOverride[T any](o *Overrides, fn func(string, *Limits) T) (defaults T, overrides iter.Seq2[string, T]) {
+	defaults = fn("", o.defaultLimits)
+	if o.tenantLimits == nil {
+		return defaults, func(yield func(string, T) bool) {}
+	}
+	c := o.tenantLimits.RuntimeConfig()
+	if c == nil {
+		return defaults, func(yield func(string, T) bool) {}
+	}
+	return defaults, func(yield func(string, T) bool) {
+		for tenantID, limits := range c.TenantLimits {
+			if !yield(tenantID, fn(tenantID, limits)) {
+				return
+			}
+		}
+	}
 }
 
 // QueryAnalysisSeriesEnabled can be used to disable the series portion of the query analysis endpoint in the query frontend.

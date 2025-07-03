@@ -8,15 +8,16 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-type compactionWorkerMetrics struct {
+type workerMetrics struct {
 	jobsInProgress   *prometheus.GaugeVec
 	jobsCompleted    *prometheus.CounterVec
 	jobDuration      *prometheus.HistogramVec
 	timeToCompaction *prometheus.HistogramVec
+	blocksDeleted    *prometheus.CounterVec
 }
 
-func newMetrics(r prometheus.Registerer) *compactionWorkerMetrics {
-	m := &compactionWorkerMetrics{
+func newMetrics(r prometheus.Registerer) *workerMetrics {
+	m := &workerMetrics{
 		jobsInProgress: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "jobs_in_progress",
 			Help: "The number of active compaction jobs currently running.",
@@ -31,9 +32,9 @@ func newMetrics(r prometheus.Registerer) *compactionWorkerMetrics {
 			Name: "job_duration_seconds",
 			Help: "Duration of compaction job runs",
 
-			Buckets:                         prometheus.ExponentialBuckets(1, 300, 16),
+			Buckets:                         prometheus.ExponentialBucketsRange(1, 300, 16),
 			NativeHistogramBucketFactor:     1.1,
-			NativeHistogramMaxBucketNumber:  16,
+			NativeHistogramMaxBucketNumber:  50,
 			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"tenant", "level", "status"}),
 
@@ -43,9 +44,14 @@ func newMetrics(r prometheus.Registerer) *compactionWorkerMetrics {
 
 			Buckets:                         prometheus.ExponentialBuckets(1, 3600, 16),
 			NativeHistogramBucketFactor:     1.1,
-			NativeHistogramMaxBucketNumber:  16,
+			NativeHistogramMaxBucketNumber:  50,
 			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"tenant", "level"}),
+
+		blocksDeleted: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "blocks_deleted_total",
+			Help: "Total number of block deletion attempts.",
+		}, []string{"status"}),
 	}
 
 	util.Register(r,
@@ -53,6 +59,7 @@ func newMetrics(r prometheus.Registerer) *compactionWorkerMetrics {
 		m.jobsCompleted,
 		m.jobDuration,
 		m.timeToCompaction,
+		m.blocksDeleted,
 	)
 
 	return m

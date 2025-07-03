@@ -31,7 +31,7 @@ func TestJobStateStore(t *testing.T) {
 	assert.Equal(t, "2", state.Name)
 	require.NoError(t, s.DeleteJobState(tx, "2"))
 	state, err = s.GetJobState(tx, "2")
-	require.ErrorIs(t, err, store.ErrorNotFound)
+	require.ErrorIs(t, err, store.ErrNotFound)
 	require.Nil(t, state)
 	require.NoError(t, tx.Commit())
 

@@ -19,30 +19,30 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 )
 
-type RecoveryConfig struct {
-	Period time.Duration `yaml:"dlq_recovery_check_interval"`
+type Config struct {
+	CheckInterval time.Duration `yaml:"dlq_recovery_check_interval"`
 }
 
-func (c *RecoveryConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.DurationVar(&c.Period, prefix+"dlq-recovery-check-interval", 15*time.Second, "Dead Letter Queue check interval.")
+func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
+	f.DurationVar(&c.CheckInterval, prefix+"dlq-recovery-check-interval", 15*time.Second, "Dead Letter Queue check interval. 0 to disable.")
 }
 
-type LocalServer interface {
+type Metastore interface {
 	AddRecoveredBlock(context.Context, *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error)
 }
 
 type Recovery struct {
-	config    RecoveryConfig
+	config    Config
 	logger    log.Logger
-	metastore LocalServer
+	metastore Metastore
 	bucket    objstore.Bucket
 
-	m       sync.Mutex
 	started bool
 	cancel  func()
+	m       sync.Mutex
 }
 
-func NewRecovery(logger log.Logger, config RecoveryConfig, metastore LocalServer, bucket objstore.Bucket) *Recovery {
+func NewRecovery(logger log.Logger, config Config, metastore Metastore, bucket objstore.Bucket) *Recovery {
 	return &Recovery{
 		config:    config,
 		logger:    logger,
@@ -52,6 +52,9 @@ func NewRecovery(logger log.Logger, config RecoveryConfig, metastore LocalServer
 }
 
 func (r *Recovery) Start() {
+	if r.config.CheckInterval == 0 {
+		return
+	}
 	r.m.Lock()
 	defer r.m.Unlock()
 	if r.started {
@@ -66,22 +69,24 @@ func (r *Recovery) Start() {
 }
 
 func (r *Recovery) Stop() {
+	if r.config.CheckInterval == 0 {
+		return
+	}
 	r.m.Lock()
 	defer r.m.Unlock()
 	if !r.started {
 		r.logger.Log("msg", "recovery already stopped")
 		return
 	}
-	r.cancel()
+	if r.cancel != nil {
+		r.cancel()
+	}
 	r.started = false
 	r.logger.Log("msg", "recovery stopped")
 }
 
 func (r *Recovery) recoverLoop(ctx context.Context) {
-	if r.config.Period == 0 {
-		return
-	}
-	ticker := time.NewTicker(r.config.Period)
+	ticker := time.NewTicker(r.config.CheckInterval)
 	defer ticker.Stop()
 	for {
 		select {

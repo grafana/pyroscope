@@ -2,6 +2,7 @@ package metastore
 
 import (
 	"context"
+	goiter "iter"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -14,6 +15,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/experiment/block/metadata"
 	placement "github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/fsm"
+	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/cleaner/retention"
+	indexstore "github.com/grafana/pyroscope/pkg/experiment/metastore/index/store"
 	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode"
 	"github.com/grafana/pyroscope/pkg/iter"
 )
@@ -26,11 +29,23 @@ type IndexBlockFinder interface {
 	GetBlocks(*bbolt.Tx, *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error)
 }
 
+type IndexPartitionLister interface {
+	// Partitions provide access to all partitions in the index.
+	// They are iterated in the order of their creation and are
+	// guaranteed to be thread-safe for reads.
+	Partitions(*bbolt.Tx) goiter.Seq[indexstore.Partition]
+}
+
+type IndexReader interface {
+	IndexBlockFinder
+	IndexPartitionLister
+}
+
 func NewIndexService(
 	logger log.Logger,
 	raft Raft,
 	state State,
-	index IndexBlockFinder,
+	index IndexReader,
 	stats PlacementStats,
 ) *IndexService {
 	return &IndexService{
@@ -48,7 +63,7 @@ type IndexService struct {
 	logger log.Logger
 	raft   Raft
 	state  State
-	index  IndexBlockFinder
+	index  IndexReader
 	stats  PlacementStats
 }
 
@@ -84,7 +99,9 @@ func (svc *IndexService) addBlockMetadata(
 		&raft_log.AddBlockMetadataRequest{Metadata: req.Block},
 	)
 	if err != nil {
-		level.Error(svc.logger).Log("msg", "failed to add block", "block", req.Block.Id, "err", err)
+		if !raftnode.IsRaftLeadershipError(err) {
+			level.Error(svc.logger).Log("msg", "failed to add block", "block", req.Block.Id, "err", err)
+		}
 		return nil, err
 	}
 	return new(metastorev1.AddBlockResponse), nil
@@ -140,4 +157,25 @@ func (s *sampleIterator) At() placement.Sample {
 		ShardID:     s.md.Shard,
 		Size:        ds.Size,
 	}
+}
+
+func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy) error {
+	var req raft_log.TruncateIndexRequest
+	read := func(tx *bbolt.Tx, r raftnode.ReadIndex) {
+		req.Tombstones = rp.CreateTombstones(tx, svc.index.Partitions(tx))
+		req.Term = r.Term // The leader may change after we read the index.
+	}
+	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {
+		return status.Error(codes.Unavailable, readErr.Error())
+	}
+	if len(req.Tombstones) == 0 {
+		return nil
+	}
+	if _, err := svc.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX), &req); err != nil {
+		if !raftnode.IsRaftLeadershipError(err) {
+			level.Error(svc.logger).Log("msg", "failed to truncate index", "err", err)
+		}
+		return err
+	}
+	return nil
 }

@@ -23,8 +23,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
+	thanosstore "github.com/thanos-io/objstore"
 	_ "go.uber.org/automaxprocs"
-	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/experiment/block"
@@ -34,35 +34,14 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-type Worker struct {
-	service services.Service
-
-	logger  log.Logger
-	config  Config
-	client  MetastoreClient
-	storage objstore.Bucket
-	metrics *compactionWorkerMetrics
-
-	jobs     map[string]*compactionJob
-	queue    chan *compactionJob
-	threads  int
-	capacity atomic.Int32
-
-	stopped   atomic.Bool
-	closeOnce sync.Once
-	wg        sync.WaitGroup
-
-	exporter metrics.Exporter
-	ruler    metrics.Ruler
-}
-
 type Config struct {
-	JobConcurrency  int            `yaml:"job_capacity"`
-	JobPollInterval time.Duration  `yaml:"job_poll_interval"`
-	SmallObjectSize int            `yaml:"small_object_size_bytes"`
-	TempDir         string         `yaml:"temp_dir"`
-	RequestTimeout  time.Duration  `yaml:"request_timeout"`
-	MetricsExporter metrics.Config `yaml:"metrics_exporter"`
+	JobConcurrency     int            `yaml:"job_capacity"`
+	JobPollInterval    time.Duration  `yaml:"job_poll_interval"`
+	SmallObjectSize    int            `yaml:"small_object_size_bytes"`
+	TempDir            string         `yaml:"temp_dir"`
+	RequestTimeout     time.Duration  `yaml:"request_timeout"`
+	CleanupMaxDuration time.Duration  `yaml:"cleanup_max_duration"`
+	MetricsExporter    metrics.Config `yaml:"metrics_exporter"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
@@ -70,9 +49,35 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&cfg.JobConcurrency, prefix+"job-concurrency", 0, "Number of concurrent jobs compaction worker will run. Defaults to the number of CPU cores.")
 	f.DurationVar(&cfg.JobPollInterval, prefix+"job-poll-interval", 5*time.Second, "Interval between job requests")
 	f.DurationVar(&cfg.RequestTimeout, prefix+"request-timeout", 5*time.Second, "Job request timeout.")
+	f.DurationVar(&cfg.CleanupMaxDuration, prefix+"cleanup-max-duration", 15*time.Second, "Maximum duration of the cleanup operations.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", os.TempDir(), "Temporary directory for compaction jobs.")
 	cfg.MetricsExporter.RegisterFlags(f)
+}
+
+type Worker struct {
+	service services.Service
+
+	logger    log.Logger
+	config    Config
+	client    MetastoreClient
+	storage   objstore.Bucket
+	compactFn compactFunc
+	metrics   *workerMetrics
+
+	jobs     map[string]*compactionJob
+	queue    chan *compactionJob
+	threads  int
+	capacity atomic.Int32
+
+	deleterPool *deleterPool
+
+	stopped   atomic.Bool
+	closeOnce sync.Once
+	wg        sync.WaitGroup
+
+	exporter metrics.Exporter
+	ruler    metrics.Ruler
 }
 
 type compactionJob struct {
@@ -87,17 +92,7 @@ type compactionJob struct {
 	compacted  *metastorev1.CompactedBlocks
 }
 
-// String representation of the compaction job.
-// Is only used for logging and metrics.
-type jobStatus string
-
-const (
-	statusSuccess   jobStatus = "success"
-	statusFailure   jobStatus = "failure"
-	statusCancelled jobStatus = "cancelled"
-	statusNoMeta    jobStatus = "metadata_not_found"
-	statusNoBlocks  jobStatus = "blocks_not_found"
-)
+type compactFunc func(context.Context, []*metastorev1.BlockMeta, objstore.Bucket, ...block.CompactionOption) ([]*metastorev1.BlockMeta, error)
 
 type MetastoreClient interface {
 	metastorev1.CompactionServiceClient
@@ -119,13 +114,14 @@ func New(
 		return nil, fmt.Errorf("failed to create compactor directory: %w", err)
 	}
 	w := &Worker{
-		config:   config,
-		logger:   logger,
-		client:   client,
-		storage:  storage,
-		metrics:  newMetrics(reg),
-		ruler:    ruler,
-		exporter: exporter,
+		config:    config,
+		logger:    logger,
+		client:    client,
+		storage:   storage,
+		compactFn: block.Compact,
+		metrics:   newMetrics(reg),
+		ruler:     ruler,
+		exporter:  exporter,
 	}
 	w.threads = config.JobConcurrency
 	if w.threads < 1 {
@@ -134,6 +130,7 @@ func New(
 	w.queue = make(chan *compactionJob, 2*w.threads)
 	w.jobs = make(map[string]*compactionJob, 2*w.threads)
 	w.capacity.Store(int32(w.threads))
+	w.deleterPool = newDeleterPool(16 * w.threads)
 	w.service = services.NewBasicService(w.starting, w.running, w.stopping)
 	return w, nil
 }
@@ -195,6 +192,7 @@ func (w *Worker) running(ctx context.Context) error {
 	if w.exporter != nil {
 		w.exporter.Flush()
 	}
+	w.deleterPool.close()
 	return nil
 }
 
@@ -350,18 +348,29 @@ func (w *Worker) handleResponse(resp *metastorev1.PollCompactionJobsResponse) (n
 	return newJobs
 }
 
+// Status is only used in metrics and logging.
+type status string
+
+const (
+	statusSuccess          status = "success"
+	statusFailure          status = "failure"
+	statusCanceled         status = "canceled"
+	statusMetadataNotFound status = "metadata_not_found"
+	statusBlockNotFound    status = "block_not_found"
+)
+
 func (w *Worker) runCompaction(job *compactionJob) {
 	start := time.Now()
-	labels := []string{job.Tenant, strconv.Itoa(int(job.CompactionLevel))}
+	metricLabels := []string{job.Tenant, strconv.Itoa(int(job.CompactionLevel))}
 	statusName := statusFailure
 	defer func() {
-		labelsWithStatus := append(labels, string(statusName))
+		labelsWithStatus := append(metricLabels, string(statusName))
 		w.metrics.jobDuration.WithLabelValues(labelsWithStatus...).Observe(time.Since(start).Seconds())
 		w.metrics.jobsCompleted.WithLabelValues(labelsWithStatus...).Inc()
-		w.metrics.jobsInProgress.WithLabelValues(labels...).Dec()
+		w.metrics.jobsInProgress.WithLabelValues(metricLabels...).Dec()
 	}()
 
-	w.metrics.jobsInProgress.WithLabelValues(labels...).Inc()
+	w.metrics.jobsInProgress.WithLabelValues(metricLabels...).Inc()
 	sp, ctx := opentracing.StartSpanFromContext(job.ctx, "runCompaction",
 		opentracing.Tag{Key: "Job", Value: job.String()},
 		opentracing.Tag{Key: "Tenant", Value: job.Tenant},
@@ -374,25 +383,40 @@ func (w *Worker) runCompaction(job *compactionJob) {
 
 	logger := log.With(w.logger, "job", job.Name)
 	level.Info(logger).Log("msg", "starting compaction job", "source_blocks", strings.Join(job.SourceBlocks, " "))
+
+	// FIXME(kolesnikovae): Read metadata from blocks: it's located in the
+	//   blocks footer. The start offest and CRC are the last 8 bytes (BE).
+	//   See metadata.Encode and metadata.Decode.
+	//   We use metadata to download objects: in fact we need to know only
+	//   tenant, shard, level, and ID: the information which we already have
+	//   in the job. We definitely don't need the full metadata entry with
+	//   datasets: this part can be set once we download the block and read
+	//   meta locally. Or, we can just fetch the metadata from the objects
+	//   directly, before downloading them.
 	if err := w.getBlockMetadata(logger, job); err != nil {
 		// The error is likely to be transient, therefore the job is not failed,
 		// but just abandoned – another worker will pick it up and try again.
 		return
 	}
 
-	deleteGroup, deleteCtx := errgroup.WithContext(ctx)
-	for _, t := range job.Tombstones {
-		if b := t.GetBlocks(); b != nil {
-			deleteGroup.Go(func() error {
-				// TODO(kolesnikovae): Clarify guarantees of cleanup.
-				// Currently, we ignore any cleanup failures, as it's unlikely
-				// that anyone would want to stop compaction due to a failed
-				// cleanup. However, we should make this behavior configurable:
-				// if cleanup fails, the entire job should be retried.
-				w.deleteBlocks(deleteCtx, logger, b)
-				return nil
-			})
-		}
+	if len(job.Tombstones) > 0 {
+		// Handle tombstones asynchronously on the best effort basis:
+		// if deletion fails, leftovers will be cleaned up eventually.
+		//
+		// There are following reasons why we may not be able to delete:
+		//  1. General storage unavailability: compaction jobs will be
+		//     retried either way, and the tombstones will be handled again.
+		//  2. Permission issues. In this case, retry will not help.
+		//  3. Worker crash: jobs will be retried.
+		//
+		// A worker is given a limited time to finish the cleanup. If worker
+		// didn't finish the cleanup before shutdown and after the compaction
+		// job was finished (so no retry is expected), the data will be deleted
+		// eventually due to time-based retention policy. However, if no more
+		// tombstones are created for the shard, the data will remain in the
+		// storage. This should be handled by the index cleaner: some garbage
+		// collection should happen in the background.
+		w.handleTombstones(logger, job.Tombstones...)
 	}
 
 	if len(job.blocks) == 0 {
@@ -404,10 +428,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		// found in storage, which may happen if the blocks are deleted manually.
 		level.Error(logger).Log("msg", "no block metadata found; skipping")
 		job.compacted = &metastorev1.CompactedBlocks{SourceBlocks: new(metastorev1.BlockList)}
-		statusName = statusNoMeta
-		// We, however, want to remove the tombstones: those are not the
-		// blocks we were supposed to compact.
-		_ = deleteGroup.Wait()
+		statusName = statusMetadataNotFound
 		return
 	}
 
@@ -426,7 +447,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		options = append(options, block.WithSampleObserver(observer))
 	}
 
-	compacted, err := block.Compact(ctx, job.blocks, w.storage, options...)
+	compacted, err := w.compactFn(ctx, job.blocks, w.storage, options...)
 	defer func() {
 		if err = os.RemoveAll(tempdir); err != nil {
 			level.Warn(logger).Log("msg", "failed to remove compaction directory", "path", tempdir, "err", err)
@@ -448,7 +469,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 				"block_shard", c.Shard,
 				"block_compaction_level", c.CompactionLevel,
 				"block_min_time", c.MinTime,
-				"block_max_time", c.MinTime,
+				"block_max_time", c.MaxTime,
 				"block_size", c.Size,
 				"datasets", len(c.Datasets),
 			)
@@ -463,26 +484,22 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		}
 
 		firstBlock := metadata.Timestamp(job.blocks[0])
-		w.metrics.timeToCompaction.WithLabelValues(labels...).Observe(time.Since(firstBlock).Seconds())
+		w.metrics.timeToCompaction.WithLabelValues(metricLabels...).Observe(time.Since(firstBlock).Seconds())
 		statusName = statusSuccess
 
 	case errors.Is(err, context.Canceled):
 		level.Warn(logger).Log("msg", "compaction cancelled")
-		statusName = statusCancelled
+		statusName = statusCanceled
 
 	case objstore.IsNotExist(w.storage, err):
 		level.Error(logger).Log("msg", "failed to find blocks", "err", err)
 		job.compacted = &metastorev1.CompactedBlocks{SourceBlocks: new(metastorev1.BlockList)}
-		statusName = statusNoBlocks
+		statusName = statusBlockNotFound
 
 	default:
 		level.Error(logger).Log("msg", "failed to compact blocks", "err", err)
 		statusName = statusFailure
 	}
-
-	// The only error returned by Wait is the context
-	// cancellation error handled above.
-	_ = deleteGroup.Wait()
 }
 
 func (w *Worker) buildSampleObserver(md *metastorev1.BlockMeta) *metrics.SampleObserver {
@@ -530,22 +547,203 @@ func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
 	return nil
 }
 
-func (w *Worker) deleteBlocks(ctx context.Context, logger log.Logger, t *metastorev1.BlockTombstones) {
-	level.Info(logger).Log(
-		"msg", "deleting blocks",
-		"tenant", t.Tenant,
-		"shard", t.Shard,
-		"compaction_level", t.CompactionLevel,
-		"blocks", strings.Join(t.Blocks, " "),
-	)
-	for _, b := range t.Blocks {
-		path := block.BuildObjectPath(t.Tenant, t.Shard, t.CompactionLevel, b)
-		if err := w.storage.Delete(ctx, path); err != nil {
-			if objstore.IsNotExist(w.storage, err) {
-				level.Warn(logger).Log("msg", "failed to delete block", "path", path, "err", err)
-				continue
-			}
-			level.Warn(logger).Log("msg", "failed to delete block", "path", path, "err", err)
-		}
+func (w *Worker) handleTombstones(logger log.Logger, tombstones ...*metastorev1.Tombstones) {
+	for _, t := range tombstones {
+		w.deleterPool.add(w.newDeleter(logger, t), w.config.CleanupMaxDuration)
 	}
+}
+
+func (w *Worker) newDeleter(logger log.Logger, tombstone *metastorev1.Tombstones) *deleter {
+	return &deleter{
+		logger:    logger,
+		bucket:    w.storage,
+		metrics:   w.metrics,
+		tombstone: tombstone,
+	}
+}
+
+type deleter struct {
+	logger    log.Logger
+	bucket    objstore.Bucket
+	metrics   *workerMetrics
+	tombstone *metastorev1.Tombstones
+	wg        sync.WaitGroup
+}
+
+func (d *deleter) run(ctx context.Context, p *deleterPool) {
+	if t := d.tombstone.GetBlocks(); t != nil {
+		d.handleBlockTombstones(ctx, p, t)
+	}
+	if t := d.tombstone.GetShard(); t != nil {
+		d.handleShardTombstone(ctx, p, t)
+	}
+}
+
+func (d *deleter) wait() { d.wg.Wait() }
+
+func (d *deleter) handleBlockTombstones(ctx context.Context, pool *deleterPool, t *metastorev1.BlockTombstones) {
+	logger := log.With(d.logger, "tombstone_name", t.Name)
+	level.Info(logger).Log("msg", "deleting blocks", "blocks", strings.Join(t.Blocks, " "))
+	for _, b := range t.Blocks {
+		d.wg.Add(1)
+		pool.run(func() {
+			defer d.wg.Done()
+			d.delete(ctx, block.BuildObjectPath(t.Tenant, t.Shard, t.CompactionLevel, b))
+		})
+	}
+}
+
+func (d *deleter) handleShardTombstone(ctx context.Context, pool *deleterPool, t *metastorev1.ShardTombstone) {
+	// It's safe to delete blocks in the shard that are older than the
+	// maximum time specified in the tombstone.
+	minTime := time.Unix(0, t.Timestamp)
+	maxTime := minTime.Add(time.Duration(t.Duration))
+	dir := block.BuildObjectDir(t.Tenant, t.Shard)
+
+	logger := log.With(d.logger, "tombstone_name", t.Name)
+	level.Info(logger).Log("msg", "cleaning up shard", "max_time", maxTime, "dir", dir)
+
+	deleteBlock := func(path string) error {
+		blockID, err := block.ParseBlockIDFromPath(path)
+		if err != nil {
+			level.Warn(logger).Log("msg", "failed to parse block ID from path", "path", path, "err", err)
+			return nil
+		}
+		// Note that although we could skip blocks that are older than the
+		// minimum time, we do not do it here: we want to make sure we deleted
+		// everything before the maximum time, as previous jobs could fail
+		// to do so. In the worst case, this may result in a competition between
+		// workers that try to clean up the same shard. This is not an issue
+		// in practice, because there are not so many cleanup jobs for the
+		// same shard are running concurrently, and the cleanup is fast.
+		blockTs := time.UnixMilli(int64(blockID.Time()))
+		if !blockTs.Before(maxTime) {
+			level.Debug(logger).Log("msg", "reached range end, exiting", "path", path)
+			return filepath.SkipAll
+		}
+		d.wg.Add(1)
+		pool.run(func() {
+			defer d.wg.Done()
+			d.delete(ctx, path)
+		})
+		return nil
+	}
+
+	if err := d.bucket.Iter(ctx, dir, deleteBlock, thanosstore.WithRecursiveIter()); err != nil {
+		if errors.Is(err, filepath.SkipAll) {
+			// This is expected if we successfully handled the tombstone.
+			// This is logged in the deleteBlock function.
+			return
+		}
+		// It's only possible if the error is returned by the iterator itself.
+		level.Error(logger).Log("msg", "failed to cleanup shard", "err", err)
+	}
+}
+
+func (d *deleter) delete(ctx context.Context, path string) {
+	var statusName status
+	switch err := d.bucket.Delete(ctx, path); {
+	case err == nil:
+		statusName = statusSuccess
+
+	case objstore.IsNotExist(d.bucket, err):
+		level.Info(d.logger).Log("msg", "block not found while attempting to delete it", "path", path, "err", err)
+		statusName = statusBlockNotFound
+
+	case errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded):
+		level.Warn(d.logger).Log("msg", "block delete attempt canceled", "path", path, "err", err)
+		statusName = statusCanceled
+
+	default:
+		level.Error(d.logger).Log("msg", "failed to delete block", "path", path, "err", err)
+		statusName = statusFailure
+	}
+
+	d.metrics.blocksDeleted.WithLabelValues(string(statusName)).Inc()
+}
+
+type deleterPool struct {
+	deletersWg sync.WaitGroup
+	stop       chan struct{}
+
+	threadsWg sync.WaitGroup
+	queue     chan func()
+}
+
+func newDeleterPool(threads int) *deleterPool {
+	p := &deleterPool{
+		queue: make(chan func(), threads),
+		stop:  make(chan struct{}),
+	}
+	p.threadsWg.Add(threads)
+	for i := 0; i < threads; i++ {
+		go func() {
+			defer p.threadsWg.Done()
+			for fn := range p.queue {
+				fn()
+			}
+		}()
+	}
+	return p
+}
+
+// If too many tombstones are created for the same tenant-shard, of if there
+// are too many blocks to delete so a single worker does not cope up, multiple
+// workers may end up deleting same blocks as they process the shard from the
+// very beginning. The timeout aims to reduce the competition factor: at any
+// time, the number of workers that cleanup the same shard is limited. This is
+// difficult to achieve in practice, and may happen if the retention is enabled
+// for the first time, and large number of blocks are deleted at once.
+func (p *deleterPool) deleterContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	ctx := context.Background()
+	if timeout > 0 {
+		return context.WithTimeout(ctx, timeout)
+	}
+	return context.WithCancel(ctx)
+}
+
+func (p *deleterPool) add(deleter *deleter, timeout time.Duration) {
+	ctx, cancel := p.deleterContext(timeout)
+	done := make(chan struct{})
+	p.deletersWg.Add(1)
+	go func() {
+		deleter.run(ctx, p)
+		deleter.wait()
+		p.deletersWg.Done()
+		// Notify the other goroutine that the deleter is done
+		// and there's no need to wait for it anymore.
+		close(done)
+	}()
+	go func() {
+		// Wait for the deleter to finish or for the stop signal,
+		// or for the timeout to expire, whichever comes first.
+		defer cancel()
+		select {
+		case <-done:
+		case <-ctx.Done():
+		case <-p.stop:
+			// We don't want to halt the deletion abruptly when
+			// the worker is stopped. In most cases, the deletion
+			// will be finished by the time the worker is stopped.
+			// Otherwise, we may wait up to CleanupMaxDuration.
+			select {
+			case <-done:
+			case <-ctx.Done():
+			}
+		}
+	}()
+}
+
+func (p *deleterPool) run(fn func()) { p.queue <- fn }
+
+// It is guaranteed that no [add] calls will be made at this point:
+// all compaction jobs are done, and no new jobs can be queued.
+func (p *deleterPool) close() {
+	// Wait for all the deleters to finish.
+	close(p.stop)
+	p.deletersWg.Wait()
+	// No new deletions can be queued.
+	// We can close the queue now.
+	close(p.queue)
+	p.threadsWg.Wait()
 }
