@@ -171,47 +171,64 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 
 // handleSanitizedLabel handles the case where a label name is sanitized. It ensures that the label name is unique and fails if the value is distinct.
 func handleSanitizedLabel(ls []*typesv1.LabelPair, origIdx int, origName, newName string) ([]*typesv1.LabelPair, int, error) {
-	var (
-		found     = false
-		origValue = ls[origIdx].Value
-		newIdx    int
-	)
-
-	for idx := range ls {
-		// label name matches
-		if ls[idx].Name == newName {
-			if ls[idx].Value == origValue {
-				found = true
+	origValue := ls[origIdx].Value
+	// check if sanitized name already exists
+	for i := 0; i < len(ls); i++ {
+		if i == origIdx {
+			continue
+		}
+		if ls[i].Name == newName {
+			if ls[i].Value == origValue {
+				// Same name and value after sanitization - remove the original and continue
+				// Shift all labels after origIdx down by one
+				copy(ls[origIdx:], ls[origIdx+1:])
+				return ls[:len(ls)-1], origIdx, nil
 			} else {
 				return ls, origIdx, NewErrorf(DuplicateLabelNames, DuplicateLabelNamesAfterSanitizationErrorMsg, phlaremodel.LabelPairsString(ls), newName, origName)
 			}
 		}
-		// move up labels that are after the original index
-		if idx > origIdx {
-			idx -= 1
-			ls[idx] = ls[idx+1]
+	}
+
+	ls[origIdx].Name = newName
+
+	insertIdx := origIdx
+
+	// Find the correct position for the sanitized label. Move backwards to find where it should be inserted
+	for i := 0; i < origIdx; i++ {
+		if newName < ls[i].Name {
+			insertIdx = i
+			break
 		}
-		// check if the new label should be inserted before the current label
-		if newName < ls[idx].Name {
-			newIdx = idx
+	}
+
+	// If we need to move it forward, find the correct position
+	if insertIdx == origIdx {
+		for i := origIdx + 1; i < len(ls); i++ {
+			if newName > ls[i].Name {
+				insertIdx = i
+			} else {
+				break
+			}
 		}
 	}
 
-	// when the new label already exists with matchin value, we don't need to insert it and we continue at the original index
-	if found {
-		return ls[:len(ls)-1], origIdx, nil
+	// If position changed, move the label to the correct position
+	if insertIdx != origIdx {
+		label := ls[origIdx]
+		if insertIdx < origIdx {
+			// Move backwards - shift labels right
+			copy(ls[insertIdx+1:origIdx+1], ls[insertIdx:origIdx])
+			ls[insertIdx] = label
+			return ls, insertIdx, nil
+		} else {
+			// Move forwards - shift labels left
+			copy(ls[origIdx:insertIdx], ls[origIdx+1:insertIdx+1])
+			ls[insertIdx] = label
+			return ls, origIdx, nil
+		}
 	}
 
-	// insert the new label at the determined index
-	copy(ls[newIdx+1:], ls[newIdx:])
-	ls[newIdx] = &typesv1.LabelPair{Name: newName, Value: origValue}
-
-	// if the new label is inserted after the original index, we need to return the original index, so all labels after the original index are validated
-	if newIdx > origIdx {
-		return ls, origIdx, nil
-	}
-
-	return ls, newIdx, nil
+	return ls, origIdx, nil
 }
 
 // SanitizeLabelName reports whether the label name is valid,
