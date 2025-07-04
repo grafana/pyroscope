@@ -13,27 +13,29 @@
 # eBPF collector
 /ebpf/ @korniltsev
 
+# LIDIA debug symbols format
+/lidia/ @korniltsev @marcsanmi
+
 # area/read-path
-/pkg/experiment/query_backend/ @marcsanmi @aleks-p
-/pkg/experiment/symbolizer/ @marcsanmi @korniltsev
+/pkg/querybackend/ @marcsanmi @aleks-p
+/pkg/symbolizer/ @marcsanmi @korniltsev
 /pkg/storegateway/ @aleks-p
 /pkg/scheduler/ @korniltsev @bryanhuhta
 /pkg/phlaredb/symdb/ @simonswine @korniltsev
 /pkg/phlaredb/tsdb/ @simonswine @korniltsev
 /pkg/querier/ @marcsanmi
 /pkg/frontend/ @marcsanmi @bryanhuhta
-/pkg/experiment/block/ @simonswine @marcsanmi @alsoba13
+/pkg/block/ @simonswine @marcsanmi @alsoba13
 /pkg/phlaredb/block @simonswine
 
 # area/write-path
 /pkg/distributor/ @aleks-p @alsoba13
-/pkg/experiment/distributor/ @alsoba13 @korniltsev
-/pkg/experiment/ingester/ @alsoba13 @korniltsev
+/pkg/segmentwriter/ @alsoba13 @korniltsev
 /pkg/og/convert/ @korniltsev @bryanhuhta
 /pkg/pprof/ @korniltsev @bryanhuhta
 /pkg/model/relabel/ @korniltsev @bryanhuhta
 /pkg/model/ @korniltsev @bryanhuhta
-/pkg/model/pprof_split/ @korniltsev @bryanhuhta
+/pkg/model/pprofsplit/ @korniltsev @bryanhuhta
 /pkg/validation/ @marcsanmi @aleks-p
 /pkg/ingester/otlp @marcsanmi @korniltsev
 /pkg/ingester/ @alsoba13 @korniltsev
@@ -41,12 +43,12 @@
 
 # area/compactor
 /pkg/compactor/ @alsoba13
-/pkg/experiment/compactor/ @alsoba13
+/pkg/compactionworker/ @alsoba13
 /pkg/phlaredb/bucketindex/ @aleks-p
 /pkg/phlaredb/downsample/ @aleks-p
 
 # area/metastore
-/pkg/experiment/metastore/ @aleks-p
+/pkg/metastore/ @aleks-p
 
 # parquet
 /pkg/objstore/parquet/ @simonswine
