@@ -106,7 +106,7 @@ created in the metadata index. By default, ingestion is synchronous, with median
 less than 500ms using default settings and popular object storage providers such as Amazon S3, Google Cloud Storage, and
 Azure Blob Storage.
 
-You can learn more about the write path in the [distributor documentation](../segmentwriter/client/distributor).
+You can learn more about the write path in the [distributor documentation](../segmentwriter/client/distributor/README.md).
 
 ## Metastore
 
@@ -121,7 +121,7 @@ as time ranges and datasets containing profiling data for particular services.
 The metastore service is designed to be highly available and fault-tolerant. In a cluster of three nodes, it can
 tolerate the loss of a single node, and in a cluster of five nodes, it can tolerate the loss of two nodes.
 
-You can learn more about the metadata index in the [compaction documentation](../metastore/index/README.md).
+You can learn more about the metadata index in the [metastore index documentation](../metastore/index/README.md).
 
 ## Compaction
 

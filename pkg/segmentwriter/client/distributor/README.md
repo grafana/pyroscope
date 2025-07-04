@@ -322,9 +322,4 @@ implementing directory-based sharding.
 There are a number of basic heuristics to determine the minimal sufficient number of shards for a dataset with a minimal
 control options. Specifically, due to a substantial lag in the feedback loop (up to tens of seconds), shard allocation
 is pessimistic and may lead to over-allocation of shards if a persistent burst trend is observed. Conversely, when the
-observed data rate decreases, the number of shards is not reduced immediately. For testing purposes, behavior of the
-autoscaling has been simulated on some of the archetypes (and later validated on the read data).
-
-![steady_front](placement/adaptive_placement/testdata/plots/steady_front_2.png)
-
-![extreme_spikes](placement/adaptive_placement/testdata/plots/extreme_spikes_2.png)
+observed data rate decreases, the number of shards is not reduced immediately.
