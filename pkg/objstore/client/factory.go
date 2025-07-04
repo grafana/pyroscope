@@ -13,7 +13,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore/providers/gcs"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/s3"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/swift"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 )
 
 // NewBucket creates a new bucket client based on the configured backend

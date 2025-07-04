@@ -74,8 +74,8 @@ func EachPyroscopeTest(t *testing.T, f func(p *PyroscopeTest, t *testing.T)) {
 }
 
 type PyroscopeTest struct {
-	config         phlare.Config
-	it             *phlare.Phlare
+	config         pyroscope.Config
+	it             *pyroscope.Phlare
 	wg             sync.WaitGroup
 	prevReg        prometheus.Registerer
 	reg            *prometheus.Registry
@@ -91,7 +91,7 @@ const storeInMemory = "inmemory"
 func (p *PyroscopeTest) start(t *testing.T) {
 	var err error
 
-	p.it, err = phlare.New(p.config)
+	p.it, err = pyroscope.New(p.config)
 
 	require.NoError(t, err)
 

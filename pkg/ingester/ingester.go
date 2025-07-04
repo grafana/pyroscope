@@ -26,9 +26,9 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	phlareobjclient "github.com/grafana/pyroscope/pkg/objstore/client"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	phlarecontext "github.com/grafana/pyrosco
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"

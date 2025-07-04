@@ -144,7 +144,7 @@ func main() {
 	// In order to match YAML config fields with CLI flags, we map
 	// the memory address of the CLI flag variables and match them with
 	// the config struct fields' addresses.
-	cfg := &phlare.Config{}
+	cfg := &pyroscope.Config{}
 	flags := parse.Flags(cfg, log.NewLogfmtLogger(os.Stderr))
 
 	// Parse the config, mapping each config field with the related CLI flag.

@@ -5,8 +5,8 @@ package mockcompactor
 import (
 	"go.etcd.io/bbolt"
 
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/compaction"
 	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/pkg/metastore/compaction"
 
 	"github.com/stretchr/testify/mock"
 )

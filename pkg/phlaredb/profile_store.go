@@ -19,10 +19,10 @@ import (
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 	"github.com/grafana/pyroscope/pkg/util/build"
 )
 

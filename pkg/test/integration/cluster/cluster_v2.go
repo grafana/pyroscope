@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
 )
 
 const envVarV2Experiment = "PYROSCOPE_V2_EXPERIMENT"
