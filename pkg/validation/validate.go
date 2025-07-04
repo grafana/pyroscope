@@ -60,6 +60,8 @@ const (
 	IngestLimitReached     Reason = "ingest_limit_reached"
 	SkippedBySamplingRules Reason = "dropped_by_sampling_rules"
 
+	BodySizeLimit Reason = "body_size_limit_exceeded"
+
 	// Those profiles were dropped because of relabeling rules
 	DroppedByRelabelRules Reason = "dropped_by_relabel_rules"
 
