@@ -46,7 +46,7 @@ Provide feedback, report bugs, and raise issues in the [Grafana Killercoda repos
 
 ## Background
 
-In this tutorial, you will profile a simple "Ride Share" application. The application is a Python Flask app that simulates a ride-sharing service. The app has three endpoints which are found in the `server.py` file:
+In this tutorial, you will profile a simple "Ride Share" application. The application is a Python Flask app that simulates a ride-sharing service. The app has three endpoints which are found in the `lib/server.py` file:
 
 - `/bike`    : calls the `order_bike(search_radius)` function to order a bike
 - `/car`     : calls the `order_car(search_radius)` function to order a car
@@ -126,7 +126,7 @@ In this example, the application is instrumented with Pyroscope using the Python
 The SDK allows you to tag functions with metadata that can be used to filter and group the profile data in the Profiles Drilldown.
 This example uses static and dynamic tagging.
 
-To start, let's take a look at a static tag use case. Within the `server.py` file, find the Pyroscope configuration:
+To start, let's take a look at a static tag use case. Within the `lib/server.py` file, find the Pyroscope configuration:
 
 ```python
  pyroscope.configure(
@@ -139,19 +139,20 @@ To start, let's take a look at a static tag use case. Within the `server.py` fil
      }
  )
 ```
-This tag is considered static is because the tag is set at the start of the application and doesn't change.
+This tag is considered static because the tag is set at the start of the application and doesn't change.
 In this case, it's useful for grouping profiles on a per region basis, which lets you see the performance of the application per region.
 
 1. Open Grafana using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
-1. In the main menu, select **Explore** > **Profiles**.
+1. In the main menu, select **Drilldown** > **Profiles**.
 1. Select  **Labels** in the **Exploration** path.
+1. Select  **ride-sharing-app** in the **Service** drop-down menu.
 1. Select the **region** tab in the **Group by labels** section.
 
 You should now see a list of regions that the application is running in. You can see that `eu-north` is experiencing the most load.
 
 {{< figure max-width="100%" src="/media/docs/pyroscope/ride-share-tag-region-2.png" caption="Region Tag" alt="Region Tag" >}}
 
-Next, look at a dynamic tag use case. Within the `utils.py` file,  find the following function:
+Next, look at a dynamic tag use case. Within the `lib/utility/utility.py` file,  find the following function:
 
 ```python
  def find_nearest_vehicle(n, vehicle):
@@ -166,7 +167,7 @@ Next, look at a dynamic tag use case. Within the `utils.py` file,  find the foll
 
 This example uses `tag_wrapper` to tag the function with the vehicle type.
 Notice that the tag is dynamic as it changes based on the vehicle type.
-This is useful for grouping profiles on a per vehicle basis. Allowing us to see the performance of the application per vehicle type being requested.
+This is useful for grouping profiles on a per vehicle basis, allowing us to see the performance of the application per vehicle type being requested.
 
 Use Profiles Drilldown to see how this tag is used:
 1. Open Profiles Drilldown using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
@@ -213,9 +214,10 @@ This example compares the performance of the `eu-north` region within a given ti
 
 1. Open Profiles Drilldown in Grafana using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
 1. Select **Diff flame graph** in the **Exploration** path.
+1. Verify that  `ride-sharing-app` is selected in the **Service** drop-down menu and `process_cpu/cpu` in the **Profile type** drop-down menu.
 1. In **Baseline**, filter by `region` and select `!= eu-north`.
 1. In **Comparison**, filter by `region` and select `== eu-north`.
-1. In **Baseline**, select the time period you want to compare against.
+1. In **Choose a preset** drop-down, select the time period you want to compare against.
 
 Scroll down to compare the two time periods side by side.
 Note that the `eu-north` region (right side) shows an excessive amount of time spent in the `find_nearest_vehicle` function.
