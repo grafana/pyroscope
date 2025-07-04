@@ -35,16 +35,16 @@ const (
 // to support tenant-friendly duration format (e.g: "1h30m45s") in JSON value.
 type Limits struct {
 	// Distributor enforced limits.
-	IngestionRateMB        float64               `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
-	IngestionBurstSizeMB   float64               `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
-	IngestionLimit         *ingestlimits.Config  `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
-	IngestionBodyLimitMB   float64               `yaml:"ingestion_body_limit_mb" json:"ingestion_body_limit_mb" category:"advanced" doc:"hidden"`
-	DistributorSampling    *sampling.Config      `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
-	MaxLabelNameLength     int                   `yaml:"max_label_name_length" json:"max_label_name_length"`
-	MaxLabelValueLength    int                   `yaml:"max_label_value_length" json:"max_label_value_length"`
-	MaxLabelNamesPerSeries int                   `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
-	MaxSessionsPerSeries   int                   `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
-	EnforceLabelsOrder     bool                  `yaml:"enforce_labels_order" json:"enforce_labels_order"`
+	IngestionRateMB        float64              `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
+	IngestionBurstSizeMB   float64              `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
+	IngestionLimit         *ingestlimits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
+	IngestionBodyLimitMB   float64              `yaml:"ingestion_body_limit_mb" json:"ingestion_body_limit_mb" category:"advanced" doc:"hidden"`
+	DistributorSampling    *sampling.Config     `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
+	MaxLabelNameLength     int                  `yaml:"max_label_name_length" json:"max_label_name_length"`
+	MaxLabelValueLength    int                  `yaml:"max_label_value_length" json:"max_label_value_length"`
+	MaxLabelNamesPerSeries int                  `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
+	MaxSessionsPerSeries   int                  `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
+	EnforceLabelsOrder     bool                 `yaml:"enforce_labels_order" json:"enforce_labels_order"`
 
 	MaxProfileSizeBytes              int `yaml:"max_profile_size_bytes" json:"max_profile_size_bytes"`
 	MaxProfileStacktraceSamples      int `yaml:"max_profile_stacktrace_samples" json:"max_profile_stacktrace_samples"`
