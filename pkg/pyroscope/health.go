@@ -3,7 +3,7 @@ package pyroscope
 import (
 	"context"
 
-	grpchealth "connectrpc.com/grpchealth"
+	"connectrpc.com/grpchealth"
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/grpcutil"
 )

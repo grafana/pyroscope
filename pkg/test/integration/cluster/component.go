@@ -19,7 +19,7 @@ type Component struct {
 	replica int
 	flags   []string
 	cfg     pyroscope.Config
-	p       *pyroscope.Phlare
+	p       *pyroscope.Pyroscope
 	reg     *prometheus.Registry
 
 	httpPort       int
@@ -105,7 +105,7 @@ func (comp *Component) nodeName() string {
 
 var lockRegistry sync.Mutex
 
-func (comp *Component) start(_ context.Context) (*pyroscope.Phlare, error) {
+func (comp *Component) start(_ context.Context) (*pyroscope.Pyroscope, error) {
 	fs := flag.NewFlagSet(comp.nodeName(), flag.PanicOnError)
 	if err := cfg.DynamicUnmarshal(&comp.cfg, comp.flags, fs); err != nil {
 		return nil, err

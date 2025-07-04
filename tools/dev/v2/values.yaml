@@ -1,6 +1,7 @@
 pyroscope:
   extraEnvVars:
-    PYROSCOPE_V2_EXPERIMENT: 1
+    PYROSCOPE_V2: 1
+
   extraArgs:
     query-backend.address: "dns:///_grpc._tcp.pyroscope-query-backend-headless.$(NAMESPACE_FQDN):9095"
     metastore.address: "dnssrvnoa+_grpc._tcp.pyroscope-metastore-headless.$(NAMESPACE_FQDN):9095"
@@ -68,12 +69,6 @@ pyroscope:
         - name: data
           mountPath: /data-compaction-worker
           subPath: compaction-worker
-
-    # TODO(bryan) Remove this once we eliminate the need for the query
-    # scheduler in v2.
-    query-scheduler:
-      kind: Deployment
-      replicaCount: 1
 
     admin:
       kind: Deployment

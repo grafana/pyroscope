@@ -86,7 +86,7 @@ const (
 	EmbeddedGrafana   string = "embedded-grafana"
 	FeatureFlags      string = "feature-flags"
 
-	// Experimental modules
+	// V2 modules.
 
 	Metastore            string = "metastore"
 	MetastoreClient      string = "metastore-client"
@@ -106,7 +106,7 @@ const (
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
 
-func (f *Phlare) initRuntimeConfig() (services.Service, error) {
+func (f *Pyroscope) initRuntimeConfig() (services.Service, error) {
 	if len(f.Cfg.RuntimeConfig.LoadPath) == 0 {
 		// no need to initialize module if load path is empty
 		return nil, nil
@@ -141,7 +141,7 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 	return serv, err
 }
 
-func (f *Phlare) initTenantSettings() (services.Service, error) {
+func (f *Pyroscope) initTenantSettings() (services.Service, error) {
 	settings, err := settings.New(f.Cfg.TenantSettings, f.storageBucket, log.With(f.logger, "component", TenantSettings))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init settings service")
@@ -151,7 +151,7 @@ func (f *Phlare) initTenantSettings() (services.Service, error) {
 	return settings, nil
 }
 
-func (f *Phlare) initAdHocProfiles() (services.Service, error) {
+func (f *Pyroscope) initAdHocProfiles() (services.Service, error) {
 	if f.storageBucket == nil {
 		level.Warn(f.logger).Log("msg", "no storage bucket configured, ad hoc profiles will not be loaded")
 		return nil, nil
@@ -162,14 +162,14 @@ func (f *Phlare) initAdHocProfiles() (services.Service, error) {
 	return a, nil
 }
 
-func (f *Phlare) initOverrides() (serv services.Service, err error) {
+func (f *Pyroscope) initOverrides() (serv services.Service, err error) {
 	f.Overrides, err = validation.NewOverrides(f.Cfg.LimitsConfig, f.TenantLimits)
 	// overrides don't have operational state, nor do they need to do anything more in starting/stopping phase,
 	// so there is no need to return any service.
 	return nil, err
 }
 
-func (f *Phlare) initOverridesExporter() (services.Service, error) {
+func (f *Pyroscope) initOverridesExporter() (services.Service, error) {
 	overridesExporter, err := exporter.NewOverridesExporter(
 		f.Cfg.OverridesExporter,
 		&f.Cfg.LimitsConfig,
@@ -189,7 +189,7 @@ func (f *Phlare) initOverridesExporter() (services.Service, error) {
 	return overridesExporter, nil
 }
 
-func (f *Phlare) initQueryScheduler() (services.Service, error) {
+func (f *Pyroscope) initQueryScheduler() (services.Service, error) {
 	f.Cfg.QueryScheduler.ServiceDiscovery.SchedulerRing.ListenPort = f.Cfg.Server.HTTPListenPort
 
 	s, err := scheduler.NewScheduler(f.Cfg.QueryScheduler, f.Overrides, log.With(f.logger, "component", "scheduler"), f.reg)
@@ -202,7 +202,7 @@ func (f *Phlare) initQueryScheduler() (services.Service, error) {
 	return s, nil
 }
 
-func (f *Phlare) initCompactor() (serv services.Service, err error) {
+func (f *Pyroscope) initCompactor() (serv services.Service, err error) {
 	f.Cfg.Compactor.ShardingRing.Common.ListenPort = f.Cfg.Server.HTTPListenPort
 
 	if f.storageBucket == nil {
@@ -229,7 +229,7 @@ func (f *Phlare) initCompactor() (serv services.Service, err error) {
 // to 90% of the read or write http timeout, whichever is smaller.
 // This is to ensure that the worker doesn't timeout before the http handler and that the connection
 // is refreshed.
-func (f *Phlare) setupWorkerTimeout() {
+func (f *Pyroscope) setupWorkerTimeout() {
 	timeout := f.Cfg.Server.HTTPServerReadTimeout
 	if f.Cfg.Server.HTTPServerWriteTimeout < timeout {
 		timeout = f.Cfg.Server.HTTPServerWriteTimeout
@@ -241,7 +241,7 @@ func (f *Phlare) setupWorkerTimeout() {
 	}
 }
 
-func (f *Phlare) initQuerier() (services.Service, error) {
+func (f *Pyroscope) initQuerier() (services.Service, error) {
 	newQuerierParams := &querier.NewQuerierParams{
 		Cfg:             f.Cfg.Querier,
 		StoreGatewayCfg: f.Cfg.StoreGateway,
@@ -299,7 +299,7 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 	}), nil
 }
 
-func (f *Phlare) initGRPCGateway() (services.Service, error) {
+func (f *Pyroscope) initGRPCGateway() (services.Service, error) {
 	f.grpcGatewayMux = grpcgw.NewServeMux(
 		grpcgw.WithMarshalerOption("application/json+pretty", &grpcgw.JSONPb{
 			MarshalOptions: protojson.MarshalOptions{
@@ -314,7 +314,7 @@ func (f *Phlare) initGRPCGateway() (services.Service, error) {
 	return nil, nil
 }
 
-func (f *Phlare) initDistributor() (services.Service, error) {
+func (f *Pyroscope) initDistributor() (services.Service, error) {
 	f.Cfg.Distributor.DistributorRing.ListenPort = f.Cfg.Server.HTTPListenPort
 	logger := log.With(f.logger, "component", "distributor")
 	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, f.segmentWriterClient, f.auth)
@@ -325,7 +325,7 @@ func (f *Phlare) initDistributor() (services.Service, error) {
 	return d, nil
 }
 
-func (f *Phlare) initMemberlistKV() (services.Service, error) {
+func (f *Pyroscope) initMemberlistKV() (services.Service, error) {
 	f.Cfg.MemberlistKV.Codecs = []codec.Codec{
 		ring.GetCodec(),
 		usagestats.JSONCodec,
@@ -358,7 +358,7 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 	return f.MemberlistKV, nil
 }
 
-func (f *Phlare) initIngesterRing() (_ services.Service, err error) {
+func (f *Pyroscope) initIngesterRing() (_ services.Service, err error) {
 	f.ingesterRing, err = ring.New(
 		f.Cfg.Ingester.LifecyclerConfig.RingConfig,
 		"ingester",
@@ -373,7 +373,7 @@ func (f *Phlare) initIngesterRing() (_ services.Service, err error) {
 	return f.ingesterRing, nil
 }
 
-func (f *Phlare) initStorage() (_ services.Service, err error) {
+func (f *Pyroscope) initStorage() (_ services.Service, err error) {
 	objectStoreTypeStats.Set(f.Cfg.Storage.Bucket.Backend)
 	if cfg := f.Cfg.Storage.Bucket; cfg.Backend != objstoreclient.None {
 		if cfg.Backend == objstoreclient.Filesystem {
@@ -399,12 +399,12 @@ func (f *Phlare) initStorage() (_ services.Service, err error) {
 }
 
 // TODO: This should be passed to all other services and could also be used to signal shutdown
-func (f *Phlare) context() context.Context {
+func (f *Pyroscope) context() context.Context {
 	phlarectx := phlarecontext.WithLogger(context.Background(), f.logger)
 	return phlarecontext.WithRegistry(phlarectx, f.reg)
 }
 
-func (f *Phlare) initIngester() (_ services.Service, err error) {
+func (f *Pyroscope) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
 	svc, err := ingester.New(
@@ -425,7 +425,7 @@ func (f *Phlare) initIngester() (_ services.Service, err error) {
 	return svc, nil
 }
 
-func (f *Phlare) initStoreGateway() (serv services.Service, err error) {
+func (f *Pyroscope) initStoreGateway() (serv services.Service, err error) {
 	f.Cfg.StoreGateway.ShardingRing.Ring.ListenPort = f.Cfg.Server.HTTPListenPort
 	if f.storageBucket == nil {
 		return nil, nil
@@ -449,7 +449,7 @@ var objstoreTracerMiddleware = middleware.Func(func(next http.Handler) http.Hand
 	})
 })
 
-func (f *Phlare) initServer() (services.Service, error) {
+func (f *Pyroscope) initServer() (services.Service, error) {
 	f.reg.MustRegister(version.NewCollector("pyroscope"))
 	f.reg.Unregister(collectors.NewGoCollector())
 	// register collector with additional metrics
@@ -464,7 +464,7 @@ func (f *Phlare) initServer() (services.Service, error) {
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, util.RecoveryInterceptorGRPC)
 
-	if f.Cfg.v2Experiment {
+	if f.Cfg.V2 {
 		f.Cfg.Server.MetricsNativeHistogramFactor = 1.1 // 10% increase from bucket to bucket
 		if slices.Contains(f.Cfg.Target, QueryBackend) {
 			concurrencyInterceptor, err := querybackend.CreateConcurrencyInterceptor(f.logger)
@@ -532,7 +532,7 @@ func (f *Phlare) initServer() (services.Service, error) {
 	return s, nil
 }
 
-func (f *Phlare) initUsageReport() (services.Service, error) {
+func (f *Pyroscope) initUsageReport() (services.Service, error) {
 	if !f.Cfg.Analytics.Enabled {
 		return nil, nil
 	}
@@ -570,7 +570,7 @@ func (f *Phlare) initUsageReport() (services.Service, error) {
 	return ur, nil
 }
 
-func (f *Phlare) initAdmin() (services.Service, error) {
+func (f *Pyroscope) initAdmin() (services.Service, error) {
 	if f.storageBucket == nil {
 		level.Warn(f.logger).Log("msg", "no storage bucket configured, the admin component will not be loaded")
 		return nil, nil
@@ -586,7 +586,7 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 	return a, nil
 }
 
-func (f *Phlare) initEmbeddedGrafana() (services.Service, error) {
+func (f *Pyroscope) initEmbeddedGrafana() (services.Service, error) {
 	return grafana.New(f.Cfg.EmbeddedGrafana, f.logger)
 }
 
@@ -678,14 +678,14 @@ func (s *statusService) GetDiffConfig(ctx context.Context, req *statusv1.GetConf
 	}, nil
 }
 
-func (f *Phlare) statusService() statusv1.StatusServiceServer {
+func (f *Pyroscope) statusService() statusv1.StatusServiceServer {
 	return &statusService{
 		actualConfig:  &f.Cfg,
 		defaultConfig: newDefaultConfig(),
 	}
 }
 
-func (f *Phlare) isModuleActive(m string) bool {
+func (f *Pyroscope) isModuleActive(m string) bool {
 	for _, target := range f.Cfg.Target {
 		if target == m {
 			return true
@@ -697,7 +697,7 @@ func (f *Phlare) isModuleActive(m string) bool {
 	return false
 }
 
-func (f *Phlare) recursiveIsModuleActive(target, m string) bool {
+func (f *Pyroscope) recursiveIsModuleActive(target, m string) bool {
 	if targetDeps, ok := f.deps[target]; ok {
 		for _, dep := range targetDeps {
 			if dep == m {

@@ -75,7 +75,7 @@ func EachPyroscopeTest(t *testing.T, f func(p *PyroscopeTest, t *testing.T)) {
 
 type PyroscopeTest struct {
 	config         pyroscope.Config
-	it             *pyroscope.Phlare
+	it             *pyroscope.Pyroscope
 	wg             sync.WaitGroup
 	prevReg        prometheus.Registerer
 	reg            *prometheus.Registry
@@ -119,13 +119,7 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 	p.reg = prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = p.reg
 
-	if v2 {
-		err = os.Setenv("PYROSCOPE_V2_EXPERIMENT", "1")
-	} else {
-		err = os.Setenv("PYROSCOPE_V2_EXPERIMENT", "")
-	}
-	require.NoError(t, err)
-
+	p.config.V2 = v2
 	err = cfg.DynamicUnmarshal(&p.config, []string{"pyroscope"}, flag.NewFlagSet("pyroscope", flag.ContinueOnError))
 	require.NoError(t, err)
 

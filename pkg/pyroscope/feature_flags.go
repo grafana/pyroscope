@@ -8,14 +8,14 @@ import (
 
 func (c *Config) getFeatureFlags() map[string]bool {
 	return map[string]bool{
-		featureflags.V2StorageLayer:          c.v2Experiment,
+		featureflags.V2StorageLayer:          c.V2,
 		featureflags.PyroscopeRuler:          c.CompactionWorker.MetricsExporter.Enabled,
 		featureflags.PyroscopeRulerFunctions: false, // not supported yet
 		featureflags.UTF8LabelNames:          false, // not supported yet
 	}
 }
 
-func (f *Phlare) initFeatureFlags() (services.Service, error) {
+func (f *Pyroscope) initFeatureFlags() (services.Service, error) {
 	ff := featureflags.NewFromEnabled(f.reg, f.Cfg.getFeatureFlags())
 	f.API.RegisterFeatureFlagsServiceHandler(ff)
 	return nil, nil

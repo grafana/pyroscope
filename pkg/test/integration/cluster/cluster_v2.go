@@ -12,8 +12,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
 )
 
-const envVarV2Experiment = "PYROSCOPE_V2_EXPERIMENT"
-
 func WithV2() ClusterOption {
 	return func(c *Cluster) {
 		c.v2 = true
@@ -105,6 +103,7 @@ func (c *Cluster) v2Prepare(_ context.Context, memberlistJoin []string) error {
 	for _, comp := range c.Components {
 		dataDir := c.dataDir(comp)
 
+		comp.cfg.V2 = true
 		comp.flags = c.commonFlags(comp)
 
 		comp.flags = append(comp.flags,

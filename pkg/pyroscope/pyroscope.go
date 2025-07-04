@@ -111,8 +111,7 @@ type Config struct {
 	ConfigFile      string `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
 
-	// Experimental modules.
-	v2Experiment      bool
+	V2                bool                    `yaml:"-" doc:"hidden"`
 	SegmentWriter     segmentwriter.Config    `yaml:"segment_writer"     doc:"hidden"`
 	Metastore         metastore.Config        `yaml:"metastore"          doc:"hidden"`
 	QueryBackend      querybackend.Config     `yaml:"query_backend"      doc:"hidden"`
@@ -224,8 +223,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		"query-scheduler.service-discovery-mode": schedulerdiscovery.ModeRing,
 	}
 
-	c.v2Experiment = os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
-	if c.v2Experiment {
+	if c.V2 {
 		for k, v := range map[string]string{
 			"server.grpc-max-recv-msg-size-bytes":                    "104857600",
 			"server.grpc-max-send-msg-size-bytes":                    "104857600",
@@ -337,7 +335,7 @@ func (c *Config) Clone() flagext.Registerer {
 	}(*c)
 }
 
-type Phlare struct {
+type Pyroscope struct {
 	Cfg    Config
 	reg    prometheus.Registerer
 	logger *logger
@@ -386,12 +384,12 @@ type Phlare struct {
 	symbolizer           *symbolizer.Symbolizer
 }
 
-func New(cfg Config) (*Phlare, error) {
+func New(cfg Config) (*Pyroscope, error) {
 	logger := initLogger(cfg.Server.LogFormat, cfg.Server.LogLevel)
 	cfg.Server.Log = logger
 	usagestats.Edition("oss")
 
-	phlare := &Phlare{
+	phlare := &Pyroscope{
 		Cfg:    cfg,
 		logger: logger,
 		reg:    prometheus.DefaultRegisterer,
@@ -429,7 +427,7 @@ func New(cfg Config) (*Phlare, error) {
 	return phlare, nil
 }
 
-func (f *Phlare) setupModuleManager() error {
+func (f *Pyroscope) setupModuleManager() error {
 	mm := modules.NewManager(f.logger)
 
 	mm.RegisterModule(Storage, f.initStorage, modules.UserInvisibleModule)
@@ -495,9 +493,8 @@ func (f *Phlare) setupModuleManager() error {
 		FeatureFlags:      {API},
 	}
 
-	// Experimental modules.
-	if f.Cfg.v2Experiment {
-		experimentalModules := map[string][]string{
+	if f.Cfg.V2 {
+		v2Modules := map[string][]string{
 			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
 			Metastore:           {Overrides, API, MetastoreClient, Storage, PlacementManager},
 			MetastoreAdmin:      {API, MetastoreClient},
@@ -509,7 +506,7 @@ func (f *Phlare) setupModuleManager() error {
 			PlacementManager:    {Overrides, API, Storage},
 			Symbolizer:          {Overrides, Storage},
 		}
-		for k, v := range experimentalModules {
+		for k, v := range v2Modules {
 			deps[k] = v
 		}
 
@@ -560,7 +557,7 @@ var banner = `
  |___/                                 |_|    |___/                        |_|
  `
 
-func (f *Phlare) Run() error {
+func (f *Pyroscope) Run() error {
 	if f.Cfg.ShowBanner {
 		_ = cli.GradientBanner(banner, os.Stderr)
 	}
@@ -625,7 +622,7 @@ func (f *Phlare) Run() error {
 	}
 
 	serviceFailed := func(service services.Service) {
-		// if any service fails, stop entire Phlare
+		// if any service fails, stop entire Pyroscope
 		sm.StopAsync()
 
 		// let's find out which module failed
@@ -686,7 +683,7 @@ func (f *Phlare) Run() error {
 	return err
 }
 
-func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
+func (f *Pyroscope) readyHandler(sm *services.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !sm.IsHealthy() {
 			msg := bytes.Buffer{}
@@ -742,7 +739,7 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 	}
 }
 
-func (f *Phlare) Stop() func(context.Context) error {
+func (f *Pyroscope) Stop() func(context.Context) error {
 	if f.serviceManager == nil {
 		return func(context.Context) error { return nil }
 	}
@@ -750,7 +747,7 @@ func (f *Phlare) Stop() func(context.Context) error {
 	return f.serviceManager.AwaitStopped
 }
 
-func (f *Phlare) stopped() {
+func (f *Pyroscope) stopped() {
 	level.Info(f.logger).Log("msg", "Pyroscope stopped")
 	if f.tracer != nil {
 		if err := f.tracer.Close(); err != nil {
@@ -784,7 +781,7 @@ type logger struct {
 	log.Logger
 }
 
-func (f *Phlare) initAPI() (services.Service, error) {
+func (f *Pyroscope) initAPI() (services.Service, error) {
 	a, err := api.New(f.Cfg.API, f.Server, f.grpcGatewayMux, f.Server.Log)
 	if err != nil {
 		return nil, err
@@ -798,7 +795,7 @@ func (f *Phlare) initAPI() (services.Service, error) {
 	return nil, nil
 }
 
-func (f *Phlare) initVersion() (services.Service, error) {
+func (f *Pyroscope) initVersion() (services.Service, error) {
 	var err error
 	f.versions, err = apiversion.New(f.Cfg.Distributor.DistributorRing, f.logger, f.reg)
 	if err != nil {

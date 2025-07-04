@@ -27,8 +27,8 @@ import (
 	metastoreadmin "github.com/grafana/pyroscope/pkg/metastore/admin"
 	"github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/metastore/discovery"
-	metricsexport "github.com/grafana/pyroscope/pkg/metrics"
-	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/metrics"
+	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/querybackend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/segmentwriter"
@@ -41,7 +41,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
 
-func (f *Phlare) initQueryFrontend() (services.Service, error) {
+func (f *Pyroscope) initQueryFrontend() (services.Service, error) {
 	var err error
 	if f.Cfg.Frontend.Addr, err = f.getFrontendAddress(); err != nil {
 		return nil, fmt.Errorf("failed to get frontend address: %w", err)
@@ -49,7 +49,7 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 	if f.Cfg.Frontend.Port == 0 {
 		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
 	}
-	if !f.Cfg.v2Experiment {
+	if !f.Cfg.V2 {
 		return f.initQueryFrontendV1()
 	}
 	// If the new read path is enabled globally by default,
@@ -71,7 +71,7 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 	}
 }
 
-func (f *Phlare) initQueryFrontendV1() (services.Service, error) {
+func (f *Pyroscope) initQueryFrontendV1() (services.Service, error) {
 	var err error
 	f.frontend, err = frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg)
 	if err != nil {
@@ -84,7 +84,7 @@ func (f *Phlare) initQueryFrontendV1() (services.Service, error) {
 	return f.frontend, nil
 }
 
-func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
+func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	queryFrontend := queryfrontend.NewQueryFrontend(
 		log.With(f.logger, "component", "query-frontend"),
 		f.Overrides,
@@ -113,7 +113,7 @@ func (f *Phlare) initQueryFrontendV2() (services.Service, error) {
 	return svc, nil
 }
 
-func (f *Phlare) initQueryFrontendV12() (services.Service, error) {
+func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 	var err error
 	f.frontend, err = frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg)
 	if err != nil {
@@ -149,7 +149,7 @@ func (f *Phlare) initQueryFrontendV12() (services.Service, error) {
 	return f.frontend, nil
 }
 
-func (f *Phlare) getFrontendAddress() (addr string, err error) {
+func (f *Pyroscope) getFrontendAddress() (addr string, err error) {
 	addr = f.Cfg.Frontend.Addr
 	if f.Cfg.Frontend.AddrOld != "" {
 		addr = f.Cfg.Frontend.AddrOld
@@ -160,7 +160,7 @@ func (f *Phlare) getFrontendAddress() (addr string, err error) {
 	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
 }
 
-func (f *Phlare) initSegmentWriterRing() (_ services.Service, err error) {
+func (f *Pyroscope) initSegmentWriterRing() (_ services.Service, err error) {
 	if err = f.Cfg.SegmentWriter.Validate(); err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (f *Phlare) initSegmentWriterRing() (_ services.Service, err error) {
 	return f.segmentWriterRing, nil
 }
 
-func (f *Phlare) initSegmentWriter() (services.Service, error) {
+func (f *Pyroscope) initSegmentWriter() (services.Service, error) {
 	f.Cfg.SegmentWriter.LifecyclerConfig.ListenPort = f.Cfg.Server.GRPCListenPort
 	if err := f.Cfg.SegmentWriter.Validate(); err != nil {
 		return nil, err
@@ -205,7 +205,7 @@ func (f *Phlare) initSegmentWriter() (services.Service, error) {
 	return f.segmentWriter, nil
 }
 
-func (f *Phlare) initSegmentWriterClient() (_ services.Service, err error) {
+func (f *Pyroscope) initSegmentWriterClient() (_ services.Service, err error) {
 	f.Cfg.SegmentWriter.GRPCClientConfig.Middleware = f.grpcClientInterceptors()
 	// Validation of the config is not required since
 	// it's already validated in initSegmentWriterRing.
@@ -224,23 +224,23 @@ func (f *Phlare) initSegmentWriterClient() (_ services.Service, err error) {
 	return client.Service(), nil
 }
 
-func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
+func (f *Pyroscope) initCompactionWorker() (svc services.Service, err error) {
 	logger := log.With(f.logger, "component", "compaction-worker")
 	registerer := prometheus.WrapRegistererWithPrefix("pyroscope_compaction_worker_", f.reg)
 
-	var ruler metricsexport.Ruler
-	var exporter metricsexport.Exporter
+	var ruler metrics.Ruler
+	var exporter metrics.Exporter
 	if f.Cfg.CompactionWorker.MetricsExporter.Enabled {
 		if f.recordingRulesClient != nil {
-			ruler, err = metricsexport.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
+			ruler, err = metrics.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			ruler = metricsexport.NewStaticRulerFromOverrides(f.Overrides)
+			ruler = metrics.NewStaticRulerFromOverrides(f.Overrides)
 		}
 
-		exporter, err = metricsexport.NewExporter(f.Cfg.CompactionWorker.MetricsExporter.RemoteWriteAddress, f.logger, f.reg)
+		exporter, err = metrics.NewExporter(f.Cfg.CompactionWorker.MetricsExporter.RemoteWriteAddress, f.logger, f.reg)
 		if err != nil {
 			return nil, err
 		}
@@ -262,7 +262,7 @@ func (f *Phlare) initCompactionWorker() (svc services.Service, err error) {
 	return w.Service(), nil
 }
 
-func (f *Phlare) initMetastore() (services.Service, error) {
+func (f *Pyroscope) initMetastore() (services.Service, error) {
 	if err := f.Cfg.Metastore.Validate(); err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (f *Phlare) initMetastore() (services.Service, error) {
 	return m.Service(), nil
 }
 
-func (f *Phlare) initMetastoreClient() (services.Service, error) {
+func (f *Pyroscope) initMetastoreClient() (services.Service, error) {
 	if err := f.Cfg.Metastore.Validate(); err != nil {
 		return nil, err
 	}
@@ -308,7 +308,7 @@ func (f *Phlare) initMetastoreClient() (services.Service, error) {
 	return f.metastoreClient.Service(), nil
 }
 
-func (f *Phlare) initMetastoreAdmin() (services.Service, error) {
+func (f *Pyroscope) initMetastoreAdmin() (services.Service, error) {
 	level.Info(f.logger).Log("msg", "initializing metastore admin")
 	if err := f.Cfg.Metastore.Validate(); err != nil {
 		return nil, err
@@ -324,7 +324,7 @@ func (f *Phlare) initMetastoreAdmin() (services.Service, error) {
 	return f.metastoreAdmin.Service(), nil
 }
 
-func (f *Phlare) initQueryBackend() (services.Service, error) {
+func (f *Pyroscope) initQueryBackend() (services.Service, error) {
 	if err := f.Cfg.QueryBackend.Validate(); err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ func (f *Phlare) initQueryBackend() (services.Service, error) {
 	return b.Service(), nil
 }
 
-func (f *Phlare) initQueryBackendClient() (services.Service, error) {
+func (f *Pyroscope) initQueryBackendClient() (services.Service, error) {
 	if err := f.Cfg.QueryBackend.Validate(); err != nil {
 		return nil, err
 	}
@@ -359,7 +359,7 @@ func (f *Phlare) initQueryBackendClient() (services.Service, error) {
 	return c.Service(), nil
 }
 
-func (f *Phlare) initRecordingRulesClient() (services.Service, error) {
+func (f *Pyroscope) initRecordingRulesClient() (services.Service, error) {
 	if err := f.Cfg.CompactionWorker.MetricsExporter.Validate(); err != nil {
 		return nil, err
 	}
@@ -375,8 +375,8 @@ func (f *Phlare) initRecordingRulesClient() (services.Service, error) {
 	return c.Service(), nil
 }
 
-func (f *Phlare) initSymbolizer() (services.Service, error) {
-	prefixedBucket := phlareobj.NewPrefixedBucket(f.storageBucket, "symbolizer")
+func (f *Pyroscope) initSymbolizer() (services.Service, error) {
+	prefixedBucket := objstore.NewPrefixedBucket(f.storageBucket, "symbolizer")
 
 	sym, err := symbolizer.New(
 		f.logger,
@@ -393,7 +393,7 @@ func (f *Phlare) initSymbolizer() (services.Service, error) {
 	return nil, nil
 }
 
-func (f *Phlare) initPlacementAgent() (services.Service, error) {
+func (f *Pyroscope) initPlacementAgent() (services.Service, error) {
 	f.placementAgent = placement.NewAgent(
 		f.logger,
 		f.reg,
@@ -404,7 +404,7 @@ func (f *Phlare) initPlacementAgent() (services.Service, error) {
 	return f.placementAgent.Service(), nil
 }
 
-func (f *Phlare) initPlacementManager() (services.Service, error) {
+func (f *Pyroscope) initPlacementManager() (services.Service, error) {
 	f.placementManager = placement.NewManager(
 		f.logger,
 		f.reg,
@@ -415,7 +415,7 @@ func (f *Phlare) initPlacementManager() (services.Service, error) {
 	return f.placementManager.Service(), nil
 }
 
-func (f *Phlare) adaptivePlacementStore() placement.Store {
+func (f *Pyroscope) adaptivePlacementStore() placement.Store {
 	if slices.Contains(f.Cfg.Target, All) {
 		// Disables sharding in all-in-one scenario.
 		return placement.NewEmptyStore()
@@ -423,12 +423,12 @@ func (f *Phlare) adaptivePlacementStore() placement.Store {
 	return placement.NewStore(f.storageBucket)
 }
 
-func (f *Phlare) initHealthServer() (services.Service, error) {
+func (f *Pyroscope) initHealthServer() (services.Service, error) {
 	f.healthServer = grpchealth.NewServer()
 	return nil, nil
 }
 
-func (f *Phlare) grpcClientInterceptors() []grpc.UnaryClientInterceptor {
+func (f *Pyroscope) grpcClientInterceptors() []grpc.UnaryClientInterceptor {
 	requestDuration := util.RegisterOrGet(f.reg, prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace:                       "pyroscope",
 		Subsystem:                       "grpc_client",
