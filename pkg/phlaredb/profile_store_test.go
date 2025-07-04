@@ -26,9 +26,9 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	phlareobjclient "github.com/grafana/pyroscope/pkg/objstore/client"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 )
 
 const (

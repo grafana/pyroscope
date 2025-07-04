@@ -11,14 +11,14 @@ import (
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
-	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
-	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/index/cleaner/retention"
-	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
+	"github.com/grafana/pyroscope/pkg/distributor/writepath"
+	"github.com/grafana/pyroscope/pkg/frontend/readpath"
+	"github.com/grafana/pyroscope/pkg/metastore/index/cleaner/retention"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	placement "github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 )
 
 const (
@@ -35,16 +35,16 @@ const (
 // to support tenant-friendly duration format (e.g: "1h30m45s") in JSON value.
 type Limits struct {
 	// Distributor enforced limits.
-	IngestionRateMB        float64               `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
-	IngestionBurstSizeMB   float64               `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
-	IngestionLimit         *ingest_limits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
-	IngestionBodyLimitMB   float64               `yaml:"ingestion_body_limit_mb" json:"ingestion_body_limit_mb" category:"advanced" doc:"hidden"`
-	DistributorSampling    *sampling.Config      `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
-	MaxLabelNameLength     int                   `yaml:"max_label_name_length" json:"max_label_name_length"`
-	MaxLabelValueLength    int                   `yaml:"max_label_value_length" json:"max_label_value_length"`
-	MaxLabelNamesPerSeries int                   `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
-	MaxSessionsPerSeries   int                   `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
-	EnforceLabelsOrder     bool                  `yaml:"enforce_labels_order" json:"enforce_labels_order"`
+	IngestionRateMB        float64              `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
+	IngestionBurstSizeMB   float64              `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
+	IngestionLimit         *ingestlimits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
+	IngestionBodyLimitMB   float64              `yaml:"ingestion_body_limit_mb" json:"ingestion_body_limit_mb" category:"advanced" doc:"hidden"`
+	DistributorSampling    *sampling.Config     `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
+	MaxLabelNameLength     int                  `yaml:"max_label_name_length" json:"max_label_name_length"`
+	MaxLabelValueLength    int                  `yaml:"max_label_value_length" json:"max_label_value_length"`
+	MaxLabelNamesPerSeries int                  `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
+	MaxSessionsPerSeries   int                  `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
+	EnforceLabelsOrder     bool                 `yaml:"enforce_labels_order" json:"enforce_labels_order"`
 
 	MaxProfileSizeBytes              int `yaml:"max_profile_size_bytes" json:"max_profile_size_bytes"`
 	MaxProfileStacktraceSamples      int `yaml:"max_profile_stacktrace_samples" json:"max_profile_stacktrace_samples"`
@@ -124,7 +124,7 @@ type Limits struct {
 	// Adaptive placement limits used in distributors and in the metastore.
 	// Distributors use these limits to determine how many shards to allocate
 	// to a tenant dataset by default, if no placement rules defined.
-	AdaptivePlacementLimits adaptive_placement.PlacementLimits `yaml:",inline" json:",inline"`
+	AdaptivePlacementLimits placement.PlacementLimits `yaml:",inline" json:",inline"`
 
 	// RecordingRules allow to specify static recording rules. This is not compatible with recording rules
 	// coming from a RecordingRulesClient, that will replace any static rules defined.
@@ -306,7 +306,7 @@ func (o *Overrides) IngestionBodyLimitBytes(tenantID string) int64 {
 	return int64(o.getOverridesForTenant(tenantID).IngestionBodyLimitMB * bytesInMB)
 }
 
-func (o *Overrides) IngestionLimit(tenantID string) *ingest_limits.Config {
+func (o *Overrides) IngestionLimit(tenantID string) *ingestlimits.Config {
 	return o.getOverridesForTenant(tenantID).IngestionLimit
 }
 
@@ -549,7 +549,7 @@ func (o *Overrides) ReadPathOverrides(tenantID string) readpath.Config {
 	return o.getOverridesForTenant(tenantID).ReadPathOverrides
 }
 
-func (o *Overrides) PlacementLimits(tenantID string) adaptive_placement.PlacementLimits {
+func (o *Overrides) PlacementLimits(tenantID string) placement.PlacementLimits {
 	// Both limits aimed at the same thing: limit the number of shards tenant's
 	// data is distributed to. The IngestionTenantShardSize specifies the number
 	// of ingester instances (taking into account the replication factor), while

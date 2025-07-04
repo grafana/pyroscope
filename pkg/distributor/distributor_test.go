@@ -37,7 +37,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -438,12 +438,12 @@ func Test_IngestLimits(t *testing.T) {
 			pushReq:     &distributormodel.PushRequest{},
 			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
-				l.IngestionLimit = &ingest_limits.Config{
+				l.IngestionLimit = &ingestlimits.Config{
 					PeriodType:     "hour",
 					PeriodLimitMb:  128,
 					LimitResetTime: 1737721086,
 					LimitReached:   true,
-					Sampling: ingest_limits.SamplingConfig{
+					Sampling: ingestlimits.SamplingConfig{
 						NumRequests: 0,
 						Period:      time.Minute,
 					},
@@ -473,12 +473,12 @@ func Test_IngestLimits(t *testing.T) {
 			},
 			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
-				l.IngestionLimit = &ingest_limits.Config{
+				l.IngestionLimit = &ingestlimits.Config{
 					PeriodType:     "hour",
 					PeriodLimitMb:  128,
 					LimitResetTime: 1737721086,
 					LimitReached:   true,
-					Sampling: ingest_limits.SamplingConfig{
+					Sampling: ingestlimits.SamplingConfig{
 						NumRequests: 1,
 						Period:      time.Minute,
 					},
@@ -510,12 +510,12 @@ func Test_IngestLimits(t *testing.T) {
 			},
 			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
-				l.IngestionLimit = &ingest_limits.Config{
+				l.IngestionLimit = &ingestlimits.Config{
 					PeriodType:     "hour",
 					PeriodLimitMb:  128,
 					LimitResetTime: 1737721086,
 					LimitReached:   true,
-					Sampling: ingest_limits.SamplingConfig{
+					Sampling: ingestlimits.SamplingConfig{
 						NumRequests: 0,
 						Period:      time.Minute,
 					},
@@ -563,12 +563,12 @@ func Test_IngestLimits(t *testing.T) {
 			},
 			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
-				l.IngestionLimit = &ingest_limits.Config{
+				l.IngestionLimit = &ingestlimits.Config{
 					PeriodType:     "hour",
 					PeriodLimitMb:  128,
 					LimitResetTime: 1737721086,
 					LimitReached:   false,
-					UsageGroups: map[string]ingest_limits.UsageGroup{
+					UsageGroups: map[string]ingestlimits.UsageGroup{
 						"group-1": {
 							PeriodLimitMb: 64,
 							LimitReached:  true,
@@ -612,16 +612,16 @@ func Test_IngestLimits(t *testing.T) {
 			},
 			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
-				l.IngestionLimit = &ingest_limits.Config{
+				l.IngestionLimit = &ingestlimits.Config{
 					PeriodType:     "hour",
 					PeriodLimitMb:  128,
 					LimitResetTime: 1737721086,
 					LimitReached:   true,
-					Sampling: ingest_limits.SamplingConfig{
+					Sampling: ingestlimits.SamplingConfig{
 						NumRequests: 100,
 						Period:      time.Minute,
 					},
-					UsageGroups: map[string]ingest_limits.UsageGroup{
+					UsageGroups: map[string]ingestlimits.UsageGroup{
 						"group-1": {
 							PeriodLimitMb: 64,
 							LimitReached:  true,
@@ -2205,12 +2205,12 @@ func TestPush_Aggregation(t *testing.T) {
 			l.DistributorAggregationPeriod = model.Duration(time.Second)
 			l.DistributorAggregationWindow = model.Duration(time.Second)
 			l.MaxSessionsPerSeries = maxSessions
-			l.IngestionLimit = &ingest_limits.Config{
+			l.IngestionLimit = &ingestlimits.Config{
 				PeriodType:     "hour",
 				PeriodLimitMb:  128,
 				LimitResetTime: time.Now().Unix(),
 				LimitReached:   true,
-				Sampling: ingest_limits.SamplingConfig{
+				Sampling: ingestlimits.SamplingConfig{
 					NumRequests: 100,
 					Period:      time.Minute,
 				},
@@ -2273,7 +2273,7 @@ func TestPush_Aggregation(t *testing.T) {
 	for i, req := range ingesterClient.requests {
 		for _, series := range req.Series {
 			require.Lenf(t, series.Annotations, 1, "failed request %d", i)
-			assert.Equal(t, ingest_limits.ProfileAnnotationKeyThrottled, series.Annotations[0].Key)
+			assert.Equal(t, ingestlimits.ProfileAnnotationKeyThrottled, series.Annotations[0].Key)
 			assert.Contains(t, series.Annotations[0].Value, "\"periodLimitMb\":128")
 		}
 	}
