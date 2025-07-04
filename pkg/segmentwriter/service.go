@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
-	"github.com/grafana/pyroscope/pkg/metastore/client"
+	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/pprof"

@@ -1,4 +1,4 @@
-package pprof_split
+package pprofsplit
 
 import (
 	"fmt"

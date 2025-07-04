@@ -30,7 +30,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/block"
 	"github.com/grafana/pyroscope/pkg/block/metadata"
 	"github.com/grafana/pyroscope/pkg/model"
-	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
+	"github.com/grafana/pyroscope/pkg/model/pprofsplit"
 	pprofmodel "github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/segmentwriter/memdb"
 	"github.com/grafana/pyroscope/pkg/util/retry"

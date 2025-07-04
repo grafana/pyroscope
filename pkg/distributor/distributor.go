@@ -45,7 +45,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	"github.com/grafana/pyroscope/pkg/distributor/writepath"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
+	"github.com/grafana/pyroscope/pkg/model/pprofsplit"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/slices"
