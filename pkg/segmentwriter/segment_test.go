@@ -381,7 +381,7 @@ func TestDLQRecoveryMock(t *testing.T) {
 	assert.Len(t, allBlocks, 1)
 
 	recoveredMetas := make(chan *metastorev1.BlockMeta, 1)
-	srv := mockdlq.NewMockLocalServer(t)
+	srv := mockdlq.NewMockMetastore(t)
 	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Once().
 		Run(func(args mock.Arguments) {

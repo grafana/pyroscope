@@ -37,7 +37,7 @@ func TestRecoverTick(t *testing.T) {
 	}
 
 	var actual []*metastorev1.BlockMeta
-	srv := mockdlq.NewMockLocalServer(t)
+	srv := mockdlq.NewMockMetastore(t)
 	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Times(3).
 		Run(func(args mock.Arguments) {
@@ -75,7 +75,7 @@ func TestNotRaftLeader(t *testing.T) {
 		},
 	}
 
-	srv := mockdlq.NewMockLocalServer(t)
+	srv := mockdlq.NewMockMetastore(t)
 	s, _ := status.New(codes.Unavailable, "mock metastore error").WithDetails(&raftnodepb.RaftNode{
 		Id:      "foo",
 		Address: "bar",
@@ -113,7 +113,7 @@ func TestStartStop(t *testing.T) {
 	m := new(sync.Mutex)
 
 	var actual []*metastorev1.BlockMeta
-	srv := mockdlq.NewMockLocalServer(t)
+	srv := mockdlq.NewMockMetastore(t)
 	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
 		Times(3).
 		Run(func(args mock.Arguments) {
