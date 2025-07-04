@@ -13,7 +13,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	block2 "github.com/grafana/pyroscope/pkg/block"
+	"github.com/grafana/pyroscope/pkg/block"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetrics"
@@ -133,8 +133,8 @@ func timeSeriesOf(values []any) prompb.TimeSeries {
 	}
 }
 
-func entriesOf(values [][]any) []block2.ProfileEntry {
-	profileEntries := make([]block2.ProfileEntry, len(values))
+func entriesOf(values [][]any) []block.ProfileEntry {
+	profileEntries := make([]block.ProfileEntry, len(values))
 	for i, value := range values {
 		ls := make(phlaremodel.Labels, len(value[1].([][]string)))
 		for j, label := range value[1].([][]string) {
@@ -146,7 +146,7 @@ func entriesOf(values [][]any) []block2.ProfileEntry {
 		sort.Sort(ls)
 		row := make(v1.ProfileRow, 4)
 		row[3] = parquet.Int64Value(value[2].(int64))
-		profileEntries[i] = block2.ProfileEntry{
+		profileEntries[i] = block.ProfileEntry{
 			Dataset:     datasetForTenant(value[0].(string)),
 			Timestamp:   profileTime,
 			Fingerprint: model.Fingerprint(ls.Hash()),
@@ -157,10 +157,10 @@ func entriesOf(values [][]any) []block2.ProfileEntry {
 	return profileEntries
 }
 
-func datasetForTenant(tenant string) *block2.Dataset {
-	return block2.NewDataset(
+func datasetForTenant(tenant string) *block.Dataset {
+	return block.NewDataset(
 		&metastorev1.Dataset{},
-		block2.NewObject(
+		block.NewObject(
 			nil,
 			&metastorev1.BlockMeta{StringTable: []string{tenant}},
 		),

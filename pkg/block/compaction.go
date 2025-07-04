@@ -18,7 +18,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	metadata2 "github.com/grafana/pyroscope/pkg/block/metadata"
+	"github.com/grafana/pyroscope/pkg/block/metadata"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
@@ -176,7 +176,7 @@ type CompactionPlan struct {
 	datasetMap   map[int32]*datasetCompaction
 	datasets     []*datasetCompaction
 	meta         *metastorev1.BlockMeta
-	strings      *metadata2.StringTable
+	strings      *metadata.StringTable
 	datasetIndex *datasetIndexWriter
 }
 
@@ -189,7 +189,7 @@ func newBlockCompaction(
 	p := &CompactionPlan{
 		tenant:       tenant,
 		datasetMap:   make(map[int32]*datasetCompaction),
-		strings:      metadata2.NewStringTable(),
+		strings:      metadata.NewStringTable(),
 		datasetIndex: newDatasetIndexWriter(),
 	}
 	p.path = BuildObjectPath(tenant, shard, compactionLevel, id)
@@ -231,7 +231,7 @@ func (b *CompactionPlan) Compact(
 	}
 	b.meta.StringTable = b.strings.Strings
 	b.meta.MetadataOffset = w.Offset()
-	if err = metadata2.Encode(w, b.meta); err != nil {
+	if err = metadata.Encode(w, b.meta); err != nil {
 		return nil, fmt.Errorf("writing metadata: %w", err)
 	}
 	b.meta.Size = w.Offset()
@@ -253,8 +253,8 @@ func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
 	// We annotate the dataset with the
 	// __tenant_dataset__ = "dataset_tsdb_index" label,
 	// so the dataset index metadata can be queried.
-	labels := metadata2.NewLabelBuilder(b.strings).
-		WithLabelSet(metadata2.LabelNameTenantDataset, metadata2.LabelValueDatasetTSDBIndex).
+	labels := metadata.NewLabelBuilder(b.strings).
+		WithLabelSet(metadata.LabelNameTenantDataset, metadata.LabelValueDatasetTSDBIndex).
 		Build()
 	b.meta.Datasets = append(b.meta.Datasets, &metastorev1.Dataset{
 		Format:          1,
@@ -292,7 +292,7 @@ type datasetCompaction struct {
 	name   string
 	parent *CompactionPlan
 	meta   *metastorev1.Dataset
-	labels *metadata2.LabelBuilder
+	labels *metadata.LabelBuilder
 
 	datasets []*Dataset
 
@@ -313,7 +313,7 @@ func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompac
 	return &datasetCompaction{
 		parent: b,
 		name:   b.strings.Strings[name],
-		labels: metadata2.NewLabelBuilder(b.strings),
+		labels: metadata.NewLabelBuilder(b.strings),
 		meta: &metastorev1.Dataset{
 			Tenant: tenant,
 			Name:   name,

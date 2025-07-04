@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/s
+	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	"github.com/grafana/pyroscope/pkg/segmentwriter/client/connpool"
 	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor"
 	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement"

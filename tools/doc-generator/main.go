@@ -15,7 +15,7 @@ import (
 
 	"github.com/go-kit/log"
 
-	"github.com/grafana/pyroscope/pkg/phlare"
+	"github.com/grafana/pyroscope/pkg/pyroscope"
 	"github.com/grafana/pyroscope/tools/doc-generator/parse"
 )
 

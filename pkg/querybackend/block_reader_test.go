@@ -15,7 +15,7 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	block2 "github.com/grafana/pyroscope/pkg/block"
+	"github.com/grafana/pyroscope/pkg/block"
 	"github.com/grafana/pyroscope/pkg/block/metadata"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
@@ -81,7 +81,7 @@ func (s *testSuite) visitPath(path string, e os.DirEntry, err error) error {
 	}
 	md.Size = uint64(len(b))
 	s.blocks = append(s.blocks, &md)
-	return s.bucket.Upload(context.Background(), block2.ObjectPath(&md), bytes.NewReader(b))
+	return s.bucket.Upload(context.Background(), block.ObjectPath(&md), bytes.NewReader(b))
 }
 
 func (s *testSuite) sanitizeMetadata() {
@@ -93,7 +93,7 @@ func (s *testSuite) sanitizeMetadata() {
 	for _, m := range s.meta {
 		for _, d := range m.Datasets {
 			total++
-			if block2.DatasetFormat(d.Format) == block2.DatasetFormat1 {
+			if block.DatasetFormat(d.Format) == block.DatasetFormat1 {
 				m.Datasets = slices.DeleteFunc(m.Datasets, func(x *metastorev1.Dataset) bool {
 					return x.Format == 0
 				})

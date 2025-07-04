@@ -44,7 +44,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	phlarecontext "github.com/grafana/pyros
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 

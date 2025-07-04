@@ -15,12 +15,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/thanos-io/objstore"
+	thanosstore "github.com/thanos-io/objstore"
 	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	block2 "github.com/grafana/pyroscope/pkg/block"
-	pkgobjstore "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/block"
+	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
@@ -31,7 +31,7 @@ type MetastoreClientMock struct {
 	*mockmetastorev1.MockIndexServiceClient
 }
 
-func createTestWorker(t *testing.T, client MetastoreClient, compactFn compactFunc, bucket pkgobjstore.Bucket) *Worker {
+func createTestWorker(t *testing.T, client MetastoreClient, compactFn compactFunc, bucket objstore.Bucket) *Worker {
 	config := Config{
 		JobConcurrency:     2,
 		JobPollInterval:    100 * time.Millisecond,
@@ -87,7 +87,7 @@ func TestWorker_SuccessfulCompaction(t *testing.T) {
 	block2ID := test.ULID("2024-01-01T11:00:00Z")
 	compactedBlockID := test.ULID("2024-01-01T12:00:00Z")
 
-	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage pkgobjstore.Bucket, options ...block2.CompactionOption) ([]*metastorev1.BlockMeta, error) {
+	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage objstore.Bucket, options ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
 		require.Len(t, blocks, 2)
 		assert.Equal(t, block1ID, blocks[0].Id)
 		assert.Equal(t, block2ID, blocks[1].Id)
@@ -144,7 +144,7 @@ func TestWorker_CompactionFailure(t *testing.T) {
 
 	block1ID := test.ULID("2024-01-01T10:00:00Z")
 
-	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage pkgobjstore.Bucket, options ...block2.CompactionOption) ([]*metastorev1.BlockMeta, error) {
+	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage objstore.Bucket, options ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
 		return nil, errors.New("compaction failed")
 	}
 
@@ -193,7 +193,7 @@ func TestWorker_JobCancellation(t *testing.T) {
 
 	block1ID := test.ULID("2024-01-01T10:00:00Z")
 
-	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage pkgobjstore.Bucket, options ...block2.CompactionOption) ([]*metastorev1.BlockMeta, error) {
+	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage objstore.Bucket, options ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
 		return nil, context.Canceled
 	}
 
@@ -241,7 +241,7 @@ func TestWorker_TombstoneHandling(t *testing.T) {
 	oldBlock1ID := test.ULID("2024-01-01T08:00:00Z")
 	oldBlock2ID := test.ULID("2024-01-01T09:00:00Z")
 
-	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage pkgobjstore.Bucket, options ...block2.CompactionOption) ([]*metastorev1.BlockMeta, error) {
+	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage objstore.Bucket, options ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
 		return []*metastorev1.BlockMeta{{Id: compactedBlockID, Tenant: 1, Shard: 1, CompactionLevel: 2}}, nil
 	}
 
@@ -310,7 +310,7 @@ func TestWorker_MetadataNotFound(t *testing.T) {
 
 	missingBlockID := test.ULID("2024-01-01T10:00:00Z")
 
-	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage pkgobjstore.Bucket, options ...block2.CompactionOption) ([]*metastorev1.BlockMeta, error) {
+	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage objstore.Bucket, options ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
 		t.Error("compactFn should not be called when metadata is not found")
 		return nil, errors.New("should not be called")
 	}
@@ -359,7 +359,7 @@ func TestWorker_ShardTombstoneHandling(t *testing.T) {
 	newBlock1ID := test.ULID("2024-01-01T10:30:00Z")
 	newBlock2ID := test.ULID("2024-01-01T11:30:00Z")
 
-	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage pkgobjstore.Bucket, options ...block2.CompactionOption) ([]*metastorev1.BlockMeta, error) {
+	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage objstore.Bucket, options ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
 		return []*metastorev1.BlockMeta{
 			{Id: compactedBlockID, Tenant: 1, Shard: 1, CompactionLevel: 2},
 		}, nil
@@ -407,15 +407,15 @@ func TestWorker_ShardTombstoneHandling(t *testing.T) {
 		Blocks: metadata,
 	}, nil).Once()
 
-	expectedDir := block2.BuildObjectDir("test-tenant", 1)
+	expectedDir := block.BuildObjectDir("test-tenant", 1)
 	bucket.EXPECT().Iter(mock.Anything, expectedDir, mock.Anything, mock.Anything).Run(
-		func(ctx context.Context, dir string, fn func(string) error, options ...objstore.IterOption) {
+		func(ctx context.Context, dir string, fn func(string) error, options ...thanosstore.IterOption) {
 			blockPaths := []string{
-				block2.BuildObjectPath("test-tenant", 1, 1, oldBlock1ID),   // Should be deleted
-				block2.BuildObjectPath("test-tenant", 1, 1, oldBlock2ID),   // Should be deleted
-				block2.BuildObjectPath("test-tenant", 1, 1, newBlock1ID),   // SkipAll
-				block2.BuildObjectPath("test-tenant", 1, 1, newBlock2ID),   //
-				block2.BuildObjectPath("test-tenant", 1, 1, sourceBlockID), //
+				block.BuildObjectPath("test-tenant", 1, 1, oldBlock1ID),   // Should be deleted
+				block.BuildObjectPath("test-tenant", 1, 1, oldBlock2ID),   // Should be deleted
+				block.BuildObjectPath("test-tenant", 1, 1, newBlock1ID),   // SkipAll
+				block.BuildObjectPath("test-tenant", 1, 1, newBlock2ID),   //
+				block.BuildObjectPath("test-tenant", 1, 1, sourceBlockID), //
 			}
 			for _, path := range blockPaths {
 				if err := fn(path); err != nil {
@@ -424,8 +424,8 @@ func TestWorker_ShardTombstoneHandling(t *testing.T) {
 			}
 		}).Return(filepath.SkipAll).Once()
 
-	bucket.EXPECT().Delete(mock.Anything, block2.BuildObjectPath("test-tenant", 1, 1, oldBlock1ID)).Return(nil).Once()
-	bucket.EXPECT().Delete(mock.Anything, block2.BuildObjectPath("test-tenant", 1, 1, oldBlock2ID)).Return(nil).Once()
+	bucket.EXPECT().Delete(mock.Anything, block.BuildObjectPath("test-tenant", 1, 1, oldBlock1ID)).Return(nil).Once()
+	bucket.EXPECT().Delete(mock.Anything, block.BuildObjectPath("test-tenant", 1, 1, oldBlock2ID)).Return(nil).Once()
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
 		return len(req.StatusUpdates) > 0 && req.StatusUpdates[0].Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS
 	}), mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Once()
@@ -435,7 +435,7 @@ func TestWorker_ShardTombstoneHandling(t *testing.T) {
 	runWorker(w)
 }
 
-var skipCompactionFn = func(context.Context, []*metastorev1.BlockMeta, pkgobjstore.Bucket, ...block2.CompactionOption) ([]*metastorev1.BlockMeta, error) {
+var skipCompactionFn = func(context.Context, []*metastorev1.BlockMeta, objstore.Bucket, ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
 	return nil, nil
 }
 

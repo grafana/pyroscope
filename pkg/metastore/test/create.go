@@ -21,7 +21,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
-	placement "github.com/grafana/pyroscope
+	placement "github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockdiscovery"
 	"github.com/grafana/pyroscope/pkg/util/health"

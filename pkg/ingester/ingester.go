@@ -28,7 +28,7 @@ import (
 	phlareobjclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	phlarecontext "github.com/grafana/pyrosco
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"

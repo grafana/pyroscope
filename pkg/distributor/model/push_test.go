@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 )
 
 func TestProfileSeries_GetLanguage(t *testing.T) {

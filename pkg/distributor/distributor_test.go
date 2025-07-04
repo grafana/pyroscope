@@ -37,7 +37,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"

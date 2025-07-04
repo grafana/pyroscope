@@ -28,11 +28,11 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/block"
-	metadata2 "github.com/grafana/pyroscope/pkg/block/metadata"
+	"github.com/grafana/pyroscope/pkg/block/metadata"
 	"github.com/grafana/pyroscope/pkg/model"
 	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
 	pprofmodel "github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/segmentwrit
+	"github.com/grafana/pyroscope/pkg/segmentwriter/memdb"
 	"github.com/grafana/pyroscope/pkg/util/retry"
 )
 
@@ -257,7 +257,7 @@ func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta
 	start := time.Now()
 	hostname, _ := os.Hostname()
 
-	stringTable := metadata2.NewStringTable()
+	stringTable := metadata.NewStringTable()
 	meta := &metastorev1.BlockMeta{
 		FormatVersion:   1,
 		Id:              s.ulid.String(),
@@ -292,7 +292,7 @@ func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta
 
 	meta.StringTable = stringTable.Strings
 	meta.MetadataOffset = uint64(w.offset)
-	if err := metadata2.Encode(w, meta); err != nil {
+	if err := metadata.Encode(w, meta); err != nil {
 		return nil, nil, fmt.Errorf("failed to encode metadata: %w", err)
 	}
 	meta.Size = uint64(w.offset)
@@ -311,7 +311,7 @@ func (w *writerOffset) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func concatSegmentHead(f *datasetFlush, w *writerOffset, s *metadata2.StringTable) *metastorev1.Dataset {
+func concatSegmentHead(f *datasetFlush, w *writerOffset, s *metadata.StringTable) *metastorev1.Dataset {
 	tenantServiceOffset := w.offset
 
 	ptypes := f.flushed.Meta.ProfileTypeNames
@@ -342,13 +342,13 @@ func concatSegmentHead(f *datasetFlush, w *writerOffset, s *metadata2.StringTabl
 		Labels:          nil,
 	}
 
-	lb := metadata2.NewLabelBuilder(s)
+	lb := metadata.NewLabelBuilder(s)
 	for _, profileType := range ptypes {
 		lb.WithLabelSet(model.LabelNameServiceName, f.dataset.key.service, model.LabelNameProfileType, profileType)
 	}
 
 	if f.flushed.Unsymbolized {
-		lb.WithLabelSet(model.LabelNameServiceName, f.dataset.key.service, metadata2.LabelNameUnsymbolized, "true")
+		lb.WithLabelSet(model.LabelNameServiceName, f.dataset.key.service, metadata.LabelNameUnsymbolized, "true")
 	}
 
 	// Other optional labels:

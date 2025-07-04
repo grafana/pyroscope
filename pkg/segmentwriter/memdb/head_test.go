@@ -152,7 +152,7 @@ func TestHead_SelectMatchingProfiles_Order(t *testing.T) {
 	}
 }
 
-const testdataPrefix = "../../../phlaredb"
+const testdataPrefix = "../../phlaredb"
 
 func TestHeadFlushQuery(t *testing.T) {
 	testdata := []struct {

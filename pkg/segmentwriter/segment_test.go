@@ -18,7 +18,7 @@ import (
 
 	gprofile "github.com/google/pprof/profile"
 	"github.com/grafana/dskit/flagext"
-	model2 "github.com/prometheus/common/model"
+	prommodel "github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -29,7 +29,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	block2 "github.com/grafana/pyroscope/pkg/block"
+	"github.com/grafana/pyroscope/pkg/block"
 	"github.com/grafana/pyroscope/pkg/block/metadata"
 	"github.com/grafana/pyroscope/pkg/metastore"
 	"github.com/grafana/pyroscope/pkg/metastore/index/dlq"
@@ -545,7 +545,7 @@ func defaultTestConfig() Config {
 func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClients {
 	dir := sw.t.TempDir()
 	for _, meta := range blocks {
-		blobReader, err := sw.bucket.Get(context.Background(), block2.ObjectPath(meta))
+		blobReader, err := sw.bucket.Get(context.Background(), block.ObjectPath(meta))
 		require.NoError(sw.t, err)
 		blob, err := io.ReadAll(blobReader)
 		require.NoError(sw.t, err)
@@ -557,8 +557,8 @@ func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClien
 			symbols := blob[ds.TableOfContents[2] : ds.TableOfContents[0]+ds.Size]
 			testutil3.CreateBlockFromMemory(sw.t,
 				filepath.Join(dir, tenant),
-				model2.TimeFromUnixNano(ds.MinTime*1e6), //todo  do not use 1e6, add comments to minTime clarifying the unit
-				model2.TimeFromUnixNano(ds.MaxTime*1e6),
+				prommodel.TimeFromUnixNano(ds.MinTime*1e6), //todo  do not use 1e6, add comments to minTime clarifying the unit
+				prommodel.TimeFromUnixNano(ds.MaxTime*1e6),
 				profiles,
 				tsdb,
 				symbols,
@@ -786,7 +786,7 @@ func groupInputs(t *testing.T, chunks ...inputChunk) groupedInputs {
 			}
 			metricname := ""
 			for _, lbl := range in.profile.Labels {
-				if lbl.Name == model2.MetricNameLabel {
+				if lbl.Name == prommodel.MetricNameLabel {
 					metricname = lbl.Value
 				}
 			}
@@ -974,17 +974,17 @@ func (g *timestampGenerator) next() int {
 func isDLQPath(p string) bool {
 	fs := strings.Split(p, "/")
 	return len(fs) == 5 &&
-		fs[0] == block2.DirNameDLQ &&
-		fs[2] == block2.DirNameAnonTenant &&
-		fs[4] == block2.FileNameMetadataObject
+		fs[0] == block.DirNameDLQ &&
+		fs[2] == block.DirNameAnonTenant &&
+		fs[4] == block.FileNameMetadataObject
 }
 
 func isSegmentPath(p string) bool {
 	fs := strings.Split(p, "/")
 	return len(fs) == 5 &&
-		fs[0] == block2.DirNameSegment &&
-		fs[2] == block2.DirNameAnonTenant &&
-		fs[4] == block2.FileNameDataObject
+		fs[0] == block.DirNameSegment &&
+		fs[2] == block.DirNameAnonTenant &&
+		fs[4] == block.FileNameDataObject
 }
 
 func hasUnsymbolizedLabel(t *testing.T, block *metastorev1.BlockMeta) bool {

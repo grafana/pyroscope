@@ -17,8 +17,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/grafana/pyroscope/pkg/metastore/client"
-	discovery2 "github.com/grafana/pyroscope/pkg/metastore/discovery"
-	raftnodepb2 "github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/metastore/discovery"
+	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
@@ -34,8 +34,8 @@ type Admin struct {
 
 	logger log.Logger
 
-	servers      []discovery2.Server
-	leaderClient raftnodepb2.RaftNodeServiceClient // used to make operational calls (e.g., removing nodes)
+	servers      []discovery.Server
+	leaderClient raftnodepb.RaftNodeServiceClient // used to make operational calls (e.g., removing nodes)
 
 	metastoreClient *metastoreclient.Client // used to test the metastoreclient.Client implementation
 
@@ -47,12 +47,12 @@ func (a *Admin) Service() services.Service {
 }
 
 type raftNodeServiceClient struct {
-	raftnodepb2.RaftNodeServiceClient
+	raftnodepb.RaftNodeServiceClient
 	conn *grpc.ClientConn
 }
 
 func New(
-	client raftnodepb2.RaftNodeServiceClient,
+	client raftnodepb.RaftNodeServiceClient,
 	logger log.Logger,
 	metastoreAddress string,
 	metastoreClient *metastoreclient.Client,
@@ -66,7 +66,7 @@ func New(
 	adm.addFormActionHandlers()
 	adm.service = services.NewIdleService(adm.starting, adm.stopping)
 
-	disc, err := discovery2.NewDiscovery(logger, metastoreAddress, nil)
+	disc, err := discovery.NewDiscovery(logger, metastoreAddress, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -78,9 +78,9 @@ func New(
 func (a *Admin) starting(context.Context) error { return nil }
 func (a *Admin) stopping(error) error           { return nil }
 
-func (a *Admin) Servers(servers []discovery2.Server) {
+func (a *Admin) Servers(servers []discovery.Server) {
 	a.servers = servers
-	slices.SortFunc(a.servers, func(a, b discovery2.Server) int {
+	slices.SortFunc(a.servers, func(a, b discovery.Server) int {
 		return strings.Compare(string(a.Raft.ID), string(b.Raft.ID))
 	})
 }
@@ -140,7 +140,7 @@ func (a *Admin) fetchRaftState(ctx context.Context) *raftNodeState {
 		}
 		nodes = append(nodes, node)
 
-		res, err := cl.NodeInfo(ctx, &raftnodepb2.NodeInfoRequest{})
+		res, err := cl.NodeInfo(ctx, &raftnodepb.NodeInfoRequest{})
 		_ = cl.conn.Close()
 
 		if err != nil {
@@ -205,35 +205,35 @@ func newClient(address string) (*raftNodeServiceClient, error) {
 		return nil, err
 	}
 	return &raftNodeServiceClient{
-		RaftNodeServiceClient: raftnodepb2.NewRaftNodeServiceClient(conn),
+		RaftNodeServiceClient: raftnodepb.NewRaftNodeServiceClient(conn),
 		conn:                  conn,
 	}, nil
 }
 
 func (a *Admin) addFormActionHandlers() {
 	a.actionHandlers["add"] = func(w http.ResponseWriter, r *http.Request, cr configChangeRequest) error {
-		_, err := a.leaderClient.AddNode(r.Context(), &raftnodepb2.AddNodeRequest{
+		_, err := a.leaderClient.AddNode(r.Context(), &raftnodepb.AddNodeRequest{
 			ServerId:    cr.serverId,
 			CurrentTerm: cr.currentTerm,
 		})
 		return err
 	}
 	a.actionHandlers["remove"] = func(w http.ResponseWriter, r *http.Request, cr configChangeRequest) error {
-		_, err := a.leaderClient.RemoveNode(r.Context(), &raftnodepb2.RemoveNodeRequest{
+		_, err := a.leaderClient.RemoveNode(r.Context(), &raftnodepb.RemoveNodeRequest{
 			ServerId:    cr.serverId,
 			CurrentTerm: cr.currentTerm,
 		})
 		return err
 	}
 	a.actionHandlers["promote"] = func(w http.ResponseWriter, r *http.Request, cr configChangeRequest) error {
-		_, err := a.leaderClient.PromoteToLeader(r.Context(), &raftnodepb2.PromoteToLeaderRequest{
+		_, err := a.leaderClient.PromoteToLeader(r.Context(), &raftnodepb.PromoteToLeaderRequest{
 			ServerId:    cr.serverId,
 			CurrentTerm: cr.currentTerm,
 		})
 		return err
 	}
 	a.actionHandlers["demote"] = func(w http.ResponseWriter, r *http.Request, cr configChangeRequest) error {
-		_, err := a.leaderClient.DemoteLeader(r.Context(), &raftnodepb2.DemoteLeaderRequest{
+		_, err := a.leaderClient.DemoteLeader(r.Context(), &raftnodepb.DemoteLeaderRequest{
 			ServerId:    cr.serverId,
 			CurrentTerm: cr.currentTerm,
 		})
@@ -251,7 +251,7 @@ func (a *Admin) ClientTestHandler() http.Handler {
 
 		if r.Method == http.MethodPost {
 			start := time.Now()
-			res, err := a.metastoreClient.ReadIndex(r.Context(), &raftnodepb2.ReadIndexRequest{})
+			res, err := a.metastoreClient.ReadIndex(r.Context(), &raftnodepb.ReadIndexRequest{})
 			content.TestResponseTime = time.Since(start)
 			if err != nil {
 				content.TestResponse = err.Error()

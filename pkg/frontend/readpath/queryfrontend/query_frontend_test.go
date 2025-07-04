@@ -18,7 +18,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockfrontend"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockquery_frontend"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockqueryfrontend"
 )
 
 func Test_QueryFrontend_QueryMetadata(t *testing.T) {

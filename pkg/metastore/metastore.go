@@ -18,9 +18,9 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	compactor2 "github.com/grafana/pyroscope/pkg/metastore/compaction/compactor"
+	"github.com/grafana/pyroscope/pkg/metastore/compaction/compactor"
 	"github.com/grafana/pyroscope/pkg/metastore/compaction/scheduler"
-	fsm2 "github.com/grafana/pyroscope/pkg/metastore/fsm"
+	"github.com/grafana/pyroscope/pkg/metastore/fsm"
 	"github.com/grafana/pyroscope/pkg/metastore/index"
 	"github.com/grafana/pyroscope/pkg/metastore/index/cleaner"
 	"github.com/grafana/pyroscope/pkg/metastore/index/cleaner/retention"
@@ -37,9 +37,9 @@ type Config struct {
 	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
 	MinReadyDuration time.Duration     `yaml:"min_ready_duration" category:"advanced"`
 	Raft             raftnode.Config   `yaml:"raft"`
-	FSM              fsm2.Config       `yaml:",inline" category:"advanced"`
+	FSM              fsm.Config        `yaml:",inline" category:"advanced"`
 	Index            index.Config      `yaml:"index" category:"advanced"`
-	Compactor        compactor2.Config `yaml:",inline" category:"advanced"`
+	Compactor        compactor.Config  `yaml:",inline" category:"advanced"`
 	Scheduler        scheduler.Config  `yaml:",inline" category:"advanced"`
 }
 
@@ -75,7 +75,7 @@ type Metastore struct {
 	health    health.Service
 
 	raft *raftnode.Node
-	fsm  *fsm2.FSM
+	fsm  *fsm.FSM
 
 	bucket    objstore.Bucket
 	placement *placement.Manager
@@ -87,7 +87,7 @@ type Metastore struct {
 	indexService *IndexService
 
 	tombstones        *tombstones.Tombstones
-	compactor         *compactor2.Compactor
+	compactor         *compactor.Compactor
 	scheduler         *scheduler.Scheduler
 	compactionHandler *CompactionCommandHandler
 	compactionService *CompactionService
@@ -126,31 +126,31 @@ func New(
 	}
 
 	var err error
-	if m.fsm, err = fsm2.New(m.logger, m.reg, m.config.FSM); err != nil {
+	if m.fsm, err = fsm.New(m.logger, m.reg, m.config.FSM); err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
 
 	// Initialization of the base components.
 	m.index = index.NewIndex(m.logger, index.NewStore(), config.Index)
 	m.tombstones = tombstones.NewTombstones(tombstones.NewStore(), m.reg)
-	m.compactor = compactor2.NewCompactor(config.Compactor, compactor2.NewStore(), m.tombstones, m.reg)
+	m.compactor = compactor.NewCompactor(config.Compactor, compactor.NewStore(), m.tombstones, m.reg)
 	m.scheduler = scheduler.NewScheduler(config.Scheduler, scheduler.NewStore(), m.reg)
 
 	// FSM handlers that utilize the components.
 	m.indexHandler = NewIndexCommandHandler(m.logger, m.index, m.tombstones, m.compactor)
-	fsm2.RegisterRaftCommandHandler(m.fsm,
-		fsm2.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
+	fsm.RegisterRaftCommandHandler(m.fsm,
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
 		m.indexHandler.AddBlock)
-	fsm2.RegisterRaftCommandHandler(m.fsm,
-		fsm2.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX),
+	fsm.RegisterRaftCommandHandler(m.fsm,
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX),
 		m.indexHandler.TruncateIndex)
 
 	m.compactionHandler = NewCompactionCommandHandler(m.logger, m.index, m.compactor, m.compactor, m.scheduler, m.tombstones)
-	fsm2.RegisterRaftCommandHandler(m.fsm,
-		fsm2.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE),
+	fsm.RegisterRaftCommandHandler(m.fsm,
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE),
 		m.compactionHandler.GetCompactionPlanUpdate)
-	fsm2.RegisterRaftCommandHandler(m.fsm,
-		fsm2.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN),
+	fsm.RegisterRaftCommandHandler(m.fsm,
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN),
 		m.compactionHandler.UpdateCompactionPlan)
 
 	m.fsm.RegisterRestorer(m.tombstones)

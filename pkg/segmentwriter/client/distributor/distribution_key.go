@@ -5,7 +5,7 @@ import (
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	
+	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement"
 )
 
 // NewTenantServiceDatasetKey builds a distribution key, where the dataset

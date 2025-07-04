@@ -21,7 +21,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	block_testutil "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
-
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 )
 
 func TestMetaFetcher_Fetch_ShouldReturnDiscoveredBlocksIncludingMarkedForDeletion(t *testing.T) {

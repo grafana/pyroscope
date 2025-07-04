@@ -38,8 +38,8 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
-	"github.com/grafana/pyroscope/pkg/phlare"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/pyroscope"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 )
 

@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/pyroscope/pkg/cfg"
-	"github.com/grafana/pyroscope/pkg/phlare"
+	"github.com/grafana/pyroscope/pkg/pyroscope"
 )
 
 type Component struct {
