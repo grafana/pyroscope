@@ -65,22 +65,23 @@ const (
 	// Those profiles were dropped because of relabeling rules
 	DroppedByRelabelRules Reason = "dropped_by_relabel_rules"
 
-	SeriesLimitErrorMsg                 = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
-	MissingLabelsErrorMsg               = "error at least one label pair is required per profile"
-	InvalidLabelsErrorMsg               = "invalid labels '%s' with error: %s"
-	MaxLabelNamesPerSeriesErrorMsg      = "profile series '%s' has %d label names; limit %d"
-	LabelNameTooLongErrorMsg            = "profile with labels '%s' has label name too long: '%s'"
-	LabelValueTooLongErrorMsg           = "profile with labels '%s' has label value too long: '%s'"
-	DuplicateLabelNamesErrorMsg         = "profile with labels '%s' has duplicate label name: '%s'"
-	QueryTooLongErrorMsg                = "the query time range exceeds the limit (max_query_length, actual: %s, limit: %s)"
-	ProfileTooBigErrorMsg               = "the profile with labels '%s' exceeds the size limit (max_profile_size_byte, actual: %d, limit: %d)"
-	ProfileTooManySamplesErrorMsg       = "the profile with labels '%s' exceeds the samples count limit (max_profile_stacktrace_samples, actual: %d, limit: %d)"
-	ProfileTooManySampleLabelsErrorMsg  = "the profile with labels '%s' exceeds the sample labels limit (max_profile_stacktrace_sample_labels, actual: %d, limit: %d)"
-	NotInIngestionWindowErrorMsg        = "profile with labels '%s' is outside of ingestion window (profile timestamp: %s, %s)"
-	MaxFlameGraphNodesErrorMsg          = "max flamegraph nodes limit %d is greater than allowed %d"
-	MaxFlameGraphNodesUnlimitedErrorMsg = "max flamegraph nodes limit must be set (max allowed %d)"
-	QueryMissingTimeRangeErrorMsg       = "missing time range in the query"
-	QueryStartAfterEndErrorMsg          = "query start time is after end time"
+	SeriesLimitErrorMsg                          = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
+	MissingLabelsErrorMsg                        = "error at least one label pair is required per profile"
+	InvalidLabelsErrorMsg                        = "invalid labels '%s' with error: %s"
+	MaxLabelNamesPerSeriesErrorMsg               = "profile series '%s' has %d label names; limit %d"
+	LabelNameTooLongErrorMsg                     = "profile with labels '%s' has label name too long: '%s'"
+	LabelValueTooLongErrorMsg                    = "profile with labels '%s' has label value too long: '%s'"
+	DuplicateLabelNamesErrorMsg                  = "profile with labels '%s' has duplicate label name: '%s'"
+	DuplicateLabelNamesAfterSanitizationErrorMsg = "profile with labels '%s' has duplicate label name '%s' after label name sanitization from '%s'"
+	QueryTooLongErrorMsg                         = "the query time range exceeds the limit (max_query_length, actual: %s, limit: %s)"
+	ProfileTooBigErrorMsg                        = "the profile with labels '%s' exceeds the size limit (max_profile_size_byte, actual: %d, limit: %d)"
+	ProfileTooManySamplesErrorMsg                = "the profile with labels '%s' exceeds the samples count limit (max_profile_stacktrace_samples, actual: %d, limit: %d)"
+	ProfileTooManySampleLabelsErrorMsg           = "the profile with labels '%s' exceeds the sample labels limit (max_profile_stacktrace_sample_labels, actual: %d, limit: %d)"
+	NotInIngestionWindowErrorMsg                 = "profile with labels '%s' is outside of ingestion window (profile timestamp: %s, %s)"
+	MaxFlameGraphNodesErrorMsg                   = "max flamegraph nodes limit %d is greater than allowed %d"
+	MaxFlameGraphNodesUnlimitedErrorMsg          = "max flamegraph nodes limit must be set (max allowed %d)"
+	QueryMissingTimeRangeErrorMsg                = "missing time range in the query"
+	QueryStartAfterEndErrorMsg                   = "query start time is after end time"
 )
 
 var (
@@ -130,30 +131,106 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 	if !isValidServiceName(serviceNameValue) {
 		return NewErrorf(MissingLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "service name is not provided")
 	}
-	lastLabelName := ""
 
-	for _, l := range ls {
+	var (
+		lastLabelName = ""
+		idx           = 0
+	)
+	for idx < len(ls) {
+		l := ls[idx]
 		if len(l.Name) > limits.MaxLabelNameLength(tenantID) {
 			return NewErrorf(LabelNameTooLong, LabelNameTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
 		}
 		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
-		var origName string
-		var ok bool
-		if origName, l.Name, ok = SanitizeLabelName(l.Name); !ok {
+		if origName, newName, ok := SanitizeLabelName(l.Name); ok && origName != newName {
+			var err error
+			ls, idx, err = handleSanitizedLabel(ls, idx, origName, newName)
+			if err != nil {
+				return err
+			}
+			lastLabelName = ""
+			if idx > 0 && idx <= len(ls) {
+				lastLabelName = ls[idx-1].Name
+			}
+			continue
+		} else if !ok {
 			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+origName+"'")
 		}
 		if !model.LabelValue(l.Value).IsValid() {
 			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label value '"+l.Value+"'")
 		}
 		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
-			return NewErrorf(DuplicateLabelNames, DuplicateLabelNamesErrorMsg, phlaremodel.LabelPairsString(ls), origName)
+			return NewErrorf(DuplicateLabelNames, DuplicateLabelNamesErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
 		}
 		lastLabelName = l.Name
+		idx += 1
 	}
 
 	return nil
+}
+
+// handleSanitizedLabel handles the case where a label name is sanitized. It ensures that the label name is unique and fails if the value is distinct.
+func handleSanitizedLabel(ls []*typesv1.LabelPair, origIdx int, origName, newName string) ([]*typesv1.LabelPair, int, error) {
+	origValue := ls[origIdx].Value
+	// check if sanitized name already exists
+	for i := 0; i < len(ls); i++ {
+		if i == origIdx {
+			continue
+		}
+		if ls[i].Name == newName {
+			if ls[i].Value == origValue {
+				// Same name and value after sanitization - remove the original and continue
+				// Shift all labels after origIdx down by one
+				copy(ls[origIdx:], ls[origIdx+1:])
+				return ls[:len(ls)-1], origIdx, nil
+			} else {
+				return ls, origIdx, NewErrorf(DuplicateLabelNames, DuplicateLabelNamesAfterSanitizationErrorMsg, phlaremodel.LabelPairsString(ls), newName, origName)
+			}
+		}
+	}
+
+	ls[origIdx].Name = newName
+
+	insertIdx := origIdx
+
+	// Find the correct position for the sanitized label. Move backwards to find where it should be inserted
+	for i := 0; i < origIdx; i++ {
+		if newName < ls[i].Name {
+			insertIdx = i
+			break
+		}
+	}
+
+	// If we need to move it forward, find the correct position
+	if insertIdx == origIdx {
+		for i := origIdx + 1; i < len(ls); i++ {
+			if newName > ls[i].Name {
+				insertIdx = i
+			} else {
+				break
+			}
+		}
+	}
+
+	// If position changed, move the label to the correct position
+	if insertIdx != origIdx {
+		label := ls[origIdx]
+		if insertIdx < origIdx {
+			// Move backwards - shift labels right
+			copy(ls[insertIdx+1:origIdx+1], ls[insertIdx:origIdx])
+			ls[insertIdx] = label
+			return ls, insertIdx, nil
+		} else {
+			// Move forwards - shift labels left
+			copy(ls[origIdx:insertIdx], ls[origIdx+1:insertIdx+1])
+			ls[insertIdx] = label
+			return ls, origIdx, nil
+		}
+	}
+
+	return ls, origIdx, nil
 }
 
 // SanitizeLabelName reports whether the label name is valid,
