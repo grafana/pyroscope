@@ -82,6 +82,9 @@ func main() {
 	queryLabelValuesCardinalityCmd := queryCmd.Command("label-values-cardinality", "Request label values cardinality.")
 	queryLabelValuesCardinalityParams := addQueryLabelValuesCardinalityParams(queryLabelValuesCardinalityCmd)
 
+	queryNoveltyCmd := queryCmd.Command("novelty", "Decide how much changed particular profile is compared to the ones before.")
+	queryNoveltyParams := addQueryNoveltyParams(queryNoveltyCmd)
+
 	queryTracerCmd := app.Command("query-tracer", "Analyze query traces.")
 	queryTracerParams := addQueryTracerParams(queryTracerCmd)
 
@@ -149,6 +152,11 @@ func main() {
 
 	case queryLabelValuesCardinalityCmd.FullCommand():
 		if err := queryLabelValuesCardinality(ctx, queryLabelValuesCardinalityParams); err != nil {
+			os.Exit(checkError(err))
+		}
+
+	case queryNoveltyCmd.FullCommand():
+		if err := queryNovelty(ctx, queryNoveltyParams); err != nil {
 			os.Exit(checkError(err))
 		}
 
