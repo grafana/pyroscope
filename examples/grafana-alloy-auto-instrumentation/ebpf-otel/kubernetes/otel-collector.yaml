@@ -14,7 +14,7 @@ spec:
       containers:
         - name: otel-collector
           # fixed versions for pyroscope, otel-collector, otel-profiler due to protocol changes
-          image: otel/opentelemetry-collector-contrib:0.114.0
+          image: otel/opentelemetry-collector-contrib:0.129.1
           args:
             - "--config=/etc/otel-collector-config.yaml"
             - "--feature-gates=service.profilesSupport"
