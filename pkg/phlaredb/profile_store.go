@@ -540,11 +540,12 @@ func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
 	if err != nil {
 		return n, err
 	}
-
+	// searchHint for next call of getSeriesIndex
+	var searchHint int
 	for pos, row := range rows[:n] {
 		// actual row num
 		rowNum := r.pos + int64(pos)
-		row[colIdxSeriesIndex] = parquet.ValueOf(r.seriesIndexes.getSeriesIndex(rowNum)).Level(0, 0, colIdxSeriesIndex)
+		row[colIdxSeriesIndex] = parquet.ValueOf(r.seriesIndexes.getSeriesIndex(rowNum, &searchHint)).Level(0, 0, colIdxSeriesIndex)
 	}
 
 	r.pos += int64(n)
