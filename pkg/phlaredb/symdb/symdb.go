@@ -120,6 +120,8 @@ type ParquetConfig struct {
 	// DEPRECATED: the parameter is not used and
 	// will be removed in the future versions.
 	MaxBufferRowCount int
+	CompressionAlgo   string
+	CompressionLevel  int
 }
 
 type MemoryStats struct {

@@ -15,6 +15,7 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/build"
 )
 
@@ -211,10 +212,15 @@ func (s *parquetWriter[M, P]) init(dir string, c ParquetConfig) (err error) {
 	}
 	s.rowsBatch = make([]parquet.Row, 0, 128)
 	s.buffer = parquet.NewBuffer(s.persister.Schema())
-	s.writer = parquet.NewGenericWriter[P](s.file, s.persister.Schema(),
+	var opts []parquet.WriterOption
+	opts = append(opts, s.persister.Schema(),
 		parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
 		parquet.PageBufferSize(3*1024*1024),
 	)
+	if o, err := util.ParseCompressionOpt(c.CompressionAlgo, c.CompressionLevel); err == nil {
+		opts = append(opts, o)
+	}
+	s.writer = parquet.NewGenericWriter[P](s.file, opts...)
 	return nil
 }
 
