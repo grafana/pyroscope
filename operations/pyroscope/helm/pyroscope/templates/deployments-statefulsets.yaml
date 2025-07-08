@@ -86,6 +86,16 @@ spec:
             - name: NAMESPACE_FQDN
               value: "{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}"
           {{- with $values.extraEnvVars }}
+          {{- range $key, $value := . }}
+            - name: {{ $key }}
+              {{- if kindIs "map" $value }}
+              {{- toYaml $value | nindent 14 }}
+              {{- else }}
+              value: {{ $value | quote }}
+              {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- with $values.extraCustomEnvVars }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
           {{- with $values.extraEnvFrom }}
