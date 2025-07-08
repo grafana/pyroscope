@@ -38,8 +38,8 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
-	"github.com/grafana/pyroscope/pkg/phlare"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/pyroscope"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 )
 
@@ -74,8 +74,8 @@ func EachPyroscopeTest(t *testing.T, f func(p *PyroscopeTest, t *testing.T)) {
 }
 
 type PyroscopeTest struct {
-	config         phlare.Config
-	it             *phlare.Phlare
+	config         pyroscope.Config
+	it             *pyroscope.Pyroscope
 	wg             sync.WaitGroup
 	prevReg        prometheus.Registerer
 	reg            *prometheus.Registry
@@ -91,7 +91,7 @@ const storeInMemory = "inmemory"
 func (p *PyroscopeTest) start(t *testing.T) {
 	var err error
 
-	p.it, err = phlare.New(p.config)
+	p.it, err = pyroscope.New(p.config)
 
 	require.NoError(t, err)
 
@@ -119,13 +119,7 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 	p.reg = prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = p.reg
 
-	if v2 {
-		err = os.Setenv("PYROSCOPE_V2_EXPERIMENT", "1")
-	} else {
-		err = os.Setenv("PYROSCOPE_V2_EXPERIMENT", "")
-	}
-	require.NoError(t, err)
-
+	p.config.V2 = v2
 	err = cfg.DynamicUnmarshal(&p.config, []string{"pyroscope"}, flag.NewFlagSet("pyroscope", flag.ContinueOnError))
 	require.NoError(t, err)
 

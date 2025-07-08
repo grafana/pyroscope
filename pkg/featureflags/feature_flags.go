@@ -27,7 +27,7 @@ var (
 		V2StorageLayer: {
 			Enabled:          false,
 			Description:      stringPtr("v2 storage layer"),
-			DocumentationUrl: stringPtr("https://github.com/grafana/pyroscope/blob/2b8e08ac9098113d3ba3376b5ae53e81ef8511ec/pkg/experiment/README.md"),
+			DocumentationUrl: stringPtr("https://github.com/grafana/pyroscope/blob/main/pkg/pyroscope/PYROSCOPE_V2.md"),
 		},
 		PyroscopeRuler: {
 			Enabled:     false,

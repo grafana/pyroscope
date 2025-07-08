@@ -123,14 +123,6 @@ func NewMicroServiceCluster(opts ...ClusterOption) *Cluster {
 		c.Components[idx] = newComponent(c.expectedComponents[idx])
 	}
 
-	// ensure the right mode is set in env var
-	c.envVarV2Experiment = os.Getenv(envVarV2Experiment)
-	if c.v2 {
-		os.Setenv(envVarV2Experiment, "true")
-	} else {
-		os.Setenv(envVarV2Experiment, "true")
-	}
-
 	return c
 }
 
@@ -141,7 +133,6 @@ type Cluster struct {
 	wg sync.WaitGroup // components wait group
 
 	v2                 bool     // is this a v2 cluster
-	envVarV2Experiment string   // the value of the env before this is run
 	expectedComponents []string // number of expected components
 
 	tmpDir     string
@@ -254,12 +245,6 @@ func (c *Cluster) Prepare(ctx context.Context) (err error) {
 
 func (c *Cluster) Stop() func(context.Context) error {
 	funcWaiters := make([]func(context.Context) error, 0, len(c.Components)+1)
-
-	// reset the envVarV2Experiment variable
-	funcWaiters = append(funcWaiters, func(_ context.Context) error {
-		return os.Setenv(envVarV2Experiment, c.envVarV2Experiment)
-	})
-
 	for _, comp := range c.Components {
 		funcWaiters = append(funcWaiters, comp.Stop())
 	}

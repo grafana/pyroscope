@@ -2332,6 +2332,30 @@
         }
       }
     },
+    "v1ShardTombstone": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Lower time boundary. Unix epoch in nanoseconds."
+        },
+        "duration": {
+          "type": "string",
+          "format": "int64"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenant": {
+          "type": "string"
+        }
+      }
+    },
     "v1StackTraceSelector": {
       "type": "object",
       "properties": {
@@ -2459,8 +2483,10 @@
       "type": "object",
       "properties": {
         "blocks": {
-          "$ref": "#/definitions/v1BlockTombstones",
-          "description": "For now, we only have block tombstones created due to the\n compaction process. Later, we may add more types of tombstones,\n e.g, deleted tenant (shard), partition, dataset, series etc.\n Exactly one member of Tombstones should be present."
+          "$ref": "#/definitions/v1BlockTombstones"
+        },
+        "shard": {
+          "$ref": "#/definitions/v1ShardTombstone"
         }
       },
       "description": "Tombstones represent objects removed from the index but still stored."
