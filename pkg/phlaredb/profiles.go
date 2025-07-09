@@ -41,6 +41,9 @@ type rowRangeWithSeriesIndex struct {
 type rowRangesWithSeriesIndex []rowRangeWithSeriesIndex
 
 func (s rowRangesWithSeriesIndex) getSeriesIndex(rowNum int64, searchHint *int) uint32 {
+	if *searchHint < 0 || *searchHint > len(s) {
+		*searchHint = 0
+	}
 	for i := *searchHint; i < len(s); i++ {
 		rg := s[i]
 		// it is possible that the series is not existing
@@ -52,6 +55,7 @@ func (s rowRangesWithSeriesIndex) getSeriesIndex(rowNum int64, searchHint *int) 
 			return rg.seriesIndex
 		}
 	}
+	// for corner case
 	for i := 0; i < *searchHint; i++ {
 		rg := s[i]
 		// it is possible that the series is not existing
