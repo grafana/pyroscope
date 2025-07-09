@@ -7,10 +7,11 @@ import (
 )
 
 func (c *Config) getFeatureFlags() map[string]bool {
+	rulerEnabled := c.CompactionWorker.MetricsExporter.Enabled
 	return map[string]bool{
 		featureflags.V2StorageLayer:          c.V2,
-		featureflags.PyroscopeRuler:          c.CompactionWorker.MetricsExporter.Enabled,
-		featureflags.PyroscopeRulerFunctions: false, // not supported yet
+		featureflags.PyroscopeRuler:          rulerEnabled,
+		featureflags.PyroscopeRulerFunctions: rulerEnabled,
 		featureflags.UTF8LabelNames:          false, // not supported yet
 	}
 }
