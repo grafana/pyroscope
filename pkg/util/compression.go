@@ -17,7 +17,7 @@ func ParseCompressionOpt(algo string, level int) (parquet.WriterOption, error) {
 		if level == 0 {
 			level = gzip.DefaultCompression
 		}
-		return parquet.Compression(&gzip.Codec{Level: gzip.DefaultCompression}), nil
+		return parquet.Compression(&gzip.Codec{Level: level}), nil
 	case "zstd":
 		if level == 0 {
 			level = int(zstd.DefaultLevel)
