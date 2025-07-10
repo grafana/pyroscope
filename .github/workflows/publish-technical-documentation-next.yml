@@ -1,5 +1,7 @@
 name: publish-technical-documentation-next
 
+permissions: {}
+
 on:
   push:
     branches:
@@ -13,9 +15,11 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: grafana/writers-toolkit/publish-technical-documentation@publish-technical-documentation/v1
+        with:
+          persist-credentials: false
+      - uses: grafana/writers-toolkit/publish-technical-documentation@9ccaaf1f78c5c045229e7088e816925311c67abc
         with:
           website_directory: content/docs/pyroscope/next
