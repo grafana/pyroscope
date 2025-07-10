@@ -40,7 +40,7 @@ To capture and analyze profiling data, you need either a hosted Pyroscope OSS se
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 
-## Configure the Dotnet client
+## Configure the .NET client
 
 1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/pyroscope-io/pyroscope-dotnet/releases/):
 
