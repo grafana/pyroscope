@@ -99,7 +99,7 @@ spec:
             port:
               number: {{ $.Values.pyroscope.service.port }}
         path: /settings.v1.SettingsService/
-        pathType: ImplementationSpecific
+        pathType: Prefix
       - backend:
           service:
             {{- if gt (len $.Values.pyroscope.components) 1}}
