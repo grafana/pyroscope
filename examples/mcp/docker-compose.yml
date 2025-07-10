@@ -1,0 +1,30 @@
+services:
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: true
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: true
+      GF_INSTALL_PLUGINS: grafana-llm-app
+      OPENAI_API_KEY: $OPENAI_API_KEY
+      OPENAI_ORGANIZATION_ID: $OPENAI_ORGANIZATION_ID
+    volumes:
+      - ./provisioning:/etc/grafana/provisioning
+    ports:
+      - 3000:3000
+    depends_on:
+      - pyroscope
+      - qdrant
+
+  pyroscope:
+    image: grafana/pyroscope:latest
+    ports:
+      - 4040:4040
+
+  qdrant:
+    image: qdrant/qdrant
+    volumes:
+      - qdrant-storage:/qdrant/storage
+
+volumes:
+  qdrant-storage:
