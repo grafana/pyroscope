@@ -1,5 +1,7 @@
 name: publish-technical-documentation-release
 
+permissions: {}
+
 on:
   push:
     branches:
@@ -15,12 +17,13 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
+          persist-credentials: false
           fetch-depth: 0
-      - uses: grafana/writers-toolkit/publish-technical-documentation-release@publish-technical-documentation-release/v1
+      - uses: grafana/writers-toolkit/publish-technical-documentation-release@9ccaaf1f78c5c045229e7088e816925311c67abc
         with:
           release_tag_regexp: "^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
           release_branch_regexp: "^release/v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
