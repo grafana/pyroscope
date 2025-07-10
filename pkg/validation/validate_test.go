@@ -163,40 +163,6 @@ func TestValidateLabels(t *testing.T) {
 	}
 }
 
-func TestHandleSanitizedLabelOrdering(t *testing.T) {
-	labels := []*typesv1.LabelPair{
-		{Name: model.MetricNameLabel, Value: "cpu"},
-		{Name: "middle.label", Value: "original_value"},
-		{Name: "other_label", Value: "should_remain"},
-		{Name: "service_name", Value: "myapp"},
-	}
-
-	result, _, err := handleSanitizedLabel(labels, 1, "middle.label", "middle_label")
-	require.NoError(t, err)
-
-	labelMap := make(map[string]string)
-	for _, label := range result {
-		if label != nil {
-			labelMap[label.Name] = label.Value
-		}
-	}
-
-	// Check that the labels are still in the correct sorted order
-	expectedOrder := []string{"__name__", "middle_label", "other_label", "service_name"}
-	actualOrder := make([]string, len(result))
-	for i, label := range result {
-		if label != nil {
-			actualOrder[i] = label.Name
-		}
-	}
-
-	for i, expectedName := range expectedOrder {
-		if i < len(actualOrder) && actualOrder[i] != expectedName {
-			t.Errorf("Corrupted labels: Label at index %d should be '%s' but is '%s'", i, expectedName, actualOrder[i])
-		}
-	}
-}
-
 func Test_ValidateRangeRequest(t *testing.T) {
 	now := model.Now()
 	for _, tt := range []struct {

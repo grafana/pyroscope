@@ -3,6 +3,7 @@ package validation
 import (
 	"encoding/hex"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -172,63 +173,42 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 // handleSanitizedLabel handles the case where a label name is sanitized. It ensures that the label name is unique and fails if the value is distinct.
 func handleSanitizedLabel(ls []*typesv1.LabelPair, origIdx int, origName, newName string) ([]*typesv1.LabelPair, int, error) {
 	origValue := ls[origIdx].Value
-	// check if sanitized name already exists
-	for i := 0; i < len(ls); i++ {
-		if i == origIdx {
-			continue
-		}
-		if ls[i].Name == newName {
-			if ls[i].Value == origValue {
-				// Same name and value after sanitization - remove the original and continue
-				// Shift all labels after origIdx down by one
-				copy(ls[origIdx:], ls[origIdx+1:])
-				return ls[:len(ls)-1], origIdx, nil
-			} else {
-				return ls, origIdx, NewErrorf(DuplicateLabelNames, DuplicateLabelNamesAfterSanitizationErrorMsg, phlaremodel.LabelPairsString(ls), newName, origName)
-			}
-		}
-	}
 
-	ls[origIdx].Name = newName
+	// Create new slice without the original element
+	newSlice := make([]*typesv1.LabelPair, 0, len(ls))
+	newSlice = append(newSlice, ls[:origIdx]...)
+	newSlice = append(newSlice, ls[origIdx+1:]...)
 
-	insertIdx := origIdx
+	insertIdx, found := slices.BinarySearchFunc(newSlice, &typesv1.LabelPair{Name: newName},
+		func(a, b *typesv1.LabelPair) int {
+			return strings.Compare(a.Name, b.Name)
+		})
 
-	// Find the correct position for the sanitized label. Move backwards to find where it should be inserted
-	for i := 0; i < origIdx; i++ {
-		if newName < ls[i].Name {
-			insertIdx = i
-			break
-		}
-	}
-
-	// If we need to move it forward, find the correct position
-	if insertIdx == origIdx {
-		for i := origIdx + 1; i < len(ls); i++ {
-			if newName > ls[i].Name {
-				insertIdx = i
-			} else {
-				break
-			}
-		}
-	}
-
-	// If position changed, move the label to the correct position
-	if insertIdx != origIdx {
-		label := ls[origIdx]
-		if insertIdx < origIdx {
-			// Move backwards - shift labels right
-			copy(ls[insertIdx+1:origIdx+1], ls[insertIdx:origIdx])
-			ls[insertIdx] = label
-			return ls, insertIdx, nil
+	if found {
+		if newSlice[insertIdx].Value == origValue {
+			// Same name and value - remove duplicate (already removed from newSlice)
+			copy(ls, newSlice)
+			return ls[:len(newSlice)], origIdx, nil
 		} else {
-			// Move forwards - shift labels left
-			copy(ls[origIdx:insertIdx], ls[origIdx+1:insertIdx+1])
-			ls[insertIdx] = label
-			return ls, origIdx, nil
+			// Same name, different value - error
+			return ls, origIdx, NewErrorf(DuplicateLabelNames,
+				DuplicateLabelNamesAfterSanitizationErrorMsg,
+				phlaremodel.LabelPairsString(ls), newName, origName)
 		}
 	}
 
-	return ls, origIdx, nil
+	// Insert the new label at correct position
+	newLabel := &typesv1.LabelPair{Name: newName, Value: origValue}
+	newSlice = slices.Insert(newSlice, insertIdx, newLabel)
+
+	copy(ls, newSlice)
+
+	finalIdx := insertIdx
+	if insertIdx >= origIdx {
+		finalIdx = origIdx
+	}
+
+	return ls[:len(newSlice)], finalIdx, nil
 }
 
 // SanitizeLabelName reports whether the label name is valid,
