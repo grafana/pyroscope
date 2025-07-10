@@ -11,15 +11,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/pyroscope/pkg/cfg"
-	"github.com/grafana/pyroscope/pkg/phlare"
+	"github.com/grafana/pyroscope/pkg/pyroscope"
 )
 
 type Component struct {
 	Target  string
 	replica int
 	flags   []string
-	cfg     phlare.Config
-	p       *phlare.Phlare
+	cfg     pyroscope.Config
+	p       *pyroscope.Pyroscope
 	reg     *prometheus.Registry
 
 	httpPort       int
@@ -105,7 +105,7 @@ func (comp *Component) nodeName() string {
 
 var lockRegistry sync.Mutex
 
-func (comp *Component) start(_ context.Context) (*phlare.Phlare, error) {
+func (comp *Component) start(_ context.Context) (*pyroscope.Pyroscope, error) {
 	fs := flag.NewFlagSet(comp.nodeName(), flag.PanicOnError)
 	if err := cfg.DynamicUnmarshal(&comp.cfg, comp.flags, fs); err != nil {
 		return nil, err
@@ -119,7 +119,7 @@ func (comp *Component) start(_ context.Context) (*phlare.Phlare, error) {
 	prometheus.DefaultRegisterer = comp.reg
 	prometheus.DefaultGatherer = comp.reg
 	comp.cfg.Server.Gatherer = comp.reg
-	f, err := phlare.New(comp.cfg)
+	f, err := pyroscope.New(comp.cfg)
 	if err != nil {
 		return nil, err
 	}

@@ -40,12 +40,12 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
-	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
+	"github.com/grafana/pyroscope/pkg/distributor/writepath"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
+	"github.com/grafana/pyroscope/pkg/model/pprofsplit"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/slices"
@@ -104,7 +104,7 @@ type Distributor struct {
 	ingestionRateLimiter   *limiter.RateLimiter
 	aggregator             *aggregator.MultiTenantAggregator[*pprof.ProfileMerge]
 	asyncRequests          sync.WaitGroup
-	ingestionLimitsSampler *ingest_limits.Sampler
+	ingestionLimitsSampler *ingestlimits.Sampler
 	usageGroupEvaluator    *validation.UsageGroupEvaluator
 
 	subservices        *services.Manager
@@ -125,7 +125,7 @@ type Distributor struct {
 type Limits interface {
 	IngestionRateBytes(tenantID string) float64
 	IngestionBurstSizeBytes(tenantID string) int
-	IngestionLimit(tenantID string) *ingest_limits.Config
+	IngestionLimit(tenantID string) *ingestlimits.Config
 	DistributorSampling(tenantID string) *sampling.Config
 	IngestionTenantShardSize(tenantID string) int
 	MaxLabelNameLength(tenantID string) int
@@ -199,7 +199,7 @@ func New(
 		return nil, err
 	}
 
-	d.ingestionLimitsSampler = ingest_limits.NewSampler(distributorsRing)
+	d.ingestionLimitsSampler = ingestlimits.NewSampler(distributorsRing)
 	d.usageGroupEvaluator = validation.NewUsageGroupEvaluator(logger)
 
 	subservices = append(subservices, distributorsLifecycler, distributorsRing, d.aggregator, d.ingestionLimitsSampler)

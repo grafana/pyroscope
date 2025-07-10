@@ -2,14 +2,14 @@ package mockobjstore
 
 import (
 	"bytes"
-	context "context"
+	"context"
 	"errors"
-	io "io"
+	"io"
 	"testing"
 	"time"
 
-	mock "github.com/stretchr/testify/mock"
-	objstore "github.com/thanos-io/objstore"
+	"github.com/stretchr/testify/mock"
+	"github.com/thanos-io/objstore"
 )
 
 // ErrObjectDoesNotExist is used in tests to simulate objstore.Bucket.IsObjNotFoundErr().

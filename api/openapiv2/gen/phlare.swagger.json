@@ -1679,6 +1679,13 @@
         }
       }
     },
+    "v1MetricType": {
+      "type": "string",
+      "enum": [
+        "TOTAL"
+      ],
+      "default": "TOTAL"
+    },
     "v1Point": {
       "type": "object",
       "properties": {
@@ -2044,6 +2051,10 @@
           "type": "string",
           "format": "int64",
           "description": "The observed generation of this recording rule. This value should be\nprovided when making updates to this record, to avoid conflicting\nconcurrent updates."
+        },
+        "stacktraceFilter": {
+          "$ref": "#/definitions/v1StacktraceFilter",
+          "description": "The stacktrace filter allows filtering on particular function names in the stacktrace.\nThis allows recording rules to focus on specific functions and calculate their \"total\"\nresource usage."
         }
       }
     },
@@ -2321,6 +2332,30 @@
         }
       }
     },
+    "v1ShardTombstone": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Lower time boundary. Unix epoch in nanoseconds."
+        },
+        "duration": {
+          "type": "string",
+          "format": "int64"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenant": {
+          "type": "string"
+        }
+      }
+    },
     "v1StackTraceSelector": {
       "type": "object",
       "properties": {
@@ -2338,6 +2373,25 @@
         }
       },
       "description": "StackTraceSelector is used for filtering stack traces by locations."
+    },
+    "v1StacktraceFilter": {
+      "type": "object",
+      "properties": {
+        "functionName": {
+          "$ref": "#/definitions/v1StacktraceFilterFunctionName"
+        }
+      }
+    },
+    "v1StacktraceFilterFunctionName": {
+      "type": "object",
+      "properties": {
+        "functionName": {
+          "type": "string"
+        },
+        "metricType": {
+          "$ref": "#/definitions/v1MetricType"
+        }
+      }
     },
     "v1StacktraceSample": {
       "type": "object",
@@ -2429,8 +2483,10 @@
       "type": "object",
       "properties": {
         "blocks": {
-          "$ref": "#/definitions/v1BlockTombstones",
-          "description": "For now, we only have block tombstones created due to the\n compaction process. Later, we may add more types of tombstones,\n e.g, deleted tenant (shard), partition, dataset, series etc.\n Exactly one member of Tombstones should be present."
+          "$ref": "#/definitions/v1BlockTombstones"
+        },
+        "shard": {
+          "$ref": "#/definitions/v1ShardTombstone"
         }
       },
       "description": "Tombstones represent objects removed from the index but still stored."

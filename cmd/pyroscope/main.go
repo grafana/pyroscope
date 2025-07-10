@@ -13,13 +13,13 @@ import (
 	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
 
 	"github.com/grafana/pyroscope/pkg/cfg"
-	"github.com/grafana/pyroscope/pkg/phlare"
+	"github.com/grafana/pyroscope/pkg/pyroscope"
 	"github.com/grafana/pyroscope/pkg/usage"
 	_ "github.com/grafana/pyroscope/pkg/util/build"
 )
 
 type mainFlags struct {
-	phlare.Config `yaml:",inline"`
+	pyroscope.Config `yaml:",inline"`
 
 	PrintVersion bool `yaml:"-"`
 	PrintModules bool `yaml:"-"`
@@ -33,7 +33,7 @@ func (mf *mainFlags) Clone() flagext.Registerer {
 	}(*mf)
 }
 
-func (mf *mainFlags) PhlareConfig() *phlare.Config {
+func (mf *mainFlags) PhlareConfig() *pyroscope.Config {
 	return &mf.Config
 }
 
@@ -53,10 +53,9 @@ func errorHandler() {
 
 }
 func main() {
-	var (
-		flags mainFlags
-	)
+	var flags mainFlags
 
+	flags.Config.V2 = os.Getenv("PYROSCOPE_V2") != "" || os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
 	if err := cfg.DynamicUnmarshal(&flags, os.Args[1:], flag.CommandLine); err != nil {
 		fmt.Fprintf(os.Stderr, "failed parsing config: %v\n", err)
 		errorHandler()
@@ -80,7 +79,7 @@ func main() {
 		}
 	}
 
-	f, err := phlare.New(flags.Config)
+	f, err := pyroscope.New(flags.Config)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed creating pyroscope: %v\n", err)
 		errorHandler()
@@ -93,7 +92,7 @@ func main() {
 	}
 
 	if flags.PrintModules {
-		allDeps := f.ModuleManager.DependenciesForModule(phlare.All)
+		allDeps := f.ModuleManager.DependenciesForModule(pyroscope.All)
 
 		for _, m := range f.ModuleManager.UserVisibleModuleNames() {
 			ix := sort.SearchStrings(allDeps, m)

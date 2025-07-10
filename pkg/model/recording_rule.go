@@ -14,6 +14,7 @@ type RecordingRule struct {
 	Matchers       []*labels.Matcher
 	GroupBy        []string
 	ExternalLabels labels.Labels
+	FunctionName   string
 }
 
 func NewRecordingRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
@@ -27,21 +28,31 @@ func NewRecordingRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse matchers: %w", err)
 	}
-	var profileTypePresent bool
+	var profileTypeMatcher *labels.Matcher
 	for _, matcher := range matchers {
 		if matcher.Name == LabelNameProfileType {
-			profileTypePresent = true
+			profileTypeMatcher = matcher
 			break
 		}
 	}
-	if !profileTypePresent {
+	if profileTypeMatcher == nil {
 		return nil, fmt.Errorf("no __profile_type__ matcher present")
+	}
+	if profileTypeMatcher.Type != labels.MatchEqual {
+		return nil, fmt.Errorf("__profile_type__ matcher is not an equality")
+	}
+	var functionName string
+	if rule.StacktraceFilter != nil {
+		if rule.StacktraceFilter.FunctionName != nil {
+			functionName = rule.StacktraceFilter.FunctionName.FunctionName
+		}
 	}
 
 	r := &RecordingRule{
 		Matchers:       matchers,
 		GroupBy:        rule.GroupBy,
 		ExternalLabels: make(labels.Labels, 0, len(rule.ExternalLabels)+1),
+		FunctionName:   functionName,
 	}
 
 	// ensure __name__ is unique

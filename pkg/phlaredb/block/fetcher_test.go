@@ -18,10 +18,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	objstore_testutil "github.com/grafana/pyroscope/pkg/objstore/testutil"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	block_testutil "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 )
 
 func TestMetaFetcher_Fetch_ShouldReturnDiscoveredBlocksIncludingMarkedForDeletion(t *testing.T) {

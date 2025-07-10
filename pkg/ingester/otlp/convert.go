@@ -237,10 +237,7 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location, dictionar
 	if i, ok := p.locationMap[ol]; ok {
 		return i, nil
 	}
-	if ol.MappingIndex == nil {
-		return 0, fmt.Errorf("invalid location address=%x: mapping index is required", ol.Address)
-	}
-	lmi := *ol.MappingIndex
+	lmi := ol.GetMappingIndex()
 	om, err := at(dictionary.MappingTable, lmi)
 	if err != nil {
 		return 0, fmt.Errorf("could not access mapping: %w", err)

@@ -4,19 +4,21 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"iter"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
-	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
-	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
-	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
+	"github.com/grafana/pyroscope/pkg/distributor/writepath"
+	"github.com/grafana/pyroscope/pkg/frontend/readpath"
+	"github.com/grafana/pyroscope/pkg/metastore/index/cleaner/retention"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	placement "github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 )
 
 const (
@@ -33,15 +35,16 @@ const (
 // to support tenant-friendly duration format (e.g: "1h30m45s") in JSON value.
 type Limits struct {
 	// Distributor enforced limits.
-	IngestionRateMB        float64               `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
-	IngestionBurstSizeMB   float64               `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
-	IngestionLimit         *ingest_limits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
-	DistributorSampling    *sampling.Config      `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
-	MaxLabelNameLength     int                   `yaml:"max_label_name_length" json:"max_label_name_length"`
-	MaxLabelValueLength    int                   `yaml:"max_label_value_length" json:"max_label_value_length"`
-	MaxLabelNamesPerSeries int                   `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
-	MaxSessionsPerSeries   int                   `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
-	EnforceLabelsOrder     bool                  `yaml:"enforce_labels_order" json:"enforce_labels_order"`
+	IngestionRateMB        float64              `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
+	IngestionBurstSizeMB   float64              `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
+	IngestionLimit         *ingestlimits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
+	IngestionBodyLimitMB   float64              `yaml:"ingestion_body_limit_mb" json:"ingestion_body_limit_mb" category:"advanced" doc:"hidden"`
+	DistributorSampling    *sampling.Config     `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
+	MaxLabelNameLength     int                  `yaml:"max_label_name_length" json:"max_label_name_length"`
+	MaxLabelValueLength    int                  `yaml:"max_label_value_length" json:"max_label_value_length"`
+	MaxLabelNamesPerSeries int                  `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
+	MaxSessionsPerSeries   int                  `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
+	EnforceLabelsOrder     bool                 `yaml:"enforce_labels_order" json:"enforce_labels_order"`
 
 	MaxProfileSizeBytes              int `yaml:"max_profile_size_bytes" json:"max_profile_size_bytes"`
 	MaxProfileStacktraceSamples      int `yaml:"max_profile_stacktrace_samples" json:"max_profile_stacktrace_samples"`
@@ -115,10 +118,13 @@ type Limits struct {
 	// Write path overrides used in query-frontend.
 	ReadPathOverrides readpath.Config `yaml:",inline" json:",inline"`
 
+	// Data retention configuration.
+	Retention retention.Config `yaml:",inline" json:",inline"`
+
 	// Adaptive placement limits used in distributors and in the metastore.
 	// Distributors use these limits to determine how many shards to allocate
 	// to a tenant dataset by default, if no placement rules defined.
-	AdaptivePlacementLimits adaptive_placement.PlacementLimits `yaml:",inline" json:",inline"`
+	AdaptivePlacementLimits placement.PlacementLimits `yaml:",inline" json:",inline"`
 
 	// RecordingRules allow to specify static recording rules. This is not compatible with recording rules
 	// coming from a RecordingRulesClient, that will replace any static rules defined.
@@ -139,7 +145,7 @@ func (e LimitError) Error() string {
 func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Float64Var(&l.IngestionRateMB, "distributor.ingestion-rate-limit-mb", 4, "Per-tenant ingestion rate limit in sample size per second. Units in MB.")
 	f.Float64Var(&l.IngestionBurstSizeMB, "distributor.ingestion-burst-size-mb", 2, "Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request.")
-
+	f.Float64Var(&l.IngestionBodyLimitMB, "distributor.ingestion-body-limit-mb", 0, "Per-tenant ingestion body size limit in MB, before decompressing. 0 to disable.")
 	f.IntVar(&l.IngestionTenantShardSize, "distributor.ingestion-tenant-shard-size", 0, "The tenant's shard size used by shuffle-sharding. Must be set both on ingesters and distributors. 0 disables shuffle sharding.")
 
 	f.IntVar(&l.MaxLabelNameLength, "validation.max-length-label-name", 1024, "Maximum length accepted for label names.")
@@ -260,6 +266,8 @@ type TenantLimits interface {
 	TenantLimits(tenantID string) *Limits
 	// AllByTenantID gets a mapping of all tenant IDs and limits for that tenant
 	AllByTenantID() map[string]*Limits
+	// RuntimeConfig returns the runtime config values, if available, and nil otherwise.
+	RuntimeConfig() *RuntimeConfigValues
 }
 
 // Overrides periodically fetch a set of per-tenant overrides, and provides convenience
@@ -294,7 +302,11 @@ func (o *Overrides) IngestionBurstSizeBytes(tenantID string) int {
 	return int(o.getOverridesForTenant(tenantID).IngestionBurstSizeMB * bytesInMB)
 }
 
-func (o *Overrides) IngestionLimit(tenantID string) *ingest_limits.Config {
+func (o *Overrides) IngestionBodyLimitBytes(tenantID string) int64 {
+	return int64(o.getOverridesForTenant(tenantID).IngestionBodyLimitMB * bytesInMB)
+}
+
+func (o *Overrides) IngestionLimit(tenantID string) *ingestlimits.Config {
 	return o.getOverridesForTenant(tenantID).IngestionLimit
 }
 
@@ -497,6 +509,32 @@ func (o *Overrides) QueryAnalysisEnabled(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).QueryAnalysisEnabled
 }
 
+func (o *Overrides) Retention() (defaults retention.Config, overrides iter.Seq2[string, retention.Config]) {
+	return GetOverride(o, func(tenantID string, limits *Limits) retention.Config {
+		return limits.Retention
+	})
+}
+
+// GetOverride is a convenience function to get an override value for all tenants.
+// The order is not deterministic.
+func GetOverride[T any](o *Overrides, fn func(string, *Limits) T) (defaults T, overrides iter.Seq2[string, T]) {
+	defaults = fn("", o.defaultLimits)
+	if o.tenantLimits == nil {
+		return defaults, func(yield func(string, T) bool) {}
+	}
+	c := o.tenantLimits.RuntimeConfig()
+	if c == nil {
+		return defaults, func(yield func(string, T) bool) {}
+	}
+	return defaults, func(yield func(string, T) bool) {
+		for tenantID, limits := range c.TenantLimits {
+			if !yield(tenantID, fn(tenantID, limits)) {
+				return
+			}
+		}
+	}
+}
+
 // QueryAnalysisSeriesEnabled can be used to disable the series portion of the query analysis endpoint in the query frontend.
 // To be used for tenants where calculating series can be expensive.
 func (o *Overrides) QueryAnalysisSeriesEnabled(tenantID string) bool {
@@ -511,7 +549,7 @@ func (o *Overrides) ReadPathOverrides(tenantID string) readpath.Config {
 	return o.getOverridesForTenant(tenantID).ReadPathOverrides
 }
 
-func (o *Overrides) PlacementLimits(tenantID string) adaptive_placement.PlacementLimits {
+func (o *Overrides) PlacementLimits(tenantID string) placement.PlacementLimits {
 	// Both limits aimed at the same thing: limit the number of shards tenant's
 	// data is distributed to. The IngestionTenantShardSize specifies the number
 	// of ingester instances (taking into account the replication factor), while

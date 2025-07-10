@@ -800,7 +800,7 @@ func (s *symbolsCompactor) ReWriteRow(profile profileRow) (uint64, error) {
 		s.loadStacktracesID(values)
 		r, ok := s.rewriters[profile.blockReader]
 		if !ok {
-			r = symdb.NewRewriter(s.w, profile.blockReader.Symbols())
+			r = symdb.NewRewriter(s.w, profile.blockReader.Symbols(), nil)
 			s.rewriters[profile.blockReader] = r
 		}
 		if err = r.Rewrite(profile.row.StacktracePartitionID(), s.stacktraces); err != nil {

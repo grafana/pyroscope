@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
@@ -110,34 +110,34 @@ func (req *PushRequest) ClearAnnotations() {
 	}
 }
 
-func (req *PushRequest) MarkThrottledTenant(l *ingest_limits.Config) error {
+func (req *PushRequest) MarkThrottledTenant(l *ingestlimits.Config) error {
 	if l == nil {
 		return fmt.Errorf("no limit config provided")
 	}
-	annotation, err := ingest_limits.CreateTenantAnnotation(l)
+	annotation, err := ingestlimits.CreateTenantAnnotation(l)
 	if err != nil {
 		return err
 	}
 	for _, series := range req.Series {
 		series.Annotations = append(series.Annotations, &v1.ProfileAnnotation{
-			Key:   ingest_limits.ProfileAnnotationKeyThrottled,
+			Key:   ingestlimits.ProfileAnnotationKeyThrottled,
 			Value: string(annotation),
 		})
 	}
 	return nil
 }
 
-func (req *PushRequest) MarkThrottledUsageGroup(l *ingest_limits.Config, usageGroup string) error {
+func (req *PushRequest) MarkThrottledUsageGroup(l *ingestlimits.Config, usageGroup string) error {
 	if l == nil {
 		return fmt.Errorf("no limit config provided")
 	}
-	annotation, err := ingest_limits.CreateUsageGroupAnnotation(l, usageGroup)
+	annotation, err := ingestlimits.CreateUsageGroupAnnotation(l, usageGroup)
 	if err != nil {
 		return err
 	}
 	for _, series := range req.Series {
 		series.Annotations = append(series.Annotations, &v1.ProfileAnnotation{
-			Key:   ingest_limits.ProfileAnnotationKeyThrottled,
+			Key:   ingestlimits.ProfileAnnotationKeyThrottled,
 			Value: string(annotation),
 		})
 	}
