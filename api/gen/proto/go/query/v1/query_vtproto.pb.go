@@ -402,6 +402,10 @@ func (m *TimeSeriesQuery) CloneVT() *TimeSeriesQuery {
 		copy(tmpContainer, rhs)
 		r.GroupBy = tmpContainer
 	}
+	if rhs := m.Aggregation; rhs != nil {
+		tmpVal := *rhs
+		r.Aggregation = &tmpVal
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -1061,6 +1065,9 @@ func (this *TimeSeriesQuery) EqualVT(that *TimeSeriesQuery) bool {
 		}
 	}
 	if this.Limit != that.Limit {
+		return false
+	}
+	if p, q := this.Aggregation, that.Aggregation; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2349,6 +2356,11 @@ func (m *TimeSeriesQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Aggregation != nil {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.Aggregation))
+		i--
+		dAtA[i] = 0x20
+	}
 	if m.Limit != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Limit))
 		i--
@@ -3014,6 +3026,9 @@ func (m *TimeSeriesQuery) SizeVT() (n int) {
 	}
 	if m.Limit != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Limit))
+	}
+	if m.Aggregation != nil {
+		n += 1 + protohelpers.SizeOfVarint(uint64(*m.Aggregation))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -5361,6 +5376,26 @@ func (m *TimeSeriesQuery) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Aggregation", wireType)
+			}
+			var v v11.TimeSeriesAggregationType
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= v11.TimeSeriesAggregationType(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Aggregation = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

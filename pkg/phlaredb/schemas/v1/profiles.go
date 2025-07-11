@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	IDColumnName                  = "ID"
 	SeriesIndexColumnName         = "SeriesIndex"
 	TimeNanosColumnName           = "TimeNanos"
 	StacktracePartitionColumnName = "StacktracePartition"
@@ -40,7 +41,7 @@ var (
 		phlareparquet.NewGroupField("SpanID", parquet.Optional(parquet.Encoded(parquet.Uint(64), &parquet.RLEDictionary))),
 	}
 	ProfilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
-		phlareparquet.NewGroupField("ID", parquet.UUID()),
+		phlareparquet.NewGroupField(IDColumnName, parquet.UUID()),
 		phlareparquet.NewGroupField(SeriesIndexColumnName, parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField(StacktracePartitionColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField(TotalValueColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
@@ -77,7 +78,7 @@ var (
 
 	sampleStacktraceIDColumnPath = strings.Split("Samples.list.element.StacktraceID", ".")
 	SampleValueColumnPath        = strings.Split("Samples.list.element.Value", ".")
-	sampleSpanIDColumnPath       = strings.Split("Samples.list.element.SpanID", ".")
+	SampleSpanIDColumnPath       = strings.Split("Samples.list.element.SpanID", ".")
 
 	maxProfileRow               parquet.Row
 	seriesIndexColIndex         int
@@ -172,7 +173,7 @@ func (c *SampleColumns) Resolve(schema *parquet.Schema) error {
 		return err
 	}
 	// Optional.
-	c.SpanID, _ = ResolveColumnByPath(schema, sampleSpanIDColumnPath)
+	c.SpanID, _ = ResolveColumnByPath(schema, SampleSpanIDColumnPath)
 	return nil
 }
 

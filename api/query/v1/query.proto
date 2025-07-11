@@ -160,6 +160,8 @@ message TimeSeriesQuery {
   double step = 1;
   repeated string group_by = 2;
   int64 limit = 3;
+  optional types.v1.TimeSeriesAggregationType aggregation = 4;
+
 }
 
 message TimeSeriesReport {

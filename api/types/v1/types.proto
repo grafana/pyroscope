@@ -31,6 +31,11 @@ message Point {
   // Milliseconds unix timestamp
   int64 timestamp = 2;
   repeated ProfileAnnotation annotations = 3;
+  // Series fingerprints of the full series
+  repeated uint64 series_fingerprints = 4;
+
+  // Originating profile_id
+  string profile_id = 5;
 }
 
 message ProfileAnnotation {

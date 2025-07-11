@@ -2,6 +2,7 @@ package model
 
 import (
 	"math"
+	"slices"
 	"sort"
 
 	"github.com/prometheus/common/model"
@@ -12,11 +13,12 @@ import (
 )
 
 type TimeSeriesValue struct {
-	Ts          int64
-	Lbs         []*typesv1.LabelPair
-	LabelsHash  uint64
-	Value       float64
-	Annotations []*typesv1.ProfileAnnotation
+	Ts                 int64
+	Lbs                []*typesv1.LabelPair
+	LabelsHash         uint64
+	Value              float64
+	Annotations        []*typesv1.ProfileAnnotation
+	SeriesFingerprints []uint64
 }
 
 func (p TimeSeriesValue) Labels() Labels        { return p.Lbs }
@@ -47,6 +49,7 @@ func (s *TimeSeriesIterator) Next() bool {
 	s.curr.Ts = p.Timestamp
 	s.curr.Value = p.Value
 	s.curr.Annotations = p.Annotations
+	s.curr.SeriesFingerprints = p.SeriesFingerprints
 	return true
 }
 
@@ -109,28 +112,66 @@ func (a *sumTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 func (a *sumTimeSeriesAggregator) IsEmpty() bool       { return a.ts == -1 }
 func (a *sumTimeSeriesAggregator) GetTimestamp() int64 { return a.ts }
 
+type fingerprintRef struct {
+	fp     uint64
+	values []int // indexes into values
+}
+
 type avgTimeSeriesAggregator struct {
 	ts          int64
 	sum         float64
 	count       int64
 	annotations []*typesv1.ProfileAnnotation
+	values      []float64
+	fpRefs      []fingerprintRef
+}
+
+func (a *avgTimeSeriesAggregator) addFpRef(fp uint64, valueIdx int) {
+	newFpRef := fingerprintRef{fp: fp, values: []int{valueIdx}}
+	idx, found := slices.BinarySearchFunc(a.fpRefs, newFpRef, func(a, b fingerprintRef) int {
+		return int(b.fp - a.fp)
+	})
+	if found {
+		a.fpRefs[idx].values = append(a.fpRefs[idx].values, valueIdx)
+		return
+	}
+	a.fpRefs = slices.Insert(a.fpRefs, idx, newFpRef)
 }
 
 func (a *avgTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
 	a.ts = ts
-	a.sum += point.Value
-	a.count++
+	a.values = append(a.values, point.Value)
 	a.annotations = append(a.annotations, point.Annotations...)
+	for _, fp := range point.SeriesFingerprints {
+		a.addFpRef(fp, len(a.values)-1)
+	}
 }
 
 func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
-	avg := a.sum / float64(a.count)
+	maxPerValue := make([]int, len(a.values))
+	for i := range maxPerValue {
+		maxPerValue[i] = 1
+	}
+	// iterate over all fp and record the points for each in the correpsonding values
+	for _, fpRef := range a.fpRefs {
+		refCount := len(fpRef.values)
+		for _, idx := range fpRef.values {
+			if maxPerValue[idx] < refCount {
+				maxPerValue[idx] = refCount
+			}
+		}
+	}
+
+	var avg float64
+	for idx := range maxPerValue {
+		avg += a.values[idx] / float64(maxPerValue[idx])
+	}
 	tsCopy := a.ts
 	annotationsCopy := make([]*typesv1.ProfileAnnotation, len(a.annotations))
 	copy(annotationsCopy, a.annotations)
 	a.ts = -1
-	a.sum = 0
-	a.count = 0
+	a.values = a.values[:0]
+	a.fpRefs = a.fpRefs[:0]
 	a.annotations = a.annotations[:0]
 	return &typesv1.Point{
 		Timestamp:   tsCopy,
