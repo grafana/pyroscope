@@ -32,6 +32,7 @@ func (l LogSpanParametersWrapper) ProfileTypes(ctx context.Context, c *connect.R
 	level.Info(FromContext(ctx, l.logger)).Log(
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
+		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 	)
 	defer sp.Finish()
 
@@ -43,6 +44,7 @@ func (l LogSpanParametersWrapper) LabelValues(ctx context.Context, c *connect.Re
 	level.Info(FromContext(ctx, l.logger)).Log(
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
+		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"matchers", c.Msg.Matchers,
 		"name", c.Msg.Name,
 	)
@@ -56,6 +58,7 @@ func (l LogSpanParametersWrapper) LabelNames(ctx context.Context, c *connect.Req
 	level.Info(FromContext(ctx, l.logger)).Log(
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
+		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"matchers", c.Msg.Matchers,
 	)
 	defer sp.Finish()
@@ -68,6 +71,7 @@ func (l LogSpanParametersWrapper) Series(ctx context.Context, c *connect.Request
 	level.Info(FromContext(ctx, l.logger)).Log(
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
+		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"matchers", c.Msg.Matchers,
 		"label_names", c.Msg.LabelNames,
 	)
@@ -81,6 +85,7 @@ func (l LogSpanParametersWrapper) SelectMergeStacktraces(ctx context.Context, c 
 	level.Info(FromContext(ctx, l.logger)).Log(
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
+		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"selector", c.Msg.LabelSelector,
 		"profile_type", c.Msg.ProfileTypeID,
 		"format", c.Msg.Format,
@@ -96,6 +101,7 @@ func (l LogSpanParametersWrapper) SelectMergeSpanProfile(ctx context.Context, c 
 	level.Info(FromContext(ctx, l.logger)).Log(
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
+		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"selector", c.Msg.LabelSelector,
 		"profile_type", c.Msg.ProfileTypeID,
 		"format", c.Msg.Format,
@@ -111,6 +117,7 @@ func (l LogSpanParametersWrapper) SelectMergeProfile(ctx context.Context, c *con
 	level.Info(FromContext(ctx, l.logger)).Log(
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
+		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"selector", c.Msg.LabelSelector,
 		"max_nodes", c.Msg.GetMaxNodes(),
 		"profile_type", c.Msg.ProfileTypeID,
@@ -126,6 +133,7 @@ func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.R
 	level.Info(FromContext(ctx, l.logger)).Log(
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
+		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"selector", c.Msg.LabelSelector,
 		"profile_type", c.Msg.ProfileTypeID,
 		"stacktrace_selector", c.Msg.StackTraceSelector,
@@ -144,12 +152,14 @@ func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[q
 	level.Info(FromContext(ctx, l.logger)).Log(
 		"left_start", model.Time(c.Msg.Left.Start).Time().String(),
 		"left_end", model.Time(c.Msg.Left.End).Time().String(),
+		"left_query_window", model.Time(c.Msg.Left.End).Sub(model.Time(c.Msg.Left.Start)).String(),
 		"left_selector", c.Msg.Left.LabelSelector,
 		"left_profile_type", c.Msg.Left.ProfileTypeID,
 		"left_format", c.Msg.Left.Format,
 		"left_max_nodes", c.Msg.Left.GetMaxNodes(),
 		"right_start", model.Time(c.Msg.Right.Start).Time().String(),
 		"right_end", model.Time(c.Msg.Right.End).Time().String(),
+		"right_query_window", model.Time(c.Msg.Right.End).Sub(model.Time(c.Msg.Right.Start)).String(),
 		"right_selector", c.Msg.Right.LabelSelector,
 		"right_profile_type", c.Msg.Right.ProfileTypeID,
 		"right_format", c.Msg.Right.Format,
@@ -172,6 +182,7 @@ func (l LogSpanParametersWrapper) AnalyzeQuery(ctx context.Context, c *connect.R
 	level.Info(FromContext(ctx, l.logger)).Log(
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
+		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"query", c.Msg.Query,
 	)
 	defer sp.Finish()
