@@ -206,7 +206,8 @@ func handleSanitizedLabel(ls []*typesv1.LabelPair, origIdx int, origName, newNam
 		finalIdx = origIdx
 	}
 
-	return newSlice, finalIdx, nil
+	copy(ls, newSlice)
+	return ls[:len(newSlice)], finalIdx, nil
 }
 
 // SanitizeLabelName reports whether the label name is valid,
