@@ -163,7 +163,7 @@ func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[q
 func (l LogSpanParametersWrapper) GetProfileStats(ctx context.Context, c *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "GetProfileStats")
 	defer sp.Finish()
-	
+
 	return l.client.GetProfileStats(ctx, c)
 }
 
