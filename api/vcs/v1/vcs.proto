@@ -13,7 +13,13 @@ service VCSService {
 message GithubAppRequest {}
 
 message GithubAppResponse {
+  // clientID must be propagated when calling https://github.com/login/oauth/authorize
+  // in the client_id query parameter.
   string clientID = 1;
+  // If callbackURL is not empty, the URL should be propagated when
+  // calling https://github.com/login/oauth/authorize in the
+  // redirect_uri query parameter.
+  string callbackURL = 2;
 }
 
 message GithubLoginRequest {
