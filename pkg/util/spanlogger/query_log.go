@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	dslog "github.com/grafana/dskit/log"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 
@@ -28,8 +29,10 @@ func NewLogSpanParametersWrapper(client querierv1connect.QuerierServiceClient, l
 }
 
 func (l LogSpanParametersWrapper) ProfileTypes(ctx context.Context, c *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "ProfileTypes")
+	spanName := "ProfileTypes"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
 	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
@@ -40,12 +43,14 @@ func (l LogSpanParametersWrapper) ProfileTypes(ctx context.Context, c *connect.R
 }
 
 func (l LogSpanParametersWrapper) LabelValues(ctx context.Context, c *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues")
+	spanName := "LabelValues"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
 	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
-		"matchers", c.Msg.Matchers,
+		"matchers", dslog.LazySprintf("%v", c.Msg.Matchers),
 		"name", c.Msg.Name,
 	)
 	defer sp.Finish()
@@ -54,12 +59,14 @@ func (l LogSpanParametersWrapper) LabelValues(ctx context.Context, c *connect.Re
 }
 
 func (l LogSpanParametersWrapper) LabelNames(ctx context.Context, c *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames")
+	spanName := "LabelNames"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
 	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
-		"matchers", c.Msg.Matchers,
+		"matchers", dslog.LazySprintf("%v", c.Msg.Matchers),
 	)
 	defer sp.Finish()
 
@@ -67,13 +74,15 @@ func (l LogSpanParametersWrapper) LabelNames(ctx context.Context, c *connect.Req
 }
 
 func (l LogSpanParametersWrapper) Series(ctx context.Context, c *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
+	spanName := "Series"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
 	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
-		"matchers", c.Msg.Matchers,
-		"label_names", c.Msg.LabelNames,
+		"matchers", dslog.LazySprintf("%v", c.Msg.Matchers),
+		"label_names", dslog.LazySprintf("%v", c.Msg.LabelNames),
 	)
 	defer sp.Finish()
 
@@ -81,8 +90,10 @@ func (l LogSpanParametersWrapper) Series(ctx context.Context, c *connect.Request
 }
 
 func (l LogSpanParametersWrapper) SelectMergeStacktraces(ctx context.Context, c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
+	spanName := "SelectMergeStacktraces"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
 	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
@@ -97,8 +108,10 @@ func (l LogSpanParametersWrapper) SelectMergeStacktraces(ctx context.Context, c 
 }
 
 func (l LogSpanParametersWrapper) SelectMergeSpanProfile(ctx context.Context, c *connect.Request[querierv1.SelectMergeSpanProfileRequest]) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeSpanProfile")
+	spanName := "SelectMergeSpanProfile"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
 	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
@@ -113,8 +126,10 @@ func (l LogSpanParametersWrapper) SelectMergeSpanProfile(ctx context.Context, c 
 }
 
 func (l LogSpanParametersWrapper) SelectMergeProfile(ctx context.Context, c *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[profilev1.Profile], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeProfile")
+	spanName := "SelectMergeProfile"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
 	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
@@ -129,8 +144,10 @@ func (l LogSpanParametersWrapper) SelectMergeProfile(ctx context.Context, c *con
 }
 
 func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSeries")
+	spanName := "SelectSeries"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
 	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
@@ -138,7 +155,7 @@ func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.R
 		"profile_type", c.Msg.ProfileTypeID,
 		"stacktrace_selector", c.Msg.StackTraceSelector,
 		"step", c.Msg.Step,
-		"by", c.Msg.GroupBy,
+		"by", dslog.LazySprintf("%v", c.Msg.GroupBy),
 		"aggregation", c.Msg.Aggregation,
 		"limit", c.Msg.Limit,
 	)
@@ -148,8 +165,10 @@ func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.R
 }
 
 func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Diff")
+	spanName := "Diff"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
 	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
 		"left_start", model.Time(c.Msg.Left.Start).Time().String(),
 		"left_end", model.Time(c.Msg.Left.End).Time().String(),
 		"left_query_window", model.Time(c.Msg.Left.End).Sub(model.Time(c.Msg.Left.Start)).String(),
@@ -178,8 +197,10 @@ func (l LogSpanParametersWrapper) GetProfileStats(ctx context.Context, c *connec
 }
 
 func (l LogSpanParametersWrapper) AnalyzeQuery(ctx context.Context, c *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "AnalyzeQuery")
+	spanName := "AnalyzeQuery"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
 	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
