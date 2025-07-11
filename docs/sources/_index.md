@@ -10,8 +10,10 @@ keywords:
   - TSDB
   - profiles storage
   - profiles datastore
+  - profiles database
   - observability
   - continuous profiling
+  - performance engineering
 hero:
   title: Grafana Pyroscope
   level: 1
