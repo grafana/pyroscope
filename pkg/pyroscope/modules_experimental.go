@@ -39,6 +39,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/health"
+	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 )
 
 func (f *Pyroscope) initQueryFrontend() (services.Service, error) {
@@ -78,7 +79,7 @@ func (f *Pyroscope) initQueryFrontendV1() (services.Service, error) {
 		return nil, err
 	}
 	f.API.RegisterFrontendForQuerierHandler(f.frontend)
-	f.API.RegisterQuerierServiceHandler(f.frontend)
+	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(f.frontend, f.logger))
 	f.API.RegisterPyroscopeHandlers(f.frontend)
 	f.API.RegisterVCSServiceHandler(f.frontend)
 	return f.frontend, nil
@@ -99,7 +100,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 		f.reg,
 	)
 
-	f.API.RegisterQuerierServiceHandler(queryFrontend)
+	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(queryFrontend, f.logger))
 	f.API.RegisterPyroscopeHandlers(queryFrontend)
 	f.API.RegisterVCSServiceHandler(vcsService)
 
@@ -142,7 +143,7 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 	)
 
 	f.API.RegisterFrontendForQuerierHandler(f.frontend)
-	f.API.RegisterQuerierServiceHandler(handler)
+	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(handler, f.logger))
 	f.API.RegisterPyroscopeHandlers(handler)
 	f.API.RegisterVCSServiceHandler(vcsService)
 
