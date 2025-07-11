@@ -174,43 +174,39 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 
 // handleSanitizedLabel handles the case where a label name is sanitized. It ensures that the label name is unique and fails if the value is distinct.
 func handleSanitizedLabel(ls []*typesv1.LabelPair, origIdx int, origName, newName string) ([]*typesv1.LabelPair, int, error) {
-	origValue := ls[origIdx].Value
+	newLabel := &typesv1.LabelPair{Name: newName, Value: ls[origIdx].Value}
 
 	// Create new slice without the original element
 	newSlice := make([]*typesv1.LabelPair, 0, len(ls))
 	newSlice = append(newSlice, ls[:origIdx]...)
 	newSlice = append(newSlice, ls[origIdx+1:]...)
 
-	insertIdx, found := slices.BinarySearchFunc(newSlice, &typesv1.LabelPair{Name: newName},
+	insertIdx, found := slices.BinarySearchFunc(newSlice, newLabel,
 		func(a, b *typesv1.LabelPair) int {
 			return strings.Compare(a.Name, b.Name)
 		})
 
 	if found {
-		if newSlice[insertIdx].Value == origValue {
-			// Same name and value - remove duplicate (already removed from newSlice)
-			copy(ls, newSlice)
-			return ls[:len(newSlice)], origIdx, nil
+		if newSlice[insertIdx].Value == newLabel.Value {
+			// Same name and value we are done and can just return newSlice
+			return newSlice, origIdx, nil
 		} else {
 			// Same name, different value - error
-			return ls, origIdx, NewErrorf(DuplicateLabelNames,
+			return nil, 0, NewErrorf(DuplicateLabelNames,
 				DuplicateLabelNamesAfterSanitizationErrorMsg,
 				phlaremodel.LabelPairsString(ls), newName, origName)
 		}
 	}
 
 	// Insert the new label at correct position
-	newLabel := &typesv1.LabelPair{Name: newName, Value: origValue}
 	newSlice = slices.Insert(newSlice, insertIdx, newLabel)
-
-	copy(ls, newSlice)
 
 	finalIdx := insertIdx
 	if insertIdx >= origIdx {
 		finalIdx = origIdx
 	}
 
-	return ls[:len(newSlice)], finalIdx, nil
+	return newSlice, finalIdx, nil
 }
 
 // SanitizeLabelName reports whether the label name is valid,
