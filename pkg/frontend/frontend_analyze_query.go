@@ -5,7 +5,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -19,8 +18,6 @@ func (f *Frontend) AnalyzeQuery(
 	ctx context.Context,
 	c *connect.Request[querierv1.AnalyzeQueryRequest],
 ) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
-	opentracing.SpanFromContext(ctx)
-
 	tenantID, err := tenant.TenantID(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

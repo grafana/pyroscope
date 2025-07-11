@@ -5,8 +5,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
-	"github.com/prometheus/common/model"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -17,11 +15,6 @@ func (q *QueryFrontend) LabelNames(
 	ctx context.Context,
 	c *connect.Request[typesv1.LabelNamesRequest],
 ) (*connect.Response[typesv1.LabelNamesResponse], error) {
-	opentracing.SpanFromContext(ctx).
-		SetTag("start", model.Time(c.Msg.Start).Time().String()).
-		SetTag("end", model.Time(c.Msg.End).Time().String()).
-		SetTag("matchers", c.Msg.Matchers)
-
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

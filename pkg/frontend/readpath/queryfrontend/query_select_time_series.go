@@ -6,8 +6,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
-	"github.com/prometheus/common/model"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -19,14 +17,6 @@ func (q *QueryFrontend) SelectSeries(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectSeriesRequest],
 ) (*connect.Response[querierv1.SelectSeriesResponse], error) {
-	opentracing.SpanFromContext(ctx).
-		SetTag("start", model.Time(c.Msg.Start).Time().String()).
-		SetTag("end", model.Time(c.Msg.End).Time().String()).
-		SetTag("selector", c.Msg.LabelSelector).
-		SetTag("step", c.Msg.Step).
-		SetTag("by", c.Msg.GroupBy).
-		SetTag("profile_type", c.Msg.ProfileTypeID)
-
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

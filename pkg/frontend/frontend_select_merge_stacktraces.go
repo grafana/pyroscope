@@ -6,7 +6,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 	"golang.org/x/sync/errgroup"
 
@@ -40,13 +39,6 @@ func (f *Frontend) selectMergeStacktracesTree(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*phlaremodel.Tree, error) {
-	opentracing.SpanFromContext(ctx).
-		SetTag("start", model.Time(c.Msg.Start).Time().String()).
-		SetTag("end", model.Time(c.Msg.End).Time().String()).
-		SetTag("selector", c.Msg.LabelSelector).
-		SetTag("max_nodes", c.Msg.GetMaxNodes()).
-		SetTag("profile_type", c.Msg.ProfileTypeID)
-
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeStacktracesProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {

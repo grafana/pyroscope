@@ -5,7 +5,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -19,10 +18,6 @@ func (f *Frontend) ProfileTypes(
 	ctx context.Context,
 	c *connect.Request[querierv1.ProfileTypesRequest],
 ) (*connect.Response[querierv1.ProfileTypesResponse], error) {
-	opentracing.SpanFromContext(ctx).
-		SetTag("start", model.Time(c.Msg.Start).Time().String()).
-		SetTag("end", model.Time(c.Msg.End).Time().String())
-
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceProfileTypesProcedure)
 
 	interval, ok := phlaremodel.GetTimeRange(c.Msg)

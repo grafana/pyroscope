@@ -5,8 +5,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
-	"github.com/prometheus/common/model"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -20,13 +18,6 @@ func (q *QueryFrontend) SelectMergeSpanProfile(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeSpanProfileRequest],
 ) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
-	opentracing.SpanFromContext(ctx).
-		SetTag("start", model.Time(c.Msg.Start).Time().String()).
-		SetTag("end", model.Time(c.Msg.End).Time().String()).
-		SetTag("selector", c.Msg.LabelSelector).
-		SetTag("max_nodes", c.Msg.GetMaxNodes()).
-		SetTag("profile_type", c.Msg.ProfileTypeID)
-
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
