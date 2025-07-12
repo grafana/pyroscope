@@ -279,3 +279,93 @@ func TestProfileIndex_Add_OutOfOrder(t *testing.T) {
 	require.Equal(t, []int64{20, 50, 80, 100, 110}, tsOrder)
 
 }
+
+func Test_rowRangesWithSeriesIndex_getSeriesIndex(t *testing.T) {
+	testCases := []struct {
+		name        string
+		ranges      rowRangesWithSeriesIndex
+		rowNum      int64
+		searchHint  int
+		expectIdx   int
+		expectPanic bool
+	}{
+		{
+			name: "main loop hit",
+			ranges: rowRangesWithSeriesIndex{
+				{rowRange: &rowRange{rowNum: 0, length: 5}, seriesIndex: 1},
+				{rowRange: &rowRange{rowNum: 5, length: 5}, seriesIndex: 2},
+			},
+			rowNum:     6,
+			searchHint: 1,
+			expectIdx:  1,
+		},
+		{
+			name: "second loop hit",
+			ranges: rowRangesWithSeriesIndex{
+				{rowRange: &rowRange{rowNum: 0, length: 5}, seriesIndex: 1},
+				{rowRange: &rowRange{rowNum: 5, length: 5}, seriesIndex: 2},
+			},
+			rowNum:     1,
+			searchHint: 1, // will skip 0 in main loop, hit in second loop
+			expectIdx:  0,
+		},
+		{
+			name: "searchHint out of range",
+			ranges: rowRangesWithSeriesIndex{
+				{rowRange: &rowRange{rowNum: 0, length: 5}, seriesIndex: 1},
+			},
+			rowNum:     2,
+			searchHint: 100, // should reset to 0
+			expectIdx:  0,
+		},
+		{
+			name: "nil rowRange skipped",
+			ranges: rowRangesWithSeriesIndex{
+				{rowRange: nil, seriesIndex: 1},
+				{rowRange: &rowRange{rowNum: 10, length: 5}, seriesIndex: 2},
+			},
+			rowNum:     12,
+			searchHint: 0,
+			expectIdx:  1,
+		},
+		{
+			name:        "not found panics",
+			ranges:      rowRangesWithSeriesIndex{{rowRange: &rowRange{rowNum: 0, length: 2}, seriesIndex: 1}},
+			rowNum:      10,
+			searchHint:  0,
+			expectPanic: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			searchHint := tc.searchHint
+			if tc.expectPanic {
+				assert.Panics(t, func() {
+					_ = tc.ranges.getSeriesIndex(tc.rowNum, &searchHint)
+				})
+			} else {
+				idx := tc.ranges.getSeriesIndex(tc.rowNum, &searchHint)
+				assert.Equal(t, tc.ranges[tc.expectIdx].seriesIndex, idx)
+				assert.Equal(t, tc.expectIdx, searchHint)
+			}
+		})
+	}
+}
+
+func Test_rowRangesWithSeriesIndex_getSeriesIndex_second_loop(t *testing.T) {
+	ranges := rowRangesWithSeriesIndex{
+		{rowRange: &rowRange{rowNum: 0, length: 5}, seriesIndex: 1},
+		{rowRange: &rowRange{rowNum: 5, length: 5}, seriesIndex: 2},
+	}
+	searchHint := 0
+
+	idx := ranges.getSeriesIndex(6, &searchHint)
+	assert.Equal(t, uint32(2), idx)
+	assert.Equal(t, 1, searchHint)
+
+	// rowNum is not increasing, so it will not hit the first loop, and will hit the second loop
+	idx = ranges.getSeriesIndex(2, &searchHint)
+	assert.Equal(t, uint32(1), idx)
+	assert.Equal(t, 0, searchHint)
+}
