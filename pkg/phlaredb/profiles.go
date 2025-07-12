@@ -40,6 +40,8 @@ type rowRangeWithSeriesIndex struct {
 // those need to be strictly ordered
 type rowRangesWithSeriesIndex []rowRangeWithSeriesIndex
 
+// getSeriesIndex returns the series index for a given row number.
+// searchHint is the hint for the index to start searching from, it should be passed to next call of this function.
 func (s rowRangesWithSeriesIndex) getSeriesIndex(rowNum int64, searchHint *int) uint32 {
 	if *searchHint < 0 || *searchHint > len(s) {
 		*searchHint = 0
@@ -55,7 +57,10 @@ func (s rowRangesWithSeriesIndex) getSeriesIndex(rowNum int64, searchHint *int) 
 			return rg.seriesIndex
 		}
 	}
-	// for corner case
+
+	// Most of the time, index will found in the first loop,
+	// but if the rowNum is not increasing or the searchHint is wrong, we need to check the second loop.
+	// Maybe we can merge the two loops into one, but it will be not easy to understand.
 	for i := 0; i < *searchHint; i++ {
 		rg := s[i]
 		// it is possible that the series is not existing
