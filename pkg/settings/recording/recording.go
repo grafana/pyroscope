@@ -22,16 +22,18 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/settings/store"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 var _ settingsv1connect.RecordingRulesServiceHandler = (*RecordingRules)(nil)
 
-func New(cfg Config, bucket objstore.Bucket, logger log.Logger) *RecordingRules {
+func New(cfg Config, bucket objstore.Bucket, logger log.Logger, overrides *validation.Overrides) *RecordingRules {
 	return &RecordingRules{
-		cfg:    cfg,
-		bucket: bucket,
-		logger: logger,
-		stores: make(map[store.Key]*bucketStore),
+		cfg:       cfg,
+		bucket:    bucket,
+		logger:    logger,
+		stores:    make(map[store.Key]*bucketStore),
+		overrides: overrides,
 	}
 }
 
@@ -42,6 +44,8 @@ type RecordingRules struct {
 
 	rw     sync.RWMutex
 	stores map[store.Key]*bucketStore
+
+	overrides *validation.Overrides
 }
 
 func (r *RecordingRules) GetRecordingRule(ctx context.Context, req *connect.Request[settingsv1.GetRecordingRuleRequest]) (*connect.Response[settingsv1.GetRecordingRuleResponse], error) {
@@ -50,7 +54,7 @@ func (r *RecordingRules) GetRecordingRule(ctx context.Context, req *connect.Requ
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	s, err := r.storeForTenant(ctx)
+	s, err := r.storeFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -67,21 +71,30 @@ func (r *RecordingRules) GetRecordingRule(ctx context.Context, req *connect.Requ
 }
 
 func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Request[settingsv1.ListRecordingRulesRequest]) (*connect.Response[settingsv1.ListRecordingRulesResponse], error) {
-	s, err := r.storeForTenant(ctx)
+	tenantId, err := r.tenantOrError(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s, err := r.storeForTenant(tenantId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	rules, err := s.List(ctx)
+	rulesFromStore, err := s.List(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	rulesFromOverrides := r.overrides.RecordingRules(tenantId)
 
 	res := &settingsv1.ListRecordingRulesResponse{
-		Rules: make([]*settingsv1.RecordingRule, 0, len(rules.Rules)),
+		Rules: make([]*settingsv1.RecordingRule, 0, len(rulesFromStore.Rules)+len(rulesFromOverrides)),
 	}
-	for _, rule := range rules.Rules {
+	for _, rule := range rulesFromStore.Rules {
 		res.Rules = append(res.Rules, convertRuleToAPI(rule))
+	}
+	for _, rule := range rulesFromOverrides {
+		rule.Provisioned = true
+		res.Rules = append(res.Rules, rule)
 	}
 
 	return connect.NewResponse(res), nil
@@ -93,7 +106,7 @@ func (r *RecordingRules) UpsertRecordingRule(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid request: %v", err))
 	}
 
-	s, err := r.storeForTenant(ctx)
+	s, err := r.storeFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -128,7 +141,7 @@ func (r *RecordingRules) DeleteRecordingRule(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid request: %v", err))
 	}
 
-	s, err := r.storeForTenant(ctx)
+	s, err := r.storeFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -142,12 +155,15 @@ func (r *RecordingRules) DeleteRecordingRule(ctx context.Context, req *connect.R
 	return connect.NewResponse(res), nil
 }
 
-func (r *RecordingRules) storeForTenant(ctx context.Context) (*bucketStore, error) {
-	tenantID, err := tenant.TenantID(ctx)
+func (r *RecordingRules) storeFromContext(ctx context.Context) (*bucketStore, error) {
+	tenantID, err := r.tenantOrError(ctx)
 	if err != nil {
-		level.Error(r.logger).Log("error getting tenant ID", "err", err)
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, err
 	}
+	return r.storeForTenant(tenantID)
+}
+
+func (r *RecordingRules) storeForTenant(tenantID string) (*bucketStore, error) {
 	key := store.Key{TenantID: tenantID}
 
 	r.rw.RLock()
@@ -168,6 +184,15 @@ func (r *RecordingRules) storeForTenant(ctx context.Context) (*bucketStore, erro
 	tenantStore = newBucketStore(r.logger, r.bucket, key)
 	r.stores[key] = tenantStore
 	return tenantStore, nil
+}
+
+func (r *RecordingRules) tenantOrError(ctx context.Context) (string, error) {
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		level.Error(r.logger).Log("error getting tenant ID", "err", err)
+		return "", connect.NewError(connect.CodeInternal, err)
+	}
+	return tenantID, nil
 }
 
 func validateGet(req *settingsv1.GetRecordingRuleRequest) error {

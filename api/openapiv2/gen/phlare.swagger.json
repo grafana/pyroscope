@@ -2055,6 +2055,10 @@
         "stacktraceFilter": {
           "$ref": "#/definitions/v1StacktraceFilter",
           "description": "The stacktrace filter allows filtering on particular function names in the stacktrace.\nThis allows recording rules to focus on specific functions and calculate their \"total\"\nresource usage."
+        },
+        "provisioned": {
+          "type": "boolean",
+          "title": "Provisioned rules are added by config and can't be Upsert or Deleted"
         }
       }
     },
