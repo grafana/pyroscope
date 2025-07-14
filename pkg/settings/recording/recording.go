@@ -123,10 +123,7 @@ func (r *RecordingRules) UpsertRecordingRule(ctx context.Context, req *connect.R
 		}
 	}
 
-	s, err := r.storeFromContext(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
+	s := r.storeForTenant(tenantId)
 
 	newRule := &settingsv1.RecordingRuleStore{
 		Id:               req.Msg.Id,
