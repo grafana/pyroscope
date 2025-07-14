@@ -1,15 +1,12 @@
 package recording
 
 import (
-	"os"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 )
 
 func Test_validateGet(t *testing.T) {
@@ -332,28 +329,4 @@ func Test_idForRule(t *testing.T) {
 			require.Equal(t, tt.expectedId, result)
 		})
 	}
-}
-
-type testRecordingRules struct {
-	*RecordingRules
-	bucketPath string
-}
-
-func newTestRecordingRules(t *testing.T) RecordingRules {
-	logger := log.NewNopLogger()
-	if testing.Verbose() {
-		logger = log.NewLogfmtLogger(os.Stderr)
-	}
-	bucketPath := t.TempDir()
-	bucket, err := filesystem.NewBucket(bucketPath)
-	require.NoError(t, err)
-	return &testRecordingRules{
-		RecordingRules: New(bucket, logger),
-		bucketPath:     bucketPath,
-	}
-	return New()
-}
-
-func TestRecordingRules(t *testing.T) {
-	rec := newTestRecordingRules(t)
 }

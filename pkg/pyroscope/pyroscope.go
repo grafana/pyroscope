@@ -592,7 +592,6 @@ func (f *Pyroscope) Run() error {
 			_, err := pyroscope.Start(pyroscope.Config{
 				ApplicationName: "pyroscope",
 				ServerAddress:   fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort),
-				TenantID:        "pyroscope",
 				Tags: map[string]string{
 					"hostname":           os.Getenv("HOSTNAME"),
 					"target":             "all",

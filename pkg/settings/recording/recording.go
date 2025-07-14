@@ -101,17 +101,26 @@ func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Re
 	for _, rule := range rulesFromStore.Rules {
 		res.Rules = append(res.Rules, convertRuleToAPI(rule))
 	}
-	for _, rule := range rulesFromOverrides {
-		res.Rules = append(res.Rules, rule)
-	}
+	res.Rules = append(res.Rules, rulesFromOverrides...)
 
 	return connect.NewResponse(res), nil
 }
 
 func (r *RecordingRules) UpsertRecordingRule(ctx context.Context, req *connect.Request[settingsv1.UpsertRecordingRuleRequest]) (*connect.Response[settingsv1.UpsertRecordingRuleResponse], error) {
-	err := r.validateUpsert(ctx, req.Msg)
+	err := validateUpsert(req.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid request: %v", err))
+	}
+
+	tenantId, err := r.tenantOrError(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rulesFromConfig := r.recordingRulesFromOverrides(tenantId)
+	for _, r := range rulesFromConfig {
+		if r.Id == req.Msg.Id {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("rule with id='%s' was provisioned by config and can't be updated", req.Msg.Id))
+		}
 	}
 
 	s, err := r.storeFromContext(ctx)
@@ -230,20 +239,9 @@ var (
 	upsertIdRE = regexp.MustCompile(`^[a-zA-Z]+$`)
 )
 
-func (r *RecordingRules) validateUpsert(ctx context.Context, req *settingsv1.UpsertRecordingRuleRequest) error {
+func validateUpsert(req *settingsv1.UpsertRecordingRuleRequest) error {
 	// Validate fields.
 	var errs []error
-
-	tenantId, err := r.tenantOrError(ctx)
-	if err != nil {
-		return err
-	}
-	rulesFromConfig := r.recordingRulesFromOverrides(tenantId)
-	for _, r := range rulesFromConfig {
-		if r.Id == req.Id {
-			errs = append(errs, fmt.Errorf("rule with id='%s' was provisioned by config and can't be updated", req.Id))
-		}
-	}
 
 	// Format fields.
 	if req.Id == "" {
