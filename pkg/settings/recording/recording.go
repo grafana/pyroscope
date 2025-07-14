@@ -2,10 +2,12 @@ package recording
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"math/rand"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -27,9 +29,8 @@ import (
 
 var _ settingsv1connect.RecordingRulesServiceHandler = (*RecordingRules)(nil)
 
-func New(cfg Config, bucket objstore.Bucket, logger log.Logger, overrides *validation.Overrides) *RecordingRules {
+func New(bucket objstore.Bucket, logger log.Logger, overrides *validation.Overrides) *RecordingRules {
 	return &RecordingRules{
-		cfg:       cfg,
 		bucket:    bucket,
 		logger:    logger,
 		stores:    make(map[store.Key]*bucketStore),
@@ -38,7 +39,6 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger, overrides *valid
 }
 
 type RecordingRules struct {
-	cfg    Config
 	bucket objstore.Bucket
 	logger log.Logger
 
@@ -54,20 +54,32 @@ func (r *RecordingRules) GetRecordingRule(ctx context.Context, req *connect.Requ
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	s, err := r.storeFromContext(ctx)
+	tenantID, err := r.tenantOrError(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, err
 	}
+	s := r.storeForTenant(tenantID)
 
 	rule, err := s.Get(ctx, req.Msg.Id)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	res := &settingsv1.GetRecordingRuleResponse{
-		Rule: convertRuleToAPI(rule),
+	if rule != nil {
+		res := &settingsv1.GetRecordingRuleResponse{
+			Rule: convertRuleToAPI(rule),
+		}
+		return connect.NewResponse(res), nil
 	}
-	return connect.NewResponse(res), nil
+
+	// look for provisioned rules:
+	rulesFromConfig := r.overrides.RecordingRules(tenantID)
+	for _, r := range rulesFromConfig {
+		if r.Id == req.Msg.Id {
+			return connect.NewResponse(&settingsv1.GetRecordingRuleResponse{Rule: r}), nil
+		}
+	}
+	return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no rule with id='%s' found", req.Msg.Id))
 }
 
 func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Request[settingsv1.ListRecordingRulesRequest]) (*connect.Response[settingsv1.ListRecordingRulesResponse], error) {
@@ -75,16 +87,13 @@ func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Re
 	if err != nil {
 		return nil, err
 	}
-	s, err := r.storeForTenant(tenantId)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
+	s := r.storeForTenant(tenantId)
 
 	rulesFromStore, err := s.List(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	rulesFromOverrides := r.overrides.RecordingRules(tenantId)
+	rulesFromOverrides := r.recordingRulesFromOverrides(tenantId)
 
 	res := &settingsv1.ListRecordingRulesResponse{
 		Rules: make([]*settingsv1.RecordingRule, 0, len(rulesFromStore.Rules)+len(rulesFromOverrides)),
@@ -93,7 +102,6 @@ func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Re
 		res.Rules = append(res.Rules, convertRuleToAPI(rule))
 	}
 	for _, rule := range rulesFromOverrides {
-		rule.Provisioned = true
 		res.Rules = append(res.Rules, rule)
 	}
 
@@ -101,7 +109,7 @@ func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Re
 }
 
 func (r *RecordingRules) UpsertRecordingRule(ctx context.Context, req *connect.Request[settingsv1.UpsertRecordingRuleRequest]) (*connect.Response[settingsv1.UpsertRecordingRuleResponse], error) {
-	err := validateUpsert(req.Msg)
+	err := r.validateUpsert(ctx, req.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid request: %v", err))
 	}
@@ -160,17 +168,17 @@ func (r *RecordingRules) storeFromContext(ctx context.Context) (*bucketStore, er
 	if err != nil {
 		return nil, err
 	}
-	return r.storeForTenant(tenantID)
+	return r.storeForTenant(tenantID), nil
 }
 
-func (r *RecordingRules) storeForTenant(tenantID string) (*bucketStore, error) {
+func (r *RecordingRules) storeForTenant(tenantID string) *bucketStore {
 	key := store.Key{TenantID: tenantID}
 
 	r.rw.RLock()
 	tenantStore, ok := r.stores[key]
 	r.rw.RUnlock()
 	if ok {
-		return tenantStore, nil
+		return tenantStore
 	}
 
 	r.rw.Lock()
@@ -178,12 +186,12 @@ func (r *RecordingRules) storeForTenant(tenantID string) (*bucketStore, error) {
 
 	tenantStore, ok = r.stores[key]
 	if ok {
-		return tenantStore, nil
+		return tenantStore
 	}
 
 	tenantStore = newBucketStore(r.logger, r.bucket, key)
 	r.stores[key] = tenantStore
-	return tenantStore, nil
+	return tenantStore
 }
 
 func (r *RecordingRules) tenantOrError(ctx context.Context) (string, error) {
@@ -193,6 +201,15 @@ func (r *RecordingRules) tenantOrError(ctx context.Context) (string, error) {
 		return "", connect.NewError(connect.CodeInternal, err)
 	}
 	return tenantID, nil
+}
+
+func (r *RecordingRules) recordingRulesFromOverrides(tenantID string) []*settingsv1.RecordingRule {
+	rules := r.overrides.RecordingRules(tenantID)
+	for i := range rules {
+		rules[i].Provisioned = true
+		rules[i].Id = idForRule(rules[i])
+	}
+	return rules
 }
 
 func validateGet(req *settingsv1.GetRecordingRuleRequest) error {
@@ -213,16 +230,27 @@ var (
 	upsertIdRE = regexp.MustCompile(`^[a-zA-Z]+$`)
 )
 
-func validateUpsert(req *settingsv1.UpsertRecordingRuleRequest) error {
+func (r *RecordingRules) validateUpsert(ctx context.Context, req *settingsv1.UpsertRecordingRuleRequest) error {
+	// Validate fields.
+	var errs []error
+
+	tenantId, err := r.tenantOrError(ctx)
+	if err != nil {
+		return err
+	}
+	rulesFromConfig := r.recordingRulesFromOverrides(tenantId)
+	for _, r := range rulesFromConfig {
+		if r.Id == req.Id {
+			errs = append(errs, fmt.Errorf("rule with id='%s' was provisioned by config and can't be updated", req.Id))
+		}
+	}
+
 	// Format fields.
 	if req.Id == "" {
-		req.Id = generateID(10)
+		req.Id = generateID(idLength)
 		req.Generation = 1
 	}
 	req.MetricName = strings.TrimSpace(req.MetricName)
-
-	// Validate fields.
-	var errs []error
 
 	if !upsertIdRE.MatchString(req.Id) {
 		errs = append(errs, fmt.Errorf("id %q must match %s", req.Id, upsertIdRE.String()))
@@ -322,8 +350,12 @@ Loop:
 	return apiRule
 }
 
+const (
+	alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	idLength = 10
+)
+
 func generateID(length int) string {
-	const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 	if length < 1 {
 		return ""
@@ -334,4 +366,31 @@ func generateID(length int) string {
 		b[i] = alphabet[rand.Intn(len(alphabet))]
 	}
 	return string(b)
+}
+
+func idForRule(rule *settingsv1.RecordingRule) string {
+	var b strings.Builder
+	b.WriteString(rule.MetricName)
+	b.WriteString(rule.ProfileType)
+	sort.Strings(rule.Matchers)
+	for _, m := range rule.Matchers {
+		b.WriteString(m)
+	}
+	sort.Strings(rule.GroupBy)
+	for _, g := range rule.GroupBy {
+		b.WriteString(g)
+	}
+	for _, l := range rule.ExternalLabels {
+		b.WriteString(l.Name)
+		b.WriteString(l.Value)
+	}
+	if rule.StacktraceFilter != nil {
+		b.WriteString(rule.StacktraceFilter.FunctionName.FunctionName)
+	}
+	sum := sha256.Sum256([]byte(b.String()))
+	id := make([]byte, idLength)
+	for i := 0; i < idLength; i++ {
+		id[i] = alphabet[sum[i]%byte(len(alphabet))]
+	}
+	return string(id)
 }

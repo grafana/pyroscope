@@ -1,12 +1,15 @@
 package recording
 
 import (
+	"os"
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 )
 
 func Test_validateGet(t *testing.T) {
@@ -270,4 +273,87 @@ func Test_validateDelete(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_idForRule(t *testing.T) {
+	tests := []struct {
+		name       string
+		rule       *settingsv1.RecordingRule
+		expectedId string
+	}{
+		{
+			name:       "some-rule",
+			expectedId: "veouCnOZTo",
+			rule: &settingsv1.RecordingRule{
+				MetricName:  "metric1",
+				ProfileType: "cpu",
+				Matchers: []string{
+					`{ label_a = "A" }`,
+					`{ label_b =~ "B" }`,
+				},
+				GroupBy: []string{"label_c", "label_d"},
+				ExternalLabels: []*typesv1.LabelPair{
+					{Name: "label_e", Value: "E"},
+					{Name: "label_f", Value: "F"},
+				},
+				StacktraceFilter: &settingsv1.StacktraceFilter{
+					FunctionName: &settingsv1.StacktraceFilterFunctionName{
+						FunctionName: "function_name",
+					},
+				},
+			},
+		},
+		{
+			name:       "some-other-rule",
+			expectedId: "XMMpSpeTom",
+			rule: &settingsv1.RecordingRule{
+				MetricName:  "metric1",
+				ProfileType: "cpu",
+				Matchers: []string{
+					`{ label_a = "A" }`,
+					`{ label_b =~ "B" }`,
+				},
+				GroupBy: []string{"label_c", "label_d"},
+				ExternalLabels: []*typesv1.LabelPair{
+					{Name: "label_e", Value: "E"},
+					{Name: "label_f", Value: "F"},
+				},
+				StacktraceFilter: &settingsv1.StacktraceFilter{
+					FunctionName: &settingsv1.StacktraceFilterFunctionName{
+						FunctionName: "another_function_name",
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := idForRule(tt.rule)
+			require.Equal(t, tt.expectedId, result)
+		})
+	}
+}
+
+type testRecordingRules struct {
+	*RecordingRules
+	bucketPath string
+}
+
+func newTestRecordingRules(t *testing.T) RecordingRules {
+	logger := log.NewNopLogger()
+	if testing.Verbose() {
+		logger = log.NewLogfmtLogger(os.Stderr)
+	}
+	bucketPath := t.TempDir()
+	bucket, err := filesystem.NewBucket(bucketPath)
+	require.NoError(t, err)
+	return &testRecordingRules{
+		RecordingRules: New(bucket, logger),
+		bucketPath:     bucketPath,
+	}
+	return New()
+}
+
+func TestRecordingRules(t *testing.T) {
+	rec := newTestRecordingRules(t)
 }

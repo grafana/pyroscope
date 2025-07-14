@@ -487,7 +487,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		MemberlistKV:      {API},
 		Admin:             {API, Storage},
 		Version:           {API, MemberlistKV},
-		TenantSettings:    {API, Storage},
+		TenantSettings:    {API, Overrides, Storage},
 		AdHocProfiles:     {API, Overrides, Storage},
 		EmbeddedGrafana:   {API},
 		FeatureFlags:      {API},
@@ -592,6 +592,7 @@ func (f *Pyroscope) Run() error {
 			_, err := pyroscope.Start(pyroscope.Config{
 				ApplicationName: "pyroscope",
 				ServerAddress:   fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort),
+				TenantID:        "pyroscope",
 				Tags: map[string]string{
 					"hostname":           os.Getenv("HOSTNAME"),
 					"target":             "all",

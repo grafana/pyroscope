@@ -45,10 +45,6 @@ func (b *bucketStore) Get(ctx context.Context, id string) (*settingsv1.Recording
 	if err != nil {
 		return nil, err
 	}
-
-	if rule == nil {
-		return nil, fmt.Errorf("rule %s not found", id)
-	}
 	return rule, nil
 }
 

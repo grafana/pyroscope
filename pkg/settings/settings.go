@@ -58,7 +58,7 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger, overrides *valid
 	}
 
 	if cfg.Recording.Enabled {
-		ts.RecordingRulesServiceHandler = recording.New(cfg.Recording, bucket, logger, overrides)
+		ts.RecordingRulesServiceHandler = recording.New(bucket, logger, overrides)
 	}
 
 	ts.Service = services.NewBasicService(ts.starting, ts.running, ts.stopping)
