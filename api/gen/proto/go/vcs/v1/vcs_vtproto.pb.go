@@ -45,6 +45,7 @@ func (m *GithubAppResponse) CloneVT() *GithubAppResponse {
 	}
 	r := new(GithubAppResponse)
 	r.ClientID = m.ClientID
+	r.CallbackURL = m.CallbackURL
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -313,6 +314,9 @@ func (this *GithubAppResponse) EqualVT(that *GithubAppResponse) bool {
 		return false
 	}
 	if this.ClientID != that.ClientID {
+		return false
+	}
+	if this.CallbackURL != that.CallbackURL {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -967,6 +971,13 @@ func (m *GithubAppResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.CallbackURL) > 0 {
+		i -= len(m.CallbackURL)
+		copy(dAtA[i:], m.CallbackURL)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.CallbackURL)))
+		i--
+		dAtA[i] = 0x12
 	}
 	if len(m.ClientID) > 0 {
 		i -= len(m.ClientID)
@@ -1623,6 +1634,10 @@ func (m *GithubAppResponse) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
+	l = len(m.CallbackURL)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -1986,6 +2001,38 @@ func (m *GithubAppResponse) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ClientID = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CallbackURL", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.CallbackURL = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
