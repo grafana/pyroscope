@@ -2,11 +2,11 @@ package spanlogger
 
 import (
 	"context"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	dslog "github.com/grafana/dskit/log"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 
@@ -50,7 +50,7 @@ func (l LogSpanParametersWrapper) LabelValues(ctx context.Context, c *connect.Re
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
-		"matchers", dslog.LazySprintf("%v", c.Msg.Matchers),
+		"matchers", lazyJoin(c.Msg.Matchers, ","),
 		"name", c.Msg.Name,
 	)
 	defer sp.Finish()
@@ -66,7 +66,7 @@ func (l LogSpanParametersWrapper) LabelNames(ctx context.Context, c *connect.Req
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
-		"matchers", dslog.LazySprintf("%v", c.Msg.Matchers),
+		"matchers", lazyJoin(c.Msg.Matchers, ","),
 	)
 	defer sp.Finish()
 
@@ -81,8 +81,8 @@ func (l LogSpanParametersWrapper) Series(ctx context.Context, c *connect.Request
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
-		"matchers", dslog.LazySprintf("%v", c.Msg.Matchers),
-		"label_names", dslog.LazySprintf("%v", c.Msg.LabelNames),
+		"matchers", lazyJoin(c.Msg.Matchers, ","),
+		"label_names", lazyJoin(c.Msg.LabelNames, ","),
 	)
 	defer sp.Finish()
 
@@ -155,7 +155,7 @@ func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.R
 		"profile_type", c.Msg.ProfileTypeID,
 		"stacktrace_selector", c.Msg.StackTraceSelector,
 		"step", c.Msg.Step,
-		"by", dslog.LazySprintf("%v", c.Msg.GroupBy),
+		"by", lazyJoin(c.Msg.GroupBy, ","),
 		"aggregation", c.Msg.Aggregation,
 		"limit", c.Msg.Limit,
 	)
@@ -209,4 +209,17 @@ func (l LogSpanParametersWrapper) AnalyzeQuery(ctx context.Context, c *connect.R
 	defer sp.Finish()
 
 	return l.client.AnalyzeQuery(ctx, c)
+}
+
+type LazyJoin struct {
+	strs []string
+	sep  string
+}
+
+func (l *LazyJoin) String() string {
+	return strings.Join(l.strs, l.sep)
+}
+
+func lazyJoin(strs []string, sep string) *LazyJoin {
+	return &LazyJoin{strs: strs, sep: sep}
 }
