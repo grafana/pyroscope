@@ -50,7 +50,7 @@ func (l LogSpanParametersWrapper) LabelValues(ctx context.Context, c *connect.Re
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
-		"matchers", lazyJoin(c.Msg.Matchers, ","),
+		"matchers", lazyJoin(c.Msg.Matchers),
 		"name", c.Msg.Name,
 	)
 	defer sp.Finish()
@@ -66,7 +66,7 @@ func (l LogSpanParametersWrapper) LabelNames(ctx context.Context, c *connect.Req
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
-		"matchers", lazyJoin(c.Msg.Matchers, ","),
+		"matchers", lazyJoin(c.Msg.Matchers),
 	)
 	defer sp.Finish()
 
@@ -81,8 +81,8 @@ func (l LogSpanParametersWrapper) Series(ctx context.Context, c *connect.Request
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
-		"matchers", lazyJoin(c.Msg.Matchers, ","),
-		"label_names", lazyJoin(c.Msg.LabelNames, ","),
+		"matchers", lazyJoin(c.Msg.Matchers),
+		"label_names", lazyJoin(c.Msg.LabelNames),
 	)
 	defer sp.Finish()
 
@@ -155,7 +155,7 @@ func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.R
 		"profile_type", c.Msg.ProfileTypeID,
 		"stacktrace_selector", c.Msg.StackTraceSelector,
 		"step", c.Msg.Step,
-		"by", lazyJoin(c.Msg.GroupBy, ","),
+		"by", lazyJoin(c.Msg.GroupBy),
 		"aggregation", c.Msg.Aggregation,
 		"limit", c.Msg.Limit,
 	)
@@ -220,6 +220,6 @@ func (l *LazyJoin) String() string {
 	return strings.Join(l.strs, l.sep)
 }
 
-func lazyJoin(strs []string, sep string) *LazyJoin {
-	return &LazyJoin{strs: strs, sep: sep}
+func lazyJoin(strs []string) *LazyJoin {
+	return &LazyJoin{strs: strs, sep: ","}
 }
