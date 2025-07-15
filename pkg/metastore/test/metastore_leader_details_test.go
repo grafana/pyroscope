@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/grafana/dskit/flagext"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/require"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"

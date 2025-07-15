@@ -19,7 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/services"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"

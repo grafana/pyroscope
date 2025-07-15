@@ -361,10 +361,10 @@ func TestPersistence_index_e2e(t *testing.T) {
 
 	flbls := make([]phlaremodel.Labels, len(lbls))
 	for i, ls := range lbls {
-		flbls[i] = make(phlaremodel.Labels, 0, len(ls))
-		for _, l := range ls {
+		flbls[i] = make(phlaremodel.Labels, 0, ls.Len())
+		ls.Range(func(l labels.Label) {
 			flbls[i] = append(flbls[i], &typesv1.LabelPair{Name: l.Name, Value: l.Value})
-		}
+		})
 	}
 
 	// Sort labels as the index writer expects series in sorted order by fingerprint.
@@ -374,10 +374,10 @@ func TestPersistence_index_e2e(t *testing.T) {
 
 	symbols := map[string]struct{}{}
 	for _, lset := range lbls {
-		for _, l := range lset {
+		lset.Range(func(l labels.Label) {
 			symbols[l.Name] = struct{}{}
 			symbols[l.Value] = struct{}{}
-		}
+		})
 	}
 
 	var input index.IndexWriterSeriesSlice
