@@ -310,15 +310,6 @@ func Test_rowRangesWithSeriesIndex_getSeriesIndex(t *testing.T) {
 			expectIdx:  0,
 		},
 		{
-			name: "searchHint out of range",
-			ranges: rowRangesWithSeriesIndex{
-				{rowRange: &rowRange{rowNum: 0, length: 5}, seriesIndex: 1},
-			},
-			rowNum:     2,
-			searchHint: 100, // should reset to 0
-			expectIdx:  0,
-		},
-		{
 			name: "nil rowRange skipped",
 			ranges: rowRangesWithSeriesIndex{
 				{rowRange: nil, seriesIndex: 1},
@@ -351,21 +342,4 @@ func Test_rowRangesWithSeriesIndex_getSeriesIndex(t *testing.T) {
 			}
 		})
 	}
-}
-
-func Test_rowRangesWithSeriesIndex_getSeriesIndex_second_loop(t *testing.T) {
-	ranges := rowRangesWithSeriesIndex{
-		{rowRange: &rowRange{rowNum: 0, length: 5}, seriesIndex: 1},
-		{rowRange: &rowRange{rowNum: 5, length: 5}, seriesIndex: 2},
-	}
-	searchHint := 0
-
-	idx := ranges.getSeriesIndex(6, &searchHint)
-	assert.Equal(t, uint32(2), idx)
-	assert.Equal(t, 1, searchHint)
-
-	// rowNum is not increasing, so it will not hit the first loop, and will hit the second loop
-	idx = ranges.getSeriesIndex(2, &searchHint)
-	assert.Equal(t, uint32(1), idx)
-	assert.Equal(t, 0, searchHint)
 }

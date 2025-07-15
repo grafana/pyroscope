@@ -57,21 +57,6 @@ func (s rowRangesWithSeriesIndex) getSeriesIndex(rowNum int64, searchHint *int) 
 			return rg.seriesIndex
 		}
 	}
-
-	// Most of the time, index will found in the first loop,
-	// but if the rowNum is not increasing or the searchHint is wrong, we need to check the second loop.
-	// Maybe we can merge the two loops into one, but it will be not easy to understand.
-	for i := 0; i < *searchHint; i++ {
-		rg := s[i]
-		// it is possible that the series is not existing
-		if rg.rowRange == nil {
-			continue
-		}
-		if rg.rowNum <= rowNum && rg.rowNum+int64(rg.length) > rowNum {
-			*searchHint = i
-			return rg.seriesIndex
-		}
-	}
 	panic("series index not found")
 }
 
