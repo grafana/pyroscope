@@ -38,6 +38,8 @@ func New(bucket objstore.Bucket, logger log.Logger, overrides *validation.Overri
 	}
 }
 
+// RecordingRules is a collection that gathers rules coming from config and coming from the bucket storage.
+// Rules coming from config work as overrides of store rules, and in case of repeated ID, config rules prevail.
 type RecordingRules struct {
 	bucket objstore.Bucket
 	logger log.Logger
@@ -48,6 +50,8 @@ type RecordingRules struct {
 	overrides *validation.Overrides
 }
 
+// GetRecordingRule will return a rule of the given ID or not found.
+// Rules defined by config are returned over rules in the store.
 func (r *RecordingRules) GetRecordingRule(ctx context.Context, req *connect.Request[settingsv1.GetRecordingRuleRequest]) (*connect.Response[settingsv1.GetRecordingRuleResponse], error) {
 	err := validateGet(req.Msg)
 	if err != nil {
@@ -58,72 +62,75 @@ func (r *RecordingRules) GetRecordingRule(ctx context.Context, req *connect.Requ
 	if err != nil {
 		return nil, err
 	}
-	s := r.storeForTenant(tenantID)
 
-	rule, err := s.Get(ctx, req.Msg.Id)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	if rule != nil {
-		res := &settingsv1.GetRecordingRuleResponse{
-			Rule: convertRuleToAPI(rule),
-		}
-		return connect.NewResponse(res), nil
-	}
-
-	// look for provisioned rules:
-	rulesFromConfig := r.overrides.RecordingRules(tenantID)
+	// look for provisioned rules
+	rulesFromConfig := r.recordingRulesFromOverrides(tenantID)
 	for _, r := range rulesFromConfig {
 		if r.Id == req.Msg.Id {
 			return connect.NewResponse(&settingsv1.GetRecordingRuleResponse{Rule: r}), nil
 		}
 	}
-	return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no rule with id='%s' found", req.Msg.Id))
+
+	s := r.storeForTenant(tenantID)
+	rule, err := s.Get(ctx, req.Msg.Id)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if rule == nil {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no rule with id='%s' found", req.Msg.Id))
+	}
+
+	res := &settingsv1.GetRecordingRuleResponse{
+		Rule: convertRuleToAPI(rule),
+	}
+	return connect.NewResponse(res), nil
 }
 
+// ListRecordingRules will return all the rules defined by config and in the store. Rules in the store with the same ID
+// as a rule in config will be filtered out.
 func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Request[settingsv1.ListRecordingRulesRequest]) (*connect.Response[settingsv1.ListRecordingRulesResponse], error) {
 	tenantId, err := r.tenantOrError(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s := r.storeForTenant(tenantId)
 
+	rulesFromOverrides := r.recordingRulesFromOverrides(tenantId)
+	ruleIds := make(map[string]struct{}, len(rulesFromOverrides))
+	res := &settingsv1.ListRecordingRulesResponse{
+		Rules: make([]*settingsv1.RecordingRule, 0),
+	}
+	for _, r := range rulesFromOverrides {
+		ruleIds[r.Id] = struct{}{}
+		res.Rules = append(res.Rules, r)
+	}
+
+	s := r.storeForTenant(tenantId)
 	rulesFromStore, err := s.List(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	rulesFromOverrides := r.recordingRulesFromOverrides(tenantId)
-
-	res := &settingsv1.ListRecordingRulesResponse{
-		Rules: make([]*settingsv1.RecordingRule, 0, len(rulesFromStore.Rules)+len(rulesFromOverrides)),
-	}
 	for _, rule := range rulesFromStore.Rules {
+		if _, overridden := ruleIds[rule.Id]; overridden {
+			continue
+		}
 		res.Rules = append(res.Rules, convertRuleToAPI(rule))
 	}
-	res.Rules = append(res.Rules, rulesFromOverrides...)
 
 	return connect.NewResponse(res), nil
 }
 
+// UpsertRecordingRule upserts a rule in the storage.
+// Operational purposes: you can upsert store rules (no matter if they exist in config)
 func (r *RecordingRules) UpsertRecordingRule(ctx context.Context, req *connect.Request[settingsv1.UpsertRecordingRuleRequest]) (*connect.Response[settingsv1.UpsertRecordingRuleResponse], error) {
 	err := validateUpsert(req.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid request: %v", err))
 	}
 
-	tenantId, err := r.tenantOrError(ctx)
+	s, err := r.storeFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	rulesFromConfig := r.recordingRulesFromOverrides(tenantId)
-	for _, r := range rulesFromConfig {
-		if r.Id == req.Msg.Id {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("rule with id='%s' was provisioned by config and can't be updated", req.Msg.Id))
-		}
-	}
-
-	s := r.storeForTenant(tenantId)
 
 	newRule := &settingsv1.RecordingRuleStore{
 		Id:               req.Msg.Id,
@@ -149,6 +156,8 @@ func (r *RecordingRules) UpsertRecordingRule(ctx context.Context, req *connect.R
 	return connect.NewResponse(res), nil
 }
 
+// DeleteRecordingRule deletes a store rule
+// Operational purposes: you can delete store rules (no matter if they exist in config)
 func (r *RecordingRules) DeleteRecordingRule(ctx context.Context, req *connect.Request[settingsv1.DeleteRecordingRuleRequest]) (*connect.Response[settingsv1.DeleteRecordingRuleResponse], error) {
 	err := validateDelete(req.Msg)
 	if err != nil {
@@ -162,7 +171,7 @@ func (r *RecordingRules) DeleteRecordingRule(ctx context.Context, req *connect.R
 
 	err = s.Delete(ctx, req.Msg.Id)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, err
 	}
 
 	res := &settingsv1.DeleteRecordingRuleResponse{}
@@ -213,7 +222,10 @@ func (r *RecordingRules) recordingRulesFromOverrides(tenantID string) []*setting
 	rules := r.overrides.RecordingRules(tenantID)
 	for i := range rules {
 		rules[i].Provisioned = true
-		rules[i].Id = idForRule(rules[i])
+		if rules[i].Id == "" {
+			// for consistency, rules will be filled with an ID
+			rules[i].Id = idForRule(rules[i])
+		}
 	}
 	return rules
 }
