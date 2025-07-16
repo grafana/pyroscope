@@ -198,6 +198,7 @@ func (m *RecordingRule) CloneVT() *RecordingRule {
 	r.ProfileType = m.ProfileType
 	r.Generation = m.Generation
 	r.StacktraceFilter = m.StacktraceFilter.CloneVT()
+	r.Provisioned = m.Provisioned
 	if rhs := m.Matchers; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -597,6 +598,9 @@ func (this *RecordingRule) EqualVT(that *RecordingRule) bool {
 		return false
 	}
 	if !this.StacktraceFilter.EqualVT(that.StacktraceFilter) {
+		return false
+	}
+	if this.Provisioned != that.Provisioned {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1367,6 +1371,16 @@ func (m *RecordingRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Provisioned {
+		i--
+		if m.Provisioned {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x48
+	}
 	if m.StacktraceFilter != nil {
 		size, err := m.StacktraceFilter.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -1886,6 +1900,9 @@ func (m *RecordingRule) SizeVT() (n int) {
 	if m.StacktraceFilter != nil {
 		l = m.StacktraceFilter.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Provisioned {
+		n += 2
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3083,6 +3100,26 @@ func (m *RecordingRule) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Provisioned", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Provisioned = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

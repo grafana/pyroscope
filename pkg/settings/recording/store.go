@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -45,10 +46,6 @@ func (b *bucketStore) Get(ctx context.Context, id string) (*settingsv1.Recording
 	if err != nil {
 		return nil, err
 	}
-
-	if rule == nil {
-		return nil, fmt.Errorf("rule %s not found", id)
-	}
 	return rule, nil
 }
 
@@ -78,7 +75,11 @@ func (b *bucketStore) Upsert(ctx context.Context, newRule *settingsv1.RecordingR
 }
 
 func (b *bucketStore) Delete(ctx context.Context, ruleID string) error {
-	return b.store.Delete(ctx, ruleID)
+	err := b.store.Delete(ctx, ruleID)
+	if err == store.ErrElementNotFound {
+		return connect.NewError(connect.CodeNotFound, fmt.Errorf("no rule with ID='%s' found", ruleID))
+	}
+	return nil
 }
 
 type storeHelper struct {

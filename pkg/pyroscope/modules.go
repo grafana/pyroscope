@@ -142,7 +142,7 @@ func (f *Pyroscope) initRuntimeConfig() (services.Service, error) {
 }
 
 func (f *Pyroscope) initTenantSettings() (services.Service, error) {
-	settings, err := settings.New(f.Cfg.TenantSettings, f.storageBucket, log.With(f.logger, "component", TenantSettings))
+	settings, err := settings.New(f.Cfg.TenantSettings, f.storageBucket, log.With(f.logger, "component", TenantSettings), f.Overrides)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init settings service")
 	}
