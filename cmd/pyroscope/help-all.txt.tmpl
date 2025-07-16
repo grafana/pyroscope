@@ -36,7 +36,7 @@ Usage of ./pyroscope:
   -compactor.compaction-split-by string
     	Experimental: The strategy to use when splitting blocks during compaction. Supported values are: fingerprint, stacktracePartition. (default "fingerprint")
   -compactor.compactor-downsampler-enabled
-    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. (default true)
+    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. Note: This set the default for the teanant overrides, in order to be effective it also requires compactor.downsampler-enabled to be set to true. (default true)
   -compactor.compactor-tenant-shard-size int
     	Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
   -compactor.data-dir string
