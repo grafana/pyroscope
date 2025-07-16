@@ -44,7 +44,8 @@ func (q *Service) GithubApp(ctx context.Context, req *connect.Request[vcsv1.Gith
 	}
 
 	return connect.NewResponse(&vcsv1.GithubAppResponse{
-		ClientID: githubAppClientID,
+		ClientID:    githubAppClientID,
+		CallbackURL: githubAppCallbackURL,
 	}), nil
 }
 

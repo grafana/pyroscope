@@ -28,6 +28,7 @@ const (
 var (
 	githubAppClientID     = os.Getenv("GITHUB_CLIENT_ID")
 	githubAppClientSecret = os.Getenv("GITHUB_CLIENT_SECRET")
+	githubAppCallbackURL  = os.Getenv("GITHUB_CALLBACK_URL")
 )
 
 type githubAuthToken struct {
