@@ -221,7 +221,7 @@ func (c *Collection) UpsertCollectionRule(
 	if err := s.upsertRule(ctx, req.Msg); err != nil {
 		var cErr *store.ErrConflictGeneration
 		if errors.As(err, &cErr) {
-			return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("Conflicting update, please try again"))
+			return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("conflicting update, please try again"))
 		}
 		return nil, err
 	}

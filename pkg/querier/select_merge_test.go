@@ -13,11 +13,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/model"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
-var foobarlabels = phlaremodel.Labels([]*typesv1.LabelPair{{Name: "foo", Value: "bar"}})
+var foobarlabels = model.Labels([]*typesv1.LabelPair{{Name: "foo", Value: "bar"}})
 
 func TestSelectMergeStacktraces(t *testing.T) {
 	resp1 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
@@ -199,7 +198,7 @@ func TestSelectMergeByLabels(t *testing.T) {
 	})
 	values, err := iter.Slice(res)
 	require.NoError(t, err)
-	require.Equal(t, []phlaremodel.TimeSeriesValue{
+	require.Equal(t, []model.TimeSeriesValue{
 		{Ts: 1, Value: 1.0, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
 		{Ts: 2, Value: 2.0, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
 		{Ts: 3, Value: 3.0, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},

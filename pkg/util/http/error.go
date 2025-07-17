@@ -21,8 +21,8 @@ var errorWriter = connect.NewErrorWriter()
 const StatusClientClosedRequest = 499
 
 const (
-	ErrClientCanceled   = "The request was cancelled by the client."
-	ErrDeadlineExceeded = "Request timed out, decrease the duration of the request or add more label matchers (prefer exact match over regex match) to reduce the amount of data processed."
+	ErrClientCanceled   = "the request was cancelled by the client"
+	ErrDeadlineExceeded = "request timed out, decrease the duration of the request or add more label matchers (prefer exact match over regex match) to reduce the amount of data processed"
 )
 
 // Error write a go error with the correct status code.

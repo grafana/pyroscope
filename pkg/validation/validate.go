@@ -220,7 +220,7 @@ func SanitizeLabelName(ln string) (old, sanitized string, ok bool) {
 	}
 	hasDots := false
 	for i, b := range ln {
-		if !((b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_' || (b >= '0' && b <= '9' && i > 0)) {
+		if (b < 'a' || b > 'z') && (b < 'A' || b > 'Z') && b != '_' && (b < '0' || b > '9' || i == 0) {
 			if b == '.' {
 				hasDots = true
 			} else {

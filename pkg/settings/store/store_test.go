@@ -29,29 +29,29 @@ const storeJSON = `{
 
 type testObjHelper struct{}
 
-func (_ *testObjHelper) ID(o *testObj) string {
+func (*testObjHelper) ID(o *testObj) string {
 	return o.Name
 }
 
-func (_ *testObjHelper) GetGeneration(o *testObj) int64 {
+func (*testObjHelper) GetGeneration(o *testObj) int64 {
 	return o.Generation
 }
 
-func (_ *testObjHelper) SetGeneration(o *testObj, gen int64) {
+func (*testObjHelper) SetGeneration(o *testObj, gen int64) {
 	o.Generation = gen
 }
 
-func (_ *testObjHelper) FromStore(data json.RawMessage) (*testObj, error) {
+func (*testObjHelper) FromStore(data json.RawMessage) (*testObj, error) {
 	var obj testObj
 	err := json.Unmarshal(data, &obj)
 	return &obj, err
 }
 
-func (_ *testObjHelper) ToStore(obj *testObj) (json.RawMessage, error) {
+func (*testObjHelper) ToStore(obj *testObj) (json.RawMessage, error) {
 	return json.Marshal(obj)
 }
 
-func (_ *testObjHelper) TypePath() string {
+func (*testObjHelper) TypePath() string {
 	return "testobj.v1"
 }
 
