@@ -350,7 +350,7 @@ func TestPostingsMany(t *testing.T) {
 
 		// sort expected values by label hash instead of lexicographically by labelset
 		sort.Slice(exp, func(i, j int) bool {
-			return labels.FromStrings("i", exp[i], "foo", "bar").Hash() < labels.FromStrings("i", exp[j], "foo", "bar").Hash()
+			return labels.StableHash(labels.FromStrings("i", exp[i], "foo", "bar")) < labels.StableHash(labels.FromStrings("i", exp[j], "foo", "bar"))
 		})
 
 		require.Equal(t, exp, got, fmt.Sprintf("input: %v", c.in))
