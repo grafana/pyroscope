@@ -65,21 +65,21 @@ func TestSyncer_GarbageCollect_e2e(t *testing.T) {
 		m1.ULID = ulid.MustNew(100, nil)
 		m1.Compaction.Level = 2
 		m1.Compaction.Sources = ids[:4]
-		m1.Downsample.Resolution = 0
+		m1.Resolution = 0
 
 		var m2 block.Meta
 		m2.Version = 1
 		m2.ULID = ulid.MustNew(200, nil)
 		m2.Compaction.Level = 2
 		m2.Compaction.Sources = ids[4:8] // last two source IDs is not part of a level 2 block.
-		m2.Downsample.Resolution = 0
+		m2.Resolution = 0
 
 		var m3 block.Meta
 		m3.Version = 1
 		m3.ULID = ulid.MustNew(300, nil)
 		m3.Compaction.Level = 3
 		m3.Compaction.Sources = ids[:9] // last source ID is not part of level 3 block.
-		m3.Downsample.Resolution = 0
+		m3.Resolution = 0
 		m3.MinTime = 0
 		m3.MaxTime = model.Time(2 * time.Hour.Milliseconds())
 
@@ -88,7 +88,7 @@ func TestSyncer_GarbageCollect_e2e(t *testing.T) {
 		m4.ULID = ulid.MustNew(400, nil)
 		m4.Compaction.Level = 2
 		m4.Compaction.Sources = ids[9:] // covers the last block but is a different resolution. Must not trigger deletion.
-		m4.Downsample.Resolution = 1000
+		m4.Resolution = 1000
 		m4.MinTime = 0
 		m4.MaxTime = model.Time(2 * time.Hour.Milliseconds())
 
@@ -97,7 +97,7 @@ func TestSyncer_GarbageCollect_e2e(t *testing.T) {
 		m5.ULID = ulid.MustNew(500, nil)
 		m5.Compaction.Level = 2
 		m5.Compaction.Sources = ids[8:9] // built from block 8, but different resolution. Block 8 is already included in m3, can be deleted.
-		m5.Downsample.Resolution = 1000
+		m5.Resolution = 1000
 		m5.MinTime = 0
 		m5.MaxTime = model.Time(2 * time.Hour.Milliseconds())
 

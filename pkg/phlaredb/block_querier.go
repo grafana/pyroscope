@@ -2227,7 +2227,7 @@ func (r *parquetReader[P]) relPath() string {
 }
 
 func (r *parquetReader[P]) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
-	index, _ := query.GetColumnIndexByPath(r.file.File.Root(), columnName)
+	index, _ := query.GetColumnIndexByPath(r.file.Root(), columnName)
 	if index == -1 {
 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in parquet file '%s'", columnName, r.relPath()))
 	}

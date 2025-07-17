@@ -165,7 +165,7 @@ func (q *QueryFrontend) QueryMetadata(
 	// left, request the dataset index for query backend to lookup block datasets
 	// locally.
 	matchers = slices.DeleteFunc(matchers, func(m *labels.Matcher) bool {
-		return !(m.Name == phlaremodel.LabelNameServiceName && m.Type == labels.MatchEqual)
+		return m.Name != phlaremodel.LabelNameServiceName || m.Type != labels.MatchEqual
 	})
 	if len(matchers) == 0 {
 		// We preserve the __tenant_dataset__= label: this is needed for the

@@ -43,9 +43,9 @@ func (t *Tree) String() string {
 			remaining = remaining[1:]
 			for _, n := range current.nodes {
 				if len(n.children) > 0 {
-					remaining = append(remaining, &branch{nodes: n.children, Tree: current.Tree.AddBranch(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))})
+					remaining = append(remaining, &branch{nodes: n.children, Tree: current.AddBranch(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))})
 				} else {
-					current.Tree.AddNode(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))
+					current.AddNode(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))
 				}
 			}
 		}

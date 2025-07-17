@@ -218,6 +218,6 @@ func Benchmark_Reader_ResolvePprof(b *testing.B) {
 		r.Release()
 	}
 
-	b.ReportMetric(float64(bs.testBucket.getRangeCount.Load())/float64(b.N), "get_range_calls/op")
-	b.ReportMetric(float64(bs.testBucket.getRangeSize.Load())/float64(b.N), "get_range_bytes/op")
+	b.ReportMetric(float64(bs.getRangeCount.Load())/float64(b.N), "get_range_calls/op")
+	b.ReportMetric(float64(bs.getRangeSize.Load())/float64(b.N), "get_range_bytes/op")
 }
