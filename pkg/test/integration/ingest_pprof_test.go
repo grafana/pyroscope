@@ -332,7 +332,7 @@ func TestIngestPPROFSanitizeOtelLabels(t *testing.T) {
 				Str: p1.AddString("qwe.asd"),
 			},
 		}
-		p1bs, err := p1.Profile.MarshalVT()
+		p1bs, err := p1.MarshalVT()
 		require.NoError(t, err)
 
 		rb := p.NewRequestBuilder(t)
@@ -390,13 +390,13 @@ func TestGodeltaprofRelabelPush(t *testing.T) {
 			MemoryProfile().
 			ForStacktraceString("my", "other").
 			AddSamples(239, 239*blockSize, 1000, 1000*blockSize).
-			Profile.MarshalVT()
+			MarshalVT()
 
 		p2, _ := testhelper.NewProfileBuilder(time.Now().UnixNano()).
 			MemoryProfile().
 			ForStacktraceString("my", "other").
 			AddSamples(3, 3*blockSize, 1000, 1000*blockSize).
-			Profile.MarshalVT()
+			MarshalVT()
 
 		rb := p.NewRequestBuilder(t)
 		rb.Push(rb.PushPPROFRequestFromBytes(p1, metric), 200, "")
@@ -466,7 +466,7 @@ func TestPushStringTableOOBSampleType(t *testing.T) {
 					ForStacktraceString("my", "other").
 					AddSamples(239, 239*blockSize, 1000, 1000*blockSize)
 				td.corrupt(p1)
-				p1bs, err := p1.Profile.MarshalVT()
+				p1bs, err := p1.MarshalVT()
 				require.NoError(t, err)
 
 				rb := p.NewRequestBuilder(t)

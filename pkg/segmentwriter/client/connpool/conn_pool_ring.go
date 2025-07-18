@@ -25,7 +25,7 @@ type ConnPool interface {
 type Pool struct{ *ring_client.Pool }
 
 func (p *Pool) GetConnFor(addr string) (grpc.ClientConnInterface, error) {
-	c, err := p.Pool.GetClientFor(addr)
+	c, err := p.GetClientFor(addr)
 	if err != nil {
 		return nil, err
 	}

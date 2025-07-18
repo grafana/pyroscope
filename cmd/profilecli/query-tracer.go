@@ -377,7 +377,7 @@ func queryTracer(ctx context.Context, params *queryTracerParams) (err error) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("Tempo returned status code [%d]: %s ", resp.StatusCode, body)
+		return fmt.Errorf("tempo returned status code [%d]: %s ", resp.StatusCode, body)
 	}
 
 	var respBody struct {
@@ -454,7 +454,7 @@ func queryTracer(ctx context.Context, params *queryTracerParams) (err error) {
 
 			if resp.StatusCode != http.StatusOK {
 				body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-				return fmt.Errorf("Tempo returned status code [%d]: %s ", resp.StatusCode, body)
+				return fmt.Errorf("tempo returned status code [%d]: %s ", resp.StatusCode, body)
 			}
 
 			data, err := io.ReadAll(resp.Body)

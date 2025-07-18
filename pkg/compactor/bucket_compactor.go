@@ -179,7 +179,7 @@ type Grouper interface {
 // DefaultGroupKey returns a unique identifier for the group the block belongs to, based on
 // the DefaultGrouper logic. It considers the downsampling resolution and the block's labels.
 func DefaultGroupKey(meta block.Meta) string {
-	return defaultGroupKey(meta.Downsample.Resolution, labels.FromMap(meta.Labels))
+	return defaultGroupKey(meta.Resolution, labels.FromMap(meta.Labels))
 }
 
 func defaultGroupKey(res int64, lbls labels.Labels) string {

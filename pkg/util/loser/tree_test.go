@@ -167,13 +167,13 @@ func TestInitWithErr(t *testing.T) {
 		NewList(),
 		NewList(5, 6, 7, 8),
 	}
-	lists[0].err = testErr
+	lists[0].err = errTest
 	tree := loser.New(lists, math.MaxUint64, func(s *List) uint64 { return s.At() }, func(a, b uint64) bool { return a < b }, func(s *List) { s.Close() })
 	if tree.Next() {
 		t.Errorf("Next() should have returned false")
 	}
-	if tree.Err() != testErr {
-		t.Errorf("Err() should have returned %v, got %v", testErr, tree.Err())
+	if tree.Err() != errTest {
+		t.Errorf("Err() should have returned %v, got %v", errTest, tree.Err())
 	}
 
 	tree.Close()
@@ -183,7 +183,7 @@ func TestInitWithErr(t *testing.T) {
 
 }
 
-var testErr = errors.New("test")
+var errTest = errors.New("test")
 
 func TestErrDuringNext(t *testing.T) {
 	lists := []*List{
@@ -197,12 +197,12 @@ func TestErrDuringNext(t *testing.T) {
 		t.Errorf("Next() should have returned true")
 	}
 	// now error for second
-	lists[0].err = testErr
+	lists[0].err = errTest
 	if tree.Next() {
 		t.Errorf("Next() should have returned false")
 	}
-	if tree.Err() != testErr {
-		t.Errorf("Err() should have returned %v, got %v", testErr, tree.Err())
+	if tree.Err() != errTest {
+		t.Errorf("Err() should have returned %v, got %v", errTest, tree.Err())
 	}
 	if tree.Next() {
 		t.Errorf("Next() should have returned false")

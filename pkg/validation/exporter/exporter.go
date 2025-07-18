@@ -177,7 +177,7 @@ func (oe *OverridesExporter) isLeader() bool {
 		// If the ring is not enabled, export all metrics
 		return true
 	}
-	if oe.Service.State() != services.Running {
+	if oe.State() != services.Running {
 		// We haven't finished startup yet, likely waiting for ring stability.
 		return false
 	}

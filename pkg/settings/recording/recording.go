@@ -145,7 +145,7 @@ func (r *RecordingRules) UpsertRecordingRule(ctx context.Context, req *connect.R
 	if err != nil {
 		var cErr *store.ErrConflictGeneration
 		if errors.As(err, &cErr) {
-			return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("Conflicting update, please try again"))
+			return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("conflicting update, please try again"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

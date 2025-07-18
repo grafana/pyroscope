@@ -190,7 +190,7 @@ func hugeProfileBytes(t *testing.T) []byte {
 	for i := 0; i < 10_000; i++ {
 		p.ForStacktraceString(fmt.Sprintf("my_%d", i), "other").AddSamples(1)
 	}
-	bs, err := p.Profile.MarshalVT()
+	bs, err := p.MarshalVT()
 	require.NoError(t, err)
 	return bs
 }
@@ -2533,7 +2533,7 @@ func TestPush_LabelRewrites(t *testing.T) {
 			p := pproftesthelper.NewProfileBuilderWithLabels(1000*int64(idx), tc.series).CPUProfile()
 			p.ForStacktraceString("world", "hello").AddSamples(1)
 
-			data, err := p.Profile.MarshalVT()
+			data, err := p.MarshalVT()
 			require.NoError(t, err)
 
 			_, err = d.Push(ctx, connect.NewRequest(&pushv1.PushRequest{

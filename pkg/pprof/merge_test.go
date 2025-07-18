@@ -24,7 +24,7 @@ func Test_Merge_Single(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 	var m ProfileMerge
-	require.NoError(t, m.Merge(p.Profile.CloneVT()))
+	require.NoError(t, m.Merge(p.CloneVT()))
 	sortLabels(p.Profile)
 	testhelper.EqualProto(t, p.Profile, m.Profile())
 }
@@ -191,8 +191,8 @@ func Test_Merge_Self(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 	var m ProfileMerge
-	require.NoError(t, m.Merge(p.Profile.CloneVT()))
-	require.NoError(t, m.Merge(p.Profile.CloneVT()))
+	require.NoError(t, m.Merge(p.CloneVT()))
+	require.NoError(t, m.Merge(p.CloneVT()))
 	for i := range p.Sample {
 		s := p.Sample[i]
 		for j := range s.Value {
@@ -208,8 +208,8 @@ func Test_Merge_Halves(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 
-	a := p.Profile.CloneVT()
-	b := p.Profile.CloneVT()
+	a := p.CloneVT()
+	b := p.CloneVT()
 	n := len(p.Sample) / 2
 	a.Sample = a.Sample[:n]
 	b.Sample = b.Sample[n:]
@@ -220,7 +220,7 @@ func Test_Merge_Halves(t *testing.T) {
 
 	// Merge with self for normalisation.
 	var sm ProfileMerge
-	require.NoError(t, sm.Merge(p.Profile.CloneVT()))
+	require.NoError(t, sm.Merge(p.CloneVT()))
 	p.DurationNanos *= 2
 
 	sortLabels(p.Profile)
@@ -611,7 +611,7 @@ func Benchmark_Merge_self(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			var m ProfileMerge
-			require.NoError(b, m.Merge(p.Profile.CloneVT()))
+			require.NoError(b, m.Merge(p.CloneVT()))
 		}
 	})
 

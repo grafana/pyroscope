@@ -40,7 +40,7 @@ func addRaftInfoParams(cmd commander) *raftInfoParams {
 }
 
 func raftInfo(ctx context.Context, params *raftInfoParams) error {
-	client := params.phlareClient.metadataOperatorClient()
+	client := params.metadataOperatorClient()
 
 	res, err := client.NodeInfo(ctx, connect.NewRequest(&raftnodepb.NodeInfoRequest{}))
 	if err != nil {
@@ -82,9 +82,9 @@ func formatHumanRaftInfo(node *raftnodepb.NodeInfo) string {
 		keyPadding := maxKeyPadding(keys)
 		for _, pair := range pairs {
 			key, value := pair[0], pair[1]
-			sb.WriteString(fmt.Sprintf("%s:", key))
+			fmt.Fprintf(sb, "%s:", key)
 			sb.WriteString(strings.Repeat(" ", keyPadding-len(key)+1))
-			sb.WriteString(fmt.Sprintf("%s\n", value))
+			fmt.Fprintf(sb, "%s\n", value)
 		}
 	}
 

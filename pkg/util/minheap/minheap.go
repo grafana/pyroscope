@@ -22,7 +22,7 @@ func Pop(h []int64) []int64 {
 func up(h []int64, j int) {
 	for {
 		i := (j - 1) / 2 // parent
-		if i == j || !(h[j] < h[i]) {
+		if i == j || (h[j] >= h[i]) {
 			break
 		}
 		h[i], h[j] = h[j], h[i]
@@ -41,7 +41,7 @@ func down(h []int64, i0, n int) bool {
 		if j2 := j1 + 1; j2 < n && h[j2] < h[j1] {
 			j = j2 // = 2*i + 2  // right child
 		}
-		if !(h[j] < h[i]) {
+		if h[j] >= h[i] {
 			break
 		}
 		h[i], h[j] = h[j], h[i]

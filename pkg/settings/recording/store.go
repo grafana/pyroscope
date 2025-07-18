@@ -86,15 +86,15 @@ type storeHelper struct {
 	b *bucketStore
 }
 
-func (_ *storeHelper) SetGeneration(rule *settingsv1.RecordingRuleStore, generation int64) {
+func (*storeHelper) SetGeneration(rule *settingsv1.RecordingRuleStore, generation int64) {
 	rule.Generation = generation
 }
 
-func (_ *storeHelper) GetGeneration(rule *settingsv1.RecordingRuleStore) int64 {
+func (*storeHelper) GetGeneration(rule *settingsv1.RecordingRuleStore) int64 {
 	return rule.Generation
 }
 
-func (_ *storeHelper) FromStore(storeBytes json.RawMessage) (*settingsv1.RecordingRuleStore, error) {
+func (*storeHelper) FromStore(storeBytes json.RawMessage) (*settingsv1.RecordingRuleStore, error) {
 	var store settingsv1.RecordingRuleStore
 	err := protojson.Unmarshal(storeBytes, &store)
 	if err != nil {
@@ -104,14 +104,14 @@ func (_ *storeHelper) FromStore(storeBytes json.RawMessage) (*settingsv1.Recordi
 	return &store, nil
 }
 
-func (_ *storeHelper) ToStore(rule *settingsv1.RecordingRuleStore) (json.RawMessage, error) {
+func (*storeHelper) ToStore(rule *settingsv1.RecordingRuleStore) (json.RawMessage, error) {
 	return protojson.Marshal(rule)
 }
 
-func (_ *storeHelper) ID(rule *settingsv1.RecordingRuleStore) string {
+func (*storeHelper) ID(rule *settingsv1.RecordingRuleStore) string {
 	return rule.Id
 }
 
-func (_ *storeHelper) TypePath() string {
+func (*storeHelper) TypePath() string {
 	return "settings/recording_rule.v1"
 }

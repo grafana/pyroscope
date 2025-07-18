@@ -47,11 +47,8 @@ func sortJobsBySmallestRangeOldestBlocksFirst(jobs []*Job) []*Job {
 			return false
 		}
 
-		checkLength := true
+		checkLength := !jobs[i].UseSplitting() || !jobs[j].UseSplitting()
 		// Don't check length for splitting jobs. We want to the oldest split blocks to be first, no matter the length.
-		if jobs[i].UseSplitting() && jobs[j].UseSplitting() {
-			checkLength = false
-		}
 
 		if checkLength {
 			iLength := jobs[i].MaxTime() - jobs[i].MinTime()

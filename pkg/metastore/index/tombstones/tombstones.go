@@ -110,11 +110,11 @@ func (x *Tombstones) put(k tombstoneKey, v store.TombstoneEntry) bool {
 	x.tombstones[k] = e
 	x.queue.push(e)
 	x.metrics.incrementTombstones(v.Tombstones)
-	if v.Tombstones.Blocks != nil {
+	if v.Blocks != nil {
 		// Keep track of the blocks we enqueued. This is
 		// necessary to answer if the block has already
 		// been deleted (within a limited time window).
-		x.putBlockTombstones(v.Tombstones.Blocks)
+		x.putBlockTombstones(v.Blocks)
 	}
 	return true
 }
@@ -127,8 +127,8 @@ func (x *Tombstones) delete(k tombstoneKey) (t *tombstones) {
 	delete(x.tombstones, k)
 	x.metrics.decrementTombstones(e.Tombstones)
 	if t = x.queue.delete(e); t != nil {
-		if t.Tombstones.Blocks != nil {
-			x.deleteBlockTombstones(t.Tombstones.Blocks)
+		if t.Blocks != nil {
+			x.deleteBlockTombstones(t.Blocks)
 		}
 	}
 	return t

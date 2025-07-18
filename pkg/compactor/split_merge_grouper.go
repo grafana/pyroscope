@@ -78,7 +78,7 @@ func (g *SplitAndMergeGrouper) Groups(blocks map[ulid.ULID]*block.Meta) (res []*
 
 		// All the blocks within the same group have the same downsample
 		// resolution and external labels.
-		resolution := job.blocks[0].Downsample.Resolution
+		resolution := job.blocks[0].Resolution
 		externalLabels := labels.FromMap(job.blocks[0].Labels)
 
 		compactionJob := NewJob(
@@ -367,7 +367,7 @@ func getMaxTime(blocks []*block.Meta) int64 {
 // defaultGroupKeyWithoutShardID returns the default group key excluding ShardIDLabelName
 // when computing it.
 func defaultGroupKeyWithoutShardID(meta *block.Meta) string {
-	return defaultGroupKey(meta.Downsample.Resolution, labelsWithout(meta.Labels, sharding.CompactorShardIDLabel, block.HostnameLabel))
+	return defaultGroupKey(meta.Resolution, labelsWithout(meta.Labels, sharding.CompactorShardIDLabel, block.HostnameLabel))
 }
 
 // labelsWithout returns a copy of the input labels without the given labels.

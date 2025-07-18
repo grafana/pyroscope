@@ -36,7 +36,7 @@ func (f *ShardAwareDeduplicateFilter) Filter(ctx context.Context, metas map[ulid
 
 	metasByResolution := make(map[int64][]*block.Meta)
 	for _, meta := range metas {
-		res := meta.Downsample.Resolution
+		res := meta.Resolution
 		metasByResolution[res] = append(metasByResolution[res], meta)
 	}
 

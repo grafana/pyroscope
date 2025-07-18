@@ -28,10 +28,10 @@ type TombstoneEntry struct {
 
 func (e TombstoneEntry) Name() string {
 	switch {
-	case e.Tombstones.Blocks != nil:
-		return e.Tombstones.Blocks.Name
-	case e.Tombstones.Shard != nil:
-		return e.Tombstones.Shard.Name
+	case e.Blocks != nil:
+		return e.Blocks.Name
+	case e.Shard != nil:
+		return e.Shard.Name
 	default:
 		return ""
 	}
@@ -92,8 +92,8 @@ func (x *tombstoneEntriesIterator) Err() error {
 
 func marshalTombstoneEntry(e TombstoneEntry) store.KV {
 	k := marshalTombstoneEntryKey(e)
-	b := make([]byte, e.Tombstones.SizeVT())
-	_, _ = e.Tombstones.MarshalToSizedBufferVT(b)
+	b := make([]byte, e.SizeVT())
+	_, _ = e.MarshalToSizedBufferVT(b)
 	return store.KV{Key: k, Value: b}
 }
 
@@ -120,7 +120,7 @@ func unmarshalTombstoneEntry(e *TombstoneEntry, kv store.KV) error {
 	e.Index = binary.BigEndian.Uint64(kv.Key[0:8])
 	e.AppendedAt = int64(binary.BigEndian.Uint64(kv.Key[8:16]))
 	e.Tombstones = new(metastorev1.Tombstones)
-	if err := e.Tombstones.UnmarshalVT(kv.Value); err != nil {
+	if err := e.UnmarshalVT(kv.Value); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidTombstoneEntry, err)
 	}
 	return nil

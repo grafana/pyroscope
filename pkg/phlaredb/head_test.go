@@ -55,7 +55,7 @@ type testHead struct {
 
 func (t *testHead) Flush(ctx context.Context) error {
 	defer func() {
-		t.t.Logf("flushing head of block %v", t.Head.meta.ULID)
+		t.t.Logf("flushing head of block %v", t.meta.ULID)
 	}()
 	return t.Head.Flush(ctx)
 }
