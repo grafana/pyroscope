@@ -19,7 +19,7 @@ var (
 	}}
 
 	defaultRecordingRules = []*model.RecordingRule{{
-		ExternalLabels: labels.Labels{{
+		ExternalLabels: []labels.Label{{
 			Name:  "__name__",
 			Value: "default_recording_rule",
 		}},
@@ -43,7 +43,7 @@ var (
 			{Type: labels.MatchNotEqual, Name: "matcher1", Value: "value"},
 		},
 		GroupBy: []string{"group_by_label"},
-		ExternalLabels: labels.Labels{
+		ExternalLabels: []labels.Label{
 			{Name: "foo", Value: "bar"},
 			{Name: "__name__", Value: "rule"},
 		},

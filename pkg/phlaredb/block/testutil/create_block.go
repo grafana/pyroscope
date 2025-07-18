@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"

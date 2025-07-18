@@ -1,8 +1,6 @@
 package metrics
 
 import (
-	"sort"
-
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -17,7 +15,7 @@ type SampleObserver struct {
 	state *observerState
 
 	recordingTime  int64
-	externalLabels labels.Labels
+	externalLabels []labels.Label
 
 	exporter Exporter
 	ruler    Ruler
@@ -262,14 +260,13 @@ func (o *SampleObserver) Close() {
 // initState compute labelsMap for quick lookups. Then check whether row matches the filters
 // if filters match, then labels to export are computed, and fetch/create the series where the value needs to be
 // aggregated. This state is hold for the following rows with the same fingerprint, so we can observe those faster
-func (r *recording) initState(labelsMap map[string]string, externalLabels labels.Labels, recordingTime int64) {
+func (r *recording) initState(labelsMap map[string]string, externalLabels []labels.Label, recordingTime int64) {
 	r.state.matches = r.matches(labelsMap)
 	if !r.state.matches {
 		return
 	}
 
-	exportedLabels := generateExportedLabels(labelsMap, r, externalLabels)
-	sort.Sort(exportedLabels)
+	exportedLabels := labels.New(generateExportedLabels(labelsMap, r, externalLabels)...)
 	aggregatedFp := model.Fingerprint(exportedLabels.Hash())
 
 	series, ok := r.data[aggregatedFp]
@@ -282,13 +279,13 @@ func (r *recording) initState(labelsMap map[string]string, externalLabels labels
 
 func newTimeSeries(exportedLabels labels.Labels, recordingTime int64) *prompb.TimeSeries {
 	// prompb.Labels don't implement sort interface, so we need to use labels.Labels and transform it later
-	pbLabels := make([]prompb.Label, 0, len(exportedLabels))
-	for _, label := range exportedLabels {
+	pbLabels := make([]prompb.Label, 0, exportedLabels.Len())
+	exportedLabels.Range(func(l labels.Label) {
 		pbLabels = append(pbLabels, prompb.Label{
-			Name:  label.Name,
-			Value: label.Value,
+			Name:  l.Name,
+			Value: l.Value,
 		})
-	}
+	})
 	series := &prompb.TimeSeries{
 		Labels: pbLabels,
 		Samples: []prompb.Sample{
@@ -300,8 +297,8 @@ func newTimeSeries(exportedLabels labels.Labels, recordingTime int64) *prompb.Ti
 	return series
 }
 
-func generateExportedLabels(labelsMap map[string]string, rec *recording, externalLabels labels.Labels) labels.Labels {
-	exportedLabels := make(labels.Labels, 0, len(externalLabels)+len(rec.rule.ExternalLabels)+len(rec.rule.GroupBy))
+func generateExportedLabels(labelsMap map[string]string, rec *recording, externalLabels []labels.Label) []labels.Label {
+	exportedLabels := make([]labels.Label, 0, len(externalLabels)+len(rec.rule.ExternalLabels)+len(rec.rule.GroupBy))
 	exportedLabels = append(exportedLabels, externalLabels...)
 	exportedLabels = append(exportedLabels, rec.rule.ExternalLabels...)
 	// Keep the groupBy labels if present

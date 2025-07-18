@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/grafana/dskit/multierror"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"

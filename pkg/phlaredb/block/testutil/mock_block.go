@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 

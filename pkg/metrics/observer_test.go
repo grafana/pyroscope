@@ -34,7 +34,7 @@ func Test_Observer_observe(t *testing.T) {
 				labels.MustNewMatcher(labels.MatchEqual, "b", "1"),
 			},
 			GroupBy:        []string{"c"},
-			ExternalLabels: labels.Labels{{Name: "external1", Value: "external1"}},
+			ExternalLabels: []labels.Label{{Name: "external1", Value: "external1"}},
 		},
 		{
 			Matchers: []*labels.Matcher{

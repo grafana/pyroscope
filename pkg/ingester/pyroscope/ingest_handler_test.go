@@ -84,12 +84,11 @@ func (m *MockPushService) Push(ctx context.Context, req *connect.Request[pushv1.
 	return nil, nil
 }
 
-func (m *MockPushService) selectActualProfile(ls labels.Labels, st string) DumpProfile {
-	sort.Sort(ls)
+func (m *MockPushService) selectActualProfile(lsUnsorted []labels.Label, st string) DumpProfile {
+	ls := labels.New(lsUnsorted...)
 	lss := ls.String()
 	for _, p := range m.reqPprof {
 		promLabels := phlaremodel.Labels(p.Labels).ToPrometheusLabels()
-		sort.Sort(promLabels)
 		actualLabels := labels.NewBuilder(promLabels).Del("jfr_event").Labels()
 		als := actualLabels.String()
 		if als == lss {
@@ -130,8 +129,8 @@ func (m *MockPushService) CompareDump(file string) {
 	m.reqPprof = req
 
 	for i := range expected.Profiles {
-		expectedLabels := labels.Labels{}
-		err := expectedLabels.UnmarshalJSON([]byte(expected.Profiles[i].Labels))
+		expectedLabels := []labels.Label{}
+		err := json.Unmarshal([]byte(expected.Profiles[i].Labels), &expectedLabels)
 		require.NoError(m.T, err)
 
 		actual := m.selectActualProfile(expectedLabels, expected.Profiles[i].SampleType)

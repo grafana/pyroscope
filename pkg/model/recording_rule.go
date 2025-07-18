@@ -13,7 +13,7 @@ import (
 type RecordingRule struct {
 	Matchers       []*labels.Matcher
 	GroupBy        []string
-	ExternalLabels labels.Labels
+	ExternalLabels []labels.Label
 	FunctionName   string
 }
 
@@ -51,7 +51,7 @@ func NewRecordingRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
 	r := &RecordingRule{
 		Matchers:       matchers,
 		GroupBy:        rule.GroupBy,
-		ExternalLabels: make(labels.Labels, 0, len(rule.ExternalLabels)+1),
+		ExternalLabels: make([]labels.Label, 0, len(rule.ExternalLabels)+1),
 		FunctionName:   functionName,
 	}
 

@@ -20,7 +20,7 @@ import (
 	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/pkg/errors"
@@ -34,7 +34,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type DeduplicateFilter interface {
@@ -183,7 +182,7 @@ func DefaultGroupKey(meta block.Meta) string {
 }
 
 func defaultGroupKey(res int64, lbls labels.Labels) string {
-	return fmt.Sprintf("%d@%v", res, util.StableHash(lbls))
+	return fmt.Sprintf("%d@%v", res, labels.StableHash(lbls))
 }
 
 func minTime(metas []*block.Meta) time.Time {

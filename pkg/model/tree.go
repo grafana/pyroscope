@@ -334,10 +334,10 @@ func (t *Tree) MarshalTruncate(w io.Writer, maxNodes int64) (err error) {
 	for len(nodes) > 0 {
 		last := len(nodes) - 1
 		n, nodes = nodes[last], nodes[:last]
-		if _, _ = vw.Write(w, uint64(len(n.name))); err != nil {
+		if _, err = vw.Write(w, uint64(len(n.name))); err != nil {
 			return err
 		}
-		if _, _ = w.Write(unsafeStringBytes(n.name)); err != nil {
+		if _, err = w.Write(unsafeStringBytes(n.name)); err != nil {
 			return err
 		}
 		if _, err = vw.Write(w, uint64(n.self)); err != nil {

@@ -3,7 +3,7 @@ package util
 import (
 	"unsafe"
 
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 )
 
 func ULIDStringUnixNano(s string) int64 {

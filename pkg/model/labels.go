@@ -149,7 +149,7 @@ func (ls Labels) ToPrometheusLabels() labels.Labels {
 	for i, l := range ls {
 		res[i] = labels.Label{Name: l.Name, Value: l.Value}
 	}
-	return res
+	return labels.New(res...)
 }
 
 func (ls Labels) WithoutPrivateLabels() Labels {
