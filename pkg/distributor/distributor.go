@@ -297,6 +297,8 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
+	logger := log.With(d.logger, "tenant", tenantID)
+
 	req.TenantID = tenantID
 	for _, series := range req.Series {
 		serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
@@ -323,7 +325,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	// They are unfortunately part of the Push API so we explicitly clear them here.
 	req.ClearAnnotations()
 	if err := d.checkIngestLimit(req); err != nil {
-		level.Debug(d.logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
+		level.Debug(logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
 		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return nil, err
@@ -340,7 +342,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 		groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, series.Labels)
 		if err := d.checkUsageGroupsIngestLimit(req, groups.Names()); err != nil {
-			level.Debug(d.logger).Log("msg", "rejecting push request due to usage group ingest limit", "tenant", tenantID)
+			level.Debug(logger).Log("msg", "rejecting push request due to usage group ingest limit", "tenant", tenantID)
 			validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 			groups.CountDiscardedBytes(string(validation.IngestLimitReached), req.TotalBytesUncompressed)
@@ -348,7 +350,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		}
 
 		if sample := d.shouldSample(tenantID, groups.Names()); !sample {
-			level.Debug(d.logger).Log("msg", "skipping push request due to sampling", "tenant", tenantID)
+			level.Debug(logger).Log("msg", "skipping push request due to sampling", "tenant", tenantID)
 			validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
 			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
@@ -371,7 +373,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			groups.CountReceivedBytes(profName, int64(decompressedSize))
 
 			if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
-				_ = level.Debug(d.logger).Log("msg", "invalid profile", "err", err)
+				_ = level.Debug(logger).Log("msg", "invalid profile", "err", err)
 				reason := string(validation.ReasonOf(err))
 				validation.DiscardedProfiles.WithLabelValues(reason, tenantID).Add(float64(req.TotalProfiles))
 				validation.DiscardedBytes.WithLabelValues(reason, tenantID).Add(float64(req.TotalBytesUncompressed))
@@ -410,7 +412,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	}
 
 	if err := injectMappingVersions(req.Series); err != nil {
-		_ = level.Warn(d.logger).Log("msg", "failed to inject mapping versions", "err", err)
+		_ = level.Warn(logger).Log("msg", "failed to inject mapping versions", "err", err)
 	}
 
 	// Reduce cardinality of the session_id label.
