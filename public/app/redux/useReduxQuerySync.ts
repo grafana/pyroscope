@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { actions as tracingActions } from '@pyroscope/redux/reducers/tracing';
 import { history } from '@pyroscope/util/history';
 import ReduxQuerySync from 'redux-query-sync';
 import { actions as continuousActions } from './reducers/continuous';
@@ -59,11 +58,6 @@ export function setupReduxQuerySync() {
           return undefined;
         },
         action: continuousActions.setQuery,
-      },
-      queryID: {
-        defaultvalue: '',
-        selector: (state: RootState) => state.tracing.queryID,
-        action: tracingActions.setQueryID,
       },
       rightQuery: {
         defaultvalue: '',

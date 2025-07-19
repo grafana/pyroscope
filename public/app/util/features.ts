@@ -8,7 +8,6 @@ const featuresSchema = z.object({
   signupEnabled: z.boolean().default(false),
   isAuthRequired: z.boolean().default(false),
   exportToFlamegraphDotComEnabled: z.boolean().default(true),
-  exemplarsPageEnabled: z.boolean().default(false),
 });
 
 function hasFeatures(
@@ -37,6 +36,5 @@ export const isSignupEnabled = features.signupEnabled;
 export const isExportToFlamegraphDotComEnabled =
   features.exportToFlamegraphDotComEnabled;
 export const isAuthRequired = features.isAuthRequired;
-export const isExemplarsPageEnabled = features.exemplarsPageEnabled;
 
 export const isGrafanaFlamegraphEnabled = true;

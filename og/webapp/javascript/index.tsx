@@ -29,8 +29,6 @@ import Forbidden from './pages/IntroPages/Forbidden';
 import NotFound from './pages/IntroPages/NotFound';
 import { PAGES } from './pages/constants';
 import history from './util/history';
-import TracingSingleView from './pages/TracingSingleView';
-import ExemplarsSingleView from './pages/exemplars/ExemplarsSingleView';
 
 function App() {
   return (
@@ -55,20 +53,6 @@ function App() {
             <Protected>
               <Continuous>
                 <ContinuousDiffView />
-              </Continuous>
-            </Protected>
-          </Route>
-          <Route path={PAGES.TRACING_EXEMPLARS_MERGE}>
-            <Protected>
-              <Continuous>
-                <TracingSingleView />
-              </Continuous>
-            </Protected>
-          </Route>
-          <Route path={PAGES.TRACING_EXEMPLARS_SINGLE}>
-            <Protected>
-              <Continuous>
-                <ExemplarsSingleView />
               </Continuous>
             </Protected>
           </Route>
