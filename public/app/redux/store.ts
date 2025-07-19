@@ -13,9 +13,7 @@ import {
 // @ts-ignore: Until we rewrite FlamegraphRenderer in typescript this will do
 import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
 
-import userReducer from './reducers/user';
 import { continuousReducer } from './reducers/continuous';
-import serviceDiscoveryReducer from './reducers/serviceDiscovery';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 import tenantReducer, {
   persistConfig as tenantPersistConfig,
@@ -23,8 +21,6 @@ import tenantReducer, {
 import { setStore } from '@pyroscope/services/storage';
 
 const reducer = combineReducers({
-  user: userReducer,
-  serviceDiscovery: serviceDiscoveryReducer,
   ui: persistReducer(uiPersistConfig, uiStore),
   continuous: continuousReducer,
   tenant: persistReducer(tenantPersistConfig, tenantReducer),
