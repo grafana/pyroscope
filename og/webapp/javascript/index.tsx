@@ -12,7 +12,6 @@ import PageTitle from '@webapp/components/PageTitle';
 import store, { persistor } from './redux/store';
 
 import ContinuousSingleView from './pages/ContinuousSingleView';
-import ContinuousComparisonView from './pages/ContinuousComparisonView';
 import ContinuousDiffView from './pages/ContinuousDiffView';
 import TagExplorerView from './pages/TagExplorerView';
 import Continuous from './components/Continuous';
@@ -49,13 +48,6 @@ function App() {
             <Protected>
               <Continuous>
                 <ContinuousSingleView />
-              </Continuous>
-            </Protected>
-          </Route>
-          <Route path={PAGES.COMPARISON_VIEW}>
-            <Protected>
-              <Continuous>
-                <ContinuousComparisonView />
               </Continuous>
             </Protected>
           </Route>

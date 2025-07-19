@@ -18,33 +18,7 @@ type SingleView =
     };
 
 
-type ComparisonView = {
-  left:
-    | { type: 'pristine'; profile?: Profile }
-    | { type: 'loading'; profile?: Profile }
-    | { type: 'loaded'; profile: Profile }
-    | { type: 'reloading'; profile: Profile };
 
-  right:
-    | { type: 'pristine'; profile?: Profile }
-    | { type: 'loading'; profile?: Profile }
-    | { type: 'loaded'; profile: Profile }
-    | { type: 'reloading'; profile: Profile };
-
-  comparisonMode: {
-    active: boolean;
-    period: {
-      label: string;
-      ms: number;
-    };
-  };
-};
-
-export type DiffView =
-  | { type: 'pristine'; profile?: Profile }
-  | { type: 'loading'; profile?: Profile }
-  | { type: 'loaded'; profile: Profile }
-  | { type: 'reloading'; profile: Profile };
 
 type TimelineState =
   | { type: 'pristine'; timeline: Timeline }
@@ -90,8 +64,6 @@ export interface ContinuousState {
   refreshToken?: string;
 
   singleView: SingleView;
-  diffView: DiffView;
-  comparisonView: ComparisonView;
   tags: Tags;
 
   apps:

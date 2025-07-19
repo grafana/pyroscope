@@ -1,7 +1,5 @@
 import React from 'react';
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons/faWindowMaximize';
-import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
-import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
 import { faInfoCircle } from '@fortawesome/free-solid-svg-icons/faInfoCircle';
 import { faFileAlt } from '@fortawesome/free-solid-svg-icons/faFileAlt';
@@ -71,25 +69,6 @@ export function Sidebar() {
             <NavLink
               activeClassName="active-route"
               to={{ pathname: ROUTES.SINGLE_VIEW, search }}
-              exact
-            />
-          </MenuItem>
-          <MenuItem
-            data-testid="sidebar-continuous-comparison"
-            active={isRouteActive(pathname, ROUTES.COMPARISON_VIEW)}
-            icon={<Icon icon={faColumns} />}
-          >
-            Comparison View
-            <NavLink to={{ pathname: ROUTES.COMPARISON_VIEW, search }} exact />
-          </MenuItem>
-          <MenuItem
-            data-testid="sidebar-continuous-diff"
-            active={isRouteActive(pathname, ROUTES.COMPARISON_DIFF_VIEW)}
-            icon={<Icon icon={faChartBar} />}
-          >
-            Diff View
-            <NavLink
-              to={{ pathname: ROUTES.COMPARISON_DIFF_VIEW, search }}
               exact
             />
           </MenuItem>

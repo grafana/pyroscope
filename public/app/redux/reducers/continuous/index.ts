@@ -5,10 +5,7 @@ import { createAsyncThunk } from '../../async-thunk';
 import { ContinuousState, TagsState } from './state';
 import { fetchTagValues, fetchTags } from './tags.thunks';
 import { fetchSingleView } from './singleView.thunks';
-import { fetchComparisonSide } from './comparisonView.thunks';
 import { fetchSideTimelines } from './timelines.thunks';
-import { fetchDiffView } from './diffView.thunks';
-import { defaultcomparisonPeriod } from '@pyroscope/components/SideTimelineComparator/periods';
 import { fetchApps } from '@pyroscope/services/apps';
 import { formatAsOBject } from '@pyroscope/util/formatDate';
 import { App } from '@pyroscope/models/app';
@@ -24,17 +21,7 @@ const initialState: ContinuousState = {
   aggregation: 'sum',
 
   singleView: { type: 'pristine' },
-  diffView: { type: 'pristine' },
-  comparisonView: {
-    left: { type: 'pristine' },
-    right: { type: 'pristine' },
-    comparisonMode: {
-      active: false,
-      period: defaultcomparisonPeriod,
-    },
-  },
   tags: {},
-  newAnnotation: { type: 'pristine' },
 
   apps: {
     type: 'loaded',
@@ -154,9 +141,6 @@ export const continuousSlice = createSlice({
       state.refreshToken = Math.random().toString();
     },
 
-    setComparisonMode(state, action) {
-      state.comparisonView.comparisonMode = action.payload;
-    },
   },
 
   extraReducers: (builder) => {
@@ -210,48 +194,6 @@ export const continuousSlice = createSlice({
       };
     });
 
-    /** ************************** */
-    /*      Comparison View      */
-    /** ************************** */
-    builder.addCase(fetchComparisonSide.pending, (state, action) => {
-      const s = state.comparisonView[action.meta.arg.side];
-      switch (s.type) {
-        case 'loaded':
-        case 'reloading': {
-          state.comparisonView[action.meta.arg.side] = {
-            ...s,
-            type: 'reloading',
-          };
-          break;
-        }
-
-        default: {
-          state.comparisonView[action.meta.arg.side] = {
-            ...state.comparisonView[action.meta.arg.side],
-            type: 'loading',
-          };
-        }
-      }
-    });
-
-    builder.addCase(fetchComparisonSide.fulfilled, (state, action) => {
-      state.comparisonView[action.meta.arg.side] = {
-        ...action.payload.data,
-        type: 'loaded',
-      };
-    });
-
-    builder.addCase(fetchComparisonSide.rejected, (state, action) => {
-      const { side } = action.meta.arg;
-
-      if (action.meta.aborted) {
-        return;
-      }
-
-      state.comparisonView[side] = {
-        type: 'pristine',
-      };
-    });
 
     /** ************************** */
     /*      Timeline Sides       */
@@ -280,46 +222,6 @@ export const continuousSlice = createSlice({
     // TODO
     builder.addCase(fetchSideTimelines.rejected, () => {});
 
-    /** ******************** */
-    /*      Diff View      */
-    /** ******************** */
-    builder.addCase(fetchDiffView.pending, (state) => {
-      switch (state.diffView.type) {
-        // if we are fetching but there's already data
-        // it's considered a 'reload'
-        case 'reloading':
-        case 'loaded': {
-          state.diffView = {
-            ...state.diffView,
-            type: 'reloading',
-          };
-          break;
-        }
-
-        default: {
-          state.diffView = {
-            type: 'loading',
-          };
-        }
-      }
-    });
-
-    builder.addCase(fetchDiffView.fulfilled, (state, action) => {
-      state.diffView = {
-        ...action.payload,
-        profile: action.payload.profile,
-        type: 'loaded',
-      };
-    });
-    builder.addCase(fetchDiffView.rejected, (state, action) => {
-      if (action.meta.aborted) {
-        return;
-      }
-
-      state.diffView = {
-        type: 'pristine',
-      };
-    });
 
 
 
@@ -390,8 +292,6 @@ export * from './selectors';
 export * from './state';
 export * from './tags.thunks';
 export * from './singleView.thunks';
-export * from './comparisonView.thunks';
 export * from './timelines.thunks';
-export * from './diffView.thunks';
 
 export const continuousReducer = continuousSlice.reducer;

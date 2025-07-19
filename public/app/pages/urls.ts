@@ -1,7 +1,5 @@
 export const PAGES = {
   CONTINOUS_SINGLE_VIEW: '/',
-  COMPARISON_VIEW: '/comparison',
-  COMPARISON_DIFF_VIEW: '/comparison-diff',
   LOGIN: '/login',
   SIGNUP: '/signup',
   SERVICE_DISCOVERY: '/service-discovery',

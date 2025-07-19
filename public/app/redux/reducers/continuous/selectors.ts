@@ -1,6 +1,6 @@
 import { brandQuery, Query, queryToAppName } from '@pyroscope/models/query';
 import type { RootState } from '@pyroscope/redux/store';
-import { ContinuousState, TagsState } from './state';
+import { TagsState } from './state';
 
 export const selectContinuousState = (state: RootState) => state.continuous;
 export const selectApplicationName = (state: RootState) => {
@@ -25,8 +25,6 @@ export const selectAppNames = (state: RootState) => {
   return selectApps(state).map((a) => a.name);
 };
 
-export const selectComparisonState = (state: RootState) =>
-  state.continuous.comparisonView;
 
 export const selectAppTags = (query?: Query) => (state: RootState) => {
   if (query) {
