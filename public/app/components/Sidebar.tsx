@@ -1,6 +1,5 @@
 import React from 'react';
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons/faWindowMaximize';
-import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
 import { faInfoCircle } from '@fortawesome/free-solid-svg-icons/faInfoCircle';
 import { faFileAlt } from '@fortawesome/free-solid-svg-icons/faFileAlt';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
@@ -12,37 +11,18 @@ import SidebarUI, {
   SidebarContent,
   Menu,
 } from '@pyroscope/ui/Sidebar';
-import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
-import {
-  selectSidebarCollapsed,
-  collapseSidebar,
-  uncollapseSidebar,
-  recalculateSidebar,
-} from '@pyroscope/redux/reducers/ui';
 import { useLocation, NavLink } from 'react-router-dom';
 import Icon from '@pyroscope/ui/Icon';
 import clsx from 'clsx';
-import { useWindowWidth } from '@react-hook/window-size';
 import { isRouteActive, ROUTES } from '@pyroscope/pages/routes';
 import Logo from '@pyroscope/static/logo.svg';
 import styles from './Sidebar.module.css';
 import { SidebarTenant } from '@pyroscope/components/SidebarTenant';
 
 export function Sidebar() {
-  const collapsed = useAppSelector(selectSidebarCollapsed);
-  const dispatch = useAppDispatch();
+  const collapsed = true;
 
   const { search, pathname } = useLocation();
-  const windowWidth = useWindowWidth();
-
-  React.useLayoutEffect(() => {
-    dispatch(recalculateSidebar());
-  }, [dispatch, windowWidth]);
-
-  const toggleCollapse = () => {
-    const action = collapsed ? uncollapseSidebar : collapseSidebar;
-    dispatch(action());
-  };
 
   return (
     <SidebarUI collapsed={collapsed}>
@@ -97,17 +77,6 @@ export function Sidebar() {
             >
               Github
             </a>
-          </MenuItem>
-          <MenuItem
-            data-testid="collapse-sidebar"
-            className={clsx(
-              styles.collapseIcon,
-              collapsed ? styles.collapsedIconCollapsed : ''
-            )}
-            onClick={toggleCollapse}
-            icon={<Icon icon={faChevronLeft} />}
-          >
-            Collapse Sidebar
           </MenuItem>
         </Menu>
       </SidebarFooter>
