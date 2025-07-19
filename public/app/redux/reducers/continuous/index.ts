@@ -7,11 +7,6 @@ import { fetchTagValues, fetchTags } from './tags.thunks';
 import { fetchSingleView } from './singleView.thunks';
 import { fetchComparisonSide } from './comparisonView.thunks';
 import { fetchSideTimelines } from './timelines.thunks';
-import {
-  fetchTagExplorerView,
-  fetchTagExplorerViewProfile,
-  ALL_TAGS,
-} from './tagExplorer.thunks';
 import { fetchDiffView } from './diffView.thunks';
 import { defaultcomparisonPeriod } from '@pyroscope/components/SideTimelineComparator/periods';
 import { fetchApps } from '@pyroscope/services/apps';
@@ -39,13 +34,6 @@ const initialState: ContinuousState = {
     },
   },
   tags: {},
-  tagExplorerView: {
-    groupByTag: '',
-    groupByTagValue: '',
-    groupsLoadingType: 'pristine',
-    activeTagProfileLoadingType: 'pristine',
-    groups: {},
-  },
   newAnnotation: { type: 'pristine' },
 
   apps: {
@@ -120,16 +108,6 @@ export const continuousSlice = createSlice({
     setQuery(state, action: PayloadAction<Query>) {
       // TODO: figure out why is being dispatched as undefined
       state.query = action.payload || '';
-
-      state.tagExplorerView.groupByTag = '';
-      state.tagExplorerView.groupByTagValue = '';
-    },
-    setTagExplorerViewGroupByTag(state, action: PayloadAction<string>) {
-      state.tagExplorerView.groupByTag = action.payload;
-      state.tagExplorerView.groupByTagValue = ALL_TAGS;
-    },
-    setTagExplorerViewGroupByTagValue(state, action: PayloadAction<string>) {
-      state.tagExplorerView.groupByTagValue = action.payload;
     },
     setLeftQuery(state, action: PayloadAction<Query>) {
       state.leftQuery = action.payload;
@@ -343,73 +321,7 @@ export const continuousSlice = createSlice({
       };
     });
 
-    /** **************************** */
-    /*      Tag Explorer View      */
-    /** **************************** */
 
-    builder.addCase(fetchTagExplorerView.pending, (state) => {
-      switch (state.tagExplorerView.groupsLoadingType) {
-        // if we are fetching but there's already data
-        // it's considered a 'reload'
-        case 'reloading':
-        case 'loaded': {
-          state.tagExplorerView = {
-            ...state.tagExplorerView,
-            groupsLoadingType: 'reloading',
-          };
-          break;
-        }
-
-        default: {
-          state.tagExplorerView = {
-            ...state.tagExplorerView,
-            groupsLoadingType: 'loading',
-          };
-        }
-      }
-    });
-
-    builder.addCase(fetchTagExplorerView.fulfilled, (state, action) => {
-      state.tagExplorerView = {
-        ...state.tagExplorerView,
-        ...action.payload,
-        groupsLoadingType: 'loaded',
-      };
-    });
-
-    builder.addCase(fetchTagExplorerView.rejected, () => {});
-
-    /** ************************************ */
-    /*      Tag Explorer View Profile      */
-    /** ************************************ */
-
-    builder.addCase(fetchTagExplorerViewProfile.pending, (state) => {
-      switch (state.tagExplorerView.activeTagProfileLoadingType) {
-        case 'loaded':
-        case 'reloading':
-          state.tagExplorerView = {
-            ...state.tagExplorerView,
-            activeTagProfileLoadingType: 'reloading',
-          };
-          break;
-
-        default:
-          state.tagExplorerView = {
-            ...state.tagExplorerView,
-            activeTagProfileLoadingType: 'loading',
-          };
-      }
-    });
-
-    builder.addCase(fetchTagExplorerViewProfile.fulfilled, (state, action) => {
-      state.tagExplorerView = {
-        ...state.tagExplorerView,
-        activeTagProfile: action.payload.profile,
-        activeTagProfileLoadingType: 'loaded',
-      };
-    });
-
-    builder.addCase(fetchTagExplorerViewProfile.rejected, () => {});
 
     /** ************** */
     /*      Tags     */
@@ -480,7 +392,6 @@ export * from './tags.thunks';
 export * from './singleView.thunks';
 export * from './comparisonView.thunks';
 export * from './timelines.thunks';
-export * from './tagExplorer.thunks';
 export * from './diffView.thunks';
 
 export const continuousReducer = continuousSlice.reducer;

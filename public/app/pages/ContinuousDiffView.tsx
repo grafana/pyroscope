@@ -8,7 +8,6 @@ import {
   fetchTagValues,
   selectQueries,
   selectTimelineSides,
-  selectAnnotationsOrDefault,
 } from '@pyroscope/redux/reducers/continuous';
 import usePopulateLeftRightQuery from '@pyroscope/hooks/populateLeftRightQuery.hook';
 import useTimelines, {
@@ -51,7 +50,6 @@ function ComparisonDiffApp({
     rightUntil,
   } = useAppSelector(selectContinuousState);
   const { leftQuery, rightQuery } = useAppSelector(selectQueries);
-  const annotations = useAppSelector(selectAnnotationsOrDefault('diffView'));
 
   usePopulateLeftRightQuery();
   const { leftTags, rightTags } = useTags();
@@ -115,7 +113,6 @@ function ComparisonDiffApp({
             id="timeline-chart-diff"
             format="lines"
             height="125px"
-            annotations={annotations}
             timelineA={leftTimeline}
             timelineB={rightTimeline}
             onSelect={(from, until) => {

@@ -6,7 +6,6 @@ import Color from 'color';
 import type { Group } from '@pyroscope/legacy/models';
 import type { Timeline } from '@pyroscope/models/timeline';
 import { Annotation } from '@pyroscope/models/annotation';
-import Legend from '@pyroscope/pages/tagExplorer/components/Legend';
 import type { TooltipCallbackProps } from '@pyroscope/components/TimelineChart/Tooltip.plugin';
 import TooltipWrapper from '@pyroscope/components/TimelineChart/TooltipWrapper';
 import type { TooltipWrapperProps } from '@pyroscope/components/TimelineChart/TooltipWrapper';
@@ -88,12 +87,6 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   /** selection type 'single' => gray selection, 'double' => color selection */
   selectionType: 'single' | 'double';
   onHoverDisplayTooltip?: React.FC<TooltipCallbackProps>;
-
-  /** list of annotations timestamp, to be rendered as markings */
-  annotations?: Annotation[];
-
-  /** What element to render when clicking */
-  ContextMenu?: (props: ContextMenuProps) => React.ReactNode;
 
   /** The list of timeline IDs (flotjs component) to sync the crosshair with */
   syncCrosshairsWith?: string[];

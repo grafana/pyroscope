@@ -1,6 +1,5 @@
 import React from 'react';
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons/faWindowMaximize';
-import { faSearch } from '@fortawesome/free-solid-svg-icons/faSearch';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
@@ -63,18 +62,6 @@ export function Sidebar() {
       </SidebarHeader>
       <SidebarContent>
         <Menu iconShape="square" popperArrow>
-          <MenuItem
-            data-testid="sidebar-explore-page"
-            active={isRouteActive(pathname, ROUTES.EXPLORE_VIEW)}
-            icon={<Icon icon={faSearch} />}
-          >
-            Tag Explorer
-            <NavLink
-              activeClassName="active-route"
-              to={{ pathname: ROUTES.EXPLORE_VIEW, search }}
-              exact
-            />
-          </MenuItem>
           <MenuItem
             data-testid="sidebar-continuous-single"
             active={isRouteActive(pathname, ROUTES.SINGLE_VIEW)}

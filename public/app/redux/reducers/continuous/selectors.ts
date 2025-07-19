@@ -66,43 +66,6 @@ export const selectQueries = (state: RootState) => {
   };
 };
 
-type ViewStates = Extract<keyof ContinuousState, `${string}View`>;
-export const selectAnnotationsOrDefault =
-  (view: ViewStates) => (state: RootState) => {
-    switch (view) {
-      case 'singleView': {
-        if ('annotations' in state.continuous.singleView) {
-          return state.continuous.singleView.annotations;
-        }
-        return [];
-      }
-
-      case 'tagExplorerView': {
-        return state.continuous.tagExplorerView.annotations;
-      }
-
-      // Merge data from both sides into a single annotation
-      // Which is fine, since this extra data won't be used if outside the time range
-      // NOTE: this assumes the left and right timelines belong to the same application
-      case 'diffView':
-      case 'comparisonView': {
-        const left =
-          'annotations' in state.continuous.leftTimeline
-            ? state.continuous.leftTimeline.annotations
-            : [];
-        const right =
-          'annotations' in state.continuous.rightTimeline
-            ? state.continuous.rightTimeline.annotations
-            : [];
-        return [...left, ...right];
-      }
-
-      default:
-        const exhaustiveCheck: never = view;
-        throw new Error(`Unhandled case: ${exhaustiveCheck}`);
-    }
-  };
-
 export const selectRanges = (rootState: RootState) => {
   const state = rootState.continuous;
 

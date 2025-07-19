@@ -6,7 +6,6 @@ export const PAGES = {
   SIGNUP: '/signup',
   SERVICE_DISCOVERY: '/service-discovery',
   FORBIDDEN: '/forbidden',
-  TAG_EXPLORER: '/explore',
   TRACING_EXEMPLARS_MERGE: '/exemplars/merge',
   TRACING_EXEMPLARS_SINGLE: '/exemplars/single',
 };

@@ -1,12 +1,7 @@
-import type { Profile, Groups } from '@pyroscope/legacy/models';
+import type { Profile } from '@pyroscope/legacy/models';
 import type { Timeline } from '@pyroscope/models/timeline';
 import type { App } from '@pyroscope/models/app';
 
-type NewAnnotationState =
-  | {
-      type: 'pristine';
-    }
-  | { type: 'saving' };
 
 type SingleView =
   | { type: 'pristine'; profile?: Profile }
@@ -22,49 +17,6 @@ type SingleView =
       profile: Profile;
     };
 
-type TagExplorerView = GroupByType &
-  GroupsLoadingType &
-  ActiveProfileType & {
-  };
-
-type GroupByType = {
-  groupByTag: string;
-  groupByTagValue: string;
-};
-
-type GroupsLoadingType =
-  | {
-      groupsLoadingType: 'pristine';
-      groups: Groups;
-    }
-  | {
-      groupsLoadingType: 'loading';
-      groups: Groups;
-    }
-  | {
-      groupsLoadingType: 'loaded';
-      groups: Groups;
-    }
-  | {
-      groupsLoadingType: 'reloading';
-      groups: Groups;
-    };
-
-type ActiveProfileType =
-  | {
-      activeTagProfileLoadingType: 'pristine';
-    }
-  | {
-      activeTagProfileLoadingType: 'loading';
-    }
-  | {
-      activeTagProfileLoadingType: 'loaded';
-      activeTagProfile: Profile;
-    }
-  | {
-      activeTagProfileLoadingType: 'reloading';
-      activeTagProfile: Profile;
-    };
 
 type ComparisonView = {
   left:
@@ -140,8 +92,6 @@ export interface ContinuousState {
   singleView: SingleView;
   diffView: DiffView;
   comparisonView: ComparisonView;
-  tagExplorerView: TagExplorerView;
-  newAnnotation: NewAnnotationState;
   tags: Tags;
 
   apps:
