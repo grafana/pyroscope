@@ -1,6 +1,5 @@
 import type { Profile, Groups } from '@pyroscope/legacy/models';
 import type { Timeline } from '@pyroscope/models/timeline';
-import type { Annotation } from '@pyroscope/models/annotation';
 import type { App } from '@pyroscope/models/app';
 
 type NewAnnotationState =
@@ -16,19 +15,16 @@ type SingleView =
       type: 'loaded';
       timeline: Timeline;
       profile: Profile;
-      annotations: Annotation[];
     }
   | {
       type: 'reloading';
       timeline: Timeline;
       profile: Profile;
-      annotations: Annotation[];
     };
 
 type TagExplorerView = GroupByType &
   GroupsLoadingType &
   ActiveProfileType & {
-    annotations: Annotation[];
   };
 
 type GroupByType = {
@@ -102,7 +98,7 @@ type TimelineState =
   | { type: 'pristine'; timeline: Timeline }
   | { type: 'loading'; timeline: Timeline }
   | { type: 'reloading'; timeline: Timeline }
-  | { type: 'loaded'; timeline: Timeline; annotations: Annotation[] };
+  | { type: 'loaded'; timeline: Timeline; };
 
 type TagsData =
   | { type: 'pristine' }

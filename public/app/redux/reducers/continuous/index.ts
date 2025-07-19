@@ -4,7 +4,6 @@ import { addNotification } from '../notifications';
 import { createAsyncThunk } from '../../async-thunk';
 import { ContinuousState, TagsState } from './state';
 import { fetchTagValues, fetchTags } from './tags.thunks';
-import { addAnnotation } from './annotations.thunks';
 import { fetchSingleView } from './singleView.thunks';
 import { fetchComparisonSide } from './comparisonView.thunks';
 import { fetchSideTimelines } from './timelines.thunks';
@@ -46,7 +45,6 @@ const initialState: ContinuousState = {
     groupsLoadingType: 'pristine',
     activeTagProfileLoadingType: 'pristine',
     groups: {},
-    annotations: [],
   },
   newAnnotation: { type: 'pristine' },
 
@@ -294,12 +292,10 @@ export const continuousSlice = createSlice({
       state.leftTimeline = {
         type: 'loaded',
         timeline: action.payload.left.timeline,
-        annotations: action.payload.left.annotations,
       };
       state.rightTimeline = {
         type: 'loaded',
         timeline: action.payload.right.timeline,
-        annotations: action.payload.right.annotations,
       };
     });
 
@@ -461,27 +457,6 @@ export const continuousSlice = createSlice({
     builder.addCase(reloadAppNames.rejected, (state) => {
       state.apps = { type: 'failed', data: state.apps.data };
     });
-
-    /** ************** */
-    /*  Annotation   */
-    /** ************** */
-    builder.addCase(addAnnotation.fulfilled, (state, action) => {
-      // TODO(eh-am): allow arbitrary views
-      if ('annotations' in state.singleView) {
-        // TODO(eh-am): dedup
-        state.singleView.annotations = [
-          ...state.singleView.annotations,
-          action.payload.annotation,
-        ];
-      }
-      state.newAnnotation = { type: 'pristine' };
-    });
-    builder.addCase(addAnnotation.pending, (state) => {
-      state.newAnnotation = { type: 'saving' };
-    });
-    builder.addCase(addAnnotation.rejected, (state) => {
-      state.newAnnotation = { type: 'pristine' };
-    });
   },
 });
 
@@ -503,7 +478,6 @@ export * from './selectors';
 export * from './state';
 export * from './tags.thunks';
 export * from './singleView.thunks';
-export * from './annotations.thunks';
 export * from './comparisonView.thunks';
 export * from './timelines.thunks';
 export * from './tagExplorer.thunks';

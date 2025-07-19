@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 const featuresSchema = z.object({
-  enableAdhocUI: z.boolean().default(false),
   googleEnabled: z.boolean().default(false),
   gitlabEnabled: z.boolean().default(false),
   githubEnabled: z.boolean().default(false),
@@ -30,7 +29,6 @@ const features = featuresSchema.parse(
 );
 
 // Re-export with more friendly names
-export const isAdhocUIEnabled = features.enableAdhocUI;
 export const isGoogleEnabled = features.googleEnabled;
 export const isGitlabEnabled = features.gitlabEnabled;
 export const isGithubEnabled = features.githubEnabled;
@@ -40,8 +38,5 @@ export const isExportToFlamegraphDotComEnabled =
   features.exportToFlamegraphDotComEnabled;
 export const isAuthRequired = features.isAuthRequired;
 export const isExemplarsPageEnabled = features.exemplarsPageEnabled;
-
-// oss only features
-export const isAnnotationsEnabled = true;
 
 export const isGrafanaFlamegraphEnabled = true;

@@ -12,7 +12,6 @@ import {
   buildMergeURLWithQueryID,
 } from '@pyroscope/util/updateRequests';
 import { Timeline, TimelineSchema } from '@pyroscope/models/timeline';
-import { Annotation, AnnotationSchema } from '@pyroscope/models/annotation';
 import type { RequestError } from '@pyroscope/services/base';
 import { request, parseResponse } from '@pyroscope/services/base';
 
@@ -20,16 +19,9 @@ export interface RenderOutput {
   profile: Profile;
   timeline: Timeline;
   groups?: Groups;
-  annotations: Annotation[];
 }
 
-// Default to empty array if not present
-const defaultAnnotationsSchema = z.preprocess((a) => {
-  if (!a) {
-    return [];
-  }
-  return a;
-}, z.array(AnnotationSchema));
+
 
 interface RenderSingleProps {
   from: string;
@@ -57,7 +49,6 @@ export async function renderSingle(
   const parsed = FlamebearerProfileSchema.merge(
     z.object({
       timeline: TimelineSchema,
-      annotations: defaultAnnotationsSchema,
     })
   )
     .merge(z.object({ telemetry: z.object({}).passthrough().optional() }))
@@ -66,12 +57,11 @@ export async function renderSingle(
   if (parsed.success) {
     // TODO: strip timeline
     const profile = parsed.data;
-    const { timeline, annotations } = parsed.data;
+    const { timeline } = parsed.data;
 
     return Result.ok({
       profile,
       timeline,
-      annotations,
     });
   }
 
