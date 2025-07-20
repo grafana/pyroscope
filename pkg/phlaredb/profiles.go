@@ -43,7 +43,7 @@ type rowRangesWithSeriesIndex []rowRangeWithSeriesIndex
 // getSeriesIndex returns the series index for a given row number.
 // searchHint is the hint for the index to start searching from, it should be passed to next call of this function.
 func (s rowRangesWithSeriesIndex) getSeriesIndex(rowNum int64, searchHint *int) uint32 {
-	if *searchHint < 0 || *searchHint > len(s) {
+	if *searchHint < 0 || *searchHint >= len(s) {
 		*searchHint = 0
 	}
 	for i := *searchHint; i < len(s); i++ {

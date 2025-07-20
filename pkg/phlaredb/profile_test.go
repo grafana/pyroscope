@@ -282,32 +282,32 @@ func TestProfileIndex_Add_OutOfOrder(t *testing.T) {
 
 func Test_rowRangesWithSeriesIndex_getSeriesIndex(t *testing.T) {
 	testCases := []struct {
-		name        string
-		ranges      rowRangesWithSeriesIndex
-		rowNum      int64
-		searchHint  int
-		expectIdx   int
-		expectPanic bool
+		name              string
+		ranges            rowRangesWithSeriesIndex
+		rowNum            int64
+		searchHint        int
+		expectSeriesIndex uint32
+		expectPanic       bool
 	}{
 		{
-			name: "main loop hit",
+			name: "hit 1",
 			ranges: rowRangesWithSeriesIndex{
 				{rowRange: &rowRange{rowNum: 0, length: 5}, seriesIndex: 1},
 				{rowRange: &rowRange{rowNum: 5, length: 5}, seriesIndex: 2},
 			},
-			rowNum:     6,
-			searchHint: 1,
-			expectIdx:  1,
+			rowNum:            4,
+			searchHint:        0,
+			expectSeriesIndex: 1,
 		},
 		{
-			name: "second loop hit",
+			name: "hit 2",
 			ranges: rowRangesWithSeriesIndex{
 				{rowRange: &rowRange{rowNum: 0, length: 5}, seriesIndex: 1},
 				{rowRange: &rowRange{rowNum: 5, length: 5}, seriesIndex: 2},
 			},
-			rowNum:     1,
-			searchHint: 1, // will skip 0 in main loop, hit in second loop
-			expectIdx:  0,
+			rowNum:            6,
+			searchHint:        1,
+			expectSeriesIndex: 2,
 		},
 		{
 			name: "nil rowRange skipped",
@@ -315,9 +315,9 @@ func Test_rowRangesWithSeriesIndex_getSeriesIndex(t *testing.T) {
 				{rowRange: nil, seriesIndex: 1},
 				{rowRange: &rowRange{rowNum: 10, length: 5}, seriesIndex: 2},
 			},
-			rowNum:     12,
-			searchHint: 0,
-			expectIdx:  1,
+			rowNum:            12,
+			searchHint:        0,
+			expectSeriesIndex: 2,
 		},
 		{
 			name:        "not found panics",
@@ -337,8 +337,7 @@ func Test_rowRangesWithSeriesIndex_getSeriesIndex(t *testing.T) {
 				})
 			} else {
 				idx := tc.ranges.getSeriesIndex(tc.rowNum, &searchHint)
-				assert.Equal(t, tc.ranges[tc.expectIdx].seriesIndex, idx)
-				assert.Equal(t, tc.expectIdx, searchHint)
+				assert.Equal(t, tc.expectSeriesIndex, idx)
 			}
 		})
 	}
