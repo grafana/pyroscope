@@ -69,7 +69,7 @@ generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/pr
 	cd api/ && PATH=$(BIN) $(BIN)/buf generate
 	cd pkg && PATH=$(BIN) $(BIN)/buf generate
 	PATH="$(BIN):$(PATH)" ./tools/add-parquet-tags.sh
-	go run ./tools/doc-generator/ ./docs/sources/configure-server/reference-configuration-parameters/index.template > docs/sources/configure-server/reference-configuration-parameters/index.md
+	go run -tags slicelabels ./tools/doc-generator/ ./docs/sources/configure-server/reference-configuration-parameters/index.template > docs/sources/configure-server/reference-configuration-parameters/index.md
 
 .PHONY: buf/lint
 buf/lint: $(BIN)/buf
@@ -173,7 +173,7 @@ go/bin-profilecli-debug:
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
 	$(BIN)/golangci-lint run ./... ./lidia/...
-	$(GO) vet ./... ./lidia/...
+	$(GO) vet -tags slicelabels ./... ./lidia/...
 
 .PHONY: update-contributors
 update-contributors: ## Update the contributors in README.md
