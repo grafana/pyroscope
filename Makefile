@@ -9,7 +9,7 @@ MAKEFLAGS += --no-print-directory
 BIN := $(CURDIR)/.tmp/bin
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
-GO_TEST_FLAGS ?= -v -race -cover
+GO_TEST_FLAGS ?= -v -race -cover -tags slicelabels
 GO_MOD_VERSION := 1.23.0
 
 GOOS ?= $(shell go env GOOS)
@@ -145,11 +145,11 @@ go/deps:
 	$(GO) mod tidy
 
 define go_build_pyroscope
-	GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/pyroscope
+	GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS) slicelabels" -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/pyroscope
 endef
 
 define go_build_profilecli
-	GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/profilecli
+	GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=0 $(GO) build -tags "slicelabels" -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/profilecli
 endef
 
 .PHONY: go/bin-debug
