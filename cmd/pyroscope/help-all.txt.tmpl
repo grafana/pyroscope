@@ -335,8 +335,12 @@ Usage of ./pyroscope:
     	Output log messages in the given format. Valid formats: [logfmt, json] (default "logfmt")
   -log.level value
     	Only log messages with the given severity or above. Valid levels: [debug, info, warn, error] (default info)
+  -memberlist.abort-if-fast-join-fails
+    	Abort if this node fails the fast memberlist cluster joining procedure at startup. When enabled, it's guaranteed that other services, depending on memberlist, have an updated view over the cluster state when they're started.
   -memberlist.abort-if-join-fails
-    	If this node fails to join memberlist cluster, abort.
+    	Abort if this node fails to join memberlist cluster at startup. When enabled, it's not guaranteed that other services are started only after the cluster state has been successfully updated; use 'abort-if-fast-join-fails' instead.
+  -memberlist.acquire-writer-timeout duration
+    	Timeout for acquiring one of the concurrent write slots. After this time, the message will be dropped. (default 250ms)
   -memberlist.advertise-addr string
     	Gossip address to advertise to other members in the cluster. Used for NAT traversal.
   -memberlist.advertise-port int
@@ -345,6 +349,8 @@ Usage of ./pyroscope:
     	IP address to listen on for gossip messages. Multiple addresses may be specified. Defaults to 0.0.0.0
   -memberlist.bind-port int
     	Port to listen on for gossip messages. (default 7946)
+  -memberlist.broadcast-timeout-for-local-updates-on-shutdown duration
+    	Timeout for broadcasting all remaining locally-generated updates to other nodes when shutting down. Only used if there are nodes left in the memberlist cluster, and only applies to locally-generated updates, not to broadcast messages that are result of incoming gossip updates. 0 = no timeout, wait until all locally-generated updates are sent. (default 10s)
   -memberlist.cluster-label string
     	The cluster label is an optional string to include in outbound packets and gossip streams. Other members in the memberlist cluster will discard any message whose label doesn't match the configured one, unless the 'cluster-label-verification-disabled' configuration option is set to true.
   -memberlist.cluster-label-verification-disabled
@@ -365,6 +371,8 @@ Usage of ./pyroscope:
     	Timeout for leaving memberlist cluster. (default 20s)
   -memberlist.left-ingesters-timeout duration
     	How long to keep LEFT ingesters in the ring. (default 5m0s)
+  -memberlist.max-concurrent-writes int
+    	Maximum number of concurrent writes to other nodes. (default 3)
   -memberlist.max-join-backoff duration
     	Max backoff duration to join other cluster members. (default 1m0s)
   -memberlist.max-join-retries int
@@ -375,6 +383,10 @@ Usage of ./pyroscope:
     	Min backoff duration to join other cluster members. (default 1s)
   -memberlist.nodename string
     	Name of the node in memberlist cluster. Defaults to hostname.
+  -memberlist.notify-interval duration
+    	How frequently to notify watchers when a key changes. Can reduce CPU activity in large memberlist deployments. 0 to notify without delay.
+  -memberlist.obsolete-entries-timeout duration
+    	[experimental] How long to keep obsolete entries in the KV store. (default 30s)
   -memberlist.packet-dial-timeout duration
     	Timeout used when connecting to other nodes to send packet. (default 2s)
   -memberlist.packet-write-timeout duration
@@ -388,7 +400,7 @@ Usage of ./pyroscope:
   -memberlist.retransmit-factor int
     	Multiplication factor used when sending out messages (factor * log(N+1)). (default 4)
   -memberlist.stream-timeout duration
-    	The timeout for establishing a connection with a remote node, and for read/write operations. (default 10s)
+    	The timeout for establishing a connection with a remote node, and for read/write operations. (default 2s)
   -memberlist.tls-ca-path string
     	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -memberlist.tls-cert-path string
@@ -407,6 +419,8 @@ Usage of ./pyroscope:
     	Override the expected name on the server certificate.
   -memberlist.transport-debug
     	Log debug transport messages. Note: global log.level must be at debug level as well.
+  -memberlist.watch-prefix-buffer-size int
+    	Size of the buffered channel for the WatchPrefix function. (default 128)
   -modules
     	List available modules that can be used as target and exit.
   -multi.mirror-enabled
@@ -513,6 +527,8 @@ Usage of ./pyroscope:
     	Enable backoff and retry when we hit rate limits.
   -querier.frontend-client.backoff-retries int
     	Number of times to backoff and retry before failing. (default 10)
+  -querier.frontend-client.cluster-validation.label string
+    	[experimental] Optionally define the cluster validation label.
   -querier.frontend-client.connect-backoff-base-delay duration
     	Initial backoff delay after first connection failure. Only relevant if ConnectTimeout > 0. (default 1s)
   -querier.frontend-client.connect-backoff-max-delay duration
@@ -583,6 +599,8 @@ Usage of ./pyroscope:
     	Enable backoff and retry when we hit rate limits.
   -query-frontend.grpc-client-config.backoff-retries int
     	Number of times to backoff and retry before failing. (default 10)
+  -query-frontend.grpc-client-config.cluster-validation.label string
+    	[experimental] Optionally define the cluster validation label.
   -query-frontend.grpc-client-config.connect-backoff-base-delay duration
     	Initial backoff delay after first connection failure. Only relevant if ConnectTimeout > 0. (default 1s)
   -query-frontend.grpc-client-config.connect-backoff-max-delay duration
@@ -637,6 +655,8 @@ Usage of ./pyroscope:
     	Enable backoff and retry when we hit rate limits.
   -query-scheduler.grpc-client-config.backoff-retries int
     	Number of times to backoff and retry before failing. (default 10)
+  -query-scheduler.grpc-client-config.cluster-validation.label string
+    	[experimental] Optionally define the cluster validation label.
   -query-scheduler.grpc-client-config.connect-backoff-base-delay duration
     	Initial backoff delay after first connection failure. Only relevant if ConnectTimeout > 0. (default 1s)
   -query-scheduler.grpc-client-config.connect-backoff-max-delay duration
@@ -765,8 +785,24 @@ Usage of ./pyroscope:
     	 (default 5)
   -self-profiling.use-k6-middleware
     	Read k6 labels from request headers and set them as dynamic profile tags.
+  -server.cluster-validation.grpc.enabled
+    	[experimental] When enabled, cluster label validation is executed: configured cluster validation label is compared with the cluster validation label received through the requests.
+  -server.cluster-validation.grpc.soft-validation
+    	[experimental] When enabled, soft cluster label validation is executed. Can be enabled only together with server.cluster-validation.grpc.enabled
+  -server.cluster-validation.http.enabled
+    	[experimental] When enabled, cluster label validation is executed: configured cluster validation label is compared with the cluster validation label received through the requests.
+  -server.cluster-validation.http.excluded-paths comma-separated-list-of-strings
+    	[experimental] Comma-separated list of url paths that are excluded from the cluster validation check.
+  -server.cluster-validation.http.excluded-user-agents comma-separated-list-of-strings
+    	[experimental] Comma-separated list of user agents that are excluded from the cluster validation check.
+  -server.cluster-validation.http.soft-validation
+    	[experimental] When enabled, soft cluster label validation is executed. Can be enabled only together with server.cluster-validation.http.enabled
+  -server.cluster-validation.label string
+    	[experimental] Optionally define the cluster validation label.
   -server.graceful-shutdown-timeout duration
     	Timeout for graceful shutdowns (default 30s)
+  -server.grpc-collect-max-streams-by-conn
+    	If true, the max streams by connection gauge will be collected. (default true)
   -server.grpc-conn-limit int
     	Maximum number of simultaneous grpc connections, <=0 to disable
   -server.grpc-listen-address string
@@ -805,6 +841,10 @@ Usage of ./pyroscope:
     	After having pinged for keepalive check, the duration after which an idle connection should be closed, Default: 20s (default 20s)
   -server.grpc.num-workers int
     	If non-zero, configures the amount of GRPC server workers used to serve the requests.
+  -server.grpc.recv-buffer-pools-enabled
+    	Deprecated option, has no effect and will be removed in a future version.
+  -server.grpc.stats-tracking-enabled
+    	If true, the request_message_bytes, response_message_bytes, and inflight_requests metrics will be tracked. Enabling this option prevents the use of memory pools for parsing gRPC request bodies and may lead to more memory allocations. (default true)
   -server.http-conn-limit int
     	Maximum number of simultaneous http connections, <=0 to disable
   -server.http-idle-timeout duration
@@ -839,20 +879,32 @@ Usage of ./pyroscope:
     	Comma separated list of headers to exclude from loggin. Only used if server.log-request-headers is true.
   -server.log-source-ips-enabled
     	Optionally log the source IPs.
+  -server.log-source-ips-full
+    	Log all source IPs instead of only the originating one. Only used if server.log-source-ips-enabled is true
   -server.log-source-ips-header string
     	Header field storing the source IPs. Only used if server.log-source-ips-enabled is true. If not set the default Forwarded, X-Real-IP and X-Forwarded-For headers are used
   -server.log-source-ips-regex string
     	Regex for matching the source IPs. Only used if server.log-source-ips-enabled is true. If not set the default Forwarded, X-Real-IP and X-Forwarded-For headers are used
   -server.path-prefix string
     	Base path to serve all API routes from (e.g. /v1/)
+  -server.proxy-protocol-enabled
+    	Enables PROXY protocol.
   -server.register-instrumentation
     	Register the intrumentation handlers (/metrics etc). (default true)
   -server.report-grpc-codes-in-instrumentation-label-enabled
     	If set to true, gRPC statuses will be reported in instrumentation labels with their string representations. Otherwise, they will be reported as "error".
+  -server.throughput.latency-cutoff duration
+    	Requests taking over the cutoff are be observed to measure throughput. Server-Timing header is used with specified unit as the indicator, for example 'Server-Timing: unit;val=8.2'. If set to 0, the throughput is not calculated.
+  -server.throughput.unit string
+    	Unit of the server throughput metric, for example 'processed_bytes' or 'samples_processed'. Observed values are gathered from the 'Server-Timing' header with the 'val' key. If set, it is appended to the request_server_throughput metric name. (default "samples_processed")
   -server.tls-cipher-suites string
     	Comma-separated list of cipher suites to use. If blank, the default Go cipher suites is used.
   -server.tls-min-version string
     	Minimum TLS version to use. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13. If blank, the Go TLS minimum version is used.
+  -server.trace-request-headers
+    	Optionally add request headers to tracing spans.
+  -server.trace-request-headers-exclude-list string
+    	Comma separated list of headers to exclude from tracing spans. Only used if server.trace-request-headers is true. The following headers are always excluded: Authorization, Cookie, X-Csrf-Token.
   -shutdown-delay duration
     	Wait time before shutting down after a termination signal.
   -storage.azure.account-key string
