@@ -18,4 +18,4 @@ jobs:
         with:
           go-version: 1.23.11
       - name: Run Fuzz_Merge_Single
-        run: go test -fuzz=Fuzz_Merge_Single --fuzztime 1h -run '^$' -v ./pkg/pprof/
+        run: go test -tags slicelabels -fuzz=Fuzz_Merge_Single --fuzztime 1h -run '^$' -v ./pkg/pprof/

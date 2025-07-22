@@ -25,6 +25,7 @@ builds:
     tags:
       - netgo
       - embedassets
+      - slicelabels
     ldflags:
       - >
         -extldflags "-static" {{ .Env.GORELEASER_DEBUG_INFO_FLAGS }}
@@ -37,6 +38,7 @@ builds:
       - CGO_ENABLED=0
     tags:
       - netgo
+      - slicelabels
     ldflags:
       - >
         -extldflags "-static" {{ .Env.GORELEASER_DEBUG_INFO_FLAGS }}
