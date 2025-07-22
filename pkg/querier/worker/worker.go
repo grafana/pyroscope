@@ -343,7 +343,7 @@ func (w *querierWorker) getDesiredConcurrency() map[string]int {
 
 func (w *querierWorker) connect(ctx context.Context, address string) (*grpc.ClientConn, error) {
 	// Because we only use single long-running method, it doesn't make sense to inject user ID, send over tracing or add metrics.
-	opts, err := w.cfg.GRPCClientConfig.DialOption(nil, nil)
+	opts, err := w.cfg.GRPCClientConfig.DialOption(nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}

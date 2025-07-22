@@ -507,9 +507,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		return nil, err
 	}
 	defaultHTTPMiddleware := []middleware.Interface{
-		middleware.Tracer{
-			RouteMatcher: f.Server.HTTP,
-		},
+		middleware.Tracer{},
 		util.Log{
 			Log:                   f.Server.Log,
 			LogRequestAtInfoLevel: f.Cfg.Server.LogRequestAtInfoLevel,
