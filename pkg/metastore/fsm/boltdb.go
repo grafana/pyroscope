@@ -149,8 +149,11 @@ func (db *boltdb) restore(snapshot io.Reader) error {
 		// For clarity: this step is not required (path == restored.path).
 		path = restored.path
 		level.Error(db.logger).Log("msg", "failed to compact boltdb; skipping compaction", "err", compactErr)
-		if removeErr := os.RemoveAll(compacted.path); removeErr != nil {
-			level.Error(db.logger).Log("msg", "failed to remove compacted snapshot", "err", removeErr)
+		if compacted != nil {
+			level.Warn(db.logger).Log("msg", "trying to delete compacted snapshot", "path", compacted.path)
+			if removeErr := os.RemoveAll(compacted.path); removeErr != nil {
+				level.Error(db.logger).Log("msg", "failed to remove compacted snapshot", "err", removeErr)
+			}
 		}
 	} else {
 		// If compaction succeeded, we want to remove the restored snapshot.
