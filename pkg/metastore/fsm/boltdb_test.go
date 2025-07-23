@@ -83,7 +83,7 @@ func TestBoltDB_open_restore_compact(t *testing.T) {
 func TestBoltDB_restore_compact_failure_panic(t *testing.T) {
 	tempDir := t.TempDir()
 	buf := bytes.NewBuffer(nil)
-	
+
 	db := newDB(log.NewLogfmtLogger(buf), newMetrics(nil), Config{
 		DataDir:                  tempDir,
 		SnapshotCompactOnRestore: true,
@@ -102,20 +102,20 @@ func TestBoltDB_restore_compact_failure_panic(t *testing.T) {
 
 	compactedPath := filepath.Join(tempDir, boltDBCompactedName)
 	require.NoError(t, os.MkdirAll(compactedPath+"/subdir", 0755))
-	
+
 	f, err := os.Create(filepath.Join(compactedPath, "subdir", "file"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	
+
 	require.NoError(t, os.Chmod(filepath.Join(compactedPath, "subdir", "file"), 0000))
 	require.NoError(t, os.Chmod(filepath.Join(compactedPath, "subdir"), 0500))
 	require.NoError(t, os.Chmod(compactedPath, 0500))
 
 	t.Cleanup(func() {
-		os.Chmod(compactedPath, 0755)
-		os.Chmod(filepath.Join(compactedPath, "subdir"), 0755)
-		os.Chmod(filepath.Join(compactedPath, "subdir", "file"), 0755)
-		os.RemoveAll(compactedPath)
+		_ = os.Chmod(compactedPath, 0755)
+		_ = os.Chmod(filepath.Join(compactedPath, "subdir"), 0755)
+		_ = os.Chmod(filepath.Join(compactedPath, "subdir", "file"), 0755)
+		_ = os.RemoveAll(compactedPath)
 	})
 
 	err = db.restore(bytes.NewReader(s))
