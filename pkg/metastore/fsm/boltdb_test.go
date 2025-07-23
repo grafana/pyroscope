@@ -80,6 +80,48 @@ func TestBoltDB_open_restore_compact(t *testing.T) {
 	assert.True(t, strings.Contains(buf.String(), "compacting snapshot"))
 }
 
+func TestBoltDB_restore_compact_failure_panic(t *testing.T) {
+	tempDir := t.TempDir()
+	buf := bytes.NewBuffer(nil)
+	
+	db := newDB(log.NewLogfmtLogger(buf), newMetrics(nil), Config{
+		DataDir:                  tempDir,
+		SnapshotCompactOnRestore: true,
+	})
+	require.NoError(t, db.open(false))
+
+	data := []string{
+		"k1", "v1",
+		"k2", "v2",
+	}
+
+	snapshotSource := filepath.Join(tempDir, "snapshot_source")
+	require.NoError(t, createDB(t, snapshotSource, data).Close())
+	s, err := os.ReadFile(snapshotSource)
+	require.NoError(t, err)
+
+	compactedPath := filepath.Join(tempDir, boltDBCompactedName)
+	require.NoError(t, os.MkdirAll(compactedPath+"/subdir", 0755))
+	
+	f, err := os.Create(filepath.Join(compactedPath, "subdir", "file"))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	
+	require.NoError(t, os.Chmod(filepath.Join(compactedPath, "subdir", "file"), 0000))
+	require.NoError(t, os.Chmod(filepath.Join(compactedPath, "subdir"), 0500))
+	require.NoError(t, os.Chmod(compactedPath, 0500))
+
+	t.Cleanup(func() {
+		os.Chmod(compactedPath, 0755)
+		os.Chmod(filepath.Join(compactedPath, "subdir"), 0755)
+		os.Chmod(filepath.Join(compactedPath, "subdir", "file"), 0755)
+		os.RemoveAll(compactedPath)
+	})
+
+	err = db.restore(bytes.NewReader(s))
+	require.Error(t, err)
+}
+
 func createDB(t *testing.T, path string, pairs []string) *bbolt.DB {
 	opts := bbolt.Options{
 		NoGrowSync:     true,
