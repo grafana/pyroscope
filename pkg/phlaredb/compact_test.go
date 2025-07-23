@@ -24,12 +24,12 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 )
 
 func TestCompact(t *testing.T) {
@@ -45,7 +45,9 @@ func TestCompact(t *testing.T) {
 				CPUProfile().
 				WithLabels(
 					"job", "b",
-				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+				).
+				WithAnnotations("test annotation").
+				ForStacktraceString("foo", "bar", "baz").AddSamples(1),
 			testhelper.NewProfileBuilder(int64(time.Second*3)).
 				CPUProfile().
 				WithLabels(
@@ -74,9 +76,22 @@ func TestCompact(t *testing.T) {
 	series, err := querier.MergeByLabels(ctx, it, nil, "job")
 	require.NoError(t, err)
 	require.Equal(t, []*typesv1.Series{
-		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(1000)}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "b"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(2000)}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "c"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(3000)}}},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "a"),
+			Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(1000), Annotations: []*typesv1.ProfileAnnotation{}}},
+		},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "b"),
+			Points: []*typesv1.Point{
+				{Value: float64(1), Timestamp: int64(2000), Annotations: []*typesv1.ProfileAnnotation{
+					{Key: "throttled", Value: "test annotation"},
+				}},
+			},
+		},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "c"),
+			Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(3000), Annotations: []*typesv1.ProfileAnnotation{}}},
+		},
 	}, series)
 
 	it, err = querier.SelectMatchingProfiles(ctx, matchAll)
@@ -103,7 +118,8 @@ func TestCompactWithDownsampling(t *testing.T) {
 				CPUProfile().
 				WithLabels(
 					"job", "b",
-				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+				).WithAnnotations("test annotation").
+				ForStacktraceString("foo", "bar", "baz").AddSamples(1),
 			testhelper.NewProfileBuilder(int64(time.Hour+6*time.Minute)).
 				CPUProfile().
 				WithLabels(
@@ -141,9 +157,18 @@ func TestCompactWithDownsampling(t *testing.T) {
 	series, err := querier.MergeByLabels(ctx, it, nil, "job")
 	require.NoError(t, err)
 	require.Equal(t, []*typesv1.Series{
-		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour - time.Minute).Milliseconds()}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "b"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + time.Minute).Milliseconds()}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "c"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + 6*time.Minute).Milliseconds()}}},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "a"),
+			Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour - time.Minute).Milliseconds(), Annotations: []*typesv1.ProfileAnnotation{}}},
+		},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "b"),
+			Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + time.Minute).Milliseconds(), Annotations: []*typesv1.ProfileAnnotation{{Key: "throttled", Value: "test annotation"}}}},
+		},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "c"),
+			Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + 6*time.Minute).Milliseconds(), Annotations: []*typesv1.ProfileAnnotation{}}},
+		},
 	}, series)
 
 	it, err = querier.SelectMatchingProfiles(ctx, matchAll)
@@ -308,7 +333,7 @@ func generatePoints(t *testing.T, from, through model.Time) []*typesv1.Point {
 	t.Helper()
 	var points []*typesv1.Point
 	for ts := from; ts.Before(through) || ts.Equal(through); ts = ts.Add(time.Second) {
-		points = append(points, &typesv1.Point{Timestamp: int64(ts), Value: 1})
+		points = append(points, &typesv1.Point{Timestamp: int64(ts), Value: 1, Annotations: []*typesv1.ProfileAnnotation{}})
 	}
 	return points
 }
@@ -654,7 +679,7 @@ func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *sing
 
 	// ingest.
 	for _, p := range generator() {
-		require.NoError(t, h.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
+		require.NoError(t, h.Ingest(ctx, p.Profile, p.UUID, p.Annotations, p.Labels...))
 	}
 
 	require.NoError(t, h.Flush(ctx))
@@ -667,7 +692,7 @@ func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *sing
 				Directory: dir,
 			},
 		},
-		StoragePrefix: "local",
+		Prefix: "local",
 	}, "test")
 	require.NoError(t, err)
 	metaMap, err := block.ListBlocks(filepath.Join(dir, PathLocal), time.Time{})
@@ -692,7 +717,7 @@ func blockQuerierFromMeta(t *testing.T, dir string, m block.Meta) *singleBlockQu
 				Directory: dir,
 			},
 		},
-		StoragePrefix: "",
+		Prefix: "",
 	}, "test")
 	require.NoError(t, err)
 	blk := NewSingleBlockQuerierFromMeta(ctx, bkt, &m)
@@ -894,7 +919,7 @@ func Benchmark_CompactSplit(b *testing.B) {
 				Directory: "./testdata/",
 			},
 		},
-		StoragePrefix: "",
+		Prefix: "",
 	}, "test")
 	require.NoError(b, err)
 	meta, err := block.ReadMetaFromDir("./testdata/01HHYG6245NWHZWVP27V8WJRT7")

@@ -14,13 +14,15 @@ import (
 	pprofileotlp "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
+
+	"google.golang.org/grpc/status"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/model"
-	pyromodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
 )
@@ -80,12 +82,21 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 		var err error
 		_, ctx, err = user.ExtractFromGRPCRequest(ctx)
 		if err != nil {
-			level.Error(h.log).Log("msg", "failed to extract tenant ID from GRPC request", "err", err)
+			level.Error(h.log).Log("msg", "failed to extract tenant ID from gRPC request", "err", err)
 			return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to extract tenant ID from GRPC request: %w", err)
 		}
 	}
 
+	dc := er.Dictionary
+	if dc == nil {
+		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.InvalidArgument, "missing profile metadata dictionary")
+	}
+
 	rps := er.ResourceProfiles
+	if rps == nil {
+		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.InvalidArgument, "missing resource profiles")
+	}
+
 	for i := 0; i < len(rps); i++ {
 		rp := rps[i]
 
@@ -98,9 +109,10 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 			for k := 0; k < len(sp.Profiles); k++ {
 				p := sp.Profiles[k]
 
-				pprofProfiles, err := ConvertOtelToGoogle(p)
+				pprofProfiles, err := ConvertOtelToGoogle(p, dc)
 				if err != nil {
-					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to convert otel profile: %w", err)
+					grpcError := status.Errorf(codes.InvalidArgument, "failed to convert otel profile: %s", err.Error())
+					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
 				}
 
 				req := &distirbutormodel.PushRequest{
@@ -111,7 +123,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 				for samplesServiceName, pprofProfile := range pprofProfiles {
 					labels := getDefaultLabels()
 					labels = append(labels, pprofProfile.name)
-					processedKeys := map[string]bool{pyromodel.LabelNameProfileName: true}
+					processedKeys := map[string]bool{model.LabelNameProfileName: true}
 					labels = appendAttributesUnique(labels, rp.Resource.GetAttributes(), processedKeys)
 					labels = appendAttributesUnique(labels, sp.Scope.GetAttributes(), processedKeys)
 					svc := samplesServiceName
@@ -119,7 +131,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 						svc = serviceName
 					}
 					labels = append(labels, &typesv1.LabelPair{
-						Name:  pyromodel.LabelNameServiceName,
+						Name:  model.LabelNameServiceName,
 						Value: svc,
 					})
 
@@ -178,11 +190,11 @@ func getServiceNameFromAttributes(attrs []*v1.KeyValue) string {
 func getDefaultLabels() []*typesv1.LabelPair {
 	return []*typesv1.LabelPair{
 		{
-			Name:  pyromodel.LabelNameDelta,
+			Name:  model.LabelNameDelta,
 			Value: "false",
 		},
 		{
-			Name:  pyromodel.LabelNameOTEL,
+			Name:  model.LabelNameOTEL,
 			Value: "true",
 		},
 	}

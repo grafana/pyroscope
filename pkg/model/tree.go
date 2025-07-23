@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 
 	dvarint "github.com/dennwc/varint"
 	"github.com/xlab/treeprint"
@@ -40,9 +43,9 @@ func (t *Tree) String() string {
 			remaining = remaining[1:]
 			for _, n := range current.nodes {
 				if len(n.children) > 0 {
-					remaining = append(remaining, &branch{nodes: n.children, Tree: current.Tree.AddBranch(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))})
+					remaining = append(remaining, &branch{nodes: n.children, Tree: current.AddBranch(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))})
 				} else {
-					current.Tree.AddNode(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))
+					current.AddNode(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))
 				}
 			}
 		}
@@ -441,4 +444,52 @@ func UnmarshalTree(b []byte) (*Tree, error) {
 	t.root = root.children[0].children
 
 	return t, nil
+}
+
+// TreeFromBackendProfile is a wrapper...
+func TreeFromBackendProfile(profile *profilev1.Profile, maxNodes int64) ([]byte, error) {
+	return TreeFromBackendProfileSampleType(profile, maxNodes, 0)
+}
+
+// TreeFromBackendProfileSampleType converts a pprof profile to a tree format with maxNodes limit
+func TreeFromBackendProfileSampleType(profile *profilev1.Profile, maxNodes int64, sampleType int) ([]byte, error) {
+	t := NewStacktraceTree(int(maxNodes * 2))
+	stack := make([]int32, 0, 64)
+	m := make(map[uint64]int32)
+
+	for i := range profile.Sample {
+		stack = stack[:0]
+		for j := range profile.Sample[i].LocationId {
+			locIdx := int(profile.Sample[i].LocationId[j]) - 1
+			if locIdx < 0 || len(profile.Location) <= locIdx {
+				return nil, fmt.Errorf("invalid location ID %d in sample %d", profile.Sample[i].LocationId[j], i)
+			}
+
+			loc := profile.Location[locIdx]
+			if len(loc.Line) > 0 {
+				for l := range loc.Line {
+					stack = append(stack, int32(profile.Function[loc.Line[l].FunctionId-1].Name))
+				}
+				continue
+			}
+			addr, ok := m[loc.Address]
+			if !ok {
+				addr = int32(len(profile.StringTable))
+				profile.StringTable = append(profile.StringTable, strconv.FormatInt(int64(loc.Address), 16))
+				m[loc.Address] = addr
+			}
+			stack = append(stack, addr)
+		}
+
+		if sampleType < 0 || sampleType >= len(profile.Sample[i].Value) {
+			return nil, fmt.Errorf("invalid sampleType index %d for sample %d (len=%d)", sampleType, i, len(profile.Sample[i].Value))
+		}
+
+		t.Insert(stack, profile.Sample[i].Value[sampleType])
+	}
+
+	b := bytes.NewBuffer(nil)
+	b.Grow(100 << 10)
+	t.Bytes(b, maxNodes, profile.StringTable)
+	return b.Bytes(), nil
 }

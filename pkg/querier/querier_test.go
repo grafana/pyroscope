@@ -23,6 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health/grpc_health_v1"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -530,7 +532,7 @@ func TestSelectSeries(t *testing.T) {
 						{Timestamp: 2, LabelIndex: 0},
 					},
 				},
-			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1, Annotations: []*typesv1.ProfileAnnotation{}}, {Value: 2, Timestamp: 2, Annotations: []*typesv1.ProfileAnnotation{}}}})
 			bidi2 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 				{
 					LabelsSets: []*typesv1.Labels{
@@ -547,7 +549,7 @@ func TestSelectSeries(t *testing.T) {
 						{Timestamp: 2, LabelIndex: 1},
 					},
 				},
-			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1, Annotations: []*typesv1.ProfileAnnotation{}}, {Value: 2, Timestamp: 2, Annotations: []*typesv1.ProfileAnnotation{}}}})
 			bidi3 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 				{
 					LabelsSets: []*typesv1.Labels{
@@ -564,7 +566,7 @@ func TestSelectSeries(t *testing.T) {
 						{Timestamp: 2, LabelIndex: 0},
 					},
 				},
-			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1, Annotations: []*typesv1.ProfileAnnotation{}}, {Value: 2, Timestamp: 2, Annotations: []*typesv1.ProfileAnnotation{}}}})
 			querier, err := New(&NewQuerierParams{
 				Cfg: Config{
 					PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
@@ -593,7 +595,7 @@ func TestSelectSeries(t *testing.T) {
 			require.NoError(t, err)
 			// Only 2 results are used since the 3rd not required because of replication.
 			testhelper.EqualProto(t, []*typesv1.Series{
-				{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 2, Timestamp: 1}, {Value: 4, Timestamp: 2}}},
+				{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 2, Timestamp: 1, Annotations: []*typesv1.ProfileAnnotation{}}, {Value: 4, Timestamp: 2, Annotations: []*typesv1.ProfileAnnotation{}}}},
 			}, res.Msg.Series)
 			var selected []testProfile
 			selected = append(selected, bidi1.kept...)
@@ -624,6 +626,10 @@ type fakeQuerierIngester struct {
 
 func newFakeQuerier() *fakeQuerierIngester {
 	return &fakeQuerierIngester{}
+}
+
+func (f *fakeQuerierIngester) List(ctx context.Context, in *grpc_health_v1.HealthListRequest, opts ...grpc.CallOption) (*grpc_health_v1.HealthListResponse, error) {
+	return nil, errors.New("not implemented")
 }
 
 func (f *fakeQuerierIngester) mockMergeStacktraces(bidi *fakeBidiClientStacktraces, blocks []string, blockSelect bool) {
@@ -1250,7 +1256,7 @@ func Test_GetProfileStats(t *testing.T) {
 				Directory: dbPath,
 			},
 		},
-		StoragePrefix: "testdata",
+		Prefix: "testdata",
 	}, "")
 	require.NoError(t, err)
 

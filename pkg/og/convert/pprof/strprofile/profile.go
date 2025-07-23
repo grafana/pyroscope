@@ -1,11 +1,14 @@
 package strprofile
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/cespare/xxhash/v2"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )
@@ -336,4 +339,47 @@ func findLocation(locations []*profilev1.Location, id uint64) *profilev1.Locatio
 		}
 	}
 	return nil
+}
+
+func SortProfileSamples(p CompactProfile) {
+	h := xxhash.New()
+	s := &sortedSample{
+		samples: p.Samples,
+		hashes:  make([]uint64, len(p.Samples)),
+	}
+	for i := range s.samples {
+		s.hashes[i] = sampleHash(h, s.samples[i])
+	}
+	sort.Sort(s)
+}
+
+type sortedSample struct {
+	samples []CompactSample
+	hashes  []uint64
+}
+
+func (s *sortedSample) Len() int { return len(s.samples) }
+
+func (s *sortedSample) Less(i, j int) bool { return s.hashes[i] < s.hashes[j] }
+
+func (s *sortedSample) Swap(i, j int) {
+	s.samples[i], s.samples[j] = s.samples[j], s.samples[i]
+	s.hashes[i], s.hashes[j] = s.hashes[j], s.hashes[i]
+}
+
+func sampleHash(d *xxhash.Digest, s CompactSample) uint64 {
+	d.Reset()
+	tmp := make([]byte, 8)
+	_, _ = d.WriteString(s.Labels)
+	_, _ = d.WriteString(s.Values)
+	for i := range s.Locations {
+		binary.LittleEndian.PutUint64(tmp, s.Locations[i].ID)
+		_, _ = d.Write(tmp)
+		_, _ = d.WriteString(s.Locations[i].Address)
+		_, _ = d.WriteString(s.Locations[i].Mapping)
+		for j := range s.Locations[i].Lines {
+			_, _ = d.WriteString(s.Locations[i].Lines[j])
+		}
+	}
+	return d.Sum64()
 }

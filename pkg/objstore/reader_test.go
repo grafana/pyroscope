@@ -21,7 +21,7 @@ func Test_FileSystem(t *testing.T) {
 				Directory: testDir,
 			},
 		},
-		StoragePrefix: "testdata/",
+		Prefix: "testdata/",
 	}, "foo")
 	require.NoError(t, err)
 

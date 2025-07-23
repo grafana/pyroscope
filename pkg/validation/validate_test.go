@@ -57,9 +57,9 @@ func TestValidateLabels(t *testing.T) {
 		{
 			name: "invalid metric name",
 			lbs: []*typesv1.LabelPair{
-				{Name: model.MetricNameLabel, Value: "&&"},
+				{Name: model.MetricNameLabel, Value: "\x80"},
 			},
-			expectedErr:    `invalid labels '{__name__="&&"}' with error: invalid metric name`,
+			expectedErr:    `invalid labels '{__name__="\x80"}' with error: invalid metric name`,
 			expectedReason: InvalidLabels,
 		},
 		{
@@ -123,7 +123,27 @@ func TestValidateLabels(t *testing.T) {
 				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 			},
 			expectedReason: DuplicateLabelNames,
-			expectedErr:    "profile with labels '{__name__=\"qux\", label_name=\"foo\", label_name=\"bar\", service_name=\"svc\"}' has duplicate label name: 'label.name'",
+			expectedErr:    "profile with labels '{__name__=\"qux\", label.name=\"bar\", label_name=\"foo\", service_name=\"svc\"}' has duplicate label name 'label_name' after label name sanitization from 'label.name'",
+		},
+		{
+			name: "duplicates once sanitized with matching values",
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "qux"},
+				{Name: "service.name", Value: "svc0"},
+				{Name: "service_abc", Value: "def"},
+				{Name: "service_name", Value: "svc0"},
+			},
+		},
+		{
+			name: "duplicates once sanitized with conflicting values",
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "qux"},
+				{Name: "service.name", Value: "svc1"},
+				{Name: "service_abc", Value: "def"},
+				{Name: "service_name", Value: "svc0"},
+			},
+			expectedReason: DuplicateLabelNames,
+			expectedErr:    "profile with labels '{__name__=\"qux\", service.name=\"svc1\", service_abc=\"def\", service_name=\"svc0\"}' has duplicate label name 'service_name' after label name sanitization from 'service.name'",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -223,6 +243,14 @@ func Test_ValidateRangeRequest(t *testing.T) {
 				End:   0,
 			},
 			expectedErr: NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg),
+		},
+		{
+			name: "start after end",
+			in: model.Interval{
+				Start: 1000,
+				End:   500,
+			},
+			expectedErr: NewErrorf(QueryInvalidTimeRange, QueryStartAfterEndErrorMsg),
 		},
 	} {
 		tt := tt

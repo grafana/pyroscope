@@ -9,6 +9,9 @@
       "name": "AdHocProfileService"
     },
     {
+      "name": "FeatureFlagsService"
+    },
+    {
       "name": "PusherService"
     },
     {
@@ -972,6 +975,28 @@
         }
       }
     },
+    "v1FeatureFlag": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the feature, please use lower camel case."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Wether the feature flag is enabled or disabled."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of the feature flag."
+        },
+        "documentationUrl": {
+          "type": "string",
+          "description": "Optional URL to the documentation page of the feature flag."
+        }
+      },
+      "description": "FeatureParameters contains the per feature flag parameters."
+    },
     "v1FlameGraph": {
       "type": "object",
       "properties": {
@@ -1195,6 +1220,19 @@
         }
       }
     },
+    "v1GetFeatureFlagsResponse": {
+      "type": "object",
+      "properties": {
+        "featureFlags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1FeatureFlag"
+          },
+          "title": "Map containing all features, also disable features are returned"
+        }
+      }
+    },
     "v1GetFileResponse": {
       "type": "object",
       "properties": {
@@ -1259,7 +1297,12 @@
       "type": "object",
       "properties": {
         "clientID": {
-          "type": "string"
+          "type": "string",
+          "description": "clientID must be propagated when calling https://github.com/login/oauth/authorize\nin the client_id query parameter."
+        },
+        "callbackURL": {
+          "type": "string",
+          "description": "If callbackURL is not empty, the URL should be propagated when\ncalling https://github.com/login/oauth/authorize in the\nredirect_uri query parameter."
         }
       }
     },
@@ -1641,6 +1684,13 @@
         }
       }
     },
+    "v1MetricType": {
+      "type": "string",
+      "enum": [
+        "TOTAL"
+      ],
+      "default": "TOTAL"
+    },
     "v1Point": {
       "type": "object",
       "properties": {
@@ -1652,6 +1702,13 @@
           "type": "string",
           "format": "int64",
           "title": "Milliseconds unix timestamp"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ProfileAnnotation"
+          }
         }
       }
     },
@@ -1696,6 +1753,17 @@
         "pprof": {
           "type": "string",
           "format": "byte"
+        }
+      }
+    },
+    "v1ProfileAnnotation": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
         }
       }
     },
@@ -1923,6 +1991,14 @@
             "$ref": "#/definitions/v1RawSample"
           },
           "title": "samples are the set of profile bytes"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ProfileAnnotation"
+          },
+          "description": "Annotations provide additional metadata for a profile.\n\nThe main differences between labels and annotations are:\n - annotations cannot be used in query selectors\n - annotation keys don't have to be unique\n\nCurrently annotations are applied internally by distributors,\nany annotation passed via the push API will be dropped."
         }
       },
       "title": "RawProfileSeries represents the pprof profile and its associated labels"
@@ -1980,6 +2056,14 @@
           "type": "string",
           "format": "int64",
           "description": "The observed generation of this recording rule. This value should be\nprovided when making updates to this record, to avoid conflicting\nconcurrent updates."
+        },
+        "stacktraceFilter": {
+          "$ref": "#/definitions/v1StacktraceFilter",
+          "description": "The stacktrace filter allows filtering on particular function names in the stacktrace.\nThis allows recording rules to focus on specific functions and calculate their \"total\"\nresource usage."
+        },
+        "provisioned": {
+          "type": "boolean",
+          "title": "Provisioned rules are added by config and can't be Upsert or Deleted"
         }
       }
     },
@@ -2257,6 +2341,30 @@
         }
       }
     },
+    "v1ShardTombstone": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Lower time boundary. Unix epoch in nanoseconds."
+        },
+        "duration": {
+          "type": "string",
+          "format": "int64"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenant": {
+          "type": "string"
+        }
+      }
+    },
     "v1StackTraceSelector": {
       "type": "object",
       "properties": {
@@ -2274,6 +2382,25 @@
         }
       },
       "description": "StackTraceSelector is used for filtering stack traces by locations."
+    },
+    "v1StacktraceFilter": {
+      "type": "object",
+      "properties": {
+        "functionName": {
+          "$ref": "#/definitions/v1StacktraceFilterFunctionName"
+        }
+      }
+    },
+    "v1StacktraceFilterFunctionName": {
+      "type": "object",
+      "properties": {
+        "functionName": {
+          "type": "string"
+        },
+        "metricType": {
+          "$ref": "#/definitions/v1MetricType"
+        }
+      }
     },
     "v1StacktraceSample": {
       "type": "object",
@@ -2365,8 +2492,10 @@
       "type": "object",
       "properties": {
         "blocks": {
-          "$ref": "#/definitions/v1BlockTombstones",
-          "description": "For now, we only have block tombstones created due to the\n compaction process. Later, we may add more types of tombstones,\n e.g, deleted tenant (shard), partition, dataset, series etc.\n Exactly one member of Tombstones should be present."
+          "$ref": "#/definitions/v1BlockTombstones"
+        },
+        "shard": {
+          "$ref": "#/definitions/v1ShardTombstone"
         }
       },
       "description": "Tombstones represent objects removed from the index but still stored."

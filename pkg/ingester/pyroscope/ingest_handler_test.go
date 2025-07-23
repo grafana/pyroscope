@@ -25,6 +25,9 @@ import (
 	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/util/body"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type flatProfileSeries struct {
@@ -47,7 +50,7 @@ func (m *MockPushService) PushParsed(ctx context.Context, req *model.PushRequest
 				copy(rawProfileCopy, sample.RawProfile)
 				m.reqPprof = append(m.reqPprof, &flatProfileSeries{
 					Labels:     series.Labels,
-					Profile:    sample.Profile.Profile.CloneVT(),
+					Profile:    sample.Profile.CloneVT(),
 					RawProfile: rawProfileCopy,
 				})
 			}
@@ -74,7 +77,7 @@ func (m *MockPushService) Push(ctx context.Context, req *connect.Request[pushv1.
 			}
 			m.reqPprof = append(m.reqPprof, &flatProfileSeries{
 				Labels:  series.Labels,
-				Profile: p.Profile.CloneVT(),
+				Profile: p.CloneVT(),
 			})
 		}
 	}
@@ -445,4 +448,67 @@ func mergeSeriesAndSampleLabels(p *profilev1.Profile, sl []*v1.LabelPair, pl []*
 	}
 	sort.Stable(m)
 	return m.Unique()
+}
+
+func TestBodySizeLimit(t *testing.T) {
+	l := log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr))
+	svc := &MockPushService{Keep: true, T: t}
+
+	const sizeLimit = 64 << 20 // 64 MiB
+
+	bodySizeLimiter := body.NewSizeLimitHandler(validation.MockLimits{
+		IngestionBodyLimitBytesValue: sizeLimit,
+	})
+
+	h := bodySizeLimiter(NewPyroscopeIngestHandler(svc, l))
+
+	// Create a body larger than the 64 MiB limit
+	largeBody := make([]byte, sizeLimit+1) // 1 byte over the limit
+	for i := range largeBody {
+		largeBody[i] = byte(i % 256)
+	}
+
+	res := httptest.NewRecorder()
+	ctx := tenant.InjectTenantID(context.Background(), "any-tenant")
+	req := httptest.NewRequestWithContext(ctx, "POST", "/ingest?name=testapp&format=pprof", bytes.NewReader(largeBody))
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	h.ServeHTTP(res, req)
+
+	// Should return 413 Request Entity Too Large status when body size limit is exceeded
+	require.Equal(t, 413, res.Code)
+
+	// Verify the error message contains information about the body size limit
+	responseBody := res.Body.String()
+	assert.Contains(t, responseBody, "request body too large")
+
+	// Verify no profiles were ingested
+	assert.Equal(t, 0, len(svc.reqPprof))
+}
+
+func TestBodySizeWithinLimit(t *testing.T) {
+	l := log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr))
+	svc := &MockPushService{Keep: true, T: t}
+	const sizeLimit = 64 << 20 // 64 MiB
+
+	bodySizeLimiter := body.NewSizeLimitHandler(validation.MockLimits{
+		IngestionBodyLimitBytesValue: sizeLimit,
+	})
+
+	h := bodySizeLimiter(NewPyroscopeIngestHandler(svc, l))
+
+	// Use a valid small pprof profile for the test
+	profile, err := os.ReadFile(repoRoot + "pkg/og/convert/testdata/cpu.pprof")
+	require.NoError(t, err)
+
+	// Create a request with the actual profile (much smaller than limit)
+	res := httptest.NewRecorder()
+	ctx := tenant.InjectTenantID(context.Background(), "any-tenant")
+	req := httptest.NewRequestWithContext(ctx, "POST", "/ingest?name=testapp&format=pprof", bytes.NewReader(profile))
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	h.ServeHTTP(res, req)
+
+	// Should succeed with a valid profile within size limit
+	require.Equal(t, 200, res.Code)
 }

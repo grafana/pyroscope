@@ -24,9 +24,9 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 )
 
 type noLimit struct{}
@@ -55,7 +55,7 @@ type testHead struct {
 
 func (t *testHead) Flush(ctx context.Context) error {
 	defer func() {
-		t.t.Logf("flushing head of block %v", t.Head.meta.ULID)
+		t.t.Logf("flushing head of block %v", t.meta.ULID)
 	}()
 	return t.Head.Flush(ctx)
 }
@@ -186,8 +186,8 @@ func newProfileBaz() *profilev1.Profile {
 
 func TestHeadLabelValues(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &typesv1.LabelPair{Name: "job", Value: "foo"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &typesv1.LabelPair{Name: "job", Value: "bar"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), nil, &typesv1.LabelPair{Name: "job", Value: "foo"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), nil, &typesv1.LabelPair{Name: "job", Value: "bar"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}))
 
 	res, err := head.LabelValues(context.Background(), connect.NewRequest(&typesv1.LabelValuesRequest{Name: "cluster"}))
 	require.NoError(t, err)
@@ -200,8 +200,8 @@ func TestHeadLabelValues(t *testing.T) {
 
 func TestHeadLabelNames(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &typesv1.LabelPair{Name: "job", Value: "foo"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &typesv1.LabelPair{Name: "job", Value: "bar"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), nil, &typesv1.LabelPair{Name: "job", Value: "foo"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), nil, &typesv1.LabelPair{Name: "job", Value: "bar"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}))
 
 	res, err := head.LabelNames(context.Background(), connect.NewRequest(&typesv1.LabelNamesRequest{}))
 	require.NoError(t, err)
@@ -212,8 +212,8 @@ func TestHeadSeries(t *testing.T) {
 	head := newTestHead(t)
 	fooLabels := phlaremodel.NewLabelsBuilder(nil).Set("namespace", "phlare").Set("job", "foo").Labels()
 	barLabels := phlaremodel.NewLabelsBuilder(nil).Set("namespace", "phlare").Set("job", "bar").Labels()
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), fooLabels...))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), barLabels...))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), nil, fooLabels...))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), nil, barLabels...))
 
 	lblBuilder := phlaremodel.NewLabelsBuilder(nil).
 		Set("namespace", "phlare").
@@ -242,8 +242,8 @@ func TestHeadSeries(t *testing.T) {
 
 func TestHeadProfileTypes(t *testing.T) {
 	head := newTestHead(t)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), &typesv1.LabelPair{Name: "__name__", Value: "foo"}, &typesv1.LabelPair{Name: "job", Value: "foo"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), &typesv1.LabelPair{Name: "__name__", Value: "bar"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), nil, &typesv1.LabelPair{Name: "__name__", Value: "foo"}, &typesv1.LabelPair{Name: "job", Value: "foo"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}))
+	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), nil, &typesv1.LabelPair{Name: "__name__", Value: "bar"}, &typesv1.LabelPair{Name: "namespace", Value: "phlare"}))
 
 	res, err := head.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 	require.NoError(t, err)
@@ -283,7 +283,7 @@ func TestHead_SelectMatchingProfiles_Order(t *testing.T) {
 		x := newProfileFoo()
 		// Make sure some of our profiles have matching timestamps.
 		x.TimeNanos = now.Add(time.Second * time.Duration(i-i%2)).UnixNano()
-		require.NoError(t, head.Ingest(ctx, x, uuid.UUID{}, []*typesv1.LabelPair{
+		require.NoError(t, head.Ingest(ctx, x, uuid.UUID{}, nil, []*typesv1.LabelPair{
 			{Name: "job", Value: "foo"},
 			{Name: "x", Value: strconv.Itoa(i)},
 		}...))
@@ -332,7 +332,7 @@ func TestHeadFlush(t *testing.T) {
 
 	for pos := range profilePaths {
 		profile := parseProfile(t, profilePaths[pos])
-		require.NoError(t, head.Ingest(ctx, profile, uuid.New()))
+		require.NoError(t, head.Ingest(ctx, profile, uuid.New(), nil))
 	}
 
 	require.NoError(t, head.Flush(ctx))
@@ -540,6 +540,7 @@ func TestHead_ProfileOrder(t *testing.T) {
 		context.Background(),
 		p,
 		u,
+		nil,
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "service-a"},
@@ -550,6 +551,7 @@ func TestHead_ProfileOrder(t *testing.T) {
 		context.Background(),
 		p,
 		u,
+		nil,
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
@@ -561,6 +563,7 @@ func TestHead_ProfileOrder(t *testing.T) {
 		context.Background(),
 		p,
 		u,
+		nil,
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameProfileName, Value: "memory"},
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "service-c"},
@@ -572,6 +575,7 @@ func TestHead_ProfileOrder(t *testing.T) {
 		context.Background(),
 		p,
 		u,
+		nil,
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "service-a"},
@@ -583,6 +587,7 @@ func TestHead_ProfileOrder(t *testing.T) {
 		context.Background(),
 		p,
 		u,
+		nil,
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
@@ -593,6 +598,7 @@ func TestHead_ProfileOrder(t *testing.T) {
 		context.Background(),
 		p,
 		u,
+		nil,
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameProfileName, Value: "cpu"},
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameOrder, Value: phlaremodel.LabelOrderEnforced},
 		&typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "service-b"},
@@ -626,7 +632,7 @@ func BenchmarkHeadIngestProfiles(t *testing.B) {
 	for n := 0; n < t.N; n++ {
 		for pos := range profilePaths {
 			p := parseProfile(t, profilePaths[pos])
-			require.NoError(t, head.Ingest(ctx, p, uuid.New()))
+			require.NoError(t, head.Ingest(ctx, p, uuid.New(), nil))
 			profileCount++
 		}
 	}

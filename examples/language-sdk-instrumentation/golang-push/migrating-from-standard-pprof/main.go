@@ -78,7 +78,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error starting profiler: %v", err)
 	}
-	defer profiler.Stop()
+	defer func() {
+		err := profiler.Stop()
+		if err != nil {
+			log.Printf("Error stopping profiler: %v", err)
+		}
+	}()
 
 	// pyroscope.Start is non-blocking: the profiler will start shortly.
 	// To ensure we don't miss the investigation, we wait briefly.

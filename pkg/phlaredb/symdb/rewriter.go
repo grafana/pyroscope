@@ -15,12 +15,21 @@ type Rewriter struct {
 	symdb      *SymDB
 	source     SymbolsReader
 	partitions *lru.Cache[uint64, *partitionRewriter]
+	observer   SymbolsObserver
 }
 
-func NewRewriter(w *SymDB, r SymbolsReader) *Rewriter {
+type SymbolsObserver interface {
+	// ObserveSymbols is called once new symbols have been rewritten. This method must not modify the symbols.
+	// When using within a SampleObserver, Evaluate should be called first
+	ObserveSymbols(strings []string, functions []schemav1.InMemoryFunction, locations []schemav1.InMemoryLocation,
+		stacktraceValues [][]int32, stacktraceIds []uint32)
+}
+
+func NewRewriter(w *SymDB, r SymbolsReader, o SymbolsObserver) *Rewriter {
 	return &Rewriter{
-		source: r,
-		symdb:  w,
+		source:   r,
+		symdb:    w,
+		observer: o,
 	}
 }
 
@@ -79,6 +88,7 @@ func (r *Rewriter) newRewriter(p uint64) (*partitionRewriter, error) {
 	n.mappings = newLookupTable[schemav1.InMemoryMapping](stats.MappingsTotal)
 	n.functions = newLookupTable[schemav1.InMemoryFunction](stats.FunctionsTotal)
 	n.strings = newLookupTable[string](stats.StringsTotal)
+	n.observer = r.observer
 	return n, nil
 }
 
@@ -94,6 +104,8 @@ type partitionRewriter struct {
 	functions   *lookupTable[schemav1.InMemoryFunction]
 	strings     *lookupTable[string]
 	current     []*schemav1.Stacktrace
+
+	observer SymbolsObserver
 }
 
 func (p *partitionRewriter) reset() {
@@ -128,6 +140,10 @@ func (p *partitionRewriter) populateUnresolved(stacktraceIDs []uint32) error {
 	for unresolvedLocs.Next() {
 		location := p.src.Locations[unresolvedLocs.At()]
 		location.MappingId = p.mappings.tryLookup(location.MappingId)
+		if len(p.src.Functions) == 0 {
+			location.Line = nil
+			continue
+		}
 		for j, line := range location.Line {
 			location.Line[j].FunctionId = p.functions.tryLookup(line.FunctionId)
 		}
@@ -198,6 +214,10 @@ func (p *partitionRewriter) appendRewrite(stacktraces []uint32) error {
 
 	for i, v := range stacktraces {
 		stacktraces[i] = p.stacktraces.lookupResolved(v)
+	}
+
+	if p.observer != nil {
+		p.observer.ObserveSymbols(p.dst.strings.slice, p.dst.functions.slice, p.dst.locations.slice, p.stacktraces.values, p.stacktraces.buf)
 	}
 
 	return nil

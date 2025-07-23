@@ -19,10 +19,10 @@ import (
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 	"github.com/grafana/pyroscope/pkg/util/build"
 )
 
@@ -516,6 +516,7 @@ type seriesIDRowsRewriter struct {
 	parquet.Rows
 	pos           int64
 	seriesIndexes rowRangesWithSeriesIndex
+	searchHint    int // speed up getSeriesIndex()
 }
 
 func (r *seriesIDRowsRewriter) SeekToRow(pos int64) error {
@@ -540,13 +541,14 @@ func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
 	if err != nil {
 		return n, err
 	}
-
+	// sh for next call of getSeriesIndex
+	sh := r.searchHint
 	for pos, row := range rows[:n] {
 		// actual row num
 		rowNum := r.pos + int64(pos)
-		row[colIdxSeriesIndex] = parquet.ValueOf(r.seriesIndexes.getSeriesIndex(rowNum)).Level(0, 0, colIdxSeriesIndex)
+		row[colIdxSeriesIndex] = parquet.ValueOf(r.seriesIndexes.getSeriesIndex(rowNum, &sh)).Level(0, 0, colIdxSeriesIndex)
 	}
-
+	r.searchHint = sh
 	r.pos += int64(n)
 
 	return n, nil

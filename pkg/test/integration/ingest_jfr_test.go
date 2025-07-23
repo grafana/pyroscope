@@ -148,29 +148,27 @@ func TestNOJFRDump(t *testing.T) {
 }
 
 func TestIngestJFR(t *testing.T) {
-	p := new(PyroscopeTest)
-	p.Start(t)
-	defer p.Stop(t)
+	EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+		for _, testdatum := range jfrTestDatas {
+			t.Run(testdatum.jfr, func(t *testing.T) {
 
-	for _, testdatum := range jfrTestDatas {
-		t.Run(testdatum.jfr, func(t *testing.T) {
+				rb := p.NewRequestBuilder(t)
+				req := rb.IngestJFRRequestFiles(testdatum.jfr, testdatum.labels)
+				p.Ingest(t, req, testdatum.expectStatus)
 
-			rb := p.NewRequestBuilder(t)
-			req := rb.IngestJFRRequestFiles(testdatum.jfr, testdatum.labels)
-			p.Ingest(t, req, testdatum.expectStatus)
-
-			if testdatum.expectStatus == 200 {
-				assert.NotEqual(t, len(testdatum.expectedMetrics), 0)
-				for _, metric := range testdatum.expectedMetrics {
-					goldFile := expectedPPROFFile(testdatum, metric)
-					t.Logf("%v gold file %s", metric, goldFile)
-					rb.Render(metric.name)
-					profile := rb.SelectMergeProfile(metric.name, metric.query)
-					verifyPPROF(t, profile, goldFile, metric)
+				if testdatum.expectStatus == 200 {
+					assert.NotEqual(t, len(testdatum.expectedMetrics), 0)
+					for _, metric := range testdatum.expectedMetrics {
+						goldFile := expectedPPROFFile(testdatum, metric)
+						t.Logf("%v gold file %s", metric, goldFile)
+						rb.Render(metric.name)
+						profile := rb.SelectMergeProfile(metric.name, metric.query)
+						verifyPPROF(t, profile, goldFile, metric)
+					}
 				}
-			}
-		})
-	}
+			})
+		}
+	})
 }
 
 func expectedPPROFFile(testdatum jfrTestData, metric expectedMetric) string {
@@ -185,18 +183,16 @@ func expectedPPROFFile(testdatum jfrTestData, metric expectedMetric) string {
 }
 
 func TestCorruptedJFR422(t *testing.T) {
-	p := new(PyroscopeTest)
-	p.Start(t)
-	defer p.Stop(t)
+	EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+		td := jfrTestDatas[0]
+		jfr, err := bench.ReadGzipFile(td.jfr)
+		require.NoError(t, err)
+		jfr[0] = 0 // corrupt jfr
 
-	td := jfrTestDatas[0]
-	jfr, err := bench.ReadGzipFile(td.jfr)
-	require.NoError(t, err)
-	jfr[0] = 0 // corrupt jfr
-
-	rb := p.NewRequestBuilder(t)
-	req := rb.IngestJFRRequestBody(jfr, nil)
-	p.Ingest(t, req, 422)
+		rb := p.NewRequestBuilder(t)
+		req := rb.IngestJFRRequestBody(jfr, nil)
+		p.Ingest(t, req, 422)
+	})
 }
 
 func verifyPPROF(t *testing.T, resp *connect.Response[profilev1.Profile], expectedPPROF string, metric expectedMetric) {

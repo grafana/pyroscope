@@ -210,6 +210,9 @@ func (s *GenericStore[T, H]) getFromBucket(ctx context.Context) (*Collection[T],
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		_ = r.Close()
+	}()
 
 	var storeStruct storeStruct
 	if err := json.NewDecoder(r).Decode(&storeStruct); err != nil {

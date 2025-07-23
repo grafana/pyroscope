@@ -74,7 +74,7 @@ func (s *memSuite) init() {
 func (s *memSuite) writeProfileFromFile(p uint64, f string) {
 	x, err := pprof.OpenFile(f)
 	require.NoError(s.t, err)
-	s.profiles[p] = x.Profile.CloneVT()
+	s.profiles[p] = x.CloneVT()
 	x.Normalize()
 	w := s.db.PartitionWriter(p)
 	s.indexed[p] = w.WriteProfileSymbols(x.Profile)
@@ -83,7 +83,7 @@ func (s *memSuite) writeProfileFromFile(p uint64, f string) {
 func (s *blockSuite) flush() {
 	require.NoError(s.t, s.db.Flush())
 	b, err := filesystem.NewBucket(s.config.Dir, func(x objstore.Bucket) (objstore.Bucket, error) {
-		s.testBucket.Bucket = x
+		s.Bucket = x
 		return &s.testBucket, nil
 	})
 	require.NoError(s.t, err)
@@ -226,4 +226,24 @@ func TestWritePartition(t *testing.T) {
         └── qwe: self 2 total 2
 `
 	require.Equal(t, expected, resolved.String())
+}
+
+func BenchmarkPartitionWriter_WriteProfileSymbols(b *testing.B) {
+	b.ReportAllocs()
+
+	p, err := pprof.OpenFile("testdata/profile.pb.gz")
+	require.NoError(b, err)
+	p.Normalize()
+	cfg := DefaultConfig().WithDirectory(b.TempDir())
+
+	db := NewSymDB(cfg)
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		newP := p.CloneVT()
+		pw := db.PartitionWriter(uint64(i))
+		b.StartTimer()
+
+		pw.WriteProfileSymbols(newP)
+	}
 }

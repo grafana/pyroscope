@@ -19,6 +19,7 @@ data-metastore/
 **/dist
 
 # IDE
+.cursor
 .idea
 .vscode
 
@@ -38,8 +39,12 @@ node_modules
 .pnp.*
 yarn-error.log
 
-# Contains the docker image id for pyroscope
-/.docker-image-id-pyroscope
+# Contains the docker image digest for pyroscope
+/.docker-image-digest-pyroscope
+# Contains the docker image digest for frontend
+/.docker-image-digest-frontend
+# Contains the docker image name for pyroscope
+/.docker-image-name-pyroscope
 
 /.tmp
 tools/k6/.env

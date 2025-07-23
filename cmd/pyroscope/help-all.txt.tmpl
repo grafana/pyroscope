@@ -36,7 +36,7 @@ Usage of ./pyroscope:
   -compactor.compaction-split-by string
     	Experimental: The strategy to use when splitting blocks during compaction. Supported values are: fingerprint, stacktracePartition. (default "fingerprint")
   -compactor.compactor-downsampler-enabled
-    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. (default true)
+    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. Note: This set the default for the teanant overrides, in order to be effective it also requires compactor.downsampler-enabled to be set to true. (default true)
   -compactor.compactor-tenant-shard-size int
     	Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
   -compactor.data-dir string
@@ -171,6 +171,10 @@ Usage of ./pyroscope:
     	Run a health check on each ingester client during periodic cleanup. (default true)
   -distributor.health-check-timeout duration
     	Timeout for ingester client healthcheck RPCs. (default 5s)
+  -distributor.ingestion-artificial-delay duration
+    	[experimental] Target ingestion delay to apply to all tenants. If set to a non-zero value, the distributor will artificially delay ingestion time-frame by the specified duration by computing the difference between actual ingestion and the target. There is no delay on actual ingestion of samples, it is only the response back to the client.
+  -distributor.ingestion-body-limit-mb float
+    	Per-tenant ingestion body size limit in MB, before decompressing. 0 to disable.
   -distributor.ingestion-burst-size-mb float
     	Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request. (default 2)
   -distributor.ingestion-rate-limit-mb float
@@ -917,6 +921,8 @@ Usage of ./pyroscope:
     	JSON either from a Google Developers Console client_credentials.json file, or a Google Developers service account key. Needs to be valid JSON, not a filesystem path.
   -storage.gcs.tls-handshake-timeout duration
     	Maximum time to wait for a TLS handshake. 0 means no limit. (default 10s)
+  -storage.prefix string
+    	Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet characters, hyphens, underscores, dots and forward slashes.
   -storage.s3.access-key-id string
     	S3 access key ID
   -storage.s3.bucket-lookup-type string
@@ -958,7 +964,7 @@ Usage of ./pyroscope:
   -storage.s3.tls-handshake-timeout duration
     	Maximum time to wait for a TLS handshake. 0 means no limit. (default 10s)
   -storage.storage-prefix string
-    	[experimental] Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet letters.
+    	[experimental] Deprecated: Use 'storage..prefix' instead. Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet characters, hyphens, underscores, dots and forward slashes.
   -storage.swift.auth-url string
     	OpenStack Swift authentication URL
   -storage.swift.auth-version int
@@ -1092,7 +1098,7 @@ Usage of ./pyroscope:
   -tracing.profiling-enabled
     	[experimental] Set to true to enable profiling integration.
   -usage-stats.enabled
-    	Enable anonymous usage reporting. (default true)
+    	Enable anonymous usage statistics collection. For more details about usage statistics, refer to https://grafana.com/docs/pyroscope/latest/configure-server/anonymous-usage-statistics-reporting/ (default true)
   -validation.enforce-labels-order
     	Enforce labels order optimization.
   -validation.max-label-names-per-series int

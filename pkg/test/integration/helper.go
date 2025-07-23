@@ -17,8 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/test"
-
 	"connectrpc.com/connect"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -40,35 +38,88 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
-	"github.com/grafana/pyroscope/pkg/phlare"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/pyroscope"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 )
 
+func EachPyroscopeTest(t *testing.T, f func(p *PyroscopeTest, t *testing.T)) {
+	tests := []struct {
+		name string
+		f    func(t *testing.T) *PyroscopeTest
+	}{
+		{
+			"v1",
+			func(t *testing.T) *PyroscopeTest {
+				return new(PyroscopeTest).Configure(t, false)
+			},
+		},
+		{
+			"v2",
+			func(t *testing.T) *PyroscopeTest {
+				return new(PyroscopeTest).Configure(t, true)
+			},
+		},
+	}
+	for _, pt := range tests {
+		t.Run(pt.name, func(t *testing.T) {
+			p := pt.f(t)
+			p.start(t)
+			t.Cleanup(func() {
+				p.stop()
+			})
+			f(p, t)
+		})
+	}
+}
+
 type PyroscopeTest struct {
-	config         phlare.Config
-	it             *phlare.Phlare
+	config         pyroscope.Config
+	it             *pyroscope.Pyroscope
 	wg             sync.WaitGroup
 	prevReg        prometheus.Registerer
 	reg            *prometheus.Registry
 	httpPort       int
 	memberlistPort int
+	grpcPort       int
+	raftPort       int
 }
 
 const address = "127.0.0.1"
 const storeInMemory = "inmemory"
 
-func (p *PyroscopeTest) Start(t *testing.T) {
+func (p *PyroscopeTest) start(t *testing.T) {
+	var err error
 
-	ports, err := test.GetFreePorts(2)
+	p.it, err = pyroscope.New(p.config)
+
+	require.NoError(t, err)
+
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		err := p.it.Run()
+		require.NoError(t, err)
+	}()
+	require.Eventually(t, func() bool {
+		return p.ringActive() && p.ready()
+	}, 30*time.Second, 100*time.Millisecond)
+}
+
+func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
+	ports, err := GetFreePorts(4)
 	require.NoError(t, err)
 	p.httpPort = ports[0]
 	p.memberlistPort = ports[1]
+	p.grpcPort = ports[2]
+	p.raftPort = ports[3]
+	t.Logf("ports: http %d memberlist %d grpc %d raft %d", p.httpPort, p.memberlistPort, p.grpcPort, p.raftPort)
 
 	p.prevReg = prometheus.DefaultRegisterer
 	p.reg = prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = p.reg
 
+	p.config.V2 = v2
 	err = cfg.DynamicUnmarshal(&p.config, []string{"pyroscope"}, flag.NewFlagSet("pyroscope", flag.ContinueOnError))
 	require.NoError(t, err)
 
@@ -76,6 +127,7 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 	p.config.Server.HTTPListenAddress = address
 	p.config.Server.HTTPListenPort = p.httpPort
 	p.config.Server.GRPCListenAddress = address
+	p.config.Server.GRPCListenPort = p.grpcPort
 	p.config.Worker.SchedulerAddress = address
 	p.config.MemberlistKV.AdvertisePort = p.memberlistPort
 	p.config.MemberlistKV.TCPTransport.BindPort = p.memberlistPort
@@ -102,22 +154,29 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 	p.config.LimitsConfig.MaxQueryLookback = 0
 	p.config.LimitsConfig.RejectOlderThan = 0
 	_ = p.config.Server.LogLevel.Set("debug")
-	p.it, err = phlare.New(p.config)
 
-	require.NoError(t, err)
-
-	p.wg.Add(1)
-	go func() {
-		defer p.wg.Done()
-		err := p.it.Run()
-		require.NoError(t, err)
-	}()
-	require.Eventually(t, func() bool {
-		return p.ringActive() && p.ready()
-	}, 30*time.Second, 100*time.Millisecond)
+	if v2 {
+		p.config.Storage.Bucket.Filesystem.Directory = t.TempDir()
+		p.config.Storage.Bucket.Backend = "filesystem"
+		p.config.LimitsConfig.WritePathOverrides.WritePath = "segment-writer"
+		p.config.LimitsConfig.ReadPathOverrides.EnableQueryBackend = true
+		p.config.SegmentWriter.LifecyclerConfig.MinReadyDuration = 0 * time.Second
+		p.config.SegmentWriter.LifecyclerConfig.Addr = address
+		p.config.SegmentWriter.MetadataUpdateTimeout = 0 * time.Second
+		p.config.Metastore.MinReadyDuration = 0 * time.Second
+		p.config.QueryBackend.Address = fmt.Sprintf("%s:%d", address, p.grpcPort)
+		p.config.Metastore.Address = fmt.Sprintf("%s:%d", address, p.grpcPort)
+		p.config.Metastore.Raft.ServerID = fmt.Sprintf("%s:%d", address, p.raftPort)
+		p.config.Metastore.Raft.BindAddress = fmt.Sprintf("%s:%d", address, p.raftPort)
+		p.config.Metastore.Raft.AdvertiseAddress = fmt.Sprintf("%s:%d", address, p.raftPort)
+		p.config.Metastore.Raft.Dir = t.TempDir()
+		p.config.Metastore.Raft.SnapshotsDir = t.TempDir()
+		p.config.Metastore.FSM.DataDir = t.TempDir()
+	}
+	return p
 }
 
-func (p *PyroscopeTest) Stop(t *testing.T) {
+func (p *PyroscopeTest) stop() {
 	defer func() {
 		prometheus.DefaultRegisterer = p.prevReg
 	}()
@@ -322,7 +381,7 @@ func (b *RequestBuilder) PushPPROFRequestFromFile(file string, metric string) *c
 	updateTimestamp := func(rawProfile []byte) []byte {
 		expectedProfile, err := pprof.RawFromBytes(rawProfile)
 		require.NoError(b.t, err)
-		expectedProfile.Profile.TimeNanos = time.Now().Add(-time.Minute).UnixNano()
+		expectedProfile.TimeNanos = time.Now().Add(-time.Minute).UnixNano()
 		buf := bytes.NewBuffer(nil)
 		_, err = expectedProfile.WriteTo(buf)
 		require.NoError(b.t, err)

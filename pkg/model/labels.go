@@ -219,6 +219,52 @@ func (ls Labels) Delete(name string) Labels {
 	return ls
 }
 
+func (ls Labels) Subtract(labels Labels) Labels {
+	var i, j, k int
+	for i < len(ls) && j < len(labels) {
+		cmp := CompareLabelPairs2(ls[i], labels[j])
+		switch {
+		case cmp == 0:
+			i++
+			j++
+		case cmp < 0:
+			if i != k {
+				ls[k] = ls[i]
+			}
+			k++
+			i++
+		default:
+			j++
+		}
+	}
+	for i < len(ls) {
+		if i != k {
+			ls[k] = ls[i]
+		}
+		k++
+		i++
+	}
+	return ls[:k]
+}
+
+func (ls Labels) Intersect(labels Labels) Labels {
+	var i, j, k int
+	for i < len(ls) && j < len(labels) {
+		cmp := CompareLabelPairs2(ls[i], labels[j])
+		if cmp == 0 {
+			ls[k] = ls[i]
+			k++
+			i++
+			j++
+		} else if cmp < 0 {
+			i++
+		} else {
+			j++
+		}
+	}
+	return ls[:k]
+}
+
 // InsertSorted adds the given label to the set of labels.
 // It assumes the labels are sorted lexicographically.
 func (ls Labels) InsertSorted(name, value string) Labels {
@@ -346,8 +392,22 @@ func CompareLabelPairs(a, b []*typesv1.LabelPair) int {
 	return len(a) - len(b)
 }
 
-func CompareLabels(a, b Labels) int {
-	return CompareLabelPairs(a, b)
+func CompareLabels(a, b *typesv1.Labels) int {
+	return CompareLabelPairs(a.Labels, b.Labels)
+}
+
+func CompareLabelPairs2(a, b *typesv1.LabelPair) int {
+	if a.Name < b.Name {
+		return -1
+	} else if a.Name > b.Name {
+		return 1
+	}
+	if a.Value < b.Value {
+		return -1
+	} else if a.Value > b.Value {
+		return 1
+	}
+	return 0
 }
 
 // LabelsBuilder allows modifying Labels.

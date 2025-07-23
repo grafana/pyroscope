@@ -23,6 +23,16 @@ message RawProfileSeries {
 
   // samples are the set of profile bytes
   repeated RawSample samples = 2;
+
+  // Annotations provide additional metadata for a profile.
+  //
+  // The main differences between labels and annotations are:
+  //  - annotations cannot be used in query selectors
+  //  - annotation keys don't have to be unique
+  //
+  // Currently annotations are applied internally by distributors,
+  // any annotation passed via the push API will be dropped.
+  repeated types.v1.ProfileAnnotation annotations = 3;
 }
 
 // RawSample is the set of bytes that correspond to a pprof profile

@@ -3,8 +3,8 @@ name: pyroscope
 description: 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 home: https://grafana.com/oss/pyroscope/
 type: application
-version: 1.13.1
-appVersion: 1.13.1
+version: 1.14.0
+appVersion: 1.14.0
 dependencies:
   - name: grafana-agent
     alias: agent
@@ -13,7 +13,7 @@ dependencies:
     condition: agent.enabled
   - name: alloy
     alias: alloy
-    version: "0.3.2"
+    version: "1.0.1"
     repository: https://grafana.github.io/helm-charts
     condition: alloy.enabled
   - name: minio

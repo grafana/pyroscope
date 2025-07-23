@@ -19,7 +19,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
-	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -129,7 +128,7 @@ func TestBlockCompatability(t *testing.T) {
 				t.Log(profileType)
 				profileTypeParts := strings.Split(profileType, ":")
 
-				it, err := q.SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+				it, err := q.SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
 					LabelSelector: "{}",
 					Start:         0,
 					End:           time.Now().UnixMilli(),
@@ -180,7 +179,7 @@ func TestBlockCompatability_SelectMergeSpans(t *testing.T) {
 				t.Log(profileType)
 				profileTypeParts := strings.Split(profileType, ":")
 
-				it, err := q.SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+				it, err := q.SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
 					LabelSelector: "{}",
 					Start:         0,
 					End:           time.Now().UnixMilli(),
@@ -219,7 +218,7 @@ func (f *fakeQuerier) BlockID() string {
 	return "block-id"
 }
 
-func (f *fakeQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
+func (f *fakeQuerier) SelectMatchingProfiles(ctx context.Context, params *ingesterv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
 	// add some jitter
 	time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
 	if f.doErr {
@@ -250,7 +249,7 @@ func openSingleBlockQuerierIndex(t *testing.T, blockID string) *singleBlockQueri
 func TestSelectMatchingProfilesCleanUp(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	_, err := SelectMatchingProfiles(context.Background(), &ingestv1.SelectProfilesRequest{}, Queriers{
+	_, err := SelectMatchingProfiles(context.Background(), &ingesterv1.SelectProfilesRequest{}, Queriers{
 		&fakeQuerier{},
 		&fakeQuerier{},
 		&fakeQuerier{},
@@ -304,7 +303,7 @@ func Test_singleBlockQuerier_Series(t *testing.T) {
 				{Name: "__name__", Value: "process_cpu"},
 			}},
 		}
-		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
+		got, err := q.Series(ctx, &ingesterv1.SeriesRequest{
 			LabelNames: []string{
 				"__name__",
 			},
@@ -320,7 +319,7 @@ func Test_singleBlockQuerier_Series(t *testing.T) {
 				{Name: "__name__", Value: "block"},
 			}},
 		}
-		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
+		got, err := q.Series(ctx, &ingesterv1.SeriesRequest{
 			Matchers:   []string{`{__name__="block"}`},
 			LabelNames: []string{"__name__"},
 		})
@@ -372,7 +371,7 @@ func Test_singleBlockQuerier_Series(t *testing.T) {
 				{Name: "__type__", Value: "cpu"},
 			}},
 		}
-		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
+		got, err := q.Series(ctx, &ingesterv1.SeriesRequest{
 			LabelNames: []string{"__name__", "__type__"},
 		})
 
@@ -387,7 +386,7 @@ func Test_singleBlockQuerier_Series(t *testing.T) {
 				{Name: "__type__", Value: "alloc_objects"},
 			}},
 		}
-		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
+		got, err := q.Series(ctx, &ingesterv1.SeriesRequest{
 			Matchers:   []string{`{__name__="memory",__type__="alloc_objects"}`},
 			LabelNames: []string{"__name__", "__type__"},
 		})
@@ -614,7 +613,7 @@ func Test_singleBlockQuerier_Series(t *testing.T) {
 				{Name: "service_name", Value: "simple.golang.app"},
 			}},
 		}
-		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
+		got, err := q.Series(ctx, &ingesterv1.SeriesRequest{
 			Matchers:   []string{},
 			LabelNames: []string{},
 		})
@@ -716,7 +715,7 @@ func Test_singleBlockQuerier_Series(t *testing.T) {
 				{Name: "service_name", Value: "simple.golang.app"},
 			}},
 		}
-		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
+		got, err := q.Series(ctx, &ingesterv1.SeriesRequest{
 			Matchers: []string{},
 			LabelNames: []string{
 				"pyroscope_app",
@@ -1058,7 +1057,7 @@ func Test_singleBlockQuerier_ProfileTypes(t *testing.T) {
 		},
 	}
 
-	got, err := q.ProfileTypes(ctx, &connect.Request[ingestv1.ProfileTypesRequest]{})
+	got, err := q.ProfileTypes(ctx, &connect.Request[ingesterv1.ProfileTypesRequest]{})
 	assert.NoError(t, err)
 	assert.Equal(t, want, got.Msg.ProfileTypes)
 }
@@ -1079,7 +1078,7 @@ func Benchmark_singleBlockQuerier_Series(b *testing.B) {
 
 	b.Run("multiple labels", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
-			q.Series(ctx, &ingestv1.SeriesRequest{ //nolint:errcheck
+			q.Series(ctx, &ingesterv1.SeriesRequest{ //nolint:errcheck
 				Matchers:   []string{`{__name__="block"}`},
 				LabelNames: []string{"__name__"},
 			})
@@ -1088,7 +1087,7 @@ func Benchmark_singleBlockQuerier_Series(b *testing.B) {
 
 	b.Run("multiple labels with matcher", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
-			q.Series(ctx, &ingestv1.SeriesRequest{ //nolint:errcheck
+			q.Series(ctx, &ingesterv1.SeriesRequest{ //nolint:errcheck
 				Matchers:   []string{`{__name__="memory",__type__="alloc_objects"}`},
 				LabelNames: []string{"__name__", "__type__"},
 			})
@@ -1097,7 +1096,7 @@ func Benchmark_singleBlockQuerier_Series(b *testing.B) {
 
 	b.Run("UI request", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
-			q.Series(ctx, &ingestv1.SeriesRequest{ //nolint:errcheck
+			q.Series(ctx, &ingesterv1.SeriesRequest{ //nolint:errcheck
 				Matchers:   []string{},
 				LabelNames: []string{"pyroscope_app", "service_name", "__profile_type__", "__type__", "__name__"},
 			})
@@ -1287,8 +1286,9 @@ func genPoints(count int) []*typesv1.Point {
 	points := make([]*typesv1.Point, 0, count)
 	for i := 1; i < count+1; i++ {
 		points = append(points, &typesv1.Point{
-			Timestamp: int64(model.TimeFromUnixNano(int64(time.Second * time.Duration(i)))),
-			Value:     1,
+			Timestamp:   int64(model.TimeFromUnixNano(int64(time.Second * time.Duration(i)))),
+			Value:       1,
+			Annotations: []*typesv1.ProfileAnnotation{},
 		})
 	}
 	return points

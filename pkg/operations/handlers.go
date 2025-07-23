@@ -16,7 +16,6 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
-	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
@@ -156,7 +155,7 @@ func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.R
 			return
 		}
 
-		prefixedBucket := phlareobj.NewPrefixedBucket(h.Bucket, path.Join(tenantId, "phlaredb/"))
+		prefixedBucket := objstore.NewPrefixedBucket(h.Bucket, path.Join(tenantId, "phlaredb/"))
 		defer prefixedBucket.Close()
 
 		fetcher, err := block.NewMetaFetcher(h.Logger, 1, prefixedBucket, os.TempDir(), nil, nil)

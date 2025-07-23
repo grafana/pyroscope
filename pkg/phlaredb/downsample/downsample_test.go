@@ -49,26 +49,28 @@ func TestDownsampler_Aggregation(t *testing.T) {
 	builder := testhelper.NewProfileBuilder(1703853310000000000).CPUProfile() // 2023-12-29T12:35:10Z
 	builder.ForStacktraceString("a", "b", "c").AddSamples(30)
 	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(20)
-	batch, _ := schemav1testhelper.NewProfileSchema(builder.Profile, "cpu")
+	builder.WithAnnotations("test annotation 1")
+	batch, _ := schemav1testhelper.NewProfileSchema(builder, "cpu")
 	profiles = append(profiles, batch...)
 
 	builder = testhelper.NewProfileBuilder(1703853559000000000).CPUProfile() // 2023-12-29T12:39:19Z
 	builder.ForStacktraceString("a", "b", "c").AddSamples(40)
 	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(30)
 	builder.ForStacktraceString("a", "b", "c", "d", "e").AddSamples(20)
-	batch, _ = schemav1testhelper.NewProfileSchema(builder.Profile, "cpu")
+	batch, _ = schemav1testhelper.NewProfileSchema(builder, "cpu")
 	profiles = append(profiles, batch...)
 
 	builder = testhelper.NewProfileBuilder(1703854209000000000).CPUProfile() // 2023-12-29T12:50:09Z
 	builder.ForStacktraceString("a", "b", "c").AddSamples(40)
 	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(30)
-	batch, _ = schemav1testhelper.NewProfileSchema(builder.Profile, "cpu")
+	batch, _ = schemav1testhelper.NewProfileSchema(builder, "cpu")
 	profiles = append(profiles, batch...)
 
 	builder = testhelper.NewProfileBuilder(1703858409000000000).CPUProfile() // 2023-12-29T14:00:09Z
 	builder.ForStacktraceString("a", "b", "c").AddSamples(30)
 	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(20)
-	batch, _ = schemav1testhelper.NewProfileSchema(builder.Profile, "cpu")
+	builder.WithAnnotations("test annotation 2")
+	batch, _ = schemav1testhelper.NewProfileSchema(builder, "cpu")
 	profiles = append(profiles, batch...)
 
 	reader := schemav1.NewInMemoryProfilesRowReader(profiles)
@@ -96,6 +98,13 @@ func TestDownsampler_Aggregation(t *testing.T) {
 		require.Equal(t, int64(20), values[2].Int64()) // a, b, c, d, e
 	})
 
+	annotations := make([]string, 0)
+	schemav1.DownsampledProfileRow(downsampledRows[0]).ForAnnotationValues(func(values []parquet.Value) {
+		annotations = append(annotations, values[0].String())
+	})
+	require.Equal(t, 1, len(annotations))
+	require.Equal(t, "test annotation 1", annotations[0])
+
 	downsampledRows = readDownsampledRows(t, filepath.Join(outDir, "profiles_1h_sum.parquet"), 2)
 
 	schemav1.DownsampledProfileRow(downsampledRows[0]).ForValues(func(values []parquet.Value) {
@@ -104,6 +113,17 @@ func TestDownsampler_Aggregation(t *testing.T) {
 		require.Equal(t, int64(80), values[1].Int64())  // a, b, c, d
 		require.Equal(t, int64(20), values[2].Int64())  // a, b, c, d, e
 	})
+
+	annotations = make([]string, 0)
+	schemav1.DownsampledProfileRow(downsampledRows[0]).ForAnnotationValues(func(values []parquet.Value) {
+		annotations = append(annotations, values[0].String())
+	})
+	schemav1.DownsampledProfileRow(downsampledRows[1]).ForAnnotationValues(func(values []parquet.Value) {
+		annotations = append(annotations, values[0].String())
+	})
+	require.Equal(t, 2, len(annotations))
+	require.Equal(t, "test annotation 1", annotations[0])
+	require.Equal(t, "test annotation 2", annotations[1])
 }
 
 func TestDownsampler_VaryingFingerprints(t *testing.T) {
@@ -111,7 +131,7 @@ func TestDownsampler_VaryingFingerprints(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		builder := testhelper.NewProfileBuilder(1703853310000000000).CPUProfile() // 2023-12-29T12:35:10Z
 		builder.ForStacktraceString("a", "b", "c").AddSamples(30)
-		batch, _ := schemav1testhelper.NewProfileSchema(builder.Profile, "cpu")
+		batch, _ := schemav1testhelper.NewProfileSchema(builder, "cpu")
 		profiles = append(profiles, batch...)
 	}
 
@@ -140,13 +160,13 @@ func TestDownsampler_VaryingPartition(t *testing.T) {
 	builder := testhelper.NewProfileBuilder(1703853310000000000).CPUProfile()
 	builder.ForStacktraceString("a", "b", "c").AddSamples(30)
 	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(20)
-	batch, _ := schemav1testhelper.NewProfileSchema(builder.Profile, "cpu")
+	batch, _ := schemav1testhelper.NewProfileSchema(builder, "cpu")
 	profiles = append(profiles, batch...)
 
 	builder = testhelper.NewProfileBuilder(1703853311000000000).CPUProfile()
 	builder.ForStacktraceString("a", "b", "c").AddSamples(30)
 	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(20)
-	batch, _ = schemav1testhelper.NewProfileSchema(builder.Profile, "cpu")
+	batch, _ = schemav1testhelper.NewProfileSchema(builder, "cpu")
 	profiles = append(profiles, batch...)
 
 	reader := schemav1.NewInMemoryProfilesRowReader(profiles)
@@ -243,7 +263,7 @@ func readDownsampledRows(t *testing.T, path string, expectedRowCount int) []parq
 	require.NoError(t, err)
 
 	reader := parquet.NewReader(pf, schemav1.DownsampledProfilesSchema)
-	downsampledRows := make([]parquet.Row, 1000)
+	downsampledRows := make([]parquet.Row, reader.NumRows())
 	rowCount, err := reader.ReadRows(downsampledRows)
 	require.NoError(t, err)
 

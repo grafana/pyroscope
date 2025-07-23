@@ -113,7 +113,7 @@ For more documentation on how to add the Pyroscope agent to your code, see the [
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/nodejs/express" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/dotnet/"><img src="https://user-images.githubusercontent.com/23323466/178160544-d2e189c6-a521-482c-a7dc-5375c1985e24.png" width="100px;" alt=""/><br />
-        <b>Dotnet</b></a><br />
+        <b>.NET</b></a><br />
           <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/dotnet/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/dotnet" title="examples">Examples</a>
       </td>
@@ -177,14 +177,14 @@ To start contributing, check out our [Contributing Guide](docs/internal/contribu
 <a href="https://github.com/louislo7"><img src="https://avatars.githubusercontent.com/u/84481279?v=4" title="louislo7" width="80" height="80"></a>
 <a href="https://github.com/darrenjaneczek"><img src="https://avatars.githubusercontent.com/u/38694490?v=4" title="darrenjaneczek" width="80" height="80"></a>
 <a href="https://github.com/marcsanmi"><img src="https://avatars.githubusercontent.com/u/8235696?v=4" title="marcsanmi" width="80" height="80"></a>
-<a href="https://github.com/jdbaldry"><img src="https://avatars.githubusercontent.com/u/4599384?v=4" title="jdbaldry" width="80" height="80"></a>
 <a href="https://github.com/alsoba13"><img src="https://avatars.githubusercontent.com/u/3586560?v=4" title="alsoba13" width="80" height="80"></a>
+<a href="https://github.com/jdbaldry"><img src="https://avatars.githubusercontent.com/u/4599384?v=4" title="jdbaldry" width="80" height="80"></a>
 <a href="https://github.com/shaleynikov"><img src="https://avatars.githubusercontent.com/u/8720058?v=4" title="shaleynikov" width="80" height="80"></a>
-<a href="https://github.com/09jvilla"><img src="https://avatars.githubusercontent.com/u/9610816?v=4" title="09jvilla" width="80" height="80"></a>
 <a href="https://github.com/grafakus"><img src="https://avatars.githubusercontent.com/u/146180665?v=4" title="grafakus" width="80" height="80"></a>
+<a href="https://github.com/09jvilla"><img src="https://avatars.githubusercontent.com/u/9610816?v=4" title="09jvilla" width="80" height="80"></a>
 <a href="https://github.com/joey-grafana"><img src="https://avatars.githubusercontent.com/u/90795735?v=4" title="joey-grafana" width="80" height="80"></a>
-<a href="https://github.com/Eve832"><img src="https://avatars.githubusercontent.com/u/81647476?v=4" title="Eve832" width="80" height="80"></a>
 <a href="https://github.com/iOliverNguyen"><img src="https://avatars.githubusercontent.com/u/6618620?v=4" title="iOliverNguyen" width="80" height="80"></a>
+<a href="https://github.com/Eve832"><img src="https://avatars.githubusercontent.com/u/81647476?v=4" title="Eve832" width="80" height="80"></a>
 <a href="https://github.com/AdrK"><img src="https://avatars.githubusercontent.com/u/15175440?v=4" title="AdrK" width="80" height="80"></a>
 <a href="https://github.com/alonlong"><img src="https://avatars.githubusercontent.com/u/3090383?v=4" title="alonlong" width="80" height="80"></a>
 <a href="https://github.com/Loggy"><img src="https://avatars.githubusercontent.com/u/3171097?v=4" title="Loggy" width="80" height="80"></a>

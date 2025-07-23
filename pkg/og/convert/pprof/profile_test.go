@@ -74,14 +74,14 @@ func TestFixFunctionNamesForScriptingLanguages(t *testing.T) {
 
 	collapsed := bench.StackCollapseProto(profile.Profile, 0, 1)
 	expected := []string{
-		"qwe.py:242 - main;qwe.py:50 - func1 10",
-		"qwe.py:242 - main;qwe.py:8 - func2 13",
+		"qwe.py main;qwe.py func1 10",
+		"qwe.py main;qwe.py func2 13",
 	}
 	assert.Equal(t, expected, collapsed)
 
-	assert.Equal(t, "qwe.py:242 - main", functionNameFromLocation(profile.Location[0].Id))
-	assert.Equal(t, "qwe.py:50 - func1", functionNameFromLocation(profile.Location[1].Id))
-	assert.Equal(t, "qwe.py:8 - func2", functionNameFromLocation(profile.Location[2].Id))
+	assert.Equal(t, "qwe.py main", functionNameFromLocation(profile.Location[0].Id))
+	assert.Equal(t, "qwe.py func1", functionNameFromLocation(profile.Location[1].Id))
+	assert.Equal(t, "qwe.py func2", functionNameFromLocation(profile.Location[2].Id))
 }
 
 func TestCreateLabels(t *testing.T) {

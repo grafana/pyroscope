@@ -5,11 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"runtime/pprof"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -26,6 +28,8 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health/grpc_health_v1"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -33,12 +37,14 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	pprof2 "github.com/grafana/pyroscope/pkg/pprof"
 	pproftesthelper "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockwritepath"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -184,7 +190,7 @@ func hugeProfileBytes(t *testing.T) []byte {
 	for i := 0; i < 10_000; i++ {
 		p.ForStacktraceString(fmt.Sprintf("my_%d", i), "other").AddSamples(1)
 	}
-	bs, err := p.Profile.MarshalVT()
+	bs, err := p.MarshalVT()
 	require.NoError(t, err)
 	return bs
 }
@@ -196,6 +202,10 @@ type fakeIngester struct {
 	testhelper.FakePoolClient
 
 	mtx sync.Mutex
+}
+
+func (i *fakeIngester) List(ctx context.Context, in *grpc_health_v1.HealthListRequest, opts ...grpc.CallOption) (*grpc_health_v1.HealthListResponse, error) {
+	return nil, errors.New("not implemented")
 }
 
 func (i *fakeIngester) Push(_ context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
@@ -299,71 +309,6 @@ func Test_Limits(t *testing.T) {
 			}),
 			expectedCode:             connect.CodeInvalidArgument,
 			expectedValidationReason: validation.LabelNameTooLong,
-		},
-		{
-			description: "ingest_limit_reached",
-			pushReq:     &pushv1.PushRequest{},
-			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
-				l := validation.MockDefaultLimits()
-				l.IngestionLimit = &ingest_limits.Config{
-					PeriodType:     "hour",
-					PeriodLimitMb:  128,
-					LimitResetTime: 1737721086,
-					LimitReached:   true,
-					Sampling: ingest_limits.SamplingConfig{
-						NumRequests: 0,
-						Period:      time.Minute,
-					},
-				}
-				tenantLimits["user-1"] = l
-			}),
-			expectedCode:             connect.CodeResourceExhausted,
-			expectedValidationReason: validation.IngestLimitReached,
-		},
-		{
-			description: "ingest_limit_reached_for_usage_group",
-			pushReq: &pushv1.PushRequest{
-				Series: []*pushv1.RawProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "cpu"},
-							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
-						},
-						Samples: []*pushv1.RawSample{
-							{
-								RawProfile: collectTestProfileBytes(t),
-							},
-						},
-					},
-				},
-			},
-			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
-				l := validation.MockDefaultLimits()
-				l.IngestionLimit = &ingest_limits.Config{
-					PeriodType:     "hour",
-					PeriodLimitMb:  128,
-					LimitResetTime: 1737721086,
-					LimitReached:   false,
-					Sampling: ingest_limits.SamplingConfig{
-						NumRequests: 0,
-						Period:      time.Minute,
-					},
-					UsageGroups: map[string]ingest_limits.UsageGroup{
-						"group-1": {
-							PeriodLimitMb: 64,
-							LimitReached:  true,
-						},
-					},
-				}
-				usageGroupCfg, err := validation.NewUsageGroupConfig(map[string]string{
-					"group-1": "{service_name=\"svc\"}",
-				})
-				require.NoError(t, err)
-				l.DistributorUsageGroups = &usageGroupCfg
-				tenantLimits["user-1"] = l
-			}),
-			expectedCode:             connect.CodeResourceExhausted,
-			expectedValidationReason: validation.IngestLimitReached,
 		},
 	}
 
@@ -479,7 +424,246 @@ func Test_Sessions_Limit(t *testing.T) {
 	}
 }
 
-func Test_SampleLabels(t *testing.T) {
+func Test_IngestLimits(t *testing.T) {
+	type testCase struct {
+		description        string
+		pushReq            *distributormodel.PushRequest
+		overrides          *validation.Overrides
+		verifyExpectations func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse])
+	}
+
+	testCases := []testCase{
+		{
+			description: "ingest_limit_reached",
+			pushReq:     &distributormodel.PushRequest{},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingestlimits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingestlimits.SamplingConfig{
+						NumRequests: 0,
+						Period:      time.Minute,
+					},
+				}
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.Error(t, err)
+				require.Nil(t, res)
+				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+			},
+		},
+		{
+			description: "ingest_limit_reached_sampling",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{Profile: pprof2.RawFromProto(testProfile(1))},
+						},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingestlimits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingestlimits.SamplingConfig{
+						NumRequests: 1,
+						Period:      time.Minute,
+					},
+				}
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.NoError(t, err)
+				require.NotNil(t, res)
+				require.Equal(t, 1, len(req.Series[0].Annotations))
+				// annotations are json encoded and contain some of the limit config fields
+				require.True(t, strings.Contains(req.Series[0].Annotations[0].Value, "\"periodLimitMb\":128"))
+			},
+		},
+		{
+			description: "ingest_limit_reached_with_sampling_error",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{Profile: pprof2.RawFromProto(testProfile(1))},
+						},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingestlimits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingestlimits.SamplingConfig{
+						NumRequests: 0,
+						Period:      time.Minute,
+					},
+				}
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.Error(t, err)
+				require.Nil(t, res)
+				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+				require.Empty(t, req.Series[0].Annotations)
+			},
+		},
+		{
+			description: "ingest_limit_reached_with_multiple_usage_groups",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc1"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								RawProfile: collectTestProfileBytes(t),
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+									StringTable: []string{""},
+								}),
+							},
+						},
+					},
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc2"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{Profile: pprof2.RawFromProto(testProfile(1))},
+						},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingestlimits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   false,
+					UsageGroups: map[string]ingestlimits.UsageGroup{
+						"group-1": {
+							PeriodLimitMb: 64,
+							LimitReached:  true,
+						},
+						"group-2": {
+							PeriodLimitMb: 32,
+							LimitReached:  true,
+						},
+					},
+				}
+				usageGroupCfg, err := validation.NewUsageGroupConfig(map[string]string{
+					"group-1": "{service_name=\"svc1\"}",
+					"group-2": "{service_name=\"svc2\"}",
+				})
+				require.NoError(t, err)
+				l.DistributorUsageGroups = usageGroupCfg
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.Error(t, err)
+				require.Nil(t, res)
+				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+				require.Empty(t, req.Series[0].Annotations)
+				require.Empty(t, req.Series[1].Annotations)
+			},
+		},
+		{
+			description: "ingest_limit_reached_with_sampling_and_usage_groups",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{Profile: pprof2.RawFromProto(testProfile(1))},
+						},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingestlimits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingestlimits.SamplingConfig{
+						NumRequests: 100,
+						Period:      time.Minute,
+					},
+					UsageGroups: map[string]ingestlimits.UsageGroup{
+						"group-1": {
+							PeriodLimitMb: 64,
+							LimitReached:  true,
+						},
+					},
+				}
+				usageGroupCfg, err := validation.NewUsageGroupConfig(map[string]string{
+					"group-1": "{service_name=\"svc\"}",
+				})
+				require.NoError(t, err)
+				l.DistributorUsageGroups = usageGroupCfg
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.NoError(t, err)
+				require.NotNil(t, res)
+				require.Len(t, req.Series[0].Annotations, 2)
+				assert.Contains(t, req.Series[0].Annotations[0].Value, "\"periodLimitMb\":128")
+				assert.Contains(t, req.Series[0].Annotations[1].Value, "\"usageGroup\":\"group-1\"")
+				assert.Contains(t, req.Series[0].Annotations[1].Value, "\"periodLimitMb\":64")
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			ing := newFakeIngester(t, false)
+			d, err := New(Config{
+				DistributorRing: ringConfig,
+			}, testhelper.NewMockRing([]ring.InstanceDesc{
+				{Addr: "foo"},
+			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+				return ing, nil
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			require.NoError(t, err)
+
+			resp, err := d.PushParsed(tenant.InjectTenantID(context.Background(), "user-1"), tc.pushReq)
+			tc.verifyExpectations(err, tc.pushReq, resp)
+		})
+	}
+}
+
+func Test_SampleLabels_Ingester(t *testing.T) {
 	o := validation.MockDefaultOverrides()
 	defaultRelabelConfigs := o.IngestionRelabelingRules("")
 
@@ -490,12 +674,15 @@ func Test_SampleLabels(t *testing.T) {
 		relabelRules          []*relabel.Config
 		expectBytesDropped    float64
 		expectProfilesDropped float64
+		expectError           error
 	}
+	const dummyTenantID = "tenant1"
 
 	testCases := []testCase{
 		{
 			description: "no series labels, no sample labels",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Samples: []*distributormodel.ProfileSample{
@@ -510,23 +697,12 @@ func Test_SampleLabels(t *testing.T) {
 					},
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
-				{
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								Sample: []*profilev1.Sample{{
-									Value: []int64{1},
-								}},
-							}),
-						},
-					},
-				},
-			},
+			expectError: connect.NewError(connect.CodeInvalidArgument, validation.NewErrorf(validation.MissingLabels, validation.MissingLabelsErrorMsg)),
 		},
 		{
-			description: "has series labels, no sample labels",
+			description: "validation error propagation and accounting",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -544,10 +720,37 @@ func Test_SampleLabels(t *testing.T) {
 					},
 				},
 			},
+			expectError: connect.NewError(connect.CodeInvalidArgument, fmt.Errorf(`invalid labels '{foo="bar"}' with error: invalid metric name`)),
+		},
+		{
+			description: "has series labels, no sample labels",
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "service_name", Value: "service"},
+							{Name: "__name__", Value: "cpu"},
+							{Name: "foo", Value: "bar"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+								}),
+							},
+						},
+					},
+				},
+			},
 			series: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "cpu"},
 						{Name: "foo", Value: "bar"},
+						{Name: "service_name", Value: "service"},
 					},
 					Samples: []*distributormodel.ProfileSample{
 						{
@@ -562,10 +765,15 @@ func Test_SampleLabels(t *testing.T) {
 			},
 		},
 		{
-			description: "no series labels, all samples have identical label set",
+			description: "all samples have identical label set",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "service_name", Value: "service"},
+							{Name: "__name__", Value: "cpu"},
+						},
 						Samples: []*distributormodel.ProfileSample{
 							{
 								Profile: pprof2.RawFromProto(&profilev1.Profile{
@@ -585,7 +793,9 @@ func Test_SampleLabels(t *testing.T) {
 			series: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "cpu"},
 						{Name: "foo", Value: "bar"},
+						{Name: "service_name", Value: "service"},
 					},
 					Samples: []*distributormodel.ProfileSample{
 						{
@@ -604,9 +814,12 @@ func Test_SampleLabels(t *testing.T) {
 		{
 			description: "has series labels, all samples have identical label set",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
+							{Name: "service_name", Value: "service"},
+							{Name: "__name__", Value: "cpu"},
 							{Name: "baz", Value: "qux"},
 						},
 						Samples: []*distributormodel.ProfileSample{
@@ -628,8 +841,10 @@ func Test_SampleLabels(t *testing.T) {
 			series: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "cpu"},
 						{Name: "baz", Value: "qux"},
 						{Name: "foo", Value: "bar"},
+						{Name: "service_name", Value: "service"},
 					},
 					Samples: []*distributormodel.ProfileSample{
 						{
@@ -648,10 +863,14 @@ func Test_SampleLabels(t *testing.T) {
 		{
 			description: "has series labels, and the only sample label name overlaps with series label, creating overlapping groups",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
+							{Name: "service_name", Value: "service"},
+							{Name: "__name__", Value: "cpu"},
 							{Name: "foo", Value: "bar"},
+							{Name: "baz", Value: "qux"},
 						},
 						Samples: []*distributormodel.ProfileSample{
 							{
@@ -677,7 +896,10 @@ func Test_SampleLabels(t *testing.T) {
 			series: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "cpu"},
+						{Name: "baz", Value: "qux"},
 						{Name: "foo", Value: "bar"},
+						{Name: "service_name", Value: "service"},
 					},
 					Samples: []*distributormodel.ProfileSample{
 						{
@@ -698,9 +920,12 @@ func Test_SampleLabels(t *testing.T) {
 		{
 			description: "has series labels, samples have distinct label sets",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
+							{Name: "service_name", Value: "service"},
+							{Name: "__name__", Value: "cpu"},
 							{Name: "baz", Value: "qux"},
 						},
 						Samples: []*distributormodel.ProfileSample{
@@ -730,8 +955,10 @@ func Test_SampleLabels(t *testing.T) {
 			series: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "cpu"},
 						{Name: "baz", Value: "qux"},
 						{Name: "foo", Value: "bar"},
+						{Name: "service_name", Value: "service"},
 					},
 					Samples: []*distributormodel.ProfileSample{
 						{
@@ -747,7 +974,9 @@ func Test_SampleLabels(t *testing.T) {
 				},
 				{
 					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "cpu"},
 						{Name: "baz", Value: "qux"},
+						{Name: "service_name", Value: "service"},
 						{Name: "waldo", Value: "fred"},
 					},
 					Samples: []*distributormodel.ProfileSample{
@@ -768,10 +997,12 @@ func Test_SampleLabels(t *testing.T) {
 			description:  "has series labels that should be renamed to no longer include godeltaprof",
 			relabelRules: defaultRelabelConfigs,
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "godeltaprof_memory"},
+							{Name: "service_name", Value: "service"},
 						},
 						Samples: []*distributormodel.ProfileSample{
 							{
@@ -793,6 +1024,7 @@ func Test_SampleLabels(t *testing.T) {
 						{Name: "__delta__", Value: "false"},
 						{Name: "__name__", Value: "memory"},
 						{Name: "__name_replaced__", Value: "godeltaprof_memory"},
+						{Name: "service_name", Value: "service"},
 					},
 					Samples: []*distributormodel.ProfileSample{
 						{
@@ -814,10 +1046,12 @@ func Test_SampleLabels(t *testing.T) {
 				{Action: relabel.Drop, SourceLabels: []model.LabelName{"__name__", "span_name"}, Separator: "/", Regex: relabel.MustNewRegexp("unwanted/randomness")},
 			},
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "unwanted"},
+							{Name: "service_name", Value: "service"},
 						},
 						Samples: []*distributormodel.ProfileSample{
 							{
@@ -846,6 +1080,7 @@ func Test_SampleLabels(t *testing.T) {
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "unwanted"},
+						{Name: "service_name", Value: "service"},
 					},
 					Samples: []*distributormodel.ProfileSample{
 						{
@@ -866,10 +1101,12 @@ func Test_SampleLabels(t *testing.T) {
 				{Action: relabel.Drop, Regex: relabel.MustNewRegexp(".*")},
 			},
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "unwanted"},
+							{Name: "service_name", Value: "service"},
 						},
 						Samples: []*distributormodel.ProfileSample{
 							{
@@ -901,10 +1138,12 @@ func Test_SampleLabels(t *testing.T) {
 				{Action: relabel.Replace, Regex: relabel.MustNewRegexp(".*"), Replacement: "", TargetLabel: "span_name"},
 			},
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "unwanted"},
+							{Name: "service_name", Value: "service"},
 						},
 						Samples: []*distributormodel.ProfileSample{
 							{
@@ -931,6 +1170,7 @@ func Test_SampleLabels(t *testing.T) {
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "unwanted"},
+						{Name: "service_name", Value: "service"},
 					},
 					Samples: []*distributormodel.ProfileSample{
 						{
@@ -948,10 +1188,12 @@ func Test_SampleLabels(t *testing.T) {
 		{
 			description: "ensure only samples of same stacktraces get grouped",
 			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "profile"},
+							{Name: "service_name", Value: "service"},
 						},
 						Samples: []*distributormodel.ProfileSample{
 							{
@@ -1006,6 +1248,7 @@ func Test_SampleLabels(t *testing.T) {
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "profile"},
+						{Name: "service_name", Value: "service"},
 					},
 					Samples: []*distributormodel.ProfileSample{
 						{
@@ -1035,6 +1278,7 @@ func Test_SampleLabels(t *testing.T) {
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "profile"},
 						{Name: "foo", Value: "bar"},
+						{Name: "service_name", Value: "service"},
 					},
 					Samples: []*distributormodel.ProfileSample{
 						{
@@ -1059,14 +1303,707 @@ func Test_SampleLabels(t *testing.T) {
 		// reporting. Neither are validated by the tests, nor do they influence
 		// test behavior in any way.
 		ug := &validation.UsageGroupConfig{}
-		const dummyTenantID = "tenant1"
 
 		t.Run(tc.description, func(t *testing.T) {
-			series, actualBytesDropped, actualProfilesDropped := extractSampleSeries(tc.pushReq, dummyTenantID, ug, tc.relabelRules)
-			assert.Equal(t, tc.expectBytesDropped, actualBytesDropped)
-			assert.Equal(t, tc.expectProfilesDropped, actualProfilesDropped)
-			require.Len(t, series, len(tc.series))
-			for i, actualSeries := range series {
+			overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionRelabelingRules = tc.relabelRules
+				l.DistributorUsageGroups = ug
+				tenantLimits[dummyTenantID] = l
+			})
+			d, err := New(Config{
+				DistributorRing: ringConfig,
+			}, testhelper.NewMockRing([]ring.InstanceDesc{
+				{Addr: "foo"},
+			}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
+				return newFakeIngester(t, false), nil
+			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			require.NoError(t, err)
+
+			err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForIngester)
+			assert.Equal(t, tc.expectBytesDropped, float64(tc.pushReq.DiscardedBytesRelabeling))
+			assert.Equal(t, tc.expectProfilesDropped, float64(tc.pushReq.DiscardedProfilesRelabeling))
+
+			if tc.expectError != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tc.expectError.Error(), err.Error())
+				return
+			} else {
+				assert.NoError(t, err)
+			}
+
+			require.Len(t, tc.pushReq.Series, len(tc.series))
+			for i, actualSeries := range tc.pushReq.Series {
+				expectedSeries := tc.series[i]
+				assert.Equal(t, expectedSeries.Labels, actualSeries.Labels)
+				require.Len(t, actualSeries.Samples, len(expectedSeries.Samples))
+				for j, actualProfile := range actualSeries.Samples {
+					expectedProfile := expectedSeries.Samples[j]
+					assert.Equal(t, expectedProfile.Profile.Sample, actualProfile.Profile.Sample)
+				}
+			}
+		})
+	}
+}
+
+func Test_SampleLabels_SegmentWriter(t *testing.T) {
+	o := validation.MockDefaultOverrides()
+	defaultRelabelConfigs := o.IngestionRelabelingRules("")
+
+	type testCase struct {
+		description           string
+		pushReq               *distributormodel.PushRequest
+		series                []*distributormodel.ProfileSeries
+		relabelRules          []*relabel.Config
+		expectBytesDropped    float64
+		expectProfilesDropped float64
+		expectError           error
+	}
+	const dummyTenantID = "tenant1"
+
+	testCases := []testCase{
+		{
+			description: "no series labels, no sample labels",
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+								}),
+							},
+						},
+					},
+				},
+			},
+			expectError: connect.NewError(connect.CodeInvalidArgument, validation.NewErrorf(validation.MissingLabels, validation.MissingLabelsErrorMsg)),
+		},
+		{
+			description: "validation error propagation",
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "foo", Value: "bar"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+								}),
+							},
+						},
+					},
+				},
+			},
+			expectError: connect.NewError(connect.CodeInvalidArgument, fmt.Errorf(`invalid labels '{foo="bar"}' with error: invalid metric name`)),
+		},
+		{
+			description: "has series labels, no sample labels",
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "service_name", Value: "service"},
+							{Name: "__name__", Value: "cpu"},
+							{Name: "foo", Value: "bar"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "cpu"},
+						{Name: "foo", Value: "bar"},
+						{Name: "service_name", Value: "service"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								Sample: []*profilev1.Sample{{
+									Value: []int64{1},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "all samples have identical label set",
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "service_name", Value: "service"},
+							{Name: "__name__", Value: "cpu"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "foo", "bar"},
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+										Label: []*profilev1.Label{
+											{Key: 1, Str: 2},
+										},
+									}},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "cpu"},
+						{Name: "foo", Value: "bar"},
+						{Name: "service_name", Value: "service"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{"", "foo", "bar"},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{1},
+									Label: []*profilev1.Label{},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "has series labels, all samples have identical label set",
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "service_name", Value: "service"},
+							{Name: "__name__", Value: "cpu"},
+							{Name: "baz", Value: "qux"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "foo", "bar"},
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+										Label: []*profilev1.Label{
+											{Key: 1, Str: 2},
+										},
+									}},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "cpu"},
+						{Name: "baz", Value: "qux"},
+						{Name: "foo", Value: "bar"},
+						{Name: "service_name", Value: "service"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{"", "foo", "bar"},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{1},
+									Label: []*profilev1.Label{},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "has series labels, and the only sample label name overlaps with series label, creating overlapping groups",
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "service_name", Value: "service"},
+							{Name: "__name__", Value: "cpu"},
+							{Name: "foo", Value: "bar"},
+							{Name: "baz", Value: "qux"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "foo", "bar"},
+									Sample: []*profilev1.Sample{
+										{
+											Value: []int64{1},
+											Label: []*profilev1.Label{
+												{Key: 1, Str: 2},
+											},
+										},
+										{
+											Value: []int64{2},
+										},
+									},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "cpu"},
+						{Name: "baz", Value: "qux"},
+						{Name: "foo", Value: "bar"},
+						{Name: "service_name", Value: "service"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{"", "foo", "bar"},
+								Sample: []*profilev1.Sample{
+									{
+										Value: []int64{3},
+										Label: nil,
+									},
+								},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "has series labels, samples have distinct label sets",
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "service_name", Value: "service"},
+							{Name: "__name__", Value: "cpu"},
+							{Name: "baz", Value: "qux"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "foo", "bar", "waldo", "fred"},
+									Sample: []*profilev1.Sample{
+										{
+											Value: []int64{1},
+											Label: []*profilev1.Label{
+												{Key: 1, Str: 2},
+											},
+										},
+										{
+											Value: []int64{2},
+											Label: []*profilev1.Label{
+												{Key: 3, Str: 4},
+											},
+										},
+									},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "cpu"},
+						{Name: "baz", Value: "qux"},
+						{Name: "service_name", Value: "service"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{"", "foo", "bar", "waldo", "fred"},
+								Sample: []*profilev1.Sample{
+									{
+										Value: []int64{1},
+										Label: []*profilev1.Label{
+											{Key: 1, Str: 2},
+										},
+									},
+									{
+										Value: []int64{2},
+										Label: []*profilev1.Label{
+											{Key: 3, Str: 4},
+										},
+									},
+								},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description:  "has series labels that should be renamed to no longer include godeltaprof",
+			relabelRules: defaultRelabelConfigs,
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "godeltaprof_memory"},
+							{Name: "service_name", Value: "service"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{""},
+									Sample: []*profilev1.Sample{{
+										Value: []int64{2},
+										Label: []*profilev1.Label{},
+									}},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__delta__", Value: "false"},
+						{Name: "__name__", Value: "memory"},
+						{Name: "__name_replaced__", Value: "godeltaprof_memory"},
+						{Name: "service_name", Value: "service"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{""},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{2},
+									Label: []*profilev1.Label{},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "has series labels and sample label, which relabel rules drop",
+			relabelRules: []*relabel.Config{
+				{Action: relabel.Drop, SourceLabels: []model.LabelName{"__name__", "span_name"}, Separator: "/", Regex: relabel.MustNewRegexp("unwanted/randomness")},
+			},
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "unwanted"},
+							{Name: "service_name", Value: "service"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "span_name", "randomness"},
+									Sample: []*profilev1.Sample{
+										{
+											Value: []int64{2},
+											Label: []*profilev1.Label{
+												{Key: 1, Str: 2},
+											},
+										},
+										{
+											Value: []int64{1},
+										},
+									},
+								}),
+							},
+						},
+					},
+				},
+			},
+			expectProfilesDropped: 0,
+			expectBytesDropped:    3,
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "unwanted"},
+						{Name: "service_name", Value: "service"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{""},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{1},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "has series/sample labels, drops everything",
+			relabelRules: []*relabel.Config{
+				{Action: relabel.Drop, Regex: relabel.MustNewRegexp(".*")},
+			},
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "unwanted"},
+							{Name: "service_name", Value: "service"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "span_name", "randomness"},
+									Sample: []*profilev1.Sample{
+										{
+											Value: []int64{2},
+											Label: []*profilev1.Label{
+												{Key: 1, Str: 2},
+											},
+										},
+										{
+											Value: []int64{1},
+										},
+									},
+								}),
+							},
+						},
+					},
+				},
+			},
+			expectProfilesDropped: 1,
+			expectBytesDropped:    6,
+		},
+		{
+			description: "has series labels / sample rules, drops samples label",
+			relabelRules: []*relabel.Config{
+				{Action: relabel.Replace, Regex: relabel.MustNewRegexp(".*"), Replacement: "", TargetLabel: "span_name"},
+			},
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "unwanted"},
+							{Name: "service_name", Value: "service"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "span_name", "randomness"},
+									Sample: []*profilev1.Sample{
+										{
+											Value: []int64{2},
+											Label: []*profilev1.Label{
+												{Key: 1, Str: 2},
+											},
+										},
+										{
+											Value: []int64{1},
+										},
+									},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "unwanted"},
+						{Name: "service_name", Value: "service"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{""},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{3},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "ensure only samples of same stacktraces get grouped",
+			pushReq: &distributormodel.PushRequest{
+				TenantID: dummyTenantID,
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "profile"},
+							{Name: "service_name", Value: "service"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "foo", "bar", "binary", "span_id", "aaaabbbbccccdddd", "__name__"},
+									Location: []*profilev1.Location{
+										{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
+										{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
+									},
+									Mapping: []*profilev1.Mapping{{}, {Id: 1, Filename: 3}},
+									Function: []*profilev1.Function{
+										{Id: 1, Name: 1},
+										{Id: 2, Name: 2},
+									},
+									Sample: []*profilev1.Sample{
+										{
+											LocationId: []uint64{1, 2},
+											Value:      []int64{2},
+											Label: []*profilev1.Label{
+												{Key: 6, Str: 1},
+											},
+										},
+										{
+											LocationId: []uint64{1, 2},
+											Value:      []int64{1},
+										},
+										{
+											LocationId: []uint64{1, 2},
+											Value:      []int64{4},
+											Label: []*profilev1.Label{
+												{Key: 4, Str: 5},
+											},
+										},
+										{
+											Value: []int64{8},
+										},
+										{
+											Value: []int64{16},
+											Label: []*profilev1.Label{
+												{Key: 1, Str: 2},
+											},
+										},
+									},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "profile"},
+						{Name: "service_name", Value: "service"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{"", "span_id", "aaaabbbbccccdddd", "foo", "bar", "binary"},
+								Location: []*profilev1.Location{
+									{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
+									{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
+								},
+								Mapping: []*profilev1.Mapping{{Id: 1, Filename: 5}},
+								Function: []*profilev1.Function{
+									{Id: 1, Name: 1},
+									{Id: 2, Name: 2},
+								},
+								Sample: []*profilev1.Sample{
+									{
+										LocationId: []uint64{1, 2},
+										Value:      []int64{3},
+									},
+									{
+										LocationId: []uint64{1, 2},
+										Value:      []int64{4},
+										Label: []*profilev1.Label{
+											{Key: 1, Str: 2},
+										},
+									},
+									{
+										Value: []int64{8},
+									},
+									{
+										Value: []int64{16},
+										Label: []*profilev1.Label{
+											{Key: 3, Str: 4},
+										},
+									},
+								},
+							}),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		// These are both required to be set to fulfill the usage group
+		// reporting. Neither are validated by the tests, nor do they influence
+		// test behavior in any way.
+		ug := &validation.UsageGroupConfig{}
+
+		t.Run(tc.description, func(t *testing.T) {
+			overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionRelabelingRules = tc.relabelRules
+				l.DistributorUsageGroups = ug
+				tenantLimits[dummyTenantID] = l
+			})
+			d, err := New(Config{
+				DistributorRing: ringConfig,
+			}, testhelper.NewMockRing([]ring.InstanceDesc{
+				{Addr: "foo"},
+			}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
+				return newFakeIngester(t, false), nil
+			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), new(mockwritepath.MockSegmentWriterClient))
+
+			require.NoError(t, err)
+
+			err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForSegmentWriter)
+			assert.Equal(t, tc.expectBytesDropped, float64(tc.pushReq.DiscardedBytesRelabeling))
+			assert.Equal(t, tc.expectProfilesDropped, float64(tc.pushReq.DiscardedProfilesRelabeling))
+
+			if tc.expectError != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tc.expectError.Error(), err.Error())
+				return
+			} else {
+				assert.NoError(t, err)
+			}
+
+			require.Len(t, tc.pushReq.Series, len(tc.series))
+			for i, actualSeries := range tc.pushReq.Series {
 				expectedSeries := tc.series[i]
 				assert.Equal(t, expectedSeries.Labels, actualSeries.Labels)
 				require.Len(t, actualSeries.Samples, len(expectedSeries.Samples))
@@ -1268,6 +2205,16 @@ func TestPush_Aggregation(t *testing.T) {
 			l.DistributorAggregationPeriod = model.Duration(time.Second)
 			l.DistributorAggregationWindow = model.Duration(time.Second)
 			l.MaxSessionsPerSeries = maxSessions
+			l.IngestionLimit = &ingestlimits.Config{
+				PeriodType:     "hour",
+				PeriodLimitMb:  128,
+				LimitResetTime: time.Now().Unix(),
+				LimitReached:   true,
+				Sampling: ingestlimits.SamplingConfig{
+					NumRequests: 100,
+					Period:      time.Minute,
+				},
+			}
 			tenantLimits["user-1"] = l
 		}),
 		nil, log.NewLogfmtLogger(os.Stdout), nil,
@@ -1321,6 +2268,16 @@ func TestPush_Aggregation(t *testing.T) {
 	sessions := make(map[string]struct{})
 	assert.GreaterOrEqual(t, len(ingesterClient.requests), 20)
 	assert.Less(t, len(ingesterClient.requests), 100)
+
+	// Verify that throttled requests have annotations
+	for i, req := range ingesterClient.requests {
+		for _, series := range req.Series {
+			require.Lenf(t, series.Annotations, 1, "failed request %d", i)
+			assert.Equal(t, ingestlimits.ProfileAnnotationKeyThrottled, series.Annotations[0].Key)
+			assert.Contains(t, series.Annotations[0].Value, "\"periodLimitMb\":128")
+		}
+	}
+
 	for _, r := range ingesterClient.requests {
 		for _, s := range r.Series {
 			sessionID := phlaremodel.Labels(s.Labels).Get(phlaremodel.LabelNameSessionID)
@@ -1576,7 +2533,7 @@ func TestPush_LabelRewrites(t *testing.T) {
 			p := pproftesthelper.NewProfileBuilderWithLabels(1000*int64(idx), tc.series).CPUProfile()
 			p.ForStacktraceString("world", "hello").AddSamples(1)
 
-			data, err := p.Profile.MarshalVT()
+			data, err := p.MarshalVT()
 			require.NoError(t, err)
 
 			_, err = d.Push(ctx, connect.NewRequest(&pushv1.PushRequest{
@@ -1597,6 +2554,174 @@ func TestPush_LabelRewrites(t *testing.T) {
 			actualSeries := phlaremodel.LabelPairsString(ing.requests[0].Series[0].Labels)
 			assert.Equal(t, tc.expectedSeries, actualSeries)
 			ing.mtx.Unlock()
+		})
+	}
+}
+
+func TestDistributor_shouldSample(t *testing.T) {
+	tests := []struct {
+		name           string
+		tenantID       string
+		groups         []validation.UsageGroupMatchName
+		samplingConfig *sampling.Config
+		expected       bool
+	}{
+		{
+			name:     "no sampling config - should accept",
+			tenantID: "test-tenant",
+			groups:   []validation.UsageGroupMatchName{},
+			expected: true,
+		},
+		{
+			name:     "no matching groups - should accept",
+			tenantID: "test-tenant",
+			groups:   []validation.UsageGroupMatchName{{ConfiguredName: "group1", ResolvedName: "group1"}},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"group2": {Probability: 0.5},
+				},
+			},
+			expected: true,
+		},
+		{
+			name:     "matching group with 1.0 probability - should accept",
+			tenantID: "test-tenant",
+			groups:   []validation.UsageGroupMatchName{{ConfiguredName: "group1", ResolvedName: "group1"}},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"group1": {Probability: 1.0},
+				},
+			},
+			expected: true,
+		},
+		{
+			name:     "matching group with dynamic name - should accept",
+			tenantID: "test-tenant",
+			groups:   []validation.UsageGroupMatchName{{ConfiguredName: "configured-name", ResolvedName: "resolved-name"}},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"configured-name": {Probability: 1.0},
+				},
+			},
+			expected: true,
+		},
+		{
+			name:     "matching group with 0.0 probability - should reject",
+			tenantID: "test-tenant",
+			groups:   []validation.UsageGroupMatchName{{ConfiguredName: "group1", ResolvedName: "group1"}},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"group1": {Probability: 0.0},
+				},
+			},
+			expected: false,
+		},
+		{
+			name:     "multiple matching groups - should use minimum probability",
+			tenantID: "test-tenant",
+			groups: []validation.UsageGroupMatchName{
+				{ConfiguredName: "group1", ResolvedName: "group1"},
+				{ConfiguredName: "group2", ResolvedName: "group2"},
+			},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"group1": {Probability: 1.0},
+					"group2": {Probability: 0.0},
+				},
+			},
+			expected: false,
+		},
+		{
+			name:     "multiple matching groups - should prioritize specific group",
+			tenantID: "test-tenant",
+			groups: []validation.UsageGroupMatchName{
+				{ConfiguredName: "${labels.service_name}", ResolvedName: "test_service"},
+				{ConfiguredName: "test_service", ResolvedName: "test_service"},
+			},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"${labels.service_name}": {Probability: 1.0},
+					"test_service":           {Probability: 0.0},
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.DistributorSampling = tt.samplingConfig
+				tenantLimits[tt.tenantID] = l
+			})
+			d := &Distributor{
+				limits: overrides,
+			}
+
+			result := d.shouldSample(tt.tenantID, tt.groups)
+			assert.Equal(t, tt.expected, result, "shouldSample should return consistent results")
+		})
+	}
+}
+
+func TestDistributor_shouldSample_Probability(t *testing.T) {
+	tests := []struct {
+		name        string
+		probability float64
+	}{
+		{
+			name:        "30% sampling rate",
+			probability: 0.3,
+		},
+		{
+			name:        "70% sampling rate",
+			probability: 0.7,
+		},
+		{
+			name:        "10% sampling rate",
+			probability: 0.1,
+		},
+	}
+
+	const iterations = 10000
+	tenantID := "test-tenant"
+	groups := []validation.UsageGroupMatchName{{ConfiguredName: "test-group", ResolvedName: "test-group"}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			samplingConfig := &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"test-group": {Probability: tt.probability},
+				},
+			}
+
+			overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.DistributorSampling = samplingConfig
+				tenantLimits[tenantID] = l
+			})
+			d := &Distributor{
+				limits: overrides,
+			}
+
+			accepted := 0
+			for i := 0; i < iterations; i++ {
+				if d.shouldSample(tenantID, groups) {
+					accepted++
+				}
+			}
+
+			actualRate := float64(accepted) / float64(iterations)
+			expectedRate := tt.probability
+			deviation := math.Abs(actualRate - expectedRate)
+
+			tolerance := 0.05
+			assert.True(t, deviation <= tolerance,
+				"Sampling rate %.3f is outside tolerance %.3f of expected rate %.3f (deviation: %.3f)",
+				actualRate, tolerance, expectedRate, deviation)
+
+			t.Logf("Expected: %.3f, Actual: %.3f, Deviation: %.3f", expectedRate, actualRate, deviation)
 		})
 	}
 }

@@ -22,7 +22,7 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/objstore"
 	objstore_testutil "github.com/grafana/pyroscope/pkg/objstore/testutil"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 )
 
 func TestGlobalMarkersBucket_Delete_ShouldSucceedIfDeletionMarkDoesNotExistInTheBlockButExistInTheGlobalLocation(t *testing.T) {

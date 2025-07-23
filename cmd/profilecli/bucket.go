@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"embed"
-	_ "embed"
 	"fmt"
 	"log"
 	"net/http"
@@ -80,7 +79,7 @@ func newBucketWebTool(params *bucketWebToolParams) *bucketWebTool {
 
 func initObjectStoreBucket(params *bucketWebToolParams) (phlareobj.Bucket, error) {
 	objectStoreConfig := objstoreclient.Config{
-		StoragePrefix: "",
+		Prefix: "",
 		StorageBackendConfig: objstoreclient.StorageBackendConfig{
 			Backend: params.objectStoreType,
 			GCS: gcs.Config{

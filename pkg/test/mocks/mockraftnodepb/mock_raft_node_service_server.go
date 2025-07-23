@@ -5,7 +5,7 @@ package mockraftnodepb
 import (
 	context "context"
 
-	raftnodepb "github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
+	raftnodepb "github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
 	mock "github.com/stretchr/testify/mock"
 )
 

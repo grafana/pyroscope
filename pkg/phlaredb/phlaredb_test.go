@@ -56,7 +56,7 @@ func ingestProfiles(b testing.TB, db *PhlareDB, generator func(tsNano int64, t t
 	for i := from; i <= to; i += int64(step) {
 		p, name := generator(i, b)
 		require.NoError(b, db.Ingest(
-			context.Background(), p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name})...))
+			context.Background(), p, uuid.New(), nil, append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name})...))
 	}
 }
 
@@ -84,7 +84,7 @@ func (q Queriers) ingesterClient() (ingesterv1connect.IngesterServiceClient, fun
 	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(&ingesterHandlerPhlareDB{q}, connectapi.DefaultHandlerOptions()...))
 	serv := testhelper.NewInMemoryServer(mux)
 
-	var httpClient *http.Client = serv.Client()
+	var httpClient = serv.Client()
 
 	client := ingesterv1connect.NewIngesterServiceClient(
 		httpClient, serv.URL(), connectapi.DefaultClientOptions()...,

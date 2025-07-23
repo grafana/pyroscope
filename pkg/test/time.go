@@ -15,8 +15,7 @@ func ULID(t string) string {
 }
 
 func UnixMilli(t string) int64 {
-	ts, _ := time.Parse(time.RFC3339, t)
-	return ts.UnixMilli()
+	return Time(t).UnixMilli()
 }
 
 func Time(t string) time.Time {

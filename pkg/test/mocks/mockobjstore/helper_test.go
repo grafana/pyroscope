@@ -1,7 +1,7 @@
 package mockobjstore
 
 import (
-	context "context"
+	"context"
 	"io"
 	"sync"
 	"testing"

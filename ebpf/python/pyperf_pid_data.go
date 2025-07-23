@@ -60,7 +60,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 
 	data := &PerfPyPidData{}
 	var (
-		autoTLSkeyAddr, pyRuntimeAddr, PyCellType uint64
+		autoTLSkeyAddr, pyRuntimeAddr, PyCellType, PyTypeType uint64
 	)
 	baseAddr := base_.StartAddr
 	if ef.FileHeader.Type == elf.ET_EXEC {
@@ -74,12 +74,17 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 			pyRuntimeAddr = baseAddr + symbol.Value
 		case "PyCell_Type":
 			PyCellType = baseAddr + symbol.Value
+		case "PyType_Type":
+			PyTypeType = baseAddr + symbol.Value
 		default:
 			continue
 		}
 	}
 	if pyRuntimeAddr == 0 && autoTLSkeyAddr == 0 {
 		return nil, fmt.Errorf("missing symbols pyRuntimeAddr autoTLSkeyAddr %s %v", pythonPath, version)
+	}
+	if PyTypeType == 0 {
+		return nil, fmt.Errorf("PyType_Type not found %s %v", pythonPath, version)
 	}
 
 	data.Version.Major = uint32(version.Major)
@@ -150,6 +155,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 		PyCellObjectObRef:             offsets.PyCellObject__ob_ref,
 		Base:                          baseAddr,
 		PyCellType:                    PyCellType,
+		PyTypeType:                    PyTypeType,
 	}
 	if collectKernel {
 		data.CollectKernel = 1

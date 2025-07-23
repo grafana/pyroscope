@@ -29,11 +29,11 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	phlarelabels "github.com/grafana/pyroscope/pkg/phlaredb/labels"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 )
 
 var defaultParquetConfig = &ParquetConfig{
@@ -188,7 +188,7 @@ func (h *Head) isStale(maxT int64, now time.Time) bool {
 	return now.After(time.Unix(0, maxT))
 }
 
-func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1.LabelPair) error {
+func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, annotations []*typesv1.ProfileAnnotation, externalLabels ...*typesv1.LabelPair) error {
 	if len(p.Sample) == 0 {
 		level.Debug(h.logger).Log("msg", "profile has no samples", "labels", externalLabels)
 		return nil
@@ -232,6 +232,13 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		if profile.Samples.Len() == 0 {
 			level.Debug(h.logger).Log("msg", "profile is empty after delta computation", "metricName", metricName)
 			continue
+		}
+
+		profile.Annotations.Keys = make([]string, 0, len(annotations))
+		profile.Annotations.Values = make([]string, 0, len(annotations))
+		for i := range annotations {
+			profile.Annotations.Keys = append(profile.Annotations.Keys, annotations[i].Key)
+			profile.Annotations.Values = append(profile.Annotations.Values, annotations[i].Value)
 		}
 
 		if err := h.profiles.ingest(ctx, []schemav1.InMemoryProfile{profile}, lbls[idxType], metricName); err != nil {

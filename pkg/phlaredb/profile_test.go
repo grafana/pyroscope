@@ -258,7 +258,7 @@ func TestProfileIndex_Add_OutOfOrder(t *testing.T) {
 				"job", "a",
 			).ForStacktraceString("foo", "bar", "baz", fmt.Sprintf("iteration%d", idx)).AddSamples(1)
 
-		require.NoError(t, head.Ingest(ctx, p.Profile, uuid.New()))
+		require.NoError(t, head.Ingest(ctx, p.Profile, uuid.New(), nil))
 	}
 
 	index := head.profiles.index
@@ -278,4 +278,67 @@ func TestProfileIndex_Add_OutOfOrder(t *testing.T) {
 	}
 	require.Equal(t, []int64{20, 50, 80, 100, 110}, tsOrder)
 
+}
+
+func Test_rowRangesWithSeriesIndex_getSeriesIndex(t *testing.T) {
+	testCases := []struct {
+		name              string
+		ranges            rowRangesWithSeriesIndex
+		rowNum            int64
+		searchHint        int
+		expectSeriesIndex uint32
+		expectPanic       bool
+	}{
+		{
+			name: "hit 1",
+			ranges: rowRangesWithSeriesIndex{
+				{rowRange: &rowRange{rowNum: 0, length: 5}, seriesIndex: 1},
+				{rowRange: &rowRange{rowNum: 5, length: 5}, seriesIndex: 2},
+			},
+			rowNum:            4,
+			searchHint:        0,
+			expectSeriesIndex: 1,
+		},
+		{
+			name: "hit 2",
+			ranges: rowRangesWithSeriesIndex{
+				{rowRange: &rowRange{rowNum: 0, length: 5}, seriesIndex: 1},
+				{rowRange: &rowRange{rowNum: 5, length: 5}, seriesIndex: 2},
+			},
+			rowNum:            6,
+			searchHint:        1,
+			expectSeriesIndex: 2,
+		},
+		{
+			name: "nil rowRange skipped",
+			ranges: rowRangesWithSeriesIndex{
+				{rowRange: nil, seriesIndex: 1},
+				{rowRange: &rowRange{rowNum: 10, length: 5}, seriesIndex: 2},
+			},
+			rowNum:            12,
+			searchHint:        0,
+			expectSeriesIndex: 2,
+		},
+		{
+			name:        "not found panics",
+			ranges:      rowRangesWithSeriesIndex{{rowRange: &rowRange{rowNum: 0, length: 2}, seriesIndex: 1}},
+			rowNum:      10,
+			searchHint:  0,
+			expectPanic: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			searchHint := tc.searchHint
+			if tc.expectPanic {
+				assert.Panics(t, func() {
+					_ = tc.ranges.getSeriesIndex(tc.rowNum, &searchHint)
+				})
+			} else {
+				idx := tc.ranges.getSeriesIndex(tc.rowNum, &searchHint)
+				assert.Equal(t, tc.expectSeriesIndex, idx)
+			}
+		})
+	}
 }

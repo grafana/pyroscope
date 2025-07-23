@@ -27,6 +27,12 @@ For more information on the different ways to deploy Pyroscope, see [Pyroscope d
 
 Verify that you have installed [Docker](https://docs.docker.com/engine/install/).
 
+{{< admonition type="note" >}}
+By default, Pyroscope reports anonymous, non-sensitive, non-personally identifiable information about the running cluster to a remote statistics server to help Pyroscope maintainers understand how the open source community runs Pyroscope.
+
+To opt out, refer to [Disable the anonymous usage statistics reporting](../configure-server/anonymous-usage-statistics-reporting#disable-the-anonymous-usage-statistics-reporting).
+{{< /admonition >}}
+
 ## Download and configure Pyroscope
 
 1. Download Pyroscope.

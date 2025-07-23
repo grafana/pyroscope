@@ -50,7 +50,7 @@ func NewPrefixedBucket(bkt Bucket, prefix string) Bucket {
 }
 
 func validPrefix(prefix string) bool {
-	prefix = strings.Replace(prefix, "/", "", -1)
+	prefix = strings.ReplaceAll(prefix, "/", "")
 	return len(prefix) > 0
 }
 

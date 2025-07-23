@@ -126,11 +126,12 @@ func TestMultiCounter(t *testing.T) {
 	for _, entry := range drilldown {
 		entryMap := entry.(map[string]interface{})
 		data := entryMap["data"].(map[string]interface{})
-		if entryMap["key_name"] == "key_value_a" {
+		switch entryMap["key_name"] {
+		case "key_value_a":
 			require.Equal(t, int64(400), data["total"])
-		} else if entryMap["key_name"] == "key_value_b" {
+		case "key_value_b":
 			require.Equal(t, int64(200), data["total"])
-		} else {
+		default:
 			t.FailNow()
 		}
 	}
@@ -158,21 +159,22 @@ func TestMultiStatistic(t *testing.T) {
 	for _, entry := range drilldown {
 		entryMap := entry.(map[string]interface{})
 		data := entryMap["data"].(map[string]interface{})
-		if entryMap["key_name"] == "key_value_a" {
+		switch entryMap["key_name"] {
+		case "key_value_a":
 			require.Equal(t, float64(100), data["min"])
 			require.Equal(t, float64(300), data["max"])
 			require.Equal(t, int64(2), data["count"])
 			require.Equal(t, float64(200), data["avg"])
 			require.Equal(t, float64(100), data["stddev"])
 			require.Equal(t, float64(10000), data["stdvar"])
-		} else if entryMap["key_name"] == "key_value_b" {
+		case "key_value_b":
 			require.Equal(t, float64(200), data["min"])
 			require.Equal(t, float64(200), data["max"])
 			require.Equal(t, int64(1), data["count"])
 			require.Equal(t, float64(200), data["avg"])
 			require.Equal(t, float64(0), data["stddev"])
 			require.Equal(t, float64(0), data["stdvar"])
-		} else {
+		default:
 			t.FailNow()
 		}
 	}
