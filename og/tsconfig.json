@@ -13,7 +13,6 @@
       "@phlare/*": ["../public/app/*"],
     },
     "types": ["node"],
-    "plugins": [{ "name": "typescript-plugin-css-modules" }],
     "noImplicitAny": true,
     "strictNullChecks": true,
     "strict": true,
