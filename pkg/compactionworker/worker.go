@@ -507,10 +507,10 @@ func (w *Worker) buildSampleObserver(md *metastorev1.BlockMeta) *metrics.SampleO
 		return nil
 	}
 	recordingTime := int64(ulid.MustParse(md.Id).Time())
-	pyroscopeInstanceLabel := labels.Label{
+	pyroscopeInstanceLabel := labels.New(labels.Label{
 		Name:  "pyroscope_instance",
 		Value: pyroscopeInstanceHash(md.Shard, uint32(md.CreatedBy)),
-	}
+	})
 	return metrics.NewSampleObserver(recordingTime, w.exporter, w.ruler, pyroscopeInstanceLabel)
 }
 
