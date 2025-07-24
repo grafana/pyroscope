@@ -149,6 +149,9 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if hasKey $values "priorityClassName" }}
+      priorityClassName: {{ $values.priorityClassName | quote }}
+      {{- end }}
       {{- if $values.terminationGracePeriodSeconds }}
       terminationGracePeriodSeconds: {{ $values.terminationGracePeriodSeconds }}
       {{- end }}
