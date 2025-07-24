@@ -166,8 +166,7 @@ func (o *SampleObserver) initSeriesState(row block.ProfileEntry) {
 	}
 	sb.Sort()
 	blockLabels := sb.Labels()
-	lb := labels.NewBuilder(labels.New())
-
+	lb := labels.NewBuilder(labels.EmptyLabels())
 	for _, rec := range o.state.targetRecordings {
 		rec.initState(lb, blockLabels, o.externalLabels, o.recordingTime)
 		if rec.state.matches && rec.rule.FunctionName != "" {
@@ -269,27 +268,21 @@ func (r *recording) initState(lb *labels.Builder, blockLabels labels.Labels, ext
 		return
 	}
 
-	setExportedLabels(lb, blockLabels, r, externalLabels)
+	lblCount := setExportedLabels(lb, blockLabels, r, externalLabels)
 	exportedLabels := lb.Labels()
 	aggregatedFp := model.Fingerprint(exportedLabels.Hash())
 
 	series, ok := r.data[aggregatedFp]
 	if !ok {
-		series = newTimeSeries(exportedLabels, recordingTime)
+		series = newTimeSeries(exportedLabels, lblCount, recordingTime)
 		r.data[aggregatedFp] = series
 	}
 	r.state.sample = &series.Samples[0]
 }
 
-func newTimeSeries(exportedLabels labels.Labels, recordingTime int64) *prompb.TimeSeries {
-	// prompb.Labels don't implement sort interface, so we need to use labels.Labels and transform it later
-	pbLabels := make([]prompb.Label, 0, exportedLabels.Len())
-	exportedLabels.Range(func(l labels.Label) {
-		pbLabels = append(pbLabels, prompb.Label{
-			Name:  l.Name,
-			Value: l.Value,
-		})
-	})
+func newTimeSeries(exportedLabels labels.Labels, exportedLabelCount int, recordingTime int64) *prompb.TimeSeries {
+	pbLabels := make([]prompb.Label, 0, exportedLabelCount)
+	pbLabels = prompb.FromLabels(exportedLabels, pbLabels)
 	series := &prompb.TimeSeries{
 		Labels: pbLabels,
 		Samples: []prompb.Sample{
@@ -301,19 +294,25 @@ func newTimeSeries(exportedLabels labels.Labels, recordingTime int64) *prompb.Ti
 	return series
 }
 
-func setExportedLabels(lb *labels.Builder, blockLabels labels.Labels, rec *recording, externalLabels labels.Labels) {
-	// reset label builder to contain both externalLabels
-	lb.Reset(externalLabels)
-	rec.rule.ExternalLabels.Range(func(l labels.Label) {
+func setExportedLabels(lb *labels.Builder, blockLabels labels.Labels, rec *recording, externalLabels labels.Labels) int {
+	count := 0
+	set := func(l labels.Label) {
+		count += 1
 		lb.Set(l.Name, l.Value)
-	})
+	}
+	// reset label builder to contain both externalLabels
+	lb.Reset(labels.EmptyLabels())
+	externalLabels.Range(set)
+	rec.rule.ExternalLabels.Range(set)
+
 	// Keep the groupBy labels if present
 	for _, label := range rec.rule.GroupBy {
 		labelValue := blockLabels.Get(label)
 		if labelValue != "" {
-			lb.Set(label, labelValue)
+			set(labels.Label{Name: label, Value: labelValue})
 		}
 	}
+	return count
 }
 
 func (r *recording) matchesServiceName(dataset string) bool {
