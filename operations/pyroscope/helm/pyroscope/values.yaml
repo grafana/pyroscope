@@ -245,6 +245,7 @@ minio:
       memory: 128Mi
   podAnnotations: {}
 
+# Use either this ingress or the gateway, but not both at once.
 ingress:
   enabled: false
   className: ""
@@ -252,6 +253,305 @@ ingress:
   #   - localhost
   # tls:
   #   - secretName: certificate
+
+# Configuration for the gateway
+gateway:
+  # -- Specifies whether the gateway should be enabled
+  enabled: true
+  # -- Number of replicas for the gateway
+  replicas: 1
+  # -- Default container port
+  containerPort: 8080
+  # -- Enable logging of 2xx and 3xx HTTP requests
+  verboseLogging: true
+  autoscaling:
+    # -- Enable autoscaling for the gateway
+    enabled: false
+    # -- Minimum autoscaling replicas for the gateway
+    minReplicas: 1
+    # -- Maximum autoscaling replicas for the gateway
+    maxReplicas: 3
+    # -- Target CPU utilisation percentage for the gateway
+    targetCPUUtilizationPercentage: 60
+    # -- Target memory utilisation percentage for the gateway
+    targetMemoryUtilizationPercentage:
+    # -- See `kubectl explain deployment.spec.strategy` for more
+    # -- ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+    # -- Behavior policies while scaling.
+    behavior: {}
+    #    scaleUp:
+    #     stabilizationWindowSeconds: 300
+    #     policies:
+    #     - type: Pods
+    #       value: 1
+    #       periodSeconds: 60
+    #    scaleDown:
+    #     stabilizationWindowSeconds: 300
+    #     policies:
+    #     - type: Pods
+    #       value: 1
+    #       periodSeconds: 180
+  deploymentStrategy:
+    type: RollingUpdate
+  image:
+    # -- The Docker registry for the gateway image
+    registry: docker.io
+    # -- The gateway image repository
+    repository: nginxinc/nginx-unprivileged
+    # -- The gateway image tag
+    tag: 1.29-alpine
+    # -- Overrides the gateway image tag with an image digest
+    digest: null
+    # -- The gateway image pull policy
+    pullPolicy: IfNotPresent
+  # -- The name of the PriorityClass for gateway pods
+  priorityClassName: null
+  # -- Annotations for gateway deployment
+  annotations: {}
+  # -- Annotations for gateway pods
+  podAnnotations: {}
+  # -- Additional labels for gateway pods
+  podLabels: {}
+  # -- Additional CLI args for the gateway
+  extraArgs: []
+  # -- Environment variables to add to the gateway pods
+  extraEnv: []
+  # -- Environment variables from secrets or configmaps to add to the gateway pods
+  extraEnvFrom: []
+  # -- Lifecycle for the gateway container
+  lifecycle: {}
+  # -- Volumes to add to the gateway pods
+  extraVolumes: []
+  # -- Volume mounts to add to the gateway pods
+  extraVolumeMounts: []
+  # -- The SecurityContext for gateway containers
+  podSecurityContext:
+    fsGroup: 101
+    runAsGroup: 101
+    runAsNonRoot: true
+    runAsUser: 101
+  # -- The SecurityContext for gateway containers
+  containerSecurityContext:
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    allowPrivilegeEscalation: false
+  # -- Resource requests and limits for the gateway
+  resources: {}
+  # -- Containers to add to the gateway pods
+  extraContainers: []
+  # -- Grace period to allow the gateway to shutdown before it is killed
+  terminationGracePeriodSeconds: 30
+  # -- Affinity for gateway pods.
+  # @default -- Hard node anti-affinity
+  affinity: |
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              {{- include "pyroscope.gatewaySelectorLabels" . | nindent 10 }}
+          topologyKey: kubernetes.io/hostname
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                {{- include "pyroscope.gatewaySelectorLabels" . | nindent 12 }}
+            topologyKey: failure-domain.beta.kubernetes.io/zone
+  # -- DNS config for gateway pods
+  dnsConfig: {}
+  # -- Node selector for gateway pods
+  nodeSelector: {}
+  # -- Topology Spread Constraints for gateway pods
+  topologySpreadConstraints: []
+  # -- Tolerations for gateway pods
+  tolerations: []
+  # Gateway service configuration
+  service:
+    # -- Port of the gateway service
+    port: 80
+    # -- Type of the gateway service
+    type: ClusterIP
+    # -- ClusterIP of the gateway service
+    clusterIP: null
+    # -- (int) Node port if service type is NodePort
+    nodePort: null
+    # -- Load balancer IPO address if service type is LoadBalancer
+    loadBalancerIP: null
+    # -- Annotations for the gateway service
+    annotations: {}
+    # -- Labels for gateway service
+    labels: {}
+  # Gateway ingress configuration
+  ingress:
+    # -- Specifies whether an ingress for the gateway should be created
+    enabled: false
+    # -- Ingress Class Name. MAY be required for Kubernetes versions >= 1.18
+    ingressClassName: ""
+    # -- Annotations for the gateway ingress
+    annotations: {}
+    # -- Labels for the gateway ingress
+    labels: {}
+    # -- Hosts configuration for the gateway ingress, passed through the `tpl` function to allow templating
+    hosts:
+      - host: gateway.pyroscope.example.com
+        paths:
+          - path: /
+            # -- pathType (e.g. ImplementationSpecific, Prefix, .. etc.) might also be required by some Ingress Controllers
+            # pathType: Prefix
+    # -- TLS configuration for the gateway ingress. Hosts passed through the `tpl` function to allow templating
+    tls:
+      - secretName: pyroscope-gateway-tls
+        hosts:
+          - gateway.pyroscope.example.com
+  # Basic auth configuration
+  basicAuth:
+    # -- Enables basic authentication for the gateway
+    enabled: false
+    # -- The basic auth username for the gateway
+    username: null
+    # -- The basic auth password for the gateway
+    password: null
+    # -- Uses the specified users from the `pyroscope.tenants` list to create the htpasswd file.
+    # if `pyroscope.tenants` is not set, the `gateway.basicAuth.username` and `gateway.basicAuth.password` are used.
+    # The value is templated using `tpl`. Override this to use a custom htpasswd, e.g. in case the default causes
+    # high CPU load.
+    # @default -- Either `pyroscope.tenants` or `gateway.basicAuth.username` and `gateway.basicAuth.password`.
+    htpasswd: |
+      {{- with $tenants := .Values.pyroscope.tenants }}
+        {{- range $t := $tenants }}
+          {{- $username := required "All tenants must have a 'name' set" $t.name }}
+          {{- if $passwordHash := $t.passwordHash }}
+            {{- printf "%s:%s\n" $username $passwordHash }}
+          {{- else if $password := $t.password }}
+            {{- printf "%s\n" (htpasswd $username $password) }}
+          {{- else }}
+            {{- fail "All tenants must have a 'password' or 'passwordHash' set" }}
+          {{- end }}
+        {{- end }}
+      {{- else }}
+        {{- printf "%s\n" (htpasswd (required "'gateway.basicAuth.username' is required" .Values.gateway.basicAuth.username) (required "'gateway.basicAuth.password' is required" .Values.gateway.basicAuth.password)) }}
+      {{- end }}
+    # -- Existing basic auth secret to use. Must contain '.htpasswd'
+    existingSecret: null
+  # Configures the readiness probe for the gateway
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http-metrics
+    initialDelaySeconds: 15
+    timeoutSeconds: 1
+  # -- configures cluster domain ("cluster.local" by default)
+  clusterDomain: "cluster.local"
+  # -- configures DNS service name
+  dnsService: "kube-dns"
+  # -- configures DNS service namespace
+  dnsNamespace: "kube-system"
+  nginxConfig:
+    # -- Which schema to be used when building URLs. Can be 'http' or 'https'.
+    schema: http
+    # -- Enable listener for IPv6, disable on IPv4-only systems
+    enableIPv6: true
+    # -- NGINX log format
+    logFormat: |-
+      main '$remote_addr - $remote_user [$time_local]  $status '
+              '"$request" $body_bytes_sent "$http_referer" '
+              '"$http_user_agent" "$http_x_forwarded_for"';
+    # -- Allows appending custom configuration to the server block
+    serverSnippet: ""
+    # -- Allows appending custom configuration to the http block, passed through the `tpl` function to allow templating
+    httpSnippet: >-
+      {{ if .Values.pyroscope.tenants }}proxy_set_header X-Scope-OrgID $remote_user;{{ end }}
+    # -- Allows appending custom configuration inside every location block, useful for authentication or setting headers that are not inherited from the server block, passed through the `tpl` function to allow templating.
+    locationSnippet: ""
+    # -- Allows customizing the `client_max_body_size` directive
+    clientMaxBodySize: 4M
+    # -- Whether ssl should be appended to the listen directive of the server block or not.
+    ssl: false
+    # -- Override Read URL
+    customReadUrl: null
+    # -- Override Write URL
+    customWriteUrl: null
+    # -- Override Backend URL
+    customBackendUrl: null
+    # -- Allows overriding the DNS resolver address nginx will use.
+    resolver: ""
+    # -- Config file contents for Nginx. Passed through the `tpl` function to allow templating
+    # @default -- See values.yaml
+    file: |
+      worker_processes  5;  ## Default: 1
+      error_log  /dev/stderr;
+      pid        /tmp/nginx.pid;
+      worker_rlimit_nofile 8192;
+
+      events {
+        worker_connections  4096;  ## Default: 1024
+      }
+
+      http {
+        client_body_temp_path /tmp/client_temp;
+        proxy_temp_path       /tmp/proxy_temp_path;
+        fastcgi_temp_path     /tmp/fastcgi_temp;
+        uwsgi_temp_path       /tmp/uwsgi_temp;
+        scgi_temp_path        /tmp/scgi_temp;
+
+        proxy_http_version    1.1;
+
+        default_type application/octet-stream;
+        log_format   {{ .Values.gateway.nginxConfig.logFormat }}
+
+        {{- if .Values.gateway.verboseLogging }}
+        access_log   /dev/stderr  main;
+        {{- else }}
+
+        map $status $loggable {
+          ~^[23]  0;
+          default 1;
+        }
+        access_log   /dev/stderr  main  if=$loggable;
+        {{- end }}
+
+        sendfile     on;
+        tcp_nopush   on;
+        {{- if .Values.gateway.nginxConfig.resolver }}
+        resolver {{ .Values.gateway.nginxConfig.resolver }};
+        {{- else }}
+        resolver {{ .Values.gateway.dnsService }}.{{ .Values.gateway.dnsNamespace }}.svc.{{ .Values.gateway.clusterDomain }};
+        {{- end }}
+
+        {{- if .Values.gateway.nginxConfig.httpSnippet }}
+        {{- tpl .Values.gateway.nginxConfig.httpSnippet . | nindent 2 }}
+        {{- end }}
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        server {
+          listen             8080;
+
+          {{- if .Values.gateway.basicAuth.enabled }}
+          auth_basic           "Pyroscope";
+          auth_basic_user_file /etc/nginx/secrets/.htpasswd;
+          {{- end }}
+
+          location = /health {
+            return 200 'OK';
+            auth_basic off;
+          }
+
+          location ^~ {
+            set $api_prom_push_backend http://{{ include "pyroscope.fullname" .}}.{{ .Release.Namespace }}.svc.{{ .Values.gateway.clusterDomain }};
+            proxy_pass       $api_prom_push_backend:{{- .Values.pyroscope.service.port -}}$request_uri;
+            proxy_http_version 1.1;
+          }
+
+          {{- with .Values.gateway.nginxConfig.serverSnippet }}
+          {{ . | nindent 4 }}
+          {{- end }}
+        }
+      }
+
 
 # ServiceMonitor configuration
 serviceMonitor:

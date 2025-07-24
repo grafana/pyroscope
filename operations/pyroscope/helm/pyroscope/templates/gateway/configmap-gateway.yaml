@@ -1,0 +1,12 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pyroscope.gatewayFullname" . }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "pyroscope.gatewayLabels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    {{- tpl .Values.gateway.nginxConfig.file . | nindent 4 }}
+{{- end }}
