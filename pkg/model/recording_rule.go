@@ -18,6 +18,11 @@ type RecordingRule struct {
 }
 
 func NewRecordingRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
+	sb := labels.NewScratchBuilder(len(rule.ExternalLabels) + 1)
+	return newRecordingRuleWithBuilder(rule, &sb)
+}
+
+func newRecordingRuleWithBuilder(rule *settingsv1.RecordingRule, sb *labels.ScratchBuilder) (*RecordingRule, error) {
 	// validate metric name
 	if !prometheusmodel.IsValidMetricName(prometheusmodel.LabelValue(rule.MetricName)) {
 		return nil, fmt.Errorf("invalid metric name: %s", rule.MetricName)
@@ -48,30 +53,25 @@ func NewRecordingRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
 		}
 	}
 
-	r := &RecordingRule{
-		Matchers:       matchers,
-		GroupBy:        rule.GroupBy,
-		ExternalLabels: make(labels.Labels, 0, len(rule.ExternalLabels)+1),
-		FunctionName:   functionName,
-	}
-
+	sb.Reset()
 	// ensure __name__ is unique
 	for _, lbl := range rule.ExternalLabels {
 		if lbl.Name == prometheusmodel.MetricNameLabel {
 			// skip __name__
 			continue
 		}
-		r.ExternalLabels = append(r.ExternalLabels, labels.Label{
-			Name:  lbl.Name,
-			Value: lbl.Value,
-		})
+		sb.Add(lbl.Name, lbl.Value)
 	}
 	// trust rule.MetricName
-	r.ExternalLabels = append(r.ExternalLabels, labels.Label{
-		Name:  prometheusmodel.MetricNameLabel,
-		Value: rule.MetricName,
-	})
-	return r, nil
+	sb.Add(prometheusmodel.MetricNameLabel, rule.MetricName)
+	sb.Sort()
+
+	return &RecordingRule{
+		Matchers:       matchers,
+		GroupBy:        rule.GroupBy,
+		ExternalLabels: sb.Labels(),
+		FunctionName:   functionName,
+	}, nil
 }
 
 func parseMatchers(matchers []string) ([]*labels.Matcher, error) {

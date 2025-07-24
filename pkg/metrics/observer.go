@@ -1,8 +1,6 @@
 package metrics
 
 import (
-	"sort"
-
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -64,7 +62,7 @@ type Exporter interface {
 	Flush()
 }
 
-func NewSampleObserver(recordingTime int64, exporter Exporter, ruler Ruler, labels ...labels.Label) *SampleObserver {
+func NewSampleObserver(recordingTime int64, exporter Exporter, ruler Ruler, labels labels.Labels) *SampleObserver {
 	return &SampleObserver{
 		recordingTime:  recordingTime,
 		externalLabels: labels,
@@ -162,13 +160,15 @@ func (o *SampleObserver) initSeriesState(row block.ProfileEntry) {
 	o.state.fingerprint = row.Fingerprint
 	o.state.recordSymbols = false
 
-	labelsMap := map[string]string{}
+	sb := labels.NewScratchBuilder(len(row.Labels))
 	for _, label := range row.Labels {
-		labelsMap[label.Name] = label.Value
+		sb.Add(label.Name, label.Value)
 	}
-
+	sb.Sort()
+	blockLabels := sb.Labels()
+	lb := labels.NewBuilder(labels.EmptyLabels())
 	for _, rec := range o.state.targetRecordings {
-		rec.initState(labelsMap, o.externalLabels, o.recordingTime)
+		rec.initState(lb, blockLabels, o.externalLabels, o.recordingTime)
 		if rec.state.matches && rec.rule.FunctionName != "" {
 			o.state.recordSymbols = true
 		}
@@ -259,36 +259,30 @@ func (o *SampleObserver) Close() {
 	o.flush()
 }
 
-// initState compute labelsMap for quick lookups. Then check whether row matches the filters
+// initState checks whether row matches the filters
 // if filters match, then labels to export are computed, and fetch/create the series where the value needs to be
 // aggregated. This state is hold for the following rows with the same fingerprint, so we can observe those faster
-func (r *recording) initState(labelsMap map[string]string, externalLabels labels.Labels, recordingTime int64) {
-	r.state.matches = r.matches(labelsMap)
+func (r *recording) initState(lb *labels.Builder, blockLabels labels.Labels, externalLabels labels.Labels, recordingTime int64) {
+	r.state.matches = r.matches(blockLabels)
 	if !r.state.matches {
 		return
 	}
 
-	exportedLabels := generateExportedLabels(labelsMap, r, externalLabels)
-	sort.Sort(exportedLabels)
+	lblCount := setExportedLabels(lb, blockLabels, r, externalLabels)
+	exportedLabels := lb.Labels()
 	aggregatedFp := model.Fingerprint(exportedLabels.Hash())
 
 	series, ok := r.data[aggregatedFp]
 	if !ok {
-		series = newTimeSeries(exportedLabels, recordingTime)
+		series = newTimeSeries(exportedLabels, lblCount, recordingTime)
 		r.data[aggregatedFp] = series
 	}
 	r.state.sample = &series.Samples[0]
 }
 
-func newTimeSeries(exportedLabels labels.Labels, recordingTime int64) *prompb.TimeSeries {
-	// prompb.Labels don't implement sort interface, so we need to use labels.Labels and transform it later
-	pbLabels := make([]prompb.Label, 0, len(exportedLabels))
-	for _, label := range exportedLabels {
-		pbLabels = append(pbLabels, prompb.Label{
-			Name:  label.Name,
-			Value: label.Value,
-		})
-	}
+func newTimeSeries(exportedLabels labels.Labels, exportedLabelCount int, recordingTime int64) *prompb.TimeSeries {
+	pbLabels := make([]prompb.Label, 0, exportedLabelCount)
+	pbLabels = prompb.FromLabels(exportedLabels, pbLabels)
 	series := &prompb.TimeSeries{
 		Labels: pbLabels,
 		Samples: []prompb.Sample{
@@ -300,21 +294,25 @@ func newTimeSeries(exportedLabels labels.Labels, recordingTime int64) *prompb.Ti
 	return series
 }
 
-func generateExportedLabels(labelsMap map[string]string, rec *recording, externalLabels labels.Labels) labels.Labels {
-	exportedLabels := make(labels.Labels, 0, len(externalLabels)+len(rec.rule.ExternalLabels)+len(rec.rule.GroupBy))
-	exportedLabels = append(exportedLabels, externalLabels...)
-	exportedLabels = append(exportedLabels, rec.rule.ExternalLabels...)
+func setExportedLabels(lb *labels.Builder, blockLabels labels.Labels, rec *recording, externalLabels labels.Labels) int {
+	count := 0
+	set := func(l labels.Label) {
+		count += 1
+		lb.Set(l.Name, l.Value)
+	}
+	// reset label builder to contain both externalLabels
+	lb.Reset(labels.EmptyLabels())
+	externalLabels.Range(set)
+	rec.rule.ExternalLabels.Range(set)
+
 	// Keep the groupBy labels if present
 	for _, label := range rec.rule.GroupBy {
-		labelValue, ok := labelsMap[label]
-		if ok {
-			exportedLabels = append(exportedLabels, labels.Label{
-				Name:  label,
-				Value: labelValue,
-			})
+		labelValue := blockLabels.Get(label)
+		if labelValue != "" {
+			set(labels.Label{Name: label, Value: labelValue})
 		}
 	}
-	return exportedLabels
+	return count
 }
 
 func (r *recording) matchesServiceName(dataset string) bool {
@@ -326,9 +324,9 @@ func (r *recording) matchesServiceName(dataset string) bool {
 	return true
 }
 
-func (r *recording) matches(labelsMap map[string]string) bool {
+func (r *recording) matches(lbls labels.Labels) bool {
 	for _, matcher := range r.rule.Matchers {
-		if !matcher.Matches(labelsMap[matcher.Name]) {
+		if !matcher.Matches(lbls.Get(matcher.Name)) {
 			return false
 		}
 	}
