@@ -40,7 +40,7 @@ func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[Pro
 		q.ds.Profiles().Column(q.ctx, "StacktracePartition", nil),
 	)
 
-	buf := make([][]parquet.Value, 3)
+	buf := make([][]parquet.Value, 4)
 	entries := iter.NewAsyncBatchIterator[*parquetquery.IteratorResult, ProfileEntry](
 		results, bigBatchSize,
 		func(r *parquetquery.IteratorResult) ProfileEntry {

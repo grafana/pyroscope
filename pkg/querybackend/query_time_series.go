@@ -1,7 +1,6 @@
 package querybackend
 
 import (
-	"strings"
 	"sync"
 	"time"
 
@@ -30,13 +29,22 @@ func init() {
 }
 
 func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
+	// TODO(XXXXX: remove this override
+	v := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE
+	query.TimeSeries.Aggregation = &v
+
 	entries, err := profileEntryIterator(q, query.TimeSeries.GroupBy...)
 	if err != nil {
 		return nil, err
 	}
 	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 
-	column, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), strings.Split("TotalValue", "."))
+	totalValueColumn, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), []string{schemav1.TotalValueColumnName})
+	if err != nil {
+		return nil, err
+	}
+
+	idColumn, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), []string{schemav1.IDColumnName})
 	if err != nil {
 		return nil, err
 	}
@@ -50,9 +58,10 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 		entries,
 		q.ds.Profiles().RowGroups(),
 		bigBatchSize,
-		column.ColumnIndex,
+		totalValueColumn.ColumnIndex,
 		annotationKeysColumn.ColumnIndex,
 		annotationValuesColumn.ColumnIndex,
+		idColumn.ColumnIndex,
 	)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
@@ -63,6 +72,8 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 			Keys:   make([]string, 0),
 			Values: make([]string, 0),
 		}
+
+		var id []byte
 		for _, e := range row.Values {
 			if e[0].Column() == annotationKeysColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
 				annotations.Keys = append(annotations.Keys, e[0].String())
@@ -70,12 +81,16 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 			if e[0].Column() == annotationValuesColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
 				annotations.Values = append(annotations.Values, e[0].String())
 			}
+			if e[0].Column() == idColumn.ColumnIndex && e[0].Kind() == parquet.FixedLenByteArray {
+				id = e[0].ByteArray()
+			}
 		}
-		builder.Add(
+		builder.AddWithProfileID(
 			row.Row.Fingerprint,
 			row.Row.Labels,
 			int64(row.Row.Timestamp),
 			float64(row.Values[0][0].Int64()),
+			id,
 			annotations,
 		)
 	}
@@ -110,8 +125,11 @@ func newTimeSeriesAggregator(req *queryv1.InvokeRequest) aggregator {
 
 func (a *timeSeriesAggregator) aggregate(report *queryv1.Report) error {
 	r := report.TimeSeries
+	isSum :=
+		r.Query.Aggregation.Type == nil || *r.Query.Aggregation == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
+
 	a.init.Do(func() {
-		a.series = phlaremodel.NewTimeSeriesMerger(true)
+		a.series = phlaremodel.NewTimeSeriesMerger(isSum)
 		a.query = r.Query.CloneVT()
 	})
 	a.series.MergeTimeSeries(r.TimeSeries)
@@ -119,10 +137,13 @@ func (a *timeSeriesAggregator) aggregate(report *queryv1.Report) error {
 }
 
 func (a *timeSeriesAggregator) build() *queryv1.Report {
-	// TODO(kolesnikovae): Average aggregation should be implemented in
-	//  the way that it can be distributed (count + sum), and should be done
-	//  at "aggregate" call.
-	sum := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
+	var aggregationType = a.query.Aggregation
+	if aggregationType == nil {
+		// TODO(XXXXX: remove this override
+		v := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE
+		aggregationType = &v
+	}
+
 	stepMilli := time.Duration(a.query.GetStep() * float64(time.Second)).Milliseconds()
 	seriesIterator := phlaremodel.NewTimeSeriesMergeIterator(a.series.TimeSeries())
 	return &queryv1.Report{
@@ -133,7 +154,7 @@ func (a *timeSeriesAggregator) build() *queryv1.Report {
 				a.startTime,
 				a.endTime,
 				stepMilli,
-				&sum,
+				aggregationType,
 			),
 		},
 	}
