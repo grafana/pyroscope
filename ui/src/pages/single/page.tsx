@@ -1,14 +1,16 @@
-import { Button, Stack } from '@grafana/ui';
-import { ServiceSelector } from './ServiceSelector';
+import { Cascader, CascaderOption } from "@grafana/ui";
 
 export function SinglePage() {
-  return (
-    <Stack direction="column">
-      <ServiceSelector name="Single" />
+  const options: CascaderOption[] = [
+    { label: 'option 1', value: '1' }
+  ];
 
-      <Button>
-        Click me
-      </Button>
-    </Stack>
+  return (
+    <>
+      <Cascader
+        options={options}
+        onSelect={(v) => console.log(v)}
+      />
+    </>
   );
 }
