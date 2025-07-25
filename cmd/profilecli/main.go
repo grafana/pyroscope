@@ -102,6 +102,10 @@ func main() {
 	raftInfoCmd := raftCmd.Command("info", "Print info about a Raft node.")
 	raftInfoParams := addRaftInfoParams(raftInfoCmd)
 
+	v2MigrationCmd := adminCmd.Command("v2-migration", "Operation to aid the v1 to v2 storage migration.")
+	v2MigrationBucketCleanupCmd := v2MigrationCmd.Command("bucket-cleanup", "Clean up v1 artificats from data bucket.")
+	v2MigrationBucketCleanupParams := addV2MigrationBackupCleanupParam(v2MigrationBucketCleanupCmd)
+
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -179,6 +183,10 @@ func main() {
 		}
 	case raftInfoCmd.FullCommand():
 		if err := raftInfo(ctx, raftInfoParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case v2MigrationBucketCleanupCmd.FullCommand():
+		if err := v2MigrationBucketCleanup(ctx, v2MigrationBucketCleanupParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:

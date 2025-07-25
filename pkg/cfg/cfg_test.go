@@ -18,7 +18,7 @@ server:
   timeout: 60h
 tls:
   key: YAML
-`))
+`), true)
 
 	fs := flag.NewFlagSet(t.Name(), flag.PanicOnError)
 	flagSource := dFlags(fs, []string{"-verbose", "-server.port=21"})
@@ -51,7 +51,7 @@ servers:
   timeoutz: 60h
 tls:
   keey: YAML
-`))
+`), true)
 
 	fs := flag.NewFlagSet(t.Name(), flag.PanicOnError)
 	flagSource := dFlags(fs, []string{"-verbose", "-server.port=21"})

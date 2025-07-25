@@ -41,6 +41,15 @@ func dJSON(y []byte) Source {
 // When expandEnvVars is true, variables in the supplied '.yaml\ file are expanded
 // using https://pkg.go.dev/github.com/drone/envsubst?tab=overview
 func YAML(f string, expandEnvVars bool) Source {
+	return yamlWithKnowFields(f, expandEnvVars, true)
+}
+
+// Like YAML but ignores fields that are not known
+func YAMLIgnoreUnknownFields(f string, expandEnvVars bool) Source {
+	return yamlWithKnowFields(f, expandEnvVars, false)
+}
+
+func yamlWithKnowFields(f string, expandEnvVars bool, knownFields bool) Source {
 	return func(dst Cloneable) error {
 		y, err := os.ReadFile(f)
 		if err != nil {
@@ -53,19 +62,19 @@ func YAML(f string, expandEnvVars bool) Source {
 			}
 			y = []byte(s)
 		}
-		err = dYAML(y)(dst)
+		err = dYAML(y, knownFields)(dst)
 		return errors.Wrap(err, f)
 	}
 }
 
 // dYAML returns a YAML source and allows dependency injection
-func dYAML(y []byte) Source {
+func dYAML(y []byte, knownFields bool) Source {
 	return func(dst Cloneable) error {
 		if len(y) == 0 {
 			return nil
 		}
 		dec := yaml.NewDecoder(bytes.NewReader(y))
-		dec.KnownFields(true)
+		dec.KnownFields(knownFields)
 		if err := dec.Decode(dst); err != nil {
 			return err
 		}
