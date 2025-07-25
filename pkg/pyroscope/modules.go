@@ -509,7 +509,9 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	defaultHTTPMiddleware := []middleware.Interface{
 		middleware.Tracer{},
 		// https://github.com/grafana/dskit/pull/527
-		middleware.RouteInjector{},
+		middleware.RouteInjector{
+			RouteMatcher: f.Server.HTTP,
+		},
 		util.Log{
 			Log:                   f.Server.Log,
 			LogRequestAtInfoLevel: f.Cfg.Server.LogRequestAtInfoLevel,
