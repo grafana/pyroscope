@@ -9,7 +9,7 @@ MAKEFLAGS += --no-print-directory
 BIN := $(CURDIR)/.tmp/bin
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
-GO_TEST_FLAGS ?= -v -race -cover -tags slicelabels
+GO_TEST_FLAGS ?= -v -race -cover -tags
 GO_MOD_VERSION := 1.23.0
 
 GOOS ?= $(shell go env GOOS)
@@ -69,7 +69,7 @@ generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/pr
 	cd api/ && PATH=$(BIN) $(BIN)/buf generate
 	cd pkg && PATH=$(BIN) $(BIN)/buf generate
 	PATH="$(BIN):$(PATH)" ./tools/add-parquet-tags.sh
-	go run -tags slicelabels ./tools/doc-generator/ ./docs/sources/configure-server/reference-configuration-parameters/index.template > docs/sources/configure-server/reference-configuration-parameters/index.md
+	go run ./tools/doc-generator/ ./docs/sources/configure-server/reference-configuration-parameters/index.template > docs/sources/configure-server/reference-configuration-parameters/index.md
 
 .PHONY: buf/lint
 buf/lint: $(BIN)/buf
@@ -145,11 +145,11 @@ go/deps:
 	$(GO) mod tidy
 
 define go_build_pyroscope
-	GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS) slicelabels" -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/pyroscope
+	GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/pyroscope
 endef
 
 define go_build_profilecli
-	GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=0 $(GO) build -tags "slicelabels" -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/profilecli
+	GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" -gcflags=$(2) ./cmd/profilecli
 endef
 
 .PHONY: go/bin-debug
@@ -173,7 +173,7 @@ go/bin-profilecli-debug:
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
 	$(BIN)/golangci-lint run ./... ./lidia/...
-	$(GO) vet -tags slicelabels ./... ./lidia/...
+	$(GO) vet ./... ./lidia/...
 
 .PHONY: update-contributors
 update-contributors: ## Update the contributors in README.md

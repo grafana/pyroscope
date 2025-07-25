@@ -2,8 +2,6 @@ version: "2"
 run:
   concurrency: 16
   go: "1.21"
-  build-tags:
-    - slicelabels
   modules-download-mode: readonly
   issues-exit-code: 1
   tests: true
