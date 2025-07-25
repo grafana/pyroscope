@@ -32,7 +32,6 @@ func (r MockRing) Get(key uint32, op ring.Operation, buf []ring.InstanceDesc, _ 
 }
 
 func (r MockRing) GetWithOptions(key uint32, op ring.Operation, opts ...ring.Option) (ring.ReplicationSet, error) {
-	// For the mock, just delegate to the basic Get method
 	return r.Get(key, op, nil, nil, nil)
 }
 
@@ -48,7 +47,6 @@ func (r MockRing) GetReplicationSetForOperation(op ring.Operation) (ring.Replica
 }
 
 func (r MockRing) GetSubringForOperationStates(op ring.Operation) ring.ReadRing {
-	// For the mock, just return the same ring
 	return r
 }
 
@@ -61,7 +59,6 @@ func (r MockRing) InstancesCount() int {
 }
 
 func (r MockRing) InstancesWithTokensCount() int {
-	// For the mock, assume all instances have tokens
 	return len(r.ingesters)
 }
 
@@ -109,27 +106,22 @@ func (r MockRing) GetTokenRangesForInstance(instanceID string) (ring.TokenRanges
 }
 
 func (r MockRing) InstancesInZoneCount(zone string) int {
-	// For the mock, just return the total count
 	return len(r.ingesters)
 }
 
 func (r MockRing) InstancesWithTokensInZoneCount(zone string) int {
-	// For the mock, assume all instances have tokens
 	return len(r.ingesters)
 }
 
 func (r MockRing) WritableInstancesWithTokensCount() int {
-	// For the mock, assume all instances are writable and have tokens
 	return len(r.ingesters)
 }
 
 func (r MockRing) WritableInstancesWithTokensInZoneCount(zone string) int {
-	// For the mock, assume all instances are writable and have tokens
 	return len(r.ingesters)
 }
 
 func (r MockRing) ZonesCount() int {
-	// For the mock, just return 1 zone
 	return 1
 }
 
