@@ -29,7 +29,7 @@ func (n nopDelegate) OnRingInstanceHeartbeat(lifecycler *ring.BasicLifecycler, r
 func TestHealthyInstanceDelegate_OnRingInstanceHeartbeat(t *testing.T) {
 	// addInstance registers a new instance with the given ring and sets its last heartbeat timestamp
 	addInstance := func(desc *ring.Desc, id string, state ring.InstanceState, timestamp int64) {
-		instance := desc.AddIngester(id, "127.0.0.1", "", []uint32{1}, state, time.Now())
+		instance := desc.AddIngester(id, "127.0.0.1", "", []uint32{1}, state, time.Now(), false, time.Now())
 		instance.Timestamp = timestamp
 		desc.Ingesters[id] = instance
 	}

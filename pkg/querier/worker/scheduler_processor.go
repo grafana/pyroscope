@@ -298,7 +298,7 @@ func (sp *schedulerProcessor) frontendClientFactory() client.PoolFactory {
 			otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer()),
 			middleware.ClientUserHeaderInterceptor,
 			middleware.UnaryClientInstrumentInterceptor(sp.frontendClientRequestDuration),
-		}, nil)
+		}, nil, nil)
 	})
 }
 

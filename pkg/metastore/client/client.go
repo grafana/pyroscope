@@ -163,7 +163,7 @@ func newClient(s discovery.Server, config grpcclient.Config, dialOpts ...grpc.Di
 }
 
 func dial(address string, grpcClientConfig grpcclient.Config, dialOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	options, err := grpcClientConfig.DialOption(nil, nil)
+	options, err := grpcClientConfig.DialOption(nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}

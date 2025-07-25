@@ -400,7 +400,6 @@ func NewHTTPMetricMiddleware(mux *mux.Router, namespace string, reg prometheus.R
 		}
 	}
 	return middleware.Instrument{
-		RouteMatcher:     mux,
 		Duration:         requestDuration,
 		RequestBodySize:  receivedMessageSize,
 		ResponseBodySize: sentMessageSize,
