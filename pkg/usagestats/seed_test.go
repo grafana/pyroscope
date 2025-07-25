@@ -37,8 +37,10 @@ func createMemberlist(t *testing.T, port, memberID int) *memberlist.KV {
 	var cfg memberlist.KVConfig
 	flagext.DefaultValues(&cfg)
 	cfg.TCPTransport = memberlist.TCPTransportConfig{
-		BindAddrs: []string{"127.0.0.1"},
-		BindPort:  0,
+		BindAddrs:            []string{"127.0.0.1"},
+		BindPort:             0,
+		MaxConcurrentWrites:  3,
+		AcquireWriterTimeout: 250 * time.Millisecond,
 	}
 	cfg.GossipInterval = 100 * time.Millisecond
 	cfg.GossipNodes = 3
