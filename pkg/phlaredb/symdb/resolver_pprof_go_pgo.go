@@ -2,7 +2,6 @@ package symdb
 
 import (
 	"strings"
-	"unsafe"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -55,10 +54,6 @@ func (r *pprofGoPGO) InsertStacktrace(_ uint32, locations []int32) {
 	}
 	sample.Value[0] += int64(r.samples.Values[r.cur])
 	r.cur++
-}
-
-func int32sliceString(u []int32) string {
-	return unsafe.String((*byte)(unsafe.Pointer(&u[0])), len(u)*4)
 }
 
 func (r *pprofGoPGO) buildPprof() *googlev1.Profile {
