@@ -33,7 +33,7 @@ spec:
             port:
               number: {{ $.Values.pyroscope.service.port }}
         path: /
-        pathType: Prefix
+        pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
             {{- if gt (len $.Values.pyroscope.components) 1}}
@@ -44,7 +44,7 @@ spec:
             port:
               number: {{ $.Values.pyroscope.service.port }}
         path: /querier.v1.QuerierService/
-        pathType: ImplementationSpecific
+        pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
             {{- if gt (len $.Values.pyroscope.components) 1}}
@@ -55,7 +55,7 @@ spec:
             port:
               number: {{ $.Values.pyroscope.service.port }}
         path: /render
-        pathType: Prefix
+        pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
             {{- if gt (len $.Values.pyroscope.components) 1}}
@@ -66,7 +66,7 @@ spec:
             port:
               number: {{ $.Values.pyroscope.service.port }}
         path: /render-diff
-        pathType: Prefix
+        pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
             {{- if gt (len $.Values.pyroscope.components) 1}}
@@ -77,7 +77,7 @@ spec:
             port:
               number: {{ $.Values.pyroscope.service.port }}
         path: /push.v1.PusherService/
-        pathType: ImplementationSpecific
+        pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
             {{- if gt (len $.Values.pyroscope.components) 1}}
@@ -88,7 +88,7 @@ spec:
             port:
               number: {{ $.Values.pyroscope.service.port }}
         path: /ingest
-        pathType: Prefix
+        pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
             {{- if gt (len $.Values.pyroscope.components) 1}}
@@ -99,7 +99,7 @@ spec:
             port:
               number: {{ $.Values.pyroscope.service.port }}
         path: /settings.v1.SettingsService/
-        pathType: ImplementationSpecific
+        pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
             {{- if gt (len $.Values.pyroscope.components) 1}}
@@ -110,6 +110,6 @@ spec:
             port:
               number: {{ $.Values.pyroscope.service.port }}
         path: /adhocprofiles.v1.AdHocProfileService/
-        pathType: ImplementationSpecific
+        pathType: {{ $.Values.ingress.pathType }}
   {{- end }}
 {{- end }}
