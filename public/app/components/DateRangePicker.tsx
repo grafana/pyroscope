@@ -4,7 +4,6 @@ import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   setDateRange,
   selectContinuousState,
-  actions,
 } from '@pyroscope/redux/reducers/continuous';
 import cx from 'classnames';
 import Button from '@pyroscope/ui/Button';
