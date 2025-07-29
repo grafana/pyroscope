@@ -43,7 +43,7 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (*di
 		}
 	}
 
-	profiles, err := jfrPprof.ParseJFR(r, &input, labels)
+	profiles, err := jfrPprof.ParseJFR(r, &input, labels, jfrPprof.WithTruncatedFrame(true))
 	if err != nil {
 		return nil, err
 	}
