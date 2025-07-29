@@ -95,7 +95,7 @@ func (req *PushRequest) Clone() *PushRequest {
 		}
 		for j, p := range s.Samples {
 			c.Series[i].Samples[j] = &ProfileSample{
-				Profile:    &pprof.Profile{Profile: p.Profile.Profile.CloneVT()},
+				Profile:    &pprof.Profile{Profile: p.Profile.CloneVT()},
 				RawProfile: nil,
 				ID:         p.ID,
 			}

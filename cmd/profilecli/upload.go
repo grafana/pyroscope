@@ -49,7 +49,7 @@ func addUploadParams(cmd commander) *uploadParams {
 }
 
 func upload(ctx context.Context, params *uploadParams) (err error) {
-	pc := params.phlareClient.pusherClient()
+	pc := params.pusherClient()
 
 	lblStrings := make([]string, 0, len(params.extraLabels)*2)
 	for key, value := range params.extraLabels {
@@ -85,7 +85,7 @@ func upload(ctx context.Context, params *uploadParams) (err error) {
 		// detect name if no name has been set
 		if lbl.Get(model.LabelNameProfileName) == "" {
 			name := "unknown"
-			for _, t := range profile.Profile.SampleType {
+			for _, t := range profile.SampleType {
 				if sid := int(t.Type); sid < len(profile.StringTable) {
 					if s := profile.StringTable[sid]; s == "cpu" {
 						name = "process_cpu"

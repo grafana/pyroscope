@@ -124,11 +124,11 @@ func collectProfiles(profiles chan *pushv1.PushRequest) {
 
 	for _, builder := range builders.Builders {
 		protoLabels := make([]*typesv1.LabelPair, 0, builder.Labels.Len())
-		for _, label := range builder.Labels {
+		builder.Labels.Range(func(label labels.Label) {
 			protoLabels = append(protoLabels, &typesv1.LabelPair{
 				Name: label.Name, Value: label.Value,
 			})
-		}
+		})
 
 		buf := bytes.NewBuffer(nil)
 		_, err := builder.Write(buf)

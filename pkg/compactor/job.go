@@ -12,7 +12,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/model/labels"
 
@@ -65,7 +65,7 @@ func (job *Job) AppendMeta(meta *block.Meta) error {
 	if !labels.Equal(labelsWithout(job.labels.Map(), block.HostnameLabel), labelsWithout(meta.Labels, block.HostnameLabel)) {
 		return errors.New("block and group labels do not match")
 	}
-	if job.resolution != meta.Downsample.Resolution {
+	if job.resolution != meta.Resolution {
 		return errors.New("block and group resolution do not match")
 	}
 

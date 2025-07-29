@@ -1,7 +1,6 @@
 {
   "baseUrl": ".",
   "compilerOptions": {
-    "plugins": [{ "name": "typescript-plugin-css-modules" }],
     "paths": {
       "@pyroscope/*": ["./public/app/*"],
       "zod": ["./node_modules/zod"]

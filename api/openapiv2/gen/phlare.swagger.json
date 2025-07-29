@@ -1297,7 +1297,12 @@
       "type": "object",
       "properties": {
         "clientID": {
-          "type": "string"
+          "type": "string",
+          "description": "clientID must be propagated when calling https://github.com/login/oauth/authorize\nin the client_id query parameter."
+        },
+        "callbackURL": {
+          "type": "string",
+          "description": "If callbackURL is not empty, the URL should be propagated when\ncalling https://github.com/login/oauth/authorize in the\nredirect_uri query parameter."
         }
       }
     },
@@ -2055,6 +2060,10 @@
         "stacktraceFilter": {
           "$ref": "#/definitions/v1StacktraceFilter",
           "description": "The stacktrace filter allows filtering on particular function names in the stacktrace.\nThis allows recording rules to focus on specific functions and calculate their \"total\"\nresource usage."
+        },
+        "provisioned": {
+          "type": "boolean",
+          "title": "Provisioned rules are added by config and can't be Upsert or Deleted"
         }
       }
     },

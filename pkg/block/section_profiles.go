@@ -199,7 +199,7 @@ func newProfileWriter(pageBufferSize int, w io.Writer) *profilesWriter {
 
 func (p *profilesWriter) writeRow(e ProfileEntry) error {
 	p.buf[0] = parquet.Row(e.Row)
-	_, err := p.GenericWriter.WriteRows(p.buf)
+	_, err := p.WriteRows(p.buf)
 	p.profiles++
 	return err
 }
@@ -308,7 +308,7 @@ func (it *DedupeProfileRowIterator) Next() bool {
 		if !it.Iterator.Next() {
 			return false
 		}
-		currentProfile := it.Iterator.At()
+		currentProfile := it.At()
 		if it.prevFP == currentProfile.Fingerprint && it.prevTimeNanos == currentProfile.Timestamp {
 			// skip duplicate profile
 			continue

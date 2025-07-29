@@ -208,7 +208,7 @@ func TestUpsertCollectionRule(t *testing.T) {
 			Ebpf:               &settingsv1.EBPFSettings{Enabled: true},
 			Services:           []*settingsv1.ServiceData{},
 		}))
-		require.ErrorContains(t, err, "already_exists: Conflicting update, please try again")
+		require.ErrorContains(t, err, "already_exists: conflicting update, please try again")
 	})
 	t.Run("invalid rule name", func(t *testing.T) {
 		_, err := coll.UpsertCollectionRule(ctx, connect.NewRequest(&settingsv1.UpsertCollectionRuleRequest{

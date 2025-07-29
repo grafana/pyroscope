@@ -15,7 +15,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/parquet-go/parquet-go"
@@ -359,7 +359,7 @@ func newProfileWriter(path string) (*profilesWriter, error) {
 
 func (p *profilesWriter) WriteRow(r profileRow) error {
 	p.buf[0] = parquet.Row(r.row)
-	_, err := p.GenericWriter.WriteRows(p.buf)
+	_, err := p.WriteRows(p.buf)
 	if err != nil {
 		return err
 	}
@@ -713,7 +713,7 @@ func (it *dedupeProfileRowIterator) Next() bool {
 		if !it.Iterator.Next() {
 			return false
 		}
-		currentProfile := it.Iterator.At()
+		currentProfile := it.At()
 		if it.prevFP == currentProfile.fp && it.prevTimeNanos == currentProfile.timeNanos {
 			// skip duplicate profile
 			continue
@@ -779,7 +779,7 @@ func (s *symbolsRewriter) ReWriteRow(profile profileRow) error {
 }
 
 func (s *symbolsRewriter) Close() (uint64, error) {
-	if err := s.symbolsCompactor.Flush(); err != nil {
+	if err := s.Flush(); err != nil {
 		return 0, err
 	}
 	if s.version == symdb.FormatV3 {

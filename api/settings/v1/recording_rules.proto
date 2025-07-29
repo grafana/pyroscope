@@ -86,6 +86,9 @@ message RecordingRule {
   // This allows recording rules to focus on specific functions and calculate their "total"
   // resource usage.
   optional StacktraceFilter stacktrace_filter = 8;
+
+  // Provisioned rules are added by config and can't be Upsert or Deleted
+  bool provisioned = 9;
 }
 
 message StacktraceFilter {

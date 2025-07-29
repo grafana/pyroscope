@@ -192,7 +192,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.CompactorTenantShardSize, "compactor.compactor-tenant-shard-size", 0, "Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.")
 	_ = l.CompactorPartialBlockDeletionDelay.Set("1d")
 	f.Var(&l.CompactorPartialBlockDeletionDelay, "compactor.partial-block-deletion-delay", fmt.Sprintf("If a partial block (unfinished block without %s file) hasn't been modified for this time, it will be marked for deletion. The minimum accepted value is %s: a lower value will be ignored and the feature disabled. 0 to disable.", block.MetaFilename, MinCompactorPartialBlockDeletionDelay.String()))
-	f.BoolVar(&l.CompactorDownsamplerEnabled, "compactor.compactor-downsampler-enabled", true, "If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept.")
+	f.BoolVar(&l.CompactorDownsamplerEnabled, "compactor.compactor-downsampler-enabled", true, "If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. Note: This set the default for the teanant overrides, in order to be effective it also requires compactor.downsampler-enabled to be set to true.")
 
 	_ = l.RejectNewerThan.Set("10m")
 	f.Var(&l.RejectNewerThan, "validation.reject-newer-than", "This limits how far into the future profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 10m.")

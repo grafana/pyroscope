@@ -43,9 +43,9 @@ func (t *Tree) String() string {
 			remaining = remaining[1:]
 			for _, n := range current.nodes {
 				if len(n.children) > 0 {
-					remaining = append(remaining, &branch{nodes: n.children, Tree: current.Tree.AddBranch(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))})
+					remaining = append(remaining, &branch{nodes: n.children, Tree: current.AddBranch(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))})
 				} else {
-					current.Tree.AddNode(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))
+					current.AddNode(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))
 				}
 			}
 		}
@@ -334,10 +334,10 @@ func (t *Tree) MarshalTruncate(w io.Writer, maxNodes int64) (err error) {
 	for len(nodes) > 0 {
 		last := len(nodes) - 1
 		n, nodes = nodes[last], nodes[:last]
-		if _, _ = vw.Write(w, uint64(len(n.name))); err != nil {
+		if _, err = vw.Write(w, uint64(len(n.name))); err != nil {
 			return err
 		}
-		if _, _ = w.Write(unsafeStringBytes(n.name)); err != nil {
+		if _, err = w.Write(unsafeStringBytes(n.name)); err != nil {
 			return err
 		}
 		if _, err = vw.Write(w, uint64(n.self)); err != nil {

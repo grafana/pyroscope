@@ -23,11 +23,11 @@ type storeHelper struct {
 	b *bucketStore
 }
 
-func (_ *storeHelper) SetGeneration(r *settingsv1.GetCollectionRuleResponse, v int64) {
+func (*storeHelper) SetGeneration(r *settingsv1.GetCollectionRuleResponse, v int64) {
 	r.Generation = v
 }
 
-func (_ *storeHelper) GetGeneration(r *settingsv1.GetCollectionRuleResponse) int64 {
+func (*storeHelper) GetGeneration(r *settingsv1.GetCollectionRuleResponse) int64 {
 	return r.Generation
 }
 
@@ -46,7 +46,7 @@ func (h *storeHelper) FromStore(storeBytes json.RawMessage) (*settingsv1.GetColl
 	return &api, nil
 }
 
-func (_ *storeHelper) ToStore(api *settingsv1.GetCollectionRuleResponse) (json.RawMessage, error) {
+func (*storeHelper) ToStore(api *settingsv1.GetCollectionRuleResponse) (json.RawMessage, error) {
 	var store settingsv1.CollectionRuleStore
 
 	store.Name = api.Name
@@ -59,11 +59,11 @@ func (_ *storeHelper) ToStore(api *settingsv1.GetCollectionRuleResponse) (json.R
 	return protojson.Marshal(&store)
 }
 
-func (_ *storeHelper) ID(v *settingsv1.GetCollectionRuleResponse) string {
+func (*storeHelper) ID(v *settingsv1.GetCollectionRuleResponse) string {
 	return v.Name
 }
 
-func (_ *storeHelper) TypePath() string { return "settings/collection.v1" }
+func (*storeHelper) TypePath() string { return "settings/collection.v1" }
 
 // write through cache for the bucket
 type bucketStore struct {

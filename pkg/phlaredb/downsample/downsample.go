@@ -103,7 +103,7 @@ type profilesWriter struct {
 
 func (p *profilesWriter) WriteRow(r parquet.Row) error {
 	p.buf[0] = r
-	_, err := p.GenericWriter.WriteRows(p.buf)
+	_, err := p.WriteRows(p.buf)
 	if err != nil {
 		return err
 	}

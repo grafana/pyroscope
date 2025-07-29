@@ -18,7 +18,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -507,10 +507,10 @@ func (w *Worker) buildSampleObserver(md *metastorev1.BlockMeta) *metrics.SampleO
 		return nil
 	}
 	recordingTime := int64(ulid.MustParse(md.Id).Time())
-	pyroscopeInstanceLabel := labels.Label{
+	pyroscopeInstanceLabel := labels.New(labels.Label{
 		Name:  "pyroscope_instance",
 		Value: pyroscopeInstanceHash(md.Shard, uint32(md.CreatedBy)),
-	}
+	})
 	return metrics.NewSampleObserver(recordingTime, w.exporter, w.ruler, pyroscopeInstanceLabel)
 }
 

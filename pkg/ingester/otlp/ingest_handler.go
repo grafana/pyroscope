@@ -23,7 +23,6 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/model"
-	pyromodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
 )
@@ -124,7 +123,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 				for samplesServiceName, pprofProfile := range pprofProfiles {
 					labels := getDefaultLabels()
 					labels = append(labels, pprofProfile.name)
-					processedKeys := map[string]bool{pyromodel.LabelNameProfileName: true}
+					processedKeys := map[string]bool{model.LabelNameProfileName: true}
 					labels = appendAttributesUnique(labels, rp.Resource.GetAttributes(), processedKeys)
 					labels = appendAttributesUnique(labels, sp.Scope.GetAttributes(), processedKeys)
 					svc := samplesServiceName
@@ -132,7 +131,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 						svc = serviceName
 					}
 					labels = append(labels, &typesv1.LabelPair{
-						Name:  pyromodel.LabelNameServiceName,
+						Name:  model.LabelNameServiceName,
 						Value: svc,
 					})
 
@@ -191,11 +190,11 @@ func getServiceNameFromAttributes(attrs []*v1.KeyValue) string {
 func getDefaultLabels() []*typesv1.LabelPair {
 	return []*typesv1.LabelPair{
 		{
-			Name:  pyromodel.LabelNameDelta,
+			Name:  model.LabelNameDelta,
 			Value: "false",
 		},
 		{
-			Name:  pyromodel.LabelNameOTEL,
+			Name:  model.LabelNameOTEL,
 			Value: "true",
 		},
 	}

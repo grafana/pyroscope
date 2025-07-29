@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	"github.com/grafana/pyroscope/pkg/settings/collection"
 	"github.com/grafana/pyroscope/pkg/settings/recording"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type Config struct {
@@ -39,7 +40,7 @@ func (cfg *Config) Validate() error {
 
 var _ settingsv1connect.SettingsServiceHandler = (*TenantSettings)(nil)
 
-func New(cfg Config, bucket objstore.Bucket, logger log.Logger) (*TenantSettings, error) {
+func New(cfg Config, bucket objstore.Bucket, logger log.Logger, overrides *validation.Overrides) (*TenantSettings, error) {
 	if bucket == nil {
 		bucket = objstore.NewInMemBucket()
 		level.Warn(logger).Log("msg", "using in-memory settings store, changes will be lost after shutdown")
@@ -57,7 +58,7 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger) (*TenantSettings
 	}
 
 	if cfg.Recording.Enabled {
-		ts.RecordingRulesServiceHandler = recording.New(cfg.Recording, bucket, logger)
+		ts.RecordingRulesServiceHandler = recording.New(bucket, logger, overrides)
 	}
 
 	ts.Service = services.NewBasicService(ts.starting, ts.running, ts.stopping)

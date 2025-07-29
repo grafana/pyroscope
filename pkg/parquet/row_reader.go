@@ -77,10 +77,8 @@ func (it *IteratorRowReader) ReadRows(rows []parquet.Row) (int, error) {
 	if len(rows) == 0 {
 		return 0, nil
 	}
-	for {
-		if n == len(rows) {
-			break
-		}
+	for n != len(rows) {
+
 		if !it.Next() {
 			runutil.CloseWithLogOnErr(util.Logger, it.Iterator, "failed to close iterator")
 			if it.Err() != nil {

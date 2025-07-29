@@ -40,13 +40,20 @@ type rowRangeWithSeriesIndex struct {
 // those need to be strictly ordered
 type rowRangesWithSeriesIndex []rowRangeWithSeriesIndex
 
-func (s rowRangesWithSeriesIndex) getSeriesIndex(rowNum int64) uint32 {
-	for _, rg := range s {
+// getSeriesIndex returns the series index for a given row number.
+// searchHint is the hint for the index to start searching from, it should be passed to next call of this function.
+func (s rowRangesWithSeriesIndex) getSeriesIndex(rowNum int64, searchHint *int) uint32 {
+	if *searchHint < 0 || *searchHint >= len(s) {
+		*searchHint = 0
+	}
+	for i := *searchHint; i < len(s); i++ {
+		rg := s[i]
 		// it is possible that the series is not existing
 		if rg.rowRange == nil {
 			continue
 		}
 		if rg.rowNum <= rowNum && rg.rowNum+int64(rg.length) > rowNum {
+			*searchHint = i
 			return rg.seriesIndex
 		}
 	}

@@ -48,10 +48,10 @@ func (ce *canaryExporter) testIngestProfile(ctx context.Context, now time.Time) 
 	p.ForStacktraceString("func1").AddSamples(20)
 
 	// for testing the span selection
-	p.Profile.StringTable = append(p.Profile.StringTable, "profile_id", "00000bac2a5ab0c7")
-	p.Sample[1].Label = []*googlev1.Label{{Key: int64(len(p.Profile.StringTable) - 2), Str: int64(len(p.Profile.StringTable) - 1)}}
+	p.StringTable = append(p.StringTable, "profile_id", "00000bac2a5ab0c7")
+	p.Sample[1].Label = []*googlev1.Label{{Key: int64(len(p.StringTable) - 2), Str: int64(len(p.StringTable) - 1)}}
 
-	data, err := p.Profile.MarshalVT()
+	data, err := p.MarshalVT()
 	if err != nil {
 		return err
 	}

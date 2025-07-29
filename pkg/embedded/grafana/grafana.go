@@ -30,40 +30,40 @@ func mustHexDecode(s string) []byte {
 
 var exploreProfileReleases = releaseArtifacts{
 	{
-		URL:          "https://github.com/grafana/explore-profiles/releases/download/v0.1.5/grafana-pyroscope-app-405.zip",
-		Sha256Sum:    mustHexDecode("6e133f49b0528633146ccf77bb07f09ea1e4aaac3ce9563df42cfd54f6f7e753"),
+		URL:          "https://github.com/grafana/profiles-drilldown/releases/download/v1.5.0/grafana-pyroscope-app-v1.5.0.zip",
+		Sha256Sum:    mustHexDecode("0b74db5c96b5edc8849af9ca830ff98ba6eaff96f30deda225e6cd68514cc574"),
 		CompressType: CompressTypeZip,
 	},
 }
 
 var grafanaReleases = releaseArtifacts{
 	{
-		URL:             "https://dl.grafana.com/oss/release/grafana-11.1.0.linux-amd64.tar.gz",
-		Sha256Sum:       mustHexDecode("33822a0b275ea4f216c9a3bdda53d1dba668e3e9873dc52104bc565bcbd8d856"),
+		URL:             "https://dl.grafana.com/oss/release/grafana-12.0.2.linux-amd64.tar.gz",
+		Sha256Sum:       mustHexDecode("c1755b4da918edfd298d5c8d5f1ffce35982ad10e1640ec356570cfb8c34b3e8"),
 		OS:              "linux",
 		Arch:            "amd64",
 		CompressType:    CompressTypeGzip,
 		StripComponents: 1,
 	},
 	{
-		URL:             "https://dl.grafana.com/oss/release/grafana-11.1.0.linux-arm64.tar.gz",
-		Sha256Sum:       mustHexDecode("80b36751c29593b8fdb72906bd05f8833631dd826b8447bcdc9ba9bb0f6122aa"),
+		URL:             "https://dl.grafana.com/oss/release/grafana-12.0.2.linux-arm64.tar.gz",
+		Sha256Sum:       mustHexDecode("bc0b186458cc91e2f96a06ecff2b3b4033b1a6ffd2449817e2a430a0b4ae4f12"),
 		OS:              "linux",
 		Arch:            "arm64",
 		CompressType:    CompressTypeGzip,
 		StripComponents: 1,
 	},
 	{
-		URL:             "https://dl.grafana.com/oss/release/grafana-11.1.0.darwin-amd64.tar.gz",
-		Sha256Sum:       mustHexDecode("96984def29a8d2d2f93471b2f012e9750deb54ab54b41272dc0cd9fc481e0c7d"),
+		URL:             "https://dl.grafana.com/oss/release/grafana-12.0.2.darwin-amd64.tar.gz",
+		Sha256Sum:       mustHexDecode("ca2e97682149e482813c343f6b6d93e2f67dea33eae9a808513c7c62457c66e9"),
 		OS:              "darwin",
 		Arch:            "amd64",
 		CompressType:    CompressTypeGzip,
 		StripComponents: 1,
 	},
 	{
-		URL:             "https://dl.grafana.com/oss/release/grafana-11.1.0.darwin-arm64.tar.gz",
-		Sha256Sum:       mustHexDecode("a7498744d8951c46f742bdc56d429473912fed6daa81fdba9711f2cfc51b8143"),
+		URL:             "https://dl.grafana.com/oss/release/grafana-12.0.2.darwin-arm64.tar.gz",
+		Sha256Sum:       mustHexDecode("3f162ba5dc3bbd0133055ecd40f4f1f791b287bee8e0487449f001b6e1c11a4f"),
 		OS:              "darwin",
 		Arch:            "arm64",
 		CompressType:    CompressTypeGzip,
@@ -280,6 +280,7 @@ func (a *app) starting(ctx context.Context) error {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
 		}
 	}
+	setIfNotExists("GF_PLUGINS_PREINSTALL_DISABLED", "true") // required so we can load the version we have bundled
 	setIfNotExists("GF_PATHS_DATA", a.dataPath)
 	setIfNotExists("GF_PATHS_PLUGINS", a.pluginsPath)
 	setIfNotExists("GF_PATHS_PROVISIONING", a.provisioningPath)
@@ -287,6 +288,7 @@ func (a *app) starting(ctx context.Context) error {
 	setIfNotExists("GF_AUTH_ANONYMOUS_ORG_ROLE", "Admin")
 	setIfNotExists("GF_AUTH_DISABLE_LOGIN_FORM", "true")
 	setIfNotExists("GF_SERVER_HTTP_PORT", strconv.Itoa(a.cfg.ListenPort))
+	setIfNotExists("GF_LOG_LEVEL", "error")
 
 	a.g, _ = errgroup.WithContext(ctx)
 

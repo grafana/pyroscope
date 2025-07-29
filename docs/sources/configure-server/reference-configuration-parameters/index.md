@@ -2215,7 +2215,9 @@ distributor_usage_groups:
 [compactor_partial_block_deletion_delay: <duration> | default = 1d]
 
 # If enabled, the compactor will downsample profiles in blocks at compaction
-# level 3 and above. The original profiles are also kept.
+# level 3 and above. The original profiles are also kept. Note: This set the
+# default for the teanant overrides, in order to be effective it also requires
+# compactor.downsampler-enabled to be set to true.
 # CLI flag: -compactor.compactor-downsampler-enabled
 [compactor_downsampler_enabled: <boolean> | default = true]
 
