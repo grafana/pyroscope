@@ -251,6 +251,7 @@ minio:
 ingress:
   enabled: false
   className: ""
+  pathType: ImplementationSpecific
   # hosts:
   #   - localhost
   # tls:
