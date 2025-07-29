@@ -3,6 +3,5 @@ go 1.23.0
 use (
 	.
 	./api
-	./ebpf
 	./lidia
 )

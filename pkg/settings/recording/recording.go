@@ -391,7 +391,7 @@ func idForRule(rule *settingsv1.RecordingRule) string {
 		b.WriteString(l.Name)
 		b.WriteString(l.Value)
 	}
-	if rule.StacktraceFilter != nil {
+	if rule.StacktraceFilter != nil && rule.StacktraceFilter.FunctionName != nil {
 		b.WriteString(rule.StacktraceFilter.FunctionName.FunctionName)
 	}
 	sum := sha256.Sum256([]byte(b.String()))

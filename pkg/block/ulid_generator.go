@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash/v2"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 )
 
 // ULIDGenerator generates deterministic ULIDs for blocks in an

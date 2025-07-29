@@ -348,7 +348,7 @@ func TestPostingsMany(t *testing.T) {
 
 		// sort expected values by label hash instead of lexicographically by labelset
 		sort.Slice(exp, func(i, j int) bool {
-			return labels.FromStrings("i", exp[i], "foo", "bar").Hash() < labels.FromStrings("i", exp[j], "foo", "bar").Hash()
+			return labels.StableHash(labels.FromStrings("i", exp[i], "foo", "bar")) < labels.StableHash(labels.FromStrings("i", exp[j], "foo", "bar"))
 		})
 
 		require.Equal(t, exp, got, fmt.Sprintf("input: %v", c.in))
@@ -361,10 +361,10 @@ func TestPersistence_index_e2e(t *testing.T) {
 
 	flbls := make([]phlaremodel.Labels, len(lbls))
 	for i, ls := range lbls {
-		flbls[i] = make(phlaremodel.Labels, 0, len(ls))
-		for _, l := range ls {
+		flbls[i] = make(phlaremodel.Labels, 0, ls.Len())
+		ls.Range(func(l labels.Label) {
 			flbls[i] = append(flbls[i], &typesv1.LabelPair{Name: l.Name, Value: l.Value})
-		}
+		})
 	}
 
 	// Sort labels as the index writer expects series in sorted order by fingerprint.
@@ -374,10 +374,10 @@ func TestPersistence_index_e2e(t *testing.T) {
 
 	symbols := map[string]struct{}{}
 	for _, lset := range lbls {
-		for _, l := range lset {
+		lset.Range(func(l labels.Label) {
 			symbols[l.Name] = struct{}{}
 			symbols[l.Value] = struct{}{}
-		}
+		})
 	}
 
 	var input index.IndexWriterSeriesSlice

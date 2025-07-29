@@ -145,6 +145,9 @@ pyroscope:
 
   affinity: {}
 
+  # Override the PodPriorityClass
+  # priorityClassName: high
+
   # run specific components separately
   components: {}
 
