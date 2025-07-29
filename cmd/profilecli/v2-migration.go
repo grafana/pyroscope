@@ -92,7 +92,7 @@ func v2MigrationBucketCleanup(ctx context.Context, params *v2MigrationBucketClea
 			return nil
 		})
 		if err != nil {
-			return nil
+			return err
 		}
 
 		return nil
@@ -114,10 +114,9 @@ func v2MigrationBucketCleanup(ctx context.Context, params *v2MigrationBucketClea
 		fmt.Println(" - ", path)
 	}
 
-	threads := 16
 	if params.isDryRun() {
 		fmt.Println("DRY-RUN: If ran with --dry-run=false, this will delete those object store keys:")
-		return recurse(ctx, client, threads, func(key string) error {
+		return recurse(ctx, client, func(key string) error {
 			fmt.Println(" - ", key)
 			return nil
 		}, pathsToDelete)
@@ -128,7 +127,7 @@ func v2MigrationBucketCleanup(ctx context.Context, params *v2MigrationBucketClea
 	<-time.After(3 * time.Second)
 
 	fmt.Println("Deleted object store keys:")
-	return recurse(ctx, client, threads, func(key string) error {
+	return recurse(ctx, client, func(key string) error {
 		if err := client.Delete(ctx, key); err != nil {
 			return fmt.Errorf("failed to delete %s: %w", key, err)
 		}
@@ -137,9 +136,11 @@ func v2MigrationBucketCleanup(ctx context.Context, params *v2MigrationBucketClea
 	}, pathsToDelete)
 }
 
-func recurse(ctx context.Context, b pyroscopeobj.Bucket, threads int, action func(key string) error, paths []string) error {
+const maxConcurrentActions = 16
+
+func recurse(ctx context.Context, b pyroscopeobj.Bucket, action func(key string) error, paths []string) error {
 	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(threads)
+	g.SetLimit(maxConcurrentActions)
 
 	g.Go(func() error {
 		iters := list.New()
