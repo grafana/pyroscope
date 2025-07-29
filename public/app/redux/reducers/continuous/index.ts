@@ -140,7 +140,6 @@ export const continuousSlice = createSlice({
     refresh(state) {
       state.refreshToken = Math.random().toString();
     },
-
   },
 
   extraReducers: (builder) => {
@@ -194,7 +193,6 @@ export const continuousSlice = createSlice({
       };
     });
 
-
     /** ************************** */
     /*      Timeline Sides       */
     /** ************************** */
@@ -221,9 +219,6 @@ export const continuousSlice = createSlice({
 
     // TODO
     builder.addCase(fetchSideTimelines.rejected, () => {});
-
-
-
 
     /** ************** */
     /*      Tags     */

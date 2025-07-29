@@ -9,9 +9,7 @@ import type { TooltipCallbackProps } from '@pyroscope/components/TimelineChart/T
 import TooltipWrapper from '@pyroscope/components/TimelineChart/TooltipWrapper';
 import type { TooltipWrapperProps } from '@pyroscope/components/TimelineChart/TooltipWrapper';
 import TimelineChart from '@pyroscope/components/TimelineChart/TimelineChart';
-import {
-  markingsFromSelection,
-} from '@pyroscope/components/TimelineChart/markings';
+import { markingsFromSelection } from '@pyroscope/components/TimelineChart/markings';
 import { centerTimelineData } from '@pyroscope/components/TimelineChart/centerTimelineData';
 import styles from './TimelineChartWrapper.module.css';
 
@@ -218,7 +216,6 @@ class TimelineChartWrapper extends React.Component<
     }
   }
 
-
   plotMarkings = () => {
     const selectionMarkings = markingsFromSelection(
       this.props.selectionType,
@@ -290,11 +287,7 @@ class TimelineChartWrapper extends React.Component<
       }
     );
 
-    return (
-      <>
-        {this.timelineChart(centeredTimelineGroups, customFlotOptions)}
-      </>
-    );
+    return <>{this.timelineChart(centeredTimelineGroups, customFlotOptions)}</>;
   };
 
   renderSingle = (props: SingleDataProps) => {

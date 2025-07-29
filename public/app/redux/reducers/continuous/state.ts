@@ -2,7 +2,6 @@ import type { Profile } from '@pyroscope/legacy/models';
 import type { Timeline } from '@pyroscope/models/timeline';
 import type { App } from '@pyroscope/models/app';
 
-
 type SingleView =
   | { type: 'pristine'; profile?: Profile }
   | { type: 'loading'; profile?: Profile }
@@ -17,14 +16,11 @@ type SingleView =
       profile: Profile;
     };
 
-
-
-
 type TimelineState =
   | { type: 'pristine'; timeline: Timeline }
   | { type: 'loading'; timeline: Timeline }
   | { type: 'reloading'; timeline: Timeline }
-  | { type: 'loaded'; timeline: Timeline; };
+  | { type: 'loaded'; timeline: Timeline };
 
 type TagsData =
   | { type: 'pristine' }

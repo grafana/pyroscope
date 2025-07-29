@@ -54,10 +54,7 @@ function dateToLabel(from: string, until: string, offsetInMinutes: number) {
 function DateRangePicker() {
   const dispatch = useAppDispatch();
   const { offset } = useTimeZone();
-  const {
-    from,
-    until,
-  } = useAppSelector(selectContinuousState);
+  const { from, until } = useAppSelector(selectContinuousState);
   const [opened, setOpened] = useState(false);
 
   const toggleDropdown = () => {

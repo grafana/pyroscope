@@ -6,9 +6,7 @@ import {
 } from '@pyroscope/legacy/models';
 import { z } from 'zod';
 import type { ZodError } from 'zod';
-import {
-  buildRenderURL,
-} from '@pyroscope/util/updateRequests';
+import { buildRenderURL } from '@pyroscope/util/updateRequests';
 import { Timeline, TimelineSchema } from '@pyroscope/models/timeline';
 import type { RequestError } from '@pyroscope/services/base';
 import { request } from '@pyroscope/services/base';
@@ -18,8 +16,6 @@ export interface RenderOutput {
   timeline: Timeline;
   groups?: Groups;
 }
-
-
 
 interface RenderSingleProps {
   from: string;

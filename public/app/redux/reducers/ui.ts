@@ -23,8 +23,6 @@ export const persistConfig = {
   migrate: createMigrate(migrations, { debug: true }),
 };
 
-
-
 export interface UiState {
   time: {
     offset: null | number;
@@ -65,9 +63,6 @@ export const selectAppColorMode = createSelector(
   (state) => state.colorMode
 );
 
-export const {
-  changeTimeZoneOffset,
-  setColorMode,
-} = uiSlice.actions;
+export const { changeTimeZoneOffset, setColorMode } = uiSlice.actions;
 
 export default uiSlice.reducer;

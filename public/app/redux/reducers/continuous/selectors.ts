@@ -25,7 +25,6 @@ export const selectAppNames = (state: RootState) => {
   return selectApps(state).map((a) => a.name);
 };
 
-
 export const selectAppTags = (query?: Query) => (state: RootState) => {
   if (query) {
     const appName = queryToAppName(query);
