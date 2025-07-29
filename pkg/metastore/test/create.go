@@ -81,7 +81,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 	}
 
 	for i := 0; i < n; i++ {
-		options, err := cfg.GRPCClientConfig.DialOption(nil, nil)
+		options, err := cfg.GRPCClientConfig.DialOption(nil, nil, nil)
 		require.NoError(t, err)
 		options = append(options, dialOpt)
 		cc, err := grpc.Dial(grpcAddresses[i], options...)
