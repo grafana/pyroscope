@@ -383,10 +383,10 @@ github.com/grafana/alloy/syntax v0.1.0 h1:+1xQakvQPH6N0y9+q2Fu5QePyzrve6i1wMNuXd
 github.com/grafana/alloy/syntax v0.1.0/go.mod h1:8H9ToCc1M8F6A+je4rIH6saIe1MUCmjSk+Uje+LNLEo=
 github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6 h1:Z78JZ7pa6InQ5BcMB27M+NMTZ7LV+MXgOd3dZPfEdG4=
 github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6/go.mod h1:kkWM4WUV230bNG3urVRWPBnSJHs64y/0RmWjftnnn0c=
-github.com/grafana/jfr-parser v0.10.0 h1:AHQdcReixCUDBWPZ45DdAsl4fm89gLdZMI2N+Q1OBxk=
-github.com/grafana/jfr-parser v0.10.0/go.mod h1:qZEYlzD7yp7DfhPWm2QFbskUgTK+mvYFBmS3ibuI2EY=
-github.com/grafana/jfr-parser/pprof v0.0.6 h1:D6Dy2eb3jcu2zJhJm7RxAQ0LrWCecKBeP2d7LmpJBx4=
-github.com/grafana/jfr-parser/pprof v0.0.6/go.mod h1:p0nbx4MCbNw3iOFICQW1tP/X2qqcd7s9Ilkl1wMyBpM=
+github.com/grafana/jfr-parser v0.11.0 h1:JQMYAO1L+Mz12TSGrjAURNVRqKttr2J4mVdivDX+XOI=
+github.com/grafana/jfr-parser v0.11.0/go.mod h1:dA1xlm2np8htvSmEVMPMLqG6ad40Y1bpdn5cG0eEJXk=
+github.com/grafana/jfr-parser/pprof v0.0.7 h1:0XVfBI7Ut8PoTc/ez/PfjINO3tDtbfUuGxcAiwb/gaw=
+github.com/grafana/jfr-parser/pprof v0.0.7/go.mod h1:aSDERpqed8c/8wCDl6DEtWge9QoS/o7pnLpzD+SoWgg=
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91 h1:/NipyHnOmvRsVzj81j2qE0VxsvsqhOB0f4vJIhk2qCQ=
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91/go.mod h1:MS2lj3INKhZjWNqd3N0m3J+Jxf3DAOnAH9VT3Sh9MUE=
 github.com/grafana/pyroscope-go v1.2.0 h1:aILLKjTj8CS8f/24OPMGPewQSYlhmdQMBmol1d3KGj8=
