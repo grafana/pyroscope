@@ -16,11 +16,9 @@ import { faShareSquare } from '@fortawesome/free-solid-svg-icons/faShareSquare';
 import { Field, Message } from 'protobufjs/light';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { format } from 'date-fns';
-import { isRouteActive, ROUTES } from '@pyroscope/pages/routes';
 import { Profile } from '@pyroscope/legacy/models';
 import { Tooltip } from '@pyroscope/ui/Tooltip';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import { useLocation } from 'react-router-dom';
 import 'compression-streams-polyfill';
 
 /* eslint-disable react/destructuring-assignment */
@@ -117,18 +115,11 @@ function ExportData(props: ExportDataProps) {
   let { exportPprof } = props;
   const exportPNG = true;
   const exportHTML = false;
-  const { pathname } = useLocation();
   const dispatch = useAppDispatch();
   const pprofQuery = useAppSelector((state: { continuous: ContinuousState }) =>
     buildPprofQuery(state.continuous)
   );
 
-  if (
-    isRouteActive(pathname, ROUTES.COMPARISON_DIFF_VIEW) ||
-    isRouteActive(pathname, ROUTES.COMPARISON_VIEW)
-  ) {
-    exportPprof = false;
-  }
   if (
     !exportPNG &&
     !exportJSON &&

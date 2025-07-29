@@ -1,13 +1,6 @@
-import type { Profile, Groups } from '@pyroscope/legacy/models';
+import type { Profile } from '@pyroscope/legacy/models';
 import type { Timeline } from '@pyroscope/models/timeline';
-import type { Annotation } from '@pyroscope/models/annotation';
 import type { App } from '@pyroscope/models/app';
-
-type NewAnnotationState =
-  | {
-      type: 'pristine';
-    }
-  | { type: 'saving' };
 
 type SingleView =
   | { type: 'pristine'; profile?: Profile }
@@ -16,93 +9,18 @@ type SingleView =
       type: 'loaded';
       timeline: Timeline;
       profile: Profile;
-      annotations: Annotation[];
     }
   | {
       type: 'reloading';
       timeline: Timeline;
       profile: Profile;
-      annotations: Annotation[];
     };
-
-type TagExplorerView = GroupByType &
-  GroupsLoadingType &
-  ActiveProfileType & {
-    annotations: Annotation[];
-  };
-
-type GroupByType = {
-  groupByTag: string;
-  groupByTagValue: string;
-};
-
-type GroupsLoadingType =
-  | {
-      groupsLoadingType: 'pristine';
-      groups: Groups;
-    }
-  | {
-      groupsLoadingType: 'loading';
-      groups: Groups;
-    }
-  | {
-      groupsLoadingType: 'loaded';
-      groups: Groups;
-    }
-  | {
-      groupsLoadingType: 'reloading';
-      groups: Groups;
-    };
-
-type ActiveProfileType =
-  | {
-      activeTagProfileLoadingType: 'pristine';
-    }
-  | {
-      activeTagProfileLoadingType: 'loading';
-    }
-  | {
-      activeTagProfileLoadingType: 'loaded';
-      activeTagProfile: Profile;
-    }
-  | {
-      activeTagProfileLoadingType: 'reloading';
-      activeTagProfile: Profile;
-    };
-
-type ComparisonView = {
-  left:
-    | { type: 'pristine'; profile?: Profile }
-    | { type: 'loading'; profile?: Profile }
-    | { type: 'loaded'; profile: Profile }
-    | { type: 'reloading'; profile: Profile };
-
-  right:
-    | { type: 'pristine'; profile?: Profile }
-    | { type: 'loading'; profile?: Profile }
-    | { type: 'loaded'; profile: Profile }
-    | { type: 'reloading'; profile: Profile };
-
-  comparisonMode: {
-    active: boolean;
-    period: {
-      label: string;
-      ms: number;
-    };
-  };
-};
-
-export type DiffView =
-  | { type: 'pristine'; profile?: Profile }
-  | { type: 'loading'; profile?: Profile }
-  | { type: 'loaded'; profile: Profile }
-  | { type: 'reloading'; profile: Profile };
 
 type TimelineState =
   | { type: 'pristine'; timeline: Timeline }
   | { type: 'loading'; timeline: Timeline }
   | { type: 'reloading'; timeline: Timeline }
-  | { type: 'loaded'; timeline: Timeline; annotations: Annotation[] };
+  | { type: 'loaded'; timeline: Timeline };
 
 type TagsData =
   | { type: 'pristine' }
@@ -142,10 +60,6 @@ export interface ContinuousState {
   refreshToken?: string;
 
   singleView: SingleView;
-  diffView: DiffView;
-  comparisonView: ComparisonView;
-  tagExplorerView: TagExplorerView;
-  newAnnotation: NewAnnotationState;
   tags: Tags;
 
   apps:

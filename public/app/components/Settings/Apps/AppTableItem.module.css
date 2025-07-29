@@ -1,9 +1,0 @@
-.actions {
-  display: flex;
-  flex-direction: row;
-  justify-content: right;
-}
-
-.loadingIcon {
-  margin-right: 8px;
-}
