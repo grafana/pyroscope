@@ -34,6 +34,11 @@ The instrumentation method you use determines which profile types are available.
 
 You can send data from your application using Grafana Alloy collector. Alloy supports profiling with eBPF, Java, and Golang in pull mode.
 
+[//]: # 'Shared content for supported languages with eBPF'
+[//]: # 'This content is located in /pyroscope/docs/sources/shared/supported-languages-ebpf.md'
+
+{{< docs/shared source="pyroscope" lookup="supported-languages-ebpf.md" version="latest" >}}
+
 For more information, refer to [Configure the client to send profiles with Grafana Alloy](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/).
 
 This table lists the available profile types based on auto instrumentation using Alloy.

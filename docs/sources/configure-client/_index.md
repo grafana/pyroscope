@@ -25,6 +25,11 @@ This document explains these techniques and guide you when to choose each one.
 You can send data from your application using Grafana Alloy (preferred) or Grafana Agent (legacy) collectors.
 Both collectors support profiling with eBPF, Java, and Golang in pull mode.
 
+[//]: # 'Shared content for supported languages with eBPF'
+[//]: # 'This content is located in /pyroscope/docs/sources/shared/supported-languages-ebpf.md'
+
+{{< docs/shared source="pyroscope" lookup="supported-languages-ebpf.md" version="latest" >}}
+
 [Grafana Alloy](https://grafana.com/docs/alloy/latest/) is a vendor-neutral distribution of the OpenTelemetry (OTel) Collector.
 Alloy uniquely combines the very best OSS observability signals in the community.
 Grafana Alloy uses configuration file written using River.
