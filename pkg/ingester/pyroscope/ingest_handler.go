@@ -71,7 +71,6 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case errors.As(err, &maxBytesError):
 			err = fmt.Errorf("request body too large: %w", err)
 			status = http.StatusRequestEntityTooLarge
-			validation.DiscardedBytes.WithLabelValues(string(validation.BodySizeLimit), tenantID).Add(float64(maxBytesError.Limit))
 			validation.DiscardedProfiles.WithLabelValues(string(validation.BodySizeLimit), tenantID).Add(float64(1))
 		default:
 			status = http.StatusRequestTimeout
