@@ -172,12 +172,7 @@ func (a *API) RegisterTenantSettings(ts *settings.TenantSettings) {
 	connectOptions := a.connectOptionsAuthRecovery()
 	settingsv1connect.RegisterSettingsServiceHandler(a.server.HTTP, ts, connectOptions...)
 
-	_, isUnimplemented := ts.CollectionRulesServiceHandler.(*settingsv1connect.UnimplementedCollectionRulesServiceHandler)
-	if !isUnimplemented {
-		settingsv1connect.RegisterCollectionRulesServiceHandler(a.server.HTTP, ts, connectOptions...)
-	}
-
-	_, isUnimplemented = ts.RecordingRulesServiceHandler.(*settingsv1connect.UnimplementedRecordingRulesServiceHandler)
+	_, isUnimplemented := ts.RecordingRulesServiceHandler.(*settingsv1connect.UnimplementedRecordingRulesServiceHandler)
 	if !isUnimplemented {
 		settingsv1connect.RegisterRecordingRulesServiceHandler(a.server.HTTP, ts, connectOptions...)
 	}
