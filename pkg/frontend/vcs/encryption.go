@@ -1,53 +1,76 @@
 package vcs
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io"
 
-	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/encryption"
 	"golang.org/x/oauth2"
 )
 
-const gcmNonceSize = 12
-
 func encryptToken(token *oauth2.Token, key []byte) (string, error) {
-	cipher, err := encryption.NewGCMCipher(key)
+	plaintext, err := json.Marshal(token)
 	if err != nil {
 		return "", err
 	}
-	textBytes, err := json.Marshal(token)
+
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err
 	}
-	enc, err := cipher.Encrypt(textBytes)
+
+	gcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(enc), nil
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	// Using nonce as Seal's dst argument results in it being the first
+	// chunk of bytes in the ciphertext. Decrypt retrieves the nonce/IV from this.
+	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
+
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
-func decryptToken(encodedText string, key []byte) (*oauth2.Token, error) {
-	encryptedData, err := base64.StdEncoding.DecodeString(encodedText)
+func decryptToken(ciphertextBase64 string, key []byte) (*oauth2.Token, error) {
+	ciphertext, err := base64.StdEncoding.DecodeString(ciphertextBase64)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(encryptedData) < gcmNonceSize {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
 		return nil, errors.New("malformed token")
 	}
+	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
 
-	cipher, err := encryption.NewGCMCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	plaintext, err := cipher.Decrypt(encryptedData)
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	var token oauth2.Token
-	err = json.Unmarshal(plaintext, &token)
-	return &token, err
+	if err = json.Unmarshal(plaintext, &token); err != nil {
+		return nil, err
+	}
+
+	return &token, nil
 }
