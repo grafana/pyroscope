@@ -1,0 +1,56 @@
+name: Backport PR Creator
+on:
+  pull_request:
+    types:
+      - closed
+      - labeled
+
+jobs:
+  main:
+    # We don't run the backporting for PRs from forks because those can't access "pyroscope-development-app" secrets in vault.
+    # We don't use GitHub actions app (secrets.GITHUB_TOKEN) because PRs created by the bot don't trigger CI.
+    # Also only run if the PR is merged, as an extra safe-guard.
+    if: ${{ ! github.event.pull_request.head.repo.fork && github.event.pull_request.merged == true }}
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+      pull-requests: "write"
+    steps:
+      - name: Checkout Actions
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: "grafana/grafana-github-actions"
+          persist-credentials: false
+          path: ./actions
+          ref: 066cbcd084b61558d99d13c76f835c49e31b4670
+
+      - name: Install Actions
+        run: npm install --production --prefix ./actions
+
+      - id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760
+        with:
+          repo_secrets: |
+            GITHUB_APP_ID=pyroscope-development-app:app-id
+            GITHUB_APP_PRIVATE_KEY=pyroscope-development-app:private-key
+
+      - name: Generate token
+        id: app-token
+        uses: actions/create-github-app-token@3ff1caaa28b64c9cc276ce0a02e2ff584f3900c5 # v2.0.2
+        with:
+          app-id: ${{ env.GITHUB_APP_ID }}
+          private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            pyroscope
+
+      - name: Run backport
+        uses: ./actions/backport
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          labelsToAdd: backport
+          # The provided token needs read permissions for organization members if you want to remove the default reviewers.
+          removeDefaultReviewers: false
+          title: "[{{base}}] {{originalTitle}}"
