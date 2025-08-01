@@ -906,7 +906,7 @@ func (d *Distributor) checkUsageGroupsIngestLimit(req *distributormodel.PushRequ
 	return nil
 }
 
-// shouldSample returns true if the profile should be injected and optionally the usage group that was responsible.
+// shouldSample returns true if the profile should be injected and optionally the usage group that was responsible for the decision.
 func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) (bool, *validation.UsageGroupMatchName) {
 	l := d.limits.DistributorSampling(tenantID)
 	if l == nil {
@@ -935,7 +935,7 @@ func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation
 	}
 
 	if match == nil {
-		return true, match
+		return true, nil
 	}
 
 	return rand.Float64() <= samplingProbability, match
