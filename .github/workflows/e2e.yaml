@@ -40,7 +40,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
       - run: make build
       - name: Cypress run
-        uses: cypress-io/github-action@108b8684ae52e735ff7891524cbffbcd4be5b19f # v6.7.16
+        uses: cypress-io/github-action@b8ba51a856ba5f4c15cf39007636d4ab04f23e3c # v6.10.2
         with:
           wait-on: http://localhost:4040/ready
           start: make run
@@ -74,7 +74,7 @@ jobs:
       - name: run nginx with /foobar/
         run: docker compose -f scripts/base-url/docker-compose.yaml up -d
       - name: Cypress run
-        uses: cypress-io/github-action@108b8684ae52e735ff7891524cbffbcd4be5b19f # v6.7.16
+        uses: cypress-io/github-action@b8ba51a856ba5f4c15cf39007636d4ab04f23e3c # v6.10.2
         with:
           wait-on: http://localhost:8080/foobar/ready
           start: |
