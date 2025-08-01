@@ -16,5 +16,14 @@
 // Import commands.js using ES2015 syntax:
 import './commands';
 
+Cypress.on('test:before:run', () => {
+  Cypress.automation('remote:debugger:protocol', {
+    command: 'Emulation.setLocaleOverride',
+    params: {
+      locale: 'en-US',
+    },
+  });
+});
+
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
