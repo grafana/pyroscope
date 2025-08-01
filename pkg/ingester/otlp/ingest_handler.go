@@ -117,8 +117,8 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 				}
 
 				req := &distirbutormodel.BatchPushRequest{
-					RawProfileSize: proto.Size(p),
-					RawProfileType: distirbutormodel.RawProfileTypeOTEL,
+					ReceivedCompressedProfileSize: proto.Size(p),
+					RawProfileType:                distirbutormodel.RawProfileTypeOTEL,
 				}
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {

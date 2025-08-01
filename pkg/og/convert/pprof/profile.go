@@ -59,9 +59,9 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 		return nil, fmt.Errorf("failed to parse pprof /ingest multipart form %w", err)
 	}
 	res = &distributormodel.BatchPushRequest{
-		RawProfileSize: len(p.Profile),
-		RawProfileType: distributormodel.RawProfileTypePPROF,
-		Series:         nil,
+		ReceivedCompressedProfileSize: len(p.Profile),
+		RawProfileType:                distributormodel.RawProfileTypePPROF,
+		Series:                        nil,
 	}
 	if len(p.Profile) == 0 {
 		return res, nil

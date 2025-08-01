@@ -63,7 +63,7 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (*di
 			},
 		})
 	}
-	res.RawProfileSize = rawSize
+	res.ReceivedCompressedProfileSize = rawSize
 	res.RawProfileType = distributormodel.RawProfileTypeJFR
 	return res, err
 }

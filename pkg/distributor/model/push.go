@@ -16,9 +16,8 @@ const RawProfileTypeOTEL = RawProfileType("otel")
 type BatchPushRequest struct {
 	Series []*ProfileSeriesRequest
 
-	//todo rename this to something that includes "received" or "compressed" or both
-	RawProfileSize int
-	RawProfileType RawProfileType
+	ReceivedCompressedProfileSize int
+	RawProfileType                RawProfileType
 }
 
 type ProfileSample struct {

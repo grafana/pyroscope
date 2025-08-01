@@ -284,7 +284,6 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries)
 	return series.Language
 }
 
-// todo make everything concurrent, return result for each series
 func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.BatchPushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
@@ -300,26 +299,31 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.Batch
 	}
 
 	haveRawPprof := req.RawProfileType == distributormodel.RawProfileTypePPROF
-	d.bytesReceivedTotalStats.Inc(int64(req.RawProfileSize))
-	d.bytesReceivedStats.Record(float64(req.RawProfileSize))
+	d.bytesReceivedTotalStats.Inc(int64(req.ReceivedCompressedProfileSize))
+	d.bytesReceivedStats.Record(float64(req.ReceivedCompressedProfileSize))
 	if !haveRawPprof {
 		// if a single profile contains multiple profile types/names (e.g. jfr) then there is no such thing as
 		// compressed size per profile type as all profile types are compressed once together. So we can not count
 		// compressed bytes per profile type. Instead we count compressed bytes per profile.
 		profName := req.RawProfileType // use "jfr" as profile name
-		d.metrics.receivedCompressedBytes.WithLabelValues(string(profName), tenantID).Observe(float64(req.RawProfileSize))
+		d.metrics.receivedCompressedBytes.WithLabelValues(string(profName), tenantID).Observe(float64(req.ReceivedCompressedProfileSize))
 	}
 
+	g, ctx := errgroup.WithContext(ctx)
+
+	// todo return individual errors
 	for _, s := range req.Series {
-		resp, err = d.pushSeries(ctx, s.Convert(), tenantID)
-		if err != nil {
-			return nil, err
-		}
+		g.Go(func() error {
+			return d.pushSeries(ctx, s.Convert(), tenantID)
+		})
+	}
+	if err = g.Wait(); err != nil {
+		return nil, err
 	}
 	return resp, nil
 }
 
-func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, tenantID string) (resp *connect.Response[pushv1.PushResponse], err error) {
+func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, tenantID string) (err error) {
 
 	now := model.Now()
 
@@ -338,11 +342,11 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		level.Debug(logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
 		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
-		return nil, err
+		return err
 	}
 
 	if err := d.rateLimit(tenantID, req); err != nil {
-		return nil, err
+		return err
 	}
 
 	usageGroups := d.limits.DistributorUsageGroups(tenantID)
@@ -355,7 +359,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		groups.CountDiscardedBytes(string(validation.IngestLimitReached), req.TotalBytesUncompressed)
-		return nil, err
+		return err
 	}
 
 	if sample := d.shouldSample(tenantID, groups.Names()); !sample {
@@ -363,14 +367,14 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
 		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
-		return connect.NewResponse(&pushv1.PushResponse{}), nil
+		return nil
 	}
 
 	profLanguage := d.GetProfileLanguage(req)
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
-	if len(req.Sample.RawProfile) > 0 {
+	if len(req.Sample.RawProfile) > 0 { //todo do not merge, this should use same check as above RawProfileType
 		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.Sample.RawProfile)))
 	}
 	p := req.Sample.Profile
@@ -386,7 +390,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		validation.DiscardedProfiles.WithLabelValues(reason, tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(reason, tenantID).Add(float64(req.TotalBytesUncompressed))
 		groups.CountDiscardedBytes(reason, req.TotalBytesUncompressed)
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	symbolsSize, samplesSize := profileSizeBytes(p.Profile)
@@ -405,7 +409,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		//   Normalization may cause all profiles and series to be empty.
 		//   We should report it as an error and account for discarded data.
 		//   The check should be done after ValidateProfile and normalization.
-		return connect.NewResponse(&pushv1.PushResponse{}), nil
+		return nil
 	}
 
 	if err := injectMappingVersions(req); err != nil {
@@ -418,10 +422,10 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	aggregated, err := d.aggregate(ctx, req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if aggregated {
-		return connect.NewResponse(&pushv1.PushResponse{}), nil
+		return nil
 	}
 
 	// Write path router directs the request to the ingester or segment
@@ -430,11 +434,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	// functions to send the request to the appropriate service; these are
 	// called independently, and may be called concurrently: the request is
 	// cloned in this case – the callee may modify the request safely.
-	if err = d.router.Send(ctx, req); err != nil {
-		return nil, err
-	}
-
-	return connect.NewResponse(&pushv1.PushResponse{}), nil
+	return d.router.Send(ctx, req)
 }
 
 func noNewProfilesReceivedError() *connect.Error {
