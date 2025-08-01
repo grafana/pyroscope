@@ -28,7 +28,10 @@ The .NET Profiler supports the following profiling types:
 
 ### Compatibility
 
+The only compatible operating system and architecture combination is Linux running on amd64 architecture.
+
 Our .NET profiler works with the following .NET versions:
+
 * .NET 6
 * .NET 7
 * .NET 8
