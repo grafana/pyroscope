@@ -17,6 +17,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health/grpc_health_v1"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
@@ -28,8 +31,6 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/health/grpc_health_v1"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -427,15 +428,15 @@ func Test_Sessions_Limit(t *testing.T) {
 func Test_IngestLimits(t *testing.T) {
 	type testCase struct {
 		description        string
-		pushReq            *distributormodel.PushRequest
+		pushReq            *distributormodel.BatchPushRequest
 		overrides          *validation.Overrides
-		verifyExpectations func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse])
+		verifyExpectations func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse])
 	}
 
 	testCases := []testCase{
 		{
-			description: "ingest_limit_reached",
-			pushReq:     &distributormodel.PushRequest{},
+			description: "ingest_limit_reached_no_series",
+			pushReq:     &distributormodel.BatchPushRequest{},
 			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
 				l.IngestionLimit = &ingestlimits.Config{
@@ -450,7 +451,57 @@ func Test_IngestLimits(t *testing.T) {
 				}
 				tenantLimits["user-1"] = l
 			}),
-			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.Error(t, err)
+				require.Nil(t, res)
+				require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+			},
+		},
+		{
+			description: "ingest_limit_reached_no_profile",
+			pushReq:     &distributormodel.BatchPushRequest{Series: []*distributormodel.ProfileSeries{{}}},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingestlimits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingestlimits.SamplingConfig{
+						NumRequests: 0,
+						Period:      time.Minute,
+					},
+				}
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
+				require.Error(t, err)
+				require.Nil(t, res)
+				require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+			},
+		},
+		{
+			description: "ingest_limit_reached",
+			pushReq: &distributormodel.BatchPushRequest{Series: []*distributormodel.ProfileSeries{{
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(testProfile(1)),
+				},
+			}}},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionLimit = &ingestlimits.Config{
+					PeriodType:     "hour",
+					PeriodLimitMb:  128,
+					LimitResetTime: 1737721086,
+					LimitReached:   true,
+					Sampling: ingestlimits.SamplingConfig{
+						NumRequests: 0,
+						Period:      time.Minute,
+					},
+				}
+				tenantLimits["user-1"] = l
+			}),
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
 				require.Error(t, err)
 				require.Nil(t, res)
 				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
@@ -458,15 +509,15 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached_sampling",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.BatchPushRequest{
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "cpu"},
 							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 						},
-						Samples: []*distributormodel.ProfileSample{
-							{Profile: pprof2.RawFromProto(testProfile(1))},
+						Sample: &distributormodel.ProfileSample{
+							Profile: pprof2.RawFromProto(testProfile(1)),
 						},
 					},
 				},
@@ -485,7 +536,7 @@ func Test_IngestLimits(t *testing.T) {
 				}
 				tenantLimits["user-1"] = l
 			}),
-			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
 				require.NoError(t, err)
 				require.NotNil(t, res)
 				require.Equal(t, 1, len(req.Series[0].Annotations))
@@ -495,15 +546,15 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached_with_sampling_error",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.BatchPushRequest{
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "cpu"},
 							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 						},
-						Samples: []*distributormodel.ProfileSample{
-							{Profile: pprof2.RawFromProto(testProfile(1))},
+						Sample: &distributormodel.ProfileSample{
+							Profile: pprof2.RawFromProto(testProfile(1)),
 						},
 					},
 				},
@@ -522,7 +573,7 @@ func Test_IngestLimits(t *testing.T) {
 				}
 				tenantLimits["user-1"] = l
 			}),
-			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
 				require.Error(t, err)
 				require.Nil(t, res)
 				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
@@ -531,23 +582,21 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached_with_multiple_usage_groups",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.BatchPushRequest{
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "cpu"},
 							{Name: phlaremodel.LabelNameServiceName, Value: "svc1"},
 						},
-						Samples: []*distributormodel.ProfileSample{
-							{
-								RawProfile: collectTestProfileBytes(t),
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									Sample: []*profilev1.Sample{{
-										Value: []int64{1},
-									}},
-									StringTable: []string{""},
-								}),
-							},
+						Sample: &distributormodel.ProfileSample{
+							RawProfile: collectTestProfileBytes(t),
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								Sample: []*profilev1.Sample{{
+									Value: []int64{1},
+								}},
+								StringTable: []string{""},
+							}),
 						},
 					},
 					{
@@ -555,9 +604,8 @@ func Test_IngestLimits(t *testing.T) {
 							{Name: "__name__", Value: "cpu"},
 							{Name: phlaremodel.LabelNameServiceName, Value: "svc2"},
 						},
-						Samples: []*distributormodel.ProfileSample{
-							{Profile: pprof2.RawFromProto(testProfile(1))},
-						},
+						Sample: &distributormodel.ProfileSample{
+							Profile: pprof2.RawFromProto(testProfile(1))},
 					},
 				},
 			},
@@ -587,7 +635,7 @@ func Test_IngestLimits(t *testing.T) {
 				l.DistributorUsageGroups = usageGroupCfg
 				tenantLimits["user-1"] = l
 			}),
-			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
 				require.Error(t, err)
 				require.Nil(t, res)
 				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
@@ -597,15 +645,15 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached_with_sampling_and_usage_groups",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.BatchPushRequest{
 				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "cpu"},
 							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 						},
-						Samples: []*distributormodel.ProfileSample{
-							{Profile: pprof2.RawFromProto(testProfile(1))},
+						Sample: &distributormodel.ProfileSample{
+							Profile: pprof2.RawFromProto(testProfile(1)),
 						},
 					},
 				},
@@ -635,7 +683,7 @@ func Test_IngestLimits(t *testing.T) {
 				l.DistributorUsageGroups = usageGroupCfg
 				tenantLimits["user-1"] = l
 			}),
-			verifyExpectations: func(err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
 				require.NoError(t, err)
 				require.NotNil(t, res)
 				require.Len(t, req.Series[0].Annotations, 2)
@@ -657,8 +705,8 @@ func Test_IngestLimits(t *testing.T) {
 			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
 			require.NoError(t, err)
 
-			resp, err := d.PushParsed(tenant.InjectTenantID(context.Background(), "user-1"), tc.pushReq)
-			tc.verifyExpectations(err, tc.pushReq, resp)
+			resp, err := d.PushBatch(tenant.InjectTenantID(context.Background(), "user-1"), tc.pushReq)
+			tc.verifyExpectations(t, err, tc.pushReq, resp)
 		})
 	}
 }
@@ -669,8 +717,8 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 
 	type testCase struct {
 		description           string
-		pushReq               *distributormodel.PushRequest
-		series                []*distributormodel.ProfileSeries
+		pushReq               *distributormodel.ProfileSeries
+		expectedSeries        []*distributormodel.ProfileSeries
 		relabelRules          []*relabel.Config
 		expectBytesDropped    float64
 		expectProfilesDropped float64
@@ -681,164 +729,130 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 	testCases := []testCase{
 		{
 			description: "no series labels, no sample labels",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Samples: []*distributormodel.ProfileSample{
-							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									Sample: []*profilev1.Sample{{
-										Value: []int64{1},
-									}},
-								}),
-							},
-						},
-					},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						Sample: []*profilev1.Sample{{
+							Value: []int64{1},
+						}},
+					}),
 				},
 			},
 			expectError: connect.NewError(connect.CodeInvalidArgument, validation.NewErrorf(validation.MissingLabels, validation.MissingLabelsErrorMsg)),
 		},
 		{
 			description: "validation error propagation and accounting",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "foo", Value: "bar"},
-						},
-						Samples: []*distributormodel.ProfileSample{
-							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									Sample: []*profilev1.Sample{{
-										Value: []int64{1},
-									}},
-								}),
-							},
-						},
-					},
+				Labels: []*typesv1.LabelPair{
+					{Name: "foo", Value: "bar"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						Sample: []*profilev1.Sample{{
+							Value: []int64{1},
+						}},
+					}),
 				},
 			},
 			expectError: connect.NewError(connect.CodeInvalidArgument, fmt.Errorf(`invalid labels '{foo="bar"}' with error: invalid metric name`)),
 		},
 		{
 			description: "has series labels, no sample labels",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "service_name", Value: "service"},
-							{Name: "__name__", Value: "cpu"},
-							{Name: "foo", Value: "bar"},
-						},
-						Samples: []*distributormodel.ProfileSample{
-							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									Sample: []*profilev1.Sample{{
-										Value: []int64{1},
-									}},
-								}),
-							},
-						},
-					},
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service"},
+					{Name: "__name__", Value: "cpu"},
+					{Name: "foo", Value: "bar"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						Sample: []*profilev1.Sample{{
+							Value: []int64{1},
+						}},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								Sample: []*profilev1.Sample{{
-									Value: []int64{1},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							Sample: []*profilev1.Sample{{
+								Value: []int64{1},
+							}},
+						}),
 					},
 				},
 			},
 		},
 		{
 			description: "all samples have identical label set",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "service_name", Value: "service"},
-							{Name: "__name__", Value: "cpu"},
-						},
-						Samples: []*distributormodel.ProfileSample{
-							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "foo", "bar"},
-									Sample: []*profilev1.Sample{{
-										Value: []int64{1},
-										Label: []*profilev1.Label{
-											{Key: 1, Str: 2},
-										},
-									}},
-								}),
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service"},
+					{Name: "__name__", Value: "cpu"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "foo", "bar"},
+						Sample: []*profilev1.Sample{{
+							Value: []int64{1},
+							Label: []*profilev1.Label{
+								{Key: 1, Str: 2},
 							},
-						},
-					},
+						}},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{"", "foo", "bar"},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{1},
-									Label: []*profilev1.Label{},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{"", "foo", "bar"},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{1},
+								Label: []*profilev1.Label{},
+							}},
+						}),
 					},
 				},
 			},
 		},
 		{
 			description: "has series labels, all samples have identical label set",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "service_name", Value: "service"},
-							{Name: "__name__", Value: "cpu"},
-							{Name: "baz", Value: "qux"},
-						},
-						Samples: []*distributormodel.ProfileSample{
-							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "foo", "bar"},
-									Sample: []*profilev1.Sample{{
-										Value: []int64{1},
-										Label: []*profilev1.Label{
-											{Key: 1, Str: 2},
-										},
-									}},
-								}),
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service"},
+					{Name: "__name__", Value: "cpu"},
+					{Name: "baz", Value: "qux"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "foo", "bar"},
+						Sample: []*profilev1.Sample{{
+							Value: []int64{1},
+							Label: []*profilev1.Label{
+								{Key: 1, Str: 2},
 							},
-						},
-					},
+						}},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
@@ -846,54 +860,46 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{"", "foo", "bar"},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{1},
-									Label: []*profilev1.Label{},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{"", "foo", "bar"},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{1},
+								Label: []*profilev1.Label{},
+							}},
+						}),
 					},
 				},
 			},
 		},
 		{
 			description: "has series labels, and the only sample label name overlaps with series label, creating overlapping groups",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "service_name", Value: "service"},
-							{Name: "__name__", Value: "cpu"},
-							{Name: "foo", Value: "bar"},
-							{Name: "baz", Value: "qux"},
-						},
-						Samples: []*distributormodel.ProfileSample{
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service"},
+					{Name: "__name__", Value: "cpu"},
+					{Name: "foo", Value: "bar"},
+					{Name: "baz", Value: "qux"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "foo", "bar"},
+						Sample: []*profilev1.Sample{
 							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "foo", "bar"},
-									Sample: []*profilev1.Sample{
-										{
-											Value: []int64{1},
-											Label: []*profilev1.Label{
-												{Key: 1, Str: 2},
-											},
-										},
-										{
-											Value: []int64{2},
-										},
-									},
-								}),
+								Value: []int64{1},
+								Label: []*profilev1.Label{
+									{Key: 1, Str: 2},
+								},
+							},
+							{
+								Value: []int64{2},
 							},
 						},
-					},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
@@ -901,94 +907,84 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{"", "foo", "bar"},
-								Sample: []*profilev1.Sample{
-									{
-										Value: []int64{3},
-										Label: nil,
-									},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{"", "foo", "bar"},
+							Sample: []*profilev1.Sample{
+								{
+									Value: []int64{3},
+									Label: nil,
 								},
-							}),
-						},
+							},
+						}),
 					},
 				},
 			},
 		},
 		{
 			description: "has series labels, samples have distinct label sets",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "service_name", Value: "service"},
-							{Name: "__name__", Value: "cpu"},
-							{Name: "baz", Value: "qux"},
-						},
-						Samples: []*distributormodel.ProfileSample{
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service"},
+					{Name: "__name__", Value: "cpu"},
+					{Name: "baz", Value: "qux"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "foo", "bar", "waldo", "fred"},
+						Sample: []*profilev1.Sample{
 							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "foo", "bar", "waldo", "fred"},
-									Sample: []*profilev1.Sample{
-										{
-											Value: []int64{1},
-											Label: []*profilev1.Label{
-												{Key: 1, Str: 2},
-											},
-										},
-										{
-											Value: []int64{2},
-											Label: []*profilev1.Label{
-												{Key: 3, Str: 4},
-											},
-										},
-									},
-								}),
+								Value: []int64{1},
+								Label: []*profilev1.Label{
+									{Key: 1, Str: 2},
+								},
+							},
+							{
+								Value: []int64{2},
+								Label: []*profilev1.Label{
+									{Key: 3, Str: 4},
+								},
 							},
 						},
-					},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
+					TenantID: dummyTenantID,
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
 						{Name: "baz", Value: "qux"},
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{""},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{1},
-									Label: []*profilev1.Label{},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{""},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{1},
+								Label: []*profilev1.Label{},
+							}},
+						}),
 					},
 				},
 				{
+					TenantID: dummyTenantID,
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
 						{Name: "baz", Value: "qux"},
 						{Name: "service_name", Value: "service"},
 						{Name: "waldo", Value: "fred"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{""},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{2},
-									Label: []*profilev1.Label{},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{""},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{2},
+								Label: []*profilev1.Label{},
+							}},
+						}),
 					},
 				},
 			},
@@ -996,29 +992,23 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 		{
 			description:  "has series labels that should be renamed to no longer include godeltaprof",
 			relabelRules: defaultRelabelConfigs,
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "godeltaprof_memory"},
-							{Name: "service_name", Value: "service"},
-						},
-						Samples: []*distributormodel.ProfileSample{
-							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{""},
-									Sample: []*profilev1.Sample{{
-										Value: []int64{2},
-										Label: []*profilev1.Label{},
-									}},
-								}),
-							},
-						},
-					},
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "godeltaprof_memory"},
+					{Name: "service_name", Value: "service"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{""},
+						Sample: []*profilev1.Sample{{
+							Value: []int64{2},
+							Label: []*profilev1.Label{},
+						}},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__delta__", Value: "false"},
@@ -1026,16 +1016,14 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "__name_replaced__", Value: "godeltaprof_memory"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{""},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{2},
-									Label: []*profilev1.Label{},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{""},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{2},
+								Label: []*profilev1.Label{},
+							}},
+						}),
 					},
 				},
 			},
@@ -1045,52 +1033,45 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 			relabelRules: []*relabel.Config{
 				{Action: relabel.Drop, SourceLabels: []model.LabelName{"__name__", "span_name"}, Separator: "/", Regex: relabel.MustNewRegexp("unwanted/randomness")},
 			},
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "unwanted"},
-							{Name: "service_name", Value: "service"},
-						},
-						Samples: []*distributormodel.ProfileSample{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "unwanted"},
+					{Name: "service_name", Value: "service"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "span_name", "randomness"},
+						Sample: []*profilev1.Sample{
 							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "span_name", "randomness"},
-									Sample: []*profilev1.Sample{
-										{
-											Value: []int64{2},
-											Label: []*profilev1.Label{
-												{Key: 1, Str: 2},
-											},
-										},
-										{
-											Value: []int64{1},
-										},
-									},
-								}),
+								Value: []int64{2},
+								Label: []*profilev1.Label{
+									{Key: 1, Str: 2},
+								},
+							},
+							{
+								Value: []int64{1},
 							},
 						},
-					},
+					}),
 				},
 			},
 			expectProfilesDropped: 0,
 			expectBytesDropped:    3,
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
+					TenantID: dummyTenantID,
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "unwanted"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{""},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{1},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{""},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{1},
+							}},
+						}),
 					},
 				},
 			},
@@ -1100,33 +1081,27 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 			relabelRules: []*relabel.Config{
 				{Action: relabel.Drop, Regex: relabel.MustNewRegexp(".*")},
 			},
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "unwanted"},
-							{Name: "service_name", Value: "service"},
-						},
-						Samples: []*distributormodel.ProfileSample{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "unwanted"},
+					{Name: "service_name", Value: "service"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "span_name", "randomness"},
+						Sample: []*profilev1.Sample{
 							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "span_name", "randomness"},
-									Sample: []*profilev1.Sample{
-										{
-											Value: []int64{2},
-											Label: []*profilev1.Label{
-												{Key: 1, Str: 2},
-											},
-										},
-										{
-											Value: []int64{1},
-										},
-									},
-								}),
+								Value: []int64{2},
+								Label: []*profilev1.Label{
+									{Key: 1, Str: 2},
+								},
+							},
+							{
+								Value: []int64{1},
 							},
 						},
-					},
+					}),
 				},
 			},
 			expectProfilesDropped: 1,
@@ -1137,141 +1112,125 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 			relabelRules: []*relabel.Config{
 				{Action: relabel.Replace, Regex: relabel.MustNewRegexp(".*"), Replacement: "", TargetLabel: "span_name"},
 			},
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "unwanted"},
-							{Name: "service_name", Value: "service"},
-						},
-						Samples: []*distributormodel.ProfileSample{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "unwanted"},
+					{Name: "service_name", Value: "service"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "span_name", "randomness"},
+						Sample: []*profilev1.Sample{
 							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "span_name", "randomness"},
-									Sample: []*profilev1.Sample{
-										{
-											Value: []int64{2},
-											Label: []*profilev1.Label{
-												{Key: 1, Str: 2},
-											},
-										},
-										{
-											Value: []int64{1},
-										},
-									},
-								}),
+								Value: []int64{2},
+								Label: []*profilev1.Label{
+									{Key: 1, Str: 2},
+								},
+							},
+							{
+								Value: []int64{1},
 							},
 						},
-					},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "unwanted"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{""},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{3},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{""},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{3},
+							}},
+						}),
 					},
 				},
 			},
 		},
 		{
 			description: "ensure only samples of same stacktraces get grouped",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "profile"},
-							{Name: "service_name", Value: "service"},
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "profile"},
+					{Name: "service_name", Value: "service"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "foo", "bar", "binary", "span_id", "aaaabbbbccccdddd", "__name__"},
+						Location: []*profilev1.Location{
+							{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
+							{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
 						},
-						Samples: []*distributormodel.ProfileSample{
+						Mapping: []*profilev1.Mapping{{}, {Id: 1, Filename: 3}},
+						Function: []*profilev1.Function{
+							{Id: 1, Name: 1},
+							{Id: 2, Name: 2},
+						},
+						Sample: []*profilev1.Sample{
 							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "foo", "bar", "binary", "span_id", "aaaabbbbccccdddd", "__name__"},
-									Location: []*profilev1.Location{
-										{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
-										{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
-									},
-									Mapping: []*profilev1.Mapping{{}, {Id: 1, Filename: 3}},
-									Function: []*profilev1.Function{
-										{Id: 1, Name: 1},
-										{Id: 2, Name: 2},
-									},
-									Sample: []*profilev1.Sample{
-										{
-											LocationId: []uint64{1, 2},
-											Value:      []int64{2},
-											Label: []*profilev1.Label{
-												{Key: 6, Str: 1}, // This __name__ label is expected to be removed as it overlaps with the series label name
+								LocationId: []uint64{1, 2},
+								Value:      []int64{2},
+								Label: []*profilev1.Label{
+									{Key: 6, Str: 1}, // This __name__ label is expected to be removed as it overlaps with the series label name
 
-											},
-										},
-										{
-											LocationId: []uint64{1, 2},
-											Value:      []int64{1},
-										},
-										{
-											LocationId: []uint64{1, 2},
-											Value:      []int64{4},
-											Label: []*profilev1.Label{
-												{Key: 4, Str: 5},
-											},
-										},
-										{
-											Value: []int64{8},
-										},
-										{
-											Value: []int64{16},
-											Label: []*profilev1.Label{
-												{Key: 1, Str: 2},
-											},
-										},
-									},
-								}),
+								},
+							},
+							{
+								LocationId: []uint64{1, 2},
+								Value:      []int64{1},
+							},
+							{
+								LocationId: []uint64{1, 2},
+								Value:      []int64{4},
+								Label: []*profilev1.Label{
+									{Key: 4, Str: 5},
+								},
+							},
+							{
+								Value: []int64{8},
+							},
+							{
+								Value: []int64{16},
+								Label: []*profilev1.Label{
+									{Key: 1, Str: 2},
+								},
 							},
 						},
-					},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "profile"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{""},
-								Sample: []*profilev1.Sample{
-									{
-										LocationId: []uint64{1, 2},
-										Value:      []int64{3},
-									},
-									{
-										LocationId: []uint64{1, 2},
-										Value:      []int64{4},
-										Label: []*profilev1.Label{
-											{Key: 1, Str: 2},
-										},
-									},
-									{
-										Value: []int64{8},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{""},
+							Sample: []*profilev1.Sample{
+								{
+									LocationId: []uint64{1, 2},
+									Value:      []int64{3},
+								},
+								{
+									LocationId: []uint64{1, 2},
+									Value:      []int64{4},
+									Label: []*profilev1.Label{
+										{Key: 1, Str: 2},
 									},
 								},
-							}),
-						},
+								{
+									Value: []int64{8},
+								},
+							},
+						}),
 					},
 				},
 				{
@@ -1280,16 +1239,14 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{""},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{16},
-									Label: []*profilev1.Label{},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{""},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{16},
+								Label: []*profilev1.Label{},
+							}},
+						}),
 					},
 				},
 			},
@@ -1319,8 +1276,8 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 				return newFakeIngester(t, false), nil
 			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
 			require.NoError(t, err)
-
-			err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForIngester)
+			var series []*distributormodel.ProfileSeries
+			series, err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForIngester)
 			assert.Equal(t, tc.expectBytesDropped, float64(tc.pushReq.DiscardedBytesRelabeling))
 			assert.Equal(t, tc.expectProfilesDropped, float64(tc.pushReq.DiscardedProfilesRelabeling))
 
@@ -1332,15 +1289,12 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 				assert.NoError(t, err)
 			}
 
-			require.Len(t, tc.pushReq.Series, len(tc.series))
-			for i, actualSeries := range tc.pushReq.Series {
-				expectedSeries := tc.series[i]
+			require.Len(t, series, len(tc.expectedSeries))
+			for i, actualSeries := range series {
+				expectedSeries := tc.expectedSeries[i]
 				assert.Equal(t, expectedSeries.Labels, actualSeries.Labels)
-				require.Len(t, actualSeries.Samples, len(expectedSeries.Samples))
-				for j, actualProfile := range actualSeries.Samples {
-					expectedProfile := expectedSeries.Samples[j]
-					assert.Equal(t, expectedProfile.Profile.Sample, actualProfile.Profile.Sample)
-				}
+				expectedProfile := expectedSeries.Sample
+				assert.Equal(t, expectedProfile.Profile.Sample, actualSeries.Sample.Profile.Sample)
 			}
 		})
 	}
@@ -1352,8 +1306,8 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 
 	type testCase struct {
 		description           string
-		pushReq               *distributormodel.PushRequest
-		series                []*distributormodel.ProfileSeries
+		pushReq               *distributormodel.ProfileSeries
+		expectedSeries        []*distributormodel.ProfileSeries
 		relabelRules          []*relabel.Config
 		expectBytesDropped    float64
 		expectProfilesDropped float64
@@ -1364,164 +1318,131 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 	testCases := []testCase{
 		{
 			description: "no series labels, no sample labels",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Samples: []*distributormodel.ProfileSample{
-							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									Sample: []*profilev1.Sample{{
-										Value: []int64{1},
-									}},
-								}),
-							},
-						},
-					},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						Sample: []*profilev1.Sample{{
+							Value: []int64{1},
+						}},
+					}),
 				},
 			},
 			expectError: connect.NewError(connect.CodeInvalidArgument, validation.NewErrorf(validation.MissingLabels, validation.MissingLabelsErrorMsg)),
 		},
 		{
 			description: "validation error propagation",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "foo", Value: "bar"},
-						},
-						Samples: []*distributormodel.ProfileSample{
-							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									Sample: []*profilev1.Sample{{
-										Value: []int64{1},
-									}},
-								}),
-							},
-						},
-					},
+				Labels: []*typesv1.LabelPair{
+					{Name: "foo", Value: "bar"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						Sample: []*profilev1.Sample{{
+							Value: []int64{1},
+						}},
+					}),
 				},
 			},
 			expectError: connect.NewError(connect.CodeInvalidArgument, fmt.Errorf(`invalid labels '{foo="bar"}' with error: invalid metric name`)),
 		},
 		{
 			description: "has series labels, no sample labels",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "service_name", Value: "service"},
-							{Name: "__name__", Value: "cpu"},
-							{Name: "foo", Value: "bar"},
-						},
-						Samples: []*distributormodel.ProfileSample{
-							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									Sample: []*profilev1.Sample{{
-										Value: []int64{1},
-									}},
-								}),
-							},
-						},
-					},
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service"},
+					{Name: "__name__", Value: "cpu"},
+					{Name: "foo", Value: "bar"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						Sample: []*profilev1.Sample{{
+							Value: []int64{1},
+						}},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
+					TenantID: dummyTenantID,
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								Sample: []*profilev1.Sample{{
-									Value: []int64{1},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							Sample: []*profilev1.Sample{{
+								Value: []int64{1},
+							}},
+						}),
 					},
 				},
 			},
 		},
 		{
 			description: "all samples have identical label set",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "service_name", Value: "service"},
-							{Name: "__name__", Value: "cpu"},
-						},
-						Samples: []*distributormodel.ProfileSample{
-							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "foo", "bar"},
-									Sample: []*profilev1.Sample{{
-										Value: []int64{1},
-										Label: []*profilev1.Label{
-											{Key: 1, Str: 2},
-										},
-									}},
-								}),
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service"},
+					{Name: "__name__", Value: "cpu"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "foo", "bar"},
+						Sample: []*profilev1.Sample{{
+							Value: []int64{1},
+							Label: []*profilev1.Label{
+								{Key: 1, Str: 2},
 							},
-						},
-					},
+						}},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{"", "foo", "bar"},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{1},
-									Label: []*profilev1.Label{},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{"", "foo", "bar"},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{1},
+								Label: []*profilev1.Label{},
+							}},
+						}),
 					},
 				},
 			},
 		},
 		{
 			description: "has series labels, all samples have identical label set",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "service_name", Value: "service"},
-							{Name: "__name__", Value: "cpu"},
-							{Name: "baz", Value: "qux"},
-						},
-						Samples: []*distributormodel.ProfileSample{
-							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "foo", "bar"},
-									Sample: []*profilev1.Sample{{
-										Value: []int64{1},
-										Label: []*profilev1.Label{
-											{Key: 1, Str: 2},
-										},
-									}},
-								}),
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service"},
+					{Name: "__name__", Value: "cpu"},
+					{Name: "baz", Value: "qux"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "foo", "bar"},
+						Sample: []*profilev1.Sample{{
+							Value: []int64{1},
+							Label: []*profilev1.Label{
+								{Key: 1, Str: 2},
 							},
-						},
-					},
+						}},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
@@ -1529,54 +1450,46 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{"", "foo", "bar"},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{1},
-									Label: []*profilev1.Label{},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{"", "foo", "bar"},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{1},
+								Label: []*profilev1.Label{},
+							}},
+						}),
 					},
 				},
 			},
 		},
 		{
 			description: "has series labels, and the only sample label name overlaps with series label, creating overlapping groups",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "service_name", Value: "service"},
-							{Name: "__name__", Value: "cpu"},
-							{Name: "foo", Value: "bar"},
-							{Name: "baz", Value: "qux"},
-						},
-						Samples: []*distributormodel.ProfileSample{
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service"},
+					{Name: "__name__", Value: "cpu"},
+					{Name: "foo", Value: "bar"},
+					{Name: "baz", Value: "qux"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "foo", "bar"},
+						Sample: []*profilev1.Sample{
 							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "foo", "bar"},
-									Sample: []*profilev1.Sample{
-										{
-											Value: []int64{1},
-											Label: []*profilev1.Label{
-												{Key: 1, Str: 2},
-											},
-										},
-										{
-											Value: []int64{2},
-										},
-									},
-								}),
+								Value: []int64{1},
+								Label: []*profilev1.Label{
+									{Key: 1, Str: 2},
+								},
+							},
+							{
+								Value: []int64{2},
 							},
 						},
-					},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
@@ -1584,84 +1497,75 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{"", "foo", "bar"},
-								Sample: []*profilev1.Sample{
-									{
-										Value: []int64{3},
-										Label: nil,
-									},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{"", "foo", "bar"},
+							Sample: []*profilev1.Sample{
+								{
+									Value: []int64{3},
+									Label: nil,
 								},
-							}),
-						},
+							},
+						}),
 					},
 				},
 			},
 		},
 		{
 			description: "has series labels, samples have distinct label sets",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "service_name", Value: "service"},
-							{Name: "__name__", Value: "cpu"},
-							{Name: "baz", Value: "qux"},
-						},
-						Samples: []*distributormodel.ProfileSample{
+				Labels: []*typesv1.LabelPair{
+					{Name: "service_name", Value: "service"},
+					{Name: "__name__", Value: "cpu"},
+					{Name: "baz", Value: "qux"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "foo", "bar", "waldo", "fred"},
+						Sample: []*profilev1.Sample{
 							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "foo", "bar", "waldo", "fred"},
-									Sample: []*profilev1.Sample{
-										{
-											Value: []int64{1},
-											Label: []*profilev1.Label{
-												{Key: 1, Str: 2},
-											},
-										},
-										{
-											Value: []int64{2},
-											Label: []*profilev1.Label{
-												{Key: 3, Str: 4},
-											},
-										},
-									},
-								}),
+								Value: []int64{1},
+								Label: []*profilev1.Label{
+									{Key: 1, Str: 2},
+								},
+							},
+							{
+								Value: []int64{2},
+								Label: []*profilev1.Label{
+									{Key: 3, Str: 4},
+								},
 							},
 						},
-					},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
+					TenantID: dummyTenantID,
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
 						{Name: "baz", Value: "qux"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{"", "foo", "bar", "waldo", "fred"},
-								Sample: []*profilev1.Sample{
-									{
-										Value: []int64{1},
-										Label: []*profilev1.Label{
-											{Key: 1, Str: 2},
-										},
-									},
-									{
-										Value: []int64{2},
-										Label: []*profilev1.Label{
-											{Key: 3, Str: 4},
-										},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{"", "foo", "bar", "waldo", "fred"},
+							Sample: []*profilev1.Sample{
+								{
+									Value: []int64{1},
+									Label: []*profilev1.Label{
+										{Key: 1, Str: 2},
 									},
 								},
-							}),
-						},
+								{
+									Value: []int64{2},
+									Label: []*profilev1.Label{
+										{Key: 3, Str: 4},
+									},
+								},
+							},
+						}),
 					},
 				},
 			},
@@ -1669,29 +1573,23 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 		{
 			description:  "has series labels that should be renamed to no longer include godeltaprof",
 			relabelRules: defaultRelabelConfigs,
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "godeltaprof_memory"},
-							{Name: "service_name", Value: "service"},
-						},
-						Samples: []*distributormodel.ProfileSample{
-							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{""},
-									Sample: []*profilev1.Sample{{
-										Value: []int64{2},
-										Label: []*profilev1.Label{},
-									}},
-								}),
-							},
-						},
-					},
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "godeltaprof_memory"},
+					{Name: "service_name", Value: "service"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{""},
+						Sample: []*profilev1.Sample{{
+							Value: []int64{2},
+							Label: []*profilev1.Label{},
+						}},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__delta__", Value: "false"},
@@ -1699,16 +1597,14 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 						{Name: "__name_replaced__", Value: "godeltaprof_memory"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{""},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{2},
-									Label: []*profilev1.Label{},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{""},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{2},
+								Label: []*profilev1.Label{},
+							}},
+						}),
 					},
 				},
 			},
@@ -1718,52 +1614,44 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 			relabelRules: []*relabel.Config{
 				{Action: relabel.Drop, SourceLabels: []model.LabelName{"__name__", "span_name"}, Separator: "/", Regex: relabel.MustNewRegexp("unwanted/randomness")},
 			},
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "unwanted"},
-							{Name: "service_name", Value: "service"},
-						},
-						Samples: []*distributormodel.ProfileSample{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "unwanted"},
+					{Name: "service_name", Value: "service"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "span_name", "randomness"},
+						Sample: []*profilev1.Sample{
 							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "span_name", "randomness"},
-									Sample: []*profilev1.Sample{
-										{
-											Value: []int64{2},
-											Label: []*profilev1.Label{
-												{Key: 1, Str: 2},
-											},
-										},
-										{
-											Value: []int64{1},
-										},
-									},
-								}),
+								Value: []int64{2},
+								Label: []*profilev1.Label{
+									{Key: 1, Str: 2},
+								},
+							},
+							{
+								Value: []int64{1},
 							},
 						},
-					},
+					}),
 				},
 			},
 			expectProfilesDropped: 0,
 			expectBytesDropped:    3,
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "unwanted"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{""},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{1},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{""},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{1},
+							}},
+						}),
 					},
 				},
 			},
@@ -1773,33 +1661,27 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 			relabelRules: []*relabel.Config{
 				{Action: relabel.Drop, Regex: relabel.MustNewRegexp(".*")},
 			},
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "unwanted"},
-							{Name: "service_name", Value: "service"},
-						},
-						Samples: []*distributormodel.ProfileSample{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "unwanted"},
+					{Name: "service_name", Value: "service"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "span_name", "randomness"},
+						Sample: []*profilev1.Sample{
 							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "span_name", "randomness"},
-									Sample: []*profilev1.Sample{
-										{
-											Value: []int64{2},
-											Label: []*profilev1.Label{
-												{Key: 1, Str: 2},
-											},
-										},
-										{
-											Value: []int64{1},
-										},
-									},
-								}),
+								Value: []int64{2},
+								Label: []*profilev1.Label{
+									{Key: 1, Str: 2},
+								},
+							},
+							{
+								Value: []int64{1},
 							},
 						},
-					},
+					}),
 				},
 			},
 			expectProfilesDropped: 1,
@@ -1810,155 +1692,139 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 			relabelRules: []*relabel.Config{
 				{Action: relabel.Replace, Regex: relabel.MustNewRegexp(".*"), Replacement: "", TargetLabel: "span_name"},
 			},
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "unwanted"},
-							{Name: "service_name", Value: "service"},
-						},
-						Samples: []*distributormodel.ProfileSample{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "unwanted"},
+					{Name: "service_name", Value: "service"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "span_name", "randomness"},
+						Sample: []*profilev1.Sample{
 							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "span_name", "randomness"},
-									Sample: []*profilev1.Sample{
-										{
-											Value: []int64{2},
-											Label: []*profilev1.Label{
-												{Key: 1, Str: 2},
-											},
-										},
-										{
-											Value: []int64{1},
-										},
-									},
-								}),
+								Value: []int64{2},
+								Label: []*profilev1.Label{
+									{Key: 1, Str: 2},
+								},
+							},
+							{
+								Value: []int64{1},
 							},
 						},
-					},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "unwanted"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{""},
-								Sample: []*profilev1.Sample{{
-									Value: []int64{3},
-								}},
-							}),
-						},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{""},
+							Sample: []*profilev1.Sample{{
+								Value: []int64{3},
+							}},
+						}),
 					},
 				},
 			},
 		},
 		{
 			description: "ensure only samples of same stacktraces get grouped",
-			pushReq: &distributormodel.PushRequest{
+			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Series: []*distributormodel.ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "profile"},
-							{Name: "service_name", Value: "service"},
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "profile"},
+					{Name: "service_name", Value: "service"},
+				},
+				Sample: &distributormodel.ProfileSample{
+					Profile: pprof2.RawFromProto(&profilev1.Profile{
+						StringTable: []string{"", "foo", "bar", "binary", "span_id", "aaaabbbbccccdddd", "__name__"},
+						Location: []*profilev1.Location{
+							{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
+							{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
 						},
-						Samples: []*distributormodel.ProfileSample{
+						Mapping: []*profilev1.Mapping{{}, {Id: 1, Filename: 3}},
+						Function: []*profilev1.Function{
+							{Id: 1, Name: 1},
+							{Id: 2, Name: 2},
+						},
+						Sample: []*profilev1.Sample{
 							{
-								Profile: pprof2.RawFromProto(&profilev1.Profile{
-									StringTable: []string{"", "foo", "bar", "binary", "span_id", "aaaabbbbccccdddd", "__name__"},
-									Location: []*profilev1.Location{
-										{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
-										{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
-									},
-									Mapping: []*profilev1.Mapping{{}, {Id: 1, Filename: 3}},
-									Function: []*profilev1.Function{
-										{Id: 1, Name: 1},
-										{Id: 2, Name: 2},
-									},
-									Sample: []*profilev1.Sample{
-										{
-											LocationId: []uint64{1, 2},
-											Value:      []int64{2},
-											Label: []*profilev1.Label{
-												{Key: 6, Str: 1},
-											},
-										},
-										{
-											LocationId: []uint64{1, 2},
-											Value:      []int64{1},
-										},
-										{
-											LocationId: []uint64{1, 2},
-											Value:      []int64{4},
-											Label: []*profilev1.Label{
-												{Key: 4, Str: 5},
-											},
-										},
-										{
-											Value: []int64{8},
-										},
-										{
-											Value: []int64{16},
-											Label: []*profilev1.Label{
-												{Key: 1, Str: 2},
-											},
-										},
-									},
-								}),
+								LocationId: []uint64{1, 2},
+								Value:      []int64{2},
+								Label: []*profilev1.Label{
+									{Key: 6, Str: 1},
+								},
+							},
+							{
+								LocationId: []uint64{1, 2},
+								Value:      []int64{1},
+							},
+							{
+								LocationId: []uint64{1, 2},
+								Value:      []int64{4},
+								Label: []*profilev1.Label{
+									{Key: 4, Str: 5},
+								},
+							},
+							{
+								Value: []int64{8},
+							},
+							{
+								Value: []int64{16},
+								Label: []*profilev1.Label{
+									{Key: 1, Str: 2},
+								},
 							},
 						},
-					},
+					}),
 				},
 			},
-			series: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeries{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "profile"},
 						{Name: "service_name", Value: "service"},
 					},
-					Samples: []*distributormodel.ProfileSample{
-						{
-							Profile: pprof2.RawFromProto(&profilev1.Profile{
-								StringTable: []string{"", "span_id", "aaaabbbbccccdddd", "foo", "bar", "binary"},
-								Location: []*profilev1.Location{
-									{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
-									{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
+					Sample: &distributormodel.ProfileSample{
+						Profile: pprof2.RawFromProto(&profilev1.Profile{
+							StringTable: []string{"", "span_id", "aaaabbbbccccdddd", "foo", "bar", "binary"},
+							Location: []*profilev1.Location{
+								{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
+								{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
+							},
+							Mapping: []*profilev1.Mapping{{Id: 1, Filename: 5}},
+							Function: []*profilev1.Function{
+								{Id: 1, Name: 1},
+								{Id: 2, Name: 2},
+							},
+							Sample: []*profilev1.Sample{
+								{
+									LocationId: []uint64{1, 2},
+									Value:      []int64{3},
 								},
-								Mapping: []*profilev1.Mapping{{Id: 1, Filename: 5}},
-								Function: []*profilev1.Function{
-									{Id: 1, Name: 1},
-									{Id: 2, Name: 2},
-								},
-								Sample: []*profilev1.Sample{
-									{
-										LocationId: []uint64{1, 2},
-										Value:      []int64{3},
-									},
-									{
-										LocationId: []uint64{1, 2},
-										Value:      []int64{4},
-										Label: []*profilev1.Label{
-											{Key: 1, Str: 2},
-										},
-									},
-									{
-										Value: []int64{8},
-									},
-									{
-										Value: []int64{16},
-										Label: []*profilev1.Label{
-											{Key: 3, Str: 4},
-										},
+								{
+									LocationId: []uint64{1, 2},
+									Value:      []int64{4},
+									Label: []*profilev1.Label{
+										{Key: 1, Str: 2},
 									},
 								},
-							}),
-						},
+								{
+									Value: []int64{8},
+								},
+								{
+									Value: []int64{16},
+									Label: []*profilev1.Label{
+										{Key: 3, Str: 4},
+									},
+								},
+							},
+						}),
 					},
 				},
 			},
@@ -1989,8 +1855,8 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), new(mockwritepath.MockSegmentWriterClient))
 
 			require.NoError(t, err)
-
-			err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForSegmentWriter)
+			var series []*distributormodel.ProfileSeries
+			series, err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForSegmentWriter)
 			assert.Equal(t, tc.expectBytesDropped, float64(tc.pushReq.DiscardedBytesRelabeling))
 			assert.Equal(t, tc.expectProfilesDropped, float64(tc.pushReq.DiscardedProfilesRelabeling))
 
@@ -2002,15 +1868,12 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 				assert.NoError(t, err)
 			}
 
-			require.Len(t, tc.pushReq.Series, len(tc.series))
-			for i, actualSeries := range tc.pushReq.Series {
-				expectedSeries := tc.series[i]
+			require.Len(t, series, len(tc.expectedSeries))
+			for i, actualSeries := range series {
+				expectedSeries := tc.expectedSeries[i]
 				assert.Equal(t, expectedSeries.Labels, actualSeries.Labels)
-				require.Len(t, actualSeries.Samples, len(expectedSeries.Samples))
-				for j, actualProfile := range actualSeries.Samples {
-					expectedProfile := expectedSeries.Samples[j]
-					assert.Equal(t, expectedProfile.Profile.Sample, actualProfile.Profile.Sample)
-				}
+				expectedProfile := expectedSeries.Sample
+				assert.Equal(t, expectedProfile.Profile.Sample, actualSeries.Sample.Profile.Sample)
 			}
 		})
 	}
@@ -2234,7 +2097,7 @@ func TestPush_Aggregation(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < requests; j++ {
-				_, err := d.PushParsed(ctx, &distributormodel.PushRequest{
+				_, err := d.PushBatch(ctx, &distributormodel.BatchPushRequest{
 					Series: []*distributormodel.ProfileSeries{
 						{
 							Labels: []*typesv1.LabelPair{
@@ -2246,11 +2109,9 @@ func TestPush_Aggregation(t *testing.T) {
 									Value: phlaremodel.SessionID(i*j + i).String(),
 								},
 							},
-							Samples: []*distributormodel.ProfileSample{
-								{
-									Profile: &pprof2.Profile{
-										Profile: testProfile(0),
-									},
+							Sample: &distributormodel.ProfileSample{
+								Profile: &pprof2.Profile{
+									Profile: testProfile(0),
 								},
 							},
 						},
@@ -2403,11 +2264,9 @@ func TestInjectMappingVersions(t *testing.T) {
 	in := []*distributormodel.ProfileSeries{
 		{
 			Labels: []*typesv1.LabelPair{},
-			Samples: []*distributormodel.ProfileSample{
-				{
-					Profile: &pprof2.Profile{
-						Profile: testProfile(1),
-					},
+			Sample: &distributormodel.ProfileSample{
+				Profile: &pprof2.Profile{
+					Profile: testProfile(1),
 				},
 			},
 		},
@@ -2415,25 +2274,9 @@ func TestInjectMappingVersions(t *testing.T) {
 			Labels: []*typesv1.LabelPair{
 				{Name: phlaremodel.LabelNameServiceRepository, Value: "grafana/pyroscope"},
 			},
-			Samples: []*distributormodel.ProfileSample{
-				{
-					Profile: &pprof2.Profile{
-						Profile: testProfile(2),
-					},
-				},
-			},
-		},
-		{
-			Labels: []*typesv1.LabelPair{
-				{Name: phlaremodel.LabelNameServiceRepository, Value: "grafana/pyroscope"},
-				{Name: phlaremodel.LabelNameServiceGitRef, Value: "foobar"},
-				{Name: phlaremodel.LabelNameServiceRootPath, Value: "some-path"},
-			},
-			Samples: []*distributormodel.ProfileSample{
-				{
-					Profile: &pprof2.Profile{
-						Profile: testProfile(2),
-					},
+			Sample: &distributormodel.ProfileSample{
+				Profile: &pprof2.Profile{
+					Profile: testProfile(2),
 				},
 			},
 		},
@@ -2443,22 +2286,34 @@ func TestInjectMappingVersions(t *testing.T) {
 				{Name: phlaremodel.LabelNameServiceGitRef, Value: "foobar"},
 				{Name: phlaremodel.LabelNameServiceRootPath, Value: "some-path"},
 			},
-			Samples: []*distributormodel.ProfileSample{
-				{
-					Profile: &pprof2.Profile{
-						Profile: alreadyVersionned,
-					},
+			Sample: &distributormodel.ProfileSample{
+				Profile: &pprof2.Profile{
+					Profile: testProfile(2),
+				},
+			},
+		},
+		{
+			Labels: []*typesv1.LabelPair{
+				{Name: phlaremodel.LabelNameServiceRepository, Value: "grafana/pyroscope"},
+				{Name: phlaremodel.LabelNameServiceGitRef, Value: "foobar"},
+				{Name: phlaremodel.LabelNameServiceRootPath, Value: "some-path"},
+			},
+			Sample: &distributormodel.ProfileSample{
+				Profile: &pprof2.Profile{
+					Profile: alreadyVersionned,
 				},
 			},
 		},
 	}
+	for _, s := range in {
+		err := injectMappingVersions(s)
+		require.NoError(t, err)
+	}
 
-	err := injectMappingVersions(in)
-	require.NoError(t, err)
-	require.Equal(t, "", in[0].Samples[0].Profile.StringTable[in[0].Samples[0].Profile.Mapping[0].BuildId])
-	require.Equal(t, `{"repository":"grafana/pyroscope"}`, in[1].Samples[0].Profile.StringTable[in[1].Samples[0].Profile.Mapping[0].BuildId])
-	require.Equal(t, `{"repository":"grafana/pyroscope","git_ref":"foobar","root_path":"some-path"}`, in[2].Samples[0].Profile.StringTable[in[2].Samples[0].Profile.Mapping[0].BuildId])
-	require.Equal(t, `{"repository":"grafana/pyroscope","git_ref":"foobar","build_id":"foo","root_path":"some-path"}`, in[3].Samples[0].Profile.StringTable[in[3].Samples[0].Profile.Mapping[0].BuildId])
+	require.Equal(t, "", in[0].Sample.Profile.StringTable[in[0].Sample.Profile.Mapping[0].BuildId])
+	require.Equal(t, `{"repository":"grafana/pyroscope"}`, in[1].Sample.Profile.StringTable[in[1].Sample.Profile.Mapping[0].BuildId])
+	require.Equal(t, `{"repository":"grafana/pyroscope","git_ref":"foobar","root_path":"some-path"}`, in[2].Sample.Profile.StringTable[in[2].Sample.Profile.Mapping[0].BuildId])
+	require.Equal(t, `{"repository":"grafana/pyroscope","git_ref":"foobar","build_id":"foo","root_path":"some-path"}`, in[3].Sample.Profile.StringTable[in[3].Sample.Profile.Mapping[0].BuildId])
 }
 
 func uncompressedProfileSize(t *testing.T, req *pushv1.PushRequest) int {

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+
 	"github.com/prometheus/prometheus/model/labels"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -46,7 +47,7 @@ const (
 )
 
 // ParseToPprof is not doing much now. It parses the profile with no processing/splitting, adds labels.
-func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res *distributormodel.PushRequest, err error) {
+func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res *distributormodel.BatchPushRequest, err error) {
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -57,7 +58,7 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pprof /ingest multipart form %w", err)
 	}
-	res = &distributormodel.PushRequest{
+	res = &distributormodel.BatchPushRequest{
 		RawProfileSize: len(p.Profile),
 		RawProfileType: distributormodel.RawProfileTypePPROF,
 		Series:         nil,
@@ -80,10 +81,10 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 
 	res.Series = []*distributormodel.ProfileSeries{{
 		Labels: p.createLabels(profile, md),
-		Samples: []*distributormodel.ProfileSample{{
+		Sample: &distributormodel.ProfileSample{
 			Profile:    profile,
 			RawProfile: p.Profile,
-		}},
+		},
 	}}
 	return
 }

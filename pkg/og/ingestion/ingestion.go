@@ -39,7 +39,7 @@ type RawProfile interface {
 }
 
 type ParseableToPprof interface {
-	ParseToPprof(context.Context, Metadata) (*distributormodel.PushRequest, error)
+	ParseToPprof(context.Context, Metadata) (*distributormodel.BatchPushRequest, error)
 }
 
 type Metadata struct {

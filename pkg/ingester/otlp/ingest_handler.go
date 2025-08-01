@@ -7,15 +7,16 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/user"
 	pprofileotlp "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/protobuf/proto"
 
 	"google.golang.org/grpc/status"
 
@@ -41,7 +42,7 @@ type Handler interface {
 }
 
 type PushService interface {
-	PushParsed(ctx context.Context, req *distirbutormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error)
+	PushBatch(ctx context.Context, req *distirbutormodel.BatchPushRequest) (*connect.Response[pushv1.PushResponse], error)
 }
 
 func NewOTLPIngestHandler(svc PushService, l log.Logger, me bool) Handler {
@@ -115,7 +116,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
 				}
 
-				req := &distirbutormodel.PushRequest{
+				req := &distirbutormodel.BatchPushRequest{
 					RawProfileSize: proto.Size(p),
 					RawProfileType: distirbutormodel.RawProfileTypeOTEL,
 				}
@@ -137,12 +138,10 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 
 					s := &distirbutormodel.ProfileSeries{
 						Labels: labels,
-						Samples: []*distirbutormodel.ProfileSample{
-							{
-								RawProfile: nil,
-								Profile:    pprof.RawFromProto(pprofProfile.profile),
-								ID:         uuid.New().String(),
-							},
+						Sample: &distirbutormodel.ProfileSample{
+							RawProfile: nil,
+							Profile:    pprof.RawFromProto(pprofProfile.profile),
+							ID:         uuid.New().String(),
 						},
 					}
 					req.Series = append(req.Series, s)
@@ -150,7 +149,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 				if len(req.Series) == 0 {
 					continue
 				}
-				_, err = h.svc.PushParsed(ctx, req)
+				_, err = h.svc.PushBatch(ctx, req)
 				if err != nil {
 					h.log.Log("msg", "failed to push profile", "err", err)
 					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
