@@ -241,25 +241,23 @@ func (d *Distributor) stopping(_ error) error {
 
 func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	req := &distributormodel.BatchPushRequest{
-		Series: make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
+		Series: make([]*distributormodel.ProfileSeriesRequest, 0, len(grpcReq.Msg.Series)),
 	}
 
 	for _, grpcSeries := range grpcReq.Msg.Series {
 		for _, grpcSample := range grpcSeries.Samples {
-			series := &distributormodel.ProfileSeries{
-				Labels: grpcSeries.Labels,
-			}
 			profile, err := pprof.RawFromBytes(grpcSample.RawProfile)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
-			sample := &distributormodel.ProfileSample{
-				Profile:    profile,
-				RawProfile: grpcSample.RawProfile,
-				ID:         grpcSample.ID,
+			series := &distributormodel.ProfileSeriesRequest{
+				Labels: grpcSeries.Labels,
+				Sample: &distributormodel.ProfileSample{
+					Profile:    profile,
+					RawProfile: grpcSample.RawProfile,
+					ID:         grpcSample.ID,
+				},
 			}
-			req.RawProfileSize += len(grpcSample.RawProfile)
-			series.Sample = sample
 			req.Series = append(req.Series, series)
 		}
 	}
@@ -295,6 +293,11 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.Batch
 	if len(req.Series) == 0 {
 		return nil, noNewProfilesReceivedError()
 	}
+	for _, s := range req.Series {
+		if s.Sample == nil || s.Sample.Profile == nil {
+			return nil, noNewProfilesReceivedError()
+		}
+	}
 
 	haveRawPprof := req.RawProfileType == distributormodel.RawProfileTypePPROF
 	d.bytesReceivedTotalStats.Inc(int64(req.RawProfileSize))
@@ -308,7 +311,7 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.Batch
 	}
 
 	for _, s := range req.Series {
-		resp, err = d.pushSeries(ctx, s, tenantID)
+		resp, err = d.pushSeries(ctx, s.Convert(), tenantID)
 		if err != nil {
 			return nil, err
 		}
@@ -316,80 +319,73 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.Batch
 	return resp, nil
 }
 
-func (d *Distributor) pushSeries(ctx context.Context, series *distributormodel.ProfileSeries, tenantID string) (resp *connect.Response[pushv1.PushResponse], err error) {
-	if series.Sample == nil || series.Sample.Profile == nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no profile in series"))
-	}
+func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, tenantID string) (resp *connect.Response[pushv1.PushResponse], err error) {
 
 	now := model.Now()
 
 	logger := log.With(d.logger, "tenant", tenantID)
 
-	series.TenantID = tenantID
-	serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
+	req.TenantID = tenantID
+	serviceName := phlaremodel.Labels(req.Labels).Get(phlaremodel.LabelNameServiceName)
 	if serviceName == "" {
-		series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: phlaremodel.AttrServiceNameFallback})
+		req.Labels = append(req.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: phlaremodel.AttrServiceNameFallback})
 	}
-	sort.Sort(phlaremodel.Labels(series.Labels))
+	sort.Sort(phlaremodel.Labels(req.Labels))
 
-	d.calculateRequestSize(series)
+	d.calculateRequestSize(req)
 
-	//todo make it not api
-	// We don't support externally provided profile annotations right now.
-	// They are unfortunately part of the Push API so we explicitly clear them here.
-	series.ClearAnnotations()
-	if err := d.checkIngestLimit(series); err != nil {
+	if err := d.checkIngestLimit(req); err != nil {
 		level.Debug(logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
-		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(series.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(series.TotalBytesUncompressed))
+		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return nil, err
 	}
 
-	if err := d.rateLimit(tenantID, series); err != nil {
+	if err := d.rateLimit(tenantID, req); err != nil {
 		return nil, err
 	}
 
 	usageGroups := d.limits.DistributorUsageGroups(tenantID)
 
-	profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
+	profName := phlaremodel.Labels(req.Labels).Get(ProfileName)
 
-	groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, series.Labels)
-	if err := d.checkUsageGroupsIngestLimit(series, groups.Names()); err != nil {
+	groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, req.Labels)
+	if err := d.checkUsageGroupsIngestLimit(req, groups.Names()); err != nil {
 		level.Debug(logger).Log("msg", "rejecting push request due to usage group ingest limit", "tenant", tenantID)
-		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(series.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(series.TotalBytesUncompressed))
-		groups.CountDiscardedBytes(string(validation.IngestLimitReached), series.TotalBytesUncompressed)
+		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
+		groups.CountDiscardedBytes(string(validation.IngestLimitReached), req.TotalBytesUncompressed)
 		return nil, err
 	}
 
 	if sample := d.shouldSample(tenantID, groups.Names()); !sample {
 		level.Debug(logger).Log("msg", "skipping push request due to sampling", "tenant", tenantID)
-		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(series.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(series.TotalBytesUncompressed))
-		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), series.TotalBytesUncompressed)
+		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
+		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
 	}
 
-	profLanguage := d.GetProfileLanguage(series)
+	profLanguage := d.GetProfileLanguage(req)
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
-	if len(series.Sample.RawProfile) > 0 {
-		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(series.Sample.RawProfile)))
+	if len(req.Sample.RawProfile) > 0 {
+		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.Sample.RawProfile)))
 	}
-	p := series.Sample.Profile
+	p := req.Sample.Profile
 	decompressedSize := p.SizeVT()
 	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
 	d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
 	d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
 	groups.CountReceivedBytes(profName, int64(decompressedSize))
 
-	if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
+	if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, req.Labels, now); err != nil {
 		_ = level.Debug(logger).Log("msg", "invalid profile", "err", err)
 		reason := string(validation.ReasonOf(err))
-		validation.DiscardedProfiles.WithLabelValues(reason, tenantID).Add(float64(series.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(reason, tenantID).Add(float64(series.TotalBytesUncompressed))
-		groups.CountDiscardedBytes(reason, series.TotalBytesUncompressed)
+		validation.DiscardedProfiles.WithLabelValues(reason, tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(reason, tenantID).Add(float64(req.TotalBytesUncompressed))
+		groups.CountDiscardedBytes(reason, req.TotalBytesUncompressed)
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
@@ -399,12 +395,12 @@ func (d *Distributor) pushSeries(ctx context.Context, series *distributormodel.P
 
 	// Normalisation is quite an expensive operation,
 	// therefore it should be done after the rate limit check.
-	if series.Language == "go" {
-		series.Sample.Profile.Profile = pprof.FixGoProfile(series.Sample.Profile.Profile)
+	if req.Language == "go" {
+		req.Sample.Profile.Profile = pprof.FixGoProfile(req.Sample.Profile.Profile)
 	}
-	series.Sample.Profile.Normalize()
+	req.Sample.Profile.Normalize()
 
-	if len(series.Sample.Profile.Sample) == 0 {
+	if len(req.Sample.Profile.Sample) == 0 {
 		// TODO(kolesnikovae):
 		//   Normalization may cause all profiles and series to be empty.
 		//   We should report it as an error and account for discarded data.
@@ -412,15 +408,15 @@ func (d *Distributor) pushSeries(ctx context.Context, series *distributormodel.P
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
 	}
 
-	if err := injectMappingVersions(series); err != nil {
+	if err := injectMappingVersions(req); err != nil {
 		_ = level.Warn(logger).Log("msg", "failed to inject mapping versions", "err", err)
 	}
 
 	// Reduce cardinality of the session_id label.
-	maxSessionsPerSeries := d.limits.MaxSessionsPerSeries(series.TenantID)
-	series.Labels = d.limitMaxSessionsPerSeries(maxSessionsPerSeries, series.Labels)
+	maxSessionsPerSeries := d.limits.MaxSessionsPerSeries(req.TenantID)
+	req.Labels = d.limitMaxSessionsPerSeries(maxSessionsPerSeries, req.Labels)
 
-	aggregated, err := d.aggregate(ctx, series)
+	aggregated, err := d.aggregate(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -434,7 +430,7 @@ func (d *Distributor) pushSeries(ctx context.Context, series *distributormodel.P
 	// functions to send the request to the appropriate service; these are
 	// called independently, and may be called concurrently: the request is
 	// cloned in this case – the callee may modify the request safely.
-	if err = d.router.Send(ctx, series); err != nil {
+	if err = d.router.Send(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -756,13 +752,11 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 	})
 
 	for _, p := range profileTrackers {
-		sample := p.profile.Sample
-
 		series := &pushv1.RawProfileSeries{
 			Labels: p.profile.Labels,
 			Samples: []*pushv1.RawSample{{
-				RawProfile: sample.RawProfile,
-				ID:         sample.ID,
+				RawProfile: p.profile.Sample.RawProfile,
+				ID:         p.profile.Sample.ID,
 			}},
 			Annotations: p.profile.Annotations,
 		}
@@ -1036,7 +1030,6 @@ func (d *Distributor) visitSampleSeries(s *distributormodel.ProfileSeries, visit
 		validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), s.TenantID).Add(float64(s.DiscardedProfilesRelabeling))
 	}
 	// todo should we do normalization after relabeling?
-	// result = removeEmptySeries(result)
 	return result, nil
 }
 

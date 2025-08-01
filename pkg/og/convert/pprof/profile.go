@@ -79,7 +79,7 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 		fixSampleTypes(profile.Profile)
 	}
 
-	res.Series = []*distributormodel.ProfileSeries{{
+	res.Series = []*distributormodel.ProfileSeriesRequest{{
 		Labels: p.createLabels(profile, md),
 		Sample: &distributormodel.ProfileSample{
 			Profile:    profile,

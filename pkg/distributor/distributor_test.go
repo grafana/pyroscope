@@ -459,7 +459,7 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached_no_profile",
-			pushReq:     &distributormodel.BatchPushRequest{Series: []*distributormodel.ProfileSeries{{}}},
+			pushReq:     &distributormodel.BatchPushRequest{Series: []*distributormodel.ProfileSeriesRequest{{}}},
 			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
 				l.IngestionLimit = &ingestlimits.Config{
@@ -482,7 +482,7 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached",
-			pushReq: &distributormodel.BatchPushRequest{Series: []*distributormodel.ProfileSeries{{
+			pushReq: &distributormodel.BatchPushRequest{Series: []*distributormodel.ProfileSeriesRequest{{
 				Sample: &distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(testProfile(1)),
 				},
@@ -510,7 +510,7 @@ func Test_IngestLimits(t *testing.T) {
 		{
 			description: "ingest_limit_reached_sampling",
 			pushReq: &distributormodel.BatchPushRequest{
-				Series: []*distributormodel.ProfileSeries{
+				Series: []*distributormodel.ProfileSeriesRequest{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "cpu"},
@@ -547,7 +547,7 @@ func Test_IngestLimits(t *testing.T) {
 		{
 			description: "ingest_limit_reached_with_sampling_error",
 			pushReq: &distributormodel.BatchPushRequest{
-				Series: []*distributormodel.ProfileSeries{
+				Series: []*distributormodel.ProfileSeriesRequest{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "cpu"},
@@ -583,7 +583,7 @@ func Test_IngestLimits(t *testing.T) {
 		{
 			description: "ingest_limit_reached_with_multiple_usage_groups",
 			pushReq: &distributormodel.BatchPushRequest{
-				Series: []*distributormodel.ProfileSeries{
+				Series: []*distributormodel.ProfileSeriesRequest{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "cpu"},
@@ -646,7 +646,7 @@ func Test_IngestLimits(t *testing.T) {
 		{
 			description: "ingest_limit_reached_with_sampling_and_usage_groups",
 			pushReq: &distributormodel.BatchPushRequest{
-				Series: []*distributormodel.ProfileSeries{
+				Series: []*distributormodel.ProfileSeriesRequest{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "cpu"},
@@ -2098,7 +2098,7 @@ func TestPush_Aggregation(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < requests; j++ {
 				_, err := d.PushBatch(ctx, &distributormodel.BatchPushRequest{
-					Series: []*distributormodel.ProfileSeries{
+					Series: []*distributormodel.ProfileSeriesRequest{
 						{
 							Labels: []*typesv1.LabelPair{
 								{Name: "cluster", Value: "us-central1"},

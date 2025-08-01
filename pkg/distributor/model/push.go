@@ -14,7 +14,7 @@ const RawProfileTypeJFR = RawProfileType("jfr")
 const RawProfileTypeOTEL = RawProfileType("otel")
 
 type BatchPushRequest struct {
-	Series []*ProfileSeries
+	Series []*ProfileSeriesRequest
 
 	//todo rename this to something that includes "received" or "compressed" or both
 	RawProfileSize int
@@ -27,18 +27,31 @@ type ProfileSample struct {
 	ID         string
 }
 
+type ProfileSeriesRequest struct {
+	Labels []*v1.LabelPair
+	Sample *ProfileSample
+}
+
+func (r *ProfileSeriesRequest) Convert() *ProfileSeries {
+	return &ProfileSeries{
+		Labels: r.Labels,
+		Sample: r.Sample,
+	}
+}
+
+// todo better name
 type ProfileSeries struct {
-	// Caller provided
+	// Caller provided, modified during processing
 	Labels []*v1.LabelPair
 	Sample *ProfileSample
 
-	// todo split this into separate structure to not expose this to callers
 	// Transient state
 	TenantID string
 	Language string
 
 	Annotations []*v1.ProfileAnnotation
 
+	// always 1
 	TotalProfiles          int64
 	TotalBytesUncompressed int64
 
