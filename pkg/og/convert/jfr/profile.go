@@ -58,14 +58,12 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (*di
 		)
 		res.Series = append(res.Series, &distributormodel.ProfileSeries{
 			Labels: seriesLabels,
-			Samples: []*distributormodel.ProfileSample{
-				{
-					Profile: pprof.RawFromProto(req.Profile),
-				},
+			Sample: &distributormodel.ProfileSample{
+				Profile: pprof.RawFromProto(req.Profile),
 			},
 		})
 	}
-	res.RawProfileSize = rawSize
+	res.ReceivedCompressedProfileSize = rawSize
 	res.RawProfileType = distributormodel.RawProfileTypeJFR
 	return res, err
 }
