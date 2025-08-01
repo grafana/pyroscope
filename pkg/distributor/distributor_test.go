@@ -2565,6 +2565,7 @@ func TestDistributor_shouldSample(t *testing.T) {
 		groups         []validation.UsageGroupMatchName
 		samplingConfig *sampling.Config
 		expected       bool
+		expectedMatch  *validation.UsageGroupMatchName
 	}{
 		{
 			name:     "no sampling config - should accept",
@@ -2593,6 +2594,10 @@ func TestDistributor_shouldSample(t *testing.T) {
 				},
 			},
 			expected: true,
+			expectedMatch: &validation.UsageGroupMatchName{
+				ConfiguredName: "group1",
+				ResolvedName:   "group1",
+			},
 		},
 		{
 			name:     "matching group with dynamic name - should accept",
@@ -2604,6 +2609,10 @@ func TestDistributor_shouldSample(t *testing.T) {
 				},
 			},
 			expected: true,
+			expectedMatch: &validation.UsageGroupMatchName{
+				ConfiguredName: "configured-name",
+				ResolvedName:   "resolved-name",
+			},
 		},
 		{
 			name:     "matching group with 0.0 probability - should reject",
@@ -2615,6 +2624,10 @@ func TestDistributor_shouldSample(t *testing.T) {
 				},
 			},
 			expected: false,
+			expectedMatch: &validation.UsageGroupMatchName{
+				ConfiguredName: "group1",
+				ResolvedName:   "group1",
+			},
 		},
 		{
 			name:     "multiple matching groups - should use minimum probability",
@@ -2630,6 +2643,10 @@ func TestDistributor_shouldSample(t *testing.T) {
 				},
 			},
 			expected: false,
+			expectedMatch: &validation.UsageGroupMatchName{
+				ConfiguredName: "group2",
+				ResolvedName:   "group2",
+			},
 		},
 		{
 			name:     "multiple matching groups - should prioritize specific group",
@@ -2641,10 +2658,33 @@ func TestDistributor_shouldSample(t *testing.T) {
 			samplingConfig: &sampling.Config{
 				UsageGroups: map[string]sampling.UsageGroupSampling{
 					"${labels.service_name}": {Probability: 1.0},
-					"test_service":           {Probability: 0.0},
+					"test_service":           {Probability: 1.0},
 				},
 			},
-			expected: false,
+			expected: true,
+			expectedMatch: &validation.UsageGroupMatchName{
+				ConfiguredName: "test_service",
+				ResolvedName:   "test_service",
+			},
+		},
+		{
+			name:     "multiple matching groups - should prioritize specific group (reversed order)",
+			tenantID: "test-tenant",
+			groups: []validation.UsageGroupMatchName{
+				{ConfiguredName: "test_service", ResolvedName: "test_service"},
+				{ConfiguredName: "${labels.service_name}", ResolvedName: "test_service"},
+			},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"${labels.service_name}": {Probability: 1.0},
+					"test_service":           {Probability: 1.0},
+				},
+			},
+			expected: true,
+			expectedMatch: &validation.UsageGroupMatchName{
+				ConfiguredName: "test_service",
+				ResolvedName:   "test_service",
+			},
 		},
 	}
 
@@ -2659,8 +2699,9 @@ func TestDistributor_shouldSample(t *testing.T) {
 				limits: overrides,
 			}
 
-			result := d.shouldSample(tt.tenantID, tt.groups)
-			assert.Equal(t, tt.expected, result, "shouldSample should return consistent results")
+			sample, match := d.shouldSample(tt.tenantID, tt.groups)
+			assert.Equal(t, tt.expected, sample)
+			assert.Equal(t, tt.expectedMatch, match)
 		})
 	}
 }
@@ -2707,7 +2748,7 @@ func TestDistributor_shouldSample_Probability(t *testing.T) {
 
 			accepted := 0
 			for i := 0; i < iterations; i++ {
-				if d.shouldSample(tenantID, groups) {
+				if s, _ := d.shouldSample(tenantID, groups); s {
 					accepted++
 				}
 			}
