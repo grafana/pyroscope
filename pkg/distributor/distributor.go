@@ -240,7 +240,7 @@ func (d *Distributor) stopping(_ error) error {
 }
 
 func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	req := &distributormodel.BatchPushRequest{
+	req := &distributormodel.PushRequest{
 		Series: make([]*distributormodel.ProfileSeriesRequest, 0, len(grpcReq.Msg.Series)),
 	}
 
@@ -284,7 +284,7 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries)
 	return series.Language
 }
 
-func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.BatchPushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
+func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)

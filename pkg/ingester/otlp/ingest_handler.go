@@ -42,7 +42,7 @@ type Handler interface {
 }
 
 type PushService interface {
-	PushBatch(ctx context.Context, req *distirbutormodel.BatchPushRequest) (*connect.Response[pushv1.PushResponse], error)
+	PushBatch(ctx context.Context, req *distirbutormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error)
 }
 
 func NewOTLPIngestHandler(svc PushService, l log.Logger, me bool) Handler {
@@ -116,7 +116,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
 				}
 
-				req := &distirbutormodel.BatchPushRequest{
+				req := &distirbutormodel.PushRequest{
 					ReceivedCompressedProfileSize: proto.Size(p),
 					RawProfileType:                distirbutormodel.RawProfileTypeOTEL,
 				}

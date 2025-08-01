@@ -428,15 +428,15 @@ func Test_Sessions_Limit(t *testing.T) {
 func Test_IngestLimits(t *testing.T) {
 	type testCase struct {
 		description        string
-		pushReq            *distributormodel.BatchPushRequest
+		pushReq            *distributormodel.PushRequest
 		overrides          *validation.Overrides
-		verifyExpectations func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse])
+		verifyExpectations func(t *testing.T, err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse])
 	}
 
 	testCases := []testCase{
 		{
 			description: "ingest_limit_reached_no_series",
-			pushReq:     &distributormodel.BatchPushRequest{},
+			pushReq:     &distributormodel.PushRequest{},
 			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
 				l.IngestionLimit = &ingestlimits.Config{
@@ -451,7 +451,7 @@ func Test_IngestLimits(t *testing.T) {
 				}
 				tenantLimits["user-1"] = l
 			}),
-			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
 				require.Error(t, err)
 				require.Nil(t, res)
 				require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
@@ -459,7 +459,7 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached_no_profile",
-			pushReq:     &distributormodel.BatchPushRequest{Series: []*distributormodel.ProfileSeriesRequest{{}}},
+			pushReq:     &distributormodel.PushRequest{Series: []*distributormodel.ProfileSeriesRequest{{}}},
 			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
 				l.IngestionLimit = &ingestlimits.Config{
@@ -474,7 +474,7 @@ func Test_IngestLimits(t *testing.T) {
 				}
 				tenantLimits["user-1"] = l
 			}),
-			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
 				require.Error(t, err)
 				require.Nil(t, res)
 				require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
@@ -482,7 +482,7 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached",
-			pushReq: &distributormodel.BatchPushRequest{Series: []*distributormodel.ProfileSeriesRequest{{
+			pushReq: &distributormodel.PushRequest{Series: []*distributormodel.ProfileSeriesRequest{{
 				Sample: &distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(testProfile(1)),
 				},
@@ -501,7 +501,7 @@ func Test_IngestLimits(t *testing.T) {
 				}
 				tenantLimits["user-1"] = l
 			}),
-			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
 				require.Error(t, err)
 				require.Nil(t, res)
 				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
@@ -509,7 +509,7 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached_sampling",
-			pushReq: &distributormodel.BatchPushRequest{
+			pushReq: &distributormodel.PushRequest{
 				Series: []*distributormodel.ProfileSeriesRequest{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -536,7 +536,7 @@ func Test_IngestLimits(t *testing.T) {
 				}
 				tenantLimits["user-1"] = l
 			}),
-			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
 				require.NoError(t, err)
 				require.NotNil(t, res)
 				require.Equal(t, 1, len(req.Series[0].Annotations))
@@ -546,7 +546,7 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached_with_sampling_error",
-			pushReq: &distributormodel.BatchPushRequest{
+			pushReq: &distributormodel.PushRequest{
 				Series: []*distributormodel.ProfileSeriesRequest{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -573,7 +573,7 @@ func Test_IngestLimits(t *testing.T) {
 				}
 				tenantLimits["user-1"] = l
 			}),
-			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
 				require.Error(t, err)
 				require.Nil(t, res)
 				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
@@ -582,7 +582,7 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached_with_multiple_usage_groups",
-			pushReq: &distributormodel.BatchPushRequest{
+			pushReq: &distributormodel.PushRequest{
 				Series: []*distributormodel.ProfileSeriesRequest{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -635,7 +635,7 @@ func Test_IngestLimits(t *testing.T) {
 				l.DistributorUsageGroups = usageGroupCfg
 				tenantLimits["user-1"] = l
 			}),
-			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
 				require.Error(t, err)
 				require.Nil(t, res)
 				require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
@@ -645,7 +645,7 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached_with_sampling_and_usage_groups",
-			pushReq: &distributormodel.BatchPushRequest{
+			pushReq: &distributormodel.PushRequest{
 				Series: []*distributormodel.ProfileSeriesRequest{
 					{
 						Labels: []*typesv1.LabelPair{
@@ -683,7 +683,7 @@ func Test_IngestLimits(t *testing.T) {
 				l.DistributorUsageGroups = usageGroupCfg
 				tenantLimits["user-1"] = l
 			}),
-			verifyExpectations: func(t *testing.T, err error, req *distributormodel.BatchPushRequest, res *connect.Response[pushv1.PushResponse]) {
+			verifyExpectations: func(t *testing.T, err error, req *distributormodel.PushRequest, res *connect.Response[pushv1.PushResponse]) {
 				require.NoError(t, err)
 				require.NotNil(t, res)
 				require.Len(t, req.Series[0].Annotations, 2)
@@ -2097,7 +2097,7 @@ func TestPush_Aggregation(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < requests; j++ {
-				_, err := d.PushBatch(ctx, &distributormodel.BatchPushRequest{
+				_, err := d.PushBatch(ctx, &distributormodel.PushRequest{
 					Series: []*distributormodel.ProfileSeriesRequest{
 						{
 							Labels: []*typesv1.LabelPair{

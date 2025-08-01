@@ -47,7 +47,7 @@ const (
 )
 
 // ParseToPprof is not doing much now. It parses the profile with no processing/splitting, adds labels.
-func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res *distributormodel.BatchPushRequest, err error) {
+func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res *distributormodel.PushRequest, err error) {
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -58,7 +58,7 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pprof /ingest multipart form %w", err)
 	}
-	res = &distributormodel.BatchPushRequest{
+	res = &distributormodel.PushRequest{
 		ReceivedCompressedProfileSize: len(p.Profile),
 		RawProfileType:                distributormodel.RawProfileTypePPROF,
 		Series:                        nil,

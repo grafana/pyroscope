@@ -26,7 +26,7 @@ type RawProfile struct {
 
 func (p *RawProfile) Bytes() ([]byte, error) { return p.RawData, nil }
 
-func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (*distributormodel.BatchPushRequest, error) {
+func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (*distributormodel.PushRequest, error) {
 	input := jfrPprof.ParseInput{
 		StartTime:  md.StartTime,
 		EndTime:    md.EndTime,
@@ -47,7 +47,7 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (*di
 	if err != nil {
 		return nil, err
 	}
-	res := new(distributormodel.BatchPushRequest)
+	res := new(distributormodel.PushRequest)
 	for _, req := range profiles.Profiles {
 		seriesLabels := jfrPprofPyroscope.Labels(
 			md.LabelSet.Labels(),

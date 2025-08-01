@@ -29,7 +29,7 @@ import (
 
 type PushService interface {
 	Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
-	PushBatch(ctx context.Context, req *model.BatchPushRequest) (*connect.Response[pushv1.PushResponse], error)
+	PushBatch(ctx context.Context, req *model.PushRequest) (*connect.Response[pushv1.PushResponse], error)
 }
 
 func NewPyroscopeIngestHandler(svc PushService, logger log.Logger) http.Handler {

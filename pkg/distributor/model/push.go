@@ -13,7 +13,7 @@ const RawProfileTypePPROF = RawProfileType("pprof")
 const RawProfileTypeJFR = RawProfileType("jfr")
 const RawProfileTypeOTEL = RawProfileType("otel")
 
-type BatchPushRequest struct {
+type PushRequest struct {
 	Series []*ProfileSeriesRequest
 
 	ReceivedCompressedProfileSize int
