@@ -29,17 +29,17 @@ type SegmentWriterClient interface {
 }
 
 type IngesterClient interface {
-	Push(context.Context, *distributormodel.ProfileSeries) (*connect.Response[pushv1.PushResponse], error)
+	Push(context.Context, *distributormodel.ProfileSeriesTransientRequest) (*connect.Response[pushv1.PushResponse], error)
 }
 
 type IngesterFunc func(
 	context.Context,
-	*distributormodel.ProfileSeries,
+	*distributormodel.ProfileSeriesTransientRequest,
 ) (*connect.Response[pushv1.PushResponse], error)
 
 func (f IngesterFunc) Push(
 	ctx context.Context,
-	req *distributormodel.ProfileSeries,
+	req *distributormodel.ProfileSeriesTransientRequest,
 ) (*connect.Response[pushv1.PushResponse], error) {
 	return f(ctx, req)
 }
@@ -93,7 +93,7 @@ func (m *Router) running(ctx context.Context) error {
 	return nil
 }
 
-func (m *Router) Send(ctx context.Context, req *distributormodel.ProfileSeries) error {
+func (m *Router) Send(ctx context.Context, req *distributormodel.ProfileSeriesTransientRequest) error {
 	config := m.overrides.WritePathOverrides(req.TenantID)
 	switch config.WritePath {
 	case SegmentWriterPath:
@@ -121,7 +121,7 @@ func (m *Router) segwriterRoute(primary bool) *route {
 	}
 }
 
-func (m *Router) sendToBoth(ctx context.Context, req *distributormodel.ProfileSeries, config *Config) error {
+func (m *Router) sendToBoth(ctx context.Context, req *distributormodel.ProfileSeriesTransientRequest, config *Config) error {
 	r := rand.Float64() // [0.0, 1.0)
 	shouldIngester := config.IngesterWeight > 0.0 && config.IngesterWeight >= r
 	shouldSegwriter := config.SegmentWriterWeight > 0.0 && config.SegmentWriterWeight >= r
@@ -180,7 +180,7 @@ func (m *Router) sendToBoth(ctx context.Context, req *distributormodel.ProfileSe
 	return nil
 }
 
-type sendFunc func(context.Context, *distributormodel.ProfileSeries) error
+type sendFunc func(context.Context, *distributormodel.ProfileSeriesTransientRequest) error
 
 type route struct {
 	path    WritePath // IngesterPath | SegmentWriterPath
@@ -188,8 +188,8 @@ type route struct {
 	primary bool
 }
 
-func (m *Router) sendClone(ctx context.Context, req *distributormodel.ProfileSeries, client IngesterClient, config *Config) IngesterFunc {
-	return func(context.Context, *distributormodel.ProfileSeries) (*connect.Response[pushv1.PushResponse], error) {
+func (m *Router) sendClone(ctx context.Context, req *distributormodel.ProfileSeriesTransientRequest, client IngesterClient, config *Config) IngesterFunc {
+	return func(context.Context, *distributormodel.ProfileSeriesTransientRequest) (*connect.Response[pushv1.PushResponse], error) {
 		localCtx, cancel := context.WithTimeout(context.Background(), config.SegmentWriterTimeout)
 		localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
 		if sp := opentracing.SpanFromContext(ctx); sp != nil {
@@ -200,7 +200,7 @@ func (m *Router) sendClone(ctx context.Context, req *distributormodel.ProfileSer
 	}
 }
 
-func (m *Router) sendAsync(ctx context.Context, req *distributormodel.ProfileSeries, r *route) <-chan error {
+func (m *Router) sendAsync(ctx context.Context, req *distributormodel.ProfileSeriesTransientRequest, r *route) <-chan error {
 	c := make(chan error, 1)
 	m.inflight.Add(1)
 	go func() {
@@ -211,7 +211,7 @@ func (m *Router) sendAsync(ctx context.Context, req *distributormodel.ProfileSer
 }
 
 func (m *Router) send(r *route) sendFunc {
-	return func(ctx context.Context, req *distributormodel.ProfileSeries) (err error) {
+	return func(ctx context.Context, req *distributormodel.ProfileSeriesTransientRequest) (err error) {
 		start := time.Now()
 		defer func() {
 			if p := recover(); p != nil {

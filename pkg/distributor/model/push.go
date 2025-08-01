@@ -14,7 +14,7 @@ const RawProfileTypeJFR = RawProfileType("jfr")
 const RawProfileTypeOTEL = RawProfileType("otel")
 
 type PushRequest struct {
-	Series []*ProfileSeriesRequest
+	Series []*ProfileSeries
 
 	ReceivedCompressedProfileSize int
 	RawProfileType                RawProfileType
@@ -26,20 +26,20 @@ type ProfileSample struct {
 	ID         string
 }
 
-type ProfileSeriesRequest struct {
+type ProfileSeries struct {
 	Labels []*v1.LabelPair
 	Sample *ProfileSample
 }
 
-func (r *ProfileSeriesRequest) Convert() *ProfileSeries {
-	return &ProfileSeries{
+func (r *ProfileSeries) Convert() *ProfileSeriesTransientRequest {
+	return &ProfileSeriesTransientRequest{
 		Labels: r.Labels,
 		Sample: r.Sample,
 	}
 }
 
 // todo better name
-type ProfileSeries struct {
+type ProfileSeriesTransientRequest struct {
 	// Caller provided, modified during processing
 	Labels []*v1.LabelPair
 	Sample *ProfileSample
@@ -58,7 +58,7 @@ type ProfileSeries struct {
 	DiscardedBytesRelabeling    int64
 }
 
-func (p *ProfileSeries) GetLanguage() string {
+func (p *ProfileSeriesTransientRequest) GetLanguage() string {
 	spyName := phlaremodel.Labels(p.Labels).Get(phlaremodel.LabelNamePyroscopeSpy)
 	if spyName != "" {
 		lang := getProfileLanguageFromSpy(spyName)
@@ -92,8 +92,8 @@ func getProfileLanguageFromSpy(spyName string) string {
 	}
 }
 
-func (req *ProfileSeries) Clone() *ProfileSeries {
-	c := &ProfileSeries{
+func (req *ProfileSeriesTransientRequest) Clone() *ProfileSeriesTransientRequest {
+	c := &ProfileSeriesTransientRequest{
 		TenantID:               req.TenantID,
 		TotalProfiles:          req.TotalProfiles,
 		TotalBytesUncompressed: req.TotalBytesUncompressed,
@@ -109,11 +109,11 @@ func (req *ProfileSeries) Clone() *ProfileSeries {
 	return c
 }
 
-func (req *ProfileSeries) ClearAnnotations() {
+func (req *ProfileSeriesTransientRequest) ClearAnnotations() {
 	req.Annotations = nil
 }
 
-func (req *ProfileSeries) MarkThrottledTenant(l *ingestlimits.Config) error {
+func (req *ProfileSeriesTransientRequest) MarkThrottledTenant(l *ingestlimits.Config) error {
 	annotation, err := ingestlimits.CreateTenantAnnotation(l)
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func (req *ProfileSeries) MarkThrottledTenant(l *ingestlimits.Config) error {
 	return nil
 }
 
-func (req *ProfileSeries) MarkThrottledUsageGroup(l *ingestlimits.Config, usageGroup string) error {
+func (req *ProfileSeriesTransientRequest) MarkThrottledUsageGroup(l *ingestlimits.Config, usageGroup string) error {
 	annotation, err := ingestlimits.CreateUsageGroupAnnotation(l, usageGroup)
 	if err != nil {
 		return err

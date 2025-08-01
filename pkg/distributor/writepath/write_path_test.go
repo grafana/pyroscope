@@ -50,7 +50,7 @@ func (s *routerTestSuite) SetupTest() {
 	profile := &distributormodel.ProfileSample{Profile: &pprof.Profile{}}
 	s.request = &distributormodel.PushRequest{
 		TenantID: "tenant-a",
-		Series: []*distributormodel.ProfileSeries{
+		Series: []*distributormodel.ProfileSeriesTransientRequest{
 			{
 				Samples: []*distributormodel.ProfileSample{profile},
 				Labels: []*typesv1.LabelPair{

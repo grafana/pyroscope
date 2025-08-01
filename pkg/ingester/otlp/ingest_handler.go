@@ -136,7 +136,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 						Value: svc,
 					})
 
-					s := &distirbutormodel.ProfileSeriesRequest{
+					s := &distirbutormodel.ProfileSeries{
 						Labels: labels,
 						Sample: &distirbutormodel.ProfileSample{
 							RawProfile: nil,

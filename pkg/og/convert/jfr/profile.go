@@ -56,7 +56,7 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (*di
 			md.LabelSet.ServiceName(),
 			md.SpyName,
 		)
-		res.Series = append(res.Series, &distributormodel.ProfileSeriesRequest{
+		res.Series = append(res.Series, &distributormodel.ProfileSeries{
 			Labels: seriesLabels,
 			Sample: &distributormodel.ProfileSample{
 				Profile: pprof.RawFromProto(req.Profile),

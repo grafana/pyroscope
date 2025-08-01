@@ -459,7 +459,7 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached_no_profile",
-			pushReq:     &distributormodel.PushRequest{Series: []*distributormodel.ProfileSeriesRequest{{}}},
+			pushReq:     &distributormodel.PushRequest{Series: []*distributormodel.ProfileSeries{{}}},
 			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
 				l.IngestionLimit = &ingestlimits.Config{
@@ -482,7 +482,7 @@ func Test_IngestLimits(t *testing.T) {
 		},
 		{
 			description: "ingest_limit_reached",
-			pushReq: &distributormodel.PushRequest{Series: []*distributormodel.ProfileSeriesRequest{{
+			pushReq: &distributormodel.PushRequest{Series: []*distributormodel.ProfileSeries{{
 				Sample: &distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(testProfile(1)),
 				},
@@ -510,7 +510,7 @@ func Test_IngestLimits(t *testing.T) {
 		{
 			description: "ingest_limit_reached_sampling",
 			pushReq: &distributormodel.PushRequest{
-				Series: []*distributormodel.ProfileSeriesRequest{
+				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "cpu"},
@@ -547,7 +547,7 @@ func Test_IngestLimits(t *testing.T) {
 		{
 			description: "ingest_limit_reached_with_sampling_error",
 			pushReq: &distributormodel.PushRequest{
-				Series: []*distributormodel.ProfileSeriesRequest{
+				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "cpu"},
@@ -583,7 +583,7 @@ func Test_IngestLimits(t *testing.T) {
 		{
 			description: "ingest_limit_reached_with_multiple_usage_groups",
 			pushReq: &distributormodel.PushRequest{
-				Series: []*distributormodel.ProfileSeriesRequest{
+				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "cpu"},
@@ -646,7 +646,7 @@ func Test_IngestLimits(t *testing.T) {
 		{
 			description: "ingest_limit_reached_with_sampling_and_usage_groups",
 			pushReq: &distributormodel.PushRequest{
-				Series: []*distributormodel.ProfileSeriesRequest{
+				Series: []*distributormodel.ProfileSeries{
 					{
 						Labels: []*typesv1.LabelPair{
 							{Name: "__name__", Value: "cpu"},
@@ -717,8 +717,8 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 
 	type testCase struct {
 		description           string
-		pushReq               *distributormodel.ProfileSeries
-		expectedSeries        []*distributormodel.ProfileSeries
+		pushReq               *distributormodel.ProfileSeriesTransientRequest
+		expectedSeries        []*distributormodel.ProfileSeriesTransientRequest
 		relabelRules          []*relabel.Config
 		expectBytesDropped    float64
 		expectProfilesDropped float64
@@ -729,7 +729,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 	testCases := []testCase{
 		{
 			description: "no series labels, no sample labels",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Sample: &distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
@@ -743,7 +743,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 		},
 		{
 			description: "validation error propagation and accounting",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "foo", Value: "bar"},
@@ -760,7 +760,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 		},
 		{
 			description: "has series labels, no sample labels",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "service_name", Value: "service"},
@@ -775,7 +775,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
@@ -794,7 +794,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 		},
 		{
 			description: "all samples have identical label set",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "service_name", Value: "service"},
@@ -812,7 +812,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
@@ -833,7 +833,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 		},
 		{
 			description: "has series labels, all samples have identical label set",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "service_name", Value: "service"},
@@ -852,7 +852,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
@@ -874,7 +874,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 		},
 		{
 			description: "has series labels, and the only sample label name overlaps with series label, creating overlapping groups",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "service_name", Value: "service"},
@@ -899,7 +899,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
@@ -923,7 +923,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 		},
 		{
 			description: "has series labels, samples have distinct label sets",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "service_name", Value: "service"},
@@ -950,7 +950,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					TenantID: dummyTenantID,
 					Labels: []*typesv1.LabelPair{
@@ -992,7 +992,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 		{
 			description:  "has series labels that should be renamed to no longer include godeltaprof",
 			relabelRules: defaultRelabelConfigs,
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "godeltaprof_memory"},
@@ -1008,7 +1008,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__delta__", Value: "false"},
@@ -1033,7 +1033,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 			relabelRules: []*relabel.Config{
 				{Action: relabel.Drop, SourceLabels: []model.LabelName{"__name__", "span_name"}, Separator: "/", Regex: relabel.MustNewRegexp("unwanted/randomness")},
 			},
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "unwanted"},
@@ -1058,7 +1058,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 			},
 			expectProfilesDropped: 0,
 			expectBytesDropped:    3,
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					TenantID: dummyTenantID,
 					Labels: []*typesv1.LabelPair{
@@ -1081,7 +1081,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 			relabelRules: []*relabel.Config{
 				{Action: relabel.Drop, Regex: relabel.MustNewRegexp(".*")},
 			},
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "unwanted"},
@@ -1112,7 +1112,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 			relabelRules: []*relabel.Config{
 				{Action: relabel.Replace, Regex: relabel.MustNewRegexp(".*"), Replacement: "", TargetLabel: "span_name"},
 			},
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "unwanted"},
@@ -1135,7 +1135,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "unwanted"},
@@ -1154,7 +1154,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 		},
 		{
 			description: "ensure only samples of same stacktraces get grouped",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "profile"},
@@ -1205,7 +1205,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "profile"},
@@ -1276,7 +1276,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 				return newFakeIngester(t, false), nil
 			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
 			require.NoError(t, err)
-			var series []*distributormodel.ProfileSeries
+			var series []*distributormodel.ProfileSeriesTransientRequest
 			series, err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForIngester)
 			assert.Equal(t, tc.expectBytesDropped, float64(tc.pushReq.DiscardedBytesRelabeling))
 			assert.Equal(t, tc.expectProfilesDropped, float64(tc.pushReq.DiscardedProfilesRelabeling))
@@ -1306,8 +1306,8 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 
 	type testCase struct {
 		description           string
-		pushReq               *distributormodel.ProfileSeries
-		expectedSeries        []*distributormodel.ProfileSeries
+		pushReq               *distributormodel.ProfileSeriesTransientRequest
+		expectedSeries        []*distributormodel.ProfileSeriesTransientRequest
 		relabelRules          []*relabel.Config
 		expectBytesDropped    float64
 		expectProfilesDropped float64
@@ -1318,7 +1318,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 	testCases := []testCase{
 		{
 			description: "no series labels, no sample labels",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Sample: &distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
@@ -1332,7 +1332,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 		},
 		{
 			description: "validation error propagation",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "foo", Value: "bar"},
@@ -1349,7 +1349,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 		},
 		{
 			description: "has series labels, no sample labels",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "service_name", Value: "service"},
@@ -1364,7 +1364,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					TenantID: dummyTenantID,
 					Labels: []*typesv1.LabelPair{
@@ -1384,7 +1384,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 		},
 		{
 			description: "all samples have identical label set",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "service_name", Value: "service"},
@@ -1402,7 +1402,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
@@ -1423,7 +1423,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 		},
 		{
 			description: "has series labels, all samples have identical label set",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "service_name", Value: "service"},
@@ -1442,7 +1442,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
@@ -1464,7 +1464,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 		},
 		{
 			description: "has series labels, and the only sample label name overlaps with series label, creating overlapping groups",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "service_name", Value: "service"},
@@ -1489,7 +1489,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "cpu"},
@@ -1513,7 +1513,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 		},
 		{
 			description: "has series labels, samples have distinct label sets",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "service_name", Value: "service"},
@@ -1540,7 +1540,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					TenantID: dummyTenantID,
 					Labels: []*typesv1.LabelPair{
@@ -1573,7 +1573,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 		{
 			description:  "has series labels that should be renamed to no longer include godeltaprof",
 			relabelRules: defaultRelabelConfigs,
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "godeltaprof_memory"},
@@ -1589,7 +1589,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__delta__", Value: "false"},
@@ -1614,7 +1614,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 			relabelRules: []*relabel.Config{
 				{Action: relabel.Drop, SourceLabels: []model.LabelName{"__name__", "span_name"}, Separator: "/", Regex: relabel.MustNewRegexp("unwanted/randomness")},
 			},
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "unwanted"},
@@ -1639,7 +1639,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 			},
 			expectProfilesDropped: 0,
 			expectBytesDropped:    3,
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "unwanted"},
@@ -1661,7 +1661,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 			relabelRules: []*relabel.Config{
 				{Action: relabel.Drop, Regex: relabel.MustNewRegexp(".*")},
 			},
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "unwanted"},
@@ -1692,7 +1692,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 			relabelRules: []*relabel.Config{
 				{Action: relabel.Replace, Regex: relabel.MustNewRegexp(".*"), Replacement: "", TargetLabel: "span_name"},
 			},
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "unwanted"},
@@ -1715,7 +1715,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "unwanted"},
@@ -1734,7 +1734,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 		},
 		{
 			description: "ensure only samples of same stacktraces get grouped",
-			pushReq: &distributormodel.ProfileSeries{
+			pushReq: &distributormodel.ProfileSeriesTransientRequest{
 				TenantID: dummyTenantID,
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "profile"},
@@ -1784,7 +1784,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					}),
 				},
 			},
-			expectedSeries: []*distributormodel.ProfileSeries{
+			expectedSeries: []*distributormodel.ProfileSeriesTransientRequest{
 				{
 					Labels: []*typesv1.LabelPair{
 						{Name: "__name__", Value: "profile"},
@@ -1855,7 +1855,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), new(mockwritepath.MockSegmentWriterClient))
 
 			require.NoError(t, err)
-			var series []*distributormodel.ProfileSeries
+			var series []*distributormodel.ProfileSeriesTransientRequest
 			series, err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForSegmentWriter)
 			assert.Equal(t, tc.expectBytesDropped, float64(tc.pushReq.DiscardedBytesRelabeling))
 			assert.Equal(t, tc.expectProfilesDropped, float64(tc.pushReq.DiscardedProfilesRelabeling))
@@ -2098,7 +2098,7 @@ func TestPush_Aggregation(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < requests; j++ {
 				_, err := d.PushBatch(ctx, &distributormodel.PushRequest{
-					Series: []*distributormodel.ProfileSeriesRequest{
+					Series: []*distributormodel.ProfileSeries{
 						{
 							Labels: []*typesv1.LabelPair{
 								{Name: "cluster", Value: "us-central1"},
@@ -2261,7 +2261,7 @@ func TestInjectMappingVersions(t *testing.T) {
 	alreadyVersionned := testProfile(3)
 	alreadyVersionned.StringTable = append(alreadyVersionned.StringTable, `foo`)
 	alreadyVersionned.Mapping[0].BuildId = int64(len(alreadyVersionned.StringTable) - 1)
-	in := []*distributormodel.ProfileSeries{
+	in := []*distributormodel.ProfileSeriesTransientRequest{
 		{
 			Labels: []*typesv1.LabelPair{},
 			Sample: &distributormodel.ProfileSample{
