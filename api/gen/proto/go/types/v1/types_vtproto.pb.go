@@ -121,12 +121,18 @@ func (m *Point) CloneVT() *Point {
 	r := new(Point)
 	r.Value = m.Value
 	r.Timestamp = m.Timestamp
+	r.ProfileId = m.ProfileId
 	if rhs := m.Annotations; rhs != nil {
 		tmpContainer := make([]*ProfileAnnotation, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
 		r.Annotations = tmpContainer
+	}
+	if rhs := m.SeriesFingerprints; rhs != nil {
+		tmpContainer := make([]uint64, len(rhs))
+		copy(tmpContainer, rhs)
+		r.SeriesFingerprints = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -561,6 +567,18 @@ func (this *Point) EqualVT(that *Point) bool {
 				return false
 			}
 		}
+	}
+	if len(this.SeriesFingerprints) != len(that.SeriesFingerprints) {
+		return false
+	}
+	for i, vx := range this.SeriesFingerprints {
+		vy := that.SeriesFingerprints[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.ProfileId != that.ProfileId {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -1162,6 +1180,33 @@ func (m *Point) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.ProfileId) > 0 {
+		i -= len(m.ProfileId)
+		copy(dAtA[i:], m.ProfileId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileId)))
+		i--
+		dAtA[i] = 0x2a
+	}
+	if len(m.SeriesFingerprints) > 0 {
+		var pksize2 int
+		for _, num := range m.SeriesFingerprints {
+			pksize2 += protohelpers.SizeOfVarint(uint64(num))
+		}
+		i -= pksize2
+		j1 := i
+		for _, num := range m.SeriesFingerprints {
+			for num >= 1<<7 {
+				dAtA[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA[j1] = uint8(num)
+			j1++
+		}
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize2))
+		i--
+		dAtA[i] = 0x22
 	}
 	if len(m.Annotations) > 0 {
 		for iNdEx := len(m.Annotations) - 1; iNdEx >= 0; iNdEx-- {
@@ -1895,6 +1940,17 @@ func (m *Point) SizeVT() (n int) {
 			l = e.SizeVT()
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if len(m.SeriesFingerprints) > 0 {
+		l = 0
+		for _, e := range m.SeriesFingerprints {
+			l += protohelpers.SizeOfVarint(uint64(e))
+		}
+		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
+	}
+	l = len(m.ProfileId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -2786,6 +2842,114 @@ func (m *Point) UnmarshalVT(dAtA []byte) error {
 			if err := m.Annotations[len(m.Annotations)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		case 4:
+			if wireType == 0 {
+				var v uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.SeriesFingerprints = append(m.SeriesFingerprints, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
+				}
+				elementCount = count
+				if elementCount != 0 && len(m.SeriesFingerprints) == 0 {
+					m.SeriesFingerprints = make([]uint64, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return protohelpers.ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.SeriesFingerprints = append(m.SeriesFingerprints, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field SeriesFingerprints", wireType)
+			}
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

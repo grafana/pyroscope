@@ -2,8 +2,10 @@ package model
 
 import (
 	"cmp"
+	"fmt"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -63,7 +65,7 @@ type TimeSeriesMerger struct {
 }
 
 // NewTimeSeriesMerger creates a new series merger. If sum is set, samples
-// with matching timestamps are summed, otherwise duplicates are retained.
+// with matching timestamps are summed, otherwise samples are only summed if their timestamp and ID matches.
 func NewTimeSeriesMerger(sum bool) *TimeSeriesMerger {
 	return &TimeSeriesMerger{
 		series: make(map[uint64]*typesv1.Series),
@@ -81,7 +83,13 @@ func (m *TimeSeriesMerger) MergeTimeSeries(s []*typesv1.Series) {
 			m.series[h] = x
 			continue
 		}
-		d.Points = append(d.Points, x.Points...)
+		// ensure there is enough capacity in the points slice
+		d.Points = slices.Grow(d.Points, len(x.Points))
+
+		// insert the points into the destination series
+		for _, p := range x.Points {
+			d.Points = insertPoint(d.Points, p)
+		}
 	}
 }
 
@@ -115,14 +123,29 @@ func (m *TimeSeriesMerger) Top(n int) []*typesv1.Series {
 	return TopSeries(m.mergeTimeSeries(), n)
 }
 
+func PointsOrderTimestampThenProfileID(a, b *typesv1.Point) int {
+	if res := int(a.Timestamp - b.Timestamp); res != 0 {
+		return res
+	}
+
+	if res := strings.Compare(a.ProfileId, b.ProfileId); res != 0 {
+		return res
+	}
+
+	// if both profile IDs are empty we explicitly don't match
+	if len(a.ProfileId) == 0 {
+		fmt.Println("no match ID", a.ProfileId, b.ProfileId)
+		return -1
+	}
+
+	return 0
+}
+
 func (m *TimeSeriesMerger) mergePoints(points []*typesv1.Point) int {
 	l := len(points)
 	if l < 2 {
 		return l
 	}
-	sort.Slice(points, func(i, j int) bool {
-		return points[i].Timestamp < points[j].Timestamp
-	})
 	var j int
 	for i := 1; i < l; i++ {
 		if points[j].Timestamp != points[i].Timestamp || !m.sum {
@@ -131,10 +154,7 @@ func (m *TimeSeriesMerger) mergePoints(points []*typesv1.Point) int {
 			continue
 		}
 		if m.sum {
-			points[j].Value += points[i].Value
-			// Duplicate annotations are semantically correct and provide useful information.
-			// Users of the data can decide whether to discard or make use of duplicates.
-			points[j].Annotations = append(points[j].Annotations, points[i].Annotations...)
+			mergePoints(points[j], points[i])
 		}
 	}
 	return j + 1
