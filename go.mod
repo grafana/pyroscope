@@ -54,7 +54,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/minio/minio-go/v7 v7.0.88
 	github.com/mitchellh/go-wordwrap v1.0.1
-	github.com/oauth2-proxy/oauth2-proxy/v7 v7.5.1
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.21.0
