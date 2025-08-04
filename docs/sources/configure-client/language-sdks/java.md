@@ -178,7 +178,7 @@ The Java integration supports JFR format to be able to support multiple events (
 | `PYROSCOPE_PROFILER_LOCK`                   | Sets the threshold to register lock events, in nanoseconds (equivalent to `--lock=` in `async-profiler`). The default value is `""` - empty string, which means that lock profiling is disabled. Setting it to `0` will register every event, causing significant CPU and network overhead, making it not suitable for production environments. We recommend setting a starting value of 10ms and adjusting it as needed.        |
 | `PYROSCOPE_UPLOAD_INTERVAL`                 | Sets the interval for uploading profiling data. The default is `10s`.                                                                                                                                                                                                                                                                                                                                                            |
 | `PYROSCOPE_JAVA_STACK_DEPTH_MAX`            | Sets the maximum stack depth. The default is `2048`.                                                                                                                                                                                                                                                                                                                                                                             |
-| `PYROSCOPE_SERVER_ADDRESS`                  | Address of the Pyroscope server. The default is `http://localhost:4040`                                                                                                                                                                                                                                                                                                                                                          | 
+| `PYROSCOPE_SERVER_ADDRESS`                  | Address of the Pyroscope server. The default is `http://localhost:4040`                                                                                                                                                                                                                                                                                                                                                          |
 | `PYROSCOPE_CONFIGURATION_FILE`              | Sets an additional properties configuration file. The default value is `pyroscope.properties`.                                                                                                                                                                                                                                                                                                                                   |
 | `PYROSCOPE_BASIC_AUTH_USER`                 | HTTP Basic authentication username. The default value is `""` - empty string, no authentication.                                                                                                                                                                                                                                                                                                                                 |
 | `PYROSCOPE_BASIC_AUTH_PASSWORD`             | HTTP Basic authentication password. The default value is `""` - empty string, no authentication.                                                                                                                                                                                                                                                                                                                                 |
@@ -218,7 +218,14 @@ If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic a
 
 If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
 
-#### Example configurations
+### Locate the URL, user, and password in Grafana Cloud Profiles
+
+[//]: # 'Shared content for URl locationin Grafana Cloud Profiles'
+[//]: # 'This content is located in /pyroscope/docs/sources/shared/locate-url-pw-user-cloud-profiles.md'
+
+{{< docs/shared source="pyroscope" lookup="locate-url-pw-user-cloud-profiles.md" version="latest" >}}
+
+### Example configurations
 
 The following configuration sets application name, Pyroscope format, profiling interval, event, and lock.
 This example is an excerpt from the [`rideshare` Dockerfile](https://github.com/grafana/pyroscope/blob/main/examples/language-sdk-instrumentation/java/rideshare/Dockerfile#L24-L34) available in the Pyroscope repository.

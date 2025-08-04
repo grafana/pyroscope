@@ -89,7 +89,7 @@ Alternatively, if you want more control over the profiling process, you can manu
 
 ```go
   profiler, err := pyroscope.Start(pyroscope.Config{
-    // omitted for brevity 
+    // omitted for brevity
   })
   if err != nil {
     // the only reason this would fail is if the configuration is not valid
@@ -177,6 +177,13 @@ pyroscope.Start(pyroscope.Config{
   },
 })
 ```
+
+### Locate the URL, user, and password in Grafana Cloud Profiles
+
+[//]: # 'Shared content for URl locationin Grafana Cloud Profiles'
+[//]: # 'This content is located in /pyroscope/docs/sources/shared/locate-url-pw-user-cloud-profiles.md'
+
+{{< docs/shared source="pyroscope" lookup="locate-url-pw-user-cloud-profiles.md" version="latest" >}}
 
 ### Option: Use `DisableGCRuns` for handling increased memory usage
 
