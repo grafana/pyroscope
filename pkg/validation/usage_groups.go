@@ -170,10 +170,7 @@ type UsageGroupMatchName struct {
 }
 
 func (m *UsageGroupMatchName) IsMoreSpecificThan(other *UsageGroupMatchName) bool {
-	if other == nil {
-		return true
-	}
-	return !strings.HasPrefix(m.ConfiguredName, dynamicLabelNamePrefix) && strings.HasPrefix(other.ConfiguredName, dynamicLabelNamePrefix)
+	return !strings.Contains(m.ConfiguredName, dynamicLabelNamePrefix) && strings.Contains(other.ConfiguredName, dynamicLabelNamePrefix)
 }
 
 func (m *UsageGroupMatchName) String() string {
