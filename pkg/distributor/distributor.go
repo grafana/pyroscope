@@ -349,8 +349,12 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			return nil, err
 		}
 
-		if sample := d.shouldSample(tenantID, groups.Names()); !sample {
-			level.Debug(logger).Log("msg", "skipping push request due to sampling", "tenant", tenantID)
+		if sample, usageGroup := d.shouldSample(tenantID, groups.Names()); !sample {
+			level.Debug(logger).Log(
+				"msg", "skipping push request due to sampling",
+				"tenant", tenantID,
+				"usage_group", usageGroup,
+			)
 			validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
 			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
@@ -902,38 +906,39 @@ func (d *Distributor) checkUsageGroupsIngestLimit(req *distributormodel.PushRequ
 	return nil
 }
 
-func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) bool {
+// shouldSample returns true if the profile should be injected and optionally the usage group that was responsible for the decision.
+func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) (bool, *validation.UsageGroupMatchName) {
 	l := d.limits.DistributorSampling(tenantID)
 	if l == nil {
-		return true
+		return true, nil
 	}
 
-	// Determine the minimum probability among all matching usage groups.
-	minProb := 1.0
-	matched := false
+	samplingProbability := 1.0
+	var match *validation.UsageGroupMatchName
 	for _, group := range groupsInRequest {
-		if probCfg, ok := l.UsageGroups[group.ResolvedName]; ok {
-			matched = true
-			if probCfg.Probability < minProb {
-				minProb = probCfg.Probability
-			}
+		probabilityCfg, found := l.UsageGroups[group.ConfiguredName]
+		if !found {
+			probabilityCfg, found = l.UsageGroups[group.ResolvedName]
+		}
+		if !found {
 			continue
 		}
-		if probCfg, ok := l.UsageGroups[group.ConfiguredName]; ok {
-			matched = true
-			if probCfg.Probability < minProb {
-				minProb = probCfg.Probability
-			}
+		// a less specific group loses to a more specific one
+		if match != nil && match.IsMoreSpecificThan(&group) {
+			continue
+		}
+		// lower probability wins; when tied, the more specific group wins
+		if probabilityCfg.Probability <= samplingProbability {
+			samplingProbability = probabilityCfg.Probability
+			match = &group
 		}
 	}
 
-	// If no sampling rules matched, accept the request.
-	if !matched {
-		return true
+	if match == nil {
+		return true, nil
 	}
 
-	// Sample once using the minimum probability.
-	return rand.Float64() <= minProb
+	return rand.Float64() <= samplingProbability, match
 }
 
 type profileTracker struct {

@@ -169,6 +169,14 @@ type UsageGroupMatchName struct {
 	ResolvedName   string
 }
 
+func (m *UsageGroupMatchName) IsMoreSpecificThan(other *UsageGroupMatchName) bool {
+	return !strings.Contains(m.ConfiguredName, dynamicLabelNamePrefix) && strings.Contains(other.ConfiguredName, dynamicLabelNamePrefix)
+}
+
+func (m *UsageGroupMatchName) String() string {
+	return fmt.Sprintf("{configured: %s, resolved: %s}", m.ConfiguredName, m.ResolvedName)
+}
+
 func (m UsageGroupMatch) CountReceivedBytes(profileType string, n int64) {
 	if len(m.names) == 0 {
 		usageGroupReceivedDecompressedBytes.WithLabelValues(profileType, m.tenantID, noMatchName).Add(float64(n))
