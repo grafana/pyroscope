@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+
 	"github.com/go-kit/log"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
@@ -42,21 +43,20 @@ type MockPushService struct {
 	T        testing.TB
 }
 
-func (m *MockPushService) PushParsed(ctx context.Context, req *model.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
+func (m *MockPushService) PushBatch(ctx context.Context, req *model.PushRequest) error {
 	if m.Keep {
 		for _, series := range req.Series {
-			for _, sample := range series.Samples {
-				rawProfileCopy := make([]byte, len(sample.RawProfile))
-				copy(rawProfileCopy, sample.RawProfile)
-				m.reqPprof = append(m.reqPprof, &flatProfileSeries{
-					Labels:     series.Labels,
-					Profile:    sample.Profile.CloneVT(),
-					RawProfile: rawProfileCopy,
-				})
-			}
+			sample := series.Sample
+			rawProfileCopy := make([]byte, len(sample.RawProfile))
+			copy(rawProfileCopy, sample.RawProfile)
+			m.reqPprof = append(m.reqPprof, &flatProfileSeries{
+				Labels:     series.Labels,
+				Profile:    sample.Profile.CloneVT(),
+				RawProfile: rawProfileCopy,
+			})
 		}
 	}
-	return nil, nil
+	return nil
 }
 
 type DumpProfile struct {
@@ -68,7 +68,7 @@ type Dump struct {
 	Profiles []DumpProfile
 }
 
-func (m *MockPushService) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+func (m *MockPushService) Push(_ context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	for _, series := range req.Msg.Series {
 		for _, sample := range series.Samples {
 			p, err := pprof.RawFromBytes(sample.RawProfile)

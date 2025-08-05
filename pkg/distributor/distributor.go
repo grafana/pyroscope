@@ -241,7 +241,8 @@ func (d *Distributor) stopping(_ error) error {
 
 func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	req := &distributormodel.PushRequest{
-		Series: make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
+		Series:         make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
+		RawProfileType: distributormodel.RawProfileTypePPROF,
 	}
 
 	for _, grpcSeries := range grpcReq.Msg.Series {
@@ -296,10 +297,9 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		return noNewProfilesReceivedError()
 	}
 
-	haveRawPprof := req.RawProfileType == distributormodel.RawProfileTypePPROF
 	d.bytesReceivedTotalStats.Inc(int64(req.ReceivedCompressedProfileSize))
 	d.bytesReceivedStats.Record(float64(req.ReceivedCompressedProfileSize))
-	if !haveRawPprof {
+	if req.RawProfileType != distributormodel.RawProfileTypePPROF {
 		// if a single profile contains multiple profile types/names (e.g. jfr) then there is no such thing as
 		// compressed size per profile type as all profile types are compressed once together. So we can not count
 		// compressed bytes per profile type. Instead we count compressed bytes per profile.
@@ -385,7 +385,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
-	if len(req.Sample.RawProfile) > 0 { //todo do not merge, this should use same check as above RawProfileType
+	if origin == distributormodel.RawProfileTypePPROF {
 		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.Sample.RawProfile)))
 	}
 	p := req.Sample.Profile
