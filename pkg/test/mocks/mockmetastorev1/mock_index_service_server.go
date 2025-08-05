@@ -140,7 +140,7 @@ func (_c *MockIndexServiceServer_GetBlockMetadata_Call) RunAndReturn(run func(co
 	return _c
 }
 
-// mustEmbedUnimplementedIndexServiceServer provides a mock function with given fields:
+// mustEmbedUnimplementedIndexServiceServer provides a mock function with no fields
 func (_m *MockIndexServiceServer) mustEmbedUnimplementedIndexServiceServer() {
 	_m.Called()
 }
@@ -168,7 +168,7 @@ func (_c *MockIndexServiceServer_mustEmbedUnimplementedIndexServiceServer_Call) 
 }
 
 func (_c *MockIndexServiceServer_mustEmbedUnimplementedIndexServiceServer_Call) RunAndReturn(run func()) *MockIndexServiceServer_mustEmbedUnimplementedIndexServiceServer_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

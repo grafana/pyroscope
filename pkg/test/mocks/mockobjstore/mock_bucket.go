@@ -83,7 +83,7 @@ func (_c *MockBucket_Attributes_Call) RunAndReturn(run func(context.Context, str
 	return _c
 }
 
-// Close provides a mock function with given fields:
+// Close provides a mock function with no fields
 func (_m *MockBucket) Close() error {
 	ret := _m.Called()
 
@@ -570,7 +570,7 @@ func (_c *MockBucket_IterWithAttributes_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockBucket) Name() string {
 	ret := _m.Called()
 
@@ -615,7 +615,7 @@ func (_c *MockBucket_Name_Call) RunAndReturn(run func() string) *MockBucket_Name
 	return _c
 }
 
-// Provider provides a mock function with given fields:
+// Provider provides a mock function with no fields
 func (_m *MockBucket) Provider() objstore.ObjProvider {
 	ret := _m.Called()
 
@@ -719,7 +719,7 @@ func (_c *MockBucket_ReaderAt_Call) RunAndReturn(run func(context.Context, strin
 	return _c
 }
 
-// SupportedIterOptions provides a mock function with given fields:
+// SupportedIterOptions provides a mock function with no fields
 func (_m *MockBucket) SupportedIterOptions() []objstore.IterOptionType {
 	ret := _m.Called()
 

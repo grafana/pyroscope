@@ -140,7 +140,7 @@ func (_c *MockMetadataQueryServiceServer_QueryMetadataLabels_Call) RunAndReturn(
 	return _c
 }
 
-// mustEmbedUnimplementedMetadataQueryServiceServer provides a mock function with given fields:
+// mustEmbedUnimplementedMetadataQueryServiceServer provides a mock function with no fields
 func (_m *MockMetadataQueryServiceServer) mustEmbedUnimplementedMetadataQueryServiceServer() {
 	_m.Called()
 }
@@ -168,7 +168,7 @@ func (_c *MockMetadataQueryServiceServer_mustEmbedUnimplementedMetadataQueryServ
 }
 
 func (_c *MockMetadataQueryServiceServer_mustEmbedUnimplementedMetadataQueryServiceServer_Call) RunAndReturn(run func()) *MockMetadataQueryServiceServer_mustEmbedUnimplementedMetadataQueryServiceServer_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

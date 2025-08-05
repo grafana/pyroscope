@@ -26,24 +26,13 @@ type ProfileSample struct {
 	ID         string
 }
 
-type ProfileSeries struct {
-	Labels []*v1.LabelPair
-	Sample *ProfileSample
-}
-
-func (r *ProfileSeries) Convert() *ProfileSeriesTransientRequest {
-	return &ProfileSeriesTransientRequest{
-		Labels: r.Labels,
-		Sample: r.Sample,
-	}
-}
-
 // todo better name
-type ProfileSeriesTransientRequest struct {
+type ProfileSeries struct {
 	// Caller provided, modified during processing
 	Labels []*v1.LabelPair
 	Sample *ProfileSample
 
+	// todo split
 	// Transient state
 	TenantID string
 	Language string
@@ -58,7 +47,7 @@ type ProfileSeriesTransientRequest struct {
 	DiscardedBytesRelabeling    int64
 }
 
-func (p *ProfileSeriesTransientRequest) GetLanguage() string {
+func (p *ProfileSeries) GetLanguage() string {
 	spyName := phlaremodel.Labels(p.Labels).Get(phlaremodel.LabelNamePyroscopeSpy)
 	if spyName != "" {
 		lang := getProfileLanguageFromSpy(spyName)
@@ -92,8 +81,8 @@ func getProfileLanguageFromSpy(spyName string) string {
 	}
 }
 
-func (req *ProfileSeriesTransientRequest) Clone() *ProfileSeriesTransientRequest {
-	c := &ProfileSeriesTransientRequest{
+func (req *ProfileSeries) Clone() *ProfileSeries {
+	c := &ProfileSeries{
 		TenantID:               req.TenantID,
 		TotalProfiles:          req.TotalProfiles,
 		TotalBytesUncompressed: req.TotalBytesUncompressed,
@@ -109,11 +98,11 @@ func (req *ProfileSeriesTransientRequest) Clone() *ProfileSeriesTransientRequest
 	return c
 }
 
-func (req *ProfileSeriesTransientRequest) ClearAnnotations() {
+func (req *ProfileSeries) ClearAnnotations() {
 	req.Annotations = nil
 }
 
-func (req *ProfileSeriesTransientRequest) MarkThrottledTenant(l *ingestlimits.Config) error {
+func (req *ProfileSeries) MarkThrottledTenant(l *ingestlimits.Config) error {
 	annotation, err := ingestlimits.CreateTenantAnnotation(l)
 	if err != nil {
 		return err
@@ -125,7 +114,7 @@ func (req *ProfileSeriesTransientRequest) MarkThrottledTenant(l *ingestlimits.Co
 	return nil
 }
 
-func (req *ProfileSeriesTransientRequest) MarkThrottledUsageGroup(l *ingestlimits.Config, usageGroup string) error {
+func (req *ProfileSeries) MarkThrottledUsageGroup(l *ingestlimits.Config, usageGroup string) error {
 	annotation, err := ingestlimits.CreateUsageGroupAnnotation(l, usageGroup)
 	if err != nil {
 		return err

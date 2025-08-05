@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"connectrpc.com/connect"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
@@ -20,7 +19,6 @@ import (
 
 	"google.golang.org/grpc/status"
 
-	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/model"
@@ -42,7 +40,7 @@ type Handler interface {
 }
 
 type PushService interface {
-	PushBatch(ctx context.Context, req *distirbutormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error)
+	PushBatch(ctx context.Context, req *distirbutormodel.PushRequest) error
 }
 
 func NewOTLPIngestHandler(svc PushService, l log.Logger, me bool) Handler {
@@ -149,7 +147,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 				if len(req.Series) == 0 {
 					continue
 				}
-				_, err = h.svc.PushBatch(ctx, req)
+				err = h.svc.PushBatch(ctx, req)
 				if err != nil {
 					h.log.Log("msg", "failed to push profile", "err", err)
 					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)

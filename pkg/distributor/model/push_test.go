@@ -24,7 +24,7 @@ func TestProfileSeries_GetLanguage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run("", func(t *testing.T) {
-			p := &ProfileSeriesTransientRequest{
+			p := &ProfileSeries{
 				Labels: tt.labels,
 			}
 			if got := p.GetLanguage(); got != tt.want {
@@ -37,14 +37,14 @@ func TestProfileSeries_GetLanguage(t *testing.T) {
 func TestMarkThrottledTenant(t *testing.T) {
 	tests := []struct {
 		name        string
-		req         *ProfileSeriesTransientRequest
+		req         *ProfileSeries
 		limit       *ingestlimits.Config
 		expectError bool
-		verify      func(t *testing.T, req *ProfileSeriesTransientRequest)
+		verify      func(t *testing.T, req *ProfileSeries)
 	}{
 		{
 			name: "single series",
-			req: &ProfileSeriesTransientRequest{
+			req: &ProfileSeries{
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "cpu"},
 				},
@@ -55,7 +55,7 @@ func TestMarkThrottledTenant(t *testing.T) {
 				LimitResetTime: time.Now().Unix(),
 				LimitReached:   true,
 			},
-			verify: func(t *testing.T, req *ProfileSeriesTransientRequest) {
+			verify: func(t *testing.T, req *ProfileSeries) {
 				require.Len(t, req.Annotations, 1)
 				assert.Equal(t, ingestlimits.ProfileAnnotationKeyThrottled, req.Annotations[0].Key)
 				assert.Contains(t, req.Annotations[0].Value, "\"periodLimitMb\":128")
@@ -81,15 +81,15 @@ func TestMarkThrottledTenant(t *testing.T) {
 func TestMarkThrottledUsageGroup(t *testing.T) {
 	tests := []struct {
 		name        string
-		req         *ProfileSeriesTransientRequest
+		req         *ProfileSeries
 		limit       *ingestlimits.Config
 		usageGroup  string
 		expectError bool
-		verify      func(t *testing.T, req *ProfileSeriesTransientRequest)
+		verify      func(t *testing.T, req *ProfileSeries)
 	}{
 		{
 			name: "single series with usage group",
-			req: &ProfileSeriesTransientRequest{
+			req: &ProfileSeries{
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "cpu"},
 				},
@@ -107,7 +107,7 @@ func TestMarkThrottledUsageGroup(t *testing.T) {
 				},
 			},
 			usageGroup: "group-1",
-			verify: func(t *testing.T, req *ProfileSeriesTransientRequest) {
+			verify: func(t *testing.T, req *ProfileSeries) {
 				require.Len(t, req.Annotations, 1)
 				assert.Equal(t, ingestlimits.ProfileAnnotationKeyThrottled, req.Annotations[0].Key)
 				assert.Contains(t, req.Annotations[0].Value, "\"periodLimitMb\":64")
@@ -116,7 +116,7 @@ func TestMarkThrottledUsageGroup(t *testing.T) {
 		},
 		{
 			name: "invalid usage group",
-			req: &ProfileSeriesTransientRequest{
+			req: &ProfileSeries{
 				Labels: []*typesv1.LabelPair{
 					{Name: "__name__", Value: "cpu"},
 				},

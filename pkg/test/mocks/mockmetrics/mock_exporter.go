@@ -20,7 +20,7 @@ func (_m *MockExporter) EXPECT() *MockExporter_Expecter {
 	return &MockExporter_Expecter{mock: &_m.Mock}
 }
 
-// Flush provides a mock function with given fields:
+// Flush provides a mock function with no fields
 func (_m *MockExporter) Flush() {
 	_m.Called()
 }
@@ -48,7 +48,7 @@ func (_c *MockExporter_Flush_Call) Return() *MockExporter_Flush_Call {
 }
 
 func (_c *MockExporter_Flush_Call) RunAndReturn(run func()) *MockExporter_Flush_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
