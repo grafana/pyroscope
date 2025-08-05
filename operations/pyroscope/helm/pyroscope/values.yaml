@@ -7,7 +7,7 @@ pyroscope:
   replicaCount: 1
 
   # -- Enable or disable Self profile push, useful to test
-  disableSelfProfile: "true"
+  disableSelfProfile: true
 
   # -- Kubernetes cluster domain suffix for DNS discovery
   cluster_domain: .cluster.local.
@@ -30,8 +30,10 @@ pyroscope:
 
   extraCustomEnvVars: {}
     # The following environment variables raw form.
-    #- name: JAEGER_AGENT_HOST
-    #  value: "jaeger-agent.jaeger.svc.cluster.local."
+    # - name: MY_NODE_NAME
+    #   valueFrom:
+    #     fieldRef:
+    #       fieldPath: spec.nodeName
 
   # -- Environment variables from secrets or configmaps to add to the pods
   extraEnvFrom: []
