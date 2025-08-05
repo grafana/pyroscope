@@ -88,7 +88,7 @@ agent_ready.shutdown();
 
 ### Locate the URL, user, and password in Grafana Cloud Profiles
 
-[//]: # 'Shared content for URl locationin Grafana Cloud Profiles'
+[//]: # 'Shared content for URl location in Grafana Cloud Profiles'
 [//]: # 'This content is located in /pyroscope/docs/sources/shared/locate-url-pw-user-cloud-profiles.md'
 
 {{< docs/shared source="pyroscope" lookup="locate-url-pw-user-cloud-profiles.md" version="latest" >}}

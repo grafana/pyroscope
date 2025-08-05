@@ -18,7 +18,7 @@ This information is located in the **Pyroscope** section of your Grafana Cloud s
 
 1. Navigate to your Grafana Cloud stack.
 1. Select **Details** next to your stack.
-1. Locate the **Pyroscope** section and select **Send Profiles**.
+1. Locate the **Pyroscope** section and select **Details**.
 1. Copy the **URL**, **User**, and **Password** values in the **Configure the client and data source using Grafana credentials** section.
    ![Locate the SDK or Grafana Alloy configuration values](/media/docs/pyroscope/cloud-profiles-url-user-password.png)
 1. Use these values to complete the configuration.
