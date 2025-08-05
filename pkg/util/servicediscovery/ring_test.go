@@ -57,10 +57,10 @@ func TestRingServiceDiscovery_WithoutMaxUsedInstances(t *testing.T) {
 	// Register some instances.
 	require.NoError(t, inmem.CAS(ctx, ringKey, func(in interface{}) (out interface{}, retry bool, err error) {
 		desc := in.(*ring.Desc)
-		desc.AddIngester("instance-1", "127.0.0.1", "", nil, ring.ACTIVE, time.Now())
-		desc.AddIngester("instance-2", "127.0.0.2", "", nil, ring.PENDING, time.Now())
-		desc.AddIngester("instance-3", "127.0.0.3", "", nil, ring.JOINING, time.Now())
-		desc.AddIngester("instance-4", "127.0.0.4", "", nil, ring.LEAVING, time.Now())
+		desc.AddIngester("instance-1", "127.0.0.1", "", nil, ring.ACTIVE, time.Now(), false, time.Now())
+		desc.AddIngester("instance-2", "127.0.0.2", "", nil, ring.PENDING, time.Now(), false, time.Now())
+		desc.AddIngester("instance-3", "127.0.0.3", "", nil, ring.JOINING, time.Now(), false, time.Now())
+		desc.AddIngester("instance-4", "127.0.0.4", "", nil, ring.LEAVING, time.Now(), false, time.Now())
 		return desc, true, nil
 	}))
 
@@ -71,8 +71,8 @@ func TestRingServiceDiscovery_WithoutMaxUsedInstances(t *testing.T) {
 	// Register more instances.
 	require.NoError(t, inmem.CAS(ctx, ringKey, func(in interface{}) (out interface{}, retry bool, err error) {
 		desc := in.(*ring.Desc)
-		desc.AddIngester("instance-5", "127.0.0.5", "", nil, ring.ACTIVE, time.Now())
-		desc.AddIngester("instance-6", "127.0.0.6", "", nil, ring.ACTIVE, time.Now())
+		desc.AddIngester("instance-5", "127.0.0.5", "", nil, ring.ACTIVE, time.Now(), false, time.Now())
+		desc.AddIngester("instance-6", "127.0.0.6", "", nil, ring.ACTIVE, time.Now(), false, time.Now())
 		return desc, true, nil
 	}))
 
@@ -159,10 +159,10 @@ func TestRingServiceDiscovery_WithMaxUsedInstances(t *testing.T) {
 	// Register some instances.
 	require.NoError(t, inmem.CAS(ctx, ringKey, func(in interface{}) (out interface{}, retry bool, err error) {
 		desc := in.(*ring.Desc)
-		desc.AddIngester("instance-1", "127.0.0.1", "", nil, ring.ACTIVE, time.Now())
-		desc.AddIngester("instance-2", "127.0.0.2", "", nil, ring.PENDING, time.Now())
-		desc.AddIngester("instance-3", "127.0.0.3", "", nil, ring.JOINING, time.Now())
-		desc.AddIngester("instance-4", "127.0.0.4", "", nil, ring.LEAVING, time.Now())
+		desc.AddIngester("instance-1", "127.0.0.1", "", nil, ring.ACTIVE, time.Now(), false, time.Now())
+		desc.AddIngester("instance-2", "127.0.0.2", "", nil, ring.PENDING, time.Now(), false, time.Now())
+		desc.AddIngester("instance-3", "127.0.0.3", "", nil, ring.JOINING, time.Now(), false, time.Now())
+		desc.AddIngester("instance-4", "127.0.0.4", "", nil, ring.LEAVING, time.Now(), false, time.Now())
 		return desc, true, nil
 	}))
 
@@ -173,8 +173,8 @@ func TestRingServiceDiscovery_WithMaxUsedInstances(t *testing.T) {
 	// Register more instances.
 	require.NoError(t, inmem.CAS(ctx, ringKey, func(in interface{}) (out interface{}, retry bool, err error) {
 		desc := in.(*ring.Desc)
-		desc.AddIngester("instance-5", "127.0.0.5", "", nil, ring.ACTIVE, time.Now())
-		desc.AddIngester("instance-6", "127.0.0.6", "", nil, ring.ACTIVE, time.Now())
+		desc.AddIngester("instance-5", "127.0.0.5", "", nil, ring.ACTIVE, time.Now(), false, time.Now())
+		desc.AddIngester("instance-6", "127.0.0.6", "", nil, ring.ACTIVE, time.Now(), false, time.Now())
 		return desc, true, nil
 	}))
 

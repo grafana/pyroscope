@@ -195,7 +195,7 @@ func (p *schedule) allocateLease() int64 {
 }
 
 func (p *schedule) assignJob(e *jobEntry) *raft_log.CompactionJobState {
-	job := e.CompactionJobState.CloneVT()
+	job := e.CloneVT()
 	job.Status = metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS
 	job.LeaseExpiresAt = p.allocateLease()
 	job.Token = p.token

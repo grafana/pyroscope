@@ -12,7 +12,7 @@ import (
 	"path"
 
 	"github.com/grafana/dskit/multierror"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	thanosobjstore "github.com/thanos-io/objstore"
 
 	"github.com/grafana/pyroscope/pkg/objstore"

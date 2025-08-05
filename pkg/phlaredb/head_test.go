@@ -11,7 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -55,7 +55,7 @@ type testHead struct {
 
 func (t *testHead) Flush(ctx context.Context) error {
 	defer func() {
-		t.t.Logf("flushing head of block %v", t.Head.meta.ULID)
+		t.t.Logf("flushing head of block %v", t.meta.ULID)
 	}()
 	return t.Head.Flush(ctx)
 }

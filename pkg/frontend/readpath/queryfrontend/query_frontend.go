@@ -15,14 +15,12 @@ import (
 	"google.golang.org/grpc/status"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/block/metadata"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/model"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/querybackend/queryplan"
 )
@@ -165,7 +163,7 @@ func (q *QueryFrontend) QueryMetadata(
 	// left, request the dataset index for query backend to lookup block datasets
 	// locally.
 	matchers = slices.DeleteFunc(matchers, func(m *labels.Matcher) bool {
-		return !(m.Name == phlaremodel.LabelNameServiceName && m.Type == labels.MatchEqual)
+		return m.Name != model.LabelNameServiceName || m.Type != labels.MatchEqual
 	})
 	if len(matchers) == 0 {
 		// We preserve the __tenant_dataset__= label: this is needed for the
@@ -235,7 +233,7 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 			continue
 		}
 
-		var prof profilev1.Profile
+		var prof googlev1.Profile
 		if err := pprof.Unmarshal(r.Pprof.Pprof, &prof); err != nil {
 			return fmt.Errorf("failed to unmarshal profile: %w", err)
 		}

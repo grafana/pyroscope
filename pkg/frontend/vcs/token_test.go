@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -192,6 +193,26 @@ func Test_tokenFromRequest(t *testing.T) {
 		_, err := tokenFromRequest(ctx, req)
 		require.Error(t, err)
 		require.EqualError(t, err, wantErr)
+	})
+
+	t.Run("token with garbage should fail", func(t *testing.T) {
+		githubSessionSecret = []byte("16_byte_key_XXXX")
+
+		// a cookie with false metadata
+		cookieData, err := json.Marshal(map[string]interface{}{
+			"metadata": base64.StdEncoding.EncodeToString([]byte(strings.Repeat("x", 128))),
+			"expiry":   1234,
+		})
+		require.NoError(t, err)
+
+		req := connect.NewRequest(&vcsv1.GetFileRequest{})
+		req.Header().Add("Cookie", "pyroscope_git_session="+base64.RawStdEncoding.EncodeToString(cookieData))
+
+		token, err := tokenFromRequest(ctx, req)
+		require.Error(t, err)
+		require.EqualError(t, err, "cipher: message authentication failed")
+		require.Nil(t, token)
+
 	})
 }
 

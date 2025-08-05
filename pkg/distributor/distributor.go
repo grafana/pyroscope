@@ -297,6 +297,8 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
+	logger := log.With(d.logger, "tenant", tenantID)
+
 	req.TenantID = tenantID
 	for _, series := range req.Series {
 		serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
@@ -323,7 +325,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	// They are unfortunately part of the Push API so we explicitly clear them here.
 	req.ClearAnnotations()
 	if err := d.checkIngestLimit(req); err != nil {
-		level.Debug(d.logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
+		level.Debug(logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
 		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return nil, err
@@ -340,15 +342,19 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 		groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, series.Labels)
 		if err := d.checkUsageGroupsIngestLimit(req, groups.Names()); err != nil {
-			level.Debug(d.logger).Log("msg", "rejecting push request due to usage group ingest limit", "tenant", tenantID)
+			level.Debug(logger).Log("msg", "rejecting push request due to usage group ingest limit", "tenant", tenantID)
 			validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 			groups.CountDiscardedBytes(string(validation.IngestLimitReached), req.TotalBytesUncompressed)
 			return nil, err
 		}
 
-		if sample := d.shouldSample(tenantID, groups.Names()); !sample {
-			level.Debug(d.logger).Log("msg", "skipping push request due to sampling", "tenant", tenantID)
+		if sample, usageGroup := d.shouldSample(tenantID, groups.Names()); !sample {
+			level.Debug(logger).Log(
+				"msg", "skipping push request due to sampling",
+				"tenant", tenantID,
+				"usage_group", usageGroup,
+			)
 			validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
 			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
@@ -371,7 +377,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			groups.CountReceivedBytes(profName, int64(decompressedSize))
 
 			if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
-				_ = level.Debug(d.logger).Log("msg", "invalid profile", "err", err)
+				_ = level.Debug(logger).Log("msg", "invalid profile", "err", err)
 				reason := string(validation.ReasonOf(err))
 				validation.DiscardedProfiles.WithLabelValues(reason, tenantID).Add(float64(req.TotalProfiles))
 				validation.DiscardedBytes.WithLabelValues(reason, tenantID).Add(float64(req.TotalBytesUncompressed))
@@ -410,7 +416,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	}
 
 	if err := injectMappingVersions(req.Series); err != nil {
-		_ = level.Warn(d.logger).Log("msg", "failed to inject mapping versions", "err", err)
+		_ = level.Warn(logger).Log("msg", "failed to inject mapping versions", "err", err)
 	}
 
 	// Reduce cardinality of the session_id label.
@@ -900,38 +906,39 @@ func (d *Distributor) checkUsageGroupsIngestLimit(req *distributormodel.PushRequ
 	return nil
 }
 
-func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) bool {
+// shouldSample returns true if the profile should be injected and optionally the usage group that was responsible for the decision.
+func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) (bool, *validation.UsageGroupMatchName) {
 	l := d.limits.DistributorSampling(tenantID)
 	if l == nil {
-		return true
+		return true, nil
 	}
 
-	// Determine the minimum probability among all matching usage groups.
-	minProb := 1.0
-	matched := false
+	samplingProbability := 1.0
+	var match *validation.UsageGroupMatchName
 	for _, group := range groupsInRequest {
-		if probCfg, ok := l.UsageGroups[group.ResolvedName]; ok {
-			matched = true
-			if probCfg.Probability < minProb {
-				minProb = probCfg.Probability
-			}
+		probabilityCfg, found := l.UsageGroups[group.ConfiguredName]
+		if !found {
+			probabilityCfg, found = l.UsageGroups[group.ResolvedName]
+		}
+		if !found {
 			continue
 		}
-		if probCfg, ok := l.UsageGroups[group.ConfiguredName]; ok {
-			matched = true
-			if probCfg.Probability < minProb {
-				minProb = probCfg.Probability
-			}
+		// a less specific group loses to a more specific one
+		if match != nil && match.IsMoreSpecificThan(&group) {
+			continue
+		}
+		// lower probability wins; when tied, the more specific group wins
+		if probabilityCfg.Probability <= samplingProbability {
+			samplingProbability = probabilityCfg.Probability
+			match = &group
 		}
 	}
 
-	// If no sampling rules matched, accept the request.
-	if !matched {
-		return true
+	if match == nil {
+		return true, nil
 	}
 
-	// Sample once using the minimum probability.
-	return rand.Float64() <= minProb
+	return rand.Float64() <= samplingProbability, match
 }
 
 type profileTracker struct {

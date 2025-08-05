@@ -197,10 +197,10 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 		}
 		var (
 			httpErr       multierror.MultiError
-			httpCode      int = http.StatusOK
+			httpCode      = http.StatusOK
 			headerWritten bool
 			buf           bytes.Buffer
-			bodyLeft      int = maxResponseBodyInLogs
+			bodyLeft      = maxResponseBodyInLogs
 		)
 
 		wrapped := httpsnoop.Wrap(w, httpsnoop.Hooks{
@@ -315,7 +315,7 @@ func dumpRequest(req *http.Request) ([]byte, error) {
 		return nil, err
 	}
 
-	ret := bytes.Replace(b.Bytes(), []byte("\r\n"), []byte("; "), -1)
+	ret := bytes.ReplaceAll(b.Bytes(), []byte("\r\n"), []byte("; "))
 	return ret, nil
 }
 
@@ -400,7 +400,6 @@ func NewHTTPMetricMiddleware(mux *mux.Router, namespace string, reg prometheus.R
 		}
 	}
 	return middleware.Instrument{
-		RouteMatcher:     mux,
 		Duration:         requestDuration,
 		RequestBodySize:  receivedMessageSize,
 		ResponseBodySize: sentMessageSize,

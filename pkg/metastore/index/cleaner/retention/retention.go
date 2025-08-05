@@ -294,8 +294,8 @@ func (rp *TimeBasedRetentionPolicy) createTombstones(q *indexstore.PartitionQuer
 			rp.tombstones = append(rp.tombstones, &metastorev1.Tombstones{
 				Shard: &metastorev1.ShardTombstone{
 					Name:      name,
-					Timestamp: q.Partition.Timestamp.UnixNano(),
-					Duration:  q.Partition.Duration.Nanoseconds(),
+					Timestamp: q.Timestamp.UnixNano(),
+					Duration:  q.Duration.Nanoseconds(),
 					Shard:     shard.Shard,
 					Tenant:    shard.Tenant,
 				},

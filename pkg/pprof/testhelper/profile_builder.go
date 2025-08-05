@@ -64,7 +64,7 @@ func (m *ProfileBuilder) MemoryProfile() *ProfileBuilder {
 		Unit: m.addString("bytes"),
 		Type: m.addString("space"),
 	}
-	m.Profile.SampleType = []*profilev1.ValueType{
+	m.SampleType = []*profilev1.ValueType{
 		{
 			Unit: m.addString("count"),
 			Type: m.addString("alloc_objects"),
@@ -82,7 +82,7 @@ func (m *ProfileBuilder) MemoryProfile() *ProfileBuilder {
 			Type: m.addString("inuse_space"),
 		},
 	}
-	m.Profile.DefaultSampleType = m.addString("alloc_space")
+	m.DefaultSampleType = m.addString("alloc_space")
 
 	m.Labels = append(m.Labels, &typesv1.LabelPair{
 		Name:  model.MetricNameLabel,
@@ -130,7 +130,7 @@ func (m *ProfileBuilder) Name() string {
 }
 
 func (m *ProfileBuilder) AddSampleType(typ, unit string) {
-	m.Profile.SampleType = append(m.Profile.SampleType, &profilev1.ValueType{
+	m.SampleType = append(m.SampleType, &profilev1.ValueType{
 		Type: m.addString(typ),
 		Unit: m.addString(unit),
 	})
@@ -152,7 +152,7 @@ func (m *ProfileBuilder) PeriodType(periodType string, periodUnit string) {
 
 func (m *ProfileBuilder) CustomProfile(name, typ, unit, periodType, periodUnit string) {
 	m.AddSampleType(typ, unit)
-	m.Profile.DefaultSampleType = m.addString(typ)
+	m.DefaultSampleType = m.addString(typ)
 
 	m.PeriodType(periodType, periodUnit)
 
@@ -260,8 +260,8 @@ func (m *ProfileBuilder) AddExternalSampleWithLabels(locs []uint64, values []int
 	if m.externalSampleID2SampleIndex == nil {
 		m.externalSampleID2SampleIndex = map[sampleID]uint32{}
 	}
-	m.externalSampleID2SampleIndex[sampleID{locationsID: locationsID, labelsID: labelsID}] = uint32(len(m.Profile.Sample))
-	m.Profile.Sample = append(m.Profile.Sample, sample)
+	m.externalSampleID2SampleIndex[sampleID{locationsID: locationsID, labelsID: labelsID}] = uint32(len(m.Sample))
+	m.Sample = append(m.Sample, sample)
 	if len(labels) > 0 {
 		sample.Label = make([]*profilev1.Label, 0, len(labels))
 		for _, label := range labels {
@@ -278,7 +278,7 @@ func (m *ProfileBuilder) FindExternalSampleWithLabels(locationsID, labelsID uint
 	if !ok {
 		return nil
 	}
-	sample := m.Profile.Sample[sampleIndex]
+	sample := m.Sample[sampleIndex]
 	return sample
 }
 
@@ -288,10 +288,10 @@ type StacktraceBuilder struct {
 }
 
 func (s *StacktraceBuilder) AddSamples(samples ...int64) *ProfileBuilder {
-	if exp, act := len(s.Profile.SampleType), len(samples); exp != act {
+	if exp, act := len(s.SampleType), len(samples); exp != act {
 		panic(fmt.Sprintf("profile expects %d sample(s), there was actually %d sample(s) given.", exp, act))
 	}
-	s.Profile.Sample = append(s.Profile.Sample, &profilev1.Sample{
+	s.Sample = append(s.Sample, &profilev1.Sample{
 		LocationId: s.locationID,
 		Value:      samples,
 	})

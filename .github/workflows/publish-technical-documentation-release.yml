@@ -1,0 +1,31 @@
+name: publish-technical-documentation-release
+
+permissions: {}
+
+on:
+  push:
+    branches:
+    - "release/v[0-9]+.[0-9]+"
+    tags:
+    - "v[0-9]+.[0-9]+.[0-9]+"
+    paths:
+    - "docs/sources/**"
+  workflow_dispatch:
+jobs:
+  sync:
+    if: github.repository == 'grafana/pyroscope'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: grafana/writers-toolkit/publish-technical-documentation-release@9ccaaf1f78c5c045229e7088e816925311c67abc
+        with:
+          release_tag_regexp: "^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+          release_branch_regexp: "^release/v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+          release_branch_with_patch_regexp: "^release/v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+          website_directory: content/docs/pyroscope

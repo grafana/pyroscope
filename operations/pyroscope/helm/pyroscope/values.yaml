@@ -155,6 +155,9 @@ pyroscope:
 
   affinity: {}
 
+  # Override the PodPriorityClass
+  # priorityClassName: high
+
   # run specific components separately
   components: {}
 
@@ -258,6 +261,7 @@ minio:
 ingress:
   enabled: false
   className: ""
+  pathType: ImplementationSpecific
   # hosts:
   #   - localhost
   # tls:

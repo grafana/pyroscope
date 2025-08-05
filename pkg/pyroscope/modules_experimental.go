@@ -39,6 +39,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/health"
+	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 )
 
 func (f *Pyroscope) initQueryFrontend() (services.Service, error) {
@@ -72,21 +73,23 @@ func (f *Pyroscope) initQueryFrontend() (services.Service, error) {
 }
 
 func (f *Pyroscope) initQueryFrontendV1() (services.Service, error) {
+	queryFrontendLogger := log.With(f.logger, "component", "frontend")
 	var err error
-	f.frontend, err = frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg)
+	f.frontend, err = frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, queryFrontendLogger, f.reg)
 	if err != nil {
 		return nil, err
 	}
 	f.API.RegisterFrontendForQuerierHandler(f.frontend)
-	f.API.RegisterQuerierServiceHandler(f.frontend)
-	f.API.RegisterPyroscopeHandlers(f.frontend)
+	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(f.frontend, queryFrontendLogger))
+	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(f.frontend, queryFrontendLogger))
 	f.API.RegisterVCSServiceHandler(f.frontend)
 	return f.frontend, nil
 }
 
 func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
+	queryFrontendLogger := log.With(f.logger, "component", "query-frontend")
 	queryFrontend := queryfrontend.NewQueryFrontend(
-		log.With(f.logger, "component", "query-frontend"),
+		queryFrontendLogger,
 		f.Overrides,
 		f.metastoreClient,
 		f.metastoreClient,
@@ -99,8 +102,8 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 		f.reg,
 	)
 
-	f.API.RegisterQuerierServiceHandler(queryFrontend)
-	f.API.RegisterPyroscopeHandlers(queryFrontend)
+	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(queryFrontend, queryFrontendLogger))
+	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(queryFrontend, queryFrontendLogger))
 	f.API.RegisterVCSServiceHandler(vcsService)
 
 	// New query frontend does not have any state.
@@ -120,8 +123,9 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 		return nil, err
 	}
 
+	queryFrontendLogger := log.With(f.logger, "component", "query-frontend")
 	newFrontend := queryfrontend.NewQueryFrontend(
-		log.With(f.logger, "component", "query-frontend"),
+		queryFrontendLogger,
 		f.Overrides,
 		f.metastoreClient,
 		f.metastoreClient,
@@ -142,8 +146,8 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 	)
 
 	f.API.RegisterFrontendForQuerierHandler(f.frontend)
-	f.API.RegisterQuerierServiceHandler(handler)
-	f.API.RegisterPyroscopeHandlers(handler)
+	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger))
+	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger))
 	f.API.RegisterVCSServiceHandler(vcsService)
 
 	return f.frontend, nil

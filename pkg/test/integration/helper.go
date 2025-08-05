@@ -381,7 +381,7 @@ func (b *RequestBuilder) PushPPROFRequestFromFile(file string, metric string) *c
 	updateTimestamp := func(rawProfile []byte) []byte {
 		expectedProfile, err := pprof.RawFromBytes(rawProfile)
 		require.NoError(b.t, err)
-		expectedProfile.Profile.TimeNanos = time.Now().Add(-time.Minute).UnixNano()
+		expectedProfile.TimeNanos = time.Now().Add(-time.Minute).UnixNano()
 		buf := bytes.NewBuffer(nil)
 		_, err = expectedProfile.WriteTo(buf)
 		require.NoError(b.t, err)

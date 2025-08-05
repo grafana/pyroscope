@@ -134,7 +134,7 @@ func blocksQuerySeries(ctx context.Context, params *blocksQuerySeriesParams) err
 	var from, to int64
 	from, to = math.MaxInt64, math.MinInt64
 	var targetBlockQueriers phlaredb.Queriers
-	for _, blockId := range params.blocksQueryParams.BlockIds {
+	for _, blockId := range params.BlockIds {
 		meta, err := blockQuerier.BlockMeta(ctx, blockId)
 		if err != nil {
 			return err

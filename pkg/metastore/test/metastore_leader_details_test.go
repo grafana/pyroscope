@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/grafana/dskit/flagext"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/require"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -27,7 +27,7 @@ func TestRaftDetailsAddBlock(t *testing.T) {
 		Id: ulid.MustNew(1, rand.Reader).String(),
 	}
 	for _, it := range ms.Instances {
-		_, err := it.IndexServiceClient.AddBlock(context.Background(), &metastorev1.AddBlockRequest{
+		_, err := it.AddBlock(context.Background(), &metastorev1.AddBlockRequest{
 			Block: m,
 		})
 		if err != nil {
@@ -47,7 +47,7 @@ func TestRaftDetailsPullCompaction(t *testing.T) {
 
 	errors := 0
 	for _, it := range ms.Instances {
-		_, err := it.CompactionServiceClient.PollCompactionJobs(context.Background(), &metastorev1.PollCompactionJobsRequest{})
+		_, err := it.PollCompactionJobs(context.Background(), &metastorev1.PollCompactionJobsRequest{})
 		if err != nil {
 			requireRaftDetails(t, err)
 			errors++

@@ -41,7 +41,7 @@ GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE
 GO_GCFLAGS_DEBUG := all="-N -l"
 
 # Folders with go.mod file
-GO_MOD_PATHS := api/ ebpf/ lidia/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/rideshare-alloy examples/language-sdk-instrumentation/golang-push/rideshare-k6 examples/language-sdk-instrumentation/golang-push/simple/ examples/tracing/golang-push/ examples/golang-pgo/
+GO_MOD_PATHS := api/ lidia/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/rideshare-alloy examples/language-sdk-instrumentation/golang-push/rideshare-k6 examples/language-sdk-instrumentation/golang-push/simple/ examples/tracing/golang-push/ examples/golang-pgo/
 
 # Add extra arguments to helm commands
 HELM_ARGS =
@@ -83,7 +83,7 @@ go/test: $(BIN)/gotestsum
 ifeq ($(GOOS),darwin)
 	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./lidia/...' -- $(GO_TEST_FLAGS)
 else
-	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./ebpf/... ./lidia/...' -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS)
+	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./lidia/...' -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS)
 endif
 
 # Run test on examples
@@ -119,7 +119,7 @@ pyroscope/build: go/bin-pyroscope ## Build just the pyroscope binary
 .PHONY: release
 release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
 	# remove local git tags coming from helm chart release
-	git tag -d $(shell git tag -l "phlare-*" "api/*" "ebpf/*" "@pyroscope*")
+	git tag -d $(shell git tag -l "phlare-*" "api/*" "@pyroscope*")
 	# ensure there is a docker cli command
 	@which docker || { apt-get update && apt-get install -y docker.io; }
 	@docker info > /dev/null
@@ -310,7 +310,7 @@ $(BIN)/buf: Makefile
 
 $(BIN)/golangci-lint: Makefile
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.2.2
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)

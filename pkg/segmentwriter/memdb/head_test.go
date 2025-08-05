@@ -785,7 +785,7 @@ func newTestHead() *Head {
 func parseProfile(t testing.TB, path string) *profilev1.Profile {
 	p, err := pprof.OpenFile(path)
 	require.NoError(t, err, "failed opening profile: ", path)
-	if p.Profile.Mapping == nil {
+	if p.Mapping == nil {
 		// Add fake mappings to some profiles, otherwise query may panic in symdb or return wrong unpredictable results
 		p.Mapping = []*profilev1.Mapping{
 			{Id: 0},

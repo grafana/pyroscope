@@ -84,7 +84,7 @@ func (q Queriers) ingesterClient() (ingesterv1connect.IngesterServiceClient, fun
 	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(&ingesterHandlerPhlareDB{q}, connectapi.DefaultHandlerOptions()...))
 	serv := testhelper.NewInMemoryServer(mux)
 
-	var httpClient *http.Client = serv.Client()
+	var httpClient = serv.Client()
 
 	client := ingesterv1connect.NewIngesterServiceClient(
 		httpClient, serv.URL(), connectapi.DefaultClientOptions()...,
