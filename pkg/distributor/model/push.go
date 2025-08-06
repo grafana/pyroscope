@@ -98,10 +98,6 @@ func (req *ProfileSeries) Clone() *ProfileSeries {
 	return c
 }
 
-func (req *ProfileSeries) ClearAnnotations() {
-	req.Annotations = nil
-}
-
 func (req *ProfileSeries) MarkThrottledTenant(l *ingestlimits.Config) error {
 	annotation, err := ingestlimits.CreateTenantAnnotation(l)
 	if err != nil {
