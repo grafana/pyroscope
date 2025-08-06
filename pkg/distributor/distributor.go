@@ -23,6 +23,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/limiter"
+	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
@@ -244,12 +245,13 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 		Series:         make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
 		RawProfileType: distributormodel.RawProfileTypePPROF,
 	}
-
+	allErrors := multierror.New()
 	for _, grpcSeries := range grpcReq.Msg.Series {
 		for _, grpcSample := range grpcSeries.Samples {
 			profile, err := pprof.RawFromBytes(grpcSample.RawProfile)
 			if err != nil {
-				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+				allErrors.Add(err)
+				continue
 			}
 			series := &distributormodel.ProfileSeries{
 				Labels: grpcSeries.Labels,
@@ -262,7 +264,10 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 			req.Series = append(req.Series, series)
 		}
 	}
-	err := d.PushBatch(ctx, req)
+	if err := d.PushBatch(ctx, req); err != nil {
+		allErrors.Add(err)
+	}
+	err := allErrors.Err()
 	if err != nil && validation.ReasonOf(err) != validation.Unknown {
 		if sp := opentracing.SpanFromContext(ctx); sp != nil {
 			ext.LogError(sp, err)
@@ -307,29 +312,23 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		d.metrics.receivedCompressedBytes.WithLabelValues(string(profName), tenantID).Observe(float64(req.ReceivedCompressedProfileSize))
 	}
 
-	results := make([]error, len(req.Series))
+	res := multierror.New()
 	errorsMutex := new(sync.Mutex)
 	wg := new(sync.WaitGroup)
-	for i, s := range req.Series {
+	for _, s := range req.Series {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			itErr := util.RecoverPanic(func() error {
 				return d.pushSeries(ctx, s, req.RawProfileType, tenantID)
-			})
+			})()
 			errorsMutex.Lock()
-			results[i] = itErr()
+			res.Add(itErr)
 			errorsMutex.Unlock()
 		}()
 	}
 	wg.Wait()
-	// todo return all errors
-	for i := range results {
-		if results[i] != nil {
-			return results[i]
-		}
-	}
-	return nil
+	return res.Err()
 }
 
 func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string) (err error) {
