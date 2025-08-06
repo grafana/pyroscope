@@ -155,19 +155,6 @@ runtime_config:
 [compactor: <compactor>]
 
 tenant_settings:
-  collection_rules:
-    # Enable the storing of collection config in tenant settings.
-    # CLI flag: -tenant-settings.collection-rules.enabled
-    [enabled: <boolean> | default = false]
-
-    # The public facing URL of the Pyroscope instance.
-    # CLI flag: -tenant-settings.collection-rules.pyroscope-url
-    [pyroscope_url: <string> | default = ""]
-
-    # Override the default alloy go template.
-    # CLI flag: -tenant-settings.collection-rules.alloy-template-path
-    [alloy_template_path: <string> | default = ""]
-
   recording_rules:
     # Enable the storing of recording rules in tenant settings.
     # CLI flag: -tenant-settings.recording-rules.enabled

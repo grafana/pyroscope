@@ -153,8 +153,11 @@ func decodeToken(value string, key []byte) (*oauth2.Token, error) {
 		// This may be a deprecated cookie. Deprecated cookies are base64 encoded deprecatedGitSessionTokenCookie objects.
 		token, innerErr := decodeDeprecatedToken(decoded, key)
 		if innerErr != nil {
-			// Deprecated fallback failed, return the original error.
-			return nil, err
+			// Deprecated fallback failed, return the original error if exists.
+			if err != nil {
+				return nil, err
+			}
+			return nil, innerErr
 		}
 		return token, nil
 	}

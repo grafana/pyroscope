@@ -28,7 +28,10 @@ The .NET Profiler supports the following profiling types:
 
 ### Compatibility
 
+The only compatible operating system and architecture combination is Linux running on amd64 architecture.
+
 Our .NET profiler works with the following .NET versions:
+
 * .NET 6
 * .NET 7
 * .NET 8
@@ -201,3 +204,10 @@ To configure the .NET SDK to send data to Grafana Cloud Profiles or Pyroscope, r
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 
 If your open source Pyroscope server has multi-tenancy enabled, you'll need to specify a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
+
+### Locate the URL, user, and password in Grafana Cloud Profiles
+
+[//]: # 'Shared content for URl location in Grafana Cloud Profiles'
+[//]: # 'This content is located in /pyroscope/docs/sources/shared/locate-url-pw-user-cloud-profiles.md'
+
+{{< docs/shared source="pyroscope" lookup="locate-url-pw-user-cloud-profiles.md" version="latest" >}}
