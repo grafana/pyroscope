@@ -2,11 +2,13 @@ package otlp
 
 import (
 	"context"
+	"flag"
 	"os"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/grafana/dskit/server"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -334,7 +336,7 @@ func TestConversion(t *testing.T) {
 						}}}}},
 				Dictionary: &b.dictionary}
 			logger := test.NewTestingLogger(t)
-			h := NewOTLPIngestHandler(svc, logger, false)
+			h := NewOTLPIngestHandler(testConfig(), svc, logger, false)
 			_, err := h.Export(context.Background(), req)
 
 			if td.expectedError == "" {
@@ -429,7 +431,7 @@ func TestSampleAttributes(t *testing.T) {
 				}}}}},
 		Dictionary: &otlpb.dictionary}
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(svc, logger, false)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, false)
 	_, err := h.Export(context.Background(), req)
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(profiles))
@@ -593,7 +595,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		Dictionary: &otlpb.dictionary}
 
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(svc, logger, false)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, false)
 	_, err := h.Export(context.Background(), req)
 	require.NoError(t, err)
 
@@ -648,4 +650,11 @@ func (o *otlpbuilder) addstr(s string) int32 {
 	o.stringmap[s] = idx
 	o.dictionary.StringTable = append(o.dictionary.StringTable, s)
 	return idx
+}
+
+func testConfig() server.Config {
+	cfg := server.Config{}
+	fs := flag.NewFlagSet("test", flag.PanicOnError)
+	cfg.RegisterFlags(fs)
+	return cfg
 }
