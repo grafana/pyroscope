@@ -291,12 +291,15 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries)
 }
 
 func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Distributor.PushParsed")
+	defer sp.Finish()
+
 	now := model.Now()
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
-
+	sp.SetTag("tenant_id", tenantID)
 	logger := log.With(d.logger, "tenant", tenantID)
 
 	req.TenantID = tenantID
@@ -396,9 +399,13 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	for _, series := range req.Series {
 		for _, sample := range series.Samples {
 			if series.Language == "go" {
+				sp, ctx = opentracing.StartSpanFromContext(ctx, "pprof.FixGoProfile")
 				sample.Profile.Profile = pprof.FixGoProfile(sample.Profile.Profile)
+				sp.Finish()
 			}
+			sp, ctx = opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
 			sample.Profile.Normalize()
+			sp.Finish()
 		}
 	}
 
