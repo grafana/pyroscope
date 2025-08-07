@@ -54,6 +54,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -535,18 +536,26 @@ func (d *Distributor) captureProfile(ctx context.Context, tenantID string, servi
 		if d.profileCaptureCfg.probability == 0.0 || rand.Float64() > d.profileCaptureCfg.probability {
 			return
 		}
-		level.Info(d.logger).Log(
+		level.Info(spanlogger.FromContext(ctx, d.logger)).Log(
 			"msg", "capturing profile",
 			"tenant", tenantID,
 			"service", serviceName,
 			"size", len(profile),
 			"id", now.UnixNano(),
 		)
-		name := fmt.Sprintf("%s/%s/%d", tenantID, serviceName, now.UnixNano())
+		sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Capture")
+
+		objectName := fmt.Sprintf("%s/%s/%d", tenantID, serviceName, now.UnixNano())
 		data := make([]byte, len(profile))
 		copy(data, profile)
+
+		sp.SetTag("object_name", objectName)
+		sp.SetTag("profile_size", len(profile))
+		sp.SetTag("service_name", serviceName)
+		sp.Finish()
+
 		go func() {
-			err := d.profileCaptureBucket.Upload(ctx, name, bytes.NewReader(data))
+			err := d.profileCaptureBucket.Upload(ctx, objectName, bytes.NewReader(data))
 			if err != nil {
 				level.Error(d.logger).Log(
 					"msg", "failed to upload captured profile",
