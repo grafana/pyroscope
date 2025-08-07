@@ -317,7 +317,7 @@ func (f *Pyroscope) initGRPCGateway() (services.Service, error) {
 func (f *Pyroscope) initDistributor() (services.Service, error) {
 	f.Cfg.Distributor.DistributorRing.ListenPort = f.Cfg.Server.HTTPListenPort
 	logger := log.With(f.logger, "component", "distributor")
-	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, f.segmentWriterClient, f.auth)
+	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, f.segmentWriterClient, f.storageBucket, f.auth)
 	if err != nil {
 		return nil, err
 	}

@@ -20,8 +20,9 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
-	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/public"
+
+	"github.com/grafana/pyroscope/pkg/validation"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/capabilities/v1/capabilitiesv1connect"
@@ -196,6 +197,7 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, writePathOpts...)
 	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.connectOptionsAuthDelayRecovery(limits)...)
 	a.RegisterRoute("/distributor/ring", d, a.registerOptionsRingPage()...)
+	a.RegisterRoute("/distributor/profile-capture", http.HandlerFunc(d.EnableProfileCapture))
 	a.indexPage.AddLinks(defaultWeight, "Distributor", []IndexPageLink{
 		{Desc: "Ring status", Path: "/distributor/ring"},
 	})

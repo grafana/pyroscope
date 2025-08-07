@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -47,6 +48,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/model/pprofsplit"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
+	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/tenant"
@@ -86,6 +88,15 @@ func (cfg *Config) RegisterFlags(fs *flag.FlagSet, logger log.Logger) {
 	cfg.DistributorRing.RegisterFlags("distributor.ring.", "collectors/", "distributors", fs, logger)
 }
 
+type profileCaptureCfg struct {
+	tenant      string
+	serviceName string
+	probability float64
+	timeStarted time.Time
+}
+
+const profileCaptureDuration = 10 * time.Minute
+
 // Distributor coordinates replicates and distribution of log streams.
 type Distributor struct {
 	services.Service
@@ -120,6 +131,10 @@ type Distributor struct {
 
 	router        *writepath.Router
 	segmentWriter writepath.SegmentWriterClient
+
+	// debug
+	profileCaptureCfg    profileCaptureCfg
+	profileCaptureBucket objstore.Bucket
 }
 
 type Limits interface {
@@ -153,6 +168,7 @@ func New(
 	reg prometheus.Registerer,
 	logger log.Logger,
 	segmentWriter writepath.SegmentWriterClient,
+	bucket objstore.Bucket,
 	ingesterClientsOptions ...connect.ClientOption,
 ) (*Distributor, error) {
 	ingesterClientsOptions = append(
@@ -218,6 +234,10 @@ func New(
 	d.Service = services.NewBasicService(d.starting, d.running, d.stopping)
 	d.rfStats.Set(int64(ingesterRing.ReplicationFactor()))
 	d.metrics.replicationFactor.Set(float64(ingesterRing.ReplicationFactor()))
+
+	if bucket != nil {
+		d.profileCaptureBucket = objstore.NewPrefixedBucket(bucket, "captured-profiles")
+	}
 	return d, nil
 }
 
@@ -308,6 +328,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		if serviceName == "" {
 			series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: phlaremodel.AttrServiceNameFallback})
 		}
+		d.captureProfile(ctx, tenantID, serviceName, series.Samples[0].RawProfile, now)
 		sort.Sort(phlaremodel.Labels(series.Labels))
 	}
 
@@ -447,6 +468,96 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	}
 
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
+}
+
+func (d *Distributor) EnableProfileCapture(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		tenantID := r.FormValue("tenant")
+		if tenantID == "" {
+			http.Error(w, "tenant is required", http.StatusBadRequest)
+			return
+		}
+		serviceName := r.FormValue("service")
+		if serviceName == "" {
+			http.Error(w, "service is required", http.StatusBadRequest)
+			return
+		}
+		probability := 0.5
+		var err error
+		if probabilityStr := r.FormValue("probability"); probabilityStr != "" {
+			probability, err = strconv.ParseFloat(probabilityStr, 64)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			if probability < 0.0 || probability > 1.0 {
+				http.Error(w, "probability must be in range [0.0, 1.0]", http.StatusBadRequest)
+				return
+			}
+		}
+		d.profileCaptureCfg.tenant = tenantID
+		d.profileCaptureCfg.serviceName = serviceName
+		d.profileCaptureCfg.probability = probability
+		d.profileCaptureCfg.timeStarted = time.Now()
+		level.Warn(d.logger).Log(
+			"msg", "profile capture enabled",
+			"tenant", tenantID,
+			"service", serviceName,
+			"probability", probability,
+			"duration", profileCaptureDuration,
+		)
+		_, _ = w.Write([]byte("profile capture enabled until " + d.profileCaptureCfg.timeStarted.Add(profileCaptureDuration).Format(time.RFC3339) + "\n"))
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method == http.MethodDelete {
+		d.profileCaptureCfg.tenant = ""
+		d.profileCaptureCfg.serviceName = ""
+		d.profileCaptureCfg.probability = 0.0
+		d.profileCaptureCfg.timeStarted = time.Time{}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+}
+
+func (d *Distributor) captureProfile(ctx context.Context, tenantID string, serviceName string, profile []byte, now model.Time) {
+	if d.profileCaptureBucket != nil {
+		if d.profileCaptureCfg.timeStarted.Add(profileCaptureDuration).Before(now.Time()) {
+			return
+		}
+		if d.profileCaptureCfg.tenant != tenantID {
+			return
+		}
+		if d.profileCaptureCfg.serviceName != serviceName {
+			return
+		}
+		if d.profileCaptureCfg.probability == 0.0 || rand.Float64() > d.profileCaptureCfg.probability {
+			return
+		}
+		level.Info(d.logger).Log(
+			"msg", "capturing profile",
+			"tenant", tenantID,
+			"service", serviceName,
+			"size", len(profile),
+			"id", now.UnixNano(),
+		)
+		name := fmt.Sprintf("%s/%s/%d", tenantID, serviceName, now.UnixNano())
+		data := make([]byte, len(profile))
+		copy(data, profile)
+		go func() {
+			err := d.profileCaptureBucket.Upload(ctx, name, bytes.NewReader(data))
+			if err != nil {
+				level.Error(d.logger).Log(
+					"msg", "failed to upload captured profile",
+					"err", err,
+					"tenant", tenantID,
+					"service", serviceName,
+					"size", len(data),
+					"id", now.UnixNano())
+			}
+		}()
+	}
 }
 
 // If aggregation is configured for the tenant, we try to determine
