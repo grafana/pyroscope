@@ -399,11 +399,11 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	for _, series := range req.Series {
 		for _, sample := range series.Samples {
 			if series.Language == "go" {
-				sp, ctx = opentracing.StartSpanFromContext(ctx, "pprof.FixGoProfile")
+				sp, _ := opentracing.StartSpanFromContext(ctx, "pprof.FixGoProfile")
 				sample.Profile.Profile = pprof.FixGoProfile(sample.Profile.Profile)
 				sp.Finish()
 			}
-			sp, ctx = opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
+			sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
 			sample.Profile.Normalize()
 			sp.Finish()
 		}

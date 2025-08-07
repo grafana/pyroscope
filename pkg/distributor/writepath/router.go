@@ -93,6 +93,8 @@ func (m *Router) running(ctx context.Context) error {
 }
 
 func (m *Router) Send(ctx context.Context, req *distributormodel.PushRequest) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Router.Send")
+	defer sp.Finish()
 	config := m.overrides.WritePathOverrides(req.TenantID)
 	switch config.WritePath {
 	case SegmentWriterPath:
