@@ -292,10 +292,15 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries)
 }
 
 func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushRequest) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Distributor.PushBatch")
+	defer sp.Finish()
+
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return connect.NewError(connect.CodeUnauthenticated, err)
 	}
+	sp.SetTag("tenant_id", tenantID)
+
 	if len(req.Series) == 0 {
 		return noNewProfilesReceivedError()
 	}
@@ -415,9 +420,13 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	// Normalisation is quite an expensive operation,
 	// therefore it should be done after the rate limit check.
 	if req.Language == "go" {
+		sp, _ := opentracing.StartSpanFromContext(ctx, "pprof.FixGoProfile")
 		req.Profile.Profile = pprof.FixGoProfile(req.Profile.Profile)
+		sp.Finish()
 	}
+	sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
 	req.Profile.Normalize()
+	sp.Finish()
 
 	if len(req.Profile.Sample) == 0 {
 		// TODO(kolesnikovae):
