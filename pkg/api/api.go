@@ -200,6 +200,7 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, writePathOpts...)
 	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.connectOptionsAuthDelayRecovery(limits)...)
 	a.RegisterRoute("/distributor/ring", d, a.registerOptionsRingPage()...)
+	a.RegisterRoute("/distributor/profile-capture", http.HandlerFunc(d.EnableProfileCapture))
 	a.indexPage.AddLinks(defaultWeight, "Distributor", []IndexPageLink{
 		{Desc: "Ring status", Path: "/distributor/ring"},
 	})
