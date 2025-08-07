@@ -9,10 +9,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
-
 	"net/http"
 
 	"connectrpc.com/connect"
+
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/kv/memberlist"
@@ -187,10 +187,10 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 }
 
 // RegisterDistributor registers the endpoints associated with the distributor.
-func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, multitenancyEnabled bool) {
+func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, multitenancyEnabled bool, cfg server.Config) {
 	writePathOpts := a.registerOptionsWritePath(limits)
 	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, a.logger)
-	otlpHandler := otlp.NewOTLPIngestHandler(d, a.logger, multitenancyEnabled)
+	otlpHandler := otlp.NewOTLPIngestHandler(cfg, d, a.logger, multitenancyEnabled)
 
 	a.RegisterRoute("/ingest", pyroscopeHandler, writePathOpts...)
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, writePathOpts...)
