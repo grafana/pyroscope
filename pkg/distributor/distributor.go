@@ -93,6 +93,7 @@ type profileCaptureCfg struct {
 	tenant      string
 	serviceName string
 	probability float64
+	duration    time.Duration
 	timeStarted time.Time
 }
 
@@ -496,16 +497,25 @@ func (d *Distributor) EnableProfileCapture(w http.ResponseWriter, r *http.Reques
 				return
 			}
 		}
+		duration := profileCaptureDuration
+		if durationStr := r.FormValue("duration"); durationStr != "" {
+			duration, err = time.ParseDuration(durationStr)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
 		d.profileCaptureCfg.tenant = tenantID
 		d.profileCaptureCfg.serviceName = serviceName
 		d.profileCaptureCfg.probability = probability
+		d.profileCaptureCfg.duration = duration
 		d.profileCaptureCfg.timeStarted = time.Now()
 		level.Warn(d.logger).Log(
 			"msg", "profile capture enabled",
 			"tenant", tenantID,
 			"service", serviceName,
 			"probability", probability,
-			"duration", profileCaptureDuration,
+			"duration", duration,
 		)
 		_, _ = w.Write([]byte("profile capture enabled until " + d.profileCaptureCfg.timeStarted.Add(profileCaptureDuration).Format(time.RFC3339) + "\n"))
 		w.WriteHeader(http.StatusOK)
@@ -515,6 +525,7 @@ func (d *Distributor) EnableProfileCapture(w http.ResponseWriter, r *http.Reques
 		d.profileCaptureCfg.tenant = ""
 		d.profileCaptureCfg.serviceName = ""
 		d.profileCaptureCfg.probability = 0.0
+		d.profileCaptureCfg.duration = 0
 		d.profileCaptureCfg.timeStarted = time.Time{}
 		w.WriteHeader(http.StatusOK)
 		return
@@ -523,17 +534,18 @@ func (d *Distributor) EnableProfileCapture(w http.ResponseWriter, r *http.Reques
 }
 
 func (d *Distributor) captureProfile(ctx context.Context, tenantID string, serviceName string, profile []byte, now model.Time) {
+	cfg := d.profileCaptureCfg
 	if d.profileCaptureBucket != nil {
-		if d.profileCaptureCfg.timeStarted.Add(profileCaptureDuration).Before(now.Time()) {
+		if cfg.timeStarted.Add(cfg.duration).Before(now.Time()) {
 			return
 		}
-		if d.profileCaptureCfg.tenant != tenantID {
+		if cfg.tenant != tenantID {
 			return
 		}
-		if d.profileCaptureCfg.serviceName != serviceName {
+		if cfg.serviceName != serviceName {
 			return
 		}
-		if d.profileCaptureCfg.probability == 0.0 || rand.Float64() > d.profileCaptureCfg.probability {
+		if cfg.probability == 0.0 || rand.Float64() > cfg.probability {
 			return
 		}
 		level.Info(spanlogger.FromContext(ctx, d.logger)).Log(
