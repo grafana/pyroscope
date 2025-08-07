@@ -12,6 +12,9 @@ concurrency:
   cancel-in-progress: true
 permissions:
   contents: read
+env:
+  LANG: en_US.UTF-8
+  LC_ALL: en_US.UTF-8
 jobs:
   regular-path:
     strategy:
@@ -38,8 +41,11 @@ jobs:
           cache: true
       - name: Install node-canvas
         run: sudo apt-get update && sudo apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
-      - name: Set locale
-        run: sudo update-locale LANG=en_US.UTF-8
+      - name: Print locale
+        run: |
+          locale
+          echo $LANG
+          node -e "console.log(Intl.DateTimeFormat().resolvedOptions().locale)"
       - run: make build
       - name: Cypress run
         uses: cypress-io/github-action@b8ba51a856ba5f4c15cf39007636d4ab04f23e3c # v6.10.2
@@ -72,8 +78,11 @@ jobs:
           cache: true
       - name: Install node-canvas
         run: sudo apt-get update && sudo apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
-      - name: Set locale
-        run: sudo update-locale LANG=en_US.UTF-8
+      - name: Print locale
+        run: |
+          locale
+          echo $LANG
+          node -e "console.log(Intl.DateTimeFormat().resolvedOptions().locale)"
       - run: make build
       - name: run nginx with /foobar/
         run: docker compose -f scripts/base-url/docker-compose.yaml up -d
