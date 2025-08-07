@@ -10,6 +10,11 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/genproto/googleapis/api/httpbody"
+	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/protobuf/encoding/protojson"
+	"gopkg.in/yaml.v3"
+
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/dns"
@@ -29,10 +34,6 @@ import (
 	objstoretracing "github.com/thanos-io/objstore/tracing/opentracing"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
-	"google.golang.org/genproto/googleapis/api/httpbody"
-	"google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/protobuf/encoding/protojson"
-	"gopkg.in/yaml.v3"
 
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/pkg/adhocprofiles"
@@ -321,7 +322,7 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.MultitenancyEnabled)
+	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.MultitenancyEnabled, f.Cfg.Server)
 	return d, nil
 }
 
