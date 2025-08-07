@@ -517,7 +517,7 @@ func (d *Distributor) EnableProfileCapture(w http.ResponseWriter, r *http.Reques
 			"probability", probability,
 			"duration", duration,
 		)
-		_, _ = w.Write([]byte("profile capture enabled until " + d.profileCaptureCfg.timeStarted.Add(profileCaptureDuration).Format(time.RFC3339) + "\n"))
+		_, _ = w.Write([]byte("profile capture enabled until " + d.profileCaptureCfg.timeStarted.Add(duration).Format(time.RFC3339) + "\n"))
 		w.WriteHeader(http.StatusOK)
 		return
 	}
