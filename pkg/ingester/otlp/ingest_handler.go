@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"connectrpc.com/connect"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
@@ -22,7 +21,6 @@ import (
 
 	"google.golang.org/grpc/status"
 
-	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/model"
@@ -44,7 +42,7 @@ type Handler interface {
 }
 
 type PushService interface {
-	PushParsed(ctx context.Context, req *distirbutormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error)
+	PushBatch(ctx context.Context, req *distirbutormodel.PushRequest) error
 }
 
 func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, me bool) Handler {
@@ -147,8 +145,8 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 				}
 
 				req := &distirbutormodel.PushRequest{
-					RawProfileSize: proto.Size(p),
-					RawProfileType: distirbutormodel.RawProfileTypeOTEL,
+					ReceivedCompressedProfileSize: proto.Size(p),
+					RawProfileType:                distirbutormodel.RawProfileTypeOTEL,
 				}
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {
@@ -167,21 +165,17 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 					})
 
 					s := &distirbutormodel.ProfileSeries{
-						Labels: labels,
-						Samples: []*distirbutormodel.ProfileSample{
-							{
-								RawProfile: nil,
-								Profile:    pprof.RawFromProto(pprofProfile.profile),
-								ID:         uuid.New().String(),
-							},
-						},
+						Labels:     labels,
+						RawProfile: nil,
+						Profile:    pprof.RawFromProto(pprofProfile.profile),
+						ID:         uuid.New().String(),
 					}
 					req.Series = append(req.Series, s)
 				}
 				if len(req.Series) == 0 {
 					continue
 				}
-				_, err = h.svc.PushParsed(ctx, req)
+				err = h.svc.PushBatch(ctx, req)
 				if err != nil {
 					h.log.Log("msg", "failed to push profile", "err", err)
 					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)

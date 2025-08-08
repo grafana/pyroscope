@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
@@ -30,7 +31,7 @@ type routerTestSuite struct {
 	ingester  *mockwritepath.MockIngesterClient
 	segwriter *mockwritepath.MockIngesterClient
 
-	request *distributormodel.PushRequest
+	request *distributormodel.ProfileSeries
 }
 
 type mockOverrides struct{ mock.Mock }
@@ -47,20 +48,16 @@ func (s *routerTestSuite) SetupTest() {
 	s.ingester = new(mockwritepath.MockIngesterClient)
 	s.segwriter = new(mockwritepath.MockIngesterClient)
 
-	profile := &distributormodel.ProfileSample{Profile: &pprof.Profile{}}
-	s.request = &distributormodel.PushRequest{
+	s.request = &distributormodel.ProfileSeries{
+		Labels: []*typesv1.LabelPair{
+			{Name: "foo", Value: "bar"},
+			{Name: "qux", Value: "zoo"},
+		},
+		Profile: &pprof.Profile{},
+
 		TenantID: "tenant-a",
-		Series: []*distributormodel.ProfileSeries{
-			{
-				Samples: []*distributormodel.ProfileSample{profile},
-				Labels: []*typesv1.LabelPair{
-					{Name: "foo", Value: "bar"},
-					{Name: "qux", Value: "zoo"},
-				},
-				Annotations: []*typesv1.ProfileAnnotation{
-					{Key: "foo", Value: "bar"},
-				},
-			},
+		Annotations: []*typesv1.ProfileAnnotation{
+			{Key: "foo", Value: "bar"},
 		},
 	}
 
@@ -143,7 +140,7 @@ func (s *routerTestSuite) Test_CombinedPath() {
 			// attempting to access it concurrently with segment writer
 			// that should convert the distributor request to a segment
 			// writer request.
-			m.Get(1).(*distributormodel.PushRequest).Series = nil
+			m.Get(1).(*distributormodel.ProfileSeries).Profile = nil
 		}).
 		Return(new(connect.Response[pushv1.PushResponse]), nil)
 
@@ -151,7 +148,7 @@ func (s *routerTestSuite) Test_CombinedPath() {
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
 		Run(func(m mock.Arguments) {
 			sentSegwriter.Add(1)
-			m.Get(1).(*distributormodel.PushRequest).Series = nil
+			m.Get(1).(*distributormodel.ProfileSeries).Profile = nil
 		}).
 		Return(new(connect.Response[pushv1.PushResponse]), nil)
 
@@ -253,21 +250,4 @@ func (s *routerTestSuite) Test_CombinedPath_SegmentWriter_Exclusive_Error() {
 		Once()
 
 	s.Assert().Error(s.router.Send(context.Background(), s.request), context.Canceled)
-}
-
-func (s *routerTestSuite) Test_SegmentWriter_MultipleProfiles() {
-	s.overrides.On("WritePathOverrides", "tenant-a").Return(Config{
-		WritePath:           SegmentWriterPath,
-		IngesterWeight:      0,
-		SegmentWriterWeight: 1,
-	})
-
-	x := s.request.Series[0]
-	x.Samples = append(x.Samples, &distributormodel.ProfileSample{Profile: &pprof.Profile{}})
-
-	s.segwriter.On("Push", mock.Anything, mock.Anything).
-		Return(new(connect.Response[pushv1.PushResponse]), nil).
-		Once()
-
-	s.Assert().NoError(s.router.Send(context.Background(), s.request))
 }
