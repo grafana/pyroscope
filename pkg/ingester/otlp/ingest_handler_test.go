@@ -343,7 +343,7 @@ func TestConversion(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, 1, len(profiles))
 
-				gp := profiles[0].Series[0].Sample.Profile.Profile
+				gp := profiles[0].Series[0].Profile.Profile
 
 				jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
 				assert.NoError(t, err)
@@ -444,7 +444,7 @@ func TestSampleAttributes(t *testing.T) {
 	assert.Equal(t, "", seriesLabelsMap["process"])
 	assert.NotContains(t, seriesLabelsMap, "service.name")
 
-	gp := profiles[0].Series[0].Sample.Profile.Profile
+	gp := profiles[0].Series[0].Profile.Profile
 
 	jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
 	assert.NoError(t, err)
@@ -613,7 +613,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		expectedJsonPath := expectedProfiles[series]
 		expectedJson := readJSONFile(t, expectedJsonPath)
 
-		gp := s.Sample.Profile.Profile
+		gp := s.Profile.Profile
 
 		require.Equal(t, 1, len(gp.SampleType))
 		assert.Equal(t, "cpu", gp.StringTable[gp.SampleType[0].Type])
