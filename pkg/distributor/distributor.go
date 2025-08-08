@@ -315,13 +315,16 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 	res := multierror.New()
 	errorsMutex := new(sync.Mutex)
 	wg := new(sync.WaitGroup)
-	for _, s := range req.Series {
+	for index, s := range req.Series {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			itErr := util.RecoverPanic(func() error {
 				return d.pushSeries(ctx, s, req.RawProfileType, tenantID)
 			})()
+			if itErr != nil {
+				itErr = fmt.Errorf("push series with index %d and id %s failed: %w", index, s.Sample.ID, itErr)
+			}
 			errorsMutex.Lock()
 			res.Add(itErr)
 			errorsMutex.Unlock()
