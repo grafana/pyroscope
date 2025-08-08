@@ -63,7 +63,7 @@ lint: go/lint helm/lint buf/lint goreleaser/lint ## Lint Go, Helm and protobuf
 test: go/test ## Run unit tests
 
 .PHONY: generate
-generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/protoc-gen-openapiv2 $(BIN)/protoc-gen-grpc-gateway $(BIN)/protoc-gen-connect-go $(BIN)/protoc-gen-connect-go-mux $(BIN)/gomodifytags ## Regenerate protobuf
+generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/protoc-gen-openapiv2 $(BIN)/protoc-gen-grpc-gateway $(BIN)/protoc-gen-connect-go $(BIN)/protoc-gen-connect-go-mux $(BIN)/gomodifytags examples/generate ## Regenerate protobuf
 	rm -Rf api/openapiv2/gen/ api/gen
 	find pkg/ \( -name \*.pb.go -o -name \*.connect\*.go \) -delete
 	cd api/ && PATH=$(BIN) $(BIN)/buf generate
@@ -93,6 +93,11 @@ endif
 examples/test: RUN := .*
 examples/test: $(BIN)/gotestsum
 	$(BIN)/gotestsum --format testname --rerun-fails=2 --packages ./examples -- --count 1 --parallel 2 --timeout 1h --tags examples -run "$(RUN)"
+
+# Run template generation on examples
+.PHONY: examples/generate
+examples/generate:
+	go run ./tools/generate-examples
 
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
