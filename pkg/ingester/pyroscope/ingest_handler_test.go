@@ -46,11 +46,11 @@ type MockPushService struct {
 func (m *MockPushService) PushBatch(ctx context.Context, req *model.PushRequest) error {
 	if m.Keep {
 		for _, series := range req.Series {
-			rawProfileCopy := make([]byte, len(series.Sample.RawProfile))
-			copy(rawProfileCopy, series.Sample.RawProfile)
+			rawProfileCopy := make([]byte, len(series.RawProfile))
+			copy(rawProfileCopy, series.RawProfile)
 			m.reqPprof = append(m.reqPprof, &flatProfileSeries{
 				Labels:     series.Labels,
-				Profile:    series.Sample.Profile.CloneVT(),
+				Profile:    series.Profile.CloneVT(),
 				RawProfile: rawProfileCopy,
 			})
 		}
