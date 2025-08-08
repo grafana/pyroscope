@@ -3,6 +3,8 @@ package delayhandler
 import (
 	"net/http"
 	"time"
+
+	"github.com/opentracing/opentracing-go"
 )
 
 func wrapResponseWriter(w http.ResponseWriter, end time.Time) (http.ResponseWriter, *delayedResponseWriter) {
@@ -65,15 +67,21 @@ func NewHTTP(limits Limits) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := timeNow()
+			ctx := r.Context()
 
-			delay := getDelay(r.Context(), limits)
+			delay := getDelay(ctx, limits)
 			var delayRw *delayedResponseWriter
 			if delay > 0 {
 				w, delayRw = wrapResponseWriter(w, start.Add(delay))
+
+				// only add a span when delay is active
+				var sp opentracing.Span
+				sp, ctx = opentracing.StartSpanFromContext(ctx, "delayhandler.Handler")
+				defer sp.Finish()
 			}
 
 			// now run the chain after me
-			h.ServeHTTP(w, r)
+			h.ServeHTTP(w, r.WithContext(ctx))
 
 			// if we didn't delay, return immediately
 			if delayRw == nil {
@@ -95,6 +103,11 @@ func NewHTTP(limits Limits) func(h http.Handler) http.Handler {
 			if !delayRw.statusWritten {
 				addDelayHeader(w.Header(), delayLeft)
 			}
+
+			// create a separate span to make the artificial delay clear
+			sp, _ := opentracing.StartSpanFromContext(ctx, "delayhandler.Delay")
+			sp.SetTag("delayed_by", delayLeft.String())
+			defer sp.Finish()
 
 			// wait for the delay to elapse
 			<-timeAfter(delayLeft)
