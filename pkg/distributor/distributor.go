@@ -561,15 +561,14 @@ func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distribut
 
 	profiles := make([]*profileTracker, 0, len(sampleSeries))
 	for _, series := range sampleSeries {
-		raw := series.Sample
-		p := raw.Profile
+		p := series.Sample.Profile
 		// zip the data back into the buffer
-		bw := bytes.NewBuffer(raw.RawProfile[:0])
+		bw := bytes.NewBuffer(series.Sample.RawProfile[:0])
 		if _, err = p.WriteTo(bw); err != nil {
 			return nil, err
 		}
-		raw.ID = uuid.NewString()
-		raw.RawProfile = bw.Bytes()
+		series.Sample.ID = uuid.NewString()
+		series.Sample.RawProfile = bw.Bytes()
 		profiles = append(profiles, &profileTracker{profile: series})
 	}
 
@@ -650,8 +649,7 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 	config := d.limits.WritePathOverrides(req.TenantID)
 	requests := make([]*segmentwriterv1.PushRequest, 0, len(serviceSeries)*2)
 	for _, s := range serviceSeries {
-		p := s.Sample
-		buf, err := pprof.Marshal(p.Profile.Profile, config.Compression == writepath.CompressionGzip)
+		buf, err := pprof.Marshal(s.Sample.Profile.Profile, config.Compression == writepath.CompressionGzip)
 		if err != nil {
 			panic(fmt.Sprintf("failed to marshal profile: %v", err))
 		}
@@ -998,15 +996,14 @@ func injectMappingVersions(s *distributormodel.ProfileSeries) error {
 	if !ok {
 		return nil
 	}
-	sample := s.Sample
-	for _, m := range sample.Profile.Mapping {
-		version.BuildID = sample.Profile.StringTable[m.BuildId]
+	for _, m := range s.Sample.Profile.Mapping {
+		version.BuildID = s.Sample.Profile.StringTable[m.BuildId]
 		versionString, err := json.Marshal(version)
 		if err != nil {
 			return err
 		}
-		sample.Profile.StringTable = append(sample.Profile.StringTable, string(versionString))
-		m.BuildId = int64(len(sample.Profile.StringTable) - 1)
+		s.Sample.Profile.StringTable = append(s.Sample.Profile.StringTable, string(versionString))
+		m.BuildId = int64(len(s.Sample.Profile.StringTable) - 1)
 	}
 	return nil
 }
@@ -1018,13 +1015,12 @@ func (d *Distributor) visitSampleSeries(s *distributormodel.ProfileSeries, visit
 	usageConfig := d.limits.DistributorUsageGroups(s.TenantID)
 	var result []*distributormodel.ProfileSeries
 	usageGroups := d.usageGroupEvaluator.GetMatch(s.TenantID, usageConfig, s.Labels)
-	p := s.Sample
 	visitor := &sampleSeriesVisitor{
 		tenantID: s.TenantID,
 		limits:   d.limits,
-		profile:  p.Profile,
+		profile:  s.Sample.Profile,
 	}
-	if err := visit(p.Profile.Profile, s.Labels, relabelingRules, visitor); err != nil {
+	if err := visit(s.Sample.Profile.Profile, s.Labels, relabelingRules, visitor); err != nil {
 		validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), s.TenantID).Add(float64(s.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), s.TenantID).Add(float64(s.TotalBytesUncompressed))
 		usageGroups.CountDiscardedBytes(string(validation.ReasonOf(err)), s.TotalBytesUncompressed)
