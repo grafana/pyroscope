@@ -254,12 +254,10 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 				continue
 			}
 			series := &distributormodel.ProfileSeries{
-				Labels: grpcSeries.Labels,
-				Sample: distributormodel.ProfileSample{
-					Profile:    profile,
-					RawProfile: grpcSample.RawProfile,
-					ID:         grpcSample.ID,
-				},
+				Labels:     grpcSeries.Labels,
+				Profile:    profile,
+				RawProfile: grpcSample.RawProfile,
+				ID:         grpcSample.ID,
 			}
 			req.Series = append(req.Series, series)
 		}
@@ -287,7 +285,7 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries)
 	}
 	lang := series.GetLanguage()
 	if lang == "" {
-		lang = pprof.GetLanguage(series.Sample.Profile)
+		lang = pprof.GetLanguage(series.Profile)
 	}
 	series.Language = lang
 	return series.Language
@@ -323,7 +321,7 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 				return d.pushSeries(ctx, s, req.RawProfileType, tenantID)
 			})()
 			if itErr != nil {
-				itErr = fmt.Errorf("push series with index %d and id %s failed: %w", index, s.Sample.ID, itErr)
+				itErr = fmt.Errorf("push series with index %d and id %s failed: %w", index, s.ID, itErr)
 			}
 			errorsMutex.Lock()
 			res.Add(itErr)
@@ -335,7 +333,7 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 }
 
 func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string) (err error) {
-	if req.Sample.Profile == nil {
+	if req.Profile == nil {
 		return noNewProfilesReceivedError()
 	}
 	now := model.Now()
@@ -392,9 +390,9 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
 	if origin == distributormodel.RawProfileTypePPROF {
-		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.Sample.RawProfile)))
+		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.RawProfile)))
 	}
-	p := req.Sample.Profile
+	p := req.Profile
 	decompressedSize := p.SizeVT()
 	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
 	d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
@@ -417,11 +415,11 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	// Normalisation is quite an expensive operation,
 	// therefore it should be done after the rate limit check.
 	if req.Language == "go" {
-		req.Sample.Profile.Profile = pprof.FixGoProfile(req.Sample.Profile.Profile)
+		req.Profile.Profile = pprof.FixGoProfile(req.Profile.Profile)
 	}
-	req.Sample.Profile.Normalize()
+	req.Profile.Normalize()
 
-	if len(req.Sample.Profile.Sample) == 0 {
+	if len(req.Profile.Sample) == 0 {
 		// TODO(kolesnikovae):
 		//   Normalization may cause all profiles and series to be empty.
 		//   We should report it as an error and account for discarded data.
@@ -481,7 +479,7 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 
 	// First, we drop __session_id__ label to increase probability
 	// of aggregation, which is handled done per series.
-	profile := series.Sample.Profile.Profile
+	profile := series.Profile.Profile
 	labels := phlaremodel.Labels(series.Labels)
 	if _, hasSessionID := labels.GetLabel(phlaremodel.LabelNameSessionID); hasSessionID {
 		labels = labels.Clone().Delete(phlaremodel.LabelNameSessionID)
@@ -523,7 +521,7 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 			aggregated := &distributormodel.ProfileSeries{
 				TenantID:    req.TenantID,
 				Labels:      labels,
-				Sample:      distributormodel.ProfileSample{Profile: pprof.RawFromProto(p.Profile())},
+				Profile:     pprof.RawFromProto(p.Profile()),
 				Annotations: annotations,
 			}
 			return d.router.Send(localCtx, aggregated)
@@ -561,14 +559,14 @@ func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distribut
 
 	profiles := make([]*profileTracker, 0, len(sampleSeries))
 	for _, series := range sampleSeries {
-		p := series.Sample.Profile
+		p := series.Profile
 		// zip the data back into the buffer
-		bw := bytes.NewBuffer(series.Sample.RawProfile[:0])
+		bw := bytes.NewBuffer(series.RawProfile[:0])
 		if _, err = p.WriteTo(bw); err != nil {
 			return nil, err
 		}
-		series.Sample.ID = uuid.NewString()
-		series.Sample.RawProfile = bw.Bytes()
+		series.ID = uuid.NewString()
+		series.RawProfile = bw.Bytes()
 		profiles = append(profiles, &profileTracker{profile: series})
 	}
 
@@ -649,7 +647,7 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 	config := d.limits.WritePathOverrides(req.TenantID)
 	requests := make([]*segmentwriterv1.PushRequest, 0, len(serviceSeries)*2)
 	for _, s := range serviceSeries {
-		buf, err := pprof.Marshal(s.Sample.Profile.Profile, config.Compression == writepath.CompressionGzip)
+		buf, err := pprof.Marshal(s.Profile.Profile, config.Compression == writepath.CompressionGzip)
 		if err != nil {
 			panic(fmt.Sprintf("failed to marshal profile: %v", err))
 		}
@@ -770,8 +768,8 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 		series := &pushv1.RawProfileSeries{
 			Labels: p.profile.Labels,
 			Samples: []*pushv1.RawSample{{
-				RawProfile: p.profile.Sample.RawProfile,
-				ID:         p.profile.Sample.ID,
+				RawProfile: p.profile.RawProfile,
+				ID:         p.profile.ID,
 			}},
 			Annotations: p.profile.Annotations,
 		}
@@ -847,7 +845,7 @@ func (d *Distributor) calculateRequestSize(req *distributormodel.ProfileSeries) 
 		req.TotalBytesUncompressed += int64(len(lbs.Value))
 	}
 	req.TotalProfiles += 1
-	req.TotalBytesUncompressed += int64(req.Sample.Profile.SizeVT())
+	req.TotalBytesUncompressed += int64(req.Profile.SizeVT())
 }
 
 func (d *Distributor) checkIngestLimit(req *distributormodel.ProfileSeries) error {
@@ -996,14 +994,14 @@ func injectMappingVersions(s *distributormodel.ProfileSeries) error {
 	if !ok {
 		return nil
 	}
-	for _, m := range s.Sample.Profile.Mapping {
-		version.BuildID = s.Sample.Profile.StringTable[m.BuildId]
+	for _, m := range s.Profile.Mapping {
+		version.BuildID = s.Profile.StringTable[m.BuildId]
 		versionString, err := json.Marshal(version)
 		if err != nil {
 			return err
 		}
-		s.Sample.Profile.StringTable = append(s.Sample.Profile.StringTable, string(versionString))
-		m.BuildId = int64(len(s.Sample.Profile.StringTable) - 1)
+		s.Profile.StringTable = append(s.Profile.StringTable, string(versionString))
+		m.BuildId = int64(len(s.Profile.StringTable) - 1)
 	}
 	return nil
 }
@@ -1018,9 +1016,9 @@ func (d *Distributor) visitSampleSeries(s *distributormodel.ProfileSeries, visit
 	visitor := &sampleSeriesVisitor{
 		tenantID: s.TenantID,
 		limits:   d.limits,
-		profile:  s.Sample.Profile,
+		profile:  s.Profile,
 	}
-	if err := visit(s.Sample.Profile.Profile, s.Labels, relabelingRules, visitor); err != nil {
+	if err := visit(s.Profile.Profile, s.Labels, relabelingRules, visitor); err != nil {
 		validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), s.TenantID).Add(float64(s.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), s.TenantID).Add(float64(s.TotalBytesUncompressed))
 		usageGroups.CountDiscardedBytes(string(validation.ReasonOf(err)), s.TotalBytesUncompressed)
@@ -1064,8 +1062,8 @@ func (v *sampleSeriesVisitor) ValidateLabels(labels phlaremodel.Labels) error {
 
 func (v *sampleSeriesVisitor) VisitProfile(labels phlaremodel.Labels) {
 	v.series = append(v.series, &distributormodel.ProfileSeries{
-		Sample: distributormodel.ProfileSample{Profile: v.profile},
-		Labels: labels,
+		Profile: v.profile,
+		Labels:  labels,
 	})
 }
 
@@ -1074,8 +1072,8 @@ func (v *sampleSeriesVisitor) VisitSampleSeries(labels phlaremodel.Labels, sampl
 		v.exp = pprof.NewSampleExporter(v.profile.Profile)
 	}
 	v.series = append(v.series, &distributormodel.ProfileSeries{
-		Sample: distributormodel.ProfileSample{Profile: exportSamples(v.exp, samples)},
-		Labels: labels,
+		Profile: exportSamples(v.exp, samples),
+		Labels:  labels,
 	})
 }
 

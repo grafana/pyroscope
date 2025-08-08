@@ -165,12 +165,10 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 					})
 
 					s := &distirbutormodel.ProfileSeries{
-						Labels: labels,
-						Sample: distirbutormodel.ProfileSample{
-							RawProfile: nil,
-							Profile:    pprof.RawFromProto(pprofProfile.profile),
-							ID:         uuid.New().String(),
-						},
+						Labels:     labels,
+						RawProfile: nil,
+						Profile:    pprof.RawFromProto(pprofProfile.profile),
+						ID:         uuid.New().String(),
 					}
 					req.Series = append(req.Series, s)
 				}

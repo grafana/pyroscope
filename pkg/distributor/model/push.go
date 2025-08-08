@@ -20,17 +20,13 @@ type PushRequest struct {
 	RawProfileType                RawProfileType
 }
 
-type ProfileSample struct {
-	Profile    *pprof.Profile
-	RawProfile []byte // may be nil if the Profile is composed not from pprof ( e.g. jfr)
-	ID         string
-}
-
 // todo better name
 type ProfileSeries struct {
 	// Caller provided, modified during processing
-	Labels []*v1.LabelPair
-	Sample ProfileSample
+	Labels     []*v1.LabelPair
+	Profile    *pprof.Profile
+	RawProfile []byte // may be nil if the Profile is composed not from pprof ( e.g. jfr)
+	ID         string
 
 	// todo split
 	// Transient state
@@ -87,13 +83,11 @@ func (req *ProfileSeries) Clone() *ProfileSeries {
 		TotalProfiles:          req.TotalProfiles,
 		TotalBytesUncompressed: req.TotalBytesUncompressed,
 		Labels:                 phlaremodel.Labels(req.Labels).Clone(),
-		Sample: ProfileSample{
-			Profile:    &pprof.Profile{Profile: req.Sample.Profile.CloneVT()},
-			RawProfile: nil,
-			ID:         req.Sample.ID,
-		},
-		Language:    req.Language,
-		Annotations: req.Annotations,
+		Profile:                &pprof.Profile{Profile: req.Profile.CloneVT()},
+		RawProfile:             nil,
+		ID:                     req.ID,
+		Language:               req.Language,
+		Annotations:            req.Annotations,
 	}
 	return c
 }
