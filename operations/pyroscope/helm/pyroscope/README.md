@@ -38,7 +38,7 @@
 | pyroscope.extraArgs."log.level" | string | `"debug"` |  |
 | pyroscope.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |
 | pyroscope.extraEnvVars | object | `{}` |  |
-| pyroscope.extraCustomEnvVars | object | `{}` |  |
+| pyroscope.extraCustomEnvVars | object | `{}` | Additional custom environment variables to add to the Pyroscope pods |
 | pyroscope.extraLabels | object | `{}` |  |
 | pyroscope.extraVolumeMounts | list | `[]` |  |
 | pyroscope.extraVolumes | list | `[]` |  |
