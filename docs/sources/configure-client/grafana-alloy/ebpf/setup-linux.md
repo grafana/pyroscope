@@ -23,7 +23,7 @@ Before you begin, you need:
 - Access to Grafana with the [Grafana Pyroscope data source][pyroscope-ds] provisioned.
 
 {{% admonition type="note" %}}
-If you don't have a Grafana or a Pyroscope server, you can use the [Grafana Cloud][gcloud] free plan to get started.
+If you don't have a Grafana or a Pyroscope server, you can use the [Grafana Cloud][https://grafana.com/auth/sign-up/create-user?pg=pricing&plcmt=free&cta=create-free-account] free plan to get started.
 {{% /admonition %}}
 
 ## Verify system meets the requirements
