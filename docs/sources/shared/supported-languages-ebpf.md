@@ -13,7 +13,7 @@ description: Shared file for supported languages when using eBPF.
 
 The eBPF profiler only collects CPU profiles.
 Generally, natively compiled languages like C/C++, Go, and Rust are supported. They should have frame pointers enabled (enabled by default in Go).
-Refer to [Troubleshooting unknown symbols][troubleshooting] for additional requirements and information.
+Refer to [Troubleshooting unknown symbols][https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/ebpf/troubleshooting/#troubleshoot-unknown-symbols] for additional requirements and information.
 
 Python is the only supported high-level language, as long as `python_enabled=true`.
 Other high-level languages like Java, Ruby, PHP, and JavaScript require additional work to show stack traces of methods in these languages correctly.
