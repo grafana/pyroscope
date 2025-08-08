@@ -177,8 +177,16 @@ func readInputRawDataFromRequest(ctx context.Context, r *http.Request, input *in
 	}
 
 	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
-	if n, err := io.Copy(buf, r.Body); err != nil {
+	n, err := io.Copy(buf, r.Body)
+	if err != nil {
 		return fmt.Errorf("error reading request body bytes_read %d: %w", n, err)
+	}
+
+	if sp != nil {
+		sp.SetTag("content_length", n)
+		sp.LogFields(
+			otlog.String("msg", "read body from request"),
+		)
 	}
 	b := buf.Bytes()
 
