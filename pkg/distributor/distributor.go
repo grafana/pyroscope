@@ -255,7 +255,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 			}
 			series := &distributormodel.ProfileSeries{
 				Labels: grpcSeries.Labels,
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile:    profile,
 					RawProfile: grpcSample.RawProfile,
 					ID:         grpcSample.ID,
@@ -335,7 +335,7 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 }
 
 func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string) (err error) {
-	if req.Sample == nil || req.Sample.Profile == nil {
+	if req.Sample.Profile == nil {
 		return noNewProfilesReceivedError()
 	}
 	now := model.Now()
@@ -523,7 +523,7 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 			aggregated := &distributormodel.ProfileSeries{
 				TenantID:    req.TenantID,
 				Labels:      labels,
-				Sample:      &distributormodel.ProfileSample{Profile: pprof.RawFromProto(p.Profile())},
+				Sample:      distributormodel.ProfileSample{Profile: pprof.RawFromProto(p.Profile())},
 				Annotations: annotations,
 			}
 			return d.router.Send(localCtx, aggregated)
@@ -1068,7 +1068,7 @@ func (v *sampleSeriesVisitor) ValidateLabels(labels phlaremodel.Labels) error {
 
 func (v *sampleSeriesVisitor) VisitProfile(labels phlaremodel.Labels) {
 	v.series = append(v.series, &distributormodel.ProfileSeries{
-		Sample: &distributormodel.ProfileSample{Profile: v.profile},
+		Sample: distributormodel.ProfileSample{Profile: v.profile},
 		Labels: labels,
 	})
 }
@@ -1078,7 +1078,7 @@ func (v *sampleSeriesVisitor) VisitSampleSeries(labels phlaremodel.Labels, sampl
 		v.exp = pprof.NewSampleExporter(v.profile.Profile)
 	}
 	v.series = append(v.series, &distributormodel.ProfileSeries{
-		Sample: &distributormodel.ProfileSample{Profile: exportSamples(v.exp, samples)},
+		Sample: distributormodel.ProfileSample{Profile: exportSamples(v.exp, samples)},
 		Labels: labels,
 	})
 }

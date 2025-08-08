@@ -481,7 +481,7 @@ func Test_IngestLimits(t *testing.T) {
 		{
 			description: "ingest_limit_reached",
 			pushReq: &distributormodel.PushRequest{Series: []*distributormodel.ProfileSeries{{
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(testProfile(1)),
 				},
 			}}},
@@ -513,7 +513,7 @@ func Test_IngestLimits(t *testing.T) {
 							{Name: "__name__", Value: "cpu"},
 							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 						},
-						Sample: &distributormodel.ProfileSample{
+						Sample: distributormodel.ProfileSample{
 							Profile: pprof2.RawFromProto(testProfile(1)),
 						},
 					},
@@ -549,7 +549,7 @@ func Test_IngestLimits(t *testing.T) {
 							{Name: "__name__", Value: "cpu"},
 							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 						},
-						Sample: &distributormodel.ProfileSample{
+						Sample: distributormodel.ProfileSample{
 							Profile: pprof2.RawFromProto(testProfile(1)),
 						},
 					},
@@ -584,7 +584,7 @@ func Test_IngestLimits(t *testing.T) {
 							{Name: "__name__", Value: "cpu"},
 							{Name: phlaremodel.LabelNameServiceName, Value: "svc1"},
 						},
-						Sample: &distributormodel.ProfileSample{
+						Sample: distributormodel.ProfileSample{
 							RawProfile: collectTestProfileBytes(t),
 							Profile: pprof2.RawFromProto(&profilev1.Profile{
 								Sample: []*profilev1.Sample{{
@@ -599,7 +599,7 @@ func Test_IngestLimits(t *testing.T) {
 							{Name: "__name__", Value: "cpu"},
 							{Name: phlaremodel.LabelNameServiceName, Value: "svc2"},
 						},
-						Sample: &distributormodel.ProfileSample{
+						Sample: distributormodel.ProfileSample{
 							Profile: pprof2.RawFromProto(testProfile(1))},
 					},
 				},
@@ -646,7 +646,7 @@ func Test_IngestLimits(t *testing.T) {
 							{Name: "__name__", Value: "cpu"},
 							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 						},
-						Sample: &distributormodel.ProfileSample{
+						Sample: distributormodel.ProfileSample{
 							Profile: pprof2.RawFromProto(testProfile(1)),
 						},
 					},
@@ -724,7 +724,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 			description: "no series labels, no sample labels",
 			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						Sample: []*profilev1.Sample{{
 							Value: []int64{1},
@@ -741,7 +741,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 				Labels: []*typesv1.LabelPair{
 					{Name: "foo", Value: "bar"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						Sample: []*profilev1.Sample{{
 							Value: []int64{1},
@@ -760,7 +760,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					{Name: "__name__", Value: "cpu"},
 					{Name: "foo", Value: "bar"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						Sample: []*profilev1.Sample{{
 							Value: []int64{1},
@@ -775,7 +775,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							Sample: []*profilev1.Sample{{
 								Value: []int64{1},
@@ -793,7 +793,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					{Name: "service_name", Value: "service"},
 					{Name: "__name__", Value: "cpu"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "foo", "bar"},
 						Sample: []*profilev1.Sample{{
@@ -812,7 +812,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{"", "foo", "bar"},
 							Sample: []*profilev1.Sample{{
@@ -833,7 +833,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					{Name: "__name__", Value: "cpu"},
 					{Name: "baz", Value: "qux"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "foo", "bar"},
 						Sample: []*profilev1.Sample{{
@@ -853,7 +853,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{"", "foo", "bar"},
 							Sample: []*profilev1.Sample{{
@@ -875,7 +875,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					{Name: "foo", Value: "bar"},
 					{Name: "baz", Value: "qux"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "foo", "bar"},
 						Sample: []*profilev1.Sample{
@@ -900,7 +900,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{"", "foo", "bar"},
 							Sample: []*profilev1.Sample{
@@ -923,7 +923,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					{Name: "__name__", Value: "cpu"},
 					{Name: "baz", Value: "qux"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "foo", "bar", "waldo", "fred"},
 						Sample: []*profilev1.Sample{
@@ -952,7 +952,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{""},
 							Sample: []*profilev1.Sample{{
@@ -970,7 +970,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "service_name", Value: "service"},
 						{Name: "waldo", Value: "fred"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{""},
 							Sample: []*profilev1.Sample{{
@@ -991,7 +991,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					{Name: "__name__", Value: "godeltaprof_memory"},
 					{Name: "service_name", Value: "service"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{""},
 						Sample: []*profilev1.Sample{{
@@ -1009,7 +1009,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "__name_replaced__", Value: "godeltaprof_memory"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{""},
 							Sample: []*profilev1.Sample{{
@@ -1032,7 +1032,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					{Name: "__name__", Value: "unwanted"},
 					{Name: "service_name", Value: "service"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "span_name", "randomness"},
 						Sample: []*profilev1.Sample{
@@ -1058,7 +1058,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "__name__", Value: "unwanted"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{""},
 							Sample: []*profilev1.Sample{{
@@ -1080,7 +1080,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					{Name: "__name__", Value: "unwanted"},
 					{Name: "service_name", Value: "service"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "span_name", "randomness"},
 						Sample: []*profilev1.Sample{
@@ -1111,7 +1111,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					{Name: "__name__", Value: "unwanted"},
 					{Name: "service_name", Value: "service"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "span_name", "randomness"},
 						Sample: []*profilev1.Sample{
@@ -1134,7 +1134,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "__name__", Value: "unwanted"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{""},
 							Sample: []*profilev1.Sample{{
@@ -1153,7 +1153,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 					{Name: "__name__", Value: "profile"},
 					{Name: "service_name", Value: "service"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "foo", "bar", "binary", "span_id", "aaaabbbbccccdddd", "__name__"},
 						Location: []*profilev1.Location{
@@ -1204,7 +1204,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "__name__", Value: "profile"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{""},
 							Sample: []*profilev1.Sample{
@@ -1232,7 +1232,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{""},
 							Sample: []*profilev1.Sample{{
@@ -1313,7 +1313,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 			description: "no series labels, no sample labels",
 			pushReq: &distributormodel.ProfileSeries{
 				TenantID: dummyTenantID,
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						Sample: []*profilev1.Sample{{
 							Value: []int64{1},
@@ -1330,7 +1330,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 				Labels: []*typesv1.LabelPair{
 					{Name: "foo", Value: "bar"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						Sample: []*profilev1.Sample{{
 							Value: []int64{1},
@@ -1349,7 +1349,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					{Name: "__name__", Value: "cpu"},
 					{Name: "foo", Value: "bar"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						Sample: []*profilev1.Sample{{
 							Value: []int64{1},
@@ -1365,7 +1365,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							Sample: []*profilev1.Sample{{
 								Value: []int64{1},
@@ -1383,7 +1383,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					{Name: "service_name", Value: "service"},
 					{Name: "__name__", Value: "cpu"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "foo", "bar"},
 						Sample: []*profilev1.Sample{{
@@ -1402,7 +1402,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{"", "foo", "bar"},
 							Sample: []*profilev1.Sample{{
@@ -1423,7 +1423,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					{Name: "__name__", Value: "cpu"},
 					{Name: "baz", Value: "qux"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "foo", "bar"},
 						Sample: []*profilev1.Sample{{
@@ -1443,7 +1443,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{"", "foo", "bar"},
 							Sample: []*profilev1.Sample{{
@@ -1465,7 +1465,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					{Name: "foo", Value: "bar"},
 					{Name: "baz", Value: "qux"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "foo", "bar"},
 						Sample: []*profilev1.Sample{
@@ -1490,7 +1490,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 						{Name: "foo", Value: "bar"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{"", "foo", "bar"},
 							Sample: []*profilev1.Sample{
@@ -1513,7 +1513,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					{Name: "__name__", Value: "cpu"},
 					{Name: "baz", Value: "qux"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "foo", "bar", "waldo", "fred"},
 						Sample: []*profilev1.Sample{
@@ -1541,7 +1541,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 						{Name: "baz", Value: "qux"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{"", "foo", "bar", "waldo", "fred"},
 							Sample: []*profilev1.Sample{
@@ -1572,7 +1572,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					{Name: "__name__", Value: "godeltaprof_memory"},
 					{Name: "service_name", Value: "service"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{""},
 						Sample: []*profilev1.Sample{{
@@ -1590,7 +1590,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 						{Name: "__name_replaced__", Value: "godeltaprof_memory"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{""},
 							Sample: []*profilev1.Sample{{
@@ -1613,7 +1613,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					{Name: "__name__", Value: "unwanted"},
 					{Name: "service_name", Value: "service"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "span_name", "randomness"},
 						Sample: []*profilev1.Sample{
@@ -1638,7 +1638,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 						{Name: "__name__", Value: "unwanted"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{""},
 							Sample: []*profilev1.Sample{{
@@ -1660,7 +1660,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					{Name: "__name__", Value: "unwanted"},
 					{Name: "service_name", Value: "service"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "span_name", "randomness"},
 						Sample: []*profilev1.Sample{
@@ -1691,7 +1691,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					{Name: "__name__", Value: "unwanted"},
 					{Name: "service_name", Value: "service"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "span_name", "randomness"},
 						Sample: []*profilev1.Sample{
@@ -1714,7 +1714,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 						{Name: "__name__", Value: "unwanted"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{""},
 							Sample: []*profilev1.Sample{{
@@ -1733,7 +1733,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 					{Name: "__name__", Value: "profile"},
 					{Name: "service_name", Value: "service"},
 				},
-				Sample: &distributormodel.ProfileSample{
+				Sample: distributormodel.ProfileSample{
 					Profile: pprof2.RawFromProto(&profilev1.Profile{
 						StringTable: []string{"", "foo", "bar", "binary", "span_id", "aaaabbbbccccdddd", "__name__"},
 						Location: []*profilev1.Location{
@@ -1783,7 +1783,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 						{Name: "__name__", Value: "profile"},
 						{Name: "service_name", Value: "service"},
 					},
-					Sample: &distributormodel.ProfileSample{
+					Sample: distributormodel.ProfileSample{
 						Profile: pprof2.RawFromProto(&profilev1.Profile{
 							StringTable: []string{"", "span_id", "aaaabbbbccccdddd", "foo", "bar", "binary"},
 							Location: []*profilev1.Location{
@@ -2102,7 +2102,7 @@ func TestPush_Aggregation(t *testing.T) {
 									Value: phlaremodel.SessionID(i*j + i).String(),
 								},
 							},
-							Sample: &distributormodel.ProfileSample{
+							Sample: distributormodel.ProfileSample{
 								Profile: &pprof2.Profile{
 									Profile: testProfile(0),
 								},
@@ -2257,7 +2257,7 @@ func TestInjectMappingVersions(t *testing.T) {
 	in := []*distributormodel.ProfileSeries{
 		{
 			Labels: []*typesv1.LabelPair{},
-			Sample: &distributormodel.ProfileSample{
+			Sample: distributormodel.ProfileSample{
 				Profile: &pprof2.Profile{
 					Profile: testProfile(1),
 				},
@@ -2267,7 +2267,7 @@ func TestInjectMappingVersions(t *testing.T) {
 			Labels: []*typesv1.LabelPair{
 				{Name: phlaremodel.LabelNameServiceRepository, Value: "grafana/pyroscope"},
 			},
-			Sample: &distributormodel.ProfileSample{
+			Sample: distributormodel.ProfileSample{
 				Profile: &pprof2.Profile{
 					Profile: testProfile(2),
 				},
@@ -2279,7 +2279,7 @@ func TestInjectMappingVersions(t *testing.T) {
 				{Name: phlaremodel.LabelNameServiceGitRef, Value: "foobar"},
 				{Name: phlaremodel.LabelNameServiceRootPath, Value: "some-path"},
 			},
-			Sample: &distributormodel.ProfileSample{
+			Sample: distributormodel.ProfileSample{
 				Profile: &pprof2.Profile{
 					Profile: testProfile(2),
 				},
@@ -2291,7 +2291,7 @@ func TestInjectMappingVersions(t *testing.T) {
 				{Name: phlaremodel.LabelNameServiceGitRef, Value: "foobar"},
 				{Name: phlaremodel.LabelNameServiceRootPath, Value: "some-path"},
 			},
-			Sample: &distributormodel.ProfileSample{
+			Sample: distributormodel.ProfileSample{
 				Profile: &pprof2.Profile{
 					Profile: alreadyVersionned,
 				},

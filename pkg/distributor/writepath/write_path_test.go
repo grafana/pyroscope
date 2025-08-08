@@ -48,7 +48,7 @@ func (s *routerTestSuite) SetupTest() {
 	s.ingester = new(mockwritepath.MockIngesterClient)
 	s.segwriter = new(mockwritepath.MockIngesterClient)
 
-	profile := &distributormodel.ProfileSample{Profile: &pprof.Profile{}}
+	profile := distributormodel.ProfileSample{Profile: &pprof.Profile{}}
 	s.request = &distributormodel.ProfileSeries{
 		Labels: []*typesv1.LabelPair{
 			{Name: "foo", Value: "bar"},
@@ -141,7 +141,7 @@ func (s *routerTestSuite) Test_CombinedPath() {
 			// attempting to access it concurrently with segment writer
 			// that should convert the distributor request to a segment
 			// writer request.
-			m.Get(1).(*distributormodel.ProfileSeries).Sample = nil
+			m.Get(1).(*distributormodel.ProfileSeries).Sample = distributormodel.ProfileSample{}
 		}).
 		Return(new(connect.Response[pushv1.PushResponse]), nil)
 
@@ -149,7 +149,7 @@ func (s *routerTestSuite) Test_CombinedPath() {
 	s.segwriter.On("Push", mock.Anything, mock.Anything).
 		Run(func(m mock.Arguments) {
 			sentSegwriter.Add(1)
-			m.Get(1).(*distributormodel.ProfileSeries).Sample = nil
+			m.Get(1).(*distributormodel.ProfileSeries).Sample = distributormodel.ProfileSample{}
 		}).
 		Return(new(connect.Response[pushv1.PushResponse]), nil)
 

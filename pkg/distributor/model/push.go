@@ -30,7 +30,7 @@ type ProfileSample struct {
 type ProfileSeries struct {
 	// Caller provided, modified during processing
 	Labels []*v1.LabelPair
-	Sample *ProfileSample
+	Sample ProfileSample
 
 	// todo split
 	// Transient state
@@ -87,7 +87,7 @@ func (req *ProfileSeries) Clone() *ProfileSeries {
 		TotalProfiles:          req.TotalProfiles,
 		TotalBytesUncompressed: req.TotalBytesUncompressed,
 		Labels:                 phlaremodel.Labels(req.Labels).Clone(),
-		Sample: &ProfileSample{
+		Sample: ProfileSample{
 			Profile:    &pprof.Profile{Profile: req.Sample.Profile.CloneVT()},
 			RawProfile: nil,
 			ID:         req.Sample.ID,
