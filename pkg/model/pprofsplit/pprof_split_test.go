@@ -1,6 +1,8 @@
 package pprofsplit
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/prometheus/common/model"
@@ -454,5 +456,52 @@ func Test_VisitSampleSeries(t *testing.T) {
 				assert.Equal(t, expected.samples, actual.samples)
 			}
 		})
+	}
+}
+
+func Benchmark_VisitSampleSeries_HighCardinality(b *testing.B) {
+	defaultRelabelConfigs := validation.MockDefaultOverrides().IngestionRelabelingRules("")
+	defaultRelabelConfigs = append(defaultRelabelConfigs, &relabel.Config{
+		Action: relabel.LabelDrop,
+		Regex:  relabel.MustNewRegexp("^high_cardinality_label$"),
+	})
+
+	stringTable := []string{"", "foo", "bar", "binary", "span_id", "aaaabbbbccccdddd", "high_cardinality_label"}
+	highCardinalityOffset := int64(len(stringTable))
+	for i := 0; i < 10000; i++ {
+		stringTable = append(stringTable, fmt.Sprintf("value_%d", i))
+	}
+
+	profile := &profilev1.Profile{
+		StringTable: stringTable,
+		Location:    []*profilev1.Location{{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+		Mapping:     []*profilev1.Mapping{{}, {Id: 1, Filename: 3}},
+		Function:    []*profilev1.Function{{Id: 1, Name: 1}},
+	}
+
+	for i := 0; i < 30000; i++ {
+		labelValue := highCardinalityOffset + int64(i/10)
+		if rand.Float64() < 0.3 {
+			labelValue = highCardinalityOffset - 2 // lower the cardinality to create large groups
+		}
+		labels := []*profilev1.Label{
+			{Key: highCardinalityOffset - 1, Str: labelValue},
+		}
+		profile.Sample = append(profile.Sample, &profilev1.Sample{
+			LocationId: []uint64{uint64(i + 1)},
+			Value:      []int64{2},
+			Label:      labels,
+		})
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		err := VisitSampleSeries(profile, []*typesv1.LabelPair{
+			{Name: "__name__", Value: "profile"},
+			{Name: "foo", Value: "bar"},
+		}, defaultRelabelConfigs, &mockVisitor{})
+		require.NoError(b, err)
 	}
 }
