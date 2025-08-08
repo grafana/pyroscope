@@ -8,11 +8,13 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/user"
 	pprofileotlp "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
@@ -43,14 +45,14 @@ type PushService interface {
 	PushBatch(ctx context.Context, req *distirbutormodel.PushRequest) error
 }
 
-func NewOTLPIngestHandler(svc PushService, l log.Logger, me bool) Handler {
+func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, me bool) Handler {
 	h := &ingestHandler{
 		svc:                 svc,
 		log:                 l,
 		multitenancyEnabled: me,
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := newGrpcServer(cfg)
 	pprofileotlp.RegisterProfilesServiceServer(grpcServer, h)
 
 	h.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -66,6 +68,34 @@ func NewOTLPIngestHandler(svc PushService, l log.Logger, me bool) Handler {
 	})
 
 	return h
+}
+
+func newGrpcServer(cfg server.Config) *grpc.Server {
+	grpcKeepAliveOptions := keepalive.ServerParameters{
+		MaxConnectionIdle:     cfg.GRPCServerMaxConnectionIdle,
+		MaxConnectionAge:      cfg.GRPCServerMaxConnectionAge,
+		MaxConnectionAgeGrace: cfg.GRPCServerMaxConnectionAgeGrace,
+		Time:                  cfg.GRPCServerTime,
+		Timeout:               cfg.GRPCServerTimeout,
+	}
+
+	grpcKeepAliveEnforcementPolicy := keepalive.EnforcementPolicy{
+		MinTime:             cfg.GRPCServerMinTimeBetweenPings,
+		PermitWithoutStream: cfg.GRPCServerPingWithoutStreamAllowed,
+	}
+
+	grpcOptions := []grpc.ServerOption{
+		grpc.KeepaliveParams(grpcKeepAliveOptions),
+		grpc.KeepaliveEnforcementPolicy(grpcKeepAliveEnforcementPolicy),
+		grpc.MaxRecvMsgSize(cfg.GRPCServerMaxRecvMsgSize),
+		grpc.MaxSendMsgSize(cfg.GRPCServerMaxSendMsgSize),
+		grpc.MaxConcurrentStreams(uint32(cfg.GRPCServerMaxConcurrentStreams)),
+		grpc.NumStreamWorkers(uint32(cfg.GRPCServerNumWorkers)),
+	}
+
+	grpcOptions = append(grpcOptions, cfg.GRPCOptions...)
+
+	return grpc.NewServer(grpcOptions...)
 }
 
 func (h *ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
