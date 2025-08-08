@@ -174,13 +174,13 @@ func (g *lazyGroup) addSampleGroup(stringTable []string, sg pprof.SampleGroup) {
 }
 
 type groupsWithFingerprints struct {
-	m     map[uint64][]lazyGroup
+	m     map[uint64][]*lazyGroup
 	order []uint64
 }
 
 func newGroupsWithFingerprints() *groupsWithFingerprints {
 	return &groupsWithFingerprints{
-		m: make(map[uint64][]lazyGroup),
+		m: make(map[uint64][]*lazyGroup),
 	}
 }
 
@@ -201,7 +201,7 @@ func (g *groupsWithFingerprints) add(stringTable []string, lbls phlaremodel.Labe
 	}
 
 	// add the labels to the list
-	g.m[fp] = append(g.m[fp], lazyGroup{
+	g.m[fp] = append(g.m[fp], &lazyGroup{
 		sampleGroup: group,
 		labels:      lbls,
 	})
