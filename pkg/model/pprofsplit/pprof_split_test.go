@@ -353,21 +353,71 @@ func Test_VisitSampleSeries(t *testing.T) {
 			},
 		},
 		{
+			description: "does not drop samples when a label is dropped",
+			rules: []*relabel.Config{
+				{
+					Action: relabel.LabelDrop,
+					Regex:  relabel.MustNewRegexp("^label_to_drop$"),
+				},
+			},
+			labels: []*typesv1.LabelPair{},
+			profile: &profilev1.Profile{
+				StringTable: []string{"", "label_to_drop", "value_1", "value_2"},
+				Sample: []*profilev1.Sample{
+					{
+						LocationId: []uint64{1, 2},
+						Value:      []int64{2},
+						Label:      []*profilev1.Label{{Key: 1, Str: 2}},
+					},
+					{
+						LocationId: []uint64{1, 3},
+						Value:      []int64{2},
+						Label:      []*profilev1.Label{{Key: 1, Str: 2}},
+					},
+					{
+						LocationId: []uint64{1, 3},
+						Value:      []int64{2},
+						Label:      []*profilev1.Label{{Key: 1, Str: 3}}, // will get merged with the previous one
+					},
+					{
+						LocationId: []uint64{1, 4},
+						Value:      []int64{2},
+						Label:      []*profilev1.Label{{Key: 1, Str: 3}},
+					},
+				},
+			},
+			expectProfilesDropped: 0,
+			expectBytesDropped:    0,
+			expected: []sampleSeries{
+				{
+					labels: []*typesv1.LabelPair{},
+					samples: []*profilev1.Sample{
+						{
+							LocationId: []uint64{1, 2},
+							Label:      []*profilev1.Label{},
+							Value:      []int64{2},
+						},
+						{
+							LocationId: []uint64{1, 3},
+							Label:      []*profilev1.Label{},
+							Value:      []int64{4},
+						},
+						{
+							LocationId: []uint64{1, 4},
+							Label:      []*profilev1.Label{},
+							Value:      []int64{2},
+						},
+					},
+				},
+			},
+		},
+		{
 			description: "ensure only samples of same stacktraces get grouped",
 			labels: []*typesv1.LabelPair{
 				{Name: "__name__", Value: "profile"},
 			},
 			profile: &profilev1.Profile{
 				StringTable: []string{"", "foo", "bar", "binary", "span_id", "aaaabbbbccccdddd", "__name__"},
-				Location: []*profilev1.Location{
-					{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
-					{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
-				},
-				Mapping: []*profilev1.Mapping{{}, {Id: 1, Filename: 3}},
-				Function: []*profilev1.Function{
-					{Id: 1, Name: 1},
-					{Id: 2, Name: 2},
-				},
 				Sample: []*profilev1.Sample{
 					{
 						LocationId: []uint64{1, 2},
@@ -498,10 +548,11 @@ func Benchmark_VisitSampleSeries_HighCardinality(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
+		visitor := new(mockVisitor)
 		err := VisitSampleSeries(profile, []*typesv1.LabelPair{
 			{Name: "__name__", Value: "profile"},
 			{Name: "foo", Value: "bar"},
-		}, defaultRelabelConfigs, &mockVisitor{})
+		}, defaultRelabelConfigs, visitor)
 		require.NoError(b, err)
 	}
 }
