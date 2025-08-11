@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package fuzz.distributor;
+
+
+import "google/v1/profile.proto";
+import "types/v1/types.proto";
+import "fuzz/types.proto";
+import "push/v1/push.proto";
+
+message FuzzDistributor {
+  repeated Request requests = 1;
+  repeated bool ingesterErrors = 2;
+  fuzz.ValidationLimits limits = 3;
+}
+
+message Request {
+  repeated Sample series = 1;
+  string tenant = 2;
+  int64 ReceivedCompressedProfileSize = 3;
+  string  RawProfileType = 4;
+}
+
+message Sample {
+  repeated types.v1.LabelPair labels = 1;
+  string metric_name = 4;
+  google.v1.Profile profile = 2;
+  string ID = 3;
+}
+

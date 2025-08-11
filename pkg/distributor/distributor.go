@@ -338,7 +338,7 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 }
 
 func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string) (err error) {
-	if req.Profile == nil {
+	if req.Profile == nil || req.Profile.Profile == nil {
 		return noNewProfilesReceivedError()
 	}
 	now := model.Now()

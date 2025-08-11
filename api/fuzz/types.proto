@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package fuzz;
+
+import "google/v1/profile.proto";
+import "types/v1/types.proto";
+import "settings/v1/recording_rules.proto";
+import "settings/v1/setting.proto";
+
+message IngestlimitsConfig {
+  string PeriodType = 1;
+  int64 PeriodLimitMb = 2;
+  int64 LimitResetTime = 3;
+  bool LimitReached = 4;
+  int64 IngestlimitsSamplingConfig__NumRequests = 5;
+  int64 IngestlimitsSamplingConfig__Period = 6;
+  map<string, IngestlimitsUsageGroup> UsageGroups = 7;
+}
+
+message IngestlimitsUsageGroup {
+  int64 PeriodLimitMb = 1;
+  bool LimitReached = 2;
+}
+
+message RelabelConfig {
+  repeated string SourceLabels = 1;
+  string Separator = 2;
+  string Regex = 3;
+  uint64 Modulus = 4;
+  string TargetLabel = 5;
+  string Replacement = 6;
+  string Action = 7;
+}
+
+message SamplingConfig {
+  map<string, SamplingUsageGroupSampling> UsageGroups = 1;
+}
+
+message SamplingUsageGroupSampling {
+  float Probability = 1;
+}
+
+message ValidationLimits {
+  float IngestionRateMB = 1;
+  float IngestionBurstSizeMB = 2;
+  IngestlimitsConfig IngestionLimit = 3;
+  float IngestionBodyLimitMB = 4;
+  SamplingConfig DistributorSampling = 5;
+  int64 MaxLabelNameLength = 6;
+  int64 MaxLabelValueLength = 7;
+  int64 MaxLabelNamesPerSeries = 8;
+  int64 MaxSessionsPerSeries = 9;
+  bool EnforceLabelsOrder = 10;
+  int64 MaxProfileSizeBytes = 11;
+  int64 MaxProfileStacktraceSamples = 12;
+  int64 MaxProfileStacktraceSampleLabels = 13;
+  int64 MaxProfileStacktraceDepth = 14;
+  int64 MaxProfileSymbolValueLength = 15;
+  map<string, string> DistributorUsageGroups = 16;
+  int64 DistributorAggregationWindow = 17;
+  int64 DistributorAggregationPeriod = 18;
+  repeated RelabelConfig IngestionRelabelingRules = 19;
+  string IngestionRelabelingDefaultRulesPosition = 20;
+  int64 IngestionTenantShardSize = 21;
+  int64 IngestionArtificialDelay = 22;
+  int64 MaxLocalSeriesPerTenant = 23;
+  int64 MaxGlobalSeriesPerTenant = 24;
+  int64 MaxQueryLookback = 25;
+  int64 MaxQueryLength = 26;
+  int64 MaxQueryParallelism = 27;
+  bool QueryAnalysisEnabled = 28;
+  bool QueryAnalysisSeriesEnabled = 29;
+  int64 MaxFlameGraphNodesDefault = 30;
+  int64 MaxFlameGraphNodesMax = 31;
+  int64 StoreGatewayTenantShardSize = 32;
+  int64 QuerySplitDuration = 33;
+  int64 CompactorBlocksRetentionPeriod = 34;
+  int64 CompactorSplitAndMergeShards = 35;
+  int64 CompactorSplitAndMergeStageSize = 36;
+  int64 CompactorSplitGroups = 37;
+  int64 CompactorTenantShardSize = 38;
+  int64 CompactorPartialBlockDeletionDelay = 39;
+  bool CompactorDownsamplerEnabled = 40;
+  string S3SSEType = 41;
+  string S3SSEKMSKeyID = 42;
+  string S3SSEKMSEncryptionContext = 43;
+  int64 RejectOlderThan = 44;
+  int64 RejectNewerThan = 45;
+  string WritepathConfig__WritePath = 46;
+  float WritepathConfig__IngesterWeight = 47;
+  float WritepathConfig__SegmentWriterWeight = 48;
+  int64 WritepathConfig__SegmentWriterTimeout = 49;
+  string WritepathConfig__Compression = 50;
+  bool WritepathConfig__AsyncIngest = 51;
+  bool ReadpathConfig__EnableQueryBackend = 52;
+  uint64 ReadpathConfig__EnableQueryBackendFrom = 53;
+  int64 RetentionConfig__RetentionPeriod = 54;
+  uint64 AdaptiveplacementPlacementLimits__TenantShards = 55;
+  uint64 AdaptiveplacementPlacementLimits__DefaultDatasetShards = 56;
+  string AdaptiveplacementPlacementLimits__LoadBalancing = 57;
+  uint64 AdaptiveplacementPlacementLimits__MinDatasetShards = 58;
+  uint64 AdaptiveplacementPlacementLimits__MaxDatasetShards = 59;
+  uint64 AdaptiveplacementPlacementLimits__UnitSizeBytes = 60;
+  int64 AdaptiveplacementPlacementLimits__BurstWindow = 61;
+  int64 AdaptiveplacementPlacementLimits__DecayWindow = 62;
+  repeated settings.v1.RecordingRule RecordingRules = 63;
+  bool ValidationSymbolizer__Enabled = 64;
+}
+

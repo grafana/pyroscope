@@ -1,0 +1,5 @@
+corpus/
+go-fuzz.a
+go-fuzz.h
+crash-*
+fuzz

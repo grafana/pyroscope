@@ -51,7 +51,7 @@ func PanicError(p interface{}) error {
 }
 
 // RecoverPanic is a helper function to recover from panic and return an error.
-func RecoverPanic(f func() error) func() error {
+var RecoverPanic = func(f func() error) func() error {
 	return func() (err error) {
 		defer func() {
 			if p := recover(); p != nil {
@@ -62,7 +62,7 @@ func RecoverPanic(f func() error) func() error {
 	}
 }
 
-func Recover(f func()) {
+var Recover = func(f func()) {
 	defer func() {
 		if p := recover(); p != nil {
 			_ = PanicError(p)
