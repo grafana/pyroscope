@@ -71,6 +71,8 @@ message SelectMergeStacktracesRequest {
   // Profile format specifies the format of profile to be returned.
   // If not specified, the profile will be returned in flame graph format.
   ProfileFormat format = 6;
+  // Select stack traces that match the provided selector.
+  optional types.v1.StackTraceSelector stack_trace_selector = 7;
 }
 
 enum ProfileFormat {
