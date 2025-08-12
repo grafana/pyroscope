@@ -20,10 +20,10 @@ To set up eBPF profiling with Grafana Alloy on Linux, you need to:
 Before you begin, you need:
 
 - A Pyroscope server where Alloy can send profiling data.
-- Access to Grafana with the [Grafana Pyroscope data source][pyroscope-ds] provisioned.
+- Access to Grafana with the [Grafana Pyroscope data source](/docs/grafana/<GRAFANA_VERSION>/datasources/pyroscope/) provisioned.
 
 {{% admonition type="note" %}}
-If you don't have a Grafana or a Pyroscope server, you can use the [Grafana Cloud][gcloud] free plan to get started.
+If you don't have a Grafana or a Pyroscope server, you can use the [Grafana Cloud](https://grafana.com/auth/sign-up/create-user?pg=pricing&plcmt=free&cta=create-free-account) free plan to get started.
 {{% /admonition %}}
 
 ## Verify system meets the requirements
@@ -129,8 +129,4 @@ Make sure you're running Alloy with root privileges which are required for the e
 
 ## Verify profiles are received
 
-To verify that the profiles are received by the Pyroscope server, go to the Pyroscope UI or [Grafana Pyroscope data source][pyroscope-ds]. Select a profile type and a service from the drop-down menu.
-
-[pyroscope-ds]: /docs/grafana/<GRAFANA_VERSION>/datasources/pyroscope/
-[config-reference]: ../configuration/
-[gcloud]: /products/cloud/
+To verify that the profiles are received by the Pyroscope server, go to the Pyroscope UI or [Grafana Pyroscope data source](/docs/grafana/<GRAFANA_VERSION>/datasources/pyroscope/). Select a profile type and a service from the drop-down menu.
