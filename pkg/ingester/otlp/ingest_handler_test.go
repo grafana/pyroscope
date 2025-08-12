@@ -322,7 +322,7 @@ func TestConversion(t *testing.T) {
 		t.Run(td.name, func(t *testing.T) {
 			svc := mockotlp.NewMockPushService(t)
 			var profiles []*model.PushRequest
-			svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 				c := (args.Get(1)).(*model.PushRequest)
 				profiles = append(profiles, c)
 			}).Return(nil, nil).Maybe()
@@ -343,7 +343,7 @@ func TestConversion(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, 1, len(profiles))
 
-				gp := profiles[0].Series[0].Samples[0].Profile.Profile
+				gp := profiles[0].Series[0].Profile.Profile
 
 				jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
 				assert.NoError(t, err)
@@ -366,7 +366,7 @@ func TestSampleAttributes(t *testing.T) {
 	// expect both of them to be present in the converted pprof as labels, but not series labels
 	svc := mockotlp.NewMockPushService(t)
 	var profiles []*model.PushRequest
-	svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		c := (args.Get(1)).(*model.PushRequest)
 		profiles = append(profiles, c)
 	}).Return(nil, nil)
@@ -436,7 +436,6 @@ func TestSampleAttributes(t *testing.T) {
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(profiles))
 	require.Equal(t, 1, len(profiles[0].Series))
-	require.Equal(t, 1, len(profiles[0].Series[0].Samples))
 
 	seriesLabelsMap := make(map[string]string)
 	for _, label := range profiles[0].Series[0].Labels {
@@ -445,7 +444,7 @@ func TestSampleAttributes(t *testing.T) {
 	assert.Equal(t, "", seriesLabelsMap["process"])
 	assert.NotContains(t, seriesLabelsMap, "service.name")
 
-	gp := profiles[0].Series[0].Samples[0].Profile.Profile
+	gp := profiles[0].Series[0].Profile.Profile
 
 	jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
 	assert.NoError(t, err)
@@ -459,7 +458,7 @@ func TestDifferentServiceNames(t *testing.T) {
 	// Expect them to be pushed as separate profiles
 	svc := mockotlp.NewMockPushService(t)
 	var profiles []*model.PushRequest
-	svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		c := (args.Get(1)).(*model.PushRequest)
 		for _, series := range c.Series {
 			sort.Sort(phlaremodel.Labels(series.Labels))
@@ -614,7 +613,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		expectedJsonPath := expectedProfiles[series]
 		expectedJson := readJSONFile(t, expectedJsonPath)
 
-		gp := s.Samples[0].Profile.Profile
+		gp := s.Profile.Profile
 
 		require.Equal(t, 1, len(gp.SampleType))
 		assert.Equal(t, "cpu", gp.StringTable[gp.SampleType[0].Type])

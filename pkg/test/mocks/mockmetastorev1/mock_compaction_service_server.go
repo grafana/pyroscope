@@ -81,7 +81,7 @@ func (_c *MockCompactionServiceServer_PollCompactionJobs_Call) RunAndReturn(run 
 	return _c
 }
 
-// mustEmbedUnimplementedCompactionServiceServer provides a mock function with given fields:
+// mustEmbedUnimplementedCompactionServiceServer provides a mock function with no fields
 func (_m *MockCompactionServiceServer) mustEmbedUnimplementedCompactionServiceServer() {
 	_m.Called()
 }
@@ -109,7 +109,7 @@ func (_c *MockCompactionServiceServer_mustEmbedUnimplementedCompactionServiceSer
 }
 
 func (_c *MockCompactionServiceServer_mustEmbedUnimplementedCompactionServiceServer_Call) RunAndReturn(run func()) *MockCompactionServiceServer_mustEmbedUnimplementedCompactionServiceServer_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

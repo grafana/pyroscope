@@ -13,10 +13,11 @@ import (
 	"github.com/grafana/pyroscope/pkg/tenant"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/prometheus/prometheus/model/labels"
-	"google.golang.org/protobuf/proto"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -28,7 +29,7 @@ import (
 
 type PushService interface {
 	Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
-	PushParsed(ctx context.Context, req *model.PushRequest) (*connect.Response[pushv1.PushResponse], error)
+	PushBatch(ctx context.Context, req *model.PushRequest) error
 }
 
 func NewPyroscopeIngestHandler(svc PushService, logger log.Logger) http.Handler {
@@ -190,7 +191,7 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(
 			"orgID", tenantID)
 		return nil
 	}
-	_, err = p.svc.PushParsed(ctx, plainReq)
+	err = p.svc.PushBatch(ctx, plainReq)
 	if err != nil {
 		return fmt.Errorf("pushing IngestInput-pprof failed %w", err)
 	}
