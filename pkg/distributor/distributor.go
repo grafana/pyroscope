@@ -352,7 +352,11 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 	sort.Sort(phlaremodel.Labels(req.Labels))
 
-	d.calculateRequestSize(req)
+	req.TotalProfiles = 1
+	req.TotalBytesUncompressed = calculateRequestSize(req)
+	req.TotalBytesUncompressedProcessed = req.TotalBytesUncompressed
+
+	d.metrics.receivedDecompressedBytesTotal.WithLabelValues(tenantID).Observe(float64(req.TotalBytesUncompressed))
 
 	if err := d.checkIngestLimit(req); err != nil {
 		level.Debug(logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
@@ -391,6 +395,9 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 
 	profLanguage := d.GetProfileLanguage(req)
+	defer func() { // defer to allow re-calculate the size of the profile after normalization
+		d.metrics.processedDecompressedBytes.WithLabelValues(tenantID).Observe(float64(req.TotalBytesUncompressedProcessed))
+	}()
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
@@ -427,6 +434,8 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
 	req.Profile.Normalize()
 	sp.Finish()
+
+	req.TotalBytesUncompressedProcessed = calculateRequestSize(req)
 
 	if len(req.Profile.Sample) == 0 {
 		// TODO(kolesnikovae):
@@ -847,14 +856,16 @@ func (d *Distributor) rateLimit(tenantID string, req *distributormodel.ProfileSe
 	return nil
 }
 
-func (d *Distributor) calculateRequestSize(req *distributormodel.ProfileSeries) {
+func calculateRequestSize(req *distributormodel.ProfileSeries) int64 {
 	// include the labels in the size calculation
+	bs := int64(0)
 	for _, lbs := range req.Labels {
-		req.TotalBytesUncompressed += int64(len(lbs.Name))
-		req.TotalBytesUncompressed += int64(len(lbs.Value))
+		bs += int64(len(lbs.Name))
+		bs += int64(len(lbs.Value))
 	}
-	req.TotalProfiles += 1
-	req.TotalBytesUncompressed += int64(req.Profile.SizeVT())
+
+	bs += int64(req.Profile.SizeVT())
+	return bs
 }
 
 func (d *Distributor) checkIngestLimit(req *distributormodel.ProfileSeries) error {
