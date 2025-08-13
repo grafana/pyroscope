@@ -2272,7 +2272,7 @@ distributor_usage_groups:
 
 # Maximum number of flame graph nodes allowed. 0 to disable.
 # CLI flag: -querier.max-flamegraph-nodes-max
-[max_flamegraph_nodes_max: <int> | default = 0]
+[max_flamegraph_nodes_max: <int> | default = 1048576]
 
 # The tenant's shard size, used when store-gateway sharding is enabled. Value of
 # 0 disables shuffle sharding for the tenant, that is all tenant blocks are
