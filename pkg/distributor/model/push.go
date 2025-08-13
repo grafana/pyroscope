@@ -35,9 +35,11 @@ type ProfileSeries struct {
 
 	Annotations []*v1.ProfileAnnotation
 
-	// always 1
+	// always 1 todo delete
 	TotalProfiles          int64
 	TotalBytesUncompressed int64
+
+	TotalBytesUncompressedProcessed int64 // after normalization and other size-reducing manipulation
 
 	DiscardedProfilesRelabeling int64
 	DiscardedBytesRelabeling    int64
@@ -80,7 +82,6 @@ func getProfileLanguageFromSpy(spyName string) string {
 func (req *ProfileSeries) Clone() *ProfileSeries {
 	c := &ProfileSeries{
 		TenantID:               req.TenantID,
-		TotalProfiles:          req.TotalProfiles,
 		TotalBytesUncompressed: req.TotalBytesUncompressed,
 		Labels:                 phlaremodel.Labels(req.Labels).Clone(),
 		Profile:                &pprof.Profile{Profile: req.Profile.CloneVT()},
