@@ -35,6 +35,13 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: |
             pyroscope
+      - name: Get GitHub App User ID
+        id: get-user-id
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          APP_BOT="${{ steps.generate_token.outputs.app-slug }}[bot]"
+          echo "user-id=$(gh api "/users/${APP_BOT}" --jq .id)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@v5
         with:
           go-version: 1.23.11
@@ -43,8 +50,9 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          git config --local user.name 'Pyroscope Bot'
-          git config --local user.email 'dmitry+bot@pyroscope.io'
+          APP_BOT="${{ steps.generate_token.outputs.app-slug }}[bot]"
+          git config --local user.name "${APP_BOT}"
+          git config --local user.email "${{ steps.get-user-id.outputs.user-id }}+${APP_BOT}@users.noreply.github.com"
           if ! git diff --exit-code README.md; then
               git add README.md
               git commit -m 'docs: updates the list of contributors in README'
