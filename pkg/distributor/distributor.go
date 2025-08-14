@@ -382,16 +382,23 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		return err
 	}
 
-	if sample, usageGroup := d.shouldSample(tenantID, groups.Names()); !sample {
+	willSample, samplingSource := d.shouldSample(tenantID, groups.Names())
+	if !willSample {
 		level.Debug(logger).Log(
 			"msg", "skipping push request due to sampling",
 			"tenant", tenantID,
-			"usage_group", usageGroup,
+			"usage_group", samplingSource.UsageGroup,
+			"probability", samplingSource.Probability,
 		)
 		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
 		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 		return nil
+	}
+	if samplingSource != nil {
+		if err := req.MarkSampledRequest(samplingSource); err != nil {
+			return err
+		}
 	}
 
 	profLanguage := d.GetProfileLanguage(req)
@@ -919,7 +926,7 @@ func (d *Distributor) checkUsageGroupsIngestLimit(req *distributormodel.ProfileS
 }
 
 // shouldSample returns true if the profile should be injected and optionally the usage group that was responsible for the decision.
-func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) (bool, *validation.UsageGroupMatchName) {
+func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) (bool, *sampling.Source) {
 	l := d.limits.DistributorSampling(tenantID)
 	if l == nil {
 		return true, nil
@@ -950,7 +957,12 @@ func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation
 		return true, nil
 	}
 
-	return rand.Float64() <= samplingProbability, match
+	source := &sampling.Source{
+		UsageGroup:  match.ResolvedName,
+		Probability: samplingProbability,
+	}
+
+	return rand.Float64() <= samplingProbability, source
 }
 
 type profileTracker struct {
