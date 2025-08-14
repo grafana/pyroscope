@@ -80,11 +80,11 @@ Contact your organization administrator for assistance.
 Refer to [Requesting a GitHub App from your organization owner](https://docs.github.com/en/apps/using-github-apps/requesting-a-github-app-from-your-organization-owner).
 {{< /admonition >}}
 
-### Ensure the GitHub integration is configued in Grafana Pyroscope
+### Ensure the GitHub integration is configured in Grafana Pyroscope
 
-Refer to [Configure GitHub integration](../configure-server/configuring-github-integration/) on the steps required.
+Refer to [Configure GitHub integration](../../configure-server/configuring-github-integration/) on the steps required.
 
-### Ensure the Grafana Pyroscope data source is configued correctly
+### Ensure the Grafana Pyroscope data source is configured correctly
 
 In order to make use of the GitHub integration, the Pyroscope data source needs to be configured to pass a particular cookie through.
 
