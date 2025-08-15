@@ -2,10 +2,19 @@ package otlp
 
 import (
 	"context"
+	"flag"
 	"os"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/grafana/dskit/server"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	v1experimental2 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
+	v1 "go.opentelemetry.io/proto/otlp/common/v1"
+	v1experimental "go.opentelemetry.io/proto/otlp/profiles/v1development"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/distributor/model"
@@ -13,13 +22,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
 	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockotlp"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-	v1experimental2 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
-	v1 "go.opentelemetry.io/proto/otlp/common/v1"
-	v1experimental "go.opentelemetry.io/proto/otlp/profiles/v1development"
 )
 
 func TestGetServiceNameFromAttributes(t *testing.T) {
@@ -320,7 +322,7 @@ func TestConversion(t *testing.T) {
 		t.Run(td.name, func(t *testing.T) {
 			svc := mockotlp.NewMockPushService(t)
 			var profiles []*model.PushRequest
-			svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 				c := (args.Get(1)).(*model.PushRequest)
 				profiles = append(profiles, c)
 			}).Return(nil, nil).Maybe()
@@ -334,14 +336,14 @@ func TestConversion(t *testing.T) {
 						}}}}},
 				Dictionary: &b.dictionary}
 			logger := test.NewTestingLogger(t)
-			h := NewOTLPIngestHandler(svc, logger, false)
+			h := NewOTLPIngestHandler(testConfig(), svc, logger, false)
 			_, err := h.Export(context.Background(), req)
 
 			if td.expectedError == "" {
 				require.NoError(t, err)
 				require.Equal(t, 1, len(profiles))
 
-				gp := profiles[0].Series[0].Samples[0].Profile.Profile
+				gp := profiles[0].Series[0].Profile.Profile
 
 				jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
 				assert.NoError(t, err)
@@ -364,7 +366,7 @@ func TestSampleAttributes(t *testing.T) {
 	// expect both of them to be present in the converted pprof as labels, but not series labels
 	svc := mockotlp.NewMockPushService(t)
 	var profiles []*model.PushRequest
-	svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		c := (args.Get(1)).(*model.PushRequest)
 		profiles = append(profiles, c)
 	}).Return(nil, nil)
@@ -429,12 +431,11 @@ func TestSampleAttributes(t *testing.T) {
 				}}}}},
 		Dictionary: &otlpb.dictionary}
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(svc, logger, false)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, false)
 	_, err := h.Export(context.Background(), req)
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(profiles))
 	require.Equal(t, 1, len(profiles[0].Series))
-	require.Equal(t, 1, len(profiles[0].Series[0].Samples))
 
 	seriesLabelsMap := make(map[string]string)
 	for _, label := range profiles[0].Series[0].Labels {
@@ -443,7 +444,7 @@ func TestSampleAttributes(t *testing.T) {
 	assert.Equal(t, "", seriesLabelsMap["process"])
 	assert.NotContains(t, seriesLabelsMap, "service.name")
 
-	gp := profiles[0].Series[0].Samples[0].Profile.Profile
+	gp := profiles[0].Series[0].Profile.Profile
 
 	jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
 	assert.NoError(t, err)
@@ -457,7 +458,7 @@ func TestDifferentServiceNames(t *testing.T) {
 	// Expect them to be pushed as separate profiles
 	svc := mockotlp.NewMockPushService(t)
 	var profiles []*model.PushRequest
-	svc.On("PushParsed", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		c := (args.Get(1)).(*model.PushRequest)
 		for _, series := range c.Series {
 			sort.Sort(phlaremodel.Labels(series.Labels))
@@ -593,7 +594,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		Dictionary: &otlpb.dictionary}
 
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(svc, logger, false)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, false)
 	_, err := h.Export(context.Background(), req)
 	require.NoError(t, err)
 
@@ -612,7 +613,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		expectedJsonPath := expectedProfiles[series]
 		expectedJson := readJSONFile(t, expectedJsonPath)
 
-		gp := s.Samples[0].Profile.Profile
+		gp := s.Profile.Profile
 
 		require.Equal(t, 1, len(gp.SampleType))
 		assert.Equal(t, "cpu", gp.StringTable[gp.SampleType[0].Type])
@@ -648,4 +649,11 @@ func (o *otlpbuilder) addstr(s string) int32 {
 	o.stringmap[s] = idx
 	o.dictionary.StringTable = append(o.dictionary.StringTable, s)
 	return idx
+}
+
+func testConfig() server.Config {
+	cfg := server.Config{}
+	fs := flag.NewFlagSet("test", flag.PanicOnError)
+	cfg.RegisterFlags(fs)
+	return cfg
 }

@@ -366,7 +366,7 @@ $(BIN)/mage: Makefile go.mod
 
 $(BIN)/mockery: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/vektra/mockery/v2@v2.45.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/vektra/mockery/v2@v2.53.4
 
 # Note: When updating the goreleaser version also update .github/workflow/release.yml and .git/workflow/weekly-release.yaml
 $(BIN)/goreleaser: Makefile go.mod

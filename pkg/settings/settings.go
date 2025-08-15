@@ -16,24 +16,20 @@ import (
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
-	"github.com/grafana/pyroscope/pkg/settings/collection"
 	"github.com/grafana/pyroscope/pkg/settings/recording"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type Config struct {
-	Collection collection.Config `yaml:"collection_rules"`
-	Recording  recording.Config  `yaml:"recording_rules"`
+	Recording recording.Config `yaml:"recording_rules"`
 }
 
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
-	cfg.Collection.RegisterFlags(fs)
 	cfg.Recording.RegisterFlags(fs)
 }
 
 func (cfg *Config) Validate() error {
 	return errors.Join(
-		cfg.Collection.Validate(),
 		cfg.Recording.Validate(),
 	)
 }
@@ -47,14 +43,9 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger, overrides *valid
 	}
 
 	ts := &TenantSettings{
-		CollectionRulesServiceHandler: &settingsv1connect.UnimplementedCollectionRulesServiceHandler{},
-		RecordingRulesServiceHandler:  &settingsv1connect.UnimplementedRecordingRulesServiceHandler{},
-		store:                         newBucketStore(bucket),
-		logger:                        logger,
-	}
-
-	if cfg.Collection.Enabled {
-		ts.CollectionRulesServiceHandler = collection.New(cfg.Collection, bucket, logger)
+		RecordingRulesServiceHandler: &settingsv1connect.UnimplementedRecordingRulesServiceHandler{},
+		store:                        newBucketStore(bucket),
+		logger:                       logger,
 	}
 
 	if cfg.Recording.Enabled {
@@ -68,7 +59,6 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger, overrides *valid
 
 type TenantSettings struct {
 	services.Service
-	settingsv1connect.CollectionRulesServiceHandler
 	settingsv1connect.RecordingRulesServiceHandler
 
 	store  store

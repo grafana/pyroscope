@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+
 	"github.com/prometheus/prometheus/model/labels"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -58,9 +59,9 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 		return nil, fmt.Errorf("failed to parse pprof /ingest multipart form %w", err)
 	}
 	res = &distributormodel.PushRequest{
-		RawProfileSize: len(p.Profile),
-		RawProfileType: distributormodel.RawProfileTypePPROF,
-		Series:         nil,
+		ReceivedCompressedProfileSize: len(p.Profile),
+		RawProfileType:                distributormodel.RawProfileTypePPROF,
+		Series:                        nil,
 	}
 	if len(p.Profile) == 0 {
 		return res, nil
@@ -79,11 +80,9 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 	}
 
 	res.Series = []*distributormodel.ProfileSeries{{
-		Labels: p.createLabels(profile, md),
-		Samples: []*distributormodel.ProfileSample{{
-			Profile:    profile,
-			RawProfile: p.Profile,
-		}},
+		Labels:     p.createLabels(profile, md),
+		Profile:    profile,
+		RawProfile: p.Profile,
 	}}
 	return
 }

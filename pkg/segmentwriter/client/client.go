@@ -302,7 +302,7 @@ func newConnPool(
 	grpcClientConfig grpcclient.Config,
 	dialOpts ...grpc.DialOption,
 ) (*connpool.Pool, error) {
-	options, err := grpcClientConfig.DialOption(nil, nil)
+	options, err := grpcClientConfig.DialOption(nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -41,8 +41,8 @@ The `forward_to` parameter should point to a `pyroscope.write` component to send
 
 The `pyroscope.ebpf` component supports the following languages:
 
-- Go
-- Rust
+- Go with frame pointers enabled (default)
+- Rust with frame pointers enabled
 - C/C++ with frame pointers enabled
 - Python
 

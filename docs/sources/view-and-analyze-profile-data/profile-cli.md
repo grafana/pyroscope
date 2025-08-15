@@ -251,7 +251,7 @@ By default it looks for samples within the last hour, though this can be control
 
      profilecli query profile \
          --profile-type=<profile_type> \
-         --query='{<label_name>="<label_value>"' \
+         --query='{<label_name>="<label_value>"}' \
          --from="<from>" --to="<to>"
      ```
 
