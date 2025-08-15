@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/distributor/annotation"
 	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 )
 
@@ -57,7 +58,7 @@ func TestMarkThrottledTenant(t *testing.T) {
 			},
 			verify: func(t *testing.T, req *ProfileSeries) {
 				require.Len(t, req.Annotations, 1)
-				assert.Equal(t, ingestlimits.ProfileAnnotationKeyThrottled, req.Annotations[0].Key)
+				assert.Equal(t, annotation.ProfileAnnotationKeyThrottled, req.Annotations[0].Key)
 				assert.Contains(t, req.Annotations[0].Value, "\"periodLimitMb\":128")
 			},
 		},
@@ -109,7 +110,7 @@ func TestMarkThrottledUsageGroup(t *testing.T) {
 			usageGroup: "group-1",
 			verify: func(t *testing.T, req *ProfileSeries) {
 				require.Len(t, req.Annotations, 1)
-				assert.Equal(t, ingestlimits.ProfileAnnotationKeyThrottled, req.Annotations[0].Key)
+				assert.Equal(t, annotation.ProfileAnnotationKeyThrottled, req.Annotations[0].Key)
 				assert.Contains(t, req.Annotations[0].Value, "\"periodLimitMb\":64")
 				assert.Contains(t, req.Annotations[0].Value, "\"usageGroup\":\"group-1\"")
 			},

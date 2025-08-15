@@ -38,6 +38,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
+	"github.com/grafana/pyroscope/pkg/distributor/annotation"
 	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
@@ -2062,7 +2063,7 @@ func TestPush_Aggregation(t *testing.T) {
 	for i, req := range ingesterClient.requests {
 		for _, series := range req.Series {
 			require.Lenf(t, series.Annotations, 1, "failed request %d", i)
-			assert.Equal(t, ingestlimits.ProfileAnnotationKeyThrottled, series.Annotations[0].Key)
+			assert.Equal(t, annotation.ProfileAnnotationKeyThrottled, series.Annotations[0].Key)
 			assert.Contains(t, series.Annotations[0].Value, "\"periodLimitMb\":128")
 		}
 	}
@@ -2344,7 +2345,7 @@ func TestDistributor_shouldSample(t *testing.T) {
 		groups         []validation.UsageGroupMatchName
 		samplingConfig *sampling.Config
 		expected       bool
-		expectedMatch  *validation.UsageGroupMatchName
+		expectedMatch  *sampling.Source
 	}{
 		{
 			name:     "no sampling config - should accept",
@@ -2373,9 +2374,9 @@ func TestDistributor_shouldSample(t *testing.T) {
 				},
 			},
 			expected: true,
-			expectedMatch: &validation.UsageGroupMatchName{
-				ConfiguredName: "group1",
-				ResolvedName:   "group1",
+			expectedMatch: &sampling.Source{
+				UsageGroup:  "group1",
+				Probability: 1.0,
 			},
 		},
 		{
@@ -2388,9 +2389,9 @@ func TestDistributor_shouldSample(t *testing.T) {
 				},
 			},
 			expected: true,
-			expectedMatch: &validation.UsageGroupMatchName{
-				ConfiguredName: "configured-name",
-				ResolvedName:   "resolved-name",
+			expectedMatch: &sampling.Source{
+				UsageGroup:  "resolved-name",
+				Probability: 1.0,
 			},
 		},
 		{
@@ -2403,9 +2404,9 @@ func TestDistributor_shouldSample(t *testing.T) {
 				},
 			},
 			expected: false,
-			expectedMatch: &validation.UsageGroupMatchName{
-				ConfiguredName: "group1",
-				ResolvedName:   "group1",
+			expectedMatch: &sampling.Source{
+				UsageGroup:  "group1",
+				Probability: 0.0,
 			},
 		},
 		{
@@ -2422,9 +2423,9 @@ func TestDistributor_shouldSample(t *testing.T) {
 				},
 			},
 			expected: false,
-			expectedMatch: &validation.UsageGroupMatchName{
-				ConfiguredName: "group2",
-				ResolvedName:   "group2",
+			expectedMatch: &sampling.Source{
+				UsageGroup:  "group2",
+				Probability: 0.0,
 			},
 		},
 		{
@@ -2441,9 +2442,9 @@ func TestDistributor_shouldSample(t *testing.T) {
 				},
 			},
 			expected: true,
-			expectedMatch: &validation.UsageGroupMatchName{
-				ConfiguredName: "test_service",
-				ResolvedName:   "test_service",
+			expectedMatch: &sampling.Source{
+				UsageGroup:  "test_service",
+				Probability: 1.0,
 			},
 		},
 		{
@@ -2460,9 +2461,9 @@ func TestDistributor_shouldSample(t *testing.T) {
 				},
 			},
 			expected: true,
-			expectedMatch: &validation.UsageGroupMatchName{
-				ConfiguredName: "test_service",
-				ResolvedName:   "test_service",
+			expectedMatch: &sampling.Source{
+				UsageGroup:  "test_service",
+				Probability: 1.0,
 			},
 		},
 	}
