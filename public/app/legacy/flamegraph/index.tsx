@@ -5,10 +5,4 @@ import { FlamegraphRenderer } from './FlamegraphRenderer';
 import { DefaultPalette } from './FlameGraph/FlameGraphComponent/colorPalette';
 import { diffTwoProfiles } from './convert/diffTwoProfiles';
 
-export {
-  Flamegraph,
-  DefaultPalette,
-  FlamegraphRenderer,
-  Box,
-  diffTwoProfiles,
-};
+export { Flamegraph, DefaultPalette, FlamegraphRenderer, Box, diffTwoProfiles };
