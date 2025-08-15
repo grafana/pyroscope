@@ -1,10 +1,12 @@
 package sampletype
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -250,7 +252,7 @@ func TestRelabelProfile(t *testing.T) {
 				}
 			}
 
-			p := &validation.ValidatedProfile{Profile: pprof.RawFromProto(tt.profile)}
+			p := validation.ValidatedProfile{Profile: pprof.RawFromProto(tt.profile)}
 
 			Relabel(p, tt.rules, nil)
 
@@ -291,7 +293,7 @@ func TestTestdata(t *testing.T) {
 			f, err := pprof.OpenFile(td.f)
 			require.NoError(t, err)
 			require.Equal(t, td.expectedSize, f.SizeVT())
-			Relabel(&validation.ValidatedProfile{Profile: f}, td.rules, td.series)
+			Relabel(validation.ValidatedProfile{Profile: f}, td.rules, td.series)
 			f.Normalize()
 			require.Equal(t, td.expectedNormalizedSize, f.SizeVT())
 		})

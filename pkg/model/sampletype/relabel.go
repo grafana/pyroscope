@@ -2,6 +2,7 @@ package sampletype
 
 import (
 	"fmt"
+
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -13,7 +14,7 @@ import (
 	phlarerelabel "github.com/grafana/pyroscope/pkg/model/relabel"
 )
 
-func Relabel(p *validation.ValidatedProfile, rules []*relabel.Config, series []*typesv1.LabelPair) {
+func Relabel(p validation.ValidatedProfile, rules []*relabel.Config, series []*typesv1.LabelPair) {
 	if len(rules) == 0 {
 		return
 	}
