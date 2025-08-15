@@ -61,11 +61,11 @@ func (m *ReceivedMetricsMeter) Observe() {
 	if !m.set[ReceiveMetricStageSampled] {
 		return
 	}
+	m.observe(ReceiveMetricStageSampled)
 	if !m.set[ReceiveMetricStageNormalized] {
 		m.sizes[ReceiveMetricStageNormalized] = m.sizes[ReceiveMetricStageSampled]
 		m.set[ReceiveMetricStageNormalized] = true
 	}
-	m.observe(ReceiveMetricStageSampled)
 	m.observe(ReceiveMetricStageNormalized)
 
 }
