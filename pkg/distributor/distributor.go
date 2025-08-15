@@ -7,6 +7,7 @@ import (
 	"expvar"
 	"flag"
 	"fmt"
+	"github.com/grafana/pyroscope/pkg/model/sampletype"
 	"hash/fnv"
 	"math/rand"
 	"net/http"
@@ -411,7 +412,8 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
 	groups.CountReceivedBytes(profName, int64(decompressedSize))
 
-	if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, req.Labels, now); err != nil {
+	validated, err := validation.ValidateProfile(d.limits, tenantID, p, decompressedSize, req.Labels, now)
+	if err != nil {
 		_ = level.Debug(logger).Log("msg", "invalid profile", "err", err)
 		reason := string(validation.ReasonOf(err))
 		validation.DiscardedProfiles.WithLabelValues(reason, tenantID).Add(float64(req.TotalProfiles))
@@ -429,6 +431,11 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	if req.Language == "go" {
 		sp, _ := opentracing.StartSpanFromContext(ctx, "pprof.FixGoProfile")
 		req.Profile.Profile = pprof.FixGoProfile(req.Profile.Profile)
+		sp.Finish()
+	}
+	{
+		sp, _ := opentracing.StartSpanFromContext(ctx, "sampletype.Relabel")
+		sampletype.Relabel(validated, nil, req.Labels)
 		sp.Finish()
 	}
 	sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")

@@ -409,7 +409,6 @@ func (p *Profile) Normalize() {
 		}
 		return false
 	})
-
 	// Remove references to removed samples.
 	p.clearSampleReferences(removedSamples)
 	sanitizeProfile(p.Profile, &p.stats)
@@ -1421,4 +1420,13 @@ func (s *sanitizeStats) pretty() string {
 	put("sample_value_zero", s.sampleValueZero)
 	put("sample_duplicate", s.sampleDuplicate)
 	return b.String()
+}
+
+func (p *Profile) DebugString() string {
+	bs, _ := p.Profile.MarshalVT()
+	gp, _ := profile.ParseData(bs)
+	if gp == nil {
+		return "<nil>"
+	}
+	return gp.String()
 }
