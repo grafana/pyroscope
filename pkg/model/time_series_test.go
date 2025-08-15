@@ -145,6 +145,44 @@ func Test_RangeSeriesAvg(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "single series from multiple underlying series",
+			in: []TimeSeriesValue{
+				// we have 3 processes: a, b, c. All use 1 value, process c is scraping twice a second
+				{Ts: 1, Value: 1, SeriesFingerprints: []uint64{0xa}},
+				{Ts: 1, Value: 1, SeriesFingerprints: []uint64{0xb}},
+				{Ts: 1, Value: 1, SeriesFingerprints: []uint64{0xc}},
+				{Ts: 1, Value: 1, SeriesFingerprints: []uint64{0xc}},
+			},
+			out: []*typesv1.Series{
+				{
+					Points: []*typesv1.Point{
+						{Timestamp: 1, Value: 3, SeriesFingerprints: []uint64{0xa, 0xb, 0xc}}, // build the avg of each process and sum it up
+					},
+				},
+			},
+		},
+		{
+			name: "single series",
+			in: []TimeSeriesValue{
+				{Ts: 1, Value: 1},
+				{Ts: 1, Value: 2},
+				{Ts: 2, Value: 2},
+				{Ts: 2, Value: 3},
+				{Ts: 3, Value: 4},
+				{Ts: 4, Value: 5, Annotations: []*typesv1.ProfileAnnotation{{Key: "foo", Value: "bar"}}},
+			},
+			out: []*typesv1.Series{
+				{
+					Points: []*typesv1.Point{
+						{Timestamp: 1, Value: 1.5, Annotations: []*typesv1.ProfileAnnotation{}}, // avg of 1 and 2
+						{Timestamp: 2, Value: 2.5, Annotations: []*typesv1.ProfileAnnotation{}}, // avg of 2 and 3
+						{Timestamp: 3, Value: 4, Annotations: []*typesv1.ProfileAnnotation{}},
+						{Timestamp: 4, Value: 5, Annotations: []*typesv1.ProfileAnnotation{{Key: "foo", Value: "bar"}}},
+					},
+				},
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			in := iter.NewSliceIterator(tc.in)

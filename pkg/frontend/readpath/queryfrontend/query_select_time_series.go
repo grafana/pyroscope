@@ -43,9 +43,10 @@ func (q *QueryFrontend) SelectSeries(
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
 			TimeSeries: &queryv1.TimeSeriesQuery{
-				Step:    c.Msg.GetStep(),
-				GroupBy: c.Msg.GetGroupBy(),
-				Limit:   c.Msg.GetLimit(),
+				Step:        c.Msg.GetStep(),
+				GroupBy:     c.Msg.GetGroupBy(),
+				Limit:       c.Msg.GetLimit(),
+				Aggregation: c.Msg.Aggregation,
 			},
 		}},
 	})
