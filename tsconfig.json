@@ -24,7 +24,7 @@
     "strictNullChecks": true,
     "experimentalDecorators": true,
 
-    "types": ["node"]
+    "types": ["node", "@types/jest"]
   },
   "include": [
     "public",
