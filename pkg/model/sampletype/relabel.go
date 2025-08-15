@@ -37,5 +37,4 @@ func Relabel(p validation.ValidatedProfile, rules []*relabel.Config, series []*t
 			return !keeps[idx]
 		})
 	}
-	return
 }
