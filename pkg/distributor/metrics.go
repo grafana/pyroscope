@@ -1,8 +1,82 @@
 package distributor
 
 import (
+	"fmt"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+type ReceiveMetricStage int
+
+const (
+	ReceiveMetricStageReceived ReceiveMetricStage = iota
+	ReceiveMetricStageSampled
+	ReceiveMetricStageNormalized
+	totalStages
+)
+
+func (s ReceiveMetricStage) String() string {
+	switch s {
+	case ReceiveMetricStageSampled:
+		return "sampled"
+	case ReceiveMetricStageReceived:
+		return "received"
+	case ReceiveMetricStageNormalized:
+		return "normalized"
+	default:
+		panic(fmt.Sprintf("unexpected ReceiveMetricStage value: %d", s))
+	}
+}
+
+func ReceiveMetricStageFromString(s string) ReceiveMetricStage {
+	switch s {
+	case "sampled":
+		return ReceiveMetricStageSampled
+	case "received":
+		return ReceiveMetricStageReceived
+	case "normalized":
+		return ReceiveMetricStageNormalized
+	default:
+		return ReceiveMetricStageSampled
+	}
+}
+
+type ReceivedMetricsMeter struct {
+	metric      *prometheus.HistogramVec
+	tenant      string
+	tenantStage ReceiveMetricStage
+	sizes       [totalStages]int64
+	set         [totalStages]bool
+}
+
+func (m *ReceivedMetricsMeter) Record(stage ReceiveMetricStage, size int64) {
+	m.set[stage] = true
+	m.sizes[stage] = size
+}
+func (m *ReceivedMetricsMeter) Observe() {
+	if !m.set[ReceiveMetricStageReceived] {
+		panic("Received metric stage not set")
+	}
+	m.observe(ReceiveMetricStageReceived)
+	if !m.set[ReceiveMetricStageSampled] {
+		return
+	}
+	if !m.set[ReceiveMetricStageNormalized] {
+		m.sizes[ReceiveMetricStageNormalized] = m.sizes[ReceiveMetricStageSampled]
+		m.set[ReceiveMetricStageNormalized] = true
+	}
+	m.observe(ReceiveMetricStageSampled)
+	m.observe(ReceiveMetricStageNormalized)
+
+}
+
+func (m *ReceivedMetricsMeter) observe(stage ReceiveMetricStage) {
+	sz := m.sizes[stage]
+	if !m.set[stage] {
+		panic(fmt.Sprintf("Received metric stage %d not set", stage))
+	}
+	m.metric.WithLabelValues(m.tenant, stage.String(), fmt.Sprint(stage == m.tenantStage)).Observe(float64(sz))
+}
 
 const (
 	minBytes     = 10 * 1024
@@ -19,7 +93,6 @@ type metrics struct {
 	replicationFactor         prometheus.Gauge
 
 	receivedDecompressedBytesTotal *prometheus.HistogramVec
-	processedDecompressedBytes     *prometheus.HistogramVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -78,19 +151,10 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			prometheus.HistogramOpts{
 				Namespace: "pyroscope",
 				Name:      "distributor_received_decompressed_bytes_total",
-				Help:      "The total number of decompressed bytes per profile received by the distributor before limits/sampling checks.",
+				Help:      "The total number of decompressed bytes per profile received by the distributor at different processing stages.",
 				Buckets:   prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
 			},
-			[]string{"tenant"},
-		),
-		processedDecompressedBytes: prometheus.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Namespace: "pyroscope",
-				Name:      "distributor_processed_decompressed_bytes",
-				Help:      "The number of decompressed bytes per profile received (processed) by the distributor after limits/sampling checks and normalization.",
-				Buckets:   prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
-			},
-			[]string{"tenant"},
+			[]string{"tenant", "stage", "tenant_stage"},
 		),
 	}
 	if reg != nil {
@@ -102,7 +166,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			m.receivedSymbolsBytes,
 			m.replicationFactor,
 			m.receivedDecompressedBytesTotal,
-			m.processedDecompressedBytes,
 		)
 	}
 	return m
