@@ -356,7 +356,15 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	req.TotalBytesUncompressed = calculateRequestSize(req)
 	req.TotalBytesUncompressedProcessed = req.TotalBytesUncompressed
 
-	d.metrics.receivedDecompressedBytesTotal.WithLabelValues(tenantID).Observe(float64(req.TotalBytesUncompressed))
+	recvMeter := ReceivedMetricsMeter{
+		metric:      d.metrics.receivedCompressedBytes,
+		tenantStage: ReceiveMetricStageSampled, //todo configure
+		tenant:      tenantID,
+	}
+	defer func() {
+		recvMeter.Observe()
+	}()
+	recvMeter.Record(ReceiveMetricStageReceived, req.TotalBytesUncompressed)
 
 	if err := d.checkIngestLimit(req); err != nil {
 		level.Debug(logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
@@ -393,11 +401,9 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 		return nil
 	}
+	recvMeter.Record(ReceiveMetricStageSampled, req.TotalBytesUncompressed)
 
 	profLanguage := d.GetProfileLanguage(req)
-	defer func() { // defer to allow re-calculate the size of the profile after normalization
-		d.metrics.processedDecompressedBytes.WithLabelValues(tenantID).Observe(float64(req.TotalBytesUncompressedProcessed))
-	}()
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
@@ -431,11 +437,13 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		req.Profile.Profile = pprof.FixGoProfile(req.Profile.Profile)
 		sp.Finish()
 	}
-	sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
-	req.Profile.Normalize()
-	sp.Finish()
-
-	req.TotalBytesUncompressedProcessed = calculateRequestSize(req)
+	{
+		sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
+		req.Profile.Normalize()
+		sp.Finish()
+		req.TotalBytesUncompressedProcessed = calculateRequestSize(req)
+		recvMeter.Record(ReceiveMetricStageNormalized, req.TotalBytesUncompressed)
+	}
 
 	if len(req.Profile.Sample) == 0 {
 		// TODO(kolesnikovae):
