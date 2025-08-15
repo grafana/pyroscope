@@ -55,7 +55,7 @@ func (m *ReceivedMetricsMeter) Record(stage ReceiveMetricStage, size int64) {
 }
 func (m *ReceivedMetricsMeter) Observe() {
 	if !m.set[ReceiveMetricStageReceived] {
-		panic("Received metric stage not set")
+		panic("ReceiveMetricStageReceived metric stage not set. It should always be set")
 	}
 	m.observe(ReceiveMetricStageReceived)
 	if !m.set[ReceiveMetricStageSampled] {
