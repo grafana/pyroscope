@@ -144,3 +144,8 @@ func (o *Overrides) IngestionRelabelingRules(tenantID string) []*relabel.Config 
 	rules = append(rules, l.IngestionRelabelingRules...)
 	return append(rules, defaultRelabelRules...)
 }
+
+func (o *Overrides) SampleTypeRelabelingRules(tenantID string) []*relabel.Config {
+	l := o.getOverridesForTenant(tenantID)
+	return l.SampleTypeRelabelingRules
+}

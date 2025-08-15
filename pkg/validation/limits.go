@@ -63,6 +63,8 @@ type Limits struct {
 	IngestionRelabelingRules                RelabelRules         `yaml:"ingestion_relabeling_rules" json:"ingestion_relabeling_rules" category:"advanced"`
 	IngestionRelabelingDefaultRulesPosition RelabelRulesPosition `yaml:"ingestion_relabeling_default_rules_position" json:"ingestion_relabeling_default_rules_position" category:"advanced"`
 
+	SampleTypeRelabelingRules RelabelRules `yaml:"sample_type_relabeling_rules" json:"sample_type_relabeling_rules" category:"advanced"`
+
 	// The tenant shard size determines the how many ingesters a particular
 	// tenant will be sharded to. Needs to be specified on distributors for
 	// correct distribution and on ingesters so that the local ingestion limit
@@ -204,6 +206,9 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&l.IngestionRelabelingDefaultRulesPosition, "distributor.ingestion-relabeling-default-rules-position", "Position of the default ingestion relabeling rules in relation to relabel rules from overrides. Valid values are 'first', 'last' or 'disabled'.")
 	_ = l.IngestionRelabelingRules.Set("[]")
 	f.Var(&l.IngestionRelabelingRules, "distributor.ingestion-relabeling-rules", "List of ingestion relabel configurations. The relabeling rules work the same way, as those of [Prometheus](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config). All rules are applied in the order they are specified. Note: In most situations, it is more effective to use relabeling directly in Grafana Alloy.")
+
+	_ = l.SampleTypeRelabelingRules.Set("[]")
+	f.Var(&l.SampleTypeRelabelingRules, "distributor.sample-type-relabeling-rules", "List of sample type relabel configurations. Rules are applied to sample types with __type__ and __unit__ labels, along with all series labels.")
 
 	f.Var(&l.IngestionArtificialDelay, "distributor.ingestion-artificial-delay", "Target ingestion delay to apply to all tenants. If set to a non-zero value, the distributor will artificially delay ingestion time-frame by the specified duration by computing the difference between actual ingestion and the target. There is no delay on actual ingestion of samples, it is only the response back to the client.")
 

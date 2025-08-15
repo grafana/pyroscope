@@ -141,6 +141,7 @@ type Limits interface {
 	MaxSessionsPerSeries(tenantID string) int
 	EnforceLabelsOrder(tenantID string) bool
 	IngestionRelabelingRules(tenantID string) []*relabel.Config
+	SampleTypeRelabelingRules(tenantID string) []*relabel.Config
 	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
 	validation.ProfileValidationLimits
 	aggregator.Limits
@@ -435,7 +436,8 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 	{
 		sp, _ := opentracing.StartSpanFromContext(ctx, "sampletype.Relabel")
-		sampletype.Relabel(validated, nil, req.Labels)
+		sampleTypeRules := d.limits.SampleTypeRelabelingRules(req.TenantID)
+		sampletype.Relabel(validated, sampleTypeRules, req.Labels)
 		sp.Finish()
 	}
 	sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")

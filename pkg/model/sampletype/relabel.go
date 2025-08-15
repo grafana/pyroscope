@@ -1,8 +1,6 @@
 package sampletype
 
 import (
-	"fmt"
-
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -24,11 +22,9 @@ func Relabel(p validation.ValidatedProfile, rules []*relabel.Config, series []*t
 		builder.Set("__type__", p.StringTable[st.Type])
 		builder.Set("__unit__", p.StringTable[st.Unit])
 		labels := builder.Labels()
-		fmt.Println(labels)
 		_, keep := phlarerelabel.Process(labels, rules...)
 		keeps[i] = keep
 	}
-	fmt.Println("keeps", keeps)
 	p.SampleType = slices.RemoveInPlace(p.SampleType, func(_ *googlev1.ValueType, idx int) bool {
 		return !keeps[idx]
 	})
