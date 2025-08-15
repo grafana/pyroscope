@@ -1423,7 +1423,7 @@ func (s *sanitizeStats) pretty() string {
 }
 
 func (p *Profile) DebugString() string {
-	bs, _ := p.Profile.MarshalVT()
+	bs, _ := p.MarshalVT()
 	gp, _ := profile.ParseData(bs)
 	if gp == nil {
 		return "<nil>"
