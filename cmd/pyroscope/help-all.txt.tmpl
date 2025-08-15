@@ -255,6 +255,8 @@ Usage of ./pyroscope:
     	The prefix for the keys in the store. Should end with a /. (default "collectors/")
   -distributor.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -distributor.sample-type-relabeling-rules value
+    	List of sample type relabel configurations. Rules are applied to sample types with __type__ and __unit__ labels, along with all series labels.
   -distributor.zone-awareness-enabled
     	True to enable the zone-awareness and replicate ingested samples across different availability zones.
   -embedded-grafana.data-path string

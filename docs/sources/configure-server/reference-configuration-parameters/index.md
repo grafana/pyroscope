@@ -2221,6 +2221,23 @@ distributor_usage_groups:
 # CLI flag: -distributor.ingestion-relabeling-default-rules-position
 [ingestion_relabeling_default_rules_position: <string> | default = "first"]
 
+# List of sample type relabel configurations. Rules are applied to sample types
+# with __type__ and __unit__ labels, along with all series labels.
+# Example:
+#   This example consists of two rules, the first one will drop all profiles
+#   received with an label 'environment="secrets"' and the second rule will add
+#   a label 'powered_by="Grafana Labs"' to all profile series.
+#   sample_type_relabeling_rules:
+#       - action: drop
+#         regex: secret
+#         source_labels:
+#           - environment
+#       - action: replace
+#         replacement: grafana-labs
+#         target_label: powered_by
+# CLI flag: -distributor.sample-type-relabeling-rules
+[sample_type_relabeling_rules: <list of Configs> | default = []]
+
 # The tenant's shard size used by shuffle-sharding. Must be set both on
 # ingesters and distributors. 0 disables shuffle sharding.
 # CLI flag: -distributor.ingestion-tenant-shard-size
