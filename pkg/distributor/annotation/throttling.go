@@ -12,7 +12,7 @@ type ThrottledAnnotation struct {
 	PeriodLimitMb     int    `json:"periodLimitMb"`
 	LimitResetTime    int64  `json:"limitResetTime"`
 	SamplingPeriodSec int    `json:"samplingPeriodSec"`
-	SamplingRequests  int    `yaml:"samplingRequests"`
+	SamplingRequests  int    `json:"samplingRequests"`
 	UsageGroup        string `json:"usageGroup"`
 }
 
