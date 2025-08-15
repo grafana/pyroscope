@@ -41,14 +41,6 @@ type Resolver struct {
 
 type ResolverOption func(*Resolver)
 
-// WithResolverMaxConcurrent specifies how many partitions
-// can be resolved concurrently.
-func WithResolverMaxConcurrent(n int) ResolverOption {
-	return func(r *Resolver) {
-		r.c = n
-	}
-}
-
 // WithResolverMaxNodes specifies the desired maximum number
 // of nodes the resulting profile should include.
 func WithResolverMaxNodes(n int64) ResolverOption {
