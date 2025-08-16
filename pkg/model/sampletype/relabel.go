@@ -12,17 +12,16 @@ import (
 	phlarerelabel "github.com/grafana/pyroscope/pkg/model/relabel"
 )
 
-func Relabel(p validation.ValidatedProfile, rules []*relabel.Config, series []*typesv1.LabelPair) {
+func Relabel(p validation.ValidatedProfile, rules []*relabel.Config, labels []*typesv1.LabelPair) {
 	if len(rules) == 0 {
 		return
 	}
 	keeps := make([]bool, len(p.SampleType))
 	for i, st := range p.SampleType {
-		builder := phlaremodel.NewLabelsBuilder(series)
-		builder.Set("__type__", p.StringTable[st.Type])
-		builder.Set("__unit__", p.StringTable[st.Unit])
-		labels := builder.Labels()
-		_, keep := phlarerelabel.Process(labels, rules...)
+		lb := phlaremodel.NewLabelsBuilder(labels)
+		lb.Set("__type__", p.StringTable[st.Type])
+		lb.Set("__unit__", p.StringTable[st.Unit])
+		_, keep := phlarerelabel.Process(lb.Labels(), rules...)
 		keeps[i] = keep
 	}
 	p.SampleType = slices.RemoveInPlace(p.SampleType, func(_ *googlev1.ValueType, idx int) bool {
