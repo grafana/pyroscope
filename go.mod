@@ -78,6 +78,7 @@ require (
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/xlab/treeprint v1.2.0
+	github.com/yandex-cloud/go-protobuf-mutator v1.0.1
 	go.etcd.io/bbolt v1.3.11
 	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/proto/otlp v1.7.0

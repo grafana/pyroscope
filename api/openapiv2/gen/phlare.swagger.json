@@ -12,6 +12,12 @@
       "name": "FeatureFlagsService"
     },
     {
+      "name": "RecordingRulesService"
+    },
+    {
+      "name": "SettingsService"
+    },
+    {
       "name": "PusherService"
     },
     {
@@ -40,12 +46,6 @@
     },
     {
       "name": "SegmentWriterService"
-    },
-    {
-      "name": "RecordingRulesService"
-    },
-    {
-      "name": "SettingsService"
     },
     {
       "name": "StatusService"
@@ -256,7 +256,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Sample"
+            "$ref": "#/definitions/googlev1Sample"
           },
           "description": "The set of samples recorded in this profile."
         },
@@ -334,6 +334,36 @@
           "description": "Index into the string table of the type of the preferred sample\nvalue. If unset, clients should default to the last sample value."
         }
       }
+    },
+    "googlev1Sample": {
+      "type": "object",
+      "properties": {
+        "locationId": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "description": "The ids recorded here correspond to a Profile.location.id.\nThe leaf is at location_id[0]."
+        },
+        "value": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          },
+          "description": "The type and unit of each value is defined by the corresponding\nentry in Profile.sample_type. All samples must have the same\nnumber of values, the same as the length of Profile.sample_type.\nWhen aggregating multiple samples into a single sample, the\nresult has a list of values that is the element-wise sum of the\nlists of the originals."
+        },
+        "label": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/googlev1Label"
+          },
+          "title": "label includes additional context for this sample. It can include\nthings like a thread id, allocation size, etc"
+        }
+      },
+      "description": "Each Sample records values encountered in some program\ncontext. The program context is typically a stack trace, perhaps\naugmented with auxiliary information like the thread-id, some\nindicator of a higher level request being handled etc."
     },
     "ingesterv1ProfileTypesResponse": {
       "type": "object",
@@ -2032,36 +2062,6 @@
         "REPORT_PPROF"
       ],
       "default": "REPORT_UNSPECIFIED"
-    },
-    "v1Sample": {
-      "type": "object",
-      "properties": {
-        "locationId": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "uint64"
-          },
-          "description": "The ids recorded here correspond to a Profile.location.id.\nThe leaf is at location_id[0]."
-        },
-        "value": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "int64"
-          },
-          "description": "The type and unit of each value is defined by the corresponding\nentry in Profile.sample_type. All samples must have the same\nnumber of values, the same as the length of Profile.sample_type.\nWhen aggregating multiple samples into a single sample, the\nresult has a list of values that is the element-wise sum of the\nlists of the originals."
-        },
-        "label": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/googlev1Label"
-          },
-          "title": "label includes additional context for this sample. It can include\nthings like a thread id, allocation size, etc"
-        }
-      },
-      "description": "Each Sample records values encountered in some program\ncontext. The program context is typically a stack trace, perhaps\naugmented with auxiliary information like the thread-id, some\nindicator of a higher level request being handled etc."
     },
     "v1SelectMergeSpanProfileResponse": {
       "type": "object",

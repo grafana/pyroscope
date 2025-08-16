@@ -134,13 +134,7 @@ func (c *UsageGroupConfig) UnmarshalYAML(value *yaml.Node) error {
 		return fmt.Errorf("malformed usage group config: %w", err)
 	}
 
-	entries, rawData, err := parseUsageGroupEntries(m)
-	if err != nil {
-		return err
-	}
-	c.parsedEntries = entries
-	c.config = rawData
-	return nil
+	return c.UnmarshalMap(m)
 }
 
 func (c *UsageGroupConfig) UnmarshalJSON(bytes []byte) error {
@@ -150,6 +144,10 @@ func (c *UsageGroupConfig) UnmarshalJSON(bytes []byte) error {
 		return fmt.Errorf("malformed usage group config: %w", err)
 	}
 
+	return c.UnmarshalMap(m)
+}
+
+func (c *UsageGroupConfig) UnmarshalMap(m map[string]string) error {
 	entries, rawData, err := parseUsageGroupEntries(m)
 	if err != nil {
 		return err
