@@ -2227,7 +2227,9 @@ distributor_usage_groups:
 #   This example shows sample type filtering rules. The first rule drops all
 #   allocation-related sample types (alloc_objects, alloc_space) from memory
 #   profiles, keeping only in-use metrics. The second rule keeps only
-#   CPU-related sample types by matching the __type__ label.
+#   CPU-related sample types by matching the __type__ label. The third rule
+#   shows how to drop allocation sample types for a specific service by
+#   combining __type__ and service_name labels.
 #   sample_type_relabeling_rules:
 #       - action: drop
 #         regex: alloc_.*
@@ -2237,6 +2239,12 @@ distributor_usage_groups:
 #         regex: cpu|wall
 #         source_labels:
 #           - __type__
+#       - action: drop
+#         regex: alloc_.*;my-service
+#         separator: ;
+#         source_labels:
+#           - __type__
+#           - service_name
 # CLI flag: -distributor.sample-type-relabeling-rules
 [sample_type_relabeling_rules: <list of Configs> | default = []]
 

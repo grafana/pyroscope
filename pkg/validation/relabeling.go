@@ -141,10 +141,11 @@ func (r *SampleTypeRelabelRules) String() string {
 }
 
 func (r *SampleTypeRelabelRules) ExampleDoc() (comment string, yaml interface{}) {
-	return `This example shows sample type filtering rules. The first rule drops all allocation-related sample types (alloc_objects, alloc_space) from memory profiles, keeping only in-use metrics. The second rule keeps only CPU-related sample types by matching the __type__ label.`,
+	return `This example shows sample type filtering rules. The first rule drops all allocation-related sample types (alloc_objects, alloc_space) from memory profiles, keeping only in-use metrics. The second rule keeps only CPU-related sample types by matching the __type__ label. The third rule shows how to drop allocation sample types for a specific service by combining __type__ and service_name labels.`,
 		[]map[string]interface{}{
 			{"action": "drop", "source_labels": []interface{}{"__type__"}, "regex": "alloc_.*"},
 			{"action": "keep", "source_labels": []interface{}{"__type__"}, "regex": "cpu|wall"},
+			{"action": "drop", "source_labels": []interface{}{"__type__", "service_name"}, "separator": ";", "regex": "alloc_.*;my-service"},
 		}
 }
 
