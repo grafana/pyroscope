@@ -7,9 +7,10 @@ import (
 	"iter"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
@@ -60,10 +61,10 @@ type Limits struct {
 	DistributorAggregationPeriod model.Duration `yaml:"distributor_aggregation_period" json:"distributor_aggregation_period"`
 
 	// IngestionRelabelingRules allow to specify additional relabeling rules that get applied before a profile gets ingested. There are some default relabeling rules, which ensure consistency of profiling series. The position of the default rules can be contolled by IngestionRelabelingDefaultRulesPosition
-	IngestionRelabelingRules                RelabelRules         `yaml:"ingestion_relabeling_rules" json:"ingestion_relabeling_rules" category:"advanced"`
-	IngestionRelabelingDefaultRulesPosition RelabelRulesPosition `yaml:"ingestion_relabeling_default_rules_position" json:"ingestion_relabeling_default_rules_position" category:"advanced"`
+	IngestionRelabelingRules                IngestionRelabelRules `yaml:"ingestion_relabeling_rules" json:"ingestion_relabeling_rules" category:"advanced"`
+	IngestionRelabelingDefaultRulesPosition RelabelRulesPosition  `yaml:"ingestion_relabeling_default_rules_position" json:"ingestion_relabeling_default_rules_position" category:"advanced"`
 
-	SampleTypeRelabelingRules RelabelRules `yaml:"sample_type_relabeling_rules" json:"sample_type_relabeling_rules" category:"advanced"`
+	SampleTypeRelabelingRules SampleTypeRelabelRules `yaml:"sample_type_relabeling_rules" json:"sample_type_relabeling_rules" category:"advanced"`
 
 	// The tenant shard size determines the how many ingesters a particular
 	// tenant will be sharded to. Needs to be specified on distributors for

@@ -2224,17 +2224,19 @@ distributor_usage_groups:
 # List of sample type relabel configurations. Rules are applied to sample types
 # with __type__ and __unit__ labels, along with all series labels.
 # Example:
-#   This example consists of two rules, the first one will drop all profiles
-#   received with an label 'environment="secrets"' and the second rule will add
-#   a label 'powered_by="Grafana Labs"' to all profile series.
+#   This example shows sample type filtering rules. The first rule drops all
+#   allocation-related sample types (alloc_objects, alloc_space) from memory
+#   profiles, keeping only in-use metrics. The second rule keeps only
+#   CPU-related sample types by matching the __type__ label.
 #   sample_type_relabeling_rules:
 #       - action: drop
-#         regex: secret
+#         regex: alloc_.*
 #         source_labels:
-#           - environment
-#       - action: replace
-#         replacement: grafana-labs
-#         target_label: powered_by
+#           - __type__
+#       - action: keep
+#         regex: cpu|wall
+#         source_labels:
+#           - __type__
 # CLI flag: -distributor.sample-type-relabeling-rules
 [sample_type_relabeling_rules: <list of Configs> | default = []]
 

@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
-	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -78,7 +79,6 @@ const (
 type RelabelRules []*relabel.Config
 
 func (p *RelabelRules) Set(s string) error {
-
 	v := []*relabel.Config{}
 	if err := yaml.Unmarshal([]byte(s), &v); err != nil {
 		return err
@@ -93,13 +93,13 @@ func (p *RelabelRules) Set(s string) error {
 	return nil
 }
 
-func (p RelabelRules) String() string {
+func (p *RelabelRules) String() string {
 	yamlBytes, err := yaml.Marshal(p)
 	if err != nil {
 		panic(fmt.Errorf("error marshal yaml: %w", err))
 	}
 
-	temp := make([]interface{}, 0, len(p))
+	temp := make([]interface{}, 0, len(*p))
 	err = yaml.Unmarshal(yamlBytes, &temp)
 	if err != nil {
 		panic(fmt.Errorf("error unmarshal yaml: %w", err))
@@ -112,12 +112,39 @@ func (p RelabelRules) String() string {
 	return string(jsonBytes)
 }
 
-// ExampleDoc provides an example doc for this config, especially valuable since it's custom-unmarshaled.
-func (r RelabelRules) ExampleDoc() (comment string, yaml interface{}) {
+type IngestionRelabelRules []*relabel.Config
+
+func (r *IngestionRelabelRules) Set(s string) error {
+	return (*RelabelRules)(r).Set(s)
+}
+
+func (r *IngestionRelabelRules) String() string {
+	return (*RelabelRules)(r).String()
+}
+
+func (r *IngestionRelabelRules) ExampleDoc() (comment string, yaml interface{}) {
 	return `This example consists of two rules, the first one will drop all profiles received with an label 'environment="secrets"' and the second rule will add a label 'powered_by="Grafana Labs"' to all profile series.`,
 		[]map[string]interface{}{
 			{"action": "drop", "source_labels": []interface{}{"environment"}, "regex": "secret"},
 			{"action": "replace", "replacement": "grafana-labs", "target_label": "powered_by"},
+		}
+}
+
+type SampleTypeRelabelRules []*relabel.Config
+
+func (r *SampleTypeRelabelRules) Set(s string) error {
+	return (*RelabelRules)(r).Set(s)
+}
+
+func (r *SampleTypeRelabelRules) String() string {
+	return (*RelabelRules)(r).String()
+}
+
+func (r *SampleTypeRelabelRules) ExampleDoc() (comment string, yaml interface{}) {
+	return `This example shows sample type filtering rules. The first rule drops all allocation-related sample types (alloc_objects, alloc_space) from memory profiles, keeping only in-use metrics. The second rule keeps only CPU-related sample types by matching the __type__ label.`,
+		[]map[string]interface{}{
+			{"action": "drop", "source_labels": []interface{}{"__type__"}, "regex": "alloc_.*"},
+			{"action": "keep", "source_labels": []interface{}{"__type__"}, "regex": "cpu|wall"},
 		}
 }
 
