@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { actions as tracingActions } from '@pyroscope/redux/reducers/tracing';
 import { history } from '@pyroscope/util/history';
 import ReduxQuerySync from 'redux-query-sync';
 import { actions as continuousActions } from './reducers/continuous';
@@ -60,11 +59,6 @@ export function setupReduxQuerySync() {
         },
         action: continuousActions.setQuery,
       },
-      queryID: {
-        defaultvalue: '',
-        selector: (state: RootState) => state.tracing.queryID,
-        action: tracingActions.setQueryID,
-      },
       rightQuery: {
         defaultvalue: '',
         selector: (state: RootState) => state.continuous.rightQuery,
@@ -84,18 +78,6 @@ export function setupReduxQuerySync() {
         defaultValue: 'sum',
         selector: (state: RootState) => state.continuous.aggregation,
         action: continuousActions.setAggregation,
-      },
-      groupBy: {
-        defaultValue: '',
-        selector: (state: RootState) =>
-          state.continuous.tagExplorerView.groupByTag,
-        action: continuousActions.setTagExplorerViewGroupByTag,
-      },
-      groupByValue: {
-        defaultValue: '',
-        selector: (state: RootState) =>
-          state.continuous.tagExplorerView.groupByTagValue,
-        action: continuousActions.setTagExplorerViewGroupByTagValue,
       },
     },
     initialTruth: 'location',

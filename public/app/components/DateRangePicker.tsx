@@ -4,7 +4,6 @@ import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   setDateRange,
   selectContinuousState,
-  actions,
 } from '@pyroscope/redux/reducers/continuous';
 import cx from 'classnames';
 import Button from '@pyroscope/ui/Button';
@@ -54,11 +53,7 @@ function dateToLabel(from: string, until: string, offsetInMinutes: number) {
 function DateRangePicker() {
   const dispatch = useAppDispatch();
   const { offset } = useTimeZone();
-  const {
-    from,
-    until,
-    comparisonView: { comparisonMode },
-  } = useAppSelector(selectContinuousState);
+  const { from, until } = useAppSelector(selectContinuousState);
   const [opened, setOpened] = useState(false);
 
   const toggleDropdown = () => {
@@ -71,15 +66,6 @@ function DateRangePicker() {
   const selectPreset = ({ from, until }: { from: string; until: string }) => {
     dispatch(setDateRange({ from, until }));
     setOpened(false);
-
-    if (comparisonMode.active) {
-      dispatch(
-        actions.setComparisonMode({
-          ...comparisonMode,
-          active: false,
-        })
-      );
-    }
   };
 
   const isPresetSelected = (preset: (typeof defaultPresets)[0][0]) => {
@@ -88,15 +74,6 @@ function DateRangePicker() {
 
   const handleChangeDataRange = (from: string, until: string) => {
     dispatch(setDateRange({ from, until }));
-
-    if (comparisonMode.active) {
-      dispatch(
-        actions.setComparisonMode({
-          ...comparisonMode,
-          active: false,
-        })
-      );
-    }
   };
 
   return (

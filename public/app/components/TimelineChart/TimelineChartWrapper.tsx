@@ -5,17 +5,11 @@ import React, { ReactNode } from 'react';
 import Color from 'color';
 import type { Group } from '@pyroscope/legacy/models';
 import type { Timeline } from '@pyroscope/models/timeline';
-import { Annotation } from '@pyroscope/models/annotation';
-import Legend from '@pyroscope/pages/tagExplorer/components/Legend';
 import type { TooltipCallbackProps } from '@pyroscope/components/TimelineChart/Tooltip.plugin';
 import TooltipWrapper from '@pyroscope/components/TimelineChart/TooltipWrapper';
 import type { TooltipWrapperProps } from '@pyroscope/components/TimelineChart/TooltipWrapper';
 import TimelineChart from '@pyroscope/components/TimelineChart/TimelineChart';
-import { ContextMenuProps } from '@pyroscope/components/TimelineChart/ContextMenu.plugin';
-import {
-  markingsFromSelection,
-  ANNOTATION_COLOR,
-} from '@pyroscope/components/TimelineChart/markings';
+import { markingsFromSelection } from '@pyroscope/components/TimelineChart/markings';
 import { centerTimelineData } from '@pyroscope/components/TimelineChart/centerTimelineData';
 import styles from './TimelineChartWrapper.module.css';
 
@@ -89,12 +83,6 @@ type TimelineChartWrapperProps = TimelineDataProps & {
   selectionType: 'single' | 'double';
   onHoverDisplayTooltip?: React.FC<TooltipCallbackProps>;
 
-  /** list of annotations timestamp, to be rendered as markings */
-  annotations?: Annotation[];
-
-  /** What element to render when clicking */
-  ContextMenu?: (props: ContextMenuProps) => React.ReactNode;
-
   /** The list of timeline IDs (flotjs component) to sync the crosshair with */
   syncCrosshairsWith?: string[];
 };
@@ -154,7 +142,6 @@ class TimelineChartWrapper extends React.Component<
         //   a position and a nearby data item object as parameters.
         clickable: true,
       },
-      annotations: [],
       syncCrosshairsWith: [],
       yaxis: {
         show: false,
@@ -213,35 +200,21 @@ class TimelineChartWrapper extends React.Component<
 
     this.state = { flotOptions };
     this.state.flotOptions.grid.markings = this.plotMarkings();
-    this.state.flotOptions.annotations = this.composeAnnotationsList();
   }
 
   // TODO: this only seems to sync props back into the state, which seems unnecessary
   componentDidUpdate(prevProps: TimelineChartWrapperProps) {
     if (
       prevProps.selection !== this.props.selection ||
-      prevProps.annotations !== this.props.annotations ||
       prevProps.syncCrosshairsWith !== this.props.syncCrosshairsWith
     ) {
       const newFlotOptions = this.state.flotOptions;
       newFlotOptions.grid.markings = this.plotMarkings();
-      newFlotOptions.annotations = this.composeAnnotationsList();
       newFlotOptions.syncCrosshairsWith = this.props.syncCrosshairsWith;
 
       this.setState({ flotOptions: newFlotOptions });
     }
   }
-
-  composeAnnotationsList = () => {
-    return Array.isArray(this.props.annotations)
-      ? this.props.annotations?.map((a) => ({
-          timestamp: a.timestamp,
-          content: a.content,
-          type: 'message',
-          color: ANNOTATION_COLOR,
-        }))
-      : [];
-  };
 
   plotMarkings = () => {
     const selectionMarkings = markingsFromSelection(
@@ -288,7 +261,7 @@ class TimelineChartWrapper extends React.Component<
 
   renderMultiple = (props: MultipleDataProps) => {
     const { flotOptions } = this.state;
-    const { timelineGroups, activeGroup, showTagsLegend } = props;
+    const { timelineGroups, activeGroup } = props;
     const { timezone } = this.props;
 
     // TODO: unify with renderSingle
@@ -299,7 +272,6 @@ class TimelineChartWrapper extends React.Component<
     const customFlotOptions = {
       ...flotOptions,
       onHoverDisplayTooltip,
-      ContextMenu: this.props.ContextMenu,
       xaxis: { ...flotOptions.xaxis, autoscaleMargin: null, timezone },
       wrapperId: this.props.id,
     };
@@ -315,18 +287,7 @@ class TimelineChartWrapper extends React.Component<
       }
     );
 
-    return (
-      <>
-        {this.timelineChart(centeredTimelineGroups, customFlotOptions)}
-        {showTagsLegend && (
-          <Legend
-            activeGroup={activeGroup}
-            groups={timelineGroups}
-            handleGroupByTagValueChange={props.handleGroupByTagValueChange}
-          />
-        )}
-      </>
-    );
+    return <>{this.timelineChart(centeredTimelineGroups, customFlotOptions)}</>;
   };
 
   renderSingle = (props: SingleDataProps) => {
@@ -346,7 +307,6 @@ class TimelineChartWrapper extends React.Component<
     const customFlotOptions = {
       ...flotOptions,
       onHoverDisplayTooltip,
-      ContextMenu: this.props.ContextMenu,
       wrapperId: this.props.id,
       xaxis: {
         ...flotOptions.xaxis,
