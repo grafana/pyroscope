@@ -133,7 +133,16 @@ func (r *IngestionRelabelRules) ExampleDoc() (comment string, yaml interface{}) 
 type SampleTypeRelabelRules []*relabel.Config
 
 func (r *SampleTypeRelabelRules) Set(s string) error {
-	return (*RelabelRules)(r).Set(s)
+	if err := (*RelabelRules)(r).Set(s); err != nil {
+		return err
+	}
+
+	for idx, rule := range *r {
+		if rule.Action != relabel.Drop && rule.Action != relabel.Keep {
+			return fmt.Errorf("rule at pos %d: sample type relabeling only supports 'drop' and 'keep' actions, got '%s'", idx, rule.Action)
+		}
+	}
+	return nil
 }
 
 func (r *SampleTypeRelabelRules) String() string {
