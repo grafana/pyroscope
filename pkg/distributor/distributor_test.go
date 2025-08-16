@@ -1912,6 +1912,7 @@ func TestPush_ShuffleSharding(t *testing.T) {
 	// Empty profiles are discarded before sending to ingesters.
 	var buf bytes.Buffer
 	_, err = pprof2.RawFromProto(&profilev1.Profile{
+		SampleType: []*profilev1.ValueType{{}},
 		Sample: []*profilev1.Sample{{
 			LocationId: []uint64{1},
 			Value:      []int64{1},

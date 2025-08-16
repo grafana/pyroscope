@@ -49,6 +49,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/model/pprofsplit"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
+	"github.com/grafana/pyroscope/pkg/model/sampletype"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
@@ -140,6 +141,7 @@ type Limits interface {
 	MaxSessionsPerSeries(tenantID string) int
 	EnforceLabelsOrder(tenantID string) bool
 	IngestionRelabelingRules(tenantID string) []*relabel.Config
+	SampleTypeRelabelingRules(tenantID string) []*relabel.Config
 	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
 	validation.ProfileValidationLimits
 	aggregator.Limits
@@ -418,7 +420,8 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
 	groups.CountReceivedBytes(profName, int64(decompressedSize))
 
-	if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, req.Labels, now); err != nil {
+	validated, err := validation.ValidateProfile(d.limits, tenantID, p, decompressedSize, req.Labels, now)
+	if err != nil {
 		_ = level.Debug(logger).Log("msg", "invalid profile", "err", err)
 		reason := string(validation.ReasonOf(err))
 		validation.DiscardedProfiles.WithLabelValues(reason, tenantID).Add(float64(req.TotalProfiles))
@@ -436,6 +439,12 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	if req.Language == "go" {
 		sp, _ := opentracing.StartSpanFromContext(ctx, "pprof.FixGoProfile")
 		req.Profile.Profile = pprof.FixGoProfile(req.Profile.Profile)
+		sp.Finish()
+	}
+	{
+		sp, _ := opentracing.StartSpanFromContext(ctx, "sampletype.Relabel")
+		sampleTypeRules := d.limits.SampleTypeRelabelingRules(req.TenantID)
+		sampletype.Relabel(validated, sampleTypeRules, req.Labels)
 		sp.Finish()
 	}
 	sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
