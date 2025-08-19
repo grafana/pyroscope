@@ -41,8 +41,6 @@ type ProfileSeries struct {
 	TotalProfiles          int64
 	TotalBytesUncompressed int64
 
-	TotalBytesUncompressedProcessed int64 // after normalization and other size-reducing manipulation
-
 	DiscardedProfilesRelabeling int64
 	DiscardedBytesRelabeling    int64
 }
