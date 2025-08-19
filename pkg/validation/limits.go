@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
+	"github.com/grafana/pyroscope/pkg/distributor/recvmetric"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	"github.com/grafana/pyroscope/pkg/distributor/writepath"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath"
@@ -135,6 +136,8 @@ type Limits struct {
 
 	// Symbolizer.
 	Symbolizer Symbolizer `yaml:"symbolizer" json:"symbolizer" category:"experimental" doc:"hidden"`
+
+	DistributorReceiveMetricStage recvmetric.Stage `yaml:"distributor_receive_metric_stage" json:"distributor_receive_metric_stage" category:"advanced" doc:"hidden"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -213,6 +216,8 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 
 	f.Var(&l.IngestionArtificialDelay, "distributor.ingestion-artificial-delay", "Target ingestion delay to apply to all tenants. If set to a non-zero value, the distributor will artificially delay ingestion time-frame by the specified duration by computing the difference between actual ingestion and the target. There is no delay on actual ingestion of samples, it is only the response back to the client.")
 
+	l.DistributorReceiveMetricStage = recvmetric.StageSampled
+	f.Var(&l.DistributorReceiveMetricStage, "distributor.receive-metric-stage", "The stage at which to record receive metrics. Valid values are: received, sampled, normalized. Default is sampled.")
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -262,8 +267,13 @@ var defaultLimits *Limits
 // SetDefaultLimitsForYAMLUnmarshalling sets global default limits, used when loading
 // Limits from YAML files. This is used to ensure per-tenant limits are defaulted to
 // those values.
-func SetDefaultLimitsForYAMLUnmarshalling(defaults Limits) {
+// returns a function to restore previous defaults
+func SetDefaultLimitsForYAMLUnmarshalling(defaults Limits) func() {
+	prev := defaultLimits
 	defaultLimits = &defaults
+	return func() {
+		defaultLimits = prev
+	}
 }
 
 type TenantLimits interface {
@@ -318,6 +328,10 @@ func (o *Overrides) IngestionLimit(tenantID string) *ingestlimits.Config {
 
 func (o *Overrides) DistributorSampling(tenantID string) *sampling.Config {
 	return o.getOverridesForTenant(tenantID).DistributorSampling
+}
+
+func (o *Overrides) DistributorReceiveMetricStage(tenantID string) recvmetric.Stage {
+	return o.getOverridesForTenant(tenantID).DistributorReceiveMetricStage
 }
 
 // IngestionArtificialDelay returns the artificial ingestion latency for a given user.

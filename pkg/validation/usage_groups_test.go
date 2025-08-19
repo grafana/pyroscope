@@ -153,7 +153,7 @@ func TestUsageGroupMatch_CountReceivedBytes(t *testing.T) {
 	tests := []struct {
 		Name       string
 		Match      UsageGroupMatch
-		Count      int64
+		Count      uint64
 		WantCounts map[string]float64
 	}{
 		{
@@ -225,7 +225,7 @@ func TestUsageGroupMatch_CountDiscardedBytes(t *testing.T) {
 	tests := []struct {
 		Name       string
 		Match      UsageGroupMatch
-		Count      int64
+		Count      uint64
 		WantCounts map[string]float64
 	}{
 		{

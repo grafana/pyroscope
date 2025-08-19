@@ -177,7 +177,7 @@ func (m *UsageGroupMatchName) String() string {
 	return fmt.Sprintf("{configured: %s, resolved: %s}", m.ConfiguredName, m.ResolvedName)
 }
 
-func (m UsageGroupMatch) CountReceivedBytes(profileType string, n int64) {
+func (m UsageGroupMatch) CountReceivedBytes(profileType string, n uint64) {
 	if len(m.names) == 0 {
 		usageGroupReceivedDecompressedBytes.WithLabelValues(profileType, m.tenantID, noMatchName).Add(float64(n))
 		return
@@ -188,7 +188,7 @@ func (m UsageGroupMatch) CountReceivedBytes(profileType string, n int64) {
 	}
 }
 
-func (m UsageGroupMatch) CountDiscardedBytes(reason string, n int64) {
+func (m UsageGroupMatch) CountDiscardedBytes(reason string, n uint64) {
 	if len(m.names) == 0 {
 		usageGroupDiscardedBytes.WithLabelValues(reason, m.tenantID, noMatchName).Add(float64(n))
 		return

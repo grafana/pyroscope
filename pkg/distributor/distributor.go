@@ -44,6 +44,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
 	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	"github.com/grafana/pyroscope/pkg/distributor/recvmetric"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	"github.com/grafana/pyroscope/pkg/distributor/writepath"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -143,6 +144,7 @@ type Limits interface {
 	IngestionRelabelingRules(tenantID string) []*relabel.Config
 	SampleTypeRelabelingRules(tenantID string) []*relabel.Config
 	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
+	DistributorReceiveMetricStage(tenantID string) recvmetric.Stage
 	validation.ProfileValidationLimits
 	aggregator.Limits
 	writepath.Overrides
@@ -356,9 +358,13 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	req.TotalProfiles = 1
 	req.TotalBytesUncompressed = calculateRequestSize(req)
-	req.TotalBytesUncompressedProcessed = req.TotalBytesUncompressed
 
-	d.metrics.receivedDecompressedBytesTotal.WithLabelValues(tenantID).Observe(float64(req.TotalBytesUncompressed))
+	receiveMetric := d.metrics.recv.NewRequest(
+		tenantID,
+		d.limits.DistributorReceiveMetricStage(tenantID),
+		req.TotalBytesUncompressed,
+	)
+	defer receiveMetric.Observe()
 
 	if err := d.checkIngestLimit(req); err != nil {
 		level.Debug(logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
@@ -404,9 +410,6 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 
 	profLanguage := d.GetProfileLanguage(req)
-	defer func() { // defer to allow re-calculate the size of the profile after normalization
-		d.metrics.processedDecompressedBytes.WithLabelValues(tenantID).Observe(float64(req.TotalBytesUncompressedProcessed))
-	}()
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
@@ -415,10 +418,11 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 	p := req.Profile
 	decompressedSize := p.SizeVT()
+	receiveMetric.Record(recvmetric.StageSampled, uint64(decompressedSize)) //todo use req.TotalBytesUncompressed to include labels
 	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
 	d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
 	d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
-	groups.CountReceivedBytes(profName, int64(decompressedSize))
+	groups.CountReceivedBytes(profName, uint64(decompressedSize))
 
 	validated, err := validation.ValidateProfile(d.limits, tenantID, p, decompressedSize, req.Labels, now)
 	if err != nil {
@@ -447,11 +451,12 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		sampletype.Relabel(validated, sampleTypeRules, req.Labels)
 		sp.Finish()
 	}
-	sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
-	req.Profile.Normalize()
-	sp.Finish()
-
-	req.TotalBytesUncompressedProcessed = calculateRequestSize(req)
+	{
+		sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
+		req.Profile.Normalize()
+		sp.Finish()
+		receiveMetric.Record(recvmetric.StageNormalized, calculateRequestSize(req))
+	}
 
 	if len(req.Profile.Sample) == 0 {
 		// TODO(kolesnikovae):
@@ -866,21 +871,21 @@ func (d *Distributor) rateLimit(tenantID string, req *distributormodel.ProfileSe
 		validation.DiscardedProfiles.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return connect.NewError(connect.CodeResourceExhausted,
-			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(uint64(req.TotalBytesUncompressed))),
+			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(req.TotalBytesUncompressed)),
 		)
 	}
 	return nil
 }
 
-func calculateRequestSize(req *distributormodel.ProfileSeries) int64 {
+func calculateRequestSize(req *distributormodel.ProfileSeries) uint64 {
 	// include the labels in the size calculation
-	bs := int64(0)
+	bs := uint64(0)
 	for _, lbs := range req.Labels {
-		bs += int64(len(lbs.Name))
-		bs += int64(len(lbs.Value))
+		bs += uint64(len(lbs.Name))
+		bs += uint64(len(lbs.Value))
 	}
 
-	bs += int64(req.Profile.SizeVT())
+	bs += uint64(req.Profile.SizeVT())
 	return bs
 }
 
@@ -1073,7 +1078,7 @@ func (d *Distributor) visitSampleSeries(s *distributormodel.ProfileSeries, visit
 	s.DiscardedProfilesRelabeling += int64(visitor.discardedProfiles)
 	s.DiscardedBytesRelabeling += int64(visitor.discardedBytes)
 	if visitor.discardedBytes > 0 {
-		usageGroups.CountDiscardedBytes(string(validation.DroppedByRelabelRules), int64(visitor.discardedBytes))
+		usageGroups.CountDiscardedBytes(string(validation.DroppedByRelabelRules), uint64(visitor.discardedBytes))
 	}
 
 	if s.DiscardedBytesRelabeling > 0 {

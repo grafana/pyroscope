@@ -39,9 +39,7 @@ type ProfileSeries struct {
 
 	// always 1 todo delete
 	TotalProfiles          int64
-	TotalBytesUncompressed int64
-
-	TotalBytesUncompressedProcessed int64 // after normalization and other size-reducing manipulation
+	TotalBytesUncompressed uint64
 
 	DiscardedProfilesRelabeling int64
 	DiscardedBytesRelabeling    int64

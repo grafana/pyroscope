@@ -187,6 +187,8 @@ Usage of ./pyroscope:
     	The tenant's shard size used by shuffle-sharding. Must be set both on ingesters and distributors. 0 disables shuffle sharding.
   -distributor.push.timeout duration
     	Timeout when pushing data to ingester. (default 5s)
+  -distributor.receive-metric-stage value
+    	The stage at which to record receive metrics. Valid values are: received, sampled, normalized. Default is sampled. (default sampled)
   -distributor.replication-factor int
     	The number of ingesters to write to and read from. (default 1)
   -distributor.ring.consul.acl-token string

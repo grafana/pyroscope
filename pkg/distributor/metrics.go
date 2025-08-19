@@ -2,6 +2,8 @@ package distributor
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/pyroscope/pkg/distributor/recvmetric"
 )
 
 const (
@@ -18,8 +20,7 @@ type metrics struct {
 	receivedSymbolsBytes      *prometheus.HistogramVec
 	replicationFactor         prometheus.Gauge
 
-	receivedDecompressedBytesTotal *prometheus.HistogramVec
-	processedDecompressedBytes     *prometheus.HistogramVec
+	recv *recvmetric.Metric
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -74,24 +75,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			},
 			[]string{"type", "tenant"},
 		),
-		receivedDecompressedBytesTotal: prometheus.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Namespace: "pyroscope",
-				Name:      "distributor_received_decompressed_bytes_total",
-				Help:      "The total number of decompressed bytes per profile received by the distributor before limits/sampling checks.",
-				Buckets:   prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
-			},
-			[]string{"tenant"},
-		),
-		processedDecompressedBytes: prometheus.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Namespace: "pyroscope",
-				Name:      "distributor_processed_decompressed_bytes",
-				Help:      "The number of decompressed bytes per profile received (processed) by the distributor after limits/sampling checks and normalization.",
-				Buckets:   prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
-			},
-			[]string{"tenant"},
-		),
+		recv: recvmetric.New(reg),
 	}
 	if reg != nil {
 		reg.MustRegister(
@@ -101,8 +85,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			m.receivedSamplesBytes,
 			m.receivedSymbolsBytes,
 			m.replicationFactor,
-			m.receivedDecompressedBytesTotal,
-			m.processedDecompressedBytes,
 		)
 	}
 	return m

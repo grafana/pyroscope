@@ -351,7 +351,7 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 						if reason != validation.Unknown {
 							validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))
 							validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID).Add(float64(size))
-							groups.CountDiscardedBytes(string(reason), int64(size))
+							groups.CountDiscardedBytes(string(reason), uint64(size))
 
 							switch validation.ReasonOf(err) {
 							case validation.SeriesLimit:
