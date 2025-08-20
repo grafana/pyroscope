@@ -29,9 +29,9 @@ func TestMetricWithDifferentTenantStages(t *testing.T) {
 			sampled:      true,
 			normalized:   true,
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="normalized",tenant="tenant-received"} 980`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="sampled",tenant="tenant-received"} 990`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="true",stage="received",tenant="tenant-received"} 1000`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="normalized",tenant="tenant-received",tenant_stage="false"} 980`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="tenant-received",tenant_stage="true"} 1000`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="sampled",tenant="tenant-received",tenant_stage="false"} 990`,
 			},
 		},
 		{
@@ -42,9 +42,9 @@ func TestMetricWithDifferentTenantStages(t *testing.T) {
 			sampled:      true,
 			normalized:   true,
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="normalized",tenant="tenant-sampled"} 1980`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="received",tenant="tenant-sampled"} 2000`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="true",stage="sampled",tenant="tenant-sampled"} 1990`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="normalized",tenant="tenant-sampled",tenant_stage="false"} 1980`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="tenant-sampled",tenant_stage="false"} 2000`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="sampled",tenant="tenant-sampled",tenant_stage="true"} 1990`,
 			},
 		},
 		{
@@ -55,9 +55,9 @@ func TestMetricWithDifferentTenantStages(t *testing.T) {
 			sampled:      true,
 			normalized:   true,
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="received",tenant="tenant-normalized"} 3000`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="sampled",tenant="tenant-normalized"} 2990`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="true",stage="normalized",tenant="tenant-normalized"} 2980`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="normalized",tenant="tenant-normalized",tenant_stage="true"} 2980`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="tenant-normalized",tenant_stage="false"} 3000`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="sampled",tenant="tenant-normalized",tenant_stage="false"} 2990`,
 			},
 		},
 		{
@@ -68,9 +68,9 @@ func TestMetricWithDifferentTenantStages(t *testing.T) {
 			sampled:      true,
 			normalized:   false,
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="normalized",tenant="tenant-no-norm"} 3990`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="received",tenant="tenant-no-norm"} 4000`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="true",stage="sampled",tenant="tenant-no-norm"} 3990`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="normalized",tenant="tenant-no-norm",tenant_stage="false"} 3990`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="tenant-no-norm",tenant_stage="false"} 4000`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="sampled",tenant="tenant-no-norm",tenant_stage="true"} 3990`,
 			},
 		},
 		{
@@ -81,7 +81,7 @@ func TestMetricWithDifferentTenantStages(t *testing.T) {
 			sampled:      false,
 			normalized:   false,
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="received",tenant="tenant-no-sampled"} 5000`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="tenant-no-sampled",tenant_stage="false"} 5000`,
 			},
 		},
 		{
@@ -92,9 +92,9 @@ func TestMetricWithDifferentTenantStages(t *testing.T) {
 			sampled:      true,
 			normalized:   false,
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="received",tenant="tenant-norm-not-normalized"} 6000`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="sampled",tenant="tenant-norm-not-normalized"} 5990`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="true",stage="normalized",tenant="tenant-norm-not-normalized"} 5990`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="normalized",tenant="tenant-norm-not-normalized",tenant_stage="true"} 5990`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="tenant-norm-not-normalized",tenant_stage="false"} 6000`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="sampled",tenant="tenant-norm-not-normalized",tenant_stage="false"} 5990`,
 			},
 		},
 	}
@@ -126,4 +126,18 @@ func TestMetricWithDifferentTenantStages(t *testing.T) {
 			require.Equal(t, tc.expectedMetrics, sums)
 		})
 	}
+}
+
+func TestRecordPanic(t *testing.T) {
+	m := New(nil)
+	req := m.NewRequest("test-tenant", StageSampled, 1000)
+
+	require.Panics(t, func() {
+		req.Record(StageReceived, 500)
+	})
+
+	require.NotPanics(t, func() {
+		req.Record(StageSampled, 900)
+		req.Record(StageNormalized, 800)
+	})
 }

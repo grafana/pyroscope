@@ -45,9 +45,9 @@ func TestDistributorPushWithDifferentTenantStages(t *testing.T) {
 			profilePath: "../../pkg/og/convert/testdata/cpu.pprof",
 			tenantStage: recvmetric.StageReceived,
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="normalized",tenant="tenant-received"} 2024`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="sampled",tenant="tenant-received"} 2144`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="true",stage="received",tenant="tenant-received"} 2198`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="normalized",tenant="tenant-received",tenant_stage="false"} 2024`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="tenant-received",tenant_stage="true"} 2198`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="sampled",tenant="tenant-received",tenant_stage="false"} 2144`,
 			},
 		},
 		{
@@ -56,9 +56,9 @@ func TestDistributorPushWithDifferentTenantStages(t *testing.T) {
 			profilePath: "../../pkg/og/convert/testdata/cpu.pprof",
 			tenantStage: recvmetric.StageSampled,
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="normalized",tenant="tenant-sampled"} 2024`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="received",tenant="tenant-sampled"} 2198`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="true",stage="sampled",tenant="tenant-sampled"} 2144`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="normalized",tenant="tenant-sampled",tenant_stage="false"} 2024`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="tenant-sampled",tenant_stage="false"} 2198`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="sampled",tenant="tenant-sampled",tenant_stage="true"} 2144`,
 			},
 		},
 		{
@@ -67,9 +67,9 @@ func TestDistributorPushWithDifferentTenantStages(t *testing.T) {
 			profilePath: "../../pkg/og/convert/testdata/cpu.pprof",
 			tenantStage: recvmetric.StageNormalized,
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="received",tenant="tenant-normalized"} 2198`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="sampled",tenant="tenant-normalized"} 2144`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="true",stage="normalized",tenant="tenant-normalized"} 2024`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="normalized",tenant="tenant-normalized",tenant_stage="true"} 2024`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="tenant-normalized",tenant_stage="false"} 2198`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="sampled",tenant="tenant-normalized",tenant_stage="false"} 2144`,
 			},
 		},
 		{
@@ -84,7 +84,7 @@ func TestDistributorPushWithDifferentTenantStages(t *testing.T) {
 			expectErr:      true,
 			expectedErrMsg: "rate limit",
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="received",tenant="tenant-rate-limited"} 2198`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="tenant-rate-limited",tenant_stage="false"} 2198`,
 			},
 		},
 		{
@@ -95,9 +95,9 @@ func TestDistributorPushWithDifferentTenantStages(t *testing.T) {
 			failIngester: true,
 			expectErr:    true,
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="received",tenant="tenant-ingester-fail"} 2198`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="sampled",tenant="tenant-ingester-fail"} 2144`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="true",stage="normalized",tenant="tenant-ingester-fail"} 2024`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="normalized",tenant="tenant-ingester-fail",tenant_stage="true"} 2024`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="tenant-ingester-fail",tenant_stage="false"} 2198`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="sampled",tenant="tenant-ingester-fail",tenant_stage="false"} 2144`,
 			},
 		},
 		{
@@ -115,9 +115,9 @@ func TestDistributorPushWithDifferentTenantStages(t *testing.T) {
 				}
 			},
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="received",tenant="tenant-heap-relabel"} 847192`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="false",stage="sampled",tenant="tenant-heap-relabel"} 847138`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{is_tenant_stage="true",stage="normalized",tenant="tenant-heap-relabel"} 46234`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="normalized",tenant="tenant-heap-relabel",tenant_stage="true"} 46234`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="tenant-heap-relabel",tenant_stage="false"} 847192`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="sampled",tenant="tenant-heap-relabel",tenant_stage="false"} 847138`,
 			},
 		},
 	}

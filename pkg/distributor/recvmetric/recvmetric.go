@@ -67,13 +67,13 @@ func (s Stage) MarshalYAML() (interface{}, error) {
 	return s.String(), nil
 }
 
+const metricName = "distributor_received_decompressed_bytes_total"
+const NamespacedMetricName = "pyroscope_" + metricName
+
 type Metric struct {
 	metric *prometheus.HistogramVec
 	//	todo move discarded and usage group metrics to this package
 }
-
-const metricName = "distributor_received_decompressed_bytes_total"
-const NamespacedMetricName = "pyroscope_" + metricName
 
 func New(reg prometheus.Registerer) *Metric {
 	const (
@@ -92,7 +92,7 @@ func New(reg prometheus.Registerer) *Metric {
 			[]string{
 				"tenant",
 				"stage",
-				"is_tenant_stage", // bool todo better name
+				"tenant_stage", // bool: "true" if this stage matches the tenant's configured stage
 			},
 		),
 	}
