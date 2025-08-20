@@ -33,10 +33,10 @@ func BucketWithGlobalMarkers(b objstore.Bucket) objstore.Bucket {
 }
 
 // Upload implements objstore.Bucket.
-func (b *globalMarkersBucket) Upload(ctx context.Context, name string, r io.Reader) error {
+func (b *globalMarkersBucket) Upload(ctx context.Context, name string, r io.Reader, opts ...thanosobjstore.ObjectUploadOption) error {
 	globalMarkPath := getGlobalMarkPathFromBlockMark(name)
 	if globalMarkPath == "" {
-		return b.parent.Upload(ctx, name, r)
+		return b.parent.Upload(ctx, name, r, opts...)
 	}
 
 	// Read the marker.
@@ -46,12 +46,12 @@ func (b *globalMarkersBucket) Upload(ctx context.Context, name string, r io.Read
 	}
 
 	// Upload it to the original location.
-	if err := b.parent.Upload(ctx, name, bytes.NewBuffer(body)); err != nil {
+	if err := b.parent.Upload(ctx, name, bytes.NewBuffer(body), opts...); err != nil {
 		return err
 	}
 
 	// Upload it to the global markers location too.
-	return b.parent.Upload(ctx, globalMarkPath, bytes.NewBuffer(body))
+	return b.parent.Upload(ctx, globalMarkPath, bytes.NewBuffer(body), opts...)
 }
 
 // Delete implements objstore.Bucket.
