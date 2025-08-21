@@ -1,7 +1,7 @@
 package distributor
 
 import (
-	"strings"
+	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -12,21 +12,23 @@ const (
 	bucketsCount = 30
 )
 
+type ReceiveStage string
+
 const (
 	// StageReceived is the earliest stage and as soon as we begin processing a profile,
 	// before any rate-limit/sampling checks
-	StageReceived = "received"
+	StageReceived ReceiveStage = "received"
 	// StageSampled is recorded after the profile is accepted by rate-limit/sampling checks
-	StageSampled = "sampled"
+	StageSampled ReceiveStage = "sampled"
 	// StageNormalized is recorded after the profile is validated and normalized.
-	StageNormalized = "normalized"
+	StageNormalized ReceiveStage = "normalized"
 )
 
-var allStages = []string{
+var allStages = fmt.Sprintf("%s, %s, %s",
 	StageReceived,
 	StageSampled,
 	StageNormalized,
-}
+)
 
 type metrics struct {
 	receivedCompressedBytes        *prometheus.HistogramVec
@@ -97,7 +99,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 				Namespace: "pyroscope",
 				Name:      "distributor_received_decompressed_bytes_total",
 				Help: "The total number of decompressed bytes per profile received by the distributor at different " +
-					"processing stages. Valid stages are: " + strings.Join(allStages, ", "),
+					"processing stages. Valid stages are: " + allStages,
 				Buckets: prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
 			},
 			[]string{
@@ -118,4 +120,8 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		)
 	}
 	return m
+}
+
+func (m *metrics) observeProfileSize(tenant string, stage ReceiveStage, sz int64) {
+	m.receivedDecompressedBytesTotal.WithLabelValues(tenant, string(stage)).Observe(float64(sz))
 }

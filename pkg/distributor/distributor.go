@@ -356,7 +356,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	req.TotalProfiles = 1
 	req.TotalBytesUncompressed = calculateRequestSize(req)
-	d.metrics.receivedDecompressedBytesTotal.WithLabelValues(tenantID, StageReceived).Observe(float64(req.TotalBytesUncompressed))
+	d.metrics.observeProfileSize(tenantID, StageReceived, req.TotalBytesUncompressed)
 
 	if err := d.checkIngestLimit(req); err != nil {
 		level.Debug(logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
@@ -410,8 +410,8 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 	p := req.Profile
 	decompressedSize := p.SizeVT()
-	d.metrics.receivedDecompressedBytesTotal.WithLabelValues(tenantID, StageSampled).Observe(float64(decompressedSize)) //todo use req.TotalBytesUncompressed to include labels size
-	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))          // deprecated TODO remove
+	d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize))                              //todo use req.TotalBytesUncompressed to include labels size
+	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize)) // deprecated TODO remove
 	d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
 	d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
 	groups.CountReceivedBytes(profName, int64(decompressedSize))
@@ -447,8 +447,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
 		req.Profile.Normalize()
 		sp.Finish()
-		d.metrics.receivedDecompressedBytesTotal.WithLabelValues(tenantID, StageNormalized).
-			Observe(float64(calculateRequestSize(req)))
+		d.metrics.observeProfileSize(tenantID, StageNormalized, calculateRequestSize(req))
 	}
 
 	if len(req.Profile.Sample) == 0 {
