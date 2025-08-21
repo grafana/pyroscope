@@ -70,8 +70,8 @@ func TestDistributorPushWithDifferentTenantStages(t *testing.T) {
 			expectErr:      true,
 			expectedErrMsg: "exceeds the size limit (max_profile_size_byte, actual: 2144, limit: 2)",
 			expectedMetrics: []string{
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage=\"received\",tenant=\"239\"} 2198`,
-				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage=\"sampled\",tenant=\"239\"} 2144`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="received",tenant="239"} 2198`,
+				`pyroscope_distributor_received_decompressed_bytes_total_sum{stage="sampled",tenant="239"} 2144`,
 			},
 		},
 		{
