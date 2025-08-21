@@ -1,6 +1,8 @@
 package distributor
 
 import (
+	"fmt"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -10,16 +12,32 @@ const (
 	bucketsCount = 30
 )
 
-type metrics struct {
-	receivedCompressedBytes   *prometheus.HistogramVec
-	receivedDecompressedBytes *prometheus.HistogramVec
-	receivedSamples           *prometheus.HistogramVec
-	receivedSamplesBytes      *prometheus.HistogramVec
-	receivedSymbolsBytes      *prometheus.HistogramVec
-	replicationFactor         prometheus.Gauge
+type ReceiveStage string
 
+const (
+	// StageReceived is the earliest stage and as soon as we begin processing a profile,
+	// before any rate-limit/sampling checks
+	StageReceived ReceiveStage = "received"
+	// StageSampled is recorded after the profile is accepted by rate-limit/sampling checks
+	StageSampled ReceiveStage = "sampled"
+	// StageNormalized is recorded after the profile is validated and normalized.
+	StageNormalized ReceiveStage = "normalized"
+)
+
+var allStages = fmt.Sprintf("%s, %s, %s",
+	StageReceived,
+	StageSampled,
+	StageNormalized,
+)
+
+type metrics struct {
+	receivedCompressedBytes        *prometheus.HistogramVec
+	receivedDecompressedBytes      *prometheus.HistogramVec // deprecated TODO remove
+	receivedSamples                *prometheus.HistogramVec
+	receivedSamplesBytes           *prometheus.HistogramVec
+	receivedSymbolsBytes           *prometheus.HistogramVec
+	replicationFactor              prometheus.Gauge
 	receivedDecompressedBytesTotal *prometheus.HistogramVec
-	processedDecompressedBytes     *prometheus.HistogramVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -42,8 +60,10 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			prometheus.HistogramOpts{
 				Namespace: "pyroscope",
 				Name:      "distributor_received_decompressed_bytes",
-				Help:      "The number of decompressed bytes per profiles received by the distributor after limits/sampling checks.",
-				Buckets:   prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
+				Help: "The number of decompressed bytes per profiles received by the distributor after " +
+					"limits/sampling checks. distributor_received_decompressed_bytes is deprecated, use " +
+					"distributor_received_decompressed_bytes_total instead.",
+				Buckets: prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
 			},
 			[]string{"type", "tenant"},
 		),
@@ -78,19 +98,14 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			prometheus.HistogramOpts{
 				Namespace: "pyroscope",
 				Name:      "distributor_received_decompressed_bytes_total",
-				Help:      "The total number of decompressed bytes per profile received by the distributor before limits/sampling checks.",
-				Buckets:   prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
+				Help: "The total number of decompressed bytes per profile received by the distributor at different " +
+					"processing stages. Valid stages are: " + allStages,
+				Buckets: prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
 			},
-			[]string{"tenant"},
-		),
-		processedDecompressedBytes: prometheus.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Namespace: "pyroscope",
-				Name:      "distributor_processed_decompressed_bytes",
-				Help:      "The number of decompressed bytes per profile received (processed) by the distributor after limits/sampling checks and normalization.",
-				Buckets:   prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
+			[]string{
+				"tenant",
+				"stage",
 			},
-			[]string{"tenant"},
 		),
 	}
 	if reg != nil {
@@ -102,8 +117,11 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			m.receivedSymbolsBytes,
 			m.replicationFactor,
 			m.receivedDecompressedBytesTotal,
-			m.processedDecompressedBytes,
 		)
 	}
 	return m
+}
+
+func (m *metrics) observeProfileSize(tenant string, stage ReceiveStage, sz int64) {
+	m.receivedDecompressedBytesTotal.WithLabelValues(tenant, string(stage)).Observe(float64(sz))
 }
