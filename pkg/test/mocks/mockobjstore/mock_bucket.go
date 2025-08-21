@@ -767,7 +767,7 @@ func (_c *MockBucket_SupportedIterOptions_Call) RunAndReturn(run func() []objsto
 }
 
 // Upload provides a mock function with given fields: ctx, name, r
-func (_m *MockBucket) Upload(ctx context.Context, name string, r io.Reader) error {
+func (_m *MockBucket) Upload(ctx context.Context, name string, r io.Reader, opts ...objstore.ObjectUploadOption) error {
 	ret := _m.Called(ctx, name, r)
 
 	if len(ret) == 0 {
