@@ -1,6 +1,7 @@
 package otlp
 
 import (
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -386,8 +387,7 @@ func (p *profileBuilder) convertSampleToLabelsBack(os *otelProfile.Sample, dicti
 		}
 		gs.Label = append(gs.Label, &googleProfile.Label{
 			Key: p.addstr(pprof.SpanIDLabelName),
-			// TODO: make sure this is a 16 char hex
-			Str: p.addstr(string(link.GetSpanId())),
+			Str: p.addstr(hex.EncodeToString(link.GetSpanId())),
 		})
 	}
 
