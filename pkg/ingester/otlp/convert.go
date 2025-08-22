@@ -9,6 +9,7 @@ import (
 	googleProfile "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	pyromodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 const serviceNameKey = "service.name"
@@ -334,7 +335,7 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample, dictionary *o
 		return nil, fmt.Errorf("sample values length mismatch %d %d", len(gs.Value), len(p.dst.SampleType))
 	}
 
-	err := p.convertSampleAttributesToLabelsBack(os, dictionary, gs)
+	err := p.convertSampleToLabelsBack(os, dictionary, gs)
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +361,7 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample, dictionary *o
 	return gs, nil
 }
 
-func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sample, dictionary *otelProfile.ProfilesDictionary, gs *googleProfile.Sample) error {
+func (p *profileBuilder) convertSampleToLabelsBack(os *otelProfile.Sample, dictionary *otelProfile.ProfilesDictionary, gs *googleProfile.Sample) error {
 	gs.Label = make([]*googleProfile.Label, 0, len(os.AttributeIndices))
 	for i, attributeIdx := range os.AttributeIndices {
 		attribute, err := at(dictionary.AttributeTable, attributeIdx)
@@ -377,6 +378,19 @@ func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sam
 			})
 		}
 	}
+
+	if os.GetLinkIndex() != 0 {
+		link, err := at(dictionary.LinkTable, os.GetLinkIndex())
+		if err != nil {
+			return fmt.Errorf("could not access link at index %d: %w", os.GetLinkIndex(), err)
+		}
+		gs.Label = append(gs.Label, &googleProfile.Label{
+			Key: p.addstr(pprof.SpanIDLabelName),
+			// TODO: make sure this is a 16 char hex
+			Str: p.addstr(string(link.GetSpanId())),
+		})
+	}
+
 	return nil
 }
 
