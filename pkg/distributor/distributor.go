@@ -49,6 +49,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/model/pprofsplit"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
+	"github.com/grafana/pyroscope/pkg/model/sampletype"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
@@ -140,6 +141,7 @@ type Limits interface {
 	MaxSessionsPerSeries(tenantID string) int
 	EnforceLabelsOrder(tenantID string) bool
 	IngestionRelabelingRules(tenantID string) []*relabel.Config
+	SampleTypeRelabelingRules(tenantID string) []*relabel.Config
 	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
 	validation.ProfileValidationLimits
 	aggregator.Limits
@@ -354,9 +356,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	req.TotalProfiles = 1
 	req.TotalBytesUncompressed = calculateRequestSize(req)
-	req.TotalBytesUncompressedProcessed = req.TotalBytesUncompressed
-
-	d.metrics.receivedDecompressedBytesTotal.WithLabelValues(tenantID).Observe(float64(req.TotalBytesUncompressed))
+	d.metrics.observeProfileSize(tenantID, StageReceived, req.TotalBytesUncompressed)
 
 	if err := d.checkIngestLimit(req); err != nil {
 		level.Debug(logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
@@ -382,22 +382,26 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		return err
 	}
 
-	if sample, usageGroup := d.shouldSample(tenantID, groups.Names()); !sample {
+	willSample, samplingSource := d.shouldSample(tenantID, groups.Names())
+	if !willSample {
 		level.Debug(logger).Log(
 			"msg", "skipping push request due to sampling",
 			"tenant", tenantID,
-			"usage_group", usageGroup,
+			"usage_group", samplingSource.UsageGroup,
+			"probability", samplingSource.Probability,
 		)
 		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
 		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 		return nil
 	}
+	if samplingSource != nil {
+		if err := req.MarkSampledRequest(samplingSource); err != nil {
+			return err
+		}
+	}
 
 	profLanguage := d.GetProfileLanguage(req)
-	defer func() { // defer to allow re-calculate the size of the profile after normalization
-		d.metrics.processedDecompressedBytes.WithLabelValues(tenantID).Observe(float64(req.TotalBytesUncompressedProcessed))
-	}()
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
@@ -406,12 +410,14 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 	p := req.Profile
 	decompressedSize := p.SizeVT()
-	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
+	d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize))                              //todo use req.TotalBytesUncompressed to include labels size
+	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize)) // deprecated TODO remove
 	d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
 	d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
 	groups.CountReceivedBytes(profName, int64(decompressedSize))
 
-	if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, req.Labels, now); err != nil {
+	validated, err := validation.ValidateProfile(d.limits, tenantID, p, decompressedSize, req.Labels, now)
+	if err != nil {
 		_ = level.Debug(logger).Log("msg", "invalid profile", "err", err)
 		reason := string(validation.ReasonOf(err))
 		validation.DiscardedProfiles.WithLabelValues(reason, tenantID).Add(float64(req.TotalProfiles))
@@ -431,11 +437,18 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		req.Profile.Profile = pprof.FixGoProfile(req.Profile.Profile)
 		sp.Finish()
 	}
-	sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
-	req.Profile.Normalize()
-	sp.Finish()
-
-	req.TotalBytesUncompressedProcessed = calculateRequestSize(req)
+	{
+		sp, _ := opentracing.StartSpanFromContext(ctx, "sampletype.Relabel")
+		sampleTypeRules := d.limits.SampleTypeRelabelingRules(req.TenantID)
+		sampletype.Relabel(validated, sampleTypeRules, req.Labels)
+		sp.Finish()
+	}
+	{
+		sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
+		req.Profile.Normalize()
+		sp.Finish()
+		d.metrics.observeProfileSize(tenantID, StageNormalized, calculateRequestSize(req))
+	}
 
 	if len(req.Profile.Sample) == 0 {
 		// TODO(kolesnikovae):
@@ -919,7 +932,7 @@ func (d *Distributor) checkUsageGroupsIngestLimit(req *distributormodel.ProfileS
 }
 
 // shouldSample returns true if the profile should be injected and optionally the usage group that was responsible for the decision.
-func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) (bool, *validation.UsageGroupMatchName) {
+func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) (bool, *sampling.Source) {
 	l := d.limits.DistributorSampling(tenantID)
 	if l == nil {
 		return true, nil
@@ -950,7 +963,12 @@ func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation
 		return true, nil
 	}
 
-	return rand.Float64() <= samplingProbability, match
+	source := &sampling.Source{
+		UsageGroup:  match.ResolvedName,
+		Probability: samplingProbability,
+	}
+
+	return rand.Float64() <= samplingProbability, source
 }
 
 type profileTracker struct {

@@ -10,7 +10,7 @@ BIN := $(CURDIR)/.tmp/bin
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
-GO_MOD_VERSION := 1.23.0
+GO_MOD_VERSION := 1.24.0
 
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)

@@ -8,3 +8,8 @@ type Config struct {
 type UsageGroupSampling struct {
 	Probability float64 `yaml:"probability" json:"probability"`
 }
+
+type Source struct {
+	UsageGroup  string  `json:"usageGroup"`
+	Probability float64 `json:"probability"`
+}
