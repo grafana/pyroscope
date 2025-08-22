@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/thanos-io/objstore"
 	"golang.org/x/time/rate"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -1012,7 +1013,7 @@ type mockBucket struct {
 	uploads atomic.Int64
 }
 
-func (m *mockBucket) Upload(ctx context.Context, _ string, _ io.Reader) error {
+func (m *mockBucket) Upload(ctx context.Context, _ string, _ io.Reader, _ ...objstore.ObjectUploadOption) error {
 	m.uploads.Add(1)
 	<-ctx.Done()
 	return ctx.Err()

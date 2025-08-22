@@ -86,7 +86,7 @@ func NewInClusterK8sClient() (K8sClient, error) {
 	certPool := x509.NewCertPool()
 	certPool.AppendCertsFromPEM(ca)
 	transport := &http.Transport{TLSClientConfig: &tls.Config{
-		MinVersion: tls.VersionTLS10,
+		MinVersion: tls.VersionTLS12,
 		RootCAs:    certPool,
 	}}
 	httpClient := &http.Client{Transport: transport, Timeout: time.Nanosecond * 0}

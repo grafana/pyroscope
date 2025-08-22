@@ -9,13 +9,14 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/grafana/pyroscope/pkg/pprof"
+
 	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
 
-	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -284,25 +285,32 @@ func (iw *ingestionWindow) valid(t model.Time, ls phlaremodel.Labels) error {
 	return NewErrorf(NotInIngestionWindow, NotInIngestionWindowErrorMsg, phlaremodel.LabelPairsString(ls), util.FormatTimeMillis(int64(t)), iw.errorDetail())
 }
 
-func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *googlev1.Profile, uncompressedSize int, ls phlaremodel.Labels, now model.Time) error {
-	if prof == nil {
-		return nil
+type ValidatedProfile struct {
+	*pprof.Profile
+}
+
+func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *pprof.Profile, uncompressedSize int, ls phlaremodel.Labels, now model.Time) (ValidatedProfile, error) {
+	if prof == nil || prof.Profile == nil {
+		return ValidatedProfile{}, NewErrorf(MalformedProfile, "nil profile")
+	}
+	if len(prof.SampleType) == 0 {
+		return ValidatedProfile{}, NewErrorf(MalformedProfile, "empty profile")
 	}
 
 	if prof.TimeNanos > 0 {
 		// check profile timestamp within ingestion window
 		if err := newIngestionWindow(limits, tenantID, now).valid(model.TimeFromUnixNano(prof.TimeNanos), ls); err != nil {
-			return err
+			return ValidatedProfile{}, err
 		}
 	} else {
 		prof.TimeNanos = now.UnixNano()
 	}
 
 	if limit := limits.MaxProfileSizeBytes(tenantID); limit != 0 && uncompressedSize > limit {
-		return NewErrorf(ProfileSizeLimit, ProfileTooBigErrorMsg, phlaremodel.LabelPairsString(ls), uncompressedSize, limit)
+		return ValidatedProfile{}, NewErrorf(ProfileSizeLimit, ProfileTooBigErrorMsg, phlaremodel.LabelPairsString(ls), uncompressedSize, limit)
 	}
 	if limit, size := limits.MaxProfileStacktraceSamples(tenantID), len(prof.Sample); limit != 0 && size > limit {
-		return NewErrorf(SamplesLimit, ProfileTooManySamplesErrorMsg, phlaremodel.LabelPairsString(ls), size, limit)
+		return ValidatedProfile{}, NewErrorf(SamplesLimit, ProfileTooManySamplesErrorMsg, phlaremodel.LabelPairsString(ls), size, limit)
 	}
 	var (
 		depthLimit        = limits.MaxProfileStacktraceDepth(tenantID)
@@ -315,7 +323,7 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *goog
 			s.LocationId = s.LocationId[len(s.LocationId)-depthLimit:]
 		}
 		if labelsLimit != 0 && len(s.Label) > labelsLimit {
-			return NewErrorf(SampleLabelsLimit, ProfileTooManySampleLabelsErrorMsg, phlaremodel.LabelPairsString(ls), len(s.Label), labelsLimit)
+			return ValidatedProfile{}, NewErrorf(SampleLabelsLimit, ProfileTooManySampleLabelsErrorMsg, phlaremodel.LabelPairsString(ls), len(s.Label), labelsLimit)
 		}
 	}
 	if symbolLengthLimit > 0 {
@@ -327,35 +335,43 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *goog
 	}
 	for _, location := range prof.Location {
 		if location.Id == 0 {
-			return NewErrorf(MalformedProfile, "location id is 0")
+			return ValidatedProfile{}, NewErrorf(MalformedProfile, "location id is 0")
 		}
 	}
 	for _, function := range prof.Function {
 		if function.Id == 0 {
-			return NewErrorf(MalformedProfile, "function id is 0")
+			return ValidatedProfile{}, NewErrorf(MalformedProfile, "function id is 0")
+		}
+	}
+	for _, s := range prof.Sample {
+		if s == nil {
+			return ValidatedProfile{}, NewErrorf(MalformedProfile, "nil sample")
+		}
+		if len(s.Value) != len(prof.SampleType) {
+			return ValidatedProfile{}, NewErrorf(MalformedProfile, "sample value length mismatch")
 		}
 	}
 
 	if err := validateStringTableAccess(prof); err != nil {
-		return err
+		return ValidatedProfile{}, err
 	}
 	for _, valueType := range prof.SampleType {
 		stt := prof.StringTable[valueType.Type]
 		if strings.Contains(stt, "-") {
-			return NewErrorf(MalformedProfile, "sample type contains -")
+			return ValidatedProfile{}, NewErrorf(MalformedProfile, "sample type contains -")
 		}
 		// todo check if sample type is valid from the promql parser perspective
 	}
 
 	for _, s := range prof.StringTable {
 		if !utf8.ValidString(s) {
-			return NewErrorf(MalformedProfile, "invalid utf8 string hex: %s", hex.EncodeToString([]byte(s)))
+			return ValidatedProfile{}, NewErrorf(MalformedProfile, "invalid utf8 string hex: %s", hex.EncodeToString([]byte(s)))
 		}
 	}
-	return nil
+	return ValidatedProfile{Profile: prof}, nil
 }
 
-func validateStringTableAccess(prof *googlev1.Profile) error {
+func validateStringTableAccess(prof *pprof.Profile) error {
 	if len(prof.StringTable) == 0 || prof.StringTable[0] != "" {
 		return NewErrorf(MalformedProfile, "string 0 should be empty string")
 	}

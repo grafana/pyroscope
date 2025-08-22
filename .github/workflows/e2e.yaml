@@ -37,7 +37,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
-          go-version: "1.23.11"
+          go-version: "1.24.6"
           cache: true
       - name: Install node-canvas
         run: sudo apt-get update && sudo apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
@@ -69,7 +69,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
-          go-version: "1.23.11"
+          go-version: "1.24.6"
           cache: true
       - name: Install node-canvas
         run: sudo apt-get update && sudo apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev

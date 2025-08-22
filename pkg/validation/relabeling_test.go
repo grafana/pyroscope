@@ -105,6 +105,57 @@ overrides:
 
 }
 
+func Test_SampleTypeRelabelRules_Set(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:    "valid drop action",
+			config:  `[{"action": "drop", "source_labels": ["__type__"], "regex": "alloc_.*"}]`,
+			wantErr: false,
+		},
+		{
+			name:    "valid keep action",
+			config:  `[{"action": "keep", "source_labels": ["__type__"], "regex": "cpu|wall"}]`,
+			wantErr: false,
+		},
+		{
+			name:        "invalid replace action",
+			config:      `[{"action": "replace", "source_labels": ["__type__"], "target_label": "new_type", "replacement": "cpu"}]`,
+			wantErr:     true,
+			errContains: "sample type relabeling only supports 'drop' and 'keep' actions, got 'replace'",
+		},
+		{
+			name:        "invalid labeldrop action",
+			config:      `[{"action": "labeldrop", "regex": "temp_.*"}]`,
+			wantErr:     true,
+			errContains: "sample type relabeling only supports 'drop' and 'keep' actions, got 'labeldrop'",
+		},
+		{
+			name:        "multiple rules with one invalid",
+			config:      `[{"action": "keep", "source_labels": ["__type__"], "regex": "cpu"}, {"action": "replace", "source_labels": ["__type__"], "target_label": "new_type", "replacement": "cpu"}]`,
+			wantErr:     true,
+			errContains: "rule at pos 1: sample type relabeling only supports 'drop' and 'keep' actions, got 'replace'",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var rules SampleTypeRelabelRules
+			err := rules.Set(tt.config)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errContains)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func Test_defaultRelabelRules(t *testing.T) {
 	for _, tc := range []struct {
 		name     string

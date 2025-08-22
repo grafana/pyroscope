@@ -2221,6 +2221,33 @@ distributor_usage_groups:
 # CLI flag: -distributor.ingestion-relabeling-default-rules-position
 [ingestion_relabeling_default_rules_position: <string> | default = "first"]
 
+# List of sample type relabel configurations. Rules are applied to sample types
+# with __type__ and __unit__ labels, along with all series labels.
+# Example:
+#   This example shows sample type filtering rules. The first rule drops all
+#   allocation-related sample types (alloc_objects, alloc_space) from memory
+#   profiles, keeping only in-use metrics. The second rule keeps only
+#   CPU-related sample types by matching the __type__ label. The third rule
+#   shows how to drop allocation sample types for a specific service by
+#   combining __type__ and service_name labels.
+#   sample_type_relabeling_rules:
+#       - action: drop
+#         regex: alloc_.*
+#         source_labels:
+#           - __type__
+#       - action: keep
+#         regex: cpu|wall
+#         source_labels:
+#           - __type__
+#       - action: drop
+#         regex: alloc_.*;my-service
+#         separator: ;
+#         source_labels:
+#           - __type__
+#           - service_name
+# CLI flag: -distributor.sample-type-relabeling-rules
+[sample_type_relabeling_rules: <list of Configs> | default = []]
+
 # The tenant's shard size used by shuffle-sharding. Must be set both on
 # ingesters and distributors. 0 disables shuffle sharding.
 # CLI flag: -distributor.ingestion-tenant-shard-size
@@ -2272,7 +2299,7 @@ distributor_usage_groups:
 
 # Maximum number of flame graph nodes allowed. 0 to disable.
 # CLI flag: -querier.max-flamegraph-nodes-max
-[max_flamegraph_nodes_max: <int> | default = 0]
+[max_flamegraph_nodes_max: <int> | default = 1048576]
 
 # The tenant's shard size, used when store-gateway sharding is enabled. Value of
 # 0 disables shuffle sharding for the tenant, that is all tenant blocks are

@@ -2,7 +2,9 @@ package model
 
 import (
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/distributor/annotation"
 	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
+	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
@@ -35,7 +37,7 @@ type ProfileSeries struct {
 
 	Annotations []*v1.ProfileAnnotation
 
-	// always 1
+	// always 1 todo delete
 	TotalProfiles          int64
 	TotalBytesUncompressed int64
 
@@ -43,8 +45,8 @@ type ProfileSeries struct {
 	DiscardedBytesRelabeling    int64
 }
 
-func (p *ProfileSeries) GetLanguage() string {
-	spyName := phlaremodel.Labels(p.Labels).Get(phlaremodel.LabelNamePyroscopeSpy)
+func (req *ProfileSeries) GetLanguage() string {
+	spyName := phlaremodel.Labels(req.Labels).Get(phlaremodel.LabelNamePyroscopeSpy)
 	if spyName != "" {
 		lang := getProfileLanguageFromSpy(spyName)
 		if lang != "" {
@@ -80,7 +82,6 @@ func getProfileLanguageFromSpy(spyName string) string {
 func (req *ProfileSeries) Clone() *ProfileSeries {
 	c := &ProfileSeries{
 		TenantID:               req.TenantID,
-		TotalProfiles:          req.TotalProfiles,
 		TotalBytesUncompressed: req.TotalBytesUncompressed,
 		Labels:                 phlaremodel.Labels(req.Labels).Clone(),
 		Profile:                &pprof.Profile{Profile: req.Profile.CloneVT()},
@@ -93,25 +94,37 @@ func (req *ProfileSeries) Clone() *ProfileSeries {
 }
 
 func (req *ProfileSeries) MarkThrottledTenant(l *ingestlimits.Config) error {
-	annotation, err := ingestlimits.CreateTenantAnnotation(l)
+	a, err := annotation.CreateTenantAnnotation(l)
 	if err != nil {
 		return err
 	}
 	req.Annotations = append(req.Annotations, &v1.ProfileAnnotation{
-		Key:   ingestlimits.ProfileAnnotationKeyThrottled,
-		Value: string(annotation),
+		Key:   annotation.ProfileAnnotationKeyThrottled,
+		Value: string(a),
 	})
 	return nil
 }
 
 func (req *ProfileSeries) MarkThrottledUsageGroup(l *ingestlimits.Config, usageGroup string) error {
-	annotation, err := ingestlimits.CreateUsageGroupAnnotation(l, usageGroup)
+	a, err := annotation.CreateUsageGroupAnnotation(l, usageGroup)
 	if err != nil {
 		return err
 	}
 	req.Annotations = append(req.Annotations, &v1.ProfileAnnotation{
-		Key:   ingestlimits.ProfileAnnotationKeyThrottled,
-		Value: string(annotation),
+		Key:   annotation.ProfileAnnotationKeyThrottled,
+		Value: string(a),
+	})
+	return nil
+}
+
+func (req *ProfileSeries) MarkSampledRequest(source *sampling.Source) error {
+	a, err := annotation.CreateProfileAnnotation(source)
+	if err != nil {
+		return err
+	}
+	req.Annotations = append(req.Annotations, &v1.ProfileAnnotation{
+		Key:   annotation.ProfileAnnotationKeySampled,
+		Value: string(a),
 	})
 	return nil
 }
