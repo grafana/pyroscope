@@ -1,7 +1,7 @@
 services:
   otel-collector:
     # fixed versions for pyroscope, otel-collector, otel-profiler due to protocol changes
-    image: otel/opentelemetry-collector-contrib:0.114.0 
+    image: otel/opentelemetry-collector-contrib:0.129.0 
     command: ["--config=/etc/otel-collector-config.yaml", "--feature-gates=service.profilesSupport"]
     volumes:
       - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml
@@ -30,7 +30,7 @@ services:
 
   pyroscope:
     # fixed versions for pyroscope, otel-collector, otel-profiler due to protocol changes
-    image: grafana/pyroscope:weekly-f96-1886f2c42 
+    image: grafana/pyroscope:weekly-f125-16eebf27b
     command: ["-self-profiling.disable-push=true"]
     ports:
       - "4040:4040"
