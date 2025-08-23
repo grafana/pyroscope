@@ -352,7 +352,7 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample, dictionary *o
 		return nil, fmt.Errorf("sample values length mismatch %d %d", len(gs.Value), len(p.dst.SampleType))
 	}
 
-	err := p.convertSampleToLabelsBack(os, dictionary, gs)
+	err := p.convertSampleAttributesToLabelsBack(os, dictionary, gs)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +378,7 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample, dictionary *o
 	return gs, nil
 }
 
-func (p *profileBuilder) convertSampleToLabelsBack(os *otelProfile.Sample, dictionary *otelProfile.ProfilesDictionary, gs *googleProfile.Sample) error {
+func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sample, dictionary *otelProfile.ProfilesDictionary, gs *googleProfile.Sample) error {
 	gs.Label = make([]*googleProfile.Label, 0, len(os.AttributeIndices))
 	for i, attributeIdx := range os.AttributeIndices {
 		attribute, err := at(dictionary.AttributeTable, attributeIdx)
