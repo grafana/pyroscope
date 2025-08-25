@@ -28,15 +28,6 @@ func at[T any](arr []T, i int32) (T, error) {
 	return zero, fmt.Errorf("index %d out of bounds", i)
 }
 
-func allZeros(arr []byte) bool {
-	for _, val := range arr {
-		if val != 0 {
-			return false
-		}
-	}
-	return true
-}
-
 // ConvertOtelToGoogle converts an OpenTelemetry profile to a Google profile.
 func ConvertOtelToGoogle(src *otelProfile.Profile, dictionary *otelProfile.ProfilesDictionary) (map[string]convertedProfile, error) {
 	svc2Profile := make(map[string]*profileBuilder)
