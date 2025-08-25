@@ -2,6 +2,7 @@ package frontend
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -51,12 +52,14 @@ func (f *Frontend) SelectMergeProfile(
 	//   truncation is not applicable for that.
 
 	maxNodes := validation.SanitizeMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
-	level.Debug(f.log).Log(
-		"msg", "enforcing global flame graph max depth limit",
-		"tenant", tenantIDs,
-		"requested_depth", c.Msg.GetMaxNodes(),
-		"limited_depth", maxNodes,
-	)
+	if c.Msg.MaxNodes != nil && maxNodes != c.Msg.GetMaxNodes() {
+		level.Debug(f.log).Log(
+			"msg", "enforcing global flame graph max depth limit",
+			"tenant", strings.Join(tenantIDs, ", "),
+			"requested_depth", c.Msg.GetMaxNodes(),
+			"limited_depth", maxNodes,
+		)
+	}
 
 	var m pprof.ProfileMerge
 	for intervals.Next() {

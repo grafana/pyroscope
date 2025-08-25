@@ -2,6 +2,7 @@ package queryfrontend
 
 import (
 	"context"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
@@ -35,10 +36,10 @@ func (q *QueryFrontend) SelectMergeProfile(
 	//   truncation might not be desirable.
 
 	maxNodes := validation.SanitizeMaxNodes(q.limits, tenantIDs, c.Msg.GetMaxNodes())
-	if maxNodes != c.Msg.GetMaxNodes() {
+	if c.Msg.MaxNodes != nil && maxNodes != c.Msg.GetMaxNodes() {
 		level.Debug(q.logger).Log(
 			"msg", "enforcing global flame graph max depth limit",
-			"tenant", tenantIDs,
+			"tenant", strings.Join(tenantIDs, ", "),
 			"requested_depth", c.Msg.GetMaxNodes(),
 			"limited_depth", maxNodes,
 		)
