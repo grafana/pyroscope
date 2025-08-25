@@ -33,6 +33,8 @@ func (q *QueryFrontend) SelectMergeProfile(
 	//   the method is used for pprof export and
 	//   truncation might not be desirable.
 
+	maxNodes := validation.SanitizeMaxNodes(q.limits, tenantIDs, c.Msg.GetMaxNodes())
+
 	labelSelector, err := buildLabelSelectorWithProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, err
@@ -44,7 +46,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_PPROF,
 			Pprof: &queryv1.PprofQuery{
-				MaxNodes:           c.Msg.GetMaxNodes(),
+				MaxNodes:           maxNodes,
 				StackTraceSelector: c.Msg.StackTraceSelector,
 			},
 		}},

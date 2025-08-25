@@ -49,6 +49,8 @@ func (f *Frontend) SelectMergeProfile(
 	//   the method is used for pprof export and
 	//   truncation is not applicable for that.
 
+	maxNodes := validation.SanitizeMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
+
 	var m pprof.ProfileMerge
 	for intervals.Next() {
 		r := intervals.At()
@@ -58,7 +60,7 @@ func (f *Frontend) SelectMergeProfile(
 				LabelSelector:      c.Msg.LabelSelector,
 				Start:              r.Start.UnixMilli(),
 				End:                r.End.UnixMilli(),
-				MaxNodes:           c.Msg.MaxNodes,
+				MaxNodes:           &maxNodes,
 				StackTraceSelector: c.Msg.StackTraceSelector,
 			})
 			resp, err := connectgrpc.RoundTripUnary[

@@ -534,3 +534,19 @@ func ValidateMaxNodes(l FlameGraphLimits, tenantIDs []string, n int64) (int64, e
 	}
 	return n, nil
 }
+
+func SanitizeMaxNodes(l FlameGraphLimits, tenantIDs []string, n int64) int64 {
+	if n == 0 {
+		return int64(validation.SmallestPositiveNonZeroIntPerTenant(tenantIDs, l.MaxFlameGraphNodesDefault))
+	}
+	maxNodes := int64(validation.SmallestPositiveNonZeroIntPerTenant(tenantIDs, l.MaxFlameGraphNodesMax))
+	if maxNodes != 0 {
+		if n > maxNodes {
+			return maxNodes
+		}
+		if n < 0 {
+			return maxNodes
+		}
+	}
+	return n
+}
