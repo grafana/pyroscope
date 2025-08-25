@@ -24,6 +24,7 @@ type PushRequest struct {
 
 // todo better name
 type ProfileSeries struct {
+	DebugRequestId string
 	// Caller provided, modified during processing
 	Labels     []*v1.LabelPair
 	Profile    *pprof.Profile
@@ -81,6 +82,7 @@ func getProfileLanguageFromSpy(spyName string) string {
 
 func (req *ProfileSeries) Clone() *ProfileSeries {
 	c := &ProfileSeries{
+		DebugRequestId:         req.DebugRequestId,
 		TenantID:               req.TenantID,
 		TotalBytesUncompressed: req.TotalBytesUncompressed,
 		Labels:                 phlaremodel.Labels(req.Labels).Clone(),

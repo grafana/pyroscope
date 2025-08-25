@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -16,6 +17,7 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
@@ -189,6 +191,11 @@ func (i *SegmentWriterService) stopping(_ error) error {
 }
 
 func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error) {
+
+	debugRequestId := ""
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		debugRequestId = strings.Join(md.Get("X-Debug-Request-ID"), "")
+	}
 	if !i.requests.Add() {
 		return nil, status.Error(codes.Unavailable, "service is unavailable")
 	} else {
@@ -200,6 +207,15 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	if req.TenantId == "" {
 		return nil, status.Error(codes.InvalidArgument, tenant.ErrNoTenantID.Error())
 	}
+	l := i.logger
+	l = log.With(l, "tenant_id", req.TenantId)
+	if dl, ok := ctx.Deadline(); ok {
+		l = log.With(l, "deadline", dl)
+	}
+	if debugRequestId != "" {
+		l = log.With(l, "debug_request_id", debugRequestId)
+	}
+
 	var id uuid.UUID
 	if err := id.UnmarshalBinary(req.ProfileId); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -220,20 +236,22 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 			Observe(time.Since(flushStarted).Seconds())
 	}()
 	if err = wait.waitFlushed(ctx); err == nil {
+		l.Log("msg", "flushed")
 		return &segmentwriterv1.PushResponse{}, nil
 	}
 
 	switch {
 	case errors.Is(err, context.Canceled):
+		level.Error(l).Log("msg", "canceled")
 		return nil, status.FromContextError(err).Err()
 
 	case errors.Is(err, context.DeadlineExceeded):
 		i.segmentWriter.metrics.segmentFlushTimeouts.WithLabelValues(req.TenantId).Inc()
-		level.Error(i.logger).Log("msg", "flush timeout", "err", err)
+		level.Error(l).Log("msg", "flush timeout", "err", err)
 		return nil, status.FromContextError(err).Err()
 
 	default:
-		level.Error(i.logger).Log("msg", "flush err", "err", err)
+		level.Error(l).Log("msg", "flush err", "err", err)
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 }

@@ -15,8 +15,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"go.uber.org/atomic"
-
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -33,7 +31,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
+	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/metadata"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -243,6 +243,8 @@ func (d *Distributor) stopping(_ error) error {
 }
 
 func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+	debugReqId := grpcReq.Header().Get("X-Debug-Request-ID")
+	ctx = metadata.AppendToOutgoingContext(ctx, "X-Debug-Request-ID", debugReqId)
 	req := &distributormodel.PushRequest{
 		Series:         make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
 		RawProfileType: distributormodel.RawProfileTypePPROF,
@@ -256,10 +258,11 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 				continue
 			}
 			series := &distributormodel.ProfileSeries{
-				Labels:     grpcSeries.Labels,
-				Profile:    profile,
-				RawProfile: grpcSample.RawProfile,
-				ID:         grpcSample.ID,
+				DebugRequestId: debugReqId,
+				Labels:         grpcSeries.Labels,
+				Profile:        profile,
+				RawProfile:     grpcSample.RawProfile,
+				ID:             grpcSample.ID,
 			}
 			req.Series = append(req.Series, series)
 		}
@@ -345,7 +348,14 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 	now := model.Now()
 
-	logger := log.With(d.logger, "tenant", tenantID)
+	logger := log.With(d.logger,
+		"tenant", tenantID)
+	if dl, ok := ctx.Deadline(); ok {
+		logger = log.With(logger, "deadline", dl)
+	}
+	if req.DebugRequestId != "" {
+		logger = log.With(logger, "debug_request_id", req.DebugRequestId)
+	}
 
 	req.TenantID = tenantID
 	serviceName := phlaremodel.Labels(req.Labels).Get(phlaremodel.LabelNameServiceName)
@@ -357,6 +367,10 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	req.TotalProfiles = 1
 	req.TotalBytesUncompressed = calculateRequestSize(req)
 	d.metrics.observeProfileSize(tenantID, StageReceived, req.TotalBytesUncompressed)
+	logger.Log("msg", "push request received", "profiles", req.TotalProfiles, "bytes", req.TotalBytesUncompressed)
+	defer func() {
+		logger.Log("msg", "push request processed", "err", err)
+	}()
 
 	if err := d.checkIngestLimit(req); err != nil {
 		level.Debug(logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
