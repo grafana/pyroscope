@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"golang.org/x/sync/errgroup"
@@ -18,7 +19,14 @@ func buildTree(
 	symbols *Symbols,
 	appender *SampleAppender,
 	maxNodes int64,
+	selection *SelectedStackTraces,
 ) (*model.Tree, error) {
+	if !selection.HasValidCallSite() {
+		// TODO(bryan) Maybe return an error here? buildPprof returns a blank
+		// profile. So mimicking that behavior for now.
+		return &model.Tree{}, nil
+	}
+
 	// If the number of samples is large (> 128K) and the StacktraceResolver
 	// implements the range iterator, we will be building the tree based on
 	// the parent pointer tree of the partition (a copy of). The only exception
@@ -36,7 +44,7 @@ func buildTree(
 	samples := appender.Samples()
 	t := treeSymbolsFromPool()
 	defer t.reset()
-	t.init(symbols, samples)
+	t.init(symbols, samples, selection)
 	if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
 		return nil, err
 	}
@@ -55,6 +63,9 @@ type treeSymbols struct {
 	tree    *model.StacktraceTree
 	lines   []int32
 	cur     int
+
+	selection     *SelectedStackTraces
+	functionIDsFn func(locations []int32) ([]int32, bool)
 }
 
 var treeSymbolsPool = sync.Pool{
@@ -74,26 +85,80 @@ func (r *treeSymbols) reset() {
 	treeSymbolsPool.Put(r)
 }
 
-func (r *treeSymbols) init(symbols *Symbols, samples schemav1.Samples) {
+func (r *treeSymbols) init(symbols *Symbols, samples schemav1.Samples, selection *SelectedStackTraces) {
 	r.symbols = symbols
 	r.samples = &samples
+	r.selection = selection
+
 	if r.tree == nil {
 		// Branching factor.
 		r.tree = model.NewStacktraceTree(samples.Len() * 2)
 	}
+	if r.selection != nil && len(r.selection.callSite) > 0 {
+		r.functionIDsFn = r.getFilteredFunctionIDs
+	} else {
+		r.functionIDsFn = r.getFunctionIDs
+	}
 }
 
 func (r *treeSymbols) InsertStacktrace(_ uint32, locations []int32) {
-	r.lines = r.lines[:0]
-	for i := 0; i < len(locations); i++ {
-		lines := r.symbols.Locations[locations[i]].Line
-		for j := 0; j < len(lines); j++ {
-			f := r.symbols.Functions[lines[j].FunctionId]
-			r.lines = append(r.lines, int32(f.Name))
+	value := r.samples.Values[r.cur]
+	r.cur++
+
+	functionIDs, ok := r.functionIDsFn(locations)
+	if !ok {
+		// This stack trace does not match the stack trace selector.
+		return
+	}
+
+	for _, functionID := range functionIDs {
+		function := r.symbols.Functions[functionID]
+		r.lines = append(r.lines, int32(function.Name))
+	}
+	r.tree.Insert(r.lines, int64(value))
+}
+
+func (r *treeSymbols) getFunctionIDs(locations []int32) ([]int32, bool) {
+	functionIDs := make([]int32, 0)
+	for _, locationID := range locations {
+		lines := r.symbols.Locations[locationID].Line
+		for _, line := range lines {
+			functionIDs = append(functionIDs, int32(line.FunctionId))
 		}
 	}
-	r.tree.Insert(r.lines, int64(r.samples.Values[r.cur]))
-	r.cur++
+	return functionIDs, true
+}
+
+func (r *treeSymbols) getFilteredFunctionIDs(locations []int32) ([]int32, bool) {
+	functionIDs := make([]int32, 0)
+	var pos int
+	pathLen := int(r.selection.depth)
+
+	for i := len(locations) - 1; i >= 0; i-- {
+		locationID := locations[i]
+		lines := r.symbols.Locations[locationID].Line
+
+		for j := len(lines) - 1; j >= 0; j-- {
+			line := lines[j]
+			functionID := line.FunctionId
+
+			if pos < pathLen {
+				if r.selection.callSite[pos] != r.selection.funcNames[functionID] {
+					return nil, false
+				}
+				pos++
+			}
+
+			functionIDs = append(functionIDs, int32(functionID))
+		}
+	}
+
+	if pos < pathLen {
+		return nil, false
+	}
+
+	slices.Reverse(functionIDs)
+	return functionIDs, true
 }
 
 func buildTreeFromParentPointerTrees(

@@ -52,11 +52,17 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		indices = append(indices, columns.SpanID.ColumnIndex)
 	}
 
+	resolverOptions := []symdb.ResolverOption{
+		symdb.WithResolverMaxNodes(query.Tree.MaxNodes),
+	}
+	if query.Tree.StackTraceSelector != nil {
+		resolverOptions = append(resolverOptions, symdb.WithResolverStackTraceSelector(query.Tree.StackTraceSelector))
+	}
+
 	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups(), indices...)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
-	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(),
-		symdb.WithResolverMaxNodes(query.Tree.GetMaxNodes()))
+	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(), resolverOptions...)
 	defer resolver.Release()
 
 	if len(spanSelector) > 0 {

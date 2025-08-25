@@ -235,7 +235,7 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 	var lock sync.Mutex
 	tree := new(model.Tree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
-		resolved, err := symbols.Tree(ctx, appender, r.maxNodes)
+		resolved, err := symbols.Tree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
 		if err != nil {
 			return err
 		}
@@ -292,6 +292,7 @@ func (r *Symbols) Tree(
 	ctx context.Context,
 	appender *SampleAppender,
 	maxNodes int64,
+	selection *SelectedStackTraces,
 ) (*model.Tree, error) {
-	return buildTree(ctx, r, appender, maxNodes)
+	return buildTree(ctx, r, appender, maxNodes, selection)
 }

@@ -8,18 +8,56 @@ import (
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 func Test_memory_Resolver_ResolveTree(t *testing.T) {
 	s := newMemSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	expectedFingerprint := pprofFingerprint(s.profiles[0], 0)
-	r := NewResolver(context.Background(), s.db)
-	defer r.Release()
-	r.AddSamples(0, s.indexed[0][0].Samples)
-	resolved, err := r.Tree()
-	require.NoError(t, err)
-	require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
+
+	t.Run("default", func(t *testing.T) {
+		r := NewResolver(context.Background(), s.db)
+		defer r.Release()
+		r.AddSamples(0, s.indexed[0][0].Samples)
+		resolved, err := r.Tree()
+		require.NoError(t, err)
+		require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
+	})
+
+	t.Run("with stack trace selector", func(t *testing.T) {
+		t.SkipNow()
+
+		locations := []string{
+			"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*Trie).Diff.func1",
+			"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*trieNode).findNodeAt",
+			"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*Trie).Diff",
+			"github.com/pyroscope-io/pyroscope/pkg/scrape.(*pprofWriter).writeProfile",
+		}
+
+		callSites := make([]*typesv1.Location, len(locations))
+		for i, name := range locations {
+			callSites[i] = &typesv1.Location{
+				Name: name,
+			}
+		}
+
+		sts := &typesv1.StackTraceSelector{
+			CallSite: callSites,
+		}
+
+		r := NewResolver(context.Background(), s.db, WithResolverStackTraceSelector(sts))
+		defer r.Release()
+		r.AddSamples(0, s.indexed[0][0].Samples)
+		resolved, err := r.Tree()
+		require.NoError(t, err)
+		// require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
+		resolved.IterateStacks(func(name string, self int64, stack []string) {
+			require.Equal(t, len(locations), len(stack), "stack shorter than expected prefix")
+			require.Equal(t, locations, stack[:len(locations)], "stack prefix doesn't match")
+		})
+		t.FailNow()
+	})
 }
 
 func Test_block_Resolver_ResolveTree(t *testing.T) {
