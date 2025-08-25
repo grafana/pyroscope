@@ -3,7 +3,7 @@
     <module name="pyroscope" />
     <working_directory value="$PROJECT_DIR$" />
     <go_parameters value="-tags embedassets" />
-    <parameters value="-storage.backend=filesystem" />
+    <parameters value="-storage.backend=filesystem -write-path=segment-writer -enable-query-backend=true" />
     <envs>
       <env name="PYROSCOPE_V2" value="true" />
     </envs>
