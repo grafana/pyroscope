@@ -16,7 +16,7 @@ var (
 
 const ReservedLabelNameName = "__name__"
 
-var reservedLabelNames = []string{
+var reservedLabelNames = []string{ //nolint:gochecknoglobals
 	ReservedLabelNameName,
 }
 
@@ -60,6 +60,7 @@ func ValidateLabelName(k string) error {
 	if IsLabelNameReserved(k) {
 		return newErr(ErrLabelNameReserved, k)
 	}
+
 	return nil
 }
 
@@ -73,6 +74,7 @@ func ValidateServiceName(n string) error {
 			return NewInvalidServiceNameRuneError(n, r)
 		}
 	}
+
 	return nil
 }
 
@@ -90,5 +92,6 @@ func IsLabelNameReserved(k string) bool {
 			return true
 		}
 	}
+
 	return false
 }

@@ -1,6 +1,6 @@
 // Package labelset implements parsing/normalizing of string representation of the Label Set of a profile.
 //
-// This is used by the /ingest endpoint, as described in the original Pyroscope API. We keep this mainly for backwards compatability.
+// This is used by the /ingest endpoint, as described in the original Pyroscope API. We keep this mainly for backwards compatibility.
 package labelset
 
 import (
@@ -30,7 +30,10 @@ func New(labels map[string]string) *LabelSet { return &LabelSet{labels: labels} 
 
 func Parse(name string) (*LabelSet, error) {
 	k := &LabelSet{labels: make(map[string]string)}
-	p := parserPool.Get().(*parser)
+	p, ok := parserPool.Get().(*parser)
+	if !ok {
+		return nil, errParserPoolFailure
+	}
 	defer parserPool.Put(p)
 	p.reset()
 	var err error
@@ -42,11 +45,14 @@ func Parse(name string) (*LabelSet, error) {
 			p.tagLabelSetParserCase(r)
 		case tagValueParserState:
 			err = p.tagValueParserCase(r, k)
+		case doneParserState:
+			// No action needed
 		}
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return k, nil
 }
 
@@ -66,6 +72,7 @@ func ValidateLabelSet(k *LabelSet) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -75,7 +82,7 @@ type parser struct {
 	value       *bytes.Buffer
 }
 
-var parserPool = sync.Pool{
+var parserPool = sync.Pool{ //nolint:gochecknoglobals
 	New: func() any {
 		return &parser{
 			parserState: nameParserState,
@@ -104,6 +111,7 @@ func (p *parser) nameParserCase(r int32, k *LabelSet) error {
 	default:
 		p.value.WriteRune(r)
 	}
+
 	return nil
 }
 
@@ -136,6 +144,7 @@ func (p *parser) tagValueParserCase(r rune, k *LabelSet) error {
 	default:
 		p.value.WriteRune(r)
 	}
+
 	return nil
 }
 
@@ -147,11 +156,13 @@ const ProfileIDLabelName = "profile_id"
 
 func (k *LabelSet) HasProfileID() bool {
 	v, ok := k.labels[ProfileIDLabelName]
+
 	return ok && v != ""
 }
 
 func (k *LabelSet) ProfileID() (string, bool) {
 	id, ok := k.labels[ProfileIDLabelName]
+
 	return id, ok
 }
 
@@ -165,7 +176,10 @@ func (k *LabelSet) TreeLabelSet(depth int, t time.Time) string {
 	return TreeLabelSet(k.Normalized(), depth, t.Unix())
 }
 
-var errLabelSetInvalid = errors.New("invalid key")
+var (
+	errLabelSetInvalid   = errors.New("invalid key")
+	errParserPoolFailure = errors.New("failed to get parser from pool")
+)
 
 // ParseTreeLabelSet retrieves tree time and depth level from the given key.
 func ParseTreeLabelSet(k string) (time.Time, int, error) {
@@ -181,6 +195,7 @@ func ParseTreeLabelSet(k string) (time.Time, int, error) {
 	if err != nil {
 		return time.Time{}, 0, err
 	}
+
 	return time.Unix(int64(v), 0), level, err
 }
 
@@ -233,6 +248,7 @@ func (k *LabelSet) Clone() *LabelSet {
 	for k, v := range k.labels {
 		newMap[k] = v
 	}
+
 	return &LabelSet{labels: newMap}
 }
 
