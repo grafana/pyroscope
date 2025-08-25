@@ -1,6 +1,7 @@
 package otlp
 
 import (
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	googleProfile "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	pyromodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 const serviceNameKey = "service.name"
@@ -26,8 +28,19 @@ func at[T any](arr []T, i int32) (T, error) {
 	return zero, fmt.Errorf("index %d out of bounds", i)
 }
 
+func allZeros(arr []byte) bool {
+	for _, val := range arr {
+		if val != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // ConvertOtelToGoogle converts an OpenTelemetry profile to a Google profile.
 func ConvertOtelToGoogle(src *otelProfile.Profile, dictionary *otelProfile.ProfilesDictionary) (map[string]convertedProfile, error) {
+	applyProfileId := src.GetProfileId() != nil && len(src.GetProfileId()) == 16 && !allZeros(src.GetProfileId())
+
 	svc2Profile := make(map[string]*profileBuilder)
 	for _, sample := range src.Sample {
 		svc, err := serviceNameFromSample(sample, dictionary)
@@ -43,8 +56,13 @@ func ConvertOtelToGoogle(src *otelProfile.Profile, dictionary *otelProfile.Profi
 			}
 			svc2Profile[svc] = p
 		}
-		if _, err := p.convertSampleBack(sample, dictionary); err != nil {
+		if gs, err := p.convertSampleBack(sample, dictionary); err != nil {
 			return nil, err
+		} else if applyProfileId {
+			gs.Label = append(gs.Label, &googleProfile.Label{
+				Key: p.addstr(pprof.ProfileIDLabelName),
+				Str: p.addstr(hex.EncodeToString(src.GetProfileId())),
+			})
 		}
 	}
 
@@ -377,6 +395,18 @@ func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sam
 			})
 		}
 	}
+
+	if os.GetLinkIndex() != 0 {
+		link, err := at(dictionary.LinkTable, os.GetLinkIndex())
+		if err != nil {
+			return fmt.Errorf("could not access link at index %d: %w", os.GetLinkIndex(), err)
+		}
+		gs.Label = append(gs.Label, &googleProfile.Label{
+			Key: p.addstr(pprof.SpanIDLabelName),
+			Str: p.addstr(hex.EncodeToString(link.GetSpanId())),
+		})
+	}
+
 	return nil
 }
 
