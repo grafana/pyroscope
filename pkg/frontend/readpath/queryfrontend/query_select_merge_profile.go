@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -34,6 +35,14 @@ func (q *QueryFrontend) SelectMergeProfile(
 	//   truncation might not be desirable.
 
 	maxNodes := validation.SanitizeMaxNodes(q.limits, tenantIDs, c.Msg.GetMaxNodes())
+	if maxNodes != c.Msg.GetMaxNodes() {
+		level.Debug(q.logger).Log(
+			"msg", "enforcing global flame graph max depth limit",
+			"tenant", tenantIDs,
+			"requested_depth", c.Msg.GetMaxNodes(),
+			"limited_depth", maxNodes,
+		)
+	}
 
 	labelSelector, err := buildLabelSelectorWithProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {

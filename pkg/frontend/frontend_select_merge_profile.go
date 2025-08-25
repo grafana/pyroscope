@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/common/model"
 	"golang.org/x/sync/errgroup"
@@ -50,6 +51,12 @@ func (f *Frontend) SelectMergeProfile(
 	//   truncation is not applicable for that.
 
 	maxNodes := validation.SanitizeMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
+	level.Debug(f.log).Log(
+		"msg", "enforcing global flame graph max depth limit",
+		"tenant", tenantIDs,
+		"requested_depth", c.Msg.GetMaxNodes(),
+		"limited_depth", maxNodes,
+	)
 
 	var m pprof.ProfileMerge
 	for intervals.Next() {
