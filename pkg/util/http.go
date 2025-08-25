@@ -139,9 +139,15 @@ type Log struct {
 // logWithRequest information from the request and context as fields.
 func (l Log) logWithRequest(r *http.Request) log.Logger {
 	localLog := l.Log
-	traceID, ok := tracing.ExtractTraceID(r.Context())
-	if ok {
+	if traceID, ok := tracing.ExtractTraceID(r.Context()); ok {
 		localLog = log.With(localLog, "traceID", traceID)
+	}
+	if reqId := r.Header.Get("X-Debug-Request-ID"); reqId != "" {
+		localLog = log.With(localLog, "debug_request_id", reqId)
+	}
+
+	if dl, ok := r.Context().Deadline(); ok {
+		localLog = log.With(localLog, "deadline", dl)
 	}
 
 	if l.SourceIPs != nil {
@@ -254,9 +260,11 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 			requestLogD = log.With(requestLogD, "request_body_size", rBody.read)
 		}
 
+		//logRequestAtInfoLevel := l.LogRequestAtInfoLevel
+		logRequestAtInfoLevel := true
 		if writeErr != nil {
 			if errors.Is(writeErr, context.Canceled) {
-				if l.LogRequestAtInfoLevel {
+				if logRequestAtInfoLevel {
 					level.Info(requestLogD).Log("msg", dslog.LazySprintf("request cancelled: %s ws: %v; %s", writeErr, IsWSHandshakeRequest(r), headers))
 				} else {
 					level.Debug(requestLogD).Log("msg", dslog.LazySprintf("request cancelled: %s ws: %v; %s", writeErr, IsWSHandshakeRequest(r), headers))
@@ -269,13 +277,13 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 		}
 
 		if 100 <= statusCode && statusCode < 400 {
-			if l.LogRequestAtInfoLevel {
+			if logRequestAtInfoLevel {
 				level.Info(requestLogD).Log("msg", "http request processed")
 			} else {
 				level.Debug(requestLogD).Log("msg", "http request processed")
 			}
 			if l.LogRequestHeaders && headers != nil {
-				if l.LogRequestAtInfoLevel {
+				if logRequestAtInfoLevel {
 					level.Info(requestLog).Log("msg", dslog.LazySprintf("ws: %v; %s", IsWSHandshakeRequest(r), string(headers)))
 				} else {
 					level.Debug(requestLog).Log("msg", dslog.LazySprintf("ws: %v; %s", IsWSHandshakeRequest(r), string(headers)))
