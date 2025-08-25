@@ -76,15 +76,9 @@ buf/lint: $(BIN)/buf
 	cd api/ && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 	cd pkg && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 
-EBPF_TESTS='^TestEBPF.*'
-
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
-ifeq ($(GOOS),darwin)
 	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./lidia/...' -- $(GO_TEST_FLAGS)
-else
-	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./lidia/...' -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS)
-endif
 
 # Run test on examples
 # This can also be used to run it on a subset of tests
