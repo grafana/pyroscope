@@ -39,8 +39,6 @@ func allZeros(arr []byte) bool {
 
 // ConvertOtelToGoogle converts an OpenTelemetry profile to a Google profile.
 func ConvertOtelToGoogle(src *otelProfile.Profile, dictionary *otelProfile.ProfilesDictionary) (map[string]convertedProfile, error) {
-	applyProfileId := src.GetProfileId() != nil && len(src.GetProfileId()) == 16 && !allZeros(src.GetProfileId())
-
 	svc2Profile := make(map[string]*profileBuilder)
 	for _, sample := range src.Sample {
 		svc, err := serviceNameFromSample(sample, dictionary)
@@ -56,13 +54,8 @@ func ConvertOtelToGoogle(src *otelProfile.Profile, dictionary *otelProfile.Profi
 			}
 			svc2Profile[svc] = p
 		}
-		if gs, err := p.convertSampleBack(sample, dictionary); err != nil {
+		if _, err := p.convertSampleBack(sample, dictionary); err != nil {
 			return nil, err
-		} else if applyProfileId {
-			gs.Label = append(gs.Label, &googleProfile.Label{
-				Key: p.addstr(pprof.ProfileIDLabelName),
-				Str: p.addstr(hex.EncodeToString(src.GetProfileId())),
-			})
 		}
 	}
 
