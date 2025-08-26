@@ -748,7 +748,7 @@ func mergeProfile(profile *profilev1.Profile) aggregator.AggregateFn[*pprof.Prof
 		if m == nil {
 			m = new(pprof.ProfileMerge)
 		}
-		if err := m.Merge(profile); err != nil {
+		if err := m.Merge(profile, true); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 		return m, nil

@@ -119,9 +119,11 @@ func (q *QueryFrontend) Query(
 		StartTime:     req.StartTime,
 		EndTime:       req.EndTime,
 		LabelSelector: req.LabelSelector,
-		Options:       &queryv1.InvokeOptions{},
-		QueryPlan:     p,
-		Query:         modifiedQueries,
+		Options: &queryv1.InvokeOptions{
+			SanitizeOnMerge: q.limits.QuerySanitizeOnMerge(tenants[0]),
+		},
+		QueryPlan: p,
+		Query:     modifiedQueries,
 	})
 	if err != nil {
 		return nil, err

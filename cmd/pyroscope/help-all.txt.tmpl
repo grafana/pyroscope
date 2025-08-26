@@ -591,6 +591,8 @@ Usage of ./pyroscope:
     	Whether the series portion of query analysis is enabled. If disabled, no series data (e.g., series count) will be calculated by the /AnalyzeQuery endpoint.
   -querier.query-store-after duration
     	The time after which a metric should be queried from storage and not just ingesters. 0 means all queries are sent to store. If this option is enabled, the time range of the query sent to the store-gateway will be manipulated to ensure the query end is not more recent than 'now - query-store-after'. (default 4h0m0s)
+  -querier.sanitize-on-merge
+    	Whether profiles should be sanitized when merging. (default true)
   -querier.split-queries-by-interval duration
     	Split queries by a time interval and execute in parallel. The value 0 disables splitting by time
   -query-frontend.grpc-client-config.backoff-max-period duration

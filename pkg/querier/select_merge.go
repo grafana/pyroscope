@@ -40,16 +40,16 @@ type BidiClientMerge[Req any, Res any] interface {
 
 type Request interface {
 	*ingestv1.MergeProfilesStacktracesRequest |
-		*ingestv1.MergeProfilesLabelsRequest |
-		*ingestv1.MergeProfilesPprofRequest |
-		*ingestv1.MergeSpanProfileRequest
+	*ingestv1.MergeProfilesLabelsRequest |
+	*ingestv1.MergeProfilesPprofRequest |
+	*ingestv1.MergeSpanProfileRequest
 }
 
 type Response interface {
 	*ingestv1.MergeProfilesStacktracesResponse |
-		*ingestv1.MergeProfilesLabelsResponse |
-		*ingestv1.MergeProfilesPprofResponse |
-		*ingestv1.MergeSpanProfileResponse
+	*ingestv1.MergeProfilesLabelsResponse |
+	*ingestv1.MergeProfilesPprofResponse |
+	*ingestv1.MergeSpanProfileResponse
 }
 
 type MergeResult[R any] interface {
@@ -86,9 +86,9 @@ type mergeIterator[R any, Req Request, Res Response] struct {
 // Merging or querying profiles sample values is expensive, we only merge the sample of the profiles that are kept.
 // On creating the iterator, we send a request to ingesters to fetch the first batch.
 func NewMergeIterator[
-	R any,
-	Req Request,
-	Res Response,
+R any,
+Req Request,
+Res Response,
 ](ctx context.Context, r ResponseFromReplica[BidiClientMerge[Req, Res]],
 ) *mergeIterator[R, Req, Res] {
 	it := &mergeIterator[R, Req, Res]{
@@ -444,7 +444,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 			if err = pprof.Unmarshal(result, &p); err != nil {
 				return err
 			}
-			return pprofMerge.Merge(&p)
+			return pprofMerge.Merge(&p, true)
 		}))
 	}
 	if err := g.Wait(); err != nil {
