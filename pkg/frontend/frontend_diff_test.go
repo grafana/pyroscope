@@ -22,6 +22,9 @@ type mockLimits struct{}
 func (m *mockLimits) QuerySplitDuration(_ string) time.Duration {
 	return time.Hour
 }
+func (m *mockLimits) QueryTypedPprofEnabled(_ string) bool {
+	return false
+}
 
 func (m *mockLimits) MaxQueryParallelism(_ string) int {
 	return 100

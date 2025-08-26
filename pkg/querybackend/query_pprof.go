@@ -80,8 +80,13 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 	resp := &queryv1.Report{
 		Pprof: &queryv1.PprofReport{
 			Query: query.Pprof.CloneVT(),
-			Pprof: pprof.MustMarshal(profile, true),
 		},
+	}
+
+	if query.Pprof.TypedOutput {
+		resp.Pprof.TypedPprof = profile
+	} else {
+		resp.Pprof.Pprof = pprof.MustMarshal(profile, true)
 	}
 
 	return resp, nil
@@ -100,14 +105,22 @@ func (a *pprofAggregator) aggregate(report *queryv1.Report) error {
 	a.init.Do(func() {
 		a.query = r.Query.CloneVT()
 	})
+	if a.query.TypedOutput {
+		return a.profile.Merge(r.TypedPprof)
+	}
 	return a.profile.MergeBytes(r.Pprof)
 }
 
 func (a *pprofAggregator) build() *queryv1.Report {
-	return &queryv1.Report{
+	rep := &queryv1.Report{
 		Pprof: &queryv1.PprofReport{
 			Query: a.query,
-			Pprof: pprof.MustMarshal(a.profile.Profile(), true),
 		},
 	}
+	if a.query.TypedOutput {
+		rep.Pprof.TypedPprof = a.profile.Profile()
+	} else {
+		rep.Pprof.Pprof = pprof.MustMarshal(a.profile.Profile(), true)
+	}
+	return rep
 }

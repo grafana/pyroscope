@@ -2312,6 +2312,10 @@ distributor_usage_groups:
 # CLI flag: -querier.split-queries-by-interval
 [split_queries_by_interval: <duration> | default = 0s]
 
+# Whether pprof queries work with typed data sent over the wire.
+# CLI flag: -querier.typed-pprof-enabled
+[query_typed_pprof_enabled: <boolean> | default = false]
+
 # Delete blocks containing samples older than the specified retention period. 0
 # to disable.
 # CLI flag: -compactor.blocks-retention-period

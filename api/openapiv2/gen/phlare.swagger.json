@@ -1665,7 +1665,10 @@
           "format": "int64"
         },
         "stackTraceSelector": {
-          "$ref": "#/definitions/v1StackTraceSelector",
+          "$ref": "#/definitions/v1StackTraceSelector"
+        },
+        "typedOutput": {
+          "type": "boolean",
           "description": "TODO(kolesnikovae): Go PGO options."
         }
       }
@@ -1679,6 +1682,9 @@
         "pprof": {
           "type": "string",
           "format": "byte"
+        },
+        "typedPprof": {
+          "$ref": "#/definitions/googlev1Profile"
         }
       }
     },

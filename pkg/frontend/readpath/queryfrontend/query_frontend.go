@@ -105,7 +105,8 @@ func (q *QueryFrontend) Query(
 		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
-				MaxNodes: 0,
+				MaxNodes:    0,
+				TypedOutput: q.limits.QueryTypedPprofEnabled(tenants[0]),
 			}
 			modifiedQueries[i].Tree = nil
 		}
@@ -234,24 +235,35 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 		}
 
 		var prof googlev1.Profile
-		if err := pprof.Unmarshal(r.Pprof.Pprof, &prof); err != nil {
-			return fmt.Errorf("failed to unmarshal profile: %w", err)
-		}
-
-		if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
-			return fmt.Errorf("failed to symbolize profile: %w", err)
+		if r.Pprof.TypedPprof != nil {
+			if err := q.symbolizer.SymbolizePprof(ctx, r.Pprof.TypedPprof); err != nil {
+				return fmt.Errorf("failed to symbolize profile: %w", err)
+			}
+		} else {
+			if err := pprof.Unmarshal(r.Pprof.Pprof, &prof); err != nil {
+				return fmt.Errorf("failed to unmarshal profile: %w", err)
+			}
+			if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
+				return fmt.Errorf("failed to symbolize profile: %w", err)
+			}
 		}
 
 		// Convert back to tree if originally a tree
 		if i < len(originalQueries) && originalQueries[i].QueryType == queryv1.QueryType_QUERY_TREE {
-			treeBytes, err := model.TreeFromBackendProfile(&prof, originalQueries[i].Tree.MaxNodes)
+			var treeBytes []byte
+			var err error
+			if r.Pprof.TypedPprof != nil {
+				treeBytes, err = model.TreeFromBackendProfile(r.Pprof.TypedPprof, originalQueries[i].Tree.MaxNodes)
+			} else {
+				treeBytes, err = model.TreeFromBackendProfile(&prof, originalQueries[i].Tree.MaxNodes)
+			}
 			if err != nil {
 				return fmt.Errorf("failed to build tree: %w", err)
 			}
 			r.Tree = &queryv1.TreeReport{Tree: treeBytes}
 			r.ReportType = queryv1.ReportType_REPORT_TREE
 			r.Pprof = nil
-		} else {
+		} else if r.Pprof.TypedPprof == nil {
 			symbolizedBytes, err := pprof.Marshal(&prof, true)
 			if err != nil {
 				return fmt.Errorf("failed to marshal symbolized profile: %w", err)

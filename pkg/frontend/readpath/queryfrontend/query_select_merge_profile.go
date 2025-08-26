@@ -46,6 +46,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 			Pprof: &queryv1.PprofQuery{
 				MaxNodes:           c.Msg.GetMaxNodes(),
 				StackTraceSelector: c.Msg.StackTraceSelector,
+				TypedOutput:        q.limits.QueryTypedPprofEnabled(tenantIDs[0]),
 			},
 		}},
 	})
@@ -55,6 +56,11 @@ func (q *QueryFrontend) SelectMergeProfile(
 	if report == nil {
 		return connect.NewResponse(&profilev1.Profile{}), nil
 	}
+
+	if report.Pprof.TypedPprof != nil {
+		return connect.NewResponse(report.Pprof.TypedPprof), nil
+	}
+
 	var p profilev1.Profile
 	if err = pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {
 		return nil, err
