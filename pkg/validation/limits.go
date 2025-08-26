@@ -96,6 +96,7 @@ type Limits struct {
 	// Query frontend.
 	QuerySplitDuration     model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
 	QueryTypedPprofEnabled bool           `yaml:"query_typed_pprof_enabled" json:"query_typed_pprof_enabled"`
+	QuerySanitizeOnMerge   bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge"`
 
 	// Compactor.
 	CompactorBlocksRetentionPeriod     model.Duration `yaml:"compactor_blocks_retention_period" json:"compactor_blocks_retention_period"`
@@ -172,6 +173,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	_ = l.QuerySplitDuration.Set("0s")
 	f.Var(&l.QuerySplitDuration, "querier.split-queries-by-interval", "Split queries by a time interval and execute in parallel. The value 0 disables splitting by time")
 	f.BoolVar(&l.QueryTypedPprofEnabled, "querier.typed-pprof-enabled", false, "Whether pprof queries work with typed data sent over the wire.")
+	f.BoolVar(&l.QuerySanitizeOnMerge, "querier.sanitize-on-merge", true, "Whether profiles should be sanitized when merging.")
 
 	f.IntVar(&l.MaxQueryParallelism, "querier.max-query-parallelism", 0, "Maximum number of queries that will be scheduled in parallel by the frontend.")
 
@@ -441,6 +443,11 @@ func (o *Overrides) QuerySplitDuration(tenantID string) time.Duration {
 // QueryTypedPprofEnabled returns whether pprof queries work with typed pprof data over the wire.
 func (o *Overrides) QueryTypedPprofEnabled(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).QueryTypedPprofEnabled
+}
+
+// QuerySanitizeOnMerge returns whether profiles should be sanitized in the read path.
+func (o *Overrides) QuerySanitizeOnMerge(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).QuerySanitizeOnMerge
 }
 
 // CompactorTenantShardSize returns number of compactors that this user can use. 0 = all compactors.

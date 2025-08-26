@@ -114,6 +114,7 @@ type Limits interface {
 	QueryAnalysisEnabled(string) bool
 	SymbolizerEnabled(string) bool
 	QueryTypedPprofEnabled(string) bool
+	QuerySanitizeOnMerge(string) bool
 	validation.FlameGraphLimits
 }
 

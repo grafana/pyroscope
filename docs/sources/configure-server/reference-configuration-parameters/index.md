@@ -2316,6 +2316,10 @@ distributor_usage_groups:
 # CLI flag: -querier.typed-pprof-enabled
 [query_typed_pprof_enabled: <boolean> | default = false]
 
+# Whether profiles should be sanitized when merging.
+# CLI flag: -querier.sanitize-on-merge
+[query_sanitize_on_merge: <boolean> | default = true]
+
 # Delete blocks containing samples older than the specified retention period. 0
 # to disable.
 # CLI flag: -compactor.blocks-retention-period

@@ -11,6 +11,7 @@ type MockLimits struct {
 	MaxQueryLookbackValue           time.Duration
 	QueryAnalysisEnabledValue       bool
 	QueryTypedPprofEnabledValue     bool
+	QuerySanitizeOnMergeValue       bool
 	QueryAnalysisSeriesEnabledValue bool
 	MaxLabelNameLengthValue         int
 	MaxLabelValueLengthValue        int
@@ -48,6 +49,9 @@ func (m MockLimits) QueryAnalysisSeriesEnabled(tenantID string) bool {
 }
 func (m MockLimits) QueryTypedPprofEnabled(tenantID string) bool {
 	return m.QueryTypedPprofEnabledValue
+}
+func (m MockLimits) QuerySanitizeOnMerge(tenantID string) bool {
+	return m.QuerySanitizeOnMergeValue
 }
 func (m MockLimits) MaxFlameGraphNodesDefault(string) int { return m.MaxFlameGraphNodesDefaultValue }
 func (m MockLimits) MaxFlameGraphNodesMax(string) int     { return m.MaxFlameGraphNodesMaxValue }

@@ -25,6 +25,9 @@ func (m *mockLimits) QuerySplitDuration(_ string) time.Duration {
 func (m *mockLimits) QueryTypedPprofEnabled(_ string) bool {
 	return false
 }
+func (m *mockLimits) QuerySanitizeOnMerge(_ string) bool {
+	return true
+}
 
 func (m *mockLimits) MaxQueryParallelism(_ string) int {
 	return 100

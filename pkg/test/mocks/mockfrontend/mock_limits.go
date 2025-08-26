@@ -365,7 +365,24 @@ func (_m *MockLimits) QueryTypedPprofEnabled(_a0 string) bool {
 	ret := _m.Called(_a0)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SymbolizerEnabled")
+		panic("no return value specified for QueryTypedPprofEnabled")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+func (_m *MockLimits) QuerySanitizeOnMerge(_a0 string) bool {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for QuerySanitizeOnMerge")
 	}
 
 	var r0 bool
