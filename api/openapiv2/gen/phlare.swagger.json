@@ -1635,6 +1635,18 @@
             "type": "object",
             "$ref": "#/definitions/v1ProfileAnnotation"
           }
+        },
+        "seriesFingerprints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "title": "Series fingerprints of the full series"
+        },
+        "profileId": {
+          "type": "string",
+          "title": "Originating profile_id"
         }
       }
     },
@@ -2385,6 +2397,9 @@
         "limit": {
           "type": "string",
           "format": "int64"
+        },
+        "aggregation": {
+          "$ref": "#/definitions/v1TimeSeriesAggregationType"
         }
       }
     },

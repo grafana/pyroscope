@@ -1,6 +1,7 @@
 package model
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/prometheus/common/model"
@@ -31,7 +32,38 @@ func (s *TimeSeriesBuilder) Init(by ...string) {
 	s.by = by
 }
 
-func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, value float64, annotations schemav1.Annotations) {
+// mergePoints merges two points with the same timestamp.
+func mergePoints(a, b *typesv1.Point) {
+	if a.Timestamp != b.Timestamp {
+		panic("timestamps do not match")
+	}
+
+	a.Value += b.Value
+	a.Annotations = append(a.Annotations, b.Annotations...)
+
+	// add the series fingerprints into an ordered slice
+	for _, fp := range b.SeriesFingerprints {
+		idx, found := slices.BinarySearchFunc(a.SeriesFingerprints, fp, func(a, b uint64) int {
+			return int(a - b)
+		})
+		if found {
+			continue
+		}
+		a.SeriesFingerprints = slices.Insert(a.SeriesFingerprints, idx, fp)
+	}
+}
+
+// insertPoint inserts a point into a sorted slice of points.
+func insertPoint(points []*typesv1.Point, newPoint *typesv1.Point) []*typesv1.Point {
+	idx, found := slices.BinarySearchFunc(points, newPoint, PointsOrderTimestampThenProfileID)
+	if found {
+		mergePoints(points[idx], newPoint)
+		return points
+	}
+	return slices.Insert(points, idx, newPoint)
+}
+
+func (s *TimeSeriesBuilder) AddWithProfileID(fp model.Fingerprint, lbs Labels, ts int64, value float64, profileID []byte, annotations schemav1.Annotations) {
 	labelsByString, ok := s.labelsByFingerprint[fp]
 	pAnnotations := make([]*typesv1.ProfileAnnotation, 0, len(annotations.Keys))
 	for i := range len(annotations.Keys) {
@@ -49,9 +81,11 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 				Labels: lbs.WithLabels(s.by...),
 				Points: []*typesv1.Point{
 					{
-						Timestamp:   ts,
-						Value:       value,
-						Annotations: pAnnotations,
+						Timestamp:          ts,
+						Value:              value,
+						Annotations:        pAnnotations,
+						ProfileId:          string(profileID),
+						SeriesFingerprints: []uint64{uint64(fp)},
 					},
 				},
 			}
@@ -59,11 +93,17 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 		}
 	}
 	series := s.series[labelsByString]
-	series.Points = append(series.Points, &typesv1.Point{
-		Timestamp:   ts,
-		Value:       value,
-		Annotations: pAnnotations,
+	series.Points = insertPoint(series.Points, &typesv1.Point{
+		Timestamp:          ts,
+		Value:              value,
+		Annotations:        pAnnotations,
+		ProfileId:          string(profileID),
+		SeriesFingerprints: []uint64{uint64(fp)},
 	})
+}
+
+func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, value float64, annotations schemav1.Annotations) {
+	s.AddWithProfileID(fp, lbs, ts, value, nil, annotations)
 }
 
 func (s *TimeSeriesBuilder) Build() []*typesv1.Series {
@@ -77,11 +117,5 @@ func (m seriesByLabels) normalize() []*typesv1.Series {
 	sort.Slice(result, func(i, j int) bool {
 		return CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
 	})
-	// we have to sort the points in each series because labels reduction may have changed the order
-	for _, s := range result {
-		sort.Slice(s.Points, func(i, j int) bool {
-			return s.Points[i].Timestamp < s.Points[j].Timestamp
-		})
-	}
 	return result
 }
