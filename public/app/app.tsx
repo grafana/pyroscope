@@ -3,9 +3,6 @@ import { Sidebar } from '@pyroscope/components/Sidebar';
 import { TenantWall } from '@pyroscope/components/TenantWall';
 import { useSelectFirstApp } from '@pyroscope/hooks/useAppNames';
 import '@pyroscope/jquery-import';
-import { ComparisonView } from '@pyroscope/pages/ComparisonView';
-import { DiffView } from '@pyroscope/pages/DiffView';
-import { ExploreView } from '@pyroscope/pages/ExploreView';
 import { SingleView } from '@pyroscope/pages/SingleView';
 import { ROUTES } from '@pyroscope/pages/routes';
 import store from '@pyroscope/redux/store';
@@ -44,17 +41,8 @@ function App() {
         <div className="pyroscope-app">
           <TenantWall>
             <Switch>
-              <Route exact path={ROUTES.EXPLORE_VIEW}>
-                <ExploreView />
-              </Route>
               <Route exact path={ROUTES.SINGLE_VIEW}>
                 <SingleView />
-              </Route>
-              <Route path={ROUTES.COMPARISON_VIEW}>
-                <ComparisonView />
-              </Route>
-              <Route path={ROUTES.COMPARISON_DIFF_VIEW}>
-                <DiffView />
               </Route>
             </Switch>
           </TenantWall>

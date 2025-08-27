@@ -8,7 +8,6 @@ import '@pyroscope/components/TimelineChart/Selection.plugin';
 import 'react-flot/flot/jquery.flot.crosshair';
 import '@pyroscope/components/TimelineChart/TimelineChartPlugin';
 import '@pyroscope/components/TimelineChart/Tooltip.plugin';
-import '@pyroscope/components/TimelineChart/Annotations.plugin';
 import '@pyroscope/components/TimelineChart/ContextMenu.plugin';
 import '@pyroscope/components/TimelineChart/CrosshairSync.plugin';
 import { rangeIsAcceptableForZoom } from './util';

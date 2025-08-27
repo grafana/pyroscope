@@ -204,18 +204,16 @@ func (i *Index) GetTenantStats(tx *bbolt.Tx, tenant string) *metastorev1.TenantS
 			// Partition not found.
 			continue
 		}
-		if q.Shards(tenant) == nil {
-			// No shards for this tenant in this partition.
-			continue
-		}
-		oldest := p.StartTime().UnixMilli()
-		newest := p.EndTime().UnixMilli()
-		stats.DataIngested = true
-		if oldest < stats.OldestProfileTime {
-			stats.OldestProfileTime = oldest
-		}
-		if newest > stats.NewestProfileTime {
-			stats.NewestProfileTime = newest
+		for shard := range q.Shards(tenant) {
+			stats.DataIngested = true
+			oldest := shard.ShardIndex.MinTime
+			newest := shard.ShardIndex.MaxTime
+			if oldest < stats.OldestProfileTime {
+				stats.OldestProfileTime = oldest
+			}
+			if newest > stats.NewestProfileTime {
+				stats.NewestProfileTime = newest
+			}
 		}
 	}
 	if !stats.DataIngested {
