@@ -48,7 +48,7 @@ func (m *MockBucket) MockIterWithCallback(prefix string, objects []string, err e
 }
 
 func (m *MockBucket) MockUpload(name string, err error) {
-	m.On("Upload", mock.Anything, name, mock.Anything).Return(err)
+	m.On("Upload", mock.Anything, name, mock.Anything, mock.Anything).Return(err)
 }
 
 func (m *MockBucket) MockAttributes(name string, attrs objstore.ObjectAttributes, err error) {
