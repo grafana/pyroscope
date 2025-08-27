@@ -1,6 +1,7 @@
 package otlp
 
 import (
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	googleProfile "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	pyromodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 const serviceNameKey = "service.name"
@@ -377,6 +379,18 @@ func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sam
 			})
 		}
 	}
+
+	if os.GetLinkIndex() != 0 {
+		link, err := at(dictionary.LinkTable, os.GetLinkIndex())
+		if err != nil {
+			return fmt.Errorf("could not access link at index %d: %w", os.GetLinkIndex(), err)
+		}
+		gs.Label = append(gs.Label, &googleProfile.Label{
+			Key: p.addstr(pprof.SpanIDLabelName),
+			Str: p.addstr(hex.EncodeToString(link.GetSpanId())),
+		})
+	}
+
 	return nil
 }
 
