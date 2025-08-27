@@ -35,7 +35,7 @@ require (
 	github.com/grafana/dskit v0.0.0-20250723143816-ff33c5829b96
 	github.com/grafana/jfr-parser/pprof v0.0.7
 	github.com/grafana/pyroscope-go v1.2.0
-	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.9
 	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3
 	github.com/grafana/pyroscope/api v0.4.0
 	github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff
