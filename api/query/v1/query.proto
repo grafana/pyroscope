@@ -170,6 +170,7 @@ message TimeSeriesReport {
 message TreeQuery {
   int64 max_nodes = 1;
   repeated string span_selector = 2;
+  optional types.v1.StackTraceSelector stack_trace_selector = 3;
 }
 
 message TreeReport {

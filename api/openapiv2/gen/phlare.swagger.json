@@ -2103,6 +2103,10 @@
         "format": {
           "$ref": "#/definitions/v1ProfileFormat",
           "description": "Profile format specifies the format of profile to be returned.\nIf not specified, the profile will be returned in flame graph format."
+        },
+        "stackTraceSelector": {
+          "$ref": "#/definitions/v1StackTraceSelector",
+          "description": "Select stack traces that match the provided selector."
         }
       }
     },
@@ -2427,6 +2431,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "stackTraceSelector": {
+          "$ref": "#/definitions/v1StackTraceSelector"
         }
       }
     },
