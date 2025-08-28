@@ -359,7 +359,11 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	d.metrics.observeProfileSize(tenantID, StageReceived, req.TotalBytesUncompressed)
 
 	if err := d.checkIngestLimit(req); err != nil {
-		level.Debug(logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
+		level.Debug(logger).Log(
+			"msg", "rejecting push request due to global ingest limit",
+			"tenant", tenantID,
+			"err", err,
+		)
 		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return err
@@ -375,7 +379,11 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, req.Labels)
 	if err := d.checkUsageGroupsIngestLimit(req, groups.Names()); err != nil {
-		level.Debug(logger).Log("msg", "rejecting push request due to usage group ingest limit", "tenant", tenantID)
+		level.Debug(logger).Log(
+			"msg", "rejecting push request due to usage group ingest limit",
+			"tenant", tenantID,
+			"err", err,
+		)
 		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		groups.CountDiscardedBytes(string(validation.IngestLimitReached), req.TotalBytesUncompressed)
