@@ -252,6 +252,10 @@ ingress:
   enabled: false
   className: ""
   pathType: ImplementationSpecific
+  # Additional labels to add to the ingress resource
+  labels: {}
+  # Additional annotations to add to the ingress resource
+  annotations: {}
   # hosts:
   #   - localhost
   # tls:

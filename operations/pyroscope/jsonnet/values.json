@@ -51,8 +51,10 @@
     "enabled": true
   },
   "ingress": {
+    "annotations": {},
     "className": "",
     "enabled": false,
+    "labels": {},
     "pathType": "ImplementationSpecific"
   },
   "minio": {
