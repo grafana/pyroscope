@@ -354,34 +354,71 @@ func (l *lazyUsageGroups) String() string {
 	return fmt.Sprintf("%v", result)
 }
 
-type lazyStringer struct {
-	f func() string
-}
-
-func (l *lazyStringer) String() string {
-	return l.f()
-}
-
 func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string) (err error) {
 	if req.Profile == nil {
 		return noNewProfilesReceivedError()
 	}
 	now := model.Now()
-	logger := spanlogger.FromContext(ctx, log.With(d.logger, "tenant", tenantID))
+
+	var (
+		logger    = spanlogger.FromContext(ctx, log.With(d.logger, "tenant", tenantID))
+		logFields = make([]any, 0, 20)
+		logMsg    = ""
+		logLvl    func(log.Logger) log.Logger
+	)
+	logFields = append(logFields, "msg", "")
+	defer func() {
+		// determine log level
+		if logLvl == nil {
+			if err != nil {
+				logLvl = level.Warn
+			} else {
+				logLvl = level.Debug
+			}
+		}
+
+		// append error
+		if err != nil {
+			logFields = append(logFields, "err", err)
+		}
+
+		// update message
+		if logMsg == "" {
+			if err != nil {
+				logMsg = "profile rejected"
+			} else {
+				logMsg = "profile accepted"
+			}
+		}
+		logFields[1] = logMsg
+
+		logLvl(logger).Log(logFields...)
+	}()
 
 	req.TenantID = tenantID
 	serviceName := phlaremodel.Labels(req.Labels).Get(phlaremodel.LabelNameServiceName)
 	if serviceName == "" {
 		req.Labels = append(req.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: phlaremodel.AttrServiceNameFallback})
+	} else {
+		logFields = append(logFields,
+			"service_name", serviceName,
+		)
 	}
 	sort.Sort(phlaremodel.Labels(req.Labels))
+
+	if req.ID != "" {
+		logFields = append(logFields,
+			"profile_id", req.ID,
+		)
+	}
 
 	req.TotalProfiles = 1
 	req.TotalBytesUncompressed = calculateRequestSize(req)
 	d.metrics.observeProfileSize(tenantID, StageReceived, req.TotalBytesUncompressed)
 
 	if err := d.checkIngestLimit(req); err != nil {
-		level.Debug(logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
+		logMsg = "rejecting profile due to global ingest limit"
+		logLvl = level.Debug
 		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return err
@@ -394,10 +431,14 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	usageGroups := d.limits.DistributorUsageGroups(tenantID)
 
 	profName := phlaremodel.Labels(req.Labels).Get(ProfileName)
+	logFields = append(logFields,
+		"profile_type", profName,
+	)
 
 	groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, req.Labels)
 	if err := d.checkUsageGroupsIngestLimit(req, groups.Names()); err != nil {
-		level.Debug(logger).Log("msg", "rejecting push request due to usage group ingest limit", "tenant", tenantID)
+		logMsg = "rejecting profile due to usage group ingest limit"
+		logLvl = level.Debug
 		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
 		groups.CountDiscardedBytes(string(validation.IngestLimitReached), req.TotalBytesUncompressed)
@@ -406,12 +447,11 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	willSample, samplingSource := d.shouldSample(tenantID, groups.Names())
 	if !willSample {
-		level.Debug(logger).Log(
-			"msg", "skipping push request due to sampling",
-			"tenant", tenantID,
+		logFields = append(logFields,
 			"usage_group", samplingSource.UsageGroup,
 			"probability", samplingSource.Probability,
 		)
+		logMsg = "skipping profile due to sampling"
 		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
 		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
@@ -424,6 +464,9 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 
 	profLanguage := d.GetProfileLanguage(req)
+	if profLanguage != "" {
+		logFields = append(logFields, "detected_language", profLanguage)
+	}
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
@@ -432,7 +475,14 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 	p := req.Profile
 	decompressedSize := p.SizeVT()
-	d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize))                              //todo use req.TotalBytesUncompressed to include labels size
+	profTime := model.TimeFromUnixNano(p.TimeNanos).Time()
+	logFields = append(logFields,
+		"profile_time", profTime,
+		"ingestion_delay", now.Time().Sub(profTime),
+		"decompressed_size", decompressedSize,
+		"sample_count", len(p.Sample),
+	)
+	d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize))                              //todo use req.TotalBytesUncompressed to include labels siz
 	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize)) // deprecated TODO remove
 	d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
 	d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
@@ -440,8 +490,11 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	validated, err := validation.ValidateProfile(d.limits, tenantID, p, decompressedSize, req.Labels, now)
 	if err != nil {
-		_ = level.Debug(logger).Log("msg", "invalid profile", "err", err)
 		reason := string(validation.ReasonOf(err))
+		logFields = append(logFields,
+			"reason",
+			reason,
+		)
 		validation.DiscardedProfiles.WithLabelValues(reason, tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(reason, tenantID).Add(float64(req.TotalBytesUncompressed))
 		groups.CountDiscardedBytes(reason, req.TotalBytesUncompressed)
@@ -502,24 +555,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	// functions to send the request to the appropriate service; these are
 	// called independently, and may be called concurrently: the request is
 	// cloned in this case – the callee may modify the request safely.
-	err = d.router.Send(ctx, req)
-	if err != nil {
-		return err
-	}
-	profTime := model.TimeFromUnixNano(p.TimeNanos).Time()
-	level.Debug(logger).Log(
-		"msg", "profile accepted",
-		"service_name", &lazyStringer{f: func() string { return phlaremodel.Labels(req.Labels).Get(phlaremodel.LabelNameServiceName) }},
-		"profile_id", req.ID,
-		"profile_type", profName,
-		"profile_time", profTime,
-		"ingestion_delay", now.Time().Sub(profTime),
-		"detected_language", profLanguage,
-		"usage_groups", &lazyUsageGroups{getMatches: groups.Names},
-		"sample_count", len(p.Sample),
-		"decompressed_size", decompressedSize,
-	)
-	return nil
+	return d.router.Send(ctx, req)
 }
 
 func noNewProfilesReceivedError() *connect.Error {
