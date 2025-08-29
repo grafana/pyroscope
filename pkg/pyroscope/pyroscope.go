@@ -30,6 +30,7 @@ import (
 	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/signals"
+	"github.com/grafana/dskit/spanlogger"
 	"github.com/grafana/dskit/spanprofiler"
 	wwtracing "github.com/grafana/dskit/tracing"
 	"github.com/grafana/pyroscope-go"
@@ -768,7 +769,7 @@ func initLogger(logFormat string, logLevel dslog.Level) *logger {
 
 	// Use UTC timestamps and skip 5 stack frames.
 	l := dslog.NewGoKitWithWriter(logFormat, w)
-	l = log.With(l, "ts", log.DefaultTimestampUTC, "caller", log.Caller(5))
+	l = log.With(l, "ts", log.DefaultTimestampUTC, "caller", spanlogger.Caller(5))
 
 	// Must put the level filter last for efficiency.
 	l = level.NewFilter(l, logLevel.Option)
