@@ -54,6 +54,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -327,6 +328,7 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 			itErr := util.RecoverPanic(func() error {
 				return d.pushSeries(ctx, s, req.RawProfileType, tenantID)
 			})()
+
 			if itErr != nil {
 				itErr = fmt.Errorf("push series with index %d and id %s failed: %w", index, s.ID, itErr)
 			}
@@ -339,13 +341,33 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 	return res.Err()
 }
 
+type lazyUsageGroups struct {
+	getMatches func() []validation.UsageGroupMatchName
+}
+
+func (l *lazyUsageGroups) String() string {
+	groups := l.getMatches()
+	result := make([]string, len(groups))
+	for pos := range groups {
+		result[pos] = groups[pos].ResolvedName
+	}
+	return fmt.Sprintf("%v", result)
+}
+
+type lazyStringer struct {
+	f func() string
+}
+
+func (l *lazyStringer) String() string {
+	return l.f()
+}
+
 func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string) (err error) {
 	if req.Profile == nil {
 		return noNewProfilesReceivedError()
 	}
 	now := model.Now()
-
-	logger := log.With(d.logger, "tenant", tenantID)
+	logger := spanlogger.FromContext(ctx, log.With(d.logger, "tenant", tenantID))
 
 	req.TenantID = tenantID
 	serviceName := phlaremodel.Labels(req.Labels).Get(phlaremodel.LabelNameServiceName)
@@ -480,7 +502,24 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	// functions to send the request to the appropriate service; these are
 	// called independently, and may be called concurrently: the request is
 	// cloned in this case – the callee may modify the request safely.
-	return d.router.Send(ctx, req)
+	err = d.router.Send(ctx, req)
+	if err != nil {
+		return err
+	}
+	profTime := model.TimeFromUnixNano(p.TimeNanos).Time()
+	level.Debug(logger).Log(
+		"msg", "profile accepted",
+		"service_name", &lazyStringer{f: func() string { return phlaremodel.Labels(req.Labels).Get(phlaremodel.LabelNameServiceName) }},
+		"profile_id", req.ID,
+		"profile_type", profName,
+		"profile_time", profTime,
+		"ingestion_delay", now.Time().Sub(profTime),
+		"detected_language", profLanguage,
+		"usage_groups", &lazyUsageGroups{getMatches: groups.Names},
+		"sample_count", len(p.Sample),
+		"decompressed_size", decompressedSize,
+	)
+	return nil
 }
 
 func noNewProfilesReceivedError() *connect.Error {
