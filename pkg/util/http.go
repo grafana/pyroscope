@@ -10,7 +10,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/textproto"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/grafana/dskit/instrument"
@@ -21,12 +24,12 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
-	dslog "github.com/grafana/dskit/log"
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/tracing"
 	"github.com/grafana/dskit/user"
 	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/http2"
 	"gopkg.in/yaml.v3"
@@ -45,6 +48,8 @@ var defaultTransport http.RoundTripper = &http2.Transport{
 		return net.Dial(network, addr)
 	},
 }
+
+var timeNow = time.Now
 
 type RoundTripperFunc func(req *http.Request) (*http.Response, error)
 
@@ -130,14 +135,57 @@ const (
 
 // Log middleware logs http requests
 type Log struct {
-	Log                   log.Logger
-	LogRequestHeaders     bool // LogRequestHeaders true -> dump http headers at debug log level
-	LogRequestAtInfoLevel bool // LogRequestAtInfoLevel true -> log requests at info log level
-	SourceIPs             *middleware.SourceIPExtractor
+	Log                      log.Logger
+	LogRequestHeaders        bool
+	LogRequestExcludeHeaders []string
+	LogRequestAtInfoLevel    bool // LogRequestAtInfoLevel true -> log requests at info log level
+	SourceIPs                *middleware.SourceIPExtractor
+
+	filterHeaderMap  map[string]struct{}
+	filterHeaderOnce sync.Once
+}
+
+func (l *Log) filterHeader(key string) bool {
+	// ensure map is populated once
+	l.filterHeaderOnce.Do(func() {
+		l.filterHeaderMap = make(map[string]struct{})
+		for _, k := range l.LogRequestExcludeHeaders {
+			l.filterHeaderMap[textproto.CanonicalMIMEHeaderKey(k)] = struct{}{}
+		}
+		for k := range middleware.AlwaysExcludedHeaders {
+			l.filterHeaderMap[textproto.CanonicalMIMEHeaderKey(k)] = struct{}{}
+		}
+	})
+	_, filter := l.filterHeaderMap[key]
+	return filter
+}
+
+func (l *Log) extractHeaders(req *http.Request) []any {
+	// Populate header list first and sort it
+	logKeys := make([]string, 0, len(req.Header))
+	for k := range req.Header {
+		if l.filterHeader(k) {
+			continue
+		}
+		logKeys = append(logKeys, k)
+	}
+	slices.SortFunc(logKeys, strings.Compare)
+
+	// build the log fields
+	logFields := make([]any, 0, len(logKeys)*2)
+	for _, k := range logKeys {
+		logFields = append(
+			logFields,
+			"request_header_"+k,
+			req.Header.Get(k),
+		)
+	}
+
+	return logFields
 }
 
 // logWithRequest information from the request and context as fields.
-func (l Log) logWithRequest(r *http.Request) log.Logger {
+func (l *Log) logWithRequest(r *http.Request) log.Logger {
 	localLog := l.Log
 	traceID, ok := tracing.ExtractTraceID(r.Context())
 	if ok {
@@ -150,12 +198,18 @@ func (l Log) logWithRequest(r *http.Request) log.Logger {
 			localLog = log.With(localLog, "sourceIPs", ips)
 		}
 	}
-	orgID := r.Header.Get(user.OrgIDHeaderName)
-	if orgID == "" {
-		localLog = user.LogWith(r.Context(), localLog)
-	} else {
-		localLog = log.With(localLog, "orgID", orgID)
+
+	tenantID := r.Header.Get(user.OrgIDHeaderName)
+	if tenantID == "" {
+		id, err := user.ExtractOrgID(r.Context())
+		if err == nil {
+			tenantID = id
+		}
 	}
+	if tenantID != "" {
+		localLog = log.With(localLog, "tenant", tenantID)
+	}
+
 	return localLog
 }
 
@@ -163,12 +217,32 @@ func (l Log) logWithRequest(r *http.Request) log.Logger {
 type reqBody struct {
 	b    io.ReadCloser
 	read byteSize
+
+	start    time.Time
+	duration time.Duration
+
+	sp opentracing.Span
 }
 
 func (w *reqBody) Read(p []byte) (int, error) {
+	if w.start.IsZero() {
+		w.start = timeNow()
+		if w.sp != nil {
+			w.sp.LogFields(otlog.String("msg", "start reading body from request"))
+		}
+	}
 	n, err := w.b.Read(p)
 	if n > 0 {
 		w.read += byteSize(n)
+	}
+	if err == io.EOF {
+		w.duration = timeNow().Sub(w.start)
+		if w.sp != nil {
+			w.sp.LogFields(otlog.String("msg", "read body from request"))
+			if w.read > 0 {
+				w.sp.SetTag("request_body_size", w.read)
+			}
+		}
 	}
 	return n, err
 }
@@ -184,17 +258,13 @@ func (bs byteSize) String() string {
 }
 
 // Wrap implements Middleware
-func (l Log) Wrap(next http.Handler) http.Handler {
+func (l *Log) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		begin := time.Now()
-		uri := r.RequestURI // capture the URI before running next, as it may get rewritten
+		begin := timeNow()
+		uri := r.RequestURI // Capture the URI before running next, as it may get rewritten
 		requestLog := l.logWithRequest(r)
 		// Log headers before running 'next' in case other interceptors change the data.
-		headers, err := dumpRequest(r)
-		if err != nil {
-			headers = nil
-			level.Error(requestLog).Log("msg", "Could not dump request headers", "err", err)
-		}
+
 		var (
 			httpErr       multierror.MultiError
 			httpCode      = http.StatusOK
@@ -202,6 +272,8 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 			buf           bytes.Buffer
 			bodyLeft      = maxResponseBodyInLogs
 		)
+
+		headerFields := l.extractHeaders(r)
 
 		wrapped := httpsnoop.Wrap(w, httpsnoop.Hooks{
 			WriteHeader: func(next httpsnoop.WriteHeaderFunc) httpsnoop.WriteHeaderFunc {
@@ -242,49 +314,57 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 			r.Body = origBody
 		}()
 
-		rBody := &reqBody{b: origBody}
+		rBody := &reqBody{
+			b:  origBody,
+			sp: opentracing.SpanFromContext(r.Context()),
+		}
 		r.Body = rBody
 
 		next.ServeHTTP(wrapped, r)
 
 		statusCode, writeErr := httpCode, httpErr.Err()
 
-		requestLogD := log.With(requestLog, "method", r.Method, "uri", uri, "status", statusCode, "duration", time.Since(begin))
+		requestLog = log.With(requestLog, "method", r.Method, "uri", uri, "status", statusCode, "duration", time.Since(begin))
+
+		if l.LogRequestHeaders {
+			requestLog = log.With(requestLog, headerFields...)
+		}
 		if rBody.read > 0 {
-			requestLogD = log.With(requestLogD, "request_body_size", rBody.read)
+			requestLog = log.With(requestLog, "request_body_size", rBody.read)
+			if rBody.duration > 0 {
+				requestLog = log.With(requestLog, "request_body_read_duration", rBody.duration)
+			}
 		}
 
-		if writeErr != nil {
-			if errors.Is(writeErr, context.Canceled) {
-				if l.LogRequestAtInfoLevel {
-					level.Info(requestLogD).Log("msg", dslog.LazySprintf("request cancelled: %s ws: %v; %s", writeErr, IsWSHandshakeRequest(r), headers))
-				} else {
-					level.Debug(requestLogD).Log("msg", dslog.LazySprintf("request cancelled: %s ws: %v; %s", writeErr, IsWSHandshakeRequest(r), headers))
-				}
-			} else {
-				level.Warn(requestLogD).Log("msg", dslog.LazySprintf("error: %s ws: %v; %s", writeErr, IsWSHandshakeRequest(r), headers))
-			}
+		requestLvl := level.Debug
+		if l.LogRequestAtInfoLevel {
+			requestLvl = level.Info
+		}
 
+		// log successful requests
+		if writeErr == nil && (100 <= statusCode && statusCode < 400) {
+			requestLvl(requestLog).Log("msg", "http request processed")
 			return
 		}
 
-		if 100 <= statusCode && statusCode < 400 {
-			if l.LogRequestAtInfoLevel {
-				level.Info(requestLogD).Log("msg", "http request processed")
-			} else {
-				level.Debug(requestLogD).Log("msg", "http request processed")
-			}
-			if l.LogRequestHeaders && headers != nil {
-				if l.LogRequestAtInfoLevel {
-					level.Info(requestLog).Log("msg", dslog.LazySprintf("ws: %v; %s", IsWSHandshakeRequest(r), string(headers)))
-				} else {
-					level.Debug(requestLog).Log("msg", dslog.LazySprintf("ws: %v; %s", IsWSHandshakeRequest(r), string(headers)))
-				}
-			}
-		} else {
-			level.Warn(requestLog).Log("msg", dslog.LazySprintf("%s %s (%d) %s Response: %q ws: %v; %s",
-				r.Method, uri, statusCode, time.Since(begin), buf.Bytes(), IsWSHandshakeRequest(r), headers))
+		// context cancelled is not considered a failure
+		if writeErr != nil && errors.Is(writeErr, context.Canceled) {
+			requestLvl(requestLog).Log("msg", "request cancelled")
+			return
 		}
+
+		// add request headers if not anyhow added
+		if !l.LogRequestHeaders {
+			requestLog = log.With(requestLog, headerFields...)
+		}
+
+		// writeError shouldn't log the body
+		if writeErr != nil {
+			level.Warn(requestLog).Log("msg", "http request failed", "err", writeErr)
+			return
+		}
+
+		level.Warn(requestLog).Log("msg", "http request failed", "response_body", buf.Bytes())
 	})
 }
 
@@ -300,37 +380,6 @@ func captureResponseBody(data []byte, bodyBytesLeft int, buf *bytes.Buffer) int 
 		buf.Write(data)
 		return bodyBytesLeft - len(data)
 	}
-}
-
-func dumpRequest(req *http.Request) ([]byte, error) {
-	var b bytes.Buffer
-
-	// Exclude some headers for security, or just that we don't need them when debugging
-	err := req.Header.WriteSubset(&b, map[string]bool{
-		"Cookie":        true,
-		"X-Csrf-Token":  true,
-		"Authorization": true,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	ret := bytes.ReplaceAll(b.Bytes(), []byte("\r\n"), []byte("; "))
-	return ret, nil
-}
-
-// IsWSHandshakeRequest returns true if the given request is a websocket handshake request.
-func IsWSHandshakeRequest(req *http.Request) bool {
-	if strings.ToLower(req.Header.Get("Upgrade")) == "websocket" {
-		// Connection header values can be of form "foo, bar, ..."
-		parts := strings.Split(strings.ToLower(req.Header.Get("Connection")), ",")
-		for _, part := range parts {
-			if strings.TrimSpace(part) == "upgrade" {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // NewHTTPMetricMiddleware creates a new middleware that automatically instruments HTTP requests from the given router.
