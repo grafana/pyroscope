@@ -94,8 +94,8 @@ type Limits struct {
 	StoreGatewayTenantShardSize int `yaml:"store_gateway_tenant_shard_size" json:"store_gateway_tenant_shard_size"`
 
 	// Query frontend.
-	QuerySplitDuration     model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
-	QuerySanitizeOnMerge   bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge"`
+	QuerySplitDuration   model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
+	QuerySanitizeOnMerge bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge"`
 
 	// Compactor.
 	CompactorBlocksRetentionPeriod     model.Duration `yaml:"compactor_blocks_retention_period" json:"compactor_blocks_retention_period"`
