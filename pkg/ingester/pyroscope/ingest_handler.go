@@ -171,9 +171,6 @@ func readInputRawDataFromRequest(ctx context.Context, r *http.Request, input *in
 	if sp != nil {
 		sp.SetTag("format", format)
 		sp.SetTag("content_type", contentType)
-		sp.LogFields(
-			otlog.String("msg", "reading body from request"),
-		)
 	}
 
 	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
@@ -184,9 +181,6 @@ func readInputRawDataFromRequest(ctx context.Context, r *http.Request, input *in
 
 	if sp != nil {
 		sp.SetTag("content_length", n)
-		sp.LogFields(
-			otlog.String("msg", "read body from request"),
-		)
 	}
 	b := buf.Bytes()
 
