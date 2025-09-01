@@ -2312,6 +2312,10 @@ distributor_usage_groups:
 # CLI flag: -querier.split-queries-by-interval
 [split_queries_by_interval: <duration> | default = 0s]
 
+# Whether profiles should be sanitized when merging.
+# CLI flag: -querier.sanitize-on-merge
+[query_sanitize_on_merge: <boolean> | default = true]
+
 # Delete blocks containing samples older than the specified retention period. 0
 # to disable.
 # CLI flag: -compactor.blocks-retention-period

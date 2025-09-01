@@ -35,8 +35,9 @@ type Resolver struct {
 	m sync.RWMutex
 	p map[uint64]*lazyPartition
 
-	maxNodes int64
-	sts      *typesv1.StackTraceSelector
+	maxNodes        int64
+	sts             *typesv1.StackTraceSelector
+	sanitizeOnMerge bool
 }
 
 type ResolverOption func(*Resolver)
@@ -64,6 +65,12 @@ func WithResolverMaxNodes(n int64) ResolverOption {
 func WithResolverStackTraceSelector(sts *typesv1.StackTraceSelector) ResolverOption {
 	return func(r *Resolver) {
 		r.sts = sts
+	}
+}
+
+func WithResolverSanitizeOnMerge(sanitizeOnMerge bool) ResolverOption {
+	return func(r *Resolver) {
+		r.sanitizeOnMerge = sanitizeOnMerge
 	}
 }
 
@@ -256,7 +263,7 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 		if err != nil {
 			return err
 		}
-		return p.Merge(resolved)
+		return p.Merge(resolved, r.sanitizeOnMerge)
 	})
 	if err != nil {
 		return nil, err
