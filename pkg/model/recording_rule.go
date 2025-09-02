@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 
 	prometheusmodel "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -17,6 +18,8 @@ type RecordingRule struct {
 	FunctionName   string
 }
 
+const metricNamePrefix = "pyroscope_exported_metric_"
+
 func NewRecordingRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
 	sb := labels.NewScratchBuilder(len(rule.ExternalLabels) + 1)
 	return newRecordingRuleWithBuilder(rule, &sb)
@@ -24,8 +27,8 @@ func NewRecordingRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
 
 func newRecordingRuleWithBuilder(rule *settingsv1.RecordingRule, sb *labels.ScratchBuilder) (*RecordingRule, error) {
 	// validate metric name
-	if !prometheusmodel.IsValidMetricName(prometheusmodel.LabelValue(rule.MetricName)) {
-		return nil, fmt.Errorf("invalid metric name: %s", rule.MetricName)
+	if err := ValidateMetricName(rule.MetricName); err != nil {
+		return nil, err
 	}
 
 	// ensure __profile_type__ matcher is present
@@ -84,4 +87,14 @@ func parseMatchers(matchers []string) ([]*labels.Matcher, error) {
 		parsed = append(parsed, s...)
 	}
 	return parsed, nil
+}
+
+func ValidateMetricName(name string) error {
+	if !prometheusmodel.IsValidMetricName(prometheusmodel.LabelValue(name)) {
+		return fmt.Errorf("invalid metric name: %s", name)
+	}
+	if !strings.HasPrefix(name, metricNamePrefix) {
+		return fmt.Errorf("metric name must start with %s", metricNamePrefix)
+	}
+	return nil
 }

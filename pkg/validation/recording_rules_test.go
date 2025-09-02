@@ -18,7 +18,7 @@ overrides:
     recording_rules: []
   some-rules:
     recording_rules:
-    - metric_name: 'any_name'
+    - metric_name: 'pyroscope_exported_metric_any_name'
       matchers: ['{__profile_type__="any-profile-type", foo="bar"}']
       group_by: ['any-group-by']
       external_labels:
@@ -45,7 +45,7 @@ func Test_RecordingRules(t *testing.T) {
 	rules = o.RecordingRules("some-rules")
 	assert.Equal(t, []*settingsv1.RecordingRule{
 		{
-			MetricName:     "any_name",
+			MetricName:     "pyroscope_exported_metric_any_name",
 			Matchers:       []string{"{__profile_type__=\"any-profile-type\", foo=\"bar\"}"},
 			GroupBy:        []string{"any-group-by"},
 			ExternalLabels: []*typesv1.LabelPair{{Name: "any-label-name", Value: "any-label-value"}},
@@ -62,9 +62,17 @@ overrides:
 
 	_, err = LoadRuntimeConfig(bytes.NewReader([]byte(`
 overrides:
+  wrong_name:
+    recording_rules:
+    - metric_name: "metric_name_without_preffix"
+  `)))
+	require.ErrorContains(t, err, "metric name must start with pyroscope_exported_metric_")
+
+	_, err = LoadRuntimeConfig(bytes.NewReader([]byte(`
+overrides:
   malformed_matchers:
     recording_rules:
-    - metric_name: 'any_name'
+    - metric_name: 'pyroscope_exported_metric_any_name'
       matchers: ['{foo="bar}']
   `)))
 	require.ErrorContains(t, err, "failed to parse matchers")
@@ -73,7 +81,7 @@ overrides:
 overrides:
   missing_profile_type:
     recording_rules:
-    - metric_name: 'any_name'
+    - metric_name: 'pyroscope_exported_metric_any_name'
       matchers: ['{foo="bar"}']
   `)))
 	require.ErrorContains(t, err, "no __profile_type__ matcher present")
