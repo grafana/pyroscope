@@ -203,6 +203,13 @@ func TestLocationsRoundTrip(t *testing.T) {
 			},
 			IsFolded: false,
 		},
+		{
+			Id:        10,
+			Address:   11,
+			MappingId: 12,
+			Line:      nil,
+			IsFolded:  false,
+		},
 	}
 
 	mem := []InMemoryLocation{
@@ -237,6 +244,13 @@ func TestLocationsRoundTrip(t *testing.T) {
 				},
 			},
 			IsFolded: false,
+		},
+		{
+			Id:        10,
+			Address:   11,
+			MappingId: 12,
+			Line:      nil,
+			IsFolded:  false,
 		},
 	}
 
