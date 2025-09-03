@@ -67,6 +67,8 @@ type ReaderAt struct {
 }
 
 func (b *ReaderAt) ReadAt(p []byte, off int64) (int, error) {
+	plan := b.ctx.Value("fetch-plan")
+	fmt.Printf("XXXX readerAt call, plan=%+#v\n", plan)
 	rc, err := b.GetRange(b.ctx, b.name, off, int64(len(p)))
 	if err != nil {
 		return 0, err
