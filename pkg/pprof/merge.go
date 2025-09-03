@@ -86,7 +86,16 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile, sanitize bool) error {
 	m.locationTable.Index(m.tmp, p.Location)
 	RewriteLocations(p, m.tmp)
 
-	m.sampleTable.AggregateInPlace(p.Sample)
+	m.tmp = slices.GrowLen(m.tmp, len(p.Sample))
+	m.sampleTable.Index(m.tmp, p.Sample)
+
+	for i, idx := range m.tmp {
+		dst := m.sampleTable.s[idx].Value
+		src := p.Sample[i].Value
+		for j, v := range src {
+			dst[j] += v
+		}
+	}
 
 	return nil
 }
@@ -143,13 +152,10 @@ func (m *ProfileMerge) init(x *profilev1.Profile) {
 
 	m.sampleTable = NewRewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample](
 		factor*len(x.Sample), GetSampleKey, func(sample *profilev1.Sample) *profilev1.Sample {
-			return sample
+			c := sample.CloneVT()
+			slices.Clear(c.Value)
+			return c
 		})
-	m.sampleTable.agg = func(a, b *profilev1.Sample) {
-		for i := range a.Value {
-			a.Value[i] += b.Value[i]
-		}
-	}
 
 	m.profile = &profilev1.Profile{
 		SampleType: make([]*profilev1.ValueType, len(x.SampleType)),
@@ -399,8 +405,6 @@ type RewriteTable[K comparable, V, M any] struct {
 	v func(V) M
 	t *swiss.Map[K, uint32]
 	s []M
-
-	agg func(a M, b V)
 }
 
 func NewRewriteTable[K comparable, V, M any](
@@ -426,22 +430,6 @@ func (t *RewriteTable[K, V, M]) Index(dst []uint32, values []V) {
 			t.t.Put(k, n)
 		}
 		dst[i] = n
-	}
-}
-
-func (t *RewriteTable[K, V, M]) AggregateInPlace(values []V) {
-	for _, value := range values {
-		k := t.k(value)
-		n, found := t.t.Get(k)
-		if found {
-			// aggregate in place
-			t.agg(t.s[n], value)
-		} else {
-			// append
-			n = uint32(len(t.s))
-			t.s = append(t.s, t.v(value))
-			t.t.Put(k, n)
-		}
 	}
 }
 
