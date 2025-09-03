@@ -171,6 +171,8 @@ Usage of ./pyroscope:
     	Whether query analysis is enabled in the query frontend. If disabled, the /AnalyzeQuery endpoint will return an empty response. (default true)
   -querier.query-analysis-series-enabled
     	Whether the series portion of query analysis is enabled. If disabled, no series data (e.g., series count) will be calculated by the /AnalyzeQuery endpoint.
+  -querier.sanitize-on-merge
+    	Whether profiles should be sanitized when merging. (default true)
   -querier.split-queries-by-interval duration
     	Split queries by a time interval and execute in parallel. The value 0 disables splitting by time
   -query-scheduler.max-outstanding-requests-per-tenant int

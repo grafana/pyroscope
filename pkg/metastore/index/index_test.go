@@ -365,3 +365,49 @@ func TestIndex_DeleteShard(t *testing.T) {
 		assertShard(t, db, p, tenant2, 1, true)
 	})
 }
+
+func TestIndex_GetTenantStats(t *testing.T) {
+	const (
+		existingTenant = "tenant"
+	)
+	var (
+		minTime = test.UnixMilli("2024-09-11T07:00:00.000Z")
+		maxTime = test.UnixMilli("2024-09-11T09:00:00.000Z")
+	)
+
+	db := test.BoltDB(t)
+	idx := NewIndex(util.Logger, NewStore(), DefaultConfig)
+	require.NoError(t, db.Update(idx.Init))
+
+	shardID := uint32(42)
+	blockMeta := &metastorev1.BlockMeta{
+		Id:          test.ULID("2024-09-11T07:00:00.001Z"),
+		Tenant:      1,
+		Shard:       shardID,
+		MinTime:     minTime,
+		MaxTime:     maxTime,
+		CreatedBy:   1,
+		StringTable: []string{"", existingTenant, "ingester"},
+	}
+
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return idx.InsertBlock(tx, blockMeta.CloneVT())
+	}))
+
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		stats := idx.GetTenantStats(tx, existingTenant)
+		assert.Equal(t, true, stats.GetDataIngested())
+		assert.Equal(t, minTime, stats.GetOldestProfileTime())
+		assert.Equal(t, maxTime, stats.GetNewestProfileTime())
+		return nil
+	}))
+
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		stats := idx.GetTenantStats(tx, "tenant-never-sent")
+		assert.Equal(t, false, stats.GetDataIngested())
+		assert.Equal(t, int64(0), stats.GetOldestProfileTime())
+		assert.Equal(t, int64(0), stats.GetNewestProfileTime())
+		return nil
+	}))
+
+}

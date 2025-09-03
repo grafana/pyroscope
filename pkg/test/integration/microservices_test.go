@@ -317,6 +317,55 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 		}
 	})
 
+	validateProfileTypes := func(t *testing.T, serviceCount int, resp *querierv1.ProfileTypesResponse) {
+		// no services, no label names
+		if serviceCount == 0 {
+			assert.Len(t, resp.ProfileTypes, 0)
+			return
+		}
+
+		profileTypes := make([]string, 0, len(resp.ProfileTypes))
+		for _, pt := range resp.ProfileTypes {
+			profileTypes = append(profileTypes, pt.ID)
+		}
+		assert.Equal(t, []string{
+			"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+		}, profileTypes)
+	}
+
+	t.Run("QueryProfileTypesWithTimeRange", func(t *testing.T) {
+		for tenantID, params := range tc.perTenantData {
+			t.Run(tenantID, func(t *testing.T) {
+				ctx := tenant.InjectTenantID(ctx, tenantID)
+
+				// Query profile types with time range
+				resp, err := tc.querier.ProfileTypes(ctx, connect.NewRequest(&querierv1.ProfileTypesRequest{
+					Start: tc.now.Add(-time.Hour).UnixMilli(),
+					End:   tc.now.Add(time.Hour).UnixMilli(),
+				}))
+				require.NoError(t, err)
+
+				validateProfileTypes(t, params.serviceCount, resp.Msg)
+			})
+		}
+	})
+
+	// Note: Some ProfileTypes API clients rely on the ablility to call it without start/end.
+	// See https://github.com/grafana/grafana/issues/110211
+	t.Run("QueryProfileTypesWithoutTimeRange", func(t *testing.T) {
+		for tenantID, params := range tc.perTenantData {
+			t.Run(tenantID, func(t *testing.T) {
+				ctx := tenant.InjectTenantID(ctx, tenantID)
+
+				// Query profile types with time range
+				resp, err := tc.querier.ProfileTypes(ctx, connect.NewRequest(&querierv1.ProfileTypesRequest{}))
+				require.NoError(t, err)
+
+				validateProfileTypes(t, params.serviceCount, resp.Msg)
+			})
+		}
+	})
+
 	t.Run("QueryLabelValues", func(t *testing.T) {
 		for tenantID, params := range tc.perTenantData {
 			t.Run(tenantID, func(t *testing.T) {

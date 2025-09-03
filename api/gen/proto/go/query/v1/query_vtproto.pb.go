@@ -81,6 +81,7 @@ func (m *InvokeOptions) CloneVT() *InvokeOptions {
 		return (*InvokeOptions)(nil)
 	}
 	r := new(InvokeOptions)
+	r.SanitizeOnMerge = m.SanitizeOnMerge
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -612,6 +613,9 @@ func (this *InvokeOptions) EqualVT(that *InvokeOptions) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
+		return false
+	}
+	if this.SanitizeOnMerge != that.SanitizeOnMerge {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1527,6 +1531,16 @@ func (m *InvokeOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.SanitizeOnMerge {
+		i--
+		if m.SanitizeOnMerge {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -2694,6 +2708,9 @@ func (m *InvokeOptions) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
+	if m.SanitizeOnMerge {
+		n += 2
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -3392,6 +3409,26 @@ func (m *InvokeOptions) UnmarshalVT(dAtA []byte) error {
 			return fmt.Errorf("proto: InvokeOptions: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SanitizeOnMerge", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.SanitizeOnMerge = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

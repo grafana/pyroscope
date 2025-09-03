@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -513,9 +514,11 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		middleware.RouteInjector{
 			RouteMatcher: f.Server.HTTP,
 		},
-		util.Log{
-			Log:                   f.Server.Log,
-			LogRequestAtInfoLevel: f.Cfg.Server.LogRequestAtInfoLevel,
+		&util.Log{
+			Log:                      f.Server.Log,
+			LogRequestAtInfoLevel:    f.Cfg.Server.LogRequestAtInfoLevel,
+			LogRequestHeaders:        f.Cfg.Server.LogRequestHeaders,
+			LogRequestExcludeHeaders: strings.Split(f.Cfg.Server.LogRequestExcludeHeadersList, ","),
 		},
 		httpMetric,
 		objstoreTracerMiddleware,

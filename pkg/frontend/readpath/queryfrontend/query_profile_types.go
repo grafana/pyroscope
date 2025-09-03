@@ -24,6 +24,16 @@ func (q *QueryFrontend) ProfileTypes(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+
+	// Note: Some ProfileTypes API clients rely on the ablility to call it without start/end.
+	// See https://github.com/grafana/grafana/issues/110211
+	// TODO: Consider removing this (breaking change) as part of the next major release.
+	if req.Msg.Start == 0 && req.Msg.End == 0 {
+		interval := phlaremodel.GetSafeTimeRange(q.now(), nil)
+		req.Msg.Start = int64(interval.Start)
+		req.Msg.End = int64(interval.End)
+	}
+
 	empty, err := validation.SanitizeTimeRange(q.limits, tenants, &req.Msg.Start, &req.Msg.End)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

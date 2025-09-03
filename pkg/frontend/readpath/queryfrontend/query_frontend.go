@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/tenant"
@@ -43,6 +44,7 @@ type QueryFrontend struct {
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
 	symbolizer          Symbolizer
+	now                 func() time.Time
 }
 
 func NewQueryFrontend(
@@ -60,6 +62,7 @@ func NewQueryFrontend(
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
 		symbolizer:          sym,
+		now:                 time.Now,
 	}
 }
 
@@ -116,9 +119,11 @@ func (q *QueryFrontend) Query(
 		StartTime:     req.StartTime,
 		EndTime:       req.EndTime,
 		LabelSelector: req.LabelSelector,
-		Options:       &queryv1.InvokeOptions{},
-		QueryPlan:     p,
-		Query:         modifiedQueries,
+		Options: &queryv1.InvokeOptions{
+			SanitizeOnMerge: q.limits.QuerySanitizeOnMerge(tenants[0]),
+		},
+		QueryPlan: p,
+		Query:     modifiedQueries,
 	})
 	if err != nil {
 		return nil, err

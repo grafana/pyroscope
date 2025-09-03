@@ -6,6 +6,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/dolthub/swiss"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
 )
@@ -38,7 +40,7 @@ type ProfileMerge struct {
 
 // Merge adds p to the profile merge, cloning new objects.
 // Profile p is modified in place but not retained by the function.
-func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
+func (m *ProfileMerge) Merge(p *profilev1.Profile, sanitize bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -46,8 +48,10 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 		return nil
 	}
 
-	var stats sanitizeStats
-	sanitizeProfile(p, &stats)
+	if sanitize {
+		var stats sanitizeStats
+		sanitizeProfile(p, &stats)
+	}
 	var initial bool
 	if m.profile == nil {
 		m.init(p)
@@ -82,26 +86,17 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 	m.locationTable.Index(m.tmp, p.Location)
 	RewriteLocations(p, m.tmp)
 
-	m.tmp = slices.GrowLen(m.tmp, len(p.Sample))
-	m.sampleTable.Index(m.tmp, p.Sample)
-
-	for i, idx := range m.tmp {
-		dst := m.sampleTable.s[idx].Value
-		src := p.Sample[i].Value
-		for j, v := range src {
-			dst[j] += v
-		}
-	}
+	m.sampleTable.AggregateInPlace(p.Sample)
 
 	return nil
 }
 
-func (m *ProfileMerge) MergeBytes(b []byte) error {
+func (m *ProfileMerge) MergeBytes(b []byte, sanitize bool) error {
 	var p profilev1.Profile
 	if err := Unmarshal(b, &p); err != nil {
 		return err
 	}
-	return m.Merge(&p)
+	return m.Merge(&p, sanitize)
 }
 
 func (m *ProfileMerge) Profile() *profilev1.Profile {
@@ -148,10 +143,13 @@ func (m *ProfileMerge) init(x *profilev1.Profile) {
 
 	m.sampleTable = NewRewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample](
 		factor*len(x.Sample), GetSampleKey, func(sample *profilev1.Sample) *profilev1.Sample {
-			c := sample.CloneVT()
-			slices.Clear(c.Value)
-			return c
+			return sample
 		})
+	m.sampleTable.agg = func(a, b *profilev1.Sample) {
+		for i := range a.Value {
+			a.Value[i] += b.Value[i]
+		}
+	}
 
 	m.profile = &profilev1.Profile{
 		SampleType: make([]*profilev1.ValueType, len(x.SampleType)),
@@ -399,8 +397,10 @@ func hashLabels(s []*profilev1.Label) uint64 {
 type RewriteTable[K comparable, V, M any] struct {
 	k func(V) K
 	v func(V) M
-	t map[K]uint32
+	t *swiss.Map[K, uint32]
 	s []M
+
+	agg func(a M, b V)
 }
 
 func NewRewriteTable[K comparable, V, M any](
@@ -411,7 +411,7 @@ func NewRewriteTable[K comparable, V, M any](
 	return RewriteTable[K, V, M]{
 		k: k,
 		v: v,
-		t: make(map[K]uint32, size),
+		t: swiss.NewMap[K, uint32](uint32(size)),
 		s: make([]M, 0, size),
 	}
 }
@@ -419,13 +419,29 @@ func NewRewriteTable[K comparable, V, M any](
 func (t *RewriteTable[K, V, M]) Index(dst []uint32, values []V) {
 	for i, value := range values {
 		k := t.k(value)
-		n, found := t.t[k]
+		n, found := t.t.Get(k)
 		if !found {
 			n = uint32(len(t.s))
 			t.s = append(t.s, t.v(value))
-			t.t[k] = n
+			t.t.Put(k, n)
 		}
 		dst[i] = n
+	}
+}
+
+func (t *RewriteTable[K, V, M]) AggregateInPlace(values []V) {
+	for _, value := range values {
+		k := t.k(value)
+		n, found := t.t.Get(k)
+		if found {
+			// aggregate in place
+			t.agg(t.s[n], value)
+		} else {
+			// append
+			n = uint32(len(t.s))
+			t.s = append(t.s, t.v(value))
+			t.t.Put(k, n)
+		}
 	}
 }
 
@@ -434,7 +450,7 @@ func (t *RewriteTable[K, V, M]) Append(values []V) {
 		k := t.k(value)
 		n := uint32(len(t.s))
 		t.s = append(t.s, t.v(value))
-		t.t[k] = n
+		t.t.Put(k, n)
 	}
 }
 

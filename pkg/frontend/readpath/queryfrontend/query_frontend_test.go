@@ -112,6 +112,7 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 			hasUnsymbolized:   true,
 			setupMocks: func(mockLimits *mockfrontend.MockLimits, mockSymbolizer *mockqueryfrontend.MockSymbolizer) {
 				mockLimits.On("SymbolizerEnabled", "tenant1").Return(true)
+				mockLimits.On("QuerySanitizeOnMerge", "tenant1").Return(true)
 				mockSymbolizer.On("SymbolizePprof", mock.Anything, mock.Anything).Return(nil).Once()
 			},
 		},
@@ -122,6 +123,7 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 			hasUnsymbolized:   true,
 			setupMocks: func(mockLimits *mockfrontend.MockLimits, mockSymbolizer *mockqueryfrontend.MockSymbolizer) {
 				mockLimits.On("SymbolizerEnabled", "tenant2").Return(false)
+				mockLimits.On("QuerySanitizeOnMerge", "tenant2").Return(true)
 				mockSymbolizer.AssertNotCalled(t, "SymbolizePprof")
 			},
 		},
@@ -132,6 +134,7 @@ func TestQueryFrontendSymbolization(t *testing.T) {
 			hasUnsymbolized:   false,
 			setupMocks: func(mockLimits *mockfrontend.MockLimits, mockSymbolizer *mockqueryfrontend.MockSymbolizer) {
 				mockLimits.On("SymbolizerEnabled", "tenant3").Return(true)
+				mockLimits.On("QuerySanitizeOnMerge", "tenant3").Return(true)
 				mockSymbolizer.AssertNotCalled(t, "SymbolizePprof")
 			},
 		},

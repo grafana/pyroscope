@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 
-	"github.com/grafana/pyroscope/pkg/og/structs/merge"
 	"github.com/grafana/pyroscope/pkg/og/util/varint"
 )
 
@@ -227,79 +226,5 @@ var _ = Describe("trie package", func() {
 				Expect(buf2).To(Equal(buf1))
 			})
 		})
-	})
-
-	Context("MergeTriesConcurrently()", func() {
-		It("merges 2 tries", func(done Done) {
-			for s := 0; s < 1000; s++ {
-				rand.Seed(int64(s))
-				// logrus.Debug(s)
-				t1 := New()
-				t2 := New()
-				t3 := New()
-				// logrus.Debug("---")
-				n := 2
-				n2 := 4
-				for i := 0; i < n; i++ {
-					str := randStr(n2)
-					t1.Insert(str, uint64(i))
-					t3.Insert(str, uint64(i))
-				}
-				for i := 0; i < n; i++ {
-					str := randStr(n2)
-					t2.Insert(str, uint64(n+i))
-					t3.Insert(str, uint64(n+i), true)
-				}
-
-				// t1 := New()
-				// t1.Insert([]byte("abc"), []byte{1})
-				// t1.Insert([]byte("abd"), []byte{2})
-				// t1.Insert([]byte("abe"), []byte{2})
-
-				// t2 := New()
-				// t2.Insert([]byte("abc"), []byte{1})
-				// t2.Insert([]byte("abd"), []byte{2})
-				// t2.Insert([]byte("abf"), []byte{3})
-				// t2.Insert([]byte("abef"), []byte{5})
-				// t2.Insert([]byte("a"), []byte{6})
-				// t2.Insert([]byte("ac"), []byte{7})
-				// t2.Insert([]byte("aa"), []byte{8})
-
-				// t3 := New()
-				// t3.Insert([]byte("a"), []byte{6})
-				// t3.Insert([]byte("ac"), []byte{7})
-				// t3.Insert([]byte("aa"), []byte{8})
-				// t3.Insert([]byte("abc"), []byte{2})
-				// t3.Insert([]byte("abd"), []byte{4})
-				// t3.Insert([]byte("abe"), []byte{2})
-				// t3.Insert([]byte("abf"), []byte{3})
-				// t3.Insert([]byte("abef"), []byte{5})
-
-				var buf1 bytes.Buffer
-				var buf2 bytes.Buffer
-				t1.Serialize(&buf1)
-				t2.Serialize(&buf2)
-
-				// logrus.Debug("t1\n", t1.String())
-				// logrus.Debug("t2\n", t2.String())
-				// logrus.Debug("t3\n", t3.String())
-
-				// Expect(buf1.Bytes()).To(Equal(buf2.Bytes()))
-				tries := []merge.Merger{t1, t2}
-				rand.Shuffle(len(tries), func(i, j int) {
-					tries[i], tries[j] = tries[j], tries[i]
-				})
-				t1I := merge.MergeTriesSerially(1, tries...)
-				t1 = t1I.(*Trie)
-				// logrus.Debug("t1m\n", t1.String())
-
-				var buf3 bytes.Buffer
-				var buf4 bytes.Buffer
-				t3.Serialize(&buf3)
-				t1.Serialize(&buf4)
-				Expect(buf4).To(Equal(buf3))
-			}
-			close(done)
-		}, 1.0)
 	})
 })

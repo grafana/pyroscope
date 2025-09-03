@@ -24,9 +24,11 @@ func Test_Merge_Single(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 	var m ProfileMerge
-	require.NoError(t, m.Merge(p.CloneVT()))
+	require.NoError(t, m.Merge(p.CloneVT(), true))
 	sortLabels(p.Profile)
-	testhelper.EqualProto(t, p.Profile, m.Profile())
+	act := m.Profile()
+	exp := p.Profile
+	testhelper.EqualProto(t, exp, act)
 }
 
 func sortLabels(p *profilev1.Profile) {
@@ -179,7 +181,7 @@ func Fuzz_Merge_Single(f *testing.F) {
 
 		eventWrite(t, []byte{byte(fuzzEventPostDecode)})
 		var m ProfileMerge
-		err = m.Merge(&p)
+		err = m.Merge(&p, true)
 		if err != nil {
 			return
 		}
@@ -191,8 +193,8 @@ func Test_Merge_Self(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 	var m ProfileMerge
-	require.NoError(t, m.Merge(p.CloneVT()))
-	require.NoError(t, m.Merge(p.CloneVT()))
+	require.NoError(t, m.Merge(p.CloneVT(), true))
+	require.NoError(t, m.Merge(p.CloneVT(), true))
 	for i := range p.Sample {
 		s := p.Sample[i]
 		for j := range s.Value {
@@ -215,12 +217,12 @@ func Test_Merge_Halves(t *testing.T) {
 	b.Sample = b.Sample[n:]
 
 	var m ProfileMerge
-	require.NoError(t, m.Merge(a))
-	require.NoError(t, m.Merge(b))
+	require.NoError(t, m.Merge(a, true))
+	require.NoError(t, m.Merge(b, true))
 
 	// Merge with self for normalisation.
 	var sm ProfileMerge
-	require.NoError(t, sm.Merge(p.CloneVT()))
+	require.NoError(t, sm.Merge(p.CloneVT(), true))
 	p.DurationNanos *= 2
 
 	sortLabels(p.Profile)
@@ -536,8 +538,8 @@ func Test_Merge_Sample(t *testing.T) {
 	}
 
 	var m ProfileMerge
-	require.NoError(t, m.Merge(a))
-	require.NoError(t, m.Merge(b))
+	require.NoError(t, m.Merge(a, true))
+	require.NoError(t, m.Merge(b, true))
 
 	testhelper.EqualProto(t, expected, m.Profile())
 }
@@ -557,7 +559,7 @@ func TestMergeEmpty(t *testing.T) {
 			Unit: 1,
 		},
 		StringTable: []string{"", "nanoseconds", "cpu"},
-	})
+	}, true)
 	require.NoError(t, err)
 	err = m.Merge(&profilev1.Profile{
 		Sample: []*profilev1.Sample{
@@ -595,7 +597,7 @@ func TestMergeEmpty(t *testing.T) {
 			},
 		},
 		StringTable: []string{"", "bar", "nanoseconds", "cpu"},
-	})
+	}, true)
 	require.NoError(t, err)
 }
 
@@ -611,7 +613,7 @@ func Benchmark_Merge_self(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			var m ProfileMerge
-			require.NoError(b, m.Merge(p.CloneVT()))
+			require.NoError(b, m.Merge(p.CloneVT(), true))
 		}
 	})
 
