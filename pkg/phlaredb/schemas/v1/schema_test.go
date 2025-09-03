@@ -203,6 +203,21 @@ func TestLocationsRoundTrip(t *testing.T) {
 			},
 			IsFolded: false,
 		},
+		{
+			Id:        10,
+			Address:   11,
+			MappingId: 12,
+			// both pprofLocationPersister and LocationPersister deserialize as empty slice, not nil
+			Line:     nil,
+			IsFolded: false,
+		},
+		{
+			Id:        10,
+			Address:   11,
+			MappingId: 12,
+			Line:      make([]*profilev1.Line, 0),
+			IsFolded:  false,
+		},
 	}
 
 	mem := []InMemoryLocation{
@@ -238,19 +253,63 @@ func TestLocationsRoundTrip(t *testing.T) {
 			},
 			IsFolded: false,
 		},
+		{
+			Id:        10,
+			Address:   11,
+			MappingId: 12,
+			// both pprofLocationPersister and LocationPersister deserialize as empty slice, not nil
+			Line:     nil,
+			IsFolded: false,
+		},
+		{
+			Id:        10,
+			Address:   11,
+			MappingId: 12,
+			Line:      make([]InMemoryLine, 0),
+			IsFolded:  false,
+		},
+	}
+
+	expectedMem := func() []InMemoryLocation {
+		res := make([]InMemoryLocation, len(mem))
+		for i, loc := range mem {
+			if loc.Line == nil {
+				loc.Line = make([]InMemoryLine, 0)
+			}
+			res[i] = loc
+		}
+		return res
+	}
+
+	expectedRaw := func() []*profilev1.Location {
+		res := make([]*profilev1.Location, len(raw))
+		for i, loc := range raw {
+			cloned := loc.CloneVT()
+			if cloned.Line == nil {
+				cloned.Line = make([]*profilev1.Line, 0)
+			}
+			res[i] = cloned
+		}
+		return res
 	}
 
 	var buf bytes.Buffer
 	require.NoError(t, new(ReadWriter[*profilev1.Location, pprofLocationPersister]).WriteParquetFile(&buf, raw))
-	actual, err := new(ReadWriter[InMemoryLocation, LocationPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	actualMem, err := new(ReadWriter[InMemoryLocation, LocationPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
 	require.NoError(t, err)
-	assert.Equal(t, mem, actual)
+	assert.Equal(t, expectedMem(), actualMem)
 
 	buf.Reset()
 	require.NoError(t, new(ReadWriter[InMemoryLocation, LocationPersister]).WriteParquetFile(&buf, mem))
-	actual, err = new(ReadWriter[InMemoryLocation, LocationPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	actualMem, err = new(ReadWriter[InMemoryLocation, LocationPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
 	require.NoError(t, err)
-	assert.Equal(t, mem, actual)
+	assert.Equal(t, expectedMem(), actualMem)
+
+	buf.Reset()
+	require.NoError(t, new(ReadWriter[*profilev1.Location, pprofLocationPersister]).WriteParquetFile(&buf, raw))
+	actualRaw, err := new(ReadWriter[*profilev1.Location, pprofLocationPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, err)
+	assert.Equal(t, expectedRaw(), actualRaw)
 }
 
 var protoLocationsSchema = parquet.SchemaOf(&profilev1.Location{})
