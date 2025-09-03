@@ -14,6 +14,7 @@ import (
 
 var (
 	defaultRecordingRulesProto = []*settingsv1.RecordingRule{{
+		Id:         "some-id",
 		MetricName: "profiles_recorded_default_recording_rule",
 		Matchers:   []string{"{__profile_type__=\"any-profile-type\"}"},
 	}}
@@ -22,6 +23,9 @@ var (
 		ExternalLabels: labels.New(labels.Label{
 			Name:  "__name__",
 			Value: "profiles_recorded_default_recording_rule",
+		}, labels.Label{
+			Name:  "pyroscope_rule_id",
+			Value: "some-id",
 		}),
 		Matchers: []*labels.Matcher{{
 			Type:  labels.MatchEqual,
@@ -31,6 +35,7 @@ var (
 	}}
 
 	overriddenRecordingRulesProto = []*settingsv1.RecordingRule{{
+		Id:             "another-id",
 		MetricName:     "profiles_recorded_rule",
 		Matchers:       []string{"{__profile_type__=\"any-profile-type\", matcher1!=\"value\"}"},
 		GroupBy:        []string{"group_by_label"},
@@ -46,6 +51,7 @@ var (
 		ExternalLabels: labels.New(
 			labels.Label{Name: "__name__", Value: "profiles_recorded_rule"},
 			labels.Label{Name: "foo", Value: "bar"},
+			labels.Label{Name: "pyroscope_rule_id", Value: "another-id"},
 		),
 	}}
 )
