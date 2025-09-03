@@ -444,7 +444,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 			if err = pprof.Unmarshal(result, &p); err != nil {
 				return err
 			}
-			return pprofMerge.Merge(&p, true)
+			return pprofMerge.Merge(&p)
 		}))
 	}
 	if err := g.Wait(); err != nil {

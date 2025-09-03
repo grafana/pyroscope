@@ -6,8 +6,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/dolthub/swiss"
-
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
 )
@@ -40,7 +38,7 @@ type ProfileMerge struct {
 
 // Merge adds p to the profile merge, cloning new objects.
 // Profile p is modified in place but not retained by the function.
-func (m *ProfileMerge) Merge(p *profilev1.Profile, sanitize bool) error {
+func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -48,10 +46,8 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile, sanitize bool) error {
 		return nil
 	}
 
-	if sanitize {
-		var stats sanitizeStats
-		sanitizeProfile(p, &stats)
-	}
+	var stats sanitizeStats
+	sanitizeProfile(p, &stats)
 	var initial bool
 	if m.profile == nil {
 		m.init(p)
@@ -100,12 +96,12 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile, sanitize bool) error {
 	return nil
 }
 
-func (m *ProfileMerge) MergeBytes(b []byte, sanitize bool) error {
+func (m *ProfileMerge) MergeBytes(b []byte) error {
 	var p profilev1.Profile
 	if err := Unmarshal(b, &p); err != nil {
 		return err
 	}
-	return m.Merge(&p, sanitize)
+	return m.Merge(&p)
 }
 
 func (m *ProfileMerge) Profile() *profilev1.Profile {
@@ -403,7 +399,7 @@ func hashLabels(s []*profilev1.Label) uint64 {
 type RewriteTable[K comparable, V, M any] struct {
 	k func(V) K
 	v func(V) M
-	t *swiss.Map[K, uint32]
+	t map[K]uint32
 	s []M
 }
 
@@ -415,7 +411,7 @@ func NewRewriteTable[K comparable, V, M any](
 	return RewriteTable[K, V, M]{
 		k: k,
 		v: v,
-		t: swiss.NewMap[K, uint32](uint32(size)),
+		t: make(map[K]uint32, size),
 		s: make([]M, 0, size),
 	}
 }
@@ -423,11 +419,11 @@ func NewRewriteTable[K comparable, V, M any](
 func (t *RewriteTable[K, V, M]) Index(dst []uint32, values []V) {
 	for i, value := range values {
 		k := t.k(value)
-		n, found := t.t.Get(k)
+		n, found := t.t[k]
 		if !found {
 			n = uint32(len(t.s))
 			t.s = append(t.s, t.v(value))
-			t.t.Put(k, n)
+			t.t[k] = n
 		}
 		dst[i] = n
 	}
@@ -438,7 +434,7 @@ func (t *RewriteTable[K, V, M]) Append(values []V) {
 		k := t.k(value)
 		n := uint32(len(t.s))
 		t.s = append(t.s, t.v(value))
-		t.t.Put(k, n)
+		t.t[k] = n
 	}
 }
 

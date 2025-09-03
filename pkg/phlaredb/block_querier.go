@@ -1250,7 +1250,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 				if err != nil {
 					return err
 				}
-				return result.Merge(p, true)
+				return result.Merge(p)
 			}))
 		}
 	} else {
@@ -1284,7 +1284,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 				if err != nil {
 					return err
 				}
-				return result.Merge(p, true)
+				return result.Merge(p)
 			}))
 		}
 

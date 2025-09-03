@@ -127,10 +127,10 @@ func (r *Router) SelectMergeProfile(
 		func(_, _ *querierv1.SelectMergeProfileRequest) {},
 		func(a, b *profilev1.Profile) (*profilev1.Profile, error) {
 			var m pprof.ProfileMerge
-			if err := m.Merge(a, false); err != nil {
+			if err := m.Merge(a); err != nil {
 				return nil, err
 			}
-			if err := m.Merge(b, false); err != nil {
+			if err := m.Merge(b); err != nil {
 				return nil, err
 			}
 			return m.Profile(), nil

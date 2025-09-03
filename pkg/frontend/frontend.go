@@ -113,7 +113,6 @@ type Limits interface {
 	MaxQueryLookback(tenantID string) time.Duration
 	QueryAnalysisEnabled(string) bool
 	SymbolizerEnabled(string) bool
-	QuerySanitizeOnMerge(string) bool
 	validation.FlameGraphLimits
 }
 

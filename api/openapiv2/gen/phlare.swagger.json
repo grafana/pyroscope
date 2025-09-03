@@ -1328,12 +1328,7 @@
     },
     "v1InvokeOptions": {
       "type": "object",
-      "properties": {
-        "sanitizeOnMerge": {
-          "type": "boolean",
-          "description": "Query workers might not have access to the tenant\noverrides, therefore all the necessary options should\nbe listed in the request explicitly."
-        }
-      }
+      "description": "Query workers might not have access to the tenant\n overrides, therefore all the necessary options should\n be listed in the request explicitly."
     },
     "v1InvokeResponse": {
       "type": "object",

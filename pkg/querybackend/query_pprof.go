@@ -49,10 +49,7 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 	resolverOptions := make([]symdb.ResolverOption, 0)
 	resolverOptions = append(resolverOptions, symdb.WithResolverMaxNodes(query.Pprof.MaxNodes))
 	if query.Pprof.StackTraceSelector != nil {
-		resolverOptions = append(
-			resolverOptions,
-			symdb.WithResolverStackTraceSelector(query.Pprof.StackTraceSelector),
-			symdb.WithResolverSanitizeOnMerge(q.req.src.Options.SanitizeOnMerge))
+		resolverOptions = append(resolverOptions, symdb.WithResolverStackTraceSelector(query.Pprof.StackTraceSelector))
 	}
 
 	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(), resolverOptions...)
@@ -91,27 +88,19 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 }
 
 type pprofAggregator struct {
-	init     sync.Once
-	query    *queryv1.PprofQuery
-	profile  pprof.ProfileMerge
-	sanitize bool
+	init    sync.Once
+	query   *queryv1.PprofQuery
+	profile pprof.ProfileMerge
 }
 
-func newPprofAggregator(req *queryv1.InvokeRequest) aggregator {
-	if req.Options != nil {
-		return &pprofAggregator{
-			sanitize: req.Options.SanitizeOnMerge,
-		}
-	}
-	return &pprofAggregator{}
-}
+func newPprofAggregator(*queryv1.InvokeRequest) aggregator { return new(pprofAggregator) }
 
 func (a *pprofAggregator) aggregate(report *queryv1.Report) error {
 	r := report.Pprof
 	a.init.Do(func() {
 		a.query = r.Query.CloneVT()
 	})
-	return a.profile.MergeBytes(r.Pprof, a.sanitize)
+	return a.profile.MergeBytes(r.Pprof)
 }
 
 func (a *pprofAggregator) build() *queryv1.Report {
