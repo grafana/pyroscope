@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/oklog/ulid/v2"
+	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -57,6 +59,50 @@ func WithObjectDownload(dir string) ObjectOption {
 	return func(obj *Object) {
 		obj.downloadDir = dir
 	}
+}
+
+func NewObjectFromPath(ctx context.Context, storage objstore.Bucket, path string, opts ...ObjectOption) (*Object, error) {
+	attrs, err := storage.Attributes(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	defaultSize := int64(1 << 8) // 18)
+	offset := attrs.Size - defaultSize
+	if offset < 0 {
+		offset = 0
+	}
+	size := attrs.Size - offset
+
+	buf := bufferpool.GetBuffer(int(size))
+	if err := objstore.ReadRange(ctx, buf, path, storage, offset, size); err != nil {
+		return nil, err
+	}
+	if size < 8 {
+		return nil, errors.New("invalid object too small")
+	}
+
+	metaSize := int64(binary.BigEndian.Uint32(buf.B[len(buf.B)-8:len(buf.B)-4])) + 8
+	if metaSize > size {
+		offset = attrs.Size - metaSize
+
+		bufNew := bufferpool.GetBuffer(int(metaSize))
+		if err := objstore.ReadRange(ctx, bufNew, path, storage, offset, metaSize-size); err != nil {
+			return nil, err
+		}
+		bufNew.B = append(bufNew.B, buf.B...)
+		buf = bufNew
+
+	}
+
+	var meta metastorev1.BlockMeta
+	if err := metadata.Decode(buf.B, &meta); err != nil {
+		return nil, err
+	}
+	meta.Size = uint64(attrs.Size)
+
+	opts = append(opts, WithObjectPath(path))
+	return NewObject(storage, &meta, opts...), nil
 }
 
 func NewObject(storage objstore.Bucket, md *metastorev1.BlockMeta, opts ...ObjectOption) *Object {
