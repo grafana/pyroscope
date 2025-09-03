@@ -67,6 +67,10 @@ func (LocationPersister) Reconstruct(row parquet.Row) (InMemoryLocation, error) 
 		IsFolded:  row[len(row)-1].Boolean(),
 	}
 	lines := row[3 : len(row)-1]
+	if len(lines) == 2 && lines[0].DefinitionLevel() == 0 {
+		loc.Line = make([]InMemoryLine, 0)
+		return loc, nil
+	}
 	loc.Line = make([]InMemoryLine, len(lines)/2)
 	for i, v := range lines[:len(lines)/2] {
 		loc.Line[i].FunctionId = uint32(v.Uint64())
