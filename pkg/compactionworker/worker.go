@@ -610,13 +610,12 @@ func (d *deleter) handleShardTombstone(ctx context.Context, pool *deleterPool, t
 	// See: https://github.com/minio/minio-go/blame/f64cdbde257f48f1a44b0f5aeee0475bad7e0e8d/api-list.go#L784
 	iterCtx, iterCancel := context.WithCancel(ctx)
 	defer iterCancel()
-	stop := false
 
 	deleteBlock := func(path string) error {
 		// After we cancel iterCtx, the provider (e.g., MinIO ListObjects) may do
 		// one final blocking send on its results channel. Returning nil here keeps
 		// draining without scheduling new work so the producer isn't left blocked.
-		if stop || iterCtx.Err() != nil {
+		if iterCtx.Err() != nil {
 			return nil
 		}
 		blockID, err := block.ParseBlockIDFromPath(path)
@@ -638,7 +637,6 @@ func (d *deleter) handleShardTombstone(ctx context.Context, pool *deleterPool, t
 			// Keep consuming to drain any buffered items and allow the producer's
 			// final send on ctx.Done() to be received.
 			iterCancel()
-			stop = true
 			return nil
 		}
 		d.wg.Add(1)
