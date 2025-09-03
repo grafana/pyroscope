@@ -2,9 +2,14 @@ syntax = "proto3";
 
 package types.v1;
 
+import "gnostic/openapi/v3/annotations.proto";
+
 message LabelPair {
-  string name = 1;
-  string value = 2;
+  // Label name
+  string name = 1 [(gnostic.openapi.v3.property).example = {yaml: "service_name"}];
+
+  // Label value
+  string value = 2 [(gnostic.openapi.v3.property).example = {yaml: "my_service"}];
 }
 
 message ProfileType {
@@ -39,10 +44,14 @@ message ProfileAnnotation {
 }
 
 message LabelValuesRequest {
-  string name = 1;
+  // Name of the label
+  string name = 1 [(gnostic.openapi.v3.property).example = {yaml: "service_name"}];
+  // List of Label selectors
   repeated string matchers = 2;
-  int64 start = 3;
-  int64 end = 4;
+  // Query from this point in time, given in Milliseconds since epoch.
+  int64 start = 3 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
+  // Query to this point in time, given in Milliseconds since epoch.
+  int64 end = 4 [(gnostic.openapi.v3.property).example = {yaml: "1676289600000"}];
 }
 
 message LabelValuesResponse {
@@ -50,9 +59,12 @@ message LabelValuesResponse {
 }
 
 message LabelNamesRequest {
+  // List of Label selectors
   repeated string matchers = 1;
-  int64 start = 2;
-  int64 end = 3;
+  // Query from this point in time, given in Milliseconds since epoch.
+  int64 start = 2 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
+  // Query to this point in time, given in Milliseconds since epoch.
+  int64 end = 3 [(gnostic.openapi.v3.property).example = {yaml: "1676289600000"}];
 }
 
 message LabelNamesResponse {

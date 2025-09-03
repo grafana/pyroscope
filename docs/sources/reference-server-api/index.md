@@ -1,15 +1,13 @@
 ---
 description: Learn about the Pyrocope server API
-menuTitle: "Reference: Server HTTP API"
+menuTitle: "Reference: Server API"
 title: Server HTTP API
 aliases:
   - ../configure-server/about-server-api/ # https://grafana.com/docs/pyroscope/latest/configure-server/about-server-api/
 weight: 650
 ---
 
-# Server HTTP API
-
-Grafana Pyroscope exposes an HTTP API for querying profiling data and ingesting profiling data from other sources.
+# Grafana Pyroscope server API
 
 ## Authentication
 
@@ -18,7 +16,552 @@ Pyroscope doesn't include an authentication layer. Operators should use an authe
 In multi-tenant mode, Pyroscope requires the X-Scope-OrgID HTTP header set to a string identifying the tenant.
 The authenticating reverse proxy handles this responsibility. For more information, refer to the [multi-tenancy documentation](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/about-tenant-ids/).
 
-## Ingestion
+
+## Connect API
+
+The Pyroscope Connect API uses the [Connect protocol](https://connectrpc.com/), which provides a unified approach to building APIs that work seamlessly across multiple protocols and formats:
+
+- **Protocol Flexibility**: Connect APIs work over both HTTP/1.1 and HTTP/2, supporting JSON and binary protobuf encoding
+- **gRPC Compatibility**: Full compatibility with existing gRPC clients and servers while offering better browser and HTTP tooling support  
+- **Type Safety**: Generated from protobuf definitions, ensuring consistent types across client and server implementations
+- **Developer Experience**: Simpler debugging with standard HTTP tools like curl, while maintaining the performance benefits of protobuf
+
+The API definitions are available in the [`api/`](https://github.com/grafana/pyroscope/tree/main/api) directory of the Pyroscope repository, with protobuf schemas organized by service.
+
+Pyroscope APIs are categorized into two scopes:
+
+- **Public APIs** (`scope/public`): These APIs are considered stable. Breaking changes will be communicated in advance and include migration paths.
+- **Internal APIs** (`scope/internal`): These APIs are used for internal communication between Pyroscope components. They may change without notice and should not be used by external clients.
+
+### Ingestion Path
+
+#### `/push.v1.PusherService/Push`
+
+
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`series[].annotations[].key` |  |  |
+|`series[].annotations[].value` |  |  |
+|`series[].labels[].name` | Label name | `service_name` |
+|`series[].labels[].value` | Label value | `my_service` |
+|`series[].samples[].ID` | unique UUID of the profile | `734FD599-6865-419E-9475-932762D8F469` |
+|`series[].samples[].rawProfile` | raw_profile is the set of bytes of the pprof profile | `PROFILE_BASE64` |
+
+{{% code %}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "series": [
+        {
+          "labels": [
+            {
+              "name": "__name__",
+              "value": "process_cpu"
+            },
+            {
+              "name": "service_name",
+              "value": "my_service"
+            }
+          ],
+          "samples": [
+            {
+              "ID": "734FD599-6865-419E-9475-932762D8F469",
+              "rawProfile": "'$(cat cpu.pb.gz| base64 -w 0)'"
+            }
+          ]
+        }
+      ]
+    }' \
+  http://localhost:4040/push.v1.PusherService/Push
+```
+
+```python
+import requests
+import base64
+body = {
+    "series": [
+      {
+        "labels": [
+          {
+            "name": "__name__",
+            "value": "process_cpu"
+          },
+          {
+            "name": "service_name",
+            "value": "my_service"
+          }
+        ],
+        "samples": [
+          {
+            "ID": "734FD599-6865-419E-9475-932762D8F469",
+            "rawProfile": base64.b64encode(open('cpu.pb.gz', 'rb').read()).decode('ascii')
+          }
+        ]
+      }
+    ]
+  }
+url = 'http://localhost:4040/push.v1.PusherService/Push'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{% /code %}}
+
+
+### Querying profiling data
+
+#### `/querier.v1.QuerierService/Diff`
+
+Diff returns a diff of two profiles
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`left.start` | Milliseconds since epoch. | `1676282400000` |
+|`left.end` | Milliseconds since epoch. | `1676289600000` |
+|`left.format` |  |  |
+|`left.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
+|`left.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
+|`left.profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
+|`left.stackTraceSelector.callSite[].name` |  |  |
+|`left.stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
+|`left.stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
+|`right.start` | Milliseconds since epoch. | `1676282400000` |
+|`right.end` | Milliseconds since epoch. | `1676289600000` |
+|`right.format` |  |  |
+|`right.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
+|`right.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
+|`right.profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
+|`right.stackTraceSelector.callSite[].name` |  |  |
+|`right.stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
+|`right.stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
+
+{{% code %}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "left": {
+        "end": '$(date +%s)000',
+        "labelSelector": "{namespace=\"my-namespace\"}",
+        "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+        "start": '$(expr $(date +%s) - 3600 )000'
+      },
+      "right": {
+        "end": '$(date +%s)000',
+        "labelSelector": "{namespace=\"my-namespace\"}",
+        "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+        "start": '$(expr $(date +%s) - 3600 )000'
+      }
+    }' \
+  http://localhost:4040/querier.v1.QuerierService/Diff
+```
+
+```python
+import requests
+import datetime
+body = {
+    "left": {
+      "end": int(datetime.datetime.now().timestamp() * 1000),
+      "labelSelector": "{namespace=\"my-namespace\"}",
+      "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+      "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+    },
+    "right": {
+      "end": int(datetime.datetime.now().timestamp() * 1000),
+      "labelSelector": "{namespace=\"my-namespace\"}",
+      "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+      "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+    }
+  }
+url = 'http://localhost:4040/querier.v1.QuerierService/Diff'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{% /code %}}
+#### `/querier.v1.QuerierService/LabelNames`
+
+LabelNames returns a list of the existing label names.
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`start` | Query from this point in time, given in Milliseconds since epoch. | `1676282400000` |
+|`end` | Query to this point in time, given in Milliseconds since epoch. | `1676289600000` |
+|`matchers` | List of Label selectors |  |
+
+{{% code %}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "end": '$(date +%s)000',
+      "start": '$(expr $(date +%s) - 3600 )000'
+    }' \
+  http://localhost:4040/querier.v1.QuerierService/LabelNames
+```
+
+```python
+import requests
+import datetime
+body = {
+    "end": int(datetime.datetime.now().timestamp() * 1000),
+    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+  }
+url = 'http://localhost:4040/querier.v1.QuerierService/LabelNames'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{% /code %}}
+#### `/querier.v1.QuerierService/LabelValues`
+
+LabelValues returns the existing label values for the provided label names.
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`start` | Query from this point in time, given in Milliseconds since epoch. | `1676282400000` |
+|`end` | Query to this point in time, given in Milliseconds since epoch. | `1676289600000` |
+|`matchers` | List of Label selectors |  |
+|`name` | Name of the label | `service_name` |
+
+{{% code %}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "end": '$(date +%s)000',
+      "name": "service_name",
+      "start": '$(expr $(date +%s) - 3600 )000'
+    }' \
+  http://localhost:4040/querier.v1.QuerierService/LabelValues
+```
+
+```python
+import requests
+import datetime
+body = {
+    "end": int(datetime.datetime.now().timestamp() * 1000),
+    "name": "service_name",
+    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+  }
+url = 'http://localhost:4040/querier.v1.QuerierService/LabelValues'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{% /code %}}
+#### `/querier.v1.QuerierService/ProfileTypes`
+
+ProfileType returns a list of the existing profile types.
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`start` | Milliseconds since epoch. If missing or zero, only the ingesters will be  queried. | `1676282400000` |
+|`end` | Milliseconds since epoch. If missing or zero, only the ingesters will be  queried. | `1676289600000` |
+
+{{% code %}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "end": '$(date +%s)000',
+      "start": '$(expr $(date +%s) - 3600 )000'
+    }' \
+  http://localhost:4040/querier.v1.QuerierService/ProfileTypes
+```
+
+```python
+import requests
+import datetime
+body = {
+    "end": int(datetime.datetime.now().timestamp() * 1000),
+    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+  }
+url = 'http://localhost:4040/querier.v1.QuerierService/ProfileTypes'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{% /code %}}
+#### `/querier.v1.QuerierService/SelectMergeProfile`
+
+SelectMergeProfile returns matching profiles aggregated in pprof format. It
+ will contain all information stored (so including filenames and line
+ number, if ingested).
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`start` | Milliseconds since epoch. | `1676282400000` |
+|`end` | Milliseconds since epoch. | `1676289600000` |
+|`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
+|`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
+|`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
+|`stackTraceSelector.callSite[].name` |  |  |
+|`stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
+|`stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
+
+{{% code %}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "end": '$(date +%s)000',
+      "labelSelector": "{namespace=\"my-namespace\"}",
+      "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+      "start": '$(expr $(date +%s) - 3600 )000'
+    }' \
+  http://localhost:4040/querier.v1.QuerierService/SelectMergeProfile
+```
+
+```python
+import requests
+import datetime
+body = {
+    "end": int(datetime.datetime.now().timestamp() * 1000),
+    "labelSelector": "{namespace=\"my-namespace\"}",
+    "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+  }
+url = 'http://localhost:4040/querier.v1.QuerierService/SelectMergeProfile'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{% /code %}}
+#### `/querier.v1.QuerierService/SelectMergeSpanProfile`
+
+SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
+ format. It will combine samples from within the same callstack, with each
+ element being grouped by its function name.
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`start` | Milliseconds since epoch. | `1676282400000` |
+|`end` | Milliseconds since epoch. | `1676289600000` |
+|`format` |  |  |
+|`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
+|`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
+|`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
+|`spanSelector` | List of Span IDs to query | `["9a517183f26a089d","5a4fe264a9c987fe"]` |
+
+{{% code %}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "end": '$(date +%s)000',
+      "labelSelector": "{namespace=\"my-namespace\"}",
+      "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+      "spanSelector": [
+        "9a517183f26a089d",
+        "5a4fe264a9c987fe"
+      ],
+      "start": '$(expr $(date +%s) - 3600 )000'
+    }' \
+  http://localhost:4040/querier.v1.QuerierService/SelectMergeSpanProfile
+```
+
+```python
+import requests
+import datetime
+body = {
+    "end": int(datetime.datetime.now().timestamp() * 1000),
+    "labelSelector": "{namespace=\"my-namespace\"}",
+    "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+    "spanSelector": [
+      "9a517183f26a089d",
+      "5a4fe264a9c987fe"
+    ],
+    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+  }
+url = 'http://localhost:4040/querier.v1.QuerierService/SelectMergeSpanProfile'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{% /code %}}
+#### `/querier.v1.QuerierService/SelectMergeStacktraces`
+
+SelectMergeStacktraces returns matching profiles aggregated in a flamegraph
+ format. It will combine samples from within the same callstack, with each
+ element being grouped by its function name.
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`start` | Milliseconds since epoch. | `1676282400000` |
+|`end` | Milliseconds since epoch. | `1676289600000` |
+|`format` |  |  |
+|`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
+|`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
+|`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
+|`stackTraceSelector.callSite[].name` |  |  |
+|`stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
+|`stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
+
+{{% code %}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "end": '$(date +%s)000',
+      "labelSelector": "{namespace=\"my-namespace\"}",
+      "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+      "start": '$(expr $(date +%s) - 3600 )000'
+    }' \
+  http://localhost:4040/querier.v1.QuerierService/SelectMergeStacktraces
+```
+
+```python
+import requests
+import datetime
+body = {
+    "end": int(datetime.datetime.now().timestamp() * 1000),
+    "labelSelector": "{namespace=\"my-namespace\"}",
+    "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+  }
+url = 'http://localhost:4040/querier.v1.QuerierService/SelectMergeStacktraces'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{% /code %}}
+#### `/querier.v1.QuerierService/SelectSeries`
+
+SelectSeries returns a time series for the total sum of the requested
+ profiles.
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`start` | Milliseconds since epoch. | `1676282400000` |
+|`end` | Milliseconds since epoch. | `1676289600000` |
+|`aggregation` |  |  |
+|`groupBy` |  | `["pod"]` |
+|`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
+|`limit` | Select the top N series by total value. |  |
+|`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
+|`stackTraceSelector.callSite[].name` |  |  |
+|`stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
+|`stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
+|`step` |  |  |
+
+{{% code %}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "end": '$(date +%s)000',
+      "groupBy": [
+        "pod"
+      ],
+      "labelSelector": "{namespace=\"my-namespace\"}",
+      "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+      "start": '$(expr $(date +%s) - 3600 )000'
+    }' \
+  http://localhost:4040/querier.v1.QuerierService/SelectSeries
+```
+
+```python
+import requests
+import datetime
+body = {
+    "end": int(datetime.datetime.now().timestamp() * 1000),
+    "groupBy": [
+      "pod"
+    ],
+    "labelSelector": "{namespace=\"my-namespace\"}",
+    "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+  }
+url = 'http://localhost:4040/querier.v1.QuerierService/SelectSeries'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{% /code %}}
+#### `/querier.v1.QuerierService/Series`
+
+Series returns profiles series matching the request. A series is a unique
+ label set.
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`start` | Milliseconds since epoch. If missing or zero, only the ingesters will be  queried. | `1676282400000` |
+|`end` | queried. | `1676289600000` |
+|`labelNames` | List of label_names to request. If empty will return all label names in the  result. |  |
+|`matchers` | List of label selector to apply to the result. | `["{namespace=\"my-namespace\"}"]` |
+
+{{% code %}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "end": '$(date +%s)000',
+      "matchers": [
+        "{namespace=\"my-namespace\"}"
+      ],
+      "start": '$(expr $(date +%s) - 3600 )000'
+    }' \
+  http://localhost:4040/querier.v1.QuerierService/Series
+```
+
+```python
+import requests
+import datetime
+body = {
+    "end": int(datetime.datetime.now().timestamp() * 1000),
+    "matchers": [
+      "{namespace=\"my-namespace\"}"
+    ],
+    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+  }
+url = 'http://localhost:4040/querier.v1.QuerierService/Series'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{% /code %}}
+
+
+
+## Pyroscope Legacy HTTP API
+
+Grafana Pyroscope exposes an HTTP API for querying profiling data and ingesting profiling data from other sources.
+
+
+### Ingestion
 
 There is one primary endpoint: `POST /ingest`.
 It accepts profile data in the request body and metadata as query parameters.
@@ -46,7 +589,7 @@ The request body contains profiling data, and the Content-Type header may be use
 
 Some of the query parameters depend on the format of profiling data. Pyroscope currently supports three major ingestion formats.
 
-### Text formats
+#### Text formats
 
 These formats handle simple ingestion of profiling data, such as `cpu` samples, and typically don't support metadata (for example, labels) within the format.
 All necessary metadata is derived from query parameters, and the format is specified by the `format` query parameter.
@@ -67,7 +610,7 @@ foo;baz
 foo;bar
 ```
 
-### The `pprof` format
+#### The `pprof` format
 
 The `pprof` format is a widely used binary profiling data format, particularly prevalent in the Go ecosystem.
 
@@ -77,7 +620,7 @@ When using this format, certain query parameters have specific behaviors:
 - **name**: This parameter contains the _prefix_ of the application name. Since a single request might include multiple profile types, the complete application name is formed by concatenating this prefix with the profile type. For instance, if you send CPU profiling data and set `name` to `my-app{}`, it is displayed in Pyroscope as `my-app.cpu{}`.
 - **units**, **aggregationType**, and **sampleRate**: These parameters are ignored. The actual values are determined based on the profile types present in the data (refer to the "Sample Type Configuration" section for more details).
 
-#### Sample type configuration
+##### Sample type configuration
 
 Pyroscope server inherently supports standard Go profile types such as `cpu`, `inuse_objects`, `inuse_space`, `alloc_objects`, and `alloc_space`. When dealing with software that generates data in `pprof` format, you may need to supply a custom sample type configuration for Pyroscope to interpret the data correctly.
 
@@ -132,7 +675,7 @@ Explanation of sample type configuration fields:
 
 This configuration allows for customized visualization and analysis of various profile types within Pyroscope.
 
-### JFR format
+#### JFR format
 
 This is the [Java Flight Recorder](https://openjdk.java.net/jeps/328) format, typically used by JVM-based profilers, also supported by our Java integration.
 
@@ -151,7 +694,7 @@ JFR ingestion support uses the profile metadata to determine which profile types
 * `alloc_outside_tlab_objects`, which indicates the number of new allocated objects outside any TLAB.
 * `alloc_outside_tlab_bytes`, which indicates the size in bytes of new allocated objects outside any TLAB.
 
-#### JFR with labels
+##### JFR with labels
 
 In order to ingest JFR data with dynamic labels, you have to make the following changes to your requests:
 * use an HTTP form (`multipart/form-data`) Content-Type.
@@ -173,7 +716,7 @@ message LabelsSnapshot {
 ```
 Where `context_id` is a parameter [set in async-profiler](https://github.com/pyroscope-io/async-profiler/pull/1/files#diff-34c624b2fbf52c68fc3f15dee43a73caec11b9524319c3a581cd84ec3fd2aacfR218)
 
-### Examples
+#### Examples
 
 Here's a sample code that uploads a very simple profile to pyroscope:
 
@@ -218,14 +761,15 @@ curl -X POST \
 
 {{< /code >}}
 
-## Querying profile data
+
+### Querying profile data
 
 There is one primary endpoint for querying profile data: `GET /pyroscope/render`.
 
 The search input is provided via query parameters.
 The output is typically a JSON object containing one or more time series and a flame graph.
 
-### Query parameters
+#### Query parameters
 
 Here is an overview of the accepted query parameters:
 
@@ -238,7 +782,7 @@ Here is an overview of the accepted query parameters:
 | `maxNodes` | the maximum number of nodes the resulting flame graph will contain                     | optional (default is `max_flamegraph_nodes_default`) |
 | `groupBy`  | one or more label names to group the time series by (doesn't apply to the flame graph) | optional (default is no grouping)                    |
 
-#### `query`
+##### `query`
 
 The `query` parameter is the only required search input. It carries the profile type and any labels we want to use to narrow down the output.
 The format for this parameter is similar to that of a PromQL query and can be defined as:
@@ -257,7 +801,7 @@ In a Kubernetes environment, a query could also look like:
 Refer to the [profiling types documentation](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/profile-types/) for more information and [profile-metrics.json](https://github.com/grafana/pyroscope/blob/main/public/app/constants/profile-metrics.json) for a list of valid profile types.
 {{% /admonition %}}
 
-#### `from` and `until`
+##### `from` and `until`
 
 The `from` and `until` parameters determine the start and end of the time period for the query.
 They can be provided in absolute and relative form.
@@ -317,9 +861,9 @@ When a value is provided, it is capped to the `max_flamegraph_nodes_max` configu
 The `groupBy` parameter impacts the output for the time series portion of the response.
 When a valid label is provided, the response contains as many series as there are label values for the given label.
 
-{{< admonition type="note" >}}
+{{% admonition type="note" %}}
 Pyroscope supports a single label for the group by functionality.
-{{< /admonition >}}
+{{% /admonition %}}
 
 ### Query output
 
@@ -411,7 +955,7 @@ Here is the same example in Python:
 import requests
 
 application_name = 'my_application_name'
-query = f'process_cpu:cpu:nanoseconds:cpu:nanoseconds{{service_name="{application_name}"}}'
+query = f'process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="{application_name}"}'
 query_from = 'now-1h'
 url = f'http://localhost:4040/pyroscope/render?query={query}&from={query_from}'
 

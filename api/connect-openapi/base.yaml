@@ -1,0 +1,10 @@
+openapi: 3.1.0
+info:
+  title: Pyroscope API
+  description: "Pyroscope API definitions"
+  version: v1.0.0
+tags:
+  - name: scope/public
+    description: This operation is considered part of the public API scope
+  - name: scope/internal
+    description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
