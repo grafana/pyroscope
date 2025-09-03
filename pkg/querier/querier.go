@@ -894,14 +894,14 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 		if err != nil {
 			return err
 		}
-		return merge.Merge(ingesterProfile, true)
+		return merge.Merge(ingesterProfile)
 	})
 	g.Go(func() error {
 		storegatewayProfile, err := q.selectProfileFromStoreGateway(gCtx, storeQueries.storeGateway.MergeProfileRequest(req), plan)
 		if err != nil {
 			return err
 		}
-		return merge.Merge(storegatewayProfile, true)
+		return merge.Merge(storegatewayProfile)
 	})
 	if err := g.Wait(); err != nil {
 		return nil, err

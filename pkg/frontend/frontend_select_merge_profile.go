@@ -67,7 +67,7 @@ func (f *Frontend) SelectMergeProfile(
 			if err != nil {
 				return err
 			}
-			return m.Merge(resp.Msg, f.limits.QuerySanitizeOnMerge(tenantIDs[0]))
+			return m.Merge(resp.Msg)
 		})
 	}
 

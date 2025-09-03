@@ -40,7 +40,6 @@ message InvokeOptions {
   // Query workers might not have access to the tenant
   // overrides, therefore all the necessary options should
   // be listed in the request explicitly.
-  bool sanitize_on_merge = 1;
 }
 
 message InvokeRequest {
