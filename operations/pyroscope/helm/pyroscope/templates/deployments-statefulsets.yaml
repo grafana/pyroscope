@@ -78,6 +78,25 @@ spec:
           {{- range $key, $value := $extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
+          {{- /* distributor specific v1/v2 migration config */}}
+          {{-  if or (eq $component "all") (eq $component "distributor") }}
+          {{-  if and ($global.Values.architecture.storage.v2) (not (hasKey $extraArgs "write-path"))  }}
+          {{-  if $global.Values.architecture.storage.v1 }}
+            - "-write-path=combined"
+          {{-  if not (hasKey $extraArgs "write-path.segment-writer-weight")  }}
+            - "-write-path.segment-writer-weight=1"
+          {{- end }}
+          {{- else }}
+            - "-write-path=segment-writer"
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- /* query-frontend specific v1/v2 migration config */}}
+          {{-  if or (eq $component "all") (eq $component "query-frontend") }}
+          {{-  if and ($global.Values.architecture.storage.v2) (not (hasKey $extraArgs "enable-query-backend"))  }}
+            - "-enable-query-backend=true"
+          {{- end }}
+          {{- end }}
           env:
             - name: POD_NAME
               valueFrom:
@@ -85,6 +104,10 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}"
+          {{- if and ($global.Values.architecture.storage.v2) (not (hasKey $values.extraEnvVars "PYROSCOPE_V2_EXPERIMENT"))  }}
+            - name: PYROSCOPE_V2_EXPERIMENT
+              value: "1"
+          {{- end }}
           {{- with $values.extraEnvVars }}
           {{- range $key, $value := . }}
             - name: {{ $key }}

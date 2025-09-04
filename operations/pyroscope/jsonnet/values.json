@@ -50,6 +50,266 @@
     },
     "enabled": true
   },
+  "architecture": {
+    "microservices": {
+      "enabled": false,
+      "v1": {
+        "ad-hoc-profiles": {
+          "kind": "Deployment",
+          "replicaCount": 1,
+          "resources": {
+            "limits": {
+              "memory": "4Gi"
+            },
+            "requests": {
+              "cpu": 0.1,
+              "memory": "16Mi"
+            }
+          }
+        },
+        "compactor": {
+          "kind": "StatefulSet",
+          "persistence": {
+            "enabled": false
+          },
+          "replicaCount": 3,
+          "resources": {
+            "limits": {
+              "memory": "16Gi"
+            },
+            "requests": {
+              "cpu": 1,
+              "memory": "8Gi"
+            }
+          },
+          "terminationGracePeriodSeconds": 1200
+        },
+        "distributor": {
+          "kind": "Deployment",
+          "replicaCount": 2,
+          "resources": {
+            "limits": {
+              "memory": "1Gi"
+            },
+            "requests": {
+              "cpu": "500m",
+              "memory": "256Mi"
+            }
+          }
+        },
+        "ingester": {
+          "kind": "StatefulSet",
+          "replicaCount": 3,
+          "resources": {
+            "limits": {
+              "memory": "16Gi"
+            },
+            "requests": {
+              "cpu": 1,
+              "memory": "8Gi"
+            }
+          },
+          "terminationGracePeriodSeconds": 600
+        },
+        "querier": {
+          "extraArgs": {
+            "store-gateway.sharding-ring.replication-factor": "3"
+          },
+          "kind": "Deployment",
+          "replicaCount": 3,
+          "resources": {
+            "limits": {
+              "memory": "1Gi"
+            },
+            "requests": {
+              "cpu": 1,
+              "memory": "256Mi"
+            }
+          }
+        },
+        "query-frontend": {
+          "kind": "Deployment",
+          "replicaCount": 2,
+          "resources": {
+            "limits": {
+              "memory": "1Gi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "256Mi"
+            }
+          }
+        },
+        "query-scheduler": {
+          "kind": "Deployment",
+          "replicaCount": 2,
+          "resources": {
+            "limits": {
+              "memory": "1Gi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "256Mi"
+            }
+          }
+        },
+        "store-gateway": {
+          "extraArgs": {
+            "store-gateway.sharding-ring.replication-factor": "3"
+          },
+          "kind": "StatefulSet",
+          "persistence": {
+            "enabled": false
+          },
+          "readinessProbe": {
+            "initialDelaySeconds": 60
+          },
+          "replicaCount": 3,
+          "resources": {
+            "limits": {
+              "memory": "16Gi"
+            },
+            "requests": {
+              "cpu": 1,
+              "memory": "8Gi"
+            }
+          }
+        },
+        "tenant-settings": {
+          "kind": "Deployment",
+          "replicaCount": 1,
+          "resources": {
+            "limits": {
+              "memory": "4Gi"
+            },
+            "requests": {
+              "cpu": 0.1,
+              "memory": "16Mi"
+            }
+          }
+        }
+      },
+      "v2": {
+        "ad-hoc-profiles": {
+          "kind": "Deployment",
+          "replicaCount": 1,
+          "resources": {
+            "limits": {
+              "memory": "256Mi"
+            },
+            "requests": {
+              "cpu": 0.1,
+              "memory": "16Mi"
+            }
+          }
+        },
+        "compaction-worker": {
+          "kind": "StatefulSet",
+          "persistence": {
+            "enabled": false
+          },
+          "replicaCount": 3,
+          "resources": {
+            "limits": {
+              "memory": "2Gi"
+            },
+            "requests": {
+              "cpu": 1,
+              "memory": "1Gi"
+            }
+          },
+          "terminationGracePeriodSeconds": 1200
+        },
+        "distributor": {
+          "kind": "Deployment",
+          "replicaCount": 2,
+          "resources": {
+            "limits": {
+              "memory": "1Gi"
+            },
+            "requests": {
+              "cpu": "500m",
+              "memory": "256Mi"
+            }
+          }
+        },
+        "metastore": {
+          "kind": "StatefulSet",
+          "persistence": {
+            "enabled": false
+          },
+          "replicaCount": 3,
+          "resources": {
+            "limits": {
+              "memory": "2Gi"
+            },
+            "requests": {
+              "cpu": 1,
+              "memory": "1Gi"
+            }
+          },
+          "terminationGracePeriodSeconds": 1200
+        },
+        "query-backend": {
+          "kind": "Deployment",
+          "replicaCount": 3,
+          "resources": {
+            "limits": {
+              "memory": "1Gi"
+            },
+            "requests": {
+              "cpu": 1,
+              "memory": "256Mi"
+            }
+          }
+        },
+        "query-frontend": {
+          "kind": "Deployment",
+          "replicaCount": 2,
+          "resources": {
+            "limits": {
+              "memory": "1Gi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "256Mi"
+            }
+          }
+        },
+        "segment-writer": {
+          "kind": "StatefulSet",
+          "replicaCount": 3,
+          "resources": {
+            "limits": {
+              "memory": "4Gi"
+            },
+            "requests": {
+              "cpu": 1,
+              "memory": "2Gi"
+            }
+          },
+          "terminationGracePeriodSeconds": 600
+        },
+        "tenant-settings": {
+          "kind": "Deployment",
+          "replicaCount": 1,
+          "resources": {
+            "limits": {
+              "memory": "256Mi"
+            },
+            "requests": {
+              "cpu": 0.1,
+              "memory": "16Mi"
+            }
+          }
+        }
+      }
+    },
+    "storage": {
+      "v1": true,
+      "v2": false
+    }
+  },
   "ingress": {
     "annotations": {},
     "className": "",
