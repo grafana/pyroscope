@@ -405,11 +405,20 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
-	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --set architecture.storage.v1=false --set architecture.storage.v2=true \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary-v2.yaml \
+		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --set architecture.microservices.enabled=true --set minio.enabled=true \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --set architecture.microservices.enabled=true --set architecture.storage.v1=false --set architecture.storage.v2=true --set minio.enabled=true \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services-v2.yaml \
+		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/legacy-micro-services.yaml \
+		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
 	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services-hpa.yaml \
-		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services-hpa.yaml \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/legacy-micro-services-hpa.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
 	cat operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
 		| go run ./tools/yaml-to-json \
