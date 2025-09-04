@@ -16,6 +16,8 @@ VOLUME /data
 COPY --chown=pyroscope:pyroscope --from=debug /data /data
 VOLUME /data-compactor
 COPY --chown=pyroscope:pyroscope --from=debug /data /data-compactor
+VOLUME /data-metastore
+COPY --chown=pyroscope:pyroscope --from=debug /data /data-metastore
 
 COPY cmd/pyroscope/pyroscope.yaml /etc/pyroscope/config.yaml
 COPY profilecli /usr/bin/profilecli
