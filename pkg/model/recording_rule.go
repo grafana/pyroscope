@@ -18,7 +18,7 @@ type RecordingRule struct {
 	FunctionName   string
 }
 
-const metricNamePrefix = "pyroscope_exported_metric_"
+const metricNamePrefix = "profiles_recorded_"
 
 func NewRecordingRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
 	sb := labels.NewScratchBuilder(len(rule.ExternalLabels) + 1)
