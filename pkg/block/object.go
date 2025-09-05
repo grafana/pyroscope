@@ -119,6 +119,9 @@ func NewObject(storage objstore.Bucket, md *metastorev1.BlockMeta, opts ...Objec
 }
 
 func ObjectPath(md *metastorev1.BlockMeta) string {
+	if md == nil {
+		return ""
+	}
 	return BuildObjectPath(metadata.Tenant(md), md.Shard, md.CompactionLevel, md.Id)
 }
 
@@ -280,7 +283,7 @@ func (obj *Object) SetMetadata(md *metastorev1.BlockMeta) { obj.meta = md }
 // It the object does not include the metadata offset, the method
 // returns the metadata entry the object was opened with.
 func (obj *Object) ReadMetadata(ctx context.Context) (*metastorev1.BlockMeta, error) {
-	if obj.meta.MetadataOffset == 0 {
+	if obj.meta != nil && obj.meta.MetadataOffset == 0 {
 		return obj.meta, nil
 	}
 	offset := int64(obj.meta.MetadataOffset)
@@ -295,7 +298,9 @@ func (obj *Object) ReadMetadata(ctx context.Context) (*metastorev1.BlockMeta, er
 		return nil, fmt.Errorf("decoding block metadata %s: %w", obj.path, err)
 	}
 	// Size is not stored in the metadata, so we need to preserve it.
-	meta.Size = obj.meta.Size
+	if obj.meta != nil {
+		meta.Size = obj.meta.Size
+	}
 	return &meta, nil
 }
 

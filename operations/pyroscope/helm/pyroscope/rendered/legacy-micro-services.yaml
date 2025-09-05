@@ -1412,7 +1412,7 @@ data:
 
     pyroscope.write "pyroscope_write" {
     	endpoint {
-    		url = "http://pyroscope-dev.default.svc.cluster.local.:4040"
+    		url = "http://pyroscope-dev-distributor.default.svc.cluster.local.:4040"
     	}
     }
 ---
@@ -2249,6 +2249,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2351,6 +2352,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2556,6 +2558,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2658,6 +2661,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2760,6 +2764,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3047,6 +3052,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3156,6 +3162,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:

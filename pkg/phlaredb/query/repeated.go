@@ -133,6 +133,13 @@ type multiColumnIterator struct {
 	v [][]parquet.Value
 }
 
+type fetchPlan struct {
+	name    string
+	columns []int
+}
+
+const FetchPlanKey = "fetchplan"
+
 func NewMultiColumnIterator(
 	ctx context.Context,
 	rows iter.Iterator[int64],
@@ -140,6 +147,8 @@ func NewMultiColumnIterator(
 	rowGroups []parquet.RowGroup,
 	columns ...int,
 ) iter.Iterator[[][]parquet.Value] {
+	fmt.Println("attach a fetch plan")
+	ctx = context.WithValue(ctx, FetchPlanKey, &fetchPlan{name: "my-fetch-plan", columns: columns})
 	m := multiColumnIterator{
 		c: make([]iter.Iterator[[]parquet.Value], len(columns)),
 		v: make([][]parquet.Value, len(columns)),

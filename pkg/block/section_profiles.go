@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"sync"
 
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
@@ -49,6 +50,23 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 	return nil
 }
 
+type parquetSection struct {
+	ctx context.Context
+	off int64
+	len int64
+}
+
+type parquetReaderAt struct {
+	f        *ParquetFile
+	upstream io.ReaderAt
+}
+
+func (r *parquetReaderAt) ReadAt(p []byte, off int64) (n int, err error) {
+	r.f.sectionsMtx.RLock()
+	defer r.f.sectionsMtx.RUnlock()
+	return r.upstream.ReadAt(p, off)
+}
+
 type ParquetFile struct {
 	*parquet.File
 
@@ -59,6 +77,9 @@ type ParquetFile struct {
 	path    string
 	off     int64
 	size    int64
+
+	sections    []parquetSection // this is ordered list
+	sectionsMtx sync.RWMutex
 }
 
 func openParquetFile(
@@ -105,6 +126,10 @@ func openParquetFile(
 		ra = rf
 	}
 
+	ra = &parquetReaderAt{
+		f:        p,
+		upstream: ra,
+	}
 	f, err := parquet.OpenFile(ra, size, options...)
 	if err != nil {
 		return nil, err
@@ -113,6 +138,9 @@ func openParquetFile(
 	p.reader = r
 	p.File = f
 	return p, nil
+}
+
+func (f *ParquetFile) RegisterSections(ctx, offset int64) {
 }
 
 func (f *ParquetFile) RowReader() parquet.RowReader {

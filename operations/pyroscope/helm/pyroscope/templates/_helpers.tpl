@@ -80,14 +80,24 @@ Create a list of components that should be deployed.
 */}}
 {{- define "pyroscope.components" -}}
 {{- $full_name := (include "pyroscope.fullname" .) }}
-{{- range $k, $v := .Values.pyroscope.components }}
+{{- $components := dict }}
+{{- if .Values.architecture.microservices.enabled }}
+{{-   if .Values.architecture.storage.v1 }}
+{{-     $components = mustMergeOverwrite (deepCopy $components) (.Values.architecture.microservices.v1 | default dict)}}
+{{-   end }}
+{{-   if .Values.architecture.storage.v2 }}
+{{-     $components = mustMergeOverwrite (deepCopy $components) (.Values.architecture.microservices.v2 | default dict)}}
+{{-   end }}
+{{- end }}
+{{- $components = mustMergeOverwrite (deepCopy $components) (.Values.pyroscope.components | default dict)}}
+{{- range $k, $v := $components }}
 {{- $v :=  set $v "name" (printf "%s-%s" $full_name $k) }}
 {{$k}}: {{ $v | toJson }}
 {{- end }}
 {{/*
 If no components are defined fall back to single binary statefulset
 */}}
-{{- if eq (len .Values.pyroscope.components) 0 }}
+{{- if eq (len $components) 0 }}
 all: {kind: "StatefulSet", name: "{{$full_name}}"}
 {{- end }}
 {{- end }}
