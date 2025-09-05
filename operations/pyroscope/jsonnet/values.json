@@ -51,6 +51,7 @@
     "enabled": true
   },
   "architecture": {
+    "deployWriteReadServices": false,
     "microservices": {
       "enabled": false,
       "v1": {
@@ -305,6 +306,7 @@
         }
       }
     },
+    "overwriteResources": {},
     "storage": {
       "v1": true,
       "v2": false

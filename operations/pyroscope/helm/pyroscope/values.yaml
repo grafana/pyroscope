@@ -192,6 +192,16 @@ architecture:
     v1: true
     v2: false
 
+  # -- This flag is useful for testing, it will overwrite all pods resource statements with its contents
+  overwriteResources:
+    {}
+    #limits: {}
+    #requests: {}
+
+
+  # -- Provide write/read services. These endpoints will can be used no matter if the helm chart is configured as single-binary or microservices
+  deployWriteReadServices: false
+
   microservices:
     enabled: false
 

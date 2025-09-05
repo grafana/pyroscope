@@ -158,7 +158,11 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
           resources:
+            {{- if $global.Values.architecture.overwriteResources }}
+            {{- toYaml $global.Values.architecture.overwriteResources | nindent 12 }}
+            {{- else }}
             {{- toYaml $values.resources | nindent 12 }}
+            {{- end }}
       {{- with $values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
