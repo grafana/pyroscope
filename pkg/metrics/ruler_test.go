@@ -24,7 +24,7 @@ var (
 			Name:  "__name__",
 			Value: "profiles_recorded_default_recording_rule",
 		}, labels.Label{
-			Name:  "pyroscope_rule_id",
+			Name:  "profiles_rule_id",
 			Value: "some-id",
 		}),
 		Matchers: []*labels.Matcher{{
@@ -51,7 +51,7 @@ var (
 		ExternalLabels: labels.New(
 			labels.Label{Name: "__name__", Value: "profiles_recorded_rule"},
 			labels.Label{Name: "foo", Value: "bar"},
-			labels.Label{Name: "pyroscope_rule_id", Value: "another-id"},
+			labels.Label{Name: "profiles_rule_id", Value: "another-id"},
 		),
 	}}
 )

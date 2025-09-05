@@ -20,7 +20,7 @@ type RecordingRule struct {
 
 const (
 	metricNamePrefix = "profiles_recorded_"
-	ruleIdLabel      = "pyroscope_rule_id"
+	ruleIdLabel      = "profiles_rule_id"
 )
 
 var uniqueLabels = map[string]bool{
@@ -65,7 +65,7 @@ func newRecordingRuleWithBuilder(rule *settingsv1.RecordingRule, sb *labels.Scra
 	}
 
 	sb.Reset()
-	// ensure no __name__ or pyroscope_rule_id labels already exist
+	// ensure no __name__ or profiles_rule_id labels already exist
 	for _, lbl := range rule.ExternalLabels {
 		if uniqueLabels[lbl.Name] {
 			// skip

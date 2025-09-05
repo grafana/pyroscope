@@ -54,7 +54,7 @@ type Ruler interface {
 	// RecordingRules return a validated set of rules for a tenant, with the following guarantees:
 	// - a "__name__" label is present among ExternalLabels. It contains a valid prometheus metric name, and starts
 	//   with `profiles_recorded_`
-	// - a "pyroscope_rule_id" label is present among ExternalLabels. It identifies the rule.
+	// - a "profiles_rule_id" label is present among ExternalLabels. It identifies the rule.
 	// - a matcher with name "__profile__type__" is present in Matchers
 	RecordingRules(tenant string) []*phlaremodel.RecordingRule
 }
