@@ -46,6 +46,12 @@ GO_MOD_PATHS := api/ lidia/ examples/language-sdk-instrumentation/golang-push/ri
 # Add extra arguments to helm commands
 HELM_ARGS =
 
+HELM_FLAGS_V1 :=
+HELM_FLAGS_V1_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true
+HELM_FLAGS_V2 := --set architecture.storage.v1=false --set architecture.storage.v2=true
+HELM_FLAGS_V2_MICROSERVICES := $(HELM_FLAGS_V1_MICROSERVICES) $(HELM_FLAGS_V2)
+
+
 # Local deployment params
 KIND_CLUSTER = pyroscope-dev
 
@@ -223,7 +229,9 @@ define deploy
 	# Load image into nodes
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)
 	kubectl get pods
-	$(BIN)/helm upgrade --install $(1) ./operations/pyroscope/helm/pyroscope $(2) $(HELM_ARGS) \
+	$(BIN)/helm upgrade --install pyroscope ./operations/pyroscope/helm/pyroscope $(2) $(HELM_ARGS) \
+		--set architecture.deployWriteReadServices=true \
+		--set architecture.overwriteResources.requests.cpu=10m \
 		--set pyroscope.image.tag=$(IMAGE_TAG) \
 		--set pyroscope.image.repository=$(IMAGE_PREFIX)pyroscope \
 		--set pyroscope.podAnnotations.image-digest=$(shell cat .docker-image-digest-pyroscope) \
@@ -280,7 +288,8 @@ docker-image/pyroscope/push-debug: frontend/build go/bin-debug docker-image/pyro
 	$(call docker_buildx,--push,debug.)
 
 .PHONY: docker-image/pyroscope/build
-docker-image/pyroscope/build: frontend/build go/bin
+docker-image/pyroscope/build: frontend/build
+	GOOS=linux $(MAKE) go/bin
 	$(call docker_buildx,--load --iidfile .docker-image-digest-pyroscope,)
 
 .PHONY: docker-image/pyroscope/push
@@ -402,16 +411,16 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm dependency update ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
 	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
-	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ \
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V1) \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
-	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --set architecture.storage.v1=false --set architecture.storage.v2=true \
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V2) \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary-v2.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
-	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --set architecture.microservices.enabled=true --set minio.enabled=true \
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V1_MICROSERVICES) \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
-	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --set architecture.microservices.enabled=true --set architecture.storage.v1=false --set architecture.storage.v2=true --set minio.enabled=true \
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V2_MICROSERVICES) \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services-v2.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
 	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
@@ -432,15 +441,19 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,pyroscope-dev,)
-	# Create a service to provide the same endpoint as micro-services
-	echo '{"kind":"Service","apiVersion":"v1","metadata":{"name":"pyroscope-micro-services-query-frontend"},"spec":{"ports":[{"name":"pyroscope","port":4040,"targetPort":4040}],"selector":{"app.kubernetes.io/component":"all","app.kubernetes.io/instance":"pyroscope-dev"},"type":"ClusterIP"}}' | kubectl apply -f -
+	$(call deploy,pyroscope-dev,$(HELM_FLAGS_V2)
+
+.PHONY: deploy-v1
+deploy-v1: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
+	$(call deploy,pyroscope-dev,$(HELM_FLAGS_V1)
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	# Ensure to delete existing service, that has been created manually by the deploy target
-	kubectl delete svc --field-selector metadata.name=pyroscope-micro-services-query-frontend -l app.kubernetes.io/managed-by!=Helm || true
-	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null --set pyroscope.components.compactor.resources=null)
+	$(call deploy,pyroscope-micro-services,$(HELM_FLAGS_V2_MICROSERVICES))
+
+.PHONY: deploy-micro-services-v1
+deploy-micro-services-v1: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
+	$(call deploy,pyroscope-micro-services,$(HELM_FLAGS_V1_MICROSERVICES))
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json
