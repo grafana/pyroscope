@@ -1,0 +1,187 @@
+openapi: 3.1.0
+info:
+  title: status.v1
+  version: v1.0.0
+tags:
+  - name: scope/public
+    description: This operation is considered part of the public API scope
+  - name: scope/internal
+    description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
+  - name: status.v1.StatusService
+paths:
+  /api/v1/status/buildinfo:
+    get:
+      tags:
+        - status.v1.StatusService
+      summary: GetBuildInfo
+      description: Retrieve build information about the binary
+      operationId: status.v1.StatusService.GetBuildInfo
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/status.v1.GetBuildInfoResponse'
+  /api/v1/status/config:
+    get:
+      tags:
+        - status.v1.StatusService
+      summary: GetConfig
+      description: Retrieve the running config
+      operationId: status.v1.StatusService.GetConfig
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.api.HttpBody'
+  /api/v1/status/config/diff:
+    get:
+      tags:
+        - status.v1.StatusService
+      summary: GetDiffConfig
+      description: Retrieve the diff config to the defaults
+      operationId: status.v1.StatusService.GetDiffConfig
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.api.HttpBody'
+  /api/v1/status/config/default:
+    get:
+      tags:
+        - status.v1.StatusService
+      summary: GetDefaultConfig
+      operationId: status.v1.StatusService.GetDefaultConfig
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.api.HttpBody'
+components:
+  schemas:
+    google.api.HttpBody:
+      type: object
+      properties:
+        contentType:
+          type: string
+          title: content_type
+          description: The HTTP Content-Type header value specifying the content type of the body.
+        data:
+          type: string
+          title: data
+          format: byte
+          description: The HTTP request/response body as raw binary.
+        extensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.protobuf.Any'
+          title: extensions
+          description: |-
+            Application specific response metadata. Must be set in the first response
+             for streaming APIs.
+      title: HttpBody
+      additionalProperties: false
+      description: |-
+        Message that represents an arbitrary HTTP body. It should only be used for
+         payload formats that can't be represented as JSON, such as raw binary or
+         an HTML page.
+
+
+         This message can be used both in streaming and non-streaming API methods in
+         the request as well as the response.
+
+         It can be used as a top-level request field, which is convenient if one
+         wants to extract parameters from either the URL or HTTP template into the
+         request fields and also want access to the raw HTTP body.
+
+         Example:
+
+             message GetResourceRequest {
+               // A unique request id.
+               string request_id = 1;
+
+               // The raw HTTP body is bound to this field.
+               google.api.HttpBody http_body = 2;
+
+             }
+
+             service ResourceService {
+               rpc GetResource(GetResourceRequest)
+                 returns (google.api.HttpBody);
+               rpc UpdateResource(google.api.HttpBody)
+                 returns (google.protobuf.Empty);
+
+             }
+
+         Example with streaming methods:
+
+             service CaldavService {
+               rpc GetCalendar(stream google.api.HttpBody)
+                 returns (stream google.api.HttpBody);
+               rpc UpdateCalendar(stream google.api.HttpBody)
+                 returns (stream google.api.HttpBody);
+
+             }
+
+         Use of this type only changes how the request and response bodies are
+         handled, all other features will continue to work unchanged.
+    google.protobuf.Any:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+          format: binary
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+    status.v1.GetBuildInfoData:
+      type: object
+      properties:
+        version:
+          type: string
+          title: version
+        revision:
+          type: string
+          title: revision
+        branch:
+          type: string
+          title: branch
+        buildUser:
+          type: string
+          title: build_user
+        buildDate:
+          type: string
+          title: build_date
+        goVersion:
+          type: string
+          title: go_version
+      title: GetBuildInfoData
+      additionalProperties: false
+    status.v1.GetBuildInfoRequest:
+      type: object
+      title: GetBuildInfoRequest
+      additionalProperties: false
+    status.v1.GetBuildInfoResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          title: status
+        data:
+          title: data
+          $ref: '#/components/schemas/status.v1.GetBuildInfoData'
+      title: GetBuildInfoResponse
+      additionalProperties: false
+    status.v1.GetConfigRequest:
+      type: object
+      title: GetConfigRequest
+      additionalProperties: false
+security: []

@@ -1,0 +1,1079 @@
+openapi: 3.1.0
+info:
+  title: storegateway.v1
+  version: v1.0.0
+tags:
+  - name: scope/public
+    description: This operation is considered part of the public API scope
+  - name: scope/internal
+    description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
+  - name: storegateway.v1.StoreGatewayService
+paths:
+  /storegateway.v1.StoreGatewayService/MergeProfilesStacktraces: {}
+  /storegateway.v1.StoreGatewayService/MergeProfilesLabels: {}
+  /storegateway.v1.StoreGatewayService/MergeProfilesPprof: {}
+  /storegateway.v1.StoreGatewayService/MergeSpanProfile: {}
+  /storegateway.v1.StoreGatewayService/ProfileTypes:
+    post:
+      tags:
+        - storegateway.v1.StoreGatewayService
+      summary: 'Deprecated: ProfileType call is deprecated in the store components  TODO: Remove this call in release v1.4'
+      description: |-
+        Deprecated: ProfileType call is deprecated in the store components
+         TODO: Remove this call in release v1.4
+      operationId: storegateway.v1.StoreGatewayService.ProfileTypes
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ingester.v1.ProfileTypesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ingester.v1.ProfileTypesResponse'
+  /storegateway.v1.StoreGatewayService/LabelValues:
+    post:
+      tags:
+        - storegateway.v1.StoreGatewayService
+      summary: LabelValues
+      operationId: storegateway.v1.StoreGatewayService.LabelValues
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/types.v1.LabelValuesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.v1.LabelValuesResponse'
+  /storegateway.v1.StoreGatewayService/LabelNames:
+    post:
+      tags:
+        - storegateway.v1.StoreGatewayService
+      summary: LabelNames
+      operationId: storegateway.v1.StoreGatewayService.LabelNames
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/types.v1.LabelNamesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.v1.LabelNamesResponse'
+  /storegateway.v1.StoreGatewayService/Series:
+    post:
+      tags:
+        - storegateway.v1.StoreGatewayService
+      summary: Series
+      operationId: storegateway.v1.StoreGatewayService.Series
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ingester.v1.SeriesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ingester.v1.SeriesResponse'
+  /storegateway.v1.StoreGatewayService/BlockMetadata:
+    post:
+      tags:
+        - storegateway.v1.StoreGatewayService
+      summary: BlockMetadata
+      operationId: storegateway.v1.StoreGatewayService.BlockMetadata
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ingester.v1.BlockMetadataRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ingester.v1.BlockMetadataResponse'
+  /storegateway.v1.StoreGatewayService/GetBlockStats:
+    post:
+      tags:
+        - storegateway.v1.StoreGatewayService
+      summary: GetBlockStats
+      operationId: storegateway.v1.StoreGatewayService.GetBlockStats
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ingester.v1.GetBlockStatsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ingester.v1.GetBlockStatsResponse'
+components:
+  schemas:
+    ingester.v1.StacktracesMergeFormat:
+      type: string
+      title: StacktracesMergeFormat
+      enum:
+        - MERGE_FORMAT_UNSPECIFIED
+        - MERGE_FORMAT_STACKTRACES
+        - MERGE_FORMAT_TREE
+    types.v1.TimeSeriesAggregationType:
+      type: string
+      title: TimeSeriesAggregationType
+      enum:
+        - TIME_SERIES_AGGREGATION_TYPE_SUM
+        - TIME_SERIES_AGGREGATION_TYPE_AVERAGE
+    ingester.v1.BlockHints:
+      type: object
+      properties:
+        ulids:
+          type: array
+          items:
+            type: string
+          title: ulids
+          description: The ULID of blocks to query
+        deduplication:
+          type: boolean
+          title: deduplication
+          description: When all blocks are compacted, there is no effect of the replication factor, hence we do not need to run deduplication.
+      title: BlockHints
+      additionalProperties: false
+    ingester.v1.BlockMetadataRequest:
+      type: object
+      properties:
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+          description: |-
+            Milliseconds since epoch. If missing or zero, only the ingesters will be
+             queried.
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+          description: |-
+            Milliseconds since epoch. If missing or zero, only the ingesters will be
+             queried.
+      title: BlockMetadataRequest
+      additionalProperties: false
+    ingester.v1.BlockMetadataResponse:
+      type: object
+      properties:
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.BlockInfo'
+          title: blocks
+          description: Blocks that are present on the instance for the start to end period
+      title: BlockMetadataResponse
+      additionalProperties: false
+    ingester.v1.BlockStats:
+      type: object
+      properties:
+        seriesCount:
+          type:
+            - integer
+            - string
+          title: series_count
+          format: int64
+        profileCount:
+          type:
+            - integer
+            - string
+          title: profile_count
+          format: int64
+        sampleCount:
+          type:
+            - integer
+            - string
+          title: sample_count
+          format: int64
+        indexBytes:
+          type:
+            - integer
+            - string
+          title: index_bytes
+          format: int64
+        profileBytes:
+          type:
+            - integer
+            - string
+          title: profile_bytes
+          format: int64
+        symbolBytes:
+          type:
+            - integer
+            - string
+          title: symbol_bytes
+          format: int64
+      title: BlockStats
+      additionalProperties: false
+    ingester.v1.GetBlockStatsRequest:
+      type: object
+      properties:
+        ulids:
+          type: array
+          items:
+            type: string
+          title: ulids
+      title: GetBlockStatsRequest
+      additionalProperties: false
+    ingester.v1.GetBlockStatsResponse:
+      type: object
+      properties:
+        blockStats:
+          type: array
+          items:
+            $ref: '#/components/schemas/ingester.v1.BlockStats'
+          title: block_stats
+      title: GetBlockStatsResponse
+      additionalProperties: false
+    ingester.v1.Hints:
+      type: object
+      properties:
+        block:
+          title: block
+          $ref: '#/components/schemas/ingester.v1.BlockHints'
+      title: Hints
+      additionalProperties: false
+      description: Hints are used to propagate information about querying
+    ingester.v1.MergeProfilesLabelsRequest:
+      type: object
+      properties:
+        request:
+          title: request
+          description: The client starts the stream with a request containing the profile type and the labels.
+          $ref: '#/components/schemas/ingester.v1.SelectProfilesRequest'
+        by:
+          type: array
+          items:
+            type: string
+          title: by
+          description: The labels to merge by
+        stackTraceSelector:
+          title: stack_trace_selector
+          description: Select stack traces that match the provided selector.
+          nullable: true
+          $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        profiles:
+          type: array
+          items:
+            type: boolean
+          title: profiles
+          description: On a batch of profiles, the client sends the profiles to keep for merging.
+      title: MergeProfilesLabelsRequest
+      additionalProperties: false
+    ingester.v1.MergeProfilesLabelsResponse:
+      type: object
+      properties:
+        selectedProfiles:
+          title: selectedProfiles
+          description: |-
+            The server replies batch of profiles.
+             A last message without profiles signals the next message will be the result of the merge.
+          $ref: '#/components/schemas/ingester.v1.ProfileSets'
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Series'
+          title: series
+          description: The list of series for the profile with their respective value
+      title: MergeProfilesLabelsResponse
+      additionalProperties: false
+    ingester.v1.MergeProfilesPprofRequest:
+      type: object
+      properties:
+        request:
+          title: request
+          description: The client starts the stream with a request containing the profile type and the labels.
+          $ref: '#/components/schemas/ingester.v1.SelectProfilesRequest'
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+          description: Max nodes in the resulting profile.
+          nullable: true
+        stackTraceSelector:
+          title: stack_trace_selector
+          description: Select stack traces that match the provided selector.
+          nullable: true
+          $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        profiles:
+          type: array
+          items:
+            type: boolean
+          title: profiles
+          description: On a batch of profiles, the client sends the profiles to keep for merging.
+      title: MergeProfilesPprofRequest
+      additionalProperties: false
+    ingester.v1.MergeProfilesPprofResponse:
+      type: object
+      properties:
+        selectedProfiles:
+          title: selectedProfiles
+          description: |-
+            The server replies batch of profiles.
+             A last message without profiles signals the next message will be the result of the merge.
+          $ref: '#/components/schemas/ingester.v1.ProfileSets'
+        result:
+          type: string
+          title: result
+          format: byte
+          description: The merge result in the pprof format.
+      title: MergeProfilesPprofResponse
+      additionalProperties: false
+    ingester.v1.MergeProfilesStacktracesRequest:
+      type: object
+      properties:
+        request:
+          title: request
+          description: The client starts the stream with a request containing the profile type and the labels.
+          $ref: '#/components/schemas/ingester.v1.SelectProfilesRequest'
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+          description: Max nodes in the resulting tree.
+          nullable: true
+        profiles:
+          type: array
+          items:
+            type: boolean
+          title: profiles
+          description: On a batch of profiles, the client sends the profiles to keep for merging.
+      title: MergeProfilesStacktracesRequest
+      additionalProperties: false
+    ingester.v1.MergeProfilesStacktracesResponse:
+      type: object
+      properties:
+        selectedProfiles:
+          title: selectedProfiles
+          description: |-
+            The server replies batch of profiles.
+             A last message without profiles signals the next message will be the result of the merge.
+          $ref: '#/components/schemas/ingester.v1.ProfileSets'
+        result:
+          title: result
+          description: The list of stracktraces for the profile with their respective value
+          $ref: '#/components/schemas/ingester.v1.MergeProfilesStacktracesResult'
+      title: MergeProfilesStacktracesResponse
+      additionalProperties: false
+    ingester.v1.MergeProfilesStacktracesResult:
+      type: object
+      properties:
+        format:
+          title: format
+          $ref: '#/components/schemas/ingester.v1.StacktracesMergeFormat'
+        stacktraces:
+          type: array
+          items:
+            $ref: '#/components/schemas/ingester.v1.StacktraceSample'
+          title: stacktraces
+          description: The list of stracktraces with their respective value
+        functionNames:
+          type: array
+          items:
+            type: string
+          title: function_names
+        treeBytes:
+          type: string
+          title: tree_bytes
+          format: byte
+          description: Merge result marshaled to pyroscope tree bytes.
+      title: MergeProfilesStacktracesResult
+      additionalProperties: false
+    ingester.v1.MergeSpanProfileRequest:
+      type: object
+      properties:
+        request:
+          title: request
+          description: The client starts the stream with a request containing the profile type and the labels.
+          $ref: '#/components/schemas/ingester.v1.SelectSpanProfileRequest'
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+          description: Max nodes in the resulting tree.
+          nullable: true
+        profiles:
+          type: array
+          items:
+            type: boolean
+          title: profiles
+          description: On a batch of profiles, the client sends the profiles to keep for merging.
+      title: MergeSpanProfileRequest
+      additionalProperties: false
+    ingester.v1.MergeSpanProfileResponse:
+      type: object
+      properties:
+        selectedProfiles:
+          title: selectedProfiles
+          description: |-
+            The server replies batch of profiles.
+             A last message without profiles signals the next message will be the result of the merge.
+          $ref: '#/components/schemas/ingester.v1.ProfileSets'
+        result:
+          title: result
+          description: The list of stracktraces for the profile with their respective value
+          $ref: '#/components/schemas/ingester.v1.MergeSpanProfileResult'
+      title: MergeSpanProfileResponse
+      additionalProperties: false
+    ingester.v1.MergeSpanProfileResult:
+      type: object
+      properties:
+        treeBytes:
+          type: string
+          title: tree_bytes
+          format: byte
+      title: MergeSpanProfileResult
+      additionalProperties: false
+    ingester.v1.ProfileSets:
+      type: object
+      properties:
+        labelsSets:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Labels'
+          title: labelsSets
+          description: 'DEPRECATED: Use fingerprints instead.'
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/ingester.v1.SeriesProfile'
+          title: profiles
+        fingerprints:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: fingerprints
+      title: ProfileSets
+      additionalProperties: false
+    ingester.v1.ProfileTypesRequest:
+      type: object
+      properties:
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+          description: Milliseconds since epoch.
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+          description: Milliseconds since epoch.
+      title: ProfileTypesRequest
+      additionalProperties: false
+    ingester.v1.ProfileTypesResponse:
+      type: object
+      properties:
+        profileTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.ProfileType'
+          title: profile_types
+      title: ProfileTypesResponse
+      additionalProperties: false
+    ingester.v1.SelectProfilesRequest:
+      type: object
+      properties:
+        labelSelector:
+          type: string
+          title: label_selector
+        type:
+          title: type
+          $ref: '#/components/schemas/types.v1.ProfileType'
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+          description: Milliseconds since epoch.
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+          description: Milliseconds since epoch.
+        hints:
+          title: hints
+          description: 'Optional: Hints for querying'
+          nullable: true
+          $ref: '#/components/schemas/ingester.v1.Hints'
+        aggregation:
+          title: aggregation
+          description: 'Optional: Aggregation'
+          nullable: true
+          $ref: '#/components/schemas/types.v1.TimeSeriesAggregationType'
+      title: SelectProfilesRequest
+      additionalProperties: false
+    ingester.v1.SelectSpanProfileRequest:
+      type: object
+      properties:
+        labelSelector:
+          type: string
+          title: label_selector
+        type:
+          title: type
+          $ref: '#/components/schemas/types.v1.ProfileType'
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+          description: Milliseconds since epoch.
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+          description: Milliseconds since epoch.
+        spanSelector:
+          type: array
+          items:
+            type: string
+          title: span_selector
+          description: List of span identifiers.
+        hints:
+          title: hints
+          description: 'Optional: Hints for querying'
+          nullable: true
+          $ref: '#/components/schemas/ingester.v1.Hints'
+      title: SelectSpanProfileRequest
+      additionalProperties: false
+    ingester.v1.SeriesProfile:
+      type: object
+      properties:
+        labelIndex:
+          type: integer
+          title: labelIndex
+          format: int32
+          description: The labels index of the series
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: timestamp in milliseconds
+      title: SeriesProfile
+      additionalProperties: false
+    ingester.v1.SeriesRequest:
+      type: object
+      properties:
+        matchers:
+          type: array
+          items:
+            type: string
+          title: matchers
+        labelNames:
+          type: array
+          items:
+            type: string
+          title: label_names
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+          description: |-
+            Milliseconds since epoch. If missing or zero, only the ingesters will be
+             queried.
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+          description: |-
+            Milliseconds since epoch. If missing or zero, only the ingesters will be
+             queried.
+      title: SeriesRequest
+      additionalProperties: false
+    ingester.v1.SeriesResponse:
+      type: object
+      properties:
+        labelsSet:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Labels'
+          title: labels_set
+      title: SeriesResponse
+      additionalProperties: false
+    ingester.v1.StacktraceSample:
+      type: object
+      properties:
+        functionIds:
+          type: array
+          items:
+            type: integer
+            format: int32
+          title: function_ids
+        value:
+          type:
+            - integer
+            - string
+          title: value
+          format: int64
+      title: StacktraceSample
+      additionalProperties: false
+    types.v1.BlockCompaction:
+      type: object
+      properties:
+        level:
+          type: integer
+          title: level
+          format: int32
+        sources:
+          type: array
+          items:
+            type: string
+          title: sources
+        parents:
+          type: array
+          items:
+            type: string
+          title: parents
+      title: BlockCompaction
+      additionalProperties: false
+    types.v1.BlockInfo:
+      type: object
+      properties:
+        ulid:
+          type: string
+          title: ulid
+        minTime:
+          type:
+            - integer
+            - string
+          title: min_time
+          format: int64
+        maxTime:
+          type:
+            - integer
+            - string
+          title: max_time
+          format: int64
+        compaction:
+          title: compaction
+          $ref: '#/components/schemas/types.v1.BlockCompaction'
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+      title: BlockInfo
+      additionalProperties: false
+    types.v1.GoPGO:
+      type: object
+      properties:
+        keepLocations:
+          type: integer
+          title: keep_locations
+          description: Specifies the number of leaf locations to keep.
+        aggregateCallees:
+          type: boolean
+          title: aggregate_callees
+          description: |-
+            Aggregate callees causes the leaf location line number to be ignored,
+             thus aggregating all callee samples (but not callers).
+      title: GoPGO
+      additionalProperties: false
+    types.v1.LabelNamesRequest:
+      type: object
+      properties:
+        matchers:
+          type: array
+          items:
+            type: string
+          title: matchers
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+      title: LabelNamesRequest
+      additionalProperties: false
+    types.v1.LabelNamesResponse:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+          title: names
+      title: LabelNamesResponse
+      additionalProperties: false
+    types.v1.LabelPair:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        value:
+          type: string
+          title: value
+      title: LabelPair
+      additionalProperties: false
+    types.v1.LabelValuesRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        matchers:
+          type: array
+          items:
+            type: string
+          title: matchers
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+      title: LabelValuesRequest
+      additionalProperties: false
+    types.v1.LabelValuesResponse:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+          title: names
+      title: LabelValuesResponse
+      additionalProperties: false
+    types.v1.Labels:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+          description: LabelPair is the key value pairs to identify the corresponding profile
+      title: Labels
+      additionalProperties: false
+    types.v1.Location:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+      title: Location
+      additionalProperties: false
+    types.v1.Point:
+      type: object
+      properties:
+        value:
+          type: number
+          title: value
+          format: double
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: Milliseconds unix timestamp
+        annotations:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.ProfileAnnotation'
+          title: annotations
+      title: Point
+      additionalProperties: false
+    types.v1.ProfileAnnotation:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: ProfileAnnotation
+      additionalProperties: false
+    types.v1.ProfileType:
+      type: object
+      properties:
+        ID:
+          type: string
+          title: ID
+        name:
+          type: string
+          title: name
+        sampleType:
+          type: string
+          title: sample_type
+        sampleUnit:
+          type: string
+          title: sample_unit
+        periodType:
+          type: string
+          title: period_type
+        periodUnit:
+          type: string
+          title: period_unit
+      title: ProfileType
+      additionalProperties: false
+    types.v1.Series:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Point'
+          title: points
+      title: Series
+      additionalProperties: false
+    types.v1.StackTraceSelector:
+      type: object
+      properties:
+        callSite:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Location'
+          title: call_site
+          description: |-
+            Stack trace of the call site. Root at call_site[0].
+             Only stack traces having the prefix provided will be selected.
+             If empty, the filter is ignored.
+        goPgo:
+          title: go_pgo
+          description: |-
+            Stack trace selector for profiles purposed for Go PGO.
+             If set, call_site is ignored.
+          $ref: '#/components/schemas/types.v1.GoPGO'
+      title: StackTraceSelector
+      additionalProperties: false
+      description: StackTraceSelector is used for filtering stack traces by locations.
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+security: []

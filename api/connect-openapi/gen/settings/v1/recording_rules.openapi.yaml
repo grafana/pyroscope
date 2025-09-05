@@ -1,0 +1,418 @@
+openapi: 3.1.0
+info:
+  title: settings.v1
+  version: v1.0.0
+tags:
+  - name: scope/public
+    description: This operation is considered part of the public API scope
+  - name: scope/internal
+    description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
+  - name: settings.v1.RecordingRulesService
+paths:
+  /settings.v1.RecordingRulesService/GetRecordingRule:
+    post:
+      tags:
+        - settings.v1.RecordingRulesService
+      summary: GetRecordingRule
+      operationId: settings.v1.RecordingRulesService.GetRecordingRule
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/settings.v1.GetRecordingRuleRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settings.v1.GetRecordingRuleResponse'
+  /settings.v1.RecordingRulesService/ListRecordingRules:
+    post:
+      tags:
+        - settings.v1.RecordingRulesService
+      summary: ListRecordingRules
+      operationId: settings.v1.RecordingRulesService.ListRecordingRules
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/settings.v1.ListRecordingRulesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settings.v1.ListRecordingRulesResponse'
+  /settings.v1.RecordingRulesService/UpsertRecordingRule:
+    post:
+      tags:
+        - settings.v1.RecordingRulesService
+      summary: UpsertRecordingRule
+      operationId: settings.v1.RecordingRulesService.UpsertRecordingRule
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/settings.v1.UpsertRecordingRuleRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settings.v1.UpsertRecordingRuleResponse'
+  /settings.v1.RecordingRulesService/DeleteRecordingRule:
+    post:
+      tags:
+        - settings.v1.RecordingRulesService
+      summary: DeleteRecordingRule
+      operationId: settings.v1.RecordingRulesService.DeleteRecordingRule
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/settings.v1.DeleteRecordingRuleRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settings.v1.DeleteRecordingRuleResponse'
+components:
+  schemas:
+    settings.v1.MetricType:
+      type: string
+      title: MetricType
+      enum:
+        - TOTAL
+    settings.v1.DeleteRecordingRuleRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: DeleteRecordingRuleRequest
+      additionalProperties: false
+    settings.v1.DeleteRecordingRuleResponse:
+      type: object
+      title: DeleteRecordingRuleResponse
+      additionalProperties: false
+    settings.v1.GetRecordingRuleRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetRecordingRuleRequest
+      additionalProperties: false
+    settings.v1.GetRecordingRuleResponse:
+      type: object
+      properties:
+        rule:
+          title: rule
+          $ref: '#/components/schemas/settings.v1.RecordingRule'
+      title: GetRecordingRuleResponse
+      additionalProperties: false
+    settings.v1.ListRecordingRulesRequest:
+      type: object
+      title: ListRecordingRulesRequest
+      additionalProperties: false
+    settings.v1.ListRecordingRulesResponse:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/settings.v1.RecordingRule'
+          title: rules
+      title: ListRecordingRulesResponse
+      additionalProperties: false
+    settings.v1.RecordingRule:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: The unique id of the recording rule.
+        metricName:
+          type: string
+          title: metric_name
+          description: |-
+            The name of the recording rule, this does not necessarily need to be
+             unique.
+        profileType:
+          type: string
+          title: profile_type
+          description: |-
+            Used in the UI to display what type of profile type this recording rule is
+             generated from.
+
+             This should be the standard format of:
+
+               <name>:<sample-type>:<sample-unit>:<period-type>:<period-unit>
+
+             For example:
+
+               process_cpu:cpu:nanoseconds:cpu:nanoseconds
+        matchers:
+          type: array
+          items:
+            type: string
+          title: matchers
+        groupBy:
+          type: array
+          items:
+            type: string
+          title: group_by
+        externalLabels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: external_labels
+        generation:
+          type:
+            - integer
+            - string
+          title: generation
+          format: int64
+          description: |-
+            The observed generation of this recording rule. This value should be
+             provided when making updates to this record, to avoid conflicting
+             concurrent updates.
+        stacktraceFilter:
+          title: stacktrace_filter
+          description: |-
+            The stacktrace filter allows filtering on particular function names in the stacktrace.
+             This allows recording rules to focus on specific functions and calculate their "total"
+             resource usage.
+          nullable: true
+          $ref: '#/components/schemas/settings.v1.StacktraceFilter'
+        provisioned:
+          type: boolean
+          title: provisioned
+          description: Provisioned rules are added by config and can't be Upsert or Deleted
+      title: RecordingRule
+      additionalProperties: false
+    settings.v1.StacktraceFilter:
+      type: object
+      properties:
+        functionName:
+          title: function_name
+          nullable: true
+          $ref: '#/components/schemas/settings.v1.StacktraceFilterFunctionName'
+      title: StacktraceFilter
+      additionalProperties: false
+    settings.v1.StacktraceFilterFunctionName:
+      type: object
+      properties:
+        functionName:
+          type: string
+          title: function_name
+        metricType:
+          title: metric_type
+          $ref: '#/components/schemas/settings.v1.MetricType'
+      title: StacktraceFilterFunctionName
+      additionalProperties: false
+    settings.v1.UpsertRecordingRuleRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |-
+            The unique id of the recording rule. If an id is not provided, this will
+             create a new recording rule. If an id is provided, it will replace the
+             existing recording rule.
+        metricName:
+          type: string
+          title: metric_name
+        matchers:
+          type: array
+          items:
+            type: string
+          title: matchers
+        groupBy:
+          type: array
+          items:
+            type: string
+          title: group_by
+        externalLabels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: external_labels
+        generation:
+          type:
+            - integer
+            - string
+          title: generation
+          format: int64
+          description: |-
+            The observed generation of this recording rule. If this value does not
+             match the generation stored in the database, this upsert will be rejected.
+        stacktraceFilter:
+          title: stacktrace_filter
+          nullable: true
+          $ref: '#/components/schemas/settings.v1.StacktraceFilter'
+      title: UpsertRecordingRuleRequest
+      additionalProperties: false
+    settings.v1.UpsertRecordingRuleResponse:
+      type: object
+      properties:
+        rule:
+          title: rule
+          $ref: '#/components/schemas/settings.v1.RecordingRule'
+      title: UpsertRecordingRuleResponse
+      additionalProperties: false
+    types.v1.LabelPair:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        value:
+          type: string
+          title: value
+      title: LabelPair
+      additionalProperties: false
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+security: []
