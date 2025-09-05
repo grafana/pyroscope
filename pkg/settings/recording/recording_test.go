@@ -71,7 +71,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "valid",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				Id:         "abcdef",
-				MetricName: "my_metric",
+				MetricName: "profiles_recorded_my_metric",
 				Matchers: []string{
 					`{ label_a = "A" }`,
 					`{ label_b =~ "B" }`,
@@ -91,7 +91,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "minimal_valid",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				Id:             "",
-				MetricName:     "my_metric",
+				MetricName:     "profiles_recorded_my_metric",
 				Matchers:       []string{},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
@@ -102,7 +102,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "valid_with_formatted_fields",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				Id:             "abcdef",
-				MetricName:     "  my_metric	",
+				MetricName:     "  profiles_recorded_my_metric	",
 				Matchers:       []string{},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
@@ -113,7 +113,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "empty_id",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				Id:             "",
-				MetricName:     "my_metric",
+				MetricName:     "profiles_recorded_my_metric",
 				Matchers:       []string{},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
@@ -124,7 +124,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "whitespace_only_id",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				Id:             "  ",
-				MetricName:     "my_metric",
+				MetricName:     "profiles_recorded_my_metric",
 				Matchers:       []string{},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
@@ -135,7 +135,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "invalid_id",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				Id:             "?",
-				MetricName:     "my_metric",
+				MetricName:     "profiles_recorded_my_metric",
 				Matchers:       []string{},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
@@ -160,12 +160,12 @@ func Test_validateUpsert(t *testing.T) {
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
 			},
-			WantErr: `metric_name "\xc0\xaf" must be a valid utf-8 string`,
+			WantErr: "metric_name \"\\xc0\\xaf\" is invalid: invalid metric name: \xc0\xaf",
 		},
 		{
 			Name: "invalid_matchers",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
-				MetricName: "my_metric",
+				MetricName: "profiles_recorded_my_metric",
 				Matchers: []string{
 					"",
 				},
@@ -177,7 +177,7 @@ func Test_validateUpsert(t *testing.T) {
 		{
 			Name: "invalid_group_by",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
-				MetricName: "my_metric",
+				MetricName: "profiles_recorded_my_metric",
 				Matchers:   []string{},
 				GroupBy: []string{
 					"",
@@ -189,7 +189,7 @@ func Test_validateUpsert(t *testing.T) {
 		{
 			Name: "invalid_external_label",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
-				MetricName: "my_metric",
+				MetricName: "profiles_recorded_my_metric",
 				Matchers:   []string{},
 				GroupBy:    []string{},
 				ExternalLabels: []*typesv1.LabelPair{
@@ -205,7 +205,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "invalid_generation",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				Id:             "abcdef",
-				MetricName:     "my_metric",
+				MetricName:     "profiles_recorded_my_metric",
 				Matchers:       []string{},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
@@ -525,7 +525,7 @@ func RandomRule() *settingsv1.RecordingRule {
 	}
 	return &settingsv1.RecordingRule{
 		Id:               RandomString(10),
-		MetricName:       RandomString(5),
+		MetricName:       "profiles_recorded_" + RandomString(5),
 		ProfileType:      profileType,
 		Matchers:         matchers,
 		GroupBy:          groupBy,

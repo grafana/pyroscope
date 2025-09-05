@@ -14,14 +14,14 @@ import (
 
 var (
 	defaultRecordingRulesProto = []*settingsv1.RecordingRule{{
-		MetricName: "default_recording_rule",
+		MetricName: "profiles_recorded_default_recording_rule",
 		Matchers:   []string{"{__profile_type__=\"any-profile-type\"}"},
 	}}
 
 	defaultRecordingRules = []*model.RecordingRule{{
 		ExternalLabels: labels.New(labels.Label{
 			Name:  "__name__",
-			Value: "default_recording_rule",
+			Value: "profiles_recorded_default_recording_rule",
 		}),
 		Matchers: []*labels.Matcher{{
 			Type:  labels.MatchEqual,
@@ -31,7 +31,7 @@ var (
 	}}
 
 	overriddenRecordingRulesProto = []*settingsv1.RecordingRule{{
-		MetricName:     "rule",
+		MetricName:     "profiles_recorded_rule",
 		Matchers:       []string{"{__profile_type__=\"any-profile-type\", matcher1!=\"value\"}"},
 		GroupBy:        []string{"group_by_label"},
 		ExternalLabels: []*typesv1.LabelPair{{Name: "foo", Value: "bar"}},
@@ -44,7 +44,7 @@ var (
 		},
 		GroupBy: []string{"group_by_label"},
 		ExternalLabels: labels.New(
-			labels.Label{Name: "__name__", Value: "rule"},
+			labels.Label{Name: "__name__", Value: "profiles_recorded_rule"},
 			labels.Label{Name: "foo", Value: "bar"},
 		),
 	}}

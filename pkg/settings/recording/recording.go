@@ -265,8 +265,8 @@ func validateUpsert(req *settingsv1.UpsertRecordingRuleRequest) error {
 
 	if req.MetricName == "" {
 		errs = append(errs, fmt.Errorf("metric_name is required"))
-	} else if !prom.IsValidMetricName(prom.LabelValue(req.MetricName)) {
-		errs = append(errs, fmt.Errorf("metric_name %q must be a valid utf-8 string", req.MetricName))
+	} else if err := model.ValidateMetricName(req.MetricName); err != nil {
+		errs = append(errs, fmt.Errorf("metric_name %q is invalid: %v", req.MetricName, err))
 	}
 
 	for _, m := range req.Matchers {
