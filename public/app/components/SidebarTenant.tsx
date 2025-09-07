@@ -5,7 +5,7 @@ import { MenuButton, MenuProps, MenuHeader } from '@szhsin/react-menu';
 import Dropdown, { MenuItem as DropdownMenuItem } from '@pyroscope/ui/Dropdown';
 import flattenChildren from 'react-flatten-children';
 import Icon from '@pyroscope/ui/Icon';
-import { MenuItem } from '@pyroscope/ui/Sidebar';
+import Button from '@pyroscope/ui/Button';
 import {
   selectIsMultiTenant,
   selectTenantID,
@@ -68,7 +68,7 @@ export function SidebarTenant() {
         className={styles.dropdown}
         menuButton={
           <MenuButton className={styles.accountDropdown}>
-            <MenuItem icon={<Icon icon={faUser} />}>Tenant</MenuItem>
+            <Button icon={faUser}>Tenant</Button>
           </MenuButton>
         }
       >

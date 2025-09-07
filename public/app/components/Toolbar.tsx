@@ -15,6 +15,7 @@ import LoadingSpinner from '@pyroscope/ui/LoadingSpinner';
 import DateRangePicker from '@pyroscope/components/DateRangePicker';
 import RefreshButton from '@pyroscope/components/RefreshButton';
 import { AppSelector } from '@pyroscope/components/AppSelector/AppSelector';
+import { SidebarTenant } from '@pyroscope/components/SidebarTenant';
 import styles from './Toolbar.module.css';
 
 interface ToolbarProps {
@@ -46,6 +47,7 @@ function Toolbar({
     <>
       <div className="navbar">
         <div className={styles.leftSide}>
+          <SidebarTenant />
           <AppSelector
             onSelected={onSelected}
             apps={apps}

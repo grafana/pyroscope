@@ -1,5 +1,4 @@
 import React from 'react';
-import { Sidebar } from '@pyroscope/components/Sidebar';
 import { TenantWall } from '@pyroscope/components/TenantWall';
 import { useSelectFirstApp } from '@pyroscope/hooks/useAppNames';
 import '@pyroscope/jquery-import';
@@ -37,7 +36,6 @@ function App() {
   return (
     <Router history={history}>
       <div className="app">
-        <Sidebar />
         <div className="pyroscope-app">
           <TenantWall>
             <Switch>

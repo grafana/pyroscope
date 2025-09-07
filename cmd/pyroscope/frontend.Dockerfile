@@ -1,8 +1,8 @@
-FROM node:20 AS builder
-RUN apt-get update && apt-get install -y libpango1.0-dev libcairo2-dev
+FROM node:24@sha256:701c8a634cb3ddbc1dc9584725937619716882525356f0989f11816ba3747a22 AS builder
+
 WORKDIR /pyroscope
 COPY yarn.lock package.json tsconfig.json ./
-RUN yarn --frozen-lockfile
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn/v6 yarn --frozen-lockfile
 COPY scripts/webpack ./scripts/webpack/
 COPY public/app ./public/app
 COPY public/templates ./public/templates
