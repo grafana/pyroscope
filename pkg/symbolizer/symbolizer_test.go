@@ -12,6 +12,7 @@ import (
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
 
@@ -246,29 +247,17 @@ func TestSymbolizePprof(t *testing.T) {
 }
 
 func TestSymbolizationKeepsSequentialFunctionIDs(t *testing.T) {
-	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
-	mockBucket := mockobjstore.NewMockBucket(t)
+	s := createSymbolizerForBuildID(t, "build-id")
 
 	profile := &googlev1.Profile{
 		Mapping:     []*googlev1.Mapping{{BuildId: 1}},
 		Location:    []*googlev1.Location{{Id: 1, MappingId: 1, Address: 0x1500}},
-		Function:    []*googlev1.Function{{Id: 1, Name: 1}},
+		Function:    []*googlev1.Function{{Id: 1, Name: 2}},
 		StringTable: []string{"", "build-id", "existing_func"},
 		Sample: []*googlev1.Sample{{
 			LocationId: []uint64{1},
 			Value:      []int64{100},
 		}},
-	}
-
-	mockBucket.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found"))
-	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil)
-	mockBucket.On("Upload", mock.Anything, "build-id", mock.Anything).Return(nil)
-
-	s := &Symbolizer{
-		logger:  log.NewNopLogger(),
-		client:  mockClient,
-		bucket:  mockBucket,
-		metrics: newMetrics(nil),
 	}
 
 	err := s.SymbolizePprof(context.Background(), profile)
@@ -531,6 +520,56 @@ func TestSymbolizerMetrics(t *testing.T) {
 	}
 }
 
+// TestMixedSymbolizationCorrectsFlagsForAllMappings tests that the symbolizer correctly sets HasFunctions=false for
+// mappings with partial symbolization, fixing incorrect flags from upstream sources.
+func TestMixedSymbolizationCorrectsFlagsForAllMappings(t *testing.T) {
+	// Create a profile with incorrect HasFunctions=true on a mixed mapping
+	profile := &googlev1.Profile{
+		Mapping: []*googlev1.Mapping{
+			{Id: 1, HasFunctions: true, BuildId: 1, Filename: 1}, // incorrect: has mixed symbolization
+		},
+		Location: []*googlev1.Location{
+			{Id: 1, MappingId: 1, Address: 0x1000, Line: []*googlev1.Line{{FunctionId: 1}}}, // symbolized
+			{Id: 2, MappingId: 1, Address: 0x2000, Line: nil},                               // unsymbolized
+		},
+		Function:    []*googlev1.Function{{Id: 1, Name: 2}},
+		StringTable: []string{"", "test.so", "existing_func"},
+	}
+
+	profile.StringTable[profile.Mapping[0].BuildId] = "" // Make buildID empty so symbolizer skips it
+
+	s := &Symbolizer{
+		logger:  log.NewNopLogger(),
+		client:  nil,
+		bucket:  nil,
+		metrics: newMetrics(nil),
+	}
+
+	err := s.SymbolizePprof(context.Background(), profile)
+	require.NoError(t, err)
+
+	// Verify that HasFunctions was corrected to false for mixed symbolization
+	require.False(t, profile.Mapping[0].HasFunctions, "Mapping with mixed symbolization should have HasFunctions=false")
+}
+
+// createSymbolizerForBuildID creates a symbolizer with mocks for a specific buildID
+func createSymbolizerForBuildID(t *testing.T, buildID string) *Symbolizer {
+	t.Helper()
+	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
+	mockBucket := mockobjstore.NewMockBucket(t)
+
+	mockBucket.On("Get", mock.Anything, buildID).Return(nil, fmt.Errorf("not found"))
+	mockClient.On("FetchDebuginfo", mock.Anything, buildID).Return(openTestFile(t), nil)
+	mockBucket.On("Upload", mock.Anything, buildID, mock.Anything).Return(nil)
+
+	return &Symbolizer{
+		logger:  log.NewNopLogger(),
+		client:  mockClient,
+		bucket:  mockBucket,
+		metrics: newMetrics(nil),
+	}
+}
+
 func assertLocationHasFunction(t *testing.T, profile *googlev1.Profile, loc *googlev1.Location,
 	functionName, fileName string) {
 	t.Helper()
@@ -605,4 +644,76 @@ func createRequest(t *testing.T, buildID string, address uint64) *request {
 			},
 		},
 	}
+}
+
+// TestFlamegraphTruncationIntegration is an integration test for the flamegraph truncation fix.
+// TODO: Move this to an integration test package when one exists.
+//
+// Context: Mixed symbolization profiles with incorrect HasFunctions=true flags caused flamegraph truncation.
+// When clearAddresses() cleared ALL addresses during normalize(), unsymbolized locations became
+// indistinguishable (identical LocationKeys) and merged incorrectly, losing flamegraph blocks.
+//
+// Symbolizer now corrects HasFunctions flags based on actual symbolization state.
+// Mixed mappings get HasFunctions=false, preserving addresses for proper deduplication.
+func TestFlamegraphTruncationIntegration(t *testing.T) {
+	symbolizer := &Symbolizer{
+		logger:  log.NewNopLogger(),
+		metrics: newMetrics(prometheus.NewRegistry()),
+	}
+
+	// Create profile with mixed symbolization - some locations already symbolized
+	profile := &googlev1.Profile{
+		SampleType: []*googlev1.ValueType{{Type: 1, Unit: 2}},
+		PeriodType: &googlev1.ValueType{Type: 1, Unit: 2},
+		Period:     1000000,
+		Sample: []*googlev1.Sample{
+			{LocationId: []uint64{1, 2}, Value: []int64{100}},
+			{LocationId: []uint64{3, 2}, Value: []int64{200}},
+		},
+		Mapping: []*googlev1.Mapping{{
+			Id: 1, HasFunctions: true, BuildId: 3, Filename: 4, // Incorrectly set to true for mixed mapping
+			MemoryStart: 0x400000, MemoryLimit: 0x500000,
+		}},
+		Location: []*googlev1.Location{
+			{Id: 1, MappingId: 1, Address: 0x1500, Line: []*googlev1.Line{{FunctionId: 1}}}, // symbolized location
+			{Id: 2, MappingId: 1, Address: 0x999999, Line: nil},
+			{Id: 3, MappingId: 1, Address: 0x888888, Line: nil},
+		},
+		Function: []*googlev1.Function{
+			{Id: 1, Name: 5}, // Function for the symbolized location
+		},
+		StringTable: []string{"", "samples", "count", "build-id", "test.so", "symbolized_function"},
+	}
+
+	// Symbolizer corrects HasFunctions flag for mixed mapping
+	err := symbolizer.SymbolizePprof(context.Background(), profile)
+	require.NoError(t, err)
+	require.False(t, profile.Mapping[0].HasFunctions, "Mixed mapping should have HasFunctions=false")
+
+	// Profile normalization preserves addresses when HasFunctions=false
+	pprofProfile := &pprof.Profile{Profile: profile}
+	pprofProfile.Normalize() // calls clearAddresses()
+
+	require.NotZero(t, profile.Location[0].Address, "Address should be preserved when HasFunctions=false")
+	require.NotZero(t, profile.Location[1].Address, "Address should be preserved when HasFunctions=false")
+	require.NotZero(t, profile.Location[2].Address, "Address should be preserved when HasFunctions=false")
+
+	// Profile merge preserves all distinct locations
+	var merge pprof.ProfileMerge
+	err = merge.Merge(profile, true)
+	require.NoError(t, err)
+
+	mergedProfile := merge.Profile()
+	require.Equal(t, 3, len(mergedProfile.Location), "All locations should be preserved with distinct addresses")
+
+	// Verify unsymbolized locations maintain their distinct addresses
+	var unsymbolizedAddrs []uint64
+	for _, loc := range mergedProfile.Location {
+		if len(loc.Line) == 0 {
+			unsymbolizedAddrs = append(unsymbolizedAddrs, loc.Address)
+		}
+	}
+	require.Len(t, unsymbolizedAddrs, 2, "Both unsymbolized locations should be preserved")
+	require.Contains(t, unsymbolizedAddrs, uint64(0x999999))
+	require.Contains(t, unsymbolizedAddrs, uint64(0x888888))
 }

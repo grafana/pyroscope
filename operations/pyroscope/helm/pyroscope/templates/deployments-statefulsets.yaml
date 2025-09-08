@@ -69,7 +69,7 @@ spec:
           imagePullPolicy: {{ $values.image.pullPolicy }}
           args:
             - "-target={{ $component }}"
-            - "-self-profiling.disable-push=true"
+            - "-self-profiling.disable-push={{ .Values.pyroscope.disableSelfProfile }}"
             - "-server.http-listen-port={{ $values.service.port }}"
             - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "pyroscope.fullname" .}}"
             - "-memberlist.join=dns+{{ include "pyroscope.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.memberlist.port }}"
@@ -94,6 +94,9 @@ spec:
               value: {{ $value | quote }}
               {{- end }}
           {{- end }}
+          {{- end }}
+          {{- with $values.extraCustomEnvVars }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
           {{- with $values.extraEnvFrom }}
           envFrom:

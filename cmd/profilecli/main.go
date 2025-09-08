@@ -95,6 +95,13 @@ func main() {
 	bucketWebCmd := bucketCmd.Command("web", "Run the web tool for visualizing blocks in object-store buckets.")
 	bucketWebParams := addBucketWebToolParams(bucketWebCmd)
 
+	bucketListV2Cmd := bucketCmd.Command("list-v2-blocks", "List Pyroscope v2 segments and blocks in object-store buckets.")
+	bucketListV2Params := addBucketParams(bucketListV2Cmd)
+
+	bucketInspectV2Cmd := bucketCmd.Command("inspect-v2-blocks", "Inspect Pyroscope v2 segments and blocks in object-store buckets.")
+	bucketInspectV2Params := addBucketParams(bucketInspectV2Cmd)
+	bucketInspectV2Paths := bucketInspectV2Cmd.Arg("path", "block paths").Required().Strings()
+
 	readyCmd := app.Command("ready", "Check Pyroscope health.")
 	readyParams := addReadyParams(readyCmd)
 
@@ -171,6 +178,14 @@ func main() {
 		}
 	case bucketWebCmd.FullCommand():
 		if err := newBucketWebTool(bucketWebParams).run(ctx); err != nil {
+			os.Exit(checkError(err))
+		}
+	case bucketListV2Cmd.FullCommand():
+		if err := bucketListV2(ctx, bucketListV2Params); err != nil {
+			os.Exit(checkError(err))
+		}
+	case bucketInspectV2Cmd.FullCommand():
+		if err := bucketInspectV2(ctx, bucketInspectV2Params, *bucketInspectV2Paths); err != nil {
 			os.Exit(checkError(err))
 		}
 	case blocksCompactCmd.FullCommand():

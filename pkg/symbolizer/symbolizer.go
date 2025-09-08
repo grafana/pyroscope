@@ -70,53 +70,67 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 		}
 		mappingsToSymbolize[uint64(i+1)] = true
 	}
-	if len(mappingsToSymbolize) == 0 {
-		return nil
-	}
-
-	locationsByMapping, err := s.groupLocationsByMapping(profile, mappingsToSymbolize)
-	if err != nil {
-		return fmt.Errorf("grouping locations by mapping: %w", err)
-	}
-
+	var allSymbolizedLocs []symbolizedLocation
 	stringMap := make(map[string]int64, len(profile.StringTable))
 	for i, str := range profile.StringTable {
 		stringMap[str] = int64(i)
 	}
 
-	var allSymbolizedLocs []symbolizedLocation
-
-	for mappingID, locations := range locationsByMapping {
-		mapping := profile.Mapping[mappingID-1]
-
-		binaryName, err := s.extractBinaryName(profile, mapping)
+	// Only do actual symbolization if there are mappings that need it
+	if len(mappingsToSymbolize) > 0 {
+		locationsByMapping, err := s.groupLocationsByMapping(profile, mappingsToSymbolize)
 		if err != nil {
-			return fmt.Errorf("extract binary name: %w", err)
+			return fmt.Errorf("grouping locations by mapping: %w", err)
 		}
 
-		buildID, err := s.extractBuildID(profile, mapping)
-		if err != nil {
-			return fmt.Errorf("extract build ID: %w", err)
-		}
+		for mappingID, locations := range locationsByMapping {
+			mapping := profile.Mapping[mappingID-1]
 
-		if buildID == "" {
-			continue
-		}
+			binaryName, err := s.extractBinaryName(profile, mapping)
+			if err != nil {
+				return fmt.Errorf("extract binary name: %w", err)
+			}
 
-		req := s.createSymbolizationRequest(binaryName, buildID, locations)
+			buildID, err := s.extractBuildID(profile, mapping)
+			if err != nil {
+				return fmt.Errorf("extract build ID: %w", err)
+			}
 
-		s.symbolize(ctx, &req)
+			if buildID == "" {
+				continue
+			}
 
-		for i, loc := range locations {
-			allSymbolizedLocs = append(allSymbolizedLocs, symbolizedLocation{
-				loc:     loc,
-				symLoc:  req.locations[i],
-				mapping: mapping,
-			})
+			req := s.createSymbolizationRequest(binaryName, buildID, locations)
+
+			s.symbolize(ctx, &req)
+
+			for i, loc := range locations {
+				allSymbolizedLocs = append(allSymbolizedLocs, symbolizedLocation{
+					loc:     loc,
+					symLoc:  req.locations[i],
+					mapping: mapping,
+				})
+			}
 		}
 	}
 
-	s.updateAllSymbolsInProfile(profile, allSymbolizedLocs, stringMap)
+	mappingStats := s.updateAllSymbolsInProfile(profile, allSymbolizedLocs, stringMap)
+
+	// Correct HasFunctions flags for ALL mappings based on final symbolization state
+	for i, mapping := range profile.Mapping {
+		mappingID := uint64(i + 1)
+		stats := mappingStats[mappingID]
+
+		// Always correct HasFunctions based on actual symbolization state
+		if stats.total > 0 {
+			// Has locations: set based on symbolization ratio
+			shouldHaveFunctions := stats.symbolized == stats.total
+			mapping.HasFunctions = shouldHaveFunctions
+		} else {
+			// No locations in this profile: assume not symbolized
+			mapping.HasFunctions = false
+		}
+	}
 
 	return nil
 }
@@ -190,18 +204,22 @@ func (s *Symbolizer) createSymbolizationRequest(binaryName, buildID string, locs
 	return req
 }
 
+type mappingStats struct {
+	total      int
+	symbolized int
+}
+
 func (s *Symbolizer) updateAllSymbolsInProfile(
 	profile *googlev1.Profile,
 	symbolizedLocs []symbolizedLocation,
 	stringMap map[string]int64,
-) {
+) map[uint64]mappingStats {
 	funcMap := make(map[funcKey]uint64)
 	maxFuncID := uint64(len(profile.Function))
 
 	for _, item := range symbolizedLocs {
 		loc := item.loc
 		symLoc := item.symLoc
-		mapping := item.mapping
 
 		locIdx := loc.Id - 1
 		if loc.Id <= 0 || locIdx >= uint64(len(profile.Location)) {
@@ -241,9 +259,23 @@ func (s *Symbolizer) updateAllSymbolsInProfile(
 				FunctionId: funcID,
 			}
 		}
-
-		mapping.HasFunctions = true
 	}
+
+	// Collect final symbolization stats in single pass through locations
+	stats := make(map[uint64]mappingStats)
+	for _, loc := range profile.Location {
+		if loc.MappingId == 0 {
+			continue
+		}
+		s := stats[loc.MappingId]
+		s.total++
+		if len(loc.Line) > 0 {
+			s.symbolized++
+		}
+		stats[loc.MappingId] = s
+	}
+
+	return stats
 }
 
 func (s *Symbolizer) symbolize(ctx context.Context, req *request) {

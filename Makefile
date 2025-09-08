@@ -164,6 +164,14 @@ go/bin-pyroscope-debug:
 go/bin-profilecli-debug:
 	$(call go_build_profilecli,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
 
+.PHONY: go/bin-pyroscope
+go/bin-pyroscope:
+	$(call go_build_pyroscope,-s -w $(GO_LDFLAGS),)
+
+.PHONY: go/bin-profilecli
+go/bin-profilecli:
+	$(call go_build_profilecli,-s -w $(GO_LDFLAGS),)
+
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
 	$(BIN)/golangci-lint run ./... ./lidia/...
@@ -369,7 +377,7 @@ $(BIN)/goreleaser: Makefile go.mod
 
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.12.0
+	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.12.3
 
 .PHONY: cve/check
 cve/check:

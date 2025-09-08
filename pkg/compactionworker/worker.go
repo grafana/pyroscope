@@ -603,7 +603,21 @@ func (d *deleter) handleShardTombstone(ctx context.Context, pool *deleterPool, t
 	logger := log.With(d.logger, "tombstone_name", t.Name)
 	level.Info(logger).Log("msg", "cleaning up shard", "max_time", maxTime, "dir", dir)
 
+	// Workaround for MinIO/S3 ListObjects: if we stop consuming before cancelling,
+	// the producer goroutine can block on a final send. Cancel first and keep
+	// draining so the producer exits cleanly. Thanos Iter does not drain on early
+	// return, so we do it here.
+	// See: https://github.com/minio/minio-go/blame/f64cdbde257f48f1a44b0f5aeee0475bad7e0e8d/api-list.go#L784
+	iterCtx, iterCancel := context.WithCancel(ctx)
+	defer iterCancel()
+
 	deleteBlock := func(path string) error {
+		// After we cancel iterCtx, the provider (e.g., MinIO ListObjects) may do
+		// one final blocking send on its results channel. Returning nil here keeps
+		// draining without scheduling new work so the producer isn't left blocked.
+		if iterCtx.Err() != nil {
+			return nil
+		}
 		blockID, err := block.ParseBlockIDFromPath(path)
 		if err != nil {
 			level.Warn(logger).Log("msg", "failed to parse block ID from path", "path", path, "err", err)
@@ -619,7 +633,11 @@ func (d *deleter) handleShardTombstone(ctx context.Context, pool *deleterPool, t
 		blockTs := time.UnixMilli(int64(blockID.Time()))
 		if !blockTs.Before(maxTime) {
 			level.Debug(logger).Log("msg", "reached range end, exiting", "path", path)
-			return filepath.SkipAll
+			// Cancel the iterator so the underlying producer exits promptly.
+			// Keep consuming to drain any buffered items and allow the producer's
+			// final send on ctx.Done() to be received.
+			iterCancel()
+			return nil
 		}
 		d.wg.Add(1)
 		pool.run(func() {
@@ -629,10 +647,9 @@ func (d *deleter) handleShardTombstone(ctx context.Context, pool *deleterPool, t
 		return nil
 	}
 
-	if err := d.bucket.Iter(ctx, dir, deleteBlock, thanosstore.WithRecursiveIter()); err != nil {
-		if errors.Is(err, filepath.SkipAll) {
-			// This is expected if we successfully handled the tombstone.
-			// This is logged in the deleteBlock function.
+	if err := d.bucket.Iter(iterCtx, dir, deleteBlock, thanosstore.WithRecursiveIter()); err != nil {
+		if errors.Is(err, context.Canceled) {
+			// Expected when the iteration context is cancelled.
 			return
 		}
 		// It's only possible if the error is returned by the iterator itself.
