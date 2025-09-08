@@ -84,13 +84,19 @@ spec:
           {{- range $key, $value := $extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
+          {{- /* When v2 and single binary is used we need to explicitly configure "filesystem" (TODO: This should be the default in v2) */}}
+          {{- if and $hasV2 (eq $component "all") }}
+          {{-  if (not (hasKey $extraArgs "storage.backend")) }}
+            - "-storage.backend=filesystem"
+          {{- end }}
+          {{- end }}
           {{- /* v2 specific options for all components */}}
           {{- if $hasV2 }}
           {{-  if (not (hasKey $extraArgs "query-backend.address"))  }}
-            - "-query-backend.address=dns:///_grpc._tcp.{{ include "pyroscope.fullname" . }}-{{ if $hasQueryBackend }}query-backend{{ else }}all{{ end }}-headless.$(NAMESPACE_FQDN):{{ .Values.pyroscope.grpc.port }}"
+            - "-query-backend.address=dns:///_grpc._tcp.{{ include "pyroscope.fullname" . }}{{ if $hasQueryBackend }}-query-backend{{ end }}-headless.$(NAMESPACE_FQDN):{{ .Values.pyroscope.grpc.port }}"
           {{- end }}
           {{-  if (not (hasKey $extraArgs "metastore.address"))  }}
-            - "-metastore.address=kubernetes:///{{ include "pyroscope.fullname" . }}-{{ if $hasMetastore }}metastore{{ else }}all{{ end }}-headless.$(NAMESPACE_FQDN):{{ .Values.pyroscope.grpc.port }}"
+            - "-metastore.address=kubernetes:///{{ include "pyroscope.fullname" . }}{{ if $hasMetastore }}-metastore{{ end }}-headless.$(NAMESPACE_FQDN):{{ .Values.pyroscope.grpc.port }}"
           {{- end }}
           {{- end }}
           {{- /* metastore specific v2 migration config */}}
@@ -140,7 +146,7 @@ spec:
           {{- end }}
           {{- if and $hasV2 (not (hasKey $values.extraEnvVars "PYROSCOPE_METASTORE_SERVICE"))  }}
             - name: PYROSCOPE_METASTORE_SERVICE
-              value: "{{ include "pyroscope.fullname" .}}-{{ if $hasMetastore }}metastore{{ else }}all{{ end }}-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.metastore.port }}"
+              value: "{{ include "pyroscope.fullname" .}}{{ if $hasMetastore }}-metastore{{ end }}-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.metastore.port }}"
           {{- end }}
           {{- with $values.extraEnvVars }}
           {{- range $key, $value := . }}
@@ -197,6 +203,16 @@ spec:
             - name: data
               mountPath: /data-compactor
               subPath: compactor
+            {{- end }}
+            {{- if $hasV2 }}
+            - name: data
+              mountPath: /data-shared
+              subPath: .shared
+            {{- end }}
+            {{- if $isMetastore }}
+            - name: data
+              mountPath: /data-metastore
+              subPath: .metastore
             {{- end }}
             {{- with $values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}

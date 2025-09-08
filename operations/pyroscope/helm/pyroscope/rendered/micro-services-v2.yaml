@@ -2411,6 +2411,9 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
+            - name: data
+              mountPath: /data-shared
+              subPath: .shared
           resources:
             limits:
               memory: 256Mi
@@ -2522,6 +2525,9 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
+            - name: data
+              mountPath: /data-shared
+              subPath: .shared
           resources:
             limits:
               memory: 256Mi
@@ -2634,6 +2640,9 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
+            - name: data
+              mountPath: /data-shared
+              subPath: .shared
           resources:
             limits:
               memory: 1Gi
@@ -2745,6 +2754,9 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
+            - name: data
+              mountPath: /data-shared
+              subPath: .shared
           resources:
             limits:
               memory: 1Gi
@@ -2857,6 +2869,9 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
+            - name: data
+              mountPath: /data-shared
+              subPath: .shared
           resources:
             limits:
               memory: 1Gi
@@ -2968,6 +2983,9 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
+            - name: data
+              mountPath: /data-shared
+              subPath: .shared
           resources:
             limits:
               memory: 256Mi
@@ -3264,6 +3282,9 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
+            - name: data
+              mountPath: /data-shared
+              subPath: .shared
           resources:
             limits:
               memory: 2Gi
@@ -3344,10 +3365,8 @@ spec:
             - "-adaptive-placement.max-dataset-shards=1024"
             - "-adaptive-placement.unit-size-bytes=131072"
             - "-log.level=debug"
-            - "-metastore.data-dir=/data/.metastore/data"
             - "-metastore.index.cleanup-interval=1m"
             - "-metastore.raft.bootstrap-expect-peers=3"
-            - "-metastore.raft.dir=/data/.metastore/raft"
             - "-metastore.snapshot-compact-on-restore=true"
             - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
@@ -3392,6 +3411,12 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
+            - name: data
+              mountPath: /data-shared
+              subPath: .shared
+            - name: data
+              mountPath: /data-metastore
+              subPath: .metastore
           resources:
             limits:
               memory: 2Gi
@@ -3506,6 +3531,9 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
+            - name: data
+              mountPath: /data-shared
+              subPath: .shared
           resources:
             limits:
               memory: 4Gi

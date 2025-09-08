@@ -251,10 +251,8 @@
           "extraArgs": {
             "adaptive-placement.max-dataset-shards": 1024,
             "adaptive-placement.unit-size-bytes": 131072,
-            "metastore.data-dir": "/data/.metastore/data",
             "metastore.index.cleanup-interval": "1m",
             "metastore.raft.bootstrap-expect-peers": 3,
-            "metastore.raft.dir": "/data/.metastore/raft",
             "metastore.snapshot-compact-on-restore": true
           },
           "kind": "StatefulSet",
