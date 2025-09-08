@@ -51,7 +51,7 @@
     "enabled": true
   },
   "architecture": {
-    "deployWriteReadServices": false,
+    "deployUnifiedServices": false,
     "microservices": {
       "enabled": false,
       "v1": {
@@ -204,6 +204,19 @@
             }
           }
         },
+        "admin": {
+          "kind": "Deployment",
+          "replicaCount": 1,
+          "resources": {
+            "limits": {
+              "memory": "256Mi"
+            },
+            "requests": {
+              "cpu": 0.1,
+              "memory": "16Mi"
+            }
+          }
+        },
         "compaction-worker": {
           "kind": "StatefulSet",
           "persistence": {
@@ -235,6 +248,15 @@
           }
         },
         "metastore": {
+          "extraArgs": {
+            "adaptive-placement.max-dataset-shards": 1024,
+            "adaptive-placement.unit-size-bytes": 131072,
+            "metastore.data-dir": "/data/.metastore/data",
+            "metastore.index.cleanup-interval": "1m",
+            "metastore.raft.bootstrap-expect-peers": 3,
+            "metastore.raft.dir": "/data/.metastore/raft",
+            "metastore.snapshot-compact-on-restore": true
+          },
           "kind": "StatefulSet",
           "persistence": {
             "enabled": false
@@ -360,6 +382,10 @@
     "extraVolumeMounts": [],
     "extraVolumes": [],
     "fullnameOverride": "",
+    "grpc": {
+      "port": 9095,
+      "port_name": "grpc"
+    },
     "image": {
       "pullPolicy": "IfNotPresent",
       "repository": "grafana/pyroscope",
@@ -370,6 +396,10 @@
     "memberlist": {
       "port": 7946,
       "port_name": "memberlist"
+    },
+    "metastore": {
+      "port": 9099,
+      "port_name": "raft"
     },
     "nameOverride": "",
     "nodeSelector": {},

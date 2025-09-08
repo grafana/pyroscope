@@ -1,8 +1,10 @@
 {{- $global := . }}
 {{- $components := (fromYaml (include "pyroscope.components" .)) }}
+{{- $hasV2 := $global.Values.architecture.storage.v2 }}
 {{- range $component, $cfg := $components }}
 {{- with $global }}
 {{-  $values := mustMergeOverwrite (deepCopy .Values.pyroscope ) ($cfg | default dict)}}
+{{-  $isMetastore := or (and (eq $component "all") ($hasV2)) (eq $component "metastore") }}
 ---
 apiVersion: v1
 kind: Service
@@ -23,6 +25,18 @@ spec:
       targetPort: {{ $values.service.port_name }}
       protocol: TCP
       name: {{ $values.service.port_name }}
+    {{- if $hasV2 }}
+    - port: {{ $values.grpc.port }}
+      targetPort: {{ $values.grpc.port_name }}
+      protocol: TCP
+      name: {{ $values.grpc.port_name }}
+    {{- end }}
+    {{- if $isMetastore }}
+    - port: {{ $values.metastore.port }}
+      targetPort: {{ $values.metastore.port_name }}
+      protocol: TCP
+      name: {{ $values.metastore.port_name }}
+    {{- end }}
     {{- with $values.service.extraPorts }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -49,55 +63,26 @@ spec:
       targetPort: {{ $values.service.port_name }}
       protocol: TCP
       name: {{ $values.service.port_name }}
+    {{- if $hasV2 }}
+    - port: {{ $values.grpc.port }}
+      targetPort: {{ $values.grpc.port_name }}
+      protocol: TCP
+      name: {{ $values.grpc.port_name }}
+    {{- end }}
+    {{- if $isMetastore }}
+    - port: {{ $values.metastore.port }}
+      targetPort: {{ $values.metastore.port_name }}
+      protocol: TCP
+      name: {{ $values.metastore.port_name }}
+    {{- end }}
     {{- with $values.service.extraPorts }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- if $values.service.publishNotReadyAddresses }}
+  {{- if or $values.service.publishNotReadyAddresses $isMetastore }}
   publishNotReadyAddresses: true
   {{- end }}
   selector:
     {{- include "pyroscope.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 {{- end }}
-{{- end }}
-{{- if $global.Values.architecture.deployWriteReadServices }}
-{{- /* There services are useful wanting to switch from single binary to microservices without reconfiguring the endpoints */}}
-{{- $hasDistributor := hasKey $components "distributor" }}
-{{- $hasQueryFrontend := hasKey $components "query-frontend" }}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ .Release.Name }}-read
-  namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "pyroscope.labels" . | nindent 4 }}
-spec:
-  type: "ClusterIP"
-  ports:
-    - port: 80
-      targetPort: {{ .Values.pyroscope.service.port_name }}
-      protocol: TCP
-      name: {{ .Values.pyroscope.service.port_name }}
-  selector:
-    {{- include "pyroscope.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: "{{ if $hasDistributor }}distributor{{ else }}all{{end}}"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ .Release.Name }}-write
-  namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "pyroscope.labels" . | nindent 4 }}
-spec:
-  type: "ClusterIP"
-  ports:
-    - port: 80
-      targetPort: {{ .Values.pyroscope.service.port_name }}
-      protocol: TCP
-      name: {{ .Values.pyroscope.service.port_name }}
-  selector:
-    {{- include "pyroscope.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: "{{ if $hasQueryFrontend }}query-frontend{{ else }}all{{end}}"
 {{- end }}

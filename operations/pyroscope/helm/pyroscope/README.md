@@ -25,6 +25,7 @@
 |-----|------|---------|-------------|
 | agent | object | `{"agent":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"grafana-agent-config-pyroscope"}},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true"},"replicas":1,"type":"statefulset"},"enabled":false}` | ----------------------------------- |
 | alloy | object | `{"alloy":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"alloy-config-pyroscope"},"stabilityLevel":"public-preview"},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true","profiles.grafana.com/service_git_ref":"v1.8.1","profiles.grafana.com/service_repository":"https://github.com/grafana/alloy"},"replicas":1,"type":"statefulset"},"enabled":true}` | ----------------------------------- |
+| architecture.deployUnifiedServices | bool | `false` | Deploy unified write/read services. These endpoints will can be used no matter if the helm chart is configured as single-binary or microservices |
 | architecture.microservices.enabled | bool | `false` |  |
 | architecture.microservices.v1.ad-hoc-profiles.kind | string | `"Deployment"` |  |
 | architecture.microservices.v1.ad-hoc-profiles.replicaCount | int | `1` |  |
@@ -49,6 +50,7 @@
 | architecture.microservices.v1.ingester.resources.requests.cpu | int | `1` |  |
 | architecture.microservices.v1.ingester.resources.requests.memory | string | `"8Gi"` |  |
 | architecture.microservices.v1.ingester.terminationGracePeriodSeconds | int | `600` |  |
+| architecture.microservices.v1.querier.extraArgs."store-gateway.sharding-ring.replication-factor" | string | `"3"` |  |
 | architecture.microservices.v1.querier.kind | string | `"Deployment"` |  |
 | architecture.microservices.v1.querier.replicaCount | int | `3` |  |
 | architecture.microservices.v1.querier.resources.limits.memory | string | `"1Gi"` |  |
@@ -64,6 +66,7 @@
 | architecture.microservices.v1.query-scheduler.resources.limits.memory | string | `"1Gi"` |  |
 | architecture.microservices.v1.query-scheduler.resources.requests.cpu | string | `"100m"` |  |
 | architecture.microservices.v1.query-scheduler.resources.requests.memory | string | `"256Mi"` |  |
+| architecture.microservices.v1.store-gateway.extraArgs."store-gateway.sharding-ring.replication-factor" | string | `"3"` |  |
 | architecture.microservices.v1.store-gateway.kind | string | `"StatefulSet"` |  |
 | architecture.microservices.v1.store-gateway.persistence.enabled | bool | `false` |  |
 | architecture.microservices.v1.store-gateway.readinessProbe.initialDelaySeconds | int | `60` |  |
@@ -78,27 +81,39 @@
 | architecture.microservices.v1.tenant-settings.resources.requests.memory | string | `"16Mi"` |  |
 | architecture.microservices.v2.ad-hoc-profiles.kind | string | `"Deployment"` |  |
 | architecture.microservices.v2.ad-hoc-profiles.replicaCount | int | `1` |  |
-| architecture.microservices.v2.ad-hoc-profiles.resources.limits.memory | string | `"4Gi"` |  |
+| architecture.microservices.v2.ad-hoc-profiles.resources.limits.memory | string | `"256Mi"` |  |
 | architecture.microservices.v2.ad-hoc-profiles.resources.requests.cpu | float | `0.1` |  |
 | architecture.microservices.v2.ad-hoc-profiles.resources.requests.memory | string | `"16Mi"` |  |
+| architecture.microservices.v2.admin.kind | string | `"Deployment"` |  |
+| architecture.microservices.v2.admin.replicaCount | int | `1` |  |
+| architecture.microservices.v2.admin.resources.limits.memory | string | `"256Mi"` |  |
+| architecture.microservices.v2.admin.resources.requests.cpu | float | `0.1` |  |
+| architecture.microservices.v2.admin.resources.requests.memory | string | `"16Mi"` |  |
 | architecture.microservices.v2.compaction-worker.kind | string | `"StatefulSet"` |  |
 | architecture.microservices.v2.compaction-worker.persistence.enabled | bool | `false` |  |
 | architecture.microservices.v2.compaction-worker.replicaCount | int | `3` |  |
-| architecture.microservices.v2.compaction-worker.resources.limits.memory | string | `"16Gi"` |  |
+| architecture.microservices.v2.compaction-worker.resources.limits.memory | string | `"2Gi"` |  |
 | architecture.microservices.v2.compaction-worker.resources.requests.cpu | int | `1` |  |
-| architecture.microservices.v2.compaction-worker.resources.requests.memory | string | `"8Gi"` |  |
+| architecture.microservices.v2.compaction-worker.resources.requests.memory | string | `"1Gi"` |  |
 | architecture.microservices.v2.compaction-worker.terminationGracePeriodSeconds | int | `1200` |  |
 | architecture.microservices.v2.distributor.kind | string | `"Deployment"` |  |
 | architecture.microservices.v2.distributor.replicaCount | int | `2` |  |
 | architecture.microservices.v2.distributor.resources.limits.memory | string | `"1Gi"` |  |
 | architecture.microservices.v2.distributor.resources.requests.cpu | string | `"500m"` |  |
 | architecture.microservices.v2.distributor.resources.requests.memory | string | `"256Mi"` |  |
+| architecture.microservices.v2.metastore.extraArgs."adaptive-placement.max-dataset-shards" | int | `1024` |  |
+| architecture.microservices.v2.metastore.extraArgs."adaptive-placement.unit-size-bytes" | int | `131072` |  |
+| architecture.microservices.v2.metastore.extraArgs."metastore.data-dir" | string | `"/data/.metastore/data"` |  |
+| architecture.microservices.v2.metastore.extraArgs."metastore.index.cleanup-interval" | string | `"1m"` |  |
+| architecture.microservices.v2.metastore.extraArgs."metastore.raft.bootstrap-expect-peers" | int | `3` |  |
+| architecture.microservices.v2.metastore.extraArgs."metastore.raft.dir" | string | `"/data/.metastore/raft"` |  |
+| architecture.microservices.v2.metastore.extraArgs."metastore.snapshot-compact-on-restore" | bool | `true` |  |
 | architecture.microservices.v2.metastore.kind | string | `"StatefulSet"` |  |
 | architecture.microservices.v2.metastore.persistence.enabled | bool | `false` |  |
 | architecture.microservices.v2.metastore.replicaCount | int | `3` |  |
-| architecture.microservices.v2.metastore.resources.limits.memory | string | `"16Gi"` |  |
+| architecture.microservices.v2.metastore.resources.limits.memory | string | `"2Gi"` |  |
 | architecture.microservices.v2.metastore.resources.requests.cpu | int | `1` |  |
-| architecture.microservices.v2.metastore.resources.requests.memory | string | `"8Gi"` |  |
+| architecture.microservices.v2.metastore.resources.requests.memory | string | `"1Gi"` |  |
 | architecture.microservices.v2.metastore.terminationGracePeriodSeconds | int | `1200` |  |
 | architecture.microservices.v2.query-backend.kind | string | `"Deployment"` |  |
 | architecture.microservices.v2.query-backend.replicaCount | int | `3` |  |
@@ -112,17 +127,18 @@
 | architecture.microservices.v2.query-frontend.resources.requests.memory | string | `"256Mi"` |  |
 | architecture.microservices.v2.segment-writer.kind | string | `"StatefulSet"` |  |
 | architecture.microservices.v2.segment-writer.replicaCount | int | `3` |  |
-| architecture.microservices.v2.segment-writer.resources.limits.memory | string | `"16Gi"` |  |
+| architecture.microservices.v2.segment-writer.resources.limits.memory | string | `"4Gi"` |  |
 | architecture.microservices.v2.segment-writer.resources.requests.cpu | int | `1` |  |
-| architecture.microservices.v2.segment-writer.resources.requests.memory | string | `"8Gi"` |  |
+| architecture.microservices.v2.segment-writer.resources.requests.memory | string | `"2Gi"` |  |
 | architecture.microservices.v2.segment-writer.terminationGracePeriodSeconds | int | `600` |  |
 | architecture.microservices.v2.tenant-settings.kind | string | `"Deployment"` |  |
 | architecture.microservices.v2.tenant-settings.replicaCount | int | `1` |  |
-| architecture.microservices.v2.tenant-settings.resources.limits.memory | string | `"4Gi"` |  |
+| architecture.microservices.v2.tenant-settings.resources.limits.memory | string | `"256Mi"` |  |
 | architecture.microservices.v2.tenant-settings.resources.requests.cpu | float | `0.1` |  |
 | architecture.microservices.v2.tenant-settings.resources.requests.memory | string | `"16Mi"` |  |
-| architecture.storageLayer.v1 | bool | `true` |  |
-| architecture.storageLayer.v2 | bool | `false` |  |
+| architecture.overwriteResources | object | `{}` | This flag is useful for testing, it will overwrite all pods resource statements with its contents |
+| architecture.storage.v1 | bool | `true` |  |
+| architecture.storage.v2 | bool | `false` |  |
 | ingress.annotations | object | `{}` |  |
 | ingress.className | string | `""` |  |
 | ingress.enabled | bool | `false` |  |
@@ -144,6 +160,8 @@
 | pyroscope.extraVolumeMounts | list | `[]` |  |
 | pyroscope.extraVolumes | list | `[]` |  |
 | pyroscope.fullnameOverride | string | `""` |  |
+| pyroscope.grpc.port | int | `9095` |  |
+| pyroscope.grpc.port_name | string | `"grpc"` |  |
 | pyroscope.image.pullPolicy | string | `"IfNotPresent"` |  |
 | pyroscope.image.repository | string | `"grafana/pyroscope"` |  |
 | pyroscope.image.tag | string | `""` |  |
@@ -151,6 +169,8 @@
 | pyroscope.initContainers | list | `[]` |  |
 | pyroscope.memberlist.port | int | `7946` |  |
 | pyroscope.memberlist.port_name | string | `"memberlist"` |  |
+| pyroscope.metastore.port | int | `9099` |  |
+| pyroscope.metastore.port_name | string | `"raft"` |  |
 | pyroscope.nameOverride | string | `""` |  |
 | pyroscope.nodeSelector | object | `{}` |  |
 | pyroscope.persistence.accessModes[0] | string | `"ReadWriteOnce"` |  |

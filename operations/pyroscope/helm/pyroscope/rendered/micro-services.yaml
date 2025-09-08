@@ -1412,7 +1412,7 @@ data:
 
     pyroscope.write "pyroscope_write" {
     	endpoint {
-    		url = "http://pyroscope-dev.default.svc.cluster.local.:4040"
+    		url = "http://pyroscope-dev-distributor.default.svc.cluster.local.:4040"
     	}
     }
 ---
