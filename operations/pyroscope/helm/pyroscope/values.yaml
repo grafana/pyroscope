@@ -377,8 +377,6 @@ architecture:
             memory: 1Gi
             cpu: 1
         extraArgs:
-          metastore.data-dir: /data/.metastore/data
-          metastore.raft.dir: /data/.metastore/raft
           # Expect 3 metastores
           metastore.raft.bootstrap-expect-peers: 3
           # TODO(kolesnikovae): Update defaults.

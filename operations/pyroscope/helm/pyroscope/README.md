@@ -103,10 +103,8 @@
 | architecture.microservices.v2.distributor.resources.requests.memory | string | `"256Mi"` |  |
 | architecture.microservices.v2.metastore.extraArgs."adaptive-placement.max-dataset-shards" | int | `1024` |  |
 | architecture.microservices.v2.metastore.extraArgs."adaptive-placement.unit-size-bytes" | int | `131072` |  |
-| architecture.microservices.v2.metastore.extraArgs."metastore.data-dir" | string | `"/data/.metastore/data"` |  |
 | architecture.microservices.v2.metastore.extraArgs."metastore.index.cleanup-interval" | string | `"1m"` |  |
 | architecture.microservices.v2.metastore.extraArgs."metastore.raft.bootstrap-expect-peers" | int | `3` |  |
-| architecture.microservices.v2.metastore.extraArgs."metastore.raft.dir" | string | `"/data/.metastore/raft"` |  |
 | architecture.microservices.v2.metastore.extraArgs."metastore.snapshot-compact-on-restore" | bool | `true` |  |
 | architecture.microservices.v2.metastore.kind | string | `"StatefulSet"` |  |
 | architecture.microservices.v2.metastore.persistence.enabled | bool | `false` |  |

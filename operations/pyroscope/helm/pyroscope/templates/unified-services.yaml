@@ -21,7 +21,9 @@ spec:
       name: {{ .Values.pyroscope.service.port_name }}
   selector:
     {{- include "pyroscope.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: "{{ if $hasDistributor }}distributor{{ else }}all{{end}}"
+    {{- if $hasDistributor }}
+    app.kubernetes.io/component: distributor
+    {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -39,5 +41,7 @@ spec:
       name: {{ .Values.pyroscope.service.port_name }}
   selector:
     {{- include "pyroscope.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: "{{ if $hasQueryFrontend }}query-frontend{{ else }}all{{end}}"
+    {{- if $hasQueryFrontend }}
+    app.kubernetes.io/component: query-frontend
+    {{- end }}
 {{- end }}

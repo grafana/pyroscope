@@ -441,11 +441,11 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,pyroscope-dev,$(HELM_FLAGS_V2)
+	$(call deploy,pyroscope-dev,$(HELM_FLAGS_V2))
 
 .PHONY: deploy-v1
 deploy-v1: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,pyroscope-dev,$(HELM_FLAGS_V1)
+	$(call deploy,pyroscope-dev,$(HELM_FLAGS_V1))
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
