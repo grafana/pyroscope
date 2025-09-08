@@ -18,7 +18,15 @@ type RecordingRule struct {
 	FunctionName   string
 }
 
-const metricNamePrefix = "profiles_recorded_"
+const (
+	metricNamePrefix = "profiles_recorded_"
+	ruleIdLabel      = "profiles_rule_id"
+)
+
+var uniqueLabels = map[string]bool{
+	ruleIdLabel:                     true,
+	prometheusmodel.MetricNameLabel: true,
+}
 
 func NewRecordingRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
 	sb := labels.NewScratchBuilder(len(rule.ExternalLabels) + 1)
@@ -57,16 +65,20 @@ func newRecordingRuleWithBuilder(rule *settingsv1.RecordingRule, sb *labels.Scra
 	}
 
 	sb.Reset()
-	// ensure __name__ is unique
+	// ensure no __name__ or profiles_rule_id labels already exist
 	for _, lbl := range rule.ExternalLabels {
-		if lbl.Name == prometheusmodel.MetricNameLabel {
-			// skip __name__
+		if uniqueLabels[lbl.Name] {
+			// skip
 			continue
 		}
 		sb.Add(lbl.Name, lbl.Value)
 	}
+
 	// trust rule.MetricName
 	sb.Add(prometheusmodel.MetricNameLabel, rule.MetricName)
+	// Inject recording rule Id
+	sb.Add(ruleIdLabel, rule.Id)
+
 	sb.Sort()
 
 	return &RecordingRule{
