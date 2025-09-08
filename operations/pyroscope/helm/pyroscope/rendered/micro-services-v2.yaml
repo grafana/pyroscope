@@ -24,6 +24,27 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
+  name: pyroscope-dev-admin
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.15.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "admin"
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pyroscope
+      app.kubernetes.io/instance: pyroscope-dev
+      app.kubernetes.io/component: "admin"
+---
+# Source: pyroscope/templates/deployments-statefulsets.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
   name: pyroscope-dev-compaction-worker
   namespace: default
   labels:
@@ -1391,7 +1412,7 @@ data:
 
     pyroscope.write "pyroscope_write" {
     	endpoint {
-    		url = "http://pyroscope-dev.default.svc.cluster.local.:4040"
+    		url = "http://pyroscope-dev-distributor.default.svc.cluster.local.:4040"
     	}
     }
 ---
@@ -1556,6 +1577,51 @@ subjects:
   - kind: ServiceAccount
     name: pyroscope-dev-alloy
     namespace: default
+---
+# Source: pyroscope/templates/rbac-discovery.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pyroscope-dev-discovery
+  labels:
+    helm.sh/chart: pyroscope-1.15.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/managed-by: Helm
+rules:
+- apiGroups:
+  - ""
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  - endpoints
+  - services
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
+---
+# Source: pyroscope/templates/rbac-discovery.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pyroscope-dev-discovery
+  labels:
+    helm.sh/chart: pyroscope-1.15.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pyroscope-dev-discovery
+subjects:
+- kind: ServiceAccount
+  name: pyroscope-dev
+  namespace: default
 ---
 # Source: pyroscope/charts/alloy/templates/cluster_service.yaml
 apiVersion: v1
@@ -1730,6 +1796,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1756,10 +1826,73 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "ad-hoc-profiles"
+---
+# Source: pyroscope/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-admin
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.15.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "admin"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4040
+      targetPort: http2
+      protocol: TCP
+      name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+  selector:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/component: "admin"
+---
+# Source: pyroscope/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-admin-headless
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.15.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "admin"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 4040
+      targetPort: http2
+      protocol: TCP
+      name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+  selector:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/component: "admin"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
@@ -1781,6 +1914,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1807,6 +1944,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1832,6 +1973,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1858,6 +2003,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1883,6 +2032,14 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+    - port: 9099
+      targetPort: raft
+      protocol: TCP
+      name: raft
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1909,6 +2066,15 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+    - port: 9099
+      targetPort: raft
+      protocol: TCP
+      name: raft
+  publishNotReadyAddresses: true
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1934,6 +2100,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1960,6 +2130,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1985,6 +2159,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -2011,6 +2189,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -2036,6 +2218,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -2062,6 +2248,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -2087,6 +2277,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -2113,6 +2307,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -2177,6 +2375,8 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2186,12 +2386,128 @@ spec:
               value: "default.svc.cluster.local."
             - name: PYROSCOPE_V2_EXPERIMENT
               value: "1"
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http2
+              scheme: HTTP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/pyroscope/config.yaml
+              subPath: config.yaml
+            - name: overrides-config
+              mountPath: /etc/pyroscope/overrides/
+            - name: data
+              mountPath: /data
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              cpu: 0.1
+              memory: 16Mi
+      volumes:
+        - name: config
+          configMap:
+            name: pyroscope-dev-config
+        - name: overrides-config
+          configMap:
+            name: pyroscope-dev-overrides-config
+        - name: data
+          emptyDir: {}
+---
+# Source: pyroscope/templates/deployments-statefulsets.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyroscope-dev-admin
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.15.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.14.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "admin"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pyroscope
+      app.kubernetes.io/instance: pyroscope-dev
+      app.kubernetes.io/component: "admin"
+  template:
+    metadata:
+      annotations:
+        checksum/config: 54b9a9b3df6dff29765c333b6e8f8bc250822cad39900620f5b3fc8ed37dec8f
+        profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
+        profiles.grafana.com/service_git_ref: "v1.14.1"
+        profiles.grafana.com/cpu.port_name: http2
+        profiles.grafana.com/cpu.scrape: "true"
+        profiles.grafana.com/goroutine.port_name: http2
+        profiles.grafana.com/goroutine.scrape: "true"
+        profiles.grafana.com/memory.port_name: http2
+        profiles.grafana.com/memory.scrape: "true"
+      labels:
+        app.kubernetes.io/name: pyroscope
+        app.kubernetes.io/instance: pyroscope-dev
+        app.kubernetes.io/component: "admin"
+        name: "admin"
+    spec:
+      serviceAccountName: pyroscope-dev
+      securityContext:
+        fsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+      dnsPolicy: ClusterFirst
+      containers:
+        - name: "admin"
+          securityContext:
+            {}
+          image: "grafana/pyroscope:1.14.1"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-target=admin"
+            - "-self-profiling.disable-push=true"
+            - "-server.http-listen-port=4040"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
+            - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-config.file=/etc/pyroscope/config.yaml"
+            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-log.level=debug"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_FQDN
+              value: "default.svc.cluster.local."
+            - name: PYROSCOPE_V2_EXPERIMENT
+              value: "1"
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
+          ports:
+            - name: http2
+              containerPort: 4040
+              protocol: TCP
+            - name: memberlist
+              containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -2281,6 +2597,8 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
             - "-write-path=segment-writer"
           env:
             - name: POD_NAME
@@ -2291,12 +2609,17 @@ spec:
               value: "default.svc.cluster.local."
             - name: PYROSCOPE_V2_EXPERIMENT
               value: "1"
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -2386,6 +2709,8 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2395,12 +2720,17 @@ spec:
               value: "default.svc.cluster.local."
             - name: PYROSCOPE_V2_EXPERIMENT
               value: "1"
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -2490,6 +2820,8 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
             - "-enable-query-backend=true"
           env:
             - name: POD_NAME
@@ -2500,12 +2832,17 @@ spec:
               value: "default.svc.cluster.local."
             - name: PYROSCOPE_V2_EXPERIMENT
               value: "1"
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -2595,6 +2932,8 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2604,12 +2943,17 @@ spec:
               value: "default.svc.cluster.local."
             - name: PYROSCOPE_V2_EXPERIMENT
               value: "1"
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -2884,6 +3228,8 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2893,12 +3239,17 @@ spec:
               value: "default.svc.cluster.local."
             - name: PYROSCOPE_V2_EXPERIMENT
               value: "1"
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -2990,7 +3341,20 @@ spec:
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-adaptive-placement.max-dataset-shards=1024"
+            - "-adaptive-placement.unit-size-bytes=131072"
             - "-log.level=debug"
+            - "-metastore.data-dir=/data/.metastore/data"
+            - "-metastore.index.cleanup-interval=1m"
+            - "-metastore.raft.bootstrap-expect-peers=3"
+            - "-metastore.raft.dir=/data/.metastore/raft"
+            - "-metastore.snapshot-compact-on-restore=true"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.raft.bind-address=:9099"
+            - "-metastore.raft.server-id=$(POD_NAME).$(PYROSCOPE_METASTORE_SERVICE)"
+            - "-metastore.raft.advertise-address=$(POD_NAME).$(PYROSCOPE_METASTORE_SERVICE)"
+            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.$(PYROSCOPE_METASTORE_SERVICE)"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3000,12 +3364,20 @@ spec:
               value: "default.svc.cluster.local."
             - name: PYROSCOPE_V2_EXPERIMENT
               value: "1"
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
+              protocol: TCP
+            - name: raft
+              containerPort: 9099
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -3098,6 +3470,8 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3107,12 +3481,17 @@ spec:
               value: "default.svc.cluster.local."
             - name: PYROSCOPE_V2_EXPERIMENT
               value: "1"
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-metastore-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:

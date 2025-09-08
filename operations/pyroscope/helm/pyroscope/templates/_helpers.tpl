@@ -102,6 +102,51 @@ all: {kind: "StatefulSet", name: "{{$full_name}}"}
 {{- end }}
 {{- end }}
 
+
+{{/*
+Return the URL for sending profiles to Pyroscope.
+*/}}
+{{- define "pyroscope.write_url" -}}
+{{- $components := (fromYaml (include "pyroscope.components" .)) -}}
+{{- if .Values.architecture.deployUnifiedServices -}}
+http://{{ include "pyroscope.fullname" . }}-write.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}
+{{- else if hasKey $components "distributor" -}}
+http://{{ include "pyroscope.fullname" . }}-distributor.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ ($components.distributor.service).port | default .Values.pyroscope.service.port}}
+{{- else -}}
+http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.service.port }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return the URL for querying profiles from Pyroscope.
+*/}}
+{{- define "pyroscope.read_url" -}}
+{{- $components := (fromYaml (include "pyroscope.components" .)) -}}
+{{- if .Values.architecture.deployUnifiedServices -}}
+http://{{ include "pyroscope.fullname" . }}-read.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}
+{{- else if hasKey $components "query-frontend" -}}A
+{{- $port := ((index $components "query-frontend").service).port | default .Values.pyroscope.service.port }}
+http://{{ include "pyroscope.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ $port }}
+{{- else -}}
+http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.service.port }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return the kubectl port-forward command for querying profiles from Pyroscope.
+*/}}
+{{- define "pyroscope.kubectl_port_forward_read" -}}
+{{- $components := (fromYaml (include "pyroscope.components" .)) -}}
+{{- if .Values.architecture.deployUnifiedServices -}}
+kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pyroscope.fullname" . }}-read {{ .Values.pyroscope.service.port }}:80
+{{- else if hasKey $components "query-frontend" -}}
+{{- $port := ((index $components "query-frontend").service).port | default .Values.pyroscope.service.port }}
+kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pyroscope.fullname" . }}-query-frontend {{ $port }}:{{ $port }}
+{{- else -}}
+kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pyroscope.fullname" . }} {{ .Values.pyroscope.service.port }}:{{ .Values.pyroscope.service.port }}
+{{- end }}
+{{- end }}
+
 {{- define "pyroscope.defaultAutoscalingComponents" -}}
 enabled: false
 minReplicas: 1

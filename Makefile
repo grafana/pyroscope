@@ -230,7 +230,7 @@ define deploy
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)
 	kubectl get pods
 	$(BIN)/helm upgrade --install pyroscope ./operations/pyroscope/helm/pyroscope $(2) $(HELM_ARGS) \
-		--set architecture.deployWriteReadServices=true \
+		--set architecture.deployUnifiedServices=true \
 		--set architecture.overwriteResources.requests.cpu=10m \
 		--set pyroscope.image.tag=$(IMAGE_TAG) \
 		--set pyroscope.image.repository=$(IMAGE_PREFIX)pyroscope \
