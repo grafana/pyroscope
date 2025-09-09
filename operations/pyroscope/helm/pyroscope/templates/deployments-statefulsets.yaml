@@ -77,7 +77,7 @@ spec:
             - "-target={{ $component }}"
             - "-self-profiling.disable-push={{ .Values.pyroscope.disableSelfProfile }}"
             - "-server.http-listen-port={{ $values.service.port }}"
-            - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "pyroscope.fullname" .}}"
+            - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "pyroscope.fullname" .}}{{if $global.Values.architecture.microservices.enabled}}{{$global.Values.architecture.microservices.clusterLabelSuffix}}{{end}}"
             - "-memberlist.join=dns+{{ include "pyroscope.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.memberlist.port }}"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"

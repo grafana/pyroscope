@@ -53,6 +53,7 @@
   "architecture": {
     "deployUnifiedServices": false,
     "microservices": {
+      "clusterLabelSuffix": "-micro-services",
       "enabled": false,
       "v1": {
         "ad-hoc-profiles": {

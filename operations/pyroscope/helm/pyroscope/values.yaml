@@ -216,6 +216,9 @@ architecture:
     # -- (bool) Enable micro-services deployment mode. This is recommend for larger scale deployment and allow right size each aspect of Pyroscope.
     enabled: false
 
+    # -- (string) Memberlist cluster label that will be used for all members of this cluster
+    clusterLabelSuffix: -micro-services
+
     # -- @ignored
     # Not useful to be indivually exposed
     v1:
