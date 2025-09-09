@@ -29,6 +29,10 @@
 | architecture.microservices.clusterLabelSuffix | string | `"-micro-services"` | Memberlist cluster label that will be used for all members of this cluster |
 | architecture.microservices.enabled | bool | `false` | Enable micro-services deployment mode. This is recommend for larger scale deployment and allow right size each aspect of Pyroscope. |
 | architecture.overwriteResources | object | `{}` | This flag is useful for testing, it will overwrite all pods resource statements with its contents |
+| architecture.storage.migration.ingesterWeight | float | `1` | Specifies the fraction [0:1] that should be send to the v1 write path / ingester in combined mode. 0 means no traffics is sent to ingester. 1 means 100% of requests are sent to ingester. |
+| architecture.storage.migration.queryBackend | bool | `true` | Specify a time stamp from when the v2 read path should serve traffic. |
+| architecture.storage.migration.queryBackendFrom | string | `"auto"` | Specify a time stamp from when the v2 read path should serve traffic. |
+| architecture.storage.migration.segmentWriterWeight | float | `1` | Specifies the fraction [0:1] that should be send to the v2 write path / segment-writer in combined mode. 0 means no traffics is sent to segment-writer. 1 means 100% of requests are sent to segment-writer. |
 | architecture.storage.v1 | bool | `true` | Enable v1 storage layer. |
 | architecture.storage.v2 | bool | `false` | Enable v2 storage layer. |
 | ingress.annotations | object | `{}` |  |
