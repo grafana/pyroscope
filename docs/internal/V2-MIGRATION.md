@@ -47,6 +47,8 @@ helm upgrade \
 ### First deploy v1
 
 - Note: Needs persistence enabled otherwise data will be lost after restart
+- Note:   `--set architecture.overwriteResources.requests.cpu=10m` allow this to be tested without allocation many resources, this should not be used in production
+
 
 ```
 helm upgrade \
@@ -54,6 +56,7 @@ helm upgrade \
   ./operations/pyroscope/helm/pyroscope \
   --install \
   --set architecture.microservices.enabled=true \
+  --set architecture.overwriteResources.requests.cpu=10m \
   --set minio.enabled=true \
   --set architecture.storage.v1=true \
   --set architecture.storage.v2=false \
@@ -69,6 +72,7 @@ helm upgrade \
   pyroscope \
   ./operations/pyroscope/helm/pyroscope \
   --set architecture.microservices.enabled=true \
+  --set architecture.overwriteResources.requests.cpu=10m \
   --set minio.enabled=true \
   --set architecture.storage.v1=true \
   --set architecture.storage.v2=true \
