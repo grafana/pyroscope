@@ -96,7 +96,7 @@ pyroscope:
   grpc:
     port: 9095
     port_name: grpc
-  
+
   metastore:
     port: 9099
     port_name: raft
@@ -216,8 +216,8 @@ architecture:
   # -- This flag is useful for testing, it will overwrite all pods resource statements with its contents
   overwriteResources:
     {}
-    #limits: {}
-    #requests: {}
+    # limits: {}
+    # requests: {}
 
 
   # -- Deploy unified write/read services. These endpoints will can be used no matter if the helm chart is configured as single-binary or microservices
@@ -433,9 +433,6 @@ architecture:
           requests:
             memory: 16Mi
             cpu: 0.1
-minio:
-  enabled: true
-
 
 # -------------------------------------
 # Configuration for `alloy` child chart
