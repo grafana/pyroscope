@@ -202,6 +202,17 @@ architecture:
     # -- (bool) Enable v2 storage layer.
     v2: false
 
+    migration:
+      # -- (float) Specifies the fraction [0:1] that should be send to the v1 write path / ingester in combined mode. 0 means no traffics is sent to ingester. 1 means 100% of requests are sent to ingester.
+      ingesterWeight: 1.0
+      # -- (float) Specifies the fraction [0:1] that should be send to the v2 write path / segment-writer in combined mode. 0 means no traffics is sent to segment-writer. 1 means 100% of requests are sent to segment-writer.
+      segmentWriterWeight: 1.0
+
+      # -- (bool) Specify a time stamp from when the v2 read path should serve traffic.
+      queryBackend: true
+      # -- (string) Specify a time stamp from when the v2 read path should serve traffic.
+      queryBackendFrom: auto
+
   # -- This flag is useful for testing, it will overwrite all pods resource statements with its contents
   overwriteResources:
     {}

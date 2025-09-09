@@ -41,3 +41,23 @@ There are various ways to collect profiles from your application depending on yo
 Follow our guide to setup profiling data collection for your workload:
 
 https://grafana.com/docs/pyroscope/latest/configure-client/
+
+{{- $storage := .Values.architecture.storage }}
+{{- if and $storage.v1 $storage.v2 }}
+
+# Pyroscope v2 Migration is active
+
+Write traffic will be written to:
+- {{ mul $storage.migration.ingesterWeight 100 }}% v1: ingester
+- {{ mul $storage.migration.segmentWriterWeight 100 }}% v2: segment-writer
+
+{{ if $storage.migration.queryBackend }}
+Read traffic is served from v2 read path from {{if eq $storage.migration.queryBackendFrom "auto"}}as soon as data was first ingested to v2{{else}}{{$storage.migration.queryBackendFrom}}{{end}}.
+{{- else }}
+Read traffic is served from v1 read path.
+{{- end }}
+{{- end }}
+
+{{- if and (not $storage.v1) (not $storage.v2) }}
+{{- fail "you need to set at least one of .Values.architecture.storage.v1, .Values.architecture.storage.v2 to true" }}
+{{- end }}

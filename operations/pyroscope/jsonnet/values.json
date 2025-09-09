@@ -329,6 +329,12 @@
     },
     "overwriteResources": {},
     "storage": {
+      "migration": {
+        "ingesterWeight": 1,
+        "queryBackend": true,
+        "queryBackendFrom": "auto",
+        "segmentWriterWeight": 1
+      },
       "v1": true,
       "v2": false
     }

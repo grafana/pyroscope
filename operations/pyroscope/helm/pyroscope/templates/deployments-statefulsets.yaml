@@ -128,10 +128,17 @@ spec:
           {{- end }}
           {{- end }}
           {{- /* query-frontend specific v1/v2 migration config */}}
-          {{-  if or (eq $component "all") (eq $component "query-frontend") }}
-          {{-  if and $hasV2 (not (hasKey $extraArgs "enable-query-backend"))  }}
+          {{- if or (eq $component "all") (eq $component "query-frontend") }}
+          {{-   if and $hasV2 (not (hasKey $extraArgs "enable-query-backend"))  }}
+          {{-     if and $hasV1 $global.Values.architecture.storage.migration.queryBackend }}
             - "-enable-query-backend=true"
-          {{- end }}
+          {{-       if and (not (hasKey $extraArgs "enable-query-backend-from")) $global.Values.architecture.storage.migration.queryBackendFrom }}
+            - "-enable-query-backend-from={{$global.Values.architecture.storage.migration.queryBackendFrom}}"
+          {{-       end }}
+          {{-     else }}
+            - "-enable-query-backend=true"
+          {{-     end }}
+          {{-   end }}
           {{- end }}
           env:
             - name: POD_NAME
