@@ -259,7 +259,7 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	defer span.Finish()
 
 	if r.canSkipProfileMerge() {
-		// in some cases we can avoid the overhead of a profile merge
+		// this is the same as the block below, without the profile merge
 		var p *googlev1.Profile
 		err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
 			resolved, err := symbols.Pprof(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
