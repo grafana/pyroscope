@@ -20,7 +20,7 @@ jobs:
           fi
 
       - name: Lint Code Base
-        uses: docker://github/super-linter:v8.1.0
+        uses: super-linter/super-linter@ffde3b2b33b745cb612d787f669ef9442b1339a6 # v8.1.0
         env:
           FILTER_REGEX_EXCLUDE: .*(README\.md|Chart\.yaml|NOTES.txt).*
           FILTER_REGEX_INCLUDE: "operations/pyroscope/helm/pyroscope/templates/.*"
