@@ -257,6 +257,24 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
 	defer span.Finish()
+
+	if len(r.p) == 1 {
+		// skip the merge path when there is a single partition to avoid the overhead
+		var p *googlev1.Profile
+		err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+			resolved, err := symbols.Pprof(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
+			if err != nil {
+				return err
+			}
+			p = resolved
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return p, nil
+	}
+
 	var p pprof.ProfileMerge
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
 		resolved, err := symbols.Pprof(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
