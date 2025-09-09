@@ -402,7 +402,7 @@ helm/lint: $(BIN)/helm
 
 .PHONY: helm/docs
 helm/docs: $(BIN)/helm-docs
-	helm-docs -c operations/pyroscope/helm/pyroscope
+	$(BIN)/helm-docs -c operations/pyroscope/helm/pyroscope
 
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
