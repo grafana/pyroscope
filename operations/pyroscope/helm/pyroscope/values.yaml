@@ -197,7 +197,9 @@ pyroscope:
 
 architecture:
   storage:
+    # -- (bool) Enable v1 storage layer.
     v1: true
+    # -- (bool) Enable v2 storage layer.
     v2: false
 
   # -- This flag is useful for testing, it will overwrite all pods resource statements with its contents
@@ -211,8 +213,11 @@ architecture:
   deployUnifiedServices: false
 
   microservices:
+    # -- (bool) Enable micro-services deployment mode. This is recommend for larger scale deployment and allow right size each aspect of Pyroscope.
     enabled: false
 
+    # -- @ignored
+    # Not useful to be indivually exposed
     v1:
       querier:
         kind: Deployment
@@ -314,6 +319,8 @@ architecture:
           requests:
             memory: 16Mi
             cpu: 0.1
+    # -- @ignored
+    # Not useful to be indivually exposed
     v2:
       query-backend:
         kind: Deployment

@@ -388,6 +388,10 @@ $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.12.3
 
+$(BIN)/helm-docs: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/norwoodj/helm-docs/cmd/helm-docs@v1.14.2
+
 .PHONY: cve/check
 cve/check:
 	docker run -t -i --rm --volume "$(CURDIR)/:/repo" -u "$(shell id -u)" aquasec/trivy:0.45.1 filesystem --cache-dir /repo/.cache/trivy --scanners vuln --skip-dirs .tmp/ --skip-dirs node_modules/ --skip-dirs tools/monitoring/vendor/ /repo
@@ -397,8 +401,8 @@ helm/lint: $(BIN)/helm
 	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope/
 
 .PHONY: helm/docs
-helm/docs: $(BIN)/helm
-	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
+helm/docs: $(BIN)/helm-docs
+	helm-docs -c operations/pyroscope/helm/pyroscope
 
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
