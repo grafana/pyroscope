@@ -258,8 +258,8 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
 	defer span.Finish()
 
-	if len(r.p) == 1 {
-		// skip the merge path when there is a single partition to avoid the overhead
+	if r.canSkipProfileMerge() {
+		// in some cases we can avoid the overhead of a profile merge
 		var p *googlev1.Profile
 		err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
 			resolved, err := symbols.Pprof(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
@@ -302,6 +302,18 @@ func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, *SampleApp
 		}))
 	}
 	return g.Wait()
+}
+
+func (r *Resolver) canSkipProfileMerge() bool {
+	if len(r.p) > 1 {
+		return false
+	}
+	if r.sts != nil && r.sts.GoPgo != nil && r.sts.GoPgo.AggregateCallees {
+		// we rely on merges to implement GoPgo.AggregateCallees
+		return false
+	}
+
+	return true
 }
 
 func (r *Symbols) Pprof(
