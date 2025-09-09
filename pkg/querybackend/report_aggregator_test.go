@@ -211,14 +211,14 @@ func TestReportAggregator_ConcurrentAccess(t *testing.T) {
 	wg.Add(numGoroutines)
 
 	for i := 0; i < numGoroutines; i++ {
-		go func(goroutineID int) {
+		go func() {
 			defer wg.Done()
 			for j := 0; j < reportsPerGoroutine; j++ {
 				report := &queryv1.Report{ReportType: reportType}
 				err := ra.aggregateReport(report)
 				assert.NoError(t, err)
 			}
-		}(i)
+		}()
 	}
 
 	wg.Wait()
