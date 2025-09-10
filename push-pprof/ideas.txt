@@ -1,0 +1,4 @@
+
+1. seems aws specific - confirm, run on gcp + aws and see if both fails
+2. dump traffic in dev aws
+3. why do I see no logs?
