@@ -27,6 +27,10 @@ func (m *mockLimits) QuerySanitizeOnMerge(_ string) bool {
 	return true
 }
 
+func (m *mockLimits) QueryInternalPprofOutputMode(_ string) string {
+	return "bytes"
+}
+
 func (m *mockLimits) MaxQueryParallelism(_ string) int {
 	return 100
 }

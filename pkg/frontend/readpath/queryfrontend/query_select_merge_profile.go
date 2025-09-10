@@ -37,6 +37,12 @@ func (q *QueryFrontend) SelectMergeProfile(
 	if err != nil {
 		return nil, err
 	}
+
+	outputMode := queryv1.PprofOutputMode_PPROF_BYTES
+	if q.limits.QueryInternalPprofOutputMode(tenantIDs[0]) == "typed" {
+		outputMode = queryv1.PprofOutputMode_PPROF_TYPED
+	}
+
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
 		EndTime:       c.Msg.End,
@@ -46,6 +52,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 			Pprof: &queryv1.PprofQuery{
 				MaxNodes:           c.Msg.GetMaxNodes(),
 				StackTraceSelector: c.Msg.StackTraceSelector,
+				OutputMode:         outputMode,
 			},
 		}},
 	})
@@ -55,6 +62,11 @@ func (q *QueryFrontend) SelectMergeProfile(
 	if report == nil {
 		return connect.NewResponse(&profilev1.Profile{}), nil
 	}
+
+	if report.Pprof.TypedPprof != nil {
+		return connect.NewResponse(report.Pprof.TypedPprof), nil
+	}
+
 	var p profilev1.Profile
 	if err = pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {
 		return nil, err

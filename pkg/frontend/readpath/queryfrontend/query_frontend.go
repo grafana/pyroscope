@@ -108,7 +108,8 @@ func (q *QueryFrontend) Query(
 		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
-				MaxNodes: 0,
+				MaxNodes:   0,
+				OutputMode: queryv1.PprofOutputMode_PPROF_BYTES,
 			}
 			modifiedQueries[i].Tree = nil
 		}
@@ -239,12 +240,17 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 		}
 
 		var prof googlev1.Profile
-		if err := pprof.Unmarshal(r.Pprof.Pprof, &prof); err != nil {
-			return fmt.Errorf("failed to unmarshal profile: %w", err)
-		}
-
-		if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
-			return fmt.Errorf("failed to symbolize profile: %w", err)
+		if r.Pprof.TypedPprof != nil {
+			if err := q.symbolizer.SymbolizePprof(ctx, r.Pprof.TypedPprof); err != nil {
+				return fmt.Errorf("failed to symbolize profile: %w", err)
+			}
+		} else {
+			if err := pprof.Unmarshal(r.Pprof.Pprof, &prof); err != nil {
+				return fmt.Errorf("failed to unmarshal profile: %w", err)
+			}
+			if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
+				return fmt.Errorf("failed to symbolize profile: %w", err)
+			}
 		}
 
 		// Convert back to tree if originally a tree
@@ -256,7 +262,7 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 			r.Tree = &queryv1.TreeReport{Tree: treeBytes}
 			r.ReportType = queryv1.ReportType_REPORT_TREE
 			r.Pprof = nil
-		} else {
+		} else if len(prof.Sample) > 0 {
 			symbolizedBytes, err := pprof.Marshal(&prof, true)
 			if err != nil {
 				return fmt.Errorf("failed to marshal symbolized profile: %w", err)

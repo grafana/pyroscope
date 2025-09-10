@@ -94,8 +94,9 @@ type Limits struct {
 	StoreGatewayTenantShardSize int `yaml:"store_gateway_tenant_shard_size" json:"store_gateway_tenant_shard_size"`
 
 	// Query frontend.
-	QuerySplitDuration   model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
-	QuerySanitizeOnMerge bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge"`
+	QuerySplitDuration           model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
+	QuerySanitizeOnMerge         bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge"`
+	QueryInternalPprofOutputMode string         `yaml:"query_internal_pprof_output_mode" json:"query_internal_pprof_output_mode"`
 
 	// Compactor.
 	CompactorBlocksRetentionPeriod     model.Duration `yaml:"compactor_blocks_retention_period" json:"compactor_blocks_retention_period"`
@@ -172,6 +173,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	_ = l.QuerySplitDuration.Set("0s")
 	f.Var(&l.QuerySplitDuration, "querier.split-queries-by-interval", "Split queries by a time interval and execute in parallel. The value 0 disables splitting by time")
 	f.BoolVar(&l.QuerySanitizeOnMerge, "querier.sanitize-on-merge", true, "Whether profiles should be sanitized when merging.")
+	f.StringVar(&l.QueryInternalPprofOutputMode, "querier.internal-pprof-output-mode", "bytes", "The output mode for pprof queries, for transfers between internal components. Valid values are 'bytes' and 'typed'.")
 
 	f.IntVar(&l.MaxQueryParallelism, "querier.max-query-parallelism", 0, "Maximum number of queries that will be scheduled in parallel by the frontend.")
 
@@ -441,6 +443,15 @@ func (o *Overrides) QuerySplitDuration(tenantID string) time.Duration {
 // QuerySanitizeOnMerge returns whether profiles should be sanitized in the read path.
 func (o *Overrides) QuerySanitizeOnMerge(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).QuerySanitizeOnMerge
+}
+
+// QueryInternalPprofOutputMode returns the internal wire transfer type for pprof queries.
+func (o *Overrides) QueryInternalPprofOutputMode(tenantID string) string {
+	mode := o.getOverridesForTenant(tenantID).QueryInternalPprofOutputMode
+	if mode != "bytes" && mode != "typed" {
+		return "bytes"
+	}
+	return mode
 }
 
 // CompactorTenantShardSize returns number of compactors that this user can use. 0 = all compactors.

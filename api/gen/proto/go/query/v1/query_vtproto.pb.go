@@ -8,6 +8,7 @@ import (
 	context "context"
 	binary "encoding/binary"
 	fmt "fmt"
+	v12 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	v11 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	protohelpers "github.com/planetscale/vtprotobuf/protohelpers"
@@ -492,6 +493,7 @@ func (m *PprofQuery) CloneVT() *PprofQuery {
 	}
 	r := new(PprofQuery)
 	r.MaxNodes = m.MaxNodes
+	r.OutputMode = m.OutputMode
 	if rhs := m.StackTraceSelector; rhs != nil {
 		if vtpb, ok := interface{}(rhs).(interface {
 			CloneVT() *v11.StackTraceSelector
@@ -522,6 +524,13 @@ func (m *PprofReport) CloneVT() *PprofReport {
 		tmpBytes := make([]byte, len(rhs))
 		copy(tmpBytes, rhs)
 		r.Pprof = tmpBytes
+	}
+	if rhs := m.TypedPprof; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v12.Profile }); ok {
+			r.TypedPprof = vtpb.CloneVT()
+		} else {
+			r.TypedPprof = proto.Clone(rhs).(*v12.Profile)
+		}
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -1185,6 +1194,9 @@ func (this *PprofQuery) EqualVT(that *PprofQuery) bool {
 	} else if !proto.Equal(this.StackTraceSelector, that.StackTraceSelector) {
 		return false
 	}
+	if this.OutputMode != that.OutputMode {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1205,6 +1217,13 @@ func (this *PprofReport) EqualVT(that *PprofReport) bool {
 		return false
 	}
 	if string(this.Pprof) != string(that.Pprof) {
+		return false
+	}
+	if equal, ok := interface{}(this.TypedPprof).(interface{ EqualVT(*v12.Profile) bool }); ok {
+		if !equal.EqualVT(that.TypedPprof) {
+			return false
+		}
+	} else if !proto.Equal(this.TypedPprof, that.TypedPprof) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2580,6 +2599,11 @@ func (m *PprofQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.OutputMode != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.OutputMode))
+		i--
+		dAtA[i] = 0x18
+	}
 	if m.StackTraceSelector != nil {
 		if vtmsg, ok := interface{}(m.StackTraceSelector).(interface {
 			MarshalToSizedBufferVT([]byte) (int, error)
@@ -2639,6 +2663,28 @@ func (m *PprofReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.TypedPprof != nil {
+		if vtmsg, ok := interface{}(m.TypedPprof).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.TypedPprof)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x1a
 	}
 	if len(m.Pprof) > 0 {
 		i -= len(m.Pprof)
@@ -3118,6 +3164,9 @@ func (m *PprofQuery) SizeVT() (n int) {
 		}
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
+	if m.OutputMode != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.OutputMode))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -3134,6 +3183,16 @@ func (m *PprofReport) SizeVT() (n int) {
 	}
 	l = len(m.Pprof)
 	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.TypedPprof != nil {
+		if size, ok := interface{}(m.TypedPprof).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.TypedPprof)
+		}
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -5864,6 +5923,25 @@ func (m *PprofQuery) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OutputMode", wireType)
+			}
+			m.OutputMode = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.OutputMode |= PprofOutputMode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -5983,6 +6061,50 @@ func (m *PprofReport) UnmarshalVT(dAtA []byte) error {
 			m.Pprof = append(m.Pprof[:0], dAtA[iNdEx:postIndex]...)
 			if m.Pprof == nil {
 				m.Pprof = []byte{}
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TypedPprof", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.TypedPprof == nil {
+				m.TypedPprof = &v12.Profile{}
+			}
+			if unmarshal, ok := interface{}(m.TypedPprof).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.TypedPprof); err != nil {
+					return err
+				}
 			}
 			iNdEx = postIndex
 		default:
