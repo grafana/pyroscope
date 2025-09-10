@@ -196,6 +196,7 @@ func iteration(client pushv1connect.PusherServiceClient, n int) {
 		wg.Add(1)
 		go func() {
 			traceId := fmt.Sprintf("%016x", rand.Uint64())
+			spanId := fmt.Sprintf("%016x", rand.Uint64())
 
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(context.Background(), *timeout)
@@ -207,7 +208,7 @@ func iteration(client pushv1connect.PusherServiceClient, n int) {
 			if *username != "" {
 				req.Header().Set("Authorization", "Basic "+basicAuth(*username, *password))
 			}
-			req.Header().Set("uber-trace-id", traceId+":0:0:1")
+			req.Header().Set("uber-trace-id", traceId+":"+spanId+":0:1")
 			req.Header().Set("jaeger-baggage", "k1=v1,k2=v2")
 			req.Header().Set("User-Agent", "Tolyan/"+traceId+":0:0:1")
 			_, err := client.Push(ctx, req)
