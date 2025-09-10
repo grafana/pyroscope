@@ -3,8 +3,11 @@ package queryfrontend
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/grafana/dskit/tenant"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,27 +21,41 @@ func (q *QueryFrontend) queryFlatPlan(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (*queryv1.Report, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "QueryFrontend.queryFlatPlan")
+
+	sp.SetTag("start_time", req.StartTime)
+	sp.SetTag("end_time", req.EndTime)
+	sp.SetTag(
+		"label_selector",
+		req.LabelSelector,
+	)
+	defer sp.Finish()
+
 	if len(req.Query) != 1 {
 		// Nil report is a valid response.
 		return nil, nil
 	}
-	reportType := querybackend.QueryReportType(req.Query[0].QueryType)
+	queryType := querybackend.QueryReportType(req.Query[0].QueryType)
+	sp.SetTag("query_type", queryType)
 
 	tenants, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	sp.SetTag("tenant_ids", strings.Join(tenants, ","))
 
 	blocks, err := q.QueryMetadata(ctx, req)
 	if err != nil {
 		return nil, err
 	}
+	sp.SetTag("block_count", len(blocks))
 	if len(blocks) == 0 {
 		return nil, nil
 	}
 
 	// Only check for symbolization if all tenants have it enabled
 	shouldSymbolize := q.shouldSymbolize(tenants, blocks)
+	sp.SetTag("should_symbolize", shouldSymbolize)
 
 	modifiedQueries := make([]*queryv1.Query, len(req.Query))
 	for i, originalQuery := range req.Query {
@@ -64,6 +81,17 @@ func (q *QueryFrontend) queryFlatPlan(
 					Blocks: []*metastorev1.BlockMeta{block},
 				},
 			}
+			datasetSize := uint64(0)
+			if len(block.Datasets) > 0 {
+				datasetSize = block.Datasets[0].Size
+			}
+			sp.LogFields(
+				log.String("msg", "querying block"),
+				log.String("block_id", block.Id),
+				log.String("block_size", fmt.Sprint(block.Size)),
+				log.String("dataset_count", fmt.Sprint(len(block.Datasets))),
+				log.String("first_dataset_size", fmt.Sprint(datasetSize)),
+			)
 			resp, err := q.querybackend.Invoke(ctx, &queryv1.InvokeRequest{
 				Tenant:        tenants,
 				StartTime:     req.StartTime,
@@ -79,11 +107,16 @@ func (q *QueryFrontend) queryFlatPlan(
 				return err
 			}
 			for _, report := range resp.Reports {
-				if report.ReportType == reportType {
+				if report.ReportType == queryType {
+					sp.LogFields(
+						log.String("msg", "got report"),
+						log.String("report_type", queryType.String()),
+						log.String("msg_size", fmt.Sprint(resp.SizeVT())),
+					)
 					return reportAggregator.aggregateReport(report)
 				}
 			}
-			return fmt.Errorf("no report of type %s", reportType)
+			return fmt.Errorf("no report of type %s", queryType)
 		})
 	}
 
