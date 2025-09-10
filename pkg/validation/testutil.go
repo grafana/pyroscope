@@ -5,17 +5,18 @@ import (
 )
 
 type MockLimits struct {
-	QuerySplitDurationValue         time.Duration
-	MaxQueryParallelismValue        int
-	MaxQueryLengthValue             time.Duration
-	MaxQueryLookbackValue           time.Duration
-	QueryAnalysisEnabledValue       bool
-	QuerySanitizeOnMergeValue       bool
-	QueryPprofFlatPlanEnabledValue  bool
-	QueryAnalysisSeriesEnabledValue bool
-	MaxLabelNameLengthValue         int
-	MaxLabelValueLengthValue        int
-	MaxLabelNamesPerSeriesValue     int
+	QuerySplitDurationValue           time.Duration
+	MaxQueryParallelismValue          int
+	MaxQueryLengthValue               time.Duration
+	MaxQueryLookbackValue             time.Duration
+	QueryAnalysisEnabledValue         bool
+	QuerySanitizeOnMergeValue         bool
+	QueryPprofFlatPlanEnabledValue    bool
+	QueryInternalPprofOutputModeValue string
+	QueryAnalysisSeriesEnabledValue   bool
+	MaxLabelNameLengthValue           int
+	MaxLabelValueLengthValue          int
+	MaxLabelNamesPerSeriesValue       int
 
 	MaxFlameGraphNodesDefaultValue int
 	MaxFlameGraphNodesMaxValue     int
@@ -52,6 +53,9 @@ func (m MockLimits) QuerySanitizeOnMerge(tenantID string) bool {
 }
 func (m MockLimits) QueryPprofFlatPlanEnabled(string) bool {
 	return m.QueryPprofFlatPlanEnabledValue
+}
+func (m MockLimits) QueryInternalPprofOutputMode(tenantID string) string {
+	return m.QueryInternalPprofOutputModeValue
 }
 func (m MockLimits) MaxFlameGraphNodesDefault(string) int { return m.MaxFlameGraphNodesDefaultValue }
 func (m MockLimits) MaxFlameGraphNodesMax(string) int     { return m.MaxFlameGraphNodesMaxValue }

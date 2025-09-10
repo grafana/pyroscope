@@ -140,6 +140,7 @@ func (c *Cluster) v2Prepare(_ context.Context, memberlistJoin []string) error {
 			comp.flags = append(comp.flags,
 				"-querier.pprof-flat-plan-enabled=true",
 				"-querier.sanitize-on-merge=false",
+				"-querier.internal-pprof-output-mode=typed",
 			)
 		}
 

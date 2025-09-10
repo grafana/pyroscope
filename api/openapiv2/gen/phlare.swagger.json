@@ -1662,6 +1662,14 @@
         }
       }
     },
+    "v1PprofOutputMode": {
+      "type": "string",
+      "enum": [
+        "PPROF_BYTES",
+        "PPROF_TYPED"
+      ],
+      "default": "PPROF_BYTES"
+    },
     "v1PprofQuery": {
       "type": "object",
       "properties": {
@@ -1675,6 +1683,9 @@
         "sanitizeOnMerge": {
           "type": "boolean",
           "description": "TODO(kolesnikovae): Go PGO options."
+        },
+        "outputMode": {
+          "$ref": "#/definitions/v1PprofOutputMode"
         }
       }
     },
@@ -1687,6 +1698,9 @@
         "pprof": {
           "type": "string",
           "format": "byte"
+        },
+        "typedPprof": {
+          "$ref": "#/definitions/googlev1Profile"
         }
       }
     },

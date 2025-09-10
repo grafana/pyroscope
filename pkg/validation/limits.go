@@ -94,9 +94,10 @@ type Limits struct {
 	StoreGatewayTenantShardSize int `yaml:"store_gateway_tenant_shard_size" json:"store_gateway_tenant_shard_size"`
 
 	// Query frontend.
-	QuerySplitDuration        model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
-	QuerySanitizeOnMerge      bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge" category:"experimental" doc:"hidden"`
-	QueryPprofFlatPlanEnabled bool           `yaml:"query_pprof_flat_plan_enabled" json:"query_pprof_flat_plan_enabled" category:"experimental" doc:"hidden"`
+	QuerySplitDuration           model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
+	QuerySanitizeOnMerge         bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge" category:"experimental" doc:"hidden"`
+	QueryPprofFlatPlanEnabled    bool           `yaml:"query_pprof_flat_plan_enabled" json:"query_pprof_flat_plan_enabled" category:"experimental" doc:"hidden"`
+	QueryInternalPprofOutputMode string         `yaml:"query_internal_pprof_output_mode" json:"query_internal_pprof_output_mode"`
 
 	// Compactor.
 	CompactorBlocksRetentionPeriod     model.Duration `yaml:"compactor_blocks_retention_period" json:"compactor_blocks_retention_period"`
@@ -174,6 +175,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&l.QuerySplitDuration, "querier.split-queries-by-interval", "Split queries by a time interval and execute in parallel. The value 0 disables splitting by time")
 	f.BoolVar(&l.QuerySanitizeOnMerge, "querier.sanitize-on-merge", true, "Whether profiles should be sanitized when merging.")
 	f.BoolVar(&l.QueryPprofFlatPlanEnabled, "querier.pprof-flat-plan-enabled", false, "Whether to use a flat query plan for pprof queries.")
+	f.StringVar(&l.QueryInternalPprofOutputMode, "querier.internal-pprof-output-mode", "bytes", "The output mode for pprof queries, for transfers between internal components. Valid values are 'bytes' and 'typed'.")
 
 	f.IntVar(&l.MaxQueryParallelism, "querier.max-query-parallelism", 0, "Maximum number of queries that will be scheduled in parallel by the frontend.")
 
@@ -448,6 +450,15 @@ func (o *Overrides) QuerySanitizeOnMerge(tenantID string) bool {
 // QueryPprofFlatPlanEnabled returns whether profile queries should be executed with a flat query plan.
 func (o *Overrides) QueryPprofFlatPlanEnabled(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).QueryPprofFlatPlanEnabled
+}
+
+// QueryInternalPprofOutputMode returns the internal wire transfer type for pprof queries.
+func (o *Overrides) QueryInternalPprofOutputMode(tenantID string) string {
+	mode := o.getOverridesForTenant(tenantID).QueryInternalPprofOutputMode
+	if mode != "bytes" && mode != "typed" {
+		return "bytes"
+	}
+	return mode
 }
 
 // CompactorTenantShardSize returns number of compactors that this user can use. 0 = all compactors.

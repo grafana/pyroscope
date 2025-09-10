@@ -31,6 +31,10 @@ func (m *mockLimits) QueryPprofFlatPlanEnabled(string) bool {
 	return false
 }
 
+func (m *mockLimits) QueryInternalPprofOutputMode(_ string) string {
+	return "bytes"
+}
+
 func (m *mockLimits) MaxQueryParallelism(_ string) int {
 	return 100
 }

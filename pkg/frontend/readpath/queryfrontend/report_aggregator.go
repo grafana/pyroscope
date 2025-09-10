@@ -144,10 +144,22 @@ func (a *pprofAggregator) aggregate(report *queryv1.Report) error {
 		a.query = r.Query.CloneVT()
 	})
 
+	if a.query.OutputMode == queryv1.PprofOutputMode_PPROF_TYPED {
+		return a.profile.Merge(r.TypedPprof, a.sanitizeOnMerge)
+	}
+
 	return a.profile.MergeBytes(r.Pprof, a.sanitizeOnMerge)
 }
 
 func (a *pprofAggregator) build() *queryv1.Report {
+	if a.query.OutputMode == queryv1.PprofOutputMode_PPROF_TYPED {
+		return &queryv1.Report{
+			Pprof: &queryv1.PprofReport{
+				Query:      a.query,
+				TypedPprof: a.profile.Profile(),
+			},
+		}
+	}
 	return &queryv1.Report{
 		Pprof: &queryv1.PprofReport{
 			Query: a.query,

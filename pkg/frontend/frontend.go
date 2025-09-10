@@ -115,6 +115,7 @@ type Limits interface {
 	SymbolizerEnabled(string) bool
 	QuerySanitizeOnMerge(string) bool
 	QueryPprofFlatPlanEnabled(string) bool
+	QueryInternalPprofOutputMode(string) string
 	validation.FlameGraphLimits
 }
 
