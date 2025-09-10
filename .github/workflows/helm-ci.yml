@@ -14,8 +14,8 @@ jobs:
       - name: Check Docs
         run: |
           make helm/docs
-          if ! git diff --exit-code pyroscope/pyroscope/helm/pyroscope; then
-              echo "Documentation not up to date. Please run "make helm/docs and commit changes!" >&2
+          if ! git diff --exit-code -- operations/pyroscope/helm/pyroscope/; then
+              echo 'Documentation not up to date. Please run "make helm/docs" and commit changes!' >&2
               exit 1
           fi
 
