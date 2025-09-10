@@ -1,21 +1,20 @@
 GL_USERNAME ?=
 GL_PASSWORD ?=
+GL_URL ?=
 
 
 .PHONY: remote
 remote: push-pprof
-	strace -f ./push-pprof \
-		-url https://profiles-prod-008.grafana.net \
+	./push-pprof \
+		-url $(GL_URL) \
 		-username $(GL_USERNAME) \
 		-password  $(GL_PASSWORD) \
-		2>strace.txt \
 			| tee log.txt
 
 
 .PHONY: local
 local: push-pprof
-	strace -f ./push-pprof \
-		2>strace.txt \
+	 ./push-pprof \
 			| tee log.txt
 
 

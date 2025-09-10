@@ -120,7 +120,7 @@ var (
 	password   = flag.String("password", "", "Basic auth password (optional)")
 	keylog     = flag.String("keylog", "keylog.txt", "")
 	tracelog   = flag.String("tracelog", "tracelog.txt", "")
-	timeout    = flag.Duration("timeout", 10*time.Second, "Timeout for the HTTP request")
+	timeout    = flag.Duration("timeout", 30*time.Second, "Timeout for the HTTP request")
 	burstSleep = flag.Duration("iteration-sleep", 20*time.Second, "How long to sleep between iterations")
 	burstSize  = flag.Int("iteration-size", 1000, "How many requests to send in a iteration")
 )
@@ -143,18 +143,13 @@ func main() {
 		return res, nil
 	})
 	config := commonconfig.DefaultHTTPClientConfig
-	config.EnableHTTP2 = false
+	config.EnableHTTP2 = true
 	httpClient, _ = commonconfig.NewClientFromConfig(config, "push-pprof-timeout-issue", tls)
-
-	client := pushv1connect.NewPusherServiceClient(
-		httpClient,
-		*url,
-	)
 
 	for {
 		it := time.Now()
-		iteration(client, *burstSize)
-		_ = globalLogger.Log("msg", "Sent", "n", *burstSize, "iteration-time", time.Since(it), "sleeping", *burstSleep)
+		iteration(httpClient, *burstSize)
+		_ = globalLogger.Log("n", *burstSize, "iteration_time", time.Since(it), "sleeping", *burstSleep)
 		time.Sleep(*burstSleep)
 	}
 
@@ -164,12 +159,8 @@ func initLogging() {
 	var err error
 	var f *os.File
 
-	st := time.Now()
 	globalLogger = log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-	globalLogger = log.WithSuffix(globalLogger,
-		"tt", log.Valuer(func() interface{} {
-			return time.Since(st)
-		}))
+
 	globalLogger = log.WithPrefix(globalLogger, "ts", log.DefaultTimestampUTC)
 
 	f, err = os.OpenFile(*tracelog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
@@ -178,9 +169,6 @@ func initLogging() {
 	}
 	requestTraceLogger = log.NewLogfmtLogger(log.NewSyncWriter(f))
 	requestTraceLogger = log.WithPrefix(requestTraceLogger, "ts", log.DefaultTimestampUTC)
-	requestTraceLogger = log.With(requestTraceLogger, "tt", log.Valuer(func() interface{} {
-		return time.Since(st)
-	}))
 
 	f, err = os.OpenFile(*keylog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
@@ -190,49 +178,57 @@ func initLogging() {
 
 }
 
-func iteration(client pushv1connect.PusherServiceClient, n int) {
+func iteration(client *http.Client, n int) {
 	wg := sync.WaitGroup{}
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func() {
-			traceId := fmt.Sprintf("%016x", rand.Uint64())
-			spanId := fmt.Sprintf("%016x", rand.Uint64())
-
 			defer wg.Done()
-			ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-			defer cancel()
-
-			ct := newClientTrace()
-			ctx = httptrace.WithClientTrace(ctx, ct.trace)
-			req := connect.NewRequest(newRequest())
-			if *username != "" {
-				req.Header().Set("Authorization", "Basic "+basicAuth(*username, *password))
-			}
-			req.Header().Set("uber-trace-id", traceId+":"+spanId+":0:1")
-			req.Header().Set("jaeger-baggage", "k1=v1,k2=v2")
-			req.Header().Set("User-Agent", "Tolyan/"+traceId+":0:0:1")
-			_, err := client.Push(ctx, req)
-			requstLogger := func(l log.Logger, err error) log.Logger {
-				var kv []interface{}
-				kv = append(kv, "traceId", traceId)
-				if err != nil {
-					kv = append(kv, "err", err)
-				}
-				for _, s := range ct.dumpConnection() {
-					kv = append(kv, "con", s)
-				}
-				return log.With(l, kv...)
-			}
-
-			tl := requstLogger(requestTraceLogger, err)
-			_ = tl.Log()
-			ct.flush(tl)
-			if err != nil {
-				_ = requstLogger(globalLogger, err).Log()
-			}
+			oneRequest(client)
 		}()
 	}
 	wg.Wait()
+}
+
+func oneRequest(client *http.Client) {
+	traceId := fmt.Sprintf("%016x", rand.Uint64())
+	connectionId := traceId
+	spanId := fmt.Sprintf("%016x", rand.Uint64())
+	requestLogger := func(l log.Logger) log.Logger {
+		return log.With(l, "trace_id", traceId, "connection_id", connectionId)
+	}
+	tl := requestLogger(requestTraceLogger)
+	tl.Log("msg", "Sending request")
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+
+	ct := newClientTrace(connectionId)
+	ctx = httptrace.WithClientTrace(ctx, ct.trace)
+	req := connect.NewRequest(newRequest())
+	if *username != "" {
+		req.Header().Set("Authorization", "Basic "+basicAuth(*username, *password))
+	}
+	req.Header().Set("uber-trace-id", traceId+":"+spanId+":0:1")
+	req.Header().Set("jaeger-baggage", "k1=v1,k2=v2")
+	req.Header().Set("User-Agent", "Tolyan/traceId:"+traceId)
+
+	connectClient := pushv1connect.NewPusherServiceClientTracingThroughURL(
+		client,
+		*url,
+		traceId,
+		connectionId,
+	)
+
+	_, err := connectClient.Push(ctx, req)
+
+	if err != nil {
+		_ = log.With(requestLogger(globalLogger), ct.dumpConnection()...).Log("msg", "Request failed", "err", err)
+		_ = log.With(tl, ct.dumpConnection()...).Log("msg", "Request failed", "err", err)
+	} else {
+		_ = log.With(tl, ct.dumpConnection()...).Log("msg", "Request successful")
+	}
+	ct.flush(tl)
 }
 
 // See 2 (end of page 4) https://www.ietf.org/rfc/rfc2617.txt
@@ -246,30 +242,54 @@ func basicAuth(username, password string) string {
 }
 
 type clientTrace struct {
-	trace *httptrace.ClientTrace
-	es    [][]any
-	mu    sync.Mutex
-
-	connections []httptrace.GotConnInfo
+	trace         *httptrace.ClientTrace
+	es            [][]any
+	mu            sync.Mutex
+	connectionIds []string
+	connections   []httptrace.GotConnInfo
 }
 
-func newClientTrace() *clientTrace {
-	t := &clientTrace{}
+var mu sync.Mutex
+var connectionToConnectionId map[connectionInfoKey]string = make(map[connectionInfoKey]string)
+
+type connectionInfoKey struct {
+	localAddr  string
+	remoteAddr string
+}
+
+func newClientTrace(connectionID string) *clientTrace {
+	t := &clientTrace{
+		connectionIds: []string{connectionID},
+	}
 	t.trace = &httptrace.ClientTrace{
 		GetConn: func(hostPort string) {
 			t.log(
-				"msg", "GetConn",
+				"trace_op", "GetConn",
 				"hostPort", hostPort,
 			)
 		},
 		GotConn: func(info httptrace.GotConnInfo) {
+			k := connectionInfoKey{
+				localAddr:  info.Conn.LocalAddr().String(),
+				remoteAddr: info.Conn.RemoteAddr().String(),
+			}
+
+			mu.Lock()
+			if cid, ok := connectionToConnectionId[k]; ok {
+				t.mu.Lock()
+				t.connectionIds = append(t.connectionIds, cid)
+				t.mu.Unlock()
+			} else {
+				connectionToConnectionId[k] = connectionID
+			}
+			mu.Unlock()
 			var remoteAddr, localAddr string
 			if info.Conn != nil {
 				remoteAddr = info.Conn.RemoteAddr().String()
 				localAddr = info.Conn.LocalAddr().String()
 			}
 			t.log(
-				"msg", "GotConn",
+				"trace_op", "GotConn",
 				"Reused", info.Reused,
 				"WasIdle", info.WasIdle,
 				"IdleTime", info.IdleTime,
@@ -280,18 +300,18 @@ func newClientTrace() *clientTrace {
 		},
 		PutIdleConn: func(err error) {
 			t.log(
-				"msg", "PutIdleConn",
+				"trace_op", "PutIdleConn",
 				"err", err,
 			)
 		},
 		GotFirstResponseByte: func() {
-			t.log("msg", "GotFirstResponseByte")
+			t.log("trace_op", "GotFirstResponseByte")
 		},
 		Got100Continue: nil,
 		Got1xxResponse: nil,
 		DNSStart: func(info httptrace.DNSStartInfo) {
 			t.log(
-				"msg", "DNSStart",
+				"trace_op", "DNSStart",
 				"Host", info.Host,
 			)
 		},
@@ -301,7 +321,7 @@ func newClientTrace() *clientTrace {
 				addrs = append(addrs, addr.String())
 			}
 			t.log(
-				"msg", "DNSDone",
+				"trace_op", "DNSDone",
 				"Addrs", strings.Join(addrs, ","),
 				"Coalesced", info.Coalesced,
 				"Err", info.Err,
@@ -309,24 +329,24 @@ func newClientTrace() *clientTrace {
 		},
 		ConnectStart: func(network, addr string) {
 			t.log(
-				"msg", "ConnectStart",
+				"trace_op", "ConnectStart",
 				"addr", addr,
 				"network", network)
 		},
 		ConnectDone: func(network, addr string, err error) {
 			t.log(
-				"msg", "ConnectDone",
+				"trace_op", "ConnectDone",
 				"addr", addr,
 				"network", network,
 				"err", err,
 			)
 		},
 		TLSHandshakeStart: func() {
-			t.log("msg", "TLSHandshakeStart")
+			t.log("trace_op", "TLSHandshakeStart")
 		},
 		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
 			t.log(
-				"msg", "TLSHandshakeDone",
+				"trace_op", "TLSHandshakeDone",
 				"Version", state.Version,
 				"CipherSuite", state.CipherSuite,
 				"ServerName", state.ServerName,
@@ -336,12 +356,12 @@ func newClientTrace() *clientTrace {
 		},
 		WroteHeaderField: nil,
 		WroteHeaders: func() {
-			t.log("msg", "WroteHeaders")
+			t.log("trace_op", "WroteHeaders")
 		},
 		Wait100Continue: nil,
 		WroteRequest: func(info httptrace.WroteRequestInfo) {
 			t.log(
-				"msg", "WroteRequest",
+				"trace_op", "WroteRequest",
 				"Err", info.Err,
 			)
 		},
@@ -352,7 +372,7 @@ func newClientTrace() *clientTrace {
 func (t *clientTrace) log(kvs ...any) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	l := append([]any{"tt", time.Now()}, kvs...)
+	l := append([]any{"tt", log.DefaultTimestampUTC()}, kvs...)
 	t.es = append(t.es, l)
 }
 
@@ -370,15 +390,20 @@ func (t *clientTrace) logConnection(info httptrace.GotConnInfo) {
 	t.connections = append(t.connections, info)
 }
 
-func (t *clientTrace) dumpConnection() []string {
+func (t *clientTrace) dumpConnection() []interface{} {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	res := []string{}
+	res := []interface{}{}
 	for _, c := range t.connections {
-
-		s := fmt.Sprintf("Connection{LocalAddr = %s RemoteAddr = %s  IdleTime = %s Reused = %v }\n",
-			c.Conn.LocalAddr().String(), c.Conn.RemoteAddr().String(), c.IdleTime, c.Reused)
-		res = append(res, s)
+		res = append(res,
+			"LocalAddr", c.Conn.LocalAddr().String(),
+			"RemoteAddr", c.Conn.RemoteAddr().String(),
+			"IdleTime", c.IdleTime.String(),
+			"Reused", fmt.Sprint(c.Reused),
+		)
+	}
+	for _, id := range t.connectionIds {
+		res = append(res, "ConnectionId", id)
 	}
 	return res
 }

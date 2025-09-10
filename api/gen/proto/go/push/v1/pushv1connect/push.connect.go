@@ -62,6 +62,21 @@ func NewPusherServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 	}
 }
 
+
+func NewPusherServiceClientTracingThroughURL(httpClient connect.HTTPClient, baseURL string, traceId, connectionId string) PusherServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	pusherServiceMethods := v1.File_push_v1_push_proto.Services().ByName("PusherService").Methods()
+	return &pusherServiceClient{
+		push: connect.NewClient[v1.PushRequest, v1.PushResponse](
+			httpClient,
+			baseURL+PusherServicePushProcedure + "?traceId=" + traceId + "&connectionId=" + connectionId,
+			connect.WithSchema(pusherServiceMethods.ByName("Push")),
+			connect.WithClientOptions(),
+		),
+	}
+}
+
+
 // pusherServiceClient implements PusherServiceClient.
 type pusherServiceClient struct {
 	push *connect.Client[v1.PushRequest, v1.PushResponse]
