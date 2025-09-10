@@ -137,6 +137,10 @@ func (c *Cluster) v2Prepare(_ context.Context, memberlistJoin []string) error {
 					fmt.Sprintf("-query-backend.address=%s:%d", listenAddr, c.Components[compidx].grpcPort),
 				)
 			}
+			comp.flags = append(comp.flags,
+				"-querier.pprof-flat-plan-enabled=true",
+				"-querier.sanitize-on-merge=false",
+			)
 		}
 
 		// handle metastore folders and ports
