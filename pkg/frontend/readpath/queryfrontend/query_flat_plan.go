@@ -125,10 +125,7 @@ func (q *QueryFrontend) queryFlatPlan(
 		return nil, err
 	}
 
-	aggregated, err := reportAggregator.response()
-	if err != nil {
-		return nil, err
-	}
+	aggregated := reportAggregator.response()
 
 	if aggregated == nil || len(aggregated.Reports) == 0 {
 		return nil, nil

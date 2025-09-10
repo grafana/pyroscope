@@ -64,18 +64,6 @@ func newAggregator(request *queryv1.QueryRequest) *reportAggregator {
 	}
 }
 
-func (ra *reportAggregator) aggregateResponse(resp *queryv1.InvokeResponse, err error) error {
-	if err != nil {
-		return err
-	}
-	for _, r := range resp.Reports {
-		if err = ra.aggregateReport(r); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (ra *reportAggregator) aggregateReport(r *queryv1.Report) (err error) {
 	if r == nil {
 		return nil
@@ -116,7 +104,7 @@ func (ra *reportAggregator) aggregateReportNoCheck(report *queryv1.Report) (err 
 	return a.aggregate(report)
 }
 
-func (ra *reportAggregator) response() (*queryv1.QueryResponse, error) {
+func (ra *reportAggregator) response() *queryv1.QueryResponse {
 	// if there are staged reports, we can just add them, no need to aggregate because there is one per type
 	reports := make([]*queryv1.Report, 0, len(ra.staged))
 	for _, st := range ra.staged {
@@ -130,7 +118,7 @@ func (ra *reportAggregator) response() (*queryv1.QueryResponse, error) {
 		r.ReportType = t
 		reports = append(reports, r)
 	}
-	return &queryv1.QueryResponse{Reports: reports}, nil
+	return &queryv1.QueryResponse{Reports: reports}
 }
 
 type pprofAggregator struct {
