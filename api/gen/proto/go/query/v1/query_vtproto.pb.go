@@ -492,6 +492,7 @@ func (m *PprofQuery) CloneVT() *PprofQuery {
 	}
 	r := new(PprofQuery)
 	r.MaxNodes = m.MaxNodes
+	r.SanitizeOnMerge = m.SanitizeOnMerge
 	if rhs := m.StackTraceSelector; rhs != nil {
 		if vtpb, ok := interface{}(rhs).(interface {
 			CloneVT() *v11.StackTraceSelector
@@ -1183,6 +1184,9 @@ func (this *PprofQuery) EqualVT(that *PprofQuery) bool {
 			return false
 		}
 	} else if !proto.Equal(this.StackTraceSelector, that.StackTraceSelector) {
+		return false
+	}
+	if this.SanitizeOnMerge != that.SanitizeOnMerge {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2580,6 +2584,16 @@ func (m *PprofQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.SanitizeOnMerge {
+		i--
+		if m.SanitizeOnMerge {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x18
+	}
 	if m.StackTraceSelector != nil {
 		if vtmsg, ok := interface{}(m.StackTraceSelector).(interface {
 			MarshalToSizedBufferVT([]byte) (int, error)
@@ -3117,6 +3131,9 @@ func (m *PprofQuery) SizeVT() (n int) {
 			l = proto.Size(m.StackTraceSelector)
 		}
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.SanitizeOnMerge {
+		n += 2
 	}
 	n += len(m.unknownFields)
 	return n
@@ -5864,6 +5881,26 @@ func (m *PprofQuery) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SanitizeOnMerge", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.SanitizeOnMerge = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

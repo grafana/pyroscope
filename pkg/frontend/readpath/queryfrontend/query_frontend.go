@@ -130,7 +130,7 @@ func (q *QueryFrontend) Query(
 	}
 
 	if shouldSymbolize {
-		err = q.processAndSymbolizeProfiles(ctx, resp, req.Query)
+		err = q.processAndSymbolizeProfiles(ctx, resp.Reports, req.Query)
 		if err != nil {
 			return nil, status.Error(codes.Internal, fmt.Sprintf("symbolizing profiles: %v", err))
 		}
@@ -225,15 +225,15 @@ func (q *QueryFrontend) shouldSymbolize(tenants []string, blocks []*metastorev1.
 // processAndSymbolizeProfiles handles the symbolization of profiles from the response
 func (q *QueryFrontend) processAndSymbolizeProfiles(
 	ctx context.Context,
-	resp *queryv1.InvokeResponse,
+	reports []*queryv1.Report,
 	originalQueries []*queryv1.Query,
 ) error {
-	if len(originalQueries) != len(resp.Reports) {
+	if len(originalQueries) != len(reports) {
 		return fmt.Errorf("query/report count mismatch: %d queries but %d reports",
-			len(originalQueries), len(resp.Reports))
+			len(originalQueries), len(reports))
 	}
 
-	for i, r := range resp.Reports {
+	for i, r := range reports {
 		if r.Pprof == nil || r.Pprof.Pprof == nil {
 			continue
 		}

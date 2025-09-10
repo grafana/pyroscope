@@ -37,7 +37,10 @@ func (q *QueryFrontend) SelectMergeProfile(
 	if err != nil {
 		return nil, err
 	}
-	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
+
+	sanitizeOnMerge := q.limits.QuerySanitizeOnMerge(tenantIDs[0])
+
+	req := &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,
@@ -46,9 +49,18 @@ func (q *QueryFrontend) SelectMergeProfile(
 			Pprof: &queryv1.PprofQuery{
 				MaxNodes:           c.Msg.GetMaxNodes(),
 				StackTraceSelector: c.Msg.StackTraceSelector,
+				SanitizeOnMerge:    sanitizeOnMerge,
 			},
 		}},
-	})
+	}
+
+	var report *queryv1.Report
+	if q.limits.QueryPprofFlatPlanEnabled(tenantIDs[0]) {
+		report, err = q.queryFlatPlan(ctx, req)
+	} else {
+		report, err = q.querySingle(ctx, req)
+	}
+
 	if err != nil {
 		return nil, err
 	}
