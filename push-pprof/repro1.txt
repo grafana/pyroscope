@@ -1,0 +1,168 @@
+GOROOT=/home/korniltsev/sdk/go1.25.0 #gosetup
+GOPATH=/home/korniltsev/go #gosetup
+/home/korniltsev/sdk/go1.25.0/bin/go build -race -o /home/korniltsev/.cache/JetBrains/GoLand2025.2/tmp/GoLand/___1go_build_github_com_grafana_pyroscope_push_pprof github.com/grafana/pyroscope/push-pprof #gosetup
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+
+
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+
+
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+ts=2025-09-09T11:09:24.238275849Z req=af686754a258a57c err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:09:24.23832357Z tt=2025-09-09T18:09:14.237457914+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:09:24.238342756Z tt=2025-09-09T18:09:14.251149592+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=22.861754031s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:38162
+ts=2025-09-09T11:09:24.238379105Z tt=2025-09-09T18:09:14.251208814+07:00 msg=WroteHeaders
+ts=2025-09-09T11:09:24.238392871Z tt=2025-09-09T18:09:14.251328921+07:00 msg=WroteRequest Err=null
+ts=2025-09-09T11:09:24.240201895Z req=fed8d41eb8a55115 err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:09:24.240230369Z tt=2025-09-09T18:09:14.239914093+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:09:24.240247211Z tt=2025-09-09T18:09:14.252220329+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=23.552251537s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:40248
+ts=2025-09-09T11:09:24.240282388Z tt=2025-09-09T18:09:14.252282156+07:00 msg=WroteHeaders
+ts=2025-09-09T11:09:24.240295122Z tt=2025-09-09T18:09:14.25235271+07:00 msg=WroteRequest Err=null
+ts=2025-09-09T11:09:24.247307627Z req=1b1202cb746d7434 err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:09:24.247333816Z tt=2025-09-09T18:09:14.247213661+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:09:24.24735172Z tt=2025-09-09T18:09:14.254476119+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=23.808523408s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:43102
+ts=2025-09-09T11:09:24.247383831Z tt=2025-09-09T18:09:14.254524631+07:00 msg=WroteHeaders
+ts=2025-09-09T11:09:24.247395162Z tt=2025-09-09T18:09:14.254572171+07:00 msg=WroteRequest Err=null
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+ts=2025-09-09T11:12:32.365210475Z req=ff0052786d34c825 err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:12:32.365261261Z tt=2025-09-09T18:12:22.361259758+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:12:32.365279435Z tt=2025-09-09T18:12:22.374345266+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=21.165276339s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:39250
+ts=2025-09-09T11:12:32.365309983Z tt=2025-09-09T18:12:22.37440596+07:00 msg=WroteHeaders
+ts=2025-09-09T11:12:32.365321545Z tt=2025-09-09T18:12:22.374491342+07:00 msg=WroteRequest Err=null
+ts=2025-09-09T11:12:32.365449026Z req=26abf356b8191a73 err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:12:32.365481969Z tt=2025-09-09T18:12:22.364234+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:12:32.365502448Z tt=2025-09-09T18:12:22.376496549+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=21.172807389s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:37688
+ts=2025-09-09T11:12:32.36553549Z tt=2025-09-09T18:12:22.376554198+07:00 msg=WroteHeaders
+ts=2025-09-09T11:12:32.36555113Z tt=2025-09-09T18:12:22.376610124+07:00 msg=WroteRequest Err=null
+ts=2025-09-09T11:12:32.367778768Z req=b07d22a4693c00e0 err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:12:32.367810157Z tt=2025-09-09T18:12:22.367267664+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:12:32.367826769Z tt=2025-09-09T18:12:22.378244218+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=21.178456707s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:39932
+ts=2025-09-09T11:12:32.367854541Z tt=2025-09-09T18:12:22.378289444+07:00 msg=WroteHeaders
+ts=2025-09-09T11:12:32.367869379Z tt=2025-09-09T18:12:22.378327486+07:00 msg=WroteRequest Err=null
+Sent 1000 requests. sleeping 20s
+ts=2025-09-09T11:13:02.375611534Z req=4bdee863e61436d2 err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:13:02.375660377Z tt=2025-09-09T18:12:52.37213872+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:13:02.375679202Z tt=2025-09-09T18:12:52.383929586+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=28.614591722s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:39446
+ts=2025-09-09T11:13:02.375712976Z tt=2025-09-09T18:12:52.383992736+07:00 msg=WroteHeaders
+ts=2025-09-09T11:13:02.375724468Z tt=2025-09-09T18:12:52.384044624+07:00 msg=WroteRequest Err=null
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+Sent 1000 requests. sleeping 20s
+ts=2025-09-09T11:21:31.783586545Z req=83b8b27b31567a98 err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:21:31.783630578Z tt=2025-09-09T18:21:21.783339378+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:21:31.783645767Z tt=2025-09-09T18:21:21.783370176+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=20.100005808s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:38772
+ts=2025-09-09T11:21:31.783685963Z tt=2025-09-09T18:21:21.783467671+07:00 msg=WroteHeaders
+ts=2025-09-09T11:21:31.783695622Z tt=2025-09-09T18:21:21.783575996+07:00 msg=WroteRequest Err=null
+ts=2025-09-09T11:21:31.78481466Z req=4e9bf633b7833366 err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:21:31.784844307Z tt=2025-09-09T18:21:21.784024395+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:21:31.784861629Z tt=2025-09-09T18:21:21.794573249+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=20.630438841s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:38896
+ts=2025-09-09T11:21:31.784889813Z tt=2025-09-09T18:21:21.794630888+07:00 msg=WroteHeaders
+ts=2025-09-09T11:21:31.784905993Z tt=2025-09-09T18:21:21.794688367+07:00 msg=WroteRequest Err=null
+ts=2025-09-09T11:21:31.786991903Z req=80c18b21afbacd68 err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:21:31.787024565Z tt=2025-09-09T18:21:21.786224+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:21:31.78704329Z tt=2025-09-09T18:21:21.796256697+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=20.634844723s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:40486
+ts=2025-09-09T11:21:31.787078577Z tt=2025-09-09T18:21:21.796310549+07:00 msg=WroteHeaders
+ts=2025-09-09T11:21:31.787091913Z tt=2025-09-09T18:21:21.796373027+07:00 msg=WroteRequest Err=null
+ts=2025-09-09T11:21:31.790139523Z req=ca5857bbd0f1c1ff err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:21:31.790161385Z tt=2025-09-09T18:21:21.789169467+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:21:31.790180601Z tt=2025-09-09T18:21:21.789196037+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=20.612320944s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:42064
+ts=2025-09-09T11:21:31.79021177Z tt=2025-09-09T18:21:21.789258936+07:00 msg=WroteHeaders
+ts=2025-09-09T11:21:31.790222941Z tt=2025-09-09T18:21:21.789321866+07:00 msg=WroteRequest Err=null
+ts=2025-09-09T11:21:31.794289151Z req=7831835dc2e31734 err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:21:31.794321342Z tt=2025-09-09T18:21:21.793202734+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:21:31.794336991Z tt=2025-09-09T18:21:21.799815536+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=21.4679075s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:39396
+ts=2025-09-09T11:21:31.794371246Z tt=2025-09-09T18:21:21.799874948+07:00 msg=WroteHeaders
+ts=2025-09-09T11:21:31.794386766Z tt=2025-09-09T18:21:21.79993379+07:00 msg=WroteRequest Err=null
+ts=2025-09-09T11:21:31.794620849Z req=412130bbe9f8e90a err="deadline_exceeded: context deadline exceeded"
+ts=2025-09-09T11:21:31.794647529Z tt=2025-09-09T18:21:21.794471016+07:00 msg=GetConn hostPort=profiles-prod-008.grafana.net:443
+ts=2025-09-09T11:21:31.794666295Z tt=2025-09-09T18:21:21.800570726+07:00 msg=GotConn Reused=true WasIdle=true IdleTime=21.478441626s RemoteAddr=52.27.83.114:443 LocalAddr=192.168.0.6:45486
+ts=2025-09-09T11:21:31.794702994Z tt=2025-09-09T18:21:21.800624047+07:00 msg=WroteHeaders
+ts=2025-09-09T11:21:31.79471656Z tt=2025-09-09T18:21:21.800751458+07:00 msg=WroteRequest Err=null
+Sent 1000 requests. sleeping 20s
