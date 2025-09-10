@@ -10,7 +10,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
-          fetch-depth: 0
           persist-credentials: false
       - name: Check Docs
         run: |
@@ -19,18 +18,6 @@ jobs:
               echo 'Documentation not up to date. Please run "make helm/docs" and commit changes!' >&2
               exit 1
           fi
-
-      - name: Lint Code Base
-        uses: super-linter/super-linter@ffde3b2b33b745cb612d787f669ef9442b1339a6 # v8.1.0
-        env:
-          FILTER_REGEX_EXCLUDE: .*(README\.md|Chart\.yaml|NOTES.txt).*
-          FILTER_REGEX_INCLUDE: "operations/pyroscope/helm/pyroscope/templates/.*"
-          VALIDATE_ALL_CODEBASE: false
-          VALIDATE_KUBERNETES_KUBEVAL: false
-          VALIDATE_YAML: false
-          DEFAULT_BRANCH: main
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 
   call-lint-test:
     uses: grafana/helm-charts/.github/workflows/lint-test.yaml@main
