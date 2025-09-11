@@ -273,11 +273,7 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 			return nil, err
 		}
 		if p == nil { // for consistency with the return value when using the merge path
-			return &googlev1.Profile{
-				SampleType:  []*googlev1.ValueType{new(googlev1.ValueType)},
-				PeriodType:  new(googlev1.ValueType),
-				StringTable: []string{""},
-			}, nil
+			return nil, nil
 		}
 		return p, nil
 	}
