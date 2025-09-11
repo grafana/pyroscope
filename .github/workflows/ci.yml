@@ -48,10 +48,8 @@ jobs:
       matrix:
         include:
           - arch: amd64
-            runner: ubuntu-x64
           - arch: arm64
-            runner: ubuntu-arm64
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-${{ matrix.runner }}
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
