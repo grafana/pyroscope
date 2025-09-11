@@ -3,7 +3,9 @@ package memdb
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"sync"
 	"testing"
@@ -409,7 +411,15 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	t.Run("empty request fails", func(t *testing.T) {
 		bidi := client.MergeProfilesStacktraces(context.Background())
 
-		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{}))
+		// It is possible that the error returned by server side of the
+		// stream closes the net.Conn before bidi.Send has finished. The
+		// short timing for that to happen with real HTTP servers makes this
+		// unlikely, but it does happen with the synchronous in memory
+		// net.Pipe() that is used here.
+		// See https://github.com/grafana/pyroscope/issues/3549 for more details.
+		if err := bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{}); !errors.Is(err, io.EOF) {
+			require.NoError(t, err)
+		}
 
 		_, err := bidi.Receive()
 		require.EqualError(t, err, "invalid_argument: missing initial select request")
@@ -603,7 +613,15 @@ func TestMergeProfilesPprof(t *testing.T) {
 	t.Run("empty request fails", func(t *testing.T) {
 		bidi := client.MergeProfilesPprof(context.Background())
 
-		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{}))
+		// It is possible that the error returned by server side of the
+		// stream closes the net.Conn before bidi.Send has finished. The
+		// short timing for that to happen with real HTTP servers makes this
+		// unlikely, but it does happen with the synchronous in memory
+		// net.Pipe() that is used here.
+		// See https://github.com/grafana/pyroscope/issues/3549 for more details.
+		if err := bidi.Send(&ingestv1.MergeProfilesPprofRequest{}); !errors.Is(err, io.EOF) {
+			require.NoError(t, err)
+		}
 
 		_, err := bidi.Receive()
 		require.EqualError(t, err, "invalid_argument: missing initial select request")
