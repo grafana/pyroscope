@@ -115,7 +115,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: ubuntu-x64
+    runs-on: ubuntu-x64-large
     outputs:
       image: ${{ steps.push-metadata.outputs.image }}
       image-digest: ${{ steps.push-metadata.outputs.image-digest }}
