@@ -46,10 +46,8 @@ jobs:
   test:
     strategy:
       matrix:
-        include:
-          - arch: amd64
-          - arch: arm64
-    runs-on: ubuntu-${{ matrix.runner }}
+        arch: [amd64, arm64]
+    runs-on: ubuntu-${{ matrix.arch }}
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
