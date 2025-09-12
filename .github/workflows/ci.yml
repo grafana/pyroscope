@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   format:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-x64-small
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -31,7 +31,7 @@ jobs:
       - name: Format
         run: make fmt check/unstaged-changes
   check-generated:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-x64-small
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -45,13 +45,10 @@ jobs:
         run: make generate check/unstaged-changes
   test:
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-24.04
-          - arch: arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
+        arch: [amd64, arm64]
+    runs-on: ubuntu-${{ matrix.arch }}-large
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -66,7 +63,7 @@ jobs:
       - name: Test
         run: make go/test
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-x64-small
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -82,7 +79,7 @@ jobs:
         run: make helm/check check/unstaged-changes
 
   test-docs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-x64-small
     steps:
       - name: "Check out code"
         uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683" # v4
@@ -93,7 +90,7 @@ jobs:
 
   build-image:
     if: github.event_name != 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-x64
     steps:
       - name: Checkout Repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -119,7 +116,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-x64-large
     outputs:
       image: ${{ steps.push-metadata.outputs.image }}
       image-digest: ${{ steps.push-metadata.outputs.image-digest }}
@@ -166,7 +163,7 @@ jobs:
       contents: read
       id-token: write
     if: github.event_name == 'push' && github.repository == 'grafana/pyroscope' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-x64-small
     needs: [build-push]
     steps:
     - id: "submit-argowfs-deployment"
