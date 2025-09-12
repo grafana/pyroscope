@@ -1,7 +1,7 @@
 services:
   otel-collector:
     # fixed versions for pyroscope, otel-collector, otel-profiler due to protocol changes
-    image: otel/opentelemetry-collector-contrib:0.129.0 
+    image: otel/opentelemetry-collector-contrib:0.129.1
     command: ["--config=/etc/otel-collector-config.yaml", "--feature-gates=service.profilesSupport"]
     volumes:
       - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml

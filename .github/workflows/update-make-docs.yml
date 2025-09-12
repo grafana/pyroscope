@@ -9,7 +9,7 @@ on:
 jobs:
   main:
     if: github.repository == 'grafana/pyroscope'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-x64-small
     steps:
       - uses: actions/checkout@v4
         with:
