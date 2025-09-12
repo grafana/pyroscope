@@ -183,11 +183,7 @@ data:
 
     pyroscope.write "pyroscope_write" {
     	endpoint {
-        {{- if hasKey .Values.pyroscope.components "distributor" }}
-    		url = "http://{{ include "pyroscope.fullname" . }}-distributor.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ (.Values.pyroscope.components.distributor.service).port | default .Values.pyroscope.service.port}}"
-        {{- else }}
-    		url = "http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.service.port }}"
-        {{- end }}
+    		url = "{{ include "pyroscope.write_url" . }}"
     	}
     }
 

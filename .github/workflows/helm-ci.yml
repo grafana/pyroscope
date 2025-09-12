@@ -3,10 +3,21 @@ on: pull_request
 permissions:
   contents: read
 jobs:
-  call-lint:
-    uses: grafana/helm-charts/.github/workflows/linter.yml@main
-    with:
-      filter_regex_include: operations/pyroscope/helm/pyroscope/templates/.*
+  # We used to import this from grafana/helm-charts/.github/workflows/linter.yml@main, but we want to update to later version of helm-docs.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+      - name: Check Docs
+        run: |
+          make helm/docs
+          if ! git diff --exit-code -- operations/pyroscope/helm/pyroscope/; then
+              echo 'Documentation not up to date. Please run "make helm/docs" and commit changes!' >&2
+              exit 1
+          fi
 
   call-lint-test:
     uses: grafana/helm-charts/.github/workflows/lint-test.yaml@main
