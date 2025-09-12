@@ -1,0 +1,247 @@
+openapi: 3.1.0
+info:
+  title: settings.v1
+  version: v1.0.0
+tags:
+  - name: scope/public
+    description: This operation is considered part of the public API scope
+  - name: scope/internal
+    description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
+  - name: settings.v1.SettingsService
+paths:
+  /settings.v1.SettingsService/Get:
+    post:
+      tags:
+        - settings.v1.SettingsService
+      summary: Get
+      operationId: settings.v1.SettingsService.Get
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/settings.v1.GetSettingsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settings.v1.GetSettingsResponse'
+  /settings.v1.SettingsService/Set:
+    post:
+      tags:
+        - settings.v1.SettingsService
+      summary: Set
+      operationId: settings.v1.SettingsService.Set
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/settings.v1.SetSettingsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settings.v1.SetSettingsResponse'
+  /settings.v1.SettingsService/Delete:
+    post:
+      tags:
+        - settings.v1.SettingsService
+      summary: Delete
+      operationId: settings.v1.SettingsService.Delete
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/settings.v1.DeleteSettingsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settings.v1.DeleteSettingsResponse'
+components:
+  schemas:
+    settings.v1.DeleteSettingsRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+      title: DeleteSettingsRequest
+      additionalProperties: false
+    settings.v1.DeleteSettingsResponse:
+      type: object
+      title: DeleteSettingsResponse
+      additionalProperties: false
+    settings.v1.GetSettingsRequest:
+      type: object
+      title: GetSettingsRequest
+      additionalProperties: false
+    settings.v1.GetSettingsResponse:
+      type: object
+      properties:
+        settings:
+          type: array
+          items:
+            $ref: '#/components/schemas/settings.v1.Setting'
+          title: settings
+      title: GetSettingsResponse
+      additionalProperties: false
+    settings.v1.SetSettingsRequest:
+      type: object
+      properties:
+        setting:
+          title: setting
+          $ref: '#/components/schemas/settings.v1.Setting'
+      title: SetSettingsRequest
+      additionalProperties: false
+    settings.v1.SetSettingsResponse:
+      type: object
+      properties:
+        setting:
+          title: setting
+          $ref: '#/components/schemas/settings.v1.Setting'
+      title: SetSettingsResponse
+      additionalProperties: false
+    settings.v1.Setting:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        value:
+          type: string
+          title: value
+        modifiedAt:
+          type:
+            - integer
+            - string
+          title: modifiedAt
+          format: int64
+      title: Setting
+      additionalProperties: false
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+security: []

@@ -1,11 +1,15 @@
 syntax = "proto3";
 
+// This is the API to send profiles to Pyroscope
 package push.v1;
 
 import "types/v1/types.proto";
+import "gnostic/openapi/v3/annotations.proto";
 
 service PusherService {
-  rpc Push(PushRequest) returns (PushResponse) {}
+  rpc Push(PushRequest) returns (PushResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
 }
 
 message PushResponse {}

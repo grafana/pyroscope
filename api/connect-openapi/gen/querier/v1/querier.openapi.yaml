@@ -1,0 +1,1652 @@
+openapi: 3.1.0
+info:
+  title: querier.v1
+  version: v1.0.0
+tags:
+  - name: scope/public
+    description: This operation is considered part of the public API scope
+  - name: scope/internal
+    description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
+  - name: querier.v1.QuerierService
+paths:
+  /querier.v1.QuerierService/ProfileTypes:
+    post:
+      tags:
+        - scope/public
+        - querier.v1.QuerierService
+      summary: ProfileType returns a list of the existing profile types.
+      description: ProfileType returns a list of the existing profile types.
+      operationId: querier.v1.QuerierService.ProfileTypes
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.ProfileTypesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/querier.v1.ProfileTypesResponse'
+  /querier.v1.QuerierService/LabelValues:
+    post:
+      tags:
+        - scope/public
+        - querier.v1.QuerierService
+      summary: LabelValues returns the existing label values for the provided label names.
+      description: LabelValues returns the existing label values for the provided label names.
+      operationId: querier.v1.QuerierService.LabelValues
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/types.v1.LabelValuesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.v1.LabelValuesResponse'
+  /querier.v1.QuerierService/LabelNames:
+    post:
+      tags:
+        - scope/public
+        - querier.v1.QuerierService
+      summary: LabelNames returns a list of the existing label names.
+      description: LabelNames returns a list of the existing label names.
+      operationId: querier.v1.QuerierService.LabelNames
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/types.v1.LabelNamesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.v1.LabelNamesResponse'
+  /querier.v1.QuerierService/Series:
+    post:
+      tags:
+        - scope/public
+        - querier.v1.QuerierService
+      summary: Series returns profiles series matching the request. A series is a unique  label set.
+      description: |-
+        Series returns profiles series matching the request. A series is a unique
+         label set.
+      operationId: querier.v1.QuerierService.Series
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.SeriesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/querier.v1.SeriesResponse'
+  /querier.v1.QuerierService/SelectMergeStacktraces:
+    post:
+      tags:
+        - scope/public
+        - querier.v1.QuerierService
+      summary: SelectMergeStacktraces returns matching profiles aggregated in a flamegraph  format. It will combine samples from within the same callstack, with each  element being grouped by its function name.
+      description: |-
+        SelectMergeStacktraces returns matching profiles aggregated in a flamegraph
+         format. It will combine samples from within the same callstack, with each
+         element being grouped by its function name.
+      operationId: querier.v1.QuerierService.SelectMergeStacktraces
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesResponse'
+  /querier.v1.QuerierService/SelectMergeSpanProfile:
+    post:
+      tags:
+        - scope/public
+        - querier.v1.QuerierService
+      summary: SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph  format. It will combine samples from within the same callstack, with each  element being grouped by its function name.
+      description: |-
+        SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
+         format. It will combine samples from within the same callstack, with each
+         element being grouped by its function name.
+      operationId: querier.v1.QuerierService.SelectMergeSpanProfile
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.SelectMergeSpanProfileRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/querier.v1.SelectMergeSpanProfileResponse'
+  /querier.v1.QuerierService/SelectMergeProfile:
+    post:
+      tags:
+        - scope/public
+        - querier.v1.QuerierService
+      summary: SelectMergeProfile returns matching profiles aggregated in pprof format. It  will contain all information stored (so including filenames and line  number, if ingested).
+      description: |-
+        SelectMergeProfile returns matching profiles aggregated in pprof format. It
+         will contain all information stored (so including filenames and line
+         number, if ingested).
+      operationId: querier.v1.QuerierService.SelectMergeProfile
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.SelectMergeProfileRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.v1.Profile'
+  /querier.v1.QuerierService/SelectSeries:
+    post:
+      tags:
+        - scope/public
+        - querier.v1.QuerierService
+      summary: SelectSeries returns a time series for the total sum of the requested  profiles.
+      description: |-
+        SelectSeries returns a time series for the total sum of the requested
+         profiles.
+      operationId: querier.v1.QuerierService.SelectSeries
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.SelectSeriesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/querier.v1.SelectSeriesResponse'
+  /querier.v1.QuerierService/Diff:
+    post:
+      tags:
+        - scope/public
+        - querier.v1.QuerierService
+      summary: Diff returns a diff of two profiles
+      description: Diff returns a diff of two profiles
+      operationId: querier.v1.QuerierService.Diff
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.DiffRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/querier.v1.DiffResponse'
+  /querier.v1.QuerierService/GetProfileStats:
+    post:
+      tags:
+        - scope/internal
+        - querier.v1.QuerierService
+      summary: GetProfileStats returns profile stats for the current tenant.
+      description: GetProfileStats returns profile stats for the current tenant.
+      operationId: querier.v1.QuerierService.GetProfileStats
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/types.v1.GetProfileStatsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.v1.GetProfileStatsResponse'
+  /querier.v1.QuerierService/AnalyzeQuery:
+    post:
+      tags:
+        - scope/internal
+        - querier.v1.QuerierService
+      summary: AnalyzeQuery
+      operationId: querier.v1.QuerierService.AnalyzeQuery
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.AnalyzeQueryRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/querier.v1.AnalyzeQueryResponse'
+components:
+  schemas:
+    querier.v1.ProfileFormat:
+      type: string
+      title: ProfileFormat
+      enum:
+        - PROFILE_FORMAT_UNSPECIFIED
+        - PROFILE_FORMAT_FLAMEGRAPH
+        - PROFILE_FORMAT_TREE
+    types.v1.TimeSeriesAggregationType:
+      type: string
+      title: TimeSeriesAggregationType
+      enum:
+        - TIME_SERIES_AGGREGATION_TYPE_SUM
+        - TIME_SERIES_AGGREGATION_TYPE_AVERAGE
+    google.v1.Function:
+      type: object
+      properties:
+        id:
+          type:
+            - integer
+            - string
+          title: id
+          format: int64
+          description: Unique nonzero id for the function.
+        name:
+          type:
+            - integer
+            - string
+          title: name
+          format: int64
+          description: Name of the function, in human-readable form if available. Index into string table
+        systemName:
+          type:
+            - integer
+            - string
+          title: system_name
+          format: int64
+          description: |-
+            Name of the function, as identified by the system.
+             For instance, it can be a C++ mangled name. Index into string table
+        filename:
+          type:
+            - integer
+            - string
+          title: filename
+          format: int64
+          description: Source file containing the function. Index into string table
+        startLine:
+          type:
+            - integer
+            - string
+          title: start_line
+          format: int64
+          description: Line number in source file.
+      title: Function
+      additionalProperties: false
+    google.v1.Label:
+      type: object
+      properties:
+        key:
+          type:
+            - integer
+            - string
+          title: key
+          format: int64
+          description: Index into string table
+        str:
+          type:
+            - integer
+            - string
+          title: str
+          format: int64
+          description: At most one of the following must be present Index into string table
+        num:
+          type:
+            - integer
+            - string
+          title: num
+          format: int64
+        numUnit:
+          type:
+            - integer
+            - string
+          title: num_unit
+          format: int64
+          description: |-
+            Should only be present when num is present.
+             Specifies the units of num.
+             Use arbitrary string (for example, "requests") as a custom count unit.
+             If no unit is specified, consumer may apply heuristic to deduce the unit.
+             Consumers may also  interpret units like "bytes" and "kilobytes" as memory
+             units and units like "seconds" and "nanoseconds" as time units,
+             and apply appropriate unit conversions to these. Index into string table
+      title: Label
+      additionalProperties: false
+    google.v1.Line:
+      type: object
+      properties:
+        functionId:
+          type:
+            - integer
+            - string
+          title: function_id
+          format: int64
+          description: The id of the corresponding profile.Function for this line.
+        line:
+          type:
+            - integer
+            - string
+          title: line
+          format: int64
+          description: Line number in source code.
+      title: Line
+      additionalProperties: false
+    google.v1.Location:
+      type: object
+      properties:
+        id:
+          type:
+            - integer
+            - string
+          title: id
+          format: int64
+          description: |-
+            Unique nonzero id for the location.  A profile could use
+             instruction addresses or any integer sequence as ids.
+        mappingId:
+          type:
+            - integer
+            - string
+          title: mapping_id
+          format: int64
+          description: |-
+            The id of the corresponding profile.Mapping for this location.
+             It can be unset if the mapping is unknown or not applicable for
+             this profile type.
+        address:
+          type:
+            - integer
+            - string
+          title: address
+          format: int64
+          description: |-
+            The instruction address for this location, if available.  It
+             should be within [Mapping.memory_start...Mapping.memory_limit]
+             for the corresponding mapping. A non-leaf address may be in the
+             middle of a call instruction. It is up to display tools to find
+             the beginning of the instruction if necessary.
+        line:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.v1.Line'
+          title: line
+          description: |-
+            Multiple line indicates this location has inlined functions,
+             where the last entry represents the caller into which the
+             preceding entries were inlined.
+
+             E.g., if memcpy() is inlined into printf:
+                line[0].function_name == "memcpy"
+                line[1].function_name == "printf"
+        isFolded:
+          type: boolean
+          title: is_folded
+          description: |-
+            Provides an indication that multiple symbols map to this location's
+             address, for example due to identical code folding by the linker. In that
+             case the line information above represents one of the multiple
+             symbols. This field must be recomputed when the symbolization state of the
+             profile changes.
+      title: Location
+      additionalProperties: false
+      description: Describes function and line table debug information.
+    google.v1.Mapping:
+      type: object
+      properties:
+        id:
+          type:
+            - integer
+            - string
+          title: id
+          format: int64
+          description: Unique nonzero id for the mapping.
+        memoryStart:
+          type:
+            - integer
+            - string
+          title: memory_start
+          format: int64
+          description: Address at which the binary (or DLL) is loaded into memory.
+        memoryLimit:
+          type:
+            - integer
+            - string
+          title: memory_limit
+          format: int64
+          description: The limit of the address range occupied by this mapping.
+        fileOffset:
+          type:
+            - integer
+            - string
+          title: file_offset
+          format: int64
+          description: Offset in the binary that corresponds to the first mapped address.
+        filename:
+          type:
+            - integer
+            - string
+          title: filename
+          format: int64
+          description: |-
+            The object this entry is loaded from.  This can be a filename on
+             disk for the main binary and shared libraries, or virtual
+             abstractions like "[vdso]". Index into string table
+        buildId:
+          type:
+            - integer
+            - string
+          title: build_id
+          format: int64
+          description: |-
+            A string that uniquely identifies a particular program version
+             with high probability. E.g., for binaries generated by GNU tools,
+             it could be the contents of the .note.gnu.build-id field. Index into string table
+        hasFunctions:
+          type: boolean
+          title: has_functions
+          description: The following fields indicate the resolution of symbolic info.
+        hasFilenames:
+          type: boolean
+          title: has_filenames
+        hasLineNumbers:
+          type: boolean
+          title: has_line_numbers
+        hasInlineFrames:
+          type: boolean
+          title: has_inline_frames
+      title: Mapping
+      additionalProperties: false
+    google.v1.Profile:
+      type: object
+      properties:
+        sampleType:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.v1.ValueType'
+          title: sample_type
+          description: |-
+            A description of the samples associated with each Sample.value.
+             For a cpu profile this might be:
+               [["cpu","nanoseconds"]] or [["wall","seconds"]] or [["syscall","count"]]
+             For a heap profile, this might be:
+               [["allocations","count"], ["space","bytes"]],
+             If one of the values represents the number of events represented
+             by the sample, by convention it should be at index 0 and use
+             sample_type.unit == "count".
+        sample:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.v1.Sample'
+          title: sample
+          description: The set of samples recorded in this profile.
+        mapping:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.v1.Mapping'
+          title: mapping
+          description: |-
+            Mapping from address ranges to the image/binary/library mapped
+             into that address range.  mapping[0] will be the main binary.
+        location:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.v1.Location'
+          title: location
+          description: Useful program location
+        function:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.v1.Function'
+          title: function
+          description: Functions referenced by locations
+        stringTable:
+          type: array
+          items:
+            type: string
+          title: string_table
+          description: |-
+            A common table for strings referenced by various messages.
+             string_table[0] must always be "".
+        dropFrames:
+          type:
+            - integer
+            - string
+          title: drop_frames
+          format: int64
+          description: |-
+            frames with Function.function_name fully matching the following
+             regexp will be dropped from the samples, along with their successors. Index into string table.
+        keepFrames:
+          type:
+            - integer
+            - string
+          title: keep_frames
+          format: int64
+          description: |-
+            frames with Function.function_name fully matching the following
+             regexp will be kept, even if it matches drop_frames. Index into string table.
+        timeNanos:
+          type:
+            - integer
+            - string
+          title: time_nanos
+          format: int64
+          description: Time of collection (UTC) represented as nanoseconds past the epoch.
+        durationNanos:
+          type:
+            - integer
+            - string
+          title: duration_nanos
+          format: int64
+          description: Duration of the profile, if a duration makes sense.
+        periodType:
+          title: period_type
+          description: |-
+            The kind of events between sampled ocurrences.
+             e.g [ "cpu","cycles" ] or [ "heap","bytes" ]
+          $ref: '#/components/schemas/google.v1.ValueType'
+        period:
+          type:
+            - integer
+            - string
+          title: period
+          format: int64
+          description: The number of events between sampled occurrences.
+        comment:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: comment
+          description: Freeform text associated to the profile. Indices into string table.
+        defaultSampleType:
+          type:
+            - integer
+            - string
+          title: default_sample_type
+          format: int64
+          description: |-
+            Index into the string table of the type of the preferred sample
+             value. If unset, clients should default to the last sample value.
+      title: Profile
+      additionalProperties: false
+    google.v1.Sample:
+      type: object
+      properties:
+        locationId:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: location_id
+          description: |-
+            The ids recorded here correspond to a Profile.location.id.
+             The leaf is at location_id[0].
+        value:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: value
+          description: |-
+            The type and unit of each value is defined by the corresponding
+             entry in Profile.sample_type. All samples must have the same
+             number of values, the same as the length of Profile.sample_type.
+             When aggregating multiple samples into a single sample, the
+             result has a list of values that is the element-wise sum of the
+             lists of the originals.
+        label:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.v1.Label'
+          title: label
+          description: |-
+            label includes additional context for this sample. It can include
+             things like a thread id, allocation size, etc
+      title: Sample
+      additionalProperties: false
+      description: |-
+        Each Sample records values encountered in some program
+         context. The program context is typically a stack trace, perhaps
+         augmented with auxiliary information like the thread-id, some
+         indicator of a higher level request being handled etc.
+    google.v1.ValueType:
+      type: object
+      properties:
+        type:
+          type:
+            - integer
+            - string
+          title: type
+          format: int64
+          description: Index into string table.
+        unit:
+          type:
+            - integer
+            - string
+          title: unit
+          format: int64
+          description: Index into string table.
+      title: ValueType
+      additionalProperties: false
+      description: ValueType describes the semantics and measurement units of a value.
+    querier.v1.AnalyzeQueryRequest:
+      type: object
+      properties:
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+        query:
+          type: string
+          title: query
+      title: AnalyzeQueryRequest
+      additionalProperties: false
+    querier.v1.AnalyzeQueryResponse:
+      type: object
+      properties:
+        queryScopes:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.QueryScope'
+          title: query_scopes
+          description: detailed view of what the query will require
+        queryImpact:
+          title: query_impact
+          description: summary of the query impact / performance
+          $ref: '#/components/schemas/querier.v1.QueryImpact'
+      title: AnalyzeQueryResponse
+      additionalProperties: false
+    querier.v1.DiffRequest:
+      type: object
+      properties:
+        left:
+          title: left
+          $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesRequest'
+        right:
+          title: right
+          $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesRequest'
+      title: DiffRequest
+      additionalProperties: false
+    querier.v1.DiffResponse:
+      type: object
+      properties:
+        flamegraph:
+          title: flamegraph
+          $ref: '#/components/schemas/querier.v1.FlameGraphDiff'
+      title: DiffResponse
+      additionalProperties: false
+    querier.v1.FlameGraph:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+          title: names
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.Level'
+          title: levels
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+        maxSelf:
+          type:
+            - integer
+            - string
+          title: max_self
+          format: int64
+      title: FlameGraph
+      additionalProperties: false
+    querier.v1.FlameGraphDiff:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+          title: names
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.Level'
+          title: levels
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+        maxSelf:
+          type:
+            - integer
+            - string
+          title: max_self
+          format: int64
+        leftTicks:
+          type:
+            - integer
+            - string
+          title: leftTicks
+          format: int64
+        rightTicks:
+          type:
+            - integer
+            - string
+          title: rightTicks
+          format: int64
+      title: FlameGraphDiff
+      additionalProperties: false
+    querier.v1.Level:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: values
+      title: Level
+      additionalProperties: false
+    querier.v1.ProfileTypesRequest:
+      type: object
+      properties:
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+          description: |-
+            Milliseconds since epoch. If missing or zero, only the ingesters will be
+             queried.
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+          description: |-
+            Milliseconds since epoch. If missing or zero, only the ingesters will be
+             queried.
+      title: ProfileTypesRequest
+      additionalProperties: false
+    querier.v1.ProfileTypesResponse:
+      type: object
+      properties:
+        profileTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.ProfileType'
+          title: profile_types
+      title: ProfileTypesResponse
+      additionalProperties: false
+    querier.v1.QueryImpact:
+      type: object
+      properties:
+        totalBytesInTimeRange:
+          type:
+            - integer
+            - string
+          title: total_bytes_in_time_range
+          format: int64
+        totalQueriedSeries:
+          type:
+            - integer
+            - string
+          title: total_queried_series
+          format: int64
+        deduplicationNeeded:
+          type: boolean
+          title: deduplication_needed
+      title: QueryImpact
+      additionalProperties: false
+    querier.v1.QueryScope:
+      type: object
+      properties:
+        componentType:
+          type: string
+          title: component_type
+          description: a descriptive high level name of the component processing one part
+        componentCount:
+          type:
+            - integer
+            - string
+          title: component_count
+          format: int64
+          description: of the query (e.g., "short term storage") how many components of this type will process
+        blockCount:
+          type:
+            - integer
+            - string
+          title: block_count
+          format: int64
+        seriesCount:
+          type:
+            - integer
+            - string
+          title: series_count
+          format: int64
+        profileCount:
+          type:
+            - integer
+            - string
+          title: profile_count
+          format: int64
+        sampleCount:
+          type:
+            - integer
+            - string
+          title: sample_count
+          format: int64
+        indexBytes:
+          type:
+            - integer
+            - string
+          title: index_bytes
+          format: int64
+        profileBytes:
+          type:
+            - integer
+            - string
+          title: profile_bytes
+          format: int64
+        symbolBytes:
+          type:
+            - integer
+            - string
+          title: symbol_bytes
+          format: int64
+      title: QueryScope
+      additionalProperties: false
+    querier.v1.SelectMergeProfileRequest:
+      type: object
+      properties:
+        profileTypeID:
+          type: string
+          title: profile_typeID
+        labelSelector:
+          type: string
+          title: label_selector
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+          description: Milliseconds since epoch.
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+          description: Milliseconds since epoch.
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+          description: |-
+            Limit the nodes returned to only show the node with the max_node's biggest
+             total
+          nullable: true
+        stackTraceSelector:
+          title: stack_trace_selector
+          description: Select stack traces that match the provided selector.
+          nullable: true
+          $ref: '#/components/schemas/types.v1.StackTraceSelector'
+      title: SelectMergeProfileRequest
+      additionalProperties: false
+    querier.v1.SelectMergeSpanProfileRequest:
+      type: object
+      properties:
+        profileTypeID:
+          type: string
+          title: profile_typeID
+        labelSelector:
+          type: string
+          title: label_selector
+        spanSelector:
+          type: array
+          items:
+            type: string
+          title: span_selector
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+          description: Milliseconds since epoch.
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+          description: Milliseconds since epoch.
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+          description: |-
+            Limit the nodes returned to only show the node with the max_node's biggest
+             total
+          nullable: true
+        format:
+          title: format
+          description: |-
+            Profile format specifies the format of profile to be returned.
+             If not specified, the profile will be returned in flame graph format.
+          $ref: '#/components/schemas/querier.v1.ProfileFormat'
+      title: SelectMergeSpanProfileRequest
+      additionalProperties: false
+    querier.v1.SelectMergeSpanProfileResponse:
+      type: object
+      properties:
+        flamegraph:
+          title: flamegraph
+          $ref: '#/components/schemas/querier.v1.FlameGraph'
+        tree:
+          type: string
+          title: tree
+          format: byte
+          description: Pyroscope tree bytes.
+      title: SelectMergeSpanProfileResponse
+      additionalProperties: false
+    querier.v1.SelectMergeStacktracesRequest:
+      type: object
+      properties:
+        profileTypeID:
+          type: string
+          title: profile_typeID
+        labelSelector:
+          type: string
+          title: label_selector
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+          description: Milliseconds since epoch.
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+          description: Milliseconds since epoch.
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+          description: |-
+            Limit the nodes returned to only show the node with the max_node's biggest
+             total
+          nullable: true
+        format:
+          title: format
+          description: |-
+            Profile format specifies the format of profile to be returned.
+             If not specified, the profile will be returned in flame graph format.
+          $ref: '#/components/schemas/querier.v1.ProfileFormat'
+      title: SelectMergeStacktracesRequest
+      additionalProperties: false
+    querier.v1.SelectMergeStacktracesResponse:
+      type: object
+      properties:
+        flamegraph:
+          title: flamegraph
+          $ref: '#/components/schemas/querier.v1.FlameGraph'
+        tree:
+          type: string
+          title: tree
+          format: byte
+          description: Pyroscope tree bytes.
+      title: SelectMergeStacktracesResponse
+      additionalProperties: false
+    querier.v1.SelectSeriesRequest:
+      type: object
+      properties:
+        profileTypeID:
+          type: string
+          title: profile_typeID
+        labelSelector:
+          type: string
+          title: label_selector
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+          description: Milliseconds since epoch.
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+          description: Milliseconds since epoch.
+        groupBy:
+          type: array
+          items:
+            type: string
+          title: group_by
+        step:
+          type: number
+          title: step
+          format: double
+        aggregation:
+          title: aggregation
+          description: Query resolution step width in seconds
+          nullable: true
+          $ref: '#/components/schemas/types.v1.TimeSeriesAggregationType'
+        stackTraceSelector:
+          title: stack_trace_selector
+          description: Select stack traces that match the provided selector.
+          nullable: true
+          $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        limit:
+          type:
+            - integer
+            - string
+          title: limit
+          format: int64
+          description: Select the top N series by total value.
+          nullable: true
+      title: SelectSeriesRequest
+      additionalProperties: false
+    querier.v1.SelectSeriesResponse:
+      type: object
+      properties:
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Series'
+          title: series
+      title: SelectSeriesResponse
+      additionalProperties: false
+    querier.v1.SeriesRequest:
+      type: object
+      properties:
+        matchers:
+          type: array
+          items:
+            type: string
+          title: matchers
+        labelNames:
+          type: array
+          items:
+            type: string
+          title: label_names
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+          description: |-
+            Milliseconds since epoch. If missing or zero, only the ingesters will be
+             queried.
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+          description: |-
+            Milliseconds since epoch. If missing or zero, only the ingesters will be
+             queried.
+      title: SeriesRequest
+      additionalProperties: false
+    querier.v1.SeriesResponse:
+      type: object
+      properties:
+        labelsSet:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Labels'
+          title: labels_set
+      title: SeriesResponse
+      additionalProperties: false
+    types.v1.GetProfileStatsRequest:
+      type: object
+      title: GetProfileStatsRequest
+      additionalProperties: false
+    types.v1.GetProfileStatsResponse:
+      type: object
+      properties:
+        dataIngested:
+          type: boolean
+          title: data_ingested
+          description: Whether we received any data at any time in the past.
+        oldestProfileTime:
+          type:
+            - integer
+            - string
+          title: oldest_profile_time
+          format: int64
+          description: Milliseconds since epoch.
+        newestProfileTime:
+          type:
+            - integer
+            - string
+          title: newest_profile_time
+          format: int64
+          description: Milliseconds since epoch.
+      title: GetProfileStatsResponse
+      additionalProperties: false
+    types.v1.GoPGO:
+      type: object
+      properties:
+        keepLocations:
+          type: integer
+          title: keep_locations
+          description: Specifies the number of leaf locations to keep.
+        aggregateCallees:
+          type: boolean
+          title: aggregate_callees
+          description: |-
+            Aggregate callees causes the leaf location line number to be ignored,
+             thus aggregating all callee samples (but not callers).
+      title: GoPGO
+      additionalProperties: false
+    types.v1.LabelNamesRequest:
+      type: object
+      properties:
+        matchers:
+          type: array
+          items:
+            type: string
+          title: matchers
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+      title: LabelNamesRequest
+      additionalProperties: false
+    types.v1.LabelNamesResponse:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+          title: names
+      title: LabelNamesResponse
+      additionalProperties: false
+    types.v1.LabelPair:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        value:
+          type: string
+          title: value
+      title: LabelPair
+      additionalProperties: false
+    types.v1.LabelValuesRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        matchers:
+          type: array
+          items:
+            type: string
+          title: matchers
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+      title: LabelValuesRequest
+      additionalProperties: false
+    types.v1.LabelValuesResponse:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+          title: names
+      title: LabelValuesResponse
+      additionalProperties: false
+    types.v1.Labels:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+          description: LabelPair is the key value pairs to identify the corresponding profile
+      title: Labels
+      additionalProperties: false
+    types.v1.Location:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+      title: Location
+      additionalProperties: false
+    types.v1.Point:
+      type: object
+      properties:
+        value:
+          type: number
+          title: value
+          format: double
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: Milliseconds unix timestamp
+        annotations:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.ProfileAnnotation'
+          title: annotations
+      title: Point
+      additionalProperties: false
+    types.v1.ProfileAnnotation:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: ProfileAnnotation
+      additionalProperties: false
+    types.v1.ProfileType:
+      type: object
+      properties:
+        ID:
+          type: string
+          title: ID
+        name:
+          type: string
+          title: name
+        sampleType:
+          type: string
+          title: sample_type
+        sampleUnit:
+          type: string
+          title: sample_unit
+        periodType:
+          type: string
+          title: period_type
+        periodUnit:
+          type: string
+          title: period_unit
+      title: ProfileType
+      additionalProperties: false
+    types.v1.Series:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Point'
+          title: points
+      title: Series
+      additionalProperties: false
+    types.v1.StackTraceSelector:
+      type: object
+      properties:
+        callSite:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Location'
+          title: call_site
+          description: |-
+            Stack trace of the call site. Root at call_site[0].
+             Only stack traces having the prefix provided will be selected.
+             If empty, the filter is ignored.
+        goPgo:
+          title: go_pgo
+          description: |-
+            Stack trace selector for profiles purposed for Go PGO.
+             If set, call_site is ignored.
+          $ref: '#/components/schemas/types.v1.GoPGO'
+      title: StackTraceSelector
+      additionalProperties: false
+      description: StackTraceSelector is used for filtering stack traces by locations.
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+security: []
