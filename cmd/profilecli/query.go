@@ -94,6 +94,7 @@ type queryProfileParams struct {
 	*queryParams
 	ProfileType        string
 	StacktraceSelector []string
+	MaxNodes           int64
 }
 
 func addQueryProfileParams(queryCmd commander) *queryProfileParams {
@@ -101,6 +102,7 @@ func addQueryProfileParams(queryCmd commander) *queryProfileParams {
 	params.queryParams = addQueryParams(queryCmd)
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
 	queryCmd.Flag("stacktrace-selector", "Only query locations with those symbols. Provide multiple times starting with the root").StringsVar(&params.StacktraceSelector)
+	queryCmd.Flag("max-nodes", "Maximum number of nodes to return in the profile").Int64Var(&params.MaxNodes)
 	return params
 }
 
@@ -116,6 +118,10 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 		Start:         from.UnixMilli(),
 		End:           to.UnixMilli(),
 		LabelSelector: params.Query,
+	}
+
+	if params.MaxNodes > 0 {
+		req.MaxNodes = &params.MaxNodes
 	}
 
 	if len(params.StacktraceSelector) > 0 {
