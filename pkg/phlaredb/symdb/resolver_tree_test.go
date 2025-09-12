@@ -200,7 +200,91 @@ func Test_buildTreeFromParentPointerTrees(t *testing.T) {
 	appender := NewSampleAppender()
 	appender.AppendMany(expectedSamples.StacktraceIDs, expectedSamples.Values)
 	ranges := iterator.SplitStacktraceIDRanges(appender)
-	resolved, err := buildTreeFromParentPointerTrees(context.Background(), ranges, symbols, maxNodes)
+	resolved, err := buildTreeFromParentPointerTrees(context.Background(), ranges, symbols, maxNodes, nil)
+	require.NoError(t, err)
+
+	require.Equal(t, expectedTree, resolved.String())
+}
+
+func Test_buildTreeFromParentPointerTrees_with_selection(t *testing.T) {
+	// The profile has the following samples:
+	//
+	//	a b c f f1 f2 f3 f4 f5
+	//	1 2 3 4 5  6  7  8  9
+	//
+	//	4: a b c f
+	//	5: a b c f1
+	//	6: a b c f1 f2
+	//	8: a b c f3 f4
+	//	9: a b c f3 f4 f5
+	//
+	expectedSamples := v1.Samples{
+		StacktraceIDs: []uint32{4, 5, 6, 8, 9},
+		Values:        []uint64{1, 1, 1, 1, 1},
+	}
+
+	// After the truncation, we expect to see the following tree
+	// (function f, f2, and f5 are replaced with "other"):
+	const maxNodes = 6
+	expectedTree := `.
+└── a: self 0 total 5
+    └── b: self 0 total 5
+        └── c: self 0 total 5
+            ├── f1: self 1 total 2
+            │   └── other: self 1 total 1
+            ├── f3: self 0 total 2
+            │   └── f4: self 1 total 2
+            │       └── other: self 1 total 1
+            └── other: self 1 total 1
+`
+
+	p := &profilev1.Profile{
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{4, 3, 2, 1}, Value: []int64{1}},
+			{LocationId: []uint64{5, 3, 2, 1}, Value: []int64{1}},
+			{LocationId: []uint64{6, 5, 3, 2, 1}, Value: []int64{1}},
+			{LocationId: []uint64{8, 7, 3, 2, 1}, Value: []int64{1}},
+			{LocationId: []uint64{9, 8, 7, 3, 2, 1}, Value: []int64{1}},
+		},
+		StringTable: []string{
+			"", "a", "b", "c", "f", "f1", "f2", "f3", "f4", "f5",
+		},
+	}
+
+	names := uint64(len(p.StringTable))
+	for i := uint64(1); i < names; i++ {
+		p.Location = append(p.Location, &profilev1.Location{
+			Id: i, Line: []*profilev1.Line{{FunctionId: i}},
+		})
+		p.Function = append(p.Function, &profilev1.Function{
+			Id: i, Name: int64(i),
+		})
+	}
+
+	s := newMemSuite(t, nil)
+	const partition = 0
+	indexed := s.db.WriteProfileSymbols(partition, p)
+	assert.Equal(t, expectedSamples, indexed[partition].Samples)
+	b := blockSuite{memSuite: s}
+	b.flush()
+	pr, err := b.reader.Partition(context.Background(), partition)
+	require.NoError(t, err)
+	symbols := pr.Symbols()
+	iterator, ok := symbols.Stacktraces.(StacktraceIDRangeIterator)
+	require.True(t, ok)
+
+	appender := NewSampleAppender()
+	appender.AppendMany(expectedSamples.StacktraceIDs, expectedSamples.Values)
+	ranges := iterator.SplitStacktraceIDRanges(appender)
+	resolved, err := buildTreeFromParentPointerTrees(context.Background(), ranges, symbols, maxNodes, SelectStackTraces(symbols, &typesv1.StackTraceSelector{
+		CallSite: []*typesv1.Location{
+			{Name: "a"},
+			{Name: "b"},
+			{Name: "c"},
+			{Name: "f1"},
+			{Name: "f2"}, // this shouldn't show f1 self
+		},
+	}))
 	require.NoError(t, err)
 
 	require.Equal(t, expectedTree, resolved.String())

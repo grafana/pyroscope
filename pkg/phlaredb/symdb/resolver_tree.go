@@ -3,6 +3,7 @@ package symdb
 import (
 	"context"
 	"slices"
+	"strconv"
 	"sync"
 
 	"golang.org/x/sync/errgroup"
@@ -36,7 +37,7 @@ func buildTree(
 	iterator, ok := symbols.Stacktraces.(StacktraceIDRangeIterator)
 	if ok && shouldCopyTree(appender, maxNodes) {
 		ranges := iterator.SplitStacktraceIDRanges(appender)
-		return buildTreeFromParentPointerTrees(ctx, ranges, symbols, maxNodes)
+		return buildTreeFromParentPointerTrees(ctx, ranges, symbols, maxNodes, selection)
 	}
 	// Otherwise, use the basic approach: resolve each stack trace
 	// and insert them into the new tree one by one. The method
@@ -166,13 +167,14 @@ func buildTreeFromParentPointerTrees(
 	ranges iter.Iterator[*StacktraceIDRange],
 	symbols *Symbols,
 	maxNodes int64,
+	selection *SelectedStackTraces,
 ) (*model.Tree, error) {
 	m := model.NewTreeMerger()
 	g, _ := errgroup.WithContext(ctx)
 	for ranges.Next() {
 		sr := ranges.At()
 		g.Go(util.RecoverPanic(func() error {
-			m.MergeTree(buildTreeForStacktraceIDRange(sr, symbols, maxNodes))
+			m.MergeTree(buildTreeForStacktraceIDRange(sr, symbols, maxNodes, selection))
 			return nil
 		}))
 	}
@@ -182,15 +184,141 @@ func buildTreeFromParentPointerTrees(
 	return m.Tree(), nil
 }
 
+type nodeResult int64
+
+const (
+	nodeResultUnknown nodeResult = iota
+	nodeResultMatch
+	nodeResultDescendant
+	nodeResultAncestor
+	nodeResultNoMatch
+)
+
+func nodeMatch(n *Node, selectionIdx int, symbols *Symbols, selection *SelectedStackTraces) int {
+	resetPos := int(selection.depth - 1)
+	for _, l := range symbols.Locations[n.Location].Line {
+		if selectionIdx < 0 {
+			return resetPos
+		}
+		if selection.callSite[selectionIdx] != selection.funcNames[l.FunctionId] {
+			return resetPos
+		}
+		selectionIdx--
+	}
+	return selectionIdx
+}
+
+func markAncestors(idx int, nodes []Node, result nodeResult) {
+	markNAncestors(idx, nodes, result, -1)
+}
+
+func markNAncestors(idx int, nodes []Node, result nodeResult, depth int) {
+	count := 0
+	for idx != sentinel {
+		if depth > 0 && count >= depth {
+			break
+		}
+		if nodes[idx].Value != int64(nodeResultUnknown) {
+			break
+		}
+		nodes[idx].Value = int64(result)
+		idx = int(nodes[idx].Parent)
+		count++
+	}
+}
+
+func selectNodes(
+	symbols *Symbols,
+	selection *SelectedStackTraces,
+	nodes []Node,
+) []Node {
+
+	var (
+		current      int
+		depth        int
+		selectionIdx int
+	)
+
+	// iterate over all nodes and check if they or their descendants match the selection
+	for idx := range nodes {
+		current = idx
+		selectionIdx = int(selection.depth) - 1
+		depth = 0
+		for {
+			// if node result is know, we can mark nodes right away
+			currentResult := nodeResult(nodes[current].Value)
+			if currentResult != nodeResultUnknown {
+				if currentResult == nodeResultDescendant || currentResult == nodeResultMatch {
+					markAncestors(idx, nodes, nodeResultDescendant)
+				} else if currentResult == nodeResultAncestor || currentResult == nodeResultNoMatch {
+					markAncestors(idx, nodes, nodeResultNoMatch)
+				} else {
+					panic("unhandled node result: " + strconv.Itoa(int(currentResult)))
+				}
+				break
+			}
+
+			// check if the strings match on this node
+			selectionIdx = nodeMatch(&nodes[current], selectionIdx, symbols, selection)
+
+			// if the next node is the root or we are on the root node already break
+			if next := nodes[current].Parent; next == sentinel || nodes[next].Parent == sentinel {
+				if selectionIdx == -1 {
+					// we found the match
+					matchNode := idx
+					for i := 0; i < int(depth-int(selection.depth)); i++ {
+						matchNode = int(nodes[matchNode].Parent)
+					}
+					markAncestors(int(nodes[matchNode].Parent), nodes, nodeResultAncestor)
+					nodes[matchNode].Value = int64(nodeResultMatch)
+					markAncestors(idx, nodes, nodeResultDescendant)
+					break
+				}
+
+				// mark everything that is deepeer than the selection as no match
+				if depth > int(selection.depth) {
+					markNAncestors(idx, nodes, nodeResultNoMatch, depth-int(selection.depth))
+				}
+				break
+			}
+
+			current = int(nodes[current].Parent)
+			depth++
+		}
+	}
+
+	// iterate once again over all nodes and mark the nodes that are not matched
+	for idx := range nodes {
+		if nodes[idx].Value == int64(nodeResultAncestor) || nodes[idx].Value == int64(nodeResultDescendant) || nodes[idx].Value == int64(nodeResultMatch) {
+			// we keep them
+			nodes[idx].Value = 0
+			continue
+		}
+		nodes[idx].Value = sentinel
+		nodes[idx].Location = sentinel
+		nodes[idx].Parent = sentinel
+	}
+
+	// TODO reset values
+	return nodes
+
+}
+
 func buildTreeForStacktraceIDRange(
 	stacktraces *StacktraceIDRange,
 	symbols *Symbols,
 	maxNodes int64,
+	selection *SelectedStackTraces,
 ) *model.Tree {
 	// Get the parent pointer tree for the range. The tree is
 	// not specific to the samples we've collected and includes
 	// all the stack traces.
 	nodes := stacktraces.Nodes()
+	// Filter stacktrace filter
+	if selection != nil && len(selection.callSite) > 0 {
+		nodes = selectNodes(symbols, selection, nodes)
+	}
+
 	// SetNodeValues sets values to the nodes that match the
 	// samples we've collected; those are not always leaves:
 	// a node may have its own value (self) and children.
@@ -259,7 +387,8 @@ func insertStacktraces(t *model.StacktraceTree, nodes []Node, symbols *Symbols) 
 	for i := int32(1); i < l; i++ {
 		p := nodes[i].Parent
 		v := nodes[i].Value
-		if v > 0 && nodes[p].Location&truncationMark == 0 {
+		l := nodes[i].Location
+		if l != sentinel && v > 0 && nodes[p].Location&truncationMark == 0 {
 			s = resolveStack(s, nodes, i, symbols)
 			t.Insert(s, v)
 		}
