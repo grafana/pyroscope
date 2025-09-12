@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   format:
-    runs-on: ubuntu-x64-small
+    runs-on: ubuntu-x64-large
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -31,7 +31,7 @@ jobs:
       - name: Format
         run: make fmt check/unstaged-changes
   check-generated:
-    runs-on: ubuntu-x64-small
+    runs-on: ubuntu-x64-large
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -63,7 +63,7 @@ jobs:
       - name: Test
         run: make go/test
   lint:
-    runs-on: ubuntu-x64-small
+    runs-on: ubuntu-x64-large
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
