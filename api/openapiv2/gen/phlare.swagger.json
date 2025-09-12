@@ -1670,7 +1670,10 @@
           "format": "int64"
         },
         "stackTraceSelector": {
-          "$ref": "#/definitions/v1StackTraceSelector",
+          "$ref": "#/definitions/v1StackTraceSelector"
+        },
+        "sanitizeOnMerge": {
+          "type": "boolean",
           "description": "TODO(kolesnikovae): Go PGO options."
         }
       }
