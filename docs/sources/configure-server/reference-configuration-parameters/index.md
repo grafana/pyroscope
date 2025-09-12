@@ -2316,6 +2316,11 @@ distributor_usage_groups:
 # CLI flag: -querier.sanitize-on-merge
 [query_sanitize_on_merge: <boolean> | default = true]
 
+# The output mode for pprof queries, for transfers between internal components.
+# Valid values are 'bytes' and 'typed'.
+# CLI flag: -querier.internal-pprof-output-mode
+[query_internal_pprof_output_mode: <string> | default = "bytes"]
+
 # Delete blocks containing samples older than the specified retention period. 0
 # to disable.
 # CLI flag: -compactor.blocks-retention-period
