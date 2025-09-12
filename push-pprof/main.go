@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -119,8 +120,9 @@ var (
 	username   = flag.String("username", "", "Basic auth username (optional)")
 	password   = flag.String("password", "", "Basic auth password (optional)")
 	timeout    = flag.Duration("timeout", 60*time.Second, "Timeout for the HTTP request")
-	burstSleep = flag.Duration("iteration-sleep", 20*time.Second, "How long to sleep between iterations")
+	burstSleep = flag.Duration("iteration-sleep", 1*time.Second, "How long to sleep between iterations")
 	burstSize  = flag.Int("iteration-size", 1000, "How many requests to send in a iteration")
+	target     = flag.String("target", "pyroscope", "Target system: 'pyroscope' or 'mimir'. pyroscope is default")
 )
 
 const keylogFile = "keylog.txt"
@@ -132,6 +134,12 @@ var gl log.Logger
 func main() {
 
 	flag.Parse()
+
+	if *target != "pyroscope" && *target != "mimir" {
+		fmt.Fprintf(os.Stderr, "Invalid target '%s'. Must be 'pyroscope' or 'mimir'\n", *target)
+		os.Exit(1)
+	}
+
 	initLogging()
 
 	var httpClient *http.Client
@@ -192,7 +200,11 @@ func iteration(client *http.Client, n int) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			oneRequest(client)
+			if *target == "mimir" {
+				oneMimirRequest(client)
+			} else {
+				oneRequest(client)
+			}
 		}()
 	}
 	wg.Wait()
@@ -202,7 +214,7 @@ func oneRequest(client *http.Client) {
 	requestStartTime := log.DefaultTimestampUTC()
 	traceId := fmt.Sprintf("%016x", rand.Uint64())
 	spanId := fmt.Sprintf("%016x", rand.Uint64())
-	tl := log.With(gl, "trace_id", traceId, "request_start_time", requestStartTime)
+	tl := log.With(gl, "trace_id", traceId, "request_start_time", requestStartTime, "target", *target)
 	level.Debug(tl).Log("msg", "Sending request")
 
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
@@ -226,11 +238,60 @@ func oneRequest(client *http.Client) {
 	)
 
 	_, err := connectClient.Push(ctx, req)
-	tl = log.With(tl, "connection", ct.connectionInfo())
+	if err != nil {
+		if strings.Contains(err.Error(), "invalid token") {
+			tl = log.With(tl, "err", err)
+			err = nil
+		}
+	}
+	tl = log.With(tl, "connection", ct.connectionInfo(), "url", *url)
 	if err != nil {
 		_ = level.Error(tl).Log("msg", "Request failed", "err", err)
 	} else {
 		_ = level.Debug(tl).Log("msg", "Request successful")
+	}
+}
+
+func oneMimirRequest(client *http.Client) {
+	requestStartTime := log.DefaultTimestampUTC()
+	traceId := fmt.Sprintf("%016x", rand.Uint64())
+	spanId := fmt.Sprintf("%016x", rand.Uint64())
+	tl := log.With(gl, "trace_id", traceId, "request_start_time", requestStartTime)
+	level.Debug(tl).Log("msg", "Sending Mimir request")
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+
+	ct := newClientTrace(level.Debug(tl))
+	ctx = httptrace.WithClientTrace(ctx, ct.trace)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", *url+"/api/prom/api/v1/query", nil)
+	if err != nil {
+		_ = level.Error(tl).Log("msg", "Failed to create request", "err", err)
+		return
+	}
+
+	req.Header.Set("uber-trace-id", traceId+":"+spanId+":0:1")
+	req.Header.Set("jaeger-baggage", "k1=v1,k2=v2")
+	req.Header.Set("User-Agent", "Tolyan/traceId:"+traceId)
+	if *username != "" {
+		req.SetBasicAuth(*username, *password)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set("Referer", "https://pyroscope.io/")
+	resp, err := client.Do(req)
+	tl = log.With(tl, "connection", ct.connectionInfo(), "url", req.URL.String())
+	if err != nil {
+		_ = level.Error(tl).Log("msg", "Mimir request failed", "err", err)
+	} else {
+		io.ReadAll(resp.Body)
+		resp.Body.Close()
+		_ = level.Debug(tl).Log("msg", "Mimir request successful", "status", resp.Status)
 	}
 }
 

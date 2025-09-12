@@ -1,4 +1,0 @@
-0. find out what ip does dns resolve to, is it aws elb?
-1. seems aws specific - confirm, run on gcp + aws and see if both fails
-2. dump traffic in dev aws
-3. why do I see no logs?
