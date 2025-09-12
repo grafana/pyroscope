@@ -199,9 +199,10 @@ func iteration(client *http.Client, n int) {
 }
 
 func oneRequest(client *http.Client) {
+	requestStartTime := log.DefaultTimestampUTC()
 	traceId := fmt.Sprintf("%016x", rand.Uint64())
 	spanId := fmt.Sprintf("%016x", rand.Uint64())
-	tl := log.With(gl, "trace_id", traceId)
+	tl := log.With(gl, "trace_id", traceId, "request_start_time", requestStartTime)
 	level.Debug(tl).Log("msg", "Sending request")
 
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
