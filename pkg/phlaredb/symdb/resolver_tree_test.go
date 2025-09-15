@@ -78,7 +78,7 @@ func Test_memory_Resolver_ResolveTree(t *testing.T) {
 				}
 			}
 
-			r := NewResolver(context.Background(), s.db, WithResolverStackTraceSelector(sts))
+			r := NewResolver(context.Background(), s.db, WithResolverStackTraceSelector(sts), WithResolverMaxNodes(10))
 			defer r.Release()
 			r.AddSamples(0, s.indexed[0][0].Samples)
 			resolved, err := r.Tree()
