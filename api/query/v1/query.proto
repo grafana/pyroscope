@@ -182,6 +182,7 @@ message PprofQuery {
   int64 max_nodes = 1;
   optional types.v1.StackTraceSelector stack_trace_selector = 2;
   // TODO(kolesnikovae): Go PGO options.
+  bool sanitize_on_merge = 3;
 }
 
 message PprofReport {
