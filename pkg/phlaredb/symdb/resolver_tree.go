@@ -160,24 +160,6 @@ const (
 	nodeResultNoMatch
 )
 
-func nodeMatch(n *Node, selectionIdx int, symbols *Symbols, selection *SelectedStackTraces) int {
-	resetPos := int(selection.depth - 1)
-	for _, l := range symbols.Locations[n.Location].Line {
-		if selectionIdx < 0 {
-			return resetPos
-		}
-		if selection.callSite[selectionIdx] != selection.funcNames[l.FunctionId] {
-			return resetPos
-		}
-		selectionIdx--
-	}
-	return selectionIdx
-}
-
-func markAncestors(idx int, nodes []Node, result nodeResult) {
-	markNAncestors(idx, nodes, result, -1)
-}
-
 func markNAncestors(idx int, nodes []Node, result nodeResult, depth int) {
 	count := 0
 	for idx != sentinel {
@@ -193,69 +175,127 @@ func markNAncestors(idx int, nodes []Node, result nodeResult, depth int) {
 	}
 }
 
-func selectNodes(
+type selectedNodeMarker struct {
+	symbols   *Symbols
+	selection *SelectedStackTraces
+	nodes     []Node
+
+	leaf         int // node we started with
+	current      int // current node index
+	depth        int // current stack depth
+	selectionIdx int // references which callsite is need to be matched next
+}
+
+// markAncestors marks the ancestors of the leaf node we started with with the given result
+// will only mark the ancestors that are not already marked
+func (m *selectedNodeMarker) markAncestors(result nodeResult) {
+	markNAncestors(m.leaf, m.nodes, result, -1)
+}
+
+// markMatch marks the match node and its ancestors and descendants
+func (m *selectedNodeMarker) markMatch() {
+	// get to the match node
+	matchNode := m.leaf
+	for i := 0; i < m.depth-int(m.selection.depth); i++ {
+		matchNode = int(m.nodes[matchNode].Parent)
+	}
+	// first mark the match node's ancestors
+	markNAncestors(matchNode, m.nodes, nodeResultAncestor, -1)
+	// mark the match node as a match
+	m.nodes[matchNode].Value = int64(nodeResultMatch)
+	// mark the match node's descendants
+	markNAncestors(matchNode, m.nodes, nodeResultDescendant, -1)
+}
+
+func (m *selectedNodeMarker) reset(idx int) {
+	m.leaf = idx
+	m.current = idx
+	m.depth = 0
+	m.selectionIdx = m.firstSelection()
+}
+
+func (m *selectedNodeMarker) firstSelection() int {
+	return int(m.selection.depth) - 1
+}
+
+// nodeMatch checks if the current node matches the selection and update m.selectionIdx to reflect the next selection to match
+// If it is -1 the full stack has been matched
+func (m *selectedNodeMarker) matchNode() {
+	for _, l := range m.symbols.Locations[m.nodes[m.current].Location].Line {
+		if m.selectionIdx < 0 {
+			m.selectionIdx = m.firstSelection()
+			return
+		}
+		if m.selection.callSite[m.selectionIdx] != m.selection.funcNames[l.FunctionId] {
+			m.selectionIdx = m.firstSelection()
+			return
+		}
+		m.selectionIdx--
+	}
+}
+
+// markStack marks the stack from the left node to the root node
+func (m *selectedNodeMarker) markStack(leaf int) {
+	m.reset(leaf)
+	for {
+		// if node result is known, we can mark nodes right away
+		currentResult := nodeResult(m.nodes[m.current].Value)
+		if currentResult != nodeResultUnknown {
+			switch currentResult {
+			case nodeResultDescendant, nodeResultMatch:
+				m.markAncestors(nodeResultDescendant)
+			case nodeResultAncestor, nodeResultNoMatch:
+				m.markAncestors(nodeResultNoMatch)
+			default:
+				panic("unhandled node result: " + strconv.Itoa(int(currentResult)))
+			}
+			return
+		}
+
+		// check if the functionNames on this node, match the selector
+		m.matchNode()
+
+		// if the next node is the root or we are on the root node already break
+		if next := m.nodes[m.current].Parent; next == sentinel || m.nodes[next].Parent == sentinel {
+			if m.selectionIdx == -1 {
+				// we found the match
+				m.markMatch()
+				return
+			}
+
+			// mark everything that is deepeer than the selection as no match
+			if m.depth > int(m.selection.depth) {
+				markNAncestors(m.leaf, m.nodes, nodeResultNoMatch, m.depth-int(m.selection.depth))
+			}
+			return
+		}
+
+		m.current = int(m.nodes[m.current].Parent)
+		m.depth++
+	}
+}
+
+// markSelectedNodes marks the nodes that are matched by the StacktraceSelector
+// When processing the nodes from the parent pointer tree, it will temporarily use the values field to keep track of the state of each node.
+// After the nodes are processed, the values field set to 0 and the truncation mark is used to mark the nodes that are not matched.
+func markSelectedNodes(
 	symbols *Symbols,
 	selection *SelectedStackTraces,
 	nodes []Node,
 ) []Node {
-
-	var (
-		current      int
-		depth        int
-		selectionIdx int
-	)
+	m := &selectedNodeMarker{
+		symbols:   symbols,
+		selection: selection,
+		nodes:     nodes,
+	}
 
 	// iterate over all nodes and check if they or their descendants match the selection
-	for idx := range nodes {
-		current = idx
-		selectionIdx = int(selection.depth) - 1
-		depth = 0
-		for {
-			// if node result is know, we can mark nodes right away
-			currentResult := nodeResult(nodes[current].Value)
-			if currentResult != nodeResultUnknown {
-				switch currentResult {
-				case nodeResultDescendant, nodeResultMatch:
-					markAncestors(idx, nodes, nodeResultDescendant)
-				case nodeResultAncestor, nodeResultNoMatch:
-					markAncestors(idx, nodes, nodeResultNoMatch)
-				default:
-					panic("unhandled node result: " + strconv.Itoa(int(currentResult)))
-				}
-				break
-			}
-
-			// check if the strings match on this node
-			selectionIdx = nodeMatch(&nodes[current], selectionIdx, symbols, selection)
-
-			// if the next node is the root or we are on the root node already break
-			if next := nodes[current].Parent; next == sentinel || nodes[next].Parent == sentinel {
-				if selectionIdx == -1 {
-					// we found the match
-					matchNode := idx
-					for i := 0; i < depth-int(selection.depth); i++ {
-						matchNode = int(nodes[matchNode].Parent)
-					}
-					markAncestors(int(nodes[matchNode].Parent), nodes, nodeResultAncestor)
-					nodes[matchNode].Value = int64(nodeResultMatch)
-					markAncestors(idx, nodes, nodeResultDescendant)
-					break
-				}
-
-				// mark everything that is deepeer than the selection as no match
-				if depth > int(selection.depth) {
-					markNAncestors(idx, nodes, nodeResultNoMatch, depth-int(selection.depth))
-				}
-				break
-			}
-
-			current = int(nodes[current].Parent)
-			depth++
-		}
+	for idx := range m.nodes {
+		m.markStack(idx)
 	}
 
 	// iterate once again over all nodes and mark the nodes that are not matched as truncated
-	for idx := range nodes {
+	for idx := range m.nodes {
 		if nodes[idx].Value != int64(nodeResultDescendant) && nodes[idx].Value != int64(nodeResultMatch) {
 			// mark them as truncated
 			nodes[idx].Location |= truncationMark
@@ -264,8 +304,7 @@ func selectNodes(
 		nodes[idx].Value = 0
 	}
 
-	return nodes
-
+	return m.nodes
 }
 
 func buildTreeForStacktraceIDRange(
@@ -280,7 +319,7 @@ func buildTreeForStacktraceIDRange(
 	nodes := stacktraces.Nodes()
 	// Filter stacktrace filter
 	if selection != nil && len(selection.callSite) > 0 {
-		nodes = selectNodes(symbols, selection, nodes)
+		nodes = markSelectedNodes(symbols, selection, nodes)
 	}
 
 	// SetNodeValues sets values to the nodes that match the
