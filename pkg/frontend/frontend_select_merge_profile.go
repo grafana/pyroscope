@@ -48,6 +48,21 @@ func (f *Frontend) SelectMergeProfile(
 	// NOTE: Max nodes limit is not set by default:
 	//   the method is used for pprof export and
 	//   truncation is not applicable for that.
+	maxNodesEnabled := false
+	for _, tenantID := range tenantIDs {
+		if f.limits.MaxFlameGraphNodesOnSelectMergeProfile(tenantID) {
+			maxNodesEnabled = true
+		}
+	}
+
+	maxNodes := c.Msg.MaxNodes
+	if maxNodesEnabled {
+		maxNodesV, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		maxNodes = &maxNodesV
+	}
 
 	var m pprof.ProfileMerge
 	for intervals.Next() {
@@ -58,7 +73,7 @@ func (f *Frontend) SelectMergeProfile(
 				LabelSelector:      c.Msg.LabelSelector,
 				Start:              r.Start.UnixMilli(),
 				End:                r.End.UnixMilli(),
-				MaxNodes:           c.Msg.MaxNodes,
+				MaxNodes:           maxNodes,
 				StackTraceSelector: c.Msg.StackTraceSelector,
 			})
 			resp, err := connectgrpc.RoundTripUnary[

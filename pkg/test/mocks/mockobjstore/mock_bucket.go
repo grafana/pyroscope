@@ -766,17 +766,24 @@ func (_c *MockBucket_SupportedIterOptions_Call) RunAndReturn(run func() []objsto
 	return _c
 }
 
-// Upload provides a mock function with given fields: ctx, name, r
+// Upload provides a mock function with given fields: ctx, name, r, opts
 func (_m *MockBucket) Upload(ctx context.Context, name string, r io.Reader, opts ...objstore.ObjectUploadOption) error {
-	ret := _m.Called(ctx, name, r)
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, name, r)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Upload")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, io.Reader) error); ok {
-		r0 = rf(ctx, name, r)
+	if rf, ok := ret.Get(0).(func(context.Context, string, io.Reader, ...objstore.ObjectUploadOption) error); ok {
+		r0 = rf(ctx, name, r, opts...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -793,13 +800,21 @@ type MockBucket_Upload_Call struct {
 //   - ctx context.Context
 //   - name string
 //   - r io.Reader
-func (_e *MockBucket_Expecter) Upload(ctx interface{}, name interface{}, r interface{}) *MockBucket_Upload_Call {
-	return &MockBucket_Upload_Call{Call: _e.mock.On("Upload", ctx, name, r)}
+//   - opts ...objstore.ObjectUploadOption
+func (_e *MockBucket_Expecter) Upload(ctx interface{}, name interface{}, r interface{}, opts ...interface{}) *MockBucket_Upload_Call {
+	return &MockBucket_Upload_Call{Call: _e.mock.On("Upload",
+		append([]interface{}{ctx, name, r}, opts...)...)}
 }
 
-func (_c *MockBucket_Upload_Call) Run(run func(ctx context.Context, name string, r io.Reader)) *MockBucket_Upload_Call {
+func (_c *MockBucket_Upload_Call) Run(run func(ctx context.Context, name string, r io.Reader, opts ...objstore.ObjectUploadOption)) *MockBucket_Upload_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(io.Reader))
+		variadicArgs := make([]objstore.ObjectUploadOption, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(objstore.ObjectUploadOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), args[2].(io.Reader), variadicArgs...)
 	})
 	return _c
 }
@@ -809,7 +824,7 @@ func (_c *MockBucket_Upload_Call) Return(_a0 error) *MockBucket_Upload_Call {
 	return _c
 }
 
-func (_c *MockBucket_Upload_Call) RunAndReturn(run func(context.Context, string, io.Reader) error) *MockBucket_Upload_Call {
+func (_c *MockBucket_Upload_Call) RunAndReturn(run func(context.Context, string, io.Reader, ...objstore.ObjectUploadOption) error) *MockBucket_Upload_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -579,6 +579,8 @@ Usage of ./pyroscope:
     	Maximum number of flame graph nodes by default. 0 to disable. (default 8192)
   -querier.max-flamegraph-nodes-max int
     	Maximum number of flame graph nodes allowed. 0 to disable. (default 1048576)
+  -querier.max-flamegraph-nodes-on-select-merge-profile
+    	Enforce the max nodes limits and defaults on SelectMergeProfile API. Historically this limit was not enforced to enable to gather full pprof profiles without truncation.
   -querier.max-query-length duration
     	The limit to length of queries. 0 to disable. (default 1d)
   -querier.max-query-lookback duration
