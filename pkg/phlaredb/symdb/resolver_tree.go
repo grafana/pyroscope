@@ -248,11 +248,12 @@ func selectNodes(
 			// if node result is know, we can mark nodes right away
 			currentResult := nodeResult(nodes[current].Value)
 			if currentResult != nodeResultUnknown {
-				if currentResult == nodeResultDescendant || currentResult == nodeResultMatch {
+				switch currentResult {
+				case nodeResultDescendant, nodeResultMatch:
 					markAncestors(idx, nodes, nodeResultDescendant)
-				} else if currentResult == nodeResultAncestor || currentResult == nodeResultNoMatch {
+				case nodeResultAncestor, nodeResultNoMatch:
 					markAncestors(idx, nodes, nodeResultNoMatch)
-				} else {
+				default:
 					panic("unhandled node result: " + strconv.Itoa(int(currentResult)))
 				}
 				break
@@ -266,7 +267,7 @@ func selectNodes(
 				if selectionIdx == -1 {
 					// we found the match
 					matchNode := idx
-					for i := 0; i < int(depth-int(selection.depth)); i++ {
+					for i := 0; i < depth-int(selection.depth); i++ {
 						matchNode = int(nodes[matchNode].Parent)
 					}
 					markAncestors(int(nodes[matchNode].Parent), nodes, nodeResultAncestor)
