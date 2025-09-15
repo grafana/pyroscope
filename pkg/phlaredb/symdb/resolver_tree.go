@@ -2,7 +2,6 @@ package symdb
 
 import (
 	"context"
-	"slices"
 	"strconv"
 	"sync"
 
@@ -65,8 +64,8 @@ type treeSymbols struct {
 	lines   []int32
 	cur     int
 
-	selection     *SelectedStackTraces
-	functionIDsFn func(locations []int32) ([]int32, bool)
+	selection        *SelectedStackTraces
+	funcNamesMatcher func(funcNames []int32) bool
 }
 
 var treeSymbolsPool = sync.Pool{
@@ -96,70 +95,37 @@ func (r *treeSymbols) init(symbols *Symbols, samples schemav1.Samples, selection
 		r.tree = model.NewStacktraceTree(samples.Len() * 2)
 	}
 	if r.selection != nil && len(r.selection.callSite) > 0 {
-		r.functionIDsFn = r.getFilteredFunctionIDs
-	} else {
-		r.functionIDsFn = r.getFunctionIDs
+		r.funcNamesMatcher = r.funcNamesMatchSelection
 	}
 }
-
 func (r *treeSymbols) InsertStacktrace(_ uint32, locations []int32) {
-	value := r.samples.Values[r.cur]
+	r.lines = r.lines[:0]
+	for i := 0; i < len(locations); i++ {
+		lines := r.symbols.Locations[locations[i]].Line
+		for j := 0; j < len(lines); j++ {
+			f := r.symbols.Functions[lines[j].FunctionId]
+			r.lines = append(r.lines, int32(f.Name))
+		}
+	}
+	if r.funcNamesMatcher == nil || r.funcNamesMatcher(r.lines) {
+		r.tree.Insert(r.lines, int64(r.samples.Values[r.cur]))
+	}
 	r.cur++
-
-	functionIDs, ok := r.functionIDsFn(locations)
-	if !ok {
-		// This stack trace does not match the stack trace selector.
-		return
-	}
-
-	for _, functionID := range functionIDs {
-		function := r.symbols.Functions[functionID]
-		r.lines = append(r.lines, int32(function.Name))
-	}
-	r.tree.Insert(r.lines, int64(value))
 }
 
-func (r *treeSymbols) getFunctionIDs(locations []int32) ([]int32, bool) {
-	functionIDs := make([]int32, 0)
-	for _, locationID := range locations {
-		lines := r.symbols.Locations[locationID].Line
-		for _, line := range lines {
-			functionIDs = append(functionIDs, int32(line.FunctionId))
+// funcNamesMatchSelection checks if the funcNames match the selection.
+// Note funcNames is a slice of function name references and is reversed. The first item is the last function in the stack trace.
+func (r *treeSymbols) funcNamesMatchSelection(funcNames []int32) bool {
+	if len(funcNames) < int(r.selection.depth) {
+		return false
+	}
+
+	for i := 0; i < int(r.selection.depth); i++ {
+		if r.symbols.Strings[funcNames[len(funcNames)-1-i]] != r.selection.callSite[i] {
+			return false
 		}
 	}
-	return functionIDs, true
-}
-
-func (r *treeSymbols) getFilteredFunctionIDs(locations []int32) ([]int32, bool) {
-	functionIDs := make([]int32, 0)
-	var pos int
-	pathLen := int(r.selection.depth)
-
-	for i := len(locations) - 1; i >= 0; i-- {
-		locationID := locations[i]
-		lines := r.symbols.Locations[locationID].Line
-
-		for j := len(lines) - 1; j >= 0; j-- {
-			line := lines[j]
-			functionID := line.FunctionId
-
-			if pos < pathLen {
-				if r.selection.callSite[pos] != r.selection.funcNames[functionID] {
-					return nil, false
-				}
-				pos++
-			}
-
-			functionIDs = append(functionIDs, int32(functionID))
-		}
-	}
-
-	if pos < pathLen {
-		return nil, false
-	}
-
-	slices.Reverse(functionIDs)
-	return functionIDs, true
+	return true
 }
 
 func buildTreeFromParentPointerTrees(

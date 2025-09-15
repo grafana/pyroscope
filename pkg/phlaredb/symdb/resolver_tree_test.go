@@ -25,39 +25,82 @@ func Test_memory_Resolver_ResolveTree(t *testing.T) {
 		require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
 	})
 
-	t.Run("with stack trace selector", func(t *testing.T) {
-		t.SkipNow()
-
-		locations := []string{
-			"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*Trie).Diff.func1",
-			"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*trieNode).findNodeAt",
-			"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*Trie).Diff",
-			"github.com/pyroscope-io/pyroscope/pkg/scrape.(*pprofWriter).writeProfile",
-		}
-
-		callSites := make([]*typesv1.Location, len(locations))
-		for i, name := range locations {
-			callSites[i] = &typesv1.Location{
-				Name: name,
+	for _, tc := range []struct {
+		name            string
+		callsite        []string
+		stacktraceCount int
+		total           int
+	}{
+		{
+			name: "multiple stacks",
+			callsite: []string{
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*scrapeLoop).run",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*Target).report",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*scrapeLoop).scrape",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*pprofWriter).writeProfile",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*cache).writeProfiles",
+				"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*Trie).Insert",
+			},
+			stacktraceCount: 4,
+			total:           2752628,
+		},
+		{
+			name: "single stack",
+			callsite: []string{
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*scrapeLoop).run",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*Target).report",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*scrapeLoop).scrape",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*pprofWriter).writeProfile",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*cache).writeProfiles",
+				"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*Trie).Insert",
+				"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*trieNode).findNodeAt",
+				"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.newTrieNode",
+			},
+			stacktraceCount: 1,
+			total:           417817,
+		},
+		{
+			name: "no match",
+			callsite: []string{
+				"github.com/no-match/no-match.main",
+			},
+			stacktraceCount: 0,
+			total:           0,
+		},
+	} {
+		t.Run("with stack trace selector/"+tc.name, func(t *testing.T) {
+			sts := &typesv1.StackTraceSelector{
+				CallSite: make([]*typesv1.Location, len(tc.callsite)),
 			}
-		}
+			for i, name := range tc.callsite {
+				sts.CallSite[i] = &typesv1.Location{
+					Name: name,
+				}
+			}
 
-		sts := &typesv1.StackTraceSelector{
-			CallSite: callSites,
-		}
+			r := NewResolver(context.Background(), s.db, WithResolverStackTraceSelector(sts))
+			defer r.Release()
+			r.AddSamples(0, s.indexed[0][0].Samples)
+			resolved, err := r.Tree()
+			require.NoError(t, err)
 
-		r := NewResolver(context.Background(), s.db, WithResolverStackTraceSelector(sts))
-		defer r.Release()
-		r.AddSamples(0, s.indexed[0][0].Samples)
-		resolved, err := r.Tree()
-		require.NoError(t, err)
-		// require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
-		resolved.IterateStacks(func(name string, self int64, stack []string) {
-			require.Equal(t, len(locations), len(stack), "stack shorter than expected prefix")
-			require.Equal(t, locations, stack[:len(locations)], "stack prefix doesn't match")
+			stacktraceCount := 0
+			total := 0
+
+			resolved.IterateStacks(func(name string, self int64, stack []string) {
+				stacktraceCount++
+				total += int(self)
+
+				prefix := make([]string, len(tc.callsite))
+				for i := range prefix {
+					prefix[i] = stack[len(stack)-1-i]
+				}
+				require.Equal(t, tc.callsite, prefix, "stack prefix doesn't match")
+			})
+			assert.Equal(t, tc.stacktraceCount, stacktraceCount)
+			assert.Equal(t, tc.total, total)
 		})
-		t.FailNow()
-	})
+	}
 }
 
 func Test_block_Resolver_ResolveTree(t *testing.T) {
