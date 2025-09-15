@@ -287,19 +287,16 @@ func selectNodes(
 		}
 	}
 
-	// iterate once again over all nodes and mark the nodes that are not matched
+	// iterate once again over all nodes and mark the nodes that are not matched as truncated
 	for idx := range nodes {
-		if nodes[idx].Value == int64(nodeResultAncestor) || nodes[idx].Value == int64(nodeResultDescendant) || nodes[idx].Value == int64(nodeResultMatch) {
-			// we keep them
-			nodes[idx].Value = 0
-			continue
+		if nodes[idx].Value != int64(nodeResultDescendant) && nodes[idx].Value != int64(nodeResultMatch) {
+			// mark them as truncated
+			nodes[idx].Location |= truncationMark
 		}
-		nodes[idx].Value = sentinel
-		nodes[idx].Location = sentinel
-		nodes[idx].Parent = sentinel
+		// reset the value
+		nodes[idx].Value = 0
 	}
 
-	// TODO reset values
 	return nodes
 
 }
@@ -364,6 +361,8 @@ func markNodesForTruncation(nodes []Node, maxNodes int64) {
 	for i := 1; i < len(nodes); i++ {
 		p := nodes[i].Parent
 		v := nodes[i].Value
+		// Remove previous truncation mark, potential set by the stacktrace filter
+		nodes[i].Location &= ^truncationMark
 		if v < m {
 			nodes[i].Location |= truncationMark
 			// Preserve values of truncated locations. The weight
@@ -387,8 +386,7 @@ func insertStacktraces(t *model.StacktraceTree, nodes []Node, symbols *Symbols) 
 	for i := int32(1); i < l; i++ {
 		p := nodes[i].Parent
 		v := nodes[i].Value
-		l := nodes[i].Location
-		if l != sentinel && v > 0 && nodes[p].Location&truncationMark == 0 {
+		if v > 0 && nodes[p].Location&truncationMark == 0 {
 			s = resolveStack(s, nodes, i, symbols)
 			t.Insert(s, v)
 		}
