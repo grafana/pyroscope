@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
@@ -15,118 +14,19 @@ import (
 	"sync"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
-	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	commonconfig "github.com/prometheus/common/config"
 )
 
-func newProfile() *profilev1.Profile {
-	return &profilev1.Profile{
-		Function: []*profilev1.Function{
-			{
-				Id:   1,
-				Name: 1,
-			},
-			{
-				Id:   2,
-				Name: 2,
-			},
-		},
-		Location: []*profilev1.Location{
-			{
-				Id:        1,
-				MappingId: 1,
-				Line: []*profilev1.Line{
-					{
-						FunctionId: 1,
-						Line:       1,
-					},
-				},
-			},
-			{
-				Id:        2,
-				MappingId: 1,
-				Line: []*profilev1.Line{
-					{
-						FunctionId: 2,
-						Line:       1,
-					},
-				},
-			},
-		},
-		Mapping: []*profilev1.Mapping{
-			{Id: 1, Filename: 3},
-		},
-		StringTable: []string{
-			"",
-			"func_a",
-			"func_b",
-			"my-foo-binary",
-			"cpu",
-			"nanoseconds",
-		},
-		TimeNanos: time.Now().UnixNano(),
-		SampleType: []*profilev1.ValueType{{
-			Type: 4,
-			Unit: 5,
-		}},
-		Sample: []*profilev1.Sample{
-			{
-				Value:      []int64{1234},
-				LocationId: []uint64{1},
-			},
-			{
-				Value:      []int64{1234},
-				LocationId: []uint64{1, 2},
-			},
-		},
-	}
-}
-
-func newRequest() *pushv1.PushRequest {
-	p, _ := newProfile().MarshalVT()
-
-	return &pushv1.PushRequest{
-		Series: []*pushv1.RawProfileSeries{
-			{
-				Labels: []*v1.LabelPair{
-					{
-						Name:  "service_name",
-						Value: "foo",
-					},
-					{
-						Name:  "__name__",
-						Value: "cpu",
-					},
-				},
-				Samples: []*pushv1.RawSample{
-					{
-						RawProfile: p,
-						ID:         "",
-					},
-				},
-			},
-		},
-	}
-}
-
 var (
-	url        = flag.String("url", "http://localhost:4040", "Target URL for pushing profiles")
-	username   = flag.String("username", "", "Basic auth username (optional)")
-	password   = flag.String("password", "", "Basic auth password (optional)")
-	timeout    = flag.Duration("timeout", 60*time.Second, "Timeout for the HTTP request")
-	burstSleep = flag.Duration("iteration-sleep", 1*time.Second, "How long to sleep between iterations")
-	burstSize  = flag.Int("iteration-size", 1000, "How many requests to send in a iteration")
-	target     = flag.String("target", "pyroscope", "Target system: 'pyroscope' or 'mimir'. pyroscope is default")
+	url          = flag.String("url", "http://localhost:4040", "Target URL for pushing profiles")
+	timeout      = flag.Duration("timeout", 60*time.Second, "Timeout for the HTTP request")
+	burstSleep   = flag.Duration("iteration-sleep", 1*time.Second, "How long to sleep between iterations")
+	burstSize    = flag.Int("iteration-size", 1000, "How many requests to send in a iteration")
+	keylogPath   = flag.String("keylog", "", "Path to TLS keylog file (optional, no keylog if not specified)")
+	debugLogPath = flag.String("debug-log", "", "Path to debug log file (optional, no debug log if not specified)")
 )
-
-const keylogFile = "keylog.txt"
-const debugLogFile = "debug.log.txt"
 
 var keylogWriter io.Writer
 var gl log.Logger
@@ -135,63 +35,66 @@ func main() {
 
 	flag.Parse()
 
-	if *target != "pyroscope" && *target != "mimir" {
-		fmt.Fprintf(os.Stderr, "Invalid target '%s'. Must be 'pyroscope' or 'mimir'\n", *target)
-		os.Exit(1)
-	}
-
 	initLogging()
 
 	var httpClient *http.Client
-	tls := commonconfig.WithNewTLSConfigFunc(func(ctx context.Context, config *commonconfig.TLSConfig, option ...commonconfig.TLSConfigOption) (*tls.Config, error) {
-		res, _ := commonconfig.NewTLSConfigWithContext(ctx, config, option...)
-		if res == nil {
-			panic("")
-		}
-		res.KeyLogWriter = keylogWriter
-		return res, nil
-	})
+	var tlsOptions []commonconfig.HTTPClientOption
+
+	if keylogWriter != nil {
+		tlsOptions = append(tlsOptions, commonconfig.WithNewTLSConfigFunc(func(ctx context.Context, config *commonconfig.TLSConfig, option ...commonconfig.TLSConfigOption) (*tls.Config, error) {
+			res, _ := commonconfig.NewTLSConfigWithContext(ctx, config, option...)
+			if res == nil {
+				panic("")
+			}
+			res.KeyLogWriter = keylogWriter
+			return res, nil
+		}))
+	}
+
 	config := commonconfig.DefaultHTTPClientConfig
 	config.EnableHTTP2 = true
-	httpClient, _ = commonconfig.NewClientFromConfig(config, "push-pprof-timeout-issue", tls)
+	httpClient, _ = commonconfig.NewClientFromConfig(config, "push-pprof-timeout-issue", tlsOptions...)
 
 	for {
 		it := time.Now()
 		iteration(httpClient, *burstSize)
-		_ = gl.Log("n", *burstSize, "iteration_time", time.Since(it), "sleeping", *burstSleep)
+		_ = level.Debug(gl).Log("n", *burstSize, "iteration_time", time.Since(it), "sleeping", *burstSleep)
 		time.Sleep(*burstSleep)
 	}
 
 }
 
 func initLogging() {
-	var err error
-	var f *os.File
-
-	f, err = os.OpenFile(keylogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		panic(err)
-	}
-	keylogWriter = f
-
-	f, err = os.OpenFile(debugLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		panic(err)
-	}
-
 	baseLogger := log.NewLogfmtLogger(os.Stdout)
 	baseLogger = log.With(baseLogger, "ts", log.DefaultTimestampUTC)
 	baseLogger = level.NewFilter(baseLogger, level.AllowInfo())
 
-	debugLogger := log.NewLogfmtLogger(f)
-	debugLogger = log.With(debugLogger, "ts", log.DefaultTimestampUTC)
-	debugLogger = level.NewFilter(debugLogger, level.AllowDebug())
+	if *keylogPath != "" {
+		f, err := os.OpenFile(*keylogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to open keylog file: %v", err))
+		}
+		keylogWriter = f
+	}
 
-	gl = log.LoggerFunc(func(keyvals ...interface{}) error {
-		_ = debugLogger.Log(keyvals...)
-		_ = baseLogger.Log(keyvals...)
-		return nil
-	})
+	if *debugLogPath != "" {
+		f, err := os.OpenFile(*debugLogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to open debug log file: %v", err))
+		}
+
+		debugLogger := log.NewLogfmtLogger(f)
+		debugLogger = log.With(debugLogger, "ts", log.DefaultTimestampUTC)
+		debugLogger = level.NewFilter(debugLogger, level.AllowDebug())
+
+		gl = log.LoggerFunc(func(keyvals ...interface{}) error {
+			_ = debugLogger.Log(keyvals...)
+			_ = baseLogger.Log(keyvals...)
+			return nil
+		})
+	} else {
+		gl = baseLogger
+	}
 }
 
 func iteration(client *http.Client, n int) {
@@ -200,11 +103,7 @@ func iteration(client *http.Client, n int) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if *target == "mimir" {
-				oneMimirRequest(client)
-			} else {
-				oneRequest(client)
-			}
+			oneRequest(client)
 		}()
 	}
 	wg.Wait()
@@ -214,7 +113,7 @@ func oneRequest(client *http.Client) {
 	requestStartTime := log.DefaultTimestampUTC()
 	traceId := fmt.Sprintf("%016x", rand.Uint64())
 	spanId := fmt.Sprintf("%016x", rand.Uint64())
-	tl := log.With(gl, "trace_id", traceId, "request_start_time", requestStartTime, "target", *target)
+	tl := log.With(gl, "trace_id", traceId, "request_start_time", requestStartTime)
 	level.Debug(tl).Log("msg", "Sending request")
 
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
@@ -222,50 +121,8 @@ func oneRequest(client *http.Client) {
 
 	ct := newClientTrace(level.Debug(tl))
 	ctx = httptrace.WithClientTrace(ctx, ct.trace)
-	req := connect.NewRequest(newRequest())
-	if *username != "" {
-		req.Header().Set("Authorization", "Basic "+basicAuth(*username, *password))
-	}
-	req.Header().Set("uber-trace-id", traceId+":"+spanId+":0:1")
-	req.Header().Set("jaeger-baggage", "k1=v1,k2=v2")
-	req.Header().Set("User-Agent", "Tolyan/traceId:"+traceId)
 
-	connectClient := pushv1connect.NewPusherServiceClientTracingThroughURL(
-		client,
-		*url,
-		traceId,
-		"",
-	)
-
-	_, err := connectClient.Push(ctx, req)
-	if err != nil {
-		if strings.Contains(err.Error(), "invalid token") {
-			tl = log.With(tl, "err", err)
-			err = nil
-		}
-	}
-	tl = log.With(tl, "connection", ct.connectionInfo(), "url", *url)
-	if err != nil {
-		_ = level.Error(tl).Log("msg", "Request failed", "err", err)
-	} else {
-		_ = level.Debug(tl).Log("msg", "Request successful")
-	}
-}
-
-func oneMimirRequest(client *http.Client) {
-	requestStartTime := log.DefaultTimestampUTC()
-	traceId := fmt.Sprintf("%016x", rand.Uint64())
-	spanId := fmt.Sprintf("%016x", rand.Uint64())
-	tl := log.With(gl, "trace_id", traceId, "request_start_time", requestStartTime)
-	level.Debug(tl).Log("msg", "Sending Mimir request")
-
-	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-	defer cancel()
-
-	ct := newClientTrace(level.Debug(tl))
-	ctx = httptrace.WithClientTrace(ctx, ct.trace)
-
-	req, err := http.NewRequestWithContext(ctx, "GET", *url+"/api/prom/api/v1/query", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", *url, nil)
 	if err != nil {
 		_ = level.Error(tl).Log("msg", "Failed to create request", "err", err)
 		return
@@ -274,35 +131,25 @@ func oneMimirRequest(client *http.Client) {
 	req.Header.Set("uber-trace-id", traceId+":"+spanId+":0:1")
 	req.Header.Set("jaeger-baggage", "k1=v1,k2=v2")
 	req.Header.Set("User-Agent", "Tolyan/traceId:"+traceId)
-	if *username != "" {
-		req.SetBasicAuth(*username, *password)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Accept-Encoding", "gzip")
-	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
-	req.Header.Set("Cache-Control", "no-cache")
-	req.Header.Set("Pragma", "no-cache")
-	req.Header.Set("Referer", "https://pyroscope.io/")
+
 	resp, err := client.Do(req)
-	tl = log.With(tl, "connection", ct.connectionInfo(), "url", req.URL.String())
+	tl = log.With(tl, "connection", ct.connectionInfo(), "url", *url)
 	if err != nil {
-		_ = level.Error(tl).Log("msg", "Mimir request failed", "err", err)
+		_ = level.Error(tl).Log("msg", "Request failed", "err", err)
 	} else {
 		io.ReadAll(resp.Body)
 		resp.Body.Close()
-		_ = level.Debug(tl).Log("msg", "Mimir request successful", "status", resp.Status)
+		if resp.StatusCode >= 400 {
+			if strings.Contains(resp.Status, "invalid token") || strings.Contains(resp.Status, "no credentials provided") {
+				tl = log.With(tl, "status", resp.Status)
+				_ = level.Debug(tl).Log("msg", "Request auth failed")
+			} else {
+				_ = level.Error(tl).Log("msg", "Request failed", "status", resp.Status)
+			}
+		} else {
+			_ = level.Debug(tl).Log("msg", "Request successful", "status", resp.Status)
+		}
 	}
-}
-
-// See 2 (end of page 4) https://www.ietf.org/rfc/rfc2617.txt
-// "To receive authorization, the client sends the userid and password,
-// separated by a single colon (":") character, within a base64
-// encoded string in the credentials."
-// It is not meant to be urlencoded.
-func basicAuth(username, password string) string {
-	auth := username + ":" + password
-	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
 
 type clientTrace struct {
