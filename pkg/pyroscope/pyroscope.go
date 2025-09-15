@@ -75,6 +75,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/cli"
+	"github.com/grafana/pyroscope/pkg/util/http/requestdump"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
@@ -119,6 +120,7 @@ type Config struct {
 	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"  doc:"hidden"`
 	AdaptivePlacement placement.Config        `yaml:"adaptive_placement" doc:"hidden"`
 	Symbolizer        symbolizer.Config       `yaml:"symbolizer"         doc:"hidden"`
+	RequestDump       requestdump.Config      `yaml:"request_dump"`
 }
 
 func newDefaultConfig() *Config {
@@ -201,6 +203,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.API.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
+	c.RequestDump.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.

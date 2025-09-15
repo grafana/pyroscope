@@ -57,6 +57,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/build"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/pkg/util/http/requestdump"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
@@ -514,6 +515,17 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		middleware.RouteInjector{
 			RouteMatcher: f.Server.HTTP,
 		},
+	}
+
+	if f.Cfg.RequestDump.Enabled {
+		if f.storageBucket == nil {
+			level.Error(f.logger).Log("msg", "request dump is enabled but storage bucket is not configured, skipping request dump middleware")
+		} else {
+			defaultHTTPMiddleware = append(defaultHTTPMiddleware, requestdump.NewMiddleware(f.Cfg.RequestDump, f.logger, f.storageBucket))
+		}
+	}
+
+	defaultHTTPMiddleware = append(defaultHTTPMiddleware,
 		&util.Log{
 			Log:                      f.Server.Log,
 			LogRequestAtInfoLevel:    f.Cfg.Server.LogRequestAtInfoLevel,
@@ -523,7 +535,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		httpMetric,
 		objstoreTracerMiddleware,
 		httputil.K6Middleware(),
-	}
+	)
 	if f.Cfg.SelfProfiling.UseK6Middleware {
 		defaultHTTPMiddleware = append(defaultHTTPMiddleware, httputil.K6Middleware())
 	}
