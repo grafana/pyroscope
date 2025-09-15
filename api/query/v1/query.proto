@@ -182,9 +182,16 @@ message PprofQuery {
   int64 max_nodes = 1;
   optional types.v1.StackTraceSelector stack_trace_selector = 2;
   // TODO(kolesnikovae): Go PGO options.
+  PprofOutputMode output_mode = 3;
+}
+
+enum PprofOutputMode {
+  PPROF_BYTES = 0;
+  PPROF_TYPED = 1;
 }
 
 message PprofReport {
   PprofQuery query = 1;
   bytes pprof = 2;
+  google.v1.Profile typed_pprof = 3;
 }
