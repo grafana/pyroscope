@@ -1232,15 +1232,23 @@ type QuerierServiceClient interface {
 	LabelValues(ctx context.Context, in *v1.LabelValuesRequest, opts ...grpc.CallOption) (*v1.LabelValuesResponse, error)
 	// LabelNames returns a list of the existing label names.
 	LabelNames(ctx context.Context, in *v1.LabelNamesRequest, opts ...grpc.CallOption) (*v1.LabelNamesResponse, error)
-	// Series returns profiles series matching the request. A series is a unique label set.
+	// Series returns profiles series matching the request. A series is a unique
+	// label set.
 	Series(ctx context.Context, in *SeriesRequest, opts ...grpc.CallOption) (*SeriesResponse, error)
-	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph
+	// format. It will combine samples from within the same callstack, with each
+	// element being grouped by its function name.
 	SelectMergeStacktraces(ctx context.Context, in *SelectMergeStacktracesRequest, opts ...grpc.CallOption) (*SelectMergeStacktracesResponse, error)
-	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
+	// format. It will combine samples from within the same callstack, with each
+	// element being grouped by its function name.
 	SelectMergeSpanProfile(ctx context.Context, in *SelectMergeSpanProfileRequest, opts ...grpc.CallOption) (*SelectMergeSpanProfileResponse, error)
-	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
+	// SelectMergeProfile returns matching profiles aggregated in pprof format. It
+	// will contain all information stored (so including filenames and line
+	// number, if ingested).
 	SelectMergeProfile(ctx context.Context, in *SelectMergeProfileRequest, opts ...grpc.CallOption) (*v11.Profile, error)
-	// SelectSeries returns a time series for the total sum of the requested profiles.
+	// SelectSeries returns a time series for the total sum of the requested
+	// profiles.
 	SelectSeries(ctx context.Context, in *SelectSeriesRequest, opts ...grpc.CallOption) (*SelectSeriesResponse, error)
 	// Diff returns a diff of two profiles
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
@@ -1366,15 +1374,23 @@ type QuerierServiceServer interface {
 	LabelValues(context.Context, *v1.LabelValuesRequest) (*v1.LabelValuesResponse, error)
 	// LabelNames returns a list of the existing label names.
 	LabelNames(context.Context, *v1.LabelNamesRequest) (*v1.LabelNamesResponse, error)
-	// Series returns profiles series matching the request. A series is a unique label set.
+	// Series returns profiles series matching the request. A series is a unique
+	// label set.
 	Series(context.Context, *SeriesRequest) (*SeriesResponse, error)
-	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph
+	// format. It will combine samples from within the same callstack, with each
+	// element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *SelectMergeStacktracesRequest) (*SelectMergeStacktracesResponse, error)
-	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
+	// format. It will combine samples from within the same callstack, with each
+	// element being grouped by its function name.
 	SelectMergeSpanProfile(context.Context, *SelectMergeSpanProfileRequest) (*SelectMergeSpanProfileResponse, error)
-	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
+	// SelectMergeProfile returns matching profiles aggregated in pprof format. It
+	// will contain all information stored (so including filenames and line
+	// number, if ingested).
 	SelectMergeProfile(context.Context, *SelectMergeProfileRequest) (*v11.Profile, error)
-	// SelectSeries returns a time series for the total sum of the requested profiles.
+	// SelectSeries returns a time series for the total sum of the requested
+	// profiles.
 	SelectSeries(context.Context, *SelectSeriesRequest) (*SelectSeriesResponse, error)
 	// Diff returns a diff of two profiles
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)

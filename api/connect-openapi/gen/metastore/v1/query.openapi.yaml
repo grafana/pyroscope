@@ -1,0 +1,446 @@
+openapi: 3.1.0
+info:
+  title: metastore.v1
+  version: v1.0.0
+tags:
+  - name: scope/public
+    description: This operation is considered part of the public API scope
+  - name: scope/internal
+    description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
+  - name: metastore.v1.MetadataQueryService
+paths:
+  /metastore.v1.MetadataQueryService/QueryMetadata:
+    post:
+      tags:
+        - metastore.v1.MetadataQueryService
+      summary: QueryMetadata
+      operationId: metastore.v1.MetadataQueryService.QueryMetadata
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/metastore.v1.QueryMetadataRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/metastore.v1.QueryMetadataResponse'
+  /metastore.v1.MetadataQueryService/QueryMetadataLabels:
+    post:
+      tags:
+        - metastore.v1.MetadataQueryService
+      summary: QueryMetadataLabels
+      operationId: metastore.v1.MetadataQueryService.QueryMetadataLabels
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/metastore.v1.QueryMetadataLabelsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/metastore.v1.QueryMetadataLabelsResponse'
+components:
+  schemas:
+    metastore.v1.BlockMeta:
+      type: object
+      properties:
+        formatVersion:
+          type: integer
+          title: format_version
+        id:
+          type: string
+          title: id
+          description: |-
+            Block ID is a unique identifier for the block.
+             This is the only field that is not included into
+             the string table.
+        tenant:
+          type: integer
+          title: tenant
+          format: int32
+          description: If empty, datasets belong to distinct tenants.
+        shard:
+          type: integer
+          title: shard
+        compactionLevel:
+          type: integer
+          title: compaction_level
+        minTime:
+          type:
+            - integer
+            - string
+          title: min_time
+          format: int64
+        maxTime:
+          type:
+            - integer
+            - string
+          title: max_time
+          format: int64
+        createdBy:
+          type: integer
+          title: created_by
+          format: int32
+        metadataOffset:
+          type:
+            - integer
+            - string
+          title: metadata_offset
+          format: int64
+        size:
+          type:
+            - integer
+            - string
+          title: size
+          format: int64
+        datasets:
+          type: array
+          items:
+            $ref: '#/components/schemas/metastore.v1.Dataset'
+          title: datasets
+        stringTable:
+          type: array
+          items:
+            type: string
+          title: string_table
+          description: |-
+            String table contains strings of the block.
+             By convention, the first string is always an empty string.
+      title: BlockMeta
+      additionalProperties: false
+      description: |-
+        BlockMeta is a metadata entry that describes the block's contents. A block
+         is a collection of datasets that share certain properties, such as shard ID,
+         compaction level, tenant ID, time range, creation time, and more.
+
+         The block content's format denotes the binary format of the datasets and the
+         metadata entry (to address logical dependencies). Each dataset has its own
+         table of contents that lists the sections within the dataset. Each dataset
+         has its own set of attributes (labels) that describe its specific contents.
+    metastore.v1.Dataset:
+      type: object
+      properties:
+        format:
+          type: integer
+          title: format
+        tenant:
+          type: integer
+          title: tenant
+          format: int32
+        name:
+          type: integer
+          title: name
+          format: int32
+        minTime:
+          type:
+            - integer
+            - string
+          title: min_time
+          format: int64
+        maxTime:
+          type:
+            - integer
+            - string
+          title: max_time
+          format: int64
+        tableOfContents:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: table_of_contents
+          description: |-
+            Table of contents lists data sections within the tenant
+             service region. The offsets are absolute.
+
+             The interpretation of the table of contents is specific
+             to the format.
+
+             By default (format 0), the sections are:
+              - 0: profiles.parquet
+              - 1: index.tsdb
+              - 2: symbols.symdb
+
+             Format 1 corresponds to the tenant-wide index:
+              - 0: index.tsdb (dataset index)
+        size:
+          type:
+            - integer
+            - string
+          title: size
+          format: int64
+          description: Size of the dataset in bytes.
+        labels:
+          type: array
+          items:
+            type: integer
+            format: int32
+          title: labels
+          description: |-
+            Length prefixed label key-value pairs.
+
+             Multiple label sets can be associated with a dataset to denote relationships
+             across multiple dimensions. For example, each dataset currently stores data
+             for multiple profile types:
+               - service_name=A, profile_type=cpu
+               - service_name=A, profile_type=memory
+
+             Labels are primarily used to filter datasets based on their attributes.
+             For instance, labels can be used to select datasets containing a specific
+             service.
+
+             The set of attributes is extensible and can grow over time. For example, a
+             namespace attribute could be added to datasets:
+               - service_name=A, profile_type=cpu
+               - service_name=A, profile_type=memory
+               - service_name=B, namespace=N, profile_type=cpu
+               - service_name=B, namespace=N, profile_type=memory
+               - service_name=C, namespace=N, profile_type=cpu
+               - service_name=C, namespace=N, profile_type=memory
+
+             This organization enables querying datasets by namespace without accessing
+             the block contents, which significantly improves performance.
+
+             Metadata labels are not required to be included in the block's TSDB index
+             and may be orthogonal to the data dimensions. Generally, attributes serve
+             two primary purposes:
+               - To create data scopes that span multiple service, reducing the need to
+                 scan the entire set of block satisfying the query expression, i.e.,
+                 the time range and tenant ID.
+               - To provide additional information about datasets without altering the
+                 storage schema or access methods.
+
+             For example, this approach can support cost attribution or similar breakdown
+             analyses. It can also handle data dependencies (e.g., links to external data)
+             using labels.
+
+             The cardinality of the labels is expected to remain relatively low (fewer
+             than a million unique combinations globally). However, this depends on the
+             metadata storage system.
+
+             Metadata labels are represented as a slice of `int32` values that refer to
+             strings in the metadata entry's string table. The slice is a sequence of
+             length-prefixed key-value (KV) pairs:
+
+             len(2) | k1 | v1 | k2 | v2 | len(3) | k1 | v3 | k2 | v4 | k3 | v5
+
+             The order of KV pairs is not defined. The format is optimized for indexing
+             rather than querying, and it is not intended to be the most space-efficient
+             representation. Since entries are supposed to be indexed, the redundancy of
+             denormalized relationships is not a concern.
+      title: Dataset
+      additionalProperties: false
+    metastore.v1.QueryMetadataLabelsRequest:
+      type: object
+      properties:
+        tenantId:
+          type: array
+          items:
+            type: string
+          title: tenant_id
+        startTime:
+          type:
+            - integer
+            - string
+          title: start_time
+          format: int64
+        endTime:
+          type:
+            - integer
+            - string
+          title: end_time
+          format: int64
+        query:
+          type: string
+          title: query
+        labels:
+          type: array
+          items:
+            type: string
+          title: labels
+      title: QueryMetadataLabelsRequest
+      additionalProperties: false
+    metastore.v1.QueryMetadataLabelsResponse:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Labels'
+          title: labels
+      title: QueryMetadataLabelsResponse
+      additionalProperties: false
+    metastore.v1.QueryMetadataRequest:
+      type: object
+      properties:
+        tenantId:
+          type: array
+          items:
+            type: string
+          title: tenant_id
+        startTime:
+          type:
+            - integer
+            - string
+          title: start_time
+          format: int64
+        endTime:
+          type:
+            - integer
+            - string
+          title: end_time
+          format: int64
+        query:
+          type: string
+          title: query
+        labels:
+          type: array
+          items:
+            type: string
+          title: labels
+      title: QueryMetadataRequest
+      additionalProperties: false
+    metastore.v1.QueryMetadataResponse:
+      type: object
+      properties:
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/metastore.v1.BlockMeta'
+          title: blocks
+      title: QueryMetadataResponse
+      additionalProperties: false
+    types.v1.LabelPair:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        value:
+          type: string
+          title: value
+      title: LabelPair
+      additionalProperties: false
+    types.v1.Labels:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+          description: LabelPair is the key value pairs to identify the corresponding profile
+      title: Labels
+      additionalProperties: false
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+security: []

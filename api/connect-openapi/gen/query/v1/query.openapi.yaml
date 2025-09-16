@@ -1,0 +1,837 @@
+openapi: 3.1.0
+info:
+  title: query.v1
+  version: v1.0.0
+tags:
+  - name: scope/public
+    description: This operation is considered part of the public API scope
+  - name: scope/internal
+    description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
+  - name: query.v1.QueryFrontendService
+  - name: query.v1.QueryBackendService
+paths:
+  /query.v1.QueryFrontendService/Query:
+    post:
+      tags:
+        - query.v1.QueryFrontendService
+      summary: Query
+      operationId: query.v1.QueryFrontendService.Query
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/query.v1.QueryRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/query.v1.QueryResponse'
+  /query.v1.QueryBackendService/Invoke:
+    post:
+      tags:
+        - query.v1.QueryBackendService
+      summary: Invoke
+      operationId: query.v1.QueryBackendService.Invoke
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/query.v1.InvokeRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/query.v1.InvokeResponse'
+components:
+  schemas:
+    query.v1.QueryNode.Type:
+      type: string
+      title: Type
+      enum:
+        - UNKNOWN
+        - MERGE
+        - READ
+    query.v1.QueryType:
+      type: string
+      title: QueryType
+      enum:
+        - QUERY_UNSPECIFIED
+        - QUERY_LABEL_NAMES
+        - QUERY_LABEL_VALUES
+        - QUERY_SERIES_LABELS
+        - QUERY_TIME_SERIES
+        - QUERY_TREE
+        - QUERY_PPROF
+    query.v1.ReportType:
+      type: string
+      title: ReportType
+      enum:
+        - REPORT_UNSPECIFIED
+        - REPORT_LABEL_NAMES
+        - REPORT_LABEL_VALUES
+        - REPORT_SERIES_LABELS
+        - REPORT_TIME_SERIES
+        - REPORT_TREE
+        - REPORT_PPROF
+    metastore.v1.BlockMeta:
+      type: object
+      properties:
+        formatVersion:
+          type: integer
+          title: format_version
+        id:
+          type: string
+          title: id
+          description: |-
+            Block ID is a unique identifier for the block.
+             This is the only field that is not included into
+             the string table.
+        tenant:
+          type: integer
+          title: tenant
+          format: int32
+          description: If empty, datasets belong to distinct tenants.
+        shard:
+          type: integer
+          title: shard
+        compactionLevel:
+          type: integer
+          title: compaction_level
+        minTime:
+          type:
+            - integer
+            - string
+          title: min_time
+          format: int64
+        maxTime:
+          type:
+            - integer
+            - string
+          title: max_time
+          format: int64
+        createdBy:
+          type: integer
+          title: created_by
+          format: int32
+        metadataOffset:
+          type:
+            - integer
+            - string
+          title: metadata_offset
+          format: int64
+        size:
+          type:
+            - integer
+            - string
+          title: size
+          format: int64
+        datasets:
+          type: array
+          items:
+            $ref: '#/components/schemas/metastore.v1.Dataset'
+          title: datasets
+        stringTable:
+          type: array
+          items:
+            type: string
+          title: string_table
+          description: |-
+            String table contains strings of the block.
+             By convention, the first string is always an empty string.
+      title: BlockMeta
+      additionalProperties: false
+      description: |-
+        BlockMeta is a metadata entry that describes the block's contents. A block
+         is a collection of datasets that share certain properties, such as shard ID,
+         compaction level, tenant ID, time range, creation time, and more.
+
+         The block content's format denotes the binary format of the datasets and the
+         metadata entry (to address logical dependencies). Each dataset has its own
+         table of contents that lists the sections within the dataset. Each dataset
+         has its own set of attributes (labels) that describe its specific contents.
+    metastore.v1.Dataset:
+      type: object
+      properties:
+        format:
+          type: integer
+          title: format
+        tenant:
+          type: integer
+          title: tenant
+          format: int32
+        name:
+          type: integer
+          title: name
+          format: int32
+        minTime:
+          type:
+            - integer
+            - string
+          title: min_time
+          format: int64
+        maxTime:
+          type:
+            - integer
+            - string
+          title: max_time
+          format: int64
+        tableOfContents:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: table_of_contents
+          description: |-
+            Table of contents lists data sections within the tenant
+             service region. The offsets are absolute.
+
+             The interpretation of the table of contents is specific
+             to the format.
+
+             By default (format 0), the sections are:
+              - 0: profiles.parquet
+              - 1: index.tsdb
+              - 2: symbols.symdb
+
+             Format 1 corresponds to the tenant-wide index:
+              - 0: index.tsdb (dataset index)
+        size:
+          type:
+            - integer
+            - string
+          title: size
+          format: int64
+          description: Size of the dataset in bytes.
+        labels:
+          type: array
+          items:
+            type: integer
+            format: int32
+          title: labels
+          description: |-
+            Length prefixed label key-value pairs.
+
+             Multiple label sets can be associated with a dataset to denote relationships
+             across multiple dimensions. For example, each dataset currently stores data
+             for multiple profile types:
+               - service_name=A, profile_type=cpu
+               - service_name=A, profile_type=memory
+
+             Labels are primarily used to filter datasets based on their attributes.
+             For instance, labels can be used to select datasets containing a specific
+             service.
+
+             The set of attributes is extensible and can grow over time. For example, a
+             namespace attribute could be added to datasets:
+               - service_name=A, profile_type=cpu
+               - service_name=A, profile_type=memory
+               - service_name=B, namespace=N, profile_type=cpu
+               - service_name=B, namespace=N, profile_type=memory
+               - service_name=C, namespace=N, profile_type=cpu
+               - service_name=C, namespace=N, profile_type=memory
+
+             This organization enables querying datasets by namespace without accessing
+             the block contents, which significantly improves performance.
+
+             Metadata labels are not required to be included in the block's TSDB index
+             and may be orthogonal to the data dimensions. Generally, attributes serve
+             two primary purposes:
+               - To create data scopes that span multiple service, reducing the need to
+                 scan the entire set of block satisfying the query expression, i.e.,
+                 the time range and tenant ID.
+               - To provide additional information about datasets without altering the
+                 storage schema or access methods.
+
+             For example, this approach can support cost attribution or similar breakdown
+             analyses. It can also handle data dependencies (e.g., links to external data)
+             using labels.
+
+             The cardinality of the labels is expected to remain relatively low (fewer
+             than a million unique combinations globally). However, this depends on the
+             metadata storage system.
+
+             Metadata labels are represented as a slice of `int32` values that refer to
+             strings in the metadata entry's string table. The slice is a sequence of
+             length-prefixed key-value (KV) pairs:
+
+             len(2) | k1 | v1 | k2 | v2 | len(3) | k1 | v3 | k2 | v4 | k3 | v5
+
+             The order of KV pairs is not defined. The format is optimized for indexing
+             rather than querying, and it is not intended to be the most space-efficient
+             representation. Since entries are supposed to be indexed, the redundancy of
+             denormalized relationships is not a concern.
+      title: Dataset
+      additionalProperties: false
+    query.v1.Diagnostics:
+      type: object
+      properties:
+        queryPlan:
+          title: query_plan
+          $ref: '#/components/schemas/query.v1.QueryPlan'
+      title: Diagnostics
+      additionalProperties: false
+      description: Diagnostic messages, events, statistics, analytics, etc.
+    query.v1.InvokeOptions:
+      type: object
+      properties:
+        sanitizeOnMerge:
+          type: boolean
+          title: sanitize_on_merge
+          description: |-
+            Query workers might not have access to the tenant
+             overrides, therefore all the necessary options should
+             be listed in the request explicitly.
+      title: InvokeOptions
+      additionalProperties: false
+    query.v1.InvokeRequest:
+      type: object
+      properties:
+        tenant:
+          type: array
+          items:
+            type: string
+          title: tenant
+        startTime:
+          type:
+            - integer
+            - string
+          title: start_time
+          format: int64
+        endTime:
+          type:
+            - integer
+            - string
+          title: end_time
+          format: int64
+        labelSelector:
+          type: string
+          title: label_selector
+        query:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Query'
+          title: query
+        queryPlan:
+          title: query_plan
+          $ref: '#/components/schemas/query.v1.QueryPlan'
+        options:
+          title: options
+          $ref: '#/components/schemas/query.v1.InvokeOptions'
+      title: InvokeRequest
+      additionalProperties: false
+    query.v1.InvokeResponse:
+      type: object
+      properties:
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Report'
+          title: reports
+        diagnostics:
+          title: diagnostics
+          $ref: '#/components/schemas/query.v1.Diagnostics'
+      title: InvokeResponse
+      additionalProperties: false
+    query.v1.LabelNamesQuery:
+      type: object
+      title: LabelNamesQuery
+      additionalProperties: false
+    query.v1.LabelNamesReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.LabelNamesQuery'
+        labelNames:
+          type: array
+          items:
+            type: string
+          title: label_names
+      title: LabelNamesReport
+      additionalProperties: false
+    query.v1.LabelValuesQuery:
+      type: object
+      properties:
+        labelName:
+          type: string
+          title: label_name
+      title: LabelValuesQuery
+      additionalProperties: false
+    query.v1.LabelValuesReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.LabelValuesQuery'
+        labelValues:
+          type: array
+          items:
+            type: string
+          title: label_values
+      title: LabelValuesReport
+      additionalProperties: false
+    query.v1.PprofQuery:
+      type: object
+      properties:
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+        stackTraceSelector:
+          title: stack_trace_selector
+          description: 'TODO(kolesnikovae): Go PGO options.'
+          nullable: true
+          $ref: '#/components/schemas/types.v1.StackTraceSelector'
+      title: PprofQuery
+      additionalProperties: false
+    query.v1.PprofReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.PprofQuery'
+        pprof:
+          type: string
+          title: pprof
+          format: byte
+      title: PprofReport
+      additionalProperties: false
+    query.v1.Query:
+      type: object
+      properties:
+        queryType:
+          title: query_type
+          $ref: '#/components/schemas/query.v1.QueryType'
+        labelNames:
+          title: label_names
+          description: |-
+            Exactly one of the following fields should be set,
+             depending on the query type.
+          $ref: '#/components/schemas/query.v1.LabelNamesQuery'
+        labelValues:
+          title: label_values
+          $ref: '#/components/schemas/query.v1.LabelValuesQuery'
+        seriesLabels:
+          title: series_labels
+          $ref: '#/components/schemas/query.v1.SeriesLabelsQuery'
+        timeSeries:
+          title: time_series
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+        tree:
+          title: tree
+          $ref: '#/components/schemas/query.v1.TreeQuery'
+        pprof:
+          title: pprof
+          description: |-
+            function_details
+             call_graph
+             top_table
+             ...
+          $ref: '#/components/schemas/query.v1.PprofQuery'
+      title: Query
+      additionalProperties: false
+    query.v1.QueryNode:
+      type: object
+      properties:
+        type:
+          title: type
+          $ref: '#/components/schemas/query.v1.QueryNode.Type'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.QueryNode'
+          title: children
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/metastore.v1.BlockMeta'
+          title: blocks
+      title: QueryNode
+      additionalProperties: false
+    query.v1.QueryPlan:
+      type: object
+      properties:
+        root:
+          title: root
+          $ref: '#/components/schemas/query.v1.QueryNode'
+      title: QueryPlan
+      additionalProperties: false
+      description: |-
+        A query plan is represented by a directed acyclic graph (DAG),
+         where each node is either a "merge" node or a "read" node.
+
+         Merge nodes reference other nodes in the plan as their "children".
+         Read nodes reference the blocks which contain the actual data to be processed.
+    query.v1.QueryRequest:
+      type: object
+      properties:
+        startTime:
+          type:
+            - integer
+            - string
+          title: start_time
+          format: int64
+        endTime:
+          type:
+            - integer
+            - string
+          title: end_time
+          format: int64
+        labelSelector:
+          type: string
+          title: label_selector
+        query:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Query'
+          title: query
+      title: QueryRequest
+      additionalProperties: false
+    query.v1.QueryResponse:
+      type: object
+      properties:
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Report'
+          title: reports
+      title: QueryResponse
+      additionalProperties: false
+    query.v1.Report:
+      type: object
+      properties:
+        reportType:
+          title: report_type
+          $ref: '#/components/schemas/query.v1.ReportType'
+        labelNames:
+          title: label_names
+          description: |-
+            Exactly one of the following fields should be set,
+             depending on the report type.
+          $ref: '#/components/schemas/query.v1.LabelNamesReport'
+        labelValues:
+          title: label_values
+          $ref: '#/components/schemas/query.v1.LabelValuesReport'
+        seriesLabels:
+          title: series_labels
+          $ref: '#/components/schemas/query.v1.SeriesLabelsReport'
+        timeSeries:
+          title: time_series
+          $ref: '#/components/schemas/query.v1.TimeSeriesReport'
+        tree:
+          title: tree
+          $ref: '#/components/schemas/query.v1.TreeReport'
+        pprof:
+          title: pprof
+          $ref: '#/components/schemas/query.v1.PprofReport'
+      title: Report
+      additionalProperties: false
+    query.v1.SeriesLabelsQuery:
+      type: object
+      properties:
+        labelNames:
+          type: array
+          items:
+            type: string
+          title: label_names
+      title: SeriesLabelsQuery
+      additionalProperties: false
+    query.v1.SeriesLabelsReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.SeriesLabelsQuery'
+        seriesLabels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Labels'
+          title: series_labels
+      title: SeriesLabelsReport
+      additionalProperties: false
+    query.v1.TimeSeriesQuery:
+      type: object
+      properties:
+        step:
+          type: number
+          title: step
+          format: double
+        groupBy:
+          type: array
+          items:
+            type: string
+          title: group_by
+        limit:
+          type:
+            - integer
+            - string
+          title: limit
+          format: int64
+      title: TimeSeriesQuery
+      additionalProperties: false
+    query.v1.TimeSeriesReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+        timeSeries:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Series'
+          title: time_series
+      title: TimeSeriesReport
+      additionalProperties: false
+    query.v1.TreeQuery:
+      type: object
+      properties:
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+        spanSelector:
+          type: array
+          items:
+            type: string
+          title: span_selector
+      title: TreeQuery
+      additionalProperties: false
+    query.v1.TreeReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.TreeQuery'
+        tree:
+          type: string
+          title: tree
+          format: byte
+      title: TreeReport
+      additionalProperties: false
+    types.v1.GoPGO:
+      type: object
+      properties:
+        keepLocations:
+          type: integer
+          title: keep_locations
+          description: Specifies the number of leaf locations to keep.
+        aggregateCallees:
+          type: boolean
+          title: aggregate_callees
+          description: |-
+            Aggregate callees causes the leaf location line number to be ignored,
+             thus aggregating all callee samples (but not callers).
+      title: GoPGO
+      additionalProperties: false
+    types.v1.LabelPair:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        value:
+          type: string
+          title: value
+      title: LabelPair
+      additionalProperties: false
+    types.v1.Labels:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+          description: LabelPair is the key value pairs to identify the corresponding profile
+      title: Labels
+      additionalProperties: false
+    types.v1.Location:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+      title: Location
+      additionalProperties: false
+    types.v1.Point:
+      type: object
+      properties:
+        value:
+          type: number
+          title: value
+          format: double
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: Milliseconds unix timestamp
+        annotations:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.ProfileAnnotation'
+          title: annotations
+      title: Point
+      additionalProperties: false
+    types.v1.ProfileAnnotation:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: ProfileAnnotation
+      additionalProperties: false
+    types.v1.Series:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Point'
+          title: points
+      title: Series
+      additionalProperties: false
+    types.v1.StackTraceSelector:
+      type: object
+      properties:
+        callSite:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Location'
+          title: call_site
+          description: |-
+            Stack trace of the call site. Root at call_site[0].
+             Only stack traces having the prefix provided will be selected.
+             If empty, the filter is ignored.
+        goPgo:
+          title: go_pgo
+          description: |-
+            Stack trace selector for profiles purposed for Go PGO.
+             If set, call_site is ignored.
+          $ref: '#/components/schemas/types.v1.GoPGO'
+      title: StackTraceSelector
+      additionalProperties: false
+      description: StackTraceSelector is used for filtering stack traces by locations.
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+security: []

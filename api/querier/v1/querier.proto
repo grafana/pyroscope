@@ -1,34 +1,73 @@
 syntax = "proto3";
 
+// Provides the ablility to query the Pyroscope database. Most of the calls in
+// this group are considered public.
 package querier.v1;
 
 import "google/v1/profile.proto";
 import "types/v1/types.proto";
+import "gnostic/openapi/v3/annotations.proto";
 
 service QuerierService {
   // ProfileType returns a list of the existing profile types.
-  rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
+  rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
   // LabelValues returns the existing label values for the provided label names.
-  rpc LabelValues(types.v1.LabelValuesRequest) returns (types.v1.LabelValuesResponse) {}
+  rpc LabelValues(types.v1.LabelValuesRequest)
+      returns (types.v1.LabelValuesResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
   // LabelNames returns a list of the existing label names.
-  rpc LabelNames(types.v1.LabelNamesRequest) returns (types.v1.LabelNamesResponse) {}
-  // Series returns profiles series matching the request. A series is a unique label set.
-  rpc Series(SeriesRequest) returns (SeriesResponse) {}
-  // SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
-  rpc SelectMergeStacktraces(SelectMergeStacktracesRequest) returns (SelectMergeStacktracesResponse) {}
-  // SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
-  rpc SelectMergeSpanProfile(SelectMergeSpanProfileRequest) returns (SelectMergeSpanProfileResponse) {}
-  // SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
-  rpc SelectMergeProfile(SelectMergeProfileRequest) returns (google.v1.Profile) {}
-  // SelectSeries returns a time series for the total sum of the requested profiles.
-  rpc SelectSeries(SelectSeriesRequest) returns (SelectSeriesResponse) {}
+  rpc LabelNames(types.v1.LabelNamesRequest)
+      returns (types.v1.LabelNamesResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
+  // Series returns profiles series matching the request. A series is a unique
+  // label set.
+  rpc Series(SeriesRequest) returns (SeriesResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
+  // SelectMergeStacktraces returns matching profiles aggregated in a flamegraph
+  // format. It will combine samples from within the same callstack, with each
+  // element being grouped by its function name.
+  rpc SelectMergeStacktraces(SelectMergeStacktracesRequest)
+      returns (SelectMergeStacktracesResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
+  // SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
+  // format. It will combine samples from within the same callstack, with each
+  // element being grouped by its function name.
+  rpc SelectMergeSpanProfile(SelectMergeSpanProfileRequest)
+      returns (SelectMergeSpanProfileResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
+  // SelectMergeProfile returns matching profiles aggregated in pprof format. It
+  // will contain all information stored (so including filenames and line
+  // number, if ingested).
+  rpc SelectMergeProfile(SelectMergeProfileRequest)
+      returns (google.v1.Profile) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
+  // SelectSeries returns a time series for the total sum of the requested
+  // profiles.
+  rpc SelectSeries(SelectSeriesRequest) returns (SelectSeriesResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
 
   // Diff returns a diff of two profiles
-  rpc Diff(DiffRequest) returns (DiffResponse) {}
+  rpc Diff(DiffRequest) returns (DiffResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
 
   // GetProfileStats returns profile stats for the current tenant.
-  rpc GetProfileStats(types.v1.GetProfileStatsRequest) returns (types.v1.GetProfileStatsResponse) {}
-  rpc AnalyzeQuery(AnalyzeQueryRequest) returns (AnalyzeQueryResponse) {}
+  rpc GetProfileStats(types.v1.GetProfileStatsRequest)
+      returns (types.v1.GetProfileStatsResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/internal";
+  }
+  rpc AnalyzeQuery(AnalyzeQueryRequest) returns (AnalyzeQueryResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/internal";
+  }
 }
 
 message ProfileTypesRequest {
@@ -55,9 +94,7 @@ message SeriesRequest {
   int64 end = 4;
 }
 
-message SeriesResponse {
-  repeated types.v1.Labels labels_set = 2;
-}
+message SeriesResponse { repeated types.v1.Labels labels_set = 2; }
 
 message SelectMergeStacktracesRequest {
   string profile_typeID = 1;
@@ -66,7 +103,8 @@ message SelectMergeStacktracesRequest {
   int64 start = 3;
   // Milliseconds since epoch.
   int64 end = 4;
-  // Limit the nodes returned to only show the node with the max_node's biggest total
+  // Limit the nodes returned to only show the node with the max_node's biggest
+  // total
   optional int64 max_nodes = 5;
   // Profile format specifies the format of profile to be returned.
   // If not specified, the profile will be returned in flame graph format.
@@ -93,7 +131,8 @@ message SelectMergeSpanProfileRequest {
   int64 start = 4;
   // Milliseconds since epoch.
   int64 end = 5;
-  // Limit the nodes returned to only show the node with the max_node's biggest total
+  // Limit the nodes returned to only show the node with the max_node's biggest
+  // total
   optional int64 max_nodes = 6;
   // Profile format specifies the format of profile to be returned.
   // If not specified, the profile will be returned in flame graph format.
@@ -111,9 +150,7 @@ message DiffRequest {
   SelectMergeStacktracesRequest right = 2;
 }
 
-message DiffResponse {
-  FlameGraphDiff flamegraph = 1;
-}
+message DiffResponse { FlameGraphDiff flamegraph = 1; }
 
 message FlameGraph {
   repeated string names = 1;
@@ -132,9 +169,7 @@ message FlameGraphDiff {
   int64 rightTicks = 6;
 }
 
-message Level {
-  repeated int64 values = 1;
-}
+message Level { repeated int64 values = 1; }
 
 message SelectMergeProfileRequest {
   string profile_typeID = 1;
@@ -143,7 +178,8 @@ message SelectMergeProfileRequest {
   int64 start = 3;
   // Milliseconds since epoch.
   int64 end = 4;
-  // Limit the nodes returned to only show the node with the max_node's biggest total
+  // Limit the nodes returned to only show the node with the max_node's biggest
+  // total
   optional int64 max_nodes = 5;
   // Select stack traces that match the provided selector.
   optional types.v1.StackTraceSelector stack_trace_selector = 6;
@@ -166,9 +202,7 @@ message SelectSeriesRequest {
   optional int64 limit = 9;
 }
 
-message SelectSeriesResponse {
-  repeated types.v1.Series series = 1;
-}
+message SelectSeriesResponse { repeated types.v1.Series series = 1; }
 
 message AnalyzeQueryRequest {
   int64 start = 2;
@@ -177,13 +211,17 @@ message AnalyzeQueryRequest {
 }
 
 message AnalyzeQueryResponse {
-  repeated QueryScope query_scopes = 1; // detailed view of what the query will require
+  repeated QueryScope query_scopes =
+      1;                        // detailed view of what the query will require
   QueryImpact query_impact = 2; // summary of the query impact / performance
 }
 
 message QueryScope {
-  string component_type = 1; // a descriptive high level name of the component processing one part of the query (e.g., "short term storage")
-  uint64 component_count = 2; // how many components of this type will process the query (indicator of read-path replication)
+  string component_type =
+      1; // a descriptive high level name of the component processing one part
+         // of the query (e.g., "short term storage")
+  uint64 component_count = 2; // how many components of this type will process
+                              // the query (indicator of read-path replication)
 
   uint64 block_count = 3;
   uint64 series_count = 4;

@@ -1,0 +1,302 @@
+openapi: 3.1.0
+info:
+  title: adhocprofiles.v1
+  version: v1.0.0
+tags:
+  - name: scope/public
+    description: This operation is considered part of the public API scope
+  - name: scope/internal
+    description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
+  - name: adhocprofiles.v1.AdHocProfileService
+paths:
+  /adhocprofiles.v1.AdHocProfileService/Upload:
+    post:
+      tags:
+        - adhocprofiles.v1.AdHocProfileService
+      summary: Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response  contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
+      description: |-
+        Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
+         contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
+      operationId: adhocprofiles.v1.AdHocProfileService.Upload
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/adhocprofiles.v1.AdHocProfilesUploadRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/adhocprofiles.v1.AdHocProfilesGetResponse'
+  /adhocprofiles.v1.AdHocProfileService/Get:
+    post:
+      tags:
+        - adhocprofiles.v1.AdHocProfileService
+      summary: Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one  for the upload method.
+      description: |-
+        Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one
+         for the upload method.
+      operationId: adhocprofiles.v1.AdHocProfileService.Get
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/adhocprofiles.v1.AdHocProfilesGetRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/adhocprofiles.v1.AdHocProfilesGetResponse'
+  /adhocprofiles.v1.AdHocProfileService/List:
+    post:
+      tags:
+        - adhocprofiles.v1.AdHocProfileService
+      summary: Retrieves a list of profiles found in the underlying store.
+      description: Retrieves a list of profiles found in the underlying store.
+      operationId: adhocprofiles.v1.AdHocProfileService.List
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/adhocprofiles.v1.AdHocProfilesListRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/adhocprofiles.v1.AdHocProfilesListResponse'
+components:
+  schemas:
+    adhocprofiles.v1.AdHocProfilesGetRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: The unique identifier of the profile.
+        profileType:
+          type: string
+          title: profile_type
+          description: The desired profile type (e.g., cpu, samples) for the returned flame graph. If omitted the first profile is returned.
+          nullable: true
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+          description: Max nodes can be used to truncate the response.
+          nullable: true
+      title: AdHocProfilesGetRequest
+      additionalProperties: false
+    adhocprofiles.v1.AdHocProfilesGetResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        uploadedAt:
+          type:
+            - integer
+            - string
+          title: uploaded_at
+          format: int64
+          description: timestamp in milliseconds
+        profileType:
+          type: string
+          title: profile_type
+        profileTypes:
+          type: array
+          items:
+            type: string
+          title: profile_types
+          description: |-
+            Some profiles formats (like pprof) can contain multiple profile (sample) types inside. One of these can be passed
+             in the Get request using the profile_type field.
+        flamebearerProfile:
+          type: string
+          title: flamebearer_profile
+      title: AdHocProfilesGetResponse
+      additionalProperties: false
+    adhocprofiles.v1.AdHocProfilesListRequest:
+      type: object
+      title: AdHocProfilesListRequest
+      additionalProperties: false
+    adhocprofiles.v1.AdHocProfilesListResponse:
+      type: object
+      properties:
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/adhocprofiles.v1.AdHocProfilesProfileMetadata'
+          title: profiles
+      title: AdHocProfilesListResponse
+      additionalProperties: false
+    adhocprofiles.v1.AdHocProfilesProfileMetadata:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        uploadedAt:
+          type:
+            - integer
+            - string
+          title: uploaded_at
+          format: int64
+          description: timestamp in milliseconds
+      title: AdHocProfilesProfileMetadata
+      additionalProperties: false
+    adhocprofiles.v1.AdHocProfilesUploadRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          description: This is typically the file name and it serves as a human readable name for the profile.
+        profile:
+          type: string
+          title: profile
+          description: This is the profile encoded in base64. The supported formats are pprof, json, collapsed and perf-script.
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+          description: Max nodes can be used to truncate the response.
+          nullable: true
+      title: AdHocProfilesUploadRequest
+      additionalProperties: false
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+security: []

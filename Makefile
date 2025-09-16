@@ -70,6 +70,7 @@ generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/pr
 	cd pkg && PATH=$(BIN) $(BIN)/buf generate
 	PATH="$(BIN):$(PATH)" ./tools/add-parquet-tags.sh
 	go run ./tools/doc-generator/ ./docs/sources/configure-server/reference-configuration-parameters/index.template > docs/sources/configure-server/reference-configuration-parameters/index.md
+	go run ./tools/api-docs-generator -input=api/connect-openapi/gen -output=docs/api-reference.md
 
 .PHONY: buf/lint
 buf/lint: $(BIN)/buf

@@ -1,0 +1,204 @@
+openapi: 3.1.0
+info:
+  title: metastore.v1
+  version: v1.0.0
+tags:
+  - name: scope/public
+    description: This operation is considered part of the public API scope
+  - name: scope/internal
+    description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
+  - name: metastore.v1.TenantService
+paths:
+  /metastore.v1.TenantService/GetTenant:
+    post:
+      tags:
+        - metastore.v1.TenantService
+      summary: GetTenant
+      operationId: metastore.v1.TenantService.GetTenant
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/metastore.v1.GetTenantRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/metastore.v1.GetTenantResponse'
+  /metastore.v1.TenantService/DeleteTenant:
+    post:
+      tags:
+        - metastore.v1.TenantService
+      summary: DeleteTenant
+      operationId: metastore.v1.TenantService.DeleteTenant
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/metastore.v1.DeleteTenantRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/metastore.v1.DeleteTenantResponse'
+components:
+  schemas:
+    metastore.v1.DeleteTenantRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          title: tenant_id
+      title: DeleteTenantRequest
+      additionalProperties: false
+    metastore.v1.DeleteTenantResponse:
+      type: object
+      title: DeleteTenantResponse
+      additionalProperties: false
+    metastore.v1.GetTenantRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          title: tenant_id
+      title: GetTenantRequest
+      additionalProperties: false
+    metastore.v1.GetTenantResponse:
+      type: object
+      properties:
+        stats:
+          title: stats
+          $ref: '#/components/schemas/metastore.v1.TenantStats'
+      title: GetTenantResponse
+      additionalProperties: false
+    metastore.v1.TenantStats:
+      type: object
+      properties:
+        dataIngested:
+          type: boolean
+          title: data_ingested
+          description: Whether we received any data at any time in the past.
+        oldestProfileTime:
+          type:
+            - integer
+            - string
+          title: oldest_profile_time
+          format: int64
+          description: Milliseconds since epoch.
+        newestProfileTime:
+          type:
+            - integer
+            - string
+          title: newest_profile_time
+          format: int64
+          description: Milliseconds since epoch.
+      title: TenantStats
+      additionalProperties: false
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+security: []
