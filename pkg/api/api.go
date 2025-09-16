@@ -306,5 +306,5 @@ func (a *API) RegisterAdmin(ad *operations.Admin) {
 }
 
 func (a *API) RegisterAdHocProfiles(ahp *adhocprofiles.AdHocProfiles) {
-	adhocprofilesv1connect.RegisterAdHocProfileServiceHandler(a.server.HTTP, ahp, a.connectOptionsAuthRecovery()...)
+	adhocprofilesv1connect.RegisterAdHocProfileServiceHandler(a.server.HTTP, ahp, a.connectOptionsAuthLogRecovery()...)
 }
