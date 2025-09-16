@@ -96,3 +96,12 @@ func (b *Buffer) ReadFrom(r io.Reader) (int64, error) {
 	b.B = buf.Bytes()
 	return n, err
 }
+
+func (b *Buffer) Write(p []byte) (n int, err error) {
+	b.B = append(b.B, p...)
+	return len(p), nil
+}
+
+func (b *Buffer) Bytes() []byte {
+	return b.B
+}

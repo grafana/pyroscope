@@ -33,6 +33,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/model/pprofsplit"
 	pprofmodel "github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/segmentwriter/memdb"
+	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 	"github.com/grafana/pyroscope/pkg/util/retry"
 )
 
@@ -238,12 +239,14 @@ func (s *segment) flush(ctx context.Context) (err error) {
 		return nil
 	}
 
-	// TODO(kolesnikovae): Use buffer pool for blockData.
+	// blockData is a buffer taken from pool, so it needs to be returned
+	// bufferpool.Put handles nil value safely
 	blockData, blockMeta, err := s.flushBlock(stream)
+	defer bufferpool.Put(blockData)
 	if err != nil {
 		return fmt.Errorf("failed to flush block %s: %w", s.ulid.String(), err)
 	}
-	if err = s.sw.uploadBlock(ctx, blockData, blockMeta, s); err != nil {
+	if err = s.sw.uploadBlock(ctx, blockData.Bytes(), blockMeta, s); err != nil {
 		return fmt.Errorf("failed to upload block %s: %w", s.ulid.String(), err)
 	}
 	if err = s.sw.storeMetadata(ctx, blockMeta, s); err != nil {
@@ -253,7 +256,7 @@ func (s *segment) flush(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta, error) {
+func (s *segment) flushBlock(stream flushStream) (*bufferpool.Buffer, *metastorev1.BlockMeta, error) {
 	start := time.Now()
 	hostname, _ := os.Hostname()
 
@@ -271,7 +274,7 @@ func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta
 		Datasets:        make([]*metastorev1.Dataset, 0, len(stream.heads)),
 	}
 
-	blockFile := bytes.NewBuffer(nil)
+	blockFile := bufferpool.GetBuffer(len(stream.heads) * 2 / 1024) // rough estimate, 2kb per head
 
 	w := &writerOffset{Writer: blockFile}
 	for stream.Next() {
@@ -297,7 +300,7 @@ func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta
 	}
 	meta.Size = uint64(w.offset)
 	s.debuginfo.flushBlockDuration = time.Since(start)
-	return blockFile.Bytes(), meta, nil
+	return blockFile, meta, nil
 }
 
 type writerOffset struct {
