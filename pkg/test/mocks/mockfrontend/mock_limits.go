@@ -113,6 +113,52 @@ func (_c *MockLimits_MaxFlameGraphNodesMax_Call) RunAndReturn(run func(string) i
 	return _c
 }
 
+// MaxFlameGraphNodesOnSelectMergeProfile provides a mock function with given fields: _a0
+func (_m *MockLimits) MaxFlameGraphNodesOnSelectMergeProfile(_a0 string) bool {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MaxFlameGraphNodesOnSelectMergeProfile")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockLimits_MaxFlameGraphNodesOnSelectMergeProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MaxFlameGraphNodesOnSelectMergeProfile'
+type MockLimits_MaxFlameGraphNodesOnSelectMergeProfile_Call struct {
+	*mock.Call
+}
+
+// MaxFlameGraphNodesOnSelectMergeProfile is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockLimits_Expecter) MaxFlameGraphNodesOnSelectMergeProfile(_a0 interface{}) *MockLimits_MaxFlameGraphNodesOnSelectMergeProfile_Call {
+	return &MockLimits_MaxFlameGraphNodesOnSelectMergeProfile_Call{Call: _e.mock.On("MaxFlameGraphNodesOnSelectMergeProfile", _a0)}
+}
+
+func (_c *MockLimits_MaxFlameGraphNodesOnSelectMergeProfile_Call) Run(run func(_a0 string)) *MockLimits_MaxFlameGraphNodesOnSelectMergeProfile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockLimits_MaxFlameGraphNodesOnSelectMergeProfile_Call) Return(_a0 bool) *MockLimits_MaxFlameGraphNodesOnSelectMergeProfile_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockLimits_MaxFlameGraphNodesOnSelectMergeProfile_Call) RunAndReturn(run func(string) bool) *MockLimits_MaxFlameGraphNodesOnSelectMergeProfile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MaxQueryLength provides a mock function with given fields: tenantID
 func (_m *MockLimits) MaxQueryLength(tenantID string) time.Duration {
 	ret := _m.Called(tenantID)
@@ -297,6 +343,52 @@ func (_c *MockLimits_QueryAnalysisEnabled_Call) RunAndReturn(run func(string) bo
 	return _c
 }
 
+// QuerySanitizeOnMerge provides a mock function with given fields: _a0
+func (_m *MockLimits) QuerySanitizeOnMerge(_a0 string) bool {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for QuerySanitizeOnMerge")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockLimits_QuerySanitizeOnMerge_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'QuerySanitizeOnMerge'
+type MockLimits_QuerySanitizeOnMerge_Call struct {
+	*mock.Call
+}
+
+// QuerySanitizeOnMerge is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockLimits_Expecter) QuerySanitizeOnMerge(_a0 interface{}) *MockLimits_QuerySanitizeOnMerge_Call {
+	return &MockLimits_QuerySanitizeOnMerge_Call{Call: _e.mock.On("QuerySanitizeOnMerge", _a0)}
+}
+
+func (_c *MockLimits_QuerySanitizeOnMerge_Call) Run(run func(_a0 string)) *MockLimits_QuerySanitizeOnMerge_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockLimits_QuerySanitizeOnMerge_Call) Return(_a0 bool) *MockLimits_QuerySanitizeOnMerge_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockLimits_QuerySanitizeOnMerge_Call) RunAndReturn(run func(string) bool) *MockLimits_QuerySanitizeOnMerge_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // QuerySplitDuration provides a mock function with given fields: _a0
 func (_m *MockLimits) QuerySplitDuration(_a0 string) time.Duration {
 	ret := _m.Called(_a0)
@@ -349,23 +441,6 @@ func (_m *MockLimits) SymbolizerEnabled(_a0 string) bool {
 
 	if len(ret) == 0 {
 		panic("no return value specified for SymbolizerEnabled")
-	}
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(string) bool); ok {
-		r0 = rf(_a0)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
-
-func (_m *MockLimits) QuerySanitizeOnMerge(_a0 string) bool {
-	ret := _m.Called(_a0)
-
-	if len(ret) == 0 {
-		panic("no return value specified for QuerySanitizeOnMerge")
 	}
 
 	var r0 bool

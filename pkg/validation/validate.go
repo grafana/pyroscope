@@ -517,6 +517,7 @@ func SanitizeTimeRange(limits RangeRequestLimits, tenant []string, start, end *i
 type FlameGraphLimits interface {
 	MaxFlameGraphNodesDefault(string) int
 	MaxFlameGraphNodesMax(string) int
+	MaxFlameGraphNodesOnSelectMergeProfile(string) bool
 }
 
 func ValidateMaxNodes(l FlameGraphLimits, tenantIDs []string, n int64) (int64, error) {

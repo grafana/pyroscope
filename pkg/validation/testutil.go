@@ -16,8 +16,9 @@ type MockLimits struct {
 	MaxLabelValueLengthValue        int
 	MaxLabelNamesPerSeriesValue     int
 
-	MaxFlameGraphNodesDefaultValue int
-	MaxFlameGraphNodesMaxValue     int
+	MaxFlameGraphNodesDefaultValue              int
+	MaxFlameGraphNodesMaxValue                  int
+	MaxFlameGraphNodesOnSelectMergeProfileValue bool
 
 	DistributorAggregationWindowValue time.Duration
 	DistributorAggregationPeriodValue time.Duration
@@ -51,6 +52,9 @@ func (m MockLimits) QuerySanitizeOnMerge(tenantID string) bool {
 }
 func (m MockLimits) MaxFlameGraphNodesDefault(string) int { return m.MaxFlameGraphNodesDefaultValue }
 func (m MockLimits) MaxFlameGraphNodesMax(string) int     { return m.MaxFlameGraphNodesMaxValue }
+func (m MockLimits) MaxFlameGraphNodesOnSelectMergeProfile(string) bool {
+	return m.MaxFlameGraphNodesOnSelectMergeProfileValue
+}
 
 func (m MockLimits) MaxLabelNameLength(userID string) int     { return m.MaxLabelNameLengthValue }
 func (m MockLimits) MaxLabelValueLength(userID string) int    { return m.MaxLabelValueLengthValue }

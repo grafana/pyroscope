@@ -87,9 +87,9 @@ type Limits struct {
 	QueryAnalysisSeriesEnabled bool           `yaml:"query_analysis_series_enabled" json:"query_analysis_series_enabled"`
 
 	// Flame graph enforced limits.
-	MaxFlameGraphNodesDefault int `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
-	MaxFlameGraphNodesMax     int `yaml:"max_flamegraph_nodes_max" json:"max_flamegraph_nodes_max"`
-
+	MaxFlameGraphNodesDefault              int  `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
+	MaxFlameGraphNodesMax                  int  `yaml:"max_flamegraph_nodes_max" json:"max_flamegraph_nodes_max"`
+	MaxFlameGraphNodesOnSelectMergeProfile bool `yaml:"max_flamegraph_nodes_on_select_merge_profile" json:"max_flamegraph_nodes_on_select_merge_profile" category:"advanced" doc:"hidden"`
 	// Store-gateway.
 	StoreGatewayTenantShardSize int `yaml:"store_gateway_tenant_shard_size" json:"store_gateway_tenant_shard_size"`
 
@@ -186,6 +186,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 
 	f.IntVar(&l.MaxFlameGraphNodesDefault, "querier.max-flamegraph-nodes-default", 8<<10, "Maximum number of flame graph nodes by default. 0 to disable.")
 	f.IntVar(&l.MaxFlameGraphNodesMax, "querier.max-flamegraph-nodes-max", 1<<20, "Maximum number of flame graph nodes allowed. 0 to disable.")
+	f.BoolVar(&l.MaxFlameGraphNodesOnSelectMergeProfile, "querier.max-flamegraph-nodes-on-select-merge-profile", false, "Enforce the max nodes limits and defaults on SelectMergeProfile API. Historically this limit was not enforced to enable to gather full pprof profiles without truncation.")
 
 	f.Var(&l.DistributorAggregationWindow, "distributor.aggregation-window", "Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.")
 	f.Var(&l.DistributorAggregationPeriod, "distributor.aggregation-period", "Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.")
@@ -426,6 +427,11 @@ func (o *Overrides) MaxFlameGraphNodesDefault(tenantID string) int {
 // MaxFlameGraphNodesMax returns the max flame graph nodes allowed.
 func (o *Overrides) MaxFlameGraphNodesMax(tenantID string) int {
 	return o.getOverridesForTenant(tenantID).MaxFlameGraphNodesMax
+}
+
+// MaxFlameGraphNodesOnSelectMergeProfiles returns if the max flame graph nodes should be enforced for the SelectMergeProfile API.
+func (o *Overrides) MaxFlameGraphNodesOnSelectMergeProfile(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).MaxFlameGraphNodesOnSelectMergeProfile
 }
 
 // StoreGatewayTenantShardSize returns the store-gateway shard size for a given user.

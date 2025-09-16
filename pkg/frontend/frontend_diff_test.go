@@ -51,6 +51,10 @@ func (m *mockLimits) MaxFlameGraphNodesMax(_ string) int {
 	return 100_000
 }
 
+func (m *mockLimits) MaxFlameGraphNodesOnSelectMergeProfile(_ string) bool {
+	return true
+}
+
 func (m *mockLimits) SymbolizerEnabled(s string) bool { return true }
 
 type mockRoundTripper struct {
