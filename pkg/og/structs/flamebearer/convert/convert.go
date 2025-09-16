@@ -231,11 +231,13 @@ func PprofToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.Flamebe
 		return nil, fmt.Errorf("parsing pprof: %w", err)
 	}
 
+	t := model.NewStacktraceTree(int(maxNodes * 2))
+	stack := make([]int32, 0, 64)
+	m := make(map[uint64]int32)
+
 	fbs := make([]*flamebearer.FlamebearerProfile, 0)
 	for sampleType := range p.SampleType {
-		t := model.NewStacktraceTree(int(maxNodes * 2))
-		stack := make([]int32, 0, 64)
-		m := make(map[uint64]int32)
+		t.Reset()
 
 		for i := range p.Sample {
 			stack = stack[:0]
@@ -268,13 +270,12 @@ func PprofToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.Flamebe
 			t.Insert(stack, p.Sample[i].Value[sampleType])
 		}
 
-		fg := model.NewFlameGraph(t.Tree(int64(maxNodes), p.StringTable), int64(maxNodes))
-
 		tp, err := getProfileType(name, sampleType, p)
 		if err != nil {
 			return nil, err
 		}
 
+		fg := model.NewFlameGraph(t.Tree(int64(maxNodes), p.StringTable), int64(maxNodes))
 		fbs = append(fbs, model.ExportToFlamebearer(fg, tp))
 	}
 	if len(fbs) == 0 {
