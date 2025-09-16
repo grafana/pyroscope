@@ -274,7 +274,7 @@ func (s *segment) flushBlock(stream flushStream) (*bufferpool.Buffer, *metastore
 		Datasets:        make([]*metastorev1.Dataset, 0, len(stream.heads)),
 	}
 
-	blockFile := bufferpool.GetBuffer(len(stream.heads) * 2 / 1024) // rough estimate, 2kb per head
+	blockFile := bufferpool.GetBuffer(2 * 1024) // reserve extra to avoid resizes
 
 	w := &writerOffset{Writer: blockFile}
 	for stream.Next() {
