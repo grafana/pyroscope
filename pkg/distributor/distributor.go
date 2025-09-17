@@ -46,6 +46,7 @@ import (
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	"github.com/grafana/pyroscope/pkg/distributor/writepath"
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/model/pprofsplit"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
@@ -248,7 +249,14 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 		Series:         make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
 		RawProfileType: distributormodel.RawProfileTypePPROF,
 	}
+
 	allErrors := multierror.New()
+
+	clientCapabilities, parseErr := featureflags.ParseClientCapabilities(grpcReq.Header())
+	if parseErr != nil {
+		allErrors.Add(parseErr)
+	}
+
 	for _, grpcSeries := range grpcReq.Msg.Series {
 		for _, grpcSample := range grpcSeries.Samples {
 			profile, err := pprof.RawFromBytes(grpcSample.RawProfile)
@@ -257,10 +265,11 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 				continue
 			}
 			series := &distributormodel.ProfileSeries{
-				Labels:     grpcSeries.Labels,
-				Profile:    profile,
-				RawProfile: grpcSample.RawProfile,
-				ID:         grpcSample.ID,
+				Labels:             grpcSeries.Labels,
+				Profile:            profile,
+				RawProfile:         grpcSample.RawProfile,
+				ID:                 grpcSample.ID,
+				ClientCapabilities: clientCapabilities,
 			}
 			req.Series = append(req.Series, series)
 		}
@@ -630,10 +639,11 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 				return handleErr
 			}
 			aggregated := &distributormodel.ProfileSeries{
-				TenantID:    req.TenantID,
-				Labels:      labels,
-				Profile:     pprof.RawFromProto(p.Profile()),
-				Annotations: annotations,
+				TenantID:           req.TenantID,
+				Labels:             labels,
+				Profile:            pprof.RawFromProto(p.Profile()),
+				Annotations:        annotations,
+				ClientCapabilities: req.ClientCapabilities,
 			}
 			return d.router.Send(localCtx, aggregated)
 		})()
@@ -1132,9 +1142,10 @@ func (d *Distributor) visitSampleSeries(s *distributormodel.ProfileSeries, visit
 	var result []*distributormodel.ProfileSeries
 	usageGroups := d.usageGroupEvaluator.GetMatch(s.TenantID, usageConfig, s.Labels)
 	visitor := &sampleSeriesVisitor{
-		tenantID: s.TenantID,
-		limits:   d.limits,
-		profile:  s.Profile,
+		tenantID:           s.TenantID,
+		limits:             d.limits,
+		profile:            s.Profile,
+		clientCapabilities: s.ClientCapabilities,
 	}
 	if err := visit(s.Profile.Profile, s.Labels, relabelingRules, visitor); err != nil {
 		validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), s.TenantID).Add(float64(s.TotalProfiles))
@@ -1164,24 +1175,28 @@ func (d *Distributor) visitSampleSeries(s *distributormodel.ProfileSeries, visit
 }
 
 type sampleSeriesVisitor struct {
-	tenantID string
-	limits   Limits
-	profile  *pprof.Profile
-	exp      *pprof.SampleExporter
-	series   []*distributormodel.ProfileSeries
+	tenantID           string
+	limits             Limits
+	profile            *pprof.Profile
+	exp                *pprof.SampleExporter
+	series             []*distributormodel.ProfileSeries
+	clientCapabilities []*featureflags.ClientCapability
 
 	discardedBytes    int
 	discardedProfiles int
 }
 
 func (v *sampleSeriesVisitor) ValidateLabels(labels phlaremodel.Labels) error {
-	return validation.ValidateLabels(v.limits, v.tenantID, labels)
+	capability := featureflags.GetClientCapability(v.clientCapabilities, featureflags.AllowUtf8LabelNamesCapabilityName)
+	utf8LabelNamesEnabled := capability != nil && capability.Value == "true"
+	return validation.ValidateLabels(v.limits, v.tenantID, utf8LabelNamesEnabled, labels)
 }
 
 func (v *sampleSeriesVisitor) VisitProfile(labels phlaremodel.Labels) {
 	v.series = append(v.series, &distributormodel.ProfileSeries{
-		Profile: v.profile,
-		Labels:  labels,
+		Profile:            v.profile,
+		Labels:             labels,
+		ClientCapabilities: v.clientCapabilities,
 	})
 }
 
