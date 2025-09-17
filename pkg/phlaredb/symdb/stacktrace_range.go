@@ -28,7 +28,7 @@ func (r *StacktraceIDRange) SetNodeValues(dst []Node) {
 	for i := 0; i < len(r.IDs); i++ {
 		x := r.StacktraceIDs[i]
 		v := int64(r.Values[i])
-		if x > 0 && v > 0 {
+		if x > 0 && v > 0 && dst[x].Location&truncationMark == 0 {
 			dst[x].Value = v
 		}
 	}

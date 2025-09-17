@@ -8,18 +8,99 @@ import (
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 func Test_memory_Resolver_ResolveTree(t *testing.T) {
 	s := newMemSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	expectedFingerprint := pprofFingerprint(s.profiles[0], 0)
-	r := NewResolver(context.Background(), s.db)
-	defer r.Release()
-	r.AddSamples(0, s.indexed[0][0].Samples)
-	resolved, err := r.Tree()
-	require.NoError(t, err)
-	require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
+
+	t.Run("default", func(t *testing.T) {
+		r := NewResolver(context.Background(), s.db)
+		defer r.Release()
+		r.AddSamples(0, s.indexed[0][0].Samples)
+		resolved, err := r.Tree()
+		require.NoError(t, err)
+		require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
+	})
+
+	for _, tc := range []struct {
+		name            string
+		callsite        []string
+		stacktraceCount int
+		total           int
+	}{
+		{
+			name: "multiple stacks",
+			callsite: []string{
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*scrapeLoop).run",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*Target).report",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*scrapeLoop).scrape",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*pprofWriter).writeProfile",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*cache).writeProfiles",
+				"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*Trie).Insert",
+			},
+			stacktraceCount: 4,
+			total:           2752628,
+		},
+		{
+			name: "single stack",
+			callsite: []string{
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*scrapeLoop).run",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*Target).report",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*scrapeLoop).scrape",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*pprofWriter).writeProfile",
+				"github.com/pyroscope-io/pyroscope/pkg/scrape.(*cache).writeProfiles",
+				"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*Trie).Insert",
+				"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*trieNode).findNodeAt",
+				"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.newTrieNode",
+			},
+			stacktraceCount: 1,
+			total:           417817,
+		},
+		{
+			name: "no match",
+			callsite: []string{
+				"github.com/no-match/no-match.main",
+			},
+			stacktraceCount: 0,
+			total:           0,
+		},
+	} {
+		t.Run("with stack trace selector/"+tc.name, func(t *testing.T) {
+			sts := &typesv1.StackTraceSelector{
+				CallSite: make([]*typesv1.Location, len(tc.callsite)),
+			}
+			for i, name := range tc.callsite {
+				sts.CallSite[i] = &typesv1.Location{
+					Name: name,
+				}
+			}
+
+			r := NewResolver(context.Background(), s.db, WithResolverStackTraceSelector(sts), WithResolverMaxNodes(10))
+			defer r.Release()
+			r.AddSamples(0, s.indexed[0][0].Samples)
+			resolved, err := r.Tree()
+			require.NoError(t, err)
+
+			stacktraceCount := 0
+			total := 0
+
+			resolved.IterateStacks(func(name string, self int64, stack []string) {
+				stacktraceCount++
+				total += int(self)
+
+				prefix := make([]string, len(tc.callsite))
+				for i := range prefix {
+					prefix[i] = stack[len(stack)-1-i]
+				}
+				require.Equal(t, tc.callsite, prefix, "stack prefix doesn't match")
+			})
+			assert.Equal(t, tc.stacktraceCount, stacktraceCount)
+			assert.Equal(t, tc.total, total)
+		})
+	}
 }
 
 func Test_block_Resolver_ResolveTree(t *testing.T) {
@@ -112,7 +193,7 @@ func Test_buildTreeFromParentPointerTrees(t *testing.T) {
 	// After the truncation, we expect to see the following tree
 	// (function f, f2, and f5 are replaced with "other"):
 	const maxNodes = 6
-	expectedTree := `.
+	expectedTruncatedTree := `.
 └── a: self 0 total 5
     └── b: self 0 total 5
         └── c: self 0 total 5
@@ -159,11 +240,73 @@ func Test_buildTreeFromParentPointerTrees(t *testing.T) {
 	iterator, ok := symbols.Stacktraces.(StacktraceIDRangeIterator)
 	require.True(t, ok)
 
-	appender := NewSampleAppender()
-	appender.AppendMany(expectedSamples.StacktraceIDs, expectedSamples.Values)
-	ranges := iterator.SplitStacktraceIDRanges(appender)
-	resolved, err := buildTreeFromParentPointerTrees(context.Background(), ranges, symbols, maxNodes)
-	require.NoError(t, err)
+	for _, tc := range []struct {
+		name     string
+		selector *typesv1.StackTraceSelector
+		expected string
+	}{
+		{
+			name:     "without selection",
+			selector: nil,
+			expected: expectedTruncatedTree,
+		},
+		{
+			name: "with common prefix selection",
+			selector: &typesv1.StackTraceSelector{
+				CallSite: []*typesv1.Location{
+					{Name: "a"},
+					{Name: "b"},
+					{Name: "c"},
+				},
+			},
+			expected: expectedTruncatedTree,
+		},
+		{
+			name: "with focus on truncated callsite last shown",
+			selector: &typesv1.StackTraceSelector{
+				CallSite: []*typesv1.Location{
+					{Name: "a"},
+					{Name: "b"},
+					{Name: "c"},
+					{Name: "f1"},
+				},
+			},
+			expected: `.
+└── a: self 0 total 2
+    └── b: self 0 total 2
+        └── c: self 0 total 2
+            └── f1: self 1 total 2
+                └── f2: self 1 total 1
+`,
+		},
+		{
+			name: "with focus on truncated callsite",
+			selector: &typesv1.StackTraceSelector{
+				CallSite: []*typesv1.Location{
+					{Name: "a"},
+					{Name: "b"},
+					{Name: "c"},
+					{Name: "f1"},
+					{Name: "f2"},
+				},
+			},
+			expected: `.
+└── a: self 0 total 1
+    └── b: self 0 total 1
+        └── c: self 0 total 1
+            └── f1: self 0 total 1
+                └── f2: self 1 total 1
+`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			appender := NewSampleAppender()
+			appender.AppendMany(expectedSamples.StacktraceIDs, expectedSamples.Values)
+			ranges := iterator.SplitStacktraceIDRanges(appender)
+			resolved, err := buildTreeFromParentPointerTrees(context.Background(), ranges, symbols, maxNodes, SelectStackTraces(symbols, tc.selector))
+			require.NoError(t, err)
 
-	require.Equal(t, expectedTree, resolved.String())
+			require.Equal(t, tc.expected, resolved.String())
+		})
+	}
 }
