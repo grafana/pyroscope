@@ -88,18 +88,22 @@ func newProfileBuilder(src *otelProfile.Profile, dictionary *otelProfile.Profile
 		mappingMap:              make(map[*otelProfile.Mapping]uint64),
 		unsymbolziedFuncNameMap: make(map[string]uint64),
 		dst: &googleProfile.Profile{
-			TimeNanos:     src.TimeNanos,
-			DurationNanos: src.DurationNanos,
+			TimeNanos:     int64(src.TimeUnixNano),
+			DurationNanos: int64(src.DurationNano),
 			Period:        src.Period,
 		},
 	}
 	res.addstr("")
 
-	sampleType, err := res.convertSampleTypesBack(src.SampleType, dictionary)
+	if src.SampleType == nil {
+		return nil, fmt.Errorf("sample type is missing")
+	}
+	sampleType, err := res.convertSampleTypeBack(src.SampleType, dictionary)
 	if err != nil {
 		return nil, err
 	}
-	res.dst.SampleType = sampleType
+	res.dst.SampleType = []*googleProfile.ValueType{sampleType}
+
 	periodType, err := res.convertValueTypeBack(src.PeriodType, dictionary)
 	if err != nil {
 		return nil, err
@@ -107,11 +111,8 @@ func newProfileBuilder(src *otelProfile.Profile, dictionary *otelProfile.Profile
 	res.dst.PeriodType = periodType
 
 	var defaultSampleTypeLabel string
-	if len(src.SampleType) > 0 {
-		defaultSampleType, err := at(src.SampleType, src.DefaultSampleTypeIndex)
-		if err != nil {
-			return nil, fmt.Errorf("could not access default sample type: %w", err)
-		}
+	if src.SampleType != nil {
+		defaultSampleType := src.SampleType
 		defaultSampleTypeLabel, err = at(dictionary.StringTable, defaultSampleType.TypeStrindex)
 		if err != nil {
 			return nil, fmt.Errorf("could not access default sample type label: %w", err)
@@ -196,28 +197,15 @@ func (p *profileBuilder) addstr(s string) int64 {
 }
 
 func serviceNameFromSample(sample *otelProfile.Sample, dictionary *otelProfile.ProfilesDictionary) (string, error) {
-	for _, attributeIndex := range sample.AttributeIndices {
-		attribute, err := at(dictionary.AttributeTable, attributeIndex)
-		if err != nil {
-			return "", fmt.Errorf("could not access attribute: %w", err)
-		}
-		if attribute.Key == serviceNameKey {
-			return attribute.Value.GetStringValue(), nil
-		}
-	}
-	return "", nil
+	return getAttributeValueByKeyOrEmpty(sample.AttributeIndices, dictionary, serviceNameKey)
 }
 
-func (p *profileBuilder) convertSampleTypesBack(ost []*otelProfile.ValueType, dictionary *otelProfile.ProfilesDictionary) ([]*googleProfile.ValueType, error) {
-	var gsts []*googleProfile.ValueType
-	for stIdx, st := range ost {
-		gst, err := p.convertValueTypeBack(st, dictionary)
-		if err != nil {
-			return make([]*googleProfile.ValueType, 0), fmt.Errorf("could not process sample type at index %d: %w", stIdx, err)
-		}
-		gsts = append(gsts, gst)
+func (p *profileBuilder) convertSampleTypeBack(ost *otelProfile.ValueType, dictionary *otelProfile.ProfilesDictionary) (*googleProfile.ValueType, error) {
+	gst, err := p.convertValueTypeBack(ost, dictionary)
+	if err != nil {
+		return nil, fmt.Errorf("could not process sample type: %w", err)
 	}
-	return gsts, nil
+	return gst, nil
 }
 
 func (p *profileBuilder) convertValueTypeBack(ovt *otelProfile.ValueType, dictionary *otelProfile.ProfilesDictionary) (*googleProfile.ValueType, error) {
@@ -253,7 +241,6 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location, dictionar
 		MappingId: mappingId,
 		Address:   ol.Address,
 		Line:      make([]*googleProfile.Line, len(ol.Line)),
-		IsFolded:  ol.IsFolded,
 	}
 
 	for i, line := range ol.Line {
@@ -312,8 +299,15 @@ func (p *profileBuilder) convertFunctionBack(of *otelProfile.Function, dictionar
 
 func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample, dictionary *otelProfile.ProfilesDictionary) (*googleProfile.Sample, error) {
 	gs := &googleProfile.Sample{
-		Value: os.Value,
+		Value: os.Values,
 	}
+
+	// According to spec, samples can come without values, in which case we assume that each timestamp occurrence has value of 1.
+	// See: https://github.com/open-telemetry/opentelemetry-proto/blob/81d6676cdc30dddb0ec1f87d080e6dac07ab214f/opentelemetry/proto/profiles/v1development/profiles.proto#L351-L353
+	if len(gs.Value) == 0 && len(os.TimestampsUnixNano) > 0 {
+		gs.Value = []int64{int64(len(os.TimestampsUnixNano))}
+	}
+
 	if len(gs.Value) == 0 {
 		return nil, fmt.Errorf("sample value is required")
 	}
@@ -341,14 +335,15 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample, dictionary *o
 		return nil, err
 	}
 
-	for i := os.LocationsStartIndex; i < os.LocationsStartIndex+os.LocationsLength; i++ {
-		olocIdx, err := at(p.src.LocationIndices, i)
-		if err != nil {
-			return nil, fmt.Errorf("could not access location index at index %d: %w", i, err)
-		}
+	stackIndex := os.GetStackIndex()
+	if stackIndex < 0 || int(stackIndex) >= len(dictionary.StackTable) {
+		return nil, fmt.Errorf("invalid stack index: %d", stackIndex)
+	}
+	stack := dictionary.StackTable[stackIndex]
+	for _, olocIdx := range stack.LocationIndices {
 		oloc, err := at(dictionary.LocationTable, olocIdx)
 		if err != nil {
-			return nil, fmt.Errorf("could not access location at index %d: %w", i, err)
+			return nil, fmt.Errorf("could not access location at index %d: %w", olocIdx, err)
 		}
 		loc, err := p.convertLocationBack(oloc, dictionary)
 		if err != nil {
@@ -369,12 +364,16 @@ func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sam
 		if err != nil {
 			return fmt.Errorf("could not access attribute at index %d: %w", i, err)
 		}
-		if attribute.Key == serviceNameKey {
+		if keyStr, err := at(dictionary.StringTable, attribute.KeyStrindex); err == nil && keyStr == serviceNameKey {
 			continue
 		}
 		if attribute.Value.GetStringValue() != "" {
+			keyStr, err := at(dictionary.StringTable, attribute.KeyStrindex)
+			if err != nil {
+				return fmt.Errorf("could not access attribute key: %w", err)
+			}
 			gs.Label = append(gs.Label, &googleProfile.Label{
-				Key: p.addstr(attribute.Key),
+				Key: p.addstr(keyStr),
 				Str: p.addstr(attribute.Value.GetStringValue()),
 			})
 		}
@@ -400,16 +399,7 @@ func (p *profileBuilder) convertMappingBack(om *otelProfile.Mapping, dictionary 
 		return i, nil
 	}
 
-	buildID := ""
-	for i, attributeIndex := range om.AttributeIndices {
-		attr, err := at(dictionary.AttributeTable, attributeIndex)
-		if err != nil {
-			return 0, fmt.Errorf("could not access attribute at index %d: %w", i, err)
-		}
-		if attr.Key == "process.executable.build_id.gnu" {
-			buildID = attr.Value.GetStringValue()
-		}
-	}
+	buildID, _ := getAttributeValueByKeyOrEmpty(om.AttributeIndices, dictionary, "process.executable.build_id.gnu")
 	filenameLabel, err := at(dictionary.StringTable, om.FilenameStrindex)
 	if err != nil {
 		return 0, fmt.Errorf("could not access mapping file name string: %w", err)
@@ -420,13 +410,32 @@ func (p *profileBuilder) convertMappingBack(om *otelProfile.Mapping, dictionary 
 		FileOffset:      om.FileOffset,
 		Filename:        p.addstr(filenameLabel),
 		BuildId:         p.addstr(buildID),
-		HasFunctions:    om.HasFunctions,
-		HasFilenames:    om.HasFilenames,
-		HasLineNumbers:  om.HasLineNumbers,
-		HasInlineFrames: om.HasInlineFrames,
+		HasFunctions:    true,
+		HasFilenames:    true,
+		HasLineNumbers:  true,
+		HasInlineFrames: true,
 	}
 	p.dst.Mapping = append(p.dst.Mapping, gm)
 	gm.Id = uint64(len(p.dst.Mapping))
 	p.mappingMap[om] = gm.Id
 	return gm.Id, nil
+}
+
+// This function extracts the value of a specific attribute key from a list of attribute indices.
+// TODO: build a map instead of iterating every time.
+func getAttributeValueByKeyOrEmpty(attributeIndices []int32, dictionary *otelProfile.ProfilesDictionary, key string) (string, error) {
+	for i, attributeIndex := range attributeIndices {
+		attr, err := at(dictionary.AttributeTable, attributeIndex)
+		if err != nil {
+			return "", fmt.Errorf("attribute not found: %d: %w", i, err)
+		}
+		keyStr, err := at(dictionary.StringTable, attr.KeyStrindex)
+		if err != nil {
+			return "", fmt.Errorf("attribute key string not found %d: %w", i, err)
+		}
+		if keyStr == key {
+			return attr.Value.GetStringValue(), nil
+		}
+	}
+	return "", nil
 }
