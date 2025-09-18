@@ -196,6 +196,9 @@ Mappings
 						Value:    []int64{3},
 					},
 				}
+				p.Function = []*profile.Function{
+					f1,
+				}
 
 				return p
 			},
@@ -207,10 +210,10 @@ cpu/nanoseconds[dflt]
           3: 1 2 
         100: 1 
 Locations
-     1: 0x1500 M=1 symbolized_func src.c:239:0 s=0()
-     2: 0x3c5a M=1 atoll_b :0:0 s=0()
+     1: 0x0 M=1 symbolized_func src.c:239:0 s=0()
+     2: 0x0 M=1 atoll_b :0:0 s=0()
 Mappings
-1: 0x0/0x1000000/0x0 libfoo.so 2fa2055ef20fabc972d5751147e093275514b142 [FN]
+1: 0x0/0x0/0x0 libfoo.so 2fa2055ef20fabc972d5751147e093275514b142 [FN]
 `,
 			skip: true, // TODO fix the testdata or symbolization
 		},
