@@ -3,6 +3,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -67,12 +68,12 @@ func testSymbolizationFlow(t *testing.T, ctx context.Context, c *cluster.Cluster
 		name     string
 		profile  func(now time.Time) *profile.Profile
 		expected string
+		skip     bool
 	}{
 		{
 			name: "fully unsymbolized",
 			profile: func(now time.Time) *profile.Profile {
 				p := &profile.Profile{
-					TimeNanos:     now.UnixNano(),
 					DurationNanos: int64(10 * time.Second),
 					Period:        1000000000,
 					SampleType: []*profile.ValueType{
@@ -138,6 +139,81 @@ Mappings
 1: 0x0/0x1000000/0x0 libfoo.so 2fa2055ef20fabc972d5751147e093275514b142 [FN]
 `,
 		},
+		{
+			name: "partially symbolized",
+			profile: func(now time.Time) *profile.Profile {
+				p := &profile.Profile{
+					DurationNanos: int64(10 * time.Second),
+					Period:        1000000000,
+					SampleType: []*profile.ValueType{
+						{Type: "cpu", Unit: "nanoseconds"},
+					},
+					PeriodType: &profile.ValueType{
+						Type: "cpu",
+						Unit: "nanoseconds",
+					},
+				}
+
+				m := &profile.Mapping{
+					ID:           1,
+					Start:        0,
+					Limit:        0x1000000,
+					Offset:       0,
+					File:         "libfoo.so",
+					BuildID:      testBuildID,
+					HasFunctions: true,
+				}
+				p.Mapping = []*profile.Mapping{m}
+				f1 := &profile.Function{
+					ID:       1,
+					Name:     "symbolized_func",
+					Filename: "src.c",
+				}
+				loc1 := &profile.Location{
+					ID:      1,
+					Mapping: m,
+					Address: 0x1500,
+					Line:    []profile.Line{{Function: f1, Line: 239}},
+				}
+				loc2 := &profile.Location{
+					ID:      2,
+					Mapping: m,
+					Address: 0x3c5a,
+				}
+				p.Location = []*profile.Location{loc1, loc2}
+
+				p.Sample = []*profile.Sample{
+					{
+						Location: []*profile.Location{loc1},
+						Value:    []int64{100},
+					},
+					{
+						Location: []*profile.Location{loc2},
+						Value:    []int64{200},
+					},
+					{
+						Location: []*profile.Location{loc1, loc2},
+						Value:    []int64{3},
+					},
+				}
+
+				return p
+			},
+			expected: `PeriodType: cpu nanoseconds
+Period: 1000000000
+Samples:
+cpu/nanoseconds[dflt]
+        200: 2 
+          3: 1 2 
+        100: 1 
+Locations
+     1: 0x1500 M=1 symbolized_func src.c:239:0 s=0()
+     2: 0x3c5a M=1 atoll_b :0:0 s=0()
+Mappings
+1: 0x0/0x1000000/0x0 libfoo.so 2fa2055ef20fabc972d5751147e093275514b142 [FN]
+`,
+			skip: true, // TODO fix the testdata or symbolization
+		},
 	}
 	pusher := c.PushClient()
 	querier := c.QueryClient()
@@ -147,11 +223,14 @@ Mappings
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			if test.skip {
+				t.Skip()
+			}
 			serviceName := "test-symbolization-service-" + test.name
-			p := test.profile(now)
+			src := test.profile(now)
 
 			var buf bytes.Buffer
-			err := p.Write(&buf)
+			err := src.Write(&buf)
 			require.NoError(t, err)
 			rawProfile := buf.Bytes()
 
@@ -179,14 +258,19 @@ Mappings
 					t.Logf("Error querying profile: %v", err)
 					return false
 				}
+				rp := pprof.RawFromProto(resp.Msg)
+				rp.TimeNanos = 0
+				actual := rp.DebugString()
 
-				p := pprof.RawFromProto(resp.Msg)
-				p.TimeNanos = 0
-				s := p.DebugString()
+				fmt.Println(actual)
 
-				if s != test.expected {
-					assert.Equal(t, test.expected, s)
-					//t.Logf("Expected:\n%s\nGot:\n%s", test.expected, s)
+				if len(resp.Msg.Sample) == 0 {
+					return false
+				}
+
+				if actual != test.expected {
+					assert.Equal(t, test.expected, actual)
+					//fmt.Println(src.String())
 					return false
 				}
 				return true
