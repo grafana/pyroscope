@@ -32,7 +32,28 @@ import (
 // of the services and runs the same queries again to check if the cluster is still
 // able to respond to queries.
 func TestMicroServicesIntegrationV1(t *testing.T) {
-	c := cluster.NewMicroServiceCluster()
+	tests := []struct {
+		name string
+		opts []cluster.ClusterOption
+	}{
+		{
+			name: "v1-microservices",
+			opts: []cluster.ClusterOption{cluster.WithV1()},
+		},
+		{
+			name: "v1-single-tareget",
+			opts: []cluster.ClusterOption{cluster.WithV1SingleTarget()},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testMicroServicesIntegrationV1(t, tt.opts)
+		})
+	}
+}
+
+func testMicroServicesIntegrationV1(t *testing.T, opts []cluster.ClusterOption) {
+	c := cluster.NewMicroServiceCluster(opts...)
 	ctx := context.Background()
 
 	require.NoError(t, c.Prepare(ctx))
