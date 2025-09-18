@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"context"
+	"os"
 	"slices"
 	"sort"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 func Test_memory_Resolver_ResolvePprof(t *testing.T) {
@@ -23,6 +25,19 @@ func Test_memory_Resolver_ResolvePprof(t *testing.T) {
 	resolved, err := r.Pprof()
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, pprofFingerprint(resolved, 0))
+}
+
+func Test_memory_Resolver_ResolvePprof_REMOVE_ME(t *testing.T) {
+	s := newMemSuite(t, [][]string{{"testdata/profile.pb.gz"}})
+
+	r := NewResolver(context.Background(), s.db, WithResolverMaxNodes(64))
+	defer r.Release()
+	r.AddSamples(0, s.indexed[0][0].Samples)
+	resolved, err := r.Pprof()
+	require.NoError(t, err)
+
+	b, err := pprof.Marshal(resolved, true)
+	assert.NoError(t, os.WriteFile("testdata/profile.pb.truncated", b, 0644))
 }
 
 func Test_block_Resolver_ResolvePprof_multiple_partitions(t *testing.T) {
