@@ -70,47 +70,46 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 		}
 		mappingsToSymbolize[uint64(i+1)] = true
 	}
-	var allSymbolizedLocs []symbolizedLocation
+
+	locationsByMapping, err := s.groupLocationsByMapping(profile, mappingsToSymbolize)
+	if err != nil {
+		return fmt.Errorf("grouping locations by mapping: %w", err)
+	}
+
 	stringMap := make(map[string]int64, len(profile.StringTable))
 	for i, str := range profile.StringTable {
 		stringMap[str] = int64(i)
 	}
 
-	// Only do actual symbolization if there are mappings that need it
-	if len(mappingsToSymbolize) > 0 {
-		locationsByMapping, err := s.groupLocationsByMapping(profile, mappingsToSymbolize)
+	var allSymbolizedLocs []symbolizedLocation
+
+	for mappingID, locations := range locationsByMapping {
+		mapping := profile.Mapping[mappingID-1]
+
+		binaryName, err := s.extractBinaryName(profile, mapping)
 		if err != nil {
-			return fmt.Errorf("grouping locations by mapping: %w", err)
+			return fmt.Errorf("extract binary name: %w", err)
 		}
 
-		for mappingID, locations := range locationsByMapping {
-			mapping := profile.Mapping[mappingID-1]
+		buildID, err := s.extractBuildID(profile, mapping)
+		if err != nil {
+			return fmt.Errorf("extract build ID: %w", err)
+		}
 
-			binaryName, err := s.extractBinaryName(profile, mapping)
-			if err != nil {
-				return fmt.Errorf("extract binary name: %w", err)
-			}
+		if buildID == "" {
+			continue
+		}
 
-			buildID, err := s.extractBuildID(profile, mapping)
-			if err != nil {
-				return fmt.Errorf("extract build ID: %w", err)
-			}
+		req := s.createSymbolizationRequest(binaryName, buildID, locations)
 
-			if buildID == "" {
-				continue
-			}
+		s.symbolize(ctx, &req)
 
-			req := s.createSymbolizationRequest(binaryName, buildID, locations)
-
-			s.symbolize(ctx, &req)
-
-			for i, loc := range locations {
-				allSymbolizedLocs = append(allSymbolizedLocs, symbolizedLocation{
-					loc:     loc,
-					symLoc:  req.locations[i],
-					mapping: mapping,
-				})
-			}
+		for i, loc := range locations {
+			allSymbolizedLocs = append(allSymbolizedLocs, symbolizedLocation{
+				loc:     loc,
+				symLoc:  req.locations[i],
+				mapping: mapping,
+			})
 		}
 	}
 
