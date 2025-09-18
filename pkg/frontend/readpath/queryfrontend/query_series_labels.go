@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
+	"github.com/grafana/pyroscope/pkg/clientcapability"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -54,5 +55,30 @@ func (q *QueryFrontend) Series(
 	if report == nil {
 		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
 	}
-	return connect.NewResponse(&querierv1.SeriesResponse{LabelsSet: report.SeriesLabels.SeriesLabels}), nil
+
+	seriesLabels := report.SeriesLabels.SeriesLabels
+	if enabled := clientcapability.Utf8LabelNamesEnabled(ctx); !enabled {
+		// Use legacy label name sanitization if utf8 label names not enabled
+		for _, seriesLabel := range seriesLabels {
+			labelNames := make([]string, len(seriesLabel.Labels))
+			for i, label := range seriesLabel.Labels {
+				labelNames[i] = label.Name
+			}
+
+			// Sanitize the label names
+			sanitizedNames, err := clientcapability.SanitizeLabelNames(labelNames)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+
+			// Update the original labels with sanitized names
+			for i, label := range seriesLabel.Labels {
+				if i < len(sanitizedNames) {
+					label.Name = sanitizedNames[i]
+				}
+			}
+		}
+	}
+
+	return connect.NewResponse(&querierv1.SeriesResponse{LabelsSet: seriesLabels}), nil
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/grafana/pyroscope/pkg/clientcapability"
 	"google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -464,7 +465,10 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	// see https://github.com/grafana/pyroscope/issues/231
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
-	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, util.RecoveryInterceptorGRPC)
+	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware,
+		util.RecoveryInterceptorGRPC,
+		clientcapability.ClientCapabilitiesGRPCMiddleware(),
+	)
 
 	if f.Cfg.V2 {
 		f.Cfg.Server.MetricsNativeHistogramFactor = 1.1 // 10% increase from bucket to bucket
@@ -523,6 +527,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		httpMetric,
 		objstoreTracerMiddleware,
 		httputil.K6Middleware(),
+		clientcapability.ClientCapabilitiesHttpMiddleware(),
 	}
 	if f.Cfg.SelfProfiling.UseK6Middleware {
 		defaultHTTPMiddleware = append(defaultHTTPMiddleware, httputil.K6Middleware())

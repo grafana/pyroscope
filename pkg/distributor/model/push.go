@@ -5,7 +5,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/annotation"
 	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
-	"github.com/grafana/pyroscope/pkg/featureflags"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
@@ -30,9 +29,6 @@ type ProfileSeries struct {
 	Profile    *pprof.Profile
 	RawProfile []byte // may be nil if the Profile is composed not from pprof ( e.g. jfr)
 	ID         string
-
-	// List of features the client supports
-	ClientCapabilities []*featureflags.ClientCapability
 
 	// todo split
 	// Transient state
@@ -93,7 +89,6 @@ func (req *ProfileSeries) Clone() *ProfileSeries {
 		ID:                     req.ID,
 		Language:               req.Language,
 		Annotations:            req.Annotations,
-		ClientCapabilities:     req.ClientCapabilities,
 	}
 	return c
 }

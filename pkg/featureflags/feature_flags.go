@@ -15,7 +15,6 @@ const (
 	V2StorageLayer          = "v2StorageLayer"
 	PyroscopeRuler          = "pyroscopeRuler"
 	PyroscopeRulerFunctions = "pyroscopeRulerFunctions"
-	UTF8LabelNames          = "utf8LabelNames"
 )
 
 func stringPtr(s string) *string {
@@ -36,10 +35,6 @@ var (
 		PyroscopeRulerFunctions: {
 			Enabled:     false,
 			Description: stringPtr("Enables function support for the Pyroscope ruler, which allows to export resource usage on a per function level."),
-		},
-		UTF8LabelNames: {
-			Enabled:     false,
-			Description: stringPtr("Supports UTF-8 label names for Pyroscope read/write APIs."),
 		},
 	}
 )
