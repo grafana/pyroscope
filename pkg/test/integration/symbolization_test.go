@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/stretchr/testify/assert"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/stretchr/testify/require"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -62,101 +62,118 @@ func TestMicroServicesIntegrationV2Symbolization(t *testing.T) {
 }
 
 func testSymbolizationFlow(t *testing.T, ctx context.Context, c *cluster.Cluster) {
+	tests := []struct {
+		name     string
+		profile  func() *testhelper.ProfileBuilder
+		expected string
+	}{{
+		name: "fully unsymbolized",
+		profile: func() *testhelper.ProfileBuilder {
+			builder := testhelper.NewProfileBuilder(0).
+				CPUProfile()
+
+			builder.Profile.Mapping[0] = &googlev1.Mapping{
+				Id:          1,
+				MemoryLimit: 0x1000000,
+				Filename:    builder.AddString("libfoo.so"),
+				BuildId:     builder.AddString(testBuildID),
+			}
+
+			builder.Profile.Location = []*googlev1.Location{
+				{
+					Id:        1,
+					MappingId: 1,
+					Address:   0x1500,
+				},
+				{
+					Id:        2,
+					MappingId: 1,
+					Address:   0x3c5a,
+				},
+			}
+
+			builder.Profile.Sample = []*googlev1.Sample{
+				{
+					LocationId: []uint64{1},
+					Value:      []int64{100},
+				},
+				{
+					LocationId: []uint64{2},
+					Value:      []int64{200},
+				},
+				{
+					LocationId: []uint64{1, 2},
+					Value:      []int64{3},
+				},
+			}
+			builder.Profile.Function = nil
+			return builder
+		},
+		expected: `PeriodType: cpu nanoseconds
+Period: 1000000000
+Samples:
+cpu/nanoseconds[dflt]
+        200: 2 
+          3: 1 2 
+        100: 1 
+Locations
+     1: 0x1500 M=1 main :0:0 s=0()
+     2: 0x3c5a M=1 atoll_b :0:0 s=0()
+Mappings
+1: 0x0/0x1000000/0x0 libfoo.so 2fa2055ef20fabc972d5751147e093275514b142 [FN]
+`,
+	},
+	}
 	pusher := c.PushClient()
 	querier := c.QueryClient()
 
 	now := time.Now().Truncate(time.Second)
 	tenantID := "test-tenant"
-	serviceName := "test-symbolization-service"
 
-	builder := testhelper.NewProfileBuilder(now.UnixNano()).
-		CPUProfile().
-		WithLabels(
-			"service_name", serviceName,
-		)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			serviceName := "test-symbolization-service-" + test.name
+			builder := test.profile()
+			builder.Profile.TimeNanos = now.UnixNano()
+			rawProfile, err := builder.Profile.MarshalVT()
+			require.NoError(t, err)
 
-	builder.ForStacktraceString("placeholder").AddSamples(100)
+			ctx = tenant.InjectTenantID(ctx, tenantID)
+			_, err = pusher.Push(ctx, connect.NewRequest(&pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{{
+					Labels: []*typesv1.LabelPair{
+						{Name: "service_name", Value: serviceName},
+						{Name: "__name__", Value: "process_cpu"},
+					},
+					Samples: []*pushv1.RawSample{{RawProfile: rawProfile}},
+				}},
+			}))
+			require.NoError(t, err)
 
-	profile := builder.Profile
+			q := connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+				ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+				Start:         now.Add(-time.Hour).UnixMilli(),
+				End:           now.Add(time.Hour).UnixMilli(),
+				LabelSelector: `{service_name="` + serviceName + `"}`,
+			})
+			require.Eventually(t, func() bool {
+				resp, err := querier.SelectMergeProfile(ctx, q)
+				if err != nil {
+					t.Logf("Error querying profile: %v", err)
+					return false
+				}
 
-	buildIDIdx := int64(len(profile.StringTable))
-	profile.StringTable = append(profile.StringTable, testBuildID)
+				p := pprof.RawFromProto(resp.Msg)
+				p.TimeNanos = 0
+				s := p.DebugString()
 
-	profile.Mapping[0].BuildId = buildIDIdx
-	profile.Mapping[0].HasFunctions = false
-	profile.Mapping[0].MemoryStart = 0x0
-	profile.Mapping[0].MemoryLimit = 0x1000000
-	profile.Mapping[0].FileOffset = 0x0
-
-	profile.Location = []*googlev1.Location{
-		{
-			Id:        1,
-			MappingId: 1,
-			Address:   0x1500,
-		},
-		{
-			Id:        2,
-			MappingId: 1,
-			Address:   0x3c5a,
-		},
+				if s != test.expected {
+					t.Logf("Expected:\n%s\nGot:\n%s", test.expected, s)
+					return false
+				}
+				return true
+			}, 5*time.Second, 100*time.Millisecond)
+		})
 	}
 
-	profile.Sample = []*googlev1.Sample{
-		{
-			LocationId: []uint64{1},
-			Value:      []int64{100},
-		},
-		{
-			LocationId: []uint64{2},
-			Value:      []int64{200},
-		},
-	}
-
-	profile.Function = nil
-	rawProfile, err := profile.MarshalVT()
-	require.NoError(t, err)
-
-	ctx = tenant.InjectTenantID(ctx, tenantID)
-	_, err = pusher.Push(ctx, connect.NewRequest(&pushv1.PushRequest{
-		Series: []*pushv1.RawProfileSeries{{
-			Labels: []*typesv1.LabelPair{
-				{Name: "service_name", Value: serviceName},
-				{Name: "__name__", Value: "process_cpu"},
-			},
-			Samples: []*pushv1.RawSample{{RawProfile: rawProfile}},
-		}},
-	}))
-	require.NoError(t, err)
-
-	time.Sleep(5 * time.Second)
-
-	resp, err := querier.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
-		ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-		Start:         now.Add(-time.Hour).UnixMilli(),
-		End:           now.Add(time.Hour).UnixMilli(),
-		LabelSelector: `{service_name="` + serviceName + `"}`,
-	}))
-	require.NoError(t, err, "Failed to query profile")
-	require.NotNil(t, resp.Msg, "Response message is nil")
-
-	require.Len(t, resp.Msg.Mapping, 1)
-	assert.True(t, resp.Msg.Mapping[0].HasFunctions, "Mapping should have HasFunctions=true after symbolization")
-
-	foundMain := false
-	foundAtollB := false
-
-	for _, fn := range resp.Msg.Function {
-		if fn.Name > 0 && fn.Name < int64(len(resp.Msg.StringTable)) {
-			functionName := resp.Msg.StringTable[fn.Name]
-			if functionName == "main" {
-				foundMain = true
-			}
-			if functionName == "atoll_b" {
-				foundAtollB = true
-			}
-		}
-	}
-
-	assert.True(t, foundMain && foundAtollB, "Expected to find both symbolized function names (main and atoll_b) in profile")
-	t.Log("Symbolization successful! Found both 'main' and 'atoll_b' functions")
 }
