@@ -11,9 +11,9 @@ import (
 )
 
 type TestDebuginfodServer struct {
-	server       *http.Server
-	debugFiles   map[string]string
-	listener     net.Listener
+	server     *http.Server
+	debugFiles map[string]string
+	listener   net.Listener
 }
 
 func NewTestDebuginfodServer() (*TestDebuginfodServer, error) {
