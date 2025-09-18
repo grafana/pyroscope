@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/prometheus/common/version"
@@ -17,7 +18,21 @@ const (
 	protocolTypeGRPCWeb = "grpc-web"
 )
 
+var acceptHeaderFeatureFlags = []string{
+	"allow-utf8-labelnames=true",
+}
+
 var userAgentHeader = fmt.Sprintf("pyroscope/%s", version.Version)
+var acceptHeaderMimeType = "*/*"
+
+func buildAcceptHeader(featureFlags []string) string {
+	acceptHeader := acceptHeaderMimeType
+	if len(acceptHeaderFeatureFlags) > 0 {
+		acceptHeader += "; " + strings.Join(featureFlags, "; ")
+	}
+
+	return acceptHeader
+}
 
 type phlareClient struct {
 	TenantID  string
@@ -46,7 +61,10 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		}
 	}
 
+	acceptHeader := buildAcceptHeader(acceptHeaderFeatureFlags)
+	req.Header.Set("Accept", acceptHeader)
 	req.Header.Set("User-Agent", userAgentHeader)
+
 	return a.next.RoundTrip(req)
 }
 

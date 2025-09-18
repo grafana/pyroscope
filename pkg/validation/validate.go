@@ -115,7 +115,7 @@ type LabelValidationLimits interface {
 }
 
 // ValidateLabels validates the labels of a profile.
-func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1.LabelPair) error {
+func ValidateLabels(limits LabelValidationLimits, tenantID string, utf8LabelNamesEnabled bool, ls []*typesv1.LabelPair) error {
 	if len(ls) == 0 {
 		return NewErrorf(MissingLabels, MissingLabelsErrorMsg)
 	}
@@ -146,7 +146,12 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
-		if origName, newName, ok := SanitizeLabelName(l.Name); ok && origName != newName {
+		// Note this conditional falls back on legacy logic if not valid utf-8 label name
+		if ok := ValidateUtf8LabelName(l.Name); utf8LabelNamesEnabled && ok {
+			idx += 1
+			continue
+		} else if origName, newName, ok := SanitizeLabelName(l.Name); ok && origName != newName {
+			// Legacy logic if client does not specify utf8LabelNamesEnabled
 			var err error
 			ls, idx, err = handleSanitizedLabel(ls, idx, origName, newName)
 			if err != nil {
@@ -209,6 +214,14 @@ func handleSanitizedLabel(ls []*typesv1.LabelPair, origIdx int, origName, newNam
 
 	copy(ls, newSlice)
 	return ls[:len(newSlice)], finalIdx, nil
+}
+
+// ValidateUtf8LabelName validates the name is not empty and is a valid utf-8 string
+func ValidateUtf8LabelName(name string) bool {
+	if len(name) == 0 {
+		return false
+	}
+	return utf8.ValidString(name)
 }
 
 // SanitizeLabelName reports whether the label name is valid,
