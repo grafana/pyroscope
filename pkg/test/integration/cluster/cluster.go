@@ -133,6 +133,7 @@ type Cluster struct {
 	wg sync.WaitGroup // components wait group
 
 	v2                 bool     // is this a v2 cluster
+	debuginfodURL      string   // debuginfod URL for symbolization
 	expectedComponents []string // number of expected components
 
 	tmpDir     string
