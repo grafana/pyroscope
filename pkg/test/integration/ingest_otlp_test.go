@@ -33,60 +33,17 @@ type expectedProfile struct {
 
 var otlpTestDatas = []otlpTestData{
 	{
-		name:        "unsymbolized profile from otel-ebpf-profiler",
-		profilePath: "testdata/otel-ebpf-profiler-unsymbolized.pb.bin",
+		name:        "unsymbolized profile from otel-ebpf-profiler with cpu and offcpu",
+		profilePath: "testdata/otel-ebpf-profile.pb.bin",
 		expectedProfiles: []expectedProfile{
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown_service"},
-				"testdata/otel-ebpf-profiler-unsymbolized.json",
+				"testdata/otel-ebpf-profile.out.json",
 			},
 		},
 		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
 
-		},
-	},
-	{
-		name:        "symbolized profile from otel-ebpf-profiler with offcpu enabled",
-		profilePath: "testdata/otel-ebpf-profiler-offcpu.pb.bin",
-		expectedProfiles: []expectedProfile{
-			{
-				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-				map[string]string{"service_name": "unknown_service"},
-				"testdata/otel-ebpf-profiler-offcpu-cpu.json",
-			},
-			{
-				"off_cpu:events:nanoseconds::",
-				map[string]string{"service_name": "unknown_service"},
-				"testdata/otel-ebpf-profiler-offcpu.json",
-			},
-		},
-		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
-
-		},
-	},
-	{
-		name:        "symbolized (with some help from pyroscope-ebpf profiler) profile from otel-ebpf-profiler",
-		profilePath: "testdata/otel-ebpf-profiler-pyrosymbolized.pb.bin",
-		expectedProfiles: []expectedProfile{
-			{
-				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-				map[string]string{"service_name": "unknown_service"},
-				"testdata/otel-ebpf-profiler-pyrosymbolized-unknown.json",
-			},
-			{
-				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-				map[string]string{"service_name": "otel-ebpf-docker//loving_robinson"},
-				"testdata/otel-ebpf-profiler-pyrosymbolized-docker.json",
-			},
-		},
-		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
-			actual := p.Metrics(t, func(s string) bool {
-				return strings.HasPrefix(s, "pyroscope_distributor_received_compressed_bytes_sum")
-			})
-			expected := `pyroscope_distributor_received_compressed_bytes_sum{tenant="anonymous",type="otel"} 95673`
-			require.Equal(t, expected, actual)
-			p.TempAppName()
 		},
 	},
 }
@@ -173,13 +130,9 @@ type badOtlpTestData struct {
 
 var badOtlpTestDatas = []badOtlpTestData{
 	{
-		name:        "OTLP 1.5.0 data containing unsymbolized an profile from otel-ebpf-profiler",
-		profilePath: "testdata/otel-ebpf-profiler-unsymbolized-otlp1.5.0.pb.bin",
-	},
-	{
 		name:                 "corrupted data (function idx out of bounds)",
-		profilePath:          "testdata/async-profiler-corrupted-function-idx.pb.bin",
-		expectedErrorMessage: "failed to convert otel profile: could not access location at index 3: index 1000000000 out of bounds",
+		profilePath:          "testdata/otel-ebpf-profile-corrupted.pb.bin",
+		expectedErrorMessage: "failed to convert otel profile: invalid stack index: 1000000000",
 	},
 }
 

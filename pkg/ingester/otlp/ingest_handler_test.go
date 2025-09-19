@@ -216,19 +216,24 @@ func TestConversion(t *testing.T) {
 					FilenameStrindex: b.addstr("file1.so"),
 				}}
 				b.dictionary.LocationTable = []*v1experimental.Location{{
-					MappingIndex: int32ptr(0),
+					MappingIndex: 0,
 					Address:      0x1e0,
 					Line:         nil,
 				}, {
-					MappingIndex: int32ptr(0),
+					MappingIndex: 0,
 					Address:      0x2f0,
 					Line:         nil,
 				}}
-				b.profile.LocationIndices = []int32{0, 1}
+				b.dictionary.StackTable = []*v1experimental.Stack{{
+					LocationIndices: []int32{0, 1},
+				}}
+				b.profile.SampleType = &v1experimental.ValueType{
+					TypeStrindex: b.addstr("samples"),
+					UnitStrindex: b.addstr("ms"),
+				}
 				b.profile.Sample = []*v1experimental.Sample{{
-					LocationsStartIndex: 0,
-					LocationsLength:     2,
-					Value:               []int64{0xef},
+					StackIndex: 0,
+					Values:     []int64{0xef},
 				}}
 				return b
 			},
@@ -238,34 +243,36 @@ func TestConversion(t *testing.T) {
 			expectedJsonFile: "testdata/TestConversionOffCpu.json",
 			profile: func() *otlpbuilder {
 				b := new(otlpbuilder)
-				b.profile.SampleType = []*v1experimental.ValueType{{
+				b.profile.SampleType = &v1experimental.ValueType{
 					TypeStrindex: b.addstr("events"),
 					UnitStrindex: b.addstr("nanoseconds"),
-				}}
+				}
 				b.dictionary.MappingTable = []*v1experimental.Mapping{{
 					MemoryStart:      0x1000,
 					MemoryLimit:      0x1000,
 					FilenameStrindex: b.addstr("file1.so"),
 				}}
 				b.dictionary.LocationTable = []*v1experimental.Location{{
-					MappingIndex: int32ptr(0),
+					MappingIndex: 0,
 					Address:      0x1e0,
 				}, {
-					MappingIndex: int32ptr(0),
+					MappingIndex: 0,
 					Address:      0x2f0,
 				}, {
-					MappingIndex: int32ptr(0),
+					MappingIndex: 0,
 					Address:      0x3f0,
 				}}
-				b.profile.LocationIndices = []int32{0, 1, 2}
-				b.profile.Sample = []*v1experimental.Sample{{
-					LocationsStartIndex: 0,
-					LocationsLength:     2,
-					Value:               []int64{0xef},
+				b.dictionary.StackTable = []*v1experimental.Stack{{
+					LocationIndices: []int32{0, 1},
 				}, {
-					LocationsStartIndex: 2,
-					LocationsLength:     1,
-					Value:               []int64{1, 2, 3, 4, 5, 6},
+					LocationIndices: []int32{2},
+				}}
+				b.profile.Sample = []*v1experimental.Sample{{
+					StackIndex: 0,
+					Values:     []int64{0xef},
+				}, {
+					StackIndex: 1,
+					Values:     []int64{1, 2, 3, 4, 5, 6},
 				}}
 				return b
 			},
@@ -275,27 +282,30 @@ func TestConversion(t *testing.T) {
 			expectedError: "sample values length mismatch",
 			profile: func() *otlpbuilder {
 				b := new(otlpbuilder)
-				b.profile.SampleType = []*v1experimental.ValueType{{
+				b.profile.SampleType = &v1experimental.ValueType{
 					TypeStrindex: b.addstr("wrote_type"),
 					UnitStrindex: b.addstr("wrong_unit"),
-				}}
+				}
 				b.dictionary.MappingTable = []*v1experimental.Mapping{{
 					MemoryStart:      0x1000,
 					MemoryLimit:      0x1000,
 					FilenameStrindex: b.addstr("file1.so"),
 				}}
-				var mappingIndex int32
 				b.dictionary.LocationTable = []*v1experimental.Location{{
-					MappingIndex: &mappingIndex,
+					MappingIndex: 0,
 					Address:      0x1e0,
 				}, {
-					MappingIndex: &mappingIndex,
+					MappingIndex: 0,
 					Address:      0x2f0,
 				}, {
-					MappingIndex: &mappingIndex,
+					MappingIndex: 0,
 					Address:      0x3f0,
 				}}
-				b.profile.LocationIndices = []int32{0, 1, 2}
+				b.dictionary.StackTable = []*v1experimental.Stack{{
+					LocationIndices: []int32{0, 1},
+				}, {
+					LocationIndices: []int32{2},
+				}}
 				b.profile.PeriodType = &v1experimental.ValueType{
 					TypeStrindex:           b.addstr("period_type"),
 					UnitStrindex:           b.addstr("period_unit"),
@@ -303,13 +313,11 @@ func TestConversion(t *testing.T) {
 				}
 				b.profile.Period = 100
 				b.profile.Sample = []*v1experimental.Sample{{
-					LocationsStartIndex: 0,
-					LocationsLength:     2,
-					Value:               []int64{0xef},
+					StackIndex: 0,
+					Values:     []int64{0xef},
 				}, {
-					LocationsStartIndex: 2,
-					LocationsLength:     1,
-					Value:               []int64{1, 2, 3, 4, 5, 6}, // should be rejected because of that
+					StackIndex: 1,
+					Values:     []int64{1, 2, 3, 4, 5, 6}, // should be rejected because of that
 				}}
 				return b
 			},
@@ -327,7 +335,7 @@ func TestConversion(t *testing.T) {
 				profiles = append(profiles, c)
 			}).Return(nil, nil).Maybe()
 			b := td.profile()
-			b.profile.TimeNanos = 239
+			b.profile.TimeUnixNano = 239
 			req := &v1experimental2.ExportProfilesServiceRequest{
 				ResourceProfiles: []*v1experimental.ResourceProfiles{{
 					ScopeProfiles: []*v1experimental.ScopeProfiles{{
@@ -358,8 +366,6 @@ func TestConversion(t *testing.T) {
 
 }
 
-func int32ptr(i int32) *int32 { return &i }
-
 func TestSampleAttributes(t *testing.T) {
 	// Create a profile with two samples, with different sample attributes
 	// one process=firefox, the other process=chrome
@@ -383,46 +389,52 @@ func TestSampleAttributes(t *testing.T) {
 	}}
 
 	otlpb.dictionary.LocationTable = []*v1experimental.Location{{
-		MappingIndex: int32ptr(0),
+		MappingIndex: 0,
 		Address:      0x1e,
 	}, {
-		MappingIndex: int32ptr(0),
+		MappingIndex: 0,
 		Address:      0x2e,
 	}, {
-		MappingIndex: int32ptr(1),
+		MappingIndex: 1,
 		Address:      0x3e,
 	}, {
-		MappingIndex: int32ptr(1),
+		MappingIndex: 1,
 		Address:      0x4e,
 	}}
-	otlpb.profile.LocationIndices = []int32{0, 1, 2, 3}
-	otlpb.profile.Sample = []*v1experimental.Sample{{
-		LocationsStartIndex: 0,
-		LocationsLength:     2,
-		Value:               []int64{0xef},
-		AttributeIndices:    []int32{0},
+	otlpb.dictionary.StackTable = []*v1experimental.Stack{{
+		LocationIndices: []int32{0, 1},
 	}, {
-		LocationsStartIndex: 2,
-		LocationsLength:     2,
-		Value:               []int64{0xefef},
-		AttributeIndices:    []int32{1},
+		LocationIndices: []int32{2, 3},
 	}}
-	otlpb.dictionary.AttributeTable = []*v1.KeyValue{{
-		Key: "process",
+	otlpb.profile.Sample = []*v1experimental.Sample{{
+		StackIndex:       0,
+		Values:           []int64{0xef},
+		AttributeIndices: []int32{0},
+	}, {
+		StackIndex:       1,
+		Values:           []int64{0xefef},
+		AttributeIndices: []int32{1},
+	}}
+	otlpb.dictionary.AttributeTable = []*v1experimental.KeyValueAndUnit{{
+		KeyStrindex: otlpb.addstr("process"),
 		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "firefox",
 			},
 		},
 	}, {
-		Key: "process",
+		KeyStrindex: otlpb.addstr("process"),
 		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "chrome",
 			},
 		},
 	}}
-	otlpb.profile.TimeNanos = 239
+	otlpb.profile.SampleType = &v1experimental.ValueType{
+		TypeStrindex: otlpb.addstr("samples"),
+		UnitStrindex: otlpb.addstr("ms"),
+	}
+	otlpb.profile.TimeUnixNano = 239
 	req := &v1experimental2.ExportProfilesServiceRequest{
 		ResourceProfiles: []*v1experimental.ResourceProfiles{{
 			ScopeProfiles: []*v1experimental.ScopeProfiles{{
@@ -482,35 +494,35 @@ func TestDifferentServiceNames(t *testing.T) {
 	}}
 
 	otlpb.dictionary.LocationTable = []*v1experimental.Location{{
-		MappingIndex: int32ptr(0), // service-a.so
+		MappingIndex: 0, // service-a.so
 		Address:      0x1100,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 0,
 			Line:          10,
 		}},
 	}, {
-		MappingIndex: int32ptr(0), // service-a.so
+		MappingIndex: 0, // service-a.so
 		Address:      0x1200,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 1,
 			Line:          20,
 		}},
 	}, {
-		MappingIndex: int32ptr(1), // service-b.so
+		MappingIndex: 1, // service-b.so
 		Address:      0x2100,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 2,
 			Line:          30,
 		}},
 	}, {
-		MappingIndex: int32ptr(1), // service-b.so
+		MappingIndex: 1, // service-b.so
 		Address:      0x2200,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 3,
 			Line:          40,
 		}},
 	}, {
-		MappingIndex: int32ptr(2), // service-c.so
+		MappingIndex: 2, // service-c.so
 		Address:      0xef0,
 		Line: []*v1experimental.Line{{
 			FunctionIndex: 4,
@@ -540,34 +552,37 @@ func TestDifferentServiceNames(t *testing.T) {
 		FilenameStrindex:   otlpb.addstr("service_c.go"),
 	}}
 
-	otlpb.profile.LocationIndices = []int32{0, 1, 2, 3, 4, 4}
-
-	otlpb.profile.Sample = []*v1experimental.Sample{{
-		LocationsStartIndex: 0,
-		LocationsLength:     2, // Use first two locations
-		Value:               []int64{100},
-		AttributeIndices:    []int32{0},
+	otlpb.dictionary.StackTable = []*v1experimental.Stack{{
+		LocationIndices: []int32{0, 1}, // Use first two locations
 	}, {
-		LocationsStartIndex: 2,
-		LocationsLength:     2,
-		Value:               []int64{200},
-		AttributeIndices:    []int32{1},
+		LocationIndices: []int32{2, 3},
 	}, {
-		LocationsStartIndex: 4,
-		LocationsLength:     2,
-		Value:               []int64{700},
-		AttributeIndices:    []int32{},
+		LocationIndices: []int32{4, 4},
 	}}
 
-	otlpb.dictionary.AttributeTable = []*v1.KeyValue{{
-		Key: "service.name",
+	otlpb.profile.Sample = []*v1experimental.Sample{{
+		StackIndex:       0,
+		Values:           []int64{100},
+		AttributeIndices: []int32{0},
+	}, {
+		StackIndex:       1,
+		Values:           []int64{200},
+		AttributeIndices: []int32{1},
+	}, {
+		StackIndex:       2,
+		Values:           []int64{700},
+		AttributeIndices: []int32{},
+	}}
+
+	otlpb.dictionary.AttributeTable = []*v1experimental.KeyValueAndUnit{{
+		KeyStrindex: otlpb.addstr("service.name"),
 		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "service-a",
 			},
 		},
 	}, {
-		Key: "service.name",
+		KeyStrindex: otlpb.addstr("service.name"),
 		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "service-b",
@@ -575,16 +590,16 @@ func TestDifferentServiceNames(t *testing.T) {
 		},
 	}}
 
-	otlpb.profile.SampleType = []*v1experimental.ValueType{{
+	otlpb.profile.SampleType = &v1experimental.ValueType{
 		TypeStrindex: otlpb.addstr("samples"),
 		UnitStrindex: otlpb.addstr("count"),
-	}}
+	}
 	otlpb.profile.PeriodType = &v1experimental.ValueType{
 		TypeStrindex: otlpb.addstr("cpu"),
 		UnitStrindex: otlpb.addstr("nanoseconds"),
 	}
 	otlpb.profile.Period = 10000000 // 10ms
-	otlpb.profile.TimeNanos = 239
+	otlpb.profile.TimeUnixNano = 239
 	req := &v1experimental2.ExportProfilesServiceRequest{
 		ResourceProfiles: []*v1experimental.ResourceProfiles{{
 			ScopeProfiles: []*v1experimental.ScopeProfiles{{

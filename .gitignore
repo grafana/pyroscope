@@ -7,6 +7,8 @@
 *.test
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+# Debug binaries
+__debug_bin*
 
 /cmd/phlare/data
 /cmd/pyroscope/data
