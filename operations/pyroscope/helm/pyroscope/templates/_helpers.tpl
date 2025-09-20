@@ -104,3 +104,78 @@ behavior:
     scaleDown: {}
     scaleUp: {}
 {{- end }}
+
+
+{{/* Allow KubeVersion to be overridden. */}}
+{{- define "pyroscope.kubeVersion" -}}
+  {{- default .Capabilities.KubeVersion.Version .Values.kubeVersionOverride -}}
+{{- end -}}
+
+{{/*
+Return the appropriate apiVersion for ingress.
+*/}}
+{{- define "pyroscope.ingress.apiVersion" -}}
+  {{- if and (.Capabilities.APIVersions.Has "networking.k8s.io/v1") (semverCompare ">= 1.19-0" (include "pyroscope.kubeVersion" .)) -}}
+      {{- print "networking.k8s.io/v1" -}}
+  {{- else if .Capabilities.APIVersions.Has "networking.k8s.io/v1beta1" -}}
+    {{- print "networking.k8s.io/v1beta1" -}}
+  {{- else -}}
+    {{- print "extensions/v1beta1" -}}
+  {{- end -}}
+{{- end -}}
+
+{/*
+Return if ingress is stable.
+*/}}
+{{- define "pyroscope.ingress.isStable" -}}
+  {{- eq (include "pyroscope.ingress.apiVersion" .) "networking.k8s.io/v1" -}}
+{{- end -}}
+
+{{/*
+Return if ingress supports ingressClassName.
+*/}}
+{{- define "pyroscope.ingress.supportsIngressClassName" -}}
+  {{- or (eq (include "pyroscope.ingress.isStable" .) "true") (and (eq (include "pyroscope.ingress.apiVersion" .) "networking.k8s.io/v1beta1") (semverCompare ">= 1.18-0" (include "pyroscope.kubeVersion" .))) -}}
+{{- end -}}
+
+{{/*
+Return if ingress supports pathType.
+*/}}
+{{- define "pyroscope.ingress.supportsPathType" -}}
+  {{- or (eq (include "pyroscope.ingress.isStable" .) "true") (and (eq (include "pyroscope.ingress.apiVersion" .) "networking.k8s.io/v1beta1") (semverCompare ">= 1.18-0" (include "pyroscope.kubeVersion" .))) -}}
+{{- end -}}
+
+{{/*
+compute a ConfigMap or Secret checksum only based on its .data content.
+This function needs to be called with a context object containing the following keys:
+- ctx: the current Helm context (what '.' is at the call site)
+- name: the file name of the ConfigMap or Secret
+*/}}
+{{- define "pyroscope.configMapOrSecretContentHash" -}}
+{{ get (include (print .ctx.Template.BasePath .name) .ctx | fromYaml) "data" | toYaml | sha256sum }}
+{{- end }}
+
+{{/* Configure enableServiceLinks in pod */}}
+{{- define "pyroscope.enableServiceLinks" -}}
+{{- if semverCompare ">=1.13-0" (include "pyroscope.kubeVersion" .) -}}
+{{- if or (.Values.pyroscope.enableServiceLinks) (ne .Values.pyroscope.enableServiceLinks false) -}}
+enableServiceLinks: true
+{{- else -}}
+enableServiceLinks: false
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Base template for building docker image reference
+*/}}
+{{- define "pyroscope.baseImage" }}
+{{- $registry := .service.registry | default "" -}}
+{{- $repository := .service.repository | default "" -}}
+{{- $ref := ternary (printf ":%s" (.service.tag | default .defaultVersion | toString)) (printf "@%s" .service.digest) (empty .service.digest) -}}
+{{- if and $registry $repository -}}
+  {{- printf "%s/%s%s" $registry $repository $ref -}}
+{{- else -}}
+  {{- printf "%s%s%s" $registry $repository $ref -}}
+{{- end -}}
+{{- end -}}
