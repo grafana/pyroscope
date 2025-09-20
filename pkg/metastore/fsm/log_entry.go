@@ -58,6 +58,10 @@ func marshal(v proto.Message) ([]byte, error) {
 	if err != nil {
 		return raw, err
 	}
+	maxRawSize := 64 * 1024 * 1024 // 64 MB guard
+	if len(raw) > maxRawSize {
+		return nil, fmt.Errorf("marshaled message too large: %d bytes", len(raw))
+	}
 	buf := make([]byte, 4+len(raw))
 	copy(buf[4:], raw)
 	return buf, err

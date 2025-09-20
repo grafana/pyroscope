@@ -3,6 +3,7 @@ package bytesize
 import (
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -86,6 +87,9 @@ func Parse(str string) (ByteSize, error) {
 
 	val, err := strconv.ParseUint(r[1], 10, 64)
 	if err != nil {
+		return 0, errParse
+	}
+	if val > uint64(math.MaxInt64) {
 		return 0, errParse
 	}
 	return ByteSize(val) * multiplier, nil
