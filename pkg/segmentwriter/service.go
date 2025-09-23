@@ -41,19 +41,21 @@ const (
 )
 
 type Config struct {
-	GRPCClientConfig      grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
-	LifecyclerConfig      ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
-	SegmentDuration       time.Duration         `yaml:"segment_duration,omitempty" category:"advanced"`
-	FlushConcurrency      uint                  `yaml:"flush_concurrency,omitempty" category:"advanced"`
-	UploadTimeout         time.Duration         `yaml:"upload-timeout,omitempty" category:"advanced"`
-	UploadMaxRetries      int                   `yaml:"upload-retry_max_retries,omitempty" category:"advanced"`
-	UploadMinBackoff      time.Duration         `yaml:"upload-retry_min_period,omitempty" category:"advanced"`
-	UploadMaxBackoff      time.Duration         `yaml:"upload-retry_max_period,omitempty" category:"advanced"`
-	UploadHedgeAfter      time.Duration         `yaml:"upload-hedge_upload_after,omitempty" category:"advanced"`
-	UploadHedgeRateMax    float64               `yaml:"upload-hedge_rate_max,omitempty" category:"advanced"`
-	UploadHedgeRateBurst  uint                  `yaml:"upload-hedge_rate_burst,omitempty" category:"advanced"`
-	MetadataDLQEnabled    bool                  `yaml:"metadata_dlq_enabled,omitempty" category:"advanced"`
-	MetadataUpdateTimeout time.Duration         `yaml:"metadata_update_timeout,omitempty" category:"advanced"`
+	GRPCClientConfig         grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
+	LifecyclerConfig         ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
+	SegmentDuration          time.Duration         `yaml:"segment_duration,omitempty" category:"advanced"`
+	FlushConcurrency         uint                  `yaml:"flush_concurrency,omitempty" category:"advanced"`
+	UploadTimeout            time.Duration         `yaml:"upload-timeout,omitempty" category:"advanced"`
+	UploadMaxRetries         int                   `yaml:"upload-retry_max_retries,omitempty" category:"advanced"`
+	UploadMinBackoff         time.Duration         `yaml:"upload-retry_min_period,omitempty" category:"advanced"`
+	UploadMaxBackoff         time.Duration         `yaml:"upload-retry_max_period,omitempty" category:"advanced"`
+	UploadHedgeAfter         time.Duration         `yaml:"upload-hedge_upload_after,omitempty" category:"advanced"`
+	UploadHedgeRateMax       float64               `yaml:"upload-hedge_rate_max,omitempty" category:"advanced"`
+	UploadHedgeRateBurst     uint                  `yaml:"upload-hedge_rate_burst,omitempty" category:"advanced"`
+	MetadataDLQEnabled       bool                  `yaml:"metadata_dlq_enabled,omitempty" category:"advanced"`
+	MetadataUpdateTimeout    time.Duration         `yaml:"metadata_update_timeout,omitempty" category:"advanced"`
+	BucketHealthCheckEnabled bool                  `yaml:"bucket_health_check_enabled,omitempty" category:"advanced"`
+	BucketHealthCheckTimeout time.Duration         `yaml:"bucket_health_check_timeout,omitempty" category:"advanced"`
 }
 
 func (cfg *Config) Validate() error {
@@ -79,6 +81,8 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.UintVar(&cfg.UploadHedgeRateBurst, prefix+".upload-hedge-rate-burst", defaultHedgedRequestBurst, "Maximum number of hedged requests in a burst.")
 	f.BoolVar(&cfg.MetadataDLQEnabled, prefix+".metadata-dlq-enabled", true, "Enables dead letter queue (DLQ) for metadata. If the metadata update fails, it will be stored and updated asynchronously.")
 	f.DurationVar(&cfg.MetadataUpdateTimeout, prefix+".metadata-update-timeout", 2*time.Second, "Timeout for metadata update requests.")
+	f.BoolVar(&cfg.BucketHealthCheckEnabled, prefix+".bucket-health-check-enabled", true, "Enables bucket health check on startup. This both validates credentials and warms up the connection to reduce latency for the first write.")
+	f.DurationVar(&cfg.BucketHealthCheckTimeout, prefix+".bucket-health-check-timeout", 10*time.Second, "Timeout for bucket health check operations.")
 }
 
 type Limits interface {
@@ -155,7 +159,43 @@ func New(
 	return i, nil
 }
 
+// performBucketHealthCheck performs a lightweight bucket operation to warm up the connection
+// and detect any object storage issues early. This serves the dual purpose of validating
+// bucket accessibility and reducing latency for the first actual write operation.
+func (i *SegmentWriterService) performBucketHealthCheck(ctx context.Context) error {
+	if !i.config.BucketHealthCheckEnabled {
+		return nil
+	}
+
+	level.Debug(i.logger).Log("msg", "starting bucket health check", "timeout", i.config.BucketHealthCheckTimeout.String())
+
+	healthCheckCtx, cancel := context.WithTimeout(ctx, i.config.BucketHealthCheckTimeout)
+	defer cancel()
+
+	err := i.storageBucket.Iter(healthCheckCtx, "", func(string) error {
+		// We only care about connectivity, not the actual contents
+		// Return an error to stop iteration after first item (if any)
+		return errors.New("stop iteration")
+	})
+
+	// Ignore the "stop iteration" error we intentionally return
+	// and any "object not found" type errors as they indicate the bucket is accessible
+	if err == nil || i.storageBucket.IsObjNotFoundErr(err) || err.Error() == "stop iteration" {
+		level.Debug(i.logger).Log("msg", "bucket health check succeeded")
+		return nil
+	}
+
+	level.Warn(i.logger).Log("msg", "bucket health check failed", "err", err)
+	return nil // Don't fail startup, just warn
+}
+
 func (i *SegmentWriterService) starting(ctx context.Context) error {
+	// Perform bucket health check before ring registration to warm up the connection
+	// and avoid slow first requests affecting p99 latency
+	if err := i.performBucketHealthCheck(ctx); err != nil {
+		return fmt.Errorf("bucket health check failed: %w", err)
+	}
+
 	if err := services.StartManagerAndAwaitHealthy(ctx, i.subservices); err != nil {
 		return err
 	}
