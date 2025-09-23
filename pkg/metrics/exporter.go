@@ -20,6 +20,7 @@ import (
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/prometheus/storage/remote"
 
+	pyroscopemodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
@@ -67,7 +68,20 @@ func (e *StaticExporter) Send(tenantId string, data []prompb.TimeSeries) error {
 			level.Error(e.logger).Log("msg", "unable to store prompb.WriteRequest", "err", err)
 			return
 		}
-		e.metrics.seriesSent.WithLabelValues(tenantId).Add(float64(len(data)))
+		seriesByRuleID := make(map[string]int)
+		for _, ts := range data {
+			ruleID := "unknown"
+			for _, l := range ts.Labels {
+				if l.Name == pyroscopemodel.RuleIDLabel {
+					ruleID = l.Value
+					break
+				}
+			}
+			seriesByRuleID[ruleID]++
+		}
+		for ruleID, count := range seriesByRuleID {
+			e.metrics.seriesSent.WithLabelValues(tenantId, ruleID).Add(float64(count))
+		}
 	}(data)
 	return nil
 }
@@ -124,7 +138,7 @@ func newMetrics(reg prometheus.Registerer, remoteUrl string) *clientMetrics {
 			Subsystem: "metrics_exporter",
 			Name:      "series_sent_total",
 			Help:      "Number of series sent on remote_write.",
-		}, []string{"tenant"}),
+		}, []string{"tenant", "rule_id"}),
 	}
 	if reg != nil {
 		remoteUrlReg := prometheus.WrapRegistererWith(prometheus.Labels{"url": remoteUrl}, reg)
