@@ -192,9 +192,8 @@ func (i *SegmentWriterService) performBucketHealthCheck(ctx context.Context) err
 func (i *SegmentWriterService) starting(ctx context.Context) error {
 	// Perform bucket health check before ring registration to warm up the connection
 	// and avoid slow first requests affecting p99 latency
-	if err := i.performBucketHealthCheck(ctx); err != nil {
-		return fmt.Errorf("bucket health check failed: %w", err)
-	}
+	// On error, will emit a warning but continue startup
+	i.performBucketHealthCheck(ctx)
 
 	if err := services.StartManagerAndAwaitHealthy(ctx, i.subservices); err != nil {
 		return err
