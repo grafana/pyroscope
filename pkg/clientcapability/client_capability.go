@@ -105,24 +105,25 @@ type ClientCapability struct {
 }
 
 func parseClientCapabilities(header http.Header) (ClientCapabilities, error) {
-	acceptHeaderValue := header.Get(acceptHeader)
-	if acceptHeaderValue != "" {
-		accepts := strings.Split(acceptHeaderValue, ",")
+	acceptHeaderValues := header.Values(acceptHeader)
 
-		var clientCapabilities = make(ClientCapabilities)
-		for _, accept := range accepts {
-			if _, params, err := mime.ParseMediaType(accept); err != nil {
-				return nil, err
-			} else {
-				for k, v := range params {
-					if _, ok := capabilities[CapabilityName(k)]; ok {
-						clientCapabilities[CapabilityName(k)] = CapabilityValue(v)
+	var clientCapabilities = make(ClientCapabilities)
+	for _, acceptHeaderValue := range acceptHeaderValues {
+		if acceptHeaderValue != "" {
+			accepts := strings.Split(acceptHeaderValue, ",")
+
+			for _, accept := range accepts {
+				if _, params, err := mime.ParseMediaType(accept); err != nil {
+					return nil, err
+				} else {
+					for k, v := range params {
+						if _, ok := capabilities[CapabilityName(k)]; ok {
+							clientCapabilities[CapabilityName(k)] = CapabilityValue(v)
+						}
 					}
 				}
 			}
 		}
-		return clientCapabilities, nil
 	}
-
-	return ClientCapabilities{}, nil
+	return clientCapabilities, nil
 }
