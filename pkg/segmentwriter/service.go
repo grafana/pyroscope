@@ -193,7 +193,7 @@ func (i *SegmentWriterService) starting(ctx context.Context) error {
 	// Perform bucket health check before ring registration to warm up the connection
 	// and avoid slow first requests affecting p99 latency
 	// On error, will emit a warning but continue startup
-	i.performBucketHealthCheck(ctx)
+	_ = i.performBucketHealthCheck(ctx)
 
 	if err := services.StartManagerAndAwaitHealthy(ctx, i.subservices); err != nil {
 		return err
