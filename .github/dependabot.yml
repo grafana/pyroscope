@@ -1,12 +1,5 @@
 version: 2
 
-multi-ecosystem-groups:
-  examples:
-    schedule:
-      interval: "weekly"
-      patterns:
-        - "*"
-
 updates:
   # Go modules - main project components
   - package-ecosystem: "gomod"
@@ -72,8 +65,6 @@ updates:
 
   # Go modules - examples
   - package-ecosystem: "gomod"
-    patterns: ["*"]
-    multi-ecosystem-group: "examples"
     directories:
       - "/examples/golang-pgo"
       - "/examples/language-sdk-instrumentation/golang-push/rideshare-alloy"
@@ -81,50 +72,76 @@ updates:
       - "/examples/language-sdk-instrumentation/golang-push/rideshare"
       - "/examples/language-sdk-instrumentation/golang-push/simple"
       - "/examples/tracing/golang-push"
+    schedule:
+      interval: "weekly"
+    groups:
+      examples-gomod:
+        patterns:
+          - "*"
 
   # npm/yarn - examples
   - package-ecosystem: "npm"
-    patterns: ["*"]
-    multi-ecosystem-group: "examples"
     directories:
       - "/examples/language-sdk-instrumentation/nodejs/express-pull"
       - "/examples/language-sdk-instrumentation/nodejs/express-ts-inline"
       - "/examples/language-sdk-instrumentation/nodejs/express-ts"
       - "/examples/language-sdk-instrumentation/nodejs/express"
       - "/examples/language-sdk-instrumentation/nodejs/tinyhttp"
+    schedule:
+      interval: "weekly"
+    groups:
+      examples-npm:
+        patterns:
+          - "*"
 
   # Python pip - examples
   - package-ecosystem: "pip"
-    patterns: ["*"]
-    multi-ecosystem-group: "examples"
     directories:
       - "/examples/language-sdk-instrumentation/python/rideshare/django/app"
       - "/examples/language-sdk-instrumentation/python/simple"
+    schedule:
+      interval: "weekly"
+    groups:
+      examples-pip:
+        patterns:
+          - "*"
 
   # Ruby bundler - examples
   - package-ecosystem: "bundler"
-    patterns: ["*"]
-    multi-ecosystem-group: "examples"
     directories:
       - "/examples/tracing/ruby"
       - "/examples/language-sdk-instrumentation/ruby/simple"
       - "/examples/language-sdk-instrumentation/ruby/rideshare"
       - "/examples/language-sdk-instrumentation/ruby/rideshare_rails"
+    schedule:
+      interval: "weekly"
+    groups:
+      examples-bundler:
+        patterns:
+          - "*"
 
   # Rust cargo - examples
   - package-ecosystem: "cargo"
-    patterns: ["*"]
-    multi-ecosystem-group: "examples"
     directories:
       - "/examples/language-sdk-instrumentation/rust/basic"
       - "/examples/language-sdk-instrumentation/rust/rideshare/server"
+    schedule:
+      interval: "weekly"
+    groups:
+      examples-cargo:
+        patterns:
+          - "*"
 
   # .NET NuGet - examples
   - package-ecosystem: "nuget"
-    multi-ecosystem-group: "examples"
-    patterns: ["*"]
     directories:
       - "/examples/language-sdk-instrumentation/dotnet/fast-slow"
       - "/examples/language-sdk-instrumentation/dotnet/rideshare"
       - "/examples/language-sdk-instrumentation/dotnet/web-new"
       - "/examples/tracing/dotnet"
+    schedule:
+      interval: "weekly"
+    groups:
+      examples-nuget:
+        patterns:
+          - "*"
