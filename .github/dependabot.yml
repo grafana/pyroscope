@@ -8,8 +8,7 @@ updates:
       - "/api"
       - "/lidia"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: weekly
     open-pull-requests-limit: 10
     ignore:
       - dependency-name: "*"
@@ -24,8 +23,7 @@ updates:
     directories:
       - "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: weekly
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -39,7 +37,7 @@ updates:
     directories:
       - "/cmd/pyroscope"
     schedule:
-      interval: "weekly"
+      interval: monthly
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -53,8 +51,7 @@ updates:
     directories:
       - "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: weekly
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -68,8 +65,7 @@ updates:
     directories:
       - "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: weekly
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -88,15 +84,10 @@ updates:
       - "/examples/language-sdk-instrumentation/golang-push/simple"
       - "/examples/tracing/golang-push"
     schedule:
-      interval: "weekly"
+      interval: weekly
     allow:
       - dependency-name: "github.com/grafana/pyroscope-go"
     # groups:
     #   examples-gomod:
     #     patterns:
     #       - "*"
-
-
-
-
-
