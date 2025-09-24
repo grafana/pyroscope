@@ -3,6 +3,7 @@ package validation
 import (
 	"encoding/hex"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -161,6 +162,62 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 	}
 
 	return nil
+}
+
+// SanitizeLabelNames uses legacy logic to transform non utf-8 compliant label names
+// (if possible). It will error on duplicate label names post-sanitization.
+func SanitizeLabelNames(labelNames []string) ([]string, error) {
+	slices.Sort(labelNames)
+	var (
+		lastLabelName = ""
+	)
+	for idx, labelName := range labelNames {
+		if origName, newName, ok := sanitizeLabelName(labelName); ok && origName != newName {
+			labelNames[idx] = newName
+			lastLabelName = origName
+			continue
+		} else if !ok {
+			return nil, NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, labelName,
+				fmt.Sprintf("invalid label name '%s'. consider setting 'allow-utf8-labelnames=true' in the `Accept` header", origName))
+		}
+
+		if cmp := strings.Compare(lastLabelName, labelName); cmp == 0 {
+			return nil, NewErrorf(DuplicateLabelNames, DuplicateLabelNamesErrorMsg, lastLabelName, labelName)
+		}
+		lastLabelName = labelName
+	}
+
+	return labelNames, nil
+}
+
+// sanitizeLabelName reports whether the label name is valid,
+// and returns the sanitized value.
+//
+// The only change the function makes is replacing dots with underscores.
+func sanitizeLabelName(ln string) (old, sanitized string, ok bool) {
+	if len(ln) == 0 {
+		return ln, ln, false
+	}
+	hasDots := false
+	for i, b := range ln {
+		if (b < 'a' || b > 'z') && (b < 'A' || b > 'Z') && b != '_' && (b < '0' || b > '9' || i == 0) {
+			if b == '.' {
+				hasDots = true
+			} else {
+				return ln, ln, false
+			}
+		}
+	}
+	if !hasDots {
+		return ln, ln, true
+	}
+	r := []rune(ln)
+	for i, b := range r {
+		if b == '.' {
+			r[i] = '_'
+		}
+	}
+	return ln, string(r), true
 }
 
 type ProfileValidationLimits interface {

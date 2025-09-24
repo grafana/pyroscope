@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/pyroscope/pkg/clientcapability"
 	"google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -43,6 +42,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
@@ -467,7 +467,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware,
 		util.RecoveryInterceptorGRPC,
-		clientcapability.ClientCapabilitiesGRPCMiddleware(),
+		featureflags.ClientCapabilitiesGRPCMiddleware(),
 	)
 
 	if f.Cfg.V2 {
@@ -487,7 +487,6 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		f.Cfg.Server.HTTPServerReadTimeout = 2 * f.Cfg.Server.HTTPServerReadTimeout
 		f.Cfg.Server.HTTPServerWriteTimeout = 2 * f.Cfg.Server.HTTPServerWriteTimeout
 	}
-
 	var err error
 	if f.Server, err = server.New(f.Cfg.Server); err != nil {
 		return nil, err
@@ -527,7 +526,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		httpMetric,
 		objstoreTracerMiddleware,
 		httputil.K6Middleware(),
-		clientcapability.ClientCapabilitiesHttpMiddleware(),
+		featureflags.ClientCapabilitiesHttpMiddleware(),
 	}
 	if f.Cfg.SelfProfiling.UseK6Middleware {
 		defaultHTTPMiddleware = append(defaultHTTPMiddleware, httputil.K6Middleware())

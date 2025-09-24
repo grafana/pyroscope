@@ -1,4 +1,4 @@
-package clientcapability
+package featureflags
 
 import (
 	"context"
@@ -7,39 +7,31 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/middleware"
+	"github.com/grafana/pyroscope/pkg/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
 const (
-	// Capability names
-	AllowUtf8LabelNamesCapabilityName CapabilityName = "allow-utf8-labelnames"
+	// Capability names - update parseClientCapabilities below when new capabilities added
+	allowUtf8LabelNamesCapabilityName string = "allow-utf8-labelnames"
 )
-
-var capabilities = map[CapabilityName]bool{
-	AllowUtf8LabelNamesCapabilityName: true,
-}
-
-type CapabilityName string
-type CapabilityValue string
 
 // Define a custom context key type to avoid collisions
-type contextKey int
+type contextKey struct{}
 
-const (
-	clientCapabilitiesKey contextKey = iota
-	acceptHeader                     = "Accept"
-)
-
-type ClientCapabilities map[CapabilityName]CapabilityValue
+type ClientCapabilities struct {
+	AllowUtf8LabelNames bool
+}
 
 func WithClientCapabilities(ctx context.Context, clientCapabilities ClientCapabilities) context.Context {
-	return context.WithValue(ctx, clientCapabilitiesKey, clientCapabilities)
+	return context.WithValue(ctx, contextKey{}, clientCapabilities)
 }
 
 func GetClientCapabilities(ctx context.Context) (ClientCapabilities, bool) {
-	value, ok := ctx.Value(clientCapabilitiesKey).(ClientCapabilities)
+	value, ok := ctx.Value(contextKey{}).(ClientCapabilities)
 	return value, ok
 }
 
@@ -64,13 +56,11 @@ func ClientCapabilitiesGRPCMiddleware() grpc.UnaryServerInterceptor {
 		}
 
 		// Reuse existing HTTP header parsing
+		// TODO add metrics = # requests like this and # clients [need
+		//  labels for requests and clients/tenet and user agent(?)]
 		clientCapabilities, err := parseClientCapabilities(httpHeader)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-
-		if len(clientCapabilities) == 0 {
-			return handler(ctx, req)
 		}
 
 		enhancedCtx := WithClientCapabilities(ctx, clientCapabilities)
@@ -87,10 +77,6 @@ func ClientCapabilitiesHttpMiddleware() middleware.Interface {
 			if err != nil {
 				http.Error(w, "Invalid header format: "+err.Error(), http.StatusBadRequest)
 				return
-			} else if len(clientCapabilities) == 0 {
-				// If no capabilities parsed, continue without setting context
-				next.ServeHTTP(w, r)
-				return
 			}
 
 			ctx := WithClientCapabilities(r.Context(), clientCapabilities)
@@ -99,31 +85,35 @@ func ClientCapabilitiesHttpMiddleware() middleware.Interface {
 	})
 }
 
-type ClientCapability struct {
-	Name  CapabilityName
-	Value string
-}
-
 func parseClientCapabilities(header http.Header) (ClientCapabilities, error) {
-	acceptHeaderValues := header.Values(acceptHeader)
+	acceptHeaderValues := header.Values("Accept")
 
-	var clientCapabilities = make(ClientCapabilities)
+	var capabilities ClientCapabilities
+
 	for _, acceptHeaderValue := range acceptHeaderValues {
 		if acceptHeaderValue != "" {
 			accepts := strings.Split(acceptHeaderValue, ",")
 
 			for _, accept := range accepts {
 				if _, params, err := mime.ParseMediaType(accept); err != nil {
-					return nil, err
+					return capabilities, err
 				} else {
 					for k, v := range params {
-						if _, ok := capabilities[CapabilityName(k)]; ok {
-							clientCapabilities[CapabilityName(k)] = CapabilityValue(v)
+						switch k {
+						case allowUtf8LabelNamesCapabilityName:
+							if v == "true" {
+								capabilities.AllowUtf8LabelNames = true
+							}
+						default:
+							level.Debug(util.Logger).Log(
+								"msg", "unknown capability parsed from Accept header",
+								"acceptHeaderKey", k,
+								"acceptHeaderValue", v)
 						}
 					}
 				}
 			}
 		}
 	}
-	return clientCapabilities, nil
+	return capabilities, nil
 }

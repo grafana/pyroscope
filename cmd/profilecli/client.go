@@ -16,22 +16,38 @@ const (
 	protocolTypeConnect = "connect"
 	protocolTypeGRPC    = "grpc"
 	protocolTypeGRPCWeb = "grpc-web"
+
+	acceptHeaderMimeType = "*/*"
 )
 
-var acceptHeaderFeatureFlags = []string{
+var acceptHeaderClientCapabilities = []string{
 	"allow-utf8-labelnames=true",
 }
 
 var userAgentHeader = fmt.Sprintf("pyroscope/%s", version.Version)
-var acceptHeaderMimeType = "*/*"
 
-func buildAcceptHeader(featureFlags []string) string {
-	acceptHeader := acceptHeaderMimeType
-	if len(acceptHeaderFeatureFlags) > 0 {
-		acceptHeader += "; " + strings.Join(featureFlags, "; ")
+func addClientCapabilitiesHeader(r *http.Request, mime string, clientCapabilities []string) {
+	missingClientCapabilities := make([]string, 0, len(clientCapabilities))
+	for _, capability := range clientCapabilities {
+		found := false
+		// Check if any header value already contains this capability
+		for _, value := range r.Header.Values("Accept") {
+			if strings.Contains(value, capability) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			missingClientCapabilities = append(missingClientCapabilities, capability)
+		}
 	}
 
-	return acceptHeader
+	if len(missingClientCapabilities) > 0 {
+		acceptHeader := mime
+		acceptHeader += "; " + strings.Join(missingClientCapabilities, "; ")
+		r.Header.Add("Accept", acceptHeader)
+	}
 }
 
 type phlareClient struct {
@@ -61,8 +77,7 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		}
 	}
 
-	acceptHeader := buildAcceptHeader(acceptHeaderFeatureFlags)
-	req.Header.Set("Accept", acceptHeader)
+	addClientCapabilitiesHeader(req, acceptHeaderMimeType, acceptHeaderClientCapabilities)
 	req.Header.Set("User-Agent", userAgentHeader)
 
 	return a.next.RoundTrip(req)
