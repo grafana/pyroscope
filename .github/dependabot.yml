@@ -11,10 +11,13 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 10
-    groups:
-      gomod:
-        patterns:
-          - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # groups:
+    #   gomod:
+    #     patterns:
+    #       - "*"
 
   # npm/yarn - main project
   - package-ecosystem: "npm"
@@ -23,10 +26,13 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    groups:
-      npm:
-        patterns:
-          - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # groups:
+    #   npm:
+    #     patterns:
+    #       - "*"
 
   # Docker - main project
   - package-ecosystem: "docker"
@@ -34,10 +40,13 @@ updates:
       - "/cmd/pyroscope"
     schedule:
       interval: "weekly"
-    groups:
-      docker:
-        patterns:
-          - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # groups:
+    #   docker:
+    #     patterns:
+    #       - "*"
 
   # Dev containers - main project
   - package-ecosystem: "devcontainers"
@@ -46,10 +55,13 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    groups:
-      devcontainers:
-        patterns:
-          - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # groups:
+    #   devcontainers:
+    #     patterns:
+    #       - "*"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -58,12 +70,15 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    groups:
-      github-actions:
-        patterns:
-          - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # groups:
+    #   github-actions:
+    #     patterns:
+    #       - "*"
 
-  # Go modules - examples
+  # Go modules - examples (only pyroscope-go package)
   - package-ecosystem: "gomod"
     directories:
       - "/examples/golang-pgo"
@@ -74,74 +89,14 @@ updates:
       - "/examples/tracing/golang-push"
     schedule:
       interval: "weekly"
-    groups:
-      examples-gomod:
-        patterns:
-          - "*"
+    allow:
+      - dependency-name: "github.com/grafana/pyroscope-go"
+    # groups:
+    #   examples-gomod:
+    #     patterns:
+    #       - "*"
 
-  # npm/yarn - examples
-  - package-ecosystem: "npm"
-    directories:
-      - "/examples/language-sdk-instrumentation/nodejs/express-pull"
-      - "/examples/language-sdk-instrumentation/nodejs/express-ts-inline"
-      - "/examples/language-sdk-instrumentation/nodejs/express-ts"
-      - "/examples/language-sdk-instrumentation/nodejs/express"
-      - "/examples/language-sdk-instrumentation/nodejs/tinyhttp"
-    schedule:
-      interval: "weekly"
-    groups:
-      examples-npm:
-        patterns:
-          - "*"
 
-  # Python pip - examples
-  - package-ecosystem: "pip"
-    directories:
-      - "/examples/language-sdk-instrumentation/python/rideshare/django/app"
-      - "/examples/language-sdk-instrumentation/python/simple"
-    schedule:
-      interval: "weekly"
-    groups:
-      examples-pip:
-        patterns:
-          - "*"
 
-  # Ruby bundler - examples
-  - package-ecosystem: "bundler"
-    directories:
-      - "/examples/tracing/ruby"
-      - "/examples/language-sdk-instrumentation/ruby/simple"
-      - "/examples/language-sdk-instrumentation/ruby/rideshare"
-      - "/examples/language-sdk-instrumentation/ruby/rideshare_rails"
-    schedule:
-      interval: "weekly"
-    groups:
-      examples-bundler:
-        patterns:
-          - "*"
 
-  # Rust cargo - examples
-  - package-ecosystem: "cargo"
-    directories:
-      - "/examples/language-sdk-instrumentation/rust/basic"
-      - "/examples/language-sdk-instrumentation/rust/rideshare/server"
-    schedule:
-      interval: "weekly"
-    groups:
-      examples-cargo:
-        patterns:
-          - "*"
 
-  # .NET NuGet - examples
-  - package-ecosystem: "nuget"
-    directories:
-      - "/examples/language-sdk-instrumentation/dotnet/fast-slow"
-      - "/examples/language-sdk-instrumentation/dotnet/rideshare"
-      - "/examples/language-sdk-instrumentation/dotnet/web-new"
-      - "/examples/tracing/dotnet"
-    schedule:
-      interval: "weekly"
-    groups:
-      examples-nuget:
-        patterns:
-          - "*"
