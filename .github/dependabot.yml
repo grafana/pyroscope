@@ -13,10 +13,10 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-    # groups:
-    #   gomod:
-    #     patterns:
-    #       - "*"
+    groups:
+      gomod:
+        patterns:
+          - "*"
 
   # npm/yarn - main project
   - package-ecosystem: "npm"
@@ -27,10 +27,10 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-    # groups:
-    #   npm:
-    #     patterns:
-    #       - "*"
+    groups:
+      npm:
+        patterns:
+          - "*"
 
   # Docker - main project
   - package-ecosystem: "docker"
@@ -41,10 +41,10 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-    # groups:
-    #   docker:
-    #     patterns:
-    #       - "*"
+    groups:
+      docker:
+        patterns:
+          - "*"
 
   # Dev containers - main project
   - package-ecosystem: "devcontainers"
@@ -55,10 +55,10 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-    # groups:
-    #   devcontainers:
-    #     patterns:
-    #       - "*"
+    groups:
+      devcontainers:
+        patterns:
+          - "*"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -69,10 +69,10 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-    # groups:
-    #   github-actions:
-    #     patterns:
-    #       - "*"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
   # Go modules - examples (only pyroscope-go package)
   - package-ecosystem: "gomod"
@@ -87,7 +87,7 @@ updates:
       interval: weekly
     allow:
       - dependency-name: "github.com/grafana/pyroscope-go"
-    # groups:
-    #   examples-gomod:
-    #     patterns:
-    #       - "*"
+    groups:
+      examples-gomod:
+        patterns:
+          - "*"
