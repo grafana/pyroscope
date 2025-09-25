@@ -17,7 +17,7 @@ RUN sed -i -E 's|<TargetFramework>.*</TargetFramework>|<TargetFramework>net'$SDK
 RUN dotnet publish -o . --framework net$SDK_VERSION --runtime linux-x64 --no-self-contained
 
 # This fetches the SDK
-FROM --platform=linux/amd64 pyroscope/pyroscope-dotnet:0.9.2-glibc AS sdk
+FROM --platform=linux/amd64 pyroscope/pyroscope-dotnet:0.12.0-glibc AS sdk
 
 # Runtime only image of the targetplatfrom, so the platform the image will be running on.
 FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:$SDK_VERSION
@@ -33,6 +33,7 @@ ENV CORECLR_ENABLE_PROFILING=1
 ENV CORECLR_PROFILER={BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}
 ENV CORECLR_PROFILER_PATH=/dotnet/Pyroscope.Profiler.Native.so
 ENV LD_PRELOAD=/dotnet/Pyroscope.Linux.ApiWrapper.x64.so
+ENV LD_LIBRARY_PATH=/dotnet
 
 ENV PYROSCOPE_APPLICATION_NAME=rideshare.dotnet.push.app
 ENV PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040

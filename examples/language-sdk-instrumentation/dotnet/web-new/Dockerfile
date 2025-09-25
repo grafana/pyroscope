@@ -3,8 +3,8 @@ FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:6.0
 
 WORKDIR /dotnet
 
-COPY --from=pyroscope/pyroscope-dotnet:0.10.0-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
-COPY --from=pyroscope/pyroscope-dotnet:0.10.0-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
+COPY --from=pyroscope/pyroscope-dotnet:0.12.0-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
+COPY --from=pyroscope/pyroscope-dotnet:0.12.0-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
 
 ADD example .
 
@@ -14,6 +14,7 @@ ENV CORECLR_ENABLE_PROFILING=1
 ENV CORECLR_PROFILER={BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}
 ENV CORECLR_PROFILER_PATH=/dotnet/Pyroscope.Profiler.Native.so
 ENV LD_PRELOAD=/dotnet/Pyroscope.Linux.ApiWrapper.x64.so
+ENV LD_LIBRARY_PATH=/dotnet
 
 ENV PYROSCOPE_APPLICATION_NAME=web.dotnet.app
 ENV PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
