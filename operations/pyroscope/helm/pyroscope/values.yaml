@@ -88,6 +88,7 @@ pyroscope:
     port_name: http2
     scheme: HTTP
     annotations: {}
+    headlessAnnotations: {}
 
   memberlist:
     port: 7946
