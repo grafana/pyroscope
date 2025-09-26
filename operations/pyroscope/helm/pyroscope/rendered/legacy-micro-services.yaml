@@ -2244,11 +2244,12 @@ spec:
             - "-target=ad-hoc-profiles"
             - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
-            - "-memberlist.cluster-label=default-pyroscope-dev-micro-services"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2346,11 +2347,12 @@ spec:
             - "-target=distributor"
             - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
-            - "-memberlist.cluster-label=default-pyroscope-dev-micro-services"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2448,7 +2450,7 @@ spec:
             - "-target=querier"
             - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
-            - "-memberlist.cluster-label=default-pyroscope-dev-micro-services"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
@@ -2551,11 +2553,12 @@ spec:
             - "-target=query-frontend"
             - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
-            - "-memberlist.cluster-label=default-pyroscope-dev-micro-services"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2653,11 +2656,12 @@ spec:
             - "-target=query-scheduler"
             - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
-            - "-memberlist.cluster-label=default-pyroscope-dev-micro-services"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2755,11 +2759,12 @@ spec:
             - "-target=tenant-settings"
             - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
-            - "-memberlist.cluster-label=default-pyroscope-dev-micro-services"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3042,11 +3047,12 @@ spec:
             - "-target=compactor"
             - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
-            - "-memberlist.cluster-label=default-pyroscope-dev-micro-services"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3151,11 +3157,12 @@ spec:
             - "-target=ingester"
             - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
-            - "-memberlist.cluster-label=default-pyroscope-dev-micro-services"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3256,7 +3263,7 @@ spec:
             - "-target=store-gateway"
             - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
-            - "-memberlist.cluster-label=default-pyroscope-dev-micro-services"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
