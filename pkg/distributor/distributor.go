@@ -42,6 +42,7 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
+	"github.com/grafana/pyroscope/pkg/distributor/arrow"
 	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
@@ -757,22 +758,58 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 	// it's hard to reason about latencies, retries, and error handling.
 	config := d.limits.WritePathOverrides(req.TenantID)
 	requests := make([]*segmentwriterv1.PushRequest, 0, len(serviceSeries)*2)
+	pool := arrow.NewMemoryPool()
+
 	for _, s := range serviceSeries {
-		buf, err := pprof.Marshal(s.Profile.Profile, config.Compression == writepath.CompressionGzip)
-		if err != nil {
-			panic(fmt.Sprintf("failed to marshal profile: %v", err))
-		}
 		// Ideally, the ID should identify the whole request, and be
 		// deterministic (e.g, based on the request hash). In practice,
 		// the API allows batches, which makes it difficult to handle.
 		profileID := uuid.New()
-		requests = append(requests, &segmentwriterv1.PushRequest{
-			TenantId:    req.TenantID,
-			Labels:      s.Labels,
-			Profile:     buf,
-			ProfileId:   profileID[:],
-			Annotations: s.Annotations,
-		})
+
+		// Arrow format enabled - ordering fixes have been implemented and tested
+		useArrowFormat := true
+
+		if useArrowFormat {
+			// Try Arrow format first, fall back to pprof if needed
+			arrowData, err := arrow.ProfileToArrow(s.Profile.Profile, pool)
+			if err != nil {
+				// Fallback to original pprof format for backward compatibility
+				level.Debug(d.logger).Log("msg", "failed to convert to Arrow format, falling back to pprof", "err", err)
+				buf, marshalErr := pprof.Marshal(s.Profile.Profile, config.Compression == writepath.CompressionGzip)
+				if marshalErr != nil {
+					panic(fmt.Sprintf("failed to marshal profile: %v", marshalErr))
+				}
+				requests = append(requests, &segmentwriterv1.PushRequest{
+					TenantId:    req.TenantID,
+					Labels:      s.Labels,
+					Profile:     buf,
+					ProfileId:   profileID[:],
+					Annotations: s.Annotations,
+				})
+			} else {
+				// Use Arrow format - this eliminates the encode/decode overhead!
+				requests = append(requests, &segmentwriterv1.PushRequest{
+					TenantId:     req.TenantID,
+					Labels:       s.Labels,
+					ProfileId:    profileID[:],
+					Annotations:  s.Annotations,
+					ArrowProfile: arrowData,
+				})
+			}
+		} else {
+			// Use traditional pprof format
+			buf, err := pprof.Marshal(s.Profile.Profile, config.Compression == writepath.CompressionGzip)
+			if err != nil {
+				panic(fmt.Sprintf("failed to marshal profile: %v", err))
+			}
+			requests = append(requests, &segmentwriterv1.PushRequest{
+				TenantId:    req.TenantID,
+				Labels:      s.Labels,
+				Profile:     buf,
+				ProfileId:   profileID[:],
+				Annotations: s.Annotations,
+			})
+		}
 	}
 
 	if len(requests) == 1 {

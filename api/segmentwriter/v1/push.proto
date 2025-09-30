@@ -24,4 +24,37 @@ message PushRequest {
   uint32 shard = 6;
   // Profile annotations with additional metadata.
   repeated types.v1.ProfileAnnotation annotations = 7;
+  // Arrow format profile data (alternative to profile field)
+  ArrowProfileData arrow_profile = 8;
+}
+
+// ArrowProfileData contains profile data in Apache Arrow format
+message ArrowProfileData {
+  // Profile metadata
+  ProfileMetadata metadata = 1;
+  // Arrow record batches serialized as bytes (Arrow IPC format)
+  bytes samples_batch = 2;
+  bytes locations_batch = 3;
+  bytes functions_batch = 4;
+  bytes mappings_batch = 5;
+  bytes strings_batch = 6;
+}
+
+// ProfileMetadata contains profile-level information
+message ProfileMetadata {
+  int64 time_nanos = 1;
+  int64 duration_nanos = 2;
+  int64 period = 3;
+  int64 drop_frames = 4;   // Index into string table
+  int64 keep_frames = 5;   // Index into string table
+  int64 default_sample_type = 6; // Index into string table
+  repeated ValueType sample_type = 7;
+  ValueType period_type = 8;
+  repeated int64 comment = 9; // Indices into string table
+}
+
+// ValueType describes the semantics and measurement units of a value
+message ValueType {
+  int64 type = 1; // Index into string table
+  int64 unit = 2; // Index into string table
 }

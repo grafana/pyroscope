@@ -18,7 +18,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	"github.com/grafana/pyroscope/pkg/distributor/arrow"
 	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
@@ -204,13 +206,31 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	if err := id.UnmarshalBinary(req.ProfileId); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	p, err := pprof.RawFromBytes(req.Profile)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+
+	var profile *profilev1.Profile
+
+	// Check if we have Arrow format data
+	if req.ArrowProfile != nil {
+		// Use Arrow format - this eliminates the second decode overhead!
+		pool := arrow.NewMemoryPool()
+		p, err := arrow.ArrowToProfile(req.ArrowProfile, pool)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, fmt.Errorf("failed to decode Arrow profile: %w", err).Error())
+		}
+		profile = p
+	} else if len(req.Profile) > 0 {
+		// Fallback to pprof format for backward compatibility
+		p, err := pprof.RawFromBytes(req.Profile)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		profile = p.Profile
+	} else {
+		return nil, status.Error(codes.InvalidArgument, "no profile data provided")
 	}
 
 	wait := i.segmentWriter.ingest(shardKey(req.Shard), func(segment segmentIngest) {
-		segment.ingest(req.TenantId, p.Profile, id, req.Labels, req.Annotations)
+		segment.ingest(req.TenantId, profile, id, req.Labels, req.Annotations)
 	})
 
 	flushStarted := time.Now()
@@ -219,7 +239,8 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 			WithLabelValues(req.TenantId).
 			Observe(time.Since(flushStarted).Seconds())
 	}()
-	if err = wait.waitFlushed(ctx); err == nil {
+	err := wait.waitFlushed(ctx)
+	if err == nil {
 		return &segmentwriterv1.PushResponse{}, nil
 	}
 

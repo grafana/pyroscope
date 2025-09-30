@@ -248,7 +248,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1ValueType"
+            "$ref": "#/definitions/googlev1ValueType"
           },
           "description": "A description of the samples associated with each Sample.value.\nFor a cpu profile this might be:\n  [[\"cpu\",\"nanoseconds\"]] or [[\"wall\",\"seconds\"]] or [[\"syscall\",\"count\"]]\nFor a heap profile, this might be:\n  [[\"allocations\",\"count\"], [\"space\",\"bytes\"]],\nIf one of the values represents the number of events represented\nby the sample, by convention it should be at index 0 and use\nsample_type.unit == \"count\"."
         },
@@ -312,7 +312,7 @@
           "description": "Duration of the profile, if a duration makes sense."
         },
         "periodType": {
-          "$ref": "#/definitions/v1ValueType",
+          "$ref": "#/definitions/googlev1ValueType",
           "title": "The kind of events between sampled ocurrences.\ne.g [ \"cpu\",\"cycles\" ] or [ \"heap\",\"bytes\" ]"
         },
         "period": {
@@ -334,6 +334,22 @@
           "description": "Index into the string table of the type of the preferred sample\nvalue. If unset, clients should default to the last sample value."
         }
       }
+    },
+    "googlev1ValueType": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "format": "int64",
+          "description": "Index into string table."
+        },
+        "unit": {
+          "type": "string",
+          "format": "int64",
+          "description": "Index into string table."
+        }
+      },
+      "description": "ValueType describes the semantics and measurement units of a value."
     },
     "ingesterv1ProfileTypesResponse": {
       "type": "object",
@@ -466,6 +482,22 @@
     "segmentwriterv1PushResponse": {
       "type": "object"
     },
+    "segmentwriterv1ValueType": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "format": "int64",
+          "title": "Index into string table"
+        },
+        "unit": {
+          "type": "string",
+          "format": "int64",
+          "title": "Index into string table"
+        }
+      },
+      "title": "ValueType describes the semantics and measurement units of a value"
+    },
     "typesv1Location": {
       "type": "object",
       "properties": {
@@ -569,6 +601,37 @@
           "title": "summary of the query impact / performance"
         }
       }
+    },
+    "v1ArrowProfileData": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "$ref": "#/definitions/v1ProfileMetadata",
+          "title": "Profile metadata"
+        },
+        "samplesBatch": {
+          "type": "string",
+          "format": "byte",
+          "title": "Arrow record batches serialized as bytes (Arrow IPC format)"
+        },
+        "locationsBatch": {
+          "type": "string",
+          "format": "byte"
+        },
+        "functionsBatch": {
+          "type": "string",
+          "format": "byte"
+        },
+        "mappingsBatch": {
+          "type": "string",
+          "format": "byte"
+        },
+        "stringsBatch": {
+          "type": "string",
+          "format": "byte"
+        }
+      },
+      "title": "ArrowProfileData contains profile data in Apache Arrow format"
     },
     "v1BlockCompaction": {
       "type": "object",
@@ -1707,6 +1770,57 @@
       ],
       "default": "PROFILE_FORMAT_UNSPECIFIED"
     },
+    "v1ProfileMetadata": {
+      "type": "object",
+      "properties": {
+        "timeNanos": {
+          "type": "string",
+          "format": "int64"
+        },
+        "durationNanos": {
+          "type": "string",
+          "format": "int64"
+        },
+        "period": {
+          "type": "string",
+          "format": "int64"
+        },
+        "dropFrames": {
+          "type": "string",
+          "format": "int64",
+          "title": "Index into string table"
+        },
+        "keepFrames": {
+          "type": "string",
+          "format": "int64",
+          "title": "Index into string table"
+        },
+        "defaultSampleType": {
+          "type": "string",
+          "format": "int64",
+          "title": "Index into string table"
+        },
+        "sampleType": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/segmentwriterv1ValueType"
+          }
+        },
+        "periodType": {
+          "$ref": "#/definitions/segmentwriterv1ValueType"
+        },
+        "comment": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          },
+          "title": "Indices into string table"
+        }
+      },
+      "title": "ProfileMetadata contains profile-level information"
+    },
     "v1ProfileSets": {
       "type": "object",
       "properties": {
@@ -2461,22 +2575,6 @@
           "$ref": "#/definitions/v1RecordingRule"
         }
       }
-    },
-    "v1ValueType": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "format": "int64",
-          "description": "Index into string table."
-        },
-        "unit": {
-          "type": "string",
-          "format": "int64",
-          "description": "Index into string table."
-        }
-      },
-      "description": "ValueType describes the semantics and measurement units of a value."
     },
     "v1VersionResponse": {
       "type": "object",
