@@ -1,8 +1,8 @@
 package arrow
 
 import (
-	"github.com/apache/arrow/go/v12/arrow"
-	"github.com/apache/arrow/go/v12/arrow/memory"
+	"github.com/apache/arrow/go/v18/arrow"
+	"github.com/apache/arrow/go/v18/arrow/memory"
 )
 
 // ProfileArrowSchema defines the Arrow schema for profile data

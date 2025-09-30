@@ -3,7 +3,7 @@ package arrow
 import (
 	"testing"
 
-	"github.com/apache/arrow/go/v12/arrow/memory"
+	"github.com/apache/arrow/go/v18/arrow/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -162,4 +162,3 @@ func TestArrowRoundTrip(t *testing.T) {
 	assert.Equal(t, original.DurationNanos, reconstructed.DurationNanos, "DurationNanos should match")
 	assert.Equal(t, original.Period, reconstructed.Period, "Period should match")
 }
-
