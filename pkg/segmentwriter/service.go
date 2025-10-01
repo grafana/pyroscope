@@ -212,6 +212,7 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	// Check if we have Arrow format data
 	if req.ArrowProfile != nil {
 		// Use Arrow format - this eliminates the second decode overhead!
+		level.Info(i.logger).Log("msg", "using arrow profile")
 		pool := arrow.NewMemoryPool()
 		p, err := arrow.ArrowToProfile(req.ArrowProfile, pool)
 		if err != nil {

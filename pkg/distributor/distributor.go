@@ -774,7 +774,7 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 			arrowData, err := arrow.ProfileToArrow(s.Profile.Profile, pool)
 			if err != nil {
 				// Fallback to original pprof format for backward compatibility
-				level.Debug(d.logger).Log("msg", "failed to convert to Arrow format, falling back to pprof", "err", err)
+				level.Error(d.logger).Log("msg", "failed to convert to Arrow format, falling back to pprof", "err", err)
 				buf, marshalErr := pprof.Marshal(s.Profile.Profile, config.Compression == writepath.CompressionGzip)
 				if marshalErr != nil {
 					panic(fmt.Sprintf("failed to marshal profile: %v", marshalErr))
