@@ -6,7 +6,13 @@
   },
   "customizations": {
     "vscode": {
-      "extensions": ["golang.go", "esbenp.prettier-vscode"]
+      "extensions": [
+        "golang.go",
+        "esbenp.prettier-vscode"
+      ]
     }
-  }
+  },
+  "appPort": [
+    "4040:4040"
+  ]
 }
