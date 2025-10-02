@@ -243,7 +243,7 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location, dictionar
 		return 0, fmt.Errorf("could not access mapping: %w", err)
 	}
 
-	mappingId, err := p.convertMappingBack(om, dictionary)
+	mappingId, err := p.convertMappingBack(ol, om, dictionary)
 	if err != nil {
 		return 0, err
 	}
@@ -404,10 +404,20 @@ func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sam
 }
 
 // convertMappingsBack converts a slice of OpenTelemetry Mapping entries to Google Mapping entries.
-func (p *profileBuilder) convertMappingBack(om *otelProfile.Mapping, dictionary *otelProfile.ProfilesDictionary) (uint64, error) {
+func (p *profileBuilder) convertMappingBack(ol *otelProfile.Location, om *otelProfile.Mapping, dictionary *otelProfile.ProfilesDictionary) (uint64, error) {
 	if i, ok := p.mappingMap[om]; ok {
 		return i, nil
 	}
+
+	hasLines := false
+	hasFunctions := false
+	hasInlineFrames := false
+	for i, line := range ol.Line {
+		hasFunctions = hasFunctions || line.FunctionIndex > 0
+		hasLines = hasLines || line.Line > 0
+		hasInlineFrames = hasInlineFrames || i >= 1
+	}
+	hasFilenames := hasLines
 
 	buildID, _ := getAttributeValueByKeyOrEmpty(om.AttributeIndices, dictionary, "process.executable.build_id.gnu")
 	filenameLabel, err := at(dictionary.StringTable, om.FilenameStrindex)
@@ -420,10 +430,10 @@ func (p *profileBuilder) convertMappingBack(om *otelProfile.Mapping, dictionary 
 		FileOffset:      om.FileOffset,
 		Filename:        p.addstr(filenameLabel),
 		BuildId:         p.addstr(buildID),
-		HasFunctions:    true,
-		HasFilenames:    true,
-		HasLineNumbers:  true,
-		HasInlineFrames: true,
+		HasFunctions:    hasFunctions,
+		HasFilenames:    hasFilenames,
+		HasLineNumbers:  hasLines,
+		HasInlineFrames: hasInlineFrames,
 	}
 	p.dst.Mapping = append(p.dst.Mapping, gm)
 	gm.Id = uint64(len(p.dst.Mapping))
