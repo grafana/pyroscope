@@ -16,7 +16,6 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/labels"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
@@ -142,7 +141,7 @@ func (h *Head) Flush(ctx context.Context) (res *FlushedHead, err error) {
 func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 	var (
 		err      error
-		profiles []schemav1.InMemoryProfile
+		profiles []InMemoryArrowProfile
 	)
 	res := new(FlushedHead)
 	res.Meta.MinTimeNanos = h.minTimeNanos

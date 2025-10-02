@@ -91,7 +91,7 @@ func (pi *profilesIndex) Add(ps *schemav1.InMemoryProfile, lbs phlaremodel.Label
 	pi.metrics.profilesCreated.WithLabelValues(profileName).Inc()
 }
 
-func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemoryProfile, error) {
+func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []InMemoryArrowProfile, error) {
 	writer, err := memindex.NewWriter(ctx, memindex.SegmentsIndexWriterBufSize)
 	if err != nil {
 		return nil, nil, err
@@ -136,7 +136,7 @@ func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemory
 		}
 	}
 
-	profiles := make([]schemav1.InMemoryProfile, 0, profilesSize)
+	profiles := make([]InMemoryArrowProfile, 0, profilesSize)
 
 	// Add series
 	for i, s := range pfs {
@@ -154,7 +154,8 @@ func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemory
 		}
 		//profiles = append(profiles, s.profiles...)
 		for _, profile := range s.profiles {
-			profiles = append(profiles, *profile) //todo avoid copy
+			arrowProfile := ConvertInMemoryProfileToArrow(profile)
+			profiles = append(profiles, arrowProfile) //todo avoid copy
 		}
 	}
 

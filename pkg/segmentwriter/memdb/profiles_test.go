@@ -32,21 +32,22 @@ func genProfile(series uint32, timeNanos int, numSamples int) schemav1.InMemoryP
 
 func TestWriteProfiles(t *testing.T) {
 	m := NewHeadMetricsWithPrefix(nil, "")
-	profiles := []schemav1.InMemoryProfile{
+	traditionalProfiles := []schemav1.InMemoryProfile{
 		genProfile(239, 4242, 4242),
 		genProfile(1, 1, 1),
 		genProfile(2, 2, 2),
 		genProfile(2, 2, 2),
 	}
+	profiles := ConvertInMemoryProfilesToArrow(traditionalProfiles)
 	profileParquet, err := WriteProfiles(m, profiles)
 	require.NoError(t, err)
 
 	reader := parquet.NewReader(bytes.NewReader(profileParquet), schemav1.ProfilesSchema)
-	for i := 0; i < len(profiles); i++ {
+	for i := 0; i < len(traditionalProfiles); i++ {
 		var p schemav1.Profile
 		err := reader.Read(&p)
 		require.NoError(t, err)
-		ep := profiles[i]
+		ep := traditionalProfiles[i]
 		require.Equal(t, ep.ID, p.ID)
 		require.Equal(t, ep.SeriesIndex, p.SeriesIndex)
 		require.Equal(t, ep.TimeNanos, p.TimeNanos)
