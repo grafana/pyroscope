@@ -258,10 +258,7 @@ func serializeArrowRecord(record arrow.Record) ([]byte, error) {
 		return nil, err
 	}
 
-	if err := writer.Close(); err != nil {
-		return nil, err
-	}
-
+	// Close is handled by defer
 	return buf.Bytes(), nil
 }
 
