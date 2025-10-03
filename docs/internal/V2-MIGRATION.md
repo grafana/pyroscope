@@ -18,7 +18,7 @@ helm upgrade \
 
 ### Step: 2: Now deploy v2 and enable dual ingest
 
-- Note: The python command will switch to the v2 write path 10 minutes after it is run.
+- Note: The python command will switch to the v2 read path for data ingested 10 minutes after it is run.
 
 ```
 helm upgrade \
@@ -30,7 +30,8 @@ helm upgrade \
   --set architecture.storage.migration.queryBackendFrom=$(python3 -c "import datetime; print((datetime.datetime.now(datetime.UTC)+ datetime.timedelta(minutes = 10)).strftime('%Y-%m-%dT%H:%M:%SZ'))")
 ```
 
-### Step 3: Now remove v1 components, this will loose all data before Step 2
+### Step 3: Remove v1 components
+Once data before Step 2 is no longer relevant, we can get rid of the v1 components. This will loose all data before Step 2.
 
 ```
 helm upgrade \
