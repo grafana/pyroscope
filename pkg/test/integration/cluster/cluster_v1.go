@@ -7,9 +7,20 @@ import (
 	"path/filepath"
 )
 
+func WithV1SingleTarget() ClusterOption {
+	return func(c *Cluster) {
+		c.v2 = false
+		c.microservices = false
+		c.expectedComponents = []string{
+			"all",
+		}
+	}
+}
+
 func WithV1() ClusterOption {
 	return func(c *Cluster) {
 		c.v2 = false
+		c.microservices = true
 		c.expectedComponents = []string{
 			"distributor",
 			"distributor",
@@ -58,8 +69,6 @@ func (c *Cluster) v1Prepare(_ context.Context, memberlistJoin []string) error {
 			fmt.Sprintf("-blocks-storage.bucket-store.sync-dir=%s", syncDir),
 			fmt.Sprintf("-compactor.data-dir=%s", compactorDir),
 			fmt.Sprintf("-pyroscopedb.data-path=%s", dataDir),
-			"-distributor.replication-factor=3",
-			"-store-gateway.sharding-ring.replication-factor=3",
 			"-query-scheduler.ring.instance-id="+comp.nodeName(),
 			"-query-scheduler.ring.instance-addr="+listenAddr,
 			"-store-gateway.sharding-ring.instance-id="+comp.nodeName(),
@@ -70,6 +79,12 @@ func (c *Cluster) v1Prepare(_ context.Context, memberlistJoin []string) error {
 			"-ingester.lifecycler.ID="+comp.nodeName(),
 			"-ingester.min-ready-duration=0",
 		)
+		if c.microservices {
+			comp.flags = append(comp.flags,
+				"-distributor.replication-factor=3",
+				"-store-gateway.sharding-ring.replication-factor=3",
+			)
+		}
 
 		// handle memberlist join
 		for _, m := range memberlistJoin {
