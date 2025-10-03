@@ -16,7 +16,7 @@ helm upgrade \
   --set pyroscope.persistence.enabled=true
 ```
 
-### Step: 2: Now deploy v2 and enable dual ingest
+### Step: 2: Deploy v2 and enable dual ingest
 
 - Note: The python command will switch to the v2 read path for data ingested 10 minutes after it is run.
 
@@ -31,6 +31,7 @@ helm upgrade \
 ```
 
 ### Step 3: Remove v1 components
+
 Once data before Step 2 is no longer relevant, we can get rid of the v1 components. This will loose all data before Step 2.
 
 ```
@@ -64,9 +65,9 @@ helm upgrade \
   --set pyroscope.persistence.enabled=true
 ```
 
-### Step: 2: Now deploy v2 and enable dual ingest
+### Step: 2: Deploy v2 and enable dual ingest
 
-- Note: The python command will switch to the v2 write path 10 minutes after it is run.
+- Note: The python command will switch to the v2 read path for data ingested 10 minutes after it is run.
 
 ```
 helm upgrade \
@@ -82,7 +83,9 @@ helm upgrade \
 ```
 
 
-### Step 3: Now remove v1 components, this will loose all data before Step 2
+### Step 3: Remove v1 components
+
+Once data before Step 2 is no longer relevant, we can get rid of the v1 components. This will loose all data before Step 2.
 
 ```
 helm upgrade \
