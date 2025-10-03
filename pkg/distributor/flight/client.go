@@ -2,6 +2,7 @@ package flight
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -344,15 +345,37 @@ func (c *ArrowFlightSegmentWriterClient) sendArrowProfile(ctx context.Context, r
 	// Encode ProfileId as hex string for gRPC metadata (must be printable ASCII)
 	profileIDStr := fmt.Sprintf("%x", req.ProfileId)
 
+	// Serialize labels to JSON for gRPC metadata
+	var labelsJSON string
+	if len(req.Labels) > 0 {
+		labelsBytes, err := json.Marshal(req.Labels)
+		if err != nil {
+			return fmt.Errorf("failed to marshal labels: %w", err)
+		}
+		labelsJSON = string(labelsBytes)
+	}
+
+	// Serialize annotations to JSON
+	var annotationsJSON string
+	if len(req.Annotations) > 0 {
+		annotationsBytes, err := json.Marshal(req.Annotations)
+		if err != nil {
+			return fmt.Errorf("failed to marshal annotations: %w", err)
+		}
+		annotationsJSON = string(annotationsBytes)
+	}
+
 	// Also send the Arrow profile metadata
+	// CRITICAL: Must serialize full metadata including SampleType!
+	// Without SampleType, deserializer doesn't know how many values per sample.
 	var metadataJSON string
 	if req.ArrowProfile.Metadata != nil {
-		// Serialize metadata as a simple string for transport
-		// In production, use proto Marshal or JSON
-		metadataJSON = fmt.Sprintf("time=%d,duration=%d,period=%d",
-			req.ArrowProfile.Metadata.TimeNanos,
-			req.ArrowProfile.Metadata.DurationNanos,
-			req.ArrowProfile.Metadata.Period)
+		// Serialize metadata as JSON to preserve all fields including SampleType
+		metadataBytes, err := json.Marshal(req.ArrowProfile.Metadata)
+		if err != nil {
+			return fmt.Errorf("failed to marshal arrow metadata: %w", err)
+		}
+		metadataJSON = string(metadataBytes)
 	}
 
 	c.logger.Log("msg", "adding metadata to Arrow Flight request",
@@ -360,13 +383,17 @@ func (c *ArrowFlightSegmentWriterClient) sendArrowProfile(ctx context.Context, r
 		"profile_id_len", len(req.ProfileId),
 		"profile_id_hex_len", len(profileIDStr),
 		"shard", req.Shard,
+		"labels_count", len(req.Labels),
+		"annotations_count", len(req.Annotations),
 		"has_arrow_metadata", req.ArrowProfile.Metadata != nil)
 
 	ctx = metadata.AppendToOutgoingContext(ctx,
 		"tenant-id", req.TenantId,
 		"profile-id", profileIDStr,
 		"shard", fmt.Sprintf("%d", req.Shard),
-		"arrow-metadata", metadataJSON)
+		"arrow-metadata", metadataJSON,
+		"labels", labelsJSON,
+		"annotations", annotationsJSON)
 
 	// Send Arrow Flight DoPut request
 	return c.sendArrowFlightData(ctx, req.TenantId, samplesBatch, locationsBatch, functionsBatch, mappingsBatch, stringsBatch)
@@ -388,6 +415,10 @@ func (c *ArrowFlightSegmentWriterClient) sendArrowFlightData(ctx context.Context
 	}
 
 	// Send data batches
+	// IMPORTANT: Send ALL batches in order, even if empty!
+	// The server expects exactly 5 batches in this order:
+	// 0: samples, 1: locations, 2: functions, 3: mappings, 4: strings
+	// Skipping empty batches would cause misalignment on the server side.
 	batches := [][]byte{
 		samplesBatch,
 		locationsBatch,
@@ -397,13 +428,12 @@ func (c *ArrowFlightSegmentWriterClient) sendArrowFlightData(ctx context.Context
 	}
 
 	for i, batch := range batches {
-		if len(batch) > 0 {
-			err = stream.Send(&arrowflightpb.FlightData{
-				DataHeader: batch,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to send batch %d: %w", i, err)
-			}
+		// Send ALL batches, even empty ones (len == 0)
+		err = stream.Send(&arrowflightpb.FlightData{
+			DataHeader: batch,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to send batch %d: %w", i, err)
 		}
 	}
 

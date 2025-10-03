@@ -220,10 +220,29 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 		}
 		// Debug: Check what we got from Arrow deserialization
 		if p == nil || len(p.Sample) == 0 {
-			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Arrow profile deserialization produced empty profile: profile_nil=%v samples=%d locations=%d strings=%d", 
+			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Arrow profile deserialization produced empty profile: profile_nil=%v samples=%d locations=%d strings=%d",
 				p == nil, len(p.Sample), len(p.Location), len(p.StringTable)))
 		}
-		level.Info(i.logger).Log("msg", "arrow profile deserialized", "samples", len(p.Sample), "locations", len(p.Location), "strings", len(p.StringTable))
+
+		// DETAILED LOGGING for debugging
+		level.Info(i.logger).Log(
+			"msg", "arrow profile deserialized",
+			"samples", len(p.Sample),
+			"locations", len(p.Location),
+			"strings", len(p.StringTable),
+			"sample_types", len(p.SampleType))
+
+		// Check first sample in detail
+		if len(p.Sample) > 0 {
+			s := p.Sample[0]
+			level.Info(i.logger).Log(
+				"msg", "first sample details",
+				"location_ids", len(s.LocationId),
+				"values", len(s.Value),
+				"labels", len(s.Label),
+				"value_data", fmt.Sprintf("%v", s.Value))
+		}
+
 		profile = p
 	} else if len(req.Profile) > 0 {
 		// Fallback to pprof format for backward compatibility

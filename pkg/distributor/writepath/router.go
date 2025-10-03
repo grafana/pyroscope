@@ -190,28 +190,28 @@ func (w *arrowFlightIngesterWrapper) Push(ctx context.Context, req *distributorm
 	// Convert profile to Arrow format
 	if req.Profile != nil && req.Profile.Profile != nil {
 		pool := arrow.NewMemoryPool()
-		
+
 		// Debug: Check what's in the profile BEFORE conversion
 		samplesCount := len(req.Profile.Profile.Sample)
 		locationsCount := len(req.Profile.Profile.Location)
 		stringsCount := len(req.Profile.Profile.StringTable)
-		
+
 		arrowData, err := arrow.ProfileToArrow(req.Profile.Profile, pool)
 		if err != nil {
 			// Log the error - this is critical!
 			return nil, fmt.Errorf("failed to convert profile to Arrow format: %w", err)
 		}
-		
+
 		// Debug: Check what Arrow produced
 		samplesSize := len(arrowData.SamplesBatch)
 		locationsSize := len(arrowData.LocationsBatch)
 		stringsSize := len(arrowData.StringsBatch)
-		
+
 		if samplesCount == 0 || samplesSize == 0 {
-			return nil, fmt.Errorf("profile conversion produced empty data: input samples=%d locations=%d strings=%d, output samples_bytes=%d locations_bytes=%d strings_bytes=%d", 
+			return nil, fmt.Errorf("profile conversion produced empty data: input samples=%d locations=%d strings=%d, output samples_bytes=%d locations_bytes=%d strings_bytes=%d",
 				samplesCount, locationsCount, stringsCount, samplesSize, locationsSize, stringsSize)
 		}
-		
+
 		pushReq.ArrowProfile = arrowData
 	} else {
 		// No profile data available

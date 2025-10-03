@@ -79,9 +79,13 @@ func ArrowToProfile(arrowData *segmentwriterv1.ArrowProfileData, pool memory.All
 		}
 	}
 
-	// Copy comments
-	profile.Comment = make([]int64, len(metadata.Comment))
-	copy(profile.Comment, metadata.Comment)
+	// Copy comments - preserve nil vs empty slice distinction
+	if len(metadata.Comment) > 0 {
+		profile.Comment = make([]int64, len(metadata.Comment))
+		copy(profile.Comment, metadata.Comment)
+	} else {
+		profile.Comment = nil
+	}
 
 	// Convert string table
 	profile.StringTable = extractStringTable(stringsRecord)

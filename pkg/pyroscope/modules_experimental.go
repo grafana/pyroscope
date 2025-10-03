@@ -28,13 +28,13 @@ import (
 	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/metrics"
-	segmentwriterflight "github.com/grafana/pyroscope/pkg/segmentwriter/flight"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/querybackend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/segmentwriter"
 	segmentwriterclient "github.com/grafana/pyroscope/pkg/segmentwriter/client"
 	placement "github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
+	segmentwriterflight "github.com/grafana/pyroscope/pkg/segmentwriter/flight"
 	recordingrulesclient "github.com/grafana/pyroscope/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/pkg/symbolizer"
 	"github.com/grafana/pyroscope/pkg/tenant"
@@ -207,25 +207,25 @@ func (f *Pyroscope) initSegmentWriter() (services.Service, error) {
 
 	f.segmentWriter = segmentWriter
 	f.API.RegisterSegmentWriter(segmentWriter)
-	
+
 	// Start Arrow Flight server if enabled
 	config := f.Overrides.WritePathOverrides("")
 	if config.ArrowFlight.Enabled {
 		go f.startArrowFlightServer(segmentWriter, logger)
 	}
-	
+
 	return f.segmentWriter, nil
 }
 
 func (f *Pyroscope) startArrowFlightServer(segmentWriter *segmentwriter.SegmentWriterService, logger log.Logger) {
 	config := f.Overrides.WritePathOverrides("")
 	flightLogger := log.With(logger, "component", "arrow-flight-server")
-	
+
 	flightServer := segmentwriterflight.NewFlightServer(flightLogger, segmentWriter, f.reg)
-	
+
 	addr := fmt.Sprintf("%s:%d", config.ArrowFlight.Address, config.ArrowFlight.Port)
 	flightLogger.Log("msg", "starting Arrow Flight server", "addr", addr)
-	
+
 	if err := flightServer.Run(context.Background(), addr); err != nil {
 		level.Error(flightLogger).Log("msg", "Arrow Flight server failed", "err", err)
 	}

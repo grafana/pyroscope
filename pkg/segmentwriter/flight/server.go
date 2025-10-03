@@ -2,6 +2,7 @@ package flight
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -79,12 +80,17 @@ func (w *flightServerWrapper) DoPut(stream flight.FlightService_DoPutServer) err
 			break
 		}
 
-		if recv.DataHeader != nil && len(recv.DataHeader) > 0 {
+		if len(recv.DataHeader) > 0 {
 			batches = append(batches, recv.DataHeader)
 		}
 	}
 
 	w.logger.Log("msg", "received Arrow Flight data", "batches", len(batches))
+
+	// Log batch sizes for debugging
+	for i, batch := range batches {
+		w.logger.Log("msg", "batch details", "index", i, "size", len(batch))
+	}
 
 	// Extract metadata from context
 	tenantID := extractTenantID(stream.Context())
@@ -108,9 +114,15 @@ func (w *flightServerWrapper) DoPut(stream flight.FlightService_DoPutServer) err
 	}
 	if len(batches) > 0 {
 		arrowProfile.SamplesBatch = batches[0]
+		w.logger.Log("msg", "set SamplesBatch", "size", len(batches[0]))
+	} else {
+		w.logger.Log("msg", "WARNING: no SamplesBatch received!")
 	}
 	if len(batches) > 1 {
 		arrowProfile.LocationsBatch = batches[1]
+		w.logger.Log("msg", "set LocationsBatch", "size", len(batches[1]))
+	} else {
+		w.logger.Log("msg", "WARNING: no LocationsBatch received!")
 	}
 	if len(batches) > 2 {
 		arrowProfile.FunctionsBatch = batches[2]
@@ -120,6 +132,8 @@ func (w *flightServerWrapper) DoPut(stream flight.FlightService_DoPutServer) err
 	}
 	if len(batches) > 4 {
 		arrowProfile.StringsBatch = batches[4]
+	} else {
+		w.logger.Log("msg", "WARNING: no StringsBatch received!")
 	}
 
 	// Create push request
@@ -190,8 +204,11 @@ func extractLabels(ctx context.Context) []*typesv1.LabelPair {
 
 	var labels []*typesv1.LabelPair
 	if labelValues := md.Get("labels"); len(labelValues) > 0 {
-		// Labels would be serialized, for now return empty
-		// In production, implement proper serialization/deserialization
+		// Deserialize from JSON
+		if err := json.Unmarshal([]byte(labelValues[0]), &labels); err != nil {
+			// Log error but don't fail - return empty labels
+			return nil
+		}
 	}
 
 	return labels
@@ -206,8 +223,11 @@ func extractAnnotations(ctx context.Context) []*typesv1.ProfileAnnotation {
 
 	var annotations []*typesv1.ProfileAnnotation
 	if annotationValues := md.Get("annotations"); len(annotationValues) > 0 {
-		// Annotations would be serialized, for now return empty
-		// In production, implement proper serialization/deserialization
+		// Deserialize from JSON
+		if err := json.Unmarshal([]byte(annotationValues[0]), &annotations); err != nil {
+			// Log error but don't fail - return empty annotations
+			return nil
+		}
 	}
 
 	return annotations
@@ -240,14 +260,14 @@ func extractArrowMetadata(ctx context.Context) *segmentwriterv1.ProfileMetadata 
 		return &segmentwriterv1.ProfileMetadata{}
 	}
 
-	// Parse simple metadata string
-	// In production, deserialize proper JSON or proto
+	// Deserialize full metadata from JSON
+	// CRITICAL: This includes SampleType which is needed for Value array allocation!
 	meta := &segmentwriterv1.ProfileMetadata{}
-	var timeNanos, durationNanos, period int64
-	fmt.Sscanf(metadataValues[0], "time=%d,duration=%d,period=%d", &timeNanos, &durationNanos, &period)
-	meta.TimeNanos = timeNanos
-	meta.DurationNanos = durationNanos
-	meta.Period = period
+	if err := json.Unmarshal([]byte(metadataValues[0]), meta); err != nil {
+		// Log error but return empty metadata rather than failing
+		// TODO: proper error handling
+		return &segmentwriterv1.ProfileMetadata{}
+	}
 
 	return meta
 }
