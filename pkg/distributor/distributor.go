@@ -158,6 +158,7 @@ func New(
 	reg prometheus.Registerer,
 	logger log.Logger,
 	segmentWriter writepath.SegmentWriterClient,
+	arrowFlightSW writepath.SegmentWriterClient, // Arrow Flight segmentwriter client
 	ingesterClientsOptions ...connect.ClientOption,
 ) (*Distributor, error) {
 	ingesterClientsOptions = append(
@@ -193,6 +194,7 @@ func New(
 		logger, reg, limits,
 		ingesterRoute,
 		segmentWriterRoute,
+		arrowFlightSW,
 	)
 
 	var err error

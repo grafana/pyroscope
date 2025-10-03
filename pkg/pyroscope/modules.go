@@ -319,7 +319,14 @@ func (f *Pyroscope) initGRPCGateway() (services.Service, error) {
 func (f *Pyroscope) initDistributor() (services.Service, error) {
 	f.Cfg.Distributor.DistributorRing.ListenPort = f.Cfg.Server.HTTPListenPort
 	logger := log.With(f.logger, "component", "distributor")
-	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, f.segmentWriterClient, f.auth)
+
+	// Create Arrow Flight segmentwriter client if needed
+	arrowFlightSW, err := f.initArrowFlightSegmentWriterClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Arrow Flight segmentwriter client: %w", err)
+	}
+
+	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, f.segmentWriterClient, arrowFlightSW, f.auth)
 	if err != nil {
 		return nil, err
 	}

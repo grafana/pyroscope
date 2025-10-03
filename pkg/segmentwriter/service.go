@@ -218,6 +218,12 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, fmt.Errorf("failed to decode Arrow profile: %w", err).Error())
 		}
+		// Debug: Check what we got from Arrow deserialization
+		if p == nil || len(p.Sample) == 0 {
+			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Arrow profile deserialization produced empty profile: profile_nil=%v samples=%d locations=%d strings=%d", 
+				p == nil, len(p.Sample), len(p.Location), len(p.StringTable)))
+		}
+		level.Info(i.logger).Log("msg", "arrow profile deserialized", "samples", len(p.Sample), "locations", len(p.Location), "strings", len(p.StringTable))
 		profile = p
 	} else if len(req.Profile) > 0 {
 		// Fallback to pprof format for backward compatibility

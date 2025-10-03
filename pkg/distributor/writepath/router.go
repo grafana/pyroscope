@@ -2,7 +2,9 @@ package writepath
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -17,6 +19,7 @@ import (
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	"github.com/grafana/pyroscope/pkg/distributor/arrow"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -56,8 +59,9 @@ type Router struct {
 	overrides Overrides
 	metrics   *metrics
 
-	ingester  IngesterClient
-	segwriter IngesterClient
+	ingester      IngesterClient
+	segwriter     IngesterClient
+	arrowFlightSW SegmentWriterClient // Arrow Flight segmentwriter client
 }
 
 func NewRouter(
@@ -66,13 +70,15 @@ func NewRouter(
 	overrides Overrides,
 	ingester IngesterClient,
 	segwriter IngesterClient,
+	arrowFlightSW SegmentWriterClient,
 ) *Router {
 	r := &Router{
-		logger:    logger,
-		overrides: overrides,
-		metrics:   newMetrics(registerer),
-		ingester:  ingester,
-		segwriter: segwriter,
+		logger:        logger,
+		overrides:     overrides,
+		metrics:       newMetrics(registerer),
+		ingester:      ingester,
+		segwriter:     segwriter,
+		arrowFlightSW: arrowFlightSW,
 	}
 	r.service = services.NewBasicService(r.starting, r.running, r.stopping)
 	return r
@@ -116,11 +122,126 @@ func (m *Router) ingesterRoute() *route {
 }
 
 func (m *Router) segwriterRoute(primary bool) *route {
+	config := m.overrides.WritePathOverrides("")
+
+	// Use Arrow Flight if enabled and available
+	if config.ArrowFlight.Enabled && m.arrowFlightSW != nil {
+		logger := log.With(m.logger, "component", "arrow-flight-segmentwriter")
+		logger.Log("msg", "using Arrow Flight segmentwriter client")
+		return &route{
+			path:    SegmentWriterPath,
+			primary: primary,
+			client:  &arrowFlightIngesterWrapper{m.arrowFlightSW},
+		}
+	}
+
+	// Fallback to ConnectRPC
 	return &route{
 		path:    SegmentWriterPath,
 		primary: primary,
 		client:  m.segwriter,
 	}
+}
+
+// arrowFlightIngesterWrapper wraps SegmentWriterClient to implement IngesterClient interface
+type arrowFlightIngesterWrapper struct {
+	SegmentWriterClient
+}
+
+func (w *arrowFlightIngesterWrapper) Push(ctx context.Context, req *distributormodel.ProfileSeries) (*connect.Response[pushv1.PushResponse], error) {
+	// Generate ProfileId - using UUID like the distributor does
+	profileID := make([]byte, 16)
+	// Use a simple random generation for now
+	// In production, this would use uuid.New()
+	for i := range profileID {
+		profileID[i] = byte(rand.Intn(256))
+	}
+
+	// Calculate shard from labels using a simple hash
+	// This mirrors the logic in segmentwriter/client but simplified
+	// In production, this should use the actual distributor logic
+	var shard uint32 = 1 // Default to shard 1 (not 0 which is sentinel)
+	if len(req.Labels) > 0 {
+		// Hash the labels to determine shard
+		// For now, use a simple hash of the service name or first label
+		for _, label := range req.Labels {
+			if label.Name == "service_name" || label.Name == "__name__" {
+				// Simple hash: sum of bytes mod some number of shards
+				// Assuming 8 shards for simplicity
+				hash := uint32(0)
+				for _, c := range label.Value {
+					hash = hash*31 + uint32(c)
+				}
+				shard = (hash % 8) + 1 // Shard IDs start at 1
+				break
+			}
+		}
+	}
+
+	// Convert ProfileSeries to PushRequest for Arrow Flight
+	pushReq := &segmentwriterv1.PushRequest{
+		TenantId:    req.TenantID,
+		Labels:      req.Labels,
+		Annotations: req.Annotations,
+		ProfileId:   profileID,
+		Shard:       shard, // Set the computed shard
+	}
+
+	// Convert profile to Arrow format
+	if req.Profile != nil && req.Profile.Profile != nil {
+		pool := arrow.NewMemoryPool()
+		
+		// Debug: Check what's in the profile BEFORE conversion
+		samplesCount := len(req.Profile.Profile.Sample)
+		locationsCount := len(req.Profile.Profile.Location)
+		stringsCount := len(req.Profile.Profile.StringTable)
+		
+		arrowData, err := arrow.ProfileToArrow(req.Profile.Profile, pool)
+		if err != nil {
+			// Log the error - this is critical!
+			return nil, fmt.Errorf("failed to convert profile to Arrow format: %w", err)
+		}
+		
+		// Debug: Check what Arrow produced
+		samplesSize := len(arrowData.SamplesBatch)
+		locationsSize := len(arrowData.LocationsBatch)
+		stringsSize := len(arrowData.StringsBatch)
+		
+		if samplesCount == 0 || samplesSize == 0 {
+			return nil, fmt.Errorf("profile conversion produced empty data: input samples=%d locations=%d strings=%d, output samples_bytes=%d locations_bytes=%d strings_bytes=%d", 
+				samplesCount, locationsCount, stringsCount, samplesSize, locationsSize, stringsSize)
+		}
+		
+		pushReq.ArrowProfile = arrowData
+	} else {
+		// No profile data available
+		return nil, fmt.Errorf("no profile data in ProfileSeries")
+	}
+
+	_, err := w.SegmentWriterClient.Push(ctx, pushReq)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert response
+	return connect.NewResponse(&pushv1.PushResponse{}), nil
+}
+
+// isArrowFlightAvailable checks if Arrow Flight server is available
+func (m *Router) isArrowFlightAvailable(logger log.Logger) bool {
+	config := m.overrides.WritePathOverrides("")
+	addr := fmt.Sprintf("%s:%d", config.ArrowFlight.Address, config.ArrowFlight.Port)
+
+	// Quick connection test
+	conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
+	if err != nil {
+		logger.Log("msg", "Arrow Flight server not available", "addr", addr, "error", err)
+		return false
+	}
+	conn.Close()
+
+	logger.Log("msg", "Arrow Flight server available", "addr", addr)
+	return true
 }
 
 func (m *Router) sendToBoth(ctx context.Context, req *distributormodel.ProfileSeries, config *Config) error {

@@ -89,12 +89,30 @@ type Config struct {
 	SegmentWriterTimeout time.Duration `yaml:"write_path_segment_writer_timeout" json:"write_path_segment_writer_timeout" doc:"hidden"`
 	Compression          Compression   `yaml:"write_path_compression" json:"write_path_compression" doc:"hidden"`
 	AsyncIngest          bool          `yaml:"async_ingest" json:"async_ingest" doc:"hidden"`
+
+	// Arrow Flight configuration for v2 write path
+	ArrowFlight ArrowFlightConfig `yaml:"arrow_flight" json:"arrow_flight" doc:"hidden"`
+}
+
+type ArrowFlightConfig struct {
+	Enabled bool          `yaml:"enabled" json:"enabled" doc:"hidden"`
+	Address string        `yaml:"address" json:"address" doc:"hidden"`
+	Port    int           `yaml:"port" json:"port" doc:"hidden"`
+	Timeout time.Duration `yaml:"timeout" json:"timeout" doc:"hidden"`
+	TLS     bool          `yaml:"tls" json:"tls" doc:"hidden"`
 }
 
 func (o *Config) RegisterFlags(f *flag.FlagSet) {
 	o.WritePath = IngesterPath
 	o.Compression = CompressionNone
 	f.Var(&o.WritePath, "write-path", "Controls the write path route; "+validWritePathOptionsString+".")
+
+	// Arrow Flight flags
+	f.BoolVar(&o.ArrowFlight.Enabled, "write-path.arrow-flight.enabled", true, "Enable Arrow Flight for segmentwriter communication in v2 write path.")
+	f.StringVar(&o.ArrowFlight.Address, "write-path.arrow-flight.address", "localhost", "Arrow Flight server address.")
+	f.IntVar(&o.ArrowFlight.Port, "write-path.arrow-flight.port", 8086, "Arrow Flight server port.")
+	f.DurationVar(&o.ArrowFlight.Timeout, "write-path.arrow-flight.timeout", 30*time.Second, "Arrow Flight client timeout.")
+	f.BoolVar(&o.ArrowFlight.TLS, "write-path.arrow-flight.tls", false, "Use TLS for Arrow Flight communication.")
 	f.Float64Var(&o.IngesterWeight, "write-path.ingester-weight", 1,
 		"Specifies the fraction [0:1] that should be send to ingester in combined mode. 0 means no traffics is sent to ingester. 1 means 100% of requests are sent to ingester.")
 	f.Float64Var(&o.SegmentWriterWeight, "write-path.segment-writer-weight", 0,
