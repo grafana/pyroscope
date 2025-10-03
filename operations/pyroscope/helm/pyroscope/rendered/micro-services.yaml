@@ -2279,10 +2279,10 @@ spec:
               mountPath: /data
           resources:
             limits:
-              memory: 4Gi
+              memory: 1Gi
             requests:
-              cpu: 0.1
-              memory: 16Mi
+              cpu: 100m
+              memory: 256Mi
       volumes:
         - name: config
           configMap:
@@ -2796,8 +2796,8 @@ spec:
             limits:
               memory: 4Gi
             requests:
-              cpu: 0.1
-              memory: 16Mi
+              cpu: 100m
+              memory: 256Mi
       volumes:
         - name: config
           configMap:
@@ -3086,10 +3086,10 @@ spec:
               subPath: compactor
           resources:
             limits:
-              memory: 16Gi
+              memory: 2Gi
             requests:
-              cpu: 1
-              memory: 8Gi
+              cpu: 200m
+              memory: 512Mi
       terminationGracePeriodSeconds: 1200
       volumes:
         - name: config
@@ -3192,10 +3192,10 @@ spec:
               mountPath: /data
           resources:
             limits:
-              memory: 16Gi
+              memory: 2Gi
             requests:
-              cpu: 1
-              memory: 8Gi
+              cpu: 200m
+              memory: 512Mi
       terminationGracePeriodSeconds: 600
       volumes:
         - name: config
@@ -3299,10 +3299,10 @@ spec:
               mountPath: /data
           resources:
             limits:
-              memory: 16Gi
+              memory: 2Gi
             requests:
-              cpu: 1
-              memory: 8Gi
+              cpu: 200m
+              memory: 512Mi
       volumes:
         - name: config
           configMap:
