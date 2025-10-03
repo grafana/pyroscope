@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+	"math"
 
 	"github.com/dustin/go-humanize"
 	"github.com/gorilla/mux"
@@ -74,9 +75,11 @@ func (s *StoreGateway) BlocksHandler(w http.ResponseWriter, req *http.Request) {
 	showParents := req.Form.Get("show_parents") == "on"
 	var splitCount int
 	if sc := req.Form.Get("split_count"); sc != "" {
-		splitCount, _ = strconv.Atoi(sc)
-		if splitCount < 0 {
+		parsed, _ := strconv.ParseInt(sc, 10, 32)
+		if parsed < 0 || parsed > int64(math.MaxUint32) {
 			splitCount = 0
+		} else {
+			splitCount = int(parsed)
 		}
 	}
 
