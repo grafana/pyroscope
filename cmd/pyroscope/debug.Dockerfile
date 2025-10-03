@@ -7,10 +7,9 @@ RUN addgroup -g 10001 -S pyroscope && \
 
 # This folder is created by adduser command with right owner/group
 VOLUME /data
-
-# This folder needs to be created and set to the right owner/group
 VOLUME /data-compactor
-RUN mkdir -p /data-compactor && chown pyroscope:pyroscope /data /data-compactor
+VOLUME /data-metastore
+RUN chown pyroscope:pyroscope /data /data-compactor /data-metastore
 
 COPY .tmp/bin/dlv /usr/bin/dlv
 COPY cmd/pyroscope/pyroscope.yaml /etc/pyroscope/config.yaml
