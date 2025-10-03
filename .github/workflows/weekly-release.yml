@@ -13,7 +13,7 @@ jobs:
   goreleaser-weekly:
     runs-on: ubuntu-x64-large
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -31,15 +31,15 @@ jobs:
         run: |
           git tag "$GORELEASER_CURRENT_TAG"
           git tag "$WEEKLY_IMAGE_TAG"
-      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v5
         with:
           go-version: "1.24.6"
           cache: false
       # setup docker buildx
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@2b82ce82d56a2a04d2637cd93a637ae1b359c0a7 # v2
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v2
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55 # v2
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v2
       # login to docker hub
       - id: get-secrets
         uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760
@@ -47,7 +47,7 @@ jobs:
           common_secrets: |
             DOCKERHUB_USERNAME=dockerhub:username
             DOCKERHUB_PASSWORD=dockerhub:password
-      - uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
+      - uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v2
         name: Login to Docker Hub
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
@@ -57,7 +57,7 @@ jobs:
           node-version: 20
           package-manager-cache: false
       - run: make frontend/build
-      - uses: goreleaser/goreleaser-action@9c156ee8a17a598857849441385a2041ef570552 # v6
+      - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
         with:
           # ensure this aligns with the version specified in the /Makefile
           version: v2.7.0
