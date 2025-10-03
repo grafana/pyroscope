@@ -70,38 +70,12 @@ func (ts *TenantSettings) starting(ctx context.Context) error {
 }
 
 func (ts *TenantSettings) running(ctx context.Context) error {
-	ticker := time.NewTicker(24 * time.Hour)
-	done := false
-
-	for !done {
-		select {
-		case <-ticker.C:
-			err := ts.store.Flush(ctx)
-			if err != nil {
-				level.Warn(ts.logger).Log(
-					"msg", "failed to refresh tenant settings",
-					"err", err,
-				)
-			}
-		case <-ctx.Done():
-			ticker.Stop()
-			done = true
-		}
-	}
-
+	<-ctx.Done()
 	return nil
 }
 
 func (ts *TenantSettings) stopping(_ error) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	err := ts.store.Flush(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = ts.store.Close()
+	err := ts.store.Close()
 	if err != nil {
 		return err
 	}
