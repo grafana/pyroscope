@@ -2557,6 +2557,18 @@ The `azure_storage_backend` block configures the connection to Azure object stor
 # CLI flag: -storage.azure.account-key
 [account_key: <string> | default = ""]
 
+# Azure Active Directory tenant ID. If set alongside client ID and client secret,
+# a client secret credential will be used to authenticate.
+[az_tenant_id: <string> | default = ""]
+
+# Azure Active Directory client ID. If set alongside Azure tenant ID and client secret,
+# a client secret credential will be used to authenticate.
+[client_id: <string> | default = ""]
+
+# Azure Active Directory client secret. If set alongside Azure tenant ID and client ID,
+# a client secret credential will be used to authenticate.
+[client_secret: <string> | default = ""]
+
 # If `connection-string` is set, the value of `endpoint-suffix` will not be
 # used. Use this method over `account-key` if you need to authenticate via a SAS
 # token. Or if you use the Azurite emulator.

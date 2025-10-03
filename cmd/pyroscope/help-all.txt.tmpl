@@ -917,6 +917,12 @@ Usage of ./pyroscope:
     	Azure storage account key. If unset, Azure managed identities will be used for authentication instead.
   -storage.azure.account-name string
     	Azure storage account name
+  -storage.azure.az-tenant-id string
+    	Azure Active Directory tenant ID. If set alongside `client-id` and `client-secret`, these values will be used for authentication via a client secret credential.
+  -storage.azure.client-id string
+      Azure Active Directory client ID. If set alongside `az-tenant-id` and `client-secret`, these values will be used for authentication via a client secret credential.
+  -storage.azure.client-secret string
+      Azure Active Directory client secret. If set alongside `az-tenant-id` and `client-id`, these values will be used for authentication via a client secret credential.
   -storage.azure.connection-string string
     	If `connection-string` is set, the value of `endpoint-suffix` will not be used. Use this method over `account-key` if you need to authenticate via a SAS token. Or if you use the Azurite emulator.
   -storage.azure.container-name string
