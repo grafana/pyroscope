@@ -88,7 +88,7 @@ func (n *Node) tryAutoJoin() error {
 	// try to join the cluster via the leader
 	level.Info(logger).Log("msg", "attempting to auto-join existing cluster", "current_term", readIndexResp.Term)
 	_, err = n.raftNodeClient.AddNode(ctx, &raftnodepb.AddNodeRequest{
-		ServerId:    n.config.ServerID,
+		ServerId:    n.config.AdvertiseAddress,
 		CurrentTerm: readIndexResp.Term,
 	})
 
