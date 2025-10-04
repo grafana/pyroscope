@@ -230,7 +230,7 @@ function LabelsSubmenu({
 
 // Identifies whether a label is in a query or not
 function isLabelInQuery(query: string, label: string, labelValue: string) {
-  return query.includes(`${label}="${labelValue}"`);
+  return query.includes(`"${label}=${labelValue}"`);
 }
 
 export default TagsBar;

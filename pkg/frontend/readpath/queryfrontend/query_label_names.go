@@ -8,6 +8,7 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -46,5 +47,16 @@ func (q *QueryFrontend) LabelNames(
 	if report == nil {
 		return connect.NewResponse(&typesv1.LabelNamesResponse{}), nil
 	}
-	return connect.NewResponse(&typesv1.LabelNamesResponse{Names: report.LabelNames.LabelNames}), nil
+
+	labelNames := report.LabelNames.LabelNames
+	if capabilities, ok := featureflags.GetClientCapabilities(ctx); !ok || !capabilities.AllowUtf8LabelNames {
+		// Use legacy label name sanitization if utf8 label names not enabled
+		if labelNames, err := validation.SanitizeLabelNames(labelNames); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		} else {
+			return connect.NewResponse(&typesv1.LabelNamesResponse{Names: labelNames}), nil
+		}
+	}
+
+	return connect.NewResponse(&typesv1.LabelNamesResponse{Names: labelNames}), nil
 }

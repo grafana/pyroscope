@@ -9,6 +9,7 @@ import (
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -54,5 +55,30 @@ func (q *QueryFrontend) Series(
 	if report == nil {
 		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
 	}
-	return connect.NewResponse(&querierv1.SeriesResponse{LabelsSet: report.SeriesLabels.SeriesLabels}), nil
+
+	seriesLabels := report.SeriesLabels.SeriesLabels
+	if capabilities, ok := featureflags.GetClientCapabilities(ctx); !ok || !capabilities.AllowUtf8LabelNames {
+		// Use legacy label name sanitization if utf8 label names not enabled
+		for _, seriesLabel := range seriesLabels {
+			labelNames := make([]string, len(seriesLabel.Labels))
+			for i, label := range seriesLabel.Labels {
+				labelNames[i] = label.Name
+			}
+
+			// Sanitize the label names
+			sanitizedNames, err := validation.SanitizeLabelNames(labelNames)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+
+			// Update the original labels with sanitized names
+			for i, label := range seriesLabel.Labels {
+				if i < len(sanitizedNames) {
+					label.Name = sanitizedNames[i]
+				}
+			}
+		}
+	}
+
+	return connect.NewResponse(&querierv1.SeriesResponse{LabelsSet: seriesLabels}), nil
 }
