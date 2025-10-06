@@ -7,6 +7,7 @@ import (
 	goiter "iter"
 
 	"go.etcd.io/bbolt"
+	bbolterrors "go.etcd.io/bbolt/errors"
 )
 
 const (
@@ -83,13 +84,13 @@ func (m *IndexStore) DeleteShard(tx *bbolt.Tx, p Partition, tenant string, shard
 		tenantKey := tenantBucketName(tenant)
 		if shards := partition.Bucket(tenantKey); shards != nil {
 			if err := shards.DeleteBucket(binary.BigEndian.AppendUint32(nil, shard)); err != nil {
-				if !errors.Is(err, bbolt.ErrBucketNotFound) {
+				if !errors.Is(err, bbolterrors.ErrBucketNotFound) {
 					return err
 				}
 			}
 			if isBucketEmpty(shards) {
 				if err := partition.DeleteBucket(tenantKey); err != nil {
-					if !errors.Is(err, bbolt.ErrBucketNotFound) {
+					if !errors.Is(err, bbolterrors.ErrBucketNotFound) {
 						return err
 					}
 				}
@@ -97,7 +98,7 @@ func (m *IndexStore) DeleteShard(tx *bbolt.Tx, p Partition, tenant string, shard
 		}
 		if isBucketEmpty(partition) {
 			if err := partitions.DeleteBucket(partitionKey); err != nil {
-				if !errors.Is(err, bbolt.ErrBucketNotFound) {
+				if !errors.Is(err, bbolterrors.ErrBucketNotFound) {
 					return err
 				}
 			}

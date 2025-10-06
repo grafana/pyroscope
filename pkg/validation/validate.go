@@ -126,7 +126,7 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 		return NewErrorf(MaxLabelNamesPerSeries, MaxLabelNamesPerSeriesErrorMsg, phlaremodel.LabelPairsString(ls), numLabelNames, maxLabels)
 	}
 	metricNameValue := phlaremodel.Labels(ls).Get(model.MetricNameLabel)
-	if !model.IsValidMetricName(model.LabelValue(metricNameValue)) {
+	if !model.UTF8Validation.IsValidMetricName(metricNameValue) {
 		return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid metric name")
 	}
 	serviceNameValue := phlaremodel.Labels(ls).Get(phlaremodel.LabelNameServiceName)
