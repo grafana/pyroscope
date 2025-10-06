@@ -13,6 +13,50 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
+func (q *QueryFrontend) filterLabelNames(
+	ctx context.Context,
+	c *connect.Request[querierv1.SeriesRequest],
+	labelNames []string,
+	labelSelector string,
+) ([]string, error) {
+	if capabilities, ok := featureflags.GetClientCapabilities(ctx); ok && capabilities.AllowUtf8LabelNames {
+		return labelNames, nil
+	}
+
+	toFilter := make([]string, len(labelNames))
+	copy(toFilter, labelNames)
+
+	// Filter out label names not passing legacy validation if utf8 label names not enabled
+	if len(labelNames) == 0 {
+		// Querying for all label names; must retrieve all label names to then filter out
+		report, err := q.querySingle(ctx, &queryv1.QueryRequest{
+			StartTime:     c.Msg.Start,
+			EndTime:       c.Msg.End,
+			LabelSelector: labelSelector,
+			Query: []*queryv1.Query{{
+				QueryType:  queryv1.QueryType_QUERY_LABEL_NAMES,
+				LabelNames: &queryv1.LabelNamesQuery{},
+			}},
+		})
+		if err != nil {
+			return nil, err
+		}
+		if report != nil {
+			toFilter = report.LabelNames.LabelNames
+		}
+	}
+
+	filtered := make([]string, 0, len(labelNames))
+	for _, name := range toFilter {
+		if _, _, ok := validation.SanitizeLegacyLabelName(name); !ok {
+			level.Debug(q.logger).Log("msg", "filtering out label", "label_name", name)
+			continue
+		}
+		filtered = append(filtered, name)
+	}
+	return filtered, nil
+}
+
 func (q *QueryFrontend) Series(
 	ctx context.Context,
 	c *connect.Request[querierv1.SeriesRequest],
@@ -39,37 +83,9 @@ func (q *QueryFrontend) Series(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	labelNames := c.Msg.LabelNames
-	if capabilities, ok := featureflags.GetClientCapabilities(ctx); !ok || !capabilities.AllowUtf8LabelNames {
-		if len(labelNames) == 0 {
-			// Querying for all label names; must retrieve all label names to then filter out
-			report, err := q.querySingle(ctx, &queryv1.QueryRequest{
-				StartTime:     c.Msg.Start,
-				EndTime:       c.Msg.End,
-				LabelSelector: labelSelector,
-				Query: []*queryv1.Query{{
-					QueryType:  queryv1.QueryType_QUERY_LABEL_NAMES,
-					LabelNames: &queryv1.LabelNamesQuery{},
-				}},
-			})
-			if err != nil {
-				return nil, err
-			}
-			if report != nil {
-				labelNames = report.LabelNames.LabelNames
-			}
-		}
-
-		// Filter out label names not passing legacy validation if utf8 label names not enabled
-		filteredLabelNames := make([]string, 0, len(labelNames))
-		for _, labelName := range labelNames {
-			if _, _, ok := validation.SanitizeLegacyLabelName(labelName); !ok {
-				level.Debug(q.logger).Log("msg", "filtering out label", "label_name", labelName)
-				continue
-			}
-			filteredLabelNames = append(filteredLabelNames, labelName)
-		}
-		labelNames = filteredLabelNames
+	labelNames, err := q.filterLabelNames(ctx, c, c.Msg.LabelNames, labelSelector)
+	if err != nil {
+		return nil, err
 	}
 
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
