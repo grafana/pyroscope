@@ -74,8 +74,9 @@ type Metastore struct {
 	reg       prometheus.Registerer
 	health    health.Service
 
-	raft *raftnode.Node
-	fsm  *fsm.FSM
+	raft           *raftnode.Node
+	fsm            *fsm.FSM
+	raftNodeClient raftnodepb.RaftNodeServiceClient
 
 	bucket    objstore.Bucket
 	placement *placement.Manager
@@ -116,13 +117,14 @@ func New(
 	placementMgr *placement.Manager,
 ) (*Metastore, error) {
 	m := &Metastore{
-		config:    config,
-		overrides: overrides,
-		logger:    logger,
-		reg:       reg,
-		health:    healthService,
-		bucket:    bucket,
-		placement: placementMgr,
+		config:         config,
+		overrides:      overrides,
+		logger:         logger,
+		reg:            reg,
+		health:         healthService,
+		bucket:         bucket,
+		placement:      placementMgr,
+		raftNodeClient: client,
 	}
 
 	var err error
@@ -192,7 +194,7 @@ func (m *Metastore) buildRaftNode() (err error) {
 	// (via FSM.Restore), if it is present. Otherwise, when no snapshots
 	// available, the state must be initialized explicitly via FSM.Init before
 	// we call raft.Init, which starts applying the raft log.
-	if m.raft, err = raftnode.NewNode(m.logger, m.config.Raft, m.reg, m.fsm); err != nil {
+	if m.raft, err = raftnode.NewNode(m.logger, m.config.Raft, m.reg, m.fsm, m.raftNodeClient); err != nil {
 		return fmt.Errorf("failed to create raft node: %w", err)
 	}
 

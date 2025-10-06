@@ -30,6 +30,7 @@ type Config struct {
 
 	BootstrapPeers       []string `yaml:"bootstrap_peers"`
 	BootstrapExpectPeers int      `yaml:"bootstrap_expect_peers"`
+	AutoJoin             bool     `yaml:"auto_join"`
 
 	ServerID         string `yaml:"server_id"`
 	BindAddress      string `yaml:"bind_address"`
@@ -68,6 +69,7 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 
 	f.Var((*flagext.StringSlice)(&cfg.BootstrapPeers), prefix+"bootstrap-peers", "")
 	f.IntVar(&cfg.BootstrapExpectPeers, prefix+"bootstrap-expect-peers", 1, "Expected number of peers including the local node.")
+	f.BoolVar(&cfg.AutoJoin, prefix+"auto-join", false, "If enabled, new nodes (without a state) will try to join an existing cluster on startup.")
 
 	f.StringVar(&cfg.ServerID, prefix+"server-id", "localhost:9099", "")
 	f.StringVar(&cfg.BindAddress, prefix+"bind-address", "localhost:9099", "")
@@ -109,6 +111,8 @@ type Node struct {
 
 	observer *Observer
 	service  *RaftNodeService
+
+	raftNodeClient raftnodepb.RaftNodeServiceClient
 }
 
 func NewNode(
@@ -116,13 +120,15 @@ func NewNode(
 	config Config,
 	reg prometheus.Registerer,
 	fsm raft.FSM,
+	raftNodeClient raftnodepb.RaftNodeServiceClient,
 ) (_ *Node, err error) {
 	n := Node{
-		logger:  logger,
-		config:  config,
-		metrics: newMetrics(reg),
-		reg:     reg,
-		fsm:     fsm,
+		logger:         logger,
+		config:         config,
+		metrics:        newMetrics(reg),
+		reg:            reg,
+		fsm:            fsm,
+		raftNodeClient: raftNodeClient,
 	}
 
 	defer func() {
@@ -176,7 +182,17 @@ func (n *Node) Init() (err error) {
 		return fmt.Errorf("failed to check for existing state: %w", err)
 	}
 	if !hasState {
-		level.Warn(n.logger).Log("msg", "no existing state found, trying to bootstrap cluster")
+		if n.config.AutoJoin {
+			level.Info(n.logger).Log("msg", "no existing state found and auto-join is enabled, trying to join existing raft cluster...")
+			if err = n.tryAutoJoin(); err != nil {
+				level.Warn(n.logger).Log("msg", "failed to auto-join raft cluster", "err", err)
+			} else {
+				level.Info(n.logger).Log("msg", "successfully joined existing raft cluster")
+				return nil
+			}
+		}
+
+		level.Info(n.logger).Log("msg", "no existing state found and auto-join is disabled, bootstrapping raft cluster...")
 		if err = n.bootstrap(); err != nil {
 			return fmt.Errorf("failed to bootstrap cluster: %w", err)
 		}

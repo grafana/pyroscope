@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/raft"
 
 	"github.com/grafana/pyroscope/pkg/metastore/discovery"
+	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
 )
 
 func (n *Node) bootstrap() error {
@@ -66,6 +67,36 @@ func (n *Node) bootstrapPeersWithRetries() (peers []raft.Server, err error) {
 		}
 	}
 	return nil, fmt.Errorf("failed to resolve bootstrap peers after %d retries %w", backOff.NumRetries(), err)
+}
+
+const autoJoinTimeout = 10 * time.Second
+
+func (n *Node) tryAutoJoin() error {
+	// we can only auto-join if there is a real raft cluster running
+	ctx, cancel := context.WithTimeout(context.Background(), autoJoinTimeout)
+	defer cancel()
+
+	readIndexResp, err := n.raftNodeClient.ReadIndex(ctx, &raftnodepb.ReadIndexRequest{})
+	if err != nil {
+		return fmt.Errorf("failed to get current term for auto-join: %w", err)
+	}
+
+	logger := log.With(n.logger,
+		"server_id", n.config.ServerID,
+		"advertise_address", n.config.AdvertiseAddress)
+
+	// try to join the cluster via the leader
+	level.Info(logger).Log("msg", "attempting to join existing cluster", "current_term", readIndexResp.Term)
+	_, err = n.raftNodeClient.AddNode(ctx, &raftnodepb.AddNodeRequest{
+		ServerId:    n.config.AdvertiseAddress,
+		CurrentTerm: readIndexResp.Term,
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to auto-join cluster: %w", err)
+	}
+
+	return nil
 }
 
 func (n *Node) bootstrapPeers(prov *dns.Provider) ([]raft.Server, error) {

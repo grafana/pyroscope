@@ -19,6 +19,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/test/integration/cluster"
@@ -161,6 +162,43 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 
 	tc.runQueryTest(ctx, t)
 
+}
+
+// TestMetastoreAutoJoin tests that a new metastore node can join an existing cluster
+// using the auto-join feature without requiring bootstrap configuration.
+func TestMetastoreAutoJoin(t *testing.T) {
+	c := cluster.NewMicroServiceCluster(cluster.WithV2())
+	ctx := context.Background()
+
+	require.NoError(t, c.Prepare(ctx))
+	for _, comp := range c.Components {
+		t.Log(comp.String())
+	}
+
+	require.NoError(t, c.Start(ctx))
+	defer func() {
+		waitStopped := c.Stop()
+		require.NoError(t, waitStopped(ctx))
+	}()
+
+	client, err := c.GetMetastoreRaftNodeClient()
+	require.NoError(t, err)
+	nodeInfo, err := client.NodeInfo(ctx, &raftnodepb.NodeInfoRequest{})
+	require.NoError(t, err)
+	require.Equal(t, 3, len(nodeInfo.Node.Peers), "initial cluster should have 3 peers")
+
+	err = c.AddMetastoreWithAutoJoin(ctx)
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		nodeInfo, err := client.NodeInfo(ctx, &raftnodepb.NodeInfoRequest{})
+		if err != nil {
+			t.Logf("Failed to get node info: %v", err)
+			return false
+		}
+		t.Logf("Current peer count: %d", len(nodeInfo.Node.Peers))
+		return len(nodeInfo.Node.Peers) == 4
+	}, 30*time.Second, 1*time.Second, "new metastore should join cluster")
 }
 
 func newTestCtx(x interface {
