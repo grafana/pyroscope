@@ -140,6 +140,65 @@ func (_c *MockTenantServiceServer_GetTenant_Call) RunAndReturn(run func(context.
 	return _c
 }
 
+// GetTenants provides a mock function with given fields: _a0, _a1
+func (_m *MockTenantServiceServer) GetTenants(_a0 context.Context, _a1 *metastorev1.GetTenantsRequest) (*metastorev1.GetTenantsResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTenants")
+	}
+
+	var r0 *metastorev1.GetTenantsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.GetTenantsRequest) (*metastorev1.GetTenantsResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.GetTenantsRequest) *metastorev1.GetTenantsResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*metastorev1.GetTenantsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *metastorev1.GetTenantsRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockTenantServiceServer_GetTenants_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTenants'
+type MockTenantServiceServer_GetTenants_Call struct {
+	*mock.Call
+}
+
+// GetTenants is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *metastorev1.GetTenantsRequest
+func (_e *MockTenantServiceServer_Expecter) GetTenants(_a0 interface{}, _a1 interface{}) *MockTenantServiceServer_GetTenants_Call {
+	return &MockTenantServiceServer_GetTenants_Call{Call: _e.mock.On("GetTenants", _a0, _a1)}
+}
+
+func (_c *MockTenantServiceServer_GetTenants_Call) Run(run func(_a0 context.Context, _a1 *metastorev1.GetTenantsRequest)) *MockTenantServiceServer_GetTenants_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*metastorev1.GetTenantsRequest))
+	})
+	return _c
+}
+
+func (_c *MockTenantServiceServer_GetTenants_Call) Return(_a0 *metastorev1.GetTenantsResponse, _a1 error) *MockTenantServiceServer_GetTenants_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockTenantServiceServer_GetTenants_Call) RunAndReturn(run func(context.Context, *metastorev1.GetTenantsRequest) (*metastorev1.GetTenantsResponse, error)) *MockTenantServiceServer_GetTenants_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // mustEmbedUnimplementedTenantServiceServer provides a mock function with no fields
 func (_m *MockTenantServiceServer) mustEmbedUnimplementedTenantServiceServer() {
 	_m.Called()

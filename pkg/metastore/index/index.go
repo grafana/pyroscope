@@ -192,6 +192,28 @@ func (i *Index) DeleteShard(tx *bbolt.Tx, key indexstore.Partition, tenant strin
 	return nil
 }
 
+func (i *Index) GetTenants(tx *bbolt.Tx) []string {
+	uniqueTenants := make(map[string]struct{})
+	for p := range i.store.Partitions(tx) {
+		q := p.Query(tx)
+		if q == nil {
+			// Partition not found.
+			continue
+		}
+		for t := range q.Tenants() {
+			if t == "" {
+				continue
+			}
+			uniqueTenants[t] = struct{}{}
+		}
+	}
+	tenants := make([]string, 0, len(uniqueTenants))
+	for t := range uniqueTenants {
+		tenants = append(tenants, t)
+	}
+	return tenants
+}
+
 func (i *Index) GetTenantStats(tx *bbolt.Tx, tenant string) *metastorev1.TenantStats {
 	stats := &metastorev1.TenantStats{
 		DataIngested:      false,

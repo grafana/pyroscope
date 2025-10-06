@@ -19,6 +19,11 @@ const _ = connect.IsAtLeastVersion0_1_0
 // RegisterTenantServiceHandler register an HTTP handler to a mux.Router from the service
 // implementation.
 func RegisterTenantServiceHandler(mux *mux.Router, svc TenantServiceHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/metastore.v1.TenantService/GetTenants", connect.NewUnaryHandler(
+		"/metastore.v1.TenantService/GetTenants",
+		svc.GetTenants,
+		opts...,
+	))
 	mux.Handle("/metastore.v1.TenantService/GetTenant", connect.NewUnaryHandler(
 		"/metastore.v1.TenantService/GetTenant",
 		svc.GetTenant,
