@@ -215,7 +215,6 @@ func handleSanitizedLabel(ls []*typesv1.LabelPair, origIdx int, origName, newNam
 // and returns the sanitized value. Legacy label names are non utf-8 and contain characters
 // [a-zA-Z0-9_-].
 //
-//
 // The only sanitization the function makes is replacing dots with underscores.
 func SanitizeLegacyLabelName(ln string) (old, sanitized string, ok bool) {
 	if len(ln) == 0 {

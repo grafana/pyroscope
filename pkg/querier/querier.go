@@ -17,7 +17,6 @@ import (
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
-	"github.com/grafana/pyroscope/pkg/featureflags"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
@@ -27,6 +26,8 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/grafana/pyroscope/pkg/featureflags"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
