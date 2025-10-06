@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/block/metadata"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
@@ -223,11 +223,30 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 	maxTime := msToTime(meta.MaxTime).UTC()
 	duration := durationInMinutes(minTime, maxTime)
 
-	// Resolve labels from string table
+	// Collect all unique labels from all datasets
 	labels := make(map[string]string)
-	// TODO: Parse the labels field from datasets according to the format specified in types.proto
-	// The labels are stored as a slice of int32 values referencing the string table
-	// Format: len(2) | k1 | v1 | k2 | v2 | len(3) | k1 | v3 | k2 | v4 | k3 | v5
+	for _, ds := range meta.Datasets {
+		pairs := metadata.LabelPairs(ds.Labels)
+		for pairs.Next() {
+			p := pairs.At()
+			for len(p) > 0 {
+				if len(p) >= 2 {
+					keyIdx := p[0]
+					valIdx := p[1]
+					if keyIdx >= 0 && int(keyIdx) < len(meta.StringTable) &&
+						valIdx >= 0 && int(valIdx) < len(meta.StringTable) {
+						key := meta.StringTable[keyIdx]
+						val := meta.StringTable[valIdx]
+						// Store the label (later occurrences will overwrite earlier ones)
+						labels[key] = val
+					}
+					p = p[2:]
+				} else {
+					break
+				}
+			}
+		}
+	}
 
 	// Parse datasets
 	datasets := make([]datasetDetails, 0, len(meta.Datasets))
@@ -250,14 +269,6 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 		})
 	}
 
-	// TODO: BlockStats are not available in BlockMeta
-	// We need to clarify how to get these stats in v2
-	stats := block.BlockStats{
-		NumSeries:   0, // Not available in v2 BlockMeta
-		NumProfiles: 0, // Not available in v2 BlockMeta
-		NumSamples:  0, // Not available in v2 BlockMeta
-	}
-
 	return &blockDetails{
 		ID:                meta.Id,
 		MinTime:           minTime.Format(time.RFC3339),
@@ -267,7 +278,6 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 		Shard:             meta.Shard,
 		CompactionLevel:   meta.CompactionLevel,
 		Size:              humanize.Bytes(meta.Size),
-		Stats:             stats,
 		Labels:            labels,
 		Datasets:          datasets,
 	}

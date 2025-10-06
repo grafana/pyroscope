@@ -63,26 +63,10 @@
                     <td>{{ .Block.Size }}</td>
                 </tr>
                 <tr>
-                    <td>Number of Series</td>
-                    <td>{{ .Block.Stats.NumSeries }} (TODO: not available in v2 BlockMeta)</td>
-                </tr>
-                <tr>
-                    <td>Number of Profiles</td>
-                    <td>{{ .Block.Stats.NumProfiles }} (TODO: not available in v2 BlockMeta)</td>
-                </tr>
-                <tr>
-                    <td>Number of Samples</td>
-                    <td>{{ .Block.Stats.NumSamples }} (TODO: not available in v2 BlockMeta)</td>
-                </tr>
-                <tr>
                     <td>Labels</td>
                     <td>
-                        {{ if .Block.Labels }}
-                            {{ range $k, $v := .Block.Labels }}
-                                <p>{{ $k }}: {{ $v }}</p>
-                            {{ end }}
-                        {{ else }}
-                            <p>TODO: Parse labels from BlockMeta.Datasets according to types.proto format</p>
+                        {{ range $k, $v := .Block.Labels }}
+                            <p>{{ $k }}: {{ $v }}</p>
                         {{ end }}
                     </td>
                 </tr>

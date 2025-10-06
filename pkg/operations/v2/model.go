@@ -5,8 +5,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 type blockQuery struct {
@@ -51,7 +49,6 @@ type blockDetails struct {
 	Shard             uint32
 	CompactionLevel   uint32
 	Size              string
-	Stats             block.BlockStats
 	Labels            map[string]string
 	Datasets          []datasetDetails
 	BlockTenant       string // Empty for multi-tenant blocks (compaction level 0)
