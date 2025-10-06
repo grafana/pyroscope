@@ -15,3 +15,5 @@ og/**
 cmd/**
 pkg/test/**
 examples/**
+.devcontainer/**
+.vscode/**

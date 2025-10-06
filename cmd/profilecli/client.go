@@ -51,9 +51,10 @@ func addClientCapabilitiesHeader(r *http.Request, mime string, clientCapabilitie
 }
 
 type phlareClient struct {
-	TenantID  string
-	URL       string
-	BasicAuth struct {
+	TenantID    string
+	URL         string
+	BearerToken string
+	BasicAuth   struct {
 		Username string
 		Password string
 	}
@@ -74,6 +75,8 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		}
 		if c.BasicAuth.Username != "" || c.BasicAuth.Password != "" {
 			req.SetBasicAuth(c.BasicAuth.Username, c.BasicAuth.Password)
+		} else if c.BearerToken != "" {
+			req.Header.Set("Authorization", "Bearer "+c.BearerToken)
 		}
 	}
 
@@ -117,8 +120,9 @@ type commander interface {
 func addPhlareClient(cmd commander) *phlareClient {
 	client := &phlareClient{}
 
-	cmd.Flag("url", "URL of the profile store.").Default("http://localhost:4040").Envar(envPrefix + "URL").StringVar(&client.URL)
+	cmd.Flag("url", "URL of the Pyroscope Endpoint. (Examples: https://profiles-prod-001.grafana.net for a Grafana Cloud endpoint, https://grafana.example.net/api/datasources/proxy/uid/<uid> when using the Grafana data source proxy)").Default("http://localhost:4040").Envar(envPrefix + "URL").StringVar(&client.URL)
 	cmd.Flag("tenant-id", "The tenant ID to be used for the X-Scope-OrgID header.").Default("").Envar(envPrefix + "TENANT_ID").StringVar(&client.TenantID)
+	cmd.Flag("token", "The bearer token to be used for communication with the server. Particularly useful when connecting to Grafana data source URLs (bearer token should be a Grafana Service Account token of the form 'glsa_[...]')").Default("").Envar(envPrefix + "TOKEN").StringVar(&client.BearerToken)
 	cmd.Flag("username", "The username to be used for basic auth.").Default("").Envar(envPrefix + "USERNAME").StringVar(&client.BasicAuth.Username)
 	cmd.Flag("password", "The password to be used for basic auth.").Default("").Envar(envPrefix + "PASSWORD").StringVar(&client.BasicAuth.Password)
 	cmd.Flag("protocol", "The protocol to be used for communicating with the server.").Default(protocolTypeConnect).EnumVar(&client.protocol,

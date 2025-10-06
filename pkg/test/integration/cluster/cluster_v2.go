@@ -113,6 +113,13 @@ func (c *Cluster) v2Prepare(_ context.Context, memberlistJoin []string) error {
 			fmt.Sprintf("-metastore.address=%s:%d/%s", listenAddr, metastoreLeader.grpcPort, metastoreLeader.nodeName()),
 		)
 
+		if c.debuginfodURL != "" && comp.Target == "query-frontend" {
+			comp.flags = append(comp.flags,
+				fmt.Sprintf("-symbolizer.debuginfod-url=%s", c.debuginfodURL),
+				"-symbolizer.enabled=true",
+			)
+		}
+
 		if comp.Target == "segment-writer" {
 			comp.flags = append(comp.flags,
 				"-segment-writer.num-tokens=1",

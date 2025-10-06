@@ -288,7 +288,7 @@ func updateJfrParser() {
 
 func extractDotnetVersion() func(tag Tag) *version {
 	return func(tag Tag) *version {
-		re := regexp.MustCompile(`v(\d+).(\d+).(\d+)$`)
+		re := regexp.MustCompile(`v(\d+).(\d+).(\d+)(-pyroscope)?$`)
 		match := re.FindStringSubmatch(tag.Name)
 		if match != nil {
 			fmt.Println(len(match), match)
