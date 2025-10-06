@@ -71,6 +71,8 @@
 | pyroscope.persistence.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | pyroscope.persistence.annotations | object | `{}` |  |
 | pyroscope.persistence.enabled | bool | `false` |  |
+| pyroscope.persistence.metastore.subPath | string | `".metastore"` |  |
+| pyroscope.persistence.shared.subPath | string | `".shared"` |  |
 | pyroscope.persistence.size | string | `"10Gi"` |  |
 | pyroscope.podAnnotations."profiles.grafana.com/cpu.port_name" | string | `"http2"` |  |
 | pyroscope.podAnnotations."profiles.grafana.com/cpu.scrape" | string | `"true"` |  |

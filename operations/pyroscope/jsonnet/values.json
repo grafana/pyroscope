@@ -414,6 +414,12 @@
       ],
       "annotations": {},
       "enabled": false,
+      "metastore": {
+        "subPath": ".metastore"
+      },
+      "shared": {
+        "subPath": ".shared"
+      },
       "size": "10Gi"
     },
     "podAnnotations": {

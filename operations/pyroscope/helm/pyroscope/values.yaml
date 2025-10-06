@@ -144,6 +144,14 @@ pyroscope:
     # subPath: ""
     # existingClaim:
 
+    metastore:
+      # subPath to use of the data volume for the metastore persistence.
+      subPath: .metastore
+
+    shared:
+      # subPath to use of the data volume for the shared storage used as bucket replacement.
+      subPath: .shared
+
   extraVolumes:
     []
     # - name: backup-volume
