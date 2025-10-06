@@ -182,19 +182,17 @@ func (n *Node) Init() (err error) {
 		return fmt.Errorf("failed to check for existing state: %w", err)
 	}
 	if !hasState {
-		level.Warn(n.logger).Log("msg", "no existing state found")
-
 		if n.config.AutoJoin {
-			level.Info(n.logger).Log("msg", "auto-join enabled, trying to join a cluster")
+			level.Info(n.logger).Log("msg", "no existing state found and auto-join is enabled, trying to join existing raft cluster...")
 			if err = n.tryAutoJoin(); err != nil {
-				level.Warn(n.logger).Log("msg", "failed to auto-join cluster", "err", err)
+				level.Warn(n.logger).Log("msg", "failed to auto-join raft cluster", "err", err)
 			} else {
-				level.Info(n.logger).Log("msg", "successfully auto-joined cluster")
+				level.Info(n.logger).Log("msg", "successfully joined existing raft cluster")
 				return nil
 			}
 		}
 
-		level.Info(n.logger).Log("msg", "bootstrapping cluster")
+		level.Info(n.logger).Log("msg", "no existing state found and auto-join is disabled, bootstrapping raft cluster...")
 		if err = n.bootstrap(); err != nil {
 			return fmt.Errorf("failed to bootstrap cluster: %w", err)
 		}
