@@ -62,6 +62,7 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 		}
 
 		query := readQuery(r)
+
 		startTimeMs := query.parsedFrom.UnixMilli()
 		endTimeMs := query.parsedTo.UnixMilli()
 
@@ -112,6 +113,13 @@ func (h *Handlers) groupBlocks(blocks []*metastorev1.BlockMeta) *blockListResult
 		}
 
 		duration := durationInMinutes(minTime, maxTime)
+
+		// For multi-tenant blocks, Tenant field is 0 (empty in string table)
+		// For single-tenant blocks, Tenant field points to the tenant string
+		blockTenantStr := ""
+		if blk.Tenant > 0 && int(blk.Tenant) < len(blk.StringTable) {
+			blockTenantStr = blk.StringTable[blk.Tenant]
+		}
 
 		blockDetails := &blockDetails{
 			ID:                blk.Id,
@@ -165,6 +173,7 @@ func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.R
 			httputil.Error(w, errors.New("No block id provided"))
 			return
 		}
+
 		shardStr := r.URL.Query().Get("shard")
 		if shardStr == "" {
 			httputil.Error(w, errors.New("No shard provided"))
@@ -176,8 +185,12 @@ func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.R
 			return
 		}
 
+		// Get block_tenant from query parameter
+		// For multi-tenant blocks (compaction level 0), this will be empty string
+		// For single-tenant blocks (compaction level > 0), this will be the tenant ID
 		blockTenant := r.URL.Query().Get("block_tenant")
 
+		// Use GetBlockMetadata to retrieve the specific block
 		metadataResp, err := h.MetastoreClient.GetBlockMetadata(r.Context(), &metastorev1.GetBlockMetadataRequest{
 			Blocks: &metastorev1.BlockList{
 				Tenant: blockTenant,
@@ -189,6 +202,7 @@ func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.R
 			httputil.Error(w, errors.Wrap(err, "failed to get block metadata"))
 			return
 		}
+
 		if len(metadataResp.Blocks) == 0 {
 			httputil.Error(w, errors.New("Block not found"))
 			return
@@ -260,6 +274,13 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 	maxTime := msToTime(meta.MaxTime).UTC()
 	duration := durationInMinutes(minTime, maxTime)
 
+	// Resolve labels from string table
+	labels := make(map[string]string)
+	// TODO: Parse the labels field from datasets according to the format specified in types.proto
+	// The labels are stored as a slice of int32 values referencing the string table
+	// Format: len(2) | k1 | v1 | k2 | v2 | len(3) | k1 | v3 | k2 | v4 | k3 | v5
+
+	// Parse datasets
 	datasets := make([]datasetDetails, 0, len(meta.Datasets))
 	for _, ds := range meta.Datasets {
 		datasets = append(datasets, h.convertDataset(ds, meta.StringTable))
@@ -274,6 +295,8 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 		Shard:             meta.Shard,
 		CompactionLevel:   meta.CompactionLevel,
 		Size:              humanize.Bytes(meta.Size),
+		Stats:             stats,
+		Labels:            labels,
 		Datasets:          datasets,
 	}
 }
