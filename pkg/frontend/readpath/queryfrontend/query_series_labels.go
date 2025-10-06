@@ -38,6 +38,40 @@ func (q *QueryFrontend) Series(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+
+	labelNames := c.Msg.LabelNames
+	if capabilities, ok := featureflags.GetClientCapabilities(ctx); !ok || !capabilities.AllowUtf8LabelNames {
+		if len(labelNames) == 0 {
+			// Querying for all label names; must retrieve all label names to then filter out
+			report, err := q.querySingle(ctx, &queryv1.QueryRequest{
+				StartTime:     c.Msg.Start,
+				EndTime:       c.Msg.End,
+				LabelSelector: labelSelector,
+				Query: []*queryv1.Query{{
+					QueryType:  queryv1.QueryType_QUERY_LABEL_NAMES,
+					LabelNames: &queryv1.LabelNamesQuery{},
+				}},
+			})
+			if err != nil {
+				return nil, err
+			}
+			if report != nil {
+				labelNames = report.LabelNames.LabelNames
+			}
+		}
+
+		// Filter out label names not passing legacy validation if utf8 label names not enabled
+		filteredLabelNames := make([]string, 0, len(labelNames))
+		for _, labelName := range labelNames {
+			if _, _, ok := validation.SanitizeLegacyLabelName(labelName); !ok {
+				level.Debug(q.logger).Log("msg", "filtering out label", "label_name", labelName)
+				continue
+			}
+			filteredLabelNames = append(filteredLabelNames, labelName)
+		}
+		labelNames = filteredLabelNames
+	}
+
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
 		EndTime:       c.Msg.End,
@@ -45,7 +79,7 @@ func (q *QueryFrontend) Series(
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_SERIES_LABELS,
 			SeriesLabels: &queryv1.SeriesLabelsQuery{
-				LabelNames: c.Msg.LabelNames,
+				LabelNames: labelNames,
 			},
 		}},
 	})
@@ -56,29 +90,5 @@ func (q *QueryFrontend) Series(
 		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
 	}
 
-	seriesLabels := report.SeriesLabels.SeriesLabels
-	if capabilities, ok := featureflags.GetClientCapabilities(ctx); !ok || !capabilities.AllowUtf8LabelNames {
-		// Use legacy label name sanitization if utf8 label names not enabled
-		for _, seriesLabel := range seriesLabels {
-			labelNames := make([]string, len(seriesLabel.Labels))
-			for i, label := range seriesLabel.Labels {
-				labelNames[i] = label.Name
-			}
-
-			// Sanitize the label names
-			sanitizedNames, err := validation.SanitizeLabelNames(labelNames)
-			if err != nil {
-				return nil, connect.NewError(connect.CodeInvalidArgument, err)
-			}
-
-			// Update the original labels with sanitized names
-			for i, label := range seriesLabel.Labels {
-				if i < len(sanitizedNames) {
-					label.Name = sanitizedNames[i]
-				}
-			}
-		}
-	}
-
-	return connect.NewResponse(&querierv1.SeriesResponse{LabelsSet: seriesLabels}), nil
+	return connect.NewResponse(&querierv1.SeriesResponse{LabelsSet: report.SeriesLabels.SeriesLabels}), nil
 }

@@ -146,10 +146,19 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
-		// We are permissive to all utf-8 label names at write; but backward compatible
-		// for clients that do not support utf-8 label names at read.
-		if !model.LabelName(l.Name).IsValid() {
-			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+l.Name+"'")
+		if origName, newName, ok := SanitizeLegacyLabelName(l.Name); ok && origName != newName {
+			var err error
+			ls, idx, err = handleSanitizedLabel(ls, idx, origName, newName)
+			if err != nil {
+				return err
+			}
+			lastLabelName = ""
+			if idx > 0 && idx <= len(ls) {
+				lastLabelName = ls[idx-1].Name
+			}
+			continue
+		} else if !ok {
+			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+origName+"'")
 		}
 		if !model.LabelValue(l.Value).IsValid() {
 			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label value '"+l.Value+"'")
@@ -164,37 +173,51 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 	return nil
 }
 
-// SanitizeLabelNames uses legacy logic to transform non utf-8 compliant label names
-// (if possible). It will error on duplicate label names post-sanitization.
-func SanitizeLabelNames(labelNames []string) ([]string, error) {
-	slices.Sort(labelNames)
-	var (
-		lastLabelName = ""
-	)
-	for idx, labelName := range labelNames {
-		if origName, newName, ok := sanitizeLabelName(labelName); ok && origName != newName {
-			labelNames[idx] = newName
-			lastLabelName = origName
-			continue
-		} else if !ok {
-			return nil, NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, labelName,
-				fmt.Sprintf("invalid label name '%s'. consider setting 'allow-utf8-labelnames=true' in the `Accept` header", origName))
-		}
+// handleSanitizedLabel handles the case where a label name is sanitized. It ensures that the label name is unique and fails if the value is distinct.
+func handleSanitizedLabel(ls []*typesv1.LabelPair, origIdx int, origName, newName string) ([]*typesv1.LabelPair, int, error) {
+	newLabel := &typesv1.LabelPair{Name: newName, Value: ls[origIdx].Value}
 
-		if cmp := strings.Compare(lastLabelName, labelName); cmp == 0 {
-			return nil, NewErrorf(DuplicateLabelNames, DuplicateLabelNamesErrorMsg, lastLabelName, labelName)
+	// Create new slice without the original element
+	newSlice := make([]*typesv1.LabelPair, 0, len(ls))
+	newSlice = append(newSlice, ls[:origIdx]...)
+	newSlice = append(newSlice, ls[origIdx+1:]...)
+
+	insertIdx, found := slices.BinarySearchFunc(newSlice, newLabel,
+		func(a, b *typesv1.LabelPair) int {
+			return strings.Compare(a.Name, b.Name)
+		})
+
+	if found {
+		if newSlice[insertIdx].Value == newLabel.Value {
+			// Same name and value we are done and can just return newSlice
+			return newSlice, origIdx, nil
+		} else {
+			// Same name, different value - error
+			return nil, 0, NewErrorf(DuplicateLabelNames,
+				DuplicateLabelNamesAfterSanitizationErrorMsg,
+				phlaremodel.LabelPairsString(ls), newName, origName)
 		}
-		lastLabelName = labelName
 	}
 
-	return labelNames, nil
+	// Insert the new label at correct position
+	newSlice = slices.Insert(newSlice, insertIdx, newLabel)
+
+	finalIdx := insertIdx
+	if insertIdx >= origIdx {
+		finalIdx = origIdx
+	}
+
+	copy(ls, newSlice)
+	return ls[:len(newSlice)], finalIdx, nil
 }
 
-// sanitizeLabelName reports whether the label name is valid,
-// and returns the sanitized value.
+// SanitizeLegacyLabelName reports whether the label name is a valid legacy label name,
+// and returns the sanitized value. Legacy label names are non utf-8 and contain characters
+// [a-zA-Z0-9_-].
 //
-// The only change the function makes is replacing dots with underscores.
-func sanitizeLabelName(ln string) (old, sanitized string, ok bool) {
+//
+// The only sanitization the function makes is replacing dots with underscores.
+func SanitizeLegacyLabelName(ln string) (old, sanitized string, ok bool) {
 	if len(ln) == 0 {
 		return ln, ln, false
 	}

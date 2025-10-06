@@ -56,8 +56,6 @@ func ClientCapabilitiesGRPCMiddleware() grpc.UnaryServerInterceptor {
 		}
 
 		// Reuse existing HTTP header parsing
-		// TODO add metrics = # requests like this and # clients [need
-		//  labels for requests and clients/tenet and user agent(?)]
 		clientCapabilities, err := parseClientCapabilities(httpHeader)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)

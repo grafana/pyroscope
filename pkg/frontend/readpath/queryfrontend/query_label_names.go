@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -50,12 +51,16 @@ func (q *QueryFrontend) LabelNames(
 
 	labelNames := report.LabelNames.LabelNames
 	if capabilities, ok := featureflags.GetClientCapabilities(ctx); !ok || !capabilities.AllowUtf8LabelNames {
-		// Use legacy label name sanitization if utf8 label names not enabled
-		if labelNames, err := validation.SanitizeLabelNames(labelNames); err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		} else {
-			return connect.NewResponse(&typesv1.LabelNamesResponse{Names: labelNames}), nil
+		// Filter out label names not passing legacy validation if utf8 label names not enabled
+		filteredLabelNames := make([]string, 0, len(labelNames))
+		for _, labelName := range labelNames {
+			if _, _, ok := validation.SanitizeLegacyLabelName(labelName); !ok {
+				level.Debug(q.logger).Log("msg", "filtering out label", "label_name", labelName)
+				continue
+			}
+			filteredLabelNames = append(filteredLabelNames, labelName)
 		}
+		labelNames = filteredLabelNames
 	}
 
 	return connect.NewResponse(&typesv1.LabelNamesResponse{Names: labelNames}), nil

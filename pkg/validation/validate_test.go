@@ -123,7 +123,7 @@ func TestValidateLabels(t *testing.T) {
 				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 			},
 			expectedReason: DuplicateLabelNames,
-			expectedErr:    "profile with labels '{__name__=\"qux\", label.name=\"foo\", label.name=\"bar\", service_name=\"svc\"}' has duplicate label name: 'label.name'",
+			expectedErr:    "profile with labels '{__name__=\"qux\", label.name=\"bar\", label_name=\"foo\", service_name=\"svc\"}' has duplicate label name 'label_name' after label name sanitization from 'label.name'",
 		},
 		{
 			name: "duplicates once sanitized with matching values",
@@ -515,7 +515,7 @@ func TestValidateFlamegraphMaxNodes(t *testing.T) {
 	}
 }
 
-func Test_sanitizeLabelName(t *testing.T) {
+func Test_SanitizeLegacyLabelName(t *testing.T) {
 	tests := []struct {
 		Name          string
 		LabelName     string
@@ -746,170 +746,10 @@ func Test_sanitizeLabelName(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 
-			gotOld, gotSanitized, gotOk := sanitizeLabelName(tt.LabelName)
+			gotOld, gotSanitized, gotOk := SanitizeLegacyLabelName(tt.LabelName)
 			require.Equal(t, tt.WantOld, gotOld)
 			require.Equal(t, tt.WantSanitized, gotSanitized)
 			require.Equal(t, tt.WantOk, gotOk)
 		})
 	}
-}
-
-func Test_SanitizeLabelNames(t *testing.T) {
-	tests := []struct {
-		Name          string
-		LabelNames    []string
-		Want          []string
-		WantError     bool
-		WantErrorType Reason
-	}{
-		{
-			Name:       "empty slice returns empty slice",
-			LabelNames: []string{},
-			Want:       []string{},
-		},
-		{
-			Name:       "single valid label",
-			LabelNames: []string{"service"},
-			Want:       []string{"service"},
-		},
-		{
-			Name:       "multiple valid labels",
-			LabelNames: []string{"service", "environment", "version"},
-			Want:       []string{"environment", "service", "version"}, // sorted
-		},
-		{
-			Name:       "labels with dots get sanitized",
-			LabelNames: []string{"service.name", "app.version"},
-			Want:       []string{"app_version", "service_name"}, // sorted and sanitized
-		},
-		{
-			Name:       "mixed valid and sanitizable labels",
-			LabelNames: []string{"service", "app.version", "environment"},
-			Want:       []string{"app_version", "environment", "service"}, // sorted
-		},
-		{
-			Name:          "label with invalid characters causes error",
-			LabelNames:    []string{"service", "invalid-name"},
-			WantError:     true,
-			WantErrorType: InvalidLabels,
-		},
-		{
-			Name:          "label starting with number causes error",
-			LabelNames:    []string{"service", "123invalid"},
-			WantError:     true,
-			WantErrorType: InvalidLabels,
-		},
-		{
-			Name:          "empty label name causes error",
-			LabelNames:    []string{"service", ""},
-			WantError:     true,
-			WantErrorType: InvalidLabels,
-		},
-		{
-			Name:       "duplicate labels after sanitization - implementation allows this",
-			LabelNames: []string{"service_name", "service.name"},
-			Want:       []string{"service_name", "service_name"}, // Both become service_name but no error in current implementation
-		},
-		{
-			Name:          "duplicate original labels cause error",
-			LabelNames:    []string{"service", "service"},
-			WantError:     true,
-			WantErrorType: DuplicateLabelNames,
-		},
-		{
-			Name:       "complex valid case with mixed sanitization",
-			LabelNames: []string{"z_last", "a.first", "m_middle", "b.second"},
-			Want:       []string{"a_first", "b_second", "m_middle", "z_last"}, // sorted and sanitized
-		},
-		{
-			Name:          "label with space character",
-			LabelNames:    []string{"service name"},
-			WantError:     true,
-			WantErrorType: InvalidLabels,
-		},
-		{
-			Name:          "label with special characters",
-			LabelNames:    []string{"service@host"},
-			WantError:     true,
-			WantErrorType: InvalidLabels,
-		},
-		{
-			Name:       "single character labels",
-			LabelNames: []string{"a", "Z", "x"},
-			Want:       []string{"Z", "a", "x"}, // sorted
-		},
-		{
-			Name:       "labels with underscores",
-			LabelNames: []string{"_private", "public_"},
-			Want:       []string{"_private", "public_"}, // sorted
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.Name, func(t *testing.T) {
-			t.Parallel()
-
-			got, err := SanitizeLabelNames(tt.LabelNames)
-
-			if tt.WantError {
-				require.Error(t, err)
-				var validationErr *Error
-				require.ErrorAs(t, err, &validationErr)
-				require.Equal(t, tt.WantErrorType, validationErr.Reason)
-				return
-			}
-
-			require.NoError(t, err)
-			require.Equal(t, tt.Want, got)
-		})
-	}
-}
-
-func Test_SanitizeLabelNames_ErrorMessages(t *testing.T) {
-	tests := []struct {
-		Name              string
-		LabelNames        []string
-		WantErrorContains string
-	}{
-		{
-			Name:              "invalid label error contains capability suggestion",
-			LabelNames:        []string{"invalid-name"},
-			WantErrorContains: "consider setting 'allow-utf8-labelnames=true' in the `Accept` header",
-		},
-		{
-			Name:              "duplicate label error contains both names",
-			LabelNames:        []string{"service", "service"},
-			WantErrorContains: "service",
-		},
-		{
-			Name:              "invalid character error shows label name",
-			LabelNames:        []string{"service@host"},
-			WantErrorContains: "invalid label name 'service@host'",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.Name, func(t *testing.T) {
-			t.Parallel()
-
-			_, err := SanitizeLabelNames(tt.LabelNames)
-			require.Error(t, err)
-			require.Contains(t, err.Error(), tt.WantErrorContains)
-		})
-	}
-}
-
-func Test_SanitizeLabelNames_PreservesOriginalSlice(t *testing.T) {
-	// Test that the original slice is not modified
-	original := []string{"service.name", "app.version"}
-	originalCopy := make([]string, len(original))
-	copy(originalCopy, original)
-
-	result, err := SanitizeLabelNames(original)
-
-	require.NoError(t, err)
-	require.Equal(t, []string{"app_version", "service_name"}, result)
-	// Original slice should be modified since the function sorts and modifies in place
-	// This is the actual behavior based on the implementation
-	require.NotEqual(t, originalCopy, original)
 }

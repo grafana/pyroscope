@@ -32,8 +32,6 @@ export async function request(
     headers = {
       ...config?.headers,
       ...(tenantID && { 'X-Scope-OrgID': tenantID }),
-      // Specify client capabilities in `Accept` header
-      Accept: 'application/json; allow-utf8-labelnames=true',
     };
   }
 
@@ -55,8 +53,6 @@ export async function downloadWithOrgID(
     headers = {
       ...config?.headers,
       ...(tenantID && { 'X-Scope-OrgID': tenantID }),
-      // Specify client capabilities in `Accept` header
-      Accept: 'application/json; allow-utf8-labelnames=true',
     };
   }
 
