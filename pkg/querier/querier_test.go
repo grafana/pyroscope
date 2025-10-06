@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -478,6 +479,7 @@ func Test_Series_WithLabelNameFiltering(t *testing.T) {
 			foobarlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "bar")
 
 			var capturedLabelNames []string
+			var capturedMutex sync.Mutex
 
 			ingesterResponse := connect.NewResponse(&ingestv1.SeriesResponse{LabelsSet: []*typesv1.Labels{
 				{Labels: foobarlabels.Labels()},
@@ -497,6 +499,8 @@ func Test_Series_WithLabelNameFiltering(t *testing.T) {
 
 					q.On("Series", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 						req := args.Get(1).(*connect.Request[ingestv1.SeriesRequest])
+						capturedMutex.Lock()
+						defer capturedMutex.Unlock()
 						capturedLabelNames = req.Msg.LabelNames
 					}).Return(ingesterResponse, nil)
 
@@ -527,8 +531,11 @@ func Test_Series_WithLabelNameFiltering(t *testing.T) {
 			require.NoError(t, err)
 
 			// Verify that the label names were filtered correctly before being sent to ingester
-			require.Equal(t, tc.expectedLabelNames, capturedLabelNames,
-				"Expected label names sent to ingester to be %v, but got %v", tc.expectedLabelNames, capturedLabelNames)
+			capturedMutex.Lock()
+			actualLabelNames := capturedLabelNames
+			capturedMutex.Unlock()
+			require.Equal(t, tc.expectedLabelNames, actualLabelNames,
+				"Expected label names sent to ingester to be %v, but got %v", tc.expectedLabelNames, actualLabelNames)
 		})
 	}
 }
