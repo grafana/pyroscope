@@ -214,12 +214,12 @@ spec:
             {{- if $hasV2 }}
             - name: data
               mountPath: /data-shared
-              subPath: .shared
+              subPath: {{ $values.persistence.shared.subPath }}
             {{- end }}
             {{- if $isMetastore }}
             - name: data
               mountPath: /data-metastore
-              subPath: .metastore
+              subPath: {{ $values.persistence.metastore.subPath }}
             {{- end }}
             {{- with $values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
