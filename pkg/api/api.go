@@ -42,7 +42,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/ingester"
 	"github.com/grafana/pyroscope/pkg/ingester/otlp"
 	"github.com/grafana/pyroscope/pkg/ingester/pyroscope"
-	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
@@ -294,7 +293,14 @@ func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
 	)
 }
 
-func (a *API) RegisterAdmin(ad *operations.Admin) {
+// AdminService is an interface for admin handlers (v1 and v2)
+type AdminService interface {
+	TenantsHandler(w http.ResponseWriter, r *http.Request)
+	BlocksHandler(w http.ResponseWriter, r *http.Request)
+	BlockHandler(w http.ResponseWriter, r *http.Request)
+}
+
+func (a *API) RegisterAdmin(ad AdminService) {
 	a.RegisterRoute("/ops/object-store/tenants", http.HandlerFunc(ad.TenantsHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks", http.HandlerFunc(ad.BlocksHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}", http.HandlerFunc(ad.BlockHandler), a.registerOptionsPublicAccess()...)

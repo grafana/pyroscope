@@ -29,6 +29,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/metrics"
 	"github.com/grafana/pyroscope/pkg/objstore"
+	operationsv2 "github.com/grafana/pyroscope/pkg/operations/v2"
 	"github.com/grafana/pyroscope/pkg/querybackend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/segmentwriter"
@@ -326,6 +327,19 @@ func (f *Pyroscope) initMetastoreAdmin() (services.Service, error) {
 	level.Info(f.logger).Log("msg", "registering metastore admin routes")
 	f.API.RegisterMetastoreAdmin(f.metastoreAdmin)
 	return f.metastoreAdmin.Service(), nil
+}
+
+func (f *Pyroscope) initAdminV2() (services.Service, error) {
+	level.Info(f.logger).Log("msg", "initializing v2 admin (metastore-based)")
+
+	a, err := operationsv2.NewAdmin(f.metastoreClient, f.logger, f.Cfg.PhlareDB.MaxBlockDuration)
+	if err != nil {
+		level.Info(f.logger).Log("msg", "failed to initialize v2 admin", "err", err)
+		return nil, nil
+	}
+	f.admin = a
+	f.API.RegisterAdmin(a)
+	return a, nil
 }
 
 func (f *Pyroscope) initQueryBackend() (services.Service, error) {
