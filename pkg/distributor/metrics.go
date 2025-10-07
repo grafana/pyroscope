@@ -36,6 +36,7 @@ type metrics struct {
 	receivedSamples                *prometheus.HistogramVec
 	receivedSamplesBytes           *prometheus.HistogramVec
 	receivedSymbolsBytes           *prometheus.HistogramVec
+	receivedMappings               *prometheus.HistogramVec
 	replicationFactor              prometheus.Gauge
 	receivedDecompressedBytesTotal *prometheus.HistogramVec
 }
@@ -94,6 +95,15 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			},
 			[]string{"type", "tenant"},
 		),
+		receivedMappings: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: "pyroscope",
+				Name:      "distributor_received_mappings",
+				Help:      "The number of mappings per profile received by the distributor.",
+				Buckets:   prometheus.ExponentialBucketsRange(1, 1000, 20),
+			},
+			[]string{"type", "tenant"},
+		),
 		receivedDecompressedBytesTotal: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: "pyroscope",
@@ -115,6 +125,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			m.receivedSamples,
 			m.receivedSamplesBytes,
 			m.receivedSymbolsBytes,
+			m.receivedMappings,
 			m.replicationFactor,
 			m.receivedDecompressedBytesTotal,
 		)
