@@ -274,7 +274,6 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 	maxTime := msToTime(meta.MaxTime).UTC()
 	duration := durationInMinutes(minTime, maxTime)
 
-	// Collect all unique labels from all datasets
 	labels := make(map[string]string)
 	for _, ds := range meta.Datasets {
 		pairs := metadata.LabelPairs(ds.Labels)
