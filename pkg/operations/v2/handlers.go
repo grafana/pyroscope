@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -35,6 +37,10 @@ func (h *Handlers) CreateIndexHandler() func(http.ResponseWriter, *http.Request)
 			httputil.Error(w, errors.Wrap(err, "failed to get tenants"))
 			return
 		}
+
+		slices.SortFunc(resp.TenantIds, func(a, b string) int {
+			return strings.Compare(a, b)
+		})
 
 		err = pageTemplates.indexTemplate.Execute(w, indexPageContent{
 			Users: resp.TenantIds,
