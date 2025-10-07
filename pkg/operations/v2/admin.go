@@ -3,7 +3,6 @@ package v2
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
