@@ -185,7 +185,6 @@ func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.R
 		// For single-tenant blocks (compaction level > 0), this will be the tenant ID
 		blockTenant := r.URL.Query().Get("block_tenant")
 
-		// Use GetBlockMetadata to retrieve the specific block
 		metadataResp, err := h.MetastoreClient.GetBlockMetadata(r.Context(), &metastorev1.GetBlockMetadataRequest{
 			Blocks: &metastorev1.BlockList{
 				Tenant: blockTenant,
@@ -249,9 +248,8 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 		}
 	}
 
-	// Parse datasets
 	datasets := make([]datasetDetails, 0, len(meta.Datasets))
-	for i, ds := range meta.Datasets {
+	for _, ds := range meta.Datasets {
 		tenantName := ""
 		if ds.Tenant >= 0 && int(ds.Tenant) < len(meta.StringTable) {
 			tenantName = meta.StringTable[ds.Tenant]
@@ -261,7 +259,6 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 			datasetName = meta.StringTable[ds.Name]
 		}
 
-		// Parse labels for this dataset
 		dsLabels := make(map[string]string)
 		pairs := metadata.LabelPairs(ds.Labels)
 		for pairs.Next() {
@@ -283,14 +280,23 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 			}
 		}
 
+		var profilesSize, indexSize, symbolsSize uint64
+		if len(ds.TableOfContents) >= 3 {
+			profilesSize = ds.TableOfContents[1] - ds.TableOfContents[0]
+			indexSize = ds.TableOfContents[2] - ds.TableOfContents[1]
+			symbolsSize = (ds.TableOfContents[0] + ds.Size) - ds.TableOfContents[2]
+		}
+
 		datasets = append(datasets, datasetDetails{
-			Index:   i,
-			Tenant:  tenantName,
-			Name:    datasetName,
-			MinTime: msToTime(ds.MinTime).UTC().Format(time.RFC3339),
-			MaxTime: msToTime(ds.MaxTime).UTC().Format(time.RFC3339),
-			Size:    humanize.Bytes(ds.Size),
-			Labels:  dsLabels,
+			Tenant:       tenantName,
+			Name:         datasetName,
+			MinTime:      msToTime(ds.MinTime).UTC().Format(time.RFC3339),
+			MaxTime:      msToTime(ds.MaxTime).UTC().Format(time.RFC3339),
+			Size:         humanize.Bytes(ds.Size),
+			ProfilesSize: humanize.Bytes(profilesSize),
+			IndexSize:    humanize.Bytes(indexSize),
+			SymbolsSize:  humanize.Bytes(symbolsSize),
+			Labels:       dsLabels,
 		})
 	}
 
@@ -331,7 +337,6 @@ func (h *Handlers) CreateDatasetDetailsHandler() func(http.ResponseWriter, *http
 			datasetName = ""
 		}
 
-		// Get shard and block_tenant from query parameters (same as block details)
 		shardStr := r.URL.Query().Get("shard")
 		if shardStr == "" {
 			httputil.Error(w, errors.New("No shard provided"))
@@ -345,7 +350,6 @@ func (h *Handlers) CreateDatasetDetailsHandler() func(http.ResponseWriter, *http
 
 		blockTenant := r.URL.Query().Get("block_tenant")
 
-		// Use GetBlockMetadata to retrieve the specific block
 		metadataResp, err := h.MetastoreClient.GetBlockMetadata(r.Context(), &metastorev1.GetBlockMetadataRequest{
 			Blocks: &metastorev1.BlockList{
 				Tenant: blockTenant,
@@ -365,10 +369,8 @@ func (h *Handlers) CreateDatasetDetailsHandler() func(http.ResponseWriter, *http
 
 		blockMeta := metadataResp.Blocks[0]
 
-		// Convert the block metadata to get the dataset details
 		blockDetails := h.convertBlockMeta(blockMeta)
 
-		// Find dataset by name
 		var dataset *datasetDetails
 		for i := range blockDetails.Datasets {
 			if blockDetails.Datasets[i].Name == datasetName {

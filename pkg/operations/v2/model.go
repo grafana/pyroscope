@@ -55,13 +55,15 @@ type blockDetails struct {
 }
 
 type datasetDetails struct {
-	Index   int    // Index in the BlockMeta.Datasets array
-	Tenant  string
-	Name    string
-	MinTime string
-	MaxTime string
-	Size    string
-	Labels  map[string]string
+	Tenant       string
+	Name         string
+	MinTime      string
+	MaxTime      string
+	Size         string
+	ProfilesSize string
+	IndexSize    string
+	SymbolsSize  string
+	Labels       map[string]string
 }
 
 type blockGroup struct {
