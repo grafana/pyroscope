@@ -2548,6 +2548,24 @@ http:
 The `azure_storage_backend` block configures the connection to Azure object storage backend.
 
 ```yaml
+# Azure Active Directory tenant ID. If set alongside `client-id` and
+# `client-secret`, these values will be used for authentication via a client
+# secret credential.
+# CLI flag: -storage.azure.az-tenant-id
+[az_tenant_id: <string> | default = ""]
+
+# Azure Active Directory client ID. If set alongside `az-tenant-id` and
+# `client-secret`, these values will be used for authentication via a client
+# secret credential.
+# CLI flag: -storage.azure.client-id
+[client_id: <string> | default = ""]
+
+# Azure Active Directory client secret. If set alongside `az-tenant-id` and
+# `client-id`, these values will be used for authentication via a client secret
+# credential.
+# CLI flag: -storage.azure.client-secret
+[client_secret: <string> | default = ""]
+
 # Azure storage account name
 # CLI flag: -storage.azure.account-name
 [account_name: <string> | default = ""]
