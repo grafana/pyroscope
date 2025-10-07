@@ -298,12 +298,14 @@ type AdminService interface {
 	TenantsHandler(w http.ResponseWriter, r *http.Request)
 	BlocksHandler(w http.ResponseWriter, r *http.Request)
 	BlockHandler(w http.ResponseWriter, r *http.Request)
+	DatasetHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (a *API) RegisterAdmin(ad AdminService) {
 	a.RegisterRoute("/ops/object-store/tenants", http.HandlerFunc(ad.TenantsHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks", http.HandlerFunc(ad.BlocksHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}", http.HandlerFunc(ad.BlockHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/{dataset}", http.HandlerFunc(ad.DatasetHandler), a.registerOptionsPublicAccess()...)
 
 	a.indexPage.AddLinks(defaultWeight, "Admin", []IndexPageLink{
 		{Desc: "Object Storage Tenants & Blocks", Path: "/ops/object-store/tenants"},

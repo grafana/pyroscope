@@ -76,7 +76,7 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 			User:           tenantId,
 			Query:          query,
 			Now:            time.Now().UTC().Format(time.RFC3339),
-			SelectedBlocks: h.groupBlocks(metadataResp.Blocks, query),
+			SelectedBlocks: h.groupBlocks(metadataResp.Blocks),
 		})
 		if err != nil {
 			httputil.Error(w, err)
@@ -85,7 +85,7 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 	}
 }
 
-func (h *Handlers) groupBlocks(blocks []*metastorev1.BlockMeta, query *blockQuery) *blockListResult {
+func (h *Handlers) groupBlocks(blocks []*metastorev1.BlockMeta) *blockListResult {
 	blockGroupMap := make(map[time.Time]*blockGroup)
 	blockGroups := make([]*blockGroup, 0)
 
@@ -207,9 +207,11 @@ func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.R
 
 		blockDetails := h.convertBlockMeta(blockMeta)
 		err = pageTemplates.blockDetailsTemplate.Execute(w, blockDetailsPageContent{
-			User:  tenantId,
-			Block: blockDetails,
-			Now:   time.Now().UTC().Format(time.RFC3339),
+			User:        tenantId,
+			Block:       blockDetails,
+			Shard:       shard,
+			BlockTenant: blockTenant,
+			Now:         time.Now().UTC().Format(time.RFC3339),
 		})
 		if err != nil {
 			httputil.Error(w, err)
@@ -223,7 +225,6 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 	maxTime := msToTime(meta.MaxTime).UTC()
 	duration := durationInMinutes(minTime, maxTime)
 
-	// Collect all unique labels from all datasets
 	labels := make(map[string]string)
 	for _, ds := range meta.Datasets {
 		pairs := metadata.LabelPairs(ds.Labels)
@@ -250,7 +251,7 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 
 	// Parse datasets
 	datasets := make([]datasetDetails, 0, len(meta.Datasets))
-	for _, ds := range meta.Datasets {
+	for i, ds := range meta.Datasets {
 		tenantName := ""
 		if ds.Tenant >= 0 && int(ds.Tenant) < len(meta.StringTable) {
 			tenantName = meta.StringTable[ds.Tenant]
@@ -260,12 +261,36 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 			datasetName = meta.StringTable[ds.Name]
 		}
 
+		// Parse labels for this dataset
+		dsLabels := make(map[string]string)
+		pairs := metadata.LabelPairs(ds.Labels)
+		for pairs.Next() {
+			p := pairs.At()
+			for len(p) > 0 {
+				if len(p) >= 2 {
+					keyIdx := p[0]
+					valIdx := p[1]
+					if keyIdx >= 0 && int(keyIdx) < len(meta.StringTable) &&
+						valIdx >= 0 && int(valIdx) < len(meta.StringTable) {
+						key := meta.StringTable[keyIdx]
+						val := meta.StringTable[valIdx]
+						dsLabels[key] = val
+					}
+					p = p[2:]
+				} else {
+					break
+				}
+			}
+		}
+
 		datasets = append(datasets, datasetDetails{
+			Index:   i,
 			Tenant:  tenantName,
 			Name:    datasetName,
 			MinTime: msToTime(ds.MinTime).UTC().Format(time.RFC3339),
 			MaxTime: msToTime(ds.MaxTime).UTC().Format(time.RFC3339),
 			Size:    humanize.Bytes(ds.Size),
+			Labels:  dsLabels,
 		})
 	}
 
@@ -280,5 +305,94 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 		Size:              humanize.Bytes(meta.Size),
 		Labels:            labels,
 		Datasets:          datasets,
+	}
+}
+
+func (h *Handlers) CreateDatasetDetailsHandler() func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		tenantId := vars["tenant"]
+		if tenantId == "" {
+			httputil.Error(w, errors.New("No tenant id provided"))
+			return
+		}
+		blockId := vars["block"]
+		if blockId == "" {
+			httputil.Error(w, errors.New("No block id provided"))
+			return
+		}
+		datasetName := vars["dataset"]
+		if datasetName == "" {
+			httputil.Error(w, errors.New("No dataset name provided"))
+			return
+		}
+		// Handle special case for empty dataset name
+		if datasetName == "_empty" {
+			datasetName = ""
+		}
+
+		// Get shard and block_tenant from query parameters (same as block details)
+		shardStr := r.URL.Query().Get("shard")
+		if shardStr == "" {
+			httputil.Error(w, errors.New("No shard provided"))
+			return
+		}
+		var shard uint32
+		if _, err := fmt.Sscanf(shardStr, "%d", &shard); err != nil {
+			httputil.Error(w, errors.Wrap(err, "invalid shard parameter"))
+			return
+		}
+
+		blockTenant := r.URL.Query().Get("block_tenant")
+
+		// Use GetBlockMetadata to retrieve the specific block
+		metadataResp, err := h.MetastoreClient.GetBlockMetadata(r.Context(), &metastorev1.GetBlockMetadataRequest{
+			Blocks: &metastorev1.BlockList{
+				Tenant: blockTenant,
+				Shard:  shard,
+				Blocks: []string{blockId},
+			},
+		})
+		if err != nil {
+			httputil.Error(w, errors.Wrap(err, "failed to get block metadata"))
+			return
+		}
+
+		if len(metadataResp.Blocks) == 0 {
+			httputil.Error(w, errors.New("Block not found"))
+			return
+		}
+
+		blockMeta := metadataResp.Blocks[0]
+
+		// Convert the block metadata to get the dataset details
+		blockDetails := h.convertBlockMeta(blockMeta)
+
+		// Find dataset by name
+		var dataset *datasetDetails
+		for i := range blockDetails.Datasets {
+			if blockDetails.Datasets[i].Name == datasetName {
+				dataset = &blockDetails.Datasets[i]
+				break
+			}
+		}
+
+		if dataset == nil {
+			httputil.Error(w, errors.New("Dataset not found"))
+			return
+		}
+
+		err = pageTemplates.datasetDetailsTemplate.Execute(w, datasetDetailsPageContent{
+			User:        tenantId,
+			BlockID:     blockId,
+			Shard:       shard,
+			BlockTenant: blockTenant,
+			Dataset:     dataset,
+			Now:         time.Now().UTC().Format(time.RFC3339),
+		})
+		if err != nil {
+			httputil.Error(w, err)
+			return
+		}
 	}
 }

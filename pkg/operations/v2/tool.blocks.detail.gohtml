@@ -63,18 +63,10 @@
                     <td>{{ .Block.Size }}</td>
                 </tr>
                 <tr>
-                    <td>Labels</td>
-                    <td>
-                        {{ range $k, $v := .Block.Labels }}
-                            <p>{{ $k }}: {{ $v }}</p>
-                        {{ end }}
-                    </td>
-                </tr>
-                <tr>
                     <td>Datasets</td>
                     <td>
                         {{ if .Block.Datasets }}
-                            <table class="table table-sm">
+                            <table class="table table-sm table-hover">
                                 <thead>
                                     <tr>
                                         <th>Tenant</th>
@@ -82,16 +74,20 @@
                                         <th>Min Time</th>
                                         <th>Max Time</th>
                                         <th>Size</th>
+                                        <th>Labels</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {{ range $ds := .Block.Datasets }}
                                         <tr>
                                             <td class="font-monospace small">{{ $ds.Tenant }}</td>
-                                            <td class="font-monospace small">{{ $ds.Name }}</td>
+                                            <td class="font-monospace small">
+                                                <a href="{{ $.Block.ID }}/datasets/{{ if $ds.Name }}{{ $ds.Name }}{{ else }}_empty{{ end }}?shard={{ $.Shard }}&block_tenant={{ $.BlockTenant }}">{{ if $ds.Name }}{{ $ds.Name }}{{ else }}<em>(empty)</em>{{ end }}</a>
+                                            </td>
                                             <td class="font-monospace small">{{ $ds.MinTime }}</td>
                                             <td class="font-monospace small">{{ $ds.MaxTime }}</td>
                                             <td class="font-monospace small">{{ $ds.Size }}</td>
+                                            <td class="font-monospace small">{{ len $ds.Labels }} labels</td>
                                         </tr>
                                     {{ end }}
                                 </tbody>

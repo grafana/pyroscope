@@ -44,3 +44,7 @@ func (a *Admin) BlocksHandler(w http.ResponseWriter, r *http.Request) {
 func (a *Admin) BlockHandler(w http.ResponseWriter, r *http.Request) {
 	a.handlers.CreateBlockDetailsHandler()(w, r)
 }
+
+func (a *Admin) DatasetHandler(w http.ResponseWriter, r *http.Request) {
+	a.handlers.CreateDatasetDetailsHandler()(w, r)
+}

@@ -15,6 +15,9 @@ var blocksPageHtml string
 //go:embed tool.blocks.detail.gohtml
 var blockDetailsPageHtml string
 
+//go:embed tool.blocks.dataset.gohtml
+var datasetDetailsPageHtml string
+
 type indexPageContent struct {
 	Users []string
 	Now   string
@@ -28,15 +31,27 @@ type blockListPageContent struct {
 }
 
 type blockDetailsPageContent struct {
-	User  string
-	Block *blockDetails
-	Now   string
+	User        string
+	Block       *blockDetails
+	Shard       uint32
+	BlockTenant string
+	Now         string
+}
+
+type datasetDetailsPageContent struct {
+	User        string
+	BlockID     string
+	Shard       uint32
+	BlockTenant string
+	Dataset     *datasetDetails
+	Now         string
 }
 
 type templates struct {
-	indexTemplate        *template.Template
-	blocksTemplate       *template.Template
-	blockDetailsTemplate *template.Template
+	indexTemplate          *template.Template
+	blocksTemplate         *template.Template
+	blockDetailsTemplate   *template.Template
+	datasetDetailsTemplate *template.Template
 }
 
 var pageTemplates = initTemplates()
@@ -57,10 +72,13 @@ func initTemplates() *templates {
 	template.Must(blocksTemplate.Parse(blocksPageHtml))
 	blockDetailsTemplate := template.New("block-details")
 	template.Must(blockDetailsTemplate.Parse(blockDetailsPageHtml))
+	datasetDetailsTemplate := template.New("dataset-details")
+	template.Must(datasetDetailsTemplate.Parse(datasetDetailsPageHtml))
 	t := &templates{
-		indexTemplate:        indexTemplate,
-		blocksTemplate:       blocksTemplate,
-		blockDetailsTemplate: blockDetailsTemplate,
+		indexTemplate:          indexTemplate,
+		blocksTemplate:         blocksTemplate,
+		blockDetailsTemplate:   blockDetailsTemplate,
+		datasetDetailsTemplate: datasetDetailsTemplate,
 	}
 	return t
 }
