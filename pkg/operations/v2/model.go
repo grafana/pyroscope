@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/grafana/pyroscope/pkg/operations"
 )
 
 type blockQuery struct {
@@ -21,12 +23,12 @@ func readQuery(r *http.Request) *blockQuery {
 	if queryFrom == "" {
 		queryFrom = "now-24h"
 	}
-	parsedFrom, _ := parseTime(queryFrom)
+	parsedFrom, _ := operations.ParseTime(queryFrom)
 	queryTo := r.URL.Query().Get("queryTo")
 	if queryTo == "" {
 		queryTo = "now"
 	}
-	parsedTo, _ := parseTime(queryTo)
+	parsedTo, _ := operations.ParseTime(queryTo)
 	view := r.URL.Query().Get("view")
 	if view == "" {
 		view = "table"
