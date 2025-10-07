@@ -17,9 +17,9 @@ jobs:
       id-token: write
     runs-on: ubuntu-x64-small
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.0.0
         with:
           persist-credentials: false
-      - uses: grafana/writers-toolkit/publish-technical-documentation@ce30c506bd39809c6273af4492da352df0e9cbbe
+      - uses: grafana/writers-toolkit/publish-technical-documentation@b51e92f99d145614bf6763c7c4f1920a03124693
         with:
           website_directory: content/docs/pyroscope/next
