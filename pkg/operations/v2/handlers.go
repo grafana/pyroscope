@@ -224,30 +224,6 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 	maxTime := msToTime(meta.MaxTime).UTC()
 	duration := durationInMinutes(minTime, maxTime)
 
-	labels := make(map[string]string)
-	for _, ds := range meta.Datasets {
-		pairs := metadata.LabelPairs(ds.Labels)
-		for pairs.Next() {
-			p := pairs.At()
-			for len(p) > 0 {
-				if len(p) >= 2 {
-					keyIdx := p[0]
-					valIdx := p[1]
-					if keyIdx >= 0 && int(keyIdx) < len(meta.StringTable) &&
-						valIdx >= 0 && int(valIdx) < len(meta.StringTable) {
-						key := meta.StringTable[keyIdx]
-						val := meta.StringTable[valIdx]
-						// Store the label (later occurrences will overwrite earlier ones)
-						labels[key] = val
-					}
-					p = p[2:]
-				} else {
-					break
-				}
-			}
-		}
-	}
-
 	datasets := make([]datasetDetails, 0, len(meta.Datasets))
 	for _, ds := range meta.Datasets {
 		tenantName := ""
@@ -259,10 +235,11 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 			datasetName = meta.StringTable[ds.Name]
 		}
 
-		dsLabels := make(map[string]string)
+		var labelSets []labelSet
 		pairs := metadata.LabelPairs(ds.Labels)
 		for pairs.Next() {
 			p := pairs.At()
+			var currentSet labelSet
 			for len(p) > 0 {
 				if len(p) >= 2 {
 					keyIdx := p[0]
@@ -271,12 +248,15 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 						valIdx >= 0 && int(valIdx) < len(meta.StringTable) {
 						key := meta.StringTable[keyIdx]
 						val := meta.StringTable[valIdx]
-						dsLabels[key] = val
+						currentSet.Pairs = append(currentSet.Pairs, labelPair{Key: key, Value: val})
 					}
 					p = p[2:]
 				} else {
 					break
 				}
+			}
+			if len(currentSet.Pairs) > 0 {
+				labelSets = append(labelSets, currentSet)
 			}
 		}
 
@@ -296,7 +276,7 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 			ProfilesSize: humanize.Bytes(profilesSize),
 			IndexSize:    humanize.Bytes(indexSize),
 			SymbolsSize:  humanize.Bytes(symbolsSize),
-			Labels:       dsLabels,
+			LabelSets:    labelSets,
 		})
 	}
 
@@ -309,7 +289,6 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 		Shard:             meta.Shard,
 		CompactionLevel:   meta.CompactionLevel,
 		Size:              humanize.Bytes(meta.Size),
-		Labels:            labels,
 		Datasets:          datasets,
 	}
 }
@@ -327,7 +306,7 @@ func (h *Handlers) CreateDatasetDetailsHandler() func(http.ResponseWriter, *http
 			httputil.Error(w, errors.New("No block id provided"))
 			return
 		}
-		datasetName := vars["dataset"]
+		datasetName := r.URL.Query().Get("dataset")
 		if datasetName == "" {
 			httputil.Error(w, errors.New("No dataset name provided"))
 			return

@@ -62,44 +62,39 @@
                     <td>Size</td>
                     <td>{{ .Block.Size }}</td>
                 </tr>
-                <tr>
-                    <td>Datasets</td>
-                    <td>
-                        {{ if .Block.Datasets }}
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Tenant</th>
-                                        <th>Size</th>
-                                        <th>Profiles Size</th>
-                                        <th>TSDB Index Size</th>
-                                        <th>Symbols Size</th>
-                                        <th>Labels</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {{ range $ds := .Block.Datasets }}
-                                        <tr>
-                                            <td class="font-monospace small">
-                                                <a href="{{ $.Block.ID }}/datasets/{{ if $ds.Name }}{{ $ds.Name }}{{ else }}_empty{{ end }}?shard={{ $.Shard }}&block_tenant={{ $.BlockTenant }}">{{ if $ds.Name }}{{ $ds.Name }}{{ else }}<em>(empty)</em>{{ end }}</a>
-                                            </td>
-                                            <td class="font-monospace small">{{ $ds.Tenant }}</td>
-                                            <td class="font-monospace small">{{ $ds.Size }}</td>
-                                            <td class="font-monospace small">{{ $ds.ProfilesSize }}</td>
-                                            <td class="font-monospace small">{{ $ds.IndexSize }}</td>
-                                            <td class="font-monospace small">{{ $ds.SymbolsSize }}</td>
-                                            <td class="font-monospace small">{{ len $ds.Labels }} labels</td>
-                                        </tr>
-                                    {{ end }}
-                                </tbody>
-                            </table>
-                        {{ else }}
-                            <p>No datasets</p>
-                        {{ end }}
-                    </td>
-                </tr>
             </table>
+
+            <h4 class="mt-4">Datasets</h4>
+            {{ if .Block.Datasets }}
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Tenant</th>
+                            <th class="text-end">Total Size</th>
+                            <th class="text-end">Profiles Size</th>
+                            <th class="text-end">TSDB Index Size</th>
+                            <th class="text-end">Symbols Size</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range $ds := .Block.Datasets }}
+                            <tr>
+                                <td class="font-monospace small">
+                                    <a href="{{ $.Block.ID }}/datasets?dataset={{ if $ds.Name }}{{ $ds.Name }}{{ else }}_empty{{ end }}&shard={{ $.Shard }}&block_tenant={{ $.BlockTenant }}">{{ if $ds.Name }}{{ $ds.Name }}{{ else }}<em>(empty)</em>{{ end }}</a>
+                                </td>
+                                <td class="font-monospace small">{{ $ds.Tenant }}</td>
+                                <td class="font-monospace small text-end">{{ $ds.Size }}</td>
+                                <td class="font-monospace small text-end">{{ $ds.ProfilesSize }}</td>
+                                <td class="font-monospace small text-end">{{ $ds.IndexSize }}</td>
+                                <td class="font-monospace small text-end">{{ $ds.SymbolsSize }}</td>
+                            </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            {{ else }}
+                <p>No datasets</p>
+            {{ end }}
         </div>
     </div>
 </main>

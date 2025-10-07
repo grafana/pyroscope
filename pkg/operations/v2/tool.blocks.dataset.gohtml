@@ -20,14 +20,14 @@
                 <h3>Bucket Blocks Explorer (v2): Dataset Details</h3>
             </div>
             <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
-                <a href="../../../../tenants">
+                <a href="/ops/object-store/tenants">
                     <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
                 </a>
             </div>
         </div>
         <div class="row my-3">
             <p>
-                <a href="../../../../tenants/{{ .User }}/blocks/{{ .BlockID }}?shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to block</a>
+                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}?shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to block</a>
             </p>
             <table class="table">
                 <tr>
@@ -73,23 +73,17 @@
                 <tr>
                     <td>Labels</td>
                     <td>
-                        {{ if .Dataset.Labels }}
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Key</th>
-                                        <th>Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {{ range $k, $v := .Dataset.Labels }}
-                                        <tr>
-                                            <td class="font-monospace small">{{ $k }}</td>
-                                            <td class="font-monospace small">{{ $v }}</td>
-                                        </tr>
-                                    {{ end }}
-                                </tbody>
-                            </table>
+                        {{ if .Dataset.LabelSets }}
+                            {{ range $set := .Dataset.LabelSets }}
+                                <div class="font-monospace small mb-1">
+                                    {
+                                    {{- range $i, $pair := $set.Pairs -}}
+                                        {{- if $i }}, {{ end -}}
+                                        {{ $pair.Key }}: {{ $pair.Value }}
+                                    {{- end -}}
+                                    }
+                                </div>
+                            {{ end }}
                         {{ else }}
                             <p>No labels</p>
                         {{ end }}

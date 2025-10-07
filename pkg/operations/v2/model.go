@@ -49,9 +49,17 @@ type blockDetails struct {
 	Shard             uint32
 	CompactionLevel   uint32
 	Size              string
-	Labels            map[string]string
 	Datasets          []datasetDetails
 	BlockTenant       string // Empty for multi-tenant blocks (compaction level 0)
+}
+
+type labelPair struct {
+	Key   string
+	Value string
+}
+
+type labelSet struct {
+	Pairs []labelPair
 }
 
 type datasetDetails struct {
@@ -63,7 +71,7 @@ type datasetDetails struct {
 	ProfilesSize string
 	IndexSize    string
 	SymbolsSize  string
-	Labels       map[string]string
+	LabelSets    []labelSet
 }
 
 type blockGroup struct {

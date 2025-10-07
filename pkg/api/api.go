@@ -20,8 +20,9 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
-	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/public"
+
+	"github.com/grafana/pyroscope/pkg/validation"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/capabilities/v1/capabilitiesv1connect"
@@ -305,7 +306,7 @@ func (a *API) RegisterAdmin(ad AdminService) {
 	a.RegisterRoute("/ops/object-store/tenants", http.HandlerFunc(ad.TenantsHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks", http.HandlerFunc(ad.BlocksHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}", http.HandlerFunc(ad.BlockHandler), a.registerOptionsPublicAccess()...)
-	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/{dataset}", http.HandlerFunc(ad.DatasetHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets", http.HandlerFunc(ad.DatasetHandler), a.registerOptionsPublicAccess()...)
 
 	a.indexPage.AddLinks(defaultWeight, "Admin", []IndexPageLink{
 		{Desc: "Object Storage Tenants & Blocks", Path: "/ops/object-store/tenants"},
