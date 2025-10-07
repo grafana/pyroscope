@@ -3,7 +3,6 @@ package v2
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
@@ -15,13 +14,12 @@ type Admin struct {
 	handlers *Handlers
 }
 
-func NewAdmin(metastoreClient MetastoreClient, logger log.Logger, maxBlockDuration time.Duration) (*Admin, error) {
+func NewAdmin(metastoreClient MetastoreClient, logger log.Logger) (*Admin, error) {
 	a := &Admin{
 		logger: logger,
 		handlers: &Handlers{
-			Logger:           logger,
-			MetastoreClient:  metastoreClient,
-			MaxBlockDuration: maxBlockDuration,
+			Logger:          logger,
+			MetastoreClient: metastoreClient,
 		},
 	}
 	a.Service = services.NewBasicService(nil, a.running, nil)
