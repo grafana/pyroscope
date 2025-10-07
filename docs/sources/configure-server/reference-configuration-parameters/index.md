@@ -2548,6 +2548,24 @@ http:
 The `azure_storage_backend` block configures the connection to Azure object storage backend.
 
 ```yaml
+# Azure Active Directory tenant ID. If set alongside `client-id` and
+# `client-secret`, these values will be used for authentication via a client
+# secret credential.
+# CLI flag: -storage.azure.az-tenant-id
+[az_tenant_id: <string> | default = ""]
+
+# Azure Active Directory client ID. If set alongside `az-tenant-id` and
+# `client-secret`, these values will be used for authentication via a client
+# secret credential.
+# CLI flag: -storage.azure.client-id
+[client_id: <string> | default = ""]
+
+# Azure Active Directory client secret. If set alongside `az-tenant-id` and
+# `client-id`, these values will be used for authentication via a client secret
+# credential.
+# CLI flag: -storage.azure.client-secret
+[client_secret: <string> | default = ""]
+
 # Azure storage account name
 # CLI flag: -storage.azure.account-name
 [account_name: <string> | default = ""]
@@ -2556,18 +2574,6 @@ The `azure_storage_backend` block configures the connection to Azure object stor
 # authentication instead.
 # CLI flag: -storage.azure.account-key
 [account_key: <string> | default = ""]
-
-# Azure Active Directory tenant ID. If set alongside client ID and client secret,
-# a client secret credential will be used to authenticate.
-[az_tenant_id: <string> | default = ""]
-
-# Azure Active Directory client ID. If set alongside Azure tenant ID and client secret,
-# a client secret credential will be used to authenticate.
-[client_id: <string> | default = ""]
-
-# Azure Active Directory client secret. If set alongside Azure tenant ID and client ID,
-# a client secret credential will be used to authenticate.
-[client_secret: <string> | default = ""]
 
 # If `connection-string` is set, the value of `endpoint-suffix` will not be
 # used. Use this method over `account-key` if you need to authenticate via a SAS
