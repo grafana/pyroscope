@@ -190,7 +190,6 @@ func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.R
 		// For single-tenant blocks (compaction level > 0), this will be the tenant ID
 		blockTenant := r.URL.Query().Get("block_tenant")
 
-		// Use GetBlockMetadata to retrieve the specific block
 		metadataResp, err := h.MetastoreClient.GetBlockMetadata(r.Context(), &metastorev1.GetBlockMetadataRequest{
 			Blocks: &metastorev1.BlockList{
 				Tenant: blockTenant,
@@ -298,7 +297,6 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 		}
 	}
 
-	// Parse datasets
 	datasets := make([]datasetDetails, 0, len(meta.Datasets))
 	for _, ds := range meta.Datasets {
 		datasets = append(datasets, h.convertDataset(ds, meta.StringTable))
