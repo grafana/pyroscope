@@ -273,30 +273,6 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 	maxTime := msToTime(meta.MaxTime).UTC()
 	duration := durationInMinutes(minTime, maxTime)
 
-	labels := make(map[string]string)
-	for _, ds := range meta.Datasets {
-		pairs := metadata.LabelPairs(ds.Labels)
-		for pairs.Next() {
-			p := pairs.At()
-			for len(p) > 0 {
-				if len(p) >= 2 {
-					keyIdx := p[0]
-					valIdx := p[1]
-					if keyIdx >= 0 && int(keyIdx) < len(meta.StringTable) &&
-						valIdx >= 0 && int(valIdx) < len(meta.StringTable) {
-						key := meta.StringTable[keyIdx]
-						val := meta.StringTable[valIdx]
-						// Store the label (later occurrences will overwrite earlier ones)
-						labels[key] = val
-					}
-					p = p[2:]
-				} else {
-					break
-				}
-			}
-		}
-	}
-
 	datasets := make([]datasetDetails, 0, len(meta.Datasets))
 	for _, ds := range meta.Datasets {
 		datasets = append(datasets, h.convertDataset(ds, meta.StringTable))
@@ -311,7 +287,6 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 		Shard:             meta.Shard,
 		CompactionLevel:   meta.CompactionLevel,
 		Size:              humanize.Bytes(meta.Size),
-		Labels:            labels,
 		Datasets:          datasets,
 	}
 }
