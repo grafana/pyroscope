@@ -1,0 +1,12 @@
+diff --git a/pkg/distributor/distributor.go b/pkg/distributor/distributor.go
+index 35a7e97..NewSHA 100644
+--- a/pkg/distributor/distributor.go
++++ b/pkg/distributor/distributor.go
+@@ -533,6 +533,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Pro
+ 	symbolsSize, samplesSize := profileSizeBytes(p.Profile)
+ 	d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))
+ 	d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(float64(symbolsSize))
++	d.metrics.receivedMappings.WithLabelValues(profName, tenantID).Observe(float64(len(p.Mapping)))
+ 
+ 	// Normalisation is quite an expensive operation,
+ 	// therefore it should be done after the rate limit check.
