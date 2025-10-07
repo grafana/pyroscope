@@ -33,8 +33,8 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 // RegisterFlagsWithPrefix registers the flags for Azure storage
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.AzTenantID, prefix+"azure.az-tenant-id", "", "Azure Active Directory tenant ID. If set alongside `client-id` and `client-secret`, these values will be used for authentication via a client secret credential.")
-	f.StringVar(&cfg.ClientID, prefix+"azure.client-id", "", "Azure Active Directory Client ID. If set alongside `az-tenant-id` and `client-secret`, these values will be used for authentication via a client secret credential.")
-	f.Var(&cfg.ClientSecret, prefix+"azure.client-secret", "Azure Active Directory Client Secret. If set alongside `az-tenant-id` and `client-id`, these values will be used for authentication via a client secret credential.")
+	f.StringVar(&cfg.ClientID, prefix+"azure.client-id", "", "Azure Active Directory client ID. If set alongside `az-tenant-id` and `client-secret`, these values will be used for authentication via a client secret credential.")
+	f.Var(&cfg.ClientSecret, prefix+"azure.client-secret", "Azure Active Directory client secret. If set alongside `az-tenant-id` and `client-id`, these values will be used for authentication via a client secret credential.")
 	f.StringVar(&cfg.StorageAccountName, prefix+"azure.account-name", "", "Azure storage account name")
 	f.Var(&cfg.StorageAccountKey, prefix+"azure.account-key", "Azure storage account key. If unset, Azure managed identities will be used for authentication instead.")
 	f.Var(&cfg.StorageConnectionString, prefix+"azure.connection-string", "If `connection-string` is set, the value of `endpoint-suffix` will not be used. Use this method over `account-key` if you need to authenticate via a SAS token. Or if you use the Azurite emulator.")
