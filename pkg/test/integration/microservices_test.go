@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -129,7 +130,10 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 	}
 	defer func() {
 		pushCancel()
-		require.NoError(t, g.Wait())
+		err := g.Wait()
+		if !errors.Is(err, context.Canceled) {
+			require.NoError(t, g.Wait())
+		}
 	}()
 
 	// await compaction so tenant wide index is available
