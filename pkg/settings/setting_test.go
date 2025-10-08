@@ -430,11 +430,6 @@ func (s *fakeStore) Delete(ctx context.Context, tenantID string, name string, mo
 	return args.Error(0)
 }
 
-func (s *fakeStore) Flush(ctx context.Context) error {
-	args := s.Called(ctx)
-	return args.Error(0)
-}
-
 func (s *fakeStore) Close() error {
 	args := s.Called()
 	return args.Error(0)

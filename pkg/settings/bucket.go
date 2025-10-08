@@ -125,13 +125,6 @@ func (s *bucketStore) Delete(ctx context.Context, tenantID string, name string, 
 	return nil
 }
 
-func (s *bucketStore) Flush(ctx context.Context) error {
-	s.rw.Lock()
-	defer s.rw.Unlock()
-
-	return s.unsafeFlush(ctx)
-}
-
 func (s *bucketStore) Close() error {
 	return s.bucket.Close()
 }
