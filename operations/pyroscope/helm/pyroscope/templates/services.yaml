@@ -52,9 +52,15 @@ metadata:
   labels:
     {{- include "pyroscope.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
+  {{- if or .Values.serviceMonitor.enabled $values.service.headlessAnnotations }}
+  annotations:
     {{- if .Values.serviceMonitor.enabled }}
     prometheus.io/service-monitor: "false"
     {{- end }}
+    {{- with $values.service.headlessAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
 spec:
   type: ClusterIP
   clusterIP: None
