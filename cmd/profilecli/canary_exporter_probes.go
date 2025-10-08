@@ -19,6 +19,13 @@ import (
 	gprofile "github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	profilesv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
+	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
+	otlpprofiles "go.opentelemetry.io/proto/otlp/profiles/v1development"
+	resourcev1 "go.opentelemetry.io/proto/otlp/resource/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -71,6 +78,225 @@ func (ce *canaryExporter) testIngestProfile(ctx context.Context, now time.Time) 
 	}
 
 	level.Info(logger).Log("msg", "successfully ingested profile", "uuid", p.UUID.String())
+	return nil
+}
+
+// generateOTLPProfile creates an OTLP profile with the specified ingestion method label
+func (ce *canaryExporter) generateOTLPProfile(now time.Time, ingestionMethod string) (*profilesv1.ExportProfilesServiceRequest, error) {
+	// Sanitize the ingestion method label value by replacing "/" with "_"
+	sanitizedMethod := strings.ReplaceAll(ingestionMethod, "/", "_")
+
+	// Create the profile dictionary
+	dictionary := &otlpprofiles.ProfilesDictionary{
+		StringTable: []string{
+			"", // 0: empty string
+			"samples",          // 1
+			"count",            // 2
+			"func1",            // 3
+			"func2",            // 4
+			"ingestion_method", // 5
+			sanitizedMethod,    // 6
+		},
+		MappingTable: []*otlpprofiles.Mapping{
+			{}, // 0: empty mapping (required null entry)
+		},
+		FunctionTable: []*otlpprofiles.Function{
+			{NameStrindex: 0}, // 0: empty
+			{NameStrindex: 3}, // 1: func1
+			{NameStrindex: 4}, // 2: func2
+		},
+		LocationTable: []*otlpprofiles.Location{
+			{Line: []*otlpprofiles.Line{{FunctionIndex: 1}}}, // 0: func1
+			{Line: []*otlpprofiles.Line{{FunctionIndex: 2}}}, // 1: func2
+		},
+		StackTable: []*otlpprofiles.Stack{
+			{LocationIndices: []int32{}},     // 0: empty (required null entry)
+			{LocationIndices: []int32{1, 0}}, // 1: func2, func1 stack
+			{LocationIndices: []int32{0}},    // 2: func1 stack
+		},
+	}
+
+	// Create profile with two samples matching the original pprof profile
+	profile := &otlpprofiles.Profile{
+		TimeUnixNano: uint64(now.UnixNano()),
+		DurationNano: 0,
+		Period:       1,
+		SampleType: &otlpprofiles.ValueType{
+			TypeStrindex: 1, // "samples"
+			UnitStrindex: 2, // "count"
+		},
+		Sample: []*otlpprofiles.Sample{
+			{
+				// func1>func2 with value 10
+				StackIndex: 1, // stack_table[1]
+				Values:     []int64{10},
+			},
+			{
+				// func1 with value 20
+				StackIndex: 2, // stack_table[2]
+				Values:     []int64{20},
+			},
+		},
+	}
+
+	// Create the resource attributes
+	resourceAttrs := []*commonv1.KeyValue{
+		{
+			Key:   "service.name",
+			Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: canaryExporterServiceName}},
+		},
+		{
+			Key:   "job",
+			Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "canary-exporter"}},
+		},
+		{
+			Key:   "instance",
+			Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: ce.hostname}},
+		},
+		{
+			Key:   "ingestion_method",
+			Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: sanitizedMethod}},
+		},
+	}
+
+	// Create the OTLP request
+	req := &profilesv1.ExportProfilesServiceRequest{
+		Dictionary: dictionary,
+		ResourceProfiles: []*otlpprofiles.ResourceProfiles{
+			{
+				Resource: &resourcev1.Resource{
+					Attributes: resourceAttrs,
+				},
+				ScopeProfiles: []*otlpprofiles.ScopeProfiles{
+					{
+						Scope: &commonv1.InstrumentationScope{
+							Name: "pyroscope-canary-exporter",
+						},
+						Profiles: []*otlpprofiles.Profile{profile},
+					},
+				},
+			},
+		},
+	}
+
+	return req, nil
+}
+
+func (ce *canaryExporter) testIngestOTLPGrpc(ctx context.Context, now time.Time) error {
+	// Generate the OTLP profile with the appropriate ingestion method label
+	req, err := ce.generateOTLPProfile(now, "otlp/grpc")
+	if err != nil {
+		return fmt.Errorf("failed to generate OTLP profile: %w", err)
+	}
+
+	// Create gRPC connection
+	grpcAddr := strings.TrimPrefix(ce.params.URL, "http://")
+	grpcAddr = strings.TrimPrefix(grpcAddr, "https://")
+
+	conn, err := grpc.DialContext(ctx, grpcAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock())
+	if err != nil {
+		return fmt.Errorf("failed to connect to gRPC server: %w", err)
+	}
+	defer conn.Close()
+
+	// Create OTLP profiles service client
+	client := profilesv1.NewProfilesServiceClient(conn)
+
+	// Send the profile
+	_, err = client.Export(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to export OTLP profile via gRPC: %w", err)
+	}
+
+	level.Info(logger).Log("msg", "successfully ingested OTLP profile via gRPC")
+	return nil
+}
+
+func (ce *canaryExporter) testIngestOTLPHttpJson(ctx context.Context, now time.Time) error {
+	// Generate the OTLP profile with the appropriate ingestion method label
+	req, err := ce.generateOTLPProfile(now, "otlp/http/json")
+	if err != nil {
+		return fmt.Errorf("failed to generate OTLP profile: %w", err)
+	}
+
+	// Marshal to JSON
+	jsonData, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal OTLP profile to JSON: %w", err)
+	}
+
+	// Create HTTP request using the instrumented client
+	url := ce.params.URL + "/v1/profiles"
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create HTTP request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	// Send the request using the instrumented client (ce.params.client is set by doTrace)
+	resp, err := ce.params.client.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("failed to send HTTP request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read the body to ensure the transport is fully traced
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Check response status
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	level.Info(logger).Log("msg", "successfully ingested OTLP profile via HTTP/JSON")
+	return nil
+}
+
+func (ce *canaryExporter) testIngestOTLPHttpProtobuf(ctx context.Context, now time.Time) error {
+	// Generate the OTLP profile with the appropriate ingestion method label
+	req, err := ce.generateOTLPProfile(now, "otlp/http/protobuf")
+	if err != nil {
+		return fmt.Errorf("failed to generate OTLP profile: %w", err)
+	}
+
+	// Marshal to protobuf
+	protoData, err := proto.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal OTLP profile to protobuf: %w", err)
+	}
+
+	// Create HTTP request using the instrumented client
+	url := ce.params.URL + "/v1/profiles"
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(protoData))
+	if err != nil {
+		return fmt.Errorf("failed to create HTTP request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/x-protobuf")
+
+	// Send the request using the instrumented client (ce.params.client is set by doTrace)
+	resp, err := ce.params.client.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("failed to send HTTP request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read the body to ensure the transport is fully traced
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Check response status
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+	}
+
+	level.Info(logger).Log("msg", "successfully ingested OTLP profile via HTTP/Protobuf")
 	return nil
 }
 
