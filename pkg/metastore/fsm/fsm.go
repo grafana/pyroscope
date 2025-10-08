@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
+	"go.etcd.io/bbolt/errors"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 )
@@ -339,7 +340,7 @@ func (fsm *FSM) initRaftBucket(tx *bbolt.Tx) error {
 func (fsm *FSM) storeAppliedIndex(tx *bbolt.Tx, term, index uint64) error {
 	b := tx.Bucket(raftBucketName)
 	if b == nil {
-		return bbolt.ErrBucketNotFound
+		return errors.ErrBucketNotFound
 	}
 	v := make([]byte, 16)
 	binary.BigEndian.PutUint64(v[0:8], term)
@@ -354,7 +355,7 @@ var errAppliedIndexInvalid = fmt.Errorf("invalid applied index")
 func (fsm *FSM) loadAppliedIndex(tx *bbolt.Tx) error {
 	b := tx.Bucket(raftBucketName)
 	if b == nil {
-		return bbolt.ErrBucketNotFound
+		return errors.ErrBucketNotFound
 	}
 	v := b.Get(appliedIndexKey)
 	if len(v) < 16 {

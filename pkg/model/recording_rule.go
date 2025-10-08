@@ -102,7 +102,7 @@ func parseMatchers(matchers []string) ([]*labels.Matcher, error) {
 }
 
 func ValidateMetricName(name string) error {
-	if !prometheusmodel.IsValidMetricName(prometheusmodel.LabelValue(name)) {
+	if !prometheusmodel.UTF8Validation.IsValidMetricName(name) {
 		return fmt.Errorf("invalid metric name: %s", name)
 	}
 	if !strings.HasPrefix(name, metricNamePrefix) {
