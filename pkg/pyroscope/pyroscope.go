@@ -34,13 +34,14 @@ import (
 	"github.com/grafana/dskit/spanprofiler"
 	wwtracing "github.com/grafana/dskit/tracing"
 	"github.com/grafana/pyroscope-go"
-	"github.com/grafana/pyroscope/pkg/featureflags"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
 	"google.golang.org/grpc/health"
+
+	"github.com/grafana/pyroscope/pkg/featureflags"
 
 	"github.com/grafana/pyroscope/pkg/api"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
@@ -81,24 +82,24 @@ import (
 )
 
 type Config struct {
-	Target            flagext.StringSliceCSV `yaml:"target,omitempty"`
-	API               api.Config             `yaml:"api"`
-	Server            server.Config          `yaml:"server,omitempty"`
-	Distributor       distributor.Config     `yaml:"distributor,omitempty"`
-	Querier           querier.Config         `yaml:"querier,omitempty"`
-	Frontend          frontend.Config        `yaml:"frontend,omitempty"`
-	Worker            worker.Config          `yaml:"frontend_worker"`
-	LimitsConfig      validation.Limits      `yaml:"limits"`
-	QueryScheduler    scheduler.Config       `yaml:"query_scheduler"`
-	Ingester          ingester.Config        `yaml:"ingester,omitempty"`
-	StoreGateway      storegateway.Config    `yaml:"store_gateway,omitempty"`
-	MemberlistKV      memberlist.KVConfig    `yaml:"memberlist"`
-	PhlareDB          phlaredb.Config        `yaml:"pyroscopedb,omitempty"`
-	Tracing           tracing.Config         `yaml:"tracing"`
-	OverridesExporter exporter.Config        `yaml:"overrides_exporter"      doc:"hidden"`
-	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
-	Compactor         compactor.Config       `yaml:"compactor"`
-	TenantSettings    settings.Config        `yaml:"tenant_settings"`
+	Target            flagext.StringSliceCSV              `yaml:"target,omitempty"`
+	API               api.Config                          `yaml:"api"`
+	Server            server.Config                       `yaml:"server,omitempty"`
+	Distributor       distributor.Config                  `yaml:"distributor,omitempty"`
+	Querier           querier.Config                      `yaml:"querier,omitempty"`
+	Frontend          frontend.Config                     `yaml:"frontend,omitempty"`
+	Worker            worker.Config                       `yaml:"frontend_worker"`
+	LimitsConfig      validation.Limits                   `yaml:"limits"`
+	QueryScheduler    scheduler.Config                    `yaml:"query_scheduler"`
+	Ingester          ingester.Config                     `yaml:"ingester,omitempty"`
+	StoreGateway      storegateway.Config                 `yaml:"store_gateway,omitempty"`
+	MemberlistKV      memberlist.KVConfig                 `yaml:"memberlist"`
+	PhlareDB          phlaredb.Config                     `yaml:"pyroscopedb,omitempty"`
+	Tracing           tracing.Config                      `yaml:"tracing"`
+	OverridesExporter exporter.Config                     `yaml:"overrides_exporter"      doc:"hidden"`
+	RuntimeConfig     runtimeconfig.Config                `yaml:"runtime_config"`
+	Compactor         compactor.Config                    `yaml:"compactor"`
+	TenantSettings    settings.Config                     `yaml:"tenant_settings"`
 	ClientCapability  featureflags.ClientCapabilityConfig `yaml:"client_capability"`
 
 	Storage       StorageConfig       `yaml:"storage"`
