@@ -34,6 +34,7 @@ import (
 	"github.com/grafana/dskit/spanprofiler"
 	wwtracing "github.com/grafana/dskit/tracing"
 	"github.com/grafana/pyroscope-go"
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -98,6 +99,7 @@ type Config struct {
 	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
 	Compactor         compactor.Config       `yaml:"compactor"`
 	TenantSettings    settings.Config        `yaml:"tenant_settings"`
+	ClientCapability  featureflags.ClientCapabilityConfig `yaml:"client_capability"`
 
 	Storage       StorageConfig       `yaml:"storage"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
@@ -201,6 +203,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.API.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
+	c.ClientCapability.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.

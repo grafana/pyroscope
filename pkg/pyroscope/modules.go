@@ -467,7 +467,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware,
 		util.RecoveryInterceptorGRPC,
-		featureflags.ClientCapabilitiesGRPCMiddleware(),
+		featureflags.ClientCapabilitiesGRPCMiddleware(&f.Cfg.ClientCapability, f.logger),
 	)
 
 	if f.Cfg.V2 {
@@ -526,7 +526,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		httpMetric,
 		objstoreTracerMiddleware,
 		httputil.K6Middleware(),
-		featureflags.ClientCapabilitiesHttpMiddleware(),
+		featureflags.ClientCapabilitiesHttpMiddleware(&f.Cfg.ClientCapability, f.logger),
 	}
 	if f.Cfg.SelfProfiling.UseK6Middleware {
 		defaultHTTPMiddleware = append(defaultHTTPMiddleware, httputil.K6Middleware())
