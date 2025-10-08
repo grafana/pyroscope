@@ -1228,7 +1228,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
 			require.NoError(t, err)
 			var series []*distributormodel.ProfileSeries
-			series, err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForIngester)
+			series, err = d.visitSampleSeries(context.Background(), tc.pushReq, visitSampleSeriesForIngester)
 			assert.Equal(t, tc.expectBytesDropped, float64(tc.pushReq.DiscardedBytesRelabeling))
 			assert.Equal(t, tc.expectProfilesDropped, float64(tc.pushReq.DiscardedProfilesRelabeling))
 
@@ -1786,7 +1786,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 
 			require.NoError(t, err)
 			var series []*distributormodel.ProfileSeries
-			series, err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForSegmentWriter)
+			series, err = d.visitSampleSeries(context.Background(), tc.pushReq, visitSampleSeriesForSegmentWriter)
 			assert.Equal(t, tc.expectBytesDropped, float64(tc.pushReq.DiscardedBytesRelabeling))
 			assert.Equal(t, tc.expectProfilesDropped, float64(tc.pushReq.DiscardedProfilesRelabeling))
 
