@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -17,7 +18,7 @@ func (q *QueryFrontend) filterLabelNames(
 	ctx context.Context,
 	c *connect.Request[querierv1.SeriesRequest],
 	labelNames []string,
-	labelSelector string,
+	matchers []string,
 ) ([]string, error) {
 	if capabilities, ok := featureflags.GetClientCapabilities(ctx); ok && capabilities.AllowUtf8LabelNames {
 		return labelNames, nil
@@ -29,20 +30,17 @@ func (q *QueryFrontend) filterLabelNames(
 	// Filter out label names not passing legacy validation if utf8 label names not enabled
 	if len(labelNames) == 0 {
 		// Querying for all label names; must retrieve all label names to then filter out
-		report, err := q.querySingle(ctx, &queryv1.QueryRequest{
-			StartTime:     c.Msg.Start,
-			EndTime:       c.Msg.End,
-			LabelSelector: labelSelector,
-			Query: []*queryv1.Query{{
-				QueryType:  queryv1.QueryType_QUERY_LABEL_NAMES,
-				LabelNames: &queryv1.LabelNamesQuery{},
-			}},
-		})
+		response, err := q.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
+			Start:    c.Msg.Start,
+			End:      c.Msg.End,
+			Matchers: matchers,
+		}))
+
 		if err != nil {
 			return nil, err
 		}
-		if report != nil {
-			toFilter = report.LabelNames.LabelNames
+		if response != nil {
+			toFilter = response.Msg.Names
 		}
 	}
 
@@ -83,7 +81,7 @@ func (q *QueryFrontend) Series(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	labelNames, err := q.filterLabelNames(ctx, c, c.Msg.LabelNames, labelSelector)
+	labelNames, err := q.filterLabelNames(ctx, c, c.Msg.LabelNames, c.Msg.Matchers)
 	if err != nil {
 		return nil, err
 	}
