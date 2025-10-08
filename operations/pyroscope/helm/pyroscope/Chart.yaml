@@ -4,7 +4,7 @@ description: 🔥 horizontally-scalable, highly-available, multi-tenant continuo
 home: https://grafana.com/oss/pyroscope/
 type: application
 version: 1.15.0
-appVersion: 1.14.1
+appVersion: 1.15.0
 dependencies:
   - name: grafana-agent
     alias: agent
