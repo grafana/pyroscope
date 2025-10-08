@@ -45,7 +45,7 @@ func addClientCapabilitiesHeader(r *http.Request, mime string, clientCapabilitie
 
 	if len(missingClientCapabilities) > 0 {
 		acceptHeader := mime
-		acceptHeader += "; " + strings.Join(missingClientCapabilities, "; ")
+		acceptHeader += ";" + strings.Join(missingClientCapabilities, ";")
 		r.Header.Add("Accept", acceptHeader)
 	}
 }
