@@ -16,9 +16,6 @@ type store interface {
 	// Delete a setting for a tenant.
 	Delete(ctx context.Context, tenantID string, name string, modifiedAtMs int64) error
 
-	// Flush the store to disk.
-	Flush(ctx context.Context) error
-
 	// Close the store.
 	Close() error
 }
