@@ -32,8 +32,8 @@ codeberg.org/go-latex/latex v0.1.0 h1:hoGO86rIbWVyjtlDLzCqZPjNykpWQ9YuTZqAzPcfL3
 codeberg.org/go-latex/latex v0.1.0/go.mod h1:LA0q/AyWIYrqVd+A9Upkgsb+IqPcmSTKc9Dny04MHMw=
 codeberg.org/go-pdf/fpdf v0.10.0 h1:u+w669foDDx5Ds43mpiiayp40Ov6sZalgcPMDBcZRd4=
 codeberg.org/go-pdf/fpdf v0.10.0/go.mod h1:Y0DGRAdZ0OmnZPvjbMp/1bYxmIPxm0ws4tfoPOc4LjU=
-connectrpc.com/connect v1.19.0 h1:LuqUbq01PqbtL0o7vn0WMRXzR2nNsiINe5zfcJ24pJM=
-connectrpc.com/connect v1.19.0/go.mod h1:tN20fjdGlewnSFeZxLKb0xwIZ6ozc3OQs2hTXy4du9w=
+connectrpc.com/connect v1.19.1 h1:R5M57z05+90EfEvCY1b7hBxDVOUl45PrtXtAV2fOC14=
+connectrpc.com/connect v1.19.1/go.mod h1:tN20fjdGlewnSFeZxLKb0xwIZ6ozc3OQs2hTXy4du9w=
 connectrpc.com/grpchealth v1.4.0 h1:MJC96JLelARPgZTiRF9KRfY/2N9OcoQvF2EWX07v2IE=
 connectrpc.com/grpchealth v1.4.0/go.mod h1:WhW6m1EzTmq3Ky1FE8EfkIpSDc6TfUx2M2KqZO3ts/Q=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=

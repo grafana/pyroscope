@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.8
 
 require (
-	connectrpc.com/connect v1.19.0
+	connectrpc.com/connect v1.19.1
 	github.com/gorilla/mux v1.8.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10

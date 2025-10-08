@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.8
 
 require (
-	connectrpc.com/connect v1.19.0
+	connectrpc.com/connect v1.19.1
 	connectrpc.com/grpchealth v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.3
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
