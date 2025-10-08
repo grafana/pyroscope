@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
+
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
