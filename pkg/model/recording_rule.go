@@ -20,11 +20,11 @@ type RecordingRule struct {
 
 const (
 	metricNamePrefix = "profiles_recorded_"
-	ruleIdLabel      = "profiles_rule_id"
+	RuleIDLabel      = "profiles_rule_id"
 )
 
 var uniqueLabels = map[string]bool{
-	ruleIdLabel:                     true,
+	RuleIDLabel:                     true,
 	prometheusmodel.MetricNameLabel: true,
 }
 
@@ -77,7 +77,7 @@ func newRecordingRuleWithBuilder(rule *settingsv1.RecordingRule, sb *labels.Scra
 	// trust rule.MetricName
 	sb.Add(prometheusmodel.MetricNameLabel, rule.MetricName)
 	// Inject recording rule Id
-	sb.Add(ruleIdLabel, rule.Id)
+	sb.Add(RuleIDLabel, rule.Id)
 
 	sb.Sort()
 
