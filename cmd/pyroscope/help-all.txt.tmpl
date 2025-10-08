@@ -15,6 +15,8 @@ Usage of ./pyroscope:
     	How frequently to scan the bucket, or to refresh the bucket index (if enabled), in order to look for changes (new blocks shipped by ingesters and blocks deleted by retention or compaction). (default 15m0s)
   -blocks-storage.bucket-store.tenant-sync-concurrency int
     	Maximum number of concurrent tenants synching blocks. (default 10)
+  -client-capability.allow-utf8-labelnames
+    	[experimental] Enable reading and writing utf-8 label names. To use this feature, API calls must include `allow-utf8-labelnames=true` in the `Accept` header.
   -compactor.block-ranges value
     	List of compaction time ranges. (default 1h0m0s,2h0m0s,8h0m0s)
   -compactor.block-sync-concurrency int
