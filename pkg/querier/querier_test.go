@@ -472,18 +472,20 @@ func Test_Series_WithLabelNameFiltering(t *testing.T) {
 			requestLabelNames:   []string{},
 			expectedLabelNames:  []string{"bar", "foo"},
 		},
+		{
+			name:                "empty label names with UTF8 enabled returns ingester labels without filtering",
+			allowUtf8LabelNames: true,
+			setCapabilities:     true,
+			requestLabelNames:   []string{},
+			expectedLabelNames:  []string{"日本語", "bar"},
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			foobarlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "bar")
-
+			ingesterLabels := []string{"日本語", "bar"}
 			var capturedLabelNames []string
 			var capturedMutex sync.Mutex
-
-			ingesterResponse := connect.NewResponse(&ingestv1.SeriesResponse{LabelsSet: []*typesv1.Labels{
-				{Labels: foobarlabels.Labels()},
-			}})
 
 			querier, err := New(&NewQuerierParams{
 				Cfg: Config{
@@ -501,8 +503,15 @@ func Test_Series_WithLabelNameFiltering(t *testing.T) {
 						req := args.Get(1).(*connect.Request[ingestv1.SeriesRequest])
 						capturedMutex.Lock()
 						defer capturedMutex.Unlock()
-						capturedLabelNames = req.Msg.LabelNames
-					}).Return(ingesterResponse, nil)
+
+						// If no labels passed to ingester series request,
+						// ingester returns all ingester labels
+						if len(req.Msg.LabelNames) == 0 {
+							capturedLabelNames = ingesterLabels
+						} else {
+							capturedLabelNames = req.Msg.LabelNames
+						}
+					}).Return(connect.NewResponse(&ingestv1.SeriesResponse{}), nil)
 
 					if len(tc.requestLabelNames) == 0 {
 						q.On("LabelNames", mock.Anything, mock.Anything).Return(
