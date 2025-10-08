@@ -27,7 +27,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: 1.24.6
+          go-version: 1.24.8
       - name: Format
         run: make fmt check/unstaged-changes
   check-generated:
@@ -40,7 +40,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: 1.24.6
+          go-version: 1.24.8
       - name: Check generated files
         run: make generate check/unstaged-changes
   test:
@@ -57,7 +57,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: 1.24.6
+          go-version: 1.24.8
       - name: Go Mod
         run: make check/go/mod
       - name: Test
@@ -72,7 +72,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: 1.24.6
+          go-version: 1.24.8
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -103,7 +103,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: 1.24.6
+          go-version: 1.24.8
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v3
         with:
           node-version: 20
@@ -133,7 +133,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: 1.24.6
+          go-version: 1.24.8
       # login to docker hub
       - id: get-secrets
         uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760

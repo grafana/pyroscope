@@ -33,7 +33,7 @@ jobs:
           git tag "$WEEKLY_IMAGE_TAG"
       - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v5
         with:
-          go-version: "1.24.6"
+          go-version: "1.24.8"
           cache: false
       # setup docker buildx
       - name: Set up QEMU
