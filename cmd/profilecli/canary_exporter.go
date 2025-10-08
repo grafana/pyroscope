@@ -160,6 +160,7 @@ func newCanaryExporter(params *canaryExporterParams) *canaryExporter {
 	}
 
 	ce.queryProbes = append(ce.queryProbes, &queryProbe{name: "query-select-merge-profile", f: ce.testSelectMergeProfile})
+	ce.queryProbes = append(ce.queryProbes, &queryProbe{name: "query-select-merge-otlp-profile", f: ce.testSelectMergeOTLPProfile})
 
 	if params.QueryProbeSet == "all" {
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-profile-types", ce.testProfileTypes})

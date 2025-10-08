@@ -38,6 +38,7 @@ import (
 
 const (
 	profileTypeID             = "deadmans_switch:made_up:profilos:made_up:profilos"
+	otlpProfileTypeID         = "otlp_test:otlp_test:count:otlp_test:samples"
 	canaryExporterServiceName = "pyroscope-canary-exporter"
 )
 
@@ -86,24 +87,25 @@ func (ce *canaryExporter) generateOTLPProfile(now time.Time, ingestionMethod str
 	// Sanitize the ingestion method label value by replacing "/" with "_"
 	sanitizedMethod := strings.ReplaceAll(ingestionMethod, "/", "_")
 
-	// Create the profile dictionary
+	// Create the profile dictionary with custom profile type similar to pprof probe
 	dictionary := &otlpprofiles.ProfilesDictionary{
 		StringTable: []string{
-			"", // 0: empty string
-			"samples",          // 1
-			"count",            // 2
-			"func1",            // 3
-			"func2",            // 4
-			"ingestion_method", // 5
-			sanitizedMethod,    // 6
+			"",                 // 0: empty string
+			"otlp_test",        // 1
+			"samples",          // 2
+			"count",            // 3
+			"func1",            // 4
+			"func2",            // 5
+			"ingestion_method", // 6
+			sanitizedMethod,    // 7
 		},
 		MappingTable: []*otlpprofiles.Mapping{
 			{}, // 0: empty mapping (required null entry)
 		},
 		FunctionTable: []*otlpprofiles.Function{
 			{NameStrindex: 0}, // 0: empty
-			{NameStrindex: 3}, // 1: func1
-			{NameStrindex: 4}, // 2: func2
+			{NameStrindex: 4}, // 1: func1
+			{NameStrindex: 5}, // 2: func2
 		},
 		LocationTable: []*otlpprofiles.Location{
 			{Line: []*otlpprofiles.Line{{FunctionIndex: 1}}}, // 0: func1
@@ -122,8 +124,12 @@ func (ce *canaryExporter) generateOTLPProfile(now time.Time, ingestionMethod str
 		DurationNano: 0,
 		Period:       1,
 		SampleType: &otlpprofiles.ValueType{
-			TypeStrindex: 1, // "samples"
-			UnitStrindex: 2, // "count"
+			TypeStrindex: 1, // "otlp_test"
+			UnitStrindex: 3, // "count"
+		},
+		PeriodType: &otlpprofiles.ValueType{
+			TypeStrindex: 1, // "otlp_test"
+			UnitStrindex: 2, // "samples"
 		},
 		Sample: []*otlpprofiles.Sample{
 			{
@@ -351,6 +357,65 @@ func (ce *canaryExporter) testSelectMergeProfile(ctx context.Context, now time.T
 		return fmt.Errorf("query mismatch (-expected, +actual):\n%s", diff)
 	}
 
+	return nil
+}
+
+func (ce *canaryExporter) testSelectMergeOTLPProfile(ctx context.Context, now time.Time) error {
+	// Query specifically for OTLP gRPC ingested profiles using the custom profile type
+	//labelSelector := fmt.Sprintf(`{service_name="%s", job="canary-exporter", instance="%s"}`, canaryExporterServiceName, ce.hostname)
+
+	respQuery, err := ce.params.queryClient().SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+		Start:         now.UnixMilli(),
+		End:           now.Add(5 * time.Second).UnixMilli(),
+		LabelSelector: ce.createLabelSelector(),
+		ProfileTypeID: otlpProfileTypeID,
+	}))
+	if err != nil {
+		return fmt.Errorf("failed to query OTLP profile: %w", err)
+	}
+
+	buf, err := respQuery.Msg.MarshalVT()
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal protobuf")
+	}
+
+	gp, err := gprofile.Parse(bytes.NewReader(buf))
+	if err != nil {
+		return errors.Wrap(err, "failed to parse profile")
+	}
+
+	// Verify the expected stacktraces from the OTLP profile
+	expected := map[string]int64{
+		"func2>func1": 10,
+		"func1":       20,
+	}
+	actual := make(map[string]int64)
+
+	var sb strings.Builder
+	for _, s := range gp.Sample {
+		sb.Reset()
+		for _, loc := range s.Location {
+			if sb.Len() != 0 {
+				_, err := sb.WriteRune('>')
+				if err != nil {
+					return err
+				}
+			}
+			for _, line := range loc.Line {
+				_, err := sb.WriteString(line.Function.Name)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		actual[sb.String()] = actual[sb.String()] + s.Value[0]
+	}
+
+	if diff := cmp.Diff(expected, actual); diff != "" {
+		return fmt.Errorf("OTLP profile query mismatch (-expected, +actual):\n%s", diff)
+	}
+
+	level.Info(logger).Log("msg", "successfully queried OTLP profile via gRPC")
 	return nil
 }
 

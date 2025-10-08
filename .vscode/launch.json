@@ -17,7 +17,19 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/profilecli",
-            "args": ["canary-exporter"]
+            "args": [
+                "canary-exporter"
+            ]
+        }
+    ],
+    "compounds": [
+        {
+            "name": "canary+pyroscope",
+            "configurations": [
+                "pyroscope",
+                "canary-exporter"
+            ],
+            "stopAll": true
         }
     ]
 }
