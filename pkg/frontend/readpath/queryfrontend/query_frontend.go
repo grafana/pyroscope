@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"path/filepath"
 	"slices"
 	"sync"
 	"time"
@@ -134,6 +135,12 @@ func (q *QueryFrontend) Query(
 		if err != nil {
 			return nil, status.Error(codes.Internal, fmt.Sprintf("symbolizing profiles: %v", err))
 		}
+	} else if q.hasAnyUnsymbolizedBlocks(blocks) {
+		// When symbolizer is disabled, create stubs for unsymbolized locations
+		err = q.createStubsForUnsymbolizedProfiles(ctx, resp, req.Query)
+		if err != nil {
+			return nil, status.Error(codes.Internal, fmt.Sprintf("creating stubs: %v", err))
+		}
 	}
 
 	// TODO(kolesnikovae): Extend diagnostics
@@ -201,6 +208,16 @@ func (q *QueryFrontend) hasUnsymbolizedProfiles(block *metastorev1.BlockMeta) bo
 	return len(slices.Collect(metadata.FindDatasets(block, matcher))) > 0
 }
 
+// hasAnyUnsymbolizedBlocks checks if any block has unsymbolized profiles
+func (q *QueryFrontend) hasAnyUnsymbolizedBlocks(blocks []*metastorev1.BlockMeta) bool {
+	for _, block := range blocks {
+		if q.hasUnsymbolizedProfiles(block) {
+			return true
+		}
+	}
+	return false
+}
+
 // shouldSymbolize determines if we should symbolize profiles based on tenant settings
 func (q *QueryFrontend) shouldSymbolize(tenants []string, blocks []*metastorev1.BlockMeta) bool {
 	if q.symbolizer == nil {
@@ -213,13 +230,7 @@ func (q *QueryFrontend) shouldSymbolize(tenants []string, blocks []*metastorev1.
 		}
 	}
 
-	for _, block := range blocks {
-		if q.hasUnsymbolizedProfiles(block) {
-			return true
-		}
-	}
-
-	return false
+	return q.hasAnyUnsymbolizedBlocks(blocks)
 }
 
 // processAndSymbolizeProfiles handles the symbolization of profiles from the response
@@ -263,6 +274,85 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 			}
 			r.Pprof.Pprof = symbolizedBytes
 		}
+	}
+
+	return nil
+}
+
+// createStubsForUnsymbolizedProfiles creates placeholder functions for unsymbolized locations
+// when symbolizer is disabled.
+func (q *QueryFrontend) createStubsForUnsymbolizedProfiles(
+	_ context.Context,
+	resp *queryv1.InvokeResponse,
+	originalQueries []*queryv1.Query,
+) error {
+	if len(originalQueries) != len(resp.Reports) {
+		return fmt.Errorf("query/report count mismatch: %d queries but %d reports",
+			len(originalQueries), len(resp.Reports))
+	}
+
+	for _, r := range resp.Reports {
+		if r.Pprof == nil || r.Pprof.Pprof == nil {
+			continue
+		}
+
+		var prof googlev1.Profile
+		if err := pprof.Unmarshal(r.Pprof.Pprof, &prof); err != nil {
+			return fmt.Errorf("failed to unmarshal profile: %w", err)
+		}
+
+		stubFuncs := make(map[string]uint64)
+		modified := false
+
+		for _, loc := range prof.Location {
+			if len(loc.Line) > 0 {
+				continue
+			}
+
+			if loc.MappingId == 0 || int(loc.MappingId) > len(prof.Mapping) {
+				continue
+			}
+			mapping := prof.Mapping[loc.MappingId-1]
+
+			binaryName := "unknown"
+			if mapping.Filename > 0 && int(mapping.Filename) < len(prof.StringTable) {
+				filename := prof.StringTable[mapping.Filename]
+				if len(filename) > 0 {
+					binaryName = filepath.Base(filename)
+				}
+			}
+
+			stubName := fmt.Sprintf("%s 0x%x", binaryName, loc.Address)
+
+			funcID, exists := stubFuncs[stubName]
+			if !exists {
+				stubIdx := int64(len(prof.StringTable))
+				prof.StringTable = append(prof.StringTable, stubName)
+
+				// Create function
+				funcID = uint64(len(prof.Function) + 1)
+				prof.Function = append(prof.Function, &googlev1.Function{
+					Id:   funcID,
+					Name: stubIdx,
+				})
+				stubFuncs[stubName] = funcID
+			}
+
+			loc.Line = []*googlev1.Line{{
+				FunctionId: funcID,
+			}}
+			modified = true
+		}
+
+		if !modified {
+			continue
+		}
+
+		profileBytes, err := pprof.Marshal(&prof, true)
+		if err != nil {
+			return fmt.Errorf("failed to marshal profile with stubs: %w", err)
+		}
+		r.Pprof.Pprof = profileBytes
 	}
 
 	return nil
