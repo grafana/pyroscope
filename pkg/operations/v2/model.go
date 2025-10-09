@@ -1,11 +1,17 @@
 package v2
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
+
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/operations"
 )
 
@@ -76,6 +82,37 @@ type datasetDetails struct {
 	LabelSets    []labelSet
 }
 
+type profileInfo struct {
+	RowNumber   int
+	Timestamp   string
+	SeriesIndex uint32
+	Fingerprint uint64
+	Labels      string
+	TotalValue  uint64
+	PartitionID uint64
+	SampleCount int
+	Annotations string
+}
+
+type treeNode struct {
+	Name     string
+	Value    uint64
+	Self     uint64
+	Percent  float64
+	Children []*treeNode
+}
+
+type profileVisualizationPageContent struct {
+	User        string
+	BlockID     string
+	Shard       uint32
+	BlockTenant string
+	Dataset     *datasetDetails
+	Timestamp   string
+	Tree        *treeNode
+	Now         string
+}
+
 type blockGroup struct {
 	MinTime                 time.Time
 	FormattedMinTime        string
@@ -102,4 +139,93 @@ func sortBlockDetailsByMinTimeDec(bd []*blockDetails) {
 	slices.SortFunc(bd, func(a, b *blockDetails) int {
 		return strings.Compare(b.MinTime, a.MinTime)
 	})
+}
+
+const emptyDatasetPlaceholder = "_empty"
+
+// datasetRequest contains common request parameters for dataset operations
+type datasetRequest struct {
+	TenantID    string
+	BlockID     string
+	BlockTenant string
+	DatasetName string
+	Shard       uint32
+}
+
+// parseDatasetRequest extracts and validates common dataset request parameters
+func parseDatasetRequest(r *http.Request) (*datasetRequest, error) {
+	vars := mux.Vars(r)
+
+	tenantID := vars["tenant"]
+	if tenantID == "" {
+		return nil, errors.New("No tenant id provided")
+	}
+
+	blockID := vars["block"]
+	if blockID == "" {
+		return nil, errors.New("No block id provided")
+	}
+
+	datasetName := r.URL.Query().Get("dataset")
+	if datasetName == "" {
+		return nil, errors.New("No dataset name provided")
+	}
+	// Handle special case for empty dataset name
+	if datasetName == emptyDatasetPlaceholder {
+		datasetName = ""
+	}
+
+	shardStr := r.URL.Query().Get("shard")
+	if shardStr == "" {
+		return nil, errors.New("No shard provided")
+	}
+	var shard uint32
+	if _, err := fmt.Sscanf(shardStr, "%d", &shard); err != nil {
+		return nil, errors.Wrap(err, "invalid shard parameter")
+	}
+
+	blockTenant := r.URL.Query().Get("block_tenant")
+
+	return &datasetRequest{
+		TenantID:    tenantID,
+		BlockID:     blockID,
+		BlockTenant: blockTenant,
+		DatasetName: datasetName,
+		Shard:       shard,
+	}, nil
+}
+
+// getDatasetMetadata retrieves block metadata and finds the specified dataset
+func (h *Handlers) getDatasetMetadata(ctx context.Context, req *datasetRequest) (*metastorev1.BlockMeta, *metastorev1.Dataset, error) {
+	metadataResp, err := h.MetastoreClient.GetBlockMetadata(ctx, &metastorev1.GetBlockMetadataRequest{
+		Blocks: &metastorev1.BlockList{
+			Tenant: req.BlockTenant,
+			Shard:  req.Shard,
+			Blocks: []string{req.BlockID},
+		},
+	})
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to get block metadata")
+	}
+
+	if len(metadataResp.Blocks) == 0 {
+		return nil, nil, errors.New("Block not found")
+	}
+
+	blockMeta := metadataResp.Blocks[0]
+
+	var foundDataset *metastorev1.Dataset
+	for _, ds := range blockMeta.Datasets {
+		dsName := blockMeta.StringTable[ds.Name]
+		if dsName == req.DatasetName {
+			foundDataset = ds
+			break
+		}
+	}
+
+	if foundDataset == nil {
+		return nil, nil, errors.New("Dataset not found")
+	}
+
+	return blockMeta, foundDataset, nil
 }

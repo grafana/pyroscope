@@ -28,6 +28,8 @@
         <div class="row my-3">
             <p>
                 <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}?shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to block</a>
+                |
+                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets/profiles?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">View profiles</a>
             </p>
             <table class="table">
                 <tr>

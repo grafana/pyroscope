@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html class="h-100" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Bucket Blocks Explorer (v2): Profile Visualization</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+
+    <style>
+        .tree-view {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        .tree-node {
+            margin-left: 0;
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .tree-node > li {
+            margin-top: 4px;
+        }
+        .tree-toggle {
+            cursor: pointer;
+            user-select: none;
+            color: #6c757d;
+            margin-right: 5px;
+            font-family: monospace;
+        }
+        .tree-toggle:hover {
+            color: #adb5bd;
+        }
+        .tree-content {
+            display: inline;
+        }
+        .tree-name {
+            color: #0dcaf0;
+            font-weight: 500;
+        }
+        .tree-value {
+            color: #ffc107;
+            margin-left: 10px;
+        }
+        .tree-percent {
+            color: #6c757d;
+            margin-left: 5px;
+        }
+        .tree-self {
+            color: #198754;
+            margin-left: 10px;
+        }
+        .tree-children {
+            margin-left: 20px;
+            padding-left: 0;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column h-100">
+<main class="flex-shrink-0">
+    <div class="container-fluid">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h3>Bucket Blocks Explorer (v2): Profile Visualization</h3>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/ops/object-store/tenants">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <p>
+                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}?shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to block</a>
+                |
+                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to dataset</a>
+                |
+                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets/profiles?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to profiles</a>
+            </p>
+
+            <h4>Profile: {{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}<em>(empty)</em>{{ end }}</h4>
+            <p class="text-muted">
+                Tenant: {{ .User }} | Block: {{ .BlockID }} | Shard: {{ .Shard }} | Timestamp: {{ .Timestamp }}
+            </p>
+
+            <div class="card bg-dark border-secondary">
+                <div class="card-header">
+                    <h5 class="mb-0">Call Graph</h5>
+                    <small class="text-muted">Click [+]/[-] to expand/collapse nodes.</small>
+                </div>
+                <div class="card-body">
+                    {{ if .Tree }}
+                        <div class="tree-view">
+                            <ul class="tree-node">
+                                {{ template "tree-node" dict "Node" .Tree "Level" 0 }}
+                            </ul>
+                        </div>
+                    {{ else }}
+                        <div class="alert alert-warning" role="alert">
+                            No call tree available for this profile.
+                        </div>
+                    {{ end }}
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3 bg-dark">
+    <div class="container">
+        <small class="text-white-50">Status @ {{ .Now }}</small>
+    </div>
+</footer>
+
+<script>
+    function toggleNode(element) {
+        const childrenContainer = element.parentElement.querySelector('.tree-children');
+        const toggle = element.querySelector('.tree-toggle');
+
+        if (childrenContainer) {
+            if (childrenContainer.style.display === 'none') {
+                childrenContainer.style.display = 'block';
+                toggle.textContent = '[-]';
+            } else {
+                childrenContainer.style.display = 'none';
+                toggle.textContent = '[+]';
+            }
+        }
+    }
+</script>
+</body>
+</html>
+
+{{ define "tree-node" }}
+    {{ $node := .Node }}
+    {{ $level := .Level }}
+    <li>
+        {{ if gt (len $node.Children) 0 }}
+            <span class="tree-content" onclick="toggleNode(this)">
+                <span class="tree-toggle">{{ if eq $level 0 }}[-]{{ else }}[+]{{ end }}</span>
+                <span class="tree-name">{{ $node.Name }}</span>
+                <span class="tree-value">{{ $node.Value }}</span>
+                <span class="tree-percent">({{ printf "%.2f" $node.Percent }}%)</span>
+                {{ if gt $node.Self 0 }}
+                    <span class="tree-self">self: {{ $node.Self }}</span>
+                {{ end }}
+            </span>
+            <ul class="tree-node tree-children" style="display: {{ if eq $level 0 }}block{{ else }}none{{ end }};">
+                {{ range $node.Children }}
+                    {{ template "tree-node" dict "Node" . "Level" (add $level 1) }}
+                {{ end }}
+            </ul>
+        {{ else }}
+            <span class="tree-content">
+                <span class="tree-name">{{ $node.Name }}</span>
+                <span class="tree-value">{{ $node.Value }}</span>
+                <span class="tree-percent">({{ printf "%.2f" $node.Percent }}%)</span>
+                {{ if gt $node.Self 0 }}
+                    <span class="tree-self">self: {{ $node.Self }}</span>
+                {{ end }}
+            </span>
+        {{ end }}
+    </li>
+{{ end }}

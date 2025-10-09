@@ -49,3 +49,15 @@ func (a *Admin) BlockHandler(w http.ResponseWriter, r *http.Request) {
 func (a *Admin) DatasetHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Dataset details not available in v1 storage", http.StatusNotFound)
 }
+
+func (a *Admin) DatasetProfilesHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Dataset profiles not available in v1 storage", http.StatusNotFound)
+}
+
+func (a *Admin) ProfileDownloadHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Profile download not available in v1 storage", http.StatusNotFound)
+}
+
+func (a *Admin) ProfileVisualizeHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Profile visualization not available in v1 storage", http.StatusNotFound)
+}

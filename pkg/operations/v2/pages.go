@@ -18,6 +18,12 @@ var blockDetailsPageHtml string
 //go:embed tool.blocks.dataset.gohtml
 var datasetDetailsPageHtml string
 
+//go:embed tool.blocks.dataset.profiles.gohtml
+var datasetProfilesPageHtml string
+
+//go:embed tool.blocks.profile.visualization.gohtml
+var profileVisualizationPageHtml string
+
 type indexPageContent struct {
 	Users []string
 	Now   string
@@ -47,11 +53,23 @@ type datasetDetailsPageContent struct {
 	Now         string
 }
 
+type datasetProfilesPageContent struct {
+	User        string
+	BlockID     string
+	Shard       uint32
+	BlockTenant string
+	Dataset     *datasetDetails
+	Profiles    []profileInfo
+	Now         string
+}
+
 type templates struct {
-	indexTemplate          *template.Template
-	blocksTemplate         *template.Template
-	blockDetailsTemplate   *template.Template
-	datasetDetailsTemplate *template.Template
+	indexTemplate                *template.Template
+	blocksTemplate               *template.Template
+	blockDetailsTemplate         *template.Template
+	datasetDetailsTemplate       *template.Template
+	datasetProfilesTemplate      *template.Template
+	profileVisualizationTemplate *template.Template
 }
 
 var pageTemplates = initTemplates()
@@ -74,11 +92,20 @@ func initTemplates() *templates {
 	template.Must(blockDetailsTemplate.Parse(blockDetailsPageHtml))
 	datasetDetailsTemplate := template.New("dataset-details")
 	template.Must(datasetDetailsTemplate.Parse(datasetDetailsPageHtml))
+	datasetProfilesTemplate := template.New("dataset-profiles")
+	template.Must(datasetProfilesTemplate.Parse(datasetProfilesPageHtml))
+	profileVisualizationTemplate := template.New("profile-visualization").Funcs(template.FuncMap{
+		"add":  add,
+		"dict": dict,
+	})
+	template.Must(profileVisualizationTemplate.Parse(profileVisualizationPageHtml))
 	t := &templates{
-		indexTemplate:          indexTemplate,
-		blocksTemplate:         blocksTemplate,
-		blockDetailsTemplate:   blockDetailsTemplate,
-		datasetDetailsTemplate: datasetDetailsTemplate,
+		indexTemplate:                indexTemplate,
+		blocksTemplate:               blocksTemplate,
+		blockDetailsTemplate:         blockDetailsTemplate,
+		datasetDetailsTemplate:       datasetDetailsTemplate,
+		datasetProfilesTemplate:      datasetProfilesTemplate,
+		profileVisualizationTemplate: profileVisualizationTemplate,
 	}
 	return t
 }
@@ -113,4 +140,20 @@ func format(format string, value any) string {
 
 func float(param int) float64 {
 	return float64(param)
+}
+
+// dict creates a map for passing multiple values to a template
+func dict(values ...interface{}) (map[string]interface{}, error) {
+	if len(values)%2 != 0 {
+		return nil, fmt.Errorf("dict requires an even number of arguments")
+	}
+	dict := make(map[string]interface{}, len(values)/2)
+	for i := 0; i < len(values); i += 2 {
+		key, ok := values[i].(string)
+		if !ok {
+			return nil, fmt.Errorf("dict keys must be strings")
+		}
+		dict[key] = values[i+1]
+	}
+	return dict, nil
 }
