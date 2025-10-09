@@ -235,7 +235,7 @@ function isLabelInQuery(query: string, label: string, labelValue: string) {
   // - Quoted: "service.name"="value"
   const unquotedPattern = `${label}="${labelValue}"`;
   const quotedPattern = `"${label}"="${labelValue}"`;
-  
+
   return query.includes(unquotedPattern) || query.includes(quotedPattern);
 }
 
