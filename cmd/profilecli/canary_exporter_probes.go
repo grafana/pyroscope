@@ -25,7 +25,6 @@ import (
 	resourcev1 "go.opentelemetry.io/proto/otlp/resource/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/proto"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -83,7 +82,7 @@ func (ce *canaryExporter) testIngestProfile(ctx context.Context, now time.Time) 
 }
 
 // generateOTLPProfile creates an OTLP profile with the specified ingestion method label
-func (ce *canaryExporter) generateOTLPProfile(now time.Time, ingestionMethod string) (*profilesv1.ExportProfilesServiceRequest, error) {
+func (ce *canaryExporter) generateOTLPProfile(now time.Time, ingestionMethod string) *profilesv1.ExportProfilesServiceRequest {
 	// Sanitize the ingestion method label value by replacing "/" with "_"
 	sanitizedMethod := strings.ReplaceAll(ingestionMethod, "/", "_")
 
@@ -185,23 +184,19 @@ func (ce *canaryExporter) generateOTLPProfile(now time.Time, ingestionMethod str
 		},
 	}
 
-	return req, nil
+	return req
 }
 
 func (ce *canaryExporter) testIngestOTLPGrpc(ctx context.Context, now time.Time) error {
 	// Generate the OTLP profile with the appropriate ingestion method label
-	req, err := ce.generateOTLPProfile(now, "otlp/grpc")
-	if err != nil {
-		return fmt.Errorf("failed to generate OTLP profile: %w", err)
-	}
+	req := ce.generateOTLPProfile(now, "otlp/grpc")
 
 	// Create gRPC connection
 	grpcAddr := strings.TrimPrefix(ce.params.URL, "http://")
 	grpcAddr = strings.TrimPrefix(grpcAddr, "https://")
 
-	conn, err := grpc.DialContext(ctx, grpcAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock())
+	conn, err := grpc.NewClient(grpcAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}
@@ -217,92 +212,6 @@ func (ce *canaryExporter) testIngestOTLPGrpc(ctx context.Context, now time.Time)
 	}
 
 	level.Info(logger).Log("msg", "successfully ingested OTLP profile via gRPC")
-	return nil
-}
-
-func (ce *canaryExporter) testIngestOTLPHttpJson(ctx context.Context, now time.Time) error {
-	// Generate the OTLP profile with the appropriate ingestion method label
-	req, err := ce.generateOTLPProfile(now, "otlp/http/json")
-	if err != nil {
-		return fmt.Errorf("failed to generate OTLP profile: %w", err)
-	}
-
-	// Marshal to JSON
-	jsonData, err := json.Marshal(req)
-	if err != nil {
-		return fmt.Errorf("failed to marshal OTLP profile to JSON: %w", err)
-	}
-
-	// Create HTTP request using the instrumented client
-	url := ce.params.URL + "/v1/profiles"
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonData))
-	if err != nil {
-		return fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	// Send the request using the instrumented client (ce.params.client is set by doTrace)
-	resp, err := ce.params.client.Do(httpReq)
-	if err != nil {
-		return fmt.Errorf("failed to send HTTP request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read the body to ensure the transport is fully traced
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	// Check response status
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
-	}
-
-	level.Info(logger).Log("msg", "successfully ingested OTLP profile via HTTP/JSON")
-	return nil
-}
-
-func (ce *canaryExporter) testIngestOTLPHttpProtobuf(ctx context.Context, now time.Time) error {
-	// Generate the OTLP profile with the appropriate ingestion method label
-	req, err := ce.generateOTLPProfile(now, "otlp/http/protobuf")
-	if err != nil {
-		return fmt.Errorf("failed to generate OTLP profile: %w", err)
-	}
-
-	// Marshal to protobuf
-	protoData, err := proto.Marshal(req)
-	if err != nil {
-		return fmt.Errorf("failed to marshal OTLP profile to protobuf: %w", err)
-	}
-
-	// Create HTTP request using the instrumented client
-	url := ce.params.URL + "/v1/profiles"
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(protoData))
-	if err != nil {
-		return fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-	httpReq.Header.Set("Content-Type", "application/x-protobuf")
-
-	// Send the request using the instrumented client (ce.params.client is set by doTrace)
-	resp, err := ce.params.client.Do(httpReq)
-	if err != nil {
-		return fmt.Errorf("failed to send HTTP request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read the body to ensure the transport is fully traced
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	// Check response status
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
-	}
-
-	level.Info(logger).Log("msg", "successfully ingested OTLP profile via HTTP/Protobuf")
 	return nil
 }
 
