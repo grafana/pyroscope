@@ -25,6 +25,12 @@ distributor:
           endpoint: 0.0.0.0:4317
     opencensus:
 
+overrides:
+  metrics_generator_processors:
+    - span-metrics
+    - service-graphs
+    - local-blocks
+
 ingester:
   max_block_duration: 5m               # cut the headblock when this much time passes. this is being set for demo purposes and should probably be left alone normally
 
@@ -39,3 +45,9 @@ storage:
       path: /tmp/tempo/wal             # where to store the wal locally
     local:
       path: /tmp/tempo/blocks
+
+metrics_generator:
+  storage:
+    path: /var/tempo/storage
+  traces_storage:
+    path: /var/tempo/traces_storage
