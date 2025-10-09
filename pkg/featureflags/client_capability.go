@@ -9,14 +9,27 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/middleware"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
 const (
-	// Capability names - update parseClientCapabilities below when new capabilities added
+	// Capability names - update parseClientCapabilities and trackEnabledCapabilities
+	// below when new capabilities added
 	allowUtf8LabelNamesCapabilityName string = "allow-utf8-labelnames"
+)
+
+var (
+	usage = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "client_capability_enabled_total",
+			Help: "Total number of requests with client capabilities enabled",
+		},
+		[]string{"tenant", "capability_name"},
+	)
 )
 
 // Define a custom context key type to avoid collisions
@@ -35,7 +48,35 @@ func GetClientCapabilities(ctx context.Context) (ClientCapabilities, bool) {
 	return value, ok
 }
 
-func ClientCapabilitiesGRPCMiddleware() grpc.UnaryServerInterceptor {
+type ClientCapabilityMiddleware struct {
+	usage *prometheus.CounterVec
+}
+
+func NewClientCapabilityMiddleware(reg prometheus.Registerer) *ClientCapabilityMiddleware {
+	usage = util.RegisterOrGet(reg, usage)
+
+	return &ClientCapabilityMiddleware{
+		usage: usage,
+	}
+}
+
+// trackEnabledCapabilities records metrics for each enabled capability
+func (m *ClientCapabilityMiddleware) trackEnabledCapabilities(ctx context.Context, capabilities ClientCapabilities) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		// Fall back if tenant cannot be extracted
+		tenantID = tenant.DefaultTenantID
+	}
+
+	// Track each enabled capability
+	if capabilities.AllowUtf8LabelNames {
+		m.usage.WithLabelValues(tenantID, allowUtf8LabelNamesCapabilityName).Inc()
+	}
+}
+
+// CreateGRPC creates gRPC middleware that extracts and parses the
+// `Accept` header for capabilities the client supports
+func (m *ClientCapabilityMiddleware) CreateGRPC() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req interface{},
@@ -62,13 +103,17 @@ func ClientCapabilitiesGRPCMiddleware() grpc.UnaryServerInterceptor {
 		}
 
 		enhancedCtx := WithClientCapabilities(ctx, clientCapabilities)
+
+		// Track enabled capabilities for metrics
+		m.trackEnabledCapabilities(enhancedCtx, clientCapabilities)
+
 		return handler(enhancedCtx, req)
 	}
 }
 
-// ClientCapabilitiesHttpMiddleware creates middleware that extracts and parses the
+// CreateHttp creates HTTP middleware that extracts and parses the
 // `Accept` header for capabilities the client supports
-func ClientCapabilitiesHttpMiddleware() middleware.Interface {
+func (m *ClientCapabilityMiddleware) CreateHttp() middleware.Interface {
 	return middleware.Func(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			clientCapabilities, err := parseClientCapabilities(r.Header)
@@ -78,6 +123,10 @@ func ClientCapabilitiesHttpMiddleware() middleware.Interface {
 			}
 
 			ctx := WithClientCapabilities(r.Context(), clientCapabilities)
+
+			// Track enabled capabilities for metrics
+			m.trackEnabledCapabilities(ctx, clientCapabilities)
+
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
