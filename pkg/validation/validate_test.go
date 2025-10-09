@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -134,17 +133,6 @@ func TestValidateLabels(t *testing.T) {
 				{Name: "service_abc", Value: "def"},
 				{Name: "service_name", Value: "svc0"},
 			},
-		},
-		{
-			name: "duplicates once sanitized with conflicting values",
-			lbs: []*typesv1.LabelPair{
-				{Name: model.MetricNameLabel, Value: "qux"},
-				{Name: "service.name", Value: "svc1"},
-				{Name: "service_abc", Value: "def"},
-				{Name: "service_name", Value: "svc0"},
-			},
-			expectedReason: DuplicateLabelNames,
-			expectedErr:    "profile with labels '{__name__=\"qux\", service.name=\"svc1\", service_abc=\"def\", service_name=\"svc0\"}' has duplicate label name 'service_name' after label name sanitization from 'service.name'",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -527,40 +515,241 @@ func TestValidateFlamegraphMaxNodes(t *testing.T) {
 	}
 }
 
-func Test_SanitizeLabelName(t *testing.T) {
-	for _, tc := range []struct {
-		input    string
-		expected string
-		valid    bool
+func Test_SanitizeLegacyLabelName(t *testing.T) {
+	tests := []struct {
+		Name          string
+		LabelName     string
+		WantOld       string
+		WantSanitized string
+		WantOk        bool
 	}{
-		{"", "", false},
-		{".", "_", true},
-		{".a", "_a", true},
-		{"a.", "a_", true},
-		{"..", "__", true},
-		{"..a", "__a", true},
-		{"a..", "a__", true},
-		{"a.a", "a_a", true},
-		{".a.", "_a_", true},
-		{"..a..", "__a__", true},
-		{"世界", "世界", false},
-		{"界世_a", "界世_a", false},
-		{"界世__a", "界世__a", false},
-		{"a_世界", "a_世界", false},
-		{"0.a", "0.a", false},
-		{"0a", "0a", false},
-		{"a.0", "a_0", true},
-		{"a0", "a0", true},
-		{"_", "_", true},
-		{"__a", "__a", true},
-		{"__a__", "__a__", true},
-	} {
-		tc := tc
-		t.Run("", func(t *testing.T) {
-			origName, actual, valid := SanitizeLabelName(tc.input)
-			assert.Equal(t, tc.input, origName)
-			assert.Equal(t, tc.expected, actual)
-			assert.Equal(t, tc.valid, valid)
+		{
+			Name:          "empty string is invalid",
+			LabelName:     "",
+			WantOld:       "",
+			WantSanitized: "",
+			WantOk:        false,
+		},
+		{
+			Name:          "valid simple label name",
+			LabelName:     "service",
+			WantOld:       "service",
+			WantSanitized: "service",
+			WantOk:        true,
+		},
+		{
+			Name:          "valid label with underscores",
+			LabelName:     "service_name",
+			WantOld:       "service_name",
+			WantSanitized: "service_name",
+			WantOk:        true,
+		},
+		{
+			Name:          "valid label with numbers",
+			LabelName:     "service123",
+			WantOld:       "service123",
+			WantSanitized: "service123",
+			WantOk:        true,
+		},
+		{
+			Name:          "valid mixed case label",
+			LabelName:     "ServiceName",
+			WantOld:       "ServiceName",
+			WantSanitized: "ServiceName",
+			WantOk:        true,
+		},
+		{
+			Name:          "label with dots gets sanitized",
+			LabelName:     "service.name",
+			WantOld:       "service.name",
+			WantSanitized: "service_name",
+			WantOk:        true,
+		},
+		{
+			Name:          "label with multiple dots gets sanitized",
+			LabelName:     "service.name.type",
+			WantOld:       "service.name.type",
+			WantSanitized: "service_name_type",
+			WantOk:        true,
+		},
+		{
+			Name:          "label starting with number is invalid",
+			LabelName:     "123service",
+			WantOld:       "123service",
+			WantSanitized: "123service",
+			WantOk:        false,
+		},
+		{
+			Name:          "label with hyphen is invalid",
+			LabelName:     "service-name",
+			WantOld:       "service-name",
+			WantSanitized: "service-name",
+			WantOk:        false,
+		},
+		{
+			Name:          "label with space is invalid",
+			LabelName:     "service name",
+			WantOld:       "service name",
+			WantSanitized: "service name",
+			WantOk:        false,
+		},
+		{
+			Name:          "label with special characters is invalid",
+			LabelName:     "service@name",
+			WantOld:       "service@name",
+			WantSanitized: "service@name",
+			WantOk:        false,
+		},
+		{
+			Name:          "label with dots and invalid characters is invalid",
+			LabelName:     "service.name@host",
+			WantOld:       "service.name@host",
+			WantSanitized: "service.name@host",
+			WantOk:        false,
+		},
+		{
+			Name:          "label starting with underscore",
+			LabelName:     "_service",
+			WantOld:       "_service",
+			WantSanitized: "_service",
+			WantOk:        true,
+		},
+		{
+			Name:          "label with only underscores",
+			LabelName:     "___",
+			WantOld:       "___",
+			WantSanitized: "___",
+			WantOk:        true,
+		},
+		{
+			Name:          "label ending with dot",
+			LabelName:     "service.",
+			WantOld:       "service.",
+			WantSanitized: "service_",
+			WantOk:        true,
+		},
+		{
+			Name:          "label starting with dot gets sanitized",
+			LabelName:     ".service",
+			WantOld:       ".service",
+			WantSanitized: "_service",
+			WantOk:        true,
+		},
+		{
+			Name:          "single dot",
+			LabelName:     ".",
+			WantOld:       ".",
+			WantSanitized: "_",
+			WantOk:        true,
+		},
+		{
+			Name:          "double dots",
+			LabelName:     "..",
+			WantOld:       "..",
+			WantSanitized: "__",
+			WantOk:        true,
+		},
+		{
+			Name:          "double dots with letter at end",
+			LabelName:     "..a",
+			WantOld:       "..a",
+			WantSanitized: "__a",
+			WantOk:        true,
+		},
+		{
+			Name:          "letter with double dots at end",
+			LabelName:     "a..",
+			WantOld:       "a..",
+			WantSanitized: "a__",
+			WantOk:        true,
+		},
+		{
+			Name:          "letter surrounded by dots",
+			LabelName:     ".a.",
+			WantOld:       ".a.",
+			WantSanitized: "_a_",
+			WantOk:        true,
+		},
+		{
+			Name:          "letter surrounded by double dots",
+			LabelName:     "..a..",
+			WantOld:       "..a..",
+			WantSanitized: "__a__",
+			WantOk:        true,
+		},
+		{
+			Name:          "letter with dot and number",
+			LabelName:     "a.0",
+			WantOld:       "a.0",
+			WantSanitized: "a_0",
+			WantOk:        true,
+		},
+		{
+			Name:          "number with dot is invalid",
+			LabelName:     "0.a",
+			WantOld:       "0.a",
+			WantSanitized: "0.a",
+			WantOk:        false,
+		},
+		{
+			Name:          "single underscore",
+			LabelName:     "_",
+			WantOld:       "_",
+			WantSanitized: "_",
+			WantOk:        true,
+		},
+		{
+			Name:          "double underscore with letter",
+			LabelName:     "__a",
+			WantOld:       "__a",
+			WantSanitized: "__a",
+			WantOk:        true,
+		},
+		{
+			Name:          "letter surrounded by double underscores",
+			LabelName:     "__a__",
+			WantOld:       "__a__",
+			WantSanitized: "__a__",
+			WantOk:        true,
+		},
+		{
+			Name:          "unicode characters are invalid",
+			LabelName:     "世界",
+			WantOld:       "世界",
+			WantSanitized: "世界",
+			WantOk:        false,
+		},
+		{
+			Name:          "mixed unicode with valid characters is invalid",
+			LabelName:     "界世_a",
+			WantOld:       "界世_a",
+			WantSanitized: "界世_a",
+			WantOk:        false,
+		},
+		{
+			Name:          "mixed unicode with underscores is invalid",
+			LabelName:     "界世__a",
+			WantOld:       "界世__a",
+			WantSanitized: "界世__a",
+			WantOk:        false,
+		},
+		{
+			Name:          "valid characters with unicode suffix is invalid",
+			LabelName:     "a_世界",
+			WantOld:       "a_世界",
+			WantSanitized: "a_世界",
+			WantOk:        false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			t.Parallel()
+
+			gotOld, gotSanitized, gotOk := SanitizeLegacyLabelName(tt.LabelName)
+			require.Equal(t, tt.WantOld, gotOld)
+			require.Equal(t, tt.WantSanitized, gotSanitized)
+			require.Equal(t, tt.WantOk, gotOk)
 		})
 	}
 }

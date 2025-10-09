@@ -27,6 +27,8 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/grafana/pyroscope/pkg/featureflags"
+
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -271,6 +273,18 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 	}), nil
 }
 
+func filterLabelNames(labelNames []string) []string {
+	filtered := make([]string, 0, len(labelNames))
+	// Filter out label names not passing legacy validation if utf8 label names not enabled
+	for _, labelName := range labelNames {
+		if _, _, ok := validation.SanitizeLegacyLabelName(labelName); !ok {
+			continue
+		}
+		filtered = append(filtered, labelName)
+	}
+	return filtered
+}
+
 func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames")
 	defer sp.Finish()
@@ -288,8 +302,15 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 		if err != nil {
 			return nil, err
 		}
+
+		labelNames := uniqueSortedStrings(responses)
+		if capabilities, ok := featureflags.GetClientCapabilities(ctx); !ok || !capabilities.AllowUtf8LabelNames {
+			level.Debug(q.logger).Log("msg", "filtering out non-valid labels")
+			labelNames = filterLabelNames(labelNames)
+		}
+
 		return connect.NewResponse(&typesv1.LabelNamesResponse{
-			Names: uniqueSortedStrings(responses),
+			Names: labelNames,
 		}), nil
 	}
 
@@ -336,8 +357,14 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 		return nil, err
 	}
 
+	labelNames := uniqueSortedStrings(responses)
+	if capabilities, ok := featureflags.GetClientCapabilities(ctx); !ok || !capabilities.AllowUtf8LabelNames {
+		level.Debug(q.logger).Log("msg", "filtering out non-valid labels")
+		labelNames = filterLabelNames(labelNames)
+	}
+
 	return connect.NewResponse(&typesv1.LabelNamesResponse{
-		Names: uniqueSortedStrings(responses),
+		Names: labelNames,
 	}), nil
 }
 
@@ -378,6 +405,42 @@ func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (block
 	return results.blockPlan(ctx), nil
 }
 
+func (q *Querier) filterLabelNames(
+	ctx context.Context,
+	req *connect.Request[querierv1.SeriesRequest],
+) ([]string, error) {
+	if capabilities, ok := featureflags.GetClientCapabilities(ctx); ok && capabilities.AllowUtf8LabelNames {
+		return req.Msg.LabelNames, nil
+	}
+
+	// Filter out label names not passing legacy validation if utf8 label names not enabled
+	toFilter := make([]string, len(req.Msg.LabelNames))
+	copy(toFilter, req.Msg.LabelNames)
+	filtered := make([]string, 0, len(toFilter))
+
+	if len(req.Msg.LabelNames) == 0 {
+		// Querying for all label names; must retrieve all label names to then filter out
+		response, err := q.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
+			Matchers: req.Msg.Matchers,
+			Start:    req.Msg.Start,
+			End:      req.Msg.End,
+		}))
+		if err != nil {
+			return nil, err
+		}
+		toFilter = response.Msg.Names
+	}
+
+	for _, name := range toFilter {
+		if _, _, ok := validation.SanitizeLegacyLabelName(name); !ok {
+			level.Debug(q.logger).Log("msg", "filtering out label", "label_name", name)
+			continue
+		}
+		filtered = append(filtered, name)
+	}
+	return filtered, nil
+}
+
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
 	defer sp.Finish()
@@ -390,6 +453,14 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		otlog.Int64("start", req.Msg.Start),
 		otlog.Int64("end", req.Msg.End),
 	)
+
+	// Update LabelNames
+	filteredLabelNames, err := q.filterLabelNames(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	req.Msg.LabelNames = filteredLabelNames
+
 	// no store gateways configured so just query the ingesters
 	if q.storeGatewayQuerier == nil || !hasTimeRange {
 		responses, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
@@ -451,7 +522,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		})
 	}
 
-	err := group.Wait()
+	err = group.Wait()
 	if err != nil {
 		return nil, err
 	}
