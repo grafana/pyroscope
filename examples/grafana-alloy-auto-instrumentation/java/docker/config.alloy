@@ -17,7 +17,7 @@ discovery.relabel "java" {
     }
     rule {
         source_labels = ["__meta_process_commandline"]
-        regex = "java FastSlow"
+        regex = "^java FastSlow.*"
         action = "keep"
     }
     rule {
@@ -34,6 +34,7 @@ pyroscope.java "java" {
     cpu = true
     lock = "10ms"
     sample_rate = 100
+    log_level = "TRACE"
   }
   forward_to = [pyroscope.write.example.receiver]
   targets = discovery.relabel.java.output
