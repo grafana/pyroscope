@@ -347,7 +347,7 @@ func (l lazyUsageGroups) String() string {
 	groups := l()
 	result := make([]string, len(groups))
 	for pos := range groups {
-		result[pos] = groups[pos].ResolvedName
+		result[pos] = groups[pos].String()
 	}
 	return fmt.Sprintf("%v", result)
 }
@@ -1021,9 +1021,9 @@ func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation
 	samplingProbability := 1.0
 	var match *validation.UsageGroupMatchName
 	for _, group := range groupsInRequest {
-		probabilityCfg, found := l.UsageGroups[group.ConfiguredName]
+		probabilityCfg, found := l.UsageGroups[group.ResolvedName]
 		if !found {
-			probabilityCfg, found = l.UsageGroups[group.ResolvedName]
+			probabilityCfg, found = l.UsageGroups[group.ConfiguredName]
 		}
 		if !found {
 			continue
