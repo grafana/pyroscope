@@ -148,8 +148,7 @@ func ValidateLabels(clientCapabilities *featureflags.ClientCapabilities, limits 
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
 		if clientCapabilities != nil && clientCapabilities.AllowUtf8LabelNames {
-			// Using Prometheus utf-8 label name validation
-			if !model.LabelName(l.Name).IsValid() {
+			if !model.UTF8Validation.IsValidLabelName(l.Name) {
 				return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+l.Name+"'")
 			}
 		} else if origName, newName, ok := SanitizeLegacyLabelName(l.Name); ok && origName != newName {
