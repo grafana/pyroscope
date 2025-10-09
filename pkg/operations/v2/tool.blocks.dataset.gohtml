@@ -28,8 +28,6 @@
         <div class="row my-3">
             <p>
                 <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}?shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to block</a>
-                |
-                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets/profiles?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">View profiles</a>
             </p>
             <table class="table">
                 <tr>
@@ -92,6 +90,38 @@
                     </td>
                 </tr>
             </table>
+
+            <!-- Actions Section -->
+            <div class="row mt-4">
+                <div class="col-md-6 mb-3">
+                    <div class="card bg-dark border-secondary h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">
+                                <i class="bi bi-file-earmark-text"></i> Profiles
+                            </h5>
+                            <p class="card-text">View and download individual profiles from this dataset.</p>
+                            <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets/profiles?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}"
+                               class="btn btn-primary mt-auto">
+                                View Profiles
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card bg-dark border-secondary h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">
+                                <i class="bi bi-list-nested"></i> TSDB Index
+                            </h5>
+                            <p class="card-text">Inspect the time series database index for this dataset.</p>
+                            <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets/index?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}"
+                               class="btn btn-primary mt-auto">
+                                View TSDB Index
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </main>

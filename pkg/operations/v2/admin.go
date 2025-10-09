@@ -61,3 +61,7 @@ func (a *Admin) ProfileDownloadHandler(w http.ResponseWriter, r *http.Request) {
 func (a *Admin) ProfileVisualizeHandler(w http.ResponseWriter, r *http.Request) {
 	a.handlers.CreateDatasetProfileVisualizeHandler()(w, r)
 }
+
+func (a *Admin) DatasetTSDBIndexHandler(w http.ResponseWriter, r *http.Request) {
+	a.handlers.CreateDatasetTSDBIndexHandler()(w, r)
+}

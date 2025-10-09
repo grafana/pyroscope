@@ -113,6 +113,34 @@ type profileVisualizationPageContent struct {
 	Now         string
 }
 
+type tsdbIndexInfo struct {
+	From           string
+	Through        string
+	Checksum       uint32
+	NumSeries      uint64
+	LabelNames     []string
+	NumSymbols     int
+	SampleSymbols  []string // First 100 symbols
+	TotalSymbols   int
+	LabelValueSets []labelValueSet
+}
+
+type labelValueSet struct {
+	LabelName    string
+	NumValues    int
+	SampleValues []string // First 20 values
+}
+
+type datasetIndexPageContent struct {
+	User        string
+	BlockID     string
+	Shard       uint32
+	BlockTenant string
+	Dataset     *datasetDetails
+	IndexInfo   *tsdbIndexInfo
+	Now         string
+}
+
 type blockGroup struct {
 	MinTime                 time.Time
 	FormattedMinTime        string

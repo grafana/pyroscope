@@ -279,34 +279,3 @@ func (h *Handlers) convertBlockMeta(meta *metastorev1.BlockMeta) *blockDetails {
 		Datasets:          datasets,
 	}
 }
-
-func (h *Handlers) CreateDatasetDetailsHandler() func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		req, err := parseDatasetRequest(r)
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-
-		blockMeta, foundDataset, err := h.getDatasetMetadata(r.Context(), req)
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-
-		dataset := h.convertDataset(foundDataset, blockMeta.StringTable)
-
-		err = pageTemplates.datasetDetailsTemplate.Execute(w, datasetDetailsPageContent{
-			User:        req.TenantID,
-			BlockID:     req.BlockID,
-			Shard:       req.Shard,
-			BlockTenant: req.BlockTenant,
-			Dataset:     &dataset,
-			Now:         time.Now().UTC().Format(time.RFC3339),
-		})
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-	}
-}

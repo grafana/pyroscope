@@ -24,6 +24,9 @@ var datasetProfilesPageHtml string
 //go:embed tool.blocks.profile.visualization.gohtml
 var profileVisualizationPageHtml string
 
+//go:embed tool.blocks.dataset.index.gohtml
+var datasetIndexPageHtml string
+
 type indexPageContent struct {
 	Users []string
 	Now   string
@@ -70,6 +73,7 @@ type templates struct {
 	datasetDetailsTemplate       *template.Template
 	datasetProfilesTemplate      *template.Template
 	profileVisualizationTemplate *template.Template
+	datasetIndexTemplate         *template.Template
 }
 
 var pageTemplates = initTemplates()
@@ -99,6 +103,10 @@ func initTemplates() *templates {
 		"dict": dict,
 	})
 	template.Must(profileVisualizationTemplate.Parse(profileVisualizationPageHtml))
+	datasetIndexTemplate := template.New("dataset-index").Funcs(template.FuncMap{
+		"sub": sub,
+	})
+	template.Must(datasetIndexTemplate.Parse(datasetIndexPageHtml))
 	t := &templates{
 		indexTemplate:                indexTemplate,
 		blocksTemplate:               blocksTemplate,
@@ -106,6 +114,7 @@ func initTemplates() *templates {
 		datasetDetailsTemplate:       datasetDetailsTemplate,
 		datasetProfilesTemplate:      datasetProfilesTemplate,
 		profileVisualizationTemplate: profileVisualizationTemplate,
+		datasetIndexTemplate:         datasetIndexTemplate,
 	}
 	return t
 }
@@ -120,6 +129,10 @@ func mulf(param1, param2 float64) float64 {
 
 func add(param1, param2 int) int {
 	return param1 + param2
+}
+
+func sub(param1, param2 int) int {
+	return param1 - param2
 }
 
 func addf(param1, param2 float64) float64 {
