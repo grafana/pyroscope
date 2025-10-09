@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/go-kit/log"
@@ -64,12 +65,12 @@ func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, me b
 
 		// Handle HTTP/Protobuf and HTTP/Binary requests
 		contentType := r.Header.Get("Content-Type")
-		if contentType == "application/x-protobuf" || contentType == "application/protobuf" {
+		if contentType == "application/json" || contentType == "application/x-protobuf" || contentType == "application/protobuf" {
 			h.handleHTTPProtobuf(w, r)
 			return
 		}
 
-		http.Error(w, "Unsupported Content-Type", http.StatusUnsupportedMediaType)
+		http.Error(w, fmt.Sprintf("Unsupported Content-Type: %s", contentType), http.StatusUnsupportedMediaType)
 	})
 
 	return h
@@ -121,10 +122,19 @@ func (h *ingestHandler) handleHTTPProtobuf(w http.ResponseWriter, r *http.Reques
 
 	// Unmarshal the protobuf request
 	req := &pprofileotlp.ExportProfilesServiceRequest{}
-	if err := proto.Unmarshal(body, req); err != nil {
-		level.Error(h.log).Log("msg", "failed to unmarshal protobuf request", "err", err)
-		http.Error(w, "Failed to parse protobuf request", http.StatusBadRequest)
-		return
+
+	if r.Header.Get("Content-Type") == "application/json" {
+		if err := protojson.Unmarshal(body, req); err != nil {
+			level.Error(h.log).Log("msg", "failed to unmarshal JSON request", "err", err)
+			http.Error(w, "Failed to parse JSON request", http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := proto.Unmarshal(body, req); err != nil {
+			level.Error(h.log).Log("msg", "failed to unmarshal protobuf request", "err", err)
+			http.Error(w, "Failed to parse protobuf request", http.StatusBadRequest)
+			return
+		}
 	}
 
 	ctx := r.Context()
