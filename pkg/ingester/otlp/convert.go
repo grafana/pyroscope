@@ -3,6 +3,7 @@ package otlp
 import (
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
 
 	otelProfile "go.opentelemetry.io/proto/otlp/profiles/v1development"
@@ -144,13 +145,22 @@ func newProfileBuilder(src *otelProfile.Profile, dictionary *otelProfile.Profile
 				}
 			}
 			res.sampleProcessingTypes[i] = sampleConversionTypeSamplesToNanos
-		}
-		// Identify off cpu profiles
-		if profileType == "events:nanoseconds::" && len(res.dst.SampleType) == 1 {
+		} else if profileType == "events:nanoseconds::" && len(res.dst.SampleType) == 1 { // Identify off-CPU profiles
+
 			res.sampleProcessingTypes[i] = sampleConversionTypeSumEvents
 			res.name = &typesv1.LabelPair{
 				Name:  pyromodel.LabelNameProfileName,
 				Value: pyromodel.ProfileNameOffCpu,
+			}
+		} else { // Custom profile type
+			// Try to extract profile name from the type, e.g. "wall:time:cpu:milliseconds" -> "wall"
+			parts := strings.Split(profileType, `:`)
+			if len(parts) >= 3 {
+				res.name = &typesv1.LabelPair{
+					Name:  pyromodel.LabelNameProfileName,
+					Value: parts[2],
+				}
+				res.sampleProcessingTypes[i] = sampleConversionTypeNone
 			}
 		}
 	}

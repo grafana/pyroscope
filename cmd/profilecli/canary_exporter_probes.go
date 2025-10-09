@@ -19,6 +19,12 @@ import (
 	gprofile "github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	profilesv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
+	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
+	otlpprofiles "go.opentelemetry.io/proto/otlp/profiles/v1development"
+	resourcev1 "go.opentelemetry.io/proto/otlp/resource/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -31,6 +37,7 @@ import (
 
 const (
 	profileTypeID             = "deadmans_switch:made_up:profilos:made_up:profilos"
+	otlpProfileTypeID         = "otlp_test:otlp_test:count:otlp_test:samples"
 	canaryExporterServiceName = "pyroscope-canary-exporter"
 )
 
@@ -71,6 +78,140 @@ func (ce *canaryExporter) testIngestProfile(ctx context.Context, now time.Time) 
 	}
 
 	level.Info(logger).Log("msg", "successfully ingested profile", "uuid", p.UUID.String())
+	return nil
+}
+
+// generateOTLPProfile creates an OTLP profile with the specified ingestion method label
+func (ce *canaryExporter) generateOTLPProfile(now time.Time, ingestionMethod string) *profilesv1.ExportProfilesServiceRequest {
+	// Sanitize the ingestion method label value by replacing "/" with "_"
+	sanitizedMethod := strings.ReplaceAll(ingestionMethod, "/", "_")
+
+	// Create the profile dictionary with custom profile type similar to pprof probe
+	dictionary := &otlpprofiles.ProfilesDictionary{
+		StringTable: []string{
+			"",                 // 0: empty string
+			"otlp_test",        // 1
+			"samples",          // 2
+			"count",            // 3
+			"func1",            // 4
+			"func2",            // 5
+			"ingestion_method", // 6
+			sanitizedMethod,    // 7
+		},
+		MappingTable: []*otlpprofiles.Mapping{
+			{}, // 0: empty mapping (required null entry)
+		},
+		FunctionTable: []*otlpprofiles.Function{
+			{NameStrindex: 0}, // 0: empty
+			{NameStrindex: 4}, // 1: func1
+			{NameStrindex: 5}, // 2: func2
+		},
+		LocationTable: []*otlpprofiles.Location{
+			{Line: []*otlpprofiles.Line{{FunctionIndex: 1}}}, // 0: func1
+			{Line: []*otlpprofiles.Line{{FunctionIndex: 2}}}, // 1: func2
+		},
+		StackTable: []*otlpprofiles.Stack{
+			{LocationIndices: []int32{}},     // 0: empty (required null entry)
+			{LocationIndices: []int32{1, 0}}, // 1: func2, func1 stack
+			{LocationIndices: []int32{0}},    // 2: func1 stack
+		},
+	}
+
+	// Create profile with two samples matching the original pprof profile
+	profile := &otlpprofiles.Profile{
+		TimeUnixNano: uint64(now.UnixNano()),
+		DurationNano: 0,
+		Period:       1,
+		SampleType: &otlpprofiles.ValueType{
+			TypeStrindex: 1, // "otlp_test"
+			UnitStrindex: 3, // "count"
+		},
+		PeriodType: &otlpprofiles.ValueType{
+			TypeStrindex: 1, // "otlp_test"
+			UnitStrindex: 2, // "samples"
+		},
+		Sample: []*otlpprofiles.Sample{
+			{
+				// func1>func2 with value 10
+				StackIndex: 1, // stack_table[1]
+				Values:     []int64{10},
+			},
+			{
+				// func1 with value 20
+				StackIndex: 2, // stack_table[2]
+				Values:     []int64{20},
+			},
+		},
+	}
+
+	// Create the resource attributes
+	resourceAttrs := []*commonv1.KeyValue{
+		{
+			Key:   "service.name",
+			Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: canaryExporterServiceName}},
+		},
+		{
+			Key:   "job",
+			Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "canary-exporter"}},
+		},
+		{
+			Key:   "instance",
+			Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: ce.hostname}},
+		},
+		{
+			Key:   "ingestion_method",
+			Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: sanitizedMethod}},
+		},
+	}
+
+	// Create the OTLP request
+	req := &profilesv1.ExportProfilesServiceRequest{
+		Dictionary: dictionary,
+		ResourceProfiles: []*otlpprofiles.ResourceProfiles{
+			{
+				Resource: &resourcev1.Resource{
+					Attributes: resourceAttrs,
+				},
+				ScopeProfiles: []*otlpprofiles.ScopeProfiles{
+					{
+						Scope: &commonv1.InstrumentationScope{
+							Name: "pyroscope-canary-exporter",
+						},
+						Profiles: []*otlpprofiles.Profile{profile},
+					},
+				},
+			},
+		},
+	}
+
+	return req
+}
+
+func (ce *canaryExporter) testIngestOTLPGrpc(ctx context.Context, now time.Time) error {
+	// Generate the OTLP profile with the appropriate ingestion method label
+	req := ce.generateOTLPProfile(now, "otlp/grpc")
+
+	// Create gRPC connection
+	grpcAddr := strings.TrimPrefix(ce.params.URL, "http://")
+	grpcAddr = strings.TrimPrefix(grpcAddr, "https://")
+
+	conn, err := grpc.NewClient(grpcAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return fmt.Errorf("failed to connect to gRPC server: %w", err)
+	}
+	defer conn.Close()
+
+	// Create OTLP profiles service client
+	client := profilesv1.NewProfilesServiceClient(conn)
+
+	// Send the profile
+	_, err = client.Export(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to export OTLP profile via gRPC: %w", err)
+	}
+
+	level.Info(logger).Log("msg", "successfully ingested OTLP profile via gRPC")
 	return nil
 }
 
@@ -125,6 +266,65 @@ func (ce *canaryExporter) testSelectMergeProfile(ctx context.Context, now time.T
 		return fmt.Errorf("query mismatch (-expected, +actual):\n%s", diff)
 	}
 
+	return nil
+}
+
+func (ce *canaryExporter) testSelectMergeOTLPProfile(ctx context.Context, now time.Time) error {
+	// Query specifically for OTLP gRPC ingested profiles using the custom profile type
+	//labelSelector := fmt.Sprintf(`{service_name="%s", job="canary-exporter", instance="%s"}`, canaryExporterServiceName, ce.hostname)
+
+	respQuery, err := ce.params.queryClient().SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+		Start:         now.UnixMilli(),
+		End:           now.Add(5 * time.Second).UnixMilli(),
+		LabelSelector: ce.createLabelSelector(),
+		ProfileTypeID: otlpProfileTypeID,
+	}))
+	if err != nil {
+		return fmt.Errorf("failed to query OTLP profile: %w", err)
+	}
+
+	buf, err := respQuery.Msg.MarshalVT()
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal protobuf")
+	}
+
+	gp, err := gprofile.Parse(bytes.NewReader(buf))
+	if err != nil {
+		return errors.Wrap(err, "failed to parse profile")
+	}
+
+	// Verify the expected stacktraces from the OTLP profile
+	expected := map[string]int64{
+		"func2>func1": 10,
+		"func1":       20,
+	}
+	actual := make(map[string]int64)
+
+	var sb strings.Builder
+	for _, s := range gp.Sample {
+		sb.Reset()
+		for _, loc := range s.Location {
+			if sb.Len() != 0 {
+				_, err := sb.WriteRune('>')
+				if err != nil {
+					return err
+				}
+			}
+			for _, line := range loc.Line {
+				_, err := sb.WriteString(line.Function.Name)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		actual[sb.String()] = actual[sb.String()] + s.Value[0]
+	}
+
+	if diff := cmp.Diff(expected, actual); diff != "" {
+		return fmt.Errorf("OTLP profile query mismatch (-expected, +actual):\n%s", diff)
+	}
+
+	level.Info(logger).Log("msg", "successfully queried OTLP profile via gRPC")
 	return nil
 }
 

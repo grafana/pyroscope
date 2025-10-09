@@ -10,6 +10,26 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/pyroscope",
+        },
+        {
+            "name": "canary-exporter",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/profilecli",
+            "args": [
+                "canary-exporter"
+            ]
+        }
+    ],
+    "compounds": [
+        {
+            "name": "canary+pyroscope",
+            "configurations": [
+                "pyroscope",
+                "canary-exporter"
+            ],
+            "stopAll": true
         }
     ]
 }
