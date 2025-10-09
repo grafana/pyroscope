@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +22,7 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/objstore"
 	objstore_testutil "github.com/grafana/pyroscope/pkg/objstore/testutil"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 )
 
 func TestGlobalMarkersBucket_Delete_ShouldSucceedIfDeletionMarkDoesNotExistInTheBlockButExistInTheGlobalLocation(t *testing.T) {

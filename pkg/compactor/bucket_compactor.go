@@ -20,7 +20,7 @@ import (
 	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/pkg/errors"
@@ -34,7 +34,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type DeduplicateFilter interface {
@@ -179,11 +178,11 @@ type Grouper interface {
 // DefaultGroupKey returns a unique identifier for the group the block belongs to, based on
 // the DefaultGrouper logic. It considers the downsampling resolution and the block's labels.
 func DefaultGroupKey(meta block.Meta) string {
-	return defaultGroupKey(meta.Downsample.Resolution, labels.FromMap(meta.Labels))
+	return defaultGroupKey(meta.Resolution, labels.FromMap(meta.Labels))
 }
 
 func defaultGroupKey(res int64, lbls labels.Labels) string {
-	return fmt.Sprintf("%d@%v", res, util.StableHash(lbls))
+	return fmt.Sprintf("%d@%v", res, labels.StableHash(lbls))
 }
 
 func minTime(metas []*block.Meta) time.Time {

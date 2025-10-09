@@ -11,7 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -24,9 +24,9 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 )
 
 type noLimit struct{}
@@ -55,7 +55,7 @@ type testHead struct {
 
 func (t *testHead) Flush(ctx context.Context) error {
 	defer func() {
-		t.t.Logf("flushing head of block %v", t.Head.meta.ULID)
+		t.t.Logf("flushing head of block %v", t.meta.ULID)
 	}()
 	return t.Head.Flush(ctx)
 }

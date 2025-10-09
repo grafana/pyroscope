@@ -199,20 +199,14 @@ body,
   min-height: 100%;
 }
 
-// This was used for the sidebar setup
-// The trick here is to have 2 items
-// The sidebar and the app
-// And ONLY scroll the app
-// which should occuppy the rest of screen width
-// making it look like it's the body's toolbar!
+// App takes full height without sidebar
 .app {
   height: 100vh;
-  display: flex;
 }
 
 .pyroscope-app {
   overflow-y: auto;
-  flex-grow: 1;
+  height: 100vh;
 
   // define the padding here instead of each individual component
   // to make it easier to maintain

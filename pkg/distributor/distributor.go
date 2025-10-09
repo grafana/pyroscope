@@ -15,12 +15,15 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"go.uber.org/atomic"
+
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/limiter"
+	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
@@ -30,7 +33,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
-	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -40,18 +42,19 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
-	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
+	"github.com/grafana/pyroscope/pkg/distributor/writepath"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	pprofsplit "github.com/grafana/pyroscope/pkg/model/pprof_split"
+	"github.com/grafana/pyroscope/pkg/model/pprofsplit"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
+	"github.com/grafana/pyroscope/pkg/model/sampletype"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -104,7 +107,7 @@ type Distributor struct {
 	ingestionRateLimiter   *limiter.RateLimiter
 	aggregator             *aggregator.MultiTenantAggregator[*pprof.ProfileMerge]
 	asyncRequests          sync.WaitGroup
-	ingestionLimitsSampler *ingest_limits.Sampler
+	ingestionLimitsSampler *ingestlimits.Sampler
 	usageGroupEvaluator    *validation.UsageGroupEvaluator
 
 	subservices        *services.Manager
@@ -125,8 +128,8 @@ type Distributor struct {
 type Limits interface {
 	IngestionRateBytes(tenantID string) float64
 	IngestionBurstSizeBytes(tenantID string) int
-	IngestionLimit(tenantID string) *ingest_limits.Config
-	SamplingProbability(tenantID string) *sampling.Config
+	IngestionLimit(tenantID string) *ingestlimits.Config
+	DistributorSampling(tenantID string) *sampling.Config
 	IngestionTenantShardSize(tenantID string) int
 	MaxLabelNameLength(tenantID string) int
 	MaxLabelValueLength(tenantID string) int
@@ -139,6 +142,7 @@ type Limits interface {
 	MaxSessionsPerSeries(tenantID string) int
 	EnforceLabelsOrder(tenantID string) bool
 	IngestionRelabelingRules(tenantID string) []*relabel.Config
+	SampleTypeRelabelingRules(tenantID string) []*relabel.Config
 	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
 	validation.ProfileValidationLimits
 	aggregator.Limits
@@ -199,7 +203,7 @@ func New(
 		return nil, err
 	}
 
-	d.ingestionLimitsSampler = ingest_limits.NewSampler(distributorsRing)
+	d.ingestionLimitsSampler = ingestlimits.NewSampler(distributorsRing)
 	d.usageGroupEvaluator = validation.NewUsageGroupEvaluator(logger)
 
 	subservices = append(subservices, distributorsLifecycler, distributorsRing, d.aggregator, d.ingestionLimitsSampler)
@@ -241,190 +245,313 @@ func (d *Distributor) stopping(_ error) error {
 
 func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	req := &distributormodel.PushRequest{
-		Series: make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
+		Series:         make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
+		RawProfileType: distributormodel.RawProfileTypePPROF,
 	}
-
+	allErrors := multierror.New()
 	for _, grpcSeries := range grpcReq.Msg.Series {
-		series := &distributormodel.ProfileSeries{
-			Labels:  grpcSeries.Labels,
-			Samples: make([]*distributormodel.ProfileSample, 0, len(grpcSeries.Samples)),
-		}
 		for _, grpcSample := range grpcSeries.Samples {
 			profile, err := pprof.RawFromBytes(grpcSample.RawProfile)
 			if err != nil {
-				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+				allErrors.Add(err)
+				continue
 			}
-			sample := &distributormodel.ProfileSample{
+			series := &distributormodel.ProfileSeries{
+				Labels:     grpcSeries.Labels,
 				Profile:    profile,
 				RawProfile: grpcSample.RawProfile,
 				ID:         grpcSample.ID,
 			}
-			req.RawProfileSize += len(grpcSample.RawProfile)
-			series.Samples = append(series.Samples, sample)
+			req.Series = append(req.Series, series)
 		}
-		req.Series = append(req.Series, series)
 	}
-	resp, err := d.PushParsed(ctx, req)
+	if err := d.PushBatch(ctx, req); err != nil {
+		allErrors.Add(err)
+	}
+	err := allErrors.Err()
 	if err != nil && validation.ReasonOf(err) != validation.Unknown {
 		if sp := opentracing.SpanFromContext(ctx); sp != nil {
 			ext.LogError(sp, err)
 		}
 		level.Debug(util.LoggerWithContext(ctx, d.logger)).Log("msg", "failed to validate profile", "err", err)
-		return resp, err
+		return nil, err
 	}
-	return resp, err
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(new(pushv1.PushResponse)), err
 }
 
 func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries) string {
 	if series.Language != "" {
 		return series.Language
 	}
-	if len(series.Samples) == 0 {
-		return "unknown"
-	}
 	lang := series.GetLanguage()
 	if lang == "" {
-		lang = pprof.GetLanguage(series.Samples[0].Profile)
+		lang = pprof.GetLanguage(series.Profile)
 	}
 	series.Language = lang
 	return series.Language
 }
 
-func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
-	now := model.Now()
+func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushRequest) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Distributor.PushBatch")
+	defer sp.Finish()
+
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+	sp.SetTag("tenant_id", tenantID)
+
+	if len(req.Series) == 0 {
+		return noNewProfilesReceivedError()
 	}
 
-	req.TenantID = tenantID
-	for _, series := range req.Series {
-		serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
-		if serviceName == "" {
-			series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: phlaremodel.AttrServiceNameFallback})
-		}
-		sort.Sort(phlaremodel.Labels(series.Labels))
-	}
-
-	haveRawPprof := req.RawProfileType == distributormodel.RawProfileTypePPROF
-	d.bytesReceivedTotalStats.Inc(int64(req.RawProfileSize))
-	d.bytesReceivedStats.Record(float64(req.RawProfileSize))
-	if !haveRawPprof {
+	d.bytesReceivedTotalStats.Inc(int64(req.ReceivedCompressedProfileSize))
+	d.bytesReceivedStats.Record(float64(req.ReceivedCompressedProfileSize))
+	if req.RawProfileType != distributormodel.RawProfileTypePPROF {
 		// if a single profile contains multiple profile types/names (e.g. jfr) then there is no such thing as
 		// compressed size per profile type as all profile types are compressed once together. So we can not count
 		// compressed bytes per profile type. Instead we count compressed bytes per profile.
 		profName := req.RawProfileType // use "jfr" as profile name
-		d.metrics.receivedCompressedBytes.WithLabelValues(string(profName), tenantID).Observe(float64(req.RawProfileSize))
+		d.metrics.receivedCompressedBytes.WithLabelValues(string(profName), tenantID).Observe(float64(req.ReceivedCompressedProfileSize))
 	}
 
-	d.calculateRequestSize(req)
+	res := multierror.New()
+	errorsMutex := new(sync.Mutex)
+	wg := new(sync.WaitGroup)
+	for index, s := range req.Series {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			itErr := util.RecoverPanic(func() error {
+				return d.pushSeries(ctx, s, req.RawProfileType, tenantID)
+			})()
 
-	// We don't support externally provided profile annotations right now.
-	// They are unfortunately part of the Push API so we explicitly clear them here.
-	req.ClearAnnotations()
+			if itErr != nil {
+				itErr = fmt.Errorf("push series with index %d and id %s failed: %w", index, s.ID, itErr)
+			}
+			errorsMutex.Lock()
+			res.Add(itErr)
+			errorsMutex.Unlock()
+		}()
+	}
+	wg.Wait()
+	return res.Err()
+}
+
+type lazyUsageGroups func() []validation.UsageGroupMatchName
+
+func (l lazyUsageGroups) String() string {
+	groups := l()
+	result := make([]string, len(groups))
+	for pos := range groups {
+		result[pos] = groups[pos].ResolvedName
+	}
+	return fmt.Sprintf("%v", result)
+}
+
+type pushLog struct {
+	fields []any
+	lvl    func(log.Logger) log.Logger
+	msg    string
+}
+
+func newPushLog(capacity int) *pushLog {
+	fields := make([]any, 2, (capacity+1)*2)
+	fields[0] = "msg"
+	return &pushLog{
+		fields: fields,
+	}
+}
+
+func (p *pushLog) addFields(fields ...any) {
+	p.fields = append(p.fields, fields...)
+}
+
+func (p *pushLog) log(logger log.Logger, err error) {
+	// determine log level
+	if p.lvl == nil {
+		if err != nil {
+			p.lvl = level.Warn
+		} else {
+			p.lvl = level.Debug
+		}
+	}
+
+	if err != nil {
+		p.addFields("err", err)
+	}
+
+	// update message
+	if p.msg == "" {
+		if err != nil {
+			p.msg = "profile rejected"
+		} else {
+			p.msg = "profile accepted"
+		}
+	}
+	p.fields[1] = p.msg
+	p.lvl(logger).Log(p.fields...)
+}
+
+func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string) (err error) {
+	if req.Profile == nil {
+		return noNewProfilesReceivedError()
+	}
+	now := model.Now()
+
+	logger := spanlogger.FromContext(ctx, log.With(d.logger, "tenant", tenantID))
+	finalLog := newPushLog(10)
+	defer func() {
+		finalLog.log(logger, err)
+	}()
+
+	req.TenantID = tenantID
+	serviceName := phlaremodel.Labels(req.Labels).Get(phlaremodel.LabelNameServiceName)
+	if serviceName == "" {
+		req.Labels = append(req.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: phlaremodel.AttrServiceNameFallback})
+	} else {
+		finalLog.addFields("service_name", serviceName)
+	}
+	sort.Sort(phlaremodel.Labels(req.Labels))
+
+	if req.ID != "" {
+		finalLog.addFields("profile_id", req.ID)
+	}
+
+	req.TotalProfiles = 1
+	req.TotalBytesUncompressed = calculateRequestSize(req)
+	d.metrics.observeProfileSize(tenantID, StageReceived, req.TotalBytesUncompressed)
+
 	if err := d.checkIngestLimit(req); err != nil {
-		level.Debug(d.logger).Log("msg", "rejecting push request due to global ingest limit", "tenant", tenantID)
+		finalLog.msg = "rejecting profile due to global ingest limit"
+		finalLog.lvl = level.Debug
 		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
-		return nil, err
+		return err
 	}
 
 	if err := d.rateLimit(tenantID, req); err != nil {
-		return nil, err
+		return err
 	}
 
 	usageGroups := d.limits.DistributorUsageGroups(tenantID)
 
-	for _, series := range req.Series {
-		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
+	profName := phlaremodel.Labels(req.Labels).Get(ProfileName)
+	finalLog.addFields("profile_type", profName)
 
-		groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, series.Labels)
-		if err := d.checkUsageGroupsIngestLimit(req, groups.Names()); err != nil {
-			level.Debug(d.logger).Log("msg", "rejecting push request due to usage group ingest limit", "tenant", tenantID)
-			validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
-			validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
-			groups.CountDiscardedBytes(string(validation.IngestLimitReached), req.TotalBytesUncompressed)
-			return nil, err
-		}
+	groups := d.usageGroupEvaluator.GetMatch(tenantID, usageGroups, req.Labels)
+	finalLog.addFields("matched_usage_groups", lazyUsageGroups(groups.Names))
+	if err := d.checkUsageGroupsIngestLimit(req, groups.Names()); err != nil {
+		finalLog.msg = "rejecting profile due to usage group ingest limit"
+		finalLog.lvl = level.Debug
+		validation.DiscardedProfiles.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.IngestLimitReached), tenantID).Add(float64(req.TotalBytesUncompressed))
+		groups.CountDiscardedBytes(string(validation.IngestLimitReached), req.TotalBytesUncompressed)
+		return err
+	}
 
-		if sample := d.shouldSample(tenantID, groups.Names()); !sample {
-			level.Debug(d.logger).Log("msg", "skipping push request due to sampling", "tenant", tenantID)
-			validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
-			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
-			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
-			return connect.NewResponse(&pushv1.PushResponse{}), nil
-		}
-
-		profLanguage := d.GetProfileLanguage(series)
-
-		for _, raw := range series.Samples {
-			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
-			d.profileReceivedStats.Inc(1, profLanguage)
-			if haveRawPprof {
-				d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(raw.RawProfile)))
-			}
-			p := raw.Profile
-			decompressedSize := p.SizeVT()
-			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
-			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
-			d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
-			groups.CountReceivedBytes(profName, int64(decompressedSize))
-
-			if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
-				_ = level.Debug(d.logger).Log("msg", "invalid profile", "err", err)
-				reason := string(validation.ReasonOf(err))
-				validation.DiscardedProfiles.WithLabelValues(reason, tenantID).Add(float64(req.TotalProfiles))
-				validation.DiscardedBytes.WithLabelValues(reason, tenantID).Add(float64(req.TotalBytesUncompressed))
-				groups.CountDiscardedBytes(reason, req.TotalBytesUncompressed)
-				return nil, connect.NewError(connect.CodeInvalidArgument, err)
-			}
-
-			symbolsSize, samplesSize := profileSizeBytes(p.Profile)
-			d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))
-			d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(float64(symbolsSize))
+	willSample, samplingSource := d.shouldSample(tenantID, groups.Names())
+	if !willSample {
+		finalLog.addFields(
+			"usage_group", samplingSource.UsageGroup,
+			"probability", samplingSource.Probability,
+		)
+		finalLog.msg = "skipping profile due to sampling"
+		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
+		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
+		return nil
+	}
+	if samplingSource != nil {
+		if err := req.MarkSampledRequest(samplingSource); err != nil {
+			return err
 		}
 	}
 
-	if req.TotalProfiles == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no profiles received"))
+	profLanguage := d.GetProfileLanguage(req)
+	if profLanguage != "" {
+		finalLog.addFields("detected_language", profLanguage)
 	}
+
+	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
+	d.profileReceivedStats.Inc(1, profLanguage)
+	if origin == distributormodel.RawProfileTypePPROF {
+		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.RawProfile)))
+	}
+	p := req.Profile
+	decompressedSize := p.SizeVT()
+	profTime := model.TimeFromUnixNano(p.TimeNanos).Time()
+	finalLog.addFields(
+		"profile_time", profTime,
+		"ingestion_delay", now.Time().Sub(profTime),
+		"decompressed_size", decompressedSize,
+		"sample_count", len(p.Sample),
+	)
+	d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize))                              //todo use req.TotalBytesUncompressed to include labels siz
+	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize)) // deprecated TODO remove
+	d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
+	d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
+	groups.CountReceivedBytes(profName, int64(decompressedSize))
+
+	validated, err := validation.ValidateProfile(d.limits, tenantID, p, decompressedSize, req.Labels, now)
+	if err != nil {
+		reason := string(validation.ReasonOf(err))
+		finalLog.addFields("reason", reason)
+		validation.DiscardedProfiles.WithLabelValues(reason, tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(reason, tenantID).Add(float64(req.TotalBytesUncompressed))
+		groups.CountDiscardedBytes(reason, req.TotalBytesUncompressed)
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	symbolsSize, samplesSize := profileSizeBytes(p.Profile)
+	d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))
+	d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(float64(symbolsSize))
 
 	// Normalisation is quite an expensive operation,
 	// therefore it should be done after the rate limit check.
-	for _, series := range req.Series {
-		for _, sample := range series.Samples {
-			if series.Language == "go" {
-				sample.Profile.Profile = pprof.FixGoProfile(sample.Profile.Profile)
-			}
-			sample.Profile.Normalize()
-		}
+	if req.Language == "go" {
+		sp, _ := opentracing.StartSpanFromContext(ctx, "pprof.FixGoProfile")
+		req.Profile.Profile = pprof.FixGoProfile(req.Profile.Profile)
+		sp.Finish()
+	}
+	{
+		sp, _ := opentracing.StartSpanFromContext(ctx, "sampletype.Relabel")
+		sampleTypeRules := d.limits.SampleTypeRelabelingRules(req.TenantID)
+		sampletype.Relabel(validated, sampleTypeRules, req.Labels)
+		sp.Finish()
+	}
+	{
+		sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
+		req.Profile.Normalize()
+		sp.Finish()
+		d.metrics.observeProfileSize(tenantID, StageNormalized, calculateRequestSize(req))
 	}
 
-	removeEmptySeries(req)
-	if len(req.Series) == 0 {
+	if len(req.Profile.Sample) == 0 {
 		// TODO(kolesnikovae):
 		//   Normalization may cause all profiles and series to be empty.
 		//   We should report it as an error and account for discarded data.
 		//   The check should be done after ValidateProfile and normalization.
-		return connect.NewResponse(&pushv1.PushResponse{}), nil
+		return nil
 	}
 
-	if err := injectMappingVersions(req.Series); err != nil {
-		_ = level.Warn(d.logger).Log("msg", "failed to inject mapping versions", "err", err)
+	if err := injectMappingVersions(req); err != nil {
+		_ = level.Warn(logger).Log("msg", "failed to inject mapping versions", "err", err)
 	}
 
 	// Reduce cardinality of the session_id label.
 	maxSessionsPerSeries := d.limits.MaxSessionsPerSeries(req.TenantID)
-	for _, series := range req.Series {
-		series.Labels = d.limitMaxSessionsPerSeries(maxSessionsPerSeries, series.Labels)
-	}
+	req.Labels = d.limitMaxSessionsPerSeries(maxSessionsPerSeries, req.Labels)
 
 	aggregated, err := d.aggregate(ctx, req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if aggregated {
-		return connect.NewResponse(&pushv1.PushResponse{}), nil
+		return nil
 	}
 
 	// Write path router directs the request to the ingester or segment
@@ -433,11 +560,11 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	// functions to send the request to the appropriate service; these are
 	// called independently, and may be called concurrently: the request is
 	// cloned in this case – the callee may modify the request safely.
-	if err = d.router.Send(ctx, req); err != nil {
-		return nil, err
-	}
+	return d.router.Send(ctx, req)
+}
 
-	return connect.NewResponse(&pushv1.PushResponse{}), nil
+func noNewProfilesReceivedError() *connect.Error {
+	return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no profiles received"))
 }
 
 // If aggregation is configured for the tenant, we try to determine
@@ -452,26 +579,18 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 // form individual series (e.g., server-less workload), and typically
 // are ephemeral in its nature, and therefore retrying is not possible
 // or desirable, as it prolongs life-time duration of the clients.
-func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushRequest) (bool, error) {
+func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.ProfileSeries) (bool, error) {
 	a, ok := d.aggregator.AggregatorForTenant(req.TenantID)
 	if !ok {
 		// Aggregation is not configured for the tenant.
 		return false, nil
 	}
 
-	// Actually all series profiles can be merged before aggregation.
-	// However, it's not expected that a series has more than one profile.
-	if len(req.Series) != 1 {
-		return false, nil
-	}
-	series := req.Series[0]
-	if len(series.Samples) != 1 {
-		return false, nil
-	}
+	series := req
 
 	// First, we drop __session_id__ label to increase probability
 	// of aggregation, which is handled done per series.
-	profile := series.Samples[0].Profile.Profile
+	profile := series.Profile.Profile
 	labels := phlaremodel.Labels(series.Labels)
 	if _, hasSessionID := labels.GetLabel(phlaremodel.LabelNameSessionID); hasSessionID {
 		labels = labels.Clone().Delete(phlaremodel.LabelNameSessionID)
@@ -494,8 +613,8 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushR
 	// Note that the labels include the source series labels with
 	// session ID: this is required to ensure fair load distribution.
 	d.asyncRequests.Add(1)
-	labels = phlaremodel.Labels(req.Series[0].Labels).Clone()
-	annotations := req.Series[0].Annotations
+	labels = phlaremodel.Labels(req.Labels).Clone()
+	annotations := req.Annotations
 	go func() {
 		defer d.asyncRequests.Done()
 		sendErr := util.RecoverPanic(func() error {
@@ -510,13 +629,11 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.PushR
 			if handleErr != nil {
 				return handleErr
 			}
-			aggregated := &distributormodel.PushRequest{
-				TenantID: req.TenantID,
-				Series: []*distributormodel.ProfileSeries{{
-					Labels:      labels,
-					Samples:     []*distributormodel.ProfileSample{{Profile: pprof.RawFromProto(p.Profile())}},
-					Annotations: annotations,
-				}},
+			aggregated := &distributormodel.ProfileSeries{
+				TenantID:    req.TenantID,
+				Labels:      labels,
+				Profile:     pprof.RawFromProto(p.Profile()),
+				Annotations: annotations,
 			}
 			return d.router.Send(localCtx, aggregated)
 		})()
@@ -533,35 +650,34 @@ func visitSampleSeriesForIngester(profile *profilev1.Profile, labels []*typesv1.
 	return pprofsplit.VisitSampleSeries(profile, labels, rules, visitor)
 }
 
-func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
-	if err = d.visitSampleSeries(req, visitSampleSeriesForIngester); err != nil {
+func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distributormodel.ProfileSeries) (resp *connect.Response[pushv1.PushResponse], err error) {
+	sampleSeries, err := d.visitSampleSeries(req, visitSampleSeriesForIngester)
+	if err != nil {
 		return nil, err
 	}
-	if len(req.Series) == 0 {
+	if len(sampleSeries) == 0 {
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
 	}
 
 	enforceLabelOrder := d.limits.EnforceLabelsOrder(req.TenantID)
-	keys := make([]uint32, len(req.Series))
-	for i, s := range req.Series {
+	keys := make([]uint32, len(sampleSeries))
+	for i, s := range sampleSeries {
 		if enforceLabelOrder {
 			s.Labels = phlaremodel.Labels(s.Labels).InsertSorted(phlaremodel.LabelNameOrder, phlaremodel.LabelOrderEnforced)
 		}
 		keys[i] = TokenFor(req.TenantID, phlaremodel.LabelPairsString(s.Labels))
 	}
 
-	profiles := make([]*profileTracker, 0, len(req.Series))
-	for _, series := range req.Series {
-		for _, raw := range series.Samples {
-			p := raw.Profile
-			// zip the data back into the buffer
-			bw := bytes.NewBuffer(raw.RawProfile[:0])
-			if _, err = p.WriteTo(bw); err != nil {
-				return nil, err
-			}
-			raw.ID = uuid.NewString()
-			raw.RawProfile = bw.Bytes()
+	profiles := make([]*profileTracker, 0, len(sampleSeries))
+	for _, series := range sampleSeries {
+		p := series.Profile
+		// zip the data back into the buffer
+		bw := bytes.NewBuffer(series.RawProfile[:0])
+		if _, err = p.WriteTo(bw); err != nil {
+			return nil, err
 		}
+		series.ID = uuid.NewString()
+		series.RawProfile = bw.Bytes()
 		profiles = append(profiles, &profileTracker{profile: series})
 	}
 
@@ -620,14 +736,15 @@ func visitSampleSeriesForSegmentWriter(profile *profilev1.Profile, labels []*typ
 	return pprofsplit.VisitSampleSeriesBy(profile, labels, rules, visitor, phlaremodel.LabelNameServiceName)
 }
 
-func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
+func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *distributormodel.ProfileSeries) (*connect.Response[pushv1.PushResponse], error) {
 	// NOTE(kolesnikovae): if we return early, e.g., due to a validation error,
 	//   or if there are no series, the write path router has already seen the
 	//   request, and could have already accounted for the size, latency, etc.
-	if err := d.visitSampleSeries(req, visitSampleSeriesForSegmentWriter); err != nil {
+	serviceSeries, err := d.visitSampleSeries(req, visitSampleSeriesForSegmentWriter)
+	if err != nil {
 		return nil, err
 	}
-	if len(req.Series) == 0 {
+	if len(serviceSeries) == 0 {
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
 	}
 
@@ -639,25 +756,23 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 	// routed to different shards to complete is generally a bad idea because
 	// it's hard to reason about latencies, retries, and error handling.
 	config := d.limits.WritePathOverrides(req.TenantID)
-	requests := make([]*segmentwriterv1.PushRequest, 0, len(req.Series)*2)
-	for _, s := range req.Series {
-		for _, p := range s.Samples {
-			buf, err := pprof.Marshal(p.Profile.Profile, config.Compression == writepath.CompressionGzip)
-			if err != nil {
-				panic(fmt.Sprintf("failed to marshal profile: %v", err))
-			}
-			// Ideally, the ID should identify the whole request, and be
-			// deterministic (e.g, based on the request hash). In practice,
-			// the API allows batches, which makes it difficult to handle.
-			profileID := uuid.New()
-			requests = append(requests, &segmentwriterv1.PushRequest{
-				TenantId:    req.TenantID,
-				Labels:      s.Labels,
-				Profile:     buf,
-				ProfileId:   profileID[:],
-				Annotations: s.Annotations,
-			})
+	requests := make([]*segmentwriterv1.PushRequest, 0, len(serviceSeries)*2)
+	for _, s := range serviceSeries {
+		buf, err := pprof.Marshal(s.Profile.Profile, config.Compression == writepath.CompressionGzip)
+		if err != nil {
+			panic(fmt.Sprintf("failed to marshal profile: %v", err))
 		}
+		// Ideally, the ID should identify the whole request, and be
+		// deterministic (e.g, based on the request hash). In practice,
+		// the API allows batches, which makes it difficult to handle.
+		profileID := uuid.New()
+		requests = append(requests, &segmentwriterv1.PushRequest{
+			TenantId:    req.TenantID,
+			Labels:      s.Labels,
+			Profile:     buf,
+			ProfileId:   profileID[:],
+			Annotations: s.Annotations,
+		})
 	}
 
 	if len(requests) == 1 {
@@ -713,7 +828,7 @@ func mergeProfile(profile *profilev1.Profile) aggregator.AggregateFn[*pprof.Prof
 		if m == nil {
 			m = new(pprof.ProfileMerge)
 		}
-		if err := m.Merge(profile); err != nil {
+		if err := m.Merge(profile, true); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 		return m, nil
@@ -762,16 +877,14 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 
 	for _, p := range profileTrackers {
 		series := &pushv1.RawProfileSeries{
-			Labels:      p.profile.Labels,
-			Samples:     make([]*pushv1.RawSample, 0, len(p.profile.Samples)),
+			Labels: p.profile.Labels,
+			Samples: []*pushv1.RawSample{{
+				RawProfile: p.profile.RawProfile,
+				ID:         p.profile.ID,
+			}},
 			Annotations: p.profile.Annotations,
 		}
-		for _, sample := range p.profile.Samples {
-			series.Samples = append(series.Samples, &pushv1.RawSample{
-				RawProfile: sample.RawProfile,
-				ID:         sample.ID,
-			})
-		}
+
 		req.Msg.Series = append(req.Msg.Series, series)
 	}
 
@@ -825,7 +938,7 @@ func (d *Distributor) limitMaxSessionsPerSeries(maxSessionsPerSeries int, labels
 	return labels
 }
 
-func (d *Distributor) rateLimit(tenantID string, req *distributormodel.PushRequest) error {
+func (d *Distributor) rateLimit(tenantID string, req *distributormodel.ProfileSeries) error {
 	if !d.ingestionRateLimiter.AllowN(time.Now(), tenantID, int(req.TotalBytesUncompressed)) {
 		validation.DiscardedProfiles.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalBytesUncompressed))
@@ -836,21 +949,19 @@ func (d *Distributor) rateLimit(tenantID string, req *distributormodel.PushReque
 	return nil
 }
 
-func (d *Distributor) calculateRequestSize(req *distributormodel.PushRequest) {
-	for _, series := range req.Series {
-		// include the labels in the size calculation
-		for _, lbs := range series.Labels {
-			req.TotalBytesUncompressed += int64(len(lbs.Name))
-			req.TotalBytesUncompressed += int64(len(lbs.Value))
-		}
-		for _, raw := range series.Samples {
-			req.TotalProfiles += 1
-			req.TotalBytesUncompressed += int64(raw.Profile.SizeVT())
-		}
+func calculateRequestSize(req *distributormodel.ProfileSeries) int64 {
+	// include the labels in the size calculation
+	bs := int64(0)
+	for _, lbs := range req.Labels {
+		bs += int64(len(lbs.Name))
+		bs += int64(len(lbs.Value))
 	}
+
+	bs += int64(req.Profile.SizeVT())
+	return bs
 }
 
-func (d *Distributor) checkIngestLimit(req *distributormodel.PushRequest) error {
+func (d *Distributor) checkIngestLimit(req *distributormodel.ProfileSeries) error {
 	l := d.limits.IngestionLimit(req.TenantID)
 	if l == nil {
 		return nil
@@ -872,7 +983,7 @@ func (d *Distributor) checkIngestLimit(req *distributormodel.PushRequest) error 
 	return nil
 }
 
-func (d *Distributor) checkUsageGroupsIngestLimit(req *distributormodel.PushRequest, groupsInRequest []validation.UsageGroupMatchName) error {
+func (d *Distributor) checkUsageGroupsIngestLimit(req *distributormodel.ProfileSeries, groupsInRequest []validation.UsageGroupMatchName) error {
 	l := d.limits.IngestionLimit(req.TenantID)
 	if l == nil || len(l.UsageGroups) == 0 {
 		return nil
@@ -900,38 +1011,44 @@ func (d *Distributor) checkUsageGroupsIngestLimit(req *distributormodel.PushRequ
 	return nil
 }
 
-func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) bool {
-	l := d.limits.SamplingProbability(tenantID)
+// shouldSample returns true if the profile should be injected and optionally the usage group that was responsible for the decision.
+func (d *Distributor) shouldSample(tenantID string, groupsInRequest []validation.UsageGroupMatchName) (bool, *sampling.Source) {
+	l := d.limits.DistributorSampling(tenantID)
 	if l == nil {
-		return true
+		return true, nil
 	}
 
-	// Determine the minimum probability among all matching usage groups.
-	minProb := 1.0
-	matched := false
+	samplingProbability := 1.0
+	var match *validation.UsageGroupMatchName
 	for _, group := range groupsInRequest {
-		if probCfg, ok := l.UsageGroups[group.ResolvedName]; ok {
-			matched = true
-			if probCfg.Probability < minProb {
-				minProb = probCfg.Probability
-			}
+		probabilityCfg, found := l.UsageGroups[group.ConfiguredName]
+		if !found {
+			probabilityCfg, found = l.UsageGroups[group.ResolvedName]
+		}
+		if !found {
 			continue
 		}
-		if probCfg, ok := l.UsageGroups[group.ConfiguredName]; ok {
-			matched = true
-			if probCfg.Probability < minProb {
-				minProb = probCfg.Probability
-			}
+		// a less specific group loses to a more specific one
+		if match != nil && match.IsMoreSpecificThan(&group) {
+			continue
+		}
+		// lower probability wins; when tied, the more specific group wins
+		if probabilityCfg.Probability <= samplingProbability {
+			samplingProbability = probabilityCfg.Probability
+			match = &group
 		}
 	}
 
-	// If no sampling rules matched, accept the request.
-	if !matched {
-		return true
+	if match == nil {
+		return true, nil
 	}
 
-	// Sample once using the minimum probability.
-	return rand.Float64() <= minProb
+	source := &sampling.Source{
+		UsageGroup:  match.ResolvedName,
+		Probability: samplingProbability,
+	}
+
+	return rand.Float64() <= samplingProbability, source
 }
 
 type profileTracker struct {
@@ -990,77 +1107,60 @@ func newRingAndLifecycler(cfg util.CommonRingConfig, instanceCount *atomic.Uint3
 }
 
 // injectMappingVersions extract from the labels the mapping version and inject it into the profile's main mapping. (mapping[0])
-func injectMappingVersions(series []*distributormodel.ProfileSeries) error {
-	for _, s := range series {
-		version, ok := phlaremodel.ServiceVersionFromLabels(s.Labels)
-		if !ok {
-			continue
+func injectMappingVersions(s *distributormodel.ProfileSeries) error {
+	version, ok := phlaremodel.ServiceVersionFromLabels(s.Labels)
+	if !ok {
+		return nil
+	}
+	for _, m := range s.Profile.Mapping {
+		version.BuildID = s.Profile.StringTable[m.BuildId]
+		versionString, err := json.Marshal(version)
+		if err != nil {
+			return err
 		}
-		for _, sample := range s.Samples {
-			for _, m := range sample.Profile.Mapping {
-				version.BuildID = sample.Profile.StringTable[m.BuildId]
-				versionString, err := json.Marshal(version)
-				if err != nil {
-					return err
-				}
-				sample.Profile.StringTable = append(sample.Profile.StringTable, string(versionString))
-				m.BuildId = int64(len(sample.Profile.StringTable) - 1)
-			}
-		}
+		s.Profile.StringTable = append(s.Profile.StringTable, string(versionString))
+		m.BuildId = int64(len(s.Profile.StringTable) - 1)
 	}
 	return nil
 }
 
 type visitFunc func(*profilev1.Profile, []*typesv1.LabelPair, []*relabel.Config, *sampleSeriesVisitor) error
 
-func (d *Distributor) visitSampleSeries(req *distributormodel.PushRequest, visit visitFunc) error {
-	relabelingRules := d.limits.IngestionRelabelingRules(req.TenantID)
-	usageConfig := d.limits.DistributorUsageGroups(req.TenantID)
+func (d *Distributor) visitSampleSeries(s *distributormodel.ProfileSeries, visit visitFunc) ([]*distributormodel.ProfileSeries, error) {
+	relabelingRules := d.limits.IngestionRelabelingRules(s.TenantID)
+	usageConfig := d.limits.DistributorUsageGroups(s.TenantID)
 	var result []*distributormodel.ProfileSeries
-
-	for _, series := range req.Series {
-		usageGroups := d.usageGroupEvaluator.GetMatch(req.TenantID, usageConfig, series.Labels)
-		for _, p := range series.Samples {
-			visitor := &sampleSeriesVisitor{
-				tenantID: req.TenantID,
-				limits:   d.limits,
-				profile:  p.Profile,
-			}
-			if err := visit(p.Profile.Profile, series.Labels, relabelingRules, visitor); err != nil {
-				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), req.TenantID).Add(float64(req.TotalProfiles))
-				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), req.TenantID).Add(float64(req.TotalBytesUncompressed))
-				usageGroups.CountDiscardedBytes(string(validation.ReasonOf(err)), req.TotalBytesUncompressed)
-				return err
-			}
-			for _, s := range visitor.series {
-				s.Annotations = series.Annotations
-				s.Language = series.Language
-				result = append(result, s)
-			}
-			req.DiscardedProfilesRelabeling += int64(visitor.discardedProfiles)
-			req.DiscardedBytesRelabeling += int64(visitor.discardedBytes)
-			if visitor.discardedBytes > 0 {
-				usageGroups.CountDiscardedBytes(string(validation.DroppedByRelabelRules), int64(visitor.discardedBytes))
-			}
-		}
+	usageGroups := d.usageGroupEvaluator.GetMatch(s.TenantID, usageConfig, s.Labels)
+	visitor := &sampleSeriesVisitor{
+		tenantID: s.TenantID,
+		limits:   d.limits,
+		profile:  s.Profile,
+	}
+	if err := visit(s.Profile.Profile, s.Labels, relabelingRules, visitor); err != nil {
+		validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), s.TenantID).Add(float64(s.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), s.TenantID).Add(float64(s.TotalBytesUncompressed))
+		usageGroups.CountDiscardedBytes(string(validation.ReasonOf(err)), s.TotalBytesUncompressed)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	for _, ss := range visitor.series {
+		ss.Annotations = s.Annotations
+		ss.Language = s.Language
+		result = append(result, ss)
+	}
+	s.DiscardedProfilesRelabeling += int64(visitor.discardedProfiles)
+	s.DiscardedBytesRelabeling += int64(visitor.discardedBytes)
+	if visitor.discardedBytes > 0 {
+		usageGroups.CountDiscardedBytes(string(validation.DroppedByRelabelRules), int64(visitor.discardedBytes))
 	}
 
-	validation.DiscardedBytes.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(float64(req.DiscardedBytesRelabeling))
-	validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), req.TenantID).Add(float64(req.DiscardedProfilesRelabeling))
-	req.Series = result
-	removeEmptySeries(req)
-	return nil
-}
-
-func removeEmptySeries(req *distributormodel.PushRequest) {
-	for _, s := range req.Series {
-		s.Samples = slices.RemoveInPlace(s.Samples, func(sample *distributormodel.ProfileSample, _ int) bool {
-			return len(sample.Profile.Sample) == 0
-		})
+	if s.DiscardedBytesRelabeling > 0 {
+		validation.DiscardedBytes.WithLabelValues(string(validation.DroppedByRelabelRules), s.TenantID).Add(float64(s.DiscardedBytesRelabeling))
 	}
-	req.Series = slices.RemoveInPlace(req.Series, func(series *distributormodel.ProfileSeries, i int) bool {
-		return len(series.Samples) == 0
-	})
+	if s.DiscardedProfilesRelabeling > 0 {
+		validation.DiscardedProfiles.WithLabelValues(string(validation.DroppedByRelabelRules), s.TenantID).Add(float64(s.DiscardedProfilesRelabeling))
+	}
+	// todo should we do normalization after relabeling?
+	return result, nil
 }
 
 type sampleSeriesVisitor struct {
@@ -1075,15 +1175,12 @@ type sampleSeriesVisitor struct {
 }
 
 func (v *sampleSeriesVisitor) ValidateLabels(labels phlaremodel.Labels) error {
-	if err := validation.ValidateLabels(v.limits, v.tenantID, labels); err != nil {
-		return connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	return nil
+	return validation.ValidateLabels(v.limits, v.tenantID, labels)
 }
 
 func (v *sampleSeriesVisitor) VisitProfile(labels phlaremodel.Labels) {
 	v.series = append(v.series, &distributormodel.ProfileSeries{
-		Samples: []*distributormodel.ProfileSample{{Profile: v.profile}},
+		Profile: v.profile,
 		Labels:  labels,
 	})
 }
@@ -1093,7 +1190,7 @@ func (v *sampleSeriesVisitor) VisitSampleSeries(labels phlaremodel.Labels, sampl
 		v.exp = pprof.NewSampleExporter(v.profile.Profile)
 	}
 	v.series = append(v.series, &distributormodel.ProfileSeries{
-		Samples: []*distributormodel.ProfileSample{{Profile: exportSamples(v.exp, samples)}},
+		Profile: exportSamples(v.exp, samples),
 		Labels:  labels,
 	})
 }

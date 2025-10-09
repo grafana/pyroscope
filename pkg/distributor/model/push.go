@@ -1,10 +1,10 @@
 package model
 
 import (
-	"fmt"
-
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/annotation"
+	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
+	"github.com/grafana/pyroscope/pkg/distributor/sampling"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
@@ -16,12 +16,28 @@ const RawProfileTypeJFR = RawProfileType("jfr")
 const RawProfileTypeOTEL = RawProfileType("otel")
 
 type PushRequest struct {
-	TenantID       string
-	RawProfileSize int
-	RawProfileType RawProfileType
-
 	Series []*ProfileSeries
 
+	ReceivedCompressedProfileSize int
+	RawProfileType                RawProfileType
+}
+
+// todo better name
+type ProfileSeries struct {
+	// Caller provided, modified during processing
+	Labels     []*v1.LabelPair
+	Profile    *pprof.Profile
+	RawProfile []byte // may be nil if the Profile is composed not from pprof ( e.g. jfr)
+	ID         string
+
+	// todo split
+	// Transient state
+	TenantID string
+	Language string
+
+	Annotations []*v1.ProfileAnnotation
+
+	// always 1 todo delete
 	TotalProfiles          int64
 	TotalBytesUncompressed int64
 
@@ -29,22 +45,8 @@ type PushRequest struct {
 	DiscardedBytesRelabeling    int64
 }
 
-type ProfileSample struct {
-	Profile    *pprof.Profile
-	RawProfile []byte // may be nil if the Profile is composed not from pprof ( e.g. jfr)
-	ID         string
-}
-
-type ProfileSeries struct {
-	Labels   []*v1.LabelPair
-	Samples  []*ProfileSample
-	Language string
-
-	Annotations []*v1.ProfileAnnotation
-}
-
-func (p *ProfileSeries) GetLanguage() string {
-	spyName := phlaremodel.Labels(p.Labels).Get(phlaremodel.LabelNamePyroscopeSpy)
+func (req *ProfileSeries) GetLanguage() string {
+	spyName := phlaremodel.Labels(req.Labels).Get(phlaremodel.LabelNamePyroscopeSpy)
 	if spyName != "" {
 		lang := getProfileLanguageFromSpy(spyName)
 		if lang != "" {
@@ -77,69 +79,52 @@ func getProfileLanguageFromSpy(spyName string) string {
 	}
 }
 
-func (req *PushRequest) Clone() *PushRequest {
-	c := &PushRequest{
+func (req *ProfileSeries) Clone() *ProfileSeries {
+	c := &ProfileSeries{
 		TenantID:               req.TenantID,
-		RawProfileSize:         req.RawProfileSize,
-		RawProfileType:         req.RawProfileType,
-		Series:                 make([]*ProfileSeries, len(req.Series)),
-		TotalProfiles:          req.TotalProfiles,
 		TotalBytesUncompressed: req.TotalBytesUncompressed,
-	}
-	for i, s := range req.Series {
-		c.Series[i] = &ProfileSeries{
-			Labels:      phlaremodel.Labels(s.Labels).Clone(),
-			Samples:     make([]*ProfileSample, len(s.Samples)),
-			Language:    s.Language,
-			Annotations: s.Annotations,
-		}
-		for j, p := range s.Samples {
-			c.Series[i].Samples[j] = &ProfileSample{
-				Profile:    &pprof.Profile{Profile: p.Profile.Profile.CloneVT()},
-				RawProfile: nil,
-				ID:         p.ID,
-			}
-		}
+		Labels:                 phlaremodel.Labels(req.Labels).Clone(),
+		Profile:                &pprof.Profile{Profile: req.Profile.CloneVT()},
+		RawProfile:             nil,
+		ID:                     req.ID,
+		Language:               req.Language,
+		Annotations:            req.Annotations,
 	}
 	return c
 }
 
-func (req *PushRequest) ClearAnnotations() {
-	for _, series := range req.Series {
-		series.Annotations = nil
-	}
-}
-
-func (req *PushRequest) MarkThrottledTenant(l *ingest_limits.Config) error {
-	if l == nil {
-		return fmt.Errorf("no limit config provided")
-	}
-	annotation, err := ingest_limits.CreateTenantAnnotation(l)
+func (req *ProfileSeries) MarkThrottledTenant(l *ingestlimits.Config) error {
+	a, err := annotation.CreateTenantAnnotation(l)
 	if err != nil {
 		return err
 	}
-	for _, series := range req.Series {
-		series.Annotations = append(series.Annotations, &v1.ProfileAnnotation{
-			Key:   ingest_limits.ProfileAnnotationKeyThrottled,
-			Value: string(annotation),
-		})
-	}
+	req.Annotations = append(req.Annotations, &v1.ProfileAnnotation{
+		Key:   annotation.ProfileAnnotationKeyThrottled,
+		Value: string(a),
+	})
 	return nil
 }
 
-func (req *PushRequest) MarkThrottledUsageGroup(l *ingest_limits.Config, usageGroup string) error {
-	if l == nil {
-		return fmt.Errorf("no limit config provided")
-	}
-	annotation, err := ingest_limits.CreateUsageGroupAnnotation(l, usageGroup)
+func (req *ProfileSeries) MarkThrottledUsageGroup(l *ingestlimits.Config, usageGroup string) error {
+	a, err := annotation.CreateUsageGroupAnnotation(l, usageGroup)
 	if err != nil {
 		return err
 	}
-	for _, series := range req.Series {
-		series.Annotations = append(series.Annotations, &v1.ProfileAnnotation{
-			Key:   ingest_limits.ProfileAnnotationKeyThrottled,
-			Value: string(annotation),
-		})
+	req.Annotations = append(req.Annotations, &v1.ProfileAnnotation{
+		Key:   annotation.ProfileAnnotationKeyThrottled,
+		Value: string(a),
+	})
+	return nil
+}
+
+func (req *ProfileSeries) MarkSampledRequest(source *sampling.Source) error {
+	a, err := annotation.CreateProfileAnnotation(source)
+	if err != nil {
+		return err
 	}
+	req.Annotations = append(req.Annotations, &v1.ProfileAnnotation{
+		Key:   annotation.ProfileAnnotationKeySampled,
+		Value: string(a),
+	})
 	return nil
 }

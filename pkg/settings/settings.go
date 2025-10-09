@@ -16,48 +16,40 @@ import (
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
-	"github.com/grafana/pyroscope/pkg/settings/collection"
 	"github.com/grafana/pyroscope/pkg/settings/recording"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type Config struct {
-	Collection collection.Config `yaml:"collection_rules"`
-	Recording  recording.Config  `yaml:"recording_rules"`
+	Recording recording.Config `yaml:"recording_rules"`
 }
 
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
-	cfg.Collection.RegisterFlags(fs)
 	cfg.Recording.RegisterFlags(fs)
 }
 
 func (cfg *Config) Validate() error {
 	return errors.Join(
-		cfg.Collection.Validate(),
 		cfg.Recording.Validate(),
 	)
 }
 
 var _ settingsv1connect.SettingsServiceHandler = (*TenantSettings)(nil)
 
-func New(cfg Config, bucket objstore.Bucket, logger log.Logger) (*TenantSettings, error) {
+func New(cfg Config, bucket objstore.Bucket, logger log.Logger, overrides *validation.Overrides) (*TenantSettings, error) {
 	if bucket == nil {
 		bucket = objstore.NewInMemBucket()
 		level.Warn(logger).Log("msg", "using in-memory settings store, changes will be lost after shutdown")
 	}
 
 	ts := &TenantSettings{
-		CollectionRulesServiceHandler: &settingsv1connect.UnimplementedCollectionRulesServiceHandler{},
-		RecordingRulesServiceHandler:  &settingsv1connect.UnimplementedRecordingRulesServiceHandler{},
-		store:                         newBucketStore(bucket),
-		logger:                        logger,
-	}
-
-	if cfg.Collection.Enabled {
-		ts.CollectionRulesServiceHandler = collection.New(cfg.Collection, bucket, logger)
+		RecordingRulesServiceHandler: &settingsv1connect.UnimplementedRecordingRulesServiceHandler{},
+		store:                        newBucketStore(bucket),
+		logger:                       logger,
 	}
 
 	if cfg.Recording.Enabled {
-		ts.RecordingRulesServiceHandler = recording.New(cfg.Recording, bucket, logger)
+		ts.RecordingRulesServiceHandler = recording.New(bucket, logger, overrides)
 	}
 
 	ts.Service = services.NewBasicService(ts.starting, ts.running, ts.stopping)
@@ -67,7 +59,6 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger) (*TenantSettings
 
 type TenantSettings struct {
 	services.Service
-	settingsv1connect.CollectionRulesServiceHandler
 	settingsv1connect.RecordingRulesServiceHandler
 
 	store  store
@@ -79,38 +70,12 @@ func (ts *TenantSettings) starting(ctx context.Context) error {
 }
 
 func (ts *TenantSettings) running(ctx context.Context) error {
-	ticker := time.NewTicker(24 * time.Hour)
-	done := false
-
-	for !done {
-		select {
-		case <-ticker.C:
-			err := ts.store.Flush(ctx)
-			if err != nil {
-				level.Warn(ts.logger).Log(
-					"msg", "failed to refresh tenant settings",
-					"err", err,
-				)
-			}
-		case <-ctx.Done():
-			ticker.Stop()
-			done = true
-		}
-	}
-
+	<-ctx.Done()
 	return nil
 }
 
 func (ts *TenantSettings) stopping(_ error) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	err := ts.store.Flush(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = ts.store.Close()
+	err := ts.store.Close()
 	if err != nil {
 		return err
 	}

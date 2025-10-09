@@ -280,7 +280,7 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 		total++
 		fingerprint := profile.Fingerprint
 		if fingerprint == 0 && len(profile.Labels) > 0 {
-			fingerprint = profile.Labels.Hash()
+			fingerprint = profile.Hash()
 		}
 		if fingerprints.keep(profile.Timestamp, fingerprint) {
 			next.Keep()
@@ -444,7 +444,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 			if err = pprof.Unmarshal(result, &p); err != nil {
 				return err
 			}
-			return pprofMerge.Merge(&p)
+			return pprofMerge.Merge(&p, true)
 		}))
 	}
 	if err := g.Wait(); err != nil {

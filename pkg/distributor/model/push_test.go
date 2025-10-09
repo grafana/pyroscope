@@ -8,7 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/annotation"
+	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 )
 
 func TestProfileSeries_GetLanguage(t *testing.T) {
@@ -37,77 +38,29 @@ func TestProfileSeries_GetLanguage(t *testing.T) {
 func TestMarkThrottledTenant(t *testing.T) {
 	tests := []struct {
 		name        string
-		req         *PushRequest
-		limit       *ingest_limits.Config
+		req         *ProfileSeries
+		limit       *ingestlimits.Config
 		expectError bool
-		verify      func(t *testing.T, req *PushRequest)
+		verify      func(t *testing.T, req *ProfileSeries)
 	}{
 		{
 			name: "single series",
-			req: &PushRequest{
-				Series: []*ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "cpu"},
-						},
-					},
+			req: &ProfileSeries{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "cpu"},
 				},
 			},
-			limit: &ingest_limits.Config{
+			limit: &ingestlimits.Config{
 				PeriodType:     "hour",
 				PeriodLimitMb:  128,
 				LimitResetTime: time.Now().Unix(),
 				LimitReached:   true,
 			},
-			verify: func(t *testing.T, req *PushRequest) {
-				require.Len(t, req.Series[0].Annotations, 1)
-				assert.Equal(t, ingest_limits.ProfileAnnotationKeyThrottled, req.Series[0].Annotations[0].Key)
-				assert.Contains(t, req.Series[0].Annotations[0].Value, "\"periodLimitMb\":128")
+			verify: func(t *testing.T, req *ProfileSeries) {
+				require.Len(t, req.Annotations, 1)
+				assert.Equal(t, annotation.ProfileAnnotationKeyThrottled, req.Annotations[0].Key)
+				assert.Contains(t, req.Annotations[0].Value, "\"periodLimitMb\":128")
 			},
-		},
-		{
-			name: "multiple series",
-			req: &PushRequest{
-				Series: []*ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "cpu"},
-						},
-					},
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "memory"},
-						},
-					},
-				},
-			},
-			limit: &ingest_limits.Config{
-				PeriodType:     "hour",
-				PeriodLimitMb:  128,
-				LimitResetTime: time.Now().Unix(),
-				LimitReached:   true,
-			},
-			verify: func(t *testing.T, req *PushRequest) {
-				for _, series := range req.Series {
-					require.Len(t, series.Annotations, 1)
-					assert.Equal(t, ingest_limits.ProfileAnnotationKeyThrottled, series.Annotations[0].Key)
-					assert.Contains(t, series.Annotations[0].Value, "\"periodLimitMb\":128")
-				}
-			},
-		},
-		{
-			name: "invalid limit config",
-			req: &PushRequest{
-				Series: []*ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "cpu"},
-						},
-					},
-				},
-			},
-			limit:       nil,
-			expectError: true,
 		},
 	}
 
@@ -129,29 +82,25 @@ func TestMarkThrottledTenant(t *testing.T) {
 func TestMarkThrottledUsageGroup(t *testing.T) {
 	tests := []struct {
 		name        string
-		req         *PushRequest
-		limit       *ingest_limits.Config
+		req         *ProfileSeries
+		limit       *ingestlimits.Config
 		usageGroup  string
 		expectError bool
-		verify      func(t *testing.T, req *PushRequest)
+		verify      func(t *testing.T, req *ProfileSeries)
 	}{
 		{
 			name: "single series with usage group",
-			req: &PushRequest{
-				Series: []*ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "cpu"},
-						},
-					},
+			req: &ProfileSeries{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "cpu"},
 				},
 			},
-			limit: &ingest_limits.Config{
+			limit: &ingestlimits.Config{
 				PeriodType:     "hour",
 				PeriodLimitMb:  128,
 				LimitResetTime: time.Now().Unix(),
 				LimitReached:   true,
-				UsageGroups: map[string]ingest_limits.UsageGroup{
+				UsageGroups: map[string]ingestlimits.UsageGroup{
 					"group-1": {
 						PeriodLimitMb: 64,
 						LimitReached:  true,
@@ -159,30 +108,26 @@ func TestMarkThrottledUsageGroup(t *testing.T) {
 				},
 			},
 			usageGroup: "group-1",
-			verify: func(t *testing.T, req *PushRequest) {
-				require.Len(t, req.Series[0].Annotations, 1)
-				assert.Equal(t, ingest_limits.ProfileAnnotationKeyThrottled, req.Series[0].Annotations[0].Key)
-				assert.Contains(t, req.Series[0].Annotations[0].Value, "\"periodLimitMb\":64")
-				assert.Contains(t, req.Series[0].Annotations[0].Value, "\"usageGroup\":\"group-1\"")
+			verify: func(t *testing.T, req *ProfileSeries) {
+				require.Len(t, req.Annotations, 1)
+				assert.Equal(t, annotation.ProfileAnnotationKeyThrottled, req.Annotations[0].Key)
+				assert.Contains(t, req.Annotations[0].Value, "\"periodLimitMb\":64")
+				assert.Contains(t, req.Annotations[0].Value, "\"usageGroup\":\"group-1\"")
 			},
 		},
 		{
 			name: "invalid usage group",
-			req: &PushRequest{
-				Series: []*ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "cpu"},
-						},
-					},
+			req: &ProfileSeries{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "cpu"},
 				},
 			},
-			limit: &ingest_limits.Config{
+			limit: &ingestlimits.Config{
 				PeriodType:     "hour",
 				PeriodLimitMb:  128,
 				LimitResetTime: time.Now().Unix(),
 				LimitReached:   true,
-				UsageGroups: map[string]ingest_limits.UsageGroup{
+				UsageGroups: map[string]ingestlimits.UsageGroup{
 					"group-1": {
 						PeriodLimitMb: 64,
 						LimitReached:  true,
@@ -190,21 +135,6 @@ func TestMarkThrottledUsageGroup(t *testing.T) {
 				},
 			},
 			usageGroup:  "nonexistent-group",
-			expectError: true,
-		},
-		{
-			name: "invalid limit config",
-			req: &PushRequest{
-				Series: []*ProfileSeries{
-					{
-						Labels: []*typesv1.LabelPair{
-							{Name: "__name__", Value: "cpu"},
-						},
-					},
-				},
-			},
-			limit:       nil,
-			usageGroup:  "group-1",
 			expectError: true,
 		},
 	}

@@ -76,3 +76,21 @@ apt install libc6-dbg
 If your profiles show many shallow stack traces, typically 1-2 frames deep, your binary might have been compiled without frame pointers.
 
 To compile your code with frame pointers, include the `-fno-omit-frame-pointer` flag in your compiler options.
+
+
+### Ensure Python process data is discoverable
+
+This error indicates that Pyroscope cannot locate required Python runtime symbols, potentially due to nonstandard library naming:
+
+`pyperf get python process data failed: missing symbols pyRuntimeAddr autoTLSkeyAddr`
+ 
+This can occur if the application build process uses custom naming for libraries, such as:
+
+- `libpython3-custom.10.so.1.0`
+
+Pyroscope expects standard naming patterns like:
+
+- `libpython3.10.so.1.0`
+
+To resolve this, ensure Python libraries follow standard naming conventions.
+

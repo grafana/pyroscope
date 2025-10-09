@@ -2,14 +2,14 @@ package mockobjstore
 
 import (
 	"bytes"
-	context "context"
+	"context"
 	"errors"
-	io "io"
+	"io"
 	"testing"
 	"time"
 
-	mock "github.com/stretchr/testify/mock"
-	objstore "github.com/thanos-io/objstore"
+	"github.com/stretchr/testify/mock"
+	"github.com/thanos-io/objstore"
 )
 
 // ErrObjectDoesNotExist is used in tests to simulate objstore.Bucket.IsObjNotFoundErr().
@@ -48,7 +48,7 @@ func (m *MockBucket) MockIterWithCallback(prefix string, objects []string, err e
 }
 
 func (m *MockBucket) MockUpload(name string, err error) {
-	m.On("Upload", mock.Anything, name, mock.Anything).Return(err)
+	m.On("Upload", mock.Anything, name, mock.Anything, mock.Anything).Return(err)
 }
 
 func (m *MockBucket) MockAttributes(name string, attrs objstore.ObjectAttributes, err error) {

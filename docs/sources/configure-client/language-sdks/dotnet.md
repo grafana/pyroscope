@@ -28,7 +28,10 @@ The .NET Profiler supports the following profiling types:
 
 ### Compatibility
 
+The only compatible operating system and architecture combination is Linux running on amd64 architecture.
+
 Our .NET profiler works with the following .NET versions:
+
 * .NET 6
 * .NET 7
 * .NET 8
@@ -40,18 +43,18 @@ To capture and analyze profiling data, you need either a hosted Pyroscope OSS se
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 
-## Configure the Dotnet client
+## Configure the .NET client
 
 1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/pyroscope-io/pyroscope-dotnet/releases/):
 
 ```bash
-curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.10.0-pyroscope/pyroscope.0.10.0-glibc-x86_64.tar.gz  | tar xvz -C .
+curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.13.0-pyroscope/pyroscope.0.13.0-glibc-x86_64.tar.gz  | tar xvz -C .
 ```
 
 Or copy them from the [latest docker image](https://hub.docker.com/r/pyroscope/pyroscope-dotnet/tags). We have `glibc` and `musl` versions:
 ```dockerfile
-COPY --from=pyroscope/pyroscope-dotnet:0.10.0-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
-COPY --from=pyroscope/pyroscope-dotnet:0.10.0-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
+COPY --from=pyroscope/pyroscope-dotnet:0.13.0-glibc /Pyroscope.Profiler.Native.so /dotnet/Pyroscope.Profiler.Native.so
+COPY --from=pyroscope/pyroscope-dotnet:0.13.0-glibc /Pyroscope.Linux.ApiWrapper.x64.so /dotnet/Pyroscope.Linux.ApiWrapper.x64.so
 ````
 
 2. Set the following required environment variables to enable profiler
@@ -61,9 +64,14 @@ PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
 PYROSCOPE_PROFILING_ENABLED=1
 CORECLR_ENABLE_PROFILING=1
 CORECLR_PROFILER={BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}
-CORECLR_PROFILER_PATH=Pyroscope.Profiler.Native.so
-LD_PRELOAD=Pyroscope.Linux.ApiWrapper.x64.so
+CORECLR_PROFILER_PATH=/dotnet/Pyroscope.Profiler.Native.so
+LD_PRELOAD=/dotnet/Pyroscope.Linux.ApiWrapper.x64.so
+LD_LIBRARY_PATH=/dotnet
 ```
+
+{{< admonition type="note" >}}
+The `LD_LIBRARY_PATH` environment variable should point to the directory containing the `Pyroscope.Profiler.Native.so` file. This ensures that the dynamic linker can locate the profiler's shared libraries at runtime.
+{{< /admonition >}}
 
 {{< admonition type="note" >}}
 Since .NET version 8 the environment variable `DOTNET_EnableDiagnostics=0` (or its legacy equivalent `COMPlus_EnableDiagnostics=0`) will also disable the profiler. In order to get the previous behaviour (allowing profiling, but switch off IPC and Debugging) the following environment variables should be set instead:
@@ -186,6 +194,7 @@ export CORECLR_ENABLE_PROFILING=1
 export CORECLR_PROFILER={BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}
 export CORECLR_PROFILER_PATH=/dotnet/Pyroscope.Profiler.Native.so
 export LD_PRELOAD=/dotnet/Pyroscope.Linux.ApiWrapper.x64.so
+export LD_LIBRARY_PATH=/dotnet
 export PYROSCOPE_PROFILING_ENABLED=1
 export PYROSCOPE_APPLICATION_NAME=example.dotnet.app
 export PYROSCOPE_SERVER_ADDRESS=<URL>
@@ -201,3 +210,10 @@ To configure the .NET SDK to send data to Grafana Cloud Profiles or Pyroscope, r
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 
 If your open source Pyroscope server has multi-tenancy enabled, you'll need to specify a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
+
+### Locate the URL, user, and password in Grafana Cloud Profiles
+
+[//]: # 'Shared content for URl location in Grafana Cloud Profiles'
+[//]: # 'This content is located in /pyroscope/docs/sources/shared/locate-url-pw-user-cloud-profiles.md'
+
+{{< docs/shared source="pyroscope" lookup="locate-url-pw-user-cloud-profiles.md" version="latest" >}}

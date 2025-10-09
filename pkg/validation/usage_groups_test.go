@@ -584,3 +584,42 @@ func testMustParseMatcher(t *testing.T, s string) []*labels.Matcher {
 	require.NoError(t, err)
 	return m
 }
+
+func TestUsageGroupMatchName_IsMoreSpecificThan(t *testing.T) {
+	tests := []struct {
+		Name  string
+		Match UsageGroupMatchName
+		Other UsageGroupMatchName
+		Want  bool
+	}{
+		{
+			Name:  "same name",
+			Match: UsageGroupMatchName{ConfiguredName: "app/foo"},
+			Other: UsageGroupMatchName{ConfiguredName: "app/foo"},
+			Want:  false,
+		},
+		{
+			Name:  "less specific name",
+			Match: UsageGroupMatchName{ConfiguredName: "${labels.service_name}"},
+			Other: UsageGroupMatchName{ConfiguredName: "test-service"},
+			Want:  false,
+		},
+		{
+			Name:  "more specific name",
+			Match: UsageGroupMatchName{ConfiguredName: "test-service"},
+			Other: UsageGroupMatchName{ConfiguredName: "${labels.service_name}"},
+			Want:  true,
+		},
+		{
+			Name:  "more specific name with prefix",
+			Match: UsageGroupMatchName{ConfiguredName: "test-service"},
+			Other: UsageGroupMatchName{ConfiguredName: "service/${labels.service_name}"},
+			Want:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			require.Equal(t, tt.Want, tt.Match.IsMoreSpecificThan(&tt.Other))
+		})
+	}
+}

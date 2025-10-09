@@ -170,7 +170,7 @@ func ExportDiffToFlamebearer(fg *querierv1.FlameGraphDiff, profileType *typesv1.
 	fb := ExportToFlamebearer(singleFlamegraph, profileType)
 	fb.LeftTicks = uint64(fg.LeftTicks)
 	fb.RightTicks = uint64(fg.RightTicks)
-	fb.FlamebearerProfileV1.Metadata.Format = "double"
+	fb.Metadata.Format = "double"
 
 	return fb
 }

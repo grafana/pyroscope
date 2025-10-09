@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+
 	"github.com/go-kit/log"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
@@ -25,6 +26,9 @@ import (
 	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/util/body"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type flatProfileSeries struct {
@@ -39,21 +43,19 @@ type MockPushService struct {
 	T        testing.TB
 }
 
-func (m *MockPushService) PushParsed(ctx context.Context, req *model.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
+func (m *MockPushService) PushBatch(ctx context.Context, req *model.PushRequest) error {
 	if m.Keep {
 		for _, series := range req.Series {
-			for _, sample := range series.Samples {
-				rawProfileCopy := make([]byte, len(sample.RawProfile))
-				copy(rawProfileCopy, sample.RawProfile)
-				m.reqPprof = append(m.reqPprof, &flatProfileSeries{
-					Labels:     series.Labels,
-					Profile:    sample.Profile.Profile.CloneVT(),
-					RawProfile: rawProfileCopy,
-				})
-			}
+			rawProfileCopy := make([]byte, len(series.RawProfile))
+			copy(rawProfileCopy, series.RawProfile)
+			m.reqPprof = append(m.reqPprof, &flatProfileSeries{
+				Labels:     series.Labels,
+				Profile:    series.Profile.CloneVT(),
+				RawProfile: rawProfileCopy,
+			})
 		}
 	}
-	return nil, nil
+	return nil
 }
 
 type DumpProfile struct {
@@ -65,7 +67,7 @@ type Dump struct {
 	Profiles []DumpProfile
 }
 
-func (m *MockPushService) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+func (m *MockPushService) Push(_ context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	for _, series := range req.Msg.Series {
 		for _, sample := range series.Samples {
 			p, err := pprof.RawFromBytes(sample.RawProfile)
@@ -74,19 +76,18 @@ func (m *MockPushService) Push(ctx context.Context, req *connect.Request[pushv1.
 			}
 			m.reqPprof = append(m.reqPprof, &flatProfileSeries{
 				Labels:  series.Labels,
-				Profile: p.Profile.CloneVT(),
+				Profile: p.CloneVT(),
 			})
 		}
 	}
 	return nil, nil
 }
 
-func (m *MockPushService) selectActualProfile(ls labels.Labels, st string) DumpProfile {
-	sort.Sort(ls)
+func (m *MockPushService) selectActualProfile(lsUnsorted []labels.Label, st string) DumpProfile {
+	ls := labels.New(lsUnsorted...)
 	lss := ls.String()
 	for _, p := range m.reqPprof {
 		promLabels := phlaremodel.Labels(p.Labels).ToPrometheusLabels()
-		sort.Sort(promLabels)
 		actualLabels := labels.NewBuilder(promLabels).Del("jfr_event").Labels()
 		als := actualLabels.String()
 		if als == lss {
@@ -127,8 +128,8 @@ func (m *MockPushService) CompareDump(file string) {
 	m.reqPprof = req
 
 	for i := range expected.Profiles {
-		expectedLabels := labels.Labels{}
-		err := expectedLabels.UnmarshalJSON([]byte(expected.Profiles[i].Labels))
+		expectedLabels := []labels.Label{}
+		err := json.Unmarshal([]byte(expected.Profiles[i].Labels), &expectedLabels)
 		require.NoError(m.T, err)
 
 		actual := m.selectActualProfile(expectedLabels, expected.Profiles[i].SampleType)
@@ -445,4 +446,67 @@ func mergeSeriesAndSampleLabels(p *profilev1.Profile, sl []*v1.LabelPair, pl []*
 	}
 	sort.Stable(m)
 	return m.Unique()
+}
+
+func TestBodySizeLimit(t *testing.T) {
+	l := log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr))
+	svc := &MockPushService{Keep: true, T: t}
+
+	const sizeLimit = 64 << 20 // 64 MiB
+
+	bodySizeLimiter := body.NewSizeLimitHandler(validation.MockLimits{
+		IngestionBodyLimitBytesValue: sizeLimit,
+	})
+
+	h := bodySizeLimiter(NewPyroscopeIngestHandler(svc, l))
+
+	// Create a body larger than the 64 MiB limit
+	largeBody := make([]byte, sizeLimit+1) // 1 byte over the limit
+	for i := range largeBody {
+		largeBody[i] = byte(i % 256)
+	}
+
+	res := httptest.NewRecorder()
+	ctx := tenant.InjectTenantID(context.Background(), "any-tenant")
+	req := httptest.NewRequestWithContext(ctx, "POST", "/ingest?name=testapp&format=pprof", bytes.NewReader(largeBody))
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	h.ServeHTTP(res, req)
+
+	// Should return 413 Request Entity Too Large status when body size limit is exceeded
+	require.Equal(t, 413, res.Code)
+
+	// Verify the error message contains information about the body size limit
+	responseBody := res.Body.String()
+	assert.Contains(t, responseBody, "request body too large")
+
+	// Verify no profiles were ingested
+	assert.Equal(t, 0, len(svc.reqPprof))
+}
+
+func TestBodySizeWithinLimit(t *testing.T) {
+	l := log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr))
+	svc := &MockPushService{Keep: true, T: t}
+	const sizeLimit = 64 << 20 // 64 MiB
+
+	bodySizeLimiter := body.NewSizeLimitHandler(validation.MockLimits{
+		IngestionBodyLimitBytesValue: sizeLimit,
+	})
+
+	h := bodySizeLimiter(NewPyroscopeIngestHandler(svc, l))
+
+	// Use a valid small pprof profile for the test
+	profile, err := os.ReadFile(repoRoot + "pkg/og/convert/testdata/cpu.pprof")
+	require.NoError(t, err)
+
+	// Create a request with the actual profile (much smaller than limit)
+	res := httptest.NewRecorder()
+	ctx := tenant.InjectTenantID(context.Background(), "any-tenant")
+	req := httptest.NewRequestWithContext(ctx, "POST", "/ingest?name=testapp&format=pprof", bytes.NewReader(profile))
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	h.ServeHTTP(res, req)
+
+	// Should succeed with a valid profile within size limit
+	require.Equal(t, 200, res.Code)
 }

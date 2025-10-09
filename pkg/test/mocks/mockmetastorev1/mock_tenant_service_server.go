@@ -140,7 +140,7 @@ func (_c *MockTenantServiceServer_GetTenant_Call) RunAndReturn(run func(context.
 	return _c
 }
 
-// mustEmbedUnimplementedTenantServiceServer provides a mock function with given fields:
+// mustEmbedUnimplementedTenantServiceServer provides a mock function with no fields
 func (_m *MockTenantServiceServer) mustEmbedUnimplementedTenantServiceServer() {
 	_m.Called()
 }
@@ -168,7 +168,7 @@ func (_c *MockTenantServiceServer_mustEmbedUnimplementedTenantServiceServer_Call
 }
 
 func (_c *MockTenantServiceServer_mustEmbedUnimplementedTenantServiceServer_Call) RunAndReturn(run func()) *MockTenantServiceServer_mustEmbedUnimplementedTenantServiceServer_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

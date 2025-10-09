@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -113,7 +114,7 @@ func assertMetricsGathered(tb testing.TB, reg prometheus.Gatherer, gathered bool
 		}
 	}
 
-	var p expfmt.TextParser
+	p := expfmt.NewTextParser(model.UTF8Validation)
 	for _, e := range expected {
 		_, err = p.TextToMetricFamilies(strings.NewReader(e))
 		require.NoError(tb, err, "expected metric is not valid:\n%s", e)

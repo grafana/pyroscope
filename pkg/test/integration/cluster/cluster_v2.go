@@ -9,10 +9,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
 )
-
-const envVarV2Experiment = "PYROSCOPE_V2_EXPERIMENT"
 
 func WithV2() ClusterOption {
 	return func(c *Cluster) {
@@ -103,71 +101,88 @@ func (c *Cluster) v2Prepare(_ context.Context, memberlistJoin []string) error {
 	metastoreLeader := c.metastoreExpectedLeader()
 
 	for _, comp := range c.Components {
-		dataDir := c.dataDir(comp)
-
-		comp.flags = c.commonFlags(comp)
-
-		comp.flags = append(comp.flags,
-			"-enable-query-backend=true",
-			"-write-path=segment-writer",
-			"-metastore.min-ready-duration=0",
-			fmt.Sprintf("-metastore.address=%s:%d/%s", listenAddr, metastoreLeader.grpcPort, metastoreLeader.nodeName()),
-		)
-
-		if comp.Target == "segment-writer" {
-			comp.flags = append(comp.flags,
-				"-segment-writer.num-tokens=1",
-				"-segment-writer.min-ready-duration=0",
-				"-segment-writer.lifecycler.addr="+listenAddr,
-				"-segment-writer.lifecycler.ID="+comp.nodeName(),
-				"-segment-writer.heartbeat-period=1s",
-			)
+		if err := c.v2PrepareComponent(comp, metastoreLeader); err != nil {
+			return err
 		}
 
-		if comp.Target == "compaction-worker" {
-			comp.flags = append(comp.flags,
-				"-compaction-worker.job-concurrency=20",
-				"-compaction-worker.job-poll-interval=1s",
-			)
-		}
-
-		// register query-backends in the frontend and themselves
-		if comp.Target == "query-frontend" || comp.Target == "query-backend" {
-			for _, compidx := range c.perTarget["query-backend"] {
-				comp.flags = append(comp.flags,
-					fmt.Sprintf("-query-backend.address=%s:%d", listenAddr, c.Components[compidx].grpcPort),
-				)
-			}
-		}
-
-		// handle metastore folders and ports
-		if comp.Target == "metastore" {
-			cfgPath, err := c.metastoreConfig()
-			if err != nil {
-				return err
-			}
-			comp.flags = append(comp.flags,
-				fmt.Sprint("-config.file=", cfgPath),
-				fmt.Sprintf("-metastore.data-dir=%s", dataDir+"../metastore-ephemeral"),
-				fmt.Sprintf("-metastore.raft.dir=%s", dataDir+"../metastore-raft"),
-				fmt.Sprintf("-metastore.raft.snapshots-dir=%s", dataDir+"../metastore-snapshots"),
-				fmt.Sprintf("-metastore.raft.bind-address=%s:%d", listenAddr, comp.raftPort),
-				fmt.Sprintf("-metastore.raft.advertise-address=%s:%d", listenAddr, comp.raftPort),
-				fmt.Sprintf("-metastore.raft.server-id=%s", comp.nodeName()),
-				fmt.Sprintf("-metastore.raft.bootstrap-expect-peers=%d", len(c.perTarget[comp.Target])),
-			)
-
-			// add bootstrap peers
-			for _, compidx := range c.perTarget[comp.Target] {
-				peer := c.Components[compidx]
-				comp.flags = append(comp.flags,
-					fmt.Sprintf("-metastore.raft.bootstrap-peers=%s:%d/%s", listenAddr, peer.raftPort, peer.nodeName()),
-				)
-			}
-		}
 		// handle memberlist join
 		for _, m := range memberlistJoin {
 			comp.flags = append(comp.flags, fmt.Sprintf("-memberlist.join=%s", m))
+		}
+	}
+
+	return nil
+}
+
+func (c *Cluster) v2PrepareComponent(comp *Component, metastoreLeader *Component) error {
+	dataDir := c.dataDir(comp)
+
+	comp.cfg.V2 = true
+	comp.flags = c.commonFlags(comp)
+
+	comp.flags = append(comp.flags,
+		"-enable-query-backend=true",
+		"-write-path=segment-writer",
+		"-metastore.min-ready-duration=0",
+		fmt.Sprintf("-metastore.address=%s:%d/%s", listenAddr, metastoreLeader.grpcPort, metastoreLeader.nodeName()),
+	)
+
+	if c.debuginfodURL != "" && comp.Target == "query-frontend" {
+		comp.flags = append(comp.flags,
+			fmt.Sprintf("-symbolizer.debuginfod-url=%s", c.debuginfodURL),
+			"-symbolizer.enabled=true",
+		)
+	}
+
+	if comp.Target == "segment-writer" {
+		comp.flags = append(comp.flags,
+			"-segment-writer.num-tokens=1",
+			"-segment-writer.min-ready-duration=0",
+			"-segment-writer.lifecycler.addr="+listenAddr,
+			"-segment-writer.lifecycler.ID="+comp.nodeName(),
+			"-segment-writer.heartbeat-period=1s",
+		)
+	}
+
+	if comp.Target == "compaction-worker" {
+		comp.flags = append(comp.flags,
+			"-compaction-worker.job-concurrency=20",
+			"-compaction-worker.job-poll-interval=1s",
+		)
+	}
+
+	// register query-backends in the frontend and themselves
+	if comp.Target == "query-frontend" || comp.Target == "query-backend" {
+		for _, compidx := range c.perTarget["query-backend"] {
+			comp.flags = append(comp.flags,
+				fmt.Sprintf("-query-backend.address=%s:%d", listenAddr, c.Components[compidx].grpcPort),
+			)
+		}
+	}
+
+	// handle metastore folders and ports
+	if comp.Target == "metastore" {
+		cfgPath, err := c.metastoreConfig()
+		if err != nil {
+			return err
+		}
+		comp.flags = append(comp.flags,
+			fmt.Sprint("-config.file=", cfgPath),
+			fmt.Sprintf("-metastore.data-dir=%s", dataDir+"../metastore-ephemeral"),
+			fmt.Sprintf("-metastore.raft.dir=%s", dataDir+"../metastore-raft"),
+			fmt.Sprintf("-metastore.raft.snapshots-dir=%s", dataDir+"../metastore-snapshots"),
+			fmt.Sprintf("-metastore.raft.bind-address=%s:%d", listenAddr, comp.raftPort),
+			fmt.Sprintf("-metastore.raft.advertise-address=%s:%d", listenAddr, comp.raftPort),
+			fmt.Sprintf("-metastore.raft.server-id=%s", comp.nodeName()),
+			fmt.Sprintf("-metastore.raft.bootstrap-expect-peers=%d", len(c.perTarget[comp.Target])),
+		)
+
+		// add bootstrap peers
+		for _, compidx := range c.perTarget[comp.Target] {
+			peer := c.Components[compidx]
+			comp.flags = append(comp.flags,
+				fmt.Sprintf("-metastore.raft.bootstrap-peers=%s:%d/%s", listenAddr, peer.raftPort, peer.nodeName()),
+			)
 		}
 	}
 
@@ -229,4 +244,47 @@ func (comp *Component) metastoreReadyCheck(ctx context.Context, metastores []*Co
 		CurrentTerm: nodeInfo.Node.CurrentTerm,
 	})
 	return err
+}
+
+func (c *Cluster) GetMetastoreRaftNodeClient() (raftnodepb.RaftNodeServiceClient, error) {
+	leader := c.metastoreExpectedLeader()
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+	cc, err := grpc.NewClient(fmt.Sprintf("127.0.0.1:%d", leader.grpcPort), opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return raftnodepb.NewRaftNodeServiceClient(cc), nil
+}
+
+func (c *Cluster) AddMetastoreWithAutoJoin(ctx context.Context) error {
+	leader := c.metastoreExpectedLeader()
+
+	comp := newComponent("metastore")
+	comp.replica = len(c.perTarget["metastore"])
+	c.Components = append(c.Components, comp)
+	c.perTarget["metastore"] = append(c.perTarget["metastore"], len(c.Components)-1)
+
+	if err := c.v2PrepareComponent(comp, leader); err != nil {
+		return err
+	}
+	comp.flags = append(comp.flags, "-metastore.raft.auto-join=true")
+
+	p, err := comp.start(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start component: %w", err)
+	}
+	comp.p = p
+
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		if err := p.Run(); err != nil {
+			fmt.Printf("metastore with auto-join stopped with error: %v\n", err)
+		}
+	}()
+
+	return nil
 }

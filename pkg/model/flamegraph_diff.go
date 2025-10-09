@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/grafana/pyroscope/pkg/og/structs/cappedarr"
+	"github.com/grafana/pyroscope/pkg/util/minheap"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 )
@@ -95,7 +95,8 @@ func NewFlamegraphDiff(left, right *Tree, maxNodes int64) (*querierv1.FlameGraph
 				int64(i),
 			}
 
-			res.Levels[level].Values = append(values, res.Levels[level].Values...)
+			// We need to prepend values here, but this is expensive. We'll reverse the order later.
+			res.Levels[level].Values = append(res.Levels[level].Values, values...)
 			xLeftOffset += left.self
 			xRghtOffset += rght.self
 			otherLeftTotal, otherRghtTotal := int64(0), int64(0)
@@ -138,6 +139,11 @@ func NewFlamegraphDiff(left, right *Tree, maxNodes int64) (*querierv1.FlameGraph
 				}
 			}
 		}
+	}
+
+	// reverse each level's values since we appended values instead of prepending them
+	for _, level := range res.Levels {
+		reverseSliceInChunks(level.Values, 7)
 	}
 
 	deltaEncoding(res.Levels, 0, 7)
@@ -259,18 +265,29 @@ func combineMinValues(leftTree, rightTree *Tree, maxNodes int) uint64 {
 	if maxNodes < 1 {
 		return 0
 	}
-	// Trees are combined, meaning that their structures are
-	// identical, therefore the resulting tree can not have
-	// more nodes than any of them.
 	treeSize := leftTree.size(make([]*node, 0, defaultDFSSize))
 	if treeSize <= int64(maxNodes) {
 		return 0
 	}
-	c := cappedarr.New(maxNodes)
+
+	h := make([]int64, 0, maxNodes)
 	combineIterateWithTotal(leftTree, rightTree, func(left uint64, right uint64) bool {
-		return c.Push(max(left, right))
+		maxVal := int64(max(left, right))
+		if len(h) >= maxNodes {
+			if maxVal > h[0] {
+				h = minheap.Pop(h)
+				h = minheap.Push(h, maxVal)
+			}
+		} else {
+			h = minheap.Push(h, maxVal)
+		}
+		return true
 	})
-	return c.MinValue()
+
+	if len(h) < maxNodes {
+		return 0
+	}
+	return uint64(h[0])
 }
 
 // iterate both trees, both trees must be returned from combineTree
@@ -363,4 +380,17 @@ func prependTreeNode(s []*node, x *node) []*node {
 	copy(s[1:], s)
 	s[0] = x
 	return s
+}
+
+// reverseSliceInChunks reverses a slice in chunks of the given size
+func reverseSliceInChunks(slice []int64, chunkSize int) {
+	if len(slice) < chunkSize {
+		return
+	}
+
+	for i, j := 0, len(slice)-chunkSize; i < j; i, j = i+chunkSize, j-chunkSize {
+		for k := 0; k < chunkSize; k++ {
+			slice[i+k], slice[j+k] = slice[j+k], slice[i+k]
+		}
+	}
 }

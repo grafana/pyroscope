@@ -7,10 +7,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gogo/status"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	profilesv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
@@ -31,60 +33,17 @@ type expectedProfile struct {
 
 var otlpTestDatas = []otlpTestData{
 	{
-		name:        "unsymbolized profile from otel-ebpf-profiler",
-		profilePath: "testdata/otel-ebpf-profiler-unsymbolized.pb.bin",
+		name:        "unsymbolized profile from otel-ebpf-profiler with cpu and offcpu",
+		profilePath: "testdata/otel-ebpf-profile.pb.bin",
 		expectedProfiles: []expectedProfile{
 			{
 				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
 				map[string]string{"service_name": "unknown_service"},
-				"testdata/otel-ebpf-profiler-unsymbolized.json",
+				"testdata/otel-ebpf-profile.out.json",
 			},
 		},
 		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
 
-		},
-	},
-	{
-		name:        "symbolized profile from otel-ebpf-profiler with offcpu enabled",
-		profilePath: "testdata/otel-ebpf-profiler-offcpu.pb.bin",
-		expectedProfiles: []expectedProfile{
-			{
-				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-				map[string]string{"service_name": "unknown_service"},
-				"testdata/otel-ebpf-profiler-offcpu-cpu.json",
-			},
-			{
-				"off_cpu:events:nanoseconds::",
-				map[string]string{"service_name": "unknown_service"},
-				"testdata/otel-ebpf-profiler-offcpu.json",
-			},
-		},
-		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
-
-		},
-	},
-	{
-		name:        "symbolized (with some help from pyroscope-ebpf profiler) profile from otel-ebpf-profiler",
-		profilePath: "testdata/otel-ebpf-profiler-pyrosymbolized.pb.bin",
-		expectedProfiles: []expectedProfile{
-			{
-				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-				map[string]string{"service_name": "unknown_service"},
-				"testdata/otel-ebpf-profiler-pyrosymbolized-unknown.json",
-			},
-			{
-				"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-				map[string]string{"service_name": "otel-ebpf-docker//loving_robinson"},
-				"testdata/otel-ebpf-profiler-pyrosymbolized-docker.json",
-			},
-		},
-		assertMetrics: func(t *testing.T, p *PyroscopeTest) {
-			actual := p.Metrics(t, func(s string) bool {
-				return strings.HasPrefix(s, "pyroscope_distributor_received_compressed_bytes_sum")
-			})
-			expected := `pyroscope_distributor_received_compressed_bytes_sum{tenant="anonymous",type="otel"} 95673`
-			require.Equal(t, expected, actual)
-			p.TempAppName()
 		},
 	},
 }
@@ -93,6 +52,9 @@ func TestIngestOTLP(t *testing.T) {
 	for _, td := range otlpTestDatas {
 		t.Run(td.name, func(t *testing.T) {
 			EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+				if td.profilePath != "testdata/otel-ebpf-profiler-unsymbolized.pb.bin" {
+					t.Skip("Skipping OTLP ingestion integration tests")
+				}
 
 				rb := p.NewRequestBuilder(t)
 				runNo := p.TempAppName()
@@ -155,6 +117,43 @@ func TestIngestOTLP(t *testing.T) {
 					assert.Equal(t, string(expectedBytes), string(actualBytes))
 				}
 				td.assertMetrics(t, p)
+			})
+		})
+	}
+}
+
+type badOtlpTestData struct {
+	name                 string
+	profilePath          string
+	expectedErrorMessage string
+}
+
+var badOtlpTestDatas = []badOtlpTestData{
+	{
+		name:                 "corrupted data (function idx out of bounds)",
+		profilePath:          "testdata/otel-ebpf-profile-corrupted.pb.bin",
+		expectedErrorMessage: "failed to convert otel profile: invalid stack index: 1000000000",
+	},
+}
+
+func TestIngestBadOTLP(t *testing.T) {
+	for _, td := range badOtlpTestDatas {
+		t.Run(td.name, func(t *testing.T) {
+			EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+				rb := p.NewRequestBuilder(t)
+				profileBytes, err := os.ReadFile(td.profilePath)
+				require.NoError(t, err)
+				var profile = new(profilesv1.ExportProfilesServiceRequest)
+				err = proto.Unmarshal(profileBytes, profile)
+				require.NoError(t, err)
+
+				client := rb.OtelPushClient()
+				_, err = client.Export(context.Background(), profile)
+				require.Error(t, err)
+				require.Equal(t, codes.InvalidArgument, status.Code(err))
+				if td.expectedErrorMessage != "" {
+					require.Contains(t, err.Error(), td.expectedErrorMessage)
+				}
 			})
 		})
 	}

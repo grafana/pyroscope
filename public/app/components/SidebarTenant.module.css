@@ -5,8 +5,9 @@
 .accountDropdown {
   border: none;
   padding: 0;
-  width: 100%;
+  width: auto;
   text-align: left;
+  margin-right: 5px;
 }
 
 .dropdown {

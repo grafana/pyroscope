@@ -10,13 +10,15 @@ type MockLimits struct {
 	MaxQueryLengthValue             time.Duration
 	MaxQueryLookbackValue           time.Duration
 	QueryAnalysisEnabledValue       bool
+	QuerySanitizeOnMergeValue       bool
 	QueryAnalysisSeriesEnabledValue bool
 	MaxLabelNameLengthValue         int
 	MaxLabelValueLengthValue        int
 	MaxLabelNamesPerSeriesValue     int
 
-	MaxFlameGraphNodesDefaultValue int
-	MaxFlameGraphNodesMaxValue     int
+	MaxFlameGraphNodesDefaultValue              int
+	MaxFlameGraphNodesMaxValue                  int
+	MaxFlameGraphNodesOnSelectMergeProfileValue bool
 
 	DistributorAggregationWindowValue time.Duration
 	DistributorAggregationPeriodValue time.Duration
@@ -33,6 +35,8 @@ type MockLimits struct {
 	MaxQueriersPerTenantValue int
 
 	SymbolizerEnabledValue bool
+
+	IngestionBodyLimitBytesValue int64
 }
 
 func (m MockLimits) QuerySplitDuration(string) time.Duration        { return m.QuerySplitDurationValue }
@@ -43,9 +47,14 @@ func (m MockLimits) QueryAnalysisEnabled(tenantID string) bool      { return m.Q
 func (m MockLimits) QueryAnalysisSeriesEnabled(tenantID string) bool {
 	return m.QueryAnalysisSeriesEnabledValue
 }
-
+func (m MockLimits) QuerySanitizeOnMerge(tenantID string) bool {
+	return m.QuerySanitizeOnMergeValue
+}
 func (m MockLimits) MaxFlameGraphNodesDefault(string) int { return m.MaxFlameGraphNodesDefaultValue }
 func (m MockLimits) MaxFlameGraphNodesMax(string) int     { return m.MaxFlameGraphNodesMaxValue }
+func (m MockLimits) MaxFlameGraphNodesOnSelectMergeProfile(string) bool {
+	return m.MaxFlameGraphNodesOnSelectMergeProfileValue
+}
 
 func (m MockLimits) MaxLabelNameLength(userID string) int     { return m.MaxLabelNameLengthValue }
 func (m MockLimits) MaxLabelValueLength(userID string) int    { return m.MaxLabelValueLengthValue }
@@ -87,3 +96,7 @@ func (m MockLimits) RejectNewerThan(userID string) time.Duration {
 }
 
 func (m MockLimits) SymbolizerEnabled(s string) bool { return m.SymbolizerEnabledValue }
+
+func (m MockLimits) IngestionBodyLimitBytes(tenantID string) int64 {
+	return m.IngestionBodyLimitBytesValue
+}

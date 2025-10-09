@@ -2,6 +2,7 @@ package phlaredb
 
 import (
 	"context"
+	"io"
 	"math"
 	"net/http"
 	"os"
@@ -84,7 +85,7 @@ func (q Queriers) ingesterClient() (ingesterv1connect.IngesterServiceClient, fun
 	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(&ingesterHandlerPhlareDB{q}, connectapi.DefaultHandlerOptions()...))
 	serv := testhelper.NewInMemoryServer(mux)
 
-	var httpClient *http.Client = serv.Client()
+	var httpClient = serv.Client()
 
 	client := ingesterv1connect.NewIngesterServiceClient(
 		httpClient, serv.URL(), connectapi.DefaultClientOptions()...,
@@ -247,7 +248,15 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	t.Run("empty request fails", func(t *testing.T) {
 		bidi := client.MergeProfilesStacktraces(ctx)
 
-		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{}))
+		// It is possible that the error returned by server side of the
+		// stream closes the net.Conn before bidi.Send has finished. The
+		// short timing for that to happen with real HTTP servers makes this
+		// unlikely, but it does happen with the synchronous in memory
+		// net.Pipe() that is used here.
+		// See https://github.com/grafana/pyroscope/issues/3549 for more details.
+		if err := bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{}); !errors.Is(err, io.EOF) {
+			require.NoError(t, err)
+		}
 
 		_, err := bidi.Receive()
 		require.EqualError(t, err, "invalid_argument: missing initial select request")
@@ -408,7 +417,15 @@ func TestMergeProfilesPprof(t *testing.T) {
 	t.Run("empty request fails", func(t *testing.T) {
 		bidi := client.MergeProfilesPprof(ctx)
 
-		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{}))
+		// It is possible that the error returned by server side of the
+		// stream closes the net.Conn before bidi.Send has finished. The
+		// short timing for that to happen with real HTTP servers makes this
+		// unlikely, but it does happen with the synchronous in memory
+		// net.Pipe() that is used here.
+		// See https://github.com/grafana/pyroscope/issues/3549 for more details.
+		if err := bidi.Send(&ingestv1.MergeProfilesPprofRequest{}); !errors.Is(err, io.EOF) {
+			require.NoError(t, err)
+		}
 
 		_, err := bidi.Receive()
 		require.EqualError(t, err, "invalid_argument: missing initial select request")

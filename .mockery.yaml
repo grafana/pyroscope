@@ -24,7 +24,7 @@ packages:
   github.com/grafana/pyroscope/pkg/frontend:
     interfaces:
       Limits:
-  github.com/grafana/pyroscope/pkg/frontend/read_path/query_frontend:
+  github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend:
     interfaces:
       QueryBackend:
       Symbolizer:
@@ -34,37 +34,44 @@ packages:
   github.com/grafana/pyroscope/pkg/ingester/pyroscope:
     interfaces:
       PushService:
-  github.com/grafana/pyroscope/pkg/experiment/metastore/discovery:
+  github.com/grafana/pyroscope/pkg/metastore/compaction/compactor:
+    interfaces:
+      BlockQueueStore:
+      Tombstones:
+  github.com/grafana/pyroscope/pkg/metastore/compaction/scheduler:
+    interfaces:
+      JobStore:
+  github.com/grafana/pyroscope/pkg/metastore/discovery:
     interfaces:
       Discovery:
-  github.com/grafana/pyroscope/pkg/experiment/metastore/dlq:
-    interfaces:
-      LocalServer:
-  github.com/grafana/pyroscope/pkg/experiment/metastore/index:
+  github.com/grafana/pyroscope/pkg/metastore/index:
     interfaces:
       Store:
-  github.com/grafana/pyroscope/pkg/experiment/distributor/placement:
+  github.com/grafana/pyroscope/pkg/metastore/index/dlq:
+    interfaces:
+      Metastore:
+  github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement:
     interfaces:
       Placement:
-  github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement:
+  github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement:
     interfaces:
       Store:
-  github.com/grafana/pyroscope/pkg/distributor/write_path:
+  github.com/grafana/pyroscope/pkg/distributor/writepath:
     interfaces:
       SegmentWriterClient:
       IngesterClient:
-  github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb:
+  github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb:
     interfaces:
       RaftNodeServiceClient:
       RaftNodeServiceServer:
-  github.com/grafana/pyroscope/pkg/experiment/metrics:
+  github.com/grafana/pyroscope/pkg/metrics:
     interfaces:
       Exporter:
       Ruler:
   github.com/grafana/pyroscope/pkg/frontend/vcs/client:
     interfaces:
       repositoryService:
-  github.com/grafana/pyroscope/pkg/experiment/symbolizer:
+  github.com/grafana/pyroscope/pkg/symbolizer:
     interfaces:
       DebuginfodClient:
       DebugInfoStore:

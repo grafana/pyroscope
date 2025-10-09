@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 
 	prometheusmodel "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -14,12 +15,28 @@ type RecordingRule struct {
 	Matchers       []*labels.Matcher
 	GroupBy        []string
 	ExternalLabels labels.Labels
+	FunctionName   string
+}
+
+const (
+	metricNamePrefix = "profiles_recorded_"
+	RuleIDLabel      = "profiles_rule_id"
+)
+
+var uniqueLabels = map[string]bool{
+	RuleIDLabel:                     true,
+	prometheusmodel.MetricNameLabel: true,
 }
 
 func NewRecordingRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
+	sb := labels.NewScratchBuilder(len(rule.ExternalLabels) + 1)
+	return newRecordingRuleWithBuilder(rule, &sb)
+}
+
+func newRecordingRuleWithBuilder(rule *settingsv1.RecordingRule, sb *labels.ScratchBuilder) (*RecordingRule, error) {
 	// validate metric name
-	if !prometheusmodel.IsValidMetricName(prometheusmodel.LabelValue(rule.MetricName)) {
-		return nil, fmt.Errorf("invalid metric name: %s", rule.MetricName)
+	if err := ValidateMetricName(rule.MetricName); err != nil {
+		return nil, err
 	}
 
 	// ensure __profile_type__ matcher is present
@@ -27,40 +44,49 @@ func NewRecordingRule(rule *settingsv1.RecordingRule) (*RecordingRule, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse matchers: %w", err)
 	}
-	var profileTypePresent bool
+	var profileTypeMatcher *labels.Matcher
 	for _, matcher := range matchers {
 		if matcher.Name == LabelNameProfileType {
-			profileTypePresent = true
+			profileTypeMatcher = matcher
 			break
 		}
 	}
-	if !profileTypePresent {
+	if profileTypeMatcher == nil {
 		return nil, fmt.Errorf("no __profile_type__ matcher present")
 	}
-
-	r := &RecordingRule{
-		Matchers:       matchers,
-		GroupBy:        rule.GroupBy,
-		ExternalLabels: make(labels.Labels, 0, len(rule.ExternalLabels)+1),
+	if profileTypeMatcher.Type != labels.MatchEqual {
+		return nil, fmt.Errorf("__profile_type__ matcher is not an equality")
+	}
+	var functionName string
+	if rule.StacktraceFilter != nil {
+		if rule.StacktraceFilter.FunctionName != nil {
+			functionName = rule.StacktraceFilter.FunctionName.FunctionName
+		}
 	}
 
-	// ensure __name__ is unique
+	sb.Reset()
+	// ensure no __name__ or profiles_rule_id labels already exist
 	for _, lbl := range rule.ExternalLabels {
-		if lbl.Name == prometheusmodel.MetricNameLabel {
-			// skip __name__
+		if uniqueLabels[lbl.Name] {
+			// skip
 			continue
 		}
-		r.ExternalLabels = append(r.ExternalLabels, labels.Label{
-			Name:  lbl.Name,
-			Value: lbl.Value,
-		})
+		sb.Add(lbl.Name, lbl.Value)
 	}
+
 	// trust rule.MetricName
-	r.ExternalLabels = append(r.ExternalLabels, labels.Label{
-		Name:  prometheusmodel.MetricNameLabel,
-		Value: rule.MetricName,
-	})
-	return r, nil
+	sb.Add(prometheusmodel.MetricNameLabel, rule.MetricName)
+	// Inject recording rule Id
+	sb.Add(RuleIDLabel, rule.Id)
+
+	sb.Sort()
+
+	return &RecordingRule{
+		Matchers:       matchers,
+		GroupBy:        rule.GroupBy,
+		ExternalLabels: sb.Labels(),
+		FunctionName:   functionName,
+	}, nil
 }
 
 func parseMatchers(matchers []string) ([]*labels.Matcher, error) {
@@ -73,4 +99,14 @@ func parseMatchers(matchers []string) ([]*labels.Matcher, error) {
 		parsed = append(parsed, s...)
 	}
 	return parsed, nil
+}
+
+func ValidateMetricName(name string) error {
+	if !prometheusmodel.UTF8Validation.IsValidMetricName(name) {
+		return fmt.Errorf("invalid metric name: %s", name)
+	}
+	if !strings.HasPrefix(name, metricNamePrefix) {
+		return fmt.Errorf("metric name must start with %s", metricNamePrefix)
+	}
+	return nil
 }

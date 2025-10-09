@@ -1,0 +1,21 @@
+name: Update `make docs` procedure
+
+permissions: {}
+
+on:
+  schedule:
+    - cron: '0 7 * * 1-5'
+  workflow_dispatch:
+jobs:
+  main:
+    if: github.repository == 'grafana/pyroscope'
+    runs-on: ubuntu-x64-small
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: grafana/writers-toolkit/update-make-docs@b51e92f99d145614bf6763c7c4f1920a03124693
+        with:
+          pr_options: >
+            --label type/docs
+          trace: true

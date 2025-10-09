@@ -7,8 +7,6 @@ import {
   setQuery,
   selectQueries,
   setDateRange,
-  selectAnnotationsOrDefault,
-  addAnnotation,
   actions,
   fetchTagValues,
 } from '@pyroscope/redux/reducers/continuous';
@@ -19,19 +17,15 @@ import ChartTitle from '@pyroscope/components/ChartTitle';
 import TagsBar from '@pyroscope/components/TagsBar';
 import useTimeZone from '@pyroscope/hooks/timeZone.hook';
 import PageTitle from '@pyroscope/components/PageTitle';
-import { ContextMenuProps } from '@pyroscope/components/TimelineChart/ContextMenu.plugin';
 import { getFormatter } from '@pyroscope/legacy/flamegraph/format/format';
 import { TooltipCallbackProps } from '@pyroscope/components/TimelineChart/Tooltip.plugin';
 import { Profile } from '@pyroscope/legacy/models';
-import { isAnnotationsEnabled } from '@pyroscope/util/features';
 import useTags from '@pyroscope/hooks/tags.hook';
 import {
   TimelineTooltip,
   TimelineTooltipProps,
 } from '@pyroscope/components/TimelineTooltip';
 import { formatTitle } from './formatTitle';
-import ContextMenu from './continuous/contextMenu/ContextMenu';
-import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
 import { isLoadingOrReloading } from './loading';
 import { Panel } from '@pyroscope/components/Panel';
 import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
@@ -58,7 +52,6 @@ function ContinuousSingleView({
   );
 
   const { singleView } = useAppSelector((state) => state.continuous);
-  const annotations = useAppSelector(selectAnnotationsOrDefault('singleView'));
 
   useEffect(() => {
     if (from && until && query && maxNodes) {
@@ -99,38 +92,6 @@ function ContinuousSingleView({
     }
   };
 
-  const contextMenu = (props: ContextMenuProps) => {
-    if (!isAnnotationsEnabled) {
-      return null;
-    }
-
-    const { click, timestamp, containerEl } = props;
-
-    if (!click) {
-      return null;
-    }
-
-    return (
-      <ContextMenu position={props?.click}>
-        <AddAnnotationMenuItem
-          container={containerEl}
-          popoverAnchorPoint={{ x: click.pageX, y: click.pageY }}
-          timestamp={timestamp}
-          timezone={offset === 0 ? 'utc' : 'browser'}
-          onCreateAnnotation={(content) => {
-            dispatch(
-              addAnnotation({
-                appName: query,
-                timestamp,
-                content,
-              })
-            );
-          }}
-        />
-      </ContextMenu>
-    );
-  };
-
   return (
     <div>
       <PageTitle title={formatTitle('Single', query)} />
@@ -166,9 +127,7 @@ function ContinuousSingleView({
             timelineA={getTimeline()}
             onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
             height="125px"
-            annotations={annotations}
             selectionType="single"
-            ContextMenu={contextMenu}
             onHoverDisplayTooltip={(data) =>
               createTooltip(query, data, singleView.profile)
             }

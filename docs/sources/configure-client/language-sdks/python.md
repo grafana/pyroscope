@@ -66,6 +66,7 @@ pyroscope.configure(
 Optionally, you can configure several additional parameters:
 
 ```python
+import os
 import pyroscope
 
 pyroscope.configure(
@@ -77,7 +78,7 @@ pyroscope.configure(
     gil_only            = True, # only include traces for threads that are holding on to the Global Interpreter Lock; default is True
     enable_logging      = True, # does enable logging facility; default is False
     tags                = {
-        "region": '{os.getenv("REGION")}',
+        "region": f'{os.getenv("REGION")}',
     }
 )
 ```
@@ -113,6 +114,13 @@ To configure the Python SDK to send data to Pyroscope, replace the `<URL>` place
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 
 If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
+
+### Locate the URL, user, and password in Grafana Cloud Profiles
+
+[//]: # 'Shared content for URl location in Grafana Cloud Profiles'
+[//]: # 'This content is located in /pyroscope/docs/sources/shared/locate-url-pw-user-cloud-profiles.md'
+
+{{< docs/shared source="pyroscope" lookup="locate-url-pw-user-cloud-profiles.md" version="latest" >}}
 
 ## Python profiling examples
 

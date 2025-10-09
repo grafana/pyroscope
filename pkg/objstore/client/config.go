@@ -48,8 +48,8 @@ var (
 	ErrUnsupportedStorageBackend      = errors.New("unsupported storage backend")
 	ErrStoragePrefixStartsWithSlash   = errors.New("storage prefix starts with a slash")
 	ErrStoragePrefixEmptyPathSegment  = errors.New("storage prefix contains an empty path segment")
-	ErrStoragePrefixInvalidCharacters = errors.New("storage prefix contains invalid characters: only alphanumeric, hyphen, underscore, dot, and no segement should be . or ..")
-	ErrStoragePrefixBothFlagsSet      = errors.New("both storage.prefix and storage.storage-prefix are set, please use only storage.prefix, as storage.storage-prefix is deprecated.")
+	ErrStoragePrefixInvalidCharacters = errors.New("storage prefix contains invalid characters: only alphanumeric, hyphen, underscore, dot, and no segement should be '.' or '..'")
+	ErrStoragePrefixBothFlagsSet      = errors.New("both storage.prefix and storage.storage-prefix are set, please use only storage.prefix, as storage.storage-prefix is deprecated")
 )
 
 type ErrInvalidCharactersInStoragePrefix struct {
@@ -148,7 +148,7 @@ func validStoragePrefixPart(part string) bool {
 		return false
 	}
 	for i, b := range part {
-		if !((b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_' || b == '-' || b == '.' || (b >= '0' && b <= '9' && i > 0)) {
+		if (b < 'a' || b > 'z') && (b < 'A' || b > 'Z') && b != '_' && b != '-' && b != '.' && (b < '0' || b > '9' || i == 0) {
 			return false
 		}
 	}

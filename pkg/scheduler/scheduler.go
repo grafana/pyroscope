@@ -97,6 +97,10 @@ type Config struct {
 	QuerierForgetDelay      time.Duration             `yaml:"querier_forget_delay" category:"experimental"`
 	GRPCClientConfig        grpcclient.Config         `yaml:"grpc_client_config" doc:"description=This configures the gRPC client used to report errors back to the query-frontend."`
 	ServiceDiscovery        schedulerdiscovery.Config `yaml:",inline"`
+
+	// Dial options used to initiate outgoing gRPC connections.
+	// Intended to be used by tests to use in-memory network connections.
+	DialOpts []grpc.DialOption `yaml:"-"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
@@ -530,12 +534,13 @@ func (s *Scheduler) forwardErrorToFrontend(ctx context.Context, req *schedulerRe
 		otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer()),
 		middleware.ClientUserHeaderInterceptor,
 	},
-		nil)
+		nil, nil)
 	if err != nil {
 		level.Warn(s.log).Log("msg", "failed to create gRPC options for the connection to frontend to report error", "frontend", req.frontendAddress, "err", err, "requestErr", requestErr)
 		return
 	}
 
+	opts = append(opts, s.cfg.DialOpts...)
 	conn, err := grpc.DialContext(ctx, req.frontendAddress, opts...)
 	if err != nil {
 		level.Warn(s.log).Log("msg", "failed to create gRPC connection to frontend to report error", "frontend", req.frontendAddress, "err", err, "requestErr", requestErr)

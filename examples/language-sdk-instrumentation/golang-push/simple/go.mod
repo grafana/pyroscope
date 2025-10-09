@@ -1,10 +1,12 @@
 module pushsimple
 
-go 1.23.0
+go 1.24.0
 
-require github.com/grafana/pyroscope-go v1.2.2
+toolchain go1.24.8
+
+require github.com/grafana/pyroscope-go v1.2.7
 
 require (
-	github.com/grafana/pyroscope-go/godeltaprof v0.1.8 // indirect
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.9 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 )

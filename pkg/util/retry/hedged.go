@@ -26,13 +26,6 @@ type Hedged[T any] struct {
 	//  - the result received first is returned, regardless of anything.
 	//  - if Call fails before the trigger fires, it won't be retried.
 	FailFast bool
-
-	// Throttler executes call retries. Optional.
-	Throttler
-}
-
-type Throttler interface {
-	Run(func())
 }
 
 type Call[T any] func(ctx context.Context, isRetry bool) (T, error)
@@ -76,13 +69,7 @@ func (s Hedged[T]) Do(ctx context.Context) (T, error) {
 	case <-attemptCtx.Done():
 		// Call has returned, or caller cancelled the request.
 	case <-s.Trigger:
-		if s.Throttler != nil {
-			s.Throttler.Run(func() {
-				attempt(true)
-			})
-		} else {
-			attempt(true)
-		}
+		attempt(true)
 	}
 
 	wg.Wait()

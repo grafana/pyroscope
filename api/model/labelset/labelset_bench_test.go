@@ -31,7 +31,7 @@ func BenchmarkKey_Parse(b *testing.B) {
 	}
 }
 
-func randInt(min, max int) int { return rand.Intn(max-min) + min }
+func randInt(minVal, maxVal int) int { return rand.Intn(maxVal-minVal) + minVal } //nolint:gosec
 
 // TODO(kolesnikovae): This is not near perfect way of generating strings.
 //  It makes sense to create a package for util functions like this.
@@ -41,7 +41,8 @@ const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 func randString(n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+		b[i] = letterBytes[rand.Intn(len(letterBytes))] //nolint:gosec
 	}
+
 	return string(b)
 }

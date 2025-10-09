@@ -4,19 +4,22 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"iter"
 	"time"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/pyroscope/pkg/distributor/ingest_limits"
+	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
 	"github.com/grafana/pyroscope/pkg/distributor/sampling"
-	writepath "github.com/grafana/pyroscope/pkg/distributor/write_path"
-	"github.com/grafana/pyroscope/pkg/experiment/distributor/placement/adaptive_placement"
-	readpath "github.com/grafana/pyroscope/pkg/frontend/read_path"
+	"github.com/grafana/pyroscope/pkg/distributor/writepath"
+	"github.com/grafana/pyroscope/pkg/frontend/readpath"
+	"github.com/grafana/pyroscope/pkg/metastore/index/cleaner/retention"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	placement "github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 )
 
 const (
@@ -33,15 +36,16 @@ const (
 // to support tenant-friendly duration format (e.g: "1h30m45s") in JSON value.
 type Limits struct {
 	// Distributor enforced limits.
-	IngestionRateMB        float64               `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
-	IngestionBurstSizeMB   float64               `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
-	IngestionLimit         *ingest_limits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
-	Sampling               *sampling.Config      `yaml:"sampling" json:"sampling" category:"advanced" doc:"hidden"`
-	MaxLabelNameLength     int                   `yaml:"max_label_name_length" json:"max_label_name_length"`
-	MaxLabelValueLength    int                   `yaml:"max_label_value_length" json:"max_label_value_length"`
-	MaxLabelNamesPerSeries int                   `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
-	MaxSessionsPerSeries   int                   `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
-	EnforceLabelsOrder     bool                  `yaml:"enforce_labels_order" json:"enforce_labels_order"`
+	IngestionRateMB        float64              `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
+	IngestionBurstSizeMB   float64              `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
+	IngestionLimit         *ingestlimits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
+	IngestionBodyLimitMB   float64              `yaml:"ingestion_body_limit_mb" json:"ingestion_body_limit_mb" category:"advanced" doc:"hidden"`
+	DistributorSampling    *sampling.Config     `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
+	MaxLabelNameLength     int                  `yaml:"max_label_name_length" json:"max_label_name_length"`
+	MaxLabelValueLength    int                  `yaml:"max_label_value_length" json:"max_label_value_length"`
+	MaxLabelNamesPerSeries int                  `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
+	MaxSessionsPerSeries   int                  `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
+	EnforceLabelsOrder     bool                 `yaml:"enforce_labels_order" json:"enforce_labels_order"`
 
 	MaxProfileSizeBytes              int `yaml:"max_profile_size_bytes" json:"max_profile_size_bytes"`
 	MaxProfileStacktraceSamples      int `yaml:"max_profile_stacktrace_samples" json:"max_profile_stacktrace_samples"`
@@ -57,14 +61,19 @@ type Limits struct {
 	DistributorAggregationPeriod model.Duration `yaml:"distributor_aggregation_period" json:"distributor_aggregation_period"`
 
 	// IngestionRelabelingRules allow to specify additional relabeling rules that get applied before a profile gets ingested. There are some default relabeling rules, which ensure consistency of profiling series. The position of the default rules can be contolled by IngestionRelabelingDefaultRulesPosition
-	IngestionRelabelingRules                RelabelRules         `yaml:"ingestion_relabeling_rules" json:"ingestion_relabeling_rules" category:"advanced"`
-	IngestionRelabelingDefaultRulesPosition RelabelRulesPosition `yaml:"ingestion_relabeling_default_rules_position" json:"ingestion_relabeling_default_rules_position" category:"advanced"`
+	IngestionRelabelingRules                IngestionRelabelRules `yaml:"ingestion_relabeling_rules" json:"ingestion_relabeling_rules" category:"advanced"`
+	IngestionRelabelingDefaultRulesPosition RelabelRulesPosition  `yaml:"ingestion_relabeling_default_rules_position" json:"ingestion_relabeling_default_rules_position" category:"advanced"`
+
+	SampleTypeRelabelingRules SampleTypeRelabelRules `yaml:"sample_type_relabeling_rules" json:"sample_type_relabeling_rules" category:"advanced"`
 
 	// The tenant shard size determines the how many ingesters a particular
 	// tenant will be sharded to. Needs to be specified on distributors for
 	// correct distribution and on ingesters so that the local ingestion limit
 	// can be calculated correctly.
 	IngestionTenantShardSize int `yaml:"ingestion_tenant_shard_size" json:"ingestion_tenant_shard_size"`
+
+	// IngestionArtificialDelay is the artificial ingestion latency. It make sure the ingestion requests are delayed at the end of the request, to achieve a more uniform latency.
+	IngestionArtificialDelay model.Duration `yaml:"ingestion_artificial_delay" json:"ingestion_artificial_delay" category:"experimental" doc:"hidden"`
 
 	// Ingester enforced limits.
 	MaxLocalSeriesPerTenant  int `yaml:"max_local_series_per_tenant" json:"max_local_series_per_tenant"`
@@ -78,14 +87,15 @@ type Limits struct {
 	QueryAnalysisSeriesEnabled bool           `yaml:"query_analysis_series_enabled" json:"query_analysis_series_enabled"`
 
 	// Flame graph enforced limits.
-	MaxFlameGraphNodesDefault int `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
-	MaxFlameGraphNodesMax     int `yaml:"max_flamegraph_nodes_max" json:"max_flamegraph_nodes_max"`
-
+	MaxFlameGraphNodesDefault              int  `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
+	MaxFlameGraphNodesMax                  int  `yaml:"max_flamegraph_nodes_max" json:"max_flamegraph_nodes_max"`
+	MaxFlameGraphNodesOnSelectMergeProfile bool `yaml:"max_flamegraph_nodes_on_select_merge_profile" json:"max_flamegraph_nodes_on_select_merge_profile" category:"advanced" doc:"hidden"`
 	// Store-gateway.
 	StoreGatewayTenantShardSize int `yaml:"store_gateway_tenant_shard_size" json:"store_gateway_tenant_shard_size"`
 
 	// Query frontend.
-	QuerySplitDuration model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
+	QuerySplitDuration   model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
+	QuerySanitizeOnMerge bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge"`
 
 	// Compactor.
 	CompactorBlocksRetentionPeriod     model.Duration `yaml:"compactor_blocks_retention_period" json:"compactor_blocks_retention_period"`
@@ -112,10 +122,13 @@ type Limits struct {
 	// Write path overrides used in query-frontend.
 	ReadPathOverrides readpath.Config `yaml:",inline" json:",inline"`
 
+	// Data retention configuration.
+	Retention retention.Config `yaml:",inline" json:",inline"`
+
 	// Adaptive placement limits used in distributors and in the metastore.
 	// Distributors use these limits to determine how many shards to allocate
 	// to a tenant dataset by default, if no placement rules defined.
-	AdaptivePlacementLimits adaptive_placement.PlacementLimits `yaml:",inline" json:",inline"`
+	AdaptivePlacementLimits placement.PlacementLimits `yaml:",inline" json:",inline"`
 
 	// RecordingRules allow to specify static recording rules. This is not compatible with recording rules
 	// coming from a RecordingRulesClient, that will replace any static rules defined.
@@ -136,7 +149,7 @@ func (e LimitError) Error() string {
 func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Float64Var(&l.IngestionRateMB, "distributor.ingestion-rate-limit-mb", 4, "Per-tenant ingestion rate limit in sample size per second. Units in MB.")
 	f.Float64Var(&l.IngestionBurstSizeMB, "distributor.ingestion-burst-size-mb", 2, "Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request.")
-
+	f.Float64Var(&l.IngestionBodyLimitMB, "distributor.ingestion-body-limit-mb", 0, "Per-tenant ingestion body size limit in MB, before decompressing. 0 to disable.")
 	f.IntVar(&l.IngestionTenantShardSize, "distributor.ingestion-tenant-shard-size", 0, "The tenant's shard size used by shuffle-sharding. Must be set both on ingesters and distributors. 0 disables shuffle sharding.")
 
 	f.IntVar(&l.MaxLabelNameLength, "validation.max-length-label-name", 1024, "Maximum length accepted for label names.")
@@ -158,6 +171,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 
 	_ = l.QuerySplitDuration.Set("0s")
 	f.Var(&l.QuerySplitDuration, "querier.split-queries-by-interval", "Split queries by a time interval and execute in parallel. The value 0 disables splitting by time")
+	f.BoolVar(&l.QuerySanitizeOnMerge, "querier.sanitize-on-merge", true, "Whether profiles should be sanitized when merging.")
 
 	f.IntVar(&l.MaxQueryParallelism, "querier.max-query-parallelism", 0, "Maximum number of queries that will be scheduled in parallel by the frontend.")
 
@@ -171,7 +185,8 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxProfileSymbolValueLength, "validation.max-profile-symbol-value-length", 65535, "Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable.")
 
 	f.IntVar(&l.MaxFlameGraphNodesDefault, "querier.max-flamegraph-nodes-default", 8<<10, "Maximum number of flame graph nodes by default. 0 to disable.")
-	f.IntVar(&l.MaxFlameGraphNodesMax, "querier.max-flamegraph-nodes-max", 0, "Maximum number of flame graph nodes allowed. 0 to disable.")
+	f.IntVar(&l.MaxFlameGraphNodesMax, "querier.max-flamegraph-nodes-max", 1<<20, "Maximum number of flame graph nodes allowed. 0 to disable.")
+	f.BoolVar(&l.MaxFlameGraphNodesOnSelectMergeProfile, "querier.max-flamegraph-nodes-on-select-merge-profile", false, "Enforce the max nodes limits and defaults on SelectMergeProfile API. Historically this limit was not enforced to enable to gather full pprof profiles without truncation.")
 
 	f.Var(&l.DistributorAggregationWindow, "distributor.aggregation-window", "Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.")
 	f.Var(&l.DistributorAggregationPeriod, "distributor.aggregation-period", "Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.")
@@ -183,7 +198,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.CompactorTenantShardSize, "compactor.compactor-tenant-shard-size", 0, "Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.")
 	_ = l.CompactorPartialBlockDeletionDelay.Set("1d")
 	f.Var(&l.CompactorPartialBlockDeletionDelay, "compactor.partial-block-deletion-delay", fmt.Sprintf("If a partial block (unfinished block without %s file) hasn't been modified for this time, it will be marked for deletion. The minimum accepted value is %s: a lower value will be ignored and the feature disabled. 0 to disable.", block.MetaFilename, MinCompactorPartialBlockDeletionDelay.String()))
-	f.BoolVar(&l.CompactorDownsamplerEnabled, "compactor.compactor-downsampler-enabled", true, "If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept.")
+	f.BoolVar(&l.CompactorDownsamplerEnabled, "compactor.compactor-downsampler-enabled", true, "If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. Note: This set the default for the teanant overrides, in order to be effective it also requires compactor.downsampler-enabled to be set to true.")
 
 	_ = l.RejectNewerThan.Set("10m")
 	f.Var(&l.RejectNewerThan, "validation.reject-newer-than", "This limits how far into the future profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 10m.")
@@ -195,6 +210,12 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&l.IngestionRelabelingDefaultRulesPosition, "distributor.ingestion-relabeling-default-rules-position", "Position of the default ingestion relabeling rules in relation to relabel rules from overrides. Valid values are 'first', 'last' or 'disabled'.")
 	_ = l.IngestionRelabelingRules.Set("[]")
 	f.Var(&l.IngestionRelabelingRules, "distributor.ingestion-relabeling-rules", "List of ingestion relabel configurations. The relabeling rules work the same way, as those of [Prometheus](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config). All rules are applied in the order they are specified. Note: In most situations, it is more effective to use relabeling directly in Grafana Alloy.")
+
+	_ = l.SampleTypeRelabelingRules.Set("[]")
+	f.Var(&l.SampleTypeRelabelingRules, "distributor.sample-type-relabeling-rules", "List of sample type relabel configurations. Rules are applied to sample types with __type__ and __unit__ labels, along with all series labels.")
+
+	f.Var(&l.IngestionArtificialDelay, "distributor.ingestion-artificial-delay", "Target ingestion delay to apply to all tenants. If set to a non-zero value, the distributor will artificially delay ingestion time-frame by the specified duration by computing the difference between actual ingestion and the target. There is no delay on actual ingestion of samples, it is only the response back to the client.")
+
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -254,6 +275,8 @@ type TenantLimits interface {
 	TenantLimits(tenantID string) *Limits
 	// AllByTenantID gets a mapping of all tenant IDs and limits for that tenant
 	AllByTenantID() map[string]*Limits
+	// RuntimeConfig returns the runtime config values, if available, and nil otherwise.
+	RuntimeConfig() *RuntimeConfigValues
 }
 
 // Overrides periodically fetch a set of per-tenant overrides, and provides convenience
@@ -288,12 +311,21 @@ func (o *Overrides) IngestionBurstSizeBytes(tenantID string) int {
 	return int(o.getOverridesForTenant(tenantID).IngestionBurstSizeMB * bytesInMB)
 }
 
-func (o *Overrides) IngestionLimit(tenantID string) *ingest_limits.Config {
+func (o *Overrides) IngestionBodyLimitBytes(tenantID string) int64 {
+	return int64(o.getOverridesForTenant(tenantID).IngestionBodyLimitMB * bytesInMB)
+}
+
+func (o *Overrides) IngestionLimit(tenantID string) *ingestlimits.Config {
 	return o.getOverridesForTenant(tenantID).IngestionLimit
 }
 
-func (o *Overrides) SamplingProbability(tenantID string) *sampling.Config {
-	return o.getOverridesForTenant(tenantID).Sampling
+func (o *Overrides) DistributorSampling(tenantID string) *sampling.Config {
+	return o.getOverridesForTenant(tenantID).DistributorSampling
+}
+
+// IngestionArtificialDelay returns the artificial ingestion latency for a given user.
+func (o *Overrides) IngestionArtificialDelay(tenantID string) time.Duration {
+	return time.Duration(o.getOverridesForTenant(tenantID).IngestionArtificialDelay)
 }
 
 // IngestionTenantShardSize returns the ingesters shard size for a given user.
@@ -397,6 +429,11 @@ func (o *Overrides) MaxFlameGraphNodesMax(tenantID string) int {
 	return o.getOverridesForTenant(tenantID).MaxFlameGraphNodesMax
 }
 
+// MaxFlameGraphNodesOnSelectMergeProfiles returns if the max flame graph nodes should be enforced for the SelectMergeProfile API.
+func (o *Overrides) MaxFlameGraphNodesOnSelectMergeProfile(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).MaxFlameGraphNodesOnSelectMergeProfile
+}
+
 // StoreGatewayTenantShardSize returns the store-gateway shard size for a given user.
 func (o *Overrides) StoreGatewayTenantShardSize(userID string) int {
 	return o.getOverridesForTenant(userID).StoreGatewayTenantShardSize
@@ -405,6 +442,11 @@ func (o *Overrides) StoreGatewayTenantShardSize(userID string) int {
 // QuerySplitDuration returns the tenant specific split by interval applied in the query frontend.
 func (o *Overrides) QuerySplitDuration(tenantID string) time.Duration {
 	return time.Duration(o.getOverridesForTenant(tenantID).QuerySplitDuration)
+}
+
+// QuerySanitizeOnMerge returns whether profiles should be sanitized in the read path.
+func (o *Overrides) QuerySanitizeOnMerge(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).QuerySanitizeOnMerge
 }
 
 // CompactorTenantShardSize returns number of compactors that this user can use. 0 = all compactors.
@@ -486,6 +528,32 @@ func (o *Overrides) QueryAnalysisEnabled(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).QueryAnalysisEnabled
 }
 
+func (o *Overrides) Retention() (defaults retention.Config, overrides iter.Seq2[string, retention.Config]) {
+	return GetOverride(o, func(tenantID string, limits *Limits) retention.Config {
+		return limits.Retention
+	})
+}
+
+// GetOverride is a convenience function to get an override value for all tenants.
+// The order is not deterministic.
+func GetOverride[T any](o *Overrides, fn func(string, *Limits) T) (defaults T, overrides iter.Seq2[string, T]) {
+	defaults = fn("", o.defaultLimits)
+	if o.tenantLimits == nil {
+		return defaults, func(yield func(string, T) bool) {}
+	}
+	c := o.tenantLimits.RuntimeConfig()
+	if c == nil {
+		return defaults, func(yield func(string, T) bool) {}
+	}
+	return defaults, func(yield func(string, T) bool) {
+		for tenantID, limits := range c.TenantLimits {
+			if !yield(tenantID, fn(tenantID, limits)) {
+				return
+			}
+		}
+	}
+}
+
 // QueryAnalysisSeriesEnabled can be used to disable the series portion of the query analysis endpoint in the query frontend.
 // To be used for tenants where calculating series can be expensive.
 func (o *Overrides) QueryAnalysisSeriesEnabled(tenantID string) bool {
@@ -500,7 +568,7 @@ func (o *Overrides) ReadPathOverrides(tenantID string) readpath.Config {
 	return o.getOverridesForTenant(tenantID).ReadPathOverrides
 }
 
-func (o *Overrides) PlacementLimits(tenantID string) adaptive_placement.PlacementLimits {
+func (o *Overrides) PlacementLimits(tenantID string) placement.PlacementLimits {
 	// Both limits aimed at the same thing: limit the number of shards tenant's
 	// data is distributed to. The IngestionTenantShardSize specifies the number
 	// of ingester instances (taking into account the replication factor), while

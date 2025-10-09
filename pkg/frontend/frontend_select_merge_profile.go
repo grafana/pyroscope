@@ -6,7 +6,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 	"golang.org/x/sync/errgroup"
 
@@ -23,13 +22,6 @@ func (f *Frontend) SelectMergeProfile(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeProfileRequest],
 ) (*connect.Response[profilev1.Profile], error) {
-	opentracing.SpanFromContext(ctx).
-		SetTag("start", model.Time(c.Msg.Start).Time().String()).
-		SetTag("end", model.Time(c.Msg.End).Time().String()).
-		SetTag("selector", c.Msg.LabelSelector).
-		SetTag("max_nodes", c.Msg.GetMaxNodes()).
-		SetTag("profile_type", c.Msg.ProfileTypeID)
-
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeProfileProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
@@ -56,6 +48,21 @@ func (f *Frontend) SelectMergeProfile(
 	// NOTE: Max nodes limit is not set by default:
 	//   the method is used for pprof export and
 	//   truncation is not applicable for that.
+	maxNodesEnabled := false
+	for _, tenantID := range tenantIDs {
+		if f.limits.MaxFlameGraphNodesOnSelectMergeProfile(tenantID) {
+			maxNodesEnabled = true
+		}
+	}
+
+	maxNodes := c.Msg.MaxNodes
+	if maxNodesEnabled {
+		maxNodesV, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		maxNodes = &maxNodesV
+	}
 
 	var m pprof.ProfileMerge
 	for intervals.Next() {
@@ -66,7 +73,7 @@ func (f *Frontend) SelectMergeProfile(
 				LabelSelector:      c.Msg.LabelSelector,
 				Start:              r.Start.UnixMilli(),
 				End:                r.End.UnixMilli(),
-				MaxNodes:           c.Msg.MaxNodes,
+				MaxNodes:           maxNodes,
 				StackTraceSelector: c.Msg.StackTraceSelector,
 			})
 			resp, err := connectgrpc.RoundTripUnary[
@@ -75,7 +82,7 @@ func (f *Frontend) SelectMergeProfile(
 			if err != nil {
 				return err
 			}
-			return m.Merge(resp.Msg)
+			return m.Merge(resp.Msg, f.limits.QuerySanitizeOnMerge(tenantIDs[0]))
 		})
 	}
 

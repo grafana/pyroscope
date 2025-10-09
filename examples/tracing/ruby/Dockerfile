@@ -9,4 +9,6 @@ RUN bundle install
 
 COPY lib ./lib
 
+ENV APP_ENV=production
+
 CMD [ "ruby", "lib/server.rb" ]

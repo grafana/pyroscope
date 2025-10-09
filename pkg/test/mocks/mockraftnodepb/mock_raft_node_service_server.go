@@ -5,7 +5,7 @@ package mockraftnodepb
 import (
 	context "context"
 
-	raftnodepb "github.com/grafana/pyroscope/pkg/experiment/metastore/raftnode/raftnodepb"
+	raftnodepb "github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -376,7 +376,7 @@ func (_c *MockRaftNodeServiceServer_RemoveNode_Call) RunAndReturn(run func(conte
 	return _c
 }
 
-// mustEmbedUnimplementedRaftNodeServiceServer provides a mock function with given fields:
+// mustEmbedUnimplementedRaftNodeServiceServer provides a mock function with no fields
 func (_m *MockRaftNodeServiceServer) mustEmbedUnimplementedRaftNodeServiceServer() {
 	_m.Called()
 }
@@ -404,7 +404,7 @@ func (_c *MockRaftNodeServiceServer_mustEmbedUnimplementedRaftNodeServiceServer_
 }
 
 func (_c *MockRaftNodeServiceServer_mustEmbedUnimplementedRaftNodeServiceServer_Call) RunAndReturn(run func()) *MockRaftNodeServiceServer_mustEmbedUnimplementedRaftNodeServiceServer_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

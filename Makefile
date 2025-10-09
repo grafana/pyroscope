@@ -10,7 +10,7 @@ BIN := $(CURDIR)/.tmp/bin
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
-GO_MOD_VERSION := 1.23.0
+GO_MOD_VERSION := 1.24.0
 
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
@@ -41,10 +41,16 @@ GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE
 GO_GCFLAGS_DEBUG := all="-N -l"
 
 # Folders with go.mod file
-GO_MOD_PATHS := api/ ebpf/ lidia/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/rideshare-alloy examples/language-sdk-instrumentation/golang-push/rideshare-k6 examples/language-sdk-instrumentation/golang-push/simple/ examples/tracing/golang-push/ examples/golang-pgo/
+GO_MOD_PATHS := api/ lidia/ examples/language-sdk-instrumentation/golang-push/rideshare examples/language-sdk-instrumentation/golang-push/rideshare-alloy examples/language-sdk-instrumentation/golang-push/rideshare-k6 examples/language-sdk-instrumentation/golang-push/simple/ examples/tracing/golang-push/ examples/golang-pgo/
 
 # Add extra arguments to helm commands
 HELM_ARGS =
+
+HELM_FLAGS_V1 :=
+HELM_FLAGS_V1_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true
+HELM_FLAGS_V2 := --set architecture.storage.v1=false --set architecture.storage.v2=true
+HELM_FLAGS_V2_MICROSERVICES := $(HELM_FLAGS_V1_MICROSERVICES) $(HELM_FLAGS_V2)
+
 
 # Local deployment params
 KIND_CLUSTER = pyroscope-dev
@@ -76,15 +82,9 @@ buf/lint: $(BIN)/buf
 	cd api/ && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 	cd pkg && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 
-EBPF_TESTS='^TestEBPF.*'
-
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
-ifeq ($(GOOS),darwin)
 	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./lidia/...' -- $(GO_TEST_FLAGS)
-else
-	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./ebpf/... ./lidia/...' -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS)
-endif
 
 # Run test on examples
 # This can also be used to run it on a subset of tests
@@ -119,7 +119,7 @@ pyroscope/build: go/bin-pyroscope ## Build just the pyroscope binary
 .PHONY: release
 release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
 	# remove local git tags coming from helm chart release
-	git tag -d $(shell git tag -l "phlare-*" "api/*" "ebpf/*" "@pyroscope*")
+	git tag -d $(shell git tag -l "phlare-*" "api/*" "@pyroscope*")
 	# ensure there is a docker cli command
 	@which docker || { apt-get update && apt-get install -y docker.io; }
 	@docker info > /dev/null
@@ -169,6 +169,14 @@ go/bin-pyroscope-debug:
 .PHONY: go/bin-profilecli-debug
 go/bin-profilecli-debug:
 	$(call go_build_profilecli,$(GO_LDFLAGS),$(GO_GCFLAGS_DEBUG))
+
+.PHONY: go/bin-pyroscope
+go/bin-pyroscope:
+	$(call go_build_pyroscope,-s -w $(GO_LDFLAGS),)
+
+.PHONY: go/bin-profilecli
+go/bin-profilecli:
+	$(call go_build_profilecli,-s -w $(GO_LDFLAGS),)
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
@@ -221,7 +229,9 @@ define deploy
 	# Load image into nodes
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)
 	kubectl get pods
-	$(BIN)/helm upgrade --install $(1) ./operations/pyroscope/helm/pyroscope $(2) $(HELM_ARGS) \
+	$(BIN)/helm upgrade --install pyroscope ./operations/pyroscope/helm/pyroscope $(2) $(HELM_ARGS) \
+		--set architecture.deployUnifiedServices=true \
+		--set architecture.overwriteResources.requests.cpu=10m \
 		--set pyroscope.image.tag=$(IMAGE_TAG) \
 		--set pyroscope.image.repository=$(IMAGE_PREFIX)pyroscope \
 		--set pyroscope.podAnnotations.image-digest=$(shell cat .docker-image-digest-pyroscope) \
@@ -278,7 +288,8 @@ docker-image/pyroscope/push-debug: frontend/build go/bin-debug docker-image/pyro
 	$(call docker_buildx,--push,debug.)
 
 .PHONY: docker-image/pyroscope/build
-docker-image/pyroscope/build: frontend/build go/bin
+docker-image/pyroscope/build: frontend/build
+	GOOS=linux $(MAKE) go/bin
 	$(call docker_buildx,--load --iidfile .docker-image-digest-pyroscope,)
 
 .PHONY: docker-image/pyroscope/push
@@ -310,15 +321,15 @@ $(BIN)/buf: Makefile
 
 $(BIN)/golangci-lint: Makefile
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.2.2
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.5
+	GOBIN=$(abspath $(@D)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
 
 $(BIN)/protoc-gen-connect-go: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.18.1
+	GOBIN=$(abspath $(@D)) $(GO) install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.19.1
 
 $(BIN)/protoc-gen-connect-go-mux: Makefile go.mod
 	@mkdir -p $(@D)
@@ -330,11 +341,11 @@ $(BIN)/protoc-gen-go-vtproto: Makefile go.mod
 
 $(BIN)/protoc-gen-openapiv2: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.25.1
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.27.3
 
 $(BIN)/protoc-gen-grpc-gateway: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.25.1
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.27.3
 
 $(BIN)/gomodifytags: Makefile go.mod
 	@mkdir -p $(@D)
@@ -354,7 +365,7 @@ $(BIN)/jb: Makefile go.mod
 
 $(BIN)/helm: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.14.3
+	CGO_ENABLED=0 GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.14.3
 
 $(BIN)/kubeconform: Makefile go.mod
 	@mkdir -p $(@D)
@@ -366,7 +377,7 @@ $(BIN)/mage: Makefile go.mod
 
 $(BIN)/mockery: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/vektra/mockery/v2@v2.45.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/vektra/mockery/v2@v2.53.4
 
 # Note: When updating the goreleaser version also update .github/workflow/release.yml and .git/workflow/weekly-release.yaml
 $(BIN)/goreleaser: Makefile go.mod
@@ -375,7 +386,11 @@ $(BIN)/goreleaser: Makefile go.mod
 
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.12.0
+	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.12.3
+
+$(BIN)/helm-docs: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/norwoodj/helm-docs/cmd/helm-docs@v1.14.2
 
 .PHONY: cve/check
 cve/check:
@@ -386,8 +401,8 @@ helm/lint: $(BIN)/helm
 	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope/
 
 .PHONY: helm/docs
-helm/docs: $(BIN)/helm
-	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
+helm/docs: $(BIN)/helm-docs
+	$(BIN)/helm-docs -c operations/pyroscope/helm/pyroscope
 
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
@@ -400,14 +415,23 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm dependency update ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
 	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
-	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ \
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V1) \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
-	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V2) \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary-v2.yaml \
+		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V1_MICROSERVICES) \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V2_MICROSERVICES) \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services-v2.yaml \
+		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/legacy-micro-services.yaml \
+		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
 	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services-hpa.yaml \
-		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services-hpa.yaml \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/legacy-micro-services-hpa.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
 	cat operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
 		| go run ./tools/yaml-to-json \
@@ -421,15 +445,19 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,pyroscope-dev,)
-	# Create a service to provide the same endpoint as micro-services
-	echo '{"kind":"Service","apiVersion":"v1","metadata":{"name":"pyroscope-micro-services-query-frontend"},"spec":{"ports":[{"name":"pyroscope","port":4040,"targetPort":4040}],"selector":{"app.kubernetes.io/component":"all","app.kubernetes.io/instance":"pyroscope-dev"},"type":"ClusterIP"}}' | kubectl apply -f -
+	$(call deploy,pyroscope-dev,$(HELM_FLAGS_V2))
+
+.PHONY: deploy-v1
+deploy-v1: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
+	$(call deploy,pyroscope-dev,$(HELM_FLAGS_V1))
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	# Ensure to delete existing service, that has been created manually by the deploy target
-	kubectl delete svc --field-selector metadata.name=pyroscope-micro-services-query-frontend -l app.kubernetes.io/managed-by!=Helm || true
-	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null --set pyroscope.components.compactor.resources=null)
+	$(call deploy,pyroscope-micro-services,$(HELM_FLAGS_V2_MICROSERVICES))
+
+.PHONY: deploy-micro-services-v1
+deploy-micro-services-v1: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
+	$(call deploy,pyroscope-micro-services,$(HELM_FLAGS_V1_MICROSERVICES))
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json

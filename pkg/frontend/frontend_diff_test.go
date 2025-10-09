@@ -23,6 +23,10 @@ func (m *mockLimits) QuerySplitDuration(_ string) time.Duration {
 	return time.Hour
 }
 
+func (m *mockLimits) QuerySanitizeOnMerge(_ string) bool {
+	return true
+}
+
 func (m *mockLimits) MaxQueryParallelism(_ string) int {
 	return 100
 }
@@ -45,6 +49,10 @@ func (m *mockLimits) MaxFlameGraphNodesDefault(_ string) int {
 
 func (m *mockLimits) MaxFlameGraphNodesMax(_ string) int {
 	return 100_000
+}
+
+func (m *mockLimits) MaxFlameGraphNodesOnSelectMergeProfile(_ string) bool {
+	return true
 }
 
 func (m *mockLimits) SymbolizerEnabled(s string) bool { return true }

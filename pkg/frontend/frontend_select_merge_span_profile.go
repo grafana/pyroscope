@@ -6,7 +6,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 	"golang.org/x/sync/errgroup"
 
@@ -22,13 +21,6 @@ func (f *Frontend) SelectMergeSpanProfile(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeSpanProfileRequest],
 ) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
-	opentracing.SpanFromContext(ctx).
-		SetTag("start", model.Time(c.Msg.Start).Time().String()).
-		SetTag("end", model.Time(c.Msg.End).Time().String()).
-		SetTag("selector", c.Msg.LabelSelector).
-		SetTag("max_nodes", c.Msg.MaxNodes).
-		SetTag("profile_type", c.Msg.ProfileTypeID)
-
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeSpanProfileProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {

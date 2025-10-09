@@ -81,7 +81,7 @@ func relabelBuilder(cfg *Config, lb *phlaremodel.LabelsBuilder) (keep bool) {
 			break
 		}
 		target := model.LabelName(cfg.Regex.ExpandString([]byte{}, cfg.TargetLabel, val, indexes))
-		if !target.IsValid() {
+		if !model.UTF8Validation.IsValidLabelName(string(target)) {
 			break
 		}
 		res := cfg.Regex.ExpandString([]byte{}, cfg.Replacement, val, indexes)

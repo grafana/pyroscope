@@ -3,7 +3,7 @@
 package mockdiscovery
 
 import (
-	discovery "github.com/grafana/pyroscope/pkg/experiment/metastore/discovery"
+	discovery "github.com/grafana/pyroscope/pkg/metastore/discovery"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -20,7 +20,7 @@ func (_m *MockDiscovery) EXPECT() *MockDiscovery_Expecter {
 	return &MockDiscovery_Expecter{mock: &_m.Mock}
 }
 
-// Close provides a mock function with given fields:
+// Close provides a mock function with no fields
 func (_m *MockDiscovery) Close() {
 	_m.Called()
 }
@@ -48,11 +48,11 @@ func (_c *MockDiscovery_Close_Call) Return() *MockDiscovery_Close_Call {
 }
 
 func (_c *MockDiscovery_Close_Call) RunAndReturn(run func()) *MockDiscovery_Close_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// Rediscover provides a mock function with given fields:
+// Rediscover provides a mock function with no fields
 func (_m *MockDiscovery) Rediscover() {
 	_m.Called()
 }
@@ -80,7 +80,7 @@ func (_c *MockDiscovery_Rediscover_Call) Return() *MockDiscovery_Rediscover_Call
 }
 
 func (_c *MockDiscovery_Rediscover_Call) RunAndReturn(run func()) *MockDiscovery_Rediscover_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -113,7 +113,7 @@ func (_c *MockDiscovery_Subscribe_Call) Return() *MockDiscovery_Subscribe_Call {
 }
 
 func (_c *MockDiscovery_Subscribe_Call) RunAndReturn(run func(discovery.Updates)) *MockDiscovery_Subscribe_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

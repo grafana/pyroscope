@@ -11,6 +11,7 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 func TestValidateLabels(t *testing.T) {
@@ -123,7 +124,27 @@ func TestValidateLabels(t *testing.T) {
 				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 			},
 			expectedReason: DuplicateLabelNames,
-			expectedErr:    "profile with labels '{__name__=\"qux\", label_name=\"foo\", label_name=\"bar\", service_name=\"svc\"}' has duplicate label name: 'label.name'",
+			expectedErr:    "profile with labels '{__name__=\"qux\", label.name=\"bar\", label_name=\"foo\", service_name=\"svc\"}' has duplicate label name 'label_name' after label name sanitization from 'label.name'",
+		},
+		{
+			name: "duplicates once sanitized with matching values",
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "qux"},
+				{Name: "service.name", Value: "svc0"},
+				{Name: "service_abc", Value: "def"},
+				{Name: "service_name", Value: "svc0"},
+			},
+		},
+		{
+			name: "duplicates once sanitized with conflicting values",
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "qux"},
+				{Name: "service.name", Value: "svc1"},
+				{Name: "service_abc", Value: "def"},
+				{Name: "service_name", Value: "svc0"},
+			},
+			expectedReason: DuplicateLabelNames,
+			expectedErr:    "profile with labels '{__name__=\"qux\", service.name=\"svc1\", service_abc=\"def\", service_name=\"svc0\"}' has duplicate label name 'service_name' after label name sanitization from 'service.name'",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -261,12 +282,34 @@ func TestValidateProfile(t *testing.T) {
 			nil,
 			0,
 			MockLimits{},
+			NewErrorf(MalformedProfile, "nil profile"),
 			nil,
+		},
+		{
+			"nil profile",
+			&googlev1.Profile{},
+			0,
+			MockLimits{},
+			NewErrorf(MalformedProfile, "empty profile"),
+			nil,
+		},
+		{
+			"empty string table",
+			&googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+			},
+			3,
+			MockLimits{
+				MaxProfileSizeBytesValue: 100,
+			},
+			NewErrorf(MalformedProfile, "string 0 should be empty string"),
 			nil,
 		},
 		{
 			"too big",
-			&googlev1.Profile{},
+			&googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+			},
 			3,
 			MockLimits{
 				MaxProfileSizeBytesValue: 1,
@@ -277,7 +320,8 @@ func TestValidateProfile(t *testing.T) {
 		{
 			"too many samples",
 			&googlev1.Profile{
-				Sample: make([]*googlev1.Sample, 3),
+				SampleType: []*googlev1.ValueType{{}},
+				Sample:     make([]*googlev1.Sample, 3),
 			},
 			0,
 			MockLimits{
@@ -287,11 +331,39 @@ func TestValidateProfile(t *testing.T) {
 			nil,
 		},
 		{
+			"nil sample",
+			&googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+				Sample:     make([]*googlev1.Sample, 3),
+			},
+			0,
+			MockLimits{
+				MaxProfileStacktraceSamplesValue: 100,
+			},
+			NewErrorf(MalformedProfile, "nil sample"),
+			nil,
+		},
+		{
+			"sample value mismatch",
+			&googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+				Sample:     []*googlev1.Sample{{Value: []int64{1, 2}}},
+			},
+			0,
+			MockLimits{
+				MaxProfileStacktraceSamplesValue: 100,
+			},
+			NewErrorf(MalformedProfile, "sample value length mismatch"),
+			nil,
+		},
+		{
 			"too many labels",
 			&googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
 				Sample: []*googlev1.Sample{
 					{
 						Label: make([]*googlev1.Label, 3),
+						Value: []int64{239},
 					},
 				},
 			},
@@ -305,10 +377,12 @@ func TestValidateProfile(t *testing.T) {
 		{
 			"truncate labels and stacktrace",
 			&googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{{}},
 				StringTable: []string{"", "foo", "/foo/bar"},
 				Sample: []*googlev1.Sample{
 					{
 						LocationId: []uint64{0, 1, 2, 3, 4, 5},
+						Value:      []int64{239},
 					},
 				},
 			},
@@ -327,7 +401,8 @@ func TestValidateProfile(t *testing.T) {
 		{
 			name: "newer than ingestion window",
 			profile: &googlev1.Profile{
-				TimeNanos: now.Add(1 * time.Hour).UnixNano(),
+				SampleType: []*googlev1.ValueType{{}},
+				TimeNanos:  now.Add(1 * time.Hour).UnixNano(),
 			},
 			limits: MockLimits{
 				RejectNewerThanValue: 10 * time.Minute,
@@ -340,7 +415,8 @@ func TestValidateProfile(t *testing.T) {
 		{
 			name: "older than ingestion window",
 			profile: &googlev1.Profile{
-				TimeNanos: now.Add(-61 * time.Minute).UnixNano(),
+				SampleType: []*googlev1.ValueType{{}},
+				TimeNanos:  now.Add(-61 * time.Minute).UnixNano(),
 			},
 			limits: MockLimits{
 				RejectOlderThanValue: time.Hour,
@@ -353,6 +429,7 @@ func TestValidateProfile(t *testing.T) {
 		{
 			name: "just in the ingestion window",
 			profile: &googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{{}},
 				TimeNanos:   now.Add(-1 * time.Minute).UnixNano(),
 				StringTable: []string{""},
 			},
@@ -364,6 +441,7 @@ func TestValidateProfile(t *testing.T) {
 		{
 			name: "without timestamp",
 			profile: &googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{{}},
 				StringTable: []string{""},
 			},
 			limits: MockLimits{
@@ -374,7 +452,7 @@ func TestValidateProfile(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateProfile(tc.limits, "foo", tc.profile, tc.size, phlaremodel.LabelsFromStrings("foo", "bar"), now)
+			_, err := ValidateProfile(tc.limits, "foo", pprof.RawFromProto(tc.profile), tc.size, phlaremodel.LabelsFromStrings("foo", "bar"), now)
 			if tc.expectedErr != nil {
 				require.Error(t, err)
 				require.Equal(t, tc.expectedErr, err)

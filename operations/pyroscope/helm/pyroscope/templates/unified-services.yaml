@@ -1,0 +1,47 @@
+{{- $global := . }}
+{{- $components := (fromYaml (include "pyroscope.components" .)) }}
+{{- if $global.Values.architecture.deployUnifiedServices }}
+{{- /* There services are useful wanting to switch from single binary to microservices without reconfiguring the endpoints */}}
+{{- $hasDistributor := hasKey $components "distributor" }}
+{{- $hasQueryFrontend := hasKey $components "query-frontend" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-write
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+spec:
+  type: "ClusterIP"
+  ports:
+    - port: 80
+      targetPort: {{ .Values.pyroscope.service.port_name }}
+      protocol: TCP
+      name: {{ .Values.pyroscope.service.port_name }}
+  selector:
+    {{- include "pyroscope.selectorLabels" . | nindent 4 }}
+    {{- if $hasDistributor }}
+    app.kubernetes.io/component: distributor
+    {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-read
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+spec:
+  type: "ClusterIP"
+  ports:
+    - port: 80
+      targetPort: {{ .Values.pyroscope.service.port_name }}
+      protocol: TCP
+      name: {{ .Values.pyroscope.service.port_name }}
+  selector:
+    {{- include "pyroscope.selectorLabels" . | nindent 4 }}
+    {{- if $hasQueryFrontend }}
+    app.kubernetes.io/component: query-frontend
+    {{- end }}
+{{- end }}

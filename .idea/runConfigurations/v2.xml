@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="v2" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="pyroscope" />
+    <working_directory value="$PROJECT_DIR$" />
+    <go_parameters value="-tags embedassets" />
+    <parameters value="-storage.backend=filesystem -write-path=segment-writer -enable-query-backend=true" />
+    <envs>
+      <env name="PYROSCOPE_V2" value="true" />
+    </envs>
+    <kind value="FILE" />
+    <package value="github.com/grafana/pyroscope" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/cmd/pyroscope/main.go" />
+    <method v="2" />
+  </configuration>
+</component>

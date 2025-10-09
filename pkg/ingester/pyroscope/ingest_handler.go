@@ -3,6 +3,7 @@ package pyroscope
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/tenant"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/pkg/validation"
 
 	"github.com/grafana/pyroscope/pkg/og/convert/speedscope"
 
@@ -63,10 +65,22 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := readInputRawDataFromRequest(ctx, r, input); err != nil {
+		var status int
+		var maxBytesError *http.MaxBytesError
+		switch {
+		case errors.As(err, &maxBytesError):
+			err = fmt.Errorf("request body too large: %w", err)
+			status = http.StatusRequestEntityTooLarge
+			validation.DiscardedBytes.WithLabelValues(string(validation.BodySizeLimit), tenantID).Add(float64(maxBytesError.Limit))
+			validation.DiscardedProfiles.WithLabelValues(string(validation.BodySizeLimit), tenantID).Add(float64(1))
+		default:
+			status = http.StatusRequestTimeout
+		}
+
 		msg := "failed to read request body"
 		sp.LogFields(otlog.Error(err), otlog.String("msg", msg))
 		_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
-		httputil.ErrorWithStatus(w, err, http.StatusRequestTimeout)
+		httputil.ErrorWithStatus(w, err, status)
 		return
 	}
 
@@ -157,14 +171,16 @@ func readInputRawDataFromRequest(ctx context.Context, r *http.Request, input *in
 	if sp != nil {
 		sp.SetTag("format", format)
 		sp.SetTag("content_type", contentType)
-		sp.LogFields(
-			otlog.String("msg", "reading body from request"),
-		)
 	}
 
 	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
-	if n, err := io.Copy(buf, r.Body); err != nil {
+	n, err := io.Copy(buf, r.Body)
+	if err != nil {
 		return fmt.Errorf("error reading request body bytes_read %d: %w", n, err)
+	}
+
+	if sp != nil {
+		sp.SetTag("content_length", n)
 	}
 	b := buf.Bytes()
 

@@ -27,11 +27,11 @@ func Test_writeError(t *testing.T) {
 		msg            string
 		expectedStatus int
 	}{
-		{"cancelled", context.Canceled, `{"code":"canceled","message":"The request was cancelled by the client."}`, StatusClientClosedRequest},
-		{"rpc cancelled", status.New(codes.Canceled, context.Canceled.Error()).Err(), `{"code":"canceled","message":"The request was cancelled by the client."}`, StatusClientClosedRequest},
+		{"cancelled", context.Canceled, `{"code":"canceled","message":"the request was cancelled by the client"}`, StatusClientClosedRequest},
+		{"rpc cancelled", status.New(codes.Canceled, context.Canceled.Error()).Err(), `{"code":"canceled","message":"the request was cancelled by the client"}`, StatusClientClosedRequest},
 		{"orgid", tenant.ErrNoTenantID, `{"code":"invalid_argument","message":"no org id"}`, http.StatusBadRequest},
-		{"deadline", context.DeadlineExceeded, `{"code":"deadline_exceeded","message":"Request timed out, decrease the duration of the request or add more label matchers (prefer exact match over regex match) to reduce the amount of data processed."}`, http.StatusGatewayTimeout},
-		{"rpc deadline", status.New(codes.DeadlineExceeded, context.DeadlineExceeded.Error()).Err(), `{"code":"deadline_exceeded","message":"Request timed out, decrease the duration of the request or add more label matchers (prefer exact match over regex match) to reduce the amount of data processed."}`, http.StatusGatewayTimeout},
+		{"deadline", context.DeadlineExceeded, `{"code":"deadline_exceeded","message":"request timed out, decrease the duration of the request or add more label matchers (prefer exact match over regex match) to reduce the amount of data processed"}`, http.StatusGatewayTimeout},
+		{"rpc deadline", status.New(codes.DeadlineExceeded, context.DeadlineExceeded.Error()).Err(), `{"code":"deadline_exceeded","message":"request timed out, decrease the duration of the request or add more label matchers (prefer exact match over regex match) to reduce the amount of data processed"}`, http.StatusGatewayTimeout},
 		// {"mixed context, rpc deadline and another", multierror.MultiError{errors.New("standard error"), context.DeadlineExceeded, status.New(codes.DeadlineExceeded, context.DeadlineExceeded.Error()).Err()}, "3 errors: standard error; context deadline exceeded; rpc error: code = DeadlineExceeded desc = context deadline exceeded", http.StatusInternalServerError},
 		{"httpgrpc", httpgrpc.Errorf(http.StatusBadRequest, "foo"), `{"code":"invalid_argument","message":"foo"}`, http.StatusBadRequest},
 		{"internal", errors.New("foo"), `{"code":"unknown","message":"foo"}`, http.StatusInternalServerError},

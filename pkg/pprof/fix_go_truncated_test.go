@@ -50,7 +50,7 @@ func Test_RepairGoTruncatedStacktraces(t *testing.T) {
 
 	// ensure all stacktraces start with the same 8 location ids
 	stacks := make([]uint64, 8)
-	for idx, sample := range b.Profile.Sample {
+	for idx, sample := range b.Sample {
 		first8Stacks := sample.LocationId[len(sample.LocationId)-8:]
 		if idx == 0 {
 			copy(stacks, first8Stacks)

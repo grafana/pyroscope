@@ -9,6 +9,9 @@
       "name": "AdHocProfileService"
     },
     {
+      "name": "FeatureFlagsService"
+    },
+    {
       "name": "PusherService"
     },
     {
@@ -37,9 +40,6 @@
     },
     {
       "name": "SegmentWriterService"
-    },
-    {
-      "name": "CollectionRulesService"
     },
     {
       "name": "RecordingRulesService"
@@ -935,9 +935,6 @@
         }
       }
     },
-    "v1DeleteCollectionRuleResponse": {
-      "type": "object"
-    },
     "v1DeleteRecordingRuleResponse": {
       "type": "object"
     },
@@ -964,13 +961,27 @@
         }
       }
     },
-    "v1EBPFSettings": {
+    "v1FeatureFlag": {
       "type": "object",
       "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the feature, please use lower camel case."
+        },
         "enabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Wether the feature flag is enabled or disabled."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of the feature flag."
+        },
+        "documentationUrl": {
+          "type": "string",
+          "description": "Optional URL to the documentation page of the feature flag."
         }
-      }
+      },
+      "description": "FeatureParameters contains the per feature flag parameters."
     },
     "v1FlameGraph": {
       "type": "object",
@@ -1123,41 +1134,6 @@
         }
       }
     },
-    "v1GetCollectionRuleResponse": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "services": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1ServiceData"
-          }
-        },
-        "ebpf": {
-          "$ref": "#/definitions/v1EBPFSettings"
-        },
-        "java": {
-          "$ref": "#/definitions/v1JavaSettings"
-        },
-        "lastUpdated": {
-          "type": "string",
-          "format": "int64",
-          "title": "milliseconds unix time of last update"
-        },
-        "generation": {
-          "type": "string",
-          "format": "int64",
-          "title": "incremented on each update"
-        },
-        "configuration": {
-          "type": "string",
-          "title": "generated configuration block in alloy syntax"
-        }
-      }
-    },
     "v1GetCommitResponse": {
       "type": "object",
       "properties": {
@@ -1192,6 +1168,19 @@
             "type": "object",
             "$ref": "#/definitions/v1CommitInfo"
           }
+        }
+      }
+    },
+    "v1GetFeatureFlagsResponse": {
+      "type": "object",
+      "properties": {
+        "featureFlags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1FeatureFlag"
+          },
+          "title": "Map containing all features, also disable features are returned"
         }
       }
     },
@@ -1259,7 +1248,12 @@
       "type": "object",
       "properties": {
         "clientID": {
-          "type": "string"
+          "type": "string",
+          "description": "clientID must be propagated when calling https://github.com/login/oauth/authorize\nin the client_id query parameter."
+        },
+        "callbackURL": {
+          "type": "string",
+          "description": "If callbackURL is not empty, the URL should be propagated when\ncalling https://github.com/login/oauth/authorize in the\nredirect_uri query parameter."
         }
       }
     },
@@ -1334,7 +1328,12 @@
     },
     "v1InvokeOptions": {
       "type": "object",
-      "description": "Query workers might not have access to the tenant\n overrides, therefore all the necessary options should\n be listed in the request explicitly."
+      "properties": {
+        "sanitizeOnMerge": {
+          "type": "boolean",
+          "description": "Query workers might not have access to the tenant\noverrides, therefore all the necessary options should\nbe listed in the request explicitly."
+        }
+      }
     },
     "v1InvokeResponse": {
       "type": "object",
@@ -1348,14 +1347,6 @@
         },
         "diagnostics": {
           "$ref": "#/definitions/v1Diagnostics"
-        }
-      }
-    },
-    "v1JavaSettings": {
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "type": "boolean"
         }
       }
     },
@@ -1468,23 +1459,6 @@
           "type": "string",
           "format": "int64",
           "description": "Line number in source code."
-        }
-      }
-    },
-    "v1ListCollectionRulesResponse": {
-      "type": "object",
-      "properties": {
-        "rules": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1GetCollectionRuleResponse"
-          }
-        },
-        "generation": {
-          "type": "string",
-          "format": "int64",
-          "title": "incremented on each update"
         }
       }
     },
@@ -1640,6 +1614,13 @@
           "format": "byte"
         }
       }
+    },
+    "v1MetricType": {
+      "type": "string",
+      "enum": [
+        "TOTAL"
+      ],
+      "default": "TOTAL"
     },
     "v1Point": {
       "type": "object",
@@ -2006,6 +1987,14 @@
           "type": "string",
           "format": "int64",
           "description": "The observed generation of this recording rule. This value should be\nprovided when making updates to this record, to avoid conflicting\nconcurrent updates."
+        },
+        "stacktraceFilter": {
+          "$ref": "#/definitions/v1StacktraceFilter",
+          "description": "The stacktrace filter allows filtering on particular function names in the stacktrace.\nThis allows recording rules to focus on specific functions and calculate their \"total\"\nresource usage."
+        },
+        "provisioned": {
+          "type": "boolean",
+          "title": "Provisioned rules are added by config and can't be Upsert or Deleted"
         }
       }
     },
@@ -2119,6 +2108,10 @@
         "format": {
           "$ref": "#/definitions/v1ProfileFormat",
           "description": "Profile format specifies the format of profile to be returned.\nIf not specified, the profile will be returned in flame graph format."
+        },
+        "stackTraceSelector": {
+          "$ref": "#/definitions/v1StackTraceSelector",
+          "description": "Select stack traces that match the provided selector."
         }
       }
     },
@@ -2249,17 +2242,6 @@
         }
       }
     },
-    "v1ServiceData": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "enabled": {
-          "type": "boolean"
-        }
-      }
-    },
     "v1SetSettingsResponse": {
       "type": "object",
       "properties": {
@@ -2283,6 +2265,30 @@
         }
       }
     },
+    "v1ShardTombstone": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Lower time boundary. Unix epoch in nanoseconds."
+        },
+        "duration": {
+          "type": "string",
+          "format": "int64"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "tenant": {
+          "type": "string"
+        }
+      }
+    },
     "v1StackTraceSelector": {
       "type": "object",
       "properties": {
@@ -2300,6 +2306,25 @@
         }
       },
       "description": "StackTraceSelector is used for filtering stack traces by locations."
+    },
+    "v1StacktraceFilter": {
+      "type": "object",
+      "properties": {
+        "functionName": {
+          "$ref": "#/definitions/v1StacktraceFilterFunctionName"
+        }
+      }
+    },
+    "v1StacktraceFilterFunctionName": {
+      "type": "object",
+      "properties": {
+        "functionName": {
+          "type": "string"
+        },
+        "metricType": {
+          "$ref": "#/definitions/v1MetricType"
+        }
+      }
     },
     "v1StacktraceSample": {
       "type": "object",
@@ -2391,8 +2416,10 @@
       "type": "object",
       "properties": {
         "blocks": {
-          "$ref": "#/definitions/v1BlockTombstones",
-          "description": "For now, we only have block tombstones created due to the\n compaction process. Later, we may add more types of tombstones,\n e.g, deleted tenant (shard), partition, dataset, series etc.\n Exactly one member of Tombstones should be present."
+          "$ref": "#/definitions/v1BlockTombstones"
+        },
+        "shard": {
+          "$ref": "#/definitions/v1ShardTombstone"
         }
       },
       "description": "Tombstones represent objects removed from the index but still stored."
@@ -2409,6 +2436,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "stackTraceSelector": {
+          "$ref": "#/definitions/v1StackTraceSelector"
         }
       }
     },

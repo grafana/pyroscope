@@ -1,7 +1,10 @@
 {{- $global := . }}
-{{- range $component, $cfg := (fromYaml (include "pyroscope.components" .)) }}
+{{- $components := (fromYaml (include "pyroscope.components" .)) }}
+{{- $hasV2 := $global.Values.architecture.storage.v2 }}
+{{- range $component, $cfg := $components }}
 {{- with $global }}
 {{-  $values := mustMergeOverwrite (deepCopy .Values.pyroscope ) ($cfg | default dict)}}
+{{-  $isMetastore := or (and (eq $component "all") ($hasV2)) (eq $component "metastore") }}
 ---
 apiVersion: v1
 kind: Service
@@ -22,6 +25,18 @@ spec:
       targetPort: {{ $values.service.port_name }}
       protocol: TCP
       name: {{ $values.service.port_name }}
+    {{- if $hasV2 }}
+    - port: {{ $values.grpc.port }}
+      targetPort: {{ $values.grpc.port_name }}
+      protocol: TCP
+      name: {{ $values.grpc.port_name }}
+    {{- end }}
+    {{- if $isMetastore }}
+    - port: {{ $values.metastore.port }}
+      targetPort: {{ $values.metastore.port_name }}
+      protocol: TCP
+      name: {{ $values.metastore.port_name }}
+    {{- end }}
     {{- with $values.service.extraPorts }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -37,9 +52,15 @@ metadata:
   labels:
     {{- include "pyroscope.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
+  {{- if or .Values.serviceMonitor.enabled $values.service.headlessAnnotations }}
+  annotations:
     {{- if .Values.serviceMonitor.enabled }}
     prometheus.io/service-monitor: "false"
     {{- end }}
+    {{- with $values.service.headlessAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
 spec:
   type: ClusterIP
   clusterIP: None
@@ -48,10 +69,22 @@ spec:
       targetPort: {{ $values.service.port_name }}
       protocol: TCP
       name: {{ $values.service.port_name }}
+    {{- if $hasV2 }}
+    - port: {{ $values.grpc.port }}
+      targetPort: {{ $values.grpc.port_name }}
+      protocol: TCP
+      name: {{ $values.grpc.port_name }}
+    {{- end }}
+    {{- if $isMetastore }}
+    - port: {{ $values.metastore.port }}
+      targetPort: {{ $values.metastore.port_name }}
+      protocol: TCP
+      name: {{ $values.metastore.port_name }}
+    {{- end }}
     {{- with $values.service.extraPorts }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- if $values.service.publishNotReadyAddresses }}
+  {{- if or $values.service.publishNotReadyAddresses $isMetastore }}
   publishNotReadyAddresses: true
   {{- end }}
   selector:

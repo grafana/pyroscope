@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -45,10 +46,6 @@ func (b *bucketStore) Get(ctx context.Context, id string) (*settingsv1.Recording
 	if err != nil {
 		return nil, err
 	}
-
-	if rule == nil {
-		return nil, fmt.Errorf("rule %s not found", id)
-	}
 	return rule, nil
 }
 
@@ -78,22 +75,26 @@ func (b *bucketStore) Upsert(ctx context.Context, newRule *settingsv1.RecordingR
 }
 
 func (b *bucketStore) Delete(ctx context.Context, ruleID string) error {
-	return b.store.Delete(ctx, ruleID)
+	err := b.store.Delete(ctx, ruleID)
+	if err == store.ErrElementNotFound {
+		return connect.NewError(connect.CodeNotFound, fmt.Errorf("no rule with ID='%s' found", ruleID))
+	}
+	return nil
 }
 
 type storeHelper struct {
 	b *bucketStore
 }
 
-func (_ *storeHelper) SetGeneration(rule *settingsv1.RecordingRuleStore, generation int64) {
+func (*storeHelper) SetGeneration(rule *settingsv1.RecordingRuleStore, generation int64) {
 	rule.Generation = generation
 }
 
-func (_ *storeHelper) GetGeneration(rule *settingsv1.RecordingRuleStore) int64 {
+func (*storeHelper) GetGeneration(rule *settingsv1.RecordingRuleStore) int64 {
 	return rule.Generation
 }
 
-func (_ *storeHelper) FromStore(storeBytes json.RawMessage) (*settingsv1.RecordingRuleStore, error) {
+func (*storeHelper) FromStore(storeBytes json.RawMessage) (*settingsv1.RecordingRuleStore, error) {
 	var store settingsv1.RecordingRuleStore
 	err := protojson.Unmarshal(storeBytes, &store)
 	if err != nil {
@@ -103,14 +104,14 @@ func (_ *storeHelper) FromStore(storeBytes json.RawMessage) (*settingsv1.Recordi
 	return &store, nil
 }
 
-func (_ *storeHelper) ToStore(rule *settingsv1.RecordingRuleStore) (json.RawMessage, error) {
+func (*storeHelper) ToStore(rule *settingsv1.RecordingRuleStore) (json.RawMessage, error) {
 	return protojson.Marshal(rule)
 }
 
-func (_ *storeHelper) ID(rule *settingsv1.RecordingRuleStore) string {
+func (*storeHelper) ID(rule *settingsv1.RecordingRuleStore) string {
 	return rule.Id
 }
 
-func (_ *storeHelper) TypePath() string {
+func (*storeHelper) TypePath() string {
 	return "settings/recording_rule.v1"
 }

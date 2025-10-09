@@ -25,6 +25,12 @@ func WithV1() ClusterOption {
 	}
 }
 
+func WithSymbolizer(debuginfodURL string) ClusterOption {
+	return func(c *Cluster) {
+		c.debuginfodURL = debuginfodURL
+	}
+}
+
 func (c *Cluster) v1ReadyCheckComponent(ctx context.Context, t *Component) (bool, error) {
 	switch t.Target {
 	case "querier":

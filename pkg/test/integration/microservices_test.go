@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/test/integration/cluster"
@@ -128,7 +130,10 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 	}
 	defer func() {
 		pushCancel()
-		require.NoError(t, g.Wait())
+		err := g.Wait()
+		if !errors.Is(err, context.Canceled) {
+			require.NoError(t, g.Wait())
+		}
 	}()
 
 	// await compaction so tenant wide index is available
@@ -161,6 +166,43 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 
 	tc.runQueryTest(ctx, t)
 
+}
+
+// TestMetastoreAutoJoin tests that a new metastore node can join an existing cluster
+// using the auto-join feature without requiring bootstrap configuration.
+func TestMetastoreAutoJoin(t *testing.T) {
+	c := cluster.NewMicroServiceCluster(cluster.WithV2())
+	ctx := context.Background()
+
+	require.NoError(t, c.Prepare(ctx))
+	for _, comp := range c.Components {
+		t.Log(comp.String())
+	}
+
+	require.NoError(t, c.Start(ctx))
+	defer func() {
+		waitStopped := c.Stop()
+		require.NoError(t, waitStopped(ctx))
+	}()
+
+	client, err := c.GetMetastoreRaftNodeClient()
+	require.NoError(t, err)
+	nodeInfo, err := client.NodeInfo(ctx, &raftnodepb.NodeInfoRequest{})
+	require.NoError(t, err)
+	require.Equal(t, 3, len(nodeInfo.Node.Peers), "initial cluster should have 3 peers")
+
+	err = c.AddMetastoreWithAutoJoin(ctx)
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		nodeInfo, err := client.NodeInfo(ctx, &raftnodepb.NodeInfoRequest{})
+		if err != nil {
+			t.Logf("Failed to get node info: %v", err)
+			return false
+		}
+		t.Logf("Current peer count: %d", len(nodeInfo.Node.Peers))
+		return len(nodeInfo.Node.Peers) == 4
+	}, 30*time.Second, 1*time.Second, "new metastore should join cluster")
 }
 
 func newTestCtx(x interface {
@@ -313,6 +355,55 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 					"job",
 					"service_name",
 				}, resp.Msg.Names)
+			})
+		}
+	})
+
+	validateProfileTypes := func(t *testing.T, serviceCount int, resp *querierv1.ProfileTypesResponse) {
+		// no services, no label names
+		if serviceCount == 0 {
+			assert.Len(t, resp.ProfileTypes, 0)
+			return
+		}
+
+		profileTypes := make([]string, 0, len(resp.ProfileTypes))
+		for _, pt := range resp.ProfileTypes {
+			profileTypes = append(profileTypes, pt.ID)
+		}
+		assert.Equal(t, []string{
+			"process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+		}, profileTypes)
+	}
+
+	t.Run("QueryProfileTypesWithTimeRange", func(t *testing.T) {
+		for tenantID, params := range tc.perTenantData {
+			t.Run(tenantID, func(t *testing.T) {
+				ctx := tenant.InjectTenantID(ctx, tenantID)
+
+				// Query profile types with time range
+				resp, err := tc.querier.ProfileTypes(ctx, connect.NewRequest(&querierv1.ProfileTypesRequest{
+					Start: tc.now.Add(-time.Hour).UnixMilli(),
+					End:   tc.now.Add(time.Hour).UnixMilli(),
+				}))
+				require.NoError(t, err)
+
+				validateProfileTypes(t, params.serviceCount, resp.Msg)
+			})
+		}
+	})
+
+	// Note: Some ProfileTypes API clients rely on the ablility to call it without start/end.
+	// See https://github.com/grafana/grafana/issues/110211
+	t.Run("QueryProfileTypesWithoutTimeRange", func(t *testing.T) {
+		for tenantID, params := range tc.perTenantData {
+			t.Run(tenantID, func(t *testing.T) {
+				ctx := tenant.InjectTenantID(ctx, tenantID)
+
+				// Query profile types with time range
+				resp, err := tc.querier.ProfileTypes(ctx, connect.NewRequest(&querierv1.ProfileTypesRequest{}))
+				require.NoError(t, err)
+
+				validateProfileTypes(t, params.serviceCount, resp.Msg)
 			})
 		}
 	})

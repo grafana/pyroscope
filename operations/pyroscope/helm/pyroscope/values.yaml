@@ -6,6 +6,9 @@
 pyroscope:
   replicaCount: 1
 
+  # -- Enable or disable Self profile push, useful to test
+  disableSelfProfile: true
+
   # -- Kubernetes cluster domain suffix for DNS discovery
   cluster_domain: .cluster.local.
 
@@ -24,6 +27,13 @@ pyroscope:
     {}
     # The following environment variables are set by the Helm chart.
     # JAEGER_AGENT_HOST: jaeger-agent.jaeger.svc.cluster.local.
+
+  extraCustomEnvVars: {}
+    # The following environment variables raw form.
+    # - name: MY_NODE_NAME
+    #   valueFrom:
+    #     fieldRef:
+    #       fieldPath: spec.nodeName
 
   # -- Environment variables from secrets or configmaps to add to the pods
   extraEnvFrom: []
@@ -78,10 +88,19 @@ pyroscope:
     port_name: http2
     scheme: HTTP
     annotations: {}
+    headlessAnnotations: {}
 
   memberlist:
     port: 7946
     port_name: memberlist
+
+  grpc:
+    port: 9095
+    port_name: grpc
+
+  metastore:
+    port: 9099
+    port_name: raft
 
   resources:
     {}
@@ -126,6 +145,14 @@ pyroscope:
     # subPath: ""
     # existingClaim:
 
+    metastore:
+      # subPath to use of the data volume for the metastore persistence.
+      subPath: .metastore
+
+    shared:
+      # subPath to use of the data volume for the shared storage used as bucket replacement.
+      subPath: .shared
+
   extraVolumes:
     []
     # - name: backup-volume
@@ -144,6 +171,9 @@ pyroscope:
   tolerations: []
 
   affinity: {}
+
+  # Override the PodPriorityClass
+  # priorityClassName: high
 
   # run specific components separately
   components: {}
@@ -172,6 +202,246 @@ pyroscope:
     #   ingestion_rate_mb: 1
     #   ingestion_burst_size_mb: 2
   # -- Grafana Agent Configuration.
+
+
+architecture:
+  storage:
+    # -- (bool) Enable v1 storage layer.
+    v1: true
+    # -- (bool) Enable v2 storage layer.
+    v2: false
+
+    migration:
+      # -- (float) Specifies the fraction [0:1] that should be send to the v1 write path / ingester in combined mode. 0 means no traffics is sent to ingester. 1 means 100% of requests are sent to ingester.
+      ingesterWeight: 1.0
+      # -- (float) Specifies the fraction [0:1] that should be send to the v2 write path / segment-writer in combined mode. 0 means no traffics is sent to segment-writer. 1 means 100% of requests are sent to segment-writer.
+      segmentWriterWeight: 1.0
+
+      # -- (bool) Specify a time stamp from when the v2 read path should serve traffic.
+      queryBackend: true
+      # -- (string) Specify a time stamp from when the v2 read path should serve traffic.
+      queryBackendFrom: auto
+
+  # -- This flag is useful for testing, it will overwrite all pods resource statements with its contents
+  overwriteResources:
+    {}
+    # limits: {}
+    # requests: {}
+
+
+  # -- Deploy unified write/read services. These endpoints will can be used no matter if the helm chart is configured as single-binary or microservices
+  deployUnifiedServices: false
+
+  microservices:
+    # -- (bool) Enable micro-services deployment mode. This is recommend for larger scale deployment and allow right size each aspect of Pyroscope.
+    enabled: false
+
+    # -- (string) Memberlist cluster label that will be used for all members of this cluster
+    clusterLabelSuffix: -micro-services
+
+    # -- @ignored
+    # Not useful to be indivually exposed
+    v1:
+      querier:
+        kind: Deployment
+        replicaCount: 3
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+            cpu: 1
+        extraArgs:
+          store-gateway.sharding-ring.replication-factor: "3"
+      query-frontend:
+        kind: Deployment
+        replicaCount: 2
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+            cpu: 100m
+      query-scheduler:
+        kind: Deployment
+        replicaCount: 2
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+            cpu: 100m
+      distributor:
+        kind: Deployment
+        replicaCount: 2
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+            cpu: 500m
+      ingester:
+        kind: StatefulSet
+        replicaCount: 3
+        terminationGracePeriodSeconds: 600
+        resources:
+          limits:
+            memory: 16Gi
+          requests:
+            memory: 8Gi
+            cpu: 1
+      compactor:
+        kind: StatefulSet
+        replicaCount: 3
+        terminationGracePeriodSeconds: 1200
+        persistence:
+          enabled: false
+        resources:
+          limits:
+            memory: 16Gi
+          requests:
+            memory: 8Gi
+            cpu: 1
+      store-gateway:
+        kind: StatefulSet
+        replicaCount: 3
+        persistence:
+          # The store-gateway needs not need persistent storage, but we still run it as a StatefulSet
+          # This is to avoid having blocks of data being
+          enabled: false
+        resources:
+          limits:
+            memory: 16Gi
+          requests:
+            memory: 8Gi
+            cpu: 1
+        readinessProbe:
+          # The store gateway can be configured to wait on startup for ring stability to be reached before it becomes
+          # ready. See the `store-gateway.sharding-ring.wait-stability-min-duration` server argument for more information.
+          #
+          # Depending on this flag and the number of tenants + blocks that need to be synced on startup, pods can take
+          # some time to become ready. This value can be used to ensure Kubernetes waits long enough and reduce errors.
+          initialDelaySeconds: 60
+        extraArgs:
+          store-gateway.sharding-ring.replication-factor: "3"
+      tenant-settings:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 4Gi
+          requests:
+            memory: 16Mi
+            cpu: 0.1
+      ad-hoc-profiles:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 4Gi
+          requests:
+            memory: 16Mi
+            cpu: 0.1
+    # -- @ignored
+    # Not useful to be indivually exposed
+    v2:
+      query-backend:
+        kind: Deployment
+        replicaCount: 3
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+            cpu: 1
+      query-frontend:
+        kind: Deployment
+        replicaCount: 2
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+            cpu: 100m
+      distributor:
+        kind: Deployment
+        replicaCount: 2
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+            cpu: 500m
+      segment-writer:
+        kind: StatefulSet
+        replicaCount: 3
+        terminationGracePeriodSeconds: 600
+        resources:
+          limits:
+            memory: 4Gi
+          requests:
+            memory: 2Gi
+            cpu: 1
+      compaction-worker:
+        kind: StatefulSet
+        replicaCount: 3
+        terminationGracePeriodSeconds: 1200
+        persistence:
+          enabled: false
+        resources:
+          limits:
+            memory: 2Gi
+          requests:
+            memory: 1Gi
+            cpu: 1
+      metastore:
+        kind: StatefulSet
+        replicaCount: 3
+        terminationGracePeriodSeconds: 1200
+        persistence:
+          enabled: false
+        resources:
+          limits:
+            memory: 2Gi
+          requests:
+            memory: 1Gi
+            cpu: 1
+        extraArgs:
+          # Expect 3 metastores
+          metastore.raft.bootstrap-expect-peers: 3
+          # TODO(kolesnikovae): Update defaults.
+          adaptive-placement.max-dataset-shards: 1024
+          adaptive-placement.unit-size-bytes: 131072
+          # enable cleanup of blocks beyond retention
+          metastore.index.cleanup-interval: 1m
+          metastore.snapshot-compact-on-restore: true
+      tenant-settings:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 16Mi
+            cpu: 0.1
+      ad-hoc-profiles:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 16Mi
+            cpu: 0.1
+      admin:
+        kind: Deployment
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            memory: 16Mi
+            cpu: 0.1
 
 # -------------------------------------
 # Configuration for `alloy` child chart
@@ -248,6 +518,11 @@ minio:
 ingress:
   enabled: false
   className: ""
+  pathType: ImplementationSpecific
+  # Additional labels to add to the ingress resource
+  labels: {}
+  # Additional annotations to add to the ingress resource
+  annotations: {}
   # hosts:
   #   - localhost
   # tls:

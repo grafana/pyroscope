@@ -1,0 +1,18 @@
+{
+  "name": "Go",
+  "image": "mcr.microsoft.com/devcontainers/go:1-1-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "appPort": [
+    "4040:4040"
+  ]
+}

@@ -35,8 +35,9 @@ type Resolver struct {
 	m sync.RWMutex
 	p map[uint64]*lazyPartition
 
-	maxNodes int64
-	sts      *typesv1.StackTraceSelector
+	maxNodes        int64
+	sts             *typesv1.StackTraceSelector
+	sanitizeOnMerge bool
 }
 
 type ResolverOption func(*Resolver)
@@ -64,6 +65,12 @@ func WithResolverMaxNodes(n int64) ResolverOption {
 func WithResolverStackTraceSelector(sts *typesv1.StackTraceSelector) ResolverOption {
 	return func(r *Resolver) {
 		r.sts = sts
+	}
+}
+
+func WithResolverSanitizeOnMerge(sanitizeOnMerge bool) ResolverOption {
+	return func(r *Resolver) {
+		r.sanitizeOnMerge = sanitizeOnMerge
 	}
 }
 
@@ -235,7 +242,7 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 	var lock sync.Mutex
 	tree := new(model.Tree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
-		resolved, err := symbols.Tree(ctx, appender, r.maxNodes)
+		resolved, err := symbols.Tree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
 		if err != nil {
 			return err
 		}
@@ -250,13 +257,38 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
 	defer span.Finish()
+
+	if r.canSkipProfileMerge() {
+		// this is the same as the block below, without the profile merge
+		var p *googlev1.Profile
+		err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+			resolved, err := symbols.Pprof(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
+			if err != nil {
+				return err
+			}
+			p = resolved
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		if p == nil { // for consistency with the return value when using the merge path
+			return &googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{new(googlev1.ValueType)},
+				PeriodType:  new(googlev1.ValueType),
+				StringTable: []string{""},
+			}, nil
+		}
+		return p, nil
+	}
+
 	var p pprof.ProfileMerge
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
 		resolved, err := symbols.Pprof(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
 		if err != nil {
 			return err
 		}
-		return p.Merge(resolved)
+		return p.Merge(resolved, r.sanitizeOnMerge)
 	})
 	if err != nil {
 		return nil, err
@@ -279,6 +311,18 @@ func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, *SampleApp
 	return g.Wait()
 }
 
+func (r *Resolver) canSkipProfileMerge() bool {
+	if len(r.p) > 1 {
+		return false
+	}
+	if r.sts != nil && r.sts.GoPgo != nil && r.sts.GoPgo.AggregateCallees {
+		// we rely on merges to implement GoPgo.AggregateCallees
+		return false
+	}
+
+	return true
+}
+
 func (r *Symbols) Pprof(
 	ctx context.Context,
 	appender *SampleAppender,
@@ -292,6 +336,7 @@ func (r *Symbols) Tree(
 	ctx context.Context,
 	appender *SampleAppender,
 	maxNodes int64,
+	selection *SelectedStackTraces,
 ) (*model.Tree, error) {
-	return buildTree(ctx, r, appender, maxNodes)
+	return buildTree(ctx, r, appender, maxNodes, selection)
 }

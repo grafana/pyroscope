@@ -5,15 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"path"
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
 
-	"github.com/grafana/pyroscope/pkg/og/agent/spy"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/perf"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
@@ -187,37 +187,96 @@ func JSONToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.Flamebea
 	return []*flamebearer.FlamebearerProfile{&p}, nil
 }
 
+func getProfileType(name string, sampleType int, p *profilev1.Profile) (*typesv1.ProfileType, error) {
+	tp := &typesv1.ProfileType{
+		Name: name,
+	}
+
+	// check if the sampleID is valid
+	if sampleType < 0 || sampleType >= len(p.SampleType) {
+		return nil, fmt.Errorf("invalid sampleID: %d", sampleType)
+	}
+
+	invalidStr := func(i int) bool {
+		return i < 0 || i > len(p.StringTable)
+	}
+	if v := int(p.PeriodType.Type); invalidStr(v) {
+		return nil, fmt.Errorf("invalid PeriodType: %d", v)
+	} else {
+		tp.PeriodType = p.StringTable[v]
+	}
+	if v := int(p.PeriodType.Unit); invalidStr(v) {
+		return nil, fmt.Errorf("invalid PeriodUnit: %d", v)
+	} else {
+		tp.PeriodUnit = p.StringTable[v]
+	}
+	if v := int(p.SampleType[sampleType].Type); invalidStr(v) {
+		return nil, fmt.Errorf("invalid SampleType[%d]: %d", sampleType, v)
+	} else {
+		tp.SampleType = p.StringTable[v]
+	}
+	if v := int(p.SampleType[sampleType].Unit); invalidStr(v) {
+		return nil, fmt.Errorf("invalid SampleUnit[%d]: %d", sampleType, v)
+	} else {
+		tp.SampleUnit = p.StringTable[v]
+	}
+
+	tp.ID = fmt.Sprintf("%s:%s:%s:%s:%s", name, tp.SampleType, tp.SampleUnit, tp.PeriodType, tp.PeriodUnit)
+	return tp, nil
+}
+
 func PprofToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.FlamebearerProfile, error) {
 	p := new(profilev1.Profile)
 	if err := pprof.Decode(bytes.NewReader(b), p); err != nil {
 		return nil, fmt.Errorf("parsing pprof: %w", err)
 	}
+
+	t := model.NewStacktraceTree(int(maxNodes * 2))
+	stack := make([]int32, 0, 64)
+	m := make(map[uint64]int32)
+
 	fbs := make([]*flamebearer.FlamebearerProfile, 0)
-	for _, stype := range tree.SampleTypes(p) {
-		sampleRate := uint32(100)
-		units := metadata.SamplesUnits
-		if c, ok := tree.DefaultSampleTypeMapping[stype]; ok {
-			units = c.Units
-			if c.Sampled && p.Period > 0 {
-				sampleRate = uint32(time.Second / time.Duration(p.Period))
+	for sampleType := range p.SampleType {
+		t.Reset()
+
+		for i := range p.Sample {
+			stack = stack[:0]
+			for j := range p.Sample[i].LocationId {
+				locIdx := int(p.Sample[i].LocationId[j]) - 1
+				if locIdx < 0 || len(p.Location) <= locIdx {
+					return nil, fmt.Errorf("invalid location ID %d in sample %d", p.Sample[i].LocationId[j], i)
+				}
+
+				loc := p.Location[locIdx]
+				if len(loc.Line) > 0 {
+					for l := range loc.Line {
+						stack = append(stack, int32(p.Function[loc.Line[l].FunctionId-1].Name))
+					}
+					continue
+				}
+				addr, ok := m[loc.Address]
+				if !ok {
+					addr = int32(len(p.StringTable))
+					p.StringTable = append(p.StringTable, strconv.FormatInt(int64(loc.Address), 16))
+					m[loc.Address] = addr
+				}
+				stack = append(stack, addr)
 			}
+
+			if sampleType < 0 || sampleType >= len(p.Sample[i].Value) {
+				return nil, fmt.Errorf("invalid sampleType index %d for sample %d (len=%d)", sampleType, i, len(p.Sample[i].Value))
+			}
+
+			t.Insert(stack, p.Sample[i].Value[sampleType])
 		}
-		t := tree.New()
-		tree.Get(p, stype, func(_labels *spy.Labels, name []byte, val int) error {
-			t.Insert(name, uint64(val))
-			return nil
-		})
-		fb := flamebearer.NewProfile(flamebearer.ProfileConfig{
-			Tree:     t,
-			Name:     stype,
-			MaxNodes: maxNodes,
-			Metadata: metadata.Metadata{
-				SpyName:    "unknown",
-				SampleRate: sampleRate,
-				Units:      units,
-			},
-		})
-		fbs = append(fbs, &fb)
+
+		tp, err := getProfileType(name, sampleType, p)
+		if err != nil {
+			return nil, err
+		}
+
+		fg := model.NewFlameGraph(t.Tree(int64(maxNodes), p.StringTable), int64(maxNodes))
+		fbs = append(fbs, model.ExportToFlamebearer(fg, tp))
 	}
 	if len(fbs) == 0 {
 		return nil, errors.New("no supported sample type found")
