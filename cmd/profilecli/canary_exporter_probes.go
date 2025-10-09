@@ -228,7 +228,7 @@ func (ce *canaryExporter) testIngestOTLPHttpJson(ctx context.Context, now time.T
 	}
 
 	// Create HTTP request using the instrumented client
-	url := ce.params.URL + "/v1/profiles"
+	url := ce.params.URL + "/v1development/profiles"
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP request: %w", err)
@@ -268,7 +268,7 @@ func (ce *canaryExporter) testIngestOTLPHttpProtobuf(ctx context.Context, now ti
 	}
 
 	// Create HTTP request using the instrumented client
-	url := ce.params.URL + "/v1/profiles"
+	url := ce.params.URL + "/v1development/profiles"
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(protoData))
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP request: %w", err)
