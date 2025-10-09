@@ -230,7 +230,13 @@ function LabelsSubmenu({
 
 // Identifies whether a label is in a query or not
 function isLabelInQuery(query: string, label: string, labelValue: string) {
-  return query.includes(`"${label}"="${labelValue}"`);
+  // Label names can be either quoted or unquoted:
+  // - Unquoted: service_name="value"
+  // - Quoted: "service.name"="value"
+  const unquotedPattern = `${label}="${labelValue}"`;
+  const quotedPattern = `"${label}"="${labelValue}"`;
+  
+  return query.includes(unquotedPattern) || query.includes(quotedPattern);
 }
 
 export default TagsBar;
