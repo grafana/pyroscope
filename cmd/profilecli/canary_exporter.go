@@ -333,21 +333,19 @@ func (ce *canaryExporter) testPyroscopeCell(ctx context.Context) error {
 
 	// ingest via OTLP HTTP/JSON
 	// Note: HTTP endpoints are not yet implemented in Pyroscope (see pkg/api/api.go:204-205)
-	// Uncomment when /v1/profiles endpoint is available
-	// if err := ce.runProbe(ctx, "ingest-otlp-http-json", func(rCtx context.Context) error {
-	// 	return ce.testIngestOTLPHttpJson(rCtx, now)
-	// }); err != nil {
-	// 	ingestErrors.Add(fmt.Errorf("error during OTLP HTTP/JSON ingestion: %w", err))
-	// }
+	if err := ce.runProbe(ctx, "ingest-otlp-http-json", func(rCtx context.Context) error {
+		return ce.testIngestOTLPHttpJson(rCtx, now)
+	}); err != nil {
+		ingestErrors.Add(fmt.Errorf("error during OTLP HTTP/JSON ingestion: %w", err))
+	}
 
 	// ingest via OTLP HTTP/Protobuf
 	// Note: HTTP endpoints are not yet implemented in Pyroscope (see pkg/api/api.go:204-205)
-	// Uncomment when /v1/profiles endpoint is available
-	// if err := ce.runProbe(ctx, "ingest-otlp-http-protobuf", func(rCtx context.Context) error {
-	// 	return ce.testIngestOTLPHttpProtobuf(rCtx, now)
-	// }); err != nil {
-	// 	ingestErrors.Add(fmt.Errorf("error during OTLP HTTP/Protobuf ingestion: %w", err))
-	// }
+	if err := ce.runProbe(ctx, "ingest-otlp-http-protobuf", func(rCtx context.Context) error {
+		return ce.testIngestOTLPHttpProtobuf(rCtx, now)
+	}); err != nil {
+		ingestErrors.Add(fmt.Errorf("error during OTLP HTTP/Protobuf ingestion: %w", err))
+	}
 
 	// Report ingestion errors if any
 	if ingestErrors.Err() != nil {

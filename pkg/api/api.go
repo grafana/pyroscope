@@ -201,8 +201,7 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation
 	})
 
 	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, writePathOpts...)
-	// TODO(@petethepig): implement http/protobuf and http/json support
-	// a.RegisterRoute("/v1/profiles", otlpHandler, true, true, "POST")
+	a.RegisterRoute("/v1development/profiles", otlpHandler, writePathOpts...)
 }
 
 // RegisterMemberlistKV registers the endpoints associated with the memberlist KV store.

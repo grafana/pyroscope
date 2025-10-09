@@ -3,12 +3,14 @@ package otlp
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/go-kit/log"
@@ -61,10 +63,14 @@ func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, me b
 			return
 		}
 
-		// Handle HTTP requests (if we want to support HTTP/Protobuf in future)
-		//if r.URL.Path == "/v1/profiles" {}
+		// Handle HTTP/Protobuf and HTTP/Binary requests
+		contentType := r.Header.Get("Content-Type")
+		if contentType == "application/json" || contentType == "application/x-protobuf" || contentType == "application/protobuf" {
+			h.handleHTTPProtobuf(w, r)
+			return
+		}
 
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, fmt.Sprintf("Unsupported Content-Type: %s", contentType), http.StatusUnsupportedMediaType)
 	})
 
 	return h
@@ -100,6 +106,76 @@ func newGrpcServer(cfg server.Config) *grpc.Server {
 
 func (h *ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
+}
+
+func (h *ingestHandler) handleHTTPProtobuf(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	// Read the request body - we need to read it all for protobuf unmarshaling
+	// Note: Protobuf wire format requires reading the entire message to determine field boundaries
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		level.Error(h.log).Log("msg", "failed to read request body", "err", err)
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	// Unmarshal the protobuf request
+	req := &pprofileotlp.ExportProfilesServiceRequest{}
+
+	if r.Header.Get("Content-Type") == "application/json" {
+		if err := protojson.Unmarshal(body, req); err != nil {
+			level.Error(h.log).Log("msg", "failed to unmarshal JSON request", "err", err)
+			http.Error(w, "Failed to parse JSON request", http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := proto.Unmarshal(body, req); err != nil {
+			level.Error(h.log).Log("msg", "failed to unmarshal protobuf request", "err", err)
+			http.Error(w, "Failed to parse protobuf request", http.StatusBadRequest)
+			return
+		}
+	}
+
+	ctx := r.Context()
+	// Process the request using the existing Export method
+	// Injects multitenancy info into context if needed
+	resp, err := h.Export(ctx, req)
+	if err != nil {
+		level.Error(h.log).Log("msg", "failed to process profiles", "err", err)
+		// Convert gRPC status to HTTP status
+		st, ok := status.FromError(err)
+		if ok {
+			switch st.Code() {
+			case codes.InvalidArgument:
+				http.Error(w, st.Message(), http.StatusBadRequest)
+			case codes.Unauthenticated:
+				http.Error(w, st.Message(), http.StatusUnauthorized)
+			case codes.PermissionDenied:
+				http.Error(w, st.Message(), http.StatusForbidden)
+			default:
+				http.Error(w, st.Message(), http.StatusInternalServerError)
+			}
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Marshal the response
+	respBytes, err := proto.Marshal(resp)
+	if err != nil {
+		level.Error(h.log).Log("msg", "failed to marshal response", "err", err)
+		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		return
+	}
+
+	// Write the response
+	w.Header().Set("Content-Type", "application/x-protobuf")
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(respBytes); err != nil {
+		level.Error(h.log).Log("msg", "failed to write response", "err", err)
+	}
 }
 
 func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
