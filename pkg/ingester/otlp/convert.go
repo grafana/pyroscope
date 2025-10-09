@@ -283,8 +283,7 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location, dictionar
 		}
 	}
 
-	// Create symbolization stub for unsymbolized locations. These stubs will be replaced
-	// with real symbols during symbolization if available.
+	// Create symbolization stub for unsymbolized locations.
 	if len(gl.Line) == 0 {
 		filenameLabel, err := at(dictionary.StringTable, om.FilenameStrindex)
 		if err != nil {
