@@ -2,14 +2,15 @@ package featureflags
 
 import (
 	"context"
+	"flag"
 	"mime"
 	"net/http"
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/middleware"
-	"github.com/grafana/pyroscope/pkg/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -17,7 +18,25 @@ import (
 const (
 	// Capability names - update parseClientCapabilities below when new capabilities added
 	allowUtf8LabelNamesCapabilityName string = "allow-utf8-labelnames"
+
+	// Config
+	clientCapabilityPrefix = "client-capability."
+	allowUtf8LabelNames    = clientCapabilityPrefix + allowUtf8LabelNamesCapabilityName
 )
+
+type ClientCapabilityConfig struct {
+	AllowUtf8LabelNames bool `yaml:"allow_utf_8_label_names" category:"experimental"`
+}
+
+func (cfg *ClientCapabilityConfig) RegisterFlags(fs *flag.FlagSet) {
+	fs.BoolVar(
+		&cfg.AllowUtf8LabelNames,
+		allowUtf8LabelNames,
+		false,
+		"Enable reading and writing utf-8 label names. To use this feature, API calls must "+
+			"include `allow-utf8-labelnames=true` in the `Accept` header.",
+	)
+}
 
 // Define a custom context key type to avoid collisions
 type contextKey struct{}
@@ -35,7 +54,7 @@ func GetClientCapabilities(ctx context.Context) (ClientCapabilities, bool) {
 	return value, ok
 }
 
-func ClientCapabilitiesGRPCMiddleware() grpc.UnaryServerInterceptor {
+func ClientCapabilitiesGRPCMiddleware(cfg *ClientCapabilityConfig, logger log.Logger) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req interface{},
@@ -56,7 +75,7 @@ func ClientCapabilitiesGRPCMiddleware() grpc.UnaryServerInterceptor {
 		}
 
 		// Reuse existing HTTP header parsing
-		clientCapabilities, err := parseClientCapabilities(httpHeader)
+		clientCapabilities, err := parseClientCapabilities(httpHeader, cfg, logger)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
@@ -68,10 +87,10 @@ func ClientCapabilitiesGRPCMiddleware() grpc.UnaryServerInterceptor {
 
 // ClientCapabilitiesHttpMiddleware creates middleware that extracts and parses the
 // `Accept` header for capabilities the client supports
-func ClientCapabilitiesHttpMiddleware() middleware.Interface {
+func ClientCapabilitiesHttpMiddleware(cfg *ClientCapabilityConfig, logger log.Logger) middleware.Interface {
 	return middleware.Func(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			clientCapabilities, err := parseClientCapabilities(r.Header)
+			clientCapabilities, err := parseClientCapabilities(r.Header, cfg, logger)
 			if err != nil {
 				http.Error(w, "Invalid header format: "+err.Error(), http.StatusBadRequest)
 				return
@@ -83,7 +102,7 @@ func ClientCapabilitiesHttpMiddleware() middleware.Interface {
 	})
 }
 
-func parseClientCapabilities(header http.Header) (ClientCapabilities, error) {
+func parseClientCapabilities(header http.Header, cfg *ClientCapabilityConfig, logger log.Logger) (ClientCapabilities, error) {
 	acceptHeaderValues := header.Values("Accept")
 
 	var capabilities ClientCapabilities
@@ -100,10 +119,16 @@ func parseClientCapabilities(header http.Header) (ClientCapabilities, error) {
 						switch k {
 						case allowUtf8LabelNamesCapabilityName:
 							if v == "true" {
-								capabilities.AllowUtf8LabelNames = true
+								if !cfg.AllowUtf8LabelNames {
+									level.Warn(logger).Log(
+										"msg", "client requested capability that is not enabled on server",
+										"capability", allowUtf8LabelNamesCapabilityName)
+								} else {
+									capabilities.AllowUtf8LabelNames = true
+								}
 							}
 						default:
-							level.Debug(util.Logger).Log(
+							level.Debug(logger).Log(
 								"msg", "unknown capability parsed from Accept header",
 								"acceptHeaderKey", k,
 								"acceptHeaderValue", v)

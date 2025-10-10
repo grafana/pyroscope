@@ -9,6 +9,7 @@ import (
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
@@ -136,7 +137,7 @@ func TestValidateLabels(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateLabels(MockLimits{
+			err := ValidateLabels(nil, MockLimits{
 				MaxLabelNamesPerSeriesValue: 4,
 				MaxLabelNameLengthValue:     12,
 				MaxLabelValueLengthValue:    10,
@@ -147,6 +148,183 @@ func TestValidateLabels(t *testing.T) {
 				require.Equal(t, tt.expectedReason, ReasonOf(err))
 			} else {
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateLabels_WithClientCapabilities(t *testing.T) {
+	for _, tt := range []struct {
+		name               string
+		clientCapabilities *featureflags.ClientCapabilities
+		lbs                []*typesv1.LabelPair
+		expectedErr        string
+		expectedReason     Reason
+		expectedLabels     []*typesv1.LabelPair // Expected labels after validation/sanitization
+	}{
+		{
+			name: "UTF-8 labels allowed when capabilities enabled",
+			clientCapabilities: &featureflags.ClientCapabilities{
+				AllowUtf8LabelNames: true,
+			},
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "日本語", Value: "test"},
+				{Name: "emoji_🚀", Value: "rocket"},
+			},
+			// Labels get sorted alphabetically
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "emoji_🚀", Value: "rocket"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "日本語", Value: "test"},
+			},
+		},
+		{
+			name:               "UTF-8 labels rejected when capabilities disabled",
+			clientCapabilities: nil,
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "日本語", Value: "test"},
+			},
+			expectedErr:    `invalid labels '{__name__="cpu", service_name="svc", 日本語="test"}' with error: invalid label name '日本語'`,
+			expectedReason: InvalidLabels,
+		},
+		{
+			name: "UTF-8 labels rejected when AllowUtf8LabelNames false",
+			clientCapabilities: &featureflags.ClientCapabilities{
+				AllowUtf8LabelNames: false,
+			},
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "café", Value: "test"},
+			},
+			expectedErr:    `invalid labels '{__name__="cpu", café="test", service_name="svc"}' with error: invalid label name 'café'`,
+			expectedReason: InvalidLabels,
+		},
+		{
+			name: "valid underscore and hyphen labels with UTF-8 enabled",
+			clientCapabilities: &featureflags.ClientCapabilities{
+				AllowUtf8LabelNames: true,
+			},
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "label_with_underscore", Value: "test"},
+				{Name: "label-with-hyphen", Value: "test2"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "label-with-hyphen", Value: "test2"},
+				{Name: "label_with_underscore", Value: "test"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+			},
+		},
+		{
+			name:               "legacy invalid label names rejected when capabilities disabled",
+			clientCapabilities: nil,
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "123invalid", Value: "test"},
+			},
+			expectedErr:    `invalid labels '{123invalid="test", __name__="cpu", service_name="svc"}' with error: invalid label name '123invalid'`,
+			expectedReason: InvalidLabels,
+		},
+		{
+			name: "dots allowed as-is with UTF-8 enabled",
+			clientCapabilities: &featureflags.ClientCapabilities{
+				AllowUtf8LabelNames: true,
+			},
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "app.kubernetes.io/name", Value: "test"},
+			},
+			// With UTF-8 enabled, dots are allowed (Prometheus UTF-8 validation)
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "app.kubernetes.io/name", Value: "test"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+			},
+		},
+		{
+			name:               "dots rejected without UTF-8",
+			clientCapabilities: nil,
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "app.kubernetes.io/name", Value: "test"},
+			},
+			expectedErr:    `invalid labels '{__name__="cpu", app.kubernetes.io/name="test", service_name="svc"}' with error: invalid label name 'app.kubernetes.io/name'`,
+			expectedReason: InvalidLabels,
+		},
+		{
+			name: "hyphens allowed with UTF-8 enabled",
+			clientCapabilities: &featureflags.ClientCapabilities{
+				AllowUtf8LabelNames: true,
+			},
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "some-label-name", Value: "test"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "some-label-name", Value: "test"},
+			},
+		},
+		{
+			name: "mixed ASCII and UTF-8 labels with capabilities enabled",
+			clientCapabilities: &featureflags.ClientCapabilities{
+				AllowUtf8LabelNames: true,
+			},
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "region", Value: "us-east-1"},
+				{Name: "地域", Value: "東京"},
+				{Name: "environment", Value: "prod"},
+			},
+			// Labels get sorted alphabetically
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "environment", Value: "prod"},
+				{Name: "region", Value: "us-east-1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "地域", Value: "東京"},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			lbsCopy := make([]*typesv1.LabelPair, len(tt.lbs))
+			for i, lb := range tt.lbs {
+				lbsCopy[i] = &typesv1.LabelPair{Name: lb.Name, Value: lb.Value}
+			}
+
+			err := ValidateLabels(tt.clientCapabilities, MockLimits{
+				MaxLabelNamesPerSeriesValue: 10,
+				MaxLabelNameLengthValue:     1024,
+				MaxLabelValueLengthValue:    2048,
+			}, "test-tenant", lbsCopy)
+
+			if tt.expectedErr != "" {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedErr, err.Error())
+				require.Equal(t, tt.expectedReason, ReasonOf(err))
+			} else {
+				require.NoError(t, err)
+				if tt.expectedLabels != nil {
+					require.Equal(t, len(tt.expectedLabels), len(lbsCopy), "label count mismatch")
+					for i, expected := range tt.expectedLabels {
+						require.Equal(t, expected.Name, lbsCopy[i].Name, "label name mismatch at index %d", i)
+						require.Equal(t, expected.Value, lbsCopy[i].Value, "label value mismatch at index %d", i)
+					}
+				}
 			}
 		})
 	}

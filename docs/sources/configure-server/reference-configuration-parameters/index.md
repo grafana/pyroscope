@@ -160,6 +160,12 @@ tenant_settings:
     # CLI flag: -tenant-settings.recording-rules.enabled
     [enabled: <boolean> | default = false]
 
+client_capability:
+  # Enable reading and writing utf-8 label names. To use this feature, API calls
+  # must include `allow-utf8-labelnames=true` in the `Accept` header.
+  # CLI flag: -client-capability.allow-utf8-labelnames
+  [allow_utf_8_label_names: <boolean> | default = false]
+
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.

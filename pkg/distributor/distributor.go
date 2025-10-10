@@ -17,6 +17,8 @@ import (
 	"connectrpc.com/connect"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/pyroscope/pkg/featureflags"
+
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -651,7 +653,7 @@ func visitSampleSeriesForIngester(profile *profilev1.Profile, labels []*typesv1.
 }
 
 func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distributormodel.ProfileSeries) (resp *connect.Response[pushv1.PushResponse], err error) {
-	sampleSeries, err := d.visitSampleSeries(req, visitSampleSeriesForIngester)
+	sampleSeries, err := d.visitSampleSeries(ctx, req, visitSampleSeriesForIngester)
 	if err != nil {
 		return nil, err
 	}
@@ -740,7 +742,7 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 	// NOTE(kolesnikovae): if we return early, e.g., due to a validation error,
 	//   or if there are no series, the write path router has already seen the
 	//   request, and could have already accounted for the size, latency, etc.
-	serviceSeries, err := d.visitSampleSeries(req, visitSampleSeriesForSegmentWriter)
+	serviceSeries, err := d.visitSampleSeries(ctx, req, visitSampleSeriesForSegmentWriter)
 	if err != nil {
 		return nil, err
 	}
@@ -1126,15 +1128,23 @@ func injectMappingVersions(s *distributormodel.ProfileSeries) error {
 
 type visitFunc func(*profilev1.Profile, []*typesv1.LabelPair, []*relabel.Config, *sampleSeriesVisitor) error
 
-func (d *Distributor) visitSampleSeries(s *distributormodel.ProfileSeries, visit visitFunc) ([]*distributormodel.ProfileSeries, error) {
+func (d *Distributor) visitSampleSeries(ctx context.Context, s *distributormodel.ProfileSeries, visit visitFunc) ([]*distributormodel.ProfileSeries, error) {
 	relabelingRules := d.limits.IngestionRelabelingRules(s.TenantID)
 	usageConfig := d.limits.DistributorUsageGroups(s.TenantID)
 	var result []*distributormodel.ProfileSeries
 	usageGroups := d.usageGroupEvaluator.GetMatch(s.TenantID, usageConfig, s.Labels)
+
+	// Extract client capabilities from context
+	var clientCapabilities *featureflags.ClientCapabilities
+	if capabilities, ok := featureflags.GetClientCapabilities(ctx); ok {
+		clientCapabilities = &capabilities
+	}
+
 	visitor := &sampleSeriesVisitor{
-		tenantID: s.TenantID,
-		limits:   d.limits,
-		profile:  s.Profile,
+		tenantID:           s.TenantID,
+		limits:             d.limits,
+		profile:            s.Profile,
+		clientCapabilities: clientCapabilities,
 	}
 	if err := visit(s.Profile.Profile, s.Labels, relabelingRules, visitor); err != nil {
 		validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), s.TenantID).Add(float64(s.TotalProfiles))
@@ -1164,18 +1174,19 @@ func (d *Distributor) visitSampleSeries(s *distributormodel.ProfileSeries, visit
 }
 
 type sampleSeriesVisitor struct {
-	tenantID string
-	limits   Limits
-	profile  *pprof.Profile
-	exp      *pprof.SampleExporter
-	series   []*distributormodel.ProfileSeries
+	tenantID           string
+	limits             Limits
+	profile            *pprof.Profile
+	exp                *pprof.SampleExporter
+	clientCapabilities *featureflags.ClientCapabilities
+	series             []*distributormodel.ProfileSeries
 
 	discardedBytes    int
 	discardedProfiles int
 }
 
 func (v *sampleSeriesVisitor) ValidateLabels(labels phlaremodel.Labels) error {
-	return validation.ValidateLabels(v.limits, v.tenantID, labels)
+	return validation.ValidateLabels(v.clientCapabilities, v.limits, v.tenantID, labels)
 }
 
 func (v *sampleSeriesVisitor) VisitProfile(labels phlaremodel.Labels) {

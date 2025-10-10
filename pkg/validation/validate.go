@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	"github.com/grafana/pyroscope/pkg/pprof"
 
 	"github.com/go-kit/log/level"
@@ -125,7 +126,7 @@ type LabelValidationLimits interface {
 }
 
 // ValidateLabels validates the labels of a profile.
-func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1.LabelPair) error {
+func ValidateLabels(clientCapabilities *featureflags.ClientCapabilities, limits LabelValidationLimits, tenantID string, ls []*typesv1.LabelPair) error {
 	if len(ls) == 0 {
 		return NewErrorf(MissingLabels, MissingLabelsErrorMsg)
 	}
@@ -156,7 +157,11 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
-		if origName, newName, ok := SanitizeLegacyLabelName(l.Name); ok && origName != newName {
+		if clientCapabilities != nil && clientCapabilities.AllowUtf8LabelNames {
+			if !model.UTF8Validation.IsValidLabelName(l.Name) {
+				return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+l.Name+"'")
+			}
+		} else if origName, newName, ok := SanitizeLegacyLabelName(l.Name); ok && origName != newName {
 			var err error
 			ls, idx, err = handleSanitizedLabel(ls, idx, origName, newName)
 			if err != nil {
