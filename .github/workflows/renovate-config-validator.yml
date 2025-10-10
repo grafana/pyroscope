@@ -25,10 +25,5 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
-        with:
-          node-version: '22'
-
-      - name: Validate Renovate config
-        run: npx --yes --package renovate -- renovate-config-validator
+      - name: Validate Renovate Config
+        uses: grafana/shared-workflows/actions/validate-renovate-config@validate-renovate-config/v0.1.0
