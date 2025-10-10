@@ -581,6 +581,15 @@ func (f *Pyroscope) initUsageReport() (services.Service, error) {
 }
 
 func (f *Pyroscope) initAdmin() (services.Service, error) {
+	if f.Cfg.V2 {
+		// For v2 storage, use metastore-based admin
+		if f.metastoreClient == nil {
+			level.Warn(f.logger).Log("msg", "v2 enabled but no metastore client configured, the admin component will not be loaded")
+			return nil, nil
+		}
+		return f.initAdminV2()
+	}
+
 	if f.storageBucket == nil {
 		level.Warn(f.logger).Log("msg", "no storage bucket configured, the admin component will not be loaded")
 		return nil, nil

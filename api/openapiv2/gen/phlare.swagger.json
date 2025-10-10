@@ -1244,6 +1244,17 @@
         }
       }
     },
+    "v1GetTenantsResponse": {
+      "type": "object",
+      "properties": {
+        "tenantIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1GithubAppResponse": {
       "type": "object",
       "properties": {

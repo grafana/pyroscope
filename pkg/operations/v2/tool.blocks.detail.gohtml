@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html class="h-100" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Bucket Blocks Explorer (v2): Tenant {{ .User }}, Block {{ .Block.ID }}</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+</head>
+<body class="d-flex flex-column h-100">
+<main class="flex-shrink-0">
+    <div class="container">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h3>Bucket Blocks Explorer (v2): Block Details</h3>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="../../../tenants">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <p>
+                <a href="../../../tenants/{{ .User }}/blocks">Back to tenant</a>
+            </p>
+            <table class="table">
+                <tr>
+                    <td>Tenant</td>
+                    <td>{{ .User }}</td>
+                </tr>
+                <tr>
+                    <td>ID</td>
+                    <td>{{ .Block.ID }}</td>
+                </tr>
+                <tr>
+                    <td>Min Time</td>
+                    <td>{{ .Block.MinTime }}</td>
+                </tr>
+                <tr>
+                    <td>Max Time</td>
+                    <td>{{ .Block.MaxTime }}</td>
+                </tr>
+                <tr>
+                    <td>Duration</td>
+                    <td>{{ .Block.FormattedDuration }}</td>
+                </tr>
+                <tr>
+                    <td>Compaction Level</td>
+                    <td>{{ .Block.CompactionLevel }}</td>
+                </tr>
+                <tr>
+                    <td>Shard</td>
+                    <td>{{ .Block.Shard }}</td>
+                </tr>
+                <tr>
+                    <td>Size</td>
+                    <td>{{ .Block.Size }}</td>
+                </tr>
+            </table>
+
+            <h4 class="mt-4">Datasets</h4>
+            {{ if .Block.Datasets }}
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Tenant</th>
+                            <th class="text-end">Total Size</th>
+                            <th class="text-end">Profiles Size</th>
+                            <th class="text-end">TSDB Index Size</th>
+                            <th class="text-end">Symbols Size</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range $ds := .Block.Datasets }}
+                            <tr>
+                                <td class="font-monospace small">
+                                    <a href="{{ $.Block.ID }}/datasets?dataset={{ if $ds.Name }}{{ $ds.Name }}{{ else }}_empty{{ end }}&shard={{ $.Shard }}&block_tenant={{ $.BlockTenant }}">{{ if $ds.Name }}{{ $ds.Name }}{{ else }}<em>(empty)</em>{{ end }}</a>
+                                </td>
+                                <td class="font-monospace small">{{ $ds.Tenant }}</td>
+                                <td class="font-monospace small text-end">{{ $ds.Size }}</td>
+                                <td class="font-monospace small text-end">{{ $ds.ProfilesSize }}</td>
+                                <td class="font-monospace small text-end">{{ $ds.IndexSize }}</td>
+                                <td class="font-monospace small text-end">{{ $ds.SymbolsSize }}</td>
+                            </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            {{ else }}
+                <p>No datasets</p>
+            {{ end }}
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3 bg-dark">
+    <div class="container">
+        <small class="text-white-50">Status @ {{ .Now }}</small>
+    </div>
+</footer>
+</body>
+</html>

@@ -20,8 +20,9 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
-	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/public"
+
+	"github.com/grafana/pyroscope/pkg/validation"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/capabilities/v1/capabilitiesv1connect"
@@ -42,7 +43,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/ingester"
 	"github.com/grafana/pyroscope/pkg/ingester/otlp"
 	"github.com/grafana/pyroscope/pkg/ingester/pyroscope"
-	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
@@ -294,10 +294,19 @@ func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
 	)
 }
 
-func (a *API) RegisterAdmin(ad *operations.Admin) {
+// AdminService is an interface for admin handlers (v1 and v2)
+type AdminService interface {
+	TenantsHandler(w http.ResponseWriter, r *http.Request)
+	BlocksHandler(w http.ResponseWriter, r *http.Request)
+	BlockHandler(w http.ResponseWriter, r *http.Request)
+	DatasetHandler(w http.ResponseWriter, r *http.Request)
+}
+
+func (a *API) RegisterAdmin(ad AdminService) {
 	a.RegisterRoute("/ops/object-store/tenants", http.HandlerFunc(ad.TenantsHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks", http.HandlerFunc(ad.BlocksHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}", http.HandlerFunc(ad.BlockHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets", http.HandlerFunc(ad.DatasetHandler), a.registerOptionsPublicAccess()...)
 
 	a.indexPage.AddLinks(defaultWeight, "Admin", []IndexPageLink{
 		{Desc: "Object Storage Tenants & Blocks", Path: "/ops/object-store/tenants"},

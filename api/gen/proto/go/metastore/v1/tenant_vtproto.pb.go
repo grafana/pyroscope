@@ -23,6 +23,43 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+func (m *GetTenantsRequest) CloneVT() *GetTenantsRequest {
+	if m == nil {
+		return (*GetTenantsRequest)(nil)
+	}
+	r := new(GetTenantsRequest)
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *GetTenantsRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *GetTenantsResponse) CloneVT() *GetTenantsResponse {
+	if m == nil {
+		return (*GetTenantsResponse)(nil)
+	}
+	r := new(GetTenantsResponse)
+	if rhs := m.TenantIds; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.TenantIds = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *GetTenantsResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *GetTenantRequest) CloneVT() *GetTenantRequest {
 	if m == nil {
 		return (*GetTenantRequest)(nil)
@@ -109,6 +146,47 @@ func (m *DeleteTenantResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (this *GetTenantsRequest) EqualVT(that *GetTenantsRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetTenantsRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetTenantsRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *GetTenantsResponse) EqualVT(that *GetTenantsResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.TenantIds) != len(that.TenantIds) {
+		return false
+	}
+	for i, vx := range this.TenantIds {
+		vy := that.TenantIds[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetTenantsResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetTenantsResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (this *GetTenantRequest) EqualVT(that *GetTenantRequest) bool {
 	if this == that {
 		return true
@@ -217,6 +295,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TenantServiceClient interface {
+	GetTenants(ctx context.Context, in *GetTenantsRequest, opts ...grpc.CallOption) (*GetTenantsResponse, error)
 	GetTenant(ctx context.Context, in *GetTenantRequest, opts ...grpc.CallOption) (*GetTenantResponse, error)
 	DeleteTenant(ctx context.Context, in *DeleteTenantRequest, opts ...grpc.CallOption) (*DeleteTenantResponse, error)
 }
@@ -227,6 +306,15 @@ type tenantServiceClient struct {
 
 func NewTenantServiceClient(cc grpc.ClientConnInterface) TenantServiceClient {
 	return &tenantServiceClient{cc}
+}
+
+func (c *tenantServiceClient) GetTenants(ctx context.Context, in *GetTenantsRequest, opts ...grpc.CallOption) (*GetTenantsResponse, error) {
+	out := new(GetTenantsResponse)
+	err := c.cc.Invoke(ctx, "/metastore.v1.TenantService/GetTenants", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *tenantServiceClient) GetTenant(ctx context.Context, in *GetTenantRequest, opts ...grpc.CallOption) (*GetTenantResponse, error) {
@@ -251,6 +339,7 @@ func (c *tenantServiceClient) DeleteTenant(ctx context.Context, in *DeleteTenant
 // All implementations must embed UnimplementedTenantServiceServer
 // for forward compatibility
 type TenantServiceServer interface {
+	GetTenants(context.Context, *GetTenantsRequest) (*GetTenantsResponse, error)
 	GetTenant(context.Context, *GetTenantRequest) (*GetTenantResponse, error)
 	DeleteTenant(context.Context, *DeleteTenantRequest) (*DeleteTenantResponse, error)
 	mustEmbedUnimplementedTenantServiceServer()
@@ -260,6 +349,9 @@ type TenantServiceServer interface {
 type UnimplementedTenantServiceServer struct {
 }
 
+func (UnimplementedTenantServiceServer) GetTenants(context.Context, *GetTenantsRequest) (*GetTenantsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetTenants not implemented")
+}
 func (UnimplementedTenantServiceServer) GetTenant(context.Context, *GetTenantRequest) (*GetTenantResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTenant not implemented")
 }
@@ -277,6 +369,24 @@ type UnsafeTenantServiceServer interface {
 
 func RegisterTenantServiceServer(s grpc.ServiceRegistrar, srv TenantServiceServer) {
 	s.RegisterService(&TenantService_ServiceDesc, srv)
+}
+
+func _TenantService_GetTenants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTenantsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TenantServiceServer).GetTenants(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/metastore.v1.TenantService/GetTenants",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TenantServiceServer).GetTenants(ctx, req.(*GetTenantsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _TenantService_GetTenant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -323,6 +433,10 @@ var TenantService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*TenantServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "GetTenants",
+			Handler:    _TenantService_GetTenants_Handler,
+		},
+		{
 			MethodName: "GetTenant",
 			Handler:    _TenantService_GetTenant_Handler,
 		},
@@ -333,6 +447,81 @@ var TenantService_ServiceDesc = grpc.ServiceDesc{
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "metastore/v1/tenant.proto",
+}
+
+func (m *GetTenantsRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetTenantsRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *GetTenantsRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *GetTenantsResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetTenantsResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *GetTenantsResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.TenantIds) > 0 {
+		for iNdEx := len(m.TenantIds) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.TenantIds[iNdEx])
+			copy(dAtA[i:], m.TenantIds[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.TenantIds[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *GetTenantRequest) MarshalVT() (dAtA []byte, err error) {
@@ -544,6 +733,32 @@ func (m *DeleteTenantResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
+func (m *GetTenantsRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *GetTenantsResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.TenantIds) > 0 {
+		for _, s := range m.TenantIds {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
 func (m *GetTenantRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -615,6 +830,140 @@ func (m *DeleteTenantResponse) SizeVT() (n int) {
 	return n
 }
 
+func (m *GetTenantsRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetTenantsRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetTenantsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetTenantsResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetTenantsResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetTenantsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TenantIds", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TenantIds = append(m.TenantIds, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *GetTenantRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0

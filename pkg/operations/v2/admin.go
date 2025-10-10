@@ -1,14 +1,11 @@
-package operations
+package v2
 
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
-
-	"github.com/grafana/pyroscope/pkg/objstore"
 )
 
 type Admin struct {
@@ -17,18 +14,18 @@ type Admin struct {
 	handlers *Handlers
 }
 
-func NewAdmin(bucketClient objstore.Bucket, logger log.Logger, maxBlockDuration time.Duration) (*Admin, error) {
+func NewAdmin(metastoreClient MetastoreClient, logger log.Logger) (*Admin, error) {
 	a := &Admin{
 		logger: logger,
 		handlers: &Handlers{
-			Logger:           logger,
-			Bucket:           bucketClient,
-			MaxBlockDuration: maxBlockDuration,
+			Logger:          logger,
+			MetastoreClient: metastoreClient,
 		},
 	}
 	a.Service = services.NewBasicService(nil, a.running, nil)
 	return a, nil
 }
+
 func (a *Admin) running(ctx context.Context) error {
 	<-ctx.Done()
 	return nil
@@ -47,5 +44,5 @@ func (a *Admin) BlockHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Admin) DatasetHandler(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Dataset details not available in v1 storage", http.StatusNotFound)
+	a.handlers.CreateDatasetDetailsHandler()(w, r)
 }
