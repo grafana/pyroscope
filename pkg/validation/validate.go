@@ -106,6 +106,16 @@ var (
 		},
 		[]string{ReasonLabel, "tenant"},
 	)
+
+	// sanitizedLabelNames is a metric of the number of label names that were sanitized.
+	sanitizedLabelNames = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "sanitized_label_names_total",
+			Help:      "The total number of label names that were sanitized (e.g., dots replaced with underscores).",
+		},
+		[]string{"tenant"},
+	)
 )
 
 type LabelValidationLimits interface {
@@ -152,6 +162,7 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 			if err != nil {
 				return err
 			}
+			sanitizedLabelNames.WithLabelValues(tenantID).Inc()
 			lastLabelName = ""
 			if idx > 0 && idx <= len(ls) {
 				lastLabelName = ls[idx-1].Name
