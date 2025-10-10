@@ -405,6 +405,10 @@ func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (block
 	return results.blockPlan(ctx), nil
 }
 
+// filterLabelNames filters out non-legacy (see validation.SanitizeLegacyLabelName)
+// label names by default. If no label names are passed in the req, all label names
+// are fetched and then filtered. Otherwise, the label names in the req are filtered.
+// If the `AllowUtf8LabelNames` client capability is enabled, this function is a no-op.
 func (q *Querier) filterLabelNames(
 	ctx context.Context,
 	req *connect.Request[querierv1.SeriesRequest],
@@ -412,11 +416,6 @@ func (q *Querier) filterLabelNames(
 	if capabilities, ok := featureflags.GetClientCapabilities(ctx); ok && capabilities.AllowUtf8LabelNames {
 		return req.Msg.LabelNames, nil
 	}
-
-	// Filter out label names not passing legacy validation if utf8 label names not enabled
-	toFilter := make([]string, len(req.Msg.LabelNames))
-	copy(toFilter, req.Msg.LabelNames)
-	filtered := make([]string, 0, len(toFilter))
 
 	if len(req.Msg.LabelNames) == 0 {
 		// Querying for all label names; must retrieve all label names to then filter out
@@ -428,17 +427,19 @@ func (q *Querier) filterLabelNames(
 		if err != nil {
 			return nil, err
 		}
-		toFilter = response.Msg.Names
-	}
-
-	for _, name := range toFilter {
-		if _, _, ok := validation.SanitizeLegacyLabelName(name); !ok {
-			level.Debug(q.logger).Log("msg", "filtering out label", "label_name", name)
-			continue
+		return response.Msg.Names, nil
+	} else {
+		// Filter out label names in request if not passing legacy validation
+		filtered := make([]string, 0, len(req.Msg.LabelNames))
+		for _, name := range req.Msg.LabelNames {
+			if _, _, ok := validation.SanitizeLegacyLabelName(name); !ok {
+				level.Debug(q.logger).Log("msg", "filtering out label", "label_name", name)
+				continue
+			}
+			filtered = append(filtered, name)
 		}
-		filtered = append(filtered, name)
+		return filtered, nil
 	}
-	return filtered, nil
 }
 
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
