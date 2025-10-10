@@ -3,6 +3,8 @@ package integration
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -52,10 +54,6 @@ func TestIngestOTLP(t *testing.T) {
 	for _, td := range otlpTestDatas {
 		t.Run(td.name, func(t *testing.T) {
 			EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
-				if td.profilePath != "testdata/otel-ebpf-profiler-unsymbolized.pb.bin" {
-					t.Skip("Skipping OTLP ingestion integration tests")
-				}
-
 				rb := p.NewRequestBuilder(t)
 				runNo := p.TempAppName()
 
@@ -154,6 +152,146 @@ func TestIngestBadOTLP(t *testing.T) {
 				if td.expectedErrorMessage != "" {
 					require.Contains(t, err.Error(), td.expectedErrorMessage)
 				}
+			})
+		})
+	}
+}
+
+// TestIngestOTLPHTTPBinary tests OTLP ingestion via HTTP with binary/protobuf content type
+func TestIngestOTLPHTTPBinary(t *testing.T) {
+	for _, td := range otlpTestDatas {
+		t.Run(td.name, func(t *testing.T) {
+			EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+				rb := p.NewRequestBuilder(t)
+				runNo := p.TempAppName()
+
+				profileBytes, err := os.ReadFile(td.profilePath)
+				require.NoError(t, err)
+				var profile = new(profilesv1.ExportProfilesServiceRequest)
+				err = proto.Unmarshal(profileBytes, profile)
+				require.NoError(t, err)
+
+				for _, rp := range profile.ResourceProfiles {
+					for _, sp := range rp.ScopeProfiles {
+						sp.Scope.Attributes = append(sp.Scope.Attributes, &commonv1.KeyValue{
+							Key: "test_run_no", Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: runNo}},
+						})
+					}
+				}
+
+				// Send via HTTP with application/x-protobuf content type
+				req := rb.OtelPushHTTPProtobuf(profile)
+				resp, err := http.DefaultClient.Do(req)
+				require.NoError(t, err)
+				defer resp.Body.Close()
+
+				body, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+				require.Equal(t, http.StatusOK, resp.StatusCode, "Response body: %s", string(body))
+
+				for _, metric := range td.expectedProfiles {
+					query := make(map[string]string)
+					for k, v := range metric.query {
+						query[k] = v
+					}
+					query["test_run_no"] = runNo
+
+					resp := rb.SelectMergeProfile(metric.metricName, query)
+
+					assert.NotEmpty(t, resp.Msg.Sample)
+					assert.NotEmpty(t, resp.Msg.Function)
+					assert.NotEmpty(t, resp.Msg.Mapping)
+					assert.NotEmpty(t, resp.Msg.Location)
+
+					actual := strprofile.ToCompactProfile(resp.Msg, strprofile.Options{
+						NoTime:     true,
+						NoDuration: true,
+					})
+					strprofile.SortProfileSamples(actual)
+					actualBytes, err := json.Marshal(actual)
+					assert.NoError(t, err)
+
+					expectedBytes, err := os.ReadFile(metric.expectedJsonPath)
+					require.NoError(t, err)
+					var expected strprofile.CompactProfile
+					assert.NoError(t, json.Unmarshal(expectedBytes, &expected))
+					strprofile.SortProfileSamples(expected)
+					expectedBytes, err = json.Marshal(expected)
+					require.NoError(t, err)
+
+					assert.Equal(t, string(expectedBytes), string(actualBytes))
+				}
+				td.assertMetrics(t, p)
+			})
+		})
+	}
+}
+
+// TestIngestOTLPHTTPJSON tests OTLP ingestion via HTTP with JSON content type
+func TestIngestOTLPHTTPJSON(t *testing.T) {
+	for _, td := range otlpTestDatas {
+		t.Run(td.name, func(t *testing.T) {
+			EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+				rb := p.NewRequestBuilder(t)
+				runNo := p.TempAppName()
+
+				profileBytes, err := os.ReadFile(td.profilePath)
+				require.NoError(t, err)
+				var profile = new(profilesv1.ExportProfilesServiceRequest)
+				err = proto.Unmarshal(profileBytes, profile)
+				require.NoError(t, err)
+
+				for _, rp := range profile.ResourceProfiles {
+					for _, sp := range rp.ScopeProfiles {
+						sp.Scope.Attributes = append(sp.Scope.Attributes, &commonv1.KeyValue{
+							Key: "test_run_no", Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: runNo}},
+						})
+					}
+				}
+
+				// Send via HTTP with application/json content type
+				req := rb.OtelPushHTTPJSON(profile)
+				resp, err := http.DefaultClient.Do(req)
+				require.NoError(t, err)
+				defer resp.Body.Close()
+
+				body, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+				require.Equal(t, http.StatusOK, resp.StatusCode, "Response body: %s", string(body))
+
+				for _, metric := range td.expectedProfiles {
+					query := make(map[string]string)
+					for k, v := range metric.query {
+						query[k] = v
+					}
+					query["test_run_no"] = runNo
+
+					resp := rb.SelectMergeProfile(metric.metricName, query)
+
+					assert.NotEmpty(t, resp.Msg.Sample)
+					assert.NotEmpty(t, resp.Msg.Function)
+					assert.NotEmpty(t, resp.Msg.Mapping)
+					assert.NotEmpty(t, resp.Msg.Location)
+
+					actual := strprofile.ToCompactProfile(resp.Msg, strprofile.Options{
+						NoTime:     true,
+						NoDuration: true,
+					})
+					strprofile.SortProfileSamples(actual)
+					actualBytes, err := json.Marshal(actual)
+					assert.NoError(t, err)
+
+					expectedBytes, err := os.ReadFile(metric.expectedJsonPath)
+					require.NoError(t, err)
+					var expected strprofile.CompactProfile
+					assert.NoError(t, json.Unmarshal(expectedBytes, &expected))
+					strprofile.SortProfileSamples(expected)
+					expectedBytes, err = json.Marshal(expected)
+					require.NoError(t, err)
+
+					assert.Equal(t, string(expectedBytes), string(actualBytes))
+				}
+				td.assertMetrics(t, p)
 			})
 		})
 	}
