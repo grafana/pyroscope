@@ -7,6 +7,7 @@
 package typesv1
 
 import (
+	_ "github.com/google/gnostic/openapiv3"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -68,9 +69,11 @@ func (TimeSeriesAggregationType) EnumDescriptor() ([]byte, []int) {
 }
 
 type LabelPair struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Label name
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Label value
+	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -414,11 +417,15 @@ func (x *ProfileAnnotation) GetValue() string {
 }
 
 type LabelValuesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Matchers      []string               `protobuf:"bytes,2,rep,name=matchers,proto3" json:"matchers,omitempty"`
-	Start         int64                  `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
-	End           int64                  `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the label
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// List of Label selectors
+	Matchers []string `protobuf:"bytes,2,rep,name=matchers,proto3" json:"matchers,omitempty"`
+	// Query from this point in time, given in Milliseconds since epoch.
+	Start int64 `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
+	// Query to this point in time, given in Milliseconds since epoch.
+	End           int64 `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -526,10 +533,13 @@ func (x *LabelValuesResponse) GetNames() []string {
 }
 
 type LabelNamesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Matchers      []string               `protobuf:"bytes,1,rep,name=matchers,proto3" json:"matchers,omitempty"`
-	Start         int64                  `protobuf:"varint,2,opt,name=start,proto3" json:"start,omitempty"`
-	End           int64                  `protobuf:"varint,3,opt,name=end,proto3" json:"end,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// List of Label selectors
+	Matchers []string `protobuf:"bytes,1,rep,name=matchers,proto3" json:"matchers,omitempty"`
+	// Query from this point in time, given in Milliseconds since epoch.
+	Start int64 `protobuf:"varint,2,opt,name=start,proto3" json:"start,omitempty"`
+	// Query to this point in time, given in Milliseconds since epoch.
+	End           int64 `protobuf:"varint,3,opt,name=end,proto3" json:"end,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1025,10 +1035,11 @@ var File_types_v1_types_proto protoreflect.FileDescriptor
 
 const file_types_v1_types_proto_rawDesc = "" +
 	"\n" +
-	"\x14types/v1/types.proto\x12\btypes.v1\"5\n" +
-	"\tLabelPair\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\xb5\x01\n" +
+	"\x14types/v1/types.proto\x12\btypes.v1\x1a$gnostic/openapi/v3/annotations.proto\"]\n" +
+	"\tLabelPair\x12'\n" +
+	"\x04name\x18\x01 \x01(\tB\x13\xbaG\x10:\x0e\x12\fservice_nameR\x04name\x12'\n" +
+	"\x05value\x18\x02 \x01(\tB\x11\xbaG\x0e:\f\x12\n" +
+	"my_serviceR\x05value\"\xb5\x01\n" +
 	"\vProfileType\x12\x0e\n" +
 	"\x02ID\x18\x01 \x01(\tR\x02ID\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1f\n" +
@@ -1051,18 +1062,18 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\vannotations\x18\x03 \x03(\v2\x1b.types.v1.ProfileAnnotationR\vannotations\";\n" +
 	"\x11ProfileAnnotation\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"l\n" +
-	"\x12LabelValuesRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
-	"\bmatchers\x18\x02 \x03(\tR\bmatchers\x12\x14\n" +
-	"\x05start\x18\x03 \x01(\x03R\x05start\x12\x10\n" +
-	"\x03end\x18\x04 \x01(\x03R\x03end\"+\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xad\x01\n" +
+	"\x12LabelValuesRequest\x12'\n" +
+	"\x04name\x18\x01 \x01(\tB\x13\xbaG\x10:\x0e\x12\fservice_nameR\x04name\x12\x1a\n" +
+	"\bmatchers\x18\x02 \x03(\tR\bmatchers\x12*\n" +
+	"\x05start\x18\x03 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
+	"\x03end\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\"+\n" +
 	"\x13LabelValuesResponse\x12\x14\n" +
-	"\x05names\x18\x01 \x03(\tR\x05names\"W\n" +
+	"\x05names\x18\x01 \x03(\tR\x05names\"\x83\x01\n" +
 	"\x11LabelNamesRequest\x12\x1a\n" +
-	"\bmatchers\x18\x01 \x03(\tR\bmatchers\x12\x14\n" +
-	"\x05start\x18\x02 \x01(\x03R\x05start\x12\x10\n" +
-	"\x03end\x18\x03 \x01(\x03R\x03end\"*\n" +
+	"\bmatchers\x18\x01 \x03(\tR\bmatchers\x12*\n" +
+	"\x05start\x18\x02 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
+	"\x03end\x18\x03 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\"*\n" +
 	"\x12LabelNamesResponse\x12\x14\n" +
 	"\x05names\x18\x01 \x03(\tR\x05names\"\xbd\x01\n" +
 	"\tBlockInfo\x12\x12\n" +
