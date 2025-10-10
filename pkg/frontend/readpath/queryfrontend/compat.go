@@ -83,11 +83,7 @@ func matchersToLabelSelector(matchers []*labels.Matcher) string {
 		if i > 0 {
 			q.WriteByte(',')
 		}
-		q.WriteString(m.Name)
-		q.WriteString(m.Type.String())
-		q.WriteByte('"')
-		q.WriteString(m.Value)
-		q.WriteByte('"')
+		q.WriteString(m.String())
 	}
 	q.WriteByte('}')
 	return q.String()
