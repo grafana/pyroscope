@@ -26,4 +26,4 @@ jobs:
           persist-credentials: false
 
       - name: Validate Renovate Config
-        uses: grafana/shared-workflows/actions/validate-renovate-config@validate-renovate-config/v0.1.0
+        uses: grafana/shared-workflows/actions/validate-renovate-config@main # TODO: pin to tag once tag is created
