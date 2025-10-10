@@ -3,6 +3,7 @@ package otlp
 import (
 	"encoding/hex"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -206,6 +207,28 @@ func (p *profileBuilder) addstr(s string) int64 {
 	return idx
 }
 
+// addUnsymbolizedFunc creates a placeholder function for unsymbolized locations.
+func (p *profileBuilder) addUnsymbolizedFunc(filename string, address uint64) uint64 {
+	binaryName := filepath.Base(filename)
+	if binaryName == "" {
+		binaryName = "unknown"
+	}
+	stubName := fmt.Sprintf("%s 0x%x", binaryName, address)
+
+	if funcId, ok := p.unsymbolziedFuncNameMap[stubName]; ok {
+		return funcId
+	}
+
+	gf := &googleProfile.Function{
+		Name: p.addstr(stubName),
+	}
+	p.dst.Function = append(p.dst.Function, gf)
+	gf.Id = uint64(len(p.dst.Function))
+	p.unsymbolziedFuncNameMap[stubName] = gf.Id
+
+	return gf.Id
+}
+
 func serviceNameFromSample(sample *otelProfile.Sample, dictionary *otelProfile.ProfilesDictionary) (string, error) {
 	return getAttributeValueByKeyOrEmpty(sample.AttributeIndices, dictionary, serviceNameKey)
 }
@@ -258,6 +281,17 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location, dictionar
 		if err != nil {
 			return 0, fmt.Errorf("could not process line at index %d: %w", i, err)
 		}
+	}
+
+	// Create symbolization stub for unsymbolized locations.
+	if len(gl.Line) == 0 {
+		filenameLabel, err := at(dictionary.StringTable, om.FilenameStrindex)
+		if err != nil {
+			return 0, fmt.Errorf("could not access mapping filename: %w", err)
+		}
+		gl.Line = append(gl.Line, &googleProfile.Line{
+			FunctionId: p.addUnsymbolizedFunc(filenameLabel, ol.Address),
+		})
 	}
 
 	p.dst.Location = append(p.dst.Location, gl)
