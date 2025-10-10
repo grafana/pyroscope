@@ -157,12 +157,12 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
 		if origName, newName, ok := SanitizeLegacyLabelName(l.Name); ok && origName != newName {
-			sanitizedLabelNames.WithLabelValues(tenantID).Inc()
 			var err error
 			ls, idx, err = handleSanitizedLabel(ls, idx, origName, newName)
 			if err != nil {
 				return err
 			}
+			sanitizedLabelNames.WithLabelValues(tenantID).Inc()
 			lastLabelName = ""
 			if idx > 0 && idx <= len(ls) {
 				lastLabelName = ls[idx-1].Name
