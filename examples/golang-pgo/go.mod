@@ -7,8 +7,8 @@ toolchain go1.24.8
 require (
 	github.com/agoda-com/opentelemetry-logs-go v0.5.1
 	github.com/grafana/otel-profiling-go v0.5.1
-	github.com/grafana/pyroscope-go v1.2.0
-	github.com/stretchr/testify v1.9.0
+	github.com/grafana/pyroscope-go v1.2.7
+	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.57.0
 	go.opentelemetry.io/otel v1.32.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.31.0
@@ -25,7 +25,7 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/grafana/pyroscope-go/godeltaprof v0.1.8 // indirect
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.9 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.22.0 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
