@@ -442,6 +442,19 @@ func (p *profileBuilder) convertMappingBack(ols []*otelProfile.Location, om *ote
 		the mapping is marked as not having that information.
 	*/
 	for _, ol := range ols {
+		// If at least one location belonging to mapping does not have lines, we must flag whole mapping as not having symbol info.
+		if len(ol.Line) == 0 {
+			hasLines = false
+			hasFunctions = false
+			hasInlineFrames = false
+			hasFilenames = false
+		}
+
+		// If by this point we know that mapping has no symbol info, we can stop checking other locations.
+		if !hasLines && !hasFunctions && !hasInlineFrames && !hasFilenames {
+			break
+		}
+
 		for i, line := range ol.Line {
 			hasFunctions = hasFunctions && line.FunctionIndex > 0
 			hasLines = hasLines && line.Line > 0
