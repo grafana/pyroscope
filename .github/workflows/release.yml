@@ -43,7 +43,7 @@ jobs:
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
       # login to docker hub
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760
+        uses: grafana/shared-workflows/actions/get-vault-secrets@ad819d8e2e2dccb7a28c7e2c43054573d6b45900
         with:
           common_secrets: |
             DOCKERHUB_USERNAME=dockerhub:username
@@ -59,7 +59,7 @@ jobs:
           private-key: ${{ env.GRAFANA_PYROSCOPE_BOT_APP_PRIVATE_KEY }}
           owner: pyroscope-io
           repositories: homebrew-brew
-      - uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v2
+      - uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
         name: Login to Docker Hub
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
