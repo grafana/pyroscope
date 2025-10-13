@@ -46,7 +46,10 @@ func (i *authInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 		if !i.enabled {
 			return next(InjectTenantID(ctx, DefaultTenantID), req)
 		}
-		_, ctx, _ = ExtractTenantIDFromHeaders(ctx, req.Header())
+		_, ctx, err := ExtractTenantIDFromHeaders(ctx, req.Header())
+		if err != nil {
+			return nil, err
+		}
 
 		resp, err := next(ctx, req)
 		if err != nil && errors.Is(err, ErrNoTenantID) {
