@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-x64-large
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           persist-credentials: false
       - name: Install Go
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-x64-large
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           persist-credentials: false
       - name: Install Go
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-${{ matrix.arch }}-large
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           persist-credentials: false
       - name: Install Go
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-x64-large
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           persist-credentials: false
       - name: Install Go
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-x64-small
     steps:
       - name: "Check out code"
-        uses: "actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8" # v4
+        uses: "actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955" # v4
         with:
           persist-credentials: false
       - name: "Test docs"
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-x64
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           persist-credentials: false
       - name: Set up QEMU
@@ -104,7 +104,7 @@ jobs:
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: 1.24.8
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v3
+      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: 20
           cache: yarn
@@ -123,7 +123,7 @@ jobs:
       image-tag: ${{ steps.push-metadata.outputs.image-tag }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
         with:
           persist-credentials: false
       - name: Set up QEMU
@@ -136,12 +136,12 @@ jobs:
           go-version: 1.24.8
       # login to docker hub
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760
+        uses: grafana/shared-workflows/actions/get-vault-secrets@ad819d8e2e2dccb7a28c7e2c43054573d6b45900
         with:
           common_secrets: |
             DOCKERHUB_USERNAME=dockerhub:username
             DOCKERHUB_PASSWORD=dockerhub:password
-      - uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v2
+      - uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
         name: Login to Docker Hub
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
@@ -168,7 +168,7 @@ jobs:
     steps:
     - id: "submit-argowfs-deployment"
       name: "Submit Argo Workflows deployment"
-      uses: grafana/shared-workflows/actions/trigger-argo-workflow@28361cdb22223e5f1e34358c86c20908e7248760
+      uses: grafana/shared-workflows/actions/trigger-argo-workflow@ad819d8e2e2dccb7a28c7e2c43054573d6b45900
       with:
         namespace: "phlare-cd"
         workflow_template: "deploy-pyroscope-dev"
