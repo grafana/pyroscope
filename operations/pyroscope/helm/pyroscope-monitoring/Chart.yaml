@@ -1,0 +1,14 @@
+apiVersion: v2
+name: pyroscope-monitoring
+description: A Helm chart for monitoring Grafana Pyroscope
+type: application
+
+version: 0.1.0
+appVersion: "0.0.0"
+
+dependencies:
+  - name: k8s-monitoring
+    alias: monitoring
+    version: 3.5.3
+    repository: https://grafana.github.io/helm-charts
+    condition: monitoring.enabled
