@@ -29,6 +29,39 @@ type node struct {
 	name        string
 }
 
+func (t *Tree) Equal(c *Tree) bool {
+	sort.Slice(t.root, func(i, j int) bool {
+		return t.root[i].name < t.root[j].name
+	})
+	sort.Slice(c.root, func(i, j int) bool {
+		return c.root[i].name < c.root[j].name
+	})
+	for i, n := range t.root {
+		if !n.equal(c.root[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (n *node) equal(c *node) bool {
+	if n.self != c.self || n.total != c.total || n.name != c.name {
+		return false
+	}
+	sort.Slice(n.children, func(i, j int) bool {
+		return n.children[i].name < n.children[j].name
+	})
+	sort.Slice(c.children, func(i, j int) bool {
+		return c.children[i].name < c.children[j].name
+	})
+	for i, cn := range n.children {
+		if !cn.equal(c.children[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 func (t *Tree) String() string {
 	type branch struct {
 		nodes []*node
