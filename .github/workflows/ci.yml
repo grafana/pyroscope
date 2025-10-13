@@ -49,9 +49,11 @@ jobs:
       matrix:
         arch: [amd64, arm64]
     runs-on: > # Using this long expression here to avoid having agent type as build parameter
-      github.repository_owner == 'grafana' && format('ubuntu-{0}-large', matrix.arch) || (
-        matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04'
-      )
+      ${{
+        github.repository_owner == 'grafana' && format('ubuntu-{0}-large', matrix.arch) || (
+          matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04'
+        )
+      }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
