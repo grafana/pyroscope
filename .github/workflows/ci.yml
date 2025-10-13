@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   format:
-    runs-on: ubuntu-x64-large
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
@@ -31,7 +31,7 @@ jobs:
       - name: Format
         run: make fmt check/unstaged-changes
   check-generated:
-    runs-on: ubuntu-x64-large
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
@@ -48,7 +48,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
-    runs-on: ubuntu-${{ matrix.arch }}-large
+    runs-on: ${{ github.repository_owner == 'grafana' && format('ubuntu-{0}-large', matrix.arch) || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
@@ -63,7 +63,7 @@ jobs:
       - name: Test
         run: make go/test
   lint:
-    runs-on: ubuntu-x64-large
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
@@ -79,7 +79,7 @@ jobs:
         run: make helm/check check/unstaged-changes
 
   test-docs:
-    runs-on: ubuntu-x64-small
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
     steps:
       - name: "Check out code"
         uses: "actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8" # v4
@@ -90,7 +90,7 @@ jobs:
 
   build-image:
     if: github.event_name != 'push'
-    runs-on: ubuntu-x64
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64' || 'ubuntu-latest' }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
@@ -116,7 +116,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: ubuntu-x64-large
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
     outputs:
       image: ${{ steps.push-metadata.outputs.image }}
       image-digest: ${{ steps.push-metadata.outputs.image-digest }}
@@ -163,7 +163,7 @@ jobs:
       contents: read
       id-token: write
     if: github.event_name == 'push' && github.repository == 'grafana/pyroscope' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-x64-small
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
     needs: [build-push]
     steps:
     - id: "submit-argowfs-deployment"
