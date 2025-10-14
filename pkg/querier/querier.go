@@ -428,18 +428,18 @@ func (q *Querier) filterLabelNames(
 			return nil, err
 		}
 		return response.Msg.Names, nil
-	} else {
-		// Filter out label names in request if not passing legacy validation
-		filtered := make([]string, 0, len(req.Msg.LabelNames))
-		for _, name := range req.Msg.LabelNames {
-			if _, _, ok := validation.SanitizeLegacyLabelName(name); !ok {
-				level.Debug(q.logger).Log("msg", "filtering out label", "label_name", name)
-				continue
-			}
-			filtered = append(filtered, name)
-		}
-		return filtered, nil
 	}
+
+	// Filter out label names in request if not passing legacy validation
+	filtered := make([]string, 0, len(req.Msg.LabelNames))
+	for _, name := range req.Msg.LabelNames {
+		if _, _, ok := validation.SanitizeLegacyLabelName(name); !ok {
+			level.Debug(q.logger).Log("msg", "filtering out label", "label_name", name)
+			continue
+		}
+		filtered = append(filtered, name)
+	}
+	return filtered, nil
 }
 
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
