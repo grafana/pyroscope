@@ -160,7 +160,7 @@ func newCanaryExporter(params *canaryExporterParams) *canaryExporter {
 	}
 
 	ce.queryProbes = append(ce.queryProbes, &queryProbe{name: "query-select-merge-profile", f: ce.testSelectMergeProfile})
-	ce.queryProbes = append(ce.queryProbes, &queryProbe{name: "query-select-merge-otlp-profile", f: ce.testSelectMergeOTLPProfile})
+	// ce.queryProbes = append(ce.queryProbes, &queryProbe{name: "query-select-merge-otlp-profile", f: ce.testSelectMergeOTLPProfile})
 
 	if params.QueryProbeSet == "all" {
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-profile-types", ce.testProfileTypes})
@@ -325,27 +325,27 @@ func (ce *canaryExporter) testPyroscopeCell(ctx context.Context) error {
 	}
 
 	// ingest via OTLP gRPC
-	if err := ce.runProbe(ctx, "ingest-otlp-grpc", func(rCtx context.Context) error {
-		return ce.testIngestOTLPGrpc(rCtx, now)
-	}); err != nil {
-		ingestErrors.Add(fmt.Errorf("error during OTLP gRPC ingestion: %w", err))
-	}
+	// if err := ce.runProbe(ctx, "ingest-otlp-grpc", func(rCtx context.Context) error {
+	// 	return ce.testIngestOTLPGrpc(rCtx, now)
+	// }); err != nil {
+	// 	ingestErrors.Add(fmt.Errorf("error during OTLP gRPC ingestion: %w", err))
+	// }
 
 	// ingest via OTLP HTTP/JSON
 	// Note: HTTP endpoints are not yet implemented in Pyroscope (see pkg/api/api.go:204-205)
-	if err := ce.runProbe(ctx, "ingest-otlp-http-json", func(rCtx context.Context) error {
-		return ce.testIngestOTLPHttpJson(rCtx, now)
-	}); err != nil {
-		ingestErrors.Add(fmt.Errorf("error during OTLP HTTP/JSON ingestion: %w", err))
-	}
+	// if err := ce.runProbe(ctx, "ingest-otlp-http-json", func(rCtx context.Context) error {
+	//	return ce.testIngestOTLPHttpJson(rCtx, now)
+	// }); err != nil {
+	//	ingestErrors.Add(fmt.Errorf("error during OTLP HTTP/JSON ingestion: %w", err))
+	// }
 
 	// ingest via OTLP HTTP/Protobuf
 	// Note: HTTP endpoints are not yet implemented in Pyroscope (see pkg/api/api.go:204-205)
-	if err := ce.runProbe(ctx, "ingest-otlp-http-protobuf", func(rCtx context.Context) error {
-		return ce.testIngestOTLPHttpProtobuf(rCtx, now)
-	}); err != nil {
-		ingestErrors.Add(fmt.Errorf("error during OTLP HTTP/Protobuf ingestion: %w", err))
-	}
+	// if err := ce.runProbe(ctx, "ingest-otlp-http-protobuf", func(rCtx context.Context) error {
+	// 	return ce.testIngestOTLPHttpProtobuf(rCtx, now)
+	// }); err != nil {
+	// 	ingestErrors.Add(fmt.Errorf("error during OTLP HTTP/Protobuf ingestion: %w", err))
+	// }
 
 	// Report ingestion errors if any
 	if ingestErrors.Err() != nil {

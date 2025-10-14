@@ -193,10 +193,22 @@ func (ce *canaryExporter) testIngestOTLPGrpc(ctx context.Context, now time.Time)
 	// Generate the OTLP profile with the appropriate ingestion method label
 	req := ce.generateOTLPProfile(now, "otlp/grpc")
 
-	// Create gRPC connection
-	grpcAddr := strings.TrimPrefix(ce.params.URL, "http://")
-	grpcAddr = strings.TrimPrefix(grpcAddr, "https://")
+	// Parse URL to extract host and port
+	parsedURL, err := url.Parse(ce.params.URL)
+	if err != nil {
+		return fmt.Errorf("failed to parse URL: %w", err)
+	}
+	port := parsedURL.Port()
+	if port == "" && parsedURL.Scheme == "http" {
+		port = "80"
+	} else if port == "" && parsedURL.Scheme == "https" {
+		port = "443"
+	} else {
+		port = "4317" // default OTLP gRPC port
+	}
+	grpcAddr := fmt.Sprintf("%s:%s", parsedURL.Hostname(), port)
 
+	// Create gRPC connection
 	conn, err := grpc.NewClient(grpcAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
