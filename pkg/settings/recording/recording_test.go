@@ -235,7 +235,7 @@ func Test_validateUpsert(t *testing.T) {
 					},
 				},
 			},
-			WantErr: `external_labels name "name:\"\\xc0\\xaf\"  value:\"\\xc0\\xaf\"" must match ^[a-zA-Z_][a-zA-Z0-9_]*$
+			WantErr: `external_labels name "\xc0\xaf" must match ^[a-zA-Z_][a-zA-Z0-9_]*$
 external_labels value "\xc0\xaf" must be a valid utf-8 string`,
 		},
 		{
@@ -248,7 +248,7 @@ external_labels value "\xc0\xaf" must be a valid utf-8 string`,
 					{Name: "service.name", Value: "foo"},
 				},
 			},
-			WantErr: `external_labels name "name:\"service.name\"  value:\"foo\"" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
+			WantErr: `external_labels name "service.name" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
 		},
 		{
 			Name: "invalid_external_label_with_utf8_name",
@@ -260,7 +260,7 @@ external_labels value "\xc0\xaf" must be a valid utf-8 string`,
 					{Name: "世界", Value: "value"},
 				},
 			},
-			WantErr: `external_labels name "name:\"世界\"  value:\"value\"" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
+			WantErr: `external_labels name "世界" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
 		},
 		{
 			Name: "invalid_external_label_starts_with_number",
@@ -272,7 +272,7 @@ external_labels value "\xc0\xaf" must be a valid utf-8 string`,
 					{Name: "123invalid", Value: "value"},
 				},
 			},
-			WantErr: `external_labels name "name:\"123invalid\"  value:\"value\"" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
+			WantErr: `external_labels name "123invalid" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
 		},
 		{
 			Name: "invalid_generation",

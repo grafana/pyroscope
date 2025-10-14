@@ -286,7 +286,7 @@ func validateUpsert(req *settingsv1.UpsertRecordingRuleRequest) error {
 	for _, l := range req.ExternalLabels {
 		name := prom.LabelName(l.Name)
 		if !prom.LegacyValidation.IsValidLabelName(string(name)) {
-			errs = append(errs, fmt.Errorf("external_labels name %q must match %s", l, prom.LabelNameRE.String()))
+			errs = append(errs, fmt.Errorf("external_labels name %q must match %s", name, prom.LabelNameRE.String()))
 		}
 
 		value := prom.LabelValue(l.Value)
