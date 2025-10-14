@@ -243,9 +243,9 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location, dictionar
 		return 0, fmt.Errorf("could not access mapping: %w", err)
 	}
 
-	mappingId, err := p.convertMappingBack(om, dictionary)
-	if err != nil {
-		return 0, err
+	mappingId, ok := p.mappingMap[om]
+	if !ok {
+		return 0, fmt.Errorf("mapping not found in mappingMap")
 	}
 	gl := &googleProfile.Location{
 		MappingId: mappingId,
@@ -350,6 +350,30 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample, dictionary *o
 		return nil, fmt.Errorf("invalid stack index: %d", stackIndex)
 	}
 	stack := dictionary.StackTable[stackIndex]
+
+	// First, gather map of locations pointing to each mapping
+	locationMap := make(map[*otelProfile.Mapping][]*otelProfile.Location)
+
+	for _, locIdx := range stack.LocationIndices {
+		loc, err := at(dictionary.LocationTable, locIdx)
+		if err != nil {
+			return nil, fmt.Errorf("could not access location at index %d: %w", locIdx, err)
+		}
+		mapping, err := at(dictionary.MappingTable, loc.GetMappingIndex())
+		if err != nil {
+			return nil, fmt.Errorf("could not access mapping at index %d: %w", loc.GetMappingIndex(), err)
+		}
+		locationMap[mapping] = append(locationMap[mapping], loc)
+	}
+
+	// Now, convert each mapping, based on information from all locations that point to it
+	for mapping, locs := range locationMap {
+		_, err := p.convertMappingBack(locs, mapping, dictionary)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	for _, olocIdx := range stack.LocationIndices {
 		oloc, err := at(dictionary.LocationTable, olocIdx)
 		if err != nil {
@@ -403,10 +427,46 @@ func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sam
 	return nil
 }
 
-// convertMappingsBack converts a slice of OpenTelemetry Mapping entries to Google Mapping entries.
-func (p *profileBuilder) convertMappingBack(om *otelProfile.Mapping, dictionary *otelProfile.ProfilesDictionary) (uint64, error) {
-	if i, ok := p.mappingMap[om]; ok {
-		return i, nil
+// convertMappingBack converts an OpenTelemetry Mapping to a Google Mapping taking into account availability
+// of symbol data in all locations that point to this mapping.
+func (p *profileBuilder) convertMappingBack(ols []*otelProfile.Location, om *otelProfile.Mapping, dictionary *otelProfile.ProfilesDictionary) (uint64, error) {
+	hasLines := true
+	hasFunctions := true
+	hasInlineFrames := true
+	hasFilenames := true
+
+	/*
+		We survey all locations that point to this mapping to determine
+		whether the mapping has functions, filenames, line numbers, inline frames.
+		Note that even if a single location does not have symbol information,
+		the mapping is marked as not having that information.
+	*/
+	for _, ol := range ols {
+		// If at least one location belonging to mapping does not have lines, we must flag whole mapping as not having symbol info.
+		if len(ol.Line) == 0 {
+			hasLines = false
+			hasFunctions = false
+			hasInlineFrames = false
+			hasFilenames = false
+		}
+
+		// If by this point we know that mapping has no symbol info, we can stop checking other locations.
+		if !hasLines && !hasFunctions && !hasInlineFrames && !hasFilenames {
+			break
+		}
+
+		for i, line := range ol.Line {
+			hasFunctions = hasFunctions && line.FunctionIndex > 0
+			hasLines = hasLines && line.Line > 0
+			hasInlineFrames = hasInlineFrames && i >= 1
+
+			if line.FunctionIndex > 0 {
+				function, _ := at(dictionary.FunctionTable, line.FunctionIndex)
+				if function != nil {
+					hasFilenames = hasFilenames && function.FilenameStrindex > 0
+				}
+			}
+		}
 	}
 
 	buildID, _ := getAttributeValueByKeyOrEmpty(om.AttributeIndices, dictionary, "process.executable.build_id.gnu")
@@ -420,10 +480,10 @@ func (p *profileBuilder) convertMappingBack(om *otelProfile.Mapping, dictionary 
 		FileOffset:      om.FileOffset,
 		Filename:        p.addstr(filenameLabel),
 		BuildId:         p.addstr(buildID),
-		HasFunctions:    true,
-		HasFilenames:    true,
-		HasLineNumbers:  true,
-		HasInlineFrames: true,
+		HasFunctions:    hasFunctions,
+		HasFilenames:    hasFilenames,
+		HasLineNumbers:  hasLines,
+		HasInlineFrames: hasInlineFrames,
 	}
 	p.dst.Mapping = append(p.dst.Mapping, gm)
 	gm.Id = uint64(len(p.dst.Mapping))

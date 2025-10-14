@@ -21,6 +21,86 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type GetTenantsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantsRequest) Reset() {
+	*x = GetTenantsRequest{}
+	mi := &file_metastore_v1_tenant_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantsRequest) ProtoMessage() {}
+
+func (x *GetTenantsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_tenant_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantsRequest.ProtoReflect.Descriptor instead.
+func (*GetTenantsRequest) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_tenant_proto_rawDescGZIP(), []int{0}
+}
+
+type GetTenantsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantIds     []string               `protobuf:"bytes,1,rep,name=tenant_ids,json=tenantIds,proto3" json:"tenant_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTenantsResponse) Reset() {
+	*x = GetTenantsResponse{}
+	mi := &file_metastore_v1_tenant_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTenantsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTenantsResponse) ProtoMessage() {}
+
+func (x *GetTenantsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_tenant_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTenantsResponse.ProtoReflect.Descriptor instead.
+func (*GetTenantsResponse) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_tenant_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GetTenantsResponse) GetTenantIds() []string {
+	if x != nil {
+		return x.TenantIds
+	}
+	return nil
+}
+
 type GetTenantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
@@ -30,7 +110,7 @@ type GetTenantRequest struct {
 
 func (x *GetTenantRequest) Reset() {
 	*x = GetTenantRequest{}
-	mi := &file_metastore_v1_tenant_proto_msgTypes[0]
+	mi := &file_metastore_v1_tenant_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -42,7 +122,7 @@ func (x *GetTenantRequest) String() string {
 func (*GetTenantRequest) ProtoMessage() {}
 
 func (x *GetTenantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_tenant_proto_msgTypes[0]
+	mi := &file_metastore_v1_tenant_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +135,7 @@ func (x *GetTenantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantRequest) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_tenant_proto_rawDescGZIP(), []int{0}
+	return file_metastore_v1_tenant_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetTenantRequest) GetTenantId() string {
@@ -74,7 +154,7 @@ type GetTenantResponse struct {
 
 func (x *GetTenantResponse) Reset() {
 	*x = GetTenantResponse{}
-	mi := &file_metastore_v1_tenant_proto_msgTypes[1]
+	mi := &file_metastore_v1_tenant_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -86,7 +166,7 @@ func (x *GetTenantResponse) String() string {
 func (*GetTenantResponse) ProtoMessage() {}
 
 func (x *GetTenantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_tenant_proto_msgTypes[1]
+	mi := &file_metastore_v1_tenant_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -99,7 +179,7 @@ func (x *GetTenantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantResponse) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_tenant_proto_rawDescGZIP(), []int{1}
+	return file_metastore_v1_tenant_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetTenantResponse) GetStats() *TenantStats {
@@ -123,7 +203,7 @@ type TenantStats struct {
 
 func (x *TenantStats) Reset() {
 	*x = TenantStats{}
-	mi := &file_metastore_v1_tenant_proto_msgTypes[2]
+	mi := &file_metastore_v1_tenant_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -135,7 +215,7 @@ func (x *TenantStats) String() string {
 func (*TenantStats) ProtoMessage() {}
 
 func (x *TenantStats) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_tenant_proto_msgTypes[2]
+	mi := &file_metastore_v1_tenant_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -148,7 +228,7 @@ func (x *TenantStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantStats.ProtoReflect.Descriptor instead.
 func (*TenantStats) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_tenant_proto_rawDescGZIP(), []int{2}
+	return file_metastore_v1_tenant_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *TenantStats) GetDataIngested() bool {
@@ -181,7 +261,7 @@ type DeleteTenantRequest struct {
 
 func (x *DeleteTenantRequest) Reset() {
 	*x = DeleteTenantRequest{}
-	mi := &file_metastore_v1_tenant_proto_msgTypes[3]
+	mi := &file_metastore_v1_tenant_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -193,7 +273,7 @@ func (x *DeleteTenantRequest) String() string {
 func (*DeleteTenantRequest) ProtoMessage() {}
 
 func (x *DeleteTenantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_tenant_proto_msgTypes[3]
+	mi := &file_metastore_v1_tenant_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -206,7 +286,7 @@ func (x *DeleteTenantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTenantRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTenantRequest) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_tenant_proto_rawDescGZIP(), []int{3}
+	return file_metastore_v1_tenant_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *DeleteTenantRequest) GetTenantId() string {
@@ -224,7 +304,7 @@ type DeleteTenantResponse struct {
 
 func (x *DeleteTenantResponse) Reset() {
 	*x = DeleteTenantResponse{}
-	mi := &file_metastore_v1_tenant_proto_msgTypes[4]
+	mi := &file_metastore_v1_tenant_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -236,7 +316,7 @@ func (x *DeleteTenantResponse) String() string {
 func (*DeleteTenantResponse) ProtoMessage() {}
 
 func (x *DeleteTenantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_tenant_proto_msgTypes[4]
+	mi := &file_metastore_v1_tenant_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -249,14 +329,18 @@ func (x *DeleteTenantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTenantResponse.ProtoReflect.Descriptor instead.
 func (*DeleteTenantResponse) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_tenant_proto_rawDescGZIP(), []int{4}
+	return file_metastore_v1_tenant_proto_rawDescGZIP(), []int{6}
 }
 
 var File_metastore_v1_tenant_proto protoreflect.FileDescriptor
 
 const file_metastore_v1_tenant_proto_rawDesc = "" +
 	"\n" +
-	"\x19metastore/v1/tenant.proto\x12\fmetastore.v1\"/\n" +
+	"\x19metastore/v1/tenant.proto\x12\fmetastore.v1\"\x13\n" +
+	"\x11GetTenantsRequest\"3\n" +
+	"\x12GetTenantsResponse\x12\x1d\n" +
+	"\n" +
+	"tenant_ids\x18\x01 \x03(\tR\ttenantIds\"/\n" +
 	"\x10GetTenantRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"D\n" +
 	"\x11GetTenantResponse\x12/\n" +
@@ -267,8 +351,10 @@ const file_metastore_v1_tenant_proto_rawDesc = "" +
 	"\x13newest_profile_time\x18\x03 \x01(\x03R\x11newestProfileTime\"2\n" +
 	"\x13DeleteTenantRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"\x16\n" +
-	"\x14DeleteTenantResponse2\xb8\x01\n" +
-	"\rTenantService\x12N\n" +
+	"\x14DeleteTenantResponse2\x8b\x02\n" +
+	"\rTenantService\x12Q\n" +
+	"\n" +
+	"GetTenants\x12\x1f.metastore.v1.GetTenantsRequest\x1a .metastore.v1.GetTenantsResponse\"\x00\x12N\n" +
 	"\tGetTenant\x12\x1e.metastore.v1.GetTenantRequest\x1a\x1f.metastore.v1.GetTenantResponse\"\x00\x12W\n" +
 	"\fDeleteTenant\x12!.metastore.v1.DeleteTenantRequest\x1a\".metastore.v1.DeleteTenantResponse\"\x00B\xb8\x01\n" +
 	"\x10com.metastore.v1B\vTenantProtoP\x01ZFgithub.com/grafana/pyroscope/api/gen/proto/go/metastore/v1;metastorev1\xa2\x02\x03MXX\xaa\x02\fMetastore.V1\xca\x02\fMetastore\\V1\xe2\x02\x18Metastore\\V1\\GPBMetadata\xea\x02\rMetastore::V1b\x06proto3"
@@ -285,22 +371,26 @@ func file_metastore_v1_tenant_proto_rawDescGZIP() []byte {
 	return file_metastore_v1_tenant_proto_rawDescData
 }
 
-var file_metastore_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_metastore_v1_tenant_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_metastore_v1_tenant_proto_goTypes = []any{
-	(*GetTenantRequest)(nil),     // 0: metastore.v1.GetTenantRequest
-	(*GetTenantResponse)(nil),    // 1: metastore.v1.GetTenantResponse
-	(*TenantStats)(nil),          // 2: metastore.v1.TenantStats
-	(*DeleteTenantRequest)(nil),  // 3: metastore.v1.DeleteTenantRequest
-	(*DeleteTenantResponse)(nil), // 4: metastore.v1.DeleteTenantResponse
+	(*GetTenantsRequest)(nil),    // 0: metastore.v1.GetTenantsRequest
+	(*GetTenantsResponse)(nil),   // 1: metastore.v1.GetTenantsResponse
+	(*GetTenantRequest)(nil),     // 2: metastore.v1.GetTenantRequest
+	(*GetTenantResponse)(nil),    // 3: metastore.v1.GetTenantResponse
+	(*TenantStats)(nil),          // 4: metastore.v1.TenantStats
+	(*DeleteTenantRequest)(nil),  // 5: metastore.v1.DeleteTenantRequest
+	(*DeleteTenantResponse)(nil), // 6: metastore.v1.DeleteTenantResponse
 }
 var file_metastore_v1_tenant_proto_depIdxs = []int32{
-	2, // 0: metastore.v1.GetTenantResponse.stats:type_name -> metastore.v1.TenantStats
-	0, // 1: metastore.v1.TenantService.GetTenant:input_type -> metastore.v1.GetTenantRequest
-	3, // 2: metastore.v1.TenantService.DeleteTenant:input_type -> metastore.v1.DeleteTenantRequest
-	1, // 3: metastore.v1.TenantService.GetTenant:output_type -> metastore.v1.GetTenantResponse
-	4, // 4: metastore.v1.TenantService.DeleteTenant:output_type -> metastore.v1.DeleteTenantResponse
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
+	4, // 0: metastore.v1.GetTenantResponse.stats:type_name -> metastore.v1.TenantStats
+	0, // 1: metastore.v1.TenantService.GetTenants:input_type -> metastore.v1.GetTenantsRequest
+	2, // 2: metastore.v1.TenantService.GetTenant:input_type -> metastore.v1.GetTenantRequest
+	5, // 3: metastore.v1.TenantService.DeleteTenant:input_type -> metastore.v1.DeleteTenantRequest
+	1, // 4: metastore.v1.TenantService.GetTenants:output_type -> metastore.v1.GetTenantsResponse
+	3, // 5: metastore.v1.TenantService.GetTenant:output_type -> metastore.v1.GetTenantResponse
+	6, // 6: metastore.v1.TenantService.DeleteTenant:output_type -> metastore.v1.DeleteTenantResponse
+	4, // [4:7] is the sub-list for method output_type
+	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -317,7 +407,7 @@ func file_metastore_v1_tenant_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_metastore_v1_tenant_proto_rawDesc), len(file_metastore_v1_tenant_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

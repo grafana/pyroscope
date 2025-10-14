@@ -8,6 +8,7 @@
   "scripts": {
     "type-check": "tsc -p tsconfig.json --noEmit",
     "build": "NODE_ENV=production webpack --progress --config scripts/webpack/webpack.prod.js",
+    "dev": "webpack serve --config scripts/webpack/webpack.dev.js",
     "backend:dev": "make build run 'PARAMS=--config.file ./cmd/pyroscope/pyroscope.yaml'",
     "lint": "eslint . --ext .js,.tsx,.ts --cache",
     "lint:fix": "yarn lint --fix",
@@ -79,6 +80,7 @@
     "web-streams-polyfill": "^3.2.1",
     "webpack": "^5.94.0",
     "webpack-cli": "^5.0.1",
+    "webpack-dev-server": "^5.2.2",
     "webpack-merge": "^5.8.0"
   },
   "dependencies": {

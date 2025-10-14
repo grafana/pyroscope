@@ -106,6 +106,16 @@ var (
 		},
 		[]string{ReasonLabel, "tenant"},
 	)
+
+	// sanitizedLabelNames is a metric of the number of label names that were sanitized.
+	sanitizedLabelNames = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "sanitized_label_names_total",
+			Help:      "The total number of label names that were sanitized (e.g., dots replaced with underscores).",
+		},
+		[]string{"tenant"},
+	)
 )
 
 type LabelValidationLimits interface {
@@ -146,12 +156,13 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
-		if origName, newName, ok := SanitizeLabelName(l.Name); ok && origName != newName {
+		if origName, newName, ok := SanitizeLegacyLabelName(l.Name); ok && origName != newName {
 			var err error
 			ls, idx, err = handleSanitizedLabel(ls, idx, origName, newName)
 			if err != nil {
 				return err
 			}
+			sanitizedLabelNames.WithLabelValues(tenantID).Inc()
 			lastLabelName = ""
 			if idx > 0 && idx <= len(ls) {
 				lastLabelName = ls[idx-1].Name
@@ -211,11 +222,12 @@ func handleSanitizedLabel(ls []*typesv1.LabelPair, origIdx int, origName, newNam
 	return ls[:len(newSlice)], finalIdx, nil
 }
 
-// SanitizeLabelName reports whether the label name is valid,
-// and returns the sanitized value.
+// SanitizeLegacyLabelName reports whether the label name is a valid legacy label name,
+// and returns the sanitized value. Legacy label names are non utf-8 and contain characters
+// [a-zA-Z0-9_.].
 //
-// The only change the function makes is replacing dots with underscores.
-func SanitizeLabelName(ln string) (old, sanitized string, ok bool) {
+// The only sanitization the function makes is replacing dots with underscores.
+func SanitizeLegacyLabelName(ln string) (old, sanitized string, ok bool) {
 	if len(ln) == 0 {
 		return ln, ln, false
 	}

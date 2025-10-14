@@ -4,7 +4,8 @@
 
 ```bash
 yarn install
-# Make sure you have the backend running.
+# Make sure you have the backend running after building with EMBEDASSETS="".
+# Note the frontend is accessible via localhost:4041.
 yarn dev
 ```
 

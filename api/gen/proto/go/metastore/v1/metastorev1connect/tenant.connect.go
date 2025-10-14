@@ -33,6 +33,9 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// TenantServiceGetTenantsProcedure is the fully-qualified name of the TenantService's GetTenants
+	// RPC.
+	TenantServiceGetTenantsProcedure = "/metastore.v1.TenantService/GetTenants"
 	// TenantServiceGetTenantProcedure is the fully-qualified name of the TenantService's GetTenant RPC.
 	TenantServiceGetTenantProcedure = "/metastore.v1.TenantService/GetTenant"
 	// TenantServiceDeleteTenantProcedure is the fully-qualified name of the TenantService's
@@ -42,6 +45,7 @@ const (
 
 // TenantServiceClient is a client for the metastore.v1.TenantService service.
 type TenantServiceClient interface {
+	GetTenants(context.Context, *connect.Request[v1.GetTenantsRequest]) (*connect.Response[v1.GetTenantsResponse], error)
 	GetTenant(context.Context, *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error)
 	DeleteTenant(context.Context, *connect.Request[v1.DeleteTenantRequest]) (*connect.Response[v1.DeleteTenantResponse], error)
 }
@@ -57,6 +61,12 @@ func NewTenantServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 	baseURL = strings.TrimRight(baseURL, "/")
 	tenantServiceMethods := v1.File_metastore_v1_tenant_proto.Services().ByName("TenantService").Methods()
 	return &tenantServiceClient{
+		getTenants: connect.NewClient[v1.GetTenantsRequest, v1.GetTenantsResponse](
+			httpClient,
+			baseURL+TenantServiceGetTenantsProcedure,
+			connect.WithSchema(tenantServiceMethods.ByName("GetTenants")),
+			connect.WithClientOptions(opts...),
+		),
 		getTenant: connect.NewClient[v1.GetTenantRequest, v1.GetTenantResponse](
 			httpClient,
 			baseURL+TenantServiceGetTenantProcedure,
@@ -74,8 +84,14 @@ func NewTenantServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 
 // tenantServiceClient implements TenantServiceClient.
 type tenantServiceClient struct {
+	getTenants   *connect.Client[v1.GetTenantsRequest, v1.GetTenantsResponse]
 	getTenant    *connect.Client[v1.GetTenantRequest, v1.GetTenantResponse]
 	deleteTenant *connect.Client[v1.DeleteTenantRequest, v1.DeleteTenantResponse]
+}
+
+// GetTenants calls metastore.v1.TenantService.GetTenants.
+func (c *tenantServiceClient) GetTenants(ctx context.Context, req *connect.Request[v1.GetTenantsRequest]) (*connect.Response[v1.GetTenantsResponse], error) {
+	return c.getTenants.CallUnary(ctx, req)
 }
 
 // GetTenant calls metastore.v1.TenantService.GetTenant.
@@ -90,6 +106,7 @@ func (c *tenantServiceClient) DeleteTenant(ctx context.Context, req *connect.Req
 
 // TenantServiceHandler is an implementation of the metastore.v1.TenantService service.
 type TenantServiceHandler interface {
+	GetTenants(context.Context, *connect.Request[v1.GetTenantsRequest]) (*connect.Response[v1.GetTenantsResponse], error)
 	GetTenant(context.Context, *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error)
 	DeleteTenant(context.Context, *connect.Request[v1.DeleteTenantRequest]) (*connect.Response[v1.DeleteTenantResponse], error)
 }
@@ -101,6 +118,12 @@ type TenantServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewTenantServiceHandler(svc TenantServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	tenantServiceMethods := v1.File_metastore_v1_tenant_proto.Services().ByName("TenantService").Methods()
+	tenantServiceGetTenantsHandler := connect.NewUnaryHandler(
+		TenantServiceGetTenantsProcedure,
+		svc.GetTenants,
+		connect.WithSchema(tenantServiceMethods.ByName("GetTenants")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tenantServiceGetTenantHandler := connect.NewUnaryHandler(
 		TenantServiceGetTenantProcedure,
 		svc.GetTenant,
@@ -115,6 +138,8 @@ func NewTenantServiceHandler(svc TenantServiceHandler, opts ...connect.HandlerOp
 	)
 	return "/metastore.v1.TenantService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case TenantServiceGetTenantsProcedure:
+			tenantServiceGetTenantsHandler.ServeHTTP(w, r)
 		case TenantServiceGetTenantProcedure:
 			tenantServiceGetTenantHandler.ServeHTTP(w, r)
 		case TenantServiceDeleteTenantProcedure:
@@ -127,6 +152,10 @@ func NewTenantServiceHandler(svc TenantServiceHandler, opts ...connect.HandlerOp
 
 // UnimplementedTenantServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedTenantServiceHandler struct{}
+
+func (UnimplementedTenantServiceHandler) GetTenants(context.Context, *connect.Request[v1.GetTenantsRequest]) (*connect.Response[v1.GetTenantsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.TenantService.GetTenants is not implemented"))
+}
 
 func (UnimplementedTenantServiceHandler) GetTenant(context.Context, *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.TenantService.GetTenant is not implemented"))
