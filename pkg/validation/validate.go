@@ -162,6 +162,10 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 			if err != nil {
 				return err
 			}
+			level.Debug(util.Logger).Log(
+				"msg", "label name sanitized",
+				"origName", origName)
+
 			sanitizedLabelNames.WithLabelValues(tenantID).Inc()
 			lastLabelName = ""
 			if idx > 0 && idx <= len(ls) {
