@@ -95,7 +95,7 @@ func ExtractTenantIDFromHeaders(ctx context.Context, headers http.Header) (strin
 
 	tenantID, err := defaultResolver.TenantID(ctx)
 	if err != nil {
-		return "", nil, err
+		return "", ctx, err
 	}
 
 	return tenantID, ctx, nil
