@@ -13,8 +13,21 @@ import (
 	"github.com/grafana/dskit/tracing"
 )
 
-// Logger is a global logger to use only where you cannot inject a logger.
-var Logger = log.NewNopLogger()
+var (
+	once sync.Once
+
+	// Logger is a global logger to use only where you cannot inject a logger.
+	// Initialized to nop logger.
+	Logger log.Logger = log.NewNopLogger()
+)
+
+// InitLogger initializes the global logger once. Subsequent calls are ignored.
+// Must be called at application startup before any logging occurs.
+func InitLogger(l log.Logger) {
+	once.Do(func() {
+		Logger = l
+	})
+}
 
 // LoggerWithUserID returns a Logger that has information about the current user in
 // its details.

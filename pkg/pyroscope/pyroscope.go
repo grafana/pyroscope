@@ -773,7 +773,12 @@ func initLogger(logFormat string, logLevel dslog.Level) *logger {
 	// Must put the level filter last for efficiency.
 	l = level.NewFilter(l, logLevel.Option)
 
-	return &logger{w: w, Logger: l}
+	logger := &logger{w: w, Logger: l}
+
+	// init global logger
+	util.InitLogger(logger)
+
+	return logger
 }
 
 type logger struct {
