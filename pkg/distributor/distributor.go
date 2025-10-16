@@ -54,7 +54,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/delayhandler"
 	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
