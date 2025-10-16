@@ -88,6 +88,8 @@ func (m *Router) running(ctx context.Context) error {
 }
 
 func (m *Router) Send(ctx context.Context, req *distributormodel.ProfileSeries, config Config) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Router.Send")
+	defer sp.Finish()
 	if config.AsyncIngest {
 		delayhandler.CancelDelay(ctx)
 	}
