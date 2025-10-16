@@ -113,8 +113,16 @@ type profileCallTreePageContent struct {
 	BlockTenant string
 	Dataset     *datasetDetails
 	Timestamp   string
+	ProfileInfo *profileMetadata
 	Tree        *treeNode
 	Now         string
+}
+
+type profileMetadata struct {
+	Labels      []labelPair
+	TotalValue  uint64
+	SampleCount int
+	Fingerprint uint64
 }
 
 type tsdbIndexInfo struct {

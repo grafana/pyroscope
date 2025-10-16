@@ -149,9 +149,53 @@
                 Tenant: {{ .User }} | Block: {{ .BlockID }} | Shard: {{ .Shard }} | Timestamp: {{ .Timestamp }}
             </p>
 
+            {{ if .ProfileInfo }}
+            <div class="card bg-dark border-secondary mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Profile Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Labels</h6>
+                            <table class="table table-sm table-dark">
+                                <thead>
+                                    <tr>
+                                        <th>Key</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{ range .ProfileInfo.Labels }}
+                                    <tr>
+                                        <td><code>{{ .Key }}</code></td>
+                                        <td><code>{{ .Value }}</code></td>
+                                    </tr>
+                                    {{ end }}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Metrics</h6>
+                            <dl class="row">
+                                <dt class="col-sm-6">Total Value:</dt>
+                                <dd class="col-sm-6">{{ .ProfileInfo.TotalValue }}</dd>
+
+                                <dt class="col-sm-6">Sample Count:</dt>
+                                <dd class="col-sm-6">{{ .ProfileInfo.SampleCount }}</dd>
+
+                                <dt class="col-sm-6">Fingerprint:</dt>
+                                <dd class="col-sm-6"><code>{{ .ProfileInfo.Fingerprint }}</code></dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+
             <div class="card bg-dark border-secondary">
                 <div class="card-header">
-                    <h5 class="mb-0">Call Graph</h5>
+                    <h5 class="mb-0">Call Tree</h5>
                     <small class="text-muted">Click [+]/[-] to expand/collapse nodes.</small>
                 </div>
                 <div class="card-body">

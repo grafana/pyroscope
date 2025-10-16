@@ -211,7 +211,7 @@ func (h *Handlers) retrieveProfile(
 	dataset *metastorev1.Dataset,
 	rowNum int64,
 ) (*googlev1.Profile, error) {
-	resolver, timestamp, err := h.buildProfileResolver(ctx, blockMeta, dataset, rowNum)
+	resolver, timestamp, _, err := h.buildProfileResolver(ctx, blockMeta, dataset, rowNum)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build profile resolver: %w", err)
 	}
@@ -281,7 +281,7 @@ func (h *Handlers) CreateDatasetProfileCallTreeHandler() func(http.ResponseWrite
 
 		dataset := h.convertDataset(foundDataset, blockMeta.StringTable)
 
-		tree, timestamp, err := h.buildProfileTree(r.Context(), blockMeta, foundDataset, rowNum)
+		tree, timestamp, profileMeta, err := h.buildProfileTree(r.Context(), blockMeta, foundDataset, rowNum)
 		if err != nil {
 			httputil.Error(w, errors.Wrap(err, "failed to build profile tree"))
 			return
@@ -294,6 +294,7 @@ func (h *Handlers) CreateDatasetProfileCallTreeHandler() func(http.ResponseWrite
 			BlockTenant: req.BlockTenant,
 			Dataset:     &dataset,
 			Timestamp:   time.Unix(0, timestamp).UTC().Format(time.RFC3339),
+			ProfileInfo: profileMeta,
 			Tree:        tree,
 			Now:         time.Now().UTC().Format(time.RFC3339),
 		})
@@ -309,21 +310,21 @@ func (h *Handlers) buildProfileTree(
 	blockMeta *metastorev1.BlockMeta,
 	dataset *metastorev1.Dataset,
 	rowNum int64,
-) (*treeNode, int64, error) {
-	resolver, timestamp, err := h.buildProfileResolver(ctx, blockMeta, dataset, rowNum)
+) (*treeNode, int64, *profileMetadata, error) {
+	resolver, timestamp, profileMeta, err := h.buildProfileResolver(ctx, blockMeta, dataset, rowNum)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to build profile resolver: %w", err)
+		return nil, 0, nil, fmt.Errorf("failed to build profile resolver: %w", err)
 	}
 	defer resolver.Release()
 
 	profile, err := resolver.Pprof()
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to build pprof profile: %w", err)
+		return nil, 0, nil, fmt.Errorf("failed to build pprof profile: %w", err)
 	}
 
 	tree := buildTreeFromPprof(profile)
 
-	return tree, timestamp, nil
+	return tree, timestamp, profileMeta, nil
 }
 
 func (h *Handlers) buildProfileResolver(
@@ -331,22 +332,22 @@ func (h *Handlers) buildProfileResolver(
 	blockMeta *metastorev1.BlockMeta,
 	dataset *metastorev1.Dataset,
 	rowNum int64,
-) (*symdb.Resolver, int64, error) {
+) (*symdb.Resolver, int64, *profileMetadata, error) {
 	obj := block.NewObject(h.Bucket, blockMeta)
 	if err := obj.Open(ctx); err != nil {
-		return nil, 0, fmt.Errorf("failed to open block object: %w", err)
+		return nil, 0, nil, fmt.Errorf("failed to open block object: %w", err)
 	}
 	defer obj.Close()
 
 	ds := block.NewDataset(dataset, obj)
 	if err := ds.Open(ctx, block.SectionProfiles, block.SectionTSDB, block.SectionSymbols); err != nil {
-		return nil, 0, fmt.Errorf("failed to open dataset: %w", err)
+		return nil, 0, nil, fmt.Errorf("failed to open dataset: %w", err)
 	}
 	defer ds.Close()
 
 	it, err := block.NewProfileRowIterator(ds)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to create profile iterator: %w", err)
+		return nil, 0, nil, fmt.Errorf("failed to create profile iterator: %w", err)
 	}
 	defer it.Close()
 
@@ -364,11 +365,36 @@ func (h *Handlers) buildProfileResolver(
 	}
 
 	if err := it.Err(); err != nil {
-		return nil, 0, fmt.Errorf("error iterating profiles: %w", err)
+		return nil, 0, nil, fmt.Errorf("error iterating profiles: %w", err)
 	}
 
 	if !found {
-		return nil, 0, fmt.Errorf("profile row %d not found", rowNum)
+		return nil, 0, nil, fmt.Errorf("profile row %d not found", rowNum)
+	}
+
+	// Build profile metadata with labels
+	var labelPairs []labelPair
+	for _, label := range targetEntry.Labels {
+		labelPairs = append(labelPairs, labelPair{
+			Key:   label.Name,
+			Value: label.Value,
+		})
+	}
+
+	var sampleCount int
+	var totalValue uint64
+	targetEntry.Row.ForStacktraceIdsAndValues(func(sids []parquet.Value, vals []parquet.Value) {
+		sampleCount = len(sids)
+		for _, val := range vals {
+			totalValue += uint64(val.Int64())
+		}
+	})
+
+	profileMeta := &profileMetadata{
+		Labels:      labelPairs,
+		TotalValue:  totalValue,
+		SampleCount: sampleCount,
+		Fingerprint: uint64(targetEntry.Fingerprint),
 	}
 
 	resolver := symdb.NewResolver(ctx, ds.Symbols())
@@ -394,7 +420,7 @@ func (h *Handlers) buildProfileResolver(
 	}
 	resolver.AddSamples(partitionID, samples)
 
-	return resolver, targetEntry.Timestamp, nil
+	return resolver, targetEntry.Timestamp, profileMeta, nil
 }
 
 func buildTreeFromPprof(profile *googlev1.Profile) *treeNode {
