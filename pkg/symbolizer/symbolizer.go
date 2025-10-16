@@ -99,18 +99,25 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 			return fmt.Errorf("extract build ID: %w", err)
 		}
 
-		if buildID == "" {
-			continue
+		var req request
+		if buildID != "" {
+			req = s.createSymbolizationRequest(binaryName, buildID, locations)
+			s.symbolize(ctx, &req)
 		}
 
-		req := s.createSymbolizationRequest(binaryName, buildID, locations)
-
-		s.symbolize(ctx, &req)
-
 		for i, loc := range locations {
+			var symLoc *location
+			if buildID == "" {
+				// Create fallback symbols for mappings without build IDs
+				lines := s.createNotFoundSymbols(binaryName, &location{address: loc.Address})
+				symLoc = &location{address: loc.Address, lines: lines}
+			} else {
+				symLoc = req.locations[i]
+			}
+
 			allSymbolizedLocs = append(allSymbolizedLocs, symbolizedLocation{
 				loc:     loc,
-				symLoc:  req.locations[i],
+				symLoc:  symLoc,
 				mapping: mapping,
 			})
 		}

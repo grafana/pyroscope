@@ -96,16 +96,31 @@ func TestSymbolizePprof(t *testing.T) {
 			},
 		},
 		{
-			name: "empty build ID",
+			name: "empty build ID creates fallback symbols",
 			profile: &googlev1.Profile{
 				Mapping: []*googlev1.Mapping{{
-					BuildId: 1,
+					Id:       1,
+					Filename: 2,
+					BuildId:  1,
 				}},
-				StringTable: []string{"", ""},
+				Location: []*googlev1.Location{
+					{Id: 1, MappingId: 1, Address: 0xa4c},
+					{Id: 2, MappingId: 1, Address: 0x9f0},
+				},
+				StringTable: []string{"", "", "linux-vdso.1.so"},
 			},
 			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {},
 			validate: func(t *testing.T, p *googlev1.Profile) {
-				require.False(t, p.Mapping[0].HasFunctions)
+				require.True(t, p.Mapping[0].HasFunctions)
+				require.Len(t, p.Location[0].Line, 1)
+				require.Len(t, p.Location[1].Line, 1)
+
+				fn1 := p.StringTable[p.Function[p.Location[0].Line[0].FunctionId-1].Name]
+				fn2 := p.StringTable[p.Function[p.Location[1].Line[0].FunctionId-1].Name]
+				require.Contains(t, fn1, "linux-vdso.1.so")
+				require.Contains(t, fn1, "0xa4c")
+				require.Contains(t, fn2, "linux-vdso.1.so")
+				require.Contains(t, fn2, "0x9f0")
 			},
 		},
 		{
