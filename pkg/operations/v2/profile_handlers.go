@@ -16,7 +16,6 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/block"
-	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
@@ -317,12 +316,12 @@ func (h *Handlers) buildProfileTree(
 	}
 	defer resolver.Release()
 
-	modelTree, err := resolver.Tree()
+	profile, err := resolver.Pprof()
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to build tree: %w", err)
+		return nil, 0, fmt.Errorf("failed to build pprof profile: %w", err)
 	}
 
-	tree := convertModelTreeToTreeNode(modelTree)
+	tree := buildTreeFromPprof(profile)
 
 	return tree, timestamp, nil
 }
@@ -398,35 +397,107 @@ func (h *Handlers) buildProfileResolver(
 	return resolver, targetEntry.Timestamp, nil
 }
 
-func convertModelTreeToTreeNode(modelTree *model.Tree) *treeNode {
-	if modelTree == nil {
+func buildTreeFromPprof(profile *googlev1.Profile) *treeNode {
+	if profile == nil || len(profile.Sample) == 0 {
 		return nil
 	}
 
-	grandTotal := modelTree.Total()
+	// Calculate total value
+	var grandTotal uint64
+	for _, sample := range profile.Sample {
+		if len(sample.Value) > 0 {
+			grandTotal += uint64(sample.Value[0])
+		}
+	}
+
 	if grandTotal == 0 {
 		return nil
 	}
 
-	nodeMap := make(map[string]*treeNode)
+	// Build string table for quick lookup
+	getString := func(idx int64) string {
+		if idx >= 0 && int(idx) < len(profile.StringTable) {
+			return profile.StringTable[idx]
+		}
+		return ""
+	}
 
+	// Build function and location maps
+	functionMap := make(map[uint64]*googlev1.Function)
+	for _, fn := range profile.Function {
+		functionMap[fn.Id] = fn
+	}
+
+	locationMap := make(map[uint64]*googlev1.Location)
+	for _, loc := range profile.Location {
+		locationMap[loc.Id] = loc
+	}
+
+	// Create root node
 	root := &treeNode{
 		Name:     "root",
-		Value:    uint64(grandTotal),
+		Value:    grandTotal,
 		Self:     0,
 		Percent:  100.0,
+		Location: "",
 		Children: make([]*treeNode, 0),
 	}
+
+	// Track nodes by path to merge duplicate stacks
+	nodeMap := make(map[string]*treeNode)
 	nodeMap[""] = root
 
-	modelTree.IterateStacks(func(name string, self int64, stack []string) {
+	// Process each sample
+	for _, sample := range profile.Sample {
+		if len(sample.Value) == 0 || len(sample.LocationId) == 0 {
+			continue
+		}
+
+		value := uint64(sample.Value[0])
 		currentPath := ""
 		currentNode := root
 
-		for i := len(stack) - 1; i >= 0; i-- {
-			funcName := stack[i]
+		// Walk the stack from root (reversed order)
+		for i := len(sample.LocationId) - 1; i >= 0; i-- {
+			locID := sample.LocationId[i]
+			location := locationMap[locID]
+			if location == nil {
+				continue
+			}
+
+			// Get the first function at this location (innermost)
+			if len(location.Line) == 0 {
+				continue
+			}
+
+			line := location.Line[0]
+			function := functionMap[line.FunctionId]
+			if function == nil {
+				continue
+			}
+
+			funcName := getString(function.Name)
+			fileName := getString(function.Filename)
+			lineNum := line.Line
+
+			// Build location string
+			var locationStr string
+			if fileName != "" && lineNum > 0 {
+				// Simplify file path
+				filePath := fileName
+				if pkgIdx := strings.Index(filePath, "/pkg/"); pkgIdx != -1 {
+					filePath = filePath[pkgIdx+1:]
+				} else if srcIdx := strings.Index(filePath, "/src/"); srcIdx != -1 {
+					filePath = filePath[srcIdx+5:]
+				} else if pathIdx := strings.LastIndex(filePath, "/"); pathIdx != -1 {
+					filePath = filePath[pathIdx+1:]
+				}
+				locationStr = fmt.Sprintf("%s:L%d", filePath, lineNum)
+			}
+
+			// Create unique path for this node
 			parentPath := currentPath
-			currentPath = parentPath + "/" + funcName
+			currentPath = fmt.Sprintf("%s/%s@%d", parentPath, funcName, line.FunctionId)
 
 			node, exists := nodeMap[currentPath]
 			if !exists {
@@ -435,21 +506,23 @@ func convertModelTreeToTreeNode(modelTree *model.Tree) *treeNode {
 					Value:    0,
 					Self:     0,
 					Percent:  0,
+					Location: locationStr,
 					Children: make([]*treeNode, 0),
 				}
 				nodeMap[currentPath] = node
 				currentNode.Children = append(currentNode.Children, node)
 			}
 
-			node.Value += uint64(self)
+			node.Value += value
 
+			// If this is the leaf node, add to self
 			if i == 0 {
-				node.Self += uint64(self)
+				node.Self += value
 			}
 
 			currentNode = node
 		}
-	})
+	}
 
 	sortAndCalculatePercents(root, float64(grandTotal))
 

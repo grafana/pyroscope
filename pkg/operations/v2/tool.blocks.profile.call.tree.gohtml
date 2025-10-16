@@ -48,12 +48,16 @@
             gap: 0;
             margin: 0;
             padding: 0;
+            width: 100%;
         }
         .tree-name-section {
-            flex: 1;
+            width: 50%;
             min-width: 0;
             margin: 0;
             padding: 0;
+        }
+        .tree-name-section.clickable {
+            cursor: pointer;
         }
         .tree-name {
             color: #0dcaf0;
@@ -63,7 +67,7 @@
             color: #ffc107;
             text-align: right;
             white-space: nowrap;
-            width: 120px;
+            width: 5%;
             flex-shrink: 0;
             margin: 0;
             padding: 0;
@@ -72,16 +76,20 @@
             color: #6c757d;
             text-align: right;
             white-space: nowrap;
-            width: 80px;
+            width: 5%;
             flex-shrink: 0;
             margin: 0 0 0 10px;
             padding: 0;
         }
         .tree-extra {
-            width: 150px;
+            width: 40%;
             flex-shrink: 0;
-            margin: 0 0 0 10px;
+            margin: 0 0 0 15px;
             padding: 0;
+            font-size: 12px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .tree-self {
             color: #198754;
@@ -89,8 +97,26 @@
             font-size: 12px;
         }
         .tree-children {
-            margin-left: 20px !important;
+            margin-left: 0 !important;
             padding: 0 !important;
+        }
+        .tree-children .tree-name-section {
+            padding-left: 20px;
+        }
+        .tree-children .tree-children .tree-name-section {
+            padding-left: 40px;
+        }
+        .tree-children .tree-children .tree-children .tree-name-section {
+            padding-left: 60px;
+        }
+        .tree-children .tree-children .tree-children .tree-children .tree-name-section {
+            padding-left: 80px;
+        }
+        .tree-children .tree-children .tree-children .tree-children .tree-children .tree-name-section {
+            padding-left: 100px;
+        }
+        .tree-children .tree-children .tree-children .tree-children .tree-children .tree-children .tree-name-section {
+            padding-left: 120px;
         }
     </style>
 </head>
@@ -153,7 +179,11 @@
 
 <script>
     function toggleNode(element) {
-        const childrenContainer = element.parentElement.querySelector('.tree-children');
+        // element is the tree-name-section div
+        // We need to find the tree-children which is a sibling of the parent tree-content div
+        const treeContent = element.parentElement;
+        const listItem = treeContent.parentElement;
+        const childrenContainer = listItem.querySelector('.tree-children');
         const toggle = element.querySelector('.tree-toggle');
 
         if (childrenContainer) {
@@ -175,14 +205,14 @@
     {{ $level := .Level }}
     <li>
         {{ if gt (len $node.Children) 0 }}
-            <div class="tree-content" onclick="toggleNode(this)">
-                <div class="tree-name-section">
+            <div class="tree-content">
+                <div class="tree-name-section clickable" onclick="toggleNode(this)">
                     <span class="tree-toggle">{{ if eq $level 0 }}[-]{{ else }}[+]{{ end }}</span>
                     <span class="tree-name">{{ $node.Name }}</span>
                 </div>
                 <div class="tree-value">{{ $node.Value }}{{ if gt $node.Self 0 }}<span class="tree-self">(self: {{ $node.Self }})</span>{{ end }}</div>
                 <div class="tree-percent">{{ printf "%.2f" $node.Percent }}%</div>
-                <div class="tree-extra"></div>
+                <div class="tree-extra">{{ if $node.Location }}<span class="text-muted">{{ $node.Location }}</span>{{ end }}</div>
             </div>
             <ul class="tree-node tree-children" style="display: {{ if eq $level 0 }}block{{ else }}none{{ end }};">
                 {{ range $node.Children }}
@@ -197,7 +227,7 @@
                 </div>
                 <div class="tree-value">{{ $node.Value }}{{ if gt $node.Self 0 }}<span class="tree-self">(self: {{ $node.Self }})</span>{{ end }}</div>
                 <div class="tree-percent">{{ printf "%.2f" $node.Percent }}%</div>
-                <div class="tree-extra"></div>
+                <div class="tree-extra">{{ if $node.Location }}<span class="text-muted">{{ $node.Location }}</span>{{ end }}</div>
             </div>
         {{ end }}
     </li>

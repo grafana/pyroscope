@@ -102,6 +102,7 @@ type treeNode struct {
 	Value    uint64
 	Self     uint64
 	Percent  float64
+	Location string // File path and line number (e.g., "pkg/util/logger.go:L91")
 	Children []*treeNode
 }
 
