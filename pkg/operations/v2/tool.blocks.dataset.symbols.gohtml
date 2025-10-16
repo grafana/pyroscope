@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html class="h-100" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Bucket Blocks Explorer (v2): Dataset Symbols</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+</head>
+<body class="d-flex flex-column h-100">
+<main class="flex-shrink-0">
+    <div class="container">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h3>Bucket Blocks Explorer (v2): Dataset Symbols</h3>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/ops/object-store/tenants">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <p>
+                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to dataset</a>
+            </p>
+
+            <div class="card bg-dark border-secondary info-card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Dataset Information</h5>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>Dataset Name: {{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}<em>(empty)</em>{{ end }}</li>
+                        <li>Dataset Tenant: {{ .Dataset.Tenant }}</li>
+                        <li>Block ID: {{ .BlockID }}</li>
+                        <li>Shard: {{ .Shard }}</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card bg-dark border-secondary info-card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Symbols Overview</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-white-50 mb-3">
+                        The symbols section contains the debug information used to resolve stacktraces.
+                        Profile data references stacktrace IDs, which resolve to location IDs, which reference function IDs and mapping IDs.
+                        Functions and mappings contain string IDs that index into the string table.
+                    </p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul>
+                                <li>Total Stacktraces: {{ .SymbolsInfo.TotalStacktraces }}</li>
+                                <li>Total Locations: {{ .SymbolsInfo.TotalLocations }}</li>
+                                <li>Total Functions: {{ .SymbolsInfo.TotalFunctions }}</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul>
+                                <li>Total Mappings: {{ .SymbolsInfo.TotalMappings }}</li>
+                                <li>Total Strings: {{ .SymbolsInfo.TotalStrings }}</li>
+                                <li>String Table Size: {{ .SymbolsInfo.StringStats.TotalLength }} bytes</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <ul class="nav nav-tabs mb-3" id="symbolsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="strings-tab" data-bs-toggle="tab" data-bs-target="#strings" type="button" role="tab">
+                        Strings ({{ .SymbolsInfo.TotalStrings }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="functions-tab" data-bs-toggle="tab" data-bs-target="#functions" type="button" role="tab">
+                        Functions ({{ .SymbolsInfo.TotalFunctions }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="locations-tab" data-bs-toggle="tab" data-bs-target="#locations" type="button" role="tab">
+                        Locations ({{ .SymbolsInfo.TotalLocations }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="mappings-tab" data-bs-toggle="tab" data-bs-target="#mappings" type="button" role="tab">
+                        Mappings ({{ .SymbolsInfo.TotalMappings }})
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="symbolsTabContent">
+                <div class="tab-pane fade show active" id="strings" role="tabpanel">
+                    <div class="card bg-dark border-secondary info-card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">String Statistics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <ul>
+                                        <li>Total Strings: {{ .SymbolsInfo.TotalStrings }}</li>
+                                        <li>Unique Strings: {{ .SymbolsInfo.StringStats.UniqueSymbols }}</li>
+                                        <li>Total Length: {{ .SymbolsInfo.StringStats.TotalLength }} bytes</li>
+                                        <li>Average Length: {{ printf "%.2f" .SymbolsInfo.StringStats.AverageLength }} bytes</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul>
+                                        <li>Shortest: <code>{{ .SymbolsInfo.StringStats.ShortestSymbol }}</code> ({{ .SymbolsInfo.StringStats.ShortestLength }} bytes)</li>
+                                        <li>Longest: <code>{{ .SymbolsInfo.StringStats.LongestSymbol }}</code> ({{ .SymbolsInfo.StringStats.LongestLength }} bytes)</li>
+                                        {{ if .SymbolsInfo.StringStats.SampleDuplicates }}
+                                        <li>Sample Duplicates:
+                                            <ul>
+                                                {{ range .SymbolsInfo.StringStats.SampleDuplicates }}
+                                                <li><code>{{ . }}</code></li>
+                                                {{ end }}
+                                            </ul>
+                                        </li>
+                                        {{ end }}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card bg-dark border-secondary info-card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Strings (first {{ len .SymbolsInfo.Strings }} of {{ .SymbolsInfo.TotalStrings }})</h5>
+                        </div>
+                        <div class="card-body">
+                            <div style="max-height: 600px; overflow-y: auto;">
+                                <table class="table table-sm table-dark table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 100px;">Index</th>
+                                            <th>String</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{ range .SymbolsInfo.Strings }}
+                                        <tr>
+                                            <td>{{ .Index }}</td>
+                                            <td><code class="text-break">{{ .Symbol }}</code></td>
+                                        </tr>
+                                        {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="functions" role="tabpanel">
+                    <div class="card bg-dark border-secondary info-card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Functions (first {{ len .SymbolsInfo.Functions }} of {{ .SymbolsInfo.TotalFunctions }})</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-white-50 small">Functions contain symbol names and file information. String fields (Name, SystemName, Filename) are indices into the string table.</p>
+                            <div style="max-height: 600px; overflow-y: auto;">
+                                <table class="table table-sm table-dark table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 80px;">Index</th>
+                                            <th style="width: 100px;">ID</th>
+                                            <th>Name</th>
+                                            <th>System Name</th>
+                                            <th>Filename</th>
+                                            <th style="width: 100px;">Line</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{ range .SymbolsInfo.Functions }}
+                                        <tr>
+                                            <td>{{ .Index }}</td>
+                                            <td>{{ .ID }}</td>
+                                            <td><code class="text-break small">{{ .Name }}</code></td>
+                                            <td><code class="text-break small">{{ .SystemName }}</code></td>
+                                            <td><code class="text-break small">{{ .Filename }}</code></td>
+                                            <td>{{ .StartLine }}</td>
+                                        </tr>
+                                        {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="locations" role="tabpanel">
+                    <div class="card bg-dark border-secondary info-card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Locations (first {{ len .SymbolsInfo.Locations }} of {{ .SymbolsInfo.TotalLocations }})</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-white-50 small">Locations represent instruction addresses and reference functions and mappings.</p>
+                            <div style="max-height: 600px; overflow-y: auto;">
+                                <table class="table table-sm table-dark table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 80px;">Index</th>
+                                            <th style="width: 100px;">ID</th>
+                                            <th style="width: 150px;">Address</th>
+                                            <th style="width: 100px;">Mapping</th>
+                                            <th>Functions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{ range .SymbolsInfo.Locations }}
+                                        <tr>
+                                            <td>{{ .Index }}</td>
+                                            <td>{{ .ID }}</td>
+                                            <td><code>0x{{ printf "%x" .Address }}</code></td>
+                                            <td>{{ .MappingID }}</td>
+                                            <td>
+                                                {{ if .Functions }}
+                                                    {{ range $i, $fn := .Functions }}
+                                                        {{ if $i }} → {{ end }}<code class="small">{{ $fn }}</code>
+                                                    {{ end }}
+                                                {{ else }}
+                                                    <em>none</em>
+                                                {{ end }}
+                                            </td>
+                                        </tr>
+                                        {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="mappings" role="tabpanel">
+                    <div class="card bg-dark border-secondary info-card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Mappings (first {{ len .SymbolsInfo.Mappings }} of {{ .SymbolsInfo.TotalMappings }})</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-white-50 small">Mappings represent loaded binaries or shared libraries with their memory regions.</p>
+                            <div style="max-height: 600px; overflow-y: auto;">
+                                <table class="table table-sm table-dark table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 80px;">Index</th>
+                                            <th style="width: 100px;">ID</th>
+                                            <th style="width: 150px;">Memory Range</th>
+                                            <th style="width: 120px;">File Offset</th>
+                                            <th>Filename</th>
+                                            <th>Build ID</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{ range .SymbolsInfo.Mappings }}
+                                        <tr>
+                                            <td>{{ .Index }}</td>
+                                            <td>{{ .ID }}</td>
+                                            <td><code class="small">0x{{ printf "%x" .MemoryStart }}-0x{{ printf "%x" .MemoryLimit }}</code></td>
+                                            <td><code class="small">0x{{ printf "%x" .FileOffset }}</code></td>
+                                            <td><code class="text-break small">{{ .Filename }}</code></td>
+                                            <td><code class="text-break small">{{ .BuildID }}</code></td>
+                                        </tr>
+                                        {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3 bg-dark">
+    <div class="container">
+        <small class="text-white-50">Status @ {{ .Now }}</small>
+    </div>
+</footer>
+</body>
+</html>

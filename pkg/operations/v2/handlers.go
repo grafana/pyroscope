@@ -244,16 +244,27 @@ func (h *Handlers) convertDataset(ds *metastorev1.Dataset, stringTable []string)
 		symbolsSize = (ds.TableOfContents[0] + ds.Size) - ds.TableOfContents[2]
 	}
 
+	// Calculate percentages
+	var profilesPercentage, indexPercentage, symbolsPercentage float64
+	if ds.Size > 0 {
+		profilesPercentage = (float64(profilesSize) / float64(ds.Size)) * 100
+		indexPercentage = (float64(indexSize) / float64(ds.Size)) * 100
+		symbolsPercentage = (float64(symbolsSize) / float64(ds.Size)) * 100
+	}
+
 	return datasetDetails{
-		Tenant:       tenant,
-		Name:         datasetName,
-		MinTime:      msToTime(ds.MinTime).UTC().Format(time.RFC3339),
-		MaxTime:      msToTime(ds.MaxTime).UTC().Format(time.RFC3339),
-		Size:         humanize.Bytes(ds.Size),
-		ProfilesSize: humanize.Bytes(profilesSize),
-		IndexSize:    humanize.Bytes(indexSize),
-		SymbolsSize:  humanize.Bytes(symbolsSize),
-		LabelSets:    labelSets,
+		Tenant:             tenant,
+		Name:               datasetName,
+		MinTime:            msToTime(ds.MinTime).UTC().Format(time.RFC3339),
+		MaxTime:            msToTime(ds.MaxTime).UTC().Format(time.RFC3339),
+		Size:               humanize.Bytes(ds.Size),
+		ProfilesSize:       humanize.Bytes(profilesSize),
+		IndexSize:          humanize.Bytes(indexSize),
+		SymbolsSize:        humanize.Bytes(symbolsSize),
+		ProfilesPercentage: profilesPercentage,
+		IndexPercentage:    indexPercentage,
+		SymbolsPercentage:  symbolsPercentage,
+		LabelSets:          labelSets,
 	}
 }
 

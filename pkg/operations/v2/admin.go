@@ -58,10 +58,14 @@ func (a *Admin) ProfileDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	a.handlers.CreateDatasetProfileDownloadHandler()(w, r)
 }
 
-func (a *Admin) ProfileVisualizeHandler(w http.ResponseWriter, r *http.Request) {
-	a.handlers.CreateDatasetProfileVisualizeHandler()(w, r)
+func (a *Admin) ProfileCallTreeHandler(w http.ResponseWriter, r *http.Request) {
+	a.handlers.CreateDatasetProfileCallTreeHandler()(w, r)
 }
 
 func (a *Admin) DatasetTSDBIndexHandler(w http.ResponseWriter, r *http.Request) {
 	a.handlers.CreateDatasetTSDBIndexHandler()(w, r)
+}
+
+func (a *Admin) DatasetSymbolsHandler(w http.ResponseWriter, r *http.Request) {
+	a.handlers.CreateDatasetSymbolsHandler()(w, r)
 }

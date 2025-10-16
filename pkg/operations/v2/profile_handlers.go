@@ -30,6 +30,20 @@ func (h *Handlers) CreateDatasetProfilesHandler() func(http.ResponseWriter, *htt
 			return
 		}
 
+		page := 1
+		if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+			if _, err := fmt.Sscanf(pageStr, "%d", &page); err != nil || page < 1 {
+				page = 1
+			}
+		}
+
+		pageSize := 100
+		if pageSizeStr := r.URL.Query().Get("page_size"); pageSizeStr != "" {
+			if _, err := fmt.Sscanf(pageSizeStr, "%d", &pageSize); err != nil || pageSize < 1 || pageSize > 500 {
+				pageSize = 100
+			}
+		}
+
 		blockMeta, foundDataset, err := h.getDatasetMetadata(r.Context(), req)
 		if err != nil {
 			httputil.Error(w, err)
@@ -38,11 +52,15 @@ func (h *Handlers) CreateDatasetProfilesHandler() func(http.ResponseWriter, *htt
 
 		dataset := h.convertDataset(foundDataset, blockMeta.StringTable)
 
-		// Read actual profiles from the block
-		profiles, err := h.readProfilesFromDataset(r.Context(), blockMeta, foundDataset)
+		profiles, totalCount, err := h.readProfilesFromDataset(r.Context(), blockMeta, foundDataset, page, pageSize)
 		if err != nil {
 			httputil.Error(w, errors.Wrap(err, "failed to read profiles from dataset"))
 			return
+		}
+
+		totalPages := (totalCount + pageSize - 1) / pageSize
+		if totalPages == 0 {
+			totalPages = 1
 		}
 
 		err = pageTemplates.datasetProfilesTemplate.Execute(w, datasetProfilesPageContent{
@@ -52,6 +70,12 @@ func (h *Handlers) CreateDatasetProfilesHandler() func(http.ResponseWriter, *htt
 			BlockTenant: req.BlockTenant,
 			Dataset:     &dataset,
 			Profiles:    profiles,
+			TotalCount:  totalCount,
+			Page:        page,
+			PageSize:    pageSize,
+			TotalPages:  totalPages,
+			HasPrevPage: page > 1,
+			HasNextPage: page < totalPages,
 			Now:         time.Now().UTC().Format(time.RFC3339),
 		})
 		if err != nil {
@@ -61,83 +85,88 @@ func (h *Handlers) CreateDatasetProfilesHandler() func(http.ResponseWriter, *htt
 	}
 }
 
-func (h *Handlers) readProfilesFromDataset(ctx context.Context, blockMeta *metastorev1.BlockMeta, dataset *metastorev1.Dataset) ([]profileInfo, error) {
+func (h *Handlers) readProfilesFromDataset(ctx context.Context, blockMeta *metastorev1.BlockMeta, dataset *metastorev1.Dataset, page, pageSize int) ([]profileInfo, int, error) {
 	obj := block.NewObject(h.Bucket, blockMeta)
 	if err := obj.Open(ctx); err != nil {
-		return nil, fmt.Errorf("failed to open block object: %w", err)
+		return nil, 0, fmt.Errorf("failed to open block object: %w", err)
 	}
 	defer obj.Close()
 
 	ds := block.NewDataset(dataset, obj)
 	if err := ds.Open(ctx, block.SectionProfiles, block.SectionTSDB); err != nil {
-		return nil, fmt.Errorf("failed to open dataset: %w", err)
+		return nil, 0, fmt.Errorf("failed to open dataset: %w", err)
 	}
 	defer ds.Close()
 
 	it, err := block.NewProfileRowIterator(ds)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create profile iterator: %w", err)
+		return nil, 0, fmt.Errorf("failed to create profile iterator: %w", err)
 	}
 	defer it.Close()
 
 	var profiles []profileInfo
 	rowNumber := 0
-	maxProfiles := 1000
+	totalCount := 0
+	startRow := (page - 1) * pageSize
+	endRow := startRow + pageSize
 
-	for it.Next() && rowNumber < maxProfiles {
-		entry := it.At()
+	for it.Next() {
+		if rowNumber >= startRow && rowNumber < endRow {
+			entry := it.At()
 
-		var labelsStr strings.Builder
-		labelsStr.WriteString("{")
-		for i, label := range entry.Labels {
-			if i > 0 {
-				labelsStr.WriteString(", ")
-			}
-			labelsStr.WriteString(label.Name)
-			labelsStr.WriteString("=")
-			labelsStr.WriteString(label.Value)
-		}
-		labelsStr.WriteString("}")
-
-		var sampleCount int
-		var annotationsStr strings.Builder
-
-		entry.Row.ForStacktraceIdsAndValues(func(sids []parquet.Value, vals []parquet.Value) {
-			sampleCount = len(sids)
-		})
-
-		entry.Row.ForAnnotations(func(keys []parquet.Value, values []parquet.Value) {
-			for i, key := range keys {
+			var labelsStr strings.Builder
+			labelsStr.WriteString("{")
+			for i, label := range entry.Labels {
 				if i > 0 {
-					annotationsStr.WriteString(", ")
+					labelsStr.WriteString(", ")
 				}
-				annotationsStr.WriteString(string(key.ByteArray()))
-				annotationsStr.WriteString("=")
-				if i < len(values) {
-					annotationsStr.WriteString(string(values[i].ByteArray()))
-				}
+				labelsStr.WriteString(label.Name)
+				labelsStr.WriteString("=")
+				labelsStr.WriteString(label.Value)
 			}
-		})
+			labelsStr.WriteString("}")
 
-		profiles = append(profiles, profileInfo{
-			RowNumber:   rowNumber,
-			Timestamp:   time.Unix(0, entry.Timestamp).UTC().Format(time.RFC3339),
-			SeriesIndex: entry.Row.SeriesIndex(),
-			Fingerprint: uint64(entry.Fingerprint),
-			Labels:      labelsStr.String(),
-			TotalValue:  uint64(entry.Row.TotalValue()),
-			PartitionID: entry.Row.StacktracePartitionID(),
-			SampleCount: sampleCount,
-			Annotations: annotationsStr.String(),
-		})
+			var sampleCount int
+			var annotationsStr strings.Builder
+
+			entry.Row.ForStacktraceIdsAndValues(func(sids []parquet.Value, vals []parquet.Value) {
+				sampleCount = len(sids)
+			})
+
+			entry.Row.ForAnnotations(func(keys []parquet.Value, values []parquet.Value) {
+				for i, key := range keys {
+					if i > 0 {
+						annotationsStr.WriteString(", ")
+					}
+					annotationsStr.WriteString(string(key.ByteArray()))
+					annotationsStr.WriteString("=")
+					if i < len(values) {
+						annotationsStr.WriteString(string(values[i].ByteArray()))
+					}
+				}
+			})
+
+			profiles = append(profiles, profileInfo{
+				RowNumber:   rowNumber,
+				Timestamp:   time.Unix(0, entry.Timestamp).UTC().Format(time.RFC3339),
+				SeriesIndex: entry.Row.SeriesIndex(),
+				Fingerprint: uint64(entry.Fingerprint),
+				Labels:      labelsStr.String(),
+				TotalValue:  uint64(entry.Row.TotalValue()),
+				PartitionID: entry.Row.StacktracePartitionID(),
+				SampleCount: sampleCount,
+				Annotations: annotationsStr.String(),
+			})
+		}
 		rowNumber++
+		totalCount++
 	}
 
 	if err := it.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating profiles: %w", err)
+		return nil, 0, fmt.Errorf("error iterating profiles: %w", err)
 	}
 
-	return profiles, nil
+	return profiles, totalCount, nil
 }
 
 func (h *Handlers) CreateDatasetProfileDownloadHandler() func(http.ResponseWriter, *http.Request) {
@@ -226,7 +255,7 @@ func (h *Handlers) writeProfile(w http.ResponseWriter, profile *googlev1.Profile
 	}
 }
 
-func (h *Handlers) CreateDatasetProfileVisualizeHandler() func(http.ResponseWriter, *http.Request) {
+func (h *Handlers) CreateDatasetProfileCallTreeHandler() func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		req, err := parseDatasetRequest(r)
 		if err != nil {
@@ -259,7 +288,7 @@ func (h *Handlers) CreateDatasetProfileVisualizeHandler() func(http.ResponseWrit
 			return
 		}
 
-		err = pageTemplates.profileVisualizationTemplate.Execute(w, profileVisualizationPageContent{
+		err = pageTemplates.profileCallTreeTemplate.Execute(w, profileCallTreePageContent{
 			User:        req.TenantID,
 			BlockID:     req.BlockID,
 			Shard:       req.Shard,
@@ -447,4 +476,212 @@ func sortAndCalculatePercents(node *treeNode, grandTotal float64) {
 			sortAndCalculatePercents(child, grandTotal)
 		}
 	}
+}
+
+func (h *Handlers) CreateDatasetSymbolsHandler() func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		req, err := parseDatasetRequest(r)
+		if err != nil {
+			httputil.Error(w, err)
+			return
+		}
+
+		blockMeta, foundDataset, err := h.getDatasetMetadata(r.Context(), req)
+		if err != nil {
+			httputil.Error(w, err)
+			return
+		}
+
+		dataset := h.convertDataset(foundDataset, blockMeta.StringTable)
+
+		symbolsInfo, err := h.readSymbols(r.Context(), blockMeta, foundDataset)
+		if err != nil {
+			httputil.Error(w, errors.Wrap(err, "failed to read symbols"))
+			return
+		}
+
+		err = pageTemplates.datasetSymbolsTemplate.Execute(w, datasetSymbolsPageContent{
+			User:        req.TenantID,
+			BlockID:     req.BlockID,
+			Shard:       req.Shard,
+			BlockTenant: req.BlockTenant,
+			Dataset:     &dataset,
+			SymbolsInfo: symbolsInfo,
+			Now:         time.Now().UTC().Format(time.RFC3339),
+		})
+		if err != nil {
+			httputil.Error(w, err)
+			return
+		}
+	}
+}
+
+func (h *Handlers) readSymbols(ctx context.Context, blockMeta *metastorev1.BlockMeta, dataset *metastorev1.Dataset) (*symbolsInfo, error) {
+	obj := block.NewObject(h.Bucket, blockMeta)
+	if err := obj.Open(ctx); err != nil {
+		return nil, fmt.Errorf("failed to open block object: %w", err)
+	}
+	defer obj.Close()
+
+	ds := block.NewDataset(dataset, obj)
+	if err := ds.Open(ctx, block.SectionSymbols); err != nil {
+		return nil, fmt.Errorf("failed to open dataset: %w", err)
+	}
+	defer ds.Close()
+
+	symbolsReader := ds.Symbols()
+
+	// We need to get a partition to access the actual symbols
+	// For v2 blocks, there's typically one partition per dataset
+	// We'll use partition 0 as a default
+	partitionID := uint64(0)
+	partition, err := symbolsReader.Partition(ctx, partitionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get symbols partition: %w", err)
+	}
+	defer partition.Release()
+
+	symbols := partition.Symbols()
+	if symbols == nil {
+		return nil, fmt.Errorf("symbols partition returned nil")
+	}
+
+	// Helper to safely get string from index
+	getString := func(idx uint32) string {
+		if int(idx) < len(symbols.Strings) {
+			return symbols.Strings[idx]
+		}
+		return fmt.Sprintf("<invalid string id %d>", idx)
+	}
+
+	// Collect strings with statistics
+	allStrings := symbols.Strings
+	totalStrings := len(allStrings)
+	var stringEntries []symbolEntry
+	maxStrings := 1000
+
+	totalLength := 0
+	shortestLen := int(^uint(0) >> 1) // Max int
+	longestLen := 0
+	var shortestSym, longestSym string
+	symbolMap := make(map[string]int)
+
+	for idx, sym := range allStrings {
+		symLen := len(sym)
+		totalLength += symLen
+		symbolMap[sym]++
+
+		if symLen < shortestLen || shortestLen == int(^uint(0)>>1) {
+			shortestLen = symLen
+			shortestSym = sym
+		}
+		if symLen > longestLen {
+			longestLen = symLen
+			longestSym = sym
+		}
+
+		if len(stringEntries) < maxStrings {
+			stringEntries = append(stringEntries, symbolEntry{
+				Index:  idx,
+				Symbol: sym,
+			})
+		}
+	}
+
+	avgLength := 0.0
+	if totalStrings > 0 {
+		avgLength = float64(totalLength) / float64(totalStrings)
+	}
+
+	var sampleDuplicates []string
+	maxDuplicates := 10
+	for sym, count := range symbolMap {
+		if count > 1 && len(sampleDuplicates) < maxDuplicates {
+			sampleDuplicates = append(sampleDuplicates, fmt.Sprintf("%s (×%d)", sym, count))
+		}
+	}
+
+	// Collect functions
+	var functionEntries []functionEntry
+	maxFunctions := 100
+	for idx, fn := range symbols.Functions {
+		if idx >= maxFunctions {
+			break
+		}
+		functionEntries = append(functionEntries, functionEntry{
+			Index:      idx,
+			ID:         fn.Id,
+			Name:       getString(fn.Name),
+			SystemName: getString(fn.SystemName),
+			Filename:   getString(fn.Filename),
+			StartLine:  fn.StartLine,
+		})
+	}
+
+	// Collect locations
+	var locationEntries []locationEntry
+	maxLocations := 100
+	for idx, loc := range symbols.Locations {
+		if idx >= maxLocations {
+			break
+		}
+		var funcs []string
+		for _, line := range loc.Line {
+			if int(line.FunctionId) < len(symbols.Functions) {
+				fn := symbols.Functions[line.FunctionId]
+				funcs = append(funcs, getString(fn.Name))
+			}
+		}
+		locationEntries = append(locationEntries, locationEntry{
+			Index:     idx,
+			ID:        loc.Id,
+			Address:   loc.Address,
+			MappingID: loc.MappingId,
+			Functions: funcs,
+		})
+	}
+
+	// Collect mappings
+	var mappingEntries []mappingEntry
+	maxMappings := 100
+	for idx, mapping := range symbols.Mappings {
+		if idx >= maxMappings {
+			break
+		}
+		mappingEntries = append(mappingEntries, mappingEntry{
+			Index:       idx,
+			ID:          mapping.Id,
+			MemoryStart: mapping.MemoryStart,
+			MemoryLimit: mapping.MemoryLimit,
+			FileOffset:  mapping.FileOffset,
+			Filename:    getString(mapping.Filename),
+			BuildID:     getString(mapping.BuildId),
+		})
+	}
+
+	// Get stacktrace stats
+	var stats symdb.PartitionStats
+	partition.WriteStats(&stats)
+
+	return &symbolsInfo{
+		Strings:      stringEntries,
+		TotalStrings: totalStrings,
+		StringStats: symbolsStats{
+			TotalLength:      totalLength,
+			AverageLength:    avgLength,
+			ShortestLength:   shortestLen,
+			LongestLength:    longestLen,
+			ShortestSymbol:   shortestSym,
+			LongestSymbol:    longestSym,
+			UniqueSymbols:    len(symbolMap),
+			SampleDuplicates: sampleDuplicates,
+		},
+		Functions:        functionEntries,
+		TotalFunctions:   len(symbols.Functions),
+		Locations:        locationEntries,
+		TotalLocations:   len(symbols.Locations),
+		Mappings:         mappingEntries,
+		TotalMappings:    len(symbols.Mappings),
+		TotalStacktraces: stats.StacktracesTotal,
+	}, nil
 }

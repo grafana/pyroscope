@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Bucket Blocks Explorer (v2): Profile Visualization</title>
+    <title>Bucket Blocks Explorer (v2): Profile Call Tree</title>
 
     <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
     <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
@@ -16,14 +16,17 @@
         .tree-view {
             font-family: 'Courier New', Courier, monospace;
             font-size: 14px;
+            line-height: 1.5;
         }
         .tree-node {
-            margin-left: 0;
+            margin: 0 !important;
             list-style-type: none;
-            padding-left: 0;
+            padding: 0 !important;
         }
         .tree-node > li {
-            margin-top: 4px;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.5 !important;
         }
         .tree-toggle {
             cursor: pointer;
@@ -31,12 +34,26 @@
             color: #6c757d;
             margin-right: 5px;
             font-family: monospace;
+            display: inline-block;
+            width: 35px;
+            text-align: left;
+            white-space: nowrap;
         }
         .tree-toggle:hover {
             color: #adb5bd;
         }
         .tree-content {
-            display: inline;
+            display: flex;
+            align-items: baseline;
+            gap: 0;
+            margin: 0;
+            padding: 0;
+        }
+        .tree-name-section {
+            flex: 1;
+            min-width: 0;
+            margin: 0;
+            padding: 0;
         }
         .tree-name {
             color: #0dcaf0;
@@ -44,19 +61,36 @@
         }
         .tree-value {
             color: #ffc107;
-            margin-left: 10px;
+            text-align: right;
+            white-space: nowrap;
+            width: 120px;
+            flex-shrink: 0;
+            margin: 0;
+            padding: 0;
         }
         .tree-percent {
             color: #6c757d;
-            margin-left: 5px;
+            text-align: right;
+            white-space: nowrap;
+            width: 80px;
+            flex-shrink: 0;
+            margin: 0 0 0 10px;
+            padding: 0;
+        }
+        .tree-extra {
+            width: 150px;
+            flex-shrink: 0;
+            margin: 0 0 0 10px;
+            padding: 0;
         }
         .tree-self {
             color: #198754;
-            margin-left: 10px;
+            margin-left: 5px;
+            font-size: 12px;
         }
         .tree-children {
-            margin-left: 20px;
-            padding-left: 0;
+            margin-left: 20px !important;
+            padding: 0 !important;
         }
     </style>
 </head>
@@ -65,7 +99,7 @@
     <div class="container-fluid">
         <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
             <div class="col-12 col-sm-9 text-center text-sm-start">
-                <h3>Bucket Blocks Explorer (v2): Profile Visualization</h3>
+                <h3>Bucket Blocks Explorer (v2): Profile Call Tree</h3>
             </div>
             <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
                 <a href="/ops/object-store/tenants">
@@ -141,29 +175,30 @@
     {{ $level := .Level }}
     <li>
         {{ if gt (len $node.Children) 0 }}
-            <span class="tree-content" onclick="toggleNode(this)">
-                <span class="tree-toggle">{{ if eq $level 0 }}[-]{{ else }}[+]{{ end }}</span>
-                <span class="tree-name">{{ $node.Name }}</span>
-                <span class="tree-value">{{ $node.Value }}</span>
-                <span class="tree-percent">({{ printf "%.2f" $node.Percent }}%)</span>
-                {{ if gt $node.Self 0 }}
-                    <span class="tree-self">self: {{ $node.Self }}</span>
-                {{ end }}
-            </span>
+            <div class="tree-content" onclick="toggleNode(this)">
+                <div class="tree-name-section">
+                    <span class="tree-toggle">{{ if eq $level 0 }}[-]{{ else }}[+]{{ end }}</span>
+                    <span class="tree-name">{{ $node.Name }}</span>
+                </div>
+                <div class="tree-value">{{ $node.Value }}{{ if gt $node.Self 0 }}<span class="tree-self">(self: {{ $node.Self }})</span>{{ end }}</div>
+                <div class="tree-percent">{{ printf "%.2f" $node.Percent }}%</div>
+                <div class="tree-extra"></div>
+            </div>
             <ul class="tree-node tree-children" style="display: {{ if eq $level 0 }}block{{ else }}none{{ end }};">
                 {{ range $node.Children }}
                     {{ template "tree-node" dict "Node" . "Level" (add $level 1) }}
                 {{ end }}
             </ul>
         {{ else }}
-            <span class="tree-content">
-                <span class="tree-name">{{ $node.Name }}</span>
-                <span class="tree-value">{{ $node.Value }}</span>
-                <span class="tree-percent">({{ printf "%.2f" $node.Percent }}%)</span>
-                {{ if gt $node.Self 0 }}
-                    <span class="tree-self">self: {{ $node.Self }}</span>
-                {{ end }}
-            </span>
+            <div class="tree-content">
+                <div class="tree-name-section">
+                    <span class="tree-toggle"></span>
+                    <span class="tree-name">{{ $node.Name }}</span>
+                </div>
+                <div class="tree-value">{{ $node.Value }}{{ if gt $node.Self 0 }}<span class="tree-self">(self: {{ $node.Self }})</span>{{ end }}</div>
+                <div class="tree-percent">{{ printf "%.2f" $node.Percent }}%</div>
+                <div class="tree-extra"></div>
+            </div>
         {{ end }}
     </li>
 {{ end }}

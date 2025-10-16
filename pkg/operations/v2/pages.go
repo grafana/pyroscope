@@ -21,11 +21,14 @@ var datasetDetailsPageHtml string
 //go:embed tool.blocks.dataset.profiles.gohtml
 var datasetProfilesPageHtml string
 
-//go:embed tool.blocks.profile.visualization.gohtml
-var profileVisualizationPageHtml string
+//go:embed tool.blocks.profile.call.tree.gohtml
+var profileCallTreePageHtml string
 
 //go:embed tool.blocks.dataset.index.gohtml
 var datasetIndexPageHtml string
+
+//go:embed tool.blocks.dataset.symbols.gohtml
+var datasetSymbolsPageHtml string
 
 type indexPageContent struct {
 	Users []string
@@ -63,17 +66,24 @@ type datasetProfilesPageContent struct {
 	BlockTenant string
 	Dataset     *datasetDetails
 	Profiles    []profileInfo
+	TotalCount  int
+	Page        int
+	PageSize    int
+	TotalPages  int
+	HasPrevPage bool
+	HasNextPage bool
 	Now         string
 }
 
 type templates struct {
-	indexTemplate                *template.Template
-	blocksTemplate               *template.Template
-	blockDetailsTemplate         *template.Template
-	datasetDetailsTemplate       *template.Template
-	datasetProfilesTemplate      *template.Template
-	profileVisualizationTemplate *template.Template
-	datasetIndexTemplate         *template.Template
+	indexTemplate           *template.Template
+	blocksTemplate          *template.Template
+	blockDetailsTemplate    *template.Template
+	datasetDetailsTemplate  *template.Template
+	datasetProfilesTemplate *template.Template
+	profileCallTreeTemplate *template.Template
+	datasetIndexTemplate    *template.Template
+	datasetSymbolsTemplate  *template.Template
 }
 
 var pageTemplates = initTemplates()
@@ -96,25 +106,33 @@ func initTemplates() *templates {
 	template.Must(blockDetailsTemplate.Parse(blockDetailsPageHtml))
 	datasetDetailsTemplate := template.New("dataset-details")
 	template.Must(datasetDetailsTemplate.Parse(datasetDetailsPageHtml))
-	datasetProfilesTemplate := template.New("dataset-profiles")
+	datasetProfilesTemplate := template.New("dataset-profiles").Funcs(template.FuncMap{
+		"add": add,
+		"mul": mul,
+		"seq": seq,
+	})
 	template.Must(datasetProfilesTemplate.Parse(datasetProfilesPageHtml))
-	profileVisualizationTemplate := template.New("profile-visualization").Funcs(template.FuncMap{
+	profileCallTreeTemplate := template.New("profile-call-tree").Funcs(template.FuncMap{
 		"add":  add,
 		"dict": dict,
+		"mul":  mul,
 	})
-	template.Must(profileVisualizationTemplate.Parse(profileVisualizationPageHtml))
+	template.Must(profileCallTreeTemplate.Parse(profileCallTreePageHtml))
 	datasetIndexTemplate := template.New("dataset-index").Funcs(template.FuncMap{
 		"sub": sub,
 	})
 	template.Must(datasetIndexTemplate.Parse(datasetIndexPageHtml))
+	datasetSymbolsTemplate := template.New("dataset-symbols")
+	template.Must(datasetSymbolsTemplate.Parse(datasetSymbolsPageHtml))
 	t := &templates{
-		indexTemplate:                indexTemplate,
-		blocksTemplate:               blocksTemplate,
-		blockDetailsTemplate:         blockDetailsTemplate,
-		datasetDetailsTemplate:       datasetDetailsTemplate,
-		datasetProfilesTemplate:      datasetProfilesTemplate,
-		profileVisualizationTemplate: profileVisualizationTemplate,
-		datasetIndexTemplate:         datasetIndexTemplate,
+		indexTemplate:           indexTemplate,
+		blocksTemplate:          blocksTemplate,
+		blockDetailsTemplate:    blockDetailsTemplate,
+		datasetDetailsTemplate:  datasetDetailsTemplate,
+		datasetProfilesTemplate: datasetProfilesTemplate,
+		profileCallTreeTemplate: profileCallTreeTemplate,
+		datasetIndexTemplate:    datasetIndexTemplate,
+		datasetSymbolsTemplate:  datasetSymbolsTemplate,
 	}
 	return t
 }
@@ -169,4 +187,16 @@ func dict(values ...interface{}) (map[string]interface{}, error) {
 		dict[key] = values[i+1]
 	}
 	return dict, nil
+}
+
+// seq generates a sequence of integers from start to end (inclusive)
+func seq(start, end int) []int {
+	if start > end {
+		return []int{}
+	}
+	result := make([]int, end-start+1)
+	for i := range result {
+		result[i] = start + i
+	}
+	return result
 }

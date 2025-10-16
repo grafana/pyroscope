@@ -71,15 +71,18 @@ type labelSet struct {
 }
 
 type datasetDetails struct {
-	Tenant       string
-	Name         string
-	MinTime      string
-	MaxTime      string
-	Size         string
-	ProfilesSize string
-	IndexSize    string
-	SymbolsSize  string
-	LabelSets    []labelSet
+	Tenant             string
+	Name               string
+	MinTime            string
+	MaxTime            string
+	Size               string
+	ProfilesSize       string
+	IndexSize          string
+	SymbolsSize        string
+	ProfilesPercentage float64
+	IndexPercentage    float64
+	SymbolsPercentage  float64
+	LabelSets          []labelSet
 }
 
 type profileInfo struct {
@@ -102,7 +105,7 @@ type treeNode struct {
 	Children []*treeNode
 }
 
-type profileVisualizationPageContent struct {
+type profileCallTreePageContent struct {
 	User        string
 	BlockID     string
 	Shard       uint32
@@ -138,6 +141,72 @@ type datasetIndexPageContent struct {
 	BlockTenant string
 	Dataset     *datasetDetails
 	IndexInfo   *tsdbIndexInfo
+	Now         string
+}
+
+type symbolsInfo struct {
+	Strings          []symbolEntry
+	TotalStrings     int
+	StringStats      symbolsStats
+	Functions        []functionEntry
+	TotalFunctions   int
+	Locations        []locationEntry
+	TotalLocations   int
+	Mappings         []mappingEntry
+	TotalMappings    int
+	TotalStacktraces int
+}
+
+type symbolEntry struct {
+	Index  int
+	Symbol string
+}
+
+type functionEntry struct {
+	Index      int
+	ID         uint64
+	Name       string
+	SystemName string
+	Filename   string
+	StartLine  uint32
+}
+
+type locationEntry struct {
+	Index     int
+	ID        uint64
+	Address   uint64
+	MappingID uint32
+	Functions []string
+}
+
+type mappingEntry struct {
+	Index       int
+	ID          uint64
+	MemoryStart uint64
+	MemoryLimit uint64
+	FileOffset  uint64
+	Filename    string
+	BuildID     string
+}
+
+type symbolsStats struct {
+	TotalLength      int
+	AverageLength    float64
+	ShortestLength   int
+	LongestLength    int
+	ShortestSymbol   string
+	LongestSymbol    string
+	UniqueSymbols    int
+	SampleDuplicates []string
+}
+
+type datasetSymbolsPageContent struct {
+	User        string
+	BlockID     string
+	Shard       uint32
+	BlockTenant string
+	Dataset     *datasetDetails
+	SymbolsInfo *symbolsInfo
 	Now         string
 }
 
