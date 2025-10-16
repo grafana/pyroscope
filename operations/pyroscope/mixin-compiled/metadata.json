@@ -1,0 +1,10 @@
+{
+  "compiled_at": "2025-10-15T17:58:40Z",
+  "git_commit": "a96bbfd58",
+  "git_branch": "main",
+  "source": "operations/pyroscope/jsonnet/pyroscope-mixin/pyroscope-mixin",
+  "compiler_version": {
+    "jsonnet": "Jsonnet commandline interpreter (Go implementation) v0.20.0",
+    "jsonnet-bundler": "dev"
+  }
+}

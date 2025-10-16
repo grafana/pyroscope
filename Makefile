@@ -363,6 +363,10 @@ $(BIN)/jb: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.5.1
 
+$(BIN)/jsonnet: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
+
 $(BIN)/helm: Makefile go.mod
 	@mkdir -p $(@D)
 	CGO_ENABLED=0 GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.14.3
@@ -484,3 +488,11 @@ run: ## Run the pyroscope binary (pass parameters with 'make run PARAMS=-myparam
 .PHONY: mockery
 mockery: $(BIN)/mockery
 	$(BIN)/mockery
+
+.PHONY: compile-mixin
+compile-mixin: $(BIN)/jb $(BIN)/jsonnet ## Compile pyroscope-mixin to ready-to-use JSON/YAML files
+	@PATH="$(BIN):$(PATH)" FROM_MAKEFILE=true ./scripts/compile-mixin.sh
+
+.PHONY: check/mixin-compiled
+check/mixin-compiled: compile-mixin ## Check if mixin-compiled files are up to date
+	@git --no-pager diff --exit-code operations/pyroscope/mixin-compiled/ || { echo ">> Mixin compiled files are out of date. Run 'make compile-mixin' and commit the changes"; exit 1; }

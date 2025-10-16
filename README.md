@@ -80,6 +80,16 @@ For more information on how to use Pyroscope with other programming languages, i
 * [Deployment Guide](https://grafana.com/docs/pyroscope/latest/deploy-kubernetes/)
 * [Pyroscope Architecture](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-architecture/)
 
+## Dashboards and Monitoring
+
+Pre-compiled, ready-to-use Grafana dashboards and Prometheus recording rules are available in [`operations/pyroscope/mixin-compiled/`](operations/pyroscope/mixin-compiled/):
+
+* **Grafana Dashboards** - Import directly into your Grafana instance to monitor Pyroscope read and write paths
+* **Prometheus Recording Rules** - Pre-computed metrics for improved query performance
+* **Alert Rules** - Placeholder for custom alerting rules
+
+[View the dashboards and rules →](operations/pyroscope/mixin-compiled/README.md)
+
 ## Send data to server via Pyroscope agent (language specific)
 
 For more documentation on how to add the Pyroscope agent to your code, see the [agent documentation](https://grafana.com/docs/pyroscope/latest/configure-client/) on our website or find language specific examples and documentation below:
