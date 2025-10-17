@@ -162,7 +162,6 @@ type datasetIndexPageContent struct {
 type symbolsInfo struct {
 	Strings          []symbolEntry
 	TotalStrings     int
-	StringStats      symbolsStats
 	Functions        []functionEntry
 	TotalFunctions   int
 	Locations        []locationEntry
@@ -186,12 +185,17 @@ type functionEntry struct {
 	StartLine  uint32
 }
 
+type locationLine struct {
+	FunctionName string
+	Line         int64
+}
+
 type locationEntry struct {
 	Index     int
 	ID        uint64
 	Address   uint64
 	MappingID uint32
-	Functions []string
+	Lines     []locationLine
 }
 
 type mappingEntry struct {
@@ -204,17 +208,6 @@ type mappingEntry struct {
 	BuildID     string
 }
 
-type symbolsStats struct {
-	TotalLength      int
-	AverageLength    float64
-	ShortestLength   int
-	LongestLength    int
-	ShortestSymbol   string
-	LongestSymbol    string
-	UniqueSymbols    int
-	SampleDuplicates []string
-}
-
 type datasetSymbolsPageContent struct {
 	User        string
 	BlockID     string
@@ -222,6 +215,12 @@ type datasetSymbolsPageContent struct {
 	BlockTenant string
 	Dataset     *datasetDetails
 	SymbolsInfo *symbolsInfo
+	Page        int
+	PageSize    int
+	TotalPages  int
+	HasPrevPage bool
+	HasNextPage bool
+	Tab         string
 	Now         string
 }
 

@@ -122,7 +122,11 @@ func initTemplates() *templates {
 		"sub": sub,
 	})
 	template.Must(datasetIndexTemplate.Parse(datasetIndexPageHtml))
-	datasetSymbolsTemplate := template.New("dataset-symbols")
+	datasetSymbolsTemplate := template.New("dataset-symbols").Funcs(template.FuncMap{
+		"add": add,
+		"mul": mul,
+		"seq": seq,
+	})
 	template.Must(datasetSymbolsTemplate.Parse(datasetSymbolsPageHtml))
 	t := &templates{
 		indexTemplate:           indexTemplate,

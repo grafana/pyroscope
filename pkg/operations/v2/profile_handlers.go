@@ -648,6 +648,25 @@ func (h *Handlers) CreateDatasetSymbolsHandler() func(http.ResponseWriter, *http
 			return
 		}
 
+		page := 1
+		if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+			if _, err := fmt.Sscanf(pageStr, "%d", &page); err != nil || page < 1 {
+				page = 1
+			}
+		}
+
+		pageSize := 100
+		if pageSizeStr := r.URL.Query().Get("page_size"); pageSizeStr != "" {
+			if _, err := fmt.Sscanf(pageSizeStr, "%d", &pageSize); err != nil || pageSize < 1 || pageSize > 500 {
+				pageSize = 100
+			}
+		}
+
+		tab := r.URL.Query().Get("tab")
+		if tab == "" {
+			tab = "strings"
+		}
+
 		blockMeta, foundDataset, err := h.getDatasetMetadata(r.Context(), req)
 		if err != nil {
 			httputil.Error(w, err)
@@ -656,10 +675,30 @@ func (h *Handlers) CreateDatasetSymbolsHandler() func(http.ResponseWriter, *http
 
 		dataset := h.convertDataset(foundDataset, blockMeta.StringTable)
 
-		symbolsInfo, err := h.readSymbols(r.Context(), blockMeta, foundDataset)
+		symbolsInfo, err := h.readSymbols(r.Context(), blockMeta, foundDataset, tab, page, pageSize)
 		if err != nil {
 			httputil.Error(w, errors.Wrap(err, "failed to read symbols"))
 			return
+		}
+
+		// Calculate total pages based on the active tab
+		var totalCount int
+		switch tab {
+		case "strings":
+			totalCount = symbolsInfo.TotalStrings
+		case "functions":
+			totalCount = symbolsInfo.TotalFunctions
+		case "locations":
+			totalCount = symbolsInfo.TotalLocations
+		case "mappings":
+			totalCount = symbolsInfo.TotalMappings
+		default:
+			totalCount = symbolsInfo.TotalStrings
+		}
+
+		totalPages := (totalCount + pageSize - 1) / pageSize
+		if totalPages == 0 {
+			totalPages = 1
 		}
 
 		err = pageTemplates.datasetSymbolsTemplate.Execute(w, datasetSymbolsPageContent{
@@ -669,6 +708,12 @@ func (h *Handlers) CreateDatasetSymbolsHandler() func(http.ResponseWriter, *http
 			BlockTenant: req.BlockTenant,
 			Dataset:     &dataset,
 			SymbolsInfo: symbolsInfo,
+			Page:        page,
+			PageSize:    pageSize,
+			TotalPages:  totalPages,
+			HasPrevPage: page > 1,
+			HasNextPage: page < totalPages,
+			Tab:         tab,
 			Now:         time.Now().UTC().Format(time.RFC3339),
 		})
 		if err != nil {
@@ -678,7 +723,7 @@ func (h *Handlers) CreateDatasetSymbolsHandler() func(http.ResponseWriter, *http
 	}
 }
 
-func (h *Handlers) readSymbols(ctx context.Context, blockMeta *metastorev1.BlockMeta, dataset *metastorev1.Dataset) (*symbolsInfo, error) {
+func (h *Handlers) readSymbols(ctx context.Context, blockMeta *metastorev1.BlockMeta, dataset *metastorev1.Dataset, tab string, page, pageSize int) (*symbolsInfo, error) {
 	obj := block.NewObject(h.Bucket, blockMeta)
 	if err := obj.Open(ctx); err != nil {
 		return nil, fmt.Errorf("failed to open block object: %w", err)
@@ -716,109 +761,91 @@ func (h *Handlers) readSymbols(ctx context.Context, blockMeta *metastorev1.Block
 		return fmt.Sprintf("<invalid string id %d>", idx)
 	}
 
-	// Collect strings with statistics
+	// Get counts for tab headers
 	allStrings := symbols.Strings
 	totalStrings := len(allStrings)
+
+	// Paginate based on the active tab
 	var stringEntries []symbolEntry
-	maxStrings := 1000
+	var functionEntries []functionEntry
+	var locationEntries []locationEntry
+	var mappingEntries []mappingEntry
 
-	totalLength := 0
-	shortestLen := int(^uint(0) >> 1) // Max int
-	longestLen := 0
-	var shortestSym, longestSym string
-	symbolMap := make(map[string]int)
+	startIdx := (page - 1) * pageSize
+	endIdx := startIdx + pageSize
 
-	for idx, sym := range allStrings {
-		symLen := len(sym)
-		totalLength += symLen
-		symbolMap[sym]++
-
-		if symLen < shortestLen || shortestLen == int(^uint(0)>>1) {
-			shortestLen = symLen
-			shortestSym = sym
+	switch tab {
+	case "strings":
+		if endIdx > totalStrings {
+			endIdx = totalStrings
 		}
-		if symLen > longestLen {
-			longestLen = symLen
-			longestSym = sym
-		}
-
-		if len(stringEntries) < maxStrings {
+		for idx := startIdx; idx < endIdx; idx++ {
 			stringEntries = append(stringEntries, symbolEntry{
 				Index:  idx,
-				Symbol: sym,
+				Symbol: allStrings[idx],
 			})
 		}
-	}
 
-	avgLength := 0.0
-	if totalStrings > 0 {
-		avgLength = float64(totalLength) / float64(totalStrings)
-	}
-
-	var sampleDuplicates []string
-	maxDuplicates := 10
-	for sym, count := range symbolMap {
-		if count > 1 && len(sampleDuplicates) < maxDuplicates {
-			sampleDuplicates = append(sampleDuplicates, fmt.Sprintf("%s (×%d)", sym, count))
+	case "functions":
+		totalFunctions := len(symbols.Functions)
+		if endIdx > totalFunctions {
+			endIdx = totalFunctions
 		}
-	}
-
-	// Collect functions
-	var functionEntries []functionEntry
-	maxFunctions := 100
-	for idx, fn := range symbols.Functions {
-		if idx >= maxFunctions {
-			break
+		for idx := startIdx; idx < endIdx; idx++ {
+			fn := symbols.Functions[idx]
+			functionEntries = append(functionEntries, functionEntry{
+				Index:      idx,
+				ID:         fn.Id,
+				Name:       getString(fn.Name),
+				SystemName: getString(fn.SystemName),
+				Filename:   getString(fn.Filename),
+				StartLine:  fn.StartLine,
+			})
 		}
-		functionEntries = append(functionEntries, functionEntry{
-			Index:      idx,
-			ID:         fn.Id,
-			Name:       getString(fn.Name),
-			SystemName: getString(fn.SystemName),
-			Filename:   getString(fn.Filename),
-			StartLine:  fn.StartLine,
-		})
-	}
 
-	// Collect locations
-	var locationEntries []locationEntry
-	maxLocations := 100
-	for idx, loc := range symbols.Locations {
-		if idx >= maxLocations {
-			break
+	case "locations":
+		totalLocations := len(symbols.Locations)
+		if endIdx > totalLocations {
+			endIdx = totalLocations
 		}
-		var funcs []string
-		for _, line := range loc.Line {
-			if int(line.FunctionId) < len(symbols.Functions) {
-				fn := symbols.Functions[line.FunctionId]
-				funcs = append(funcs, getString(fn.Name))
+		for idx := startIdx; idx < endIdx; idx++ {
+			loc := symbols.Locations[idx]
+			var lines []locationLine
+			for _, line := range loc.Line {
+				if int(line.FunctionId) < len(symbols.Functions) {
+					fn := symbols.Functions[line.FunctionId]
+					lines = append(lines, locationLine{
+						FunctionName: getString(fn.Name),
+						Line:         int64(line.Line),
+					})
+				}
 			}
+			locationEntries = append(locationEntries, locationEntry{
+				Index:     idx,
+				ID:        loc.Id,
+				Address:   loc.Address,
+				MappingID: loc.MappingId,
+				Lines:     lines,
+			})
 		}
-		locationEntries = append(locationEntries, locationEntry{
-			Index:     idx,
-			ID:        loc.Id,
-			Address:   loc.Address,
-			MappingID: loc.MappingId,
-			Functions: funcs,
-		})
-	}
 
-	// Collect mappings
-	var mappingEntries []mappingEntry
-	maxMappings := 100
-	for idx, mapping := range symbols.Mappings {
-		if idx >= maxMappings {
-			break
+	case "mappings":
+		totalMappings := len(symbols.Mappings)
+		if endIdx > totalMappings {
+			endIdx = totalMappings
 		}
-		mappingEntries = append(mappingEntries, mappingEntry{
-			Index:       idx,
-			ID:          mapping.Id,
-			MemoryStart: mapping.MemoryStart,
-			MemoryLimit: mapping.MemoryLimit,
-			FileOffset:  mapping.FileOffset,
-			Filename:    getString(mapping.Filename),
-			BuildID:     getString(mapping.BuildId),
-		})
+		for idx := startIdx; idx < endIdx; idx++ {
+			mapping := symbols.Mappings[idx]
+			mappingEntries = append(mappingEntries, mappingEntry{
+				Index:       idx,
+				ID:          mapping.Id,
+				MemoryStart: mapping.MemoryStart,
+				MemoryLimit: mapping.MemoryLimit,
+				FileOffset:  mapping.FileOffset,
+				Filename:    getString(mapping.Filename),
+				BuildID:     getString(mapping.BuildId),
+			})
+		}
 	}
 
 	// Get stacktrace stats
@@ -826,18 +853,8 @@ func (h *Handlers) readSymbols(ctx context.Context, blockMeta *metastorev1.Block
 	partition.WriteStats(&stats)
 
 	return &symbolsInfo{
-		Strings:      stringEntries,
-		TotalStrings: totalStrings,
-		StringStats: symbolsStats{
-			TotalLength:      totalLength,
-			AverageLength:    avgLength,
-			ShortestLength:   shortestLen,
-			LongestLength:    longestLen,
-			ShortestSymbol:   shortestSym,
-			LongestSymbol:    longestSym,
-			UniqueSymbols:    len(symbolMap),
-			SampleDuplicates: sampleDuplicates,
-		},
+		Strings:          stringEntries,
+		TotalStrings:     totalStrings,
 		Functions:        functionEntries,
 		TotalFunctions:   len(symbols.Functions),
 		Locations:        locationEntries,
