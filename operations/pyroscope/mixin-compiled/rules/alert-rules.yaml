@@ -1,0 +1,9 @@
+# Pyroscope Alert Rules
+#
+# Currently, no alert rules are defined in the pyroscope-mixin.
+# This file is a placeholder for future alert rules.
+#
+# To add your own alert rules, you can create them here following
+# the Prometheus alerting rules format:
+# https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+groups: []

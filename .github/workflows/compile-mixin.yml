@@ -1,0 +1,119 @@
+name: Compile Pyroscope Mixin
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'operations/pyroscope/jsonnet/pyroscope-mixin/**'
+      - 'scripts/compile-mixin.sh'
+      - '.github/workflows/compile-mixin.yml'
+  pull_request:
+    paths:
+      - 'operations/pyroscope/jsonnet/pyroscope-mixin/**'
+      - 'scripts/compile-mixin.sh'
+      - '.github/workflows/compile-mixin.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  compile-mixin:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: 'false'
+
+      - name: Set up Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: 1.23.11
+
+      - name: Compile mixin
+        run: make compile-mixin
+
+      - name: Check for changes
+        id: check-changes
+        run: |
+          if ! git diff --exit-code operations/pyroscope/mixin-compiled/; then
+            echo "changes=true" >> "$GITHUB_OUTPUT"
+            echo "Compiled mixin files have changed"
+          else
+            echo "changes=false" >> "$GITHUB_OUTPUT"
+            echo "No changes to compiled mixin files"
+          fi
+
+      - name: Get secrets for PR creation
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.check-changes.outputs.changes == 'true'
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@ad819d8e2e2dccb7a28c7e2c43054573d6b45900
+        with:
+          repo_secrets: |
+            GITHUB_APP_ID=pyroscope-development-app:app-id
+            GITHUB_APP_INSTALLATION_ID=pyroscope-development-app:app-installation-id
+            GITHUB_APP_PRIVATE_KEY=pyroscope-development-app:private-key
+
+      - name: Generate token
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.check-changes.outputs.changes == 'true'
+        id: generate_token
+        uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
+        with:
+          app-id: ${{ env.GITHUB_APP_ID }}
+          private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            pyroscope
+
+      - name: Get GitHub App User ID
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.check-changes.outputs.changes == 'true'
+        id: get-user-id
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          APP_BOT="${{ steps.generate_token.outputs.app-slug }}[bot]"
+          echo "user-id=$(gh api "/users/${APP_BOT}" --jq .id)" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push changes
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.check-changes.outputs.changes == 'true'
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          APP_BOT="${{ steps.generate_token.outputs.app-slug }}[bot]"
+          git config --local user.name "${APP_BOT}"
+          git config --local user.email "${{ steps.get-user-id.outputs.user-id }}+${APP_BOT}@users.noreply.github.com"
+          git add operations/pyroscope/mixin-compiled/
+          git commit -m 'chore: update compiled pyroscope-mixin artifacts
+
+          This commit updates the compiled dashboards and recording rules from the pyroscope-mixin.
+
+          Files updated:
+          - Dashboards: operations/pyroscope/mixin-compiled/dashboards/
+          - Rules: operations/pyroscope/mixin-compiled/rules/
+          - Metadata: operations/pyroscope/mixin-compiled/metadata.json
+
+          Generated automatically by compile-mixin.yml workflow.'
+          gh auth status
+          git push --force https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/${{ github.repository }}.git HEAD:main 2> /dev/null
+
+      - name: Check compilation in PR
+        if: github.event_name == 'pull_request' && steps.check-changes.outputs.changes == 'true'
+        run: |
+          echo "::error::Compiled mixin files are out of date. Please run 'make compile-mixin' locally and commit the changes."
+          exit 1
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && steps.check-changes.outputs.changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ **Compiled mixin artifacts are out of date**\n\nThe pyroscope-mixin source files have changed, but the compiled artifacts in `operations/pyroscope/mixin-compiled/` are not up to date.\n\nPlease run the following command locally and commit the changes:\n```bash\nmake compile-mixin\n```\n\nThen commit and push the updated files:\n```bash\ngit add operations/pyroscope/mixin-compiled/\ngit commit -m "chore: update compiled mixin artifacts"\ngit push\n```'
+            })
