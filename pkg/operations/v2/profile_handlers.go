@@ -116,17 +116,13 @@ func (h *Handlers) readProfilesFromDataset(ctx context.Context, blockMeta *metas
 		if rowNumber >= startRow && rowNumber < endRow {
 			entry := it.At()
 
-			var labelsStr strings.Builder
-			labelsStr.WriteString("{")
-			for i, label := range entry.Labels {
-				if i > 0 {
-					labelsStr.WriteString(", ")
+			// Extract profile type from labels
+			var profileType string
+			for _, label := range entry.Labels {
+				if label.Name == "__profile_type__" {
+					profileType = label.Value
 				}
-				labelsStr.WriteString(label.Name)
-				labelsStr.WriteString("=")
-				labelsStr.WriteString(label.Value)
 			}
-			labelsStr.WriteString("}")
 
 			var sampleCount int
 			var annotationsStr strings.Builder
@@ -153,7 +149,7 @@ func (h *Handlers) readProfilesFromDataset(ctx context.Context, blockMeta *metas
 				Timestamp:   time.Unix(0, entry.Timestamp).UTC().Format(time.RFC3339),
 				SeriesIndex: entry.Row.SeriesIndex(),
 				Fingerprint: uint64(entry.Fingerprint),
-				Labels:      labelsStr.String(),
+				ProfileType: profileType,
 				TotalValue:  uint64(entry.Row.TotalValue()),
 				PartitionID: entry.Row.StacktracePartitionID(),
 				SampleCount: sampleCount,

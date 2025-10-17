@@ -14,7 +14,7 @@
 </head>
 <body class="d-flex flex-column h-100">
 <main class="flex-shrink-0">
-    <div class="container-fluid">
+    <div class="container">
         <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
             <div class="col-12 col-sm-9 text-center text-sm-start">
                 <h3>Bucket Blocks Explorer (v2): Dataset Profiles</h3>
@@ -32,10 +32,19 @@
                 <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to dataset</a>
             </p>
 
-            <h4>Dataset: {{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}<em>(empty)</em>{{ end }}</h4>
-            <p class="text-muted">
-                Tenant: {{ .User }} | Block: {{ .BlockID }} | Shard: {{ .Shard }}
-            </p>
+            <div class="card bg-dark border-secondary info-card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Dataset Information</h5>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>Dataset Name: {{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}<em>(empty)</em>{{ end }}</li>
+                        <li>Dataset Tenant: {{ .Dataset.Tenant }}</li>
+                        <li>Block ID: {{ .BlockID }}</li>
+                        <li>Shard: {{ .Shard }}</li>
+                    </ul>
+                </div>
+            </div>
 
             <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
                 <h5 class="mb-0">Profiles</h5>
@@ -95,11 +104,11 @@
                 {{ end }}
 
                 <div class="table-responsive">
-                    <table class="table table-striped table-sm">
+                    <table class="table table-striped table-sm table-dark">
                         <thead>
                             <tr>
                                 <th>Timestamp</th>
-                                <th>Labels</th>
+                                <th>Profile Type</th>
                                 <th>Samples</th>
                                 <th>Annotations</th>
                                 <th>Actions</th>
@@ -108,8 +117,8 @@
                         <tbody>
                             {{ range .Profiles }}
                             <tr>
-                                <td><code>{{ .Timestamp }}</code></td>
-                                <td><span class="font-monospace small">{{ .Labels }}</span></td>
+                                <td><code class="small">{{ .Timestamp }}</code></td>
+                                <td>{{ if .ProfileType }}<code class="small">{{ .ProfileType }}</code>{{ else }}<span class="text-muted">-</span>{{ end }}</td>
                                 <td>{{ .SampleCount }}</td>
                                 <td>{{ if .Annotations }}<span class="font-monospace small">{{ .Annotations }}</span>{{ else }}<span class="text-muted">-</span>{{ end }}</td>
                                 <td>

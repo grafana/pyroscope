@@ -90,7 +90,7 @@ type profileInfo struct {
 	Timestamp   string
 	SeriesIndex uint32
 	Fingerprint uint64
-	Labels      string
+	ProfileType string
 	TotalValue  uint64
 	PartitionID uint64
 	SampleCount int
