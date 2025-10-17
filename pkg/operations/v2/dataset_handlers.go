@@ -10,6 +10,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/block"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
@@ -138,28 +139,55 @@ func (h *Handlers) readTSDBIndex(ctx context.Context, blockMeta *metastorev1.Blo
 	}
 
 	var labelValueSets []labelValueSet
-	maxLabelNames := 20
-	for i, labelName := range labelNames {
-		if i >= maxLabelNames {
-			break
-		}
-
+	for _, labelName := range labelNames {
 		values, err := idx.LabelValues(labelName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get label values for %s: %w", labelName, err)
 		}
 
-		maxValues := 20
-		sampleValues := values
-		if len(sampleValues) > maxValues {
-			sampleValues = sampleValues[:maxValues]
-		}
-
 		labelValueSets = append(labelValueSets, labelValueSet{
 			LabelName:    labelName,
 			NumValues:    len(values),
-			SampleValues: sampleValues,
+			SampleValues: values,
 		})
+	}
+
+	// Get all series with their labels
+	k2, v2 := index.AllPostingsKey()
+	seriesPostings, err := idx.Postings(k2, nil, v2)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get series postings: %w", err)
+	}
+
+	var seriesList []seriesInfo
+	var lbls phlaremodel.Labels
+	chunks := make([]index.ChunkMeta, 1)
+
+	seriesIdx := uint32(0)
+	for seriesPostings.Next() {
+		seriesRef := seriesPostings.At()
+		_, err := idx.Series(seriesRef, &lbls, &chunks)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get series %d: %w", seriesRef, err)
+		}
+
+		var labelPairs []labelPair
+		for _, lbl := range lbls {
+			labelPairs = append(labelPairs, labelPair{
+				Key:   lbl.Name,
+				Value: lbl.Value,
+			})
+		}
+
+		seriesList = append(seriesList, seriesInfo{
+			SeriesIndex: seriesIdx,
+			SeriesRef:   uint64(seriesRef),
+			Labels:      labelPairs,
+		})
+		seriesIdx++
+	}
+	if err := seriesPostings.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate series postings: %w", err)
 	}
 
 	return &tsdbIndexInfo{
@@ -167,10 +195,10 @@ func (h *Handlers) readTSDBIndex(ctx context.Context, blockMeta *metastorev1.Blo
 		Through:        throughTime,
 		Checksum:       checksum,
 		NumSeries:      numSeries,
-		LabelNames:     labelNames,
 		NumSymbols:     len(symbols),
 		SampleSymbols:  symbols,
 		TotalSymbols:   totalSymbols,
 		LabelValueSets: labelValueSets,
+		Series:         seriesList,
 	}, nil
 }

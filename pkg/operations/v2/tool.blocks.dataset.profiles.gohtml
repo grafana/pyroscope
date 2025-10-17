@@ -108,6 +108,7 @@
                         <thead>
                             <tr>
                                 <th>Timestamp</th>
+                                <th>Series Index</th>
                                 <th>Profile Type</th>
                                 <th>Samples</th>
                                 <th>Annotations</th>
@@ -118,6 +119,7 @@
                             {{ range .Profiles }}
                             <tr>
                                 <td><code class="small">{{ .Timestamp }}</code></td>
+                                <td><code>{{ .SeriesIndex }}</code></td>
                                 <td>{{ if .ProfileType }}<code class="small">{{ .ProfileType }}</code>{{ else }}<span class="text-muted">-</span>{{ end }}</td>
                                 <td>{{ .SampleCount }}</td>
                                 <td>{{ if .Annotations }}<span class="font-monospace small">{{ .Annotations }}</span>{{ else }}<span class="text-muted">-</span>{{ end }}</td>

@@ -136,17 +136,23 @@ type tsdbIndexInfo struct {
 	Through        string
 	Checksum       uint32
 	NumSeries      uint64
-	LabelNames     []string
 	NumSymbols     int
 	SampleSymbols  []string // First 100 symbols
 	TotalSymbols   int
 	LabelValueSets []labelValueSet
+	Series         []seriesInfo
 }
 
 type labelValueSet struct {
 	LabelName    string
 	NumValues    int
-	SampleValues []string // First 20 values
+	SampleValues []string // All values
+}
+
+type seriesInfo struct {
+	SeriesIndex uint32      // The index position (0, 1, 2...) - matches profile SeriesIndex
+	SeriesRef   uint64      // The actual storage reference (54, 58, 62...)
+	Labels      []labelPair
 }
 
 type datasetIndexPageContent struct {
