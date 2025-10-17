@@ -54,6 +54,12 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+
+	_, err = phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	labelSelector, err := buildLabelSelectorWithProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, err

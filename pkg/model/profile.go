@@ -8,9 +8,7 @@ import (
 	"strings"
 
 	"github.com/cespare/xxhash/v2"
-	"github.com/gogo/status"
 	"github.com/prometheus/prometheus/model/labels"
-	"google.golang.org/grpc/codes"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -31,7 +29,7 @@ func ParseProfileTypeSelector(id string) (*typesv1.ProfileType, error) {
 	parts := strings.Split(id, ":")
 
 	if len(parts) != 5 && len(parts) != 6 {
-		return nil, status.Errorf(codes.InvalidArgument, "profile-type selection must be of the form <name>:<sample-type>:<sample-unit>:<period-type>:<period-unit>(:delta), got(%d): %q", len(parts), id)
+		return nil, fmt.Errorf("profile-type selection must be of the form <name>:<sample-type>:<sample-unit>:<period-type>:<period-unit>(:delta), got(%d): %q", len(parts), id)
 	}
 	name, sampleType, sampleUnit, periodType, periodUnit := parts[0], parts[1], parts[2], parts[3], parts[4]
 	return &typesv1.ProfileType{

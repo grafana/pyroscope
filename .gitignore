@@ -24,6 +24,7 @@ data-metastore/
 .cursor
 .idea
 .vscode
+.zed
 
 # Frontend
 public/build

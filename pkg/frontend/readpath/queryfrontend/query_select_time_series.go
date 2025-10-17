@@ -29,6 +29,11 @@ func (q *QueryFrontend) SelectSeries(
 		return connect.NewResponse(&querierv1.SelectSeriesResponse{}), nil
 	}
 
+	_, err = phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	stepMs := time.Duration(c.Msg.Step * float64(time.Second)).Milliseconds()
 	start := c.Msg.Start - stepMs
 

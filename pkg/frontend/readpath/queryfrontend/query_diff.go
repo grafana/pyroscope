@@ -32,6 +32,16 @@ func (q *QueryFrontend) Diff(
 	c.Msg.Left.MaxNodes = &maxNodes
 	c.Msg.Right.MaxNodes = &maxNodes
 
+	_, err = phlaremodel.ParseProfileTypeSelector(c.Msg.Left.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	_, err = phlaremodel.ParseProfileTypeSelector(c.Msg.Right.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	var left, right []byte
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
