@@ -116,13 +116,7 @@ func (h *Handlers) readProfilesFromDataset(ctx context.Context, blockMeta *metas
 		if rowNumber >= startRow && rowNumber < endRow {
 			entry := it.At()
 
-			// Extract profile type from labels
-			var profileType string
-			for _, label := range entry.Labels {
-				if label.Name == "__profile_type__" {
-					profileType = label.Value
-				}
-			}
+			profileType := entry.Labels.Get(phlaremodel.LabelNameProfileType)
 
 			var sampleCount int
 			entry.Row.ForStacktraceIdsAndValues(func(sids []parquet.Value, vals []parquet.Value) {
@@ -173,7 +167,6 @@ func (h *Handlers) CreateDatasetProfileDownloadHandler() func(http.ResponseWrite
 			return
 		}
 
-		// Get profile metadata to extract profile type
 		_, _, profileMeta, err := h.buildProfileResolver(r.Context(), blockMeta, foundDataset, rowNum)
 		if err != nil {
 			httputil.Error(w, errors.Wrap(err, "failed to get profile metadata"))
@@ -186,8 +179,6 @@ func (h *Handlers) CreateDatasetProfileDownloadHandler() func(http.ResponseWrite
 			return
 		}
 
-		// Sanitize dataset name and profile type for filename
-		// Replace slashes and colons with underscores
 		sanitizedDataset := strings.ReplaceAll(req.DatasetName, "/", "_")
 		sanitizedProfileType := strings.ReplaceAll(profileMeta.ProfileType, ":", "_")
 		sanitizedProfileType = strings.ReplaceAll(sanitizedProfileType, "/", "_")

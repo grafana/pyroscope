@@ -245,7 +245,6 @@ func sortBlockDetailsByMinTimeDec(bd []*blockDetails) {
 
 const emptyDatasetPlaceholder = "_empty"
 
-// datasetRequest contains common request parameters for dataset operations
 type datasetRequest struct {
 	TenantID    string
 	BlockID     string
@@ -254,7 +253,6 @@ type datasetRequest struct {
 	Shard       uint32
 }
 
-// parseDatasetRequest extracts and validates common dataset request parameters
 func parseDatasetRequest(r *http.Request) (*datasetRequest, error) {
 	vars := mux.Vars(r)
 
@@ -272,7 +270,6 @@ func parseDatasetRequest(r *http.Request) (*datasetRequest, error) {
 	if datasetName == "" {
 		return nil, errors.New("No dataset name provided")
 	}
-	// Handle special case for empty dataset name
 	if datasetName == emptyDatasetPlaceholder {
 		datasetName = ""
 	}
@@ -297,7 +294,6 @@ func parseDatasetRequest(r *http.Request) (*datasetRequest, error) {
 	}, nil
 }
 
-// getDatasetMetadata retrieves block metadata and finds the specified dataset
 func (h *Handlers) getDatasetMetadata(ctx context.Context, req *datasetRequest) (*metastorev1.BlockMeta, *metastorev1.Dataset, error) {
 	metadataResp, err := h.MetastoreClient.GetBlockMetadata(ctx, &metastorev1.GetBlockMetadataRequest{
 		Blocks: &metastorev1.BlockList{
