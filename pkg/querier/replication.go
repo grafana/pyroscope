@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"math"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
@@ -249,6 +250,15 @@ func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() (bool, error) {
 				// not a sharded block continue
 				continue
 			}
+
+			// Bounds check before converting shards and using as slice length or index
+			if shards == 0 || shards > uint64(math.MaxInt) {
+				return false, fmt.Errorf("invalid shard count (must be 1..%d), got: %d, for block id %s", math.MaxInt, shards, block)
+			}
+			if shardIdx >= shards {
+				return false, fmt.Errorf("invalid shardIdx: %d for shard count %d", shardIdx, shards)
+			}
+
 			hasShardedBlocks = true
 			shardedBlocks = append(shardedBlocks, block)
 
