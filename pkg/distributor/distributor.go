@@ -144,9 +144,9 @@ type Limits interface {
 	IngestionRelabelingRules(tenantID string) []*relabel.Config
 	SampleTypeRelabelingRules(tenantID string) []*relabel.Config
 	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
+	WritePathOverrides(tenantID string) writepath.Config
 	validation.ProfileValidationLimits
 	aggregator.Limits
-	writepath.Overrides
 }
 
 func New(
@@ -188,11 +188,7 @@ func New(
 
 	ingesterRoute := writepath.IngesterFunc(d.sendRequestsToIngester)
 	segmentWriterRoute := writepath.IngesterFunc(d.sendRequestsToSegmentWriter)
-	d.router = writepath.NewRouter(
-		logger, reg, limits,
-		ingesterRoute,
-		segmentWriterRoute,
-	)
+	d.router = writepath.NewRouter(logger, reg, ingesterRoute, segmentWriterRoute)
 
 	var err error
 	subservices := []services.Service(nil)
@@ -560,7 +556,8 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	// functions to send the request to the appropriate service; these are
 	// called independently, and may be called concurrently: the request is
 	// cloned in this case – the callee may modify the request safely.
-	return d.router.Send(ctx, req)
+	config := d.limits.WritePathOverrides(req.TenantID)
+	return d.router.Send(ctx, req, config)
 }
 
 func noNewProfilesReceivedError() *connect.Error {
@@ -635,7 +632,8 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 				Profile:     pprof.RawFromProto(p.Profile()),
 				Annotations: annotations,
 			}
-			return d.router.Send(localCtx, aggregated)
+			config := d.limits.WritePathOverrides(req.TenantID)
+			return d.router.Send(localCtx, aggregated, config)
 		})()
 		if sendErr != nil {
 			_ = level.Error(d.logger).Log("msg", "failed to handle aggregation", "tenant", req.TenantID, "err", err)

@@ -46,13 +46,17 @@ func (m *mockLimits) setDelay(tenantID string, delay time.Duration) {
 
 // Test handler that records what happened
 type testHandler struct {
-	statusCode int
-	body       string
-	called     bool
+	statusCode  int
+	body        string
+	called      bool
+	cancelDelay bool
 }
 
 func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.called = true
+	if h.cancelDelay {
+		CancelDelay(r.Context())
+	}
 	if h.statusCode != 0 {
 		w.WriteHeader(h.statusCode)
 	}
@@ -120,6 +124,7 @@ func TestNewHTTP(t *testing.T) {
 		handlerBody       string
 		handlerDelay      time.Duration // delay in handler
 		middlewareDelay   time.Duration // delay in other middlewares
+		cancelDelay       bool
 		expectDelay       bool
 		expectDelayHeader bool
 	}{
@@ -181,6 +186,18 @@ func TestNewHTTP(t *testing.T) {
 			handlerBody:     "slow middlewares success",
 			middlewareDelay: 200 * time.Millisecond,
 		},
+		{
+			name:        "enabled/cancel delay",
+			configDelay: 100 * time.Millisecond,
+			handlerBody: "success",
+			cancelDelay: true,
+		},
+		{
+			name:        "disabled/cancel delay no effect",
+			configDelay: 0,
+			handlerBody: "success",
+			cancelDelay: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -218,8 +235,9 @@ func TestNewHTTP(t *testing.T) {
 			middleware := NewHTTP(limits)
 
 			handler := &testHandler{
-				statusCode: tt.handlerStatusCode,
-				body:       tt.handlerBody,
+				statusCode:  tt.handlerStatusCode,
+				body:        tt.handlerBody,
+				cancelDelay: tt.cancelDelay,
 			}
 
 			req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader("test"))

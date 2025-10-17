@@ -278,15 +278,15 @@ func validateUpsert(req *settingsv1.UpsertRecordingRuleRequest) error {
 
 	for _, l := range req.GroupBy {
 		name := prom.LabelName(l)
-		if !prom.UTF8Validation.IsValidLabelName(string(name)) {
+		if !prom.LegacyValidation.IsValidLabelName(string(name)) {
 			errs = append(errs, fmt.Errorf("group_by label %q must match %s", l, prom.LabelNameRE.String()))
 		}
 	}
 
 	for _, l := range req.ExternalLabels {
 		name := prom.LabelName(l.Name)
-		if !prom.UTF8Validation.IsValidLabelName(string(name)) {
-			errs = append(errs, fmt.Errorf("external_labels name %q must be a valid utf-8 string", l.Name))
+		if !prom.LegacyValidation.IsValidLabelName(string(name)) {
+			errs = append(errs, fmt.Errorf("external_labels name %q must match %s", name, prom.LabelNameRE.String()))
 		}
 
 		value := prom.LabelValue(l.Value)

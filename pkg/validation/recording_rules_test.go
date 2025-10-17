@@ -20,9 +20,9 @@ overrides:
     recording_rules:
     - metric_name: 'profiles_recorded_any_name'
       matchers: ['{__profile_type__="any-profile-type", foo="bar"}']
-      group_by: ['any-group-by']
+      group_by: ['any_group_by']
       external_labels:
-        - name: 'any-label-name'
+        - name: 'any_label_name'
           value: 'any-label-value'
 `
 
@@ -47,8 +47,8 @@ func Test_RecordingRules(t *testing.T) {
 		{
 			MetricName:     "profiles_recorded_any_name",
 			Matchers:       []string{"{__profile_type__=\"any-profile-type\", foo=\"bar\"}"},
-			GroupBy:        []string{"any-group-by"},
-			ExternalLabels: []*typesv1.LabelPair{{Name: "any-label-name", Value: "any-label-value"}},
+			GroupBy:        []string{"any_group_by"},
+			ExternalLabels: []*typesv1.LabelPair{{Name: "any_label_name", Value: "any-label-value"}},
 		},
 	}, rules)
 
