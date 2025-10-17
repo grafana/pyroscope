@@ -104,7 +104,13 @@ func TestIngestOTLP(t *testing.T) {
 					err = os.WriteFile(pprofDumpFileName, pprof, 0644)
 					assert.NoError(t, err)
 
-					expectedBytes, err := os.ReadFile(metric.expectedJsonPath)
+					// Use different expected output files for v1 and v2
+					expectedPath := metric.expectedJsonPath
+					if p.config.LimitsConfig.ReadPathOverrides.EnableQueryBackend {
+						expectedPath = strings.ReplaceAll(expectedPath, ".out.json", ".out.v2.json")
+					}
+
+					expectedBytes, err := os.ReadFile(expectedPath)
 					require.NoError(t, err)
 					var expected strprofile.CompactProfile
 					assert.NoError(t, json.Unmarshal(expectedBytes, &expected))
@@ -211,7 +217,13 @@ func TestIngestOTLPHTTPBinary(t *testing.T) {
 					actualBytes, err := json.Marshal(actual)
 					assert.NoError(t, err)
 
-					expectedBytes, err := os.ReadFile(metric.expectedJsonPath)
+					// Use different expected output files for v1 and v2
+					expectedPath := metric.expectedJsonPath
+					if p.config.LimitsConfig.ReadPathOverrides.EnableQueryBackend {
+						expectedPath = strings.ReplaceAll(expectedPath, ".out.json", ".out.v2.json")
+					}
+
+					expectedBytes, err := os.ReadFile(expectedPath)
 					require.NoError(t, err)
 					var expected strprofile.CompactProfile
 					assert.NoError(t, json.Unmarshal(expectedBytes, &expected))
@@ -281,7 +293,13 @@ func TestIngestOTLPHTTPJSON(t *testing.T) {
 					actualBytes, err := json.Marshal(actual)
 					assert.NoError(t, err)
 
-					expectedBytes, err := os.ReadFile(metric.expectedJsonPath)
+					// Use different expected output files for v1 and v2
+					expectedPath := metric.expectedJsonPath
+					if p.config.LimitsConfig.ReadPathOverrides.EnableQueryBackend {
+						expectedPath = strings.ReplaceAll(expectedPath, ".out.json", ".out.v2.json")
+					}
+
+					expectedBytes, err := os.ReadFile(expectedPath)
 					require.NoError(t, err)
 					var expected strprofile.CompactProfile
 					assert.NoError(t, json.Unmarshal(expectedBytes, &expected))

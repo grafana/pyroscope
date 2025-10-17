@@ -109,6 +109,7 @@ index bf7a6612f..1a6619243 100644
 +}
 ```
 2.Launch local pyroscope instance
+
 3.Compile & start ebpf profiler with following parameters:
 
 ```
