@@ -18,7 +18,7 @@ dependencies:
     condition: alloy.enabled
   - name: minio
     alias: minio
-    version: 4.0.12
+    version: 4.1.0
     repository: https://charts.min.io/
     condition: minio.enabled
 sources:
