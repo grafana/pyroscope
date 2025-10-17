@@ -56,49 +56,11 @@
 
             {{ if .Profiles }}
                 {{ if gt .TotalPages 1 }}
-                <nav aria-label="Profile pagination" class="mb-3">
-                    <ul class="pagination justify-content-center">
-                        <li class="page-item {{ if not .HasPrevPage }}disabled{{ end }}">
-                            <a class="page-link" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&page=1&page_size={{ .PageSize }}">First</a>
-                        </li>
-                        <li class="page-item {{ if not .HasPrevPage }}disabled{{ end }}">
-                            <a class="page-link" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&page={{ add .Page -1 }}&page_size={{ .PageSize }}">Previous</a>
-                        </li>
-
-                        {{ $currentPage := .Page }}
-                        {{ $totalPages := .TotalPages }}
-                        {{ $dataset := .Dataset.Name }}
-                        {{ $shard := .Shard }}
-                        {{ $blockTenant := .BlockTenant }}
-                        {{ $pageSize := .PageSize }}
-
-                        {{ $startPage := add $currentPage -2 }}
-                        {{ if lt $startPage 1 }}{{ $startPage = 1 }}{{ end }}
-                        {{ $endPage := add $currentPage 2 }}
-                        {{ if gt $endPage $totalPages }}{{ $endPage = $totalPages }}{{ end }}
-
-                        {{ if gt $startPage 1 }}
-                            <li class="page-item disabled"><span class="page-link">...</span></li>
-                        {{ end }}
-
-                        {{ range $page := seq $startPage $endPage }}
-                            <li class="page-item {{ if eq $page $currentPage }}active{{ end }}">
-                                <a class="page-link" href="?dataset={{ if $dataset }}{{ $dataset }}{{ else }}_empty{{ end }}&shard={{ $shard }}&block_tenant={{ $blockTenant }}&page={{ $page }}&page_size={{ $pageSize }}">{{ $page }}</a>
-                            </li>
-                        {{ end }}
-
-                        {{ if lt $endPage $totalPages }}
-                            <li class="page-item disabled"><span class="page-link">...</span></li>
-                        {{ end }}
-
-                        <li class="page-item {{ if not .HasNextPage }}disabled{{ end }}">
-                            <a class="page-link" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&page={{ add .Page 1 }}&page_size={{ .PageSize }}">Next</a>
-                        </li>
-                        <li class="page-item {{ if not .HasNextPage }}disabled{{ end }}">
-                            <a class="page-link" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&page={{ .TotalPages }}&page_size={{ .PageSize }}">Last</a>
-                        </li>
-                    </ul>
-                </nav>
+                <div class="mb-3">
+                    {{ $datasetName := "_empty" }}
+                    {{ if .Dataset.Name }}{{ $datasetName = .Dataset.Name }}{{ end }}
+                    {{ template "pagination" dict "BaseURL" (printf "?dataset=%s&shard=%d&block_tenant=%s" $datasetName .Shard .BlockTenant) "Page" .Page "PageSize" .PageSize "TotalPages" .TotalPages "HasPrevPage" .HasPrevPage "HasNextPage" .HasNextPage }}
+                </div>
                 {{ end }}
 
                 <div class="table-responsive">
@@ -137,49 +99,9 @@
                 </div>
 
                 {{ if gt .TotalPages 1 }}
-                <nav aria-label="Profile pagination">
-                    <ul class="pagination justify-content-center">
-                        <li class="page-item {{ if not .HasPrevPage }}disabled{{ end }}">
-                            <a class="page-link" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&page=1&page_size={{ .PageSize }}">First</a>
-                        </li>
-                        <li class="page-item {{ if not .HasPrevPage }}disabled{{ end }}">
-                            <a class="page-link" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&page={{ add .Page -1 }}&page_size={{ .PageSize }}">Previous</a>
-                        </li>
-
-                        {{ $currentPage := .Page }}
-                        {{ $totalPages := .TotalPages }}
-                        {{ $dataset := .Dataset.Name }}
-                        {{ $shard := .Shard }}
-                        {{ $blockTenant := .BlockTenant }}
-                        {{ $pageSize := .PageSize }}
-
-                        {{ $startPage := add $currentPage -2 }}
-                        {{ if lt $startPage 1 }}{{ $startPage = 1 }}{{ end }}
-                        {{ $endPage := add $currentPage 2 }}
-                        {{ if gt $endPage $totalPages }}{{ $endPage = $totalPages }}{{ end }}
-
-                        {{ if gt $startPage 1 }}
-                            <li class="page-item disabled"><span class="page-link">...</span></li>
-                        {{ end }}
-
-                        {{ range $page := seq $startPage $endPage }}
-                            <li class="page-item {{ if eq $page $currentPage }}active{{ end }}">
-                                <a class="page-link" href="?dataset={{ if $dataset }}{{ $dataset }}{{ else }}_empty{{ end }}&shard={{ $shard }}&block_tenant={{ $blockTenant }}&page={{ $page }}&page_size={{ $pageSize }}">{{ $page }}</a>
-                            </li>
-                        {{ end }}
-
-                        {{ if lt $endPage $totalPages }}
-                            <li class="page-item disabled"><span class="page-link">...</span></li>
-                        {{ end }}
-
-                        <li class="page-item {{ if not .HasNextPage }}disabled{{ end }}">
-                            <a class="page-link" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&page={{ add .Page 1 }}&page_size={{ .PageSize }}">Next</a>
-                        </li>
-                        <li class="page-item {{ if not .HasNextPage }}disabled{{ end }}">
-                            <a class="page-link" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&page={{ .TotalPages }}&page_size={{ .PageSize }}">Last</a>
-                        </li>
-                    </ul>
-                </nav>
+                    {{ $datasetName := "_empty" }}
+                    {{ if .Dataset.Name }}{{ $datasetName = .Dataset.Name }}{{ end }}
+                    {{ template "pagination" dict "BaseURL" (printf "?dataset=%s&shard=%d&block_tenant=%s" $datasetName .Shard .BlockTenant) "Page" .Page "PageSize" .PageSize "TotalPages" .TotalPages "HasPrevPage" .HasPrevPage "HasNextPage" .HasNextPage }}
                 {{ end }}
             {{ else }}
                 <div class="alert alert-warning" role="alert">
