@@ -2,6 +2,8 @@
 //
 // Source: querier/v1/querier.proto
 
+// Provides the ablility to query the Pyroscope database. Most of the calls in
+// this group are considered public.
 package querierv1connect
 
 import (
@@ -76,15 +78,23 @@ type QuerierServiceClient interface {
 	LabelValues(context.Context, *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error)
 	// LabelNames returns a list of the existing label names.
 	LabelNames(context.Context, *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error)
-	// Series returns profiles series matching the request. A series is a unique label set.
+	// Series returns profiles series matching the request. A series is a unique
+	// label set.
 	Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error)
-	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph
+	// format. It will combine samples from within the same callstack, with each
+	// element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *connect.Request[v1.SelectMergeStacktracesRequest]) (*connect.Response[v1.SelectMergeStacktracesResponse], error)
-	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
+	// format. It will combine samples from within the same callstack, with each
+	// element being grouped by its function name.
 	SelectMergeSpanProfile(context.Context, *connect.Request[v1.SelectMergeSpanProfileRequest]) (*connect.Response[v1.SelectMergeSpanProfileResponse], error)
-	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
+	// SelectMergeProfile returns matching profiles aggregated in pprof format. It
+	// will contain all information stored (so including filenames and line
+	// number, if ingested).
 	SelectMergeProfile(context.Context, *connect.Request[v1.SelectMergeProfileRequest]) (*connect.Response[v12.Profile], error)
-	// SelectSeries returns a time series for the total sum of the requested profiles.
+	// SelectSeries returns a time series for the total sum of the requested
+	// profiles.
 	SelectSeries(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error)
 	// Diff returns a diff of two profiles
 	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)
@@ -251,15 +261,23 @@ type QuerierServiceHandler interface {
 	LabelValues(context.Context, *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error)
 	// LabelNames returns a list of the existing label names.
 	LabelNames(context.Context, *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error)
-	// Series returns profiles series matching the request. A series is a unique label set.
+	// Series returns profiles series matching the request. A series is a unique
+	// label set.
 	Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error)
-	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph
+	// format. It will combine samples from within the same callstack, with each
+	// element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *connect.Request[v1.SelectMergeStacktracesRequest]) (*connect.Response[v1.SelectMergeStacktracesResponse], error)
-	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
+	// format. It will combine samples from within the same callstack, with each
+	// element being grouped by its function name.
 	SelectMergeSpanProfile(context.Context, *connect.Request[v1.SelectMergeSpanProfileRequest]) (*connect.Response[v1.SelectMergeSpanProfileResponse], error)
-	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
+	// SelectMergeProfile returns matching profiles aggregated in pprof format. It
+	// will contain all information stored (so including filenames and line
+	// number, if ingested).
 	SelectMergeProfile(context.Context, *connect.Request[v1.SelectMergeProfileRequest]) (*connect.Response[v12.Profile], error)
-	// SelectSeries returns a time series for the total sum of the requested profiles.
+	// SelectSeries returns a time series for the total sum of the requested
+	// profiles.
 	SelectSeries(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error)
 	// Diff returns a diff of two profiles
 	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)

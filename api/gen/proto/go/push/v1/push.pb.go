@@ -4,9 +4,12 @@
 // 	protoc        (unknown)
 // source: push/v1/push.proto
 
+// This is the API to send profiles to Pyroscope
+
 package pushv1
 
 import (
+	_ "github.com/google/gnostic/openapiv3"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -180,7 +183,7 @@ type RawSample struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// raw_profile is the set of bytes of the pprof profile
 	RawProfile []byte `protobuf:"bytes,1,opt,name=raw_profile,json=rawProfile,proto3" json:"raw_profile,omitempty"`
-	// unique ID of the profile
+	// UUID of the profile
 	ID            string `protobuf:"bytes,2,opt,name=ID,proto3" json:"ID,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -234,20 +237,21 @@ var File_push_v1_push_proto protoreflect.FileDescriptor
 
 const file_push_v1_push_proto_rawDesc = "" +
 	"\n" +
-	"\x12push/v1/push.proto\x12\apush.v1\x1a\x14types/v1/types.proto\"\x0e\n" +
+	"\x12push/v1/push.proto\x12\apush.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x14types/v1/types.proto\"\x0e\n" +
 	"\fPushResponse\"@\n" +
 	"\vPushRequest\x121\n" +
 	"\x06series\x18\x01 \x03(\v2\x19.push.v1.RawProfileSeriesR\x06series\"\xac\x01\n" +
 	"\x10RawProfileSeries\x12+\n" +
 	"\x06labels\x18\x01 \x03(\v2\x13.types.v1.LabelPairR\x06labels\x12,\n" +
 	"\asamples\x18\x02 \x03(\v2\x12.push.v1.RawSampleR\asamples\x12=\n" +
-	"\vannotations\x18\x03 \x03(\v2\x1b.types.v1.ProfileAnnotationR\vannotations\"<\n" +
-	"\tRawSample\x12\x1f\n" +
-	"\vraw_profile\x18\x01 \x01(\fR\n" +
-	"rawProfile\x12\x0e\n" +
-	"\x02ID\x18\x02 \x01(\tR\x02ID2F\n" +
-	"\rPusherService\x125\n" +
-	"\x04Push\x12\x14.push.v1.PushRequest\x1a\x15.push.v1.PushResponse\"\x00B\x93\x01\n" +
+	"\vannotations\x18\x03 \x03(\v2\x1b.types.v1.ProfileAnnotationR\vannotations\"\x80\x01\n" +
+	"\tRawSample\x126\n" +
+	"\vraw_profile\x18\x01 \x01(\fB\x15\xbaG\x12:\x10\x12\x0ePROFILE_BASE64R\n" +
+	"rawProfile\x12;\n" +
+	"\x02ID\x18\x02 \x01(\tB+\xbaG(:&\x12$734FD599-6865-419E-9475-932762D8F469R\x02ID2W\n" +
+	"\rPusherService\x12F\n" +
+	"\x04Push\x12\x14.push.v1.PushRequest\x1a\x15.push.v1.PushResponse\"\x11\xbaG\x0e\n" +
+	"\fscope/publicB\x93\x01\n" +
 	"\vcom.push.v1B\tPushProtoP\x01Z<github.com/grafana/pyroscope/api/gen/proto/go/push/v1;pushv1\xa2\x02\x03PXX\xaa\x02\aPush.V1\xca\x02\aPush\\V1\xe2\x02\x13Push\\V1\\GPBMetadata\xea\x02\bPush::V1b\x06proto3"
 
 var (
