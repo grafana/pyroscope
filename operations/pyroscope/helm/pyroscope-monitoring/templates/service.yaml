@@ -1,0 +1,33 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pyroscope-monitoring.fullname" . }}
+  labels:
+    {{- include "pyroscope-monitoring.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- with .Values.service.ports }}
+  ports:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    {{- include "pyroscope-monitoring.selectorLabels" . | nindent 4 }}
+{{- if and .Values.service.deployStaticName (not (eq (include "pyroscope-monitoring.fullname" .) "pyroscope-monitoring")) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  # This name is fixed, as it is relied upon, by the subchart's config
+  name: pyroscope-monitoring
+  labels:
+    {{- include "pyroscope-monitoring.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- with .Values.service.ports }}
+  ports:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    {{- include "pyroscope-monitoring.selectorLabels" . | nindent 4 }}
+{{- end }}

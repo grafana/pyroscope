@@ -1,0 +1,5065 @@
+{{- define "pyroscope-monitoring.dashboards.v2-write-path" -}}
+{{- $dashboard := "v2-write-path" -}}
+annotations:
+  list:
+    - builtIn: 1
+      datasource:
+        type: grafana
+        uid: '-- Grafana --'
+      enable: true
+      hide: true
+      iconColor: rgba(0, 211, 255, 1)
+      name: Annotations & Alerts
+      type: dashboard
+    - datasource:
+        type: loki
+        uid: ${loki_datasource}
+      enable: true
+      expr: >-
+        {cluster="$cluster", container="kube-diff-logger"} | json |
+        namespace_extracted="$namespace"
+      hide: false
+      iconColor: yellow
+      instant: false
+      name: K8s Changes
+      tagKeys: type,name_extracted,verb
+      textFormat: '{{"{{notes}}"}}'
+      titleFormat: ''
+    - datasource:
+        type: loki
+        uid: ${loki_datasource}
+      enable: false
+      expr: >-
+        {namespace="$namespace",container="eventrouter"} != "Preemption is not
+        helpful" != "Failed deploy model" | logfmt | type="Warning"
+      hide: false
+      iconColor: orange
+      instant: false
+      name: K8s Warnings
+      tagKeys: type,object_kind,object_name
+      textFormat: '{{"{{message}}"}}'
+      titleFormat: ''
+    - datasource:
+        type: loki
+        uid: ${loki_datasource}
+      enable: true
+      expr: >-
+        {namespace="$namespace",container="eventrouter"} | logfmt |
+        type!="Normal" | type!="Warning"
+      hide: false
+      iconColor: red
+      instant: false
+      name: K8s Errors
+      tagKeys: type,object_kind,object_name
+      textFormat: '{{"{{message}}"}}'
+    - datasource:
+        type: loki
+        uid: ${loki_datasource}
+      enable: false
+      expr: '{namespace="$namespace",container="eventrouter"} | logfmt'
+      hide: false
+      iconColor: blue
+      instant: false
+      name: K8s All Events
+      tagKeys: type,object_kind,object_name
+      textFormat: '{{"{{message}}"}}'
+editable: true
+fiscalYearStartMonth: 0
+graphTooltip: 1
+id: 0
+links:
+{{ .Values.dashboards.links.global | toYaml | nindent 2}}
+{{- with (dig $dashboard (list) .Values.dashboards.links.perDashboard) }}
+{{ . | toYaml | nindent 2}}
+{{ end }}
+panels:
+  - collapsed: false
+    gridPos:
+      h: 1
+      w: 24
+      x: 0
+      'y': 0
+    id: 85
+    panels: []
+    title: ''
+    type: row
+  - datasource:
+      type: prometheus
+      uid: ${datasource}
+    fieldConfig:
+      defaults:
+        color:
+          mode: thresholds
+        custom:
+          align: left
+          cellOptions:
+            type: auto
+          filterable: true
+          inspect: false
+        mappings: []
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: red
+              value: 80
+      overrides:
+        - matcher:
+            id: byName
+            options: Value
+          properties:
+            - id: unit
+              value: decbytes
+        - matcher:
+            id: byName
+            options: tenant
+          properties:
+            - id: custom.width
+              value: 78
+        - matcher:
+            id: byName
+            options: slug
+          properties:
+            - id: custom.width
+              value: 132
+        - matcher:
+            id: byName
+            options: org_name
+          properties:
+            - id: custom.width
+              value: 142
+        - matcher:
+            id: byName
+            options: Value
+          properties:
+            - id: custom.cellOptions
+              value:
+                mode: lcd
+                type: gauge
+                valueDisplayMode: text
+            - id: color
+              value:
+                fixedColor: green
+                mode: fixed
+        - matcher:
+            id: byName
+            options: Slug
+          properties:
+            - id: custom.width
+              value: 89
+        - matcher:
+            id: byName
+            options: Name
+          properties:
+            - id: custom.width
+              value: 143
+        - matcher:
+            id: byName
+            options: ID
+          properties:
+            - id: custom.width
+              value: 104
+    gridPos:
+      h: 8
+      w: 8
+      x: 0
+      'y': 1
+    id: 68
+    options:
+      cellHeight: sm
+      footer:
+        countRows: true
+        enablePagination: false
+        fields: ''
+        reducer:
+          - count
+        show: true
+      showHeader: true
+      sortBy:
+        - desc: true
+          displayName: Value
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        exemplar: false
+        expr: |
+          {{ .Values.dashboards.tenantQuery | nindent 10 }}
+        format: table
+        instant: true
+        legendFormat: __auto
+        range: false
+        refId: A
+    title: Tenants
+    transformations:
+      - id: organize
+        options:
+          excludeByName:
+            Time: true
+            Value: false
+            cluster: true
+            environment: true
+            slug: false
+          includeByName: {}
+          indexByName:
+            Time: 0
+            Value: 4
+            environment: 5
+            org_name: 3
+            slug: 2
+            tenant: 1
+          renameByName:
+            Time: ''
+            Value: ''
+            environment: Env
+            org_name: Name
+            slug: Slug
+            tenant: ID
+    type: table
+  - datasource:
+      type: prometheus
+      uid: ${datasource}
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          axisBorderShow: false
+          axisCenteredZero: false
+          axisColorMode: text
+          axisLabel: ''
+          axisPlacement: auto
+          axisSoftMin: 0
+          barAlignment: 0
+          barWidthFactor: 0.6
+          drawStyle: line
+          fillOpacity: 10
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineWidth: 1
+          pointSize: 5
+          scaleDistribution:
+            type: linear
+          showPoints: auto
+          spanNulls: false
+          stacking:
+            group: A
+            mode: none
+          thresholdsStyle:
+            mode: 'off'
+        mappings: []
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: red
+              value: 80
+        unit: binBps
+      overrides: []
+    gridPos:
+      h: 8
+      w: 4
+      x: 8
+      'y': 1
+    id: 66
+    options:
+      legend:
+        calcs:
+          - max
+        displayMode: table
+        placement: right
+        showLegend: false
+        sortBy: Max
+        sortDesc: true
+      tooltip:
+        hideZeros: false
+        mode: single
+        sort: none
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum by (tenant)
+          (rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~"$cluster",namespace=~"$namespace"}[$__rate_interval]))
+        hide: false
+        legendFormat: __auto
+        range: true
+        refId: A
+    title: MBs per Tenant (Decompressed)
+    type: timeseries
+  - datasource:
+      type: prometheus
+      uid: ${datasource}
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          axisBorderShow: false
+          axisCenteredZero: false
+          axisColorMode: text
+          axisLabel: ''
+          axisPlacement: auto
+          axisSoftMin: 0
+          barAlignment: 0
+          barWidthFactor: 0.6
+          drawStyle: line
+          fillOpacity: 4
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineWidth: 1
+          pointSize: 5
+          scaleDistribution:
+            type: linear
+          showPoints: auto
+          spanNulls: false
+          stacking:
+            group: A
+            mode: none
+          thresholdsStyle:
+            mode: 'off'
+        mappings: []
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: red
+              value: 80
+        unit: cps
+      overrides: []
+    gridPos:
+      h: 8
+      w: 4
+      x: 12
+      'y': 1
+    id: 67
+    options:
+      legend:
+        calcs:
+          - mean
+          - max
+        displayMode: table
+        placement: right
+        showLegend: false
+        sortBy: Mean
+        sortDesc: true
+      tooltip:
+        hideZeros: false
+        mode: single
+        sort: none
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum by (tenant)
+          (rate(pyroscope_distributor_received_decompressed_bytes_count{cluster=~"$cluster",namespace=~"$namespace"}[$__rate_interval]))
+        legendFormat: __auto
+        range: true
+        refId: A
+    title: Profiles/s per Tenant
+    type: timeseries
+  - datasource:
+      type: prometheus
+      uid: ${datasource}
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+        mappings: []
+      overrides: []
+    gridPos:
+      h: 8
+      w: 4
+      x: 16
+      'y': 1
+    id: 82
+    options:
+      legend:
+        displayMode: table
+        placement: bottom
+        showLegend: true
+        values:
+          - value
+      pieType: pie
+      reduceOptions:
+        calcs:
+          - lastNotNull
+        fields: ''
+        values: false
+      tooltip:
+        hideZeros: false
+        mode: single
+        sort: none
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        exemplar: false
+        expr: >-
+          sum by (state) (pyroscope_ring_members{cluster=~"$cluster",
+          namespace=~"$namespace", name="distributor"}) / count by
+          (state)(pyroscope_ring_members{cluster=~"$cluster",
+          namespace=~"$namespace", name="distributor"})
+        format: time_series
+        instant: true
+        legendFormat: __auto
+        range: false
+        refId: A
+    title: Distributor Ring
+    type: piechart
+  - datasource:
+      type: prometheus
+      uid: ${datasource}
+    description: 'The ring is used by distributor to discover segment-writer instances. '
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+        mappings: []
+      overrides: []
+    gridPos:
+      h: 8
+      w: 4
+      x: 20
+      'y': 1
+    id: 81
+    options:
+      legend:
+        displayMode: table
+        placement: bottom
+        showLegend: true
+        values:
+          - value
+      pieType: pie
+      reduceOptions:
+        calcs:
+          - lastNotNull
+        fields: ''
+        values: false
+      tooltip:
+        hideZeros: false
+        mode: single
+        sort: none
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        exemplar: false
+        expr: >-
+          sum by (state) (pyroscope_ring_members{cluster=~"$cluster",
+          namespace=~"$namespace", name="segment-writer"}) / count by
+          (state)(pyroscope_ring_members{cluster=~"$cluster",
+          namespace=~"$namespace", name="segment-writer"})
+        format: time_series
+        instant: true
+        legendFormat: __auto
+        range: false
+        refId: A
+    title: Segment Writer Ring
+    type: piechart
+{{- if .Values.dashboards.cloudBackendGateway }}
+  - collapsed: false
+    gridPos:
+      h: 1
+      w: 24
+      x: 0
+      'y': 9
+    id: 43
+    panels: []
+    title: Cortex Gateway
+    type: row
+  - datasource:
+      type: datasource
+      uid: '-- Mixed --'
+    description: >-
+      The latency observed by cortex-gw, indicating the overall write path
+      latency.
+
+
+      Only successful requests are counted.
+
+       * the purple line (1s) is our internal SLO
+       * the red line (2s) is the threshold when we start burning SLO budget
+    fieldConfig:
+      defaults:
+        color:
+          fixedColor: dark-red
+          mode: palette-classic
+        custom:
+          axisBorderShow: true
+          axisCenteredZero: true
+          axisColorMode: text
+          axisGridShow: true
+          axisLabel: ''
+          axisPlacement: auto
+          axisSoftMin: 0
+          barAlignment: 0
+          barWidthFactor: 0.6
+          drawStyle: line
+          fillOpacity: 0
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineStyle:
+            fill: solid
+          lineWidth: 1
+          pointSize: 1
+          scaleDistribution:
+            log: 10
+            type: log
+          showPoints: never
+          spanNulls: false
+          stacking:
+            group: A
+            mode: none
+          thresholdsStyle:
+            mode: dashed
+        fieldMinMax: false
+        mappings: []
+        min: 0
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: purple
+              value: 1
+            - color: red
+              value: 2
+        unit: s
+      overrides:
+        - matcher:
+            id: byName
+            options: p999
+          properties:
+            - id: color
+              value:
+                fixedColor: green
+                mode: fixed
+        - matcher:
+            id: byName
+            options: p999 envoy-upstream
+          properties:
+            - id: color
+              value:
+                fixedColor: red
+                mode: fixed
+        - matcher:
+            id: byName
+            options: envoy-upstream p999
+          properties:
+            - id: color
+              value:
+                fixedColor: orange
+                mode: fixed
+        - __systemRef: hideSeriesFrom
+          matcher:
+            id: byNames
+            options:
+              mode: exclude
+              names:
+                - p99
+                - p95
+                - p90
+                - avg
+                - p50
+              prefix: 'All except:'
+              readOnly: true
+          properties:
+            - id: custom.hideFrom
+              value:
+                legend: false
+                tooltip: false
+                viz: true
+    gridPos:
+      h: 8
+      w: 8
+      x: 0
+      'y': 10
+    id: 40
+    options:
+      legend:
+        calcs:
+          - mean
+        displayMode: list
+        placement: bottom
+        showLegend: true
+      tooltip:
+        hideZeros: false
+        mode: multi
+        sort: none
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: |
+          histogram_quantile(0.999, 
+              sum by(cluster, namespace,le) (rate(envoy_cluster_upstream_rq_time_bucket{
+                  namespace="$namespace",
+                  container="envoy",
+              }[$__rate_interval])) 
+          ) / 1000
+        hide: false
+        legendFormat: envoy-upstream p999
+        range: true
+        refId: F
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: |
+          histogram_quantile(0.999, 
+              sum by(cluster,  namespace,pod,le) (rate(envoy_cluster_external_upstream_rq_time_bucket{
+                  namespace="$namespace",
+                  container="envoy",
+              }[$__rate_interval])) 
+          ) / 1000
+        hide: true
+        legendFormat: p999 envoy-upstream-external
+        range: true
+        refId: D
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.999, sum by (le,status_code)
+          (rate(pyroscope_request_duration_seconds_bucket{
+              {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+              route=~".*pusher.*|.*ingest.*",
+              status_code="200",
+          }[$__rate_interval])))
+        hide: false
+        legendFormat: p999
+        range: true
+        refId: E
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.99, sum by (le,status_code)
+          (rate(pyroscope_request_duration_seconds_bucket{
+              {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+              route=~".*pusher.*|.*ingest.*",
+              status_code="200",
+          }[$__rate_interval])))
+        hide: false
+        legendFormat: p99
+        range: true
+        refId: A
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.95, sum by (le,status_code)
+          (rate(pyroscope_request_duration_seconds_bucket{
+              {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+              route=~".*pusher.*|.*ingest.*",
+              status_code="200",
+          }[$__rate_interval])))
+        hide: false
+        legendFormat: p95
+        range: true
+        refId: B
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.50, sum by (le,status_code)
+          (rate(pyroscope_request_duration_seconds_bucket{
+              {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+              route=~".*pusher.*|.*ingest.*",
+              status_code="200",
+          }[$__rate_interval])))
+        hide: false
+        legendFormat: p50
+        range: true
+        refId: C
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: |-
+          sum (rate(pyroscope_request_duration_seconds_sum{
+              {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+              route=~".*pusher.*|.*ingest.*",
+              status_code="200",
+          }[$__rate_interval]))
+          /
+          sum (rate(pyroscope_request_duration_seconds_count{
+              {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+              route=~".*pusher.*|.*ingest.*",
+              status_code="200",
+          }[$__rate_interval]))
+        hide: false
+        legendFormat: avg
+        range: true
+        refId: G
+    title: Latency
+    transparent: true
+    type: timeseries
+  - datasource:
+      type: datasource
+      uid: '-- Mixed --'
+    fieldConfig:
+      defaults:
+        custom:
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          scaleDistribution:
+            type: linear
+      overrides: []
+    gridPos:
+      h: 8
+      w: 8
+      x: 8
+      'y': 10
+    id: 53
+    options:
+      calculate: false
+      calculation:
+        xBuckets:
+          mode: count
+          value: ''
+        yBuckets:
+          mode: count
+          scale:
+            type: linear
+      cellGap: 0
+      cellValues:
+        unit: requests
+      color:
+        exponent: 0.2
+        fill: super-light-red
+        mode: scheme
+        reverse: true
+        scale: exponential
+        scheme: Turbo
+        steps: 128
+      exemplars:
+        color: orange
+      filterValues:
+        le: 1.e-9
+      legend:
+        show: false
+      rowsFrame:
+        layout: auto
+      tooltip:
+        mode: single
+        showColorScale: true
+        yHistogram: true
+      yAxis:
+        axisPlacement: left
+        reverse: false
+        unit: s
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: |-
+          sum(rate(pyroscope_request_duration_seconds{
+              namespace="$namespace",
+              route=~".*push.*|.*ingest.*",
+              container="cortex-gw",
+          }[$__rate_interval]))
+        hide: false
+        legendFormat: __auto
+        range: true
+        refId: B
+    title: Latency Heatmap
+    transparent: true
+    type: heatmap
+  - datasource:
+      type: prometheus
+      uid: ${datasource}
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          axisBorderShow: false
+          axisCenteredZero: false
+          axisColorMode: text
+          axisLabel: ''
+          axisPlacement: auto
+          barAlignment: 0
+          barWidthFactor: 0.6
+          drawStyle: line
+          fillOpacity: 0
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineWidth: 1
+          pointSize: 5
+          scaleDistribution:
+            log: 2
+            type: log
+          showPoints: auto
+          spanNulls: false
+          stacking:
+            group: A
+            mode: none
+          thresholdsStyle:
+            mode: 'off'
+        mappings: []
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: red
+              value: 80
+        unit: reqps
+      overrides: []
+    gridPos:
+      h: 8
+      w: 8
+      x: 16
+      'y': 10
+    id: 41
+    options:
+      legend:
+        calcs: []
+        displayMode: list
+        placement: bottom
+        showLegend: true
+      tooltip:
+        hideZeros: false
+        mode: single
+        sort: none
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: |-
+          sum by (status_code) (rate(
+              pyroscope_request_duration_seconds_count{
+                  namespace="$namespace",
+                  container="cortex-gw",
+                  route=~".*push.*|.*ingest.*",
+              }[1m])
+          )
+        hide: false
+        legendFormat: __auto
+        range: true
+        refId: A
+    title: Rate
+    transparent: true
+    type: timeseries
+  - collapsed: true
+    gridPos:
+      h: 1
+      w: 24
+      x: 0
+      'y': 18
+    id: 100
+    panels:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        description: >-
+          During load balancing, Envoy will generally only consider available
+          (healthy or degraded) hosts in an upstream cluster. However, if the
+          percentage of available hosts in the cluster becomes too low, Envoy
+          will disregard health status and balance either amongst all hosts or
+          no hosts. This is known as the panic threshold. The default panic
+          threshold is 50%. 
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+          overrides: []
+        gridPos:
+          h: 7
+          w: 8
+          x: 0
+          'y': 19
+        id: 102
+        options:
+          legend:
+            calcs: []
+            displayMode: table
+            placement: right
+            showLegend: false
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (pod)
+              (rate(envoy_cluster_lb_healthy_panic{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            legendFormat: __auto
+            range: true
+            refId: A
+        title: Envoy Panics
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+          overrides: []
+        gridPos:
+          h: 7
+          w: 8
+          x: 8
+          'y': 19
+        id: 99
+        options:
+          legend:
+            calcs: []
+            displayMode: table
+            placement: right
+            showLegend: false
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (direction,pod)
+              (conntrack_pod_connections{namespace="$namespace",pod=~"cortex-gw-.*"})
+            hide: false
+            legendFormat: '{{"{{pod}} {{direction}}"}}'
+            range: true
+            refId: A
+        title: Connections per pod
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        description: >-
+          See
+          https://www.envoyproxy.io/docs/envoy/latest/configuration/upstream/cluster_manager/cluster_stats
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+          overrides: []
+        gridPos:
+          h: 7
+          w: 8
+          x: 16
+          'y': 19
+        id: 105
+        options:
+          legend:
+            calcs: []
+            displayMode: list
+            placement: bottom
+            showLegend: true
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_rq_pending_overflow{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: pending overflow
+            range: true
+            refId: B
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_rq_pending_failure_eject{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: pending failure eject
+            range: true
+            refId: C
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_rq_timeout{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: timeout
+            range: true
+            refId: A
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_rq_cancelled{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: cancelled
+            range: true
+            refId: D
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_rq_max_duration_reached{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: max_duration_reached
+            range: true
+            refId: E
+        title: Envoy RQ Errors
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        description: >-
+          See
+          https://www.envoyproxy.io/docs/envoy/latest/configuration/upstream/cluster_manager/cluster_stats
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+          overrides: []
+        gridPos:
+          h: 7
+          w: 8
+          x: 0
+          'y': 26
+        id: 106
+        options:
+          legend:
+            calcs: []
+            displayMode: list
+            placement: bottom
+            showLegend: false
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (pod)
+              (envoy_cluster_membership_healthy{namespace="$namespace",container="envoy",envoy_cluster_name="phlare_write_h2c"})
+            hide: true
+            instant: false
+            legendFormat: healthy {{"{{pod}}"}}
+            range: true
+            refId: A
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (pod)
+              (envoy_cluster_membership_total{namespace="$namespace",container="envoy",envoy_cluster_name="phlare_write_h2c"})
+            hide: false
+            instant: false
+            legendFormat: total {{"{{pod}}"}}
+            range: true
+            refId: B
+        title: Envoy Membership
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+          overrides: []
+        gridPos:
+          h: 7
+          w: 5
+          x: 8
+          'y': 26
+        id: 103
+        options:
+          legend:
+            calcs: []
+            displayMode: list
+            placement: bottom
+            showLegend: true
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_cx_connect_fail{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: '{{"{{pod}}"}} fail'
+            range: true
+            refId: B
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_cx_connect_timeout{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: '{{"{{pod}}"}} timeout'
+            range: true
+            refId: C
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_cx_connect_attempts_exceeded{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: attempts exceeded
+            range: true
+            refId: A
+        title: Envoy CX Connect
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        description: |-
+          How and when upstream connections are destroyed.
+
+          Only connections with 1+ in-flight requests are accounted for. 
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+          overrides: []
+        gridPos:
+          h: 7
+          w: 5
+          x: 13
+          'y': 26
+        id: 101
+        options:
+          legend:
+            calcs: []
+            displayMode: list
+            placement: bottom
+            showLegend: true
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_cx_destroy_local_with_active_rq{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: local destroy
+            range: true
+            refId: B
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_cx_destroy_remote_with_active_rq{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: remote destroy
+            range: true
+            refId: C
+        title: Envoy CX Destroy
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        description: Connection errors
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+          overrides: []
+        gridPos:
+          h: 7
+          w: 6
+          x: 18
+          'y': 26
+        id: 104
+        options:
+          legend:
+            calcs: []
+            displayMode: list
+            placement: bottom
+            showLegend: true
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_cx_protocol_error{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: protocol error
+            range: true
+            refId: B
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_cx_idle_timeout{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: idle timeout
+            range: true
+            refId: A
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_cx_overflow{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: cb overflow
+            range: true
+            refId: C
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by ()
+              (rate(envoy_cluster_upstream_cx_pool_overflow{namespace="$namespace",container="envoy"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: pool overflow
+            range: true
+            refId: E
+        title: Envoy CX Errors
+        transparent: true
+        type: timeseries
+    title: Cortex Gateway Networking
+    type: row
+{{- end }}
+  - collapsed: true
+    gridPos:
+      h: 1
+      w: 24
+      x: 0
+      'y': 19
+    id: 90
+    panels:
+      - datasource:
+          type: datasource
+          uid: '-- Mixed --'
+        description: >-
+          The latency observed by distributor, indicating the overall write path
+          latency.
+
+
+          Only successful requests are counted.
+        fieldConfig:
+          defaults:
+            color:
+              fixedColor: dark-red
+              mode: palette-classic
+            custom:
+              axisBorderShow: true
+              axisCenteredZero: true
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineStyle:
+                fill: solid
+              lineWidth: 1
+              pointSize: 1
+              scaleDistribution:
+                type: linear
+              showPoints: never
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            fieldMinMax: false
+            mappings: []
+            min: 0
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+            unit: s
+          overrides:
+            - matcher:
+                id: byName
+                options: p99 overall
+              properties:
+                - id: custom.lineWidth
+                  value: 2
+                - id: color
+                  value:
+                    fixedColor: green
+                    mode: fixed
+        gridPos:
+          h: 8
+          w: 8
+          x: 0
+          'y': 20
+        id: 94
+        options:
+          legend:
+            calcs:
+              - mean
+            displayMode: table
+            placement: right
+            showLegend: false
+          tooltip:
+            hideZeros: false
+            mode: multi
+            sort: desc
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              histogram_quantile(0.99, sum by (le,pod)
+              (rate(pyroscope_request_duration_seconds_bucket{
+                  namespace="$namespace",
+                  container="distributor",
+                  route=~".*pusher.*|.*ingest.*",
+                  status_code="200",
+              }[$__rate_interval])))
+            hide: false
+            legendFormat: __auto
+            range: true
+            refId: E
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              histogram_quantile(0.99, sum by (le)
+              (rate(pyroscope_request_duration_seconds_bucket{
+                  namespace="$namespace",
+                  container="distributor",
+                  route=~".*pusher.*|.*ingest.*",
+                  status_code="200",
+              }[$__rate_interval])))
+            hide: true
+            legendFormat: p99 overall
+            range: true
+            refId: A
+        title: Latency
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: datasource
+          uid: '-- Mixed --'
+        fieldConfig:
+          defaults:
+            custom:
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              scaleDistribution:
+                type: linear
+          overrides: []
+        gridPos:
+          h: 8
+          w: 8
+          x: 8
+          'y': 20
+        id: 93
+        options:
+          calculate: false
+          calculation:
+            xBuckets:
+              mode: count
+              value: ''
+            yBuckets:
+              mode: count
+              scale:
+                type: linear
+          cellGap: 0
+          cellValues:
+            unit: requests
+          color:
+            exponent: 0.2
+            fill: super-light-red
+            mode: scheme
+            reverse: true
+            scale: exponential
+            scheme: Turbo
+            steps: 128
+          exemplars:
+            color: orange
+          filterValues:
+            le: 1.e-9
+          legend:
+            show: false
+          rowsFrame:
+            layout: auto
+          tooltip:
+            mode: single
+            showColorScale: true
+            yHistogram: true
+          yAxis:
+            axisPlacement: left
+            reverse: false
+            unit: s
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: |-
+              sum(rate(pyroscope_request_duration_seconds{
+                  namespace="$namespace",
+                  container="distributor",
+                  route=~".*push.*|.*ingest.*",
+              }[$__rate_interval]))
+            hide: false
+            legendFormat: __auto
+            range: true
+            refId: B
+        title: Latency Heatmap
+        transparent: true
+        type: heatmap
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                log: 2
+                type: log
+              showPoints: never
+              spanNulls: true
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            fieldMinMax: false
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+            unit: reqps
+          overrides: []
+        gridPos:
+          h: 8
+          w: 8
+          x: 16
+          'y': 20
+        id: 42
+        options:
+          legend:
+            calcs: []
+            displayMode: list
+            placement: bottom
+            showLegend: true
+            sortBy: Name
+            sortDesc: false
+          tooltip:
+            hideZeros: false
+            mode: multi
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: |-
+              sum by (status_code) (rate(
+                  pyroscope_request_duration_seconds_count{
+                      namespace="$namespace",
+                      container="distributor",
+                      route=~".*push.*|.*ingest.*",
+                  }[1m])
+              )
+            instant: false
+            legendFormat: __auto
+            range: true
+            refId: A
+        title: Rate
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        description: >-
+          The latency observed by distributors (write path router), broken down
+          by instance.
+
+
+          Latencies are expected to be distributed evenly across instances. An
+          outlier here likely indicates a neighborhood issue.
+
+
+          Only successful requests are counted.
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                log: 2
+                type: log
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            fieldMinMax: false
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+            unit: s
+          overrides: []
+        gridPos:
+          h: 8
+          w: 8
+          x: 0
+          'y': 28
+        id: 72
+        options:
+          legend:
+            calcs: []
+            displayMode: list
+            placement: bottom
+            showLegend: false
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              histogram_quantile(0.99,
+              sum(rate(pyroscope_write_path_downstream_request_duration_seconds_bucket{
+                  namespace="$namespace",
+                  status="200",
+                  primary="1",
+              }[$__rate_interval])) by (le,route,pod))
+            hide: false
+            instant: false
+            legendFormat: p99 primary {{"{{pod}} => {{route}}"}}
+            range: true
+            refId: A
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              histogram_quantile(0.99,
+              sum(rate(pyroscope_write_path_downstream_request_duration_seconds_bucket{
+                  namespace="$namespace",
+                  status="200",
+                  primary!="1",
+              }[$__rate_interval])) by (le,route,pod))
+            hide: false
+            instant: false
+            legendFormat: p99 secondary {{"{{pod}} => {{route}}"}}
+            range: true
+            refId: B
+        title: Downstream Latency
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: datasource
+          uid: '-- Mixed --'
+        description: The latency observed by the segment-writer client
+        fieldConfig:
+          defaults:
+            custom:
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              scaleDistribution:
+                type: linear
+          overrides: []
+        gridPos:
+          h: 8
+          w: 8
+          x: 8
+          'y': 28
+        id: 56
+        options:
+          calculate: false
+          calculation:
+            xBuckets:
+              mode: count
+              value: ''
+            yBuckets:
+              mode: count
+              scale:
+                type: linear
+          cellGap: 0
+          cellValues:
+            unit: requests
+          color:
+            exponent: 0.2
+            fill: super-light-red
+            mode: scheme
+            reverse: true
+            scale: exponential
+            scheme: Turbo
+            steps: 128
+          exemplars:
+            color: orange
+          filterValues:
+            le: 1.e-9
+          legend:
+            show: false
+          rowsFrame:
+            layout: auto
+          tooltip:
+            mode: single
+            showColorScale: true
+            yHistogram: true
+          yAxis:
+            axisPlacement: left
+            reverse: false
+            unit: s
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: |-
+              sum(rate(pyroscope_write_path_downstream_request_duration_seconds{
+                  namespace="$namespace",
+                  route="segment-writer",
+              }[$__rate_interval]))
+            hide: false
+            legendFormat: __auto
+            range: true
+            refId: B
+        title: Latency Heatmap
+        transparent: true
+        type: heatmap
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                log: 2
+                type: log
+              showPoints: never
+              spanNulls: true
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            fieldMinMax: false
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+            unit: reqps
+          overrides: []
+        gridPos:
+          h: 8
+          w: 8
+          x: 16
+          'y': 28
+        id: 95
+        options:
+          legend:
+            calcs:
+              - last
+            displayMode: table
+            placement: right
+            showLegend: false
+            sortBy: Name
+            sortDesc: false
+          tooltip:
+            hideZeros: false
+            mode: multi
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum(irate(pyroscope_write_path_downstream_request_duration_seconds_count{
+                  namespace="$namespace",
+                  primary="1",
+              }[$__rate_interval])) by (status,route)
+            instant: false
+            legendFormat: primary {{"{{route}} {{status}}"}}
+            range: true
+            refId: A
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum(irate(pyroscope_write_path_downstream_request_duration_seconds_count{
+                  namespace="$namespace",
+                  primary="0",
+              }[$__rate_interval])) by (status,route)
+            hide: false
+            instant: false
+            legendFormat: secondary {{"{{route}} {{status}}"}}
+            range: true
+            refId: C
+        title: Downstream Rate
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: datasource
+          uid: '-- Mixed --'
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 1
+              barWidthFactor: 1
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineStyle:
+                fill: solid
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            fieldMinMax: false
+            mappings: []
+            min: 0
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+            unit: bytes
+          overrides:
+            - matcher:
+                id: byName
+                options: Limit
+              properties:
+                - id: custom.lineStyle
+                  value:
+                    dash:
+                      - 10
+                      - 10
+                    fill: dash
+            - matcher:
+                id: byFrameRefID
+                options: A
+              properties:
+                - id: custom.axisColorMode
+                  value: text
+                - id: color
+                  value:
+                    fixedColor: semi-dark-red
+                    mode: fixed
+                - id: custom.lineWidth
+                  value: 2
+        gridPos:
+          h: 8
+          w: 8
+          x: 0
+          'y': 36
+        id: 97
+        options:
+          legend:
+            calcs:
+              - last
+              - max
+            displayMode: table
+            placement: bottom
+            showLegend: false
+            sortBy: Max
+            sortDesc: true
+          tooltip:
+            hideZeros: false
+            mode: multi
+            sort: desc
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (pod)
+              (container_memory_working_set_bytes{namespace="$namespace",container="distributor"})
+            legendFormat: __auto
+            range: true
+            refId: by pod
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              max(kube_pod_container_resource_requests{{ "{" }}{{ .Values.dashboards.kubeStateMetricsSelector }},
+              namespace="$namespace", resource="memory",
+              container="distributor"})
+            hide: false
+            legendFormat: Request
+            range: true
+            refId: A
+        title: Memory Usage
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: datasource
+          uid: '-- Mixed --'
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 1
+              barWidthFactor: 1
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineStyle:
+                fill: solid
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            fieldMinMax: false
+            mappings: []
+            min: 0
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+          overrides:
+            - matcher:
+                id: byName
+                options: Limit
+              properties:
+                - id: custom.lineStyle
+                  value:
+                    dash:
+                      - 10
+                      - 10
+                    fill: dash
+            - matcher:
+                id: byFrameRefID
+                options: A
+              properties:
+                - id: custom.axisColorMode
+                  value: text
+                - id: color
+                  value:
+                    fixedColor: semi-dark-red
+                    mode: fixed
+                - id: custom.lineWidth
+                  value: 2
+        gridPos:
+          h: 8
+          w: 8
+          x: 8
+          'y': 36
+        id: 62
+        options:
+          legend:
+            calcs:
+              - last
+              - max
+            displayMode: table
+            placement: bottom
+            showLegend: false
+            sortBy: Max
+            sortDesc: true
+          tooltip:
+            hideZeros: false
+            mode: multi
+            sort: desc
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (pod)
+              (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace="$namespace",container="distributor"})
+            legendFormat: __auto
+            range: true
+            refId: by pod
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: |-
+              max(
+                  kube_pod_container_resource_requests{{ "{" }}{{ .Values.dashboards.kubeStateMetricsSelector }}, namespace="$namespace", resource="cpu"}
+                * on(namespace,pod)
+                  group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{namespace="$namespace", workload=~".*-distributor"}
+              )
+            hide: false
+            legendFormat: Request
+            range: true
+            refId: A
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: |-
+              max(
+                  kube_pod_container_resource_limits{{ "{" }}{{ .Values.dashboards.kubeStateMetricsSelector }}, namespace="$namespace", resource="cpu"}
+                * on(namespace,pod)
+                  group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{namespace="$namespace", workload=~".*-distributor"}
+              )
+            hide: false
+            legendFormat: Limit
+            range: true
+            refId: B
+        title: CPU Usage
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        description: >-
+          The chart showd distribution of requests from the upstream
+          (cortex-gw/envoy)
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                log: 2
+                type: log
+              showPoints: never
+              spanNulls: true
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            fieldMinMax: false
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+            unit: reqps
+          overrides: []
+        gridPos:
+          h: 8
+          w: 8
+          x: 16
+          'y': 36
+        id: 98
+        options:
+          legend:
+            calcs:
+              - last
+            displayMode: table
+            placement: right
+            showLegend: false
+            sortBy: Name
+            sortDesc: false
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: asc
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: |-
+              sum by (pod) (rate(
+                  pyroscope_request_duration_seconds_count{
+                      namespace="$namespace",
+                      container="distributor",
+                      route=~".*push.*|.*ingest.*",
+                  }[1m])
+              )
+            instant: false
+            legendFormat: __auto
+            range: true
+            refId: A
+        title: Upstream Distribution
+        transparent: true
+        type: timeseries
+    title: Distributor
+    type: row
+  - collapsed: false
+    gridPos:
+      h: 1
+      w: 24
+      x: 0
+      'y': 20
+    id: 47
+    panels: []
+    title: Segment Writer
+    type: row
+  - datasource:
+      type: prometheus
+      uid: ${datasource}
+    description: The latency of the Push endpoint observed by segment-writer.
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          axisBorderShow: false
+          axisCenteredZero: false
+          axisColorMode: text
+          axisLabel: ''
+          axisPlacement: auto
+          barAlignment: 0
+          barWidthFactor: 0.6
+          drawStyle: line
+          fillOpacity: 0
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineWidth: 1
+          pointSize: 5
+          scaleDistribution:
+            type: linear
+          showPoints: auto
+          spanNulls: false
+          stacking:
+            group: A
+            mode: none
+          thresholdsStyle:
+            mode: 'off'
+        mappings: []
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: red
+              value: 80
+        unit: s
+      overrides:
+        - matcher:
+            id: byFrameRefID
+            options: Overall p99
+          properties:
+            - id: custom.lineWidth
+              value: 2
+            - id: color
+              value:
+                fixedColor: green
+                mode: fixed
+        - matcher:
+            id: byFrameRefID
+          properties: []
+    gridPos:
+      h: 8
+      w: 8
+      x: 0
+      'y': 21
+    id: 79
+    options:
+      legend:
+        calcs: []
+        displayMode: list
+        placement: bottom
+        showLegend: false
+      tooltip:
+        hideZeros: false
+        mode: multi
+        sort: desc
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: |-
+          histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            # status_code="success",
+            route="/segmentwriter.v1.SegmentWriterService/Push",
+          }[$__rate_interval])) by (le,pod))
+        hide: false
+        instant: false
+        legendFormat: p99 {{"{{pod}}"}}
+        range: true
+        refId: B
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: |-
+          histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            # status_code="success",
+            route="/segmentwriter.v1.SegmentWriterService/Push",
+          }[$__rate_interval])) by (le))
+        hide: false
+        instant: false
+        legendFormat: p99 overall
+        range: true
+        refId: Overall p99
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: |-
+          histogram_quantile(0.90, sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            # status_code="success",
+            route="/segmentwriter.v1.SegmentWriterService/Push",
+          }[$__rate_interval])) by (le))
+        hide: false
+        instant: false
+        legendFormat: p90 overall
+        range: true
+        refId: Overall p90
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.50,
+          sum(rate(pyroscope_request_duration_seconds_bucket{
+            namespace="$namespace",
+            method="gRPC",
+            # status_code="success",
+            route="/segmentwriter.v1.SegmentWriterService/Push",
+          }[$__rate_interval])) by (le))
+        hide: false
+        instant: false
+        legendFormat: p50 overall
+        range: true
+        refId: Overall p50
+    title: Push Latency
+    transparent: true
+    type: timeseries
+  - datasource:
+      type: datasource
+      uid: '-- Mixed --'
+    description: The latency of the Push endpoint observed by segment-writer
+    fieldConfig:
+      defaults:
+        custom:
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          scaleDistribution:
+            type: linear
+      overrides: []
+    gridPos:
+      h: 8
+      w: 8
+      x: 8
+      'y': 21
+    id: 76
+    options:
+      calculate: false
+      calculation:
+        xBuckets:
+          mode: count
+          value: ''
+        yBuckets:
+          mode: count
+          scale:
+            type: linear
+      cellGap: 0
+      cellValues:
+        unit: requests
+      color:
+        exponent: 0.2
+        fill: super-light-red
+        mode: scheme
+        reverse: true
+        scale: exponential
+        scheme: Turbo
+        steps: 128
+      exemplars:
+        color: orange
+      filterValues:
+        le: 1.e-9
+      legend:
+        show: false
+      rowsFrame:
+        layout: auto
+      tooltip:
+        mode: single
+        showColorScale: true
+        yHistogram: true
+      yAxis:
+        axisPlacement: left
+        reverse: false
+        unit: s
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: |-
+          sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            container="segment-writer",
+            method="gRPC",
+            # status_code="success",
+            route="/segmentwriter.v1.SegmentWriterService/Push",
+          }[$__rate_interval]))
+        hide: false
+        legendFormat: __auto
+        range: true
+        refId: B
+    title: Latency Heatmap
+    transparent: true
+    type: heatmap
+  - datasource:
+      type: prometheus
+      uid: ${datasource}
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          axisBorderShow: false
+          axisCenteredZero: false
+          axisColorMode: text
+          axisLabel: ''
+          axisPlacement: auto
+          axisSoftMin: 0
+          barAlignment: 0
+          barWidthFactor: 0.6
+          drawStyle: line
+          fillOpacity: 0
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineWidth: 1
+          pointSize: 5
+          scaleDistribution:
+            log: 2
+            type: log
+          showPoints: auto
+          spanNulls: false
+          stacking:
+            group: A
+            mode: none
+          thresholdsStyle:
+            mode: 'off'
+        fieldMinMax: false
+        mappings: []
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: red
+              value: 80
+        unit: reqps
+      overrides: []
+    gridPos:
+      h: 8
+      w: 8
+      x: 16
+      'y': 21
+    id: 52
+    options:
+      legend:
+        calcs: []
+        displayMode: list
+        placement: bottom
+        showLegend: true
+      tooltip:
+        hideZeros: false
+        mode: single
+        sort: none
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: |-
+          sum(irate(pyroscope_request_duration_seconds_count{
+            namespace="$namespace",
+            method="gRPC",
+            route="/segmentwriter.v1.SegmentWriterService/Push",
+          }[$__rate_interval])) by (status_code)
+        instant: false
+        legendFormat: __auto
+        range: true
+        refId: A
+    title: Push Rate
+    transparent: true
+    type: timeseries
+  - datasource:
+      type: prometheus
+      uid: ${datasource}
+    description: >-
+      The latency segment-writer observes when uploading segments to object
+      store, including retries.
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          axisBorderShow: false
+          axisCenteredZero: false
+          axisColorMode: text
+          axisLabel: ''
+          axisPlacement: auto
+          barAlignment: 0
+          barWidthFactor: 0.6
+          drawStyle: line
+          fillOpacity: 0
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineWidth: 1
+          pointSize: 5
+          scaleDistribution:
+            type: linear
+          showPoints: auto
+          spanNulls: false
+          stacking:
+            group: A
+            mode: none
+          thresholdsStyle:
+            mode: 'off'
+        mappings: []
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: red
+              value: 80
+        unit: s
+      overrides:
+        - matcher:
+            id: byFrameRefID
+            options: Overall p99
+          properties:
+            - id: custom.lineWidth
+              value: 2
+            - id: color
+              value:
+                fixedColor: green
+                mode: fixed
+        - matcher:
+            id: byFrameRefID
+          properties: []
+    gridPos:
+      h: 8
+      w: 8
+      x: 0
+      'y': 29
+    id: 57
+    options:
+      legend:
+        calcs: []
+        displayMode: list
+        placement: bottom
+        showLegend: false
+      tooltip:
+        hideZeros: false
+        mode: multi
+        sort: desc
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.99,
+          sum(rate(pyroscope_segment_writer_upload_duration_seconds_bucket{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+          by (le,pod))
+        hide: false
+        instant: false
+        legendFormat: p99 {{"{{pod}}"}}
+        range: true
+        refId: B
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.99,
+          sum(rate(pyroscope_segment_writer_upload_duration_seconds_bucket{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+          by (le))
+        hide: false
+        instant: false
+        legendFormat: p99 overall
+        range: true
+        refId: Overall p99
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.90,
+          sum(rate(pyroscope_segment_writer_upload_duration_seconds_bucket{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+          by (le))
+        hide: false
+        instant: false
+        legendFormat: p90 overall
+        range: true
+        refId: Overall p90
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.50,
+          sum(rate(pyroscope_segment_writer_upload_duration_seconds_bucket{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+          by (le))
+        hide: false
+        instant: false
+        legendFormat: p50 overall
+        range: true
+        refId: Overall p50
+    title: Object Store Upload Latency
+    transparent: true
+    type: timeseries
+  - datasource:
+      type: datasource
+      uid: '-- Mixed --'
+    description: The latency of upload calls observed by the segment-writer
+    fieldConfig:
+      defaults:
+        custom:
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          scaleDistribution:
+            type: linear
+      overrides: []
+    gridPos:
+      h: 8
+      w: 8
+      x: 8
+      'y': 29
+    id: 80
+    options:
+      calculate: false
+      calculation:
+        xBuckets:
+          mode: count
+          value: ''
+        yBuckets:
+          mode: count
+          scale:
+            type: linear
+      cellGap: 0
+      cellValues:
+        unit: requests
+      color:
+        exponent: 0.2
+        fill: super-light-red
+        mode: scheme
+        reverse: true
+        scale: exponential
+        scheme: Turbo
+        steps: 128
+      exemplars:
+        color: orange
+      filterValues:
+        le: 1.e-9
+      legend:
+        show: false
+      rowsFrame:
+        layout: auto
+      tooltip:
+        mode: single
+        showColorScale: true
+        yHistogram: true
+      yAxis:
+        axisPlacement: left
+        reverse: false
+        unit: s
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum(rate(pyroscope_segment_writer_upload_duration_seconds{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+        hide: false
+        legendFormat: __auto
+        range: true
+        refId: B
+    title: Latency Heatmap
+    transparent: true
+    type: heatmap
+  - datasource:
+      type: prometheus
+      uid: ${datasource}
+    description: New objects created by segment-writer
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          axisBorderShow: false
+          axisCenteredZero: false
+          axisColorMode: text
+          axisLabel: ''
+          axisPlacement: auto
+          axisSoftMin: 0
+          barAlignment: 0
+          barWidthFactor: 0.6
+          drawStyle: line
+          fillOpacity: 0
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineWidth: 1
+          pointSize: 5
+          scaleDistribution:
+            type: linear
+          showPoints: auto
+          spanNulls: false
+          stacking:
+            group: A
+            mode: none
+          thresholdsStyle:
+            mode: 'off'
+        mappings: []
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: red
+              value: 80
+        unit: ops
+      overrides:
+        - matcher:
+            id: byFrameRefID
+            options: B
+          properties:
+            - id: custom.axisPlacement
+              value: right
+            - id: custom.axisLabel
+              value: Hedged requests
+    gridPos:
+      h: 8
+      w: 8
+      x: 16
+      'y': 29
+    id: 59
+    options:
+      legend:
+        calcs: []
+        displayMode: list
+        placement: bottom
+        showLegend: true
+      tooltip:
+        hideZeros: false
+        mode: single
+        sort: none
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum by (status)
+          (rate(pyroscope_segment_writer_upload_duration_seconds_count{namespace="$namespace"}[$__rate_interval]))
+        hide: false
+        instant: false
+        legendFormat: __auto
+        range: true
+        refId: A
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum by (status)
+          (rate(pyroscope_segment_writer_hedged_upload_duration_seconds_count{namespace="$namespace"}[$__rate_interval]))
+        hide: false
+        instant: false
+        legendFormat: '{{"{{status}}"}} (hedged)'
+        range: true
+        refId: B
+    title: Object Store Upload Rate
+    transparent: true
+    type: timeseries
+  - datasource:
+      type: prometheus
+      uid: ${datasource}
+    description: >-
+      The latency segment-writer observes when adding metadata entries to
+      metastore, including retries.
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          axisBorderShow: false
+          axisCenteredZero: false
+          axisColorMode: text
+          axisLabel: ''
+          axisPlacement: auto
+          barAlignment: 0
+          barWidthFactor: 0.6
+          drawStyle: line
+          fillOpacity: 0
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineWidth: 1
+          pointSize: 5
+          scaleDistribution:
+            type: linear
+          showPoints: auto
+          spanNulls: false
+          stacking:
+            group: A
+            mode: none
+          thresholdsStyle:
+            mode: 'off'
+        mappings: []
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: red
+              value: 80
+        unit: s
+      overrides:
+        - matcher:
+            id: byFrameRefID
+            options: Overall p99
+          properties:
+            - id: custom.lineWidth
+              value: 2
+            - id: color
+              value:
+                fixedColor: green
+                mode: fixed
+        - matcher:
+            id: byFrameRefID
+          properties: []
+    gridPos:
+      h: 8
+      w: 8
+      x: 0
+      'y': 37
+    id: 77
+    options:
+      legend:
+        calcs: []
+        displayMode: list
+        placement: bottom
+        showLegend: false
+      tooltip:
+        hideZeros: false
+        mode: multi
+        sort: desc
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.99,
+          sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds_bucket{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+          by (le,pod))
+        hide: false
+        instant: false
+        legendFormat: p99 {{"{{pod}}"}}
+        range: true
+        refId: B
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.99,
+          sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds_bucket{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+          by (le))
+        hide: false
+        instant: false
+        legendFormat: p99 overall
+        range: true
+        refId: Overall p99
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.90,
+          sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds_bucket{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+          by (le))
+        hide: false
+        instant: false
+        legendFormat: p90 overall
+        range: true
+        refId: Overall p90
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          histogram_quantile(0.50,
+          sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds_bucket{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+          by (le))
+        hide: false
+        instant: false
+        legendFormat: p50 overall
+        range: true
+        refId: Overall p50
+    title: Store Metadata Latency
+    transparent: true
+    type: timeseries
+  - datasource:
+      type: datasource
+      uid: '-- Mixed --'
+    description: >-
+      The latency segment-writer observes when adding metadata entries,
+      including retries
+    fieldConfig:
+      defaults:
+        custom:
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          scaleDistribution:
+            type: linear
+      overrides: []
+    gridPos:
+      h: 8
+      w: 8
+      x: 8
+      'y': 37
+    id: 78
+    options:
+      calculate: false
+      calculation:
+        xBuckets:
+          mode: count
+          value: ''
+        yBuckets:
+          mode: count
+          scale:
+            type: linear
+      cellGap: 0
+      cellValues:
+        unit: requests
+      color:
+        exponent: 0.2
+        fill: super-light-red
+        mode: scheme
+        reverse: true
+        scale: exponential
+        scheme: Turbo
+        steps: 128
+      exemplars:
+        color: orange
+      filterValues:
+        le: 1.e-9
+      legend:
+        show: false
+      rowsFrame:
+        layout: auto
+      tooltip:
+        mode: single
+        showColorScale: true
+        yHistogram: true
+      yAxis:
+        axisPlacement: left
+        reverse: false
+        unit: s
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+        hide: false
+        legendFormat: __auto
+        range: true
+        refId: B
+    title: Latency Heatmap
+    transparent: true
+    type: heatmap
+  - datasource:
+      type: prometheus
+      uid: ${datasource}
+    description: New metadata entries created by segment-writers
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          axisBorderShow: false
+          axisCenteredZero: false
+          axisColorMode: text
+          axisLabel: ''
+          axisPlacement: auto
+          axisSoftMin: 0
+          barAlignment: 0
+          barWidthFactor: 0.6
+          drawStyle: line
+          fillOpacity: 0
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineWidth: 1
+          pointSize: 5
+          scaleDistribution:
+            type: linear
+          showPoints: auto
+          spanNulls: false
+          stacking:
+            group: A
+            mode: none
+          thresholdsStyle:
+            mode: 'off'
+        mappings: []
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: red
+              value: 80
+        unit: ops
+      overrides:
+        - matcher:
+            id: byFrameRefID
+            options: B
+          properties:
+            - id: custom.drawStyle
+              value: points
+            - id: color
+              value:
+                fixedColor: red
+                mode: fixed
+            - id: custom.pointSize
+              value: 11
+    gridPos:
+      h: 8
+      w: 8
+      x: 16
+      'y': 37
+    id: 73
+    options:
+      legend:
+        calcs: []
+        displayMode: list
+        placement: bottom
+        showLegend: true
+      tooltip:
+        hideZeros: false
+        mode: single
+        sort: none
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum by (status)
+          (rate(pyroscope_segment_writer_store_metadata_duration_seconds_count{namespace="$namespace"}[$__rate_interval]))
+        hide: false
+        instant: false
+        legendFormat: __auto
+        range: true
+        refId: A
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum by (status)
+          (rate(pyroscope_segment_writer_store_metadata_dql{namespace="$namespace"}[$__rate_interval]))
+        hide: false
+        instant: false
+        legendFormat: '{{"{{status}}"}} (DLQ)'
+        range: true
+        refId: B
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum(rate(pyroscope_segment_writer_store_metadata_dlq{namespace="$namespace"}[$__rate_interval]))
+        hide: false
+        instant: false
+        legendFormat: dlq
+        range: true
+        refId: C
+    title: Store Metadata Rate
+    transparent: true
+    type: timeseries
+  - datasource:
+      default: false
+      type: prometheus
+      uid: ${datasource}
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          axisBorderShow: false
+          axisCenteredZero: false
+          axisColorMode: text
+          axisLabel: ''
+          axisPlacement: auto
+          axisSoftMin: 0
+          barAlignment: 0
+          barWidthFactor: 0.6
+          drawStyle: line
+          fillOpacity: 0
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineWidth: 1
+          pointSize: 5
+          scaleDistribution:
+            type: linear
+          showPoints: auto
+          spanNulls: false
+          stacking:
+            group: A
+            mode: none
+          thresholdsStyle:
+            mode: 'off'
+        mappings: []
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: red
+              value: 80
+        unit: bytes
+      overrides: []
+    gridPos:
+      h: 8
+      w: 8
+      x: 0
+      'y': 45
+    id: 21
+    options:
+      legend:
+        calcs:
+          - mean
+        displayMode: table
+        placement: right
+        showLegend: false
+      tooltip:
+        hideZeros: false
+        mode: multi
+        sort: desc
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum by (pod)
+          (irate(pyroscope_segment_writer_segment_ingest_bytes_sum{namespace="$namespace",
+          container="segment-writer"}[10m])) /
+
+          sum by (pod)
+          (rate(container_cpu_usage_seconds_total{namespace="$namespace",
+          container="segment-writer"}[10m]))
+        legendFormat: __auto
+        range: true
+        refId: A
+    title: Processing Rate (MB/sec/core)
+    transparent: true
+    type: timeseries
+  - datasource:
+      type: datasource
+      uid: '-- Mixed --'
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          axisBorderShow: false
+          axisCenteredZero: false
+          axisColorMode: text
+          axisLabel: ''
+          axisPlacement: auto
+          axisSoftMin: 0
+          barAlignment: 1
+          barWidthFactor: 1
+          drawStyle: line
+          fillOpacity: 0
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineStyle:
+            fill: solid
+          lineWidth: 1
+          pointSize: 5
+          scaleDistribution:
+            type: linear
+          showPoints: auto
+          spanNulls: false
+          stacking:
+            group: A
+            mode: none
+          thresholdsStyle:
+            mode: 'off'
+        fieldMinMax: false
+        mappings: []
+        min: 0
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+      overrides:
+        - matcher:
+            id: byName
+            options: Limit
+          properties:
+            - id: custom.lineStyle
+              value:
+                dash:
+                  - 10
+                  - 10
+                fill: dash
+        - matcher:
+            id: byFrameRefID
+            options: A
+          properties:
+            - id: custom.axisColorMode
+              value: text
+            - id: color
+              value:
+                fixedColor: semi-dark-red
+                mode: fixed
+            - id: custom.lineWidth
+              value: 2
+    gridPos:
+      h: 8
+      w: 8
+      x: 8
+      'y': 45
+    id: 63
+    options:
+      legend:
+        calcs:
+          - last
+          - max
+        displayMode: table
+        placement: bottom
+        showLegend: false
+        sortBy: Max
+        sortDesc: true
+      tooltip:
+        hideZeros: false
+        mode: multi
+        sort: desc
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum by (pod)
+          (irate(container_cpu_usage_seconds_total{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+        legendFormat: __auto
+        range: true
+        refId: by pod
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: |-
+          max(
+              kube_pod_container_resource_requests{{ "{" }}{{ .Values.dashboards.kubeStateMetricsSelector }}, namespace="$namespace", resource="cpu"}
+            * on(namespace,pod)
+              group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{namespace="$namespace", workload=~".*-segment-writer"}
+          )
+        hide: false
+        legendFormat: Request
+        range: true
+        refId: A
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: |-
+          max(
+              kube_pod_container_resource_limits{{ "{" }}{{ .Values.dashboards.kubeStateMetricsSelector }}, namespace="$namespace", resource="cpu"}
+            * on(namespace,pod)
+              group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{namespace="$namespace", workload=~".*-segment-writer"}
+          )
+        hide: false
+        legendFormat: Limit
+        range: true
+        refId: B
+    title: CPU Usage
+    transparent: true
+    type: timeseries
+  - datasource:
+      default: false
+      type: prometheus
+      uid: ${datasource}
+    fieldConfig:
+      defaults:
+        color:
+          mode: palette-classic
+        custom:
+          axisBorderShow: false
+          axisCenteredZero: false
+          axisColorMode: text
+          axisLabel: ''
+          axisPlacement: auto
+          axisSoftMin: 0
+          barAlignment: 0
+          barWidthFactor: 0.6
+          drawStyle: line
+          fillOpacity: 7
+          gradientMode: none
+          hideFrom:
+            legend: false
+            tooltip: false
+            viz: false
+          insertNulls: false
+          lineInterpolation: linear
+          lineWidth: 1
+          pointSize: 5
+          scaleDistribution:
+            type: linear
+          showPoints: auto
+          spanNulls: false
+          stacking:
+            group: A
+            mode: normal
+          thresholdsStyle:
+            mode: 'off'
+        mappings: []
+        thresholds:
+          mode: absolute
+          steps:
+            - color: green
+              value: 0
+            - color: red
+              value: 80
+        unit: short
+      overrides:
+        - matcher:
+            id: byName
+            options: Total
+          properties:
+            - id: custom.axisPlacement
+              value: right
+            - id: custom.lineWidth
+              value: 2
+            - id: color
+              value:
+                fixedColor: red
+                mode: fixed
+    gridPos:
+      h: 8
+      w: 8
+      x: 16
+      'y': 45
+    id: 27
+    options:
+      legend:
+        calcs:
+          - mean
+        displayMode: table
+        placement: right
+        showLegend: false
+        sortBy: Mean
+        sortDesc: true
+      tooltip:
+        hideZeros: false
+        mode: single
+        sort: none
+    pluginVersion: 12.1.0-90139
+    targets:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum(irate(container_cpu_usage_seconds_total{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+          by (pod)
+        legendFormat: __auto
+        range: true
+        refId: A
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        editorMode: code
+        expr: >-
+          sum(irate(container_cpu_usage_seconds_total{namespace="$namespace",container="segment-writer"}[$__rate_interval]))
+        hide: false
+        legendFormat: Total
+        range: true
+        refId: B
+    title: CPU Usage (stack)
+    transparent: true
+    type: timeseries
+  - collapsed: true
+    gridPos:
+      h: 1
+      w: 24
+      x: 0
+      'y': 53
+    id: 51
+    panels:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        description: The latency of raft commands observed by the metastore leader
+        fieldConfig:
+          defaults:
+            color:
+              mode: continuous-GrYlRd
+            custom:
+              axisPlacement: auto
+              fillOpacity: 15
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineWidth: 1
+              spanNulls: false
+            fieldMinMax: false
+            mappings:
+              - options:
+                  from: 0
+                  result:
+                    color: green
+                    index: 0
+                    text: Follower
+                  to: 99
+                type: range
+              - options:
+                  from: 100
+                  result:
+                    color: dark-red
+                    index: 1
+                    text: Leader
+                  to: 1000000
+                type: range
+            thresholds:
+              mode: absolute
+              steps:
+                - color: dark-blue
+                  value: 0
+                - color: light-red
+                  value: 100
+            unit: short
+          overrides: []
+        gridPos:
+          h: 5
+          w: 24
+          x: 0
+          'y': 92
+        id: 65
+        options:
+          alignValue: center
+          legend:
+            displayMode: list
+            placement: bottom
+            showLegend: false
+          mergeValues: true
+          rowHeight: 0.8
+          showValue: never
+          tooltip:
+            hideZeros: false
+            mode: multi
+            sort: asc
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            exemplar: false
+            expr: |-
+              sum by (pod) (
+                pyroscope_metastore_raft_state{namespace="$namespace",state="Follower"} or
+                pyroscope_metastore_raft_state{namespace="$namespace",state="Leader"} * 100
+              )
+            format: time_series
+            hide: false
+            instant: false
+            legendFormat: '{{"{{label_name}}"}}'
+            range: true
+            refId: D
+        title: Raft Nodes
+        transparent: true
+        type: state-timeline
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        description: The latency of AddBlock endpoint observed by metastore nodes
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+            unit: s
+          overrides:
+            - matcher:
+                id: byFrameRefID
+                options: B
+              properties:
+                - id: custom.drawStyle
+                  value: points
+                - id: color
+                  value:
+                    fixedColor: red
+                    mode: fixed
+                - id: custom.pointSize
+                  value: 11
+                - id: custom.axisPlacement
+                  value: right
+        gridPos:
+          h: 8
+          w: 12
+          x: 0
+          'y': 97
+        id: 49
+        options:
+          legend:
+            calcs: []
+            displayMode: list
+            placement: bottom
+            showLegend: true
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: |-
+              (
+                histogram_quantile(0.99,(sum by (le, pod) (
+                  irate(pyroscope_metastore_boltdb_persist_snapshot_duration_seconds_bucket{namespace="$namespace"}[$__rate_interval])))
+                ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace="$namespace", state="Leader"} >= 1) 
+              )
+            hide: false
+            instant: false
+            legendFormat: Metastore leader snapshot ({{"{{pod}}"}})
+            range: true
+            refId: B
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              histogram_quantile(0.99,
+              sum(rate(pyroscope_request_duration_seconds_bucket{
+                namespace="$namespace",
+                method="gRPC",
+                route="/metastore.v1.IndexService/AddBlock",
+              }[$__rate_interval])) by (le))
+            hide: false
+            instant: false
+            legendFormat: p99
+            range: true
+            refId: D
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              histogram_quantile(0.95,
+              sum(rate(pyroscope_request_duration_seconds_bucket{
+                namespace="$namespace",
+                method="gRPC",
+                route="/metastore.v1.IndexService/AddBlock",
+              }[$__rate_interval])) by (le))
+            hide: false
+            instant: false
+            legendFormat: p95
+            range: true
+            refId: A
+        title: Latency
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            min: 0
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+            unit: ops
+          overrides:
+            - matcher:
+                id: byName
+                options: error
+              properties:
+                - id: color
+                  value:
+                    fixedColor: red
+                    mode: fixed
+            - matcher:
+                id: byName
+                options: success
+              properties:
+                - id: color
+                  value:
+                    fixedColor: green
+                    mode: fixed
+        gridPos:
+          h: 8
+          w: 12
+          x: 12
+          'y': 97
+        id: 50
+        options:
+          legend:
+            calcs: []
+            displayMode: list
+            placement: bottom
+            showLegend: true
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: |-
+              sum(rate(pyroscope_request_duration_seconds_count{
+                namespace="$namespace",
+                method="gRPC",
+                container="metastore",
+                route="/metastore.v1.IndexService/AddBlock",
+              }[$__rate_interval])) by (status_code)
+            hide: false
+            instant: false
+            legendFormat: '{{"{{status_code}}"}}'
+            range: true
+            refId: D
+        title: ''
+        transparent: true
+        type: timeseries
+    title: Metastore
+    type: row
+  - collapsed: true
+    gridPos:
+      h: 1
+      w: 24
+      x: 0
+      'y': 54
+    id: 22
+    panels:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: continuous-BlYlRd
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 3
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+          overrides: []
+        gridPos:
+          h: 9
+          w: 17
+          x: 0
+          'y': 55
+        id: 44
+        options:
+          legend:
+            calcs:
+              - lastNotNull
+              - mean
+            displayMode: table
+            placement: right
+            showLegend: true
+            sortBy: Last *
+            sortDesc: true
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: |-
+              sum by (dataset, tenant) (
+                  pyroscope_adaptive_placement_dataset_shard_limit{namespace="$namespace"}
+              ) > 1
+            legendFormat: '{{"{{tenant}}/{{dataset}}"}}'
+            range: true
+            refId: A
+        title: Dataset Shards
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        description: Top-10
+        fieldConfig:
+          defaults:
+            color:
+              mode: continuous-BlYlRd
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 3
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+          overrides: []
+        gridPos:
+          h: 9
+          w: 7
+          x: 17
+          'y': 55
+        id: 107
+        options:
+          legend:
+            calcs:
+              - lastNotNull
+            displayMode: table
+            placement: right
+            showLegend: true
+            sortBy: Last *
+            sortDesc: true
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: |-
+              topk(10, count by (tenant) (sum by (dataset, tenant) (
+                  pyroscope_adaptive_placement_dataset_shard_limit{namespace="$namespace"}
+              )))
+            legendFormat: '{{"{{tenant}}"}}'
+            range: true
+            refId: A
+        title: Datasets per tenant
+        transparent: true
+        type: timeseries
+      - datasource:
+          default: false
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            custom:
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              scaleDistribution:
+                type: linear
+          overrides: []
+        gridPos:
+          h: 11
+          w: 24
+          x: 0
+          'y': 64
+        id: 23
+        options:
+          calculate: false
+          cellGap: 0
+          cellValues:
+            unit: Bps
+          color:
+            exponent: 0.5
+            fill: red
+            mode: scheme
+            reverse: false
+            scale: exponential
+            scheme: Rainbow
+            steps: 64
+          exemplars:
+            color: rgba(255,0,255,0.7)
+          filterValues:
+            le: 1.e-9
+          legend:
+            show: true
+          rowsFrame:
+            layout: auto
+            value: Shard
+          tooltip:
+            mode: single
+            showColorScale: true
+            yHistogram: true
+          yAxis:
+            axisLabel: Shard
+            axisPlacement: right
+            reverse: true
+            unit: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (shard)
+              (rate(pyroscope_segment_writer_client_sent_bytes_sum{namespace="$namespace"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: __auto
+            range: true
+            refId: B
+        title: Distributed Bytes (per shard)
+        transparent: true
+        type: heatmap
+      - datasource:
+          default: false
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+            unit: bytes
+          overrides: []
+        gridPos:
+          h: 9
+          w: 12
+          x: 0
+          'y': 75
+        id: 64
+        options:
+          legend:
+            calcs:
+              - mean
+            displayMode: table
+            placement: right
+            showLegend: true
+            sortBy: Name
+            sortDesc: false
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (shard)
+              (rate(pyroscope_segment_writer_client_sent_bytes_sum{namespace="$namespace"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: __auto
+            range: true
+            refId: B
+        title: Distributed Bytes (per shard)
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 7
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: normal
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+            unit: bytes
+          overrides: []
+        gridPos:
+          h: 9
+          w: 12
+          x: 12
+          'y': 75
+        id: 26
+        options:
+          legend:
+            calcs:
+              - mean
+            displayMode: table
+            placement: right
+            showLegend: true
+            sortBy: Name
+            sortDesc: false
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (shard)
+              (rate(pyroscope_segment_writer_client_sent_bytes_sum{namespace="$namespace"}[$__rate_interval]))
+            hide: false
+            instant: false
+            legendFormat: __auto
+            range: true
+            refId: B
+        title: Distributed Bytes (per shard, stack)
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+            unit: bytes
+          overrides: []
+        gridPos:
+          h: 9
+          w: 12
+          x: 0
+          'y': 84
+        id: 24
+        options:
+          legend:
+            calcs:
+              - mean
+            displayMode: table
+            placement: right
+            showLegend: true
+            sortBy: Name
+            sortDesc: false
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (pod)
+              (rate(pyroscope_segment_writer_segment_ingest_bytes_sum{namespace="$namespace"}[$__rate_interval]))
+            legendFormat: __auto
+            range: true
+            refId: A
+        title: Ingested Bytes (per node)
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 7
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: normal
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+            unit: bytes
+          overrides: []
+        gridPos:
+          h: 9
+          w: 12
+          x: 12
+          'y': 84
+        id: 34
+        options:
+          legend:
+            calcs:
+              - mean
+            displayMode: table
+            placement: right
+            showLegend: true
+            sortBy: Name
+            sortDesc: false
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (pod)
+              (rate(pyroscope_segment_writer_segment_ingest_bytes_sum{namespace="$namespace"}[$__rate_interval]))
+            legendFormat: __auto
+            range: true
+            refId: A
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: ''
+            hide: false
+            instant: false
+            legendFormat: __auto
+            range: true
+            refId: B
+        title: Ingested Bytes (per node, stack)
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+            unit: short
+          overrides: []
+        gridPos:
+          h: 9
+          w: 12
+          x: 0
+          'y': 93
+        id: 35
+        options:
+          legend:
+            calcs:
+              - mean
+            displayMode: table
+            placement: right
+            showLegend: true
+            sortBy: Name
+            sortDesc: false
+          tooltip:
+            hideZeros: false
+            mode: multi
+            sort: desc
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (pod)
+              (rate(pyroscope_segment_writer_segment_ingest_bytes_count{namespace="$namespace"}[$__rate_interval]))
+            legendFormat: __auto
+            range: true
+            refId: A
+        title: Ingested Profiles (per node)
+        transparent: true
+        type: timeseries
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 7
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: normal
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+            unit: short
+          overrides: []
+        gridPos:
+          h: 9
+          w: 12
+          x: 12
+          'y': 93
+        id: 36
+        options:
+          legend:
+            calcs:
+              - mean
+            displayMode: table
+            placement: right
+            showLegend: true
+            sortBy: Name
+            sortDesc: false
+          tooltip:
+            hideZeros: false
+            mode: multi
+            sort: desc
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: >-
+              sum by (pod)
+              (rate(pyroscope_segment_writer_segment_ingest_bytes_count{namespace="$namespace"}[$__rate_interval]))
+            legendFormat: __auto
+            range: true
+            refId: A
+        title: Ingested Profiles (per node, stack)
+        transparent: true
+        type: timeseries
+    title: Data Distribution
+    type: row
+  - collapsed: true
+    gridPos:
+      h: 1
+      w: 24
+      x: 0
+      'y': 55
+    id: 86
+    panels:
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: thresholds
+            fieldMinMax: false
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+          overrides: []
+        gridPos:
+          h: 13
+          w: 12
+          x: 0
+          'y': 154
+        id: 87
+        options:
+          groupByField: container
+          labelFields:
+            - container
+            - instance_type
+          textField: instance_type
+          tiling: treemapSquarify
+        pluginVersion: 2.1.1
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            exemplar: false
+            expr: |-
+              count by (instance_type, container) (
+                  rate(container_cpu_usage_seconds_total{
+                      cluster="$cluster",
+                      namespace="$namespace",
+                      container=~"segment-writer|distributor|cortex-gw|metastore|compaction-worker",
+                  }[$__rate_interval]) + on (instance) group_left(instance_type) (0 * label_replace(
+                      karpenter_nodes_allocatable{cluster="$cluster", resource_type="cpu"}, "instance", "$1", "node_name", "(.*)")
+                  )
+              )
+            format: table
+            hide: false
+            instant: true
+            legendFormat: '{{"{{instance_type}}"}}'
+            range: false
+            refId: A
+        title: AWS | Intances By Machine Type
+        transparent: true
+        type: marcusolsson-treemap-panel
+      - datasource:
+          type: prometheus
+          uid: ${datasource}
+        fieldConfig:
+          defaults:
+            color:
+              mode: palette-classic
+            custom:
+              axisBorderShow: false
+              axisCenteredZero: false
+              axisColorMode: text
+              axisLabel: ''
+              axisPlacement: auto
+              axisSoftMin: 0
+              barAlignment: 0
+              barWidthFactor: 0.6
+              drawStyle: line
+              fillOpacity: 0
+              gradientMode: none
+              hideFrom:
+                legend: false
+                tooltip: false
+                viz: false
+              insertNulls: false
+              lineInterpolation: linear
+              lineWidth: 1
+              pointSize: 5
+              scaleDistribution:
+                type: linear
+              showPoints: auto
+              spanNulls: false
+              stacking:
+                group: A
+                mode: none
+              thresholdsStyle:
+                mode: 'off'
+            mappings: []
+            thresholds:
+              mode: absolute
+              steps:
+                - color: green
+                  value: 0
+                - color: red
+                  value: 80
+          overrides: []
+        gridPos:
+          h: 13
+          w: 12
+          x: 12
+          'y': 154
+        id: 84
+        options:
+          legend:
+            calcs:
+              - mean
+              - max
+            displayMode: table
+            placement: right
+            showLegend: true
+          tooltip:
+            hideZeros: false
+            mode: single
+            sort: none
+        pluginVersion: 12.1.0-90058
+        targets:
+          - datasource:
+              type: prometheus
+              uid: ${datasource}
+            editorMode: code
+            expr: |-
+              avg by (instance_type, container) (
+                  rate(container_cpu_usage_seconds_total{
+                      cluster="$cluster",
+                      namespace="$namespace",
+                      container=~"segment-writer|distributor|cortex-gw",
+                  }[$__rate_interval]) + on (instance) group_left(instance_type) (0 * label_replace(
+                      karpenter_nodes_allocatable{cluster="$cluster", resource_type="cpu"}, "instance", "$1", "node_name", "(.*)")
+                  )
+              )
+            hide: false
+            legendFormat: '{{"{{container}}/{{instance_type}}"}}'
+            range: true
+            refId: A
+        title: AWS | Average CPU Usage By Type
+        transparent: true
+        type: timeseries
+    title: Resource Allocation
+    type: row
+preload: false
+schemaVersion: 41
+tags:
+  - pyroscope
+  - pyroscope-v2
+templating:
+  list:
+    - current:
+        text: ops-cortex
+        value: '000000134'
+      includeAll: false
+      name: datasource
+      options: []
+      query: prometheus
+      refresh: 1
+      regex: ''
+      type: datasource
+    - allowCustomValue: false
+      current:
+        text: Grafana Logging
+        value: '000000193'
+      name: loki_datasource
+      options: []
+      query: loki
+      refresh: 1
+      regex: ''
+      type: datasource
+    - allowCustomValue: false
+      current:
+        text: prod-eu-west-2
+        value: prod-eu-west-2
+      datasource:
+        type: prometheus
+        uid: ${datasource}
+      definition: label_values(pyroscope_build_info{namespace="$namespace"},cluster)
+      label: cluster
+      name: cluster
+      options: []
+      query:
+        qryType: 1
+        query: label_values(pyroscope_build_info{namespace="$namespace"},cluster)
+        refId: PrometheusVariableQueryEditor-VariableQuery
+      refresh: 1
+      regex: ''
+      sort: 1
+      type: query
+    - allowCustomValue: false
+      current:
+        text: {{.Values.dashboards.namespace | quote}}
+        value: {{.Values.dashboards.namespace | quote}}
+      datasource:
+        type: prometheus
+        uid: ${datasource}
+      definition: label_values(pyroscope_build_info,namespace)
+      label: namespace
+      name: namespace
+      options: []
+      query:
+        qryType: 1
+        query: label_values(pyroscope_build_info,namespace)
+        refId: PrometheusVariableQueryEditor-VariableQuery
+      refresh: 1
+      regex: {{.Values.dashboards.namespaceRegex | quote}}
+      type: query
+    - baseFilters: []
+      datasource:
+        type: prometheus
+        uid: ${datasource}
+      filters: []
+      name: Filters
+      type: adhoc
+time:
+  from: now-6h
+  to: now
+timepicker: {}
+timezone: utc
+title: Pyroscope v2 / Write Path
+
+{{- end }}

@@ -1,5 +1,0 @@
-vendor/
-lib/
-environments/default/spec.json
-go.mod
-go.sum
