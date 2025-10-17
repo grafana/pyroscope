@@ -43,11 +43,11 @@ A request body with the following fields is required:
 
 |Field | Description | Example |
 |:-----|:------------|:--------|
-|`series[].annotations[].key` |  |  |
-|`series[].annotations[].value` |  |  |
+|`series[].annotations[].key` | Annotation key [hidden] |  |
+|`series[].annotations[].value` | Annotation value [hidden] |  |
 |`series[].labels[].name` | Label name | `service_name` |
 |`series[].labels[].value` | Label value | `my_service` |
-|`series[].samples[].ID` | unique UUID of the profile | `734FD599-6865-419E-9475-932762D8F469` |
+|`series[].samples[].ID` | UUID of the profile | `734FD599-6865-419E-9475-932762D8F469` |
 |`series[].samples[].rawProfile` | raw_profile is the set of bytes of the pprof profile | `PROFILE_BASE64` |
 
 {{% code %}}

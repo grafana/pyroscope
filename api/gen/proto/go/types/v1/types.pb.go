@@ -364,10 +364,20 @@ func (x *Point) GetAnnotations() []*ProfileAnnotation {
 	return nil
 }
 
+// Annotations provide additional metadata for a profile.
+//
+// The main differences between labels and annotations are:
+//   - annotations cannot be used in query selectors
+//   - annotation keys don't have to be unique
+//
+// Currently annotations are applied internally by distributors,
+// any annotation passed via the push API will be dropped.
 type ProfileAnnotation struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Annotation key [hidden]
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// Annotation value [hidden]
+	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

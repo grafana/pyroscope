@@ -1029,11 +1029,22 @@ components:
         key:
           type: string
           title: key
+          description: Annotation key [hidden]
         value:
           type: string
           title: value
+          description: Annotation value [hidden]
       title: ProfileAnnotation
       additionalProperties: false
+      description: |-
+        Annotations provide additional metadata for a profile.
+
+         The main differences between labels and annotations are:
+           - annotations cannot be used in query selectors
+           - annotation keys don't have to be unique
+
+         Currently annotations are applied internally by distributors,
+         any annotation passed via the push API will be dropped.
     types.v1.ProfileType:
       type: object
       properties:

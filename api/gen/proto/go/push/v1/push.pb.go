@@ -183,7 +183,7 @@ type RawSample struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// raw_profile is the set of bytes of the pprof profile
 	RawProfile []byte `protobuf:"bytes,1,opt,name=raw_profile,json=rawProfile,proto3" json:"raw_profile,omitempty"`
-	// unique UUID of the profile
+	// UUID of the profile
 	ID            string `protobuf:"bytes,2,opt,name=ID,proto3" json:"ID,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
