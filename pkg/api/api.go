@@ -202,6 +202,7 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation
 
 	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, writePathOpts...)
 	a.RegisterRoute("/v1development/profiles", otlpHandler, writePathOpts...)
+	a.RegisterRoute("/pyroscope/v1development/profiles", otlpHandler, writePathOpts...)
 }
 
 // RegisterMemberlistKV registers the endpoints associated with the memberlist KV store.
