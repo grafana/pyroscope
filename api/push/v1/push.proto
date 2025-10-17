@@ -42,10 +42,7 @@ message RawProfileSeries {
 // RawSample is the set of bytes that correspond to a pprof profile
 message RawSample {
   // raw_profile is the set of bytes of the pprof profile
-  bytes raw_profile = 1
-      [ (gnostic.openapi.v3.property).example = {yaml : "PROFILE_BASE64"} ];
+  bytes raw_profile = 1 [(gnostic.openapi.v3.property).example = {yaml: "PROFILE_BASE64"}];
   // UUID of the profile
-  string ID = 2 [ (gnostic.openapi.v3.property).example = {
-    yaml : "734FD599-6865-419E-9475-932762D8F469"
-  } ];
+  string ID = 2 [(gnostic.openapi.v3.property).example = {yaml: "734FD599-6865-419E-9475-932762D8F469"}];
 }

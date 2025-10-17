@@ -6,12 +6,10 @@ import "gnostic/openapi/v3/annotations.proto";
 
 message LabelPair {
   // Label name
-  string name = 1
-      [ (gnostic.openapi.v3.property).example = {yaml : "service_name"} ];
+  string name = 1 [(gnostic.openapi.v3.property).example = {yaml: "service_name"}];
 
   // Label value
-  string value = 2
-      [ (gnostic.openapi.v3.property).example = {yaml : "my_service"} ];
+  string value = 2 [(gnostic.openapi.v3.property).example = {yaml: "my_service"}];
 }
 
 message ProfileType {
@@ -57,32 +55,31 @@ message ProfileAnnotation {
 
 message LabelValuesRequest {
   // Name of the label
-  string name = 1
-      [ (gnostic.openapi.v3.property).example = {yaml : "service_name"} ];
+  string name = 1 [(gnostic.openapi.v3.property).example = {yaml: "service_name"}];
   // List of Label selectors
   repeated string matchers = 2;
   // Query from this point in time, given in Milliseconds since epoch.
-  int64 start = 3
-      [ (gnostic.openapi.v3.property).example = {yaml : "1676282400000"} ];
+  int64 start = 3 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
   // Query to this point in time, given in Milliseconds since epoch.
-  int64 end = 4
-      [ (gnostic.openapi.v3.property).example = {yaml : "1676289600000"} ];
+  int64 end = 4 [(gnostic.openapi.v3.property).example = {yaml: "1676289600000"}];
 }
 
-message LabelValuesResponse { repeated string names = 1; }
+message LabelValuesResponse {
+  repeated string names = 1;
+}
 
 message LabelNamesRequest {
   // List of Label selectors
   repeated string matchers = 1;
   // Query from this point in time, given in Milliseconds since epoch.
-  int64 start = 2
-      [ (gnostic.openapi.v3.property).example = {yaml : "1676282400000"} ];
+  int64 start = 2 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
   // Query to this point in time, given in Milliseconds since epoch.
-  int64 end = 3
-      [ (gnostic.openapi.v3.property).example = {yaml : "1676289600000"} ];
+  int64 end = 3 [(gnostic.openapi.v3.property).example = {yaml: "1676289600000"}];
 }
 
-message LabelNamesResponse { repeated string names = 1; }
+message LabelNamesResponse {
+  repeated string names = 1;
+}
 
 message BlockInfo {
   string ulid = 1;
@@ -114,7 +111,9 @@ message StackTraceSelector {
   GoPGO go_pgo = 2;
 }
 
-message Location { string name = 1; }
+message Location {
+  string name = 1;
+}
 
 message GoPGO {
   // Specifies the number of leaf locations to keep.
