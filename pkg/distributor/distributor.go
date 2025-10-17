@@ -1133,6 +1133,7 @@ func (d *Distributor) visitSampleSeries(s *distributormodel.ProfileSeries, visit
 		tenantID: s.TenantID,
 		limits:   d.limits,
 		profile:  s.Profile,
+		logger:   d.logger,
 	}
 	if err := visit(s.Profile.Profile, s.Labels, relabelingRules, visitor); err != nil {
 		validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), s.TenantID).Add(float64(s.TotalProfiles))
@@ -1167,13 +1168,14 @@ type sampleSeriesVisitor struct {
 	profile  *pprof.Profile
 	exp      *pprof.SampleExporter
 	series   []*distributormodel.ProfileSeries
+	logger   log.Logger
 
 	discardedBytes    int
 	discardedProfiles int
 }
 
 func (v *sampleSeriesVisitor) ValidateLabels(labels phlaremodel.Labels) error {
-	return validation.ValidateLabels(v.limits, v.tenantID, labels)
+	return validation.ValidateLabels(v.limits, v.tenantID, labels, v.logger)
 }
 
 func (v *sampleSeriesVisitor) VisitProfile(labels phlaremodel.Labels) {
