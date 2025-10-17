@@ -628,6 +628,29 @@ func TestCreateStubsForUnsymbolizedProfiles(t *testing.T) {
 			},
 		},
 		{
+			name: "handles zero address without 0x0 suffix",
+			profile: &profilev1.Profile{
+				StringTable: []string{"", "/usr/lib/libjvm.so"},
+				SampleType:  []*profilev1.ValueType{{Type: 1, Unit: 1}},
+				Mapping: []*profilev1.Mapping{
+					{Id: 1, Filename: 1, HasFunctions: false},
+				},
+				Location: []*profilev1.Location{
+					{Id: 1, MappingId: 1, Address: 0x0, Line: nil},
+				},
+				Function: []*profilev1.Function{},
+				Sample: []*profilev1.Sample{
+					{LocationId: []uint64{1}, Value: []int64{100}},
+				},
+			},
+			queries: []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_PPROF}},
+			validateStubs: func(t *testing.T, profile *profilev1.Profile) {
+				require.Len(t, profile.Function, 1)
+				funcName := profile.StringTable[profile.Function[0].Name]
+				assert.Equal(t, "libjvm.so", funcName)
+			},
+		},
+		{
 			name: "query/report count mismatch returns error",
 			profile: &profilev1.Profile{
 				StringTable: []string{""},

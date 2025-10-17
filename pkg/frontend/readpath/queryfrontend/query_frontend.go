@@ -322,7 +322,12 @@ func (q *QueryFrontend) createStubsForUnsymbolizedProfiles(
 				}
 			}
 
-			stubName := fmt.Sprintf("%s 0x%x", binaryName, loc.Address)
+			var stubName string
+			if loc.Address == 0 {
+				stubName = binaryName
+			} else {
+				stubName = fmt.Sprintf("%s 0x%x", binaryName, loc.Address)
+			}
 
 			funcID, exists := stubFuncs[stubName]
 			if !exists {
