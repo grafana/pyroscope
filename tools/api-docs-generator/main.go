@@ -209,8 +209,11 @@ func (s *templateSpecs) writeParameters(sb io.Writer, op *openapi3.Operation) {
 	fmt.Fprintln(sb, "")
 }
 
-func cleanTableField(s string) string {
-	return strings.ReplaceAll(s, "\n", " ")
+func cleanTableField(s string) (string, bool) {
+	if strings.Contains(s, "[hidden]") {
+		return "", false
+	}
+	return strings.ReplaceAll(s, "\n", " "), true
 }
 
 func getExample(schema *openapi3.Schema) (string, any) {
@@ -271,11 +274,15 @@ func collectParameters(schema *openapi3.Schema, prefix string, fn func(prefix st
 
 func writeSchema(sb io.Writer, schema *openapi3.Schema) {
 	collectParameters(schema, "", func(prefix string, name string, schema *openapi3.Schema) {
+		description, keep := cleanTableField(schema.Description)
+		if !keep {
+			return
+		}
 		example, _ := getExample(schema)
 		if example != "" {
 			example = fmt.Sprintf("`%s`", example)
 		}
-		fmt.Fprintf(sb, "|`%s%s` | %s | %s |\n", prefix, name, cleanTableField(schema.Description), example)
+		fmt.Fprintf(sb, "|`%s%s` | %s | %s |\n", prefix, name, description, example)
 	})
 }
 
