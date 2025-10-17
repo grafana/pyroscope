@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0
       - uses: grafana/writers-toolkit/publish-technical-documentation-release@d5577de696f0eb69ff65816795c816d6a84951fe
         with:
-          release_tag_regexp: "^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
-          release_branch_regexp: "^release/v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
-          release_branch_with_patch_regexp: "^release/v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+          release_tag_regexp: "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+          release_branch_regexp: "^release/v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+          release_branch_with_patch_regexp: "^release/v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
           website_directory: content/docs/pyroscope
