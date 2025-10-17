@@ -98,12 +98,16 @@ type profileInfo struct {
 }
 
 type treeNode struct {
-	Name     string
-	Value    uint64
-	Self     uint64
-	Percent  float64
-	Location string // File path and line number (e.g., "pkg/util/logger.go:L91")
-	Children []*treeNode
+	Name           string
+	Value          uint64
+	Self           uint64
+	Percent        float64
+	Location       string // File path and line number (e.g., "pkg/util/logger.go:L91")
+	FullPath       string // Full file path for IDE links
+	LineNumber     int64  // Line number for IDE links
+	FormattedValue string // Formatted value with unit (e.g., "1.5 MB", "250 ms")
+	FormattedSelf  string // Formatted self value with unit
+	Children       []*treeNode
 }
 
 type profileCallTreePageContent struct {
@@ -123,6 +127,8 @@ type profileMetadata struct {
 	TotalValue  uint64
 	SampleCount int
 	Fingerprint uint64
+	Unit        string
+	ProfileType string
 }
 
 type tsdbIndexInfo struct {

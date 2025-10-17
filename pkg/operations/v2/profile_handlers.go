@@ -16,8 +16,11 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/block"
+	"github.com/grafana/pyroscope/pkg/frontend/dot/measurement"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
@@ -193,14 +196,27 @@ func (h *Handlers) CreateDatasetProfileDownloadHandler() func(http.ResponseWrite
 			return
 		}
 
+		// Get profile metadata to extract profile type
+		_, _, profileMeta, err := h.buildProfileResolver(r.Context(), blockMeta, foundDataset, rowNum)
+		if err != nil {
+			httputil.Error(w, errors.Wrap(err, "failed to get profile metadata"))
+			return
+		}
+
 		profile, err := h.retrieveProfile(r.Context(), blockMeta, foundDataset, rowNum)
 		if err != nil {
 			httputil.Error(w, errors.Wrap(err, "failed to download profile"))
 			return
 		}
 
+		// Sanitize dataset name and profile type for filename
+		// Replace slashes and colons with underscores
+		sanitizedDataset := strings.ReplaceAll(req.DatasetName, "/", "_")
+		sanitizedProfileType := strings.ReplaceAll(profileMeta.ProfileType, ":", "_")
+		sanitizedProfileType = strings.ReplaceAll(sanitizedProfileType, "/", "_")
+
 		timestampStr := time.Unix(0, profile.TimeNanos).UTC().Format("20060102-150405")
-		filename := fmt.Sprintf("profile-%s-%s.pb.gz", req.BlockID, timestampStr)
+		filename := fmt.Sprintf("%s-%s-%s.pb.gz", sanitizedDataset, sanitizedProfileType, timestampStr)
 		h.writeProfile(w, profile, filename)
 	}
 }
@@ -211,7 +227,7 @@ func (h *Handlers) retrieveProfile(
 	dataset *metastorev1.Dataset,
 	rowNum int64,
 ) (*googlev1.Profile, error) {
-	resolver, timestamp, _, err := h.buildProfileResolver(ctx, blockMeta, dataset, rowNum)
+	resolver, timestamp, meta, err := h.buildProfileResolver(ctx, blockMeta, dataset, rowNum)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build profile resolver: %w", err)
 	}
@@ -221,7 +237,10 @@ func (h *Handlers) retrieveProfile(
 	if err != nil {
 		return nil, fmt.Errorf("failed to build pprof profile: %w", err)
 	}
-	profile.TimeNanos = timestamp
+
+	if t, err := phlaremodel.ParseProfileTypeSelector(meta.ProfileType); err == nil {
+		pprof.SetProfileMetadata(profile, t, timestamp, 0)
+	}
 
 	return profile, nil
 }
@@ -322,7 +341,7 @@ func (h *Handlers) buildProfileTree(
 		return nil, 0, nil, fmt.Errorf("failed to build pprof profile: %w", err)
 	}
 
-	tree := buildTreeFromPprof(profile)
+	tree := buildTreeFromPprof(profile, profileMeta.Unit)
 
 	return tree, timestamp, profileMeta, nil
 }
@@ -374,11 +393,21 @@ func (h *Handlers) buildProfileResolver(
 
 	// Build profile metadata with labels
 	var labelPairs []labelPair
+	var unit string
+	var profileType string
 	for _, label := range targetEntry.Labels {
 		labelPairs = append(labelPairs, labelPair{
 			Key:   label.Name,
 			Value: label.Value,
 		})
+		// Extract the unit label
+		if label.Name == "__unit__" {
+			unit = label.Value
+		}
+		// Extract the profile type label
+		if label.Name == "__profile_type__" {
+			profileType = label.Value
+		}
 	}
 
 	var sampleCount int
@@ -395,6 +424,8 @@ func (h *Handlers) buildProfileResolver(
 		TotalValue:  totalValue,
 		SampleCount: sampleCount,
 		Fingerprint: uint64(targetEntry.Fingerprint),
+		Unit:        unit,
+		ProfileType: profileType,
 	}
 
 	resolver := symdb.NewResolver(ctx, ds.Symbols())
@@ -423,7 +454,22 @@ func (h *Handlers) buildProfileResolver(
 	return resolver, targetEntry.Timestamp, profileMeta, nil
 }
 
-func buildTreeFromPprof(profile *googlev1.Profile) *treeNode {
+// formatValue formats a value according to the pprof unit specification
+func formatValue(value uint64, unit string) string {
+	// Use the measurement package to format the value
+	scaledValue, scaledUnit := measurement.Scale(int64(value), unit, "auto")
+
+	// Format the value with 2 decimal places, removing trailing zeros
+	formattedValue := strings.TrimSuffix(fmt.Sprintf("%.2f", scaledValue), ".00")
+
+	// Combine value and unit
+	if scaledUnit == "" {
+		return formattedValue
+	}
+	return fmt.Sprintf("%s %s", formattedValue, scaledUnit)
+}
+
+func buildTreeFromPprof(profile *googlev1.Profile, unit string) *treeNode {
 	if profile == nil || len(profile.Sample) == 0 {
 		return nil
 	}
@@ -461,12 +507,16 @@ func buildTreeFromPprof(profile *googlev1.Profile) *treeNode {
 
 	// Create root node
 	root := &treeNode{
-		Name:     "root",
-		Value:    grandTotal,
-		Self:     0,
-		Percent:  100.0,
-		Location: "",
-		Children: make([]*treeNode, 0),
+		Name:           "root",
+		Value:          grandTotal,
+		Self:           0,
+		Percent:        100.0,
+		Location:       "",
+		FullPath:       "",
+		LineNumber:     0,
+		FormattedValue: formatValue(grandTotal, unit),
+		FormattedSelf:  formatValue(0, unit),
+		Children:       make([]*treeNode, 0),
 	}
 
 	// Track nodes by path to merge duplicate stacks
@@ -506,10 +556,15 @@ func buildTreeFromPprof(profile *googlev1.Profile) *treeNode {
 			fileName := getString(function.Filename)
 			lineNum := line.Line
 
-			// Build location string
+			// Build location string and store full path
 			var locationStr string
+			var fullPath string
+			var lineNumber int64
 			if fileName != "" && lineNum > 0 {
-				// Simplify file path
+				fullPath = fileName
+				lineNumber = lineNum
+
+				// Simplify file path for display
 				filePath := fileName
 				if pkgIdx := strings.Index(filePath, "/pkg/"); pkgIdx != -1 {
 					filePath = filePath[pkgIdx+1:]
@@ -528,12 +583,16 @@ func buildTreeFromPprof(profile *googlev1.Profile) *treeNode {
 			node, exists := nodeMap[currentPath]
 			if !exists {
 				node = &treeNode{
-					Name:     funcName,
-					Value:    0,
-					Self:     0,
-					Percent:  0,
-					Location: locationStr,
-					Children: make([]*treeNode, 0),
+					Name:           funcName,
+					Value:          0,
+					Self:           0,
+					Percent:        0,
+					Location:       locationStr,
+					FullPath:       fullPath,
+					LineNumber:     lineNumber,
+					FormattedValue: formatValue(0, unit),
+					FormattedSelf:  formatValue(0, unit),
+					Children:       make([]*treeNode, 0),
 				}
 				nodeMap[currentPath] = node
 				currentNode.Children = append(currentNode.Children, node)
@@ -550,15 +609,19 @@ func buildTreeFromPprof(profile *googlev1.Profile) *treeNode {
 		}
 	}
 
-	sortAndCalculatePercents(root, float64(grandTotal))
+	sortAndCalculatePercents(root, float64(grandTotal), unit)
 
 	return root
 }
 
-func sortAndCalculatePercents(node *treeNode, grandTotal float64) {
+func sortAndCalculatePercents(node *treeNode, grandTotal float64, unit string) {
 	if grandTotal > 0 {
 		node.Percent = (float64(node.Value) / grandTotal) * 100.0
 	}
+
+	// Update formatted values after all accumulation is done
+	node.FormattedValue = formatValue(node.Value, unit)
+	node.FormattedSelf = formatValue(node.Self, unit)
 
 	if len(node.Children) > 0 {
 		slices.SortFunc(node.Children, func(a, b *treeNode) int {
@@ -572,7 +635,7 @@ func sortAndCalculatePercents(node *treeNode, grandTotal float64) {
 		})
 
 		for _, child := range node.Children {
-			sortAndCalculatePercents(child, grandTotal)
+			sortAndCalculatePercents(child, grandTotal, unit)
 		}
 	}
 }

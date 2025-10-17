@@ -91,11 +91,6 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .tree-self {
-            color: #198754;
-            margin-left: 5px;
-            font-size: 12px;
-        }
         .tree-children {
             margin-left: 0 !important;
             padding: 0 !important;
@@ -146,7 +141,7 @@
 
             <h4>Profile: {{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}<em>(empty)</em>{{ end }}</h4>
             <p class="text-muted">
-                Tenant: {{ .User }} | Block: {{ .BlockID }} | Shard: {{ .Shard }} | Timestamp: {{ .Timestamp }}
+                Tenant: {{ .User }} | Block: {{ .BlockID }} | Shard: {{ .Shard }}
             </p>
 
             {{ if .ProfileInfo }}
@@ -154,39 +149,29 @@
                 <div class="card-header">
                     <h5 class="mb-0">Profile Information</h5>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Labels</h6>
-                            <table class="table table-sm table-dark">
-                                <thead>
-                                    <tr>
-                                        <th>Key</th>
-                                        <th>Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {{ range .ProfileInfo.Labels }}
-                                    <tr>
-                                        <td><code>{{ .Key }}</code></td>
-                                        <td><code>{{ .Value }}</code></td>
-                                    </tr>
-                                    {{ end }}
-                                </tbody>
-                            </table>
+                <div class="card-body py-2">
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <strong class="text-muted">Profile Type:</strong>
+                            <span class="ms-2">
+                                <code class="text-primary fs-6">{{ .ProfileInfo.ProfileType }}</code>
+                            </span>
                         </div>
-                        <div class="col-md-6">
-                            <h6>Metrics</h6>
-                            <dl class="row">
-                                <dt class="col-sm-6">Total Value:</dt>
-                                <dd class="col-sm-6">{{ .ProfileInfo.TotalValue }}</dd>
-
-                                <dt class="col-sm-6">Sample Count:</dt>
-                                <dd class="col-sm-6">{{ .ProfileInfo.SampleCount }}</dd>
-
-                                <dt class="col-sm-6">Fingerprint:</dt>
-                                <dd class="col-sm-6"><code>{{ .ProfileInfo.Fingerprint }}</code></dd>
-                            </dl>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <strong class="text-muted">Timestamp:</strong>
+                            <span class="ms-2">
+                                {{ .Timestamp }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <strong class="text-muted">Labels:</strong>
+                            <span class="ms-2">
+                                {{ range $index, $label := .ProfileInfo.Labels }}{{ if $index }}, {{ end }}<code class="text-info">{{ $label.Key }}</code>=<code class="text-warning">{{ $label.Value }}</code>{{ end }}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -254,7 +239,7 @@
                     <span class="tree-toggle">{{ if eq $level 0 }}[-]{{ else }}[+]{{ end }}</span>
                     <span class="tree-name">{{ $node.Name }}</span>
                 </div>
-                <div class="tree-value">{{ $node.Value }}{{ if gt $node.Self 0 }}<span class="tree-self">(self: {{ $node.Self }})</span>{{ end }}</div>
+                <div class="tree-value">{{ $node.FormattedValue }}</div>
                 <div class="tree-percent">{{ printf "%.2f" $node.Percent }}%</div>
                 <div class="tree-extra">{{ if $node.Location }}<span class="text-muted">{{ $node.Location }}</span>{{ end }}</div>
             </div>
@@ -269,7 +254,7 @@
                     <span class="tree-toggle"></span>
                     <span class="tree-name">{{ $node.Name }}</span>
                 </div>
-                <div class="tree-value">{{ $node.Value }}{{ if gt $node.Self 0 }}<span class="tree-self">(self: {{ $node.Self }})</span>{{ end }}</div>
+                <div class="tree-value">{{ $node.FormattedValue }}</div>
                 <div class="tree-percent">{{ printf "%.2f" $node.Percent }}%</div>
                 <div class="tree-extra">{{ if $node.Location }}<span class="text-muted">{{ $node.Location }}</span>{{ end }}</div>
             </div>
