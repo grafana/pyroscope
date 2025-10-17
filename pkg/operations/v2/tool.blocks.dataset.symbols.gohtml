@@ -47,22 +47,22 @@
             <ul class="nav nav-tabs mb-3" id="symbolsTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <a class="nav-link {{ if eq .Tab "strings" }}active{{ end }}" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&tab=strings&page=1&page_size={{ .PageSize }}">
-                        Strings ({{ .SymbolsInfo.TotalStrings }})
+                        Strings ({{ .Symbols.TotalStrings }})
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
                     <a class="nav-link {{ if eq .Tab "functions" }}active{{ end }}" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&tab=functions&page=1&page_size={{ .PageSize }}">
-                        Functions ({{ .SymbolsInfo.TotalFunctions }})
+                        Functions ({{ .Symbols.TotalFunctions }})
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
                     <a class="nav-link {{ if eq .Tab "locations" }}active{{ end }}" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&tab=locations&page=1&page_size={{ .PageSize }}">
-                        Locations ({{ .SymbolsInfo.TotalLocations }})
+                        Locations ({{ .Symbols.TotalLocations }})
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
                     <a class="nav-link {{ if eq .Tab "mappings" }}active{{ end }}" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&tab=mappings&page=1&page_size={{ .PageSize }}">
-                        Mappings ({{ .SymbolsInfo.TotalMappings }})
+                        Mappings ({{ .Symbols.TotalMappings }})
                     </a>
                 </li>
             </ul>
@@ -73,8 +73,8 @@
                     <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
                         <h5 class="mb-0">Strings</h5>
                         <div class="text-muted">
-                            {{ if gt .SymbolsInfo.TotalStrings 0 }}
-                                Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .SymbolsInfo.TotalStrings }}{{ mul .Page .PageSize }}{{ else }}{{ .SymbolsInfo.TotalStrings }}{{ end }} of {{ .SymbolsInfo.TotalStrings }}
+                            {{ if gt .Symbols.TotalStrings 0 }}
+                                Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .Symbols.TotalStrings }}{{ mul .Page .PageSize }}{{ else }}{{ .Symbols.TotalStrings }}{{ end }} of {{ .Symbols.TotalStrings }}
                             {{ end }}
                         </div>
                     </div>
@@ -134,7 +134,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {{ range .SymbolsInfo.Strings }}
+                                {{ range .Symbols.Strings }}
                                 <tr>
                                     <td>{{ .Index }}</td>
                                     <td><code class="text-break">{{ .Symbol }}</code></td>
@@ -197,8 +197,8 @@
                     <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
                         <h5 class="mb-0">Functions</h5>
                         <div class="text-muted">
-                            {{ if gt .SymbolsInfo.TotalFunctions 0 }}
-                                Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .SymbolsInfo.TotalFunctions }}{{ mul .Page .PageSize }}{{ else }}{{ .SymbolsInfo.TotalFunctions }}{{ end }} of {{ .SymbolsInfo.TotalFunctions }}
+                            {{ if gt .Symbols.TotalFunctions 0 }}
+                                Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .Symbols.TotalFunctions }}{{ mul .Page .PageSize }}{{ else }}{{ .Symbols.TotalFunctions }}{{ end }} of {{ .Symbols.TotalFunctions }}
                             {{ end }}
                         </div>
                     </div>
@@ -262,7 +262,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {{ range .SymbolsInfo.Functions }}
+                                {{ range .Symbols.Functions }}
                                 <tr>
                                     <td>{{ .Index }}</td>
                                     <td>{{ .ID }}</td>
@@ -329,8 +329,8 @@
                     <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
                         <h5 class="mb-0">Locations</h5>
                         <div class="text-muted">
-                            {{ if gt .SymbolsInfo.TotalLocations 0 }}
-                                Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .SymbolsInfo.TotalLocations }}{{ mul .Page .PageSize }}{{ else }}{{ .SymbolsInfo.TotalLocations }}{{ end }} of {{ .SymbolsInfo.TotalLocations }}
+                            {{ if gt .Symbols.TotalLocations 0 }}
+                                Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .Symbols.TotalLocations }}{{ mul .Page .PageSize }}{{ else }}{{ .Symbols.TotalLocations }}{{ end }} of {{ .Symbols.TotalLocations }}
                             {{ end }}
                         </div>
                     </div>
@@ -393,7 +393,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {{ range .SymbolsInfo.Locations }}
+                                {{ range .Symbols.Locations }}
                                 <tr>
                                     <td>{{ .Index }}</td>
                                     <td>{{ .ID }}</td>
@@ -467,8 +467,8 @@
                     <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
                         <h5 class="mb-0">Mappings</h5>
                         <div class="text-muted">
-                            {{ if gt .SymbolsInfo.TotalMappings 0 }}
-                                Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .SymbolsInfo.TotalMappings }}{{ mul .Page .PageSize }}{{ else }}{{ .SymbolsInfo.TotalMappings }}{{ end }} of {{ .SymbolsInfo.TotalMappings }}
+                            {{ if gt .Symbols.TotalMappings 0 }}
+                                Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .Symbols.TotalMappings }}{{ mul .Page .PageSize }}{{ else }}{{ .Symbols.TotalMappings }}{{ end }} of {{ .Symbols.TotalMappings }}
                             {{ end }}
                         </div>
                     </div>
@@ -532,7 +532,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {{ range .SymbolsInfo.Mappings }}
+                                {{ range .Symbols.Mappings }}
                                 <tr>
                                     <td>{{ .Index }}</td>
                                     <td>{{ .ID }}</td>

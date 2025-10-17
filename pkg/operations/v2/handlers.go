@@ -244,7 +244,6 @@ func (h *Handlers) convertDataset(ds *metastorev1.Dataset, stringTable []string)
 		symbolsSize = (ds.TableOfContents[0] + ds.Size) - ds.TableOfContents[2]
 	}
 
-	// Calculate percentages
 	var profilesPercentage, indexPercentage, symbolsPercentage float64
 	if ds.Size > 0 {
 		profilesPercentage = (float64(profilesSize) / float64(ds.Size)) * 100

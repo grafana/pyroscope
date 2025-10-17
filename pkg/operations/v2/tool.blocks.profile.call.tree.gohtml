@@ -217,8 +217,7 @@
 
 <script>
     function toggleNode(element) {
-        // element is the tree-name-section div
-        // We need to find the tree-children which is a sibling of the parent tree-content div
+        // We need to find the tree-children div which is a sibling of the parent tree-content div
         const treeContent = element.parentElement;
         const listItem = treeContent.parentElement;
         const childrenContainer = listItem.querySelector('.tree-children');

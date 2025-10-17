@@ -89,24 +89,16 @@ type profileInfo struct {
 	RowNumber   int
 	Timestamp   string
 	SeriesIndex uint32
-	Fingerprint uint64
 	ProfileType string
-	TotalValue  uint64
-	PartitionID uint64
 	SampleCount int
-	Annotations string
 }
 
 type treeNode struct {
 	Name           string
 	Value          uint64
-	Self           uint64
 	Percent        float64
 	Location       string // File path and line number (e.g., "pkg/util/logger.go:L91")
-	FullPath       string // Full file path for IDE links
-	LineNumber     int64  // Line number for IDE links
 	FormattedValue string // Formatted value with unit (e.g., "1.5 MB", "250 ms")
-	FormattedSelf  string // Formatted self value with unit
 	Children       []*treeNode
 }
 
@@ -124,9 +116,7 @@ type profileCallTreePageContent struct {
 
 type profileMetadata struct {
 	Labels      []labelPair
-	TotalValue  uint64
 	SampleCount int
-	Fingerprint uint64
 	Unit        string
 	ProfileType string
 }
@@ -135,23 +125,19 @@ type tsdbIndexInfo struct {
 	From           string
 	Through        string
 	Checksum       uint32
-	NumSeries      uint64
-	NumSymbols     int
-	SampleSymbols  []string // First 100 symbols
-	TotalSymbols   int
-	LabelValueSets []labelValueSet
 	Series         []seriesInfo
+	Symbols        []string
+	LabelValueSets []labelValueSet
 }
 
 type labelValueSet struct {
-	LabelName    string
-	NumValues    int
-	SampleValues []string // All values
+	LabelName   string
+	LabelValues []string
 }
 
 type seriesInfo struct {
-	SeriesIndex uint32      // The index position (0, 1, 2...) - matches profile SeriesIndex
-	SeriesRef   uint64      // The actual storage reference (54, 58, 62...)
+	SeriesIndex uint32
+	SeriesRef   uint64
 	Labels      []labelPair
 }
 
@@ -161,20 +147,19 @@ type datasetIndexPageContent struct {
 	Shard       uint32
 	BlockTenant string
 	Dataset     *datasetDetails
-	IndexInfo   *tsdbIndexInfo
+	TSDBIndex   *tsdbIndexInfo
 	Now         string
 }
 
 type symbolsInfo struct {
-	Strings          []symbolEntry
-	TotalStrings     int
-	Functions        []functionEntry
-	TotalFunctions   int
-	Locations        []locationEntry
-	TotalLocations   int
-	Mappings         []mappingEntry
-	TotalMappings    int
-	TotalStacktraces int
+	Strings        []symbolEntry
+	TotalStrings   int
+	Functions      []functionEntry
+	TotalFunctions int
+	Locations      []locationEntry
+	TotalLocations int
+	Mappings       []mappingEntry
+	TotalMappings  int
 }
 
 type symbolEntry struct {
@@ -220,7 +205,7 @@ type datasetSymbolsPageContent struct {
 	Shard       uint32
 	BlockTenant string
 	Dataset     *datasetDetails
-	SymbolsInfo *symbolsInfo
+	Symbols     *symbolsInfo
 	Page        int
 	PageSize    int
 	TotalPages  int

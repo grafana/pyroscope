@@ -68,7 +68,6 @@
                 <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to dataset</a>
             </p>
 
-            <!-- Dataset Information Card -->
             <div class="card bg-dark border-secondary info-card">
                 <div class="card-header">
                     <h5 class="mb-0">Dataset Information</h5>
@@ -83,8 +82,7 @@
                 </div>
             </div>
 
-            {{ if .IndexInfo }}
-                <!-- Summary Card -->
+            {{ if .TSDBIndex }}
                 <div class="card bg-dark border-secondary info-card">
                     <div class="card-header">
                         <h5 class="mb-0">Index Summary</h5>
@@ -94,30 +92,29 @@
                             <div class="col-md-6">
                                 <p><strong>Time Range:</strong></p>
                                 <ul>
-                                    <li>From: {{ .IndexInfo.From }}</li>
-                                    <li>Through: {{ .IndexInfo.Through }}</li>
+                                    <li>From: {{ .TSDBIndex.From }}</li>
+                                    <li>Through: {{ .TSDBIndex.Through }}</li>
                                 </ul>
                             </div>
                             <div class="col-md-6">
                                 <p><strong>Statistics:</strong></p>
                                 <ul>
-                                    <li>Number of Series: {{ .IndexInfo.NumSeries }}</li>
-                                    <li>Number of Labels: {{ len .IndexInfo.LabelValueSets }}</li>
-                                    <li>Total Symbols: {{ .IndexInfo.TotalSymbols }}</li>
-                                    <li>Checksum: {{ printf "%08x" .IndexInfo.Checksum }}</li>
+                                    <li>Number of Series: {{ len .TSDBIndex.Series }}</li>
+                                    <li>Number of Labels: {{ len .TSDBIndex.LabelValueSets }}</li>
+                                    <li>Number of Symbols: {{ len .TSDBIndex.Symbols }}</li>
+                                    <li>Checksum: {{ printf "%08x" .TSDBIndex.Checksum }}</li>
                                 </ul>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Series Card -->
                 <div class="card bg-dark border-secondary info-card">
                     <div class="card-header">
                         <h5 class="mb-0">Series</h5>
                     </div>
                     <div class="card-body">
-                        {{ if .IndexInfo.Series }}
+                        {{ if .TSDBIndex.Series }}
                             <div class="table-responsive">
                                 <table class="table table-striped table-sm table-dark">
                                     <thead>
@@ -128,7 +125,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {{ range .IndexInfo.Series }}
+                                        {{ range .TSDBIndex.Series }}
                                         <tr>
                                             <td><code>{{ .SeriesIndex }}</code></td>
                                             <td><code class="text-muted small">{{ .SeriesRef }}</code></td>
@@ -154,21 +151,20 @@
                     </div>
                 </div>
 
-                <!-- Labels Card -->
                 <div class="card bg-dark border-secondary info-card">
                     <div class="card-header">
                         <h5 class="mb-0">Labels</h5>
                     </div>
                     <div class="card-body">
-                        {{ if .IndexInfo.LabelValueSets }}
-                            {{ range .IndexInfo.LabelValueSets }}
+                        {{ if .TSDBIndex.LabelValueSets }}
+                            {{ range .TSDBIndex.LabelValueSets }}
                                 <div class="label-value-set">
                                     <div class="label-name-header">
                                         {{ .LabelName }}
-                                        <span class="count-badge">{{ .NumValues }} values</span>
+                                        <span class="count-badge">{{ len .LabelValues }} values</span>
                                     </div>
                                     <div class="value-list">
-                                        {{ range .SampleValues }}
+                                        {{ range .LabelValues }}
                                             <div>{{ . }}</div>
                                         {{ end }}
                                     </div>
@@ -182,20 +178,15 @@
                     </div>
                 </div>
 
-                <!-- Symbols Card -->
                 <div class="card bg-dark border-secondary info-card">
                     <div class="card-header">
                         <h5 class="mb-0">Symbol Table</h5>
-                        <small class="text-muted">Showing first {{ .IndexInfo.NumSymbols }} of {{ .IndexInfo.TotalSymbols }} symbols</small>
                     </div>
                     <div class="card-body">
-                        {{ if .IndexInfo.SampleSymbols }}
+                        {{ if .TSDBIndex.Symbols }}
                             <div class="symbol-list">
-                                {{ range .IndexInfo.SampleSymbols }}
+                                {{ range .TSDBIndex.Symbols }}
                                     <div>{{ . }}</div>
-                                {{ end }}
-                                {{ if gt .IndexInfo.TotalSymbols .IndexInfo.NumSymbols }}
-                                    <div class="text-muted"><em>... and {{ sub .IndexInfo.TotalSymbols .IndexInfo.NumSymbols }} more</em></div>
                                 {{ end }}
                             </div>
                         {{ else }}

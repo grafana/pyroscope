@@ -109,7 +109,6 @@
                                 <th>Series Index</th>
                                 <th>Profile Type</th>
                                 <th>Samples</th>
-                                <th>Annotations</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -120,7 +119,6 @@
                                 <td><code>{{ .SeriesIndex }}</code></td>
                                 <td>{{ if .ProfileType }}<code class="small">{{ .ProfileType }}</code>{{ else }}<span class="text-muted">-</span>{{ end }}</td>
                                 <td>{{ .SampleCount }}</td>
-                                <td>{{ if .Annotations }}<span class="font-monospace small">{{ .Annotations }}</span>{{ else }}<span class="text-muted">-</span>{{ end }}</td>
                                 <td>
                                     <a href="/ops/object-store/tenants/{{ $.User }}/blocks/{{ $.BlockID }}/datasets/profiles/call-tree?dataset={{ if $.Dataset.Name }}{{ $.Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ $.Shard }}&block_tenant={{ $.BlockTenant }}&row={{ .RowNumber }}"
                                        class="btn btn-sm btn-success me-1">
@@ -155,7 +153,6 @@
                         {{ $blockTenant := .BlockTenant }}
                         {{ $pageSize := .PageSize }}
 
-                        <!-- Show pages around current page -->
                         {{ $startPage := add $currentPage -2 }}
                         {{ if lt $startPage 1 }}{{ $startPage = 1 }}{{ end }}
                         {{ $endPage := add $currentPage 2 }}

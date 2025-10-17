@@ -125,35 +125,16 @@ func (h *Handlers) readProfilesFromDataset(ctx context.Context, blockMeta *metas
 			}
 
 			var sampleCount int
-			var annotationsStr strings.Builder
-
 			entry.Row.ForStacktraceIdsAndValues(func(sids []parquet.Value, vals []parquet.Value) {
 				sampleCount = len(sids)
-			})
-
-			entry.Row.ForAnnotations(func(keys []parquet.Value, values []parquet.Value) {
-				for i, key := range keys {
-					if i > 0 {
-						annotationsStr.WriteString(", ")
-					}
-					annotationsStr.WriteString(string(key.ByteArray()))
-					annotationsStr.WriteString("=")
-					if i < len(values) {
-						annotationsStr.WriteString(string(values[i].ByteArray()))
-					}
-				}
 			})
 
 			profiles = append(profiles, profileInfo{
 				RowNumber:   rowNumber,
 				Timestamp:   time.Unix(0, entry.Timestamp).UTC().Format(time.RFC3339),
 				SeriesIndex: entry.Row.SeriesIndex(),
-				Fingerprint: uint64(entry.Fingerprint),
 				ProfileType: profileType,
-				TotalValue:  uint64(entry.Row.TotalValue()),
-				PartitionID: entry.Row.StacktracePartitionID(),
 				SampleCount: sampleCount,
-				Annotations: annotationsStr.String(),
 			})
 		}
 		rowNumber++
@@ -387,41 +368,24 @@ func (h *Handlers) buildProfileResolver(
 		return nil, 0, nil, fmt.Errorf("profile row %d not found", rowNum)
 	}
 
-	// Build profile metadata with labels
 	var labelPairs []labelPair
-	var unit string
-	var profileType string
 	for _, label := range targetEntry.Labels {
 		labelPairs = append(labelPairs, labelPair{
 			Key:   label.Name,
 			Value: label.Value,
 		})
-		// Extract the unit label
-		if label.Name == "__unit__" {
-			unit = label.Value
-		}
-		// Extract the profile type label
-		if label.Name == "__profile_type__" {
-			profileType = label.Value
-		}
 	}
 
 	var sampleCount int
-	var totalValue uint64
 	targetEntry.Row.ForStacktraceIdsAndValues(func(sids []parquet.Value, vals []parquet.Value) {
 		sampleCount = len(sids)
-		for _, val := range vals {
-			totalValue += uint64(val.Int64())
-		}
 	})
 
 	profileMeta := &profileMetadata{
 		Labels:      labelPairs,
-		TotalValue:  totalValue,
 		SampleCount: sampleCount,
-		Fingerprint: uint64(targetEntry.Fingerprint),
-		Unit:        unit,
-		ProfileType: profileType,
+		Unit:        targetEntry.Labels.Get(phlaremodel.LabelNameUnit),
+		ProfileType: targetEntry.Labels.Get(phlaremodel.LabelNameProfileType),
 	}
 
 	resolver := symdb.NewResolver(ctx, ds.Symbols())
@@ -452,13 +416,8 @@ func (h *Handlers) buildProfileResolver(
 
 // formatValue formats a value according to the pprof unit specification
 func formatValue(value uint64, unit string) string {
-	// Use the measurement package to format the value
 	scaledValue, scaledUnit := measurement.Scale(int64(value), unit, "auto")
-
-	// Format the value with 2 decimal places, removing trailing zeros
 	formattedValue := strings.TrimSuffix(fmt.Sprintf("%.2f", scaledValue), ".00")
-
-	// Combine value and unit
 	if scaledUnit == "" {
 		return formattedValue
 	}
@@ -470,7 +429,6 @@ func buildTreeFromPprof(profile *googlev1.Profile, unit string) *treeNode {
 		return nil
 	}
 
-	// Calculate total value
 	var grandTotal uint64
 	for _, sample := range profile.Sample {
 		if len(sample.Value) > 0 {
@@ -482,15 +440,6 @@ func buildTreeFromPprof(profile *googlev1.Profile, unit string) *treeNode {
 		return nil
 	}
 
-	// Build string table for quick lookup
-	getString := func(idx int64) string {
-		if idx >= 0 && int(idx) < len(profile.StringTable) {
-			return profile.StringTable[idx]
-		}
-		return ""
-	}
-
-	// Build function and location maps
 	functionMap := make(map[uint64]*googlev1.Function)
 	for _, fn := range profile.Function {
 		functionMap[fn.Id] = fn
@@ -501,25 +450,18 @@ func buildTreeFromPprof(profile *googlev1.Profile, unit string) *treeNode {
 		locationMap[loc.Id] = loc
 	}
 
-	// Create root node
 	root := &treeNode{
 		Name:           "root",
 		Value:          grandTotal,
-		Self:           0,
 		Percent:        100.0,
 		Location:       "",
-		FullPath:       "",
-		LineNumber:     0,
 		FormattedValue: formatValue(grandTotal, unit),
-		FormattedSelf:  formatValue(0, unit),
 		Children:       make([]*treeNode, 0),
 	}
 
-	// Track nodes by path to merge duplicate stacks
 	nodeMap := make(map[string]*treeNode)
 	nodeMap[""] = root
 
-	// Process each sample
 	for _, sample := range profile.Sample {
 		if len(sample.Value) == 0 || len(sample.LocationId) == 0 {
 			continue
@@ -529,7 +471,6 @@ func buildTreeFromPprof(profile *googlev1.Profile, unit string) *treeNode {
 		currentPath := ""
 		currentNode := root
 
-		// Walk the stack from root (reversed order)
 		for i := len(sample.LocationId) - 1; i >= 0; i-- {
 			locID := sample.LocationId[i]
 			location := locationMap[locID]
@@ -537,7 +478,6 @@ func buildTreeFromPprof(profile *googlev1.Profile, unit string) *treeNode {
 				continue
 			}
 
-			// Get the first function at this location (innermost)
 			if len(location.Line) == 0 {
 				continue
 			}
@@ -548,19 +488,12 @@ func buildTreeFromPprof(profile *googlev1.Profile, unit string) *treeNode {
 				continue
 			}
 
-			funcName := getString(function.Name)
-			fileName := getString(function.Filename)
+			funcName := profile.StringTable[function.Name]
+			fileName := profile.StringTable[function.Filename]
 			lineNum := line.Line
 
-			// Build location string and store full path
 			var locationStr string
-			var fullPath string
-			var lineNumber int64
 			if fileName != "" && lineNum > 0 {
-				fullPath = fileName
-				lineNumber = lineNum
-
-				// Simplify file path for display
 				filePath := fileName
 				if pkgIdx := strings.Index(filePath, "/pkg/"); pkgIdx != -1 {
 					filePath = filePath[pkgIdx+1:]
@@ -572,7 +505,6 @@ func buildTreeFromPprof(profile *googlev1.Profile, unit string) *treeNode {
 				locationStr = fmt.Sprintf("%s:L%d", filePath, lineNum)
 			}
 
-			// Create unique path for this node
 			parentPath := currentPath
 			currentPath = fmt.Sprintf("%s/%s@%d", parentPath, funcName, line.FunctionId)
 
@@ -580,14 +512,9 @@ func buildTreeFromPprof(profile *googlev1.Profile, unit string) *treeNode {
 			if !exists {
 				node = &treeNode{
 					Name:           funcName,
-					Value:          0,
-					Self:           0,
 					Percent:        0,
 					Location:       locationStr,
-					FullPath:       fullPath,
-					LineNumber:     lineNumber,
 					FormattedValue: formatValue(0, unit),
-					FormattedSelf:  formatValue(0, unit),
 					Children:       make([]*treeNode, 0),
 				}
 				nodeMap[currentPath] = node
@@ -595,11 +522,6 @@ func buildTreeFromPprof(profile *googlev1.Profile, unit string) *treeNode {
 			}
 
 			node.Value += value
-
-			// If this is the leaf node, add to self
-			if i == 0 {
-				node.Self += value
-			}
 
 			currentNode = node
 		}
@@ -615,9 +537,7 @@ func sortAndCalculatePercents(node *treeNode, grandTotal float64, unit string) {
 		node.Percent = (float64(node.Value) / grandTotal) * 100.0
 	}
 
-	// Update formatted values after all accumulation is done
 	node.FormattedValue = formatValue(node.Value, unit)
-	node.FormattedSelf = formatValue(node.Self, unit)
 
 	if len(node.Children) > 0 {
 		slices.SortFunc(node.Children, func(a, b *treeNode) int {
@@ -634,229 +554,4 @@ func sortAndCalculatePercents(node *treeNode, grandTotal float64, unit string) {
 			sortAndCalculatePercents(child, grandTotal, unit)
 		}
 	}
-}
-
-func (h *Handlers) CreateDatasetSymbolsHandler() func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		req, err := parseDatasetRequest(r)
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-
-		page := 1
-		if pageStr := r.URL.Query().Get("page"); pageStr != "" {
-			if _, err := fmt.Sscanf(pageStr, "%d", &page); err != nil || page < 1 {
-				page = 1
-			}
-		}
-
-		pageSize := 100
-		if pageSizeStr := r.URL.Query().Get("page_size"); pageSizeStr != "" {
-			if _, err := fmt.Sscanf(pageSizeStr, "%d", &pageSize); err != nil || pageSize < 1 || pageSize > 500 {
-				pageSize = 100
-			}
-		}
-
-		tab := r.URL.Query().Get("tab")
-		if tab == "" {
-			tab = "strings"
-		}
-
-		blockMeta, foundDataset, err := h.getDatasetMetadata(r.Context(), req)
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-
-		dataset := h.convertDataset(foundDataset, blockMeta.StringTable)
-
-		symbolsInfo, err := h.readSymbols(r.Context(), blockMeta, foundDataset, tab, page, pageSize)
-		if err != nil {
-			httputil.Error(w, errors.Wrap(err, "failed to read symbols"))
-			return
-		}
-
-		// Calculate total pages based on the active tab
-		var totalCount int
-		switch tab {
-		case "strings":
-			totalCount = symbolsInfo.TotalStrings
-		case "functions":
-			totalCount = symbolsInfo.TotalFunctions
-		case "locations":
-			totalCount = symbolsInfo.TotalLocations
-		case "mappings":
-			totalCount = symbolsInfo.TotalMappings
-		default:
-			totalCount = symbolsInfo.TotalStrings
-		}
-
-		totalPages := (totalCount + pageSize - 1) / pageSize
-		if totalPages == 0 {
-			totalPages = 1
-		}
-
-		err = pageTemplates.datasetSymbolsTemplate.Execute(w, datasetSymbolsPageContent{
-			User:        req.TenantID,
-			BlockID:     req.BlockID,
-			Shard:       req.Shard,
-			BlockTenant: req.BlockTenant,
-			Dataset:     &dataset,
-			SymbolsInfo: symbolsInfo,
-			Page:        page,
-			PageSize:    pageSize,
-			TotalPages:  totalPages,
-			HasPrevPage: page > 1,
-			HasNextPage: page < totalPages,
-			Tab:         tab,
-			Now:         time.Now().UTC().Format(time.RFC3339),
-		})
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-	}
-}
-
-func (h *Handlers) readSymbols(ctx context.Context, blockMeta *metastorev1.BlockMeta, dataset *metastorev1.Dataset, tab string, page, pageSize int) (*symbolsInfo, error) {
-	obj := block.NewObject(h.Bucket, blockMeta)
-	if err := obj.Open(ctx); err != nil {
-		return nil, fmt.Errorf("failed to open block object: %w", err)
-	}
-	defer obj.Close()
-
-	ds := block.NewDataset(dataset, obj)
-	if err := ds.Open(ctx, block.SectionSymbols); err != nil {
-		return nil, fmt.Errorf("failed to open dataset: %w", err)
-	}
-	defer ds.Close()
-
-	symbolsReader := ds.Symbols()
-
-	// We need to get a partition to access the actual symbols
-	// For v2 blocks, there's typically one partition per dataset
-	// We'll use partition 0 as a default
-	partitionID := uint64(0)
-	partition, err := symbolsReader.Partition(ctx, partitionID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get symbols partition: %w", err)
-	}
-	defer partition.Release()
-
-	symbols := partition.Symbols()
-	if symbols == nil {
-		return nil, fmt.Errorf("symbols partition returned nil")
-	}
-
-	// Helper to safely get string from index
-	getString := func(idx uint32) string {
-		if int(idx) < len(symbols.Strings) {
-			return symbols.Strings[idx]
-		}
-		return fmt.Sprintf("<invalid string id %d>", idx)
-	}
-
-	// Get counts for tab headers
-	allStrings := symbols.Strings
-	totalStrings := len(allStrings)
-
-	// Paginate based on the active tab
-	var stringEntries []symbolEntry
-	var functionEntries []functionEntry
-	var locationEntries []locationEntry
-	var mappingEntries []mappingEntry
-
-	startIdx := (page - 1) * pageSize
-	endIdx := startIdx + pageSize
-
-	switch tab {
-	case "strings":
-		if endIdx > totalStrings {
-			endIdx = totalStrings
-		}
-		for idx := startIdx; idx < endIdx; idx++ {
-			stringEntries = append(stringEntries, symbolEntry{
-				Index:  idx,
-				Symbol: allStrings[idx],
-			})
-		}
-
-	case "functions":
-		totalFunctions := len(symbols.Functions)
-		if endIdx > totalFunctions {
-			endIdx = totalFunctions
-		}
-		for idx := startIdx; idx < endIdx; idx++ {
-			fn := symbols.Functions[idx]
-			functionEntries = append(functionEntries, functionEntry{
-				Index:      idx,
-				ID:         fn.Id,
-				Name:       getString(fn.Name),
-				SystemName: getString(fn.SystemName),
-				Filename:   getString(fn.Filename),
-				StartLine:  fn.StartLine,
-			})
-		}
-
-	case "locations":
-		totalLocations := len(symbols.Locations)
-		if endIdx > totalLocations {
-			endIdx = totalLocations
-		}
-		for idx := startIdx; idx < endIdx; idx++ {
-			loc := symbols.Locations[idx]
-			var lines []locationLine
-			for _, line := range loc.Line {
-				if int(line.FunctionId) < len(symbols.Functions) {
-					fn := symbols.Functions[line.FunctionId]
-					lines = append(lines, locationLine{
-						FunctionName: getString(fn.Name),
-						Line:         int64(line.Line),
-					})
-				}
-			}
-			locationEntries = append(locationEntries, locationEntry{
-				Index:     idx,
-				ID:        loc.Id,
-				Address:   loc.Address,
-				MappingID: loc.MappingId,
-				Lines:     lines,
-			})
-		}
-
-	case "mappings":
-		totalMappings := len(symbols.Mappings)
-		if endIdx > totalMappings {
-			endIdx = totalMappings
-		}
-		for idx := startIdx; idx < endIdx; idx++ {
-			mapping := symbols.Mappings[idx]
-			mappingEntries = append(mappingEntries, mappingEntry{
-				Index:       idx,
-				ID:          mapping.Id,
-				MemoryStart: mapping.MemoryStart,
-				MemoryLimit: mapping.MemoryLimit,
-				FileOffset:  mapping.FileOffset,
-				Filename:    getString(mapping.Filename),
-				BuildID:     getString(mapping.BuildId),
-			})
-		}
-	}
-
-	// Get stacktrace stats
-	var stats symdb.PartitionStats
-	partition.WriteStats(&stats)
-
-	return &symbolsInfo{
-		Strings:          stringEntries,
-		TotalStrings:     totalStrings,
-		Functions:        functionEntries,
-		TotalFunctions:   len(symbols.Functions),
-		Locations:        locationEntries,
-		TotalLocations:   len(symbols.Locations),
-		Mappings:         mappingEntries,
-		TotalMappings:    len(symbols.Mappings),
-		TotalStacktraces: stats.StacktracesTotal,
-	}, nil
 }

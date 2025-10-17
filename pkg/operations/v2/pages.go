@@ -115,12 +115,9 @@ func initTemplates() *templates {
 	profileCallTreeTemplate := template.New("profile-call-tree").Funcs(template.FuncMap{
 		"add":  add,
 		"dict": dict,
-		"mul":  mul,
 	})
 	template.Must(profileCallTreeTemplate.Parse(profileCallTreePageHtml))
-	datasetIndexTemplate := template.New("dataset-index").Funcs(template.FuncMap{
-		"sub": sub,
-	})
+	datasetIndexTemplate := template.New("dataset-index")
 	template.Must(datasetIndexTemplate.Parse(datasetIndexPageHtml))
 	datasetSymbolsTemplate := template.New("dataset-symbols").Funcs(template.FuncMap{
 		"add": add,
