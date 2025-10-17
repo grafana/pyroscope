@@ -1704,12 +1704,15 @@
       "type": "object",
       "properties": {
         "key": {
-          "type": "string"
+          "type": "string",
+          "title": "Annotation key [hidden]"
         },
         "value": {
-          "type": "string"
+          "type": "string",
+          "title": "Annotation value [hidden]"
         }
-      }
+      },
+      "description": "Annotations provide additional metadata for a profile.\n\nThe main differences between labels and annotations are:\n  - annotations cannot be used in query selectors\n  - annotation keys don't have to be unique\n\nCurrently annotations are applied internally by distributors,\nany annotation passed via the push API will be dropped."
     },
     "v1ProfileFormat": {
       "type": "string",
@@ -1958,7 +1961,7 @@
         },
         "ID": {
           "type": "string",
-          "title": "unique UUID of the profile"
+          "title": "UUID of the profile"
         }
       },
       "title": "RawSample is the set of bytes that correspond to a pprof profile"
