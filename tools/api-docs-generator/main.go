@@ -27,8 +27,22 @@ func main() {
 
 	if *help {
 		fmt.Println("API Documentation Generator")
-		fmt.Println("Generates a single markdown file from OpenAPI v3 YAML files")
 		fmt.Println()
+		fmt.Println("Generates unified API documentation from OpenAPI v3 YAML files.")
+		fmt.Println("Processes all .yaml/.yml files in the input directory and creates")
+		fmt.Println("a single markdown file using the provided template.")
+		fmt.Println()
+		fmt.Println("Only processes endpoints tagged with 'scope/public' and generates")
+		fmt.Println("both cURL and Python code examples for each endpoint.")
+		fmt.Println()
+		fmt.Println("Usage:")
+		fmt.Printf("  %s [flags]\n", os.Args[0])
+		fmt.Println()
+		fmt.Println("Examples:")
+		fmt.Printf("  %s\n", os.Args[0])
+		fmt.Printf("  %s -input ./specs -output ./docs/api.md\n", os.Args[0])
+		fmt.Println()
+		fmt.Println("Flags:")
 		flag.PrintDefaults()
 		return
 	}
