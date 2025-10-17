@@ -130,53 +130,62 @@
         </div>
         <div class="row my-3">
             <p>
-                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}?shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to block</a>
-                |
-                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to dataset</a>
-                |
                 <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets/profiles?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to profiles</a>
-                |
-                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets/index?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">View TSDB index</a>
             </p>
 
-            <h4>Profile: {{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}<em>(empty)</em>{{ end }}</h4>
-            <p class="text-muted">
-                Tenant: {{ .User }} | Block: {{ .BlockID }} | Shard: {{ .Shard }}
-            </p>
-
-            {{ if .ProfileInfo }}
-            <div class="card bg-dark border-secondary mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0">Profile Information</h5>
-                </div>
-                <div class="card-body py-2">
-                    <div class="row mb-2">
-                        <div class="col-12">
-                            <strong class="text-muted">Profile Type:</strong>
-                            <span class="ms-2">
-                                <code class="text-primary fs-6">{{ .ProfileInfo.ProfileType }}</code>
-                            </span>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="card bg-dark border-secondary info-card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">Dataset Information</h5>
                         </div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-12">
-                            <strong class="text-muted">Timestamp:</strong>
-                            <span class="ms-2">
-                                {{ .Timestamp }}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-12">
-                            <strong class="text-muted">Labels:</strong>
-                            <span class="ms-2">
-                                {{ range $index, $label := .ProfileInfo.Labels }}{{ if $index }}, {{ end }}<code class="text-info">{{ $label.Key }}</code>=<code class="text-warning">{{ $label.Value }}</code>{{ end }}
-                            </span>
+                        <div class="card-body">
+                            <ul>
+                                <li>Dataset Name: {{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}<em>(empty)</em>{{ end }}</li>
+                                <li>Dataset Tenant: {{ .Dataset.Tenant }}</li>
+                                <li>Block ID: {{ .BlockID }}</li>
+                                <li>Shard: {{ .Shard }}</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
+
+                {{ if .ProfileInfo }}
+                <div class="col-md-6">
+                    <div class="card bg-dark border-secondary info-card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">Profile Information</h5>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="row mb-2">
+                                <div class="col-12">
+                                    <strong class="text-muted">Profile Type:</strong>
+                                    <span class="ms-2">
+                                        <code class="text-primary fs-6">{{ .ProfileInfo.ProfileType }}</code>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-12">
+                                    <strong class="text-muted">Timestamp:</strong>
+                                    <span class="ms-2">
+                                        {{ .Timestamp }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <strong class="text-muted">Labels:</strong>
+                                    <span class="ms-2">
+                                        {{ range $index, $label := .ProfileInfo.Labels }}{{ if $index }}, {{ end }}<code class="text-info">{{ $label.Key }}</code>=<code class="text-warning">{{ $label.Value }}</code>{{ end }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{ end }}
             </div>
-            {{ end }}
 
             <div class="card bg-dark border-secondary">
                 <div class="card-header">
