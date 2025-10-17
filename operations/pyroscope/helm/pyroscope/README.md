@@ -15,7 +15,7 @@
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.min.io/ | minio(minio) | 4.0.12 |
+| https://charts.min.io/ | minio(minio) | 4.1.0 |
 | https://grafana.github.io/helm-charts | alloy(alloy) | 1.3.1 |
 | https://grafana.github.io/helm-charts | agent(grafana-agent) | 0.44.2 |
 
