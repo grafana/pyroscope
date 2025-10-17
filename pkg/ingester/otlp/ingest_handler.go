@@ -63,10 +63,10 @@ func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, me b
 			return
 		}
 
-		// Handle HTTP/Protobuf and HTTP/Binary requests
+		// Handle HTTP/JSON and HTTP/Protobuf requests
 		contentType := r.Header.Get("Content-Type")
 		if contentType == "application/json" || contentType == "application/x-protobuf" || contentType == "application/protobuf" {
-			h.handleHTTPProtobuf(w, r)
+			h.handleHTTPRequest(w, r)
 			return
 		}
 
@@ -108,7 +108,7 @@ func (h *ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
 }
 
-func (h *ingestHandler) handleHTTPProtobuf(w http.ResponseWriter, r *http.Request) {
+func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	// Read the request body - we need to read it all for protobuf unmarshaling

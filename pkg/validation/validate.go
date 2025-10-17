@@ -11,6 +11,7 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/pprof"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -125,7 +126,7 @@ type LabelValidationLimits interface {
 }
 
 // ValidateLabels validates the labels of a profile.
-func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1.LabelPair) error {
+func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1.LabelPair, logger log.Logger) error {
 	if len(ls) == 0 {
 		return NewErrorf(MissingLabels, MissingLabelsErrorMsg)
 	}
@@ -162,7 +163,7 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 			if err != nil {
 				return err
 			}
-			level.Debug(util.Logger).Log(
+			level.Debug(logger).Log(
 				"msg", "label name sanitized",
 				"origName", origName,
 				"serviceName", serviceNameValue)

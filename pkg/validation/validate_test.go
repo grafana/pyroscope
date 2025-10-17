@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
@@ -140,7 +141,7 @@ func TestValidateLabels(t *testing.T) {
 				MaxLabelNamesPerSeriesValue: 4,
 				MaxLabelNameLengthValue:     12,
 				MaxLabelValueLengthValue:    10,
-			}, "foo", tt.lbs)
+			}, "foo", tt.lbs, log.NewNopLogger())
 			if tt.expectedErr != "" {
 				require.Error(t, err)
 				require.Equal(t, tt.expectedErr, err.Error())

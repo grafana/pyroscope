@@ -13,7 +13,7 @@ import (
 	"github.com/grafana/dskit/tracing"
 )
 
-// Logger is a global logger to use only where you cannot inject a logger.
+// Logger is a nop global logger
 var Logger = log.NewNopLogger()
 
 // LoggerWithUserID returns a Logger that has information about the current user in

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/concurrency"
@@ -140,10 +141,11 @@ func TestHandlers_CreateIndexHandler(t *testing.T) {
 }
 
 func Test_filterAndGroupBlocks(t *testing.T) {
-	block1 := &bucketindex.Block{ID: ulid.MustNew(1, nil), MinTime: model.Now().Add(-2 * time.Hour), MaxTime: model.Now().Add(-1 * time.Hour)}
-	block2 := &bucketindex.Block{ID: ulid.MustNew(2, nil), MinTime: model.Now().Add(-4 * time.Hour), MaxTime: model.Now().Add(-3 * time.Hour)}
-	block3 := &bucketindex.Block{ID: ulid.MustNew(3, nil), MinTime: model.Now().Add(-4*time.Hour + time.Minute), MaxTime: model.Now().Add(-3 * time.Hour)}
-	block4 := &bucketindex.Block{ID: ulid.MustNew(4, nil), MinTime: model.Now().Add(-12 * time.Hour), MaxTime: model.Now().Add(-10 * time.Hour)}
+	now := model.TimeFromUnixNano(time.Date(2025, 10, 16, 16, 0, 0, 0, time.UTC).UnixNano())
+	block1 := &bucketindex.Block{ID: ulid.MustNew(1, nil), MinTime: now.Add(-2 * time.Hour), MaxTime: now.Add(-1 * time.Hour)}
+	block2 := &bucketindex.Block{ID: ulid.MustNew(2, nil), MinTime: now.Add(-4 * time.Hour), MaxTime: now.Add(-3 * time.Hour)}
+	block3 := &bucketindex.Block{ID: ulid.MustNew(3, nil), MinTime: now.Add(-4*time.Hour + time.Minute), MaxTime: now.Add(-3 * time.Hour)}
+	block4 := &bucketindex.Block{ID: ulid.MustNew(4, nil), MinTime: now.Add(-12 * time.Hour), MaxTime: now.Add(-10 * time.Hour)}
 	h := &Handlers{MaxBlockDuration: time.Hour}
 
 	type args struct {
@@ -177,8 +179,8 @@ func Test_filterAndGroupBlocks(t *testing.T) {
 					BlockDeletionMarks: bucketindex.BlockDeletionMarks{&bucketindex.BlockDeletionMark{ID: block1.ID}},
 				},
 				query: &blockQuery{
-					parsedFrom: time.Now().Add(-6 * time.Hour),
-					parsedTo:   time.Now(),
+					parsedFrom: now.Time().Add(-6 * time.Hour),
+					parsedTo:   now.Time(),
 				}},
 			want: &blockListResult{
 				// block 1 is not included because it is marked as deleted
@@ -205,7 +207,7 @@ func Test_filterAndGroupBlocks(t *testing.T) {
 								UploadedAt:        time.UnixMilli(0).UTC().Format(time.RFC3339),
 							},
 						},
-						MinTimeAge:              "4 hours ago",
+						MinTimeAge:              humanize.RelTime(block2.MinTime.Time(), now.Time(), "ago", ""),
 						MaxBlockDurationMinutes: 60,
 					},
 				},
@@ -216,7 +218,7 @@ func Test_filterAndGroupBlocks(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, h.filterAndGroupBlocks(tt.args.index, tt.args.query), "filterAndGroupBlocks(%v, %v)", tt.args.index, tt.args.query)
+			assert.Equalf(t, tt.want, h.filterAndGroupBlocks(tt.args.index, tt.args.query, now.Time()), "filterAndGroupBlocks(%v, %v)", tt.args.index, tt.args.query)
 		})
 	}
 }

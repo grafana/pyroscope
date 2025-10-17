@@ -60,7 +60,7 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 			User:           tenantId,
 			Query:          query,
 			Now:            time.Now().UTC().Format(time.RFC3339),
-			SelectedBlocks: h.filterAndGroupBlocks(index, query),
+			SelectedBlocks: h.filterAndGroupBlocks(index, query, time.Now()),
 		})
 		if err != nil {
 			httputil.Error(w, err)
@@ -69,7 +69,7 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 	}
 }
 
-func (h *Handlers) filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) *blockListResult {
+func (h *Handlers) filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery, now time.Time) *blockListResult {
 	queryFrom := model.TimeFromUnix(query.parsedFrom.UnixMilli() / 1000)
 	queryTo := model.TimeFromUnix(query.parsedTo.UnixMilli() / 1000)
 	blockGroupMap := make(map[time.Time]*blockGroup)
@@ -92,7 +92,7 @@ func (h *Handlers) filterAndGroupBlocks(index *bucketindex.Index, query *blockQu
 					MinTime:                 truncatedMinTime,
 					FormattedMinTime:        truncatedMinTime.Format(time.RFC3339),
 					Blocks:                  make([]*blockDetails, 0),
-					MinTimeAge:              humanize.RelTime(blk.MinTime.Time(), time.Now(), "ago", ""),
+					MinTimeAge:              humanize.RelTime(blk.MinTime.Time(), now, "ago", ""),
 					MaxBlockDurationMinutes: int(math.Round(blk.MaxTime.Sub(blk.MinTime).Minutes())),
 				}
 				blockGroups = append(blockGroups, blkGroup)
