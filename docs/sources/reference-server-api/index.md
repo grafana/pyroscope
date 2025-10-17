@@ -1,5 +1,5 @@
 ---
-description: Learn about the Pyrocope server API
+description: Learn about the Pyroscope server API
 menuTitle: "Reference: Server API"
 title: Server HTTP API
 aliases:
