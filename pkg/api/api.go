@@ -20,9 +20,8 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
-	"github.com/grafana/pyroscope/public"
-
 	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/public"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/capabilities/v1/capabilitiesv1connect"
@@ -43,6 +42,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/ingester"
 	"github.com/grafana/pyroscope/pkg/ingester/otlp"
 	"github.com/grafana/pyroscope/pkg/ingester/pyroscope"
+	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
@@ -201,7 +201,8 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation
 	})
 
 	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, writePathOpts...)
-	a.RegisterRoute("/v1development/profiles", otlpHandler, writePathOpts...)
+	// TODO(@petethepig): implement http/protobuf and http/json support
+	// a.RegisterRoute("/v1/profiles", otlpHandler, true, true, "POST")
 }
 
 // RegisterMemberlistKV registers the endpoints associated with the memberlist KV store.
@@ -232,8 +233,8 @@ func (a *API) RegisterFeatureFlagsServiceHandler(svc capabilitiesv1connect.Featu
 	capabilitiesv1connect.RegisterFeatureFlagsServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
 }
 
-func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient) {
-	handlers := querier.NewHTTPHandlers(client)
+func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient, cfg querier.Config) {
+	handlers := querier.NewHTTPHandlers(client, cfg)
 	a.RegisterRoute("/pyroscope/render", http.HandlerFunc(handlers.Render), a.registerOptionsReadPath()...)
 	a.RegisterRoute("/pyroscope/render-diff", http.HandlerFunc(handlers.RenderDiff), a.registerOptionsReadPath()...)
 	a.RegisterRoute("/pyroscope/label-values", http.HandlerFunc(handlers.LabelValues), a.registerOptionsReadPath()...)
@@ -294,19 +295,10 @@ func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
 	)
 }
 
-// AdminService is an interface for admin handlers (v1 and v2)
-type AdminService interface {
-	TenantsHandler(w http.ResponseWriter, r *http.Request)
-	BlocksHandler(w http.ResponseWriter, r *http.Request)
-	BlockHandler(w http.ResponseWriter, r *http.Request)
-	DatasetHandler(w http.ResponseWriter, r *http.Request)
-}
-
-func (a *API) RegisterAdmin(ad AdminService) {
+func (a *API) RegisterAdmin(ad *operations.Admin) {
 	a.RegisterRoute("/ops/object-store/tenants", http.HandlerFunc(ad.TenantsHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks", http.HandlerFunc(ad.BlocksHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}", http.HandlerFunc(ad.BlockHandler), a.registerOptionsPublicAccess()...)
-	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets", http.HandlerFunc(ad.DatasetHandler), a.registerOptionsPublicAccess()...)
 
 	a.indexPage.AddLinks(defaultWeight, "Admin", []IndexPageLink{
 		{Desc: "Object Storage Tenants & Blocks", Path: "/ops/object-store/tenants"},

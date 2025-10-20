@@ -29,7 +29,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/metrics"
 	"github.com/grafana/pyroscope/pkg/objstore"
-	operationsv2 "github.com/grafana/pyroscope/pkg/operations/v2"
 	"github.com/grafana/pyroscope/pkg/querybackend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/segmentwriter"
@@ -82,7 +81,7 @@ func (f *Pyroscope) initQueryFrontendV1() (services.Service, error) {
 	}
 	f.API.RegisterFrontendForQuerierHandler(f.frontend)
 	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(f.frontend, queryFrontendLogger))
-	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(f.frontend, queryFrontendLogger))
+	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(f.frontend, queryFrontendLogger), f.Cfg.Querier)
 	f.API.RegisterVCSServiceHandler(f.frontend)
 	return f.frontend, nil
 }
@@ -104,7 +103,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	)
 
 	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(queryFrontend, queryFrontendLogger))
-	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(queryFrontend, queryFrontendLogger))
+	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(queryFrontend, queryFrontendLogger), f.Cfg.Querier)
 	f.API.RegisterVCSServiceHandler(vcsService)
 
 	// New query frontend does not have any state.
@@ -148,7 +147,7 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 
 	f.API.RegisterFrontendForQuerierHandler(f.frontend)
 	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger))
-	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger))
+	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger), f.Cfg.Querier)
 	f.API.RegisterVCSServiceHandler(vcsService)
 
 	return f.frontend, nil
@@ -327,19 +326,6 @@ func (f *Pyroscope) initMetastoreAdmin() (services.Service, error) {
 	level.Info(f.logger).Log("msg", "registering metastore admin routes")
 	f.API.RegisterMetastoreAdmin(f.metastoreAdmin)
 	return f.metastoreAdmin.Service(), nil
-}
-
-func (f *Pyroscope) initAdminV2() (services.Service, error) {
-	level.Info(f.logger).Log("msg", "initializing v2 admin (metastore-based)")
-
-	a, err := operationsv2.NewAdmin(f.metastoreClient, f.logger)
-	if err != nil {
-		level.Info(f.logger).Log("msg", "failed to initialize v2 admin", "err", err)
-		return nil, nil
-	}
-	f.admin = a
-	f.API.RegisterAdmin(a)
-	return a, nil
 }
 
 func (f *Pyroscope) initQueryBackend() (services.Service, error) {

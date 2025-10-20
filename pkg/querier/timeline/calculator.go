@@ -7,23 +7,22 @@ import (
 )
 
 var (
-	DefaultRes         int64 = 1500
-	DefaultMinInterval       = time.Second * 15
+	DefaultRes int64 = 1500
 )
 
 // CalcPointInterval calculates the appropriate interval between each point (aka step)
 // Note that its main usage is with SelectSeries, therefore its
 // * inputs are in ms
 // * output is in seconds
-func CalcPointInterval(fromMs int64, untilMs int64) float64 {
+func CalcPointInterval(fromMs int64, untilMs int64, minInterval time.Duration) float64 {
 	resolution := DefaultRes
 
 	fromNano := fromMs * 1000000
 	untilNano := untilMs * 1000000
 	calculatedIntervalNano := time.Duration((untilNano - fromNano) / resolution)
 
-	if calculatedIntervalNano < DefaultMinInterval {
-		return DefaultMinInterval.Seconds()
+	if calculatedIntervalNano < minInterval {
+		return minInterval.Seconds()
 	}
 
 	return roundInterval(calculatedIntervalNano).Seconds()
@@ -31,7 +30,7 @@ func CalcPointInterval(fromMs int64, untilMs int64) float64 {
 
 //nolint:gocyclo
 func roundInterval(interval time.Duration) time.Duration {
-	// Notice that interval may be smaller than DefaultMinInterval, and therefore some branches may never be reached
+	// Some branches may never be reached depending on the minimum interval configured
 	// These branches are left in case the invariant changes
 	switch {
 	// 0.01s
