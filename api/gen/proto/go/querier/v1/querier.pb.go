@@ -4,9 +4,13 @@
 // 	protoc        (unknown)
 // source: querier/v1/querier.proto
 
+// Provides the ablility to query the Pyroscope database. Most of the calls in
+// this group are considered public.
+
 package querierv1
 
 import (
+	_ "github.com/google/gnostic/openapiv3"
 	v11 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -173,13 +177,15 @@ func (x *ProfileTypesResponse) GetProfileTypes() []*v1.ProfileType {
 }
 
 type SeriesRequest struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	Matchers   []string               `protobuf:"bytes,1,rep,name=matchers,proto3" json:"matchers,omitempty"`
-	LabelNames []string               `protobuf:"bytes,2,rep,name=label_names,json=labelNames,proto3" json:"label_names,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// List of label selector to apply to the result.
+	Matchers []string `protobuf:"bytes,1,rep,name=matchers,proto3" json:"matchers,omitempty"`
+	// List of label_names to request. If empty will return all label names in the
+	// result.
+	LabelNames []string `protobuf:"bytes,2,rep,name=label_names,json=labelNames,proto3" json:"label_names,omitempty"`
 	// Milliseconds since epoch. If missing or zero, only the ingesters will be
 	// queried.
 	Start int64 `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
-	// Milliseconds since epoch. If missing or zero, only the ingesters will be
 	// queried.
 	End           int64 `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -289,14 +295,18 @@ func (x *SeriesResponse) GetLabelsSet() []*v1.Labels {
 }
 
 type SelectMergeStacktracesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ProfileTypeID string                 `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
-	LabelSelector string                 `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Profile Type ID string in the form
+	// <name>:<type>:<unit>:<period_type>:<period_unit>.
+	ProfileTypeID string `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
+	// Label selector string
+	LabelSelector string `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
 	// Milliseconds since epoch.
 	Start int64 `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
 	// Milliseconds since epoch.
 	End int64 `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
-	// Limit the nodes returned to only show the node with the max_node's biggest total
+	// Limit the nodes returned to only show the node with the max_node's biggest
+	// total
 	MaxNodes *int64 `protobuf:"varint,5,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
 	// Profile format specifies the format of profile to be returned.
 	// If not specified, the profile will be returned in flame graph format.
@@ -440,15 +450,20 @@ func (x *SelectMergeStacktracesResponse) GetTree() []byte {
 }
 
 type SelectMergeSpanProfileRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ProfileTypeID string                 `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
-	LabelSelector string                 `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
-	SpanSelector  []string               `protobuf:"bytes,3,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Profile Type ID string in the form
+	// <name>:<type>:<unit>:<period_type>:<period_unit>.
+	ProfileTypeID string `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
+	// Label selector string
+	LabelSelector string `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
+	// List of Span IDs to query
+	SpanSelector []string `protobuf:"bytes,3,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"`
 	// Milliseconds since epoch.
 	Start int64 `protobuf:"varint,4,opt,name=start,proto3" json:"start,omitempty"`
 	// Milliseconds since epoch.
 	End int64 `protobuf:"varint,5,opt,name=end,proto3" json:"end,omitempty"`
-	// Limit the nodes returned to only show the node with the max_node's biggest total
+	// Limit the nodes returned to only show the node with the max_node's biggest
+	// total
 	MaxNodes *int64 `protobuf:"varint,6,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
 	// Profile format specifies the format of profile to be returned.
 	// If not specified, the profile will be returned in flame graph format.
@@ -882,14 +897,18 @@ func (x *Level) GetValues() []int64 {
 }
 
 type SelectMergeProfileRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ProfileTypeID string                 `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
-	LabelSelector string                 `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Profile Type ID string in the form
+	// <name>:<type>:<unit>:<period_type>:<period_unit>.
+	ProfileTypeID string `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
+	// Label selector string
+	LabelSelector string `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
 	// Milliseconds since epoch.
 	Start int64 `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
 	// Milliseconds since epoch.
 	End int64 `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
-	// Limit the nodes returned to only show the node with the max_node's biggest total
+	// Limit the nodes returned to only show the node with the max_node's biggest
+	// total
 	MaxNodes *int64 `protobuf:"varint,5,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
 	// Select stack traces that match the provided selector.
 	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,6,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
@@ -970,9 +989,12 @@ func (x *SelectMergeProfileRequest) GetStackTraceSelector() *v1.StackTraceSelect
 }
 
 type SelectSeriesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ProfileTypeID string                 `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
-	LabelSelector string                 `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Profile Type ID string in the form
+	// <name>:<type>:<unit>:<period_type>:<period_unit>.
+	ProfileTypeID string `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
+	// Label selector string
+	LabelSelector string `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
 	// Milliseconds since epoch.
 	Start int64 `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
 	// Milliseconds since epoch.
@@ -1239,16 +1261,17 @@ func (x *AnalyzeQueryResponse) GetQueryImpact() *QueryImpact {
 }
 
 type QueryScope struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	ComponentType  string                 `protobuf:"bytes,1,opt,name=component_type,json=componentType,proto3" json:"component_type,omitempty"`     // a descriptive high level name of the component processing one part of the query (e.g., "short term storage")
-	ComponentCount uint64                 `protobuf:"varint,2,opt,name=component_count,json=componentCount,proto3" json:"component_count,omitempty"` // how many components of this type will process the query (indicator of read-path replication)
-	BlockCount     uint64                 `protobuf:"varint,3,opt,name=block_count,json=blockCount,proto3" json:"block_count,omitempty"`
-	SeriesCount    uint64                 `protobuf:"varint,4,opt,name=series_count,json=seriesCount,proto3" json:"series_count,omitempty"`
-	ProfileCount   uint64                 `protobuf:"varint,5,opt,name=profile_count,json=profileCount,proto3" json:"profile_count,omitempty"`
-	SampleCount    uint64                 `protobuf:"varint,6,opt,name=sample_count,json=sampleCount,proto3" json:"sample_count,omitempty"`
-	IndexBytes     uint64                 `protobuf:"varint,7,opt,name=index_bytes,json=indexBytes,proto3" json:"index_bytes,omitempty"`
-	ProfileBytes   uint64                 `protobuf:"varint,8,opt,name=profile_bytes,json=profileBytes,proto3" json:"profile_bytes,omitempty"`
-	SymbolBytes    uint64                 `protobuf:"varint,9,opt,name=symbol_bytes,json=symbolBytes,proto3" json:"symbol_bytes,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ComponentType string                 `protobuf:"bytes,1,opt,name=component_type,json=componentType,proto3" json:"component_type,omitempty"` // a descriptive high level name of the component processing one part
+	// of the query (e.g., "short term storage")
+	ComponentCount uint64 `protobuf:"varint,2,opt,name=component_count,json=componentCount,proto3" json:"component_count,omitempty"` // how many components of this type will process
+	BlockCount     uint64 `protobuf:"varint,3,opt,name=block_count,json=blockCount,proto3" json:"block_count,omitempty"`
+	SeriesCount    uint64 `protobuf:"varint,4,opt,name=series_count,json=seriesCount,proto3" json:"series_count,omitempty"`
+	ProfileCount   uint64 `protobuf:"varint,5,opt,name=profile_count,json=profileCount,proto3" json:"profile_count,omitempty"`
+	SampleCount    uint64 `protobuf:"varint,6,opt,name=sample_count,json=sampleCount,proto3" json:"sample_count,omitempty"`
+	IndexBytes     uint64 `protobuf:"varint,7,opt,name=index_bytes,json=indexBytes,proto3" json:"index_bytes,omitempty"`
+	ProfileBytes   uint64 `protobuf:"varint,8,opt,name=profile_bytes,json=profileBytes,proto3" json:"profile_bytes,omitempty"`
+	SymbolBytes    uint64 `protobuf:"varint,9,opt,name=symbol_bytes,json=symbolBytes,proto3" json:"symbol_bytes,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1411,26 +1434,26 @@ var File_querier_v1_querier_proto protoreflect.FileDescriptor
 const file_querier_v1_querier_proto_rawDesc = "" +
 	"\n" +
 	"\x18querier/v1/querier.proto\x12\n" +
-	"querier.v1\x1a\x17google/v1/profile.proto\x1a\x14types/v1/types.proto\"=\n" +
-	"\x13ProfileTypesRequest\x12\x14\n" +
-	"\x05start\x18\x01 \x01(\x03R\x05start\x12\x10\n" +
-	"\x03end\x18\x02 \x01(\x03R\x03end\"R\n" +
+	"querier.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x17google/v1/profile.proto\x1a\x14types/v1/types.proto\"i\n" +
+	"\x13ProfileTypesRequest\x12*\n" +
+	"\x05start\x18\x01 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
+	"\x03end\x18\x02 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\"R\n" +
 	"\x14ProfileTypesResponse\x12:\n" +
-	"\rprofile_types\x18\x01 \x03(\v2\x15.types.v1.ProfileTypeR\fprofileTypes\"t\n" +
-	"\rSeriesRequest\x12\x1a\n" +
-	"\bmatchers\x18\x01 \x03(\tR\bmatchers\x12\x1f\n" +
+	"\rprofile_types\x18\x01 \x03(\v2\x15.types.v1.ProfileTypeR\fprofileTypes\"\xc7\x01\n" +
+	"\rSeriesRequest\x12A\n" +
+	"\bmatchers\x18\x01 \x03(\tB%\xbaG\": \x12\x1e['{namespace=\"my-namespace\"}']R\bmatchers\x12\x1f\n" +
 	"\vlabel_names\x18\x02 \x03(\tR\n" +
-	"labelNames\x12\x14\n" +
-	"\x05start\x18\x03 \x01(\x03R\x05start\x12\x10\n" +
-	"\x03end\x18\x04 \x01(\x03R\x03end\"A\n" +
+	"labelNames\x12*\n" +
+	"\x05start\x18\x03 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
+	"\x03end\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\"A\n" +
 	"\x0eSeriesResponse\x12/\n" +
 	"\n" +
-	"labels_set\x18\x02 \x03(\v2\x10.types.v1.LabelsR\tlabelsSet\"\xe6\x02\n" +
-	"\x1dSelectMergeStacktracesRequest\x12%\n" +
-	"\x0eprofile_typeID\x18\x01 \x01(\tR\rprofileTypeID\x12%\n" +
-	"\x0elabel_selector\x18\x02 \x01(\tR\rlabelSelector\x12\x14\n" +
-	"\x05start\x18\x03 \x01(\x03R\x05start\x12\x10\n" +
-	"\x03end\x18\x04 \x01(\x03R\x03end\x12 \n" +
+	"labels_set\x18\x02 \x03(\v2\x10.types.v1.LabelsR\tlabelsSet\"\xeb\x03\n" +
+	"\x1dSelectMergeStacktracesRequest\x12Y\n" +
+	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
+	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12*\n" +
+	"\x05start\x18\x03 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
+	"\x03end\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\x12 \n" +
 	"\tmax_nodes\x18\x05 \x01(\x03H\x00R\bmaxNodes\x88\x01\x01\x121\n" +
 	"\x06format\x18\x06 \x01(\x0e2\x19.querier.v1.ProfileFormatR\x06format\x12S\n" +
 	"\x14stack_trace_selector\x18\a \x01(\v2\x1c.types.v1.StackTraceSelectorH\x01R\x12stackTraceSelector\x88\x01\x01B\f\n" +
@@ -1441,13 +1464,13 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\n" +
 	"flamegraph\x18\x01 \x01(\v2\x16.querier.v1.FlameGraphR\n" +
 	"flamegraph\x12\x12\n" +
-	"\x04tree\x18\x02 \x01(\fR\x04tree\"\x9d\x02\n" +
-	"\x1dSelectMergeSpanProfileRequest\x12%\n" +
-	"\x0eprofile_typeID\x18\x01 \x01(\tR\rprofileTypeID\x12%\n" +
-	"\x0elabel_selector\x18\x02 \x01(\tR\rlabelSelector\x12#\n" +
-	"\rspan_selector\x18\x03 \x03(\tR\fspanSelector\x12\x14\n" +
-	"\x05start\x18\x04 \x01(\x03R\x05start\x12\x10\n" +
-	"\x03end\x18\x05 \x01(\x03R\x03end\x12 \n" +
+	"\x04tree\x18\x02 \x01(\fR\x04tree\"\xd2\x03\n" +
+	"\x1dSelectMergeSpanProfileRequest\x12Y\n" +
+	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
+	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12S\n" +
+	"\rspan_selector\x18\x03 \x03(\tB.\xbaG+:)\x12'['9a517183f26a089d','5a4fe264a9c987fe']R\fspanSelector\x12*\n" +
+	"\x05start\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
+	"\x03end\x18\x05 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\x12 \n" +
 	"\tmax_nodes\x18\x06 \x01(\x03H\x00R\bmaxNodes\x88\x01\x01\x121\n" +
 	"\x06format\x18\a \x01(\x0e2\x19.querier.v1.ProfileFormatR\x06formatB\f\n" +
 	"\n" +
@@ -1480,23 +1503,23 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"rightTicks\x18\x06 \x01(\x03R\n" +
 	"rightTicks\"\x1f\n" +
 	"\x05Level\x12\x16\n" +
-	"\x06values\x18\x01 \x03(\x03R\x06values\"\xaf\x02\n" +
-	"\x19SelectMergeProfileRequest\x12%\n" +
-	"\x0eprofile_typeID\x18\x01 \x01(\tR\rprofileTypeID\x12%\n" +
-	"\x0elabel_selector\x18\x02 \x01(\tR\rlabelSelector\x12\x14\n" +
-	"\x05start\x18\x03 \x01(\x03R\x05start\x12\x10\n" +
-	"\x03end\x18\x04 \x01(\x03R\x03end\x12 \n" +
+	"\x06values\x18\x01 \x03(\x03R\x06values\"\xb4\x03\n" +
+	"\x19SelectMergeProfileRequest\x12Y\n" +
+	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
+	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12*\n" +
+	"\x05start\x18\x03 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
+	"\x03end\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\x12 \n" +
 	"\tmax_nodes\x18\x05 \x01(\x03H\x00R\bmaxNodes\x88\x01\x01\x12S\n" +
 	"\x14stack_trace_selector\x18\x06 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x01R\x12stackTraceSelector\x88\x01\x01B\f\n" +
 	"\n" +
 	"_max_nodesB\x17\n" +
-	"\x15_stack_trace_selector\"\xa9\x03\n" +
-	"\x13SelectSeriesRequest\x12%\n" +
-	"\x0eprofile_typeID\x18\x01 \x01(\tR\rprofileTypeID\x12%\n" +
-	"\x0elabel_selector\x18\x02 \x01(\tR\rlabelSelector\x12\x14\n" +
-	"\x05start\x18\x03 \x01(\x03R\x05start\x12\x10\n" +
-	"\x03end\x18\x04 \x01(\x03R\x03end\x12\x19\n" +
-	"\bgroup_by\x18\x05 \x03(\tR\agroupBy\x12\x12\n" +
+	"\x15_stack_trace_selector\"\xbe\x04\n" +
+	"\x13SelectSeriesRequest\x12Y\n" +
+	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
+	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12*\n" +
+	"\x05start\x18\x03 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
+	"\x03end\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\x12)\n" +
+	"\bgroup_by\x18\x05 \x03(\tB\x0e\xbaG\v:\t\x12\a['pod']R\agroupBy\x12\x12\n" +
 	"\x04step\x18\x06 \x01(\x01R\x04step\x12J\n" +
 	"\vaggregation\x18\a \x01(\x0e2#.types.v1.TimeSeriesAggregationTypeH\x00R\vaggregation\x88\x01\x01\x12S\n" +
 	"\x14stack_trace_selector\x18\b \x01(\v2\x1c.types.v1.StackTraceSelectorH\x01R\x12stackTraceSelector\x88\x01\x01\x12\x19\n" +
@@ -1533,20 +1556,31 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\rProfileFormat\x12\x1e\n" +
 	"\x1aPROFILE_FORMAT_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19PROFILE_FORMAT_FLAMEGRAPH\x10\x01\x12\x17\n" +
-	"\x13PROFILE_FORMAT_TREE\x10\x022\xbb\a\n" +
-	"\x0eQuerierService\x12S\n" +
-	"\fProfileTypes\x12\x1f.querier.v1.ProfileTypesRequest\x1a .querier.v1.ProfileTypesResponse\"\x00\x12L\n" +
-	"\vLabelValues\x12\x1c.types.v1.LabelValuesRequest\x1a\x1d.types.v1.LabelValuesResponse\"\x00\x12I\n" +
+	"\x13PROFILE_FORMAT_TREE\x10\x022\xfc\b\n" +
+	"\x0eQuerierService\x12d\n" +
+	"\fProfileTypes\x12\x1f.querier.v1.ProfileTypesRequest\x1a .querier.v1.ProfileTypesResponse\"\x11\xbaG\x0e\n" +
+	"\fscope/public\x12]\n" +
+	"\vLabelValues\x12\x1c.types.v1.LabelValuesRequest\x1a\x1d.types.v1.LabelValuesResponse\"\x11\xbaG\x0e\n" +
+	"\fscope/public\x12Z\n" +
 	"\n" +
-	"LabelNames\x12\x1b.types.v1.LabelNamesRequest\x1a\x1c.types.v1.LabelNamesResponse\"\x00\x12A\n" +
-	"\x06Series\x12\x19.querier.v1.SeriesRequest\x1a\x1a.querier.v1.SeriesResponse\"\x00\x12q\n" +
-	"\x16SelectMergeStacktraces\x12).querier.v1.SelectMergeStacktracesRequest\x1a*.querier.v1.SelectMergeStacktracesResponse\"\x00\x12q\n" +
-	"\x16SelectMergeSpanProfile\x12).querier.v1.SelectMergeSpanProfileRequest\x1a*.querier.v1.SelectMergeSpanProfileResponse\"\x00\x12Q\n" +
-	"\x12SelectMergeProfile\x12%.querier.v1.SelectMergeProfileRequest\x1a\x12.google.v1.Profile\"\x00\x12S\n" +
-	"\fSelectSeries\x12\x1f.querier.v1.SelectSeriesRequest\x1a .querier.v1.SelectSeriesResponse\"\x00\x12;\n" +
-	"\x04Diff\x12\x17.querier.v1.DiffRequest\x1a\x18.querier.v1.DiffResponse\"\x00\x12X\n" +
-	"\x0fGetProfileStats\x12 .types.v1.GetProfileStatsRequest\x1a!.types.v1.GetProfileStatsResponse\"\x00\x12S\n" +
-	"\fAnalyzeQuery\x12\x1f.querier.v1.AnalyzeQueryRequest\x1a .querier.v1.AnalyzeQueryResponse\"\x00B\xab\x01\n" +
+	"LabelNames\x12\x1b.types.v1.LabelNamesRequest\x1a\x1c.types.v1.LabelNamesResponse\"\x11\xbaG\x0e\n" +
+	"\fscope/public\x12R\n" +
+	"\x06Series\x12\x19.querier.v1.SeriesRequest\x1a\x1a.querier.v1.SeriesResponse\"\x11\xbaG\x0e\n" +
+	"\fscope/public\x12\x82\x01\n" +
+	"\x16SelectMergeStacktraces\x12).querier.v1.SelectMergeStacktracesRequest\x1a*.querier.v1.SelectMergeStacktracesResponse\"\x11\xbaG\x0e\n" +
+	"\fscope/public\x12\x82\x01\n" +
+	"\x16SelectMergeSpanProfile\x12).querier.v1.SelectMergeSpanProfileRequest\x1a*.querier.v1.SelectMergeSpanProfileResponse\"\x11\xbaG\x0e\n" +
+	"\fscope/public\x12b\n" +
+	"\x12SelectMergeProfile\x12%.querier.v1.SelectMergeProfileRequest\x1a\x12.google.v1.Profile\"\x11\xbaG\x0e\n" +
+	"\fscope/public\x12d\n" +
+	"\fSelectSeries\x12\x1f.querier.v1.SelectSeriesRequest\x1a .querier.v1.SelectSeriesResponse\"\x11\xbaG\x0e\n" +
+	"\fscope/public\x12L\n" +
+	"\x04Diff\x12\x17.querier.v1.DiffRequest\x1a\x18.querier.v1.DiffResponse\"\x11\xbaG\x0e\n" +
+	"\fscope/public\x12k\n" +
+	"\x0fGetProfileStats\x12 .types.v1.GetProfileStatsRequest\x1a!.types.v1.GetProfileStatsResponse\"\x13\xbaG\x10\n" +
+	"\x0escope/internal\x12f\n" +
+	"\fAnalyzeQuery\x12\x1f.querier.v1.AnalyzeQueryRequest\x1a .querier.v1.AnalyzeQueryResponse\"\x13\xbaG\x10\n" +
+	"\x0escope/internalB\xab\x01\n" +
 	"\x0ecom.querier.v1B\fQuerierProtoP\x01ZBgithub.com/grafana/pyroscope/api/gen/proto/go/querier/v1;querierv1\xa2\x02\x03QXX\xaa\x02\n" +
 	"Querier.V1\xca\x02\n" +
 	"Querier\\V1\xe2\x02\x16Querier\\V1\\GPBMetadata\xea\x02\vQuerier::V1b\x06proto3"
