@@ -9,6 +9,7 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -27,6 +28,11 @@ func (q *QueryFrontend) SelectMergeProfile(
 	}
 	if empty {
 		return connect.NewResponse(&profilev1.Profile{}), nil
+	}
+
+	_, err = phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	// NOTE: Max nodes limit is not set by default:
