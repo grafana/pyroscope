@@ -1,6 +1,7 @@
 package delayhandler
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -71,7 +72,12 @@ func NewHTTP(limits Limits) func(h http.Handler) http.Handler {
 
 			delay := getDelay(ctx, limits)
 			var delayRw *delayedResponseWriter
+			delayCtx := context.Background()
 			if delay > 0 {
+				var cancel context.CancelFunc
+				delayCtx, cancel = context.WithCancel(delayCtx)
+				defer cancel()
+				ctx = WithDelayCancel(ctx, cancel)
 				w, delayRw = wrapResponseWriter(w, start.Add(delay))
 
 				// only add a span when delay is active
@@ -90,6 +96,11 @@ func NewHTTP(limits Limits) func(h http.Handler) http.Handler {
 
 			// if request errored we skip the delay
 			if delayRw.requestError {
+				return
+			}
+
+			// The delay has been canceled down the chain.
+			if delayCtx.Err() != nil {
 				return
 			}
 

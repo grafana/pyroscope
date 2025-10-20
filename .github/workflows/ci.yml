@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   format:
-    runs-on: ubuntu-x64-large
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
@@ -31,7 +31,7 @@ jobs:
       - name: Format
         run: make fmt check/unstaged-changes
   check-generated:
-    runs-on: ubuntu-x64-large
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
@@ -48,7 +48,13 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
-    runs-on: ubuntu-${{ matrix.arch }}-large
+    # Compute runner OS dynamically based on arch and repo ownership
+    runs-on: >-
+      ${{ 
+        github.repository_owner == 'grafana' 
+          && format('ubuntu-{0}-large', matrix.arch) 
+          || (matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04')
+      }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
@@ -63,7 +69,7 @@ jobs:
       - name: Test
         run: make go/test
   lint:
-    runs-on: ubuntu-x64-large
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
@@ -79,7 +85,7 @@ jobs:
         run: make helm/check check/unstaged-changes
 
   test-docs:
-    runs-on: ubuntu-x64-small
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
     steps:
       - name: "Check out code"
         uses: "actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955" # v4
@@ -90,7 +96,7 @@ jobs:
 
   build-image:
     if: github.event_name != 'push'
-    runs-on: ubuntu-x64
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64' || 'ubuntu-latest' }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
@@ -116,7 +122,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    runs-on: ubuntu-x64-large
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
     outputs:
       image: ${{ steps.push-metadata.outputs.image }}
       image-digest: ${{ steps.push-metadata.outputs.image-digest }}
@@ -136,7 +142,7 @@ jobs:
           go-version: 1.24.8
       # login to docker hub
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@ad819d8e2e2dccb7a28c7e2c43054573d6b45900
+        uses: grafana/shared-workflows/actions/get-vault-secrets@50003525a2bfea2f21a7dcec5fc67ab22690d19d
         with:
           common_secrets: |
             DOCKERHUB_USERNAME=dockerhub:username
@@ -163,12 +169,12 @@ jobs:
       contents: read
       id-token: write
     if: github.event_name == 'push' && github.repository == 'grafana/pyroscope' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-x64-small
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
     needs: [build-push]
     steps:
     - id: "submit-argowfs-deployment"
       name: "Submit Argo Workflows deployment"
-      uses: grafana/shared-workflows/actions/trigger-argo-workflow@ad819d8e2e2dccb7a28c7e2c43054573d6b45900
+      uses: grafana/shared-workflows/actions/trigger-argo-workflow@50003525a2bfea2f21a7dcec5fc67ab22690d19d
       with:
         namespace: "phlare-cd"
         workflow_template: "deploy-pyroscope-dev"

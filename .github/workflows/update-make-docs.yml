@@ -9,12 +9,12 @@ on:
 jobs:
   main:
     if: github.repository == 'grafana/pyroscope'
-    runs-on: ubuntu-x64-small
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
-      - uses: grafana/writers-toolkit/update-make-docs@d5577de696f0eb69ff65816795c816d6a84951fe
+      - uses: grafana/writers-toolkit/update-make-docs@d87843b53c21125598f5e20e5bebae213f0059b6
         with:
           pr_options: >
             --label type/docs
