@@ -79,6 +79,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/metastore.v1.GetTenantResponse'
+  /metastore.v1.TenantService/GetTenants:
+    post:
+      tags:
+        - metastore.v1.TenantService
+      summary: GetTenants
+      operationId: metastore.v1.TenantService.GetTenants
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/metastore.v1.GetTenantsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/metastore.v1.GetTenantsResponse'
 components:
   schemas:
     connect-protocol-version:
@@ -177,6 +212,20 @@ components:
           title: stats
           $ref: '#/components/schemas/metastore.v1.TenantStats'
       title: GetTenantResponse
+      additionalProperties: false
+    metastore.v1.GetTenantsRequest:
+      type: object
+      title: GetTenantsRequest
+      additionalProperties: false
+    metastore.v1.GetTenantsResponse:
+      type: object
+      properties:
+        tenantIds:
+          type: array
+          items:
+            type: string
+          title: tenant_ids
+      title: GetTenantsResponse
       additionalProperties: false
     metastore.v1.TenantStats:
       type: object
