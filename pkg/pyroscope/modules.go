@@ -262,7 +262,7 @@ func (f *Pyroscope) initQuerier() (services.Service, error) {
 	}
 
 	if !f.isModuleActive(QueryFrontend) {
-		f.API.RegisterPyroscopeHandlers(querierSvc)
+		f.API.RegisterPyroscopeHandlers(querierSvc, f.Overrides)
 		f.API.RegisterQuerierServiceHandler(querierSvc)
 	}
 

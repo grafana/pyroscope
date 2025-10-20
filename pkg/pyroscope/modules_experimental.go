@@ -82,7 +82,7 @@ func (f *Pyroscope) initQueryFrontendV1() (services.Service, error) {
 	}
 	f.API.RegisterFrontendForQuerierHandler(f.frontend)
 	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(f.frontend, queryFrontendLogger))
-	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(f.frontend, queryFrontendLogger))
+	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(f.frontend, queryFrontendLogger), f.Overrides)
 	f.API.RegisterVCSServiceHandler(f.frontend)
 	return f.frontend, nil
 }
@@ -104,7 +104,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	)
 
 	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(queryFrontend, queryFrontendLogger))
-	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(queryFrontend, queryFrontendLogger))
+	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(queryFrontend, queryFrontendLogger), f.Overrides)
 	f.API.RegisterVCSServiceHandler(vcsService)
 
 	// New query frontend does not have any state.
@@ -148,7 +148,7 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 
 	f.API.RegisterFrontendForQuerierHandler(f.frontend)
 	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger))
-	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger))
+	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger), f.Overrides)
 	f.API.RegisterVCSServiceHandler(vcsService)
 
 	return f.frontend, nil

@@ -232,8 +232,8 @@ func (a *API) RegisterFeatureFlagsServiceHandler(svc capabilitiesv1connect.Featu
 	capabilitiesv1connect.RegisterFeatureFlagsServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
 }
 
-func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient) {
-	handlers := querier.NewHTTPHandlers(client)
+func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient, limits querier.Limits) {
+	handlers := querier.NewHTTPHandlers(client, limits)
 	a.RegisterRoute("/pyroscope/render", http.HandlerFunc(handlers.Render), a.registerOptionsReadPath()...)
 	a.RegisterRoute("/pyroscope/render-diff", http.HandlerFunc(handlers.RenderDiff), a.registerOptionsReadPath()...)
 	a.RegisterRoute("/pyroscope/label-values", http.HandlerFunc(handlers.LabelValues), a.registerOptionsReadPath()...)

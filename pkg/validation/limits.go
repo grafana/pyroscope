@@ -85,6 +85,7 @@ type Limits struct {
 	MaxQueryParallelism        int            `yaml:"max_query_parallelism" json:"max_query_parallelism"`
 	QueryAnalysisEnabled       bool           `yaml:"query_analysis_enabled" json:"query_analysis_enabled"`
 	QueryAnalysisSeriesEnabled bool           `yaml:"query_analysis_series_enabled" json:"query_analysis_series_enabled"`
+	MinStepDuration            model.Duration `yaml:"min_step_duration" json:"min_step_duration"`
 
 	// Flame graph enforced limits.
 	MaxFlameGraphNodesDefault              int  `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
@@ -177,6 +178,9 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 
 	f.BoolVar(&l.QueryAnalysisEnabled, "querier.query-analysis-enabled", true, "Whether query analysis is enabled in the query frontend. If disabled, the /AnalyzeQuery endpoint will return an empty response.")
 	f.BoolVar(&l.QueryAnalysisSeriesEnabled, "querier.query-analysis-series-enabled", false, "Whether the series portion of query analysis is enabled. If disabled, no series data (e.g., series count) will be calculated by the /AnalyzeQuery endpoint.")
+
+	_ = l.MinStepDuration.Set("15s")
+	f.Var(&l.MinStepDuration, "querier.min-step-duration", "The minimum step duration for range queries.")
 
 	f.IntVar(&l.MaxProfileSizeBytes, "validation.max-profile-size-bytes", 4*1024*1024, "Maximum size of a profile in bytes. This is based off the uncompressed size. 0 to disable.")
 	f.IntVar(&l.MaxProfileStacktraceSamples, "validation.max-profile-stacktrace-samples", 16000, "Maximum number of samples in a profile. 0 to disable.")
@@ -558,6 +562,11 @@ func GetOverride[T any](o *Overrides, fn func(string, *Limits) T) (defaults T, o
 // To be used for tenants where calculating series can be expensive.
 func (o *Overrides) QueryAnalysisSeriesEnabled(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).QueryAnalysisSeriesEnabled
+}
+
+// MinStepDuration returns the minimum step duration for range queries.
+func (o *Overrides) MinStepDuration(tenantID string) time.Duration {
+	return time.Duration(o.getOverridesForTenant(tenantID).MinStepDuration)
 }
 
 func (o *Overrides) WritePathOverrides(tenantID string) writepath.Config {
