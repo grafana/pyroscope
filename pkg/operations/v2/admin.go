@@ -6,6 +6,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
+
+	"github.com/grafana/pyroscope/pkg/objstore"
 )
 
 type Admin struct {
@@ -14,12 +16,13 @@ type Admin struct {
 	handlers *Handlers
 }
 
-func NewAdmin(metastoreClient MetastoreClient, logger log.Logger) (*Admin, error) {
+func NewAdmin(metastoreClient MetastoreClient, bucket objstore.Bucket, logger log.Logger) (*Admin, error) {
 	a := &Admin{
 		logger: logger,
 		handlers: &Handlers{
 			Logger:          logger,
 			MetastoreClient: metastoreClient,
+			Bucket:          bucket,
 		},
 	}
 	a.Service = services.NewBasicService(nil, a.running, nil)
@@ -45,4 +48,16 @@ func (a *Admin) BlockHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *Admin) DatasetHandler(w http.ResponseWriter, r *http.Request) {
 	a.handlers.CreateDatasetDetailsHandler()(w, r)
+}
+
+func (a *Admin) DatasetProfilesHandler(w http.ResponseWriter, r *http.Request) {
+	a.handlers.CreateDatasetProfilesHandler()(w, r)
+}
+
+func (a *Admin) ProfileDownloadHandler(w http.ResponseWriter, r *http.Request) {
+	a.handlers.CreateDatasetProfileDownloadHandler()(w, r)
+}
+
+func (a *Admin) ProfileCallTreeHandler(w http.ResponseWriter, r *http.Request) {
+	a.handlers.CreateDatasetProfileCallTreeHandler()(w, r)
 }
