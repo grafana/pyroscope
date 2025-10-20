@@ -2,6 +2,7 @@
 //
 // Source: push/v1/push.proto
 
+// This is the API to send profiles to Pyroscope
 package pushv1connect
 
 import (
