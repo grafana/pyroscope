@@ -1,11 +1,13 @@
 name: Update `make docs` procedure
 
-permissions: {}
-
 on:
   schedule:
     - cron: '0 7 * * 1-5'
   workflow_dispatch:
+
+permissions:
+  contents: write
+
 jobs:
   main:
     if: github.repository == 'grafana/pyroscope'
