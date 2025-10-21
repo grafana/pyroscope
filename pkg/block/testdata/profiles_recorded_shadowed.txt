@@ -1,0 +1,8 @@
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_alloc_total_pyroscope_ingester_Push_bytes" > samples:<value:1.2128258e+07 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_total_pyroscope_ingester_Push_bytes" > samples:<value:1.588276e+06 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_total_pyroscope_ingester_Push_samples" > samples:<value:2 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_alloc_total_pyroscope_ingester_Serve_bytes" > samples:<value:4.6148663e+07 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_total_pyroscope_ingester_Serve_bytes" > samples:<value:1.5491333e+07 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_total_pyroscope_ingester_Serve_samples" > samples:<value:5 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_total_query_Serve_bytes" > samples:<value:1.753538e+06 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_alloc_total_query_Serve_bytes" > samples:<value:2.136945e+06 > 
