@@ -47,8 +47,7 @@ jobs:
           APP_BOT="${{ steps.generate_token.outputs.app-slug }}[bot]"
           git config --local user.name "${APP_BOT}"
           git config --local user.email "${{ steps.get-user-id.outputs.user-id }}+${APP_BOT}@users.noreply.github.com"
-          git remote rm origin
-          git remote add origin https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/${{ github.repository }}.git HEAD:main 2> /dev/null
+          git remote set-url "origin" https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/${{ github.repository }}.git > /dev/null 2> /dev/null
       - uses: grafana/writers-toolkit/update-make-docs@d87843b53c21125598f5e20e5bebae213f0059b6
         with:
           pr_options: >
