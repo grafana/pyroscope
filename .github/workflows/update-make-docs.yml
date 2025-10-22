@@ -11,6 +11,7 @@ jobs:
     if: github.repository == 'grafana/pyroscope'
     permissions:
       contents: write
+      pull-requests: write
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
