@@ -139,6 +139,10 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 	return nil
 }
 
+func (a *API) RegisterRedirectToAdmin() {
+	a.RegisterRoute("/", http.RedirectHandler("/admin", http.StatusFound), a.registerOptionsPublicAccess()...)
+}
+
 func (a *API) RegisterCatchAll() error {
 	uiIndexHandler, err := public.NewIndexHandler(a.cfg.BaseURL)
 	if err != nil {
