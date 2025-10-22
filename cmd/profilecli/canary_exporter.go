@@ -332,7 +332,6 @@ func (ce *canaryExporter) testPyroscopeCell(ctx context.Context) error {
 	// }
 
 	// ingest via OTLP HTTP/JSON
-	// Note: HTTP endpoints are not yet implemented in Pyroscope (see pkg/api/api.go:204-205)
 	if err := ce.runProbe(ctx, "ingest-otlp-http-json", func(rCtx context.Context) error {
 		return ce.testIngestOTLPHttpJson(rCtx, now)
 	}); err != nil {
