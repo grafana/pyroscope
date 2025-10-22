@@ -16,7 +16,7 @@ spec:
         - name: grafana
           image: grafana/grafana:latest
           env:
-            - name: GF_INSTALL_PLUGINS
+            - name: GF_PLUGINS_PREINSTALL_SYNC
               value: grafana-pyroscope-app
             - name: GF_AUTH_ANONYMOUS_ENABLED
               value: "true"
