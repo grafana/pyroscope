@@ -61,3 +61,7 @@ func (a *Admin) ProfileDownloadHandler(w http.ResponseWriter, r *http.Request) {
 func (a *Admin) ProfileCallTreeHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Profile call tree not available in v1 storage", http.StatusNotFound)
 }
+
+func (a *Admin) DatasetTSDBIndexHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Dataset TSDB index not available in v1 storage", http.StatusNotFound)
+}

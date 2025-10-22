@@ -149,6 +149,36 @@ type profileMetadata struct {
 	ProfileType string
 }
 
+type tsdbIndexInfo struct {
+	From           string
+	Through        string
+	Checksum       uint32
+	Series         []seriesInfo
+	Symbols        []string
+	LabelValueSets []labelValueSet
+}
+
+type labelValueSet struct {
+	LabelName   string
+	LabelValues []string
+}
+
+type seriesInfo struct {
+	SeriesIndex uint32
+	SeriesRef   uint64
+	Labels      []labelPair
+}
+
+type datasetIndexPageContent struct {
+	User        string
+	BlockID     string
+	Shard       uint32
+	BlockTenant string
+	Dataset     *datasetDetails
+	TSDBIndex   *tsdbIndexInfo
+	Now         string
+}
+
 const emptyDatasetPlaceholder = "_empty"
 
 type datasetRequest struct {
