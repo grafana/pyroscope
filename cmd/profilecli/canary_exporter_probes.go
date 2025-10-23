@@ -9,7 +9,6 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"slices"
 	"strings"
 	"time"
 
@@ -494,7 +493,6 @@ func (ce *canaryExporter) testLabelNames(ctx context.Context, now time.Time) err
 	}
 
 	labelNames := respQuery.Msg.Names
-	slices.Sort(labelNames)
 
 	expectedLabelNames := []string{
 		model.LabelNameProfileName,
