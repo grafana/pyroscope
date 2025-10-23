@@ -14,7 +14,7 @@ GO_MOD_VERSION := 1.24.0
 
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
-IMAGE_PLATFORM = linux/amd64
+IMAGE_PLATFORM = linux/$(GOARCH)
 BUILDX_ARGS =
 GOPRIVATE=github.com/grafana/frostdb
 

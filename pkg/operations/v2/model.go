@@ -1,11 +1,17 @@
 package v2
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
+
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/operations"
 )
 
@@ -65,15 +71,18 @@ type labelSet struct {
 }
 
 type datasetDetails struct {
-	Tenant       string
-	Name         string
-	MinTime      string
-	MaxTime      string
-	Size         string
-	ProfilesSize string
-	IndexSize    string
-	SymbolsSize  string
-	LabelSets    []labelSet
+	Tenant             string
+	Name               string
+	MinTime            string
+	MaxTime            string
+	Size               string
+	ProfilesSize       string
+	IndexSize          string
+	SymbolsSize        string
+	ProfilesPercentage float64
+	IndexPercentage    float64
+	SymbolsPercentage  float64
+	LabelSets          []labelSet
 }
 
 type blockGroup struct {
@@ -102,4 +111,125 @@ func sortBlockDetailsByMinTimeDec(bd []*blockDetails) {
 	slices.SortFunc(bd, func(a, b *blockDetails) int {
 		return strings.Compare(b.MinTime, a.MinTime)
 	})
+}
+
+type profileInfo struct {
+	RowNumber   int
+	Timestamp   string
+	SeriesIndex uint32
+	ProfileType string
+	SampleCount int
+}
+
+type treeNode struct {
+	Name           string
+	Value          uint64
+	Percent        float64
+	Location       string // File path and line number (e.g., "pkg/util/logger.go:L91")
+	FormattedValue string // Formatted value with unit (e.g., "1.5 MB", "250 ms")
+	Children       []*treeNode
+}
+
+type profileCallTreePageContent struct {
+	User        string
+	BlockID     string
+	Shard       uint32
+	BlockTenant string
+	Dataset     *datasetDetails
+	Timestamp   string
+	ProfileInfo *profileMetadata
+	Tree        *treeNode
+	Now         string
+}
+
+type profileMetadata struct {
+	Labels      []labelPair
+	SampleCount int
+	Unit        string
+	ProfileType string
+}
+
+const emptyDatasetPlaceholder = "_empty"
+
+type datasetRequest struct {
+	TenantID    string
+	BlockID     string
+	BlockTenant string
+	DatasetName string
+	Shard       uint32
+}
+
+func parseDatasetRequest(r *http.Request) (*datasetRequest, error) {
+	vars := mux.Vars(r)
+
+	tenantID := vars["tenant"]
+	if tenantID == "" {
+		return nil, errors.New("No tenant id provided")
+	}
+
+	blockID := vars["block"]
+	if blockID == "" {
+		return nil, errors.New("No block id provided")
+	}
+
+	datasetName := r.URL.Query().Get("dataset")
+	if datasetName == "" {
+		return nil, errors.New("No dataset name provided")
+	}
+	if datasetName == emptyDatasetPlaceholder {
+		datasetName = ""
+	}
+
+	shardStr := r.URL.Query().Get("shard")
+	if shardStr == "" {
+		return nil, errors.New("No shard provided")
+	}
+	var shard uint32
+	if _, err := fmt.Sscanf(shardStr, "%d", &shard); err != nil {
+		return nil, errors.Wrap(err, "invalid shard parameter")
+	}
+
+	blockTenant := r.URL.Query().Get("block_tenant")
+
+	return &datasetRequest{
+		TenantID:    tenantID,
+		BlockID:     blockID,
+		BlockTenant: blockTenant,
+		DatasetName: datasetName,
+		Shard:       shard,
+	}, nil
+}
+
+func (h *Handlers) getDatasetMetadata(ctx context.Context, req *datasetRequest) (*metastorev1.BlockMeta, *metastorev1.Dataset, error) {
+	metadataResp, err := h.MetastoreClient.GetBlockMetadata(ctx, &metastorev1.GetBlockMetadataRequest{
+		Blocks: &metastorev1.BlockList{
+			Tenant: req.BlockTenant,
+			Shard:  req.Shard,
+			Blocks: []string{req.BlockID},
+		},
+	})
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to get block metadata")
+	}
+
+	if len(metadataResp.Blocks) == 0 {
+		return nil, nil, errors.New("Block not found")
+	}
+
+	blockMeta := metadataResp.Blocks[0]
+
+	var foundDataset *metastorev1.Dataset
+	for _, ds := range blockMeta.Datasets {
+		dsName := blockMeta.StringTable[ds.Name]
+		if dsName == req.DatasetName {
+			foundDataset = ds
+			break
+		}
+	}
+
+	if foundDataset == nil {
+		return nil, nil, errors.New("Dataset not found")
+	}
+
+	return blockMeta, foundDataset, nil
 }

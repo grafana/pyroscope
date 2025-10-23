@@ -139,6 +139,10 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 	return nil
 }
 
+func (a *API) RegisterRedirectToAdmin() {
+	a.RegisterRoute("/", http.RedirectHandler("/admin", http.StatusFound), a.registerOptionsPublicAccess()...)
+}
+
 func (a *API) RegisterCatchAll() error {
 	uiIndexHandler, err := public.NewIndexHandler(a.cfg.BaseURL)
 	if err != nil {
@@ -300,6 +304,9 @@ type AdminService interface {
 	BlocksHandler(w http.ResponseWriter, r *http.Request)
 	BlockHandler(w http.ResponseWriter, r *http.Request)
 	DatasetHandler(w http.ResponseWriter, r *http.Request)
+	DatasetProfilesHandler(w http.ResponseWriter, r *http.Request)
+	ProfileDownloadHandler(w http.ResponseWriter, r *http.Request)
+	ProfileCallTreeHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (a *API) RegisterAdmin(ad AdminService) {
@@ -307,6 +314,9 @@ func (a *API) RegisterAdmin(ad AdminService) {
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks", http.HandlerFunc(ad.BlocksHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}", http.HandlerFunc(ad.BlockHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets", http.HandlerFunc(ad.DatasetHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles", http.HandlerFunc(ad.DatasetProfilesHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles/download", http.HandlerFunc(ad.ProfileDownloadHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles/call-tree", http.HandlerFunc(ad.ProfileCallTreeHandler), a.registerOptionsPublicAccess()...)
 
 	a.indexPage.AddLinks(defaultWeight, "Admin", []IndexPageLink{
 		{Desc: "Object Storage Tenants & Blocks", Path: "/ops/object-store/tenants"},

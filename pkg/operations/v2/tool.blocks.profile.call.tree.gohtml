@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html class="h-100" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Bucket Blocks Explorer (v2): Profile Call Tree</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+
+    <style>
+        .tree-view {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .tree-node {
+            margin: 0 !important;
+            list-style-type: none;
+            padding: 0 !important;
+        }
+        .tree-node > li {
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.5 !important;
+        }
+        .tree-toggle {
+            cursor: pointer;
+            user-select: none;
+            color: #6c757d;
+            margin-right: 5px;
+            font-family: monospace;
+            display: inline-block;
+            width: 35px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .tree-toggle:hover {
+            color: #adb5bd;
+        }
+        .tree-content {
+            display: flex;
+            align-items: baseline;
+            gap: 0;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+        }
+        .tree-name-section {
+            width: 50%;
+            min-width: 0;
+            margin: 0;
+            padding: 0;
+        }
+        .tree-name-section.clickable {
+            cursor: pointer;
+        }
+        .tree-name {
+            color: #0dcaf0;
+            font-weight: 500;
+        }
+        .tree-value {
+            color: #ffc107;
+            text-align: right;
+            white-space: nowrap;
+            width: 5%;
+            flex-shrink: 0;
+            margin: 0;
+            padding: 0;
+        }
+        .tree-percent {
+            color: #6c757d;
+            text-align: right;
+            white-space: nowrap;
+            width: 5%;
+            flex-shrink: 0;
+            margin: 0 0 0 10px;
+            padding: 0;
+        }
+        .tree-extra {
+            width: 40%;
+            flex-shrink: 0;
+            margin: 0 0 0 15px;
+            padding: 0;
+            font-size: 12px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tree-children {
+            margin-left: 0 !important;
+            padding: 0 !important;
+        }
+        .tree-children .tree-name-section {
+            padding-left: 20px;
+        }
+        .tree-children .tree-children .tree-name-section {
+            padding-left: 40px;
+        }
+        .tree-children .tree-children .tree-children .tree-name-section {
+            padding-left: 60px;
+        }
+        .tree-children .tree-children .tree-children .tree-children .tree-name-section {
+            padding-left: 80px;
+        }
+        .tree-children .tree-children .tree-children .tree-children .tree-children .tree-name-section {
+            padding-left: 100px;
+        }
+        .tree-children .tree-children .tree-children .tree-children .tree-children .tree-children .tree-name-section {
+            padding-left: 120px;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column h-100">
+<main class="flex-shrink-0">
+    <div class="container-fluid">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h3>Bucket Blocks Explorer (v2): Profile Call Tree</h3>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/ops/object-store/tenants">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <p>
+                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets/profiles?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to profiles</a>
+            </p>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="card bg-dark border-secondary info-card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">Dataset Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul>
+                                <li>Dataset Name: {{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}<em>(empty)</em>{{ end }}</li>
+                                <li>Dataset Tenant: {{ .Dataset.Tenant }}</li>
+                                <li>Block ID: {{ .BlockID }}</li>
+                                <li>Shard: {{ .Shard }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {{ if .ProfileInfo }}
+                <div class="col-md-6">
+                    <div class="card bg-dark border-secondary info-card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">Profile Information</h5>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="row mb-2">
+                                <div class="col-12">
+                                    <strong class="text-muted">Profile Type:</strong>
+                                    <span class="ms-2">
+                                        <code class="text-primary fs-6">{{ .ProfileInfo.ProfileType }}</code>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-12">
+                                    <strong class="text-muted">Timestamp:</strong>
+                                    <span class="ms-2">
+                                        {{ .Timestamp }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <strong class="text-muted">Labels:</strong>
+                                    <span class="ms-2">
+                                        {{ range $index, $label := .ProfileInfo.Labels }}{{ if $index }}, {{ end }}<code class="text-info">{{ $label.Key }}</code>=<code class="text-warning">{{ $label.Value }}</code>{{ end }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{ end }}
+            </div>
+
+            <div class="card bg-dark border-secondary">
+                <div class="card-header">
+                    <h5 class="mb-0">Call Tree</h5>
+                    <small class="text-muted">Click [+]/[-] to expand/collapse nodes.</small>
+                </div>
+                <div class="card-body">
+                    {{ if .Tree }}
+                        <div class="tree-view">
+                            <ul class="tree-node">
+                                {{ template "tree-node" dict "Node" .Tree "Level" 0 }}
+                            </ul>
+                        </div>
+                    {{ else }}
+                        <div class="alert alert-warning" role="alert">
+                            No call tree available for this profile.
+                        </div>
+                    {{ end }}
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3 bg-dark">
+    <div class="container">
+        <small class="text-white-50">Status @ {{ .Now }}</small>
+    </div>
+</footer>
+
+<script>
+    function toggleNode(element) {
+        // We need to find the tree-children div which is a sibling of the parent tree-content div
+        const treeContent = element.parentElement;
+        const listItem = treeContent.parentElement;
+        const childrenContainer = listItem.querySelector('.tree-children');
+        const toggle = element.querySelector('.tree-toggle');
+
+        if (childrenContainer) {
+            if (childrenContainer.style.display === 'none') {
+                childrenContainer.style.display = 'block';
+                toggle.textContent = '[-]';
+            } else {
+                childrenContainer.style.display = 'none';
+                toggle.textContent = '[+]';
+            }
+        }
+    }
+</script>
+</body>
+</html>
+
+{{ define "tree-node" }}
+    {{ $node := .Node }}
+    {{ $level := .Level }}
+    <li>
+        {{ if gt (len $node.Children) 0 }}
+            <div class="tree-content">
+                <div class="tree-name-section clickable" onclick="toggleNode(this)">
+                    <span class="tree-toggle">{{ if eq $level 0 }}[-]{{ else }}[+]{{ end }}</span>
+                    <span class="tree-name">{{ $node.Name }}</span>
+                </div>
+                <div class="tree-value">{{ $node.FormattedValue }}</div>
+                <div class="tree-percent">{{ printf "%.2f" $node.Percent }}%</div>
+                <div class="tree-extra">{{ if $node.Location }}<span class="text-muted">{{ $node.Location }}</span>{{ end }}</div>
+            </div>
+            <ul class="tree-node tree-children" style="display: {{ if eq $level 0 }}block{{ else }}none{{ end }};">
+                {{ range $node.Children }}
+                    {{ template "tree-node" dict "Node" . "Level" (add $level 1) }}
+                {{ end }}
+            </ul>
+        {{ else }}
+            <div class="tree-content">
+                <div class="tree-name-section">
+                    <span class="tree-toggle"></span>
+                    <span class="tree-name">{{ $node.Name }}</span>
+                </div>
+                <div class="tree-value">{{ $node.FormattedValue }}</div>
+                <div class="tree-percent">{{ printf "%.2f" $node.Percent }}%</div>
+                <div class="tree-extra">{{ if $node.Location }}<span class="text-muted">{{ $node.Location }}</span>{{ end }}</div>
+            </div>
+        {{ end }}
+    </li>
+{{ end }}
