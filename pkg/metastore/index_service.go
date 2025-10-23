@@ -6,6 +6,9 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"go.etcd.io/bbolt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -71,30 +74,68 @@ func (svc *IndexService) AddBlock(
 	ctx context.Context,
 	req *metastorev1.AddBlockRequest,
 ) (resp *metastorev1.AddBlockResponse, err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.AddBlock")
+	defer span.Finish()
+
+	if block := req.GetBlock(); block != nil {
+		span.SetTag("block_id", block.GetId())
+		span.SetTag("shard", block.GetShard())
+		span.SetTag("compaction_level", block.GetCompactionLevel())
+	}
+
 	defer func() {
 		if err == nil {
 			svc.stats.RecordStats(statsFromMetadata(req.Block))
 		}
 	}()
-	return svc.addBlockMetadata(ctx, req)
+
+	resp, err = svc.addBlockMetadata(ctx, req)
+	if err != nil {
+		ext.Error.Set(span, true)
+		span.LogFields(otlog.Error(err))
+	}
+	return resp, err
 }
 
 func (svc *IndexService) AddRecoveredBlock(
 	ctx context.Context,
 	req *metastorev1.AddBlockRequest,
-) (*metastorev1.AddBlockResponse, error) {
-	return svc.addBlockMetadata(ctx, req)
+) (resp *metastorev1.AddBlockResponse, err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.AddRecoveredBlock")
+	defer span.Finish()
+
+	if block := req.GetBlock(); block != nil {
+		span.SetTag("block_id", block.GetId())
+		span.SetTag("shard", block.GetShard())
+		span.SetTag("compaction_level", block.GetCompactionLevel())
+	}
+
+	resp, err = svc.addBlockMetadata(ctx, req)
+	if err != nil {
+		ext.Error.Set(span, true)
+		span.LogFields(otlog.Error(err))
+	}
+	return resp, err
 }
 
 func (svc *IndexService) addBlockMetadata(
-	_ context.Context,
+	ctx context.Context,
 	req *metastorev1.AddBlockRequest,
-) (*metastorev1.AddBlockResponse, error) {
-	if err := metadata.Sanitize(req.Block); err != nil {
+) (resp *metastorev1.AddBlockResponse, err error) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.addBlockMetadata")
+	defer func() {
+		if err != nil {
+			ext.Error.Set(span, true)
+			span.LogFields(otlog.Error(err))
+		}
+		span.Finish()
+	}()
+
+	if err = metadata.Sanitize(req.Block); err != nil {
 		level.Warn(svc.logger).Log("invalid metadata", "block", req.Block.Id, "err", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	_, err := svc.raft.Propose(
+	_, err = svc.raft.Propose(
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
 		&raft_log.AddBlockMetadataRequest{Metadata: req.Block},
 	)
@@ -111,6 +152,21 @@ func (svc *IndexService) GetBlockMetadata(
 	ctx context.Context,
 	req *metastorev1.GetBlockMetadataRequest,
 ) (resp *metastorev1.GetBlockMetadataResponse, err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.GetBlockMetadata")
+	defer func() {
+		if err != nil {
+			ext.Error.Set(span, true)
+			span.LogFields(otlog.Error(err))
+		}
+		span.Finish()
+	}()
+
+	if list := req.GetBlocks(); list != nil {
+		span.SetTag("tenant_id", list.GetTenant())
+		span.SetTag("shard", list.GetShard())
+		span.SetTag("requested_blocks", len(list.GetBlocks()))
+	}
+
 	read := func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
 		resp, err = svc.getBlockMetadata(tx, req.GetBlocks())
 	}
@@ -159,7 +215,16 @@ func (s *sampleIterator) At() placement.Sample {
 	}
 }
 
-func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy) error {
+func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy) (err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.TruncateIndex")
+	defer func() {
+		if err != nil {
+			ext.Error.Set(span, true)
+			span.LogFields(otlog.Error(err))
+		}
+		span.Finish()
+	}()
+
 	var req raft_log.TruncateIndexRequest
 	read := func(tx *bbolt.Tx, r raftnode.ReadIndex) {
 		req.Tombstones = rp.CreateTombstones(tx, svc.index.Partitions(tx))
@@ -168,10 +233,14 @@ func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy)
 	if readErr := svc.state.ConsistentRead(ctx, read); readErr != nil {
 		return status.Error(codes.Unavailable, readErr.Error())
 	}
+
+	span.SetTag("tombstone_count", len(req.Tombstones))
+	span.SetTag("term", req.Term)
+
 	if len(req.Tombstones) == 0 {
 		return nil
 	}
-	if _, err := svc.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX), &req); err != nil {
+	if _, err = svc.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX), &req); err != nil {
 		if !raftnode.IsRaftLeadershipError(err) {
 			level.Error(svc.logger).Log("msg", "failed to truncate index", "err", err)
 		}
