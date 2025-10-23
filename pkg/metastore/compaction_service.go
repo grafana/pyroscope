@@ -6,6 +6,9 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -34,9 +37,21 @@ func NewCompactionService(
 }
 
 func (svc *CompactionService) PollCompactionJobs(
-	_ context.Context,
+	ctx context.Context,
 	req *metastorev1.PollCompactionJobsRequest,
-) (*metastorev1.PollCompactionJobsResponse, error) {
+) (resp *metastorev1.PollCompactionJobsResponse, err error) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "metastore.CompactionService.PollCompactionJobs")
+	defer func() {
+		if err != nil {
+			ext.Error.Set(span, true)
+			span.LogFields(otlog.Error(err))
+		}
+		span.Finish()
+	}()
+
+	span.SetTag("status_updates", len(req.GetStatusUpdates()))
+	span.SetTag("job_capacity", req.GetJobCapacity())
+
 	// This is a two-step process. To commit changes to the compaction plan,
 	// we need to ensure that all replicas apply exactly the same changes.
 	// Instead of relying on identical behavior across replicas and a
@@ -77,14 +92,14 @@ func (svc *CompactionService) PollCompactionJobs(
 	}
 
 	cmd := fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE)
-	resp, err := svc.raft.Propose(cmd, req)
+	proposeResp, err := svc.raft.Propose(cmd, req)
 	if err != nil {
 		if !raftnode.IsRaftLeadershipError(err) {
 			level.Error(svc.logger).Log("msg", "failed to prepare compaction plan", "err", err)
 		}
 		return nil, err
 	}
-	prepared := resp.(*raft_log.GetCompactionPlanUpdateResponse)
+	prepared := proposeResp.(*raft_log.GetCompactionPlanUpdateResponse)
 	planUpdate := prepared.GetPlanUpdate()
 
 	// Copy plan updates to the worker response. The job plan is only sent for
@@ -143,13 +158,14 @@ func (svc *CompactionService) PollCompactionJobs(
 	// scenario, and we don't want to stop the node/cluster). Instead, an
 	// empty response would indicate that the plan is rejected.
 	proposal := &raft_log.UpdateCompactionPlanRequest{Term: prepared.Term, PlanUpdate: planUpdate}
-	if resp, err = svc.raft.Propose(cmd, proposal); err != nil {
+	proposeResp, err = svc.raft.Propose(cmd, proposal)
+	if err != nil {
 		if !raftnode.IsRaftLeadershipError(err) {
 			level.Error(svc.logger).Log("msg", "failed to update compaction plan", "err", err)
 		}
 		return nil, err
 	}
-	accepted := resp.(*raft_log.UpdateCompactionPlanResponse).GetPlanUpdate()
+	accepted := proposeResp.(*raft_log.UpdateCompactionPlanResponse).GetPlanUpdate()
 	if accepted == nil {
 		level.Warn(svc.logger).Log("msg", "compaction plan update rejected")
 		return nil, status.Error(codes.FailedPrecondition, "failed to update compaction plan")
@@ -157,5 +173,7 @@ func (svc *CompactionService) PollCompactionJobs(
 
 	// As of now, accepted plan always matches the proposed one,
 	// so our prepared worker response is still valid.
+	span.SetTag("assigned_jobs", len(workerResp.GetCompactionJobs()))
+	span.SetTag("assignment_updates", len(workerResp.GetAssignments()))
 	return workerResp, nil
 }
