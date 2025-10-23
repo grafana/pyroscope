@@ -61,8 +61,6 @@ services:
     image: prom/prometheus:v3.1.0
     ports:
       - '9099:9090'
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
     command: >
       --enable-feature=remote-write-receiver
       --enable-feature=exemplar-storage
