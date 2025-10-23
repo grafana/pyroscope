@@ -27,6 +27,9 @@ var profileCallTreePageHtml string
 //go:embed tool.pagination.gohtml
 var paginationHtml string
 
+//go:embed tool.blocks.dataset.index.gohtml
+var datasetIndexPageHtml string
+
 type indexPageContent struct {
 	Users []string
 	Now   string
@@ -79,6 +82,7 @@ type templates struct {
 	datasetDetailsTemplate  *template.Template
 	datasetProfilesTemplate *template.Template
 	profileCallTreeTemplate *template.Template
+	datasetIndexTemplate    *template.Template
 }
 
 var pageTemplates = initTemplates()
@@ -114,6 +118,8 @@ func initTemplates() *templates {
 		"dict": dict,
 	})
 	template.Must(profileCallTreeTemplate.Parse(profileCallTreePageHtml))
+	datasetIndexTemplate := template.New("dataset-index")
+	template.Must(datasetIndexTemplate.Parse(datasetIndexPageHtml))
 	t := &templates{
 		indexTemplate:           indexTemplate,
 		blocksTemplate:          blocksTemplate,
@@ -121,6 +127,7 @@ func initTemplates() *templates {
 		datasetDetailsTemplate:  datasetDetailsTemplate,
 		datasetProfilesTemplate: datasetProfilesTemplate,
 		profileCallTreeTemplate: profileCallTreeTemplate,
+		datasetIndexTemplate:    datasetIndexTemplate,
 	}
 	return t
 }
