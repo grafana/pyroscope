@@ -179,6 +179,70 @@ type datasetIndexPageContent struct {
 	Now         string
 }
 
+type symbolsInfo struct {
+	Strings        []symbolEntry
+	TotalStrings   int
+	Functions      []functionEntry
+	TotalFunctions int
+	Locations      []locationEntry
+	TotalLocations int
+	Mappings       []mappingEntry
+	TotalMappings  int
+}
+
+type symbolEntry struct {
+	Index  int
+	Symbol string
+}
+
+type functionEntry struct {
+	Index      int
+	ID         uint64
+	Name       string
+	SystemName string
+	Filename   string
+	StartLine  uint32
+}
+
+type locationLine struct {
+	FunctionName string
+	Line         int64
+}
+
+type locationEntry struct {
+	Index     int
+	ID        uint64
+	Address   uint64
+	MappingID uint32
+	Lines     []locationLine
+}
+
+type mappingEntry struct {
+	Index       int
+	ID          uint64
+	MemoryStart uint64
+	MemoryLimit uint64
+	FileOffset  uint64
+	Filename    string
+	BuildID     string
+}
+
+type datasetSymbolsPageContent struct {
+	User        string
+	BlockID     string
+	Shard       uint32
+	BlockTenant string
+	Dataset     *datasetDetails
+	Symbols     *symbolsInfo
+	Page        int
+	PageSize    int
+	TotalPages  int
+	HasPrevPage bool
+	HasNextPage bool
+	Tab         string
+	Now         string
+}
+
 const emptyDatasetPlaceholder = "_empty"
 
 type datasetRequest struct {
