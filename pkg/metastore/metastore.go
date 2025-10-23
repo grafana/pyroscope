@@ -175,7 +175,7 @@ func New(
 	m.indexService = NewIndexService(m.logger, m.raft, m.leaderRead, m.index, m.placement)
 	m.tenantService = NewTenantService(m.logger, m.followerRead, m.index)
 	m.queryService = NewQueryService(m.logger, m.followerRead, m.index)
-	m.recovery = dlq.NewRecovery(logger, config.Index.Recovery, m.indexService, bucket)
+	m.recovery = dlq.NewRecovery(logger, config.Index.Recovery, m.indexService, bucket, m.reg)
 	m.cleaner = cleaner.NewCleaner(m.logger, m.overrides, config.Index.Cleaner, m.indexService)
 
 	// These are the services that only run on the raft leader.
