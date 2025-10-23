@@ -493,12 +493,6 @@ func (ce *canaryExporter) testLabelNames(ctx context.Context, now time.Time) err
 		return err
 	}
 
-	expectedLabelCount := 12
-	if len(respQuery.Msg.Names) < expectedLabelCount {
-		level.Error(logger).Log("msg", "received an invalid number of labels", "expected", expectedLabelCount, "received", len(respQuery.Msg.Names), "labels", strings.Join(respQuery.Msg.Names, ","))
-		return fmt.Errorf("expected %d label names, got %d", expectedLabelCount, len(respQuery.Msg.Names))
-	}
-
 	labelNames := respQuery.Msg.Names
 	slices.Sort(labelNames)
 
@@ -514,7 +508,7 @@ func (ce *canaryExporter) testLabelNames(ctx context.Context, now time.Time) err
 		model.LabelNameServiceName,
 	}
 
-	// Create a set for O(1) lookups
+	// Use map as set for O(1) lookups
 	labelNamesSet := make(map[string]struct{}, len(labelNames))
 	for _, label := range labelNames {
 		labelNamesSet[label] = struct{}{}
