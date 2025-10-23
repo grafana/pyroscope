@@ -127,7 +127,7 @@ func (h *ingestHandler) extractTenantIDFromHTTPRequest(r *http.Request) (context
 // If multitenancy is disabled, it injects the default tenant ID.
 // Returns a context with the tenant ID injected.
 func (h *ingestHandler) extractTenantIDFromGRPCRequest(ctx context.Context) (context.Context, error) {
-	// TODO: ideally should be merged with function above but
+	// TODO: ideally should be merged with function above
 	if !h.multitenancyEnabled {
 		return user.InjectOrgID(ctx, tenant.DefaultTenantID), nil
 	}
