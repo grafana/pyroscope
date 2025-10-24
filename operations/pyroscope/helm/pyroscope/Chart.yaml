@@ -16,11 +16,11 @@ dependencies:
     version: "1.3.1"
     repository: https://grafana.github.io/helm-charts
     condition: alloy.enabled
-  - name: minio
-    alias: minio
-    version: 4.1.0
-    repository: https://charts.min.io/
-    condition: minio.enabled
+  - name: seaweedfs
+    alias: seaweedfs
+    version: 4.0.393
+    repository: https://seaweedfs.github.io/seaweedfs/helm
+    condition: seaweedfs.enabled
 sources:
   - https://github.com/grafana/pyroscope
   - https://github.com/grafana/pyroscope/tree/main/operations/pyroscope/helm/pyroscope
