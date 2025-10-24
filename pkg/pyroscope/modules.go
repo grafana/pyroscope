@@ -465,9 +465,11 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	// see https://github.com/grafana/pyroscope/issues/231
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
+
+	clientCapabilitiesMiddleware := featureflags.NewClientCapabilityMiddleware(f.reg)
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware,
 		util.RecoveryInterceptorGRPC,
-		featureflags.ClientCapabilitiesGRPCMiddleware(),
+		clientCapabilitiesMiddleware.CreateGRPC(),
 	)
 
 	if f.Cfg.V2 {
@@ -526,7 +528,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		httpMetric,
 		objstoreTracerMiddleware,
 		httputil.K6Middleware(),
-		featureflags.ClientCapabilitiesHttpMiddleware(),
+		clientCapabilitiesMiddleware.CreateHttp(),
 	}
 	if f.Cfg.SelfProfiling.UseK6Middleware {
 		defaultHTTPMiddleware = append(defaultHTTPMiddleware, httputil.K6Middleware())
