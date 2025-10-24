@@ -57,7 +57,7 @@ func TestIngestSpeedscope(t *testing.T) {
 					for _, metric := range td.expectedMetrics {
 						rb.Render(metric.name)
 						profile := rb.SelectMergeProfile(metric.name, metric.query)
-						assertSpeedscopeProfile(t, profile, metric, td)
+						assertSpeedscopeProfile(t, profile)
 					}
 				}
 			})
@@ -65,7 +65,7 @@ func TestIngestSpeedscope(t *testing.T) {
 	})
 }
 
-func assertSpeedscopeProfile(t *testing.T, resp *connect.Response[profilev1.Profile], metric expectedMetric, testdatum speedscopeTestDataStruct) {
+func assertSpeedscopeProfile(t *testing.T, resp *connect.Response[profilev1.Profile]) {
 	assert.Equal(t, 1, len(resp.Msg.SampleType), "SampleType should be set")
 	require.Greater(t, len(resp.Msg.Sample), 0, "Profile should contain samples")
 	assert.Greater(t, resp.Msg.Sample[0].Value[0], int64(0), "Sample value should be positive")
