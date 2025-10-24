@@ -34,7 +34,7 @@ func TestIndex_PartitionList(t *testing.T) {
 		}
 
 		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-			return idx.InsertBlock(nil, tx, blockMeta.CloneVT())
+			return idx.InsertBlock(tx, blockMeta.CloneVT())
 		}))
 
 		p := indexstore.NewPartition(test.Time("2024-09-11T07:00:00.001Z"), idx.config.partitionDuration)
@@ -64,7 +64,7 @@ func TestIndex_PartitionList(t *testing.T) {
 
 		require.NoError(t, db.Update(idx.Init))
 		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-			return idx.InsertBlock(nil, tx, blockMeta.CloneVT())
+			return idx.InsertBlock(tx, blockMeta.CloneVT())
 		}))
 
 		idx = NewIndex(util.Logger, NewStore(), DefaultConfig)
@@ -86,7 +86,7 @@ func TestIndex_PartitionList(t *testing.T) {
 		}
 
 		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-			return idx.InsertBlock(nil, tx, newBlockMeta.CloneVT())
+			return idx.InsertBlock(tx, newBlockMeta.CloneVT())
 		}))
 
 		updated := findShard(t, db, p, tenant, shardID)
@@ -180,7 +180,7 @@ func TestIndex_RestoreTimeBasedLoading(t *testing.T) {
 
 	for _, block := range blocks {
 		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-			return idx.InsertBlock(nil, tx, block)
+			return idx.InsertBlock(tx, block)
 		}))
 	}
 
@@ -225,7 +225,7 @@ func TestShardIterator_TimeFiltering(t *testing.T) {
 	}
 
 	for _, block := range blocks {
-		require.NoError(t, db.Update(func(tx *bbolt.Tx) error { return idx.InsertBlock(nil, tx, block) }))
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error { return idx.InsertBlock(tx, block) }))
 	}
 
 	testCases := []struct {
@@ -272,7 +272,7 @@ func TestIndex_DeleteShard(t *testing.T) {
 	insertBlocks := func(t *testing.T, db *bbolt.DB, idx *Index, blocks []*metastorev1.BlockMeta) {
 		for _, block := range blocks {
 			require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-				return idx.InsertBlock(nil, tx, block)
+				return idx.InsertBlock(tx, block)
 			}))
 		}
 	}
@@ -391,7 +391,7 @@ func TestIndex_GetTenantStats(t *testing.T) {
 	}
 
 	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
-		return idx.InsertBlock(nil, tx, blockMeta.CloneVT())
+		return idx.InsertBlock(tx, blockMeta.CloneVT())
 	}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {

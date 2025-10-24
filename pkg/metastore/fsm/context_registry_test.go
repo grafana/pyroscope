@@ -9,16 +9,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type contextKey string
+
 func TestContextRegistry_StoreAndRetrieve(t *testing.T) {
 	r := NewContextRegistry(1*time.Second, 5*time.Second)
 	defer r.Shutdown()
 
-	ctx := context.WithValue(context.Background(), "key", "value")
+	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
 	r.Store(1, ctx)
 
 	retrieved, found := r.Retrieve(1)
 	require.True(t, found)
-	assert.Equal(t, "value", retrieved.Value("key"))
+	assert.Equal(t, "value", retrieved.Value(contextKey("key")))
 }
 
 func TestContextRegistry_RetrieveNotFound(t *testing.T) {
@@ -34,7 +36,7 @@ func TestContextRegistry_Delete(t *testing.T) {
 	r := NewContextRegistry(1*time.Second, 5*time.Second)
 	defer r.Shutdown()
 
-	ctx := context.WithValue(context.Background(), "key", "value")
+	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
 	r.Store(1, ctx)
 
 	_, found := r.Retrieve(1)
@@ -51,7 +53,7 @@ func TestContextRegistry_Cleanup(t *testing.T) {
 	r := NewContextRegistry(100*time.Millisecond, 200*time.Millisecond)
 	defer r.Shutdown()
 
-	ctx := context.WithValue(context.Background(), "key", "value")
+	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
 	r.Store(1, ctx)
 
 	// Entry should be present
@@ -94,7 +96,7 @@ func TestContextRegistry_ConcurrentAccess(t *testing.T) {
 	// Writer goroutines
 	for i := 0; i < 10; i++ {
 		go func(id int) {
-			ctx := context.WithValue(context.Background(), "id", id)
+			ctx := context.WithValue(context.Background(), contextKey("id"), id)
 			for j := 0; j < 100; j++ {
 				index := uint64(id*100 + j)
 				r.Store(index, ctx)
