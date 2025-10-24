@@ -52,8 +52,7 @@ func (svc *QueryService) QueryMetadata(
 	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.QueryService.QueryMetadata")
 	defer func() {
 		if err != nil {
-			ext.Error.Set(span, true)
-			span.LogFields(otlog.Error(err))
+			ext.LogError(span, err)
 		}
 		span.Finish()
 	}()
@@ -82,8 +81,7 @@ func (svc *QueryService) queryMetadata(
 	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.QueryService.indexQueryMetadata")
 	defer func() {
 		if err != nil {
-			ext.Error.Set(span, true)
-			span.LogFields(otlog.Error(err))
+			ext.LogError(span, err)
 		}
 		span.Finish()
 	}()
@@ -114,12 +112,10 @@ func (svc *QueryService) QueryMetadataLabels(
 	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.QueryService.QueryMetadataLabels")
 	defer func() {
 		if err != nil {
-			ext.Error.Set(span, true)
-			span.LogFields(otlog.Error(err))
+			ext.LogError(span, err)
 		}
 		span.Finish()
 	}()
-	defer span.Finish()
 
 	span.SetTag("tenant_id", req.GetTenantId())
 	span.SetTag("start_time", req.GetStartTime())
@@ -146,8 +142,7 @@ func (svc *QueryService) queryMetadataLabels(
 	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.QueryService.indexQueryMetadataLabels")
 	defer func() {
 		if err != nil {
-			ext.Error.Set(span, true)
-			span.LogFields(otlog.Error(err))
+			ext.LogError(span, err)
 		}
 		span.Finish()
 	}()

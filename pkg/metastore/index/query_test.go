@@ -301,9 +301,9 @@ func TestIndex_Query(t *testing.T) {
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 	require.NoError(t, idx.Init(tx))
-	require.NoError(t, idx.InsertBlock(tx, md.CloneVT()))
-	require.NoError(t, idx.InsertBlock(tx, md2.CloneVT()))
-	require.NoError(t, idx.InsertBlock(tx, md3.CloneVT()))
+	require.NoError(t, idx.InsertBlock(nil, tx, md.CloneVT()))
+	require.NoError(t, idx.InsertBlock(nil, tx, md2.CloneVT()))
+	require.NoError(t, idx.InsertBlock(nil, tx, md3.CloneVT()))
 	require.NoError(t, tx.Commit())
 
 	t.Run("BeforeRestore", func(t *testing.T) {
@@ -477,7 +477,7 @@ func (s *queryTestSuite) writeBlocks(t *testing.T) {
 	// Blocks are inserted one by one, each within its own transaction.
 	for i := range source {
 		require.NoError(t, s.db.Update(func(tx *bbolt.Tx) error {
-			return s.idx.InsertBlock(tx, source[i])
+			return s.idx.InsertBlock(nil, tx, source[i])
 		}))
 		s.writes.Inc()
 	}

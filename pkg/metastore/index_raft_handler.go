@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 
@@ -21,7 +20,7 @@ import (
 )
 
 type IndexInserter interface {
-	InsertBlock(*bbolt.Tx, *metastorev1.BlockMeta) error
+	InsertBlock(context.Context, *bbolt.Tx, *metastorev1.BlockMeta) error
 }
 
 type IndexDeleter interface {
@@ -63,7 +62,7 @@ func NewIndexCommandHandler(
 func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *metastorev1.AddBlockRequest) (resp *metastorev1.AddBlockResponse, err error) {
 	var span opentracing.Span
 	if ctx != nil {
-		span, _ = opentracing.StartSpanFromContext(ctx, "raft.AddBlockMetadata")
+		span, ctx = opentracing.StartSpanFromContext(ctx, "raft.AddBlockMetadata")
 		span.SetTag("block_id", req.Block.GetId())
 		span.SetTag("shard", req.Block.GetShard())
 		span.SetTag("compaction_level", req.Block.GetCompactionLevel())
@@ -71,8 +70,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 		span.SetTag("raft_log_term", cmd.Term)
 		defer func() {
 			if err != nil {
-				ext.Error.Set(span, true)
-				span.LogFields(otlog.Error(err))
+				ext.LogError(span, err)
 			}
 			span.Finish()
 		}()
@@ -83,16 +81,37 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 		level.Warn(m.logger).Log("msg", "block already added and compacted", "block", e.ID)
 		return new(metastorev1.AddBlockResponse), nil
 	}
-	if err = m.index.InsertBlock(tx, req.Block); err != nil {
+
+	var insertSpan opentracing.Span
+	if span != nil {
+		insertSpan, _ = opentracing.StartSpanFromContext(ctx, "index.InsertBlock")
+	}
+	if err = m.index.InsertBlock(ctx, tx, req.Block); err != nil {
 		if errors.Is(err, index.ErrBlockExists) {
 			level.Warn(m.logger).Log("msg", "block already added", "block", e.ID)
 			return new(metastorev1.AddBlockResponse), nil
 		}
+		if insertSpan != nil {
+			ext.LogError(insertSpan, err)
+			insertSpan.Finish()
+		}
 		level.Error(m.logger).Log("msg", "failed to add block to index", "block", e.ID, "err", err)
 		return nil, err
 	}
+	if insertSpan != nil {
+		insertSpan.Finish()
+	}
+
+	var compactSpan opentracing.Span
+	if span != nil {
+		compactSpan, _ = opentracing.StartSpanFromContext(ctx, "compactor.Compact")
+		defer compactSpan.Finish()
+	}
 	if err = m.compactor.Compact(tx, e); err != nil {
 		level.Error(m.logger).Log("msg", "failed to add block to compaction", "block", e.ID, "err", err)
+		if compactSpan != nil {
+			ext.LogError(compactSpan, err)
+		}
 		return nil, err
 	}
 	return new(metastorev1.AddBlockResponse), nil
@@ -108,8 +127,7 @@ func (m *IndexCommandHandler) TruncateIndex(ctx context.Context, tx *bbolt.Tx, c
 		span.SetTag("request_term", req.Term)
 		defer func() {
 			if err != nil {
-				ext.Error.Set(span, true)
-				span.LogFields(otlog.Error(err))
+				ext.LogError(span, err)
 			}
 			span.Finish()
 		}()
