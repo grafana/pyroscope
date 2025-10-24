@@ -19,6 +19,8 @@ import (
 	"go.etcd.io/bbolt/errors"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/grafana/pyroscope/pkg/metastore/tracing"
 )
 
 // RaftHandler is a function that processes a Raft command.
@@ -239,6 +241,17 @@ func (fsm *FSM) Apply(log *raft.Log) any {
 // the command type.
 func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	start := time.Now()
+
+	ctx, found := fsm.contextRegistry.Retrieve(cmd.Index)
+	if found {
+		defer fsm.contextRegistry.Delete(cmd.Index)
+	} else {
+		ctx = context.Background()
+	}
+
+	span, ctx := tracing.StartSpanFromContext(ctx, "fsm.applyCommand")
+	defer span.Finish()
+
 	var e RaftLogEntry
 	if err := e.UnmarshalBinary(cmd.Data); err != nil {
 		return errResponse(cmd, err)
@@ -260,11 +273,6 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		return errResponse(cmd, fmt.Errorf("unknown command type: %d", e.Type))
 	}
 
-	ctx, found := fsm.contextRegistry.Retrieve(cmd.Index)
-	if found {
-		defer fsm.contextRegistry.Delete(cmd.Index)
-	}
-
 	// Record the current size of the context registry
 	fsm.metrics.contextRegistrySize.Set(float64(fsm.contextRegistry.Size()))
 
@@ -275,17 +283,8 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		panic(fmt.Sprint("failed to begin write transaction:", err))
 	}
 
-	var txSpan opentracing.Span
-	if ctx != nil {
-		txSpan, ctx = opentracing.StartSpanFromContext(ctx, "boltdb.transaction")
-		if txSpan != nil {
-			txSpan.SetTag("writable", rawTx.Writable())
-		}
-	} else {
-		// always set a context so that handlers don't have to perform nil checks
-		ctx = context.Background()
-	}
-
+	txSpan, ctx := opentracing.StartSpanFromContext(ctx, "boltdb.transaction")
+	txSpan.SetTag("writable", rawTx.Writable())
 	tx := newTracingTx(rawTx, txSpan, ctx)
 
 	// Pass the transaction context so handler spans become children of the transaction span

@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/metastore/compaction"
 	"github.com/grafana/pyroscope/pkg/metastore/index"
 	indexstore "github.com/grafana/pyroscope/pkg/metastore/index/store"
+	"github.com/grafana/pyroscope/pkg/metastore/tracing"
 )
 
 type IndexInserter interface {
@@ -59,7 +60,7 @@ func NewIndexCommandHandler(
 }
 
 func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *metastorev1.AddBlockRequest) (resp *metastorev1.AddBlockResponse, err error) {
-	span, ctx := startSpanFromContext(ctx, "raft.AddBlockMetadata")
+	span, ctx := tracing.StartSpanFromContext(ctx, "raft.AddBlockMetadata")
 	span.SetTag("block_id", req.Block.GetId())
 	span.SetTag("shard", req.Block.GetShard())
 	span.SetTag("compaction_level", req.Block.GetCompactionLevel())
@@ -78,7 +79,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 		return new(metastorev1.AddBlockResponse), nil
 	}
 
-	insertSpan, _ := startSpanFromContext(ctx, "index.InsertBlock")
+	insertSpan, _ := tracing.StartSpanFromContext(ctx, "index.InsertBlock")
 	if err = m.index.InsertBlock(tx, req.Block); err != nil {
 		if errors.Is(err, index.ErrBlockExists) {
 			level.Warn(m.logger).Log("msg", "block already added", "block", e.ID)
@@ -91,7 +92,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 	}
 	insertSpan.Finish()
 
-	compactSpan, _ := startSpanFromContext(ctx, "compactor.Compact")
+	compactSpan, _ := tracing.StartSpanFromContext(ctx, "compactor.Compact")
 	defer compactSpan.Finish()
 	if err = m.compactor.Compact(tx, e); err != nil {
 		level.Error(m.logger).Log("msg", "failed to add block to compaction", "block", e.ID, "err", err)
@@ -102,7 +103,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 }
 
 func (m *IndexCommandHandler) TruncateIndex(ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *raft_log.TruncateIndexRequest) (resp *raft_log.TruncateIndexResponse, err error) {
-	span, _ := startSpanFromContext(ctx, "raft.TruncateIndex")
+	span, _ := tracing.StartSpanFromContext(ctx, "raft.TruncateIndex")
 	span.SetTag("tombstone_count", len(req.Tombstones))
 	span.SetTag("raft_log_index", cmd.Index)
 	span.SetTag("raft_log_term", cmd.Term)

@@ -12,6 +12,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/pkg/metastore/compaction"
+	"github.com/grafana/pyroscope/pkg/metastore/tracing"
 )
 
 type IndexReplacer interface {
@@ -48,7 +49,7 @@ func NewCompactionCommandHandler(
 func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *raft_log.GetCompactionPlanUpdateRequest,
 ) (resp *raft_log.GetCompactionPlanUpdateResponse, err error) {
-	span, _ := startSpanFromContext(ctx, "raft.GetCompactionPlanUpdate")
+	span, _ := tracing.StartSpanFromContext(ctx, "raft.GetCompactionPlanUpdate")
 	span.SetTag("status_updates", len(req.StatusUpdates))
 	span.SetTag("assign_jobs_max", req.AssignJobsMax)
 	span.SetTag("raft_log_index", cmd.Index)
@@ -156,7 +157,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *raft_log.UpdateCompactionPlanRequest,
 ) (resp *raft_log.UpdateCompactionPlanResponse, err error) {
-	span, _ := startSpanFromContext(ctx, "raft.UpdateCompactionPlan")
+	span, _ := tracing.StartSpanFromContext(ctx, "raft.UpdateCompactionPlan")
 	span.SetTag("raft_log_index", cmd.Index)
 	span.SetTag("raft_log_term", cmd.Term)
 	span.SetTag("request_term", req.Term)
