@@ -57,6 +57,7 @@ func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
 
 type Limits interface {
 	QueryAnalysisSeriesEnabled(string) bool
+	MinStepDuration(string) time.Duration
 }
 
 type Querier struct {
