@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "pyroscope-monitoring.fullname" . }}-test-metrics"
+  labels:
+    {{- include "pyroscope-monitoring.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: promtool
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+       - /bin/bash
+       - -c
+       - |
+           set +euo pipefail
+           retries=30
+           while ((retries > 0)); do
+               /otel-lgtm/prometheus/promtool query series --match 'kube_node_info' 'http://{{ include "pyroscope-monitoring.fullname" . }}:9090' | tee result.txt &&
+               test $(cat result.txt | wc -l) -gt 0 &&
+               break
+
+               echo "something went wrong, let's wait 5 seconds and retry"
+               sleep 5
+               ((retries --))
+           done
+           if ((retries == 0 )); then
+               echo "Failed!"
+               exit 1
+           fi
+  restartPolicy: Never
