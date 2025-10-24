@@ -15,7 +15,7 @@ import (
 // Raft represents a Raft consensus protocol interface. Any modifications to
 // the state should be proposed through the Raft interface.
 type Raft interface {
-	Propose(fsm.RaftLogEntryType, proto.Message) (proto.Message, error)
+	Propose(context.Context, fsm.RaftLogEntryType, proto.Message) (proto.Message, error)
 }
 
 // State represents a consistent read-only view of the metastore.

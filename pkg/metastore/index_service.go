@@ -122,20 +122,12 @@ func (svc *IndexService) addBlockMetadata(
 	ctx context.Context,
 	req *metastorev1.AddBlockRequest,
 ) (resp *metastorev1.AddBlockResponse, err error) {
-	span, _ := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.addBlockMetadata")
-	defer func() {
-		if err != nil {
-			ext.Error.Set(span, true)
-			span.LogFields(otlog.Error(err))
-		}
-		span.Finish()
-	}()
-
 	if err = metadata.Sanitize(req.Block); err != nil {
 		level.Warn(svc.logger).Log("invalid metadata", "block", req.Block.Id, "err", err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	_, err = svc.raft.Propose(
+		ctx,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_ADD_BLOCK_METADATA),
 		&raft_log.AddBlockMetadataRequest{Metadata: req.Block},
 	)
@@ -240,7 +232,7 @@ func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy)
 	if len(req.Tombstones) == 0 {
 		return nil
 	}
-	if _, err = svc.raft.Propose(fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX), &req); err != nil {
+	if _, err = svc.raft.Propose(ctx, fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX), &req); err != nil {
 		if !raftnode.IsRaftLeadershipError(err) {
 			level.Error(svc.logger).Log("msg", "failed to truncate index", "err", err)
 		}
