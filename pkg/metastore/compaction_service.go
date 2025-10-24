@@ -92,7 +92,7 @@ func (svc *CompactionService) PollCompactionJobs(
 	}
 
 	cmd := fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE)
-	proposeResp, err := svc.raft.Propose(cmd, req)
+	proposeResp, err := svc.raft.Propose(ctx, cmd, request)
 	if err != nil {
 		if !raftnode.IsRaftLeadershipError(err) {
 			level.Error(svc.logger).Log("msg", "failed to prepare compaction plan", "err", err)
@@ -158,7 +158,7 @@ func (svc *CompactionService) PollCompactionJobs(
 	// scenario, and we don't want to stop the node/cluster). Instead, an
 	// empty response would indicate that the plan is rejected.
 	proposal := &raft_log.UpdateCompactionPlanRequest{Term: prepared.Term, PlanUpdate: planUpdate}
-	proposeResp, err = svc.raft.Propose(cmd, proposal)
+	proposeResp, err = svc.raft.Propose(ctx, cmd, proposal)
 	if err != nil {
 		if !raftnode.IsRaftLeadershipError(err) {
 			level.Error(svc.logger).Log("msg", "failed to update compaction plan", "err", err)

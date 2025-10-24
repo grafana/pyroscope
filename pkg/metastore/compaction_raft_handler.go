@@ -1,9 +1,14 @@
 package metastore
 
 import (
+	"context"
+
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -43,8 +48,25 @@ func NewCompactionCommandHandler(
 }
 
 func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
-	tx *bbolt.Tx, cmd *raft.Log, req *raft_log.GetCompactionPlanUpdateRequest,
-) (*raft_log.GetCompactionPlanUpdateResponse, error) {
+	ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *raft_log.GetCompactionPlanUpdateRequest,
+) (resp *raft_log.GetCompactionPlanUpdateResponse, err error) {
+	var span opentracing.Span
+	if ctx != nil {
+		span, _ = opentracing.StartSpanFromContext(ctx, "raft.GetCompactionPlanUpdate")
+		span.SetTag("status_updates", len(req.StatusUpdates))
+		span.SetTag("assign_jobs_max", req.AssignJobsMax)
+		span.SetTag("raft_log_index", cmd.Index)
+		span.SetTag("raft_log_term", cmd.Term)
+
+		defer func() {
+			if err != nil {
+				ext.Error.Set(span, true)
+				span.LogFields(otlog.Error(err))
+			}
+			span.Finish()
+		}()
+	}
+
 	// We need to generate a plan of the update caused by the new status
 	// report from the worker. The plan will be used to update the schedule
 	// after the Raft consensus is reached.
@@ -132,12 +154,32 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 		})
 	}
 
+	if span != nil {
+		span.SetTag("assigned_jobs", len(p.AssignedJobs))
+		span.SetTag("new_jobs", len(p.NewJobs))
+		span.SetTag("evicted_jobs", len(p.EvictedJobs))
+	}
 	return &raft_log.GetCompactionPlanUpdateResponse{Term: cmd.Term, PlanUpdate: p}, nil
 }
 
 func (h *CompactionCommandHandler) UpdateCompactionPlan(
-	tx *bbolt.Tx, cmd *raft.Log, req *raft_log.UpdateCompactionPlanRequest,
-) (*raft_log.UpdateCompactionPlanResponse, error) {
+	ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *raft_log.UpdateCompactionPlanRequest,
+) (resp *raft_log.UpdateCompactionPlanResponse, err error) {
+	var span opentracing.Span
+	if ctx != nil {
+		span, _ = opentracing.StartSpanFromContext(ctx, "raft.UpdateCompactionPlan")
+		span.SetTag("raft_log_index", cmd.Index)
+		span.SetTag("raft_log_term", cmd.Term)
+		span.SetTag("request_term", req.Term)
+		defer func() {
+			if err != nil {
+				ext.Error.Set(span, true)
+				span.LogFields(otlog.Error(err))
+			}
+			span.Finish()
+		}()
+	}
+
 	if req.Term != cmd.Term || req.GetPlanUpdate() == nil {
 		level.Warn(h.logger).Log(
 			"msg", "rejecting compaction plan update; term mismatch: leader has changed",
@@ -147,18 +189,18 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 		return new(raft_log.UpdateCompactionPlanResponse), nil
 	}
 
-	if err := h.planner.UpdatePlan(tx, req.PlanUpdate); err != nil {
+	if err = h.planner.UpdatePlan(tx, req.PlanUpdate); err != nil {
 		level.Error(h.logger).Log("msg", "failed to update compaction planner", "err", err)
 		return nil, err
 	}
 
-	if err := h.scheduler.UpdateSchedule(tx, req.PlanUpdate); err != nil {
+	if err = h.scheduler.UpdateSchedule(tx, req.PlanUpdate); err != nil {
 		level.Error(h.logger).Log("msg", "failed to update compaction schedule", "err", err)
 		return nil, err
 	}
 
 	for _, job := range req.PlanUpdate.NewJobs {
-		if err := h.tombstones.DeleteTombstones(tx, cmd, job.Plan.Tombstones...); err != nil {
+		if err = h.tombstones.DeleteTombstones(tx, cmd, job.Plan.Tombstones...); err != nil {
 			level.Error(h.logger).Log("msg", "failed to delete tombstones", "err", err)
 			return nil, err
 		}
@@ -170,22 +212,27 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 			level.Warn(h.logger).Log("msg", "compacted blocks are missing; skipping", "job", job.State.Name)
 			continue
 		}
-		if err := h.tombstones.AddTombstones(tx, cmd, blockTombstonesForCompletedJob(job)); err != nil {
+		if err = h.tombstones.AddTombstones(tx, cmd, blockTombstonesForCompletedJob(job)); err != nil {
 			level.Error(h.logger).Log("msg", "failed to add tombstones", "err", err)
 			return nil, err
 		}
 		for _, block := range compacted.NewBlocks {
-			if err := h.compactor.Compact(tx, compaction.NewBlockEntry(cmd, block)); err != nil {
+			if err = h.compactor.Compact(tx, compaction.NewBlockEntry(cmd, block)); err != nil {
 				level.Error(h.logger).Log("msg", "failed to compact block", "err", err)
 				return nil, err
 			}
 		}
-		if err := h.index.ReplaceBlocks(tx, compacted); err != nil {
+		if err = h.index.ReplaceBlocks(tx, compacted); err != nil {
 			level.Error(h.logger).Log("msg", "failed to replace blocks", "err", err)
 			return nil, err
 		}
 	}
 
+	if span != nil {
+		span.SetTag("new_jobs", len(req.PlanUpdate.NewJobs))
+		span.SetTag("completed_jobs", len(req.PlanUpdate.CompletedJobs))
+		span.SetTag("updated_jobs", len(req.PlanUpdate.UpdatedJobs))
+	}
 	return &raft_log.UpdateCompactionPlanResponse{PlanUpdate: req.PlanUpdate}, nil
 }
 

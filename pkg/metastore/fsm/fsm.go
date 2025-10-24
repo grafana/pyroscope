@@ -13,6 +13,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 	"go.etcd.io/bbolt/errors"
@@ -22,7 +23,9 @@ import (
 
 // RaftHandler is a function that processes a Raft command.
 // The implementation MUST be idempotent.
-type RaftHandler[Req, Resp proto.Message] func(*bbolt.Tx, *raft.Log, Req) (Resp, error)
+// The context parameter contains tracing information propagated from the HTTP handler
+// (only available on the leader node where Propose was called).
+type RaftHandler[Req, Resp proto.Message] func(context.Context, *bbolt.Tx, *raft.Log, Req) (Resp, error)
 
 // StateRestorer is called during the FSM initialization
 // to restore the state from a snapshot.
@@ -69,16 +72,22 @@ type FSM struct {
 
 	appliedTerm  uint64
 	appliedIndex uint64
+
+	// contextRegistry maintains a mapping of Raft log indices to contexts
+	// for tracing purposes. This allows propagating context from HTTP handlers
+	// down to BoltDB transactions without persisting it in Raft logs.
+	contextRegistry *ContextRegistry
 }
 
-type handler func(tx *bbolt.Tx, cmd *raft.Log, raw []byte) (proto.Message, error)
+type handler func(ctx context.Context, tx *tracingTx, cmd *raft.Log, raw []byte) (proto.Message, error)
 
 func New(logger log.Logger, reg prometheus.Registerer, config Config) (*FSM, error) {
 	fsm := FSM{
-		logger:   logger,
-		config:   config,
-		metrics:  newMetrics(reg),
-		handlers: make(map[RaftLogEntryType]handler),
+		logger:          logger,
+		config:          config,
+		metrics:         newMetrics(reg),
+		handlers:        make(map[RaftLogEntryType]handler),
+		contextRegistry: NewContextRegistry(10*time.Second, 30*time.Second),
 	}
 	db := newDB(logger, fsm.metrics, config)
 	if err := db.open(false); err != nil {
@@ -93,12 +102,12 @@ func (fsm *FSM) RegisterRestorer(r ...StateRestorer) {
 }
 
 func RegisterRaftCommandHandler[Req, Resp proto.Message](fsm *FSM, t RaftLogEntryType, handler RaftHandler[Req, Resp]) {
-	fsm.handlers[t] = func(tx *bbolt.Tx, cmd *raft.Log, raw []byte) (proto.Message, error) {
+	fsm.handlers[t] = func(ctx context.Context, tx *tracingTx, cmd *raft.Log, raw []byte) (proto.Message, error) {
 		req, err := unmarshal[Req](raw)
 		if err != nil {
 			return nil, err
 		}
-		return handler(tx, cmd, req)
+		return handler(ctx, tx.Tx, cmd, req)
 	}
 }
 
@@ -251,14 +260,33 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		return errResponse(cmd, fmt.Errorf("unknown command type: %d", e.Type))
 	}
 
+	ctx, found := fsm.contextRegistry.Retrieve(cmd.Index)
+	if found {
+		defer fsm.contextRegistry.Delete(cmd.Index)
+	}
+
+	// Record the current size of the context registry
+	fsm.metrics.contextRegistrySize.Set(float64(fsm.contextRegistry.Size()))
+
 	// Apply is never called concurrently with Restore, so we don't need
 	// to lock the FSM: db.boltdb is guaranteed to be in a consistent state.
-	tx, err := fsm.db.boltdb.Begin(true)
+	rawTx, err := fsm.db.boltdb.Begin(true)
 	if err != nil {
 		panic(fmt.Sprint("failed to begin write transaction:", err))
 	}
 
-	data, err := handle(tx, cmd, e.Data)
+	var txSpan opentracing.Span
+	if ctx != nil {
+		txSpan, ctx = opentracing.StartSpanFromContext(ctx, "boltdb.transaction")
+		if txSpan != nil {
+			txSpan.SetTag("writable", rawTx.Writable())
+		}
+	}
+
+	tx := newTracingTx(rawTx, txSpan, ctx)
+
+	// Pass the transaction context so handler spans become children of the transaction span
+	data, err := handle(ctx, tx, cmd, e.Data)
 	if err != nil {
 		_ = tx.Rollback()
 		// NOTE(kolesnikovae): This has to be a hard failure as we assume
@@ -266,7 +294,7 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		panic(fmt.Sprint("failed to apply command:", err))
 	}
 
-	if err = fsm.storeAppliedIndex(tx, cmd.Term, cmd.Index); err != nil {
+	if err = fsm.storeAppliedIndex(tx.Tx, cmd.Term, cmd.Index); err != nil {
 		panic(fmt.Sprint("failed to store applied index: %w", err))
 	}
 
@@ -314,9 +342,25 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 }
 
 func (fsm *FSM) Shutdown() {
+	if fsm.contextRegistry != nil {
+		fsm.contextRegistry.Shutdown()
+	}
 	if fsm.db.boltdb != nil {
 		fsm.db.shutdown()
 	}
+}
+
+// StoreContext stores a context in the registry for the given Raft log index.
+// This is used by Node.Propose to propagate tracing context from HTTP handlers
+// down to BoltDB transactions without persisting it in Raft logs.
+func (fsm *FSM) StoreContext(index uint64, ctx context.Context) {
+	fsm.contextRegistry.Store(index, ctx)
+}
+
+// ContextRegistrySize returns the current number of entries in the context registry.
+// This is useful for metrics and monitoring.
+func (fsm *FSM) ContextRegistrySize() int {
+	return fsm.contextRegistry.Size()
 }
 
 var (

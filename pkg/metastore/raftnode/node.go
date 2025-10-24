@@ -1,6 +1,7 @@
 package raftnode
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -300,13 +301,20 @@ func (n *Node) TransferLeadership() (err error) {
 
 // Propose makes an attempt to apply the given command to the FSM.
 // The function returns an error if node is not the leader.
-func (n *Node) Propose(t fsm.RaftLogEntryType, m proto.Message) (resp proto.Message, err error) {
+func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Message) (resp proto.Message, err error) {
 	raw, err := fsm.MarshalEntry(t, m)
 	if err != nil {
 		return nil, err
 	}
 	timer := prometheus.NewTimer(n.metrics.apply)
 	defer timer.ObserveDuration()
+
+	lastIndex := n.raft.LastIndex()
+	nextIndex := lastIndex + 1
+	if f, ok := n.fsm.(*fsm.FSM); ok {
+		f.StoreContext(nextIndex, ctx)
+	}
+
 	future := n.raft.Apply(raw, n.config.ApplyTimeout)
 	if err = future.Error(); err != nil {
 		return nil, WithRaftLeaderStatusDetails(err, n.raft)
