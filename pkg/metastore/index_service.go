@@ -8,7 +8,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"go.etcd.io/bbolt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -75,7 +74,12 @@ func (svc *IndexService) AddBlock(
 	req *metastorev1.AddBlockRequest,
 ) (resp *metastorev1.AddBlockResponse, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.AddBlock")
-	defer span.Finish()
+	defer func() {
+		if err != nil {
+			ext.LogError(span, err)
+		}
+		span.Finish()
+	}()
 
 	if block := req.GetBlock(); block != nil {
 		span.SetTag("block_id", block.GetId())
@@ -89,12 +93,7 @@ func (svc *IndexService) AddBlock(
 		}
 	}()
 
-	resp, err = svc.addBlockMetadata(ctx, req)
-	if err != nil {
-		ext.Error.Set(span, true)
-		span.LogFields(otlog.Error(err))
-	}
-	return resp, err
+	return svc.addBlockMetadata(ctx, req)
 }
 
 func (svc *IndexService) AddRecoveredBlock(
@@ -102,7 +101,12 @@ func (svc *IndexService) AddRecoveredBlock(
 	req *metastorev1.AddBlockRequest,
 ) (resp *metastorev1.AddBlockResponse, err error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.AddRecoveredBlock")
-	defer span.Finish()
+	defer func() {
+		if err != nil {
+			ext.LogError(span, err)
+		}
+		span.Finish()
+	}()
 
 	if block := req.GetBlock(); block != nil {
 		span.SetTag("block_id", block.GetId())
@@ -110,12 +114,7 @@ func (svc *IndexService) AddRecoveredBlock(
 		span.SetTag("compaction_level", block.GetCompactionLevel())
 	}
 
-	resp, err = svc.addBlockMetadata(ctx, req)
-	if err != nil {
-		ext.Error.Set(span, true)
-		span.LogFields(otlog.Error(err))
-	}
-	return resp, err
+	return svc.addBlockMetadata(ctx, req)
 }
 
 func (svc *IndexService) addBlockMetadata(
@@ -147,8 +146,7 @@ func (svc *IndexService) GetBlockMetadata(
 	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.GetBlockMetadata")
 	defer func() {
 		if err != nil {
-			ext.Error.Set(span, true)
-			span.LogFields(otlog.Error(err))
+			ext.LogError(span, err)
 		}
 		span.Finish()
 	}()
@@ -211,8 +209,7 @@ func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy)
 	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.TruncateIndex")
 	defer func() {
 		if err != nil {
-			ext.Error.Set(span, true)
-			span.LogFields(otlog.Error(err))
+			ext.LogError(span, err)
 		}
 		span.Finish()
 	}()

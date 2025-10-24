@@ -130,7 +130,7 @@ func (i *Index) Restore(tx *bbolt.Tx) error {
 	return nil
 }
 
-func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
+func (i *Index) InsertBlock(ctx context.Context, tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
 	p := i.partitionKeyForBlock(b.Id)
 	return i.shards.update(tx, p, metadata.Tenant(b), b.Shard, func(s *indexstore.Shard) error {
 		if err := s.Store(tx, b); err != nil {
@@ -143,7 +143,7 @@ func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
 
 func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBlocks) error {
 	for _, b := range compacted.NewBlocks {
-		if err := i.InsertBlock(tx, b); err != nil {
+		if err := i.InsertBlock(nil, tx, b); err != nil {
 			return err
 		}
 	}

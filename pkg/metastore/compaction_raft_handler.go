@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -60,8 +59,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 
 		defer func() {
 			if err != nil {
-				ext.Error.Set(span, true)
-				span.LogFields(otlog.Error(err))
+				ext.LogError(span, err)
 			}
 			span.Finish()
 		}()
@@ -173,8 +171,7 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 		span.SetTag("request_term", req.Term)
 		defer func() {
 			if err != nil {
-				ext.Error.Set(span, true)
-				span.LogFields(otlog.Error(err))
+				ext.LogError(span, err)
 			}
 			span.Finish()
 		}()

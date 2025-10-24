@@ -8,7 +8,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -43,8 +42,7 @@ func (svc *CompactionService) PollCompactionJobs(
 	span, _ := opentracing.StartSpanFromContext(ctx, "metastore.CompactionService.PollCompactionJobs")
 	defer func() {
 		if err != nil {
-			ext.Error.Set(span, true)
-			span.LogFields(otlog.Error(err))
+			ext.LogError(span, err)
 		}
 		span.Finish()
 	}()
@@ -173,6 +171,7 @@ func (svc *CompactionService) PollCompactionJobs(
 
 	// As of now, accepted plan always matches the proposed one,
 	// so our prepared worker response is still valid.
+
 	span.SetTag("assigned_jobs", len(workerResp.GetCompactionJobs()))
 	span.SetTag("assignment_updates", len(workerResp.GetAssignments()))
 	return workerResp, nil
