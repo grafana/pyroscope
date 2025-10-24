@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thanos-io/objstore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -36,18 +37,20 @@ type Recovery struct {
 	logger    log.Logger
 	metastore Metastore
 	bucket    objstore.Bucket
+	metrics   *metrics
 
 	started bool
 	cancel  func()
 	m       sync.Mutex
 }
 
-func NewRecovery(logger log.Logger, config Config, metastore Metastore, bucket objstore.Bucket) *Recovery {
+func NewRecovery(logger log.Logger, config Config, metastore Metastore, bucket objstore.Bucket, reg prometheus.Registerer) *Recovery {
 	return &Recovery{
 		config:    config,
 		logger:    logger,
 		metastore: metastore,
 		bucket:    bucket,
+		metrics:   newMetrics(reg),
 	}
 }
 
@@ -121,37 +124,46 @@ func (r *Recovery) recover(ctx context.Context, path string) (err error) {
 	switch {
 	case err == nil:
 	case errors.Is(err, context.Canceled):
+		r.metrics.recoveryAttempts.WithLabelValues("canceled").Inc()
 		return err
 	case r.bucket.IsObjNotFoundErr(err):
 		// This is somewhat opportunistic: the error is likely caused by a competing recovery
 		// process that has already recovered the block, before we've discovered that the
 		// leadership has changed.
+		r.metrics.recoveryAttempts.WithLabelValues("not_found").Inc()
 		level.Warn(r.logger).Log("msg", "block metadata not found; skipping", "path", path)
 		return nil
 	default:
 		// This is somewhat opportunistic, as we don't know if the error is transient or not.
 		// we should consider an explicit retry mechanism with backoff and a limit on the
 		// number of attempts.
+		r.metrics.recoveryAttempts.WithLabelValues("read_error").Inc()
 		level.Warn(r.logger).Log("msg", "failed to read block metadata; to be retried", "err", err, "path", path)
 		return err
 	}
 
 	var meta metastorev1.BlockMeta
 	if err = meta.UnmarshalVT(b); err != nil {
-		level.Error(r.logger).Log("msg", "invalid block metadata; skipping", "err", err, "path", path)
+		r.metrics.recoveryAttempts.WithLabelValues("unmarshal_error").Inc()
+		level.Error(r.logger).Log("msg", "failed to unmarshal block metadata; skipping", "err", err, "path", path)
 		return nil
 	}
 
 	switch _, err = r.metastore.AddRecoveredBlock(ctx, &metastorev1.AddBlockRequest{Block: &meta}); {
 	case err == nil:
+		r.metrics.recoveryAttempts.WithLabelValues("success").Inc()
+		level.Debug(r.logger).Log("msg", "successfully recovered block from DLQ", "block_id", meta.Id, "path", path)
 		return nil
 	case status.Code(err) == codes.InvalidArgument:
-		level.Error(r.logger).Log("msg", "invalid block metadata", "err", err, "path", path)
+		r.metrics.recoveryAttempts.WithLabelValues("invalid_metadata").Inc()
+		level.Error(r.logger).Log("msg", "block metadata rejected by metastore; skipping", "err", err, "block_id", meta.Id, "path", path)
 		return nil
 	case raftnode.IsRaftLeadershipError(err):
+		r.metrics.recoveryAttempts.WithLabelValues("leadership_change").Inc()
 		level.Warn(r.logger).Log("msg", "leadership change; recovery interrupted", "err", err, "path", path)
 		return err
 	default:
+		r.metrics.recoveryAttempts.WithLabelValues("metastore_error").Inc()
 		level.Error(r.logger).Log("msg", "failed to add block metadata; to be retried", "err", err, "path", path)
 		return err
 	}
