@@ -283,6 +283,14 @@ func convertMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 		metricName = "exceptions"
 		stType = stTypeSamples
 		stUnit = stUnitCount
+	case "seconds", "nanoseconds", "microseconds", "milliseconds":
+		metricName = metricWall
+		stType = stTypeSamples
+		stUnit = stUnitCount
+	case "bytes":
+		metricName = metricMemory
+		stType = stTypeSamples
+		stUnit = stUnitBytes
 	default:
 		err = fmt.Errorf("unknown profile type: %s", stType)
 	}

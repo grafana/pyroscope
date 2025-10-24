@@ -244,7 +244,7 @@ func (p *PyroscopeTest) NewRequestBuilder(t *testing.T) *RequestBuilder {
 }
 
 func (p *PyroscopeTest) TempAppName() string {
-	return fmt.Sprintf("pprof.integration.%d",
+	return fmt.Sprintf("pprof-integration-%d",
 		rand.Uint64())
 }
 
@@ -358,6 +358,18 @@ func (b *RequestBuilder) IngestJFRRequestBody(jfr []byte, labels []byte) *http.R
 	req, err := http.NewRequest("POST", url, bytes.NewReader(bs))
 	require.NoError(b.t, err)
 	req.Header.Set("Content-Type", ct)
+
+	return req
+}
+
+func (b *RequestBuilder) IngestSpeedscopeRequest(speedscopePath string) *http.Request {
+	speedscopeData, err := os.ReadFile(speedscopePath)
+	require.NoError(b.t, err)
+
+	url := b.url + "/ingest?name=" + b.AppName + "&format=speedscope"
+	req, err := http.NewRequest("POST", url, bytes.NewReader(speedscopeData))
+	require.NoError(b.t, err)
+	req.Header.Set("Content-Type", "application/json")
 
 	return req
 }
