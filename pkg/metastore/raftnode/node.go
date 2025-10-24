@@ -16,6 +16,8 @@ import (
 	"github.com/grafana/dskit/flagext"
 	"github.com/hashicorp/raft"
 	raftwal "github.com/hashicorp/raft-wal"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
@@ -302,6 +304,14 @@ func (n *Node) TransferLeadership() (err error) {
 // Propose makes an attempt to apply the given command to the FSM.
 // The function returns an error if node is not the leader.
 func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Message) (resp proto.Message, err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.FSM.Propose")
+	defer func() {
+		if err != nil {
+			ext.LogError(span, err)
+		}
+		span.Finish()
+	}()
+
 	raw, err := fsm.MarshalEntry(t, m)
 	if err != nil {
 		return nil, err
@@ -310,6 +320,8 @@ func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Mess
 	defer timer.ObserveDuration()
 
 	lastIndex := n.raft.LastIndex()
+	span.SetTag("last_index", lastIndex)
+
 	nextIndex := lastIndex + 1
 	if f, ok := n.fsm.(*fsm.FSM); ok {
 		f.StoreContext(nextIndex, ctx)

@@ -33,7 +33,7 @@ func newTracingTx(tx *bbolt.Tx, span opentracing.Span, spanCtx context.Context) 
 func (t *tracingTx) Commit() error {
 	if t.span != nil {
 		defer t.span.Finish()
-		t.span.SetTag("operation", "commit")
+		t.span.LogKV("operation", "commit")
 	}
 	return t.Tx.Commit()
 }
@@ -42,7 +42,7 @@ func (t *tracingTx) Commit() error {
 func (t *tracingTx) Rollback() error {
 	if t.span != nil {
 		defer t.span.Finish()
-		t.span.SetTag("operation", "rollback")
+		t.span.LogKV("operation", "rollback")
 	}
 	return t.Tx.Rollback()
 }
