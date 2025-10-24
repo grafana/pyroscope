@@ -6,7 +6,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
-	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"go.etcd.io/bbolt"
 
@@ -49,21 +48,17 @@ func NewCompactionCommandHandler(
 func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *raft_log.GetCompactionPlanUpdateRequest,
 ) (resp *raft_log.GetCompactionPlanUpdateResponse, err error) {
-	var span opentracing.Span
-	if ctx != nil {
-		span, _ = opentracing.StartSpanFromContext(ctx, "raft.GetCompactionPlanUpdate")
-		span.SetTag("status_updates", len(req.StatusUpdates))
-		span.SetTag("assign_jobs_max", req.AssignJobsMax)
-		span.SetTag("raft_log_index", cmd.Index)
-		span.SetTag("raft_log_term", cmd.Term)
-
-		defer func() {
-			if err != nil {
-				ext.LogError(span, err)
-			}
-			span.Finish()
-		}()
-	}
+	span, ctx := startSpanFromContext(ctx, "raft.GetCompactionPlanUpdate")
+	span.SetTag("status_updates", len(req.StatusUpdates))
+	span.SetTag("assign_jobs_max", req.AssignJobsMax)
+	span.SetTag("raft_log_index", cmd.Index)
+	span.SetTag("raft_log_term", cmd.Term)
+	defer func() {
+		if err != nil {
+			ext.LogError(span, err)
+		}
+		span.Finish()
+	}()
 
 	// We need to generate a plan of the update caused by the new status
 	// report from the worker. The plan will be used to update the schedule
@@ -152,30 +147,25 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 		})
 	}
 
-	if span != nil {
-		span.SetTag("assigned_jobs", len(p.AssignedJobs))
-		span.SetTag("new_jobs", len(p.NewJobs))
-		span.SetTag("evicted_jobs", len(p.EvictedJobs))
-	}
+	span.SetTag("assigned_jobs", len(p.AssignedJobs))
+	span.SetTag("new_jobs", len(p.NewJobs))
+	span.SetTag("evicted_jobs", len(p.EvictedJobs))
 	return &raft_log.GetCompactionPlanUpdateResponse{Term: cmd.Term, PlanUpdate: p}, nil
 }
 
 func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *raft_log.UpdateCompactionPlanRequest,
 ) (resp *raft_log.UpdateCompactionPlanResponse, err error) {
-	var span opentracing.Span
-	if ctx != nil {
-		span, _ = opentracing.StartSpanFromContext(ctx, "raft.UpdateCompactionPlan")
-		span.SetTag("raft_log_index", cmd.Index)
-		span.SetTag("raft_log_term", cmd.Term)
-		span.SetTag("request_term", req.Term)
-		defer func() {
-			if err != nil {
-				ext.LogError(span, err)
-			}
-			span.Finish()
-		}()
-	}
+	span, ctx := startSpanFromContext(ctx, "raft.UpdateCompactionPlan")
+	span.SetTag("raft_log_index", cmd.Index)
+	span.SetTag("raft_log_term", cmd.Term)
+	span.SetTag("request_term", req.Term)
+	defer func() {
+		if err != nil {
+			ext.LogError(span, err)
+		}
+		span.Finish()
+	}()
 
 	if req.Term != cmd.Term || req.GetPlanUpdate() == nil {
 		level.Warn(h.logger).Log(
@@ -225,11 +215,9 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 		}
 	}
 
-	if span != nil {
-		span.SetTag("new_jobs", len(req.PlanUpdate.NewJobs))
-		span.SetTag("completed_jobs", len(req.PlanUpdate.CompletedJobs))
-		span.SetTag("updated_jobs", len(req.PlanUpdate.UpdatedJobs))
-	}
+	span.SetTag("new_jobs", len(req.PlanUpdate.NewJobs))
+	span.SetTag("completed_jobs", len(req.PlanUpdate.CompletedJobs))
+	span.SetTag("updated_jobs", len(req.PlanUpdate.UpdatedJobs))
 	return &raft_log.UpdateCompactionPlanResponse{PlanUpdate: req.PlanUpdate}, nil
 }
 
