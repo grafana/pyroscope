@@ -308,6 +308,7 @@ type AdminService interface {
 	ProfileDownloadHandler(w http.ResponseWriter, r *http.Request)
 	ProfileCallTreeHandler(w http.ResponseWriter, r *http.Request)
 	DatasetTSDBIndexHandler(w http.ResponseWriter, r *http.Request)
+	DatasetSymbolsHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (a *API) RegisterAdmin(ad AdminService) {
@@ -319,6 +320,7 @@ func (a *API) RegisterAdmin(ad AdminService) {
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles/download", http.HandlerFunc(ad.ProfileDownloadHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles/call-tree", http.HandlerFunc(ad.ProfileCallTreeHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/index", http.HandlerFunc(ad.DatasetTSDBIndexHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/symbols", http.HandlerFunc(ad.DatasetSymbolsHandler), a.registerOptionsPublicAccess()...)
 
 	a.indexPage.AddLinks(defaultWeight, "Admin", []IndexPageLink{
 		{Desc: "Object Storage Tenants & Blocks", Path: "/ops/object-store/tenants"},

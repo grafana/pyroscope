@@ -30,6 +30,9 @@ var paginationHtml string
 //go:embed tool.blocks.dataset.index.gohtml
 var datasetIndexPageHtml string
 
+//go:embed tool.blocks.dataset.symbols.gohtml
+var datasetSymbolsPageHtml string
+
 type indexPageContent struct {
 	Users []string
 	Now   string
@@ -83,6 +86,7 @@ type templates struct {
 	datasetProfilesTemplate *template.Template
 	profileCallTreeTemplate *template.Template
 	datasetIndexTemplate    *template.Template
+	datasetSymbolsTemplate  *template.Template
 }
 
 var pageTemplates = initTemplates()
@@ -120,6 +124,14 @@ func initTemplates() *templates {
 	template.Must(profileCallTreeTemplate.Parse(profileCallTreePageHtml))
 	datasetIndexTemplate := template.New("dataset-index")
 	template.Must(datasetIndexTemplate.Parse(datasetIndexPageHtml))
+	datasetSymbolsTemplate := template.New("dataset-symbols").Funcs(template.FuncMap{
+		"add":  add,
+		"mul":  mul,
+		"seq":  seq,
+		"dict": dict,
+	})
+	template.Must(datasetSymbolsTemplate.Parse(paginationHtml))
+	template.Must(datasetSymbolsTemplate.Parse(datasetSymbolsPageHtml))
 	t := &templates{
 		indexTemplate:           indexTemplate,
 		blocksTemplate:          blocksTemplate,
@@ -128,6 +140,7 @@ func initTemplates() *templates {
 		datasetProfilesTemplate: datasetProfilesTemplate,
 		profileCallTreeTemplate: profileCallTreeTemplate,
 		datasetIndexTemplate:    datasetIndexTemplate,
+		datasetSymbolsTemplate:  datasetSymbolsTemplate,
 	}
 	return t
 }
