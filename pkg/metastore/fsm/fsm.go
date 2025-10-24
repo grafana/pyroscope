@@ -245,8 +245,6 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	ctx, found := fsm.contextRegistry.Retrieve(cmd.Index)
 	if found {
 		defer fsm.contextRegistry.Delete(cmd.Index)
-	} else {
-		ctx = context.Background()
 	}
 
 	span, ctx := tracing.StartSpanFromContext(ctx, "fsm.applyCommand")

@@ -49,22 +49,19 @@ func TestContextRegistry_Delete(t *testing.T) {
 }
 
 func TestContextRegistry_Cleanup(t *testing.T) {
-	// Use short TTL for faster test
+	// Use short TTL for a faster test
 	r := NewContextRegistry(100*time.Millisecond, 200*time.Millisecond)
 	defer r.Shutdown()
 
 	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
 	r.Store(1, ctx)
 
-	// Entry should be present
 	_, found := r.Retrieve(1)
 	require.True(t, found)
 	assert.Equal(t, 1, r.Size())
 
-	// Wait for cleanup to run
 	time.Sleep(400 * time.Millisecond)
 
-	// Entry should be cleaned up
 	_, found = r.Retrieve(1)
 	require.False(t, found)
 	assert.Equal(t, 0, r.Size())
@@ -93,7 +90,6 @@ func TestContextRegistry_ConcurrentAccess(t *testing.T) {
 
 	done := make(chan bool)
 
-	// Writer goroutines
 	for i := 0; i < 10; i++ {
 		go func(id int) {
 			ctx := context.WithValue(context.Background(), contextKey("id"), id)
@@ -106,7 +102,6 @@ func TestContextRegistry_ConcurrentAccess(t *testing.T) {
 		}(i)
 	}
 
-	// Reader goroutines
 	for i := 0; i < 10; i++ {
 		go func(id int) {
 			for j := 0; j < 100; j++ {
@@ -118,11 +113,9 @@ func TestContextRegistry_ConcurrentAccess(t *testing.T) {
 		}(i)
 	}
 
-	// Wait for all goroutines
 	for i := 0; i < 20; i++ {
 		<-done
 	}
 
-	// Should not panic and should have some entries
 	assert.True(t, r.Size() > 0)
 }
