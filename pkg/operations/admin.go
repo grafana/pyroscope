@@ -65,3 +65,7 @@ func (a *Admin) ProfileCallTreeHandler(w http.ResponseWriter, r *http.Request) {
 func (a *Admin) DatasetTSDBIndexHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Dataset TSDB index not available in v1 storage", http.StatusNotFound)
 }
+
+func (a *Admin) DatasetSymbolsHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Dataset symbols not available in v1 storage", http.StatusNotFound)
+}

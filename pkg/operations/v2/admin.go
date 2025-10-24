@@ -65,3 +65,7 @@ func (a *Admin) ProfileCallTreeHandler(w http.ResponseWriter, r *http.Request) {
 func (a *Admin) DatasetTSDBIndexHandler(w http.ResponseWriter, r *http.Request) {
 	a.handlers.CreateDatasetTSDBIndexHandler()(w, r)
 }
+
+func (a *Admin) DatasetSymbolsHandler(w http.ResponseWriter, r *http.Request) {
+	a.handlers.CreateDatasetSymbolsHandler()(w, r)
+}

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html class="h-100" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Bucket Blocks Explorer (v2): Dataset Symbols</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+</head>
+<body class="d-flex flex-column h-100">
+<main class="flex-shrink-0">
+    <div class="container">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h3>Bucket Blocks Explorer (v2): Dataset Symbols</h3>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/ops/object-store/tenants">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <p>
+                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to dataset</a>
+            </p>
+
+            <div class="card bg-dark border-secondary info-card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Dataset Information</h5>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>Dataset Name: {{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}<em>(empty)</em>{{ end }}</li>
+                        <li>Dataset Tenant: {{ .Dataset.Tenant }}</li>
+                        <li>Block ID: {{ .BlockID }}</li>
+                        <li>Shard: {{ .Shard }}</li>
+                    </ul>
+                </div>
+            </div>
+
+            <ul class="nav nav-tabs mb-3" id="symbolsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {{ if eq .Tab "strings" }}active{{ end }}" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&tab=strings&page=1&page_size={{ .PageSize }}">
+                        Strings ({{ .Symbols.TotalStrings }})
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {{ if eq .Tab "functions" }}active{{ end }}" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&tab=functions&page=1&page_size={{ .PageSize }}">
+                        Functions ({{ .Symbols.TotalFunctions }})
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {{ if eq .Tab "locations" }}active{{ end }}" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&tab=locations&page=1&page_size={{ .PageSize }}">
+                        Locations ({{ .Symbols.TotalLocations }})
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link {{ if eq .Tab "mappings" }}active{{ end }}" href="?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}&tab=mappings&page=1&page_size={{ .PageSize }}">
+                        Mappings ({{ .Symbols.TotalMappings }})
+                    </a>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="symbolsTabContent">
+                {{ if eq .Tab "strings" }}
+                <div class="tab-pane fade show active" id="strings" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+                        <h5 class="mb-0">Strings</h5>
+                        <div class="text-muted">
+                            {{ if gt .Symbols.TotalStrings 0 }}
+                                Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .Symbols.TotalStrings }}{{ mul .Page .PageSize }}{{ else }}{{ .Symbols.TotalStrings }}{{ end }} of {{ .Symbols.TotalStrings }}
+                            {{ end }}
+                        </div>
+                    </div>
+
+                    {{ if gt .TotalPages 1 }}
+                    <div class="mb-3">
+                        {{ $datasetName := "_empty" }}
+                        {{ if .Dataset.Name }}{{ $datasetName = .Dataset.Name }}{{ end }}
+                        {{ template "pagination" dict "BaseURL" (printf "?dataset=%s&shard=%d&block_tenant=%s&tab=strings" $datasetName .Shard .BlockTenant) "Page" .Page "PageSize" .PageSize "TotalPages" .TotalPages "HasPrevPage" .HasPrevPage "HasNextPage" .HasNextPage }}
+                    </div>
+                    {{ end }}
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-dark table-striped">
+                            <thead>
+                                <tr>
+                                    <th style="width: 100px;">Index</th>
+                                    <th>String</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ range .Symbols.Strings }}
+                                <tr>
+                                    <td>{{ .Index }}</td>
+                                    <td><code class="text-break">{{ .Symbol }}</code></td>
+                                </tr>
+                                {{ end }}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{ if gt .TotalPages 1 }}
+                        {{ $datasetName := "_empty" }}
+                        {{ if .Dataset.Name }}{{ $datasetName = .Dataset.Name }}{{ end }}
+                        {{ template "pagination" dict "BaseURL" (printf "?dataset=%s&shard=%d&block_tenant=%s&tab=strings" $datasetName .Shard .BlockTenant) "Page" .Page "PageSize" .PageSize "TotalPages" .TotalPages "HasPrevPage" .HasPrevPage "HasNextPage" .HasNextPage }}
+                    {{ end }}
+                </div>
+                {{ end }}
+
+                {{ if eq .Tab "functions" }}
+                <div class="tab-pane fade show active" id="functions" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+                        <h5 class="mb-0">Functions</h5>
+                        <div class="text-muted">
+                            {{ if gt .Symbols.TotalFunctions 0 }}
+                                Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .Symbols.TotalFunctions }}{{ mul .Page .PageSize }}{{ else }}{{ .Symbols.TotalFunctions }}{{ end }} of {{ .Symbols.TotalFunctions }}
+                            {{ end }}
+                        </div>
+                    </div>
+
+                    {{ if gt .TotalPages 1 }}
+                    <div class="mb-3">
+                        {{ $datasetName := "_empty" }}
+                        {{ if .Dataset.Name }}{{ $datasetName = .Dataset.Name }}{{ end }}
+                        {{ template "pagination" dict "BaseURL" (printf "?dataset=%s&shard=%d&block_tenant=%s&tab=functions" $datasetName .Shard .BlockTenant) "Page" .Page "PageSize" .PageSize "TotalPages" .TotalPages "HasPrevPage" .HasPrevPage "HasNextPage" .HasNextPage }}
+                    </div>
+                    {{ end }}
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-dark table-striped">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;">Index</th>
+                                    <th style="width: 100px;">ID</th>
+                                    <th>Name</th>
+                                    <th>System Name</th>
+                                    <th>Filename</th>
+                                    <th style="width: 100px;">Line</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ range .Symbols.Functions }}
+                                <tr>
+                                    <td>{{ .Index }}</td>
+                                    <td>{{ .ID }}</td>
+                                    <td><code class="text-break small">{{ .Name }}</code></td>
+                                    <td><code class="text-break small">{{ .SystemName }}</code></td>
+                                    <td><code class="text-break small">{{ .Filename }}</code></td>
+                                    <td>{{ .StartLine }}</td>
+                                </tr>
+                                {{ end }}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{ if gt .TotalPages 1 }}
+                        {{ $datasetName := "_empty" }}
+                        {{ if .Dataset.Name }}{{ $datasetName = .Dataset.Name }}{{ end }}
+                        {{ template "pagination" dict "BaseURL" (printf "?dataset=%s&shard=%d&block_tenant=%s&tab=functions" $datasetName .Shard .BlockTenant) "Page" .Page "PageSize" .PageSize "TotalPages" .TotalPages "HasPrevPage" .HasPrevPage "HasNextPage" .HasNextPage }}
+                    {{ end }}
+                </div>
+                {{ end }}
+
+                {{ if eq .Tab "locations" }}
+                <div class="tab-pane fade show active" id="locations" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+                        <h5 class="mb-0">Locations</h5>
+                        <div class="text-muted">
+                            {{ if gt .Symbols.TotalLocations 0 }}
+                                Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .Symbols.TotalLocations }}{{ mul .Page .PageSize }}{{ else }}{{ .Symbols.TotalLocations }}{{ end }} of {{ .Symbols.TotalLocations }}
+                            {{ end }}
+                        </div>
+                    </div>
+
+                    {{ if gt .TotalPages 1 }}
+                    <div class="mb-3">
+                        {{ $datasetName := "_empty" }}
+                        {{ if .Dataset.Name }}{{ $datasetName = .Dataset.Name }}{{ end }}
+                        {{ template "pagination" dict "BaseURL" (printf "?dataset=%s&shard=%d&block_tenant=%s&tab=locations" $datasetName .Shard .BlockTenant) "Page" .Page "PageSize" .PageSize "TotalPages" .TotalPages "HasPrevPage" .HasPrevPage "HasNextPage" .HasNextPage }}
+                    </div>
+                    {{ end }}
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-dark table-striped">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;">Index</th>
+                                    <th style="width: 100px;">ID</th>
+                                    <th style="width: 150px;">Address</th>
+                                    <th style="width: 100px;">Mapping</th>
+                                    <th>Lines (Function @ Line)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ range .Symbols.Locations }}
+                                <tr>
+                                    <td>{{ .Index }}</td>
+                                    <td>{{ .ID }}</td>
+                                    <td><code>0x{{ printf "%x" .Address }}</code></td>
+                                    <td>{{ .MappingID }}</td>
+                                    <td>
+                                        {{ if .Lines }}
+                                            {{ range $i, $line := .Lines }}
+                                                {{ if $i }}<br>{{ end }}<code class="small">{{ $line.FunctionName }}</code>{{ if gt $line.Line 0 }} @ L{{ $line.Line }}{{ end }}
+                                            {{ end }}
+                                        {{ else }}
+                                            <em>none</em>
+                                        {{ end }}
+                                    </td>
+                                </tr>
+                                {{ end }}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{ if gt .TotalPages 1 }}
+                        {{ $datasetName := "_empty" }}
+                        {{ if .Dataset.Name }}{{ $datasetName = .Dataset.Name }}{{ end }}
+                        {{ template "pagination" dict "BaseURL" (printf "?dataset=%s&shard=%d&block_tenant=%s&tab=locations" $datasetName .Shard .BlockTenant) "Page" .Page "PageSize" .PageSize "TotalPages" .TotalPages "HasPrevPage" .HasPrevPage "HasNextPage" .HasNextPage }}
+                    {{ end }}
+                </div>
+                {{ end }}
+
+                {{ if eq .Tab "mappings" }}
+                <div class="tab-pane fade show active" id="mappings" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+                        <h5 class="mb-0">Mappings</h5>
+                        <div class="text-muted">
+                            {{ if gt .Symbols.TotalMappings 0 }}
+                                Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .Symbols.TotalMappings }}{{ mul .Page .PageSize }}{{ else }}{{ .Symbols.TotalMappings }}{{ end }} of {{ .Symbols.TotalMappings }}
+                            {{ end }}
+                        </div>
+                    </div>
+
+                    {{ if gt .TotalPages 1 }}
+                    <div class="mb-3">
+                        {{ $datasetName := "_empty" }}
+                        {{ if .Dataset.Name }}{{ $datasetName = .Dataset.Name }}{{ end }}
+                        {{ template "pagination" dict "BaseURL" (printf "?dataset=%s&shard=%d&block_tenant=%s&tab=mappings" $datasetName .Shard .BlockTenant) "Page" .Page "PageSize" .PageSize "TotalPages" .TotalPages "HasPrevPage" .HasPrevPage "HasNextPage" .HasNextPage }}
+                    </div>
+                    {{ end }}
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-dark table-striped">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;">Index</th>
+                                    <th style="width: 100px;">ID</th>
+                                    <th style="width: 150px;">Memory Range</th>
+                                    <th style="width: 120px;">File Offset</th>
+                                    <th>Filename</th>
+                                    <th>Build ID</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ range .Symbols.Mappings }}
+                                <tr>
+                                    <td>{{ .Index }}</td>
+                                    <td>{{ .ID }}</td>
+                                    <td><code class="small">0x{{ printf "%x" .MemoryStart }}-0x{{ printf "%x" .MemoryLimit }}</code></td>
+                                    <td><code class="small">0x{{ printf "%x" .FileOffset }}</code></td>
+                                    <td><code class="text-break small">{{ .Filename }}</code></td>
+                                    <td><code class="text-break small">{{ .BuildID }}</code></td>
+                                </tr>
+                                {{ end }}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{ if gt .TotalPages 1 }}
+                        {{ $datasetName := "_empty" }}
+                        {{ if .Dataset.Name }}{{ $datasetName = .Dataset.Name }}{{ end }}
+                        {{ template "pagination" dict "BaseURL" (printf "?dataset=%s&shard=%d&block_tenant=%s&tab=mappings" $datasetName .Shard .BlockTenant) "Page" .Page "PageSize" .PageSize "TotalPages" .TotalPages "HasPrevPage" .HasPrevPage "HasNextPage" .HasNextPage }}
+                    {{ end }}
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3 bg-dark">
+    <div class="container">
+        <small class="text-white-50">Status @ {{ .Now }}</small>
+    </div>
+</footer>
+</body>
+</html>

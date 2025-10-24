@@ -153,6 +153,20 @@
                         </div>
                     </div>
                 </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-dark border-secondary h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">
+                                <i class="bi bi-code-slash"></i> Symbols
+                            </h5>
+                            <p class="card-text">Explore the symbols table used for profile stack traces.</p>
+                            <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets/symbols?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}"
+                               class="btn btn-primary mt-auto">
+                                View Symbols
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
