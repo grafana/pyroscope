@@ -1147,8 +1147,8 @@ github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3 h1:GtwQD
 github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3/go.mod h1:nfbW6/4ke3ywlqLb+Zgr9t1z9Zv3m+2ImUp+vbkzHpc=
 github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff h1:9dI8HuAIA5L/EsPXkk3YqA3Pp5i7ECvQkWMwUepLoCY=
 github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff/go.mod h1:3f/0/CzhTk1moGlVOp2nJQKCAL+4M5GTnkfDd5hqDIk=
-github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc h1:GN2Lv3MGO7AS6PrRoT6yV5+wkrOpcszoIsO4+4ds248=
-github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
+github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853 h1:cLN4IBkmkYZNnk7EAJ0BHIethd+J6LqxFNw5mSiI2bM=
+github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
 github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 h1:UH//fgunKIs4JdUbpDl1VZCDaL56wXCB/5+wF6uHfaI=
 github.com/grpc-ecosystem/go-grpc-middleware v1.4.0/go.mod h1:g5qyo/la0ALbONm6Vbp88Yd8NsDy6rZz+RcrMPxvld8=
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
