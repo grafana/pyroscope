@@ -15,8 +15,8 @@ import (
 // is committed or rolled back.
 type tracingTx struct {
 	*bbolt.Tx
-	span       opentracing.Span
-	spanCtx    context.Context // Context with the span, for child operations
+	span    opentracing.Span
+	spanCtx context.Context // Context with the span, for child operations
 }
 
 // newTracingTx creates a tracing transaction wrapper.
@@ -27,11 +27,6 @@ func newTracingTx(tx *bbolt.Tx, span opentracing.Span, spanCtx context.Context) 
 		span:    span,
 		spanCtx: spanCtx,
 	}
-}
-
-// Context returns the context with the transaction span, useful for creating child spans.
-func (t *tracingTx) Context() context.Context {
-	return t.spanCtx
 }
 
 // Commit commits the transaction and finishes the span.

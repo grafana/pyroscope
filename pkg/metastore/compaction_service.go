@@ -39,7 +39,7 @@ func (svc *CompactionService) PollCompactionJobs(
 	ctx context.Context,
 	req *metastorev1.PollCompactionJobsRequest,
 ) (resp *metastorev1.PollCompactionJobsResponse, err error) {
-	span, _ := opentracing.StartSpanFromContext(ctx, "metastore.CompactionService.PollCompactionJobs")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.CompactionService.PollCompactionJobs")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)

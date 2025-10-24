@@ -281,6 +281,9 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		if txSpan != nil {
 			txSpan.SetTag("writable", rawTx.Writable())
 		}
+	} else {
+		// always set a context so that handlers don't have to perform nil checks
+		ctx = context.Background()
 	}
 
 	tx := newTracingTx(rawTx, txSpan, ctx)
