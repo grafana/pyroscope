@@ -54,7 +54,7 @@ func BenchmarkIndex_GetTenantStats(b *testing.B) {
 					StringTable:   []string{"", tenant},
 				}
 				err := db.Update(func(tx *bbolt.Tx) error {
-					return idx.InsertBlock(nil, tx, md)
+					return idx.InsertBlock(tx, md)
 				})
 				require.NoError(b, err)
 				blocks++

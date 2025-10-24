@@ -19,7 +19,7 @@ import (
 )
 
 type IndexInserter interface {
-	InsertBlock(context.Context, *bbolt.Tx, *metastorev1.BlockMeta) error
+	InsertBlock(*bbolt.Tx, *metastorev1.BlockMeta) error
 }
 
 type IndexDeleter interface {
@@ -79,7 +79,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 	}
 
 	insertSpan, _ := startSpanFromContext(ctx, "index.InsertBlock")
-	if err = m.index.InsertBlock(ctx, tx, req.Block); err != nil {
+	if err = m.index.InsertBlock(tx, req.Block); err != nil {
 		if errors.Is(err, index.ErrBlockExists) {
 			level.Warn(m.logger).Log("msg", "block already added", "block", e.ID)
 			return new(metastorev1.AddBlockResponse), nil
@@ -102,7 +102,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 }
 
 func (m *IndexCommandHandler) TruncateIndex(ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *raft_log.TruncateIndexRequest) (resp *raft_log.TruncateIndexResponse, err error) {
-	span, ctx := startSpanFromContext(ctx, "raft.TruncateIndex")
+	span, _ := startSpanFromContext(ctx, "raft.TruncateIndex")
 	span.SetTag("tombstone_count", len(req.Tombstones))
 	span.SetTag("raft_log_index", cmd.Index)
 	span.SetTag("raft_log_term", cmd.Term)
