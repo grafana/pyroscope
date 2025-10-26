@@ -9,13 +9,48 @@ on:
 jobs:
   main:
     if: github.repository == 'grafana/pyroscope'
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          persist-credentials: false
+          persist-credentials: 'false'
+      - id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@50003525a2bfea2f21a7dcec5fc67ab22690d19d
+        with:
+          repo_secrets: |
+            GITHUB_APP_ID=pyroscope-development-app:app-id
+            GITHUB_APP_INSTALLATION_ID=pyroscope-development-app:app-installation-id
+            GITHUB_APP_PRIVATE_KEY=pyroscope-development-app:private-key
+      - name: Generate token
+        id: generate_token
+        uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
+        with:
+          app-id: ${{ env.GITHUB_APP_ID }}
+          private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-contents: write
+          permission-pull-requests: write
+          repositories: |
+            pyroscope
+      - name: Get GitHub App User ID
+        id: get-user-id
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          APP_BOT="${{ steps.generate_token.outputs.app-slug }}[bot]"
+          echo "user-id=$(gh api "/users/${APP_BOT}" --jq .id)" >> "$GITHUB_OUTPUT"
+      - name: Configure git remote
+        run: |
+          APP_BOT="${{ steps.generate_token.outputs.app-slug }}[bot]"
+          git config --local user.name "${APP_BOT}"
+          git config --local user.email "${{ steps.get-user-id.outputs.user-id }}+${APP_BOT}@users.noreply.github.com"
+          git remote set-url "origin" https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/${{ github.repository }}.git > /dev/null 2> /dev/null
       - uses: grafana/writers-toolkit/update-make-docs@d87843b53c21125598f5e20e5bebae213f0059b6
         with:
           pr_options: >
             --label type/docs
+          token: ${{ steps.generate_token.outputs.token }}
           trace: true

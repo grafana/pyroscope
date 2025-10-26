@@ -47,11 +47,11 @@ type PushService interface {
 	PushBatch(ctx context.Context, req *distirbutormodel.PushRequest) error
 }
 
-func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, me bool) Handler {
+func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, multitenancyEnabled bool) Handler {
 	h := &ingestHandler{
 		svc:                 svc,
 		log:                 l,
-		multitenancyEnabled: me,
+		multitenancyEnabled: multitenancyEnabled,
 	}
 
 	grpcServer := newGrpcServer(cfg)
@@ -108,8 +108,46 @@ func (h *ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
 }
 
+// extractTenantIDFromHTTPRequest extracts the tenant ID from HTTP request headers.
+// If multitenancy is disabled, it injects the default tenant ID.
+// Returns a context with the tenant ID injected.
+func (h *ingestHandler) extractTenantIDFromHTTPRequest(r *http.Request) (context.Context, error) {
+	if !h.multitenancyEnabled {
+		return user.InjectOrgID(r.Context(), tenant.DefaultTenantID), nil
+	}
+
+	_, ctx, err := user.ExtractOrgIDFromHTTPRequest(r)
+	if err != nil {
+		return nil, err
+	}
+	return ctx, nil
+}
+
+// extractTenantIDFromGRPCRequest extracts the tenant ID from a gRPC request context.
+// If multitenancy is disabled, it injects the default tenant ID.
+// Returns a context with the tenant ID injected.
+func (h *ingestHandler) extractTenantIDFromGRPCRequest(ctx context.Context) (context.Context, error) {
+	// TODO: ideally should be merged with function above
+	if !h.multitenancyEnabled {
+		return user.InjectOrgID(ctx, tenant.DefaultTenantID), nil
+	}
+
+	_, ctx, err := user.ExtractFromGRPCRequest(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return ctx, nil
+}
+
 func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
+
+	ctx, err := h.extractTenantIDFromHTTPRequest(r)
+	if err != nil {
+		level.Error(h.log).Log("msg", "failed to extract tenant ID from HTTP request", "err", err)
+		http.Error(w, "Failed to extract tenant ID from HTTP request", http.StatusUnauthorized)
+		return
+	}
 
 	// Read the request body - we need to read it all for protobuf unmarshaling
 	// Note: Protobuf wire format requires reading the entire message to determine field boundaries
@@ -137,10 +175,8 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	ctx := r.Context()
-	// Process the request using the existing Export method
-	// Injects multitenancy info into context if needed
-	resp, err := h.Export(ctx, req)
+	// Process the request using the existing export method
+	resp, err := h.export(ctx, req)
 	if err != nil {
 		level.Error(h.log).Log("msg", "failed to process profiles", "err", err)
 		// Convert gRPC status to HTTP status
@@ -178,19 +214,22 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// Export is the gRPC handler for the ProfilesService Export RPC.
+// Extracts tenant ID from gRPC request metadata before processing.
 func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
-	// TODO: @petethepig This logic is copied from util.AuthenticateUser and should be refactored into a common function
-	// Extracts user ID from the request metadata and returns and injects the user ID in the context
-	if !h.multitenancyEnabled {
-		ctx = user.InjectOrgID(ctx, tenant.DefaultTenantID)
-	} else {
-		var err error
-		_, ctx, err = user.ExtractFromGRPCRequest(ctx)
-		if err != nil {
-			level.Error(h.log).Log("msg", "failed to extract tenant ID from gRPC request", "err", err)
-			return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to extract tenant ID from GRPC request: %w", err)
-		}
+	// Extract tenant ID from gRPC request
+	ctx, err := h.extractTenantIDFromGRPCRequest(ctx)
+	if err != nil {
+		level.Error(h.log).Log("msg", "failed to extract tenant ID from gRPC request", "err", err)
+		return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to extract tenant ID from gRPC request: %w", err)
 	}
+
+	return h.export(ctx, er)
+}
+
+// export is the common implementation for processing OTLP profile export requests.
+// The context must already have the tenant ID injected before calling this method.
+func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
 
 	dc := er.Dictionary
 	if dc == nil {

@@ -17,7 +17,7 @@ spec:
           ports:
             - containerPort: 3000
           env:
-            - name: GF_INSTALL_PLUGINS
+            - name: GF_PLUGINS_PREINSTALL_SYNC
               value: grafana-pyroscope-app
             - name: GF_AUTH_ANONYMOUS_ENABLED
               value: "true"

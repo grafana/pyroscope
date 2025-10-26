@@ -49,3 +49,23 @@ func (a *Admin) BlockHandler(w http.ResponseWriter, r *http.Request) {
 func (a *Admin) DatasetHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Dataset details not available in v1 storage", http.StatusNotFound)
 }
+
+func (a *Admin) DatasetProfilesHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Dataset profiles not available in v1 storage", http.StatusNotFound)
+}
+
+func (a *Admin) ProfileDownloadHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Profile download not available in v1 storage", http.StatusNotFound)
+}
+
+func (a *Admin) ProfileCallTreeHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Profile call tree not available in v1 storage", http.StatusNotFound)
+}
+
+func (a *Admin) DatasetTSDBIndexHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Dataset TSDB index not available in v1 storage", http.StatusNotFound)
+}
+
+func (a *Admin) DatasetSymbolsHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Dataset symbols not available in v1 storage", http.StatusNotFound)
+}

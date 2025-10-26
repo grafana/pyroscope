@@ -2,8 +2,8 @@ GITHUB_REPOSITORY ?= grafana/pyroscope
 
 .PHONY: tools/update_examples
 tools/update_examples:
-	docker build -t update_pyroscope_examples -f tools/update_examples.Dockerfile  tools
-	docker run --rm  -e GITHUB_TOKEN=$(GITHUB_TOKEN) -v$(shell pwd):/pyroscope -w /pyroscope update_pyroscope_examples bash -l -c "go run tools/update_examples.go"
+	docker buildx build --platform $(IMAGE_PLATFORM) -t update_pyroscope_examples -f tools/update_examples.Dockerfile  tools
+	docker run --rm  --platform=$(IMAGE_PLATFORM) -e GITHUB_TOKEN=$(GITHUB_TOKEN) -v$(shell pwd):/pyroscope -w /pyroscope update_pyroscope_examples bash -l -c "go run tools/update_examples.go"
 
 .PHONY: tools/update_examples_pr
 tools/update_examples_pr:
