@@ -79,7 +79,7 @@
       "automerge": false,
       "automergeType": "pr",
       "automergeStrategy": "squash",
-      "platformAutomerge": false
+      "platformAutomerge": true
     }
   ]
 }
