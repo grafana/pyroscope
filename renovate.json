@@ -1,6 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>grafana/grafana-renovate-config/renovate.json"],
+  "ignorePresets": [
+    "github>grafana/grafana-renovate-config//presets/automerge"
+  ],
   "timezone": "UTC",
   "schedule": ["before 4am on monday"],
   "prConcurrentLimit": 10,
