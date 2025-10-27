@@ -18,7 +18,7 @@ jobs:
         with:
           persist-credentials: 'false'
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@50003525a2bfea2f21a7dcec5fc67ab22690d19d
+        uses: grafana/shared-workflows/actions/get-vault-secrets@bca48b60029f80d2ea7c1a6bd1a49ffa7915a9e3
         with:
           repo_secrets: |
             GITHUB_APP_ID=pyroscope-development-app:app-id
@@ -48,7 +48,7 @@ jobs:
           git config --local user.name "${APP_BOT}"
           git config --local user.email "${{ steps.get-user-id.outputs.user-id }}+${APP_BOT}@users.noreply.github.com"
           git remote set-url "origin" https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/${{ github.repository }}.git > /dev/null 2> /dev/null
-      - uses: grafana/writers-toolkit/update-make-docs@d87843b53c21125598f5e20e5bebae213f0059b6
+      - uses: grafana/writers-toolkit/update-make-docs@f7597da3f90b83860c45bafd9bf35c193e17810c
         with:
           pr_options: >
             --label type/docs

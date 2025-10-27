@@ -142,7 +142,7 @@ jobs:
           go-version: 1.24.8
       # login to docker hub
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@50003525a2bfea2f21a7dcec5fc67ab22690d19d
+        uses: grafana/shared-workflows/actions/get-vault-secrets@bca48b60029f80d2ea7c1a6bd1a49ffa7915a9e3
         with:
           common_secrets: |
             DOCKERHUB_USERNAME=dockerhub:username
@@ -174,7 +174,7 @@ jobs:
     steps:
     - id: "submit-argowfs-deployment"
       name: "Submit Argo Workflows deployment"
-      uses: grafana/shared-workflows/actions/trigger-argo-workflow@50003525a2bfea2f21a7dcec5fc67ab22690d19d
+      uses: grafana/shared-workflows/actions/trigger-argo-workflow@bca48b60029f80d2ea7c1a6bd1a49ffa7915a9e3
       with:
         namespace: "phlare-cd"
         workflow_template: "deploy-pyroscope-dev"
