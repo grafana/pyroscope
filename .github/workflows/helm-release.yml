@@ -12,7 +12,7 @@ jobs:
       contents: "write"
       id-token: "write"
       packages: "write"
-    uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@1f374448ad31fcc504947cf72709b79105da193d
+    uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@42d4d00ec47f4d013a757bb26edfcd2abc50ca78
     with:
       charts_dir: operations/pyroscope/helm/
       cr_configfile: operations/pyroscope/helm/cr.yaml

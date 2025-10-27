@@ -23,7 +23,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: grafana/writers-toolkit/publish-technical-documentation-release@d87843b53c21125598f5e20e5bebae213f0059b6
+      - uses: grafana/writers-toolkit/publish-technical-documentation-release@f7597da3f90b83860c45bafd9bf35c193e17810c
         with:
           release_tag_regexp: "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
           release_branch_regexp: "^release/v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
