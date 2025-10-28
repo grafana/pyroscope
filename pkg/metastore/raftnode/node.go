@@ -19,6 +19,7 @@ import (
 	raftwal "github.com/hashicorp/raft-wal"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
@@ -318,22 +319,32 @@ func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Mess
 		f.StoreContext(ctxID, ctx)
 	}
 
+	span.LogFields(otlog.String("msg", "marshalling log entry"))
+
 	raw, err := fsm.MarshalEntry(t, m)
 	if err != nil {
 		return nil, err
 	}
+
+	span.LogFields(otlog.String("msg", "log entry marshalled"))
 	timer := prometheus.NewTimer(n.metrics.apply)
 	defer timer.ObserveDuration()
+
+	span.LogFields(otlog.String("msg", "applying log entry"))
 
 	future := n.raft.ApplyLog(raft.Log{
 		Data:       raw,
 		Extensions: []byte(ctxID),
 	}, n.config.ApplyTimeout)
 
+	span.LogFields(otlog.String("msg", "waiting for apply result"))
+
 	if err = future.Error(); err != nil {
 		return nil, WithRaftLeaderStatusDetails(err, n.raft)
 	}
 	r := future.Response().(fsm.Response)
+
+	span.LogFields(otlog.String("msg", "apply result received"))
 	if r.Data != nil {
 		resp = r.Data
 	}
