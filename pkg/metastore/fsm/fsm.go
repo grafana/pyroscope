@@ -242,18 +242,26 @@ func (fsm *FSM) Apply(log *raft.Log) any {
 func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	start := time.Now()
 
-	ctx, found := fsm.contextRegistry.Retrieve(cmd.Index)
-	if found {
-		defer fsm.contextRegistry.Delete(cmd.Index)
+	var e RaftLogEntry
+	if err := e.UnmarshalBinary(cmd.Data); err != nil {
+		return errResponse(cmd, err)
+	}
+
+	// Extract context ID from Raft's log Extensions field
+	ctxID := string(cmd.Extensions)
+
+	ctx := context.Background()
+	found := false
+	if ctxID != "" {
+		ctx, found = fsm.contextRegistry.Retrieve(ctxID)
+		if found {
+			defer fsm.contextRegistry.Delete(ctxID)
+		}
 	}
 
 	span, ctx := tracing.StartSpanFromContext(ctx, "fsm.applyCommand")
 	defer span.Finish()
 
-	var e RaftLogEntry
-	if err := e.UnmarshalBinary(cmd.Data); err != nil {
-		return errResponse(cmd, err)
-	}
 	if cmd.Index <= fsm.appliedIndex {
 		// Skip already applied commands at WAL restore.
 		// Note that the 0 index is a noop and is never applied to FSM.
@@ -350,11 +358,11 @@ func (fsm *FSM) Shutdown() {
 	}
 }
 
-// StoreContext stores a context in the registry for the given Raft log index.
+// StoreContext stores a context in the registry.
 // This is used by Node.Propose to propagate tracing context from HTTP handlers
 // down to BoltDB transactions without persisting it in Raft logs.
-func (fsm *FSM) StoreContext(index uint64, ctx context.Context) {
-	fsm.contextRegistry.Store(index, ctx)
+func (fsm *FSM) StoreContext(id string, ctx context.Context) {
+	fsm.contextRegistry.Store(id, ctx)
 }
 
 // ContextRegistrySize returns the current number of entries in the context registry.

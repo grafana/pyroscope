@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/flagext"
 	"github.com/hashicorp/raft"
 	raftwal "github.com/hashicorp/raft-wal"
@@ -312,6 +313,11 @@ func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Mess
 		span.Finish()
 	}()
 
+	ctxID := uuid.New().String()
+	if f, ok := n.fsm.(*fsm.FSM); ok {
+		f.StoreContext(ctxID, ctx)
+	}
+
 	raw, err := fsm.MarshalEntry(t, m)
 	if err != nil {
 		return nil, err
@@ -319,15 +325,11 @@ func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Mess
 	timer := prometheus.NewTimer(n.metrics.apply)
 	defer timer.ObserveDuration()
 
-	lastIndex := n.raft.LastIndex()
-	span.SetTag("last_index", lastIndex)
+	future := n.raft.ApplyLog(raft.Log{
+		Data:       raw,
+		Extensions: []byte(ctxID),
+	}, n.config.ApplyTimeout)
 
-	nextIndex := lastIndex + 1
-	if f, ok := n.fsm.(*fsm.FSM); ok {
-		f.StoreContext(nextIndex, ctx)
-	}
-
-	future := n.raft.Apply(raw, n.config.ApplyTimeout)
 	if err = future.Error(); err != nil {
 		return nil, WithRaftLeaderStatusDetails(err, n.raft)
 	}

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// ContextRegistry maintains a mapping of Raft log indices to contexts for tracing purposes.
+// ContextRegistry maintains a mapping of IDs to contexts for tracing purposes.
 // This allows us to propagate tracing context from HTTP handlers down to BoltDB transactions
 // without persisting the context in Raft logs.
 //
@@ -14,7 +14,7 @@ import (
 // not have contexts available and will use context.Background() instead.
 type ContextRegistry struct {
 	mu      sync.RWMutex
-	entries map[uint64]*contextEntry
+	entries map[string]*contextEntry
 	// cleanupInterval determines how often we scan for expired entries
 	cleanupInterval time.Duration
 	// entryTTL is the maximum age of an entry before it's considered expired
@@ -38,7 +38,7 @@ func NewContextRegistry(cleanupInterval, entryTTL time.Duration) *ContextRegistr
 	}
 
 	r := &ContextRegistry{
-		entries:         make(map[uint64]*contextEntry),
+		entries:         make(map[string]*contextEntry),
 		cleanupInterval: cleanupInterval,
 		entryTTL:        entryTTL,
 		stop:            make(chan struct{}),
@@ -49,32 +49,31 @@ func NewContextRegistry(cleanupInterval, entryTTL time.Duration) *ContextRegistr
 	return r
 }
 
-// Store saves a context for the given Raft log index.
-func (r *ContextRegistry) Store(index uint64, ctx context.Context) {
+// Store saves a context for the given ID.
+func (r *ContextRegistry) Store(id string, ctx context.Context) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.entries[index] = &contextEntry{
+	r.entries[id] = &contextEntry{
 		ctx:       ctx,
 		timestamp: time.Now(),
 	}
 }
 
-// Retrieve gets the context for the given Raft log index.
-// If no context is found, it returns context.Background() and false.
-func (r *ContextRegistry) Retrieve(index uint64) (context.Context, bool) {
+// Retrieve gets the context for the given ID.
+func (r *ContextRegistry) Retrieve(id string) (context.Context, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	if entry, ok := r.entries[index]; ok {
+	if entry, ok := r.entries[id]; ok {
 		return entry.ctx, true
 	}
 	return context.Background(), false
 }
 
-// Delete removes the context for the given Raft log index.
-func (r *ContextRegistry) Delete(index uint64) {
+// Delete removes the context for the given ID.
+func (r *ContextRegistry) Delete(id string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.entries, index)
+	delete(r.entries, id)
 }
 
 // cleanupLoop periodically removes expired entries from the registry.
@@ -99,9 +98,9 @@ func (r *ContextRegistry) cleanup() {
 	defer r.mu.Unlock()
 
 	now := time.Now()
-	for index, entry := range r.entries {
+	for id, entry := range r.entries {
 		if now.Sub(entry.timestamp) > r.entryTTL {
-			delete(r.entries, index)
+			delete(r.entries, id)
 		}
 	}
 }

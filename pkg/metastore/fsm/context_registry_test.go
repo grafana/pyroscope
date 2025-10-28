@@ -2,6 +2,7 @@ package fsm
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -16,9 +17,9 @@ func TestContextRegistry_StoreAndRetrieve(t *testing.T) {
 	defer r.Shutdown()
 
 	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
-	r.Store(1, ctx)
+	r.Store("id-1", ctx)
 
-	retrieved, found := r.Retrieve(1)
+	retrieved, found := r.Retrieve("id-1")
 	require.True(t, found)
 	assert.Equal(t, "value", retrieved.Value(contextKey("key")))
 }
@@ -27,7 +28,7 @@ func TestContextRegistry_RetrieveNotFound(t *testing.T) {
 	r := NewContextRegistry(1*time.Second, 5*time.Second)
 	defer r.Shutdown()
 
-	retrieved, found := r.Retrieve(999)
+	retrieved, found := r.Retrieve("nonexistent-id")
 	require.False(t, found)
 	assert.Equal(t, context.Background(), retrieved)
 }
@@ -37,14 +38,14 @@ func TestContextRegistry_Delete(t *testing.T) {
 	defer r.Shutdown()
 
 	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
-	r.Store(1, ctx)
+	r.Store("id-1", ctx)
 
-	_, found := r.Retrieve(1)
+	_, found := r.Retrieve("id-1")
 	require.True(t, found)
 
-	r.Delete(1)
+	r.Delete("id-1")
 
-	_, found = r.Retrieve(1)
+	_, found = r.Retrieve("id-1")
 	require.False(t, found)
 }
 
@@ -54,15 +55,15 @@ func TestContextRegistry_Cleanup(t *testing.T) {
 	defer r.Shutdown()
 
 	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
-	r.Store(1, ctx)
+	r.Store("id-1", ctx)
 
-	_, found := r.Retrieve(1)
+	_, found := r.Retrieve("id-1")
 	require.True(t, found)
 	assert.Equal(t, 1, r.Size())
 
 	time.Sleep(400 * time.Millisecond)
 
-	_, found = r.Retrieve(1)
+	_, found = r.Retrieve("id-1")
 	require.False(t, found)
 	assert.Equal(t, 0, r.Size())
 }
@@ -74,13 +75,13 @@ func TestContextRegistry_Size(t *testing.T) {
 	assert.Equal(t, 0, r.Size())
 
 	ctx := context.Background()
-	r.Store(1, ctx)
-	r.Store(2, ctx)
-	r.Store(3, ctx)
+	r.Store("id-1", ctx)
+	r.Store("id-2", ctx)
+	r.Store("id-3", ctx)
 
 	assert.Equal(t, 3, r.Size())
 
-	r.Delete(2)
+	r.Delete("id-2")
 	assert.Equal(t, 2, r.Size())
 }
 
@@ -94,8 +95,7 @@ func TestContextRegistry_ConcurrentAccess(t *testing.T) {
 		go func(id int) {
 			ctx := context.WithValue(context.Background(), contextKey("id"), id)
 			for j := 0; j < 100; j++ {
-				index := uint64(id*100 + j)
-				r.Store(index, ctx)
+				r.Store(fmt.Sprintf("%d-%d", id, j), ctx)
 				time.Sleep(1 * time.Millisecond)
 			}
 			done <- true
@@ -105,8 +105,7 @@ func TestContextRegistry_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func(id int) {
 			for j := 0; j < 100; j++ {
-				index := uint64(id*100 + j)
-				r.Retrieve(index)
+				r.Retrieve(fmt.Sprintf("%d-%d", id, j))
 				time.Sleep(1 * time.Millisecond)
 			}
 			done <- true
