@@ -4,6 +4,10 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 // ContextRegistry maintains a mapping of IDs to contexts for tracing purposes.
@@ -21,6 +25,9 @@ type ContextRegistry struct {
 	entryTTL time.Duration
 	stop     chan struct{}
 	done     chan struct{}
+
+	// sizeMetric tracks the number of entries in the registry
+	sizeMetric prometheus.Gauge
 }
 
 type contextEntry struct {
@@ -34,17 +41,25 @@ const (
 )
 
 // NewContextRegistry creates a new context registry with background cleanup.
-func NewContextRegistry() *ContextRegistry {
-	return newContextRegistry(defaultCleanupInterval, defaultEntryTTL)
+func NewContextRegistry(reg prometheus.Registerer) *ContextRegistry {
+	return newContextRegistry(defaultCleanupInterval, defaultEntryTTL, reg)
 }
 
-// NewContextRegistry creates a new context registry with background cleanup.
-func newContextRegistry(cleanupInterval, entryTTL time.Duration) *ContextRegistry {
+// newContextRegistry creates a new context registry with background cleanup.
+func newContextRegistry(cleanupInterval, entryTTL time.Duration, reg prometheus.Registerer) *ContextRegistry {
 	if cleanupInterval <= 0 {
 		cleanupInterval = defaultCleanupInterval
 	}
 	if entryTTL <= 0 {
 		entryTTL = defaultEntryTTL
+	}
+
+	sizeMetric := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "context_registry_size",
+		Help: "Number of contexts currently stored in the registry for tracing propagation",
+	})
+	if reg != nil {
+		util.RegisterOrGet(reg, sizeMetric)
 	}
 
 	r := &ContextRegistry{
@@ -53,6 +68,7 @@ func newContextRegistry(cleanupInterval, entryTTL time.Duration) *ContextRegistr
 		entryTTL:        entryTTL,
 		stop:            make(chan struct{}),
 		done:            make(chan struct{}),
+		sizeMetric:      sizeMetric,
 	}
 
 	go r.cleanupLoop()
@@ -112,6 +128,10 @@ func (r *ContextRegistry) cleanup() {
 		if now.Sub(entry.created) > r.entryTTL {
 			delete(r.entries, id)
 		}
+	}
+
+	if r.sizeMetric != nil {
+		r.sizeMetric.Set(float64(len(r.entries)))
 	}
 }
 

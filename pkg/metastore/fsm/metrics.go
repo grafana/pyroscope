@@ -15,7 +15,6 @@ type metrics struct {
 	fsmRestoreSnapshotDuration    prometheus.Histogram
 	fsmApplyCommandSize           *prometheus.HistogramVec
 	fsmApplyCommandDuration       *prometheus.HistogramVec
-	contextRegistrySize           prometheus.Gauge
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -64,11 +63,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			NativeHistogramMaxBucketNumber:  50,
 			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"command"}),
-
-		contextRegistrySize: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "fsm_context_registry_size",
-			Help: "Number of contexts currently stored in the registry for tracing propagation",
-		}),
 	}
 	if reg != nil {
 		util.RegisterOrGet(reg, m.boltDBPersistSnapshotSize)
@@ -77,7 +71,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		util.RegisterOrGet(reg, m.fsmRestoreSnapshotDuration)
 		util.RegisterOrGet(reg, m.fsmApplyCommandSize)
 		util.RegisterOrGet(reg, m.fsmApplyCommandDuration)
-		util.RegisterOrGet(reg, m.contextRegistrySize)
 	}
 	return m
 }

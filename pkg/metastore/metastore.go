@@ -119,19 +119,18 @@ func New(
 	placementMgr *placement.Manager,
 ) (*Metastore, error) {
 	m := &Metastore{
-		config:         config,
-		overrides:      overrides,
-		logger:         logger,
-		reg:            reg,
-		health:         healthService,
-		bucket:         bucket,
-		placement:      placementMgr,
-		raftNodeClient: client,
+		config:          config,
+		overrides:       overrides,
+		logger:          logger,
+		reg:             reg,
+		health:          healthService,
+		bucket:          bucket,
+		placement:       placementMgr,
+		raftNodeClient:  client,
+		contextRegistry: tracing.NewContextRegistry(reg),
 	}
 
 	var err error
-	// Create the context registry that will be shared between FSM and Node.
-	m.contextRegistry = tracing.NewContextRegistry()
 	if m.fsm, err = fsm.New(m.logger, m.reg, m.config.FSM, m.contextRegistry); err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}

@@ -275,8 +275,6 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		return errResponse(cmd, fmt.Errorf("unknown command type: %d", e.Type))
 	}
 
-	fsm.metrics.contextRegistrySize.Set(float64(fsm.contextRegistry.Size()))
-
 	// Apply is never called concurrently with Restore, so we don't need
 	// to lock the FSM: db.boltdb is guaranteed to be in a consistent state.
 	rawTx, err := fsm.db.boltdb.Begin(true)

@@ -13,7 +13,7 @@ import (
 type contextKey string
 
 func TestContextRegistry_StoreAndRetrieve(t *testing.T) {
-	r := newContextRegistry(1*time.Second, 5*time.Second)
+	r := newContextRegistry(1*time.Second, 5*time.Second, nil)
 	defer r.Shutdown()
 
 	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
@@ -25,7 +25,7 @@ func TestContextRegistry_StoreAndRetrieve(t *testing.T) {
 }
 
 func TestContextRegistry_RetrieveNotFound(t *testing.T) {
-	r := newContextRegistry(1*time.Second, 5*time.Second)
+	r := newContextRegistry(1*time.Second, 5*time.Second, nil)
 	defer r.Shutdown()
 
 	retrieved, found := r.Retrieve("nonexistent-id")
@@ -34,7 +34,7 @@ func TestContextRegistry_RetrieveNotFound(t *testing.T) {
 }
 
 func TestContextRegistry_Delete(t *testing.T) {
-	r := newContextRegistry(1*time.Second, 5*time.Second)
+	r := newContextRegistry(1*time.Second, 5*time.Second, nil)
 	defer r.Shutdown()
 
 	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
@@ -51,7 +51,7 @@ func TestContextRegistry_Delete(t *testing.T) {
 
 func TestContextRegistry_Cleanup(t *testing.T) {
 	// Use short TTL for a faster test
-	r := newContextRegistry(100*time.Millisecond, 200*time.Millisecond)
+	r := newContextRegistry(100*time.Millisecond, 200*time.Millisecond, nil)
 	defer r.Shutdown()
 
 	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
@@ -69,7 +69,7 @@ func TestContextRegistry_Cleanup(t *testing.T) {
 }
 
 func TestContextRegistry_Size(t *testing.T) {
-	r := newContextRegistry(1*time.Second, 5*time.Second)
+	r := newContextRegistry(1*time.Second, 5*time.Second, nil)
 	defer r.Shutdown()
 
 	assert.Equal(t, 0, r.Size())
@@ -86,7 +86,7 @@ func TestContextRegistry_Size(t *testing.T) {
 }
 
 func TestContextRegistry_ConcurrentAccess(t *testing.T) {
-	r := newContextRegistry(1*time.Second, 5*time.Second)
+	r := newContextRegistry(1*time.Second, 5*time.Second, nil)
 	defer r.Shutdown()
 
 	done := make(chan bool)
