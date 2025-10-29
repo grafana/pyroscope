@@ -73,7 +73,7 @@ func (svc *IndexService) AddBlock(
 	ctx context.Context,
 	req *metastorev1.AddBlockRequest,
 ) (resp *metastorev1.AddBlockResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.AddBlock")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "IndexService.AddBlock")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)
@@ -100,7 +100,7 @@ func (svc *IndexService) AddRecoveredBlock(
 	ctx context.Context,
 	req *metastorev1.AddBlockRequest,
 ) (resp *metastorev1.AddBlockResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.AddRecoveredBlock")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "IndexService.AddRecoveredBlock")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)
@@ -143,7 +143,7 @@ func (svc *IndexService) GetBlockMetadata(
 	ctx context.Context,
 	req *metastorev1.GetBlockMetadataRequest,
 ) (resp *metastorev1.GetBlockMetadataResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.GetBlockMetadata")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "IndexService.GetBlockMetadata")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)
@@ -206,7 +206,7 @@ func (s *sampleIterator) At() placement.Sample {
 }
 
 func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy) (err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.IndexService.TruncateIndex")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "IndexService.TruncateIndex")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)

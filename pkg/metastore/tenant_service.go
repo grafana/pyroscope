@@ -43,7 +43,7 @@ func (svc *TenantService) GetTenants(
 	ctx context.Context,
 	_ *metastorev1.GetTenantsRequest,
 ) (resp *metastorev1.GetTenantsResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.TenantService.GetTenants")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "TenantService.GetTenants")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)
@@ -65,7 +65,7 @@ func (svc *TenantService) GetTenant(
 	ctx context.Context,
 	req *metastorev1.GetTenantRequest,
 ) (resp *metastorev1.GetTenantResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.TenantService.GetTenant")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "TenantService.GetTenant")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)

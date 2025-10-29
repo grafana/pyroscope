@@ -306,7 +306,7 @@ func (n *Node) TransferLeadership() (err error) {
 // Propose makes an attempt to apply the given command to the FSM.
 // The function returns an error if node is not the leader.
 func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Message) (resp proto.Message, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.FSM.Propose")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "FSM.Propose")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)

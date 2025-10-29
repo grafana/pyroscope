@@ -25,8 +25,7 @@ import (
 
 // RaftHandler is a function that processes a Raft command.
 // The implementation MUST be idempotent.
-// The context parameter contains tracing information propagated from the HTTP handler
-// (only available on the leader node where Propose was called).
+// The context parameter is used for tracing purposes and is only available on the leader.
 type RaftHandler[Req, Resp proto.Message] func(context.Context, *bbolt.Tx, *raft.Log, Req) (Resp, error)
 
 // StateRestorer is called during the FSM initialization
@@ -75,9 +74,7 @@ type FSM struct {
 	appliedTerm  uint64
 	appliedIndex uint64
 
-	// contextRegistry maintains a mapping of Raft log indices to contexts
-	// for tracing purposes. This allows propagating context from HTTP handlers
-	// down to BoltDB transactions without persisting it in Raft logs.
+	// contextRegistry maintains a mapping of IDs and request contexts for tracing purposes.
 	contextRegistry *ContextRegistry
 }
 
@@ -89,7 +86,7 @@ func New(logger log.Logger, reg prometheus.Registerer, config Config) (*FSM, err
 		config:          config,
 		metrics:         newMetrics(reg),
 		handlers:        make(map[RaftLogEntryType]handler),
-		contextRegistry: NewContextRegistry(10*time.Second, 30*time.Second),
+		contextRegistry: NewContextRegistry(),
 	}
 	db := newDB(logger, fsm.metrics, config)
 	if err := db.open(false); err != nil {
@@ -241,20 +238,15 @@ func (fsm *FSM) Apply(log *raft.Log) any {
 // the command type.
 func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	start := time.Now()
-
 	var e RaftLogEntry
 	if err := e.UnmarshalBinary(cmd.Data); err != nil {
 		return errResponse(cmd, err)
 	}
 
-	// Extract context ID from Raft's log Extensions field
-	ctxID := string(cmd.Extensions)
-
 	ctx := context.Background()
-	found := false
-	if ctxID != "" {
-		ctx, found = fsm.contextRegistry.Retrieve(ctxID)
-		if found {
+	if ctxID := string(cmd.Extensions); ctxID != "" {
+		var found bool
+		if ctx, found = fsm.contextRegistry.Retrieve(ctxID); found {
 			defer fsm.contextRegistry.Delete(ctxID)
 		}
 	}
@@ -279,7 +271,6 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		return errResponse(cmd, fmt.Errorf("unknown command type: %d", e.Type))
 	}
 
-	// Record the current size of the context registry
 	fsm.metrics.contextRegistrySize.Set(float64(fsm.contextRegistry.Size()))
 
 	// Apply is never called concurrently with Restore, so we don't need
@@ -293,7 +284,6 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	txSpan.SetTag("writable", rawTx.Writable())
 	tx := newTracingTx(rawTx, txSpan, ctx)
 
-	// Pass the transaction context so handler spans become children of the transaction span
 	data, err := handle(ctx, tx, cmd, e.Data)
 	if err != nil {
 		_ = tx.Rollback()

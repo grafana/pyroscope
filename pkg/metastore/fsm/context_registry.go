@@ -24,27 +24,24 @@ type ContextRegistry struct {
 }
 
 type contextEntry struct {
-	ctx       context.Context
-	timestamp time.Time
+	ctx     context.Context
+	created time.Time
 }
 
-// NewContextRegistry creates a new context registry with background cleanup.
-func NewContextRegistry(cleanupInterval, entryTTL time.Duration) *ContextRegistry {
-	if cleanupInterval <= 0 {
-		cleanupInterval = 10 * time.Second
-	}
-	if entryTTL <= 0 {
-		entryTTL = 30 * time.Second
-	}
+const (
+	contextCleanupInterval = 10 * time.Second
+	contextEntryTTL        = 30 * time.Second
+)
 
+// NewContextRegistry creates a new context registry with background cleanup.
+func NewContextRegistry() *ContextRegistry {
 	r := &ContextRegistry{
 		entries:         make(map[string]*contextEntry),
-		cleanupInterval: cleanupInterval,
-		entryTTL:        entryTTL,
+		cleanupInterval: contextCleanupInterval,
+		entryTTL:        contextEntryTTL,
 		stop:            make(chan struct{}),
 		done:            make(chan struct{}),
 	}
-
 	go r.cleanupLoop()
 	return r
 }
@@ -54,8 +51,8 @@ func (r *ContextRegistry) Store(id string, ctx context.Context) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.entries[id] = &contextEntry{
-		ctx:       ctx,
-		timestamp: time.Now(),
+		ctx:     ctx,
+		created: time.Now(),
 	}
 }
 
@@ -99,7 +96,7 @@ func (r *ContextRegistry) cleanup() {
 
 	now := time.Now()
 	for id, entry := range r.entries {
-		if now.Sub(entry.timestamp) > r.entryTTL {
+		if now.Sub(entry.created) > r.entryTTL {
 			delete(r.entries, id)
 		}
 	}

@@ -39,7 +39,7 @@ func (svc *CompactionService) PollCompactionJobs(
 	ctx context.Context,
 	req *metastorev1.PollCompactionJobsRequest,
 ) (resp *metastorev1.PollCompactionJobsResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.CompactionService.PollCompactionJobs")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "CompactionService.PollCompactionJobs")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)
@@ -90,7 +90,7 @@ func (svc *CompactionService) PollCompactionJobs(
 	}
 
 	cmd := fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE)
-	proposeResp, err := svc.raft.Propose(ctx, cmd, request)
+	proposeResp, err := svc.raft.Propose(ctx, cmd, req)
 	if err != nil {
 		if !raftnode.IsRaftLeadershipError(err) {
 			level.Error(svc.logger).Log("msg", "failed to prepare compaction plan", "err", err)
@@ -156,8 +156,7 @@ func (svc *CompactionService) PollCompactionJobs(
 	// scenario, and we don't want to stop the node/cluster). Instead, an
 	// empty response would indicate that the plan is rejected.
 	proposal := &raft_log.UpdateCompactionPlanRequest{Term: prepared.Term, PlanUpdate: planUpdate}
-	proposeResp, err = svc.raft.Propose(ctx, cmd, proposal)
-	if err != nil {
+	if proposeResp, err = svc.raft.Propose(ctx, cmd, proposal); err != nil {
 		if !raftnode.IsRaftLeadershipError(err) {
 			level.Error(svc.logger).Log("msg", "failed to update compaction plan", "err", err)
 		}

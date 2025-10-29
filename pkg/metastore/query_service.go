@@ -49,7 +49,7 @@ func (svc *QueryService) QueryMetadata(
 	ctx context.Context,
 	req *metastorev1.QueryMetadataRequest,
 ) (resp *metastorev1.QueryMetadataResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.QueryService.QueryMetadata")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryService.QueryMetadata")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)
@@ -78,7 +78,7 @@ func (svc *QueryService) queryMetadata(
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataRequest,
 ) (resp *metastorev1.QueryMetadataResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.QueryService.indexQueryMetadata")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryService.indexQueryMetadata")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)
@@ -109,7 +109,7 @@ func (svc *QueryService) QueryMetadataLabels(
 	ctx context.Context,
 	req *metastorev1.QueryMetadataLabelsRequest,
 ) (resp *metastorev1.QueryMetadataLabelsResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.QueryService.QueryMetadataLabels")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryService.QueryMetadataLabels")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)
@@ -139,7 +139,7 @@ func (svc *QueryService) queryMetadataLabels(
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataLabelsRequest,
 ) (resp *metastorev1.QueryMetadataLabelsResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "metastore.QueryService.indexQueryMetadataLabels")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryService.indexQueryMetadataLabels")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)
