@@ -155,7 +155,7 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 	var body []byte
 
 	// Check if the body is gzip-encoded
-	if r.Header.Get("Content-Encoding") == "gzip" {
+	if strings.EqualFold(r.Header.Get("Content-Encoding"), "gzip") {
 		gzipReader, gzipErr := gzip.NewReader(r.Body)
 		if gzipErr != nil {
 			level.Error(h.log).Log("msg", "failed to create gzip reader", "err", gzipErr)
