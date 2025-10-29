@@ -159,7 +159,7 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 		gzipReader, gzipErr := gzip.NewReader(r.Body)
 		if gzipErr != nil {
 			level.Error(h.log).Log("msg", "failed to create gzip reader", "err", gzipErr)
-			http.Error(w, "Failed to decompress gzip request body", http.StatusBadRequest)
+			http.Error(w, "Failed to read request body", http.StatusBadRequest)
 			return
 		}
 		defer gzipReader.Close()
@@ -168,7 +168,7 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 		body, readErr = io.ReadAll(gzipReader)
 		if readErr != nil {
 			level.Error(h.log).Log("msg", "failed to read gzip-compressed request body", "err", readErr)
-			http.Error(w, "Failed to read gzip-compressed request body", http.StatusBadRequest)
+			http.Error(w, "Failed to read request body", http.StatusBadRequest)
 			return
 		}
 	} else {
