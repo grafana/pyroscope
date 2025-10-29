@@ -29,19 +29,32 @@ type contextEntry struct {
 }
 
 const (
-	contextCleanupInterval = 10 * time.Second
-	contextEntryTTL        = 30 * time.Second
+	defaultCleanupInterval = 10 * time.Second
+	defaultEntryTTL        = 30 * time.Second
 )
 
 // NewContextRegistry creates a new context registry with background cleanup.
 func NewContextRegistry() *ContextRegistry {
+	return newContextRegistry(defaultCleanupInterval, defaultEntryTTL)
+}
+
+// NewContextRegistry creates a new context registry with background cleanup.
+func newContextRegistry(cleanupInterval, entryTTL time.Duration) *ContextRegistry {
+	if cleanupInterval <= 0 {
+		cleanupInterval = defaultCleanupInterval
+	}
+	if entryTTL <= 0 {
+		entryTTL = defaultEntryTTL
+	}
+
 	r := &ContextRegistry{
 		entries:         make(map[string]*contextEntry),
-		cleanupInterval: contextCleanupInterval,
-		entryTTL:        contextEntryTTL,
+		cleanupInterval: cleanupInterval,
+		entryTTL:        entryTTL,
 		stop:            make(chan struct{}),
 		done:            make(chan struct{}),
 	}
+
 	go r.cleanupLoop()
 	return r
 }
