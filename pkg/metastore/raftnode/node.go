@@ -28,6 +28,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
 )
 
+type ContextRegistry interface {
+	Store(id string, ctx context.Context)
+}
+
 type Config struct {
 	Dir                string `yaml:"dir"`
 	SnapshotsDir       string `yaml:"snapshots_dir" doc:"hidden"`
@@ -99,11 +103,12 @@ func (cfg *Config) Validate() error {
 }
 
 type Node struct {
-	logger  log.Logger
-	config  Config
-	metrics *metrics
-	reg     prometheus.Registerer
-	fsm     raft.FSM
+	logger          log.Logger
+	config          Config
+	metrics         *metrics
+	reg             prometheus.Registerer
+	fsm             raft.FSM
+	contextRegistry ContextRegistry
 
 	walDir        string
 	wal           *raftwal.WAL
@@ -125,15 +130,17 @@ func NewNode(
 	config Config,
 	reg prometheus.Registerer,
 	fsm raft.FSM,
+	contextRegistry ContextRegistry,
 	raftNodeClient raftnodepb.RaftNodeServiceClient,
 ) (_ *Node, err error) {
 	n := Node{
-		logger:         logger,
-		config:         config,
-		metrics:        newMetrics(reg),
-		reg:            reg,
-		fsm:            fsm,
-		raftNodeClient: raftNodeClient,
+		logger:          logger,
+		config:          config,
+		metrics:         newMetrics(reg),
+		reg:             reg,
+		fsm:             fsm,
+		contextRegistry: contextRegistry,
+		raftNodeClient:  raftNodeClient,
 	}
 
 	defer func() {
@@ -315,9 +322,7 @@ func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Mess
 	}()
 
 	ctxID := uuid.New().String()
-	if f, ok := n.fsm.(*fsm.FSM); ok {
-		f.StoreContext(ctxID, ctx)
-	}
+	n.contextRegistry.Store(ctxID, ctx)
 
 	span.LogFields(otlog.String("msg", "marshalling log entry"))
 

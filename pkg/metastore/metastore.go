@@ -28,6 +28,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/metastore/index/tombstones"
 	"github.com/grafana/pyroscope/pkg/metastore/raftnode"
 	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/metastore/tracing"
 	placement "github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
@@ -74,9 +75,10 @@ type Metastore struct {
 	reg       prometheus.Registerer
 	health    health.Service
 
-	raft           *raftnode.Node
-	fsm            *fsm.FSM
-	raftNodeClient raftnodepb.RaftNodeServiceClient
+	raft            *raftnode.Node
+	fsm             *fsm.FSM
+	contextRegistry *tracing.ContextRegistry
+	raftNodeClient  raftnodepb.RaftNodeServiceClient
 
 	bucket    objstore.Bucket
 	placement *placement.Manager
@@ -128,7 +130,9 @@ func New(
 	}
 
 	var err error
-	if m.fsm, err = fsm.New(m.logger, m.reg, m.config.FSM); err != nil {
+	// Create the context registry that will be shared between FSM and Node.
+	m.contextRegistry = tracing.NewContextRegistry()
+	if m.fsm, err = fsm.New(m.logger, m.reg, m.config.FSM, m.contextRegistry); err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
 
@@ -194,7 +198,7 @@ func (m *Metastore) buildRaftNode() (err error) {
 	// (via FSM.Restore), if it is present. Otherwise, when no snapshots
 	// available, the state must be initialized explicitly via FSM.Init before
 	// we call raft.Init, which starts applying the raft log.
-	if m.raft, err = raftnode.NewNode(m.logger, m.config.Raft, m.reg, m.fsm, m.raftNodeClient); err != nil {
+	if m.raft, err = raftnode.NewNode(m.logger, m.config.Raft, m.reg, m.fsm, m.contextRegistry, m.raftNodeClient); err != nil {
 		return fmt.Errorf("failed to create raft node: %w", err)
 	}
 
@@ -265,6 +269,9 @@ func (m *Metastore) stopping(_ error) error {
 
 	m.raft.Shutdown()
 	m.fsm.Shutdown()
+	if m.contextRegistry != nil {
+		m.contextRegistry.Shutdown()
+	}
 	return nil
 }
 

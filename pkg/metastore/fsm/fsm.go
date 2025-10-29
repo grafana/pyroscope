@@ -23,6 +23,12 @@ import (
 	"github.com/grafana/pyroscope/pkg/metastore/tracing"
 )
 
+type ContextRegistry interface {
+	Retrieve(id string) (context.Context, bool)
+	Delete(id string)
+	Size() int
+}
+
 // RaftHandler is a function that processes a Raft command.
 // The implementation MUST be idempotent.
 // The context parameter is used for tracing purposes and is only available on the leader.
@@ -60,9 +66,10 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 
 // FSM implements the raft.FSM interface.
 type FSM struct {
-	logger  log.Logger
-	config  Config
-	metrics *metrics
+	logger          log.Logger
+	config          Config
+	contextRegistry ContextRegistry
+	metrics         *metrics
 
 	mu   sync.RWMutex
 	txns sync.WaitGroup
@@ -73,20 +80,17 @@ type FSM struct {
 
 	appliedTerm  uint64
 	appliedIndex uint64
-
-	// contextRegistry maintains a mapping of IDs and request contexts for tracing purposes.
-	contextRegistry *ContextRegistry
 }
 
 type handler func(ctx context.Context, tx *tracingTx, cmd *raft.Log, raw []byte) (proto.Message, error)
 
-func New(logger log.Logger, reg prometheus.Registerer, config Config) (*FSM, error) {
+func New(logger log.Logger, reg prometheus.Registerer, config Config, contextRegistry ContextRegistry) (*FSM, error) {
 	fsm := FSM{
 		logger:          logger,
 		config:          config,
+		contextRegistry: contextRegistry,
 		metrics:         newMetrics(reg),
 		handlers:        make(map[RaftLogEntryType]handler),
-		contextRegistry: NewContextRegistry(),
 	}
 	db := newDB(logger, fsm.metrics, config)
 	if err := db.open(false); err != nil {
@@ -340,25 +344,9 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 }
 
 func (fsm *FSM) Shutdown() {
-	if fsm.contextRegistry != nil {
-		fsm.contextRegistry.Shutdown()
-	}
 	if fsm.db.boltdb != nil {
 		fsm.db.shutdown()
 	}
-}
-
-// StoreContext stores a context in the registry.
-// This is used by Node.Propose to propagate tracing context from HTTP handlers
-// down to BoltDB transactions without persisting it in Raft logs.
-func (fsm *FSM) StoreContext(id string, ctx context.Context) {
-	fsm.contextRegistry.Store(id, ctx)
-}
-
-// ContextRegistrySize returns the current number of entries in the context registry.
-// This is useful for metrics and monitoring.
-func (fsm *FSM) ContextRegistrySize() int {
-	return fsm.contextRegistry.Size()
 }
 
 var (
