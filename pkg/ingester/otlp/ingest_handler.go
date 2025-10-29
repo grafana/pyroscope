@@ -1,6 +1,7 @@
 package otlp
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -151,11 +152,33 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 
 	// Read the request body - we need to read it all for protobuf unmarshaling
 	// Note: Protobuf wire format requires reading the entire message to determine field boundaries
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		level.Error(h.log).Log("msg", "failed to read request body", "err", err)
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
-		return
+	var body []byte
+
+	// Check if the body is gzip-encoded
+	if r.Header.Get("Content-Encoding") == "gzip" {
+		gzipReader, gzipErr := gzip.NewReader(r.Body)
+		if gzipErr != nil {
+			level.Error(h.log).Log("msg", "failed to create gzip reader", "err", gzipErr)
+			http.Error(w, "Failed to decompress gzip request body", http.StatusBadRequest)
+			return
+		}
+		defer gzipReader.Close()
+
+		var readErr error
+		body, readErr = io.ReadAll(gzipReader)
+		if readErr != nil {
+			level.Error(h.log).Log("msg", "failed to read gzip-compressed request body", "err", readErr)
+			http.Error(w, "Failed to read gzip-compressed request body", http.StatusBadRequest)
+			return
+		}
+	} else {
+		var readErr error
+		body, readErr = io.ReadAll(r.Body)
+		if readErr != nil {
+			level.Error(h.log).Log("msg", "failed to read request body", "err", readErr)
+			http.Error(w, "Failed to read request body", http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Unmarshal the protobuf request
