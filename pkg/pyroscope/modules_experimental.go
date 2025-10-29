@@ -332,7 +332,7 @@ func (f *Pyroscope) initMetastoreAdmin() (services.Service, error) {
 func (f *Pyroscope) initAdminV2() (services.Service, error) {
 	level.Info(f.logger).Log("msg", "initializing v2 admin (metastore-based)")
 
-	a, err := operationsv2.NewAdmin(f.metastoreClient, f.logger)
+	a, err := operationsv2.NewAdmin(f.metastoreClient, f.storageBucket, f.logger)
 	if err != nil {
 		level.Info(f.logger).Log("msg", "failed to initialize v2 admin", "err", err)
 		return nil, nil

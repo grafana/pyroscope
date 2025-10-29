@@ -237,7 +237,7 @@ The `docker-compose.yml` file includes a Grafana container that's pre-configured
   grafana:
     image: grafana/grafana:latest
     environment:
-    - GF_INSTALL_PLUGINS=grafana-pyroscope-app
+    - GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app
     - GF_AUTH_ANONYMOUS_ENABLED=true
     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
     - GF_AUTH_DISABLE_LOGIN_FORM=true

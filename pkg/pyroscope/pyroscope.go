@@ -617,8 +617,17 @@ func (f *Pyroscope) Run() error {
 		}
 	}
 
-	if err = f.API.RegisterCatchAll(); err != nil {
-		return err
+	// only query-frontend, query-backend, querier and target all should register the UI
+	if slices.Contains(f.Cfg.Target, All) ||
+		slices.Contains(f.Cfg.Target, QueryFrontend) ||
+		slices.Contains(f.Cfg.Target, QueryBackend) ||
+		slices.Contains(f.Cfg.Target, Querier) {
+
+		if err = f.API.RegisterCatchAll(); err != nil {
+			return err
+		}
+	} else {
+		f.API.RegisterRedirectToAdmin()
 	}
 
 	serviceFailed := func(service services.Service) {
