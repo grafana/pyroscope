@@ -408,12 +408,12 @@ cve/check:
 .PHONY: helm/lint
 helm/lint: $(BIN)/helm
 	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope
-	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope-monitoring
+	$(BIN)/helm lint ./operations/monitoring/helm/pyroscope-monitoring
 
 .PHONY: helm/docs
 helm/docs: $(BIN)/helm-docs
 	$(BIN)/helm-docs -c operations/pyroscope/helm/pyroscope
-	$(BIN)/helm-docs -c operations/pyroscope/helm/pyroscope-monitoring
+	$(BIN)/helm-docs -c operations/monitoring/helm/pyroscope-monitoring
 
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
@@ -454,7 +454,7 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 		| go run ./tools/yaml-to-json \
 		> ./operations/pyroscope/jsonnet/values.json
 	# Generate dashboards and rules
-	$(BIN)/helm template pyroscope-monitoring --show-only templates/dashboards.yaml --show-only templates/rules.yaml operations/pyroscope/helm/pyroscope-monitoring \
+	$(BIN)/helm template pyroscope-monitoring --show-only templates/dashboards.yaml --show-only templates/rules.yaml operations/monitoring/helm/pyroscope-monitoring \
 		| go run ./tools/monitoring-chart-extractor
 
 .PHONY: deploy
@@ -476,7 +476,7 @@ deploy-micro-services-v1: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/kind $(BIN)/helm
 	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
-	$(BIN)/helm upgrade --install pyroscope-monitoring ./operations/pyroscope/helm/pyroscope-monitoring
+	$(BIN)/helm upgrade --install pyroscope-monitoring ./operations/monitoring/helm/pyroscope-monitoring
 
 include Makefile.examples
 
