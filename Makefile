@@ -209,7 +209,7 @@ fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint er
 	$(BIN)/golangci-lint run --fix
 	cd api/ && $(BIN)/buf format -w .
 	cd pkg && $(BIN)/buf format -w .
-	$(BIN)/tk fmt ./operations/pyroscope/jsonnet/ tools/monitoring/
+	$(BIN)/tk fmt ./operations/pyroscope/jsonnet/
 
 .PHONY: check/unstaged-changes
 check/unstaged-changes:
@@ -236,10 +236,15 @@ define deploy
 		--set pyroscope.image.repository=$(IMAGE_PREFIX)pyroscope \
 		--set pyroscope.podAnnotations.image-digest=$(shell cat .docker-image-digest-pyroscope) \
 		--set pyroscope.service.port_name=http-metrics \
-		--set pyroscope.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
-		--set pyroscope.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
-		--set pyroscope.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
-		--set pyroscope.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local. \
+		--set-string pyroscope.podAnnotations."profiles\.grafana\.com/memory\.port_name"=http-metrics \
+		--set-string pyroscope.podAnnotations."profiles\.grafana\.com/cpu\.port_name"=http-metrics \
+		--set-string pyroscope.podAnnotations."profiles\.grafana\.com/goroutine\.port_name"=http-metrics \
+		--set-string pyroscope.podAnnotations."k8s\.grafana\.com/scrape"=true \
+		--set-string pyroscope.podAnnotations."k8s\.grafana\.com/metrics\.portName"=http-metrics \
+		--set-string pyroscope.podAnnotations."k8s\.grafana\.com/metrics\.scrapeInterval"=15s \
+		--set-string pyroscope.extraEnvVars.JAEGER_AGENT_HOST=pyroscope-monitoring-alloy-receiver \
+		--set pyroscope.extraEnvVars.JAEGER_SAMPLER_TYPE=const \
+		--set pyroscope.extraEnvVars.JAEGER_SAMPLER_PARAM=1 \
 		--set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
 endef
 
@@ -398,15 +403,17 @@ $(BIN)/helm-docs: Makefile go.mod
 
 .PHONY: cve/check
 cve/check:
-	docker run -t -i --rm --volume "$(CURDIR)/:/repo" -u "$(shell id -u)" aquasec/trivy:0.45.1 filesystem --cache-dir /repo/.cache/trivy --scanners vuln --skip-dirs .tmp/ --skip-dirs node_modules/ --skip-dirs tools/monitoring/vendor/ /repo
+	docker run -t -i --rm --volume "$(CURDIR)/:/repo" -u "$(shell id -u)" aquasec/trivy:0.45.1 filesystem --cache-dir /repo/.cache/trivy --scanners vuln --skip-dirs .tmp/ --skip-dirs node_modules/ /repo
 
 .PHONY: helm/lint
 helm/lint: $(BIN)/helm
-	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope/
+	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope
+	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope-monitoring
 
 .PHONY: helm/docs
 helm/docs: $(BIN)/helm-docs
 	$(BIN)/helm-docs -c operations/pyroscope/helm/pyroscope
+	$(BIN)/helm-docs -c operations/pyroscope/helm/pyroscope-monitoring
 
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
@@ -446,6 +453,9 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	cat operations/pyroscope/helm/pyroscope/values.yaml \
 		| go run ./tools/yaml-to-json \
 		> ./operations/pyroscope/jsonnet/values.json
+	# Generate dashboards and rules
+	$(BIN)/helm template pyroscope-monitoring --show-only templates/dashboards.yaml --show-only templates/rules.yaml operations/pyroscope/helm/pyroscope-monitoring \
+		| go run ./tools/monitoring-chart-extractor
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
@@ -464,16 +474,9 @@ deploy-micro-services-v1: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 	$(call deploy,pyroscope-micro-services,$(HELM_FLAGS_V1_MICROSERVICES))
 
 .PHONY: deploy-monitoring
-deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json
-	kubectl  --context="kind-$(KIND_CLUSTER)" create namespace monitoring --dry-run=client -o yaml | kubectl  --context="kind-$(KIND_CLUSTER)" apply -f -
-	$(BIN)/tk apply tools/monitoring/environments/default/main.jsonnet
-
-.PHONY: tools/monitoring/environments/default/spec.json # This is a phony target for now as the cluster might be not already created.
-tools/monitoring/environments/default/spec.json: $(BIN)/tk $(BIN)/kind
+deploy-monitoring: $(BIN)/kind $(BIN)/helm
 	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
-	pushd tools/monitoring/ && rm -Rf vendor/ lib/ environments/default/spec.json  && PATH=$(BIN):$(PATH) $(BIN)/tk init -f
-	echo "import 'monitoring.libsonnet'" > tools/monitoring/environments/default/main.jsonnet
-	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name pyroscope-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring
+	$(BIN)/helm upgrade --install pyroscope-monitoring ./operations/pyroscope/helm/pyroscope-monitoring
 
 include Makefile.examples
 
