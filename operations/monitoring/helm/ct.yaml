@@ -3,9 +3,8 @@ remote: origin
 target-branch: main
 kubeVersion: "1.23"
 chart-dirs:
-  - operations/pyroscope/helm
+  - operations/monitoring/helm
 chart-repos:
-  - minio=https://charts.min.io/
   - grafana=https://grafana.github.io/helm-charts
 helm-extra-args: --timeout 600s
 validate-maintainers: false
