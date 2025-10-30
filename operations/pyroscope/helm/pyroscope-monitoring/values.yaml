@@ -221,7 +221,7 @@ monitoring:
   alloy-metrics:
     enabled: true
     image:
-      # NOTE(simonswiine): Was not able to get native histograms to work with v1.11.0, as they are now default disabled and there is no flag
+      # NOTE(simonswine): Was not able to get native histograms to work with v1.11.0, as they are now default disabled and there is no flag
       # https://github.com/grafana/k8s-monitoring-helm/pull/2049#pullrequestreview-3340565881
       tag: v1.10.2
 
