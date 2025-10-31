@@ -42,6 +42,14 @@ var (
 				{"wall:wall:nanoseconds:cpu:nanoseconds", nil, 0},
 			},
 		},
+		{
+			name:           "multi profile samples bytes units",
+			speedscopeFile: testdataDirSpeedscope + "/two-sampled-bytes.speedscope.json",
+			expectStatus:   200,
+			expectedMetrics: []expectedMetric{
+				{"memory:samples:bytes::", nil, 0},
+			},
+		},
 	}
 )
 
