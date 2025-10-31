@@ -70,6 +70,13 @@ func parseOne(prof *profile, putInput storage.PutInput, frames []frame, multi bo
 		putInput.LabelSet = prof.Unit.chooseKey(putInput.LabelSet)
 	}
 
+	// This label is important to prevent all speedscope profiles
+	// from the same ingestion upload being deduped during compaction.
+	// Currently, all profiles are associated with the same timestamp
+	// from `putInput`. Since profiles are deduped over label set + timestamp,
+	// this label prevents unintended downstream deduping.
+	putInput.LabelSet.Add("profile_name", prof.Name)
+
 	// TODO(petethepig): We need a way to tell if it's a default or a value set by user
 	//   See https://github.com/pyroscope-io/pyroscope/issues/1598
 	if putInput.SampleRate == 100 {
