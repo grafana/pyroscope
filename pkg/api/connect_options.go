@@ -2,12 +2,12 @@ package api
 
 import (
 	"connectrpc.com/connect"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/validation"
 
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/delayhandler"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func connectInterceptorRecovery() connect.HandlerOption {
