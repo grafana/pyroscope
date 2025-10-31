@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/kv/memberlist"
@@ -26,6 +27,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/capabilities/v1/capabilitiesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
@@ -46,7 +48,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
 	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
-	"github.com/grafana/pyroscope/pkg/util/body"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
 
@@ -193,18 +194,7 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation
 
 	a.RegisterRoute("/ingest", pyroscopeHandler, writePathOpts...)
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, writePathOpts...)
-	a.server.HTTP.Handle(
-		"/push.v1.PusherService/Push",
-		a.httpAuthMiddleware.Wrap(
-			body.NewSizeLimitHandler(limits)(
-				connect.NewUnaryHandler(
-					"/push.v1.PusherService/Push",
-					d.Push,
-					a.connectOptionsAuthDelayRecovery(limits)...,
-				),
-			),
-		),
-	)
+	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.connectOptionsAuthDelayRecovery(limits)...)
 	a.RegisterRoute("/distributor/ring", d, a.registerOptionsRingPage()...)
 	a.indexPage.AddLinks(defaultWeight, "Distributor", []IndexPageLink{
 		{Desc: "Ring status", Path: "/distributor/ring"},
