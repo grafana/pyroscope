@@ -2,7 +2,7 @@ module github.com/grafana/pyroscope
 
 go 1.24.6
 
-toolchain go1.24.8
+toolchain go1.25.3
 
 require (
 	connectrpc.com/connect v1.19.1
@@ -29,16 +29,16 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v58 v58.0.1-0.20240111193443-e9f52699f5e5
-	github.com/google/pprof v0.0.0-20250607225305-033d6d78b36a
+	github.com/google/pprof 5df77e3f7d1d
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/dskit v0.0.0-20250723143816-ff33c5829b96
+	github.com/grafana/dskit a6f15387939b
 	github.com/grafana/pyroscope-go v1.2.7
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.9
 	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3
 	github.com/grafana/pyroscope/api v0.4.0
-	github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff
+	github.com/grafana/pyroscope/lidia v0.0.1
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3
@@ -56,18 +56,18 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.26.0
+	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
 	github.com/opentracing-contrib/go-grpc v0.1.2
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b
-	github.com/parquet-go/parquet-go v0.24.0
+	github.com/parquet-go/parquet-go v0.25.1
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
+	github.com/planetscale/vtprotobuf ba97887b0a25
 	github.com/platinummonkey/go-concurrency-limits v0.10.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.66.1
-	github.com/prometheus/prometheus v0.306.0
+	github.com/prometheus/common v0.67.2
+	github.com/prometheus/prometheus v0.307.2
 	github.com/samber/lo v1.52.0
 	github.com/simonswine/tempopb v0.2.0
 	github.com/sirupsen/logrus v1.9.3
@@ -87,19 +87,19 @@ require (
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/goleak v1.3.0
 	go.yaml.in/yaml/v3 v3.0.4
-	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
-	golang.org/x/mod v0.28.0
+	golang.org/x/exp a4bb9ffd2546
+	golang.org/x/mod v0.29.0
 	golang.org/x/net v0.46.0
-	golang.org/x/oauth2 v0.31.0
+	golang.org/x/oauth2 v0.32.0
 	golang.org/x/sync v0.17.0
 	golang.org/x/sys v0.37.0
 	golang.org/x/text v0.30.0
-	golang.org/x/time v0.13.0
+	golang.org/x/time v0.14.0
 	gonum.org/v1/plot v0.16.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20250929231259-57b25ae835d4
+	google.golang.org/genproto/googleapis/api ab9386a59fda
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
-	gopkg.in/alecthomas/kingpin.v2 v2.2.6
+	gopkg.in/alecthomas/kingpin.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -341,7 +341,7 @@ replace (
 
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
-	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91
+	github.com/hashicorp/memberlist => github.com/grafana/memberlist 5cd332c2849a
 
 	// gopkg.in/yaml.v3
 	// + https://github.com/go-yaml/yaml/pull/691

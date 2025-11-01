@@ -2,17 +2,17 @@ module github.com/grafana/pyroscope/api
 
 go 1.24.6
 
-toolchain go1.24.8
+toolchain go1.25.3
 
 require (
 	connectrpc.com/connect v1.19.1
 	github.com/google/gnostic v0.7.1
 	github.com/gorilla/mux v1.8.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3
-	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
-	github.com/prometheus/common v0.66.1
+	github.com/planetscale/vtprotobuf v0.6.1-0.20250313105119-ba97887b0a25
+	github.com/prometheus/common v0.67.2
 	github.com/stretchr/testify v1.11.1
-	google.golang.org/genproto/googleapis/api v0.0.0-20250929231259-57b25ae835d4
+	google.golang.org/genproto/googleapis/api v0.0.0-20251029180050-ab9386a59fda
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
 )
