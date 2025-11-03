@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	"golang.org/x/exp/maps"
 )
 
 // RawProfile implements ingestion.RawProfile for Speedscope format
@@ -52,6 +53,8 @@ func parseAll(rawData []byte, md ingestion.Metadata) ([]*storage.PutInput, error
 		LabelSet:   md.LabelSet,
 	}
 
+	file.Profiles = mergeProfiles(file.Profiles)
+
 	for _, prof := range file.Profiles {
 		putInput, err := parseOne(&prof, input, file.Shared.Frames, len(file.Profiles) > 1)
 		if err != nil {
@@ -60,6 +63,42 @@ func parseAll(rawData []byte, md ingestion.Metadata) ([]*storage.PutInput, error
 		results = append(results, putInput)
 	}
 	return results, nil
+}
+
+// mergeProfiles combines profiles with the same mergeKey.
+// This prevents situations downstream where two different
+// profiles are deduped during congestion for having the
+// same label set and timestamp.
+func mergeProfiles(profiles []profile) []profile {
+	type mergeKey struct {
+		name       string
+		t          string
+		unit       unit
+		startValue float64
+		endValue   float64
+	}
+
+	merged := make(map[mergeKey]profile)
+	for _, prof := range profiles {
+		k := mergeKey{
+			name:       prof.Name,
+			t:          prof.Type,
+			unit:       prof.Unit,
+			startValue: prof.StartValue,
+			endValue:   prof.EndValue,
+		}
+
+		if mergedProf, ok := merged[k]; ok {
+			mergedProf.Samples = append(mergedProf.Samples, prof.Samples...)
+			mergedProf.Events = append(mergedProf.Events, prof.Events...)
+			mergedProf.Weights = append(mergedProf.Weights, prof.Weights...)
+			merged[k] = mergedProf
+		} else {
+			merged[k] = prof
+		}
+	}
+
+	return maps.Values(merged)
 }
 
 func parseOne(prof *profile, putInput storage.PutInput, frames []frame, multi bool) (*storage.PutInput, error) {
@@ -74,7 +113,9 @@ func parseOne(prof *profile, putInput storage.PutInput, frames []frame, multi bo
 	// from the same ingestion upload being deduped during compaction.
 	// Currently, all profiles are associated with the same timestamp
 	// from `putInput`. Since profiles are deduped over label set + timestamp,
-	// this label prevents unintended downstream deduping.
+	// this label prevents unintended downstream deduping. See also mergeProfiles
+	// which addresses the case where the profile names (and other relevant fields)
+	// are the same for multiple profiles.
 	putInput.LabelSet.Add("profile_name", prof.Name)
 
 	// TODO(petethepig): We need a way to tell if it's a default or a value set by user

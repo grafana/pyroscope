@@ -81,4 +81,32 @@ a;b;d 400
 		Expect(input2.Val.String()).To(Equal(expectedResult))
 		Expect(input2.SampleRate).To(Equal(uint32(100)))
 	})
+
+	It("Merges duplicate profiles", func() {
+		data, err := os.ReadFile("testdata/duplicates.speedscope.json")
+		Expect(err).ToNot(HaveOccurred())
+
+		key, err := labelset.Parse("foo{x=y}")
+		Expect(err).ToNot(HaveOccurred())
+
+		ingester := new(mockIngester)
+		profile := &RawProfile{RawData: data}
+
+		md := ingestion.Metadata{LabelSet: key, SampleRate: 100}
+		err = profile.Parse(context.Background(), ingester, nil, md)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Two profiles merged in to one
+		Expect(ingester.actual).To(HaveLen(1))
+
+		input := ingester.actual[0]
+		Expect(input.Units).To(Equal(metadata.SamplesUnits))
+		Expect(input.LabelSet.Normalized()).To(Equal("foo{profile_name=one,x=y}"))
+		expectedResult := `a;b 1000
+a;b;c 1000
+a;b;d 800
+`
+		Expect(input.Val.String()).To(Equal(expectedResult))
+		Expect(input.SampleRate).To(Equal(uint32(100)))
+	})
 })
