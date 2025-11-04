@@ -1,0 +1,250 @@
+# Default values for pyroscope-monitoring.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: grafana/otel-lgtm
+  tag: "0.11.10"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+
+# Set environment variables
+# -- @ignored
+env:
+  - name: GF_PLUGINS_PREINSTALL
+    value: grafana-exploretraces-app
+  - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
+    value: /otel-lgtm/grafana/conf/provisioning/dashboards/operational.json
+
+service:
+  type: ClusterIP
+  # -- @ignored
+  ports:
+    - name: grafana
+      protocol: TCP
+      port: 3000
+      targetPort: 3000
+    - name: otel-grpc
+      protocol: TCP
+      port: 4317
+      targetPort: 4317
+    - name: otel-http
+      protocol: TCP
+      port: 4318
+      targetPort: 4318
+    - name: prometheus
+      protocol: TCP
+      port: 9090
+      targetPort: 9090
+    - name: loki
+      protocol: TCP
+      port: 3100
+      targetPort: 3100
+  # deploys a service with static name "pyroscope-monitoring" in order to allow the subchart to ingest to it.
+  deployStaticName: true
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+# Additional volumes on the output Deployment definition.
+# -- @ignored
+volumes:
+  - emptyDir: {}
+    name: tempo-data
+  - emptyDir: {}
+    name: loki-data
+  - emptyDir: {}
+    name: grafana-data
+  - emptyDir: {}
+    name: loki-storage
+  - emptyDir: {}
+    name: p8s-storage
+  - emptyDir: {}
+    name: pyroscope-storage
+
+# Additional volumeMounts on the output Deployment definition.
+# -- @ignored
+volumeMounts:
+  - mountPath: /data/tempo
+    name: tempo-data
+  - mountPath: /data/grafana
+    name: grafana-data
+  - mountPath: /data/loki
+    name: loki-data
+  - mountPath: /loki
+    name: loki-storage
+  - mountPath: /data/prometheus
+    name: p8s-storage
+  - mountPath: /data/pyroscope
+    name: pyroscope-storage
+  - mountPath: /otel-lgtm/grafana/conf/provisioning/dashboards
+    name: dashboards
+  - mountPath: /otel-lgtm/prometheus.yaml
+    name: rules
+    subPath: prometheus.yaml
+  - mountPath: /prometheus-rules
+    name: rules
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Customize dashboard generation
+dashboards:
+  # Is the cloud-backend-gateway available (previously cortex-gw)
+  cloudBackendGateway: false
+
+  # cloud backend gateway selector
+  cloudBackendGatewaySelector: container=~"cortex-gw(-internal)?"
+
+  kubeStateMetricsSelector: job=~"(.*/)?kube-state-metrics"
+  cadvisorSelector: job=~"(.*/)?cadvisor"
+
+  # Default namespace
+  namespace: default
+
+  # Filter available namespaces by regex
+  namespaceRegex: .*
+
+  # Default cluster
+  cluster: pyroscope-dev
+
+  # ingest label selector
+  ingestSelector: container=~"pyroscope|distributor|query-frontend"
+
+  tenantQuery: |
+    sum by (tenant, slug, org_name, environment) (
+      rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~"$cluster",namespace=~"$namespace"}[$__rate_interval])
+    )
+
+  # -- @ignored
+  links:
+    global:
+      - asDropdown: true
+        icon: external link
+        includeVars: true
+        keepTime: true
+        tags:
+          - pyroscope
+        targetBlank: false
+        title: Pyroscope Dashboards
+        type: dashboards
+    perDashboard:
+      my-dashboard: []
+
+# -- @ignored
+monitoring:
+  enabled: true
+
+  global:
+    # This enables scraping of native histograms
+    scrapeProtocols: ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]
+    scrapeClassicHistograms: true
+    # TODO: Enable after https://github.com/grafana/k8s-monitoring-helm/pull/2071 merges
+    # scrapeNativeHistograms: true
+  cluster:
+    name: pyroscope-dev
+
+  destinations:
+    - name: otlp-gateway
+      type: otlp
+      url: "http://pyroscope-monitoring:4318"
+      protocol: http
+      traces: {enabled: true}
+    # NOTE(simonswine): Unable to keep container/namespace/job/cluster as indexed label
+    - name: loki
+      type: loki
+      url: "http://pyroscope-monitoring:3100/loki/api/v1/push"
+      logs: {enabled: true}
+    # NOTE(simonswine): Was not able to get native histograms to work with otlp-gateway
+    - name: prometheus
+      type: prometheus
+      url: "http://pyroscope-monitoring:9090/api/v1/write"
+      metrics: {enabled: true}
+      sendNativeHistograms: true
+
+  clusterMetrics:
+    enabled: true
+    opencost:
+      enabled: false
+    kepler:
+      enabled: false
+
+  clusterEvents:
+    enabled: true
+
+  podLogs:
+    enabled: true
+
+  annotationAutodiscovery:
+    enabled: true
+
+  applicationObservability:
+    enabled: true
+    receivers:
+      jaeger:
+        thriftHttp: {enabled: true}
+        thriftBinary: {enabled: true}
+        thriftCompact: {enabled: true}
+
+  alloy-metrics:
+    enabled: true
+    image:
+      # NOTE(simonswine): Was not able to get native histograms to work with v1.11.0, as they are now default disabled and there is no flag
+      # https://github.com/grafana/k8s-monitoring-helm/pull/2049#pullrequestreview-3340565881
+      tag: v1.10.2
+
+  alloy-logs:
+    enabled: true
+
+  alloy-singleton:
+    enabled: true
+
+  alloy-receiver:
+    enabled: true
+    alloy:
+      # Should no longer be necessary after https://github.com/grafana/k8s-monitoring-helm/pull/2071 merges
+      extraPorts:
+        - name: "thrift-compact"
+          port: 6831
+          targetPort: 6831
+          protocol: UDP
+        - name: jaeger-binary
+          port: 6832
+          targetPort: 6832
+          protocol: UDP
+        - name: jaeger-http
+          port: 14268
+          targetPort: 14268
+          protocol: TCP

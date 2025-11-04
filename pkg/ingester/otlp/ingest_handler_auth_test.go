@@ -2,6 +2,7 @@ package otlp
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -293,4 +294,101 @@ func TestMultitenancyEnabled_GRPCRequestWithAlternateHeader(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	assert.Equal(t, "alternate-tenant", capturedTenantID)
+}
+
+func TestHTTPRequestWithGzipCompression(t *testing.T) {
+	// Setup mock service
+	svc := mockotlp.NewMockPushService(t)
+	var capturedTenantID string
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		ctx := args.Get(0).(context.Context)
+		tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+		require.NoError(t, err)
+		capturedTenantID = tenantID
+	}).Return(nil, nil)
+
+	// Create handler with multitenancy disabled
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, false)
+
+	// Create a protobuf request
+	req := createValidOTLPRequest()
+	reqBytes, err := proto.Marshal(req)
+	require.NoError(t, err)
+
+	// Compress the request body with gzip
+	var gzipBuf bytes.Buffer
+	gzipWriter := gzip.NewWriter(&gzipBuf)
+	_, err = gzipWriter.Write(reqBytes)
+	require.NoError(t, err)
+	err = gzipWriter.Close()
+	require.NoError(t, err)
+
+	// Create HTTP request with gzip-encoded body
+	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader(gzipBuf.Bytes()))
+	httpReq.Header.Set("Content-Type", "application/x-protobuf")
+	httpReq.Header.Set("Content-Encoding", "gzip")
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httpReq)
+
+	// Verify request succeeds and default tenant is used
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, tenant.DefaultTenantID, capturedTenantID)
+}
+
+func TestHTTPRequestWithGzipCompressionAndJSON(t *testing.T) {
+	// Setup mock service
+	svc := mockotlp.NewMockPushService(t)
+	var capturedTenantID string
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		ctx := args.Get(0).(context.Context)
+		tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+		require.NoError(t, err)
+		capturedTenantID = tenantID
+	}).Return(nil, nil)
+
+	// Create handler with multitenancy enabled
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, true)
+
+	// Create a minimal JSON request
+	jsonRequest := `{
+		"resourceProfiles": [{
+			"scopeProfiles": [{
+				"profiles": [{
+					"sampleType": {"typeStrindex": 0, "unitStrindex": 1},
+					"sample": [{"stackIndex": 0, "values": [100]}],
+					"timeUnixNano": "1234567890"
+				}]
+			}]
+		}],
+		"dictionary": {
+			"stringTable": ["samples", "count", "test.so"],
+			"mappingTable": [{"memoryStart": "4096", "memoryLimit": "8192", "filenameStrindex": 2}],
+			"locationTable": [{"mappingIndex": 0, "address": "4352"}],
+			"stackTable": [{"locationIndices": [0]}]
+		}
+	}`
+
+	// Compress the JSON request body with gzip
+	var gzipBuf bytes.Buffer
+	gzipWriter := gzip.NewWriter(&gzipBuf)
+	_, err := gzipWriter.Write([]byte(jsonRequest))
+	require.NoError(t, err)
+	err = gzipWriter.Close()
+	require.NoError(t, err)
+
+	// Create HTTP request with gzip-encoded JSON body
+	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader(gzipBuf.Bytes()))
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Content-Encoding", "gzip")
+	httpReq.Header.Set(user.OrgIDHeaderName, "gzip-json-tenant")
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httpReq)
+
+	// Verify request succeeds with correct tenant
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "gzip-json-tenant", capturedTenantID)
 }
