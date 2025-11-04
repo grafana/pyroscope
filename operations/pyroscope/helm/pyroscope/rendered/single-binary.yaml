@@ -9,7 +9,7 @@ metadata:
     helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -46,7 +46,7 @@ metadata:
     helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: pyroscope/templates/configmap-alloy.yaml
@@ -59,7 +59,7 @@ metadata:
     helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 data:
   config.alloy: |
@@ -917,7 +917,7 @@ metadata:
     helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 data:
   overrides.yaml: |
@@ -934,7 +934,7 @@ metadata:
     helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
@@ -1136,7 +1136,7 @@ metadata:
     helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -1163,7 +1163,7 @@ metadata:
     helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1188,7 +1188,7 @@ metadata:
     helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1304,7 +1304,7 @@ metadata:
     helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
