@@ -1319,7 +1319,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 25ba7776359647d20b4ce86f342529fdc9ad9af7153c79ae7521a2dd6fcb18d6
+        checksum/config: 37335c4a80c2faac286d62fb50b700f58d0084fed2494193bfe05e41569d9ab1
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -1344,7 +1344,7 @@ spec:
         - name: "pyroscope"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.15.0"
+          image: "grafana/pyroscope:1.16.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=all"

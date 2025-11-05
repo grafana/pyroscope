@@ -2345,7 +2345,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
+        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -2370,7 +2370,7 @@ spec:
         - name: "ad-hoc-profiles"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.15.0"
+          image: "grafana/pyroscope:1.16.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ad-hoc-profiles"
@@ -2459,7 +2459,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
+        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -2484,7 +2484,7 @@ spec:
         - name: "admin"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.15.0"
+          image: "grafana/pyroscope:1.16.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=admin"
@@ -2573,7 +2573,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
+        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -2598,7 +2598,7 @@ spec:
         - name: "distributor"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.15.0"
+          image: "grafana/pyroscope:1.16.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=distributor"
@@ -2688,7 +2688,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
+        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -2713,7 +2713,7 @@ spec:
         - name: "query-backend"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.15.0"
+          image: "grafana/pyroscope:1.16.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-backend"
@@ -2802,7 +2802,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
+        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -2827,7 +2827,7 @@ spec:
         - name: "query-frontend"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.15.0"
+          image: "grafana/pyroscope:1.16.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-frontend"
@@ -2917,7 +2917,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
+        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -2942,7 +2942,7 @@ spec:
         - name: "tenant-settings"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.15.0"
+          image: "grafana/pyroscope:1.16.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=tenant-settings"
@@ -3216,7 +3216,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
+        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -3241,7 +3241,7 @@ spec:
         - name: "compaction-worker"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.15.0"
+          image: "grafana/pyroscope:1.16.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=compaction-worker"
@@ -3333,7 +3333,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
+        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -3358,7 +3358,7 @@ spec:
         - name: "metastore"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.15.0"
+          image: "grafana/pyroscope:1.16.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=metastore"
@@ -3465,7 +3465,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
+        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -3490,7 +3490,7 @@ spec:
         - name: "segment-writer"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.15.0"
+          image: "grafana/pyroscope:1.16.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=segment-writer"
