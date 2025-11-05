@@ -2347,7 +2347,7 @@ spec:
       annotations:
         checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v1.15.0"
+        profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2461,7 +2461,7 @@ spec:
       annotations:
         checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v1.15.0"
+        profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2575,7 +2575,7 @@ spec:
       annotations:
         checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v1.15.0"
+        profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2690,7 +2690,7 @@ spec:
       annotations:
         checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v1.15.0"
+        profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2804,7 +2804,7 @@ spec:
       annotations:
         checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v1.15.0"
+        profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2919,7 +2919,7 @@ spec:
       annotations:
         checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v1.15.0"
+        profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -3218,7 +3218,7 @@ spec:
       annotations:
         checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v1.15.0"
+        profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -3335,7 +3335,7 @@ spec:
       annotations:
         checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v1.15.0"
+        profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -3467,7 +3467,7 @@ spec:
       annotations:
         checksum/config: 50a075fce546e563e7cdf4bb261c4cb1bab570c960265bb49a32e496cc36a4e2
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v1.15.0"
+        profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
