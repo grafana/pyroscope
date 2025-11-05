@@ -44,7 +44,7 @@ jobs:
           echo "user-id=$(gh api "/users/${APP_BOT}" --jq .id)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@v6
         with:
-          go-version: 1.23.11
+          go-version: 1.24.9
       - name: Update contributors
         run: make update-contributors
 
