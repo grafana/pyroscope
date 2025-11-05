@@ -115,8 +115,10 @@ func (s *Symbolizer) symbolizeMappingsConcurrently(
 		locations []symbolizedLocation
 	}
 
+	totalLocs := 0
 	jobs := make(chan mappingJob, len(locationsByMapping))
 	for mappingID, locations := range locationsByMapping {
+		totalLocs += len(locations)
 		jobs <- mappingJob{mappingID: mappingID, locations: locations}
 	}
 	close(jobs)
@@ -173,7 +175,7 @@ func (s *Symbolizer) symbolizeMappingsConcurrently(
 		return nil, err
 	}
 
-	var allSymbolizedLocs []symbolizedLocation
+	allSymbolizedLocs := make([]symbolizedLocation, 0, totalLocs)
 	for result := range results {
 		allSymbolizedLocs = append(allSymbolizedLocs, result.locations...)
 	}
