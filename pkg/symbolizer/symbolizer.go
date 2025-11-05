@@ -15,6 +15,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
@@ -84,36 +85,100 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 		stringMap[str] = int64(i)
 	}
 
-	var allSymbolizedLocs []symbolizedLocation
-
-	for mappingID, locations := range locationsByMapping {
-		mapping := profile.Mapping[mappingID-1]
-
-		binaryName, err := s.extractBinaryName(profile, mapping)
-		if err != nil {
-			return fmt.Errorf("extract binary name: %w", err)
-		}
-
-		buildID, err := s.extractBuildID(profile, mapping)
-		if err != nil {
-			return fmt.Errorf("extract build ID: %w", err)
-		}
-
-		req := s.createSymbolizationRequest(binaryName, buildID, locations)
-		s.symbolize(ctx, &req)
-
-		for i, loc := range locations {
-			allSymbolizedLocs = append(allSymbolizedLocs, symbolizedLocation{
-				loc:     loc,
-				symLoc:  req.locations[i],
-				mapping: mapping,
-			})
-		}
+	// Symbolize all mappings concurrently
+	allSymbolizedLocs, err := s.symbolizeMappingsConcurrently(ctx, profile, locationsByMapping)
+	if err != nil {
+		return fmt.Errorf("symbolizing mappings: %w", err)
 	}
 
 	s.updateAllSymbolsInProfile(profile, allSymbolizedLocs, stringMap)
 
 	return nil
+}
+
+// symbolizeMappingsConcurrently symbolizes multiple mappings concurrently with a concurrency limit.
+func (s *Symbolizer) symbolizeMappingsConcurrently(
+	ctx context.Context,
+	profile *googlev1.Profile,
+	locationsByMapping map[uint64][]*googlev1.Location,
+) ([]symbolizedLocation, error) {
+	// Concurrency limit to avoid overwhelming debuginfod server
+	const maxConcurrency = 10
+
+	type mappingJob struct {
+		mappingID uint64
+		locations []*googlev1.Location
+	}
+
+	type mappingResult struct {
+		mappingID uint64
+		locations []symbolizedLocation
+	}
+
+	jobs := make(chan mappingJob, len(locationsByMapping))
+	for mappingID, locations := range locationsByMapping {
+		jobs <- mappingJob{mappingID: mappingID, locations: locations}
+	}
+	close(jobs)
+
+	// Process jobs concurrently with errgroup for proper error handling
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(maxConcurrency)
+
+	// Results channel with buffer to avoid blocking jobs
+	results := make(chan mappingResult, len(locationsByMapping))
+
+	for job := range jobs {
+		job := job
+		g.Go(func() error {
+			mapping := profile.Mapping[job.mappingID-1]
+
+			binaryName, err := s.extractBinaryName(profile, mapping)
+			if err != nil {
+				return fmt.Errorf("extract binary name for mapping %d: %w", job.mappingID, err)
+			}
+
+			buildID, err := s.extractBuildID(profile, mapping)
+			if err != nil {
+				return fmt.Errorf("extract build ID for mapping %d: %w", job.mappingID, err)
+			}
+
+			req := s.createSymbolizationRequest(binaryName, buildID, job.locations)
+			s.symbolize(ctx, &req)
+
+			// Collect symbolized locations for this mapping
+			symbolizedLocs := make([]symbolizedLocation, len(job.locations))
+			for i, loc := range job.locations {
+				symbolizedLocs[i] = symbolizedLocation{
+					loc:     loc,
+					symLoc:  req.locations[i],
+					mapping: mapping,
+				}
+			}
+
+			select {
+			case results <- mappingResult{mappingID: job.mappingID, locations: symbolizedLocs}:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+
+			return nil
+		})
+	}
+
+	err := g.Wait()
+	close(results)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var allSymbolizedLocs []symbolizedLocation
+	for result := range results {
+		allSymbolizedLocs = append(allSymbolizedLocs, result.locations...)
+	}
+
+	return allSymbolizedLocs, nil
 }
 
 // groupLocationsByMapping groups locations by their mapping ID
