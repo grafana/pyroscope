@@ -118,7 +118,6 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 	}
 
 	if found, _ := c.notFoundCache.Get(sanitizedBuildID); found {
-		c.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Inc()
 		status = statusErrorNotFound
 		return nil, buildIDNotFoundError{buildID: sanitizedBuildID}
 	}
@@ -128,7 +127,10 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 	})
 
 	if err != nil {
+		var bnfErr buildIDNotFoundError
 		switch {
+		case errors.As(err, &bnfErr):
+			status = statusErrorNotFound
 		case errors.Is(err, context.Canceled):
 			status = statusErrorCanceled
 		case errors.Is(err, context.DeadlineExceeded):
@@ -212,6 +214,7 @@ func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, sa
 		// Don't retry on 404 errors
 		if statusCode, isHTTPErr := isHTTPStatusError(err); isHTTPErr && statusCode == http.StatusNotFound {
 			c.notFoundCache.SetWithTTL(sanitizedBuildID, true, 1, c.cfg.NotFoundCacheTTL)
+			c.metrics.cacheOperations.WithLabelValues("not_found", "set", statusSuccess).Inc()
 			c.metrics.cacheSizeBytes.WithLabelValues("not_found").Set(float64(c.notFoundCache.Metrics.CostAdded()))
 			return nil, buildIDNotFoundError{buildID: sanitizedBuildID}
 		}
@@ -264,7 +267,8 @@ func isRetryableError(err error) bool {
 		return false
 	}
 
-	if _, ok := err.(buildIDNotFoundError); ok {
+	var bnfErr buildIDNotFoundError
+	if errors.As(err, &bnfErr) {
 		return false
 	}
 
