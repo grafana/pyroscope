@@ -85,7 +85,6 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 		stringMap[str] = int64(i)
 	}
 
-	// Symbolize all mappings concurrently
 	allSymbolizedLocs, err := s.symbolizeMappingsConcurrently(ctx, profile, locationsByMapping)
 	if err != nil {
 		return fmt.Errorf("symbolizing mappings: %w", err)
