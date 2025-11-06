@@ -117,6 +117,9 @@ func (s *Symbolizer) symbolizeMappingsConcurrently(
 	locationsByMapping map[uint64][]*googlev1.Location,
 ) ([]symbolizedLocation, error) {
 	maxConcurrency := s.cfg.MaxDebuginfodConcurrency
+	if maxConcurrency <= 0 {
+		maxConcurrency = 10
+	}
 
 	type mappingJob struct {
 		mappingID uint64
