@@ -89,7 +89,7 @@ endif
 .PHONY: docs-debug
 docs-debug: ## Run Hugo web server with debugging enabled. TODO: support all SERVER_FLAGS defined in website Makefile.
 docs-debug: make-docs
-	WEBSITE_EXEC='hugo server --bind 0.0.0.0 --port 3002 --debug' $(CURDIR)/make-docs $(PROJECTS)
+	WEBSITE_EXEC='hugo server --bind 0.0.0.0 --port 3002 --logLevel debug' $(CURDIR)/make-docs $(PROJECTS)
 
 .PHONY: vale
 vale: ## Run vale on the entire docs folder which includes pulling the latest `VALE_IMAGE` (default: `grafana/vale:latest`) container image. To not pull the image, set `PULL=false`.

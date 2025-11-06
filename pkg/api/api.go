@@ -20,8 +20,9 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
-	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/public"
+
+	"github.com/grafana/pyroscope/pkg/validation"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/capabilities/v1/capabilitiesv1connect"
@@ -42,7 +43,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/ingester"
 	"github.com/grafana/pyroscope/pkg/ingester/otlp"
 	"github.com/grafana/pyroscope/pkg/ingester/pyroscope"
-	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
@@ -139,6 +139,10 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 	return nil
 }
 
+func (a *API) RegisterRedirectToAdmin() {
+	a.RegisterRoute("/", http.RedirectHandler("/admin", http.StatusFound), a.registerOptionsPublicAccess()...)
+}
+
 func (a *API) RegisterCatchAll() error {
 	uiIndexHandler, err := public.NewIndexHandler(a.cfg.BaseURL)
 	if err != nil {
@@ -201,8 +205,7 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation
 	})
 
 	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, writePathOpts...)
-	// TODO(@petethepig): implement http/protobuf and http/json support
-	// a.RegisterRoute("/v1/profiles", otlpHandler, true, true, "POST")
+	a.RegisterRoute("/v1development/profiles", otlpHandler, writePathOpts...)
 }
 
 // RegisterMemberlistKV registers the endpoints associated with the memberlist KV store.
@@ -295,10 +298,29 @@ func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
 	)
 }
 
-func (a *API) RegisterAdmin(ad *operations.Admin) {
+// AdminService is an interface for admin handlers (v1 and v2)
+type AdminService interface {
+	TenantsHandler(w http.ResponseWriter, r *http.Request)
+	BlocksHandler(w http.ResponseWriter, r *http.Request)
+	BlockHandler(w http.ResponseWriter, r *http.Request)
+	DatasetHandler(w http.ResponseWriter, r *http.Request)
+	DatasetProfilesHandler(w http.ResponseWriter, r *http.Request)
+	ProfileDownloadHandler(w http.ResponseWriter, r *http.Request)
+	ProfileCallTreeHandler(w http.ResponseWriter, r *http.Request)
+	DatasetTSDBIndexHandler(w http.ResponseWriter, r *http.Request)
+	DatasetSymbolsHandler(w http.ResponseWriter, r *http.Request)
+}
+
+func (a *API) RegisterAdmin(ad AdminService) {
 	a.RegisterRoute("/ops/object-store/tenants", http.HandlerFunc(ad.TenantsHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks", http.HandlerFunc(ad.BlocksHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}", http.HandlerFunc(ad.BlockHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets", http.HandlerFunc(ad.DatasetHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles", http.HandlerFunc(ad.DatasetProfilesHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles/download", http.HandlerFunc(ad.ProfileDownloadHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles/call-tree", http.HandlerFunc(ad.ProfileCallTreeHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/index", http.HandlerFunc(ad.DatasetTSDBIndexHandler), a.registerOptionsPublicAccess()...)
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/symbols", http.HandlerFunc(ad.DatasetSymbolsHandler), a.registerOptionsPublicAccess()...)
 
 	a.indexPage.AddLinks(defaultWeight, "Admin", []IndexPageLink{
 		{Desc: "Object Storage Tenants & Blocks", Path: "/ops/object-store/tenants"},

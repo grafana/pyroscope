@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html class="h-100" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Bucket Blocks Explorer (v2): Dataset {{ .Dataset.Name }}</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+</head>
+<body class="d-flex flex-column h-100">
+<main class="flex-shrink-0">
+    <div class="container">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h3>Bucket Blocks Explorer (v2): Dataset Details</h3>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/ops/object-store/tenants">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <p>
+                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}?shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to block</a>
+            </p>
+            <table class="table">
+                <tr>
+                    <td>Tenant</td>
+                    <td>{{ .User }}</td>
+                </tr>
+                <tr>
+                    <td>Block ID</td>
+                    <td>{{ .BlockID }}</td>
+                </tr>
+                <tr>
+                    <td>Dataset Name</td>
+                    <td>{{ .Dataset.Name }}</td>
+                </tr>
+                <tr>
+                    <td>Dataset Tenant</td>
+                    <td>{{ .Dataset.Tenant }}</td>
+                </tr>
+                <tr>
+                    <td>Min Time</td>
+                    <td>{{ .Dataset.MinTime }}</td>
+                </tr>
+                <tr>
+                    <td>Max Time</td>
+                    <td>{{ .Dataset.MaxTime }}</td>
+                </tr>
+                <tr>
+                    <td>Total Size</td>
+                    <td>{{ .Dataset.Size }}</td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <div class="mb-2"><strong>Size Distribution</strong></div>
+                        <div class="d-flex align-items-center mb-2" style="height: 40px;">
+                            <div class="d-flex w-100" style="height: 100%; border-radius: 4px; overflow: hidden;">
+                                <div class="d-flex align-items-center justify-content-center text-white fw-bold"
+                                     style="background-color: #0d6efd; width: {{ .Dataset.ProfilesPercentage }}%; min-width: 0;"
+                                     title="Profiles: {{ .Dataset.ProfilesSize }}">
+                                    {{ if ge .Dataset.ProfilesPercentage 10.0 }}
+                                        <span class="small">{{ printf "%.1f" .Dataset.ProfilesPercentage }}%</span>
+                                    {{ end }}
+                                </div>
+                                <div class="d-flex align-items-center justify-content-center text-white fw-bold"
+                                     style="background-color: #198754; width: {{ .Dataset.IndexPercentage }}%; min-width: 0;"
+                                     title="Index: {{ .Dataset.IndexSize }}">
+                                    {{ if ge .Dataset.IndexPercentage 10.0 }}
+                                        <span class="small">{{ printf "%.1f" .Dataset.IndexPercentage }}%</span>
+                                    {{ end }}
+                                </div>
+                                <div class="d-flex align-items-center justify-content-center text-white fw-bold"
+                                     style="background-color: #ffc107; width: {{ .Dataset.SymbolsPercentage }}%; min-width: 0;"
+                                     title="Symbols: {{ .Dataset.SymbolsSize }}">
+                                    {{ if ge .Dataset.SymbolsPercentage 10.0 }}
+                                        <span class="small text-dark">{{ printf "%.1f" .Dataset.SymbolsPercentage }}%</span>
+                                    {{ end }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-3 small">
+                            <div>
+                                <span class="d-inline-block" style="width: 16px; height: 16px; background-color: #0d6efd; border-radius: 2px; vertical-align: middle;"></span>
+                                <span class="ms-1">Profiles: {{ .Dataset.ProfilesSize }} ({{ printf "%.1f" .Dataset.ProfilesPercentage }}%)</span>
+                            </div>
+                            <div>
+                                <span class="d-inline-block" style="width: 16px; height: 16px; background-color: #198754; border-radius: 2px; vertical-align: middle;"></span>
+                                <span class="ms-1">Index: {{ .Dataset.IndexSize }} ({{ printf "%.1f" .Dataset.IndexPercentage }}%)</span>
+                            </div>
+                            <div>
+                                <span class="d-inline-block" style="width: 16px; height: 16px; background-color: #ffc107; border-radius: 2px; vertical-align: middle;"></span>
+                                <span class="ms-1">Symbols: {{ .Dataset.SymbolsSize }} ({{ printf "%.1f" .Dataset.SymbolsPercentage }}%)</span>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Labels</td>
+                    <td>
+                        {{ if .Dataset.LabelSets }}
+                            {{ range $set := .Dataset.LabelSets }}
+                                <div class="font-monospace small mb-1">
+                                    {
+                                    {{- range $i, $pair := $set.Pairs -}}
+                                        {{- if $i }}, {{ end -}}
+                                        {{ $pair.Key }}: {{ $pair.Value }}
+                                    {{- end -}}
+                                    }
+                                </div>
+                            {{ end }}
+                        {{ else }}
+                            <p>No labels</p>
+                        {{ end }}
+                    </td>
+                </tr>
+            </table>
+
+            <h4 class="mt-4 mb-3">Dataset Explorer</h4>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-dark border-secondary h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">
+                                <i class="bi bi-file-earmark-text"></i> Profiles
+                            </h5>
+                            <p class="card-text">View and download individual profiles from this dataset.</p>
+                            <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets/profiles?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}"
+                               class="btn btn-primary mt-auto">
+                                View Profiles
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-dark border-secondary h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">
+                                <i class="bi bi-list-nested"></i> TSDB Index
+                            </h5>
+                            <p class="card-text">Inspect the time series database index for this dataset.</p>
+                            <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets/index?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}"
+                               class="btn btn-primary mt-auto">
+                                View TSDB Index
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-dark border-secondary h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">
+                                <i class="bi bi-code-slash"></i> Symbols
+                            </h5>
+                            <p class="card-text">Explore the symbols table used for profile stack traces.</p>
+                            <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets/symbols?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}"
+                               class="btn btn-primary mt-auto">
+                                View Symbols
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3 bg-dark">
+    <div class="container">
+        <small class="text-white-50">Status @ {{ .Now }}</small>
+    </div>
+</footer>
+</body>
+</html>

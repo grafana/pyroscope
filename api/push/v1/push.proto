@@ -1,11 +1,15 @@
 syntax = "proto3";
 
+// This is the API to send profiles to Pyroscope
 package push.v1;
 
+import "gnostic/openapi/v3/annotations.proto";
 import "types/v1/types.proto";
 
 service PusherService {
-  rpc Push(PushRequest) returns (PushResponse) {}
+  rpc Push(PushRequest) returns (PushResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
 }
 
 message PushResponse {}
@@ -38,7 +42,7 @@ message RawProfileSeries {
 // RawSample is the set of bytes that correspond to a pprof profile
 message RawSample {
   // raw_profile is the set of bytes of the pprof profile
-  bytes raw_profile = 1;
-  // unique ID of the profile
-  string ID = 2;
+  bytes raw_profile = 1 [(gnostic.openapi.v3.property).example = {yaml: "PROFILE_BASE64"}];
+  // UUID of the profile
+  string ID = 2 [(gnostic.openapi.v3.property).example = {yaml: "734FD599-6865-419E-9475-932762D8F469"}];
 }

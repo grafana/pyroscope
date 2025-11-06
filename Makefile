@@ -10,11 +10,10 @@ BIN := $(CURDIR)/.tmp/bin
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
-GO_MOD_VERSION := 1.24.0
 
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
-IMAGE_PLATFORM = linux/amd64
+IMAGE_PLATFORM = linux/$(GOARCH)
 BUILDX_ARGS =
 GOPRIVATE=github.com/grafana/frostdb
 
@@ -69,13 +68,14 @@ lint: go/lint helm/lint buf/lint goreleaser/lint ## Lint Go, Helm and protobuf
 test: go/test ## Run unit tests
 
 .PHONY: generate
-generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/protoc-gen-openapiv2 $(BIN)/protoc-gen-grpc-gateway $(BIN)/protoc-gen-connect-go $(BIN)/protoc-gen-connect-go-mux $(BIN)/gomodifytags ## Regenerate protobuf
+generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/protoc-gen-openapiv2 $(BIN)/protoc-gen-grpc-gateway $(BIN)/protoc-gen-connect-go $(BIN)/protoc-gen-connect-go-mux $(BIN)/gomodifytags $(BIN)/protoc-gen-connect-openapi ## Regenerate protobuf
 	rm -Rf api/openapiv2/gen/ api/gen
 	find pkg/ \( -name \*.pb.go -o -name \*.connect\*.go \) -delete
 	cd api/ && PATH=$(BIN) $(BIN)/buf generate
 	cd pkg && PATH=$(BIN) $(BIN)/buf generate
 	PATH="$(BIN):$(PATH)" ./tools/add-parquet-tags.sh
 	go run ./tools/doc-generator/ ./docs/sources/configure-server/reference-configuration-parameters/index.template > docs/sources/configure-server/reference-configuration-parameters/index.md
+	go run ./tools/api-docs-generator/
 
 .PHONY: buf/lint
 buf/lint: $(BIN)/buf
@@ -196,12 +196,12 @@ go/mod_tidy_root:
 	# doesn't work for go workspace
 	# GO111MODULE=on go mod verify
 	go work sync
-	GO111MODULE=on go mod tidy -go $(GO_MOD_VERSION)
+	GO111MODULE=on go mod tidy
 
 .PHONY: go/mod_tidy/%
 go/mod_tidy/%: go/mod_tidy_root
 	cd "$*" && GO111MODULE=on go mod download
-	cd "$*" && GO111MODULE=on go mod tidy -go $(GO_MOD_VERSION)
+	cd "$*" && GO111MODULE=on go mod tidy
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
@@ -209,7 +209,7 @@ fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint er
 	$(BIN)/golangci-lint run --fix
 	cd api/ && $(BIN)/buf format -w .
 	cd pkg && $(BIN)/buf format -w .
-	$(BIN)/tk fmt ./operations/pyroscope/jsonnet/ tools/monitoring/
+	$(BIN)/tk fmt ./operations/pyroscope/jsonnet/
 
 .PHONY: check/unstaged-changes
 check/unstaged-changes:
@@ -236,10 +236,15 @@ define deploy
 		--set pyroscope.image.repository=$(IMAGE_PREFIX)pyroscope \
 		--set pyroscope.podAnnotations.image-digest=$(shell cat .docker-image-digest-pyroscope) \
 		--set pyroscope.service.port_name=http-metrics \
-		--set pyroscope.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
-		--set pyroscope.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
-		--set pyroscope.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
-		--set pyroscope.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local. \
+		--set-string pyroscope.podAnnotations."profiles\.grafana\.com/memory\.port_name"=http-metrics \
+		--set-string pyroscope.podAnnotations."profiles\.grafana\.com/cpu\.port_name"=http-metrics \
+		--set-string pyroscope.podAnnotations."profiles\.grafana\.com/goroutine\.port_name"=http-metrics \
+		--set-string pyroscope.podAnnotations."k8s\.grafana\.com/scrape"=true \
+		--set-string pyroscope.podAnnotations."k8s\.grafana\.com/metrics\.portName"=http-metrics \
+		--set-string pyroscope.podAnnotations."k8s\.grafana\.com/metrics\.scrapeInterval"=15s \
+		--set-string pyroscope.extraEnvVars.JAEGER_AGENT_HOST=pyroscope-monitoring-alloy-receiver \
+		--set pyroscope.extraEnvVars.JAEGER_SAMPLER_TYPE=const \
+		--set pyroscope.extraEnvVars.JAEGER_SAMPLER_PARAM=1 \
 		--set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
 endef
 
@@ -347,6 +352,10 @@ $(BIN)/protoc-gen-grpc-gateway: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.27.3
 
+$(BIN)/protoc-gen-connect-openapi: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/sudorandom/protoc-gen-connect-openapi@v0.21.2
+
 $(BIN)/gomodifytags: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/fatih/gomodifytags@v1.16.0
@@ -394,15 +403,17 @@ $(BIN)/helm-docs: Makefile go.mod
 
 .PHONY: cve/check
 cve/check:
-	docker run -t -i --rm --volume "$(CURDIR)/:/repo" -u "$(shell id -u)" aquasec/trivy:0.45.1 filesystem --cache-dir /repo/.cache/trivy --scanners vuln --skip-dirs .tmp/ --skip-dirs node_modules/ --skip-dirs tools/monitoring/vendor/ /repo
+	docker run -t -i --rm --volume "$(CURDIR)/:/repo" -u "$(shell id -u)" aquasec/trivy:0.45.1 filesystem --cache-dir /repo/.cache/trivy --scanners vuln --skip-dirs .tmp/ --skip-dirs node_modules/ /repo
 
 .PHONY: helm/lint
 helm/lint: $(BIN)/helm
-	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope/
+	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope
+	$(BIN)/helm lint ./operations/monitoring/helm/pyroscope-monitoring
 
 .PHONY: helm/docs
 helm/docs: $(BIN)/helm-docs
 	$(BIN)/helm-docs -c operations/pyroscope/helm/pyroscope
+	$(BIN)/helm-docs -c operations/monitoring/helm/pyroscope-monitoring
 
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
@@ -442,6 +453,9 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	cat operations/pyroscope/helm/pyroscope/values.yaml \
 		| go run ./tools/yaml-to-json \
 		> ./operations/pyroscope/jsonnet/values.json
+	# Generate dashboards and rules
+	$(BIN)/helm template pyroscope-monitoring --show-only templates/dashboards.yaml --show-only templates/rules.yaml operations/monitoring/helm/pyroscope-monitoring \
+		| go run ./tools/monitoring-chart-extractor
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
@@ -460,16 +474,9 @@ deploy-micro-services-v1: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 	$(call deploy,pyroscope-micro-services,$(HELM_FLAGS_V1_MICROSERVICES))
 
 .PHONY: deploy-monitoring
-deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json
-	kubectl  --context="kind-$(KIND_CLUSTER)" create namespace monitoring --dry-run=client -o yaml | kubectl  --context="kind-$(KIND_CLUSTER)" apply -f -
-	$(BIN)/tk apply tools/monitoring/environments/default/main.jsonnet
-
-.PHONY: tools/monitoring/environments/default/spec.json # This is a phony target for now as the cluster might be not already created.
-tools/monitoring/environments/default/spec.json: $(BIN)/tk $(BIN)/kind
+deploy-monitoring: $(BIN)/kind $(BIN)/helm
 	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
-	pushd tools/monitoring/ && rm -Rf vendor/ lib/ environments/default/spec.json  && PATH=$(BIN):$(PATH) $(BIN)/tk init -f
-	echo "import 'monitoring.libsonnet'" > tools/monitoring/environments/default/main.jsonnet
-	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name pyroscope-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring
+	$(BIN)/helm upgrade --install pyroscope-monitoring ./operations/monitoring/helm/pyroscope-monitoring
 
 include Makefile.examples
 

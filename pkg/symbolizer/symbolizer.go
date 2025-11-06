@@ -99,12 +99,7 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 			return fmt.Errorf("extract build ID: %w", err)
 		}
 
-		if buildID == "" {
-			continue
-		}
-
 		req := s.createSymbolizationRequest(binaryName, buildID, locations)
-
 		s.symbolize(ctx, &req)
 
 		for i, loc := range locations {
@@ -247,31 +242,37 @@ func (s *Symbolizer) updateAllSymbolsInProfile(
 }
 
 func (s *Symbolizer) symbolize(ctx context.Context, req *request) {
-	var table *lidia.Table
-	var err error
+	if req.buildID == "" {
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("empty_build_id").Inc()
+		s.setFallbackSymbols(req)
+		return
+	}
 
 	lidiaBytes, err := s.getLidiaBytes(ctx, req.buildID)
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "Failed to get debug info", "buildID", req.buildID, "err", err)
-		for _, loc := range req.locations {
-			loc.lines = s.createNotFoundSymbols(req.binaryName, loc)
-		}
+		s.setFallbackSymbols(req)
 		return
 	}
 
 	lidiaReader := NewReaderAtCloser(lidiaBytes)
-	table, err = lidia.OpenReader(lidiaReader, lidia.WithCRC())
+	table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
 	if err != nil {
 		s.metrics.debugSymbolResolutionErrors.WithLabelValues("lidia_error").Inc()
 		level.Warn(s.logger).Log("msg", "Failed to open Lidia file", "err", err)
-		for _, loc := range req.locations {
-			loc.lines = s.createNotFoundSymbols(req.binaryName, loc)
-		}
+		s.setFallbackSymbols(req)
 		return
 	}
 	defer table.Close()
 
 	s.symbolizeWithTable(table, req)
+}
+
+// setFallbackSymbols sets fallback symbols for all locations in the request
+func (s *Symbolizer) setFallbackSymbols(req *request) {
+	for _, loc := range req.locations {
+		loc.lines = s.createFallbackSymbol(req.binaryName, loc)
+	}
 }
 
 func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
@@ -285,12 +286,12 @@ func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
 	for _, loc := range req.locations {
 		frames, err := table.Lookup(framesBuf, loc.address)
 		if err != nil {
-			loc.lines = s.createNotFoundSymbols(req.binaryName, loc)
+			loc.lines = s.createFallbackSymbol(req.binaryName, loc)
 			continue
 		}
 
 		if len(frames) == 0 {
-			loc.lines = s.createNotFoundSymbols(req.binaryName, loc)
+			loc.lines = s.createFallbackSymbol(req.binaryName, loc)
 			continue
 		}
 
@@ -301,14 +302,18 @@ func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
 func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte, error) {
 	if client, ok := s.client.(*DebuginfodHTTPClient); ok {
 		if found, _ := client.notFoundCache.Get(buildID); found {
+			s.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Inc()
 			return nil, buildIDNotFoundError{buildID: buildID}
 		}
+		s.metrics.cacheOperations.WithLabelValues("not_found", "get", "miss").Inc()
 	}
 
 	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, buildID)
 	if err == nil {
+		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", statusSuccess).Inc()
 		return lidiaBytes, nil
 	}
+	s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "miss").Inc()
 
 	lidiaBytes, err = s.fetchLidiaFromDebuginfod(ctx, buildID)
 	if err != nil {
@@ -317,6 +322,9 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 
 	if err := s.bucket.Upload(ctx, buildID, bytes.NewReader(lidiaBytes)); err != nil {
 		level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", buildID, "err", err)
+		s.metrics.cacheOperations.WithLabelValues("object_storage", "set", "error").Inc()
+	} else {
+		s.metrics.cacheOperations.WithLabelValues("object_storage", "set", statusSuccess).Inc()
 	}
 
 	return lidiaBytes, nil
@@ -406,7 +414,7 @@ func (s *Symbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
 	return memBuffer.Bytes(), nil
 }
 
-func (s *Symbolizer) createNotFoundSymbols(binaryName string, loc *location) []lidia.SourceInfoFrame {
+func (s *Symbolizer) createFallbackSymbol(binaryName string, loc *location) []lidia.SourceInfoFrame {
 	prefix := "unknown"
 	if binaryName != "" {
 		prefix = binaryName

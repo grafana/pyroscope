@@ -35,8 +35,8 @@ docker run $DOCKER_ARGS --rm \
   -v "${datasource_provisioning}:/etc/grafana/provisioning/datasources/phlare.yaml:ro" \
   -v "$(pwd)"/grafana/phlare-datasource/dist:/var/lib/grafana/plugins/phlare-datasource \
   -v "$(pwd)"/grafana/flamegraph/dist:/var/lib/grafana/plugins/flamegraph \
-  -e GF_INSTALL_PLUGINS=grafana-pyroscope-app \
-  -e GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel \
+  -e GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app \
+  -e GF_PLUGINS_PREINSTALL_SYNC=pyroscope-datasource,pyroscope-panel \
   -e GF_DEFAULT_APP_MODE=development \
   -e GF_AUTH_ANONYMOUS_ENABLED=true \
   -e GF_AUTH_ANONYMOUS_ORG_ROLE=Admin \

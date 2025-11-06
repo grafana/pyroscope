@@ -1,0 +1,36 @@
+anonymous: labels:<name:"__name__" value:"profiles_recorded_goroutines_total_count" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:286 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_goroutines_total_count" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<value:125 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_alloc_total_count" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:132025 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_alloc_total_count" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<value:8506 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_alloc_total_bytes" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:9.746461e+07 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_alloc_total_bytes" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<value:1.0898839e+07 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_total_count" > labels:<name:"service_name" value:"pyroscope-test/alloy" > samples:<value:74337 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_total_count" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:71502 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_total_count" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<value:8372 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_total_bytes" > labels:<name:"service_name" value:"pyroscope-test/alloy" > samples:<value:5.3795375e+07 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_total_bytes" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:4.6093095e+07 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_total_bytes" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<value:8.820688e+06 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_total_nanoseconds" > labels:<name:"service_name" value:"pyroscope-test/alloy" > samples:<value:1.5e+08 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_total_nanoseconds" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:3.4e+08 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_total_nanoseconds" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<value:1.8e+08 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_total_samples" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<value:18 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_total_samples" > labels:<name:"service_name" value:"pyroscope-test/alloy" > samples:<value:15 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_total_samples" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:34 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_goroutines_function_total_servehttp_count" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:16 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_goroutines_function_total_servehttp_count" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<value:2 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_alloc_function_total_servehttp_count" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:70921 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_alloc_function_total_servehttp_count" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<value:3 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_alloc_function_total_servehttp_bytes" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:4.6148663e+07 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_alloc_function_total_servehttp_bytes" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<value:2.136945e+06 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_function_total_servehttp_count" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:868 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_function_total_servehttp_count" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<value:17 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_function_total_servehttp_count" > labels:<name:"service_name" value:"pyroscope-test/alloy" > samples:<value:2350 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_function_total_servehttp_bytes" > labels:<name:"service_name" value:"pyroscope-test/alloy" > samples:<value:2.638198e+06 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_function_total_servehttp_bytes" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:1.5491333e+07 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_mem_inuse_function_total_servehttp_bytes" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<value:1.753538e+06 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_function_total_servehttp_nanoseconds" > labels:<name:"service_name" value:"pyroscope-test/alloy" > samples:<value:1e+07 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_function_total_servehttp_nanoseconds" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:5e+07 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_function_total_servehttp_nanoseconds" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<> 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_function_total_servehttp_samples" > labels:<name:"service_name" value:"pyroscope-test/alloy" > samples:<value:1 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_function_total_servehttp_samples" > labels:<name:"service_name" value:"pyroscope-test/ingester" > samples:<value:5 > 
+anonymous: labels:<name:"__name__" value:"profiles_recorded_cpu_usage_function_total_servehttp_samples" > labels:<name:"service_name" value:"pyroscope-test/query-frontend" > samples:<> 

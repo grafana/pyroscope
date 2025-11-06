@@ -11,13 +11,13 @@ permissions:
 
 jobs:
   update-examples-cron:
-    runs-on: ubuntu-x64-small
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: 'false'
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760
+        uses: grafana/shared-workflows/actions/get-vault-secrets@c8ac4a279df46ebd1f85064119a0835098b88092
         with:
           repo_secrets: |
             GITHUB_APP_ID=pyroscope-development-app:app-id

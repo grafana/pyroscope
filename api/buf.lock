@@ -2,10 +2,17 @@
 version: v1
 deps:
   - remote: buf.build
+    owner: gnostic
+    repository: gnostic
+    commit: 087bc8072ce44e339f213209e4d57bf0
+    digest: shake256:4689c26f0460fea84c4c277c1b9c7e7d657388c5b4116d1065f907a92100ffbea87de05bbd138a0166411361e1f6ce063b4c0c6002358d39710f3c4a8de788d5
+  - remote: buf.build
     owner: googleapis
     repository: googleapis
-    commit: 8d7204855ec14631a499bd7393ce1970
+    commit: 61b203b9a9164be9a834f58c37be6f62
+    digest: shake256:e619113001d6e284ee8a92b1561e5d4ea89a47b28bf0410815cb2fa23914df8be9f1a6a98dcf069f5bc2d829a2cfb1ac614863be45cd4f8a5ad8606c5f200224
   - remote: buf.build
     owner: grpc-ecosystem
     repository: grpc-gateway
-    commit: bc28b723cd774c32b6fbc77621518765
+    commit: 4c5ba75caaf84e928b7137ae5c18c26a
+    digest: shake256:e174ad9408f3e608f6157907153ffec8d310783ee354f821f57178ffbeeb8faa6bb70b41b61099c1783c82fe16210ebd1279bc9c9ee6da5cffba9f0e675b8b99

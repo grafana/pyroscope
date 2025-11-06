@@ -28,6 +28,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/metastore/index/tombstones"
 	"github.com/grafana/pyroscope/pkg/metastore/raftnode"
 	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/pkg/metastore/tracing"
 	placement "github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 	"github.com/grafana/pyroscope/pkg/util/health"
 )
@@ -74,9 +75,10 @@ type Metastore struct {
 	reg       prometheus.Registerer
 	health    health.Service
 
-	raft           *raftnode.Node
-	fsm            *fsm.FSM
-	raftNodeClient raftnodepb.RaftNodeServiceClient
+	raft            *raftnode.Node
+	fsm             *fsm.FSM
+	contextRegistry *tracing.ContextRegistry
+	raftNodeClient  raftnodepb.RaftNodeServiceClient
 
 	bucket    objstore.Bucket
 	placement *placement.Manager
@@ -117,18 +119,19 @@ func New(
 	placementMgr *placement.Manager,
 ) (*Metastore, error) {
 	m := &Metastore{
-		config:         config,
-		overrides:      overrides,
-		logger:         logger,
-		reg:            reg,
-		health:         healthService,
-		bucket:         bucket,
-		placement:      placementMgr,
-		raftNodeClient: client,
+		config:          config,
+		overrides:       overrides,
+		logger:          logger,
+		reg:             reg,
+		health:          healthService,
+		bucket:          bucket,
+		placement:       placementMgr,
+		raftNodeClient:  client,
+		contextRegistry: tracing.NewContextRegistry(reg),
 	}
 
 	var err error
-	if m.fsm, err = fsm.New(m.logger, m.reg, m.config.FSM); err != nil {
+	if m.fsm, err = fsm.New(m.logger, m.reg, m.config.FSM, m.contextRegistry); err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
 
@@ -175,7 +178,7 @@ func New(
 	m.indexService = NewIndexService(m.logger, m.raft, m.leaderRead, m.index, m.placement)
 	m.tenantService = NewTenantService(m.logger, m.followerRead, m.index)
 	m.queryService = NewQueryService(m.logger, m.followerRead, m.index)
-	m.recovery = dlq.NewRecovery(logger, config.Index.Recovery, m.indexService, bucket)
+	m.recovery = dlq.NewRecovery(logger, config.Index.Recovery, m.indexService, bucket, m.reg)
 	m.cleaner = cleaner.NewCleaner(m.logger, m.overrides, config.Index.Cleaner, m.indexService)
 
 	// These are the services that only run on the raft leader.
@@ -194,7 +197,7 @@ func (m *Metastore) buildRaftNode() (err error) {
 	// (via FSM.Restore), if it is present. Otherwise, when no snapshots
 	// available, the state must be initialized explicitly via FSM.Init before
 	// we call raft.Init, which starts applying the raft log.
-	if m.raft, err = raftnode.NewNode(m.logger, m.config.Raft, m.reg, m.fsm, m.raftNodeClient); err != nil {
+	if m.raft, err = raftnode.NewNode(m.logger, m.config.Raft, m.reg, m.fsm, m.contextRegistry, m.raftNodeClient); err != nil {
 		return fmt.Errorf("failed to create raft node: %w", err)
 	}
 
@@ -265,6 +268,9 @@ func (m *Metastore) stopping(_ error) error {
 
 	m.raft.Shutdown()
 	m.fsm.Shutdown()
+	if m.contextRegistry != nil {
+		m.contextRegistry.Shutdown()
+	}
 	return nil
 }
 

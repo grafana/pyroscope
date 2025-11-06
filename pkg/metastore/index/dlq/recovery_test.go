@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -51,7 +53,7 @@ func TestRecoverTick(t *testing.T) {
 		addMeta(bucket, meta)
 	}
 
-	r := NewRecovery(test.NewTestingLogger(t), Config{}, srv, bucket)
+	r := NewRecovery(test.NewTestingLogger(t), Config{}, srv, bucket, prometheus.NewRegistry())
 	r.recoverTick(context.Background())
 
 	expected := []*metastorev1.BlockMeta{
@@ -65,6 +67,10 @@ func TestRecoverTick(t *testing.T) {
 		require.Equal(t, actual[i].Id, expected[i].Id)
 		require.Equal(t, actual[i].Shard, expected[i].Shard)
 	}
+
+	assert.Equal(t, 3.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("success")))
+	assert.Equal(t, 0.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("unmarshal_error")))
+	assert.Equal(t, 0.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("invalid_metadata")))
 }
 
 func TestNotRaftLeader(t *testing.T) {
@@ -89,10 +95,13 @@ func TestNotRaftLeader(t *testing.T) {
 		addMeta(bucket, meta)
 	}
 
-	r := NewRecovery(test.NewTestingLogger(t), Config{}, srv, bucket)
+	r := NewRecovery(test.NewTestingLogger(t), Config{}, srv, bucket, prometheus.NewRegistry())
 	r.recoverTick(context.Background())
 
 	assert.Equal(t, 1, len(bucket.Objects()))
+
+	assert.Equal(t, 1.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("metastore_error")))
+	assert.Equal(t, 0.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("success")))
 }
 
 func TestStartStop(t *testing.T) {
@@ -129,7 +138,7 @@ func TestStartStop(t *testing.T) {
 		addMeta(bucket, meta)
 	}
 
-	r := NewRecovery(test.NewTestingLogger(t), Config{CheckInterval: time.Millisecond * 10}, srv, bucket)
+	r := NewRecovery(test.NewTestingLogger(t), Config{CheckInterval: time.Millisecond * 10}, srv, bucket, prometheus.NewRegistry())
 	r.Start()
 	defer r.Stop()
 
@@ -150,6 +159,8 @@ func TestStartStop(t *testing.T) {
 		require.Equal(t, actual[i].Id, expected[i].Id)
 		require.Equal(t, actual[i].Shard, expected[i].Shard)
 	}
+
+	assert.Equal(t, 3.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("success")))
 }
 
 func addMeta(bucket *memory.InMemBucket, meta *metastorev1.BlockMeta) {

@@ -2342,7 +2342,6 @@ func TestPush_LabelRewrites(t *testing.T) {
 func TestDistributor_shouldSample(t *testing.T) {
 	tests := []struct {
 		name           string
-		tenantID       string
 		groups         []validation.UsageGroupMatchName
 		samplingConfig *sampling.Config
 		expected       bool
@@ -2350,14 +2349,12 @@ func TestDistributor_shouldSample(t *testing.T) {
 	}{
 		{
 			name:     "no sampling config - should accept",
-			tenantID: "test-tenant",
 			groups:   []validation.UsageGroupMatchName{},
 			expected: true,
 		},
 		{
-			name:     "no matching groups - should accept",
-			tenantID: "test-tenant",
-			groups:   []validation.UsageGroupMatchName{{ConfiguredName: "group1", ResolvedName: "group1"}},
+			name:   "no matching groups - should accept",
+			groups: []validation.UsageGroupMatchName{{ConfiguredName: "group1", ResolvedName: "group1"}},
 			samplingConfig: &sampling.Config{
 				UsageGroups: map[string]sampling.UsageGroupSampling{
 					"group2": {Probability: 0.5},
@@ -2366,9 +2363,8 @@ func TestDistributor_shouldSample(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "matching group with 1.0 probability - should accept",
-			tenantID: "test-tenant",
-			groups:   []validation.UsageGroupMatchName{{ConfiguredName: "group1", ResolvedName: "group1"}},
+			name:   "matching group with 1.0 probability - should accept",
+			groups: []validation.UsageGroupMatchName{{ConfiguredName: "group1", ResolvedName: "group1"}},
 			samplingConfig: &sampling.Config{
 				UsageGroups: map[string]sampling.UsageGroupSampling{
 					"group1": {Probability: 1.0},
@@ -2381,9 +2377,8 @@ func TestDistributor_shouldSample(t *testing.T) {
 			},
 		},
 		{
-			name:     "matching group with dynamic name - should accept",
-			tenantID: "test-tenant",
-			groups:   []validation.UsageGroupMatchName{{ConfiguredName: "configured-name", ResolvedName: "resolved-name"}},
+			name:   "matching group with dynamic name - should accept",
+			groups: []validation.UsageGroupMatchName{{ConfiguredName: "configured-name", ResolvedName: "resolved-name"}},
 			samplingConfig: &sampling.Config{
 				UsageGroups: map[string]sampling.UsageGroupSampling{
 					"configured-name": {Probability: 1.0},
@@ -2396,9 +2391,8 @@ func TestDistributor_shouldSample(t *testing.T) {
 			},
 		},
 		{
-			name:     "matching group with 0.0 probability - should reject",
-			tenantID: "test-tenant",
-			groups:   []validation.UsageGroupMatchName{{ConfiguredName: "group1", ResolvedName: "group1"}},
+			name:   "matching group with 0.0 probability - should reject",
+			groups: []validation.UsageGroupMatchName{{ConfiguredName: "group1", ResolvedName: "group1"}},
 			samplingConfig: &sampling.Config{
 				UsageGroups: map[string]sampling.UsageGroupSampling{
 					"group1": {Probability: 0.0},
@@ -2411,8 +2405,7 @@ func TestDistributor_shouldSample(t *testing.T) {
 			},
 		},
 		{
-			name:     "multiple matching groups - should use minimum probability",
-			tenantID: "test-tenant",
+			name: "multiple matching groups - should use minimum probability",
 			groups: []validation.UsageGroupMatchName{
 				{ConfiguredName: "group1", ResolvedName: "group1"},
 				{ConfiguredName: "group2", ResolvedName: "group2"},
@@ -2430,8 +2423,7 @@ func TestDistributor_shouldSample(t *testing.T) {
 			},
 		},
 		{
-			name:     "multiple matching groups - should prioritize specific group",
-			tenantID: "test-tenant",
+			name: "multiple matching groups - should prioritize specific group",
 			groups: []validation.UsageGroupMatchName{
 				{ConfiguredName: "${labels.service_name}", ResolvedName: "test_service"},
 				{ConfiguredName: "test_service", ResolvedName: "test_service"},
@@ -2439,18 +2431,17 @@ func TestDistributor_shouldSample(t *testing.T) {
 			samplingConfig: &sampling.Config{
 				UsageGroups: map[string]sampling.UsageGroupSampling{
 					"${labels.service_name}": {Probability: 1.0},
-					"test_service":           {Probability: 1.0},
+					"test_service":           {Probability: 0.0},
 				},
 			},
-			expected: true,
+			expected: false,
 			expectedMatch: &sampling.Source{
 				UsageGroup:  "test_service",
-				Probability: 1.0,
+				Probability: 0.0,
 			},
 		},
 		{
-			name:     "multiple matching groups - should prioritize specific group (reversed order)",
-			tenantID: "test-tenant",
+			name: "multiple matching groups - should prioritize specific group (reversed order)",
 			groups: []validation.UsageGroupMatchName{
 				{ConfiguredName: "test_service", ResolvedName: "test_service"},
 				{ConfiguredName: "${labels.service_name}", ResolvedName: "test_service"},
@@ -2458,13 +2449,30 @@ func TestDistributor_shouldSample(t *testing.T) {
 			samplingConfig: &sampling.Config{
 				UsageGroups: map[string]sampling.UsageGroupSampling{
 					"${labels.service_name}": {Probability: 1.0},
-					"test_service":           {Probability: 1.0},
+					"test_service":           {Probability: 0.0},
 				},
 			},
-			expected: true,
+			expected: false,
 			expectedMatch: &sampling.Source{
 				UsageGroup:  "test_service",
-				Probability: 1.0,
+				Probability: 0.0,
+			},
+		},
+		{
+			name: "single usage group, multiple sampling rules - should prioritize specific rule",
+			groups: []validation.UsageGroupMatchName{
+				{ConfiguredName: "${labels.service_name}", ResolvedName: "test_service"},
+			},
+			samplingConfig: &sampling.Config{
+				UsageGroups: map[string]sampling.UsageGroupSampling{
+					"${labels.service_name}": {Probability: 1.0},
+					"test_service":           {Probability: 0.0},
+				},
+			},
+			expected: false,
+			expectedMatch: &sampling.Source{
+				UsageGroup:  "test_service",
+				Probability: 0.0,
 			},
 		},
 	}
@@ -2474,13 +2482,13 @@ func TestDistributor_shouldSample(t *testing.T) {
 			overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				l := validation.MockDefaultLimits()
 				l.DistributorSampling = tt.samplingConfig
-				tenantLimits[tt.tenantID] = l
+				tenantLimits["test-tenant"] = l
 			})
 			d := &Distributor{
 				limits: overrides,
 			}
 
-			sample, match := d.shouldSample(tt.tenantID, tt.groups)
+			sample, match := d.shouldSample("test-tenant", tt.groups)
 			assert.Equal(t, tt.expected, sample)
 			assert.Equal(t, tt.expectedMatch, match)
 		})
@@ -2491,30 +2499,39 @@ func TestDistributor_shouldSample_Probability(t *testing.T) {
 	tests := []struct {
 		name        string
 		probability float64
+		usageGroups []validation.UsageGroupMatchName
 	}{
 		{
 			name:        "30% sampling rate",
 			probability: 0.3,
+			usageGroups: []validation.UsageGroupMatchName{{ConfiguredName: "${labels.service_name}", ResolvedName: "test-service-1"}},
 		},
 		{
 			name:        "70% sampling rate",
 			probability: 0.7,
+			usageGroups: []validation.UsageGroupMatchName{{ConfiguredName: "${labels.service_name}", ResolvedName: "test-service-1"}},
 		},
 		{
 			name:        "10% sampling rate",
 			probability: 0.1,
+			usageGroups: []validation.UsageGroupMatchName{{ConfiguredName: "${labels.service_name}", ResolvedName: "test-service-1"}},
+		},
+		{
+			name:        "0% sampling rate for the baseline group",
+			probability: 0.0,
+			usageGroups: []validation.UsageGroupMatchName{{ConfiguredName: "${labels.service_name}", ResolvedName: "test-service-2"}},
 		},
 	}
 
 	const iterations = 10000
 	tenantID := "test-tenant"
-	groups := []validation.UsageGroupMatchName{{ConfiguredName: "test-group", ResolvedName: "test-group"}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			samplingConfig := &sampling.Config{
 				UsageGroups: map[string]sampling.UsageGroupSampling{
-					"test-group": {Probability: tt.probability},
+					"${labels.service_name}": {Probability: 0.0}, // we drop all profiles by default
+					"test-service-1":         {Probability: tt.probability},
 				},
 			}
 
@@ -2529,7 +2546,7 @@ func TestDistributor_shouldSample_Probability(t *testing.T) {
 
 			accepted := 0
 			for i := 0; i < iterations; i++ {
-				if s, _ := d.shouldSample(tenantID, groups); s {
+				if s, _ := d.shouldSample(tenantID, tt.usageGroups); s {
 					accepted++
 				}
 			}

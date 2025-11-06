@@ -10,15 +10,24 @@ module.exports = merge(common, {
   devServer: {
     port: 4041,
     historyApiFallback: true,
-    proxy: {
-      '/pyroscope': 'http://localhost:4040',
-      '/querier.v1.QuerierService': 'http://localhost:4040',
-      '/assets/grafana/*': {
+    proxy: [
+      {
+        context: ['/pyroscope'],
+        target: 'http://localhost:4040',
+        changeOrigin: true,
+      },
+      {
+        context: ['/querier.v1.QuerierService'],
+        target: 'http://localhost:4040',
+        changeOrigin: true,
+      },
+      {
+        context: ['/assets/grafana'],
         target: 'http://localhost:4041',
         pathRewrite: { '^/assets': '' },
         logLevel: 'debug',
       },
-    },
+    ],
   },
   optimization: {
     runtimeChunk: 'single',

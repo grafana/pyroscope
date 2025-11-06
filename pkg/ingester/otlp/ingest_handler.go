@@ -1,14 +1,17 @@
 package otlp
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/go-kit/log"
@@ -45,11 +48,11 @@ type PushService interface {
 	PushBatch(ctx context.Context, req *distirbutormodel.PushRequest) error
 }
 
-func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, me bool) Handler {
+func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, multitenancyEnabled bool) Handler {
 	h := &ingestHandler{
 		svc:                 svc,
 		log:                 l,
-		multitenancyEnabled: me,
+		multitenancyEnabled: multitenancyEnabled,
 	}
 
 	grpcServer := newGrpcServer(cfg)
@@ -61,10 +64,14 @@ func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, me b
 			return
 		}
 
-		// Handle HTTP requests (if we want to support HTTP/Protobuf in future)
-		//if r.URL.Path == "/v1/profiles" {}
+		// Handle HTTP/JSON and HTTP/Protobuf requests
+		contentType := r.Header.Get("Content-Type")
+		if contentType == "application/json" || contentType == "application/x-protobuf" || contentType == "application/protobuf" {
+			h.handleHTTPRequest(w, r)
+			return
+		}
 
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, fmt.Sprintf("Unsupported Content-Type: %s", contentType), http.StatusUnsupportedMediaType)
 	})
 
 	return h
@@ -102,19 +109,150 @@ func (h *ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
 }
 
-func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
-	// TODO: @petethepig This logic is copied from util.AuthenticateUser and should be refactored into a common function
-	// Extracts user ID from the request metadata and returns and injects the user ID in the context
+// extractTenantIDFromHTTPRequest extracts the tenant ID from HTTP request headers.
+// If multitenancy is disabled, it injects the default tenant ID.
+// Returns a context with the tenant ID injected.
+func (h *ingestHandler) extractTenantIDFromHTTPRequest(r *http.Request) (context.Context, error) {
 	if !h.multitenancyEnabled {
-		ctx = user.InjectOrgID(ctx, tenant.DefaultTenantID)
+		return user.InjectOrgID(r.Context(), tenant.DefaultTenantID), nil
+	}
+
+	_, ctx, err := user.ExtractOrgIDFromHTTPRequest(r)
+	if err != nil {
+		return nil, err
+	}
+	return ctx, nil
+}
+
+// extractTenantIDFromGRPCRequest extracts the tenant ID from a gRPC request context.
+// If multitenancy is disabled, it injects the default tenant ID.
+// Returns a context with the tenant ID injected.
+func (h *ingestHandler) extractTenantIDFromGRPCRequest(ctx context.Context) (context.Context, error) {
+	// TODO: ideally should be merged with function above
+	if !h.multitenancyEnabled {
+		return user.InjectOrgID(ctx, tenant.DefaultTenantID), nil
+	}
+
+	_, ctx, err := user.ExtractFromGRPCRequest(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return ctx, nil
+}
+
+func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	ctx, err := h.extractTenantIDFromHTTPRequest(r)
+	if err != nil {
+		level.Error(h.log).Log("msg", "failed to extract tenant ID from HTTP request", "err", err)
+		http.Error(w, "Failed to extract tenant ID from HTTP request", http.StatusUnauthorized)
+		return
+	}
+
+	// Read the request body - we need to read it all for protobuf unmarshaling
+	// Note: Protobuf wire format requires reading the entire message to determine field boundaries
+	var body []byte
+
+	// Check if the body is gzip-encoded
+	if strings.EqualFold(r.Header.Get("Content-Encoding"), "gzip") {
+		gzipReader, gzipErr := gzip.NewReader(r.Body)
+		if gzipErr != nil {
+			level.Error(h.log).Log("msg", "failed to create gzip reader", "err", gzipErr)
+			http.Error(w, "Failed to read request body", http.StatusBadRequest)
+			return
+		}
+		defer gzipReader.Close()
+
+		var readErr error
+		body, readErr = io.ReadAll(gzipReader)
+		if readErr != nil {
+			level.Error(h.log).Log("msg", "failed to read gzip-compressed request body", "err", readErr)
+			http.Error(w, "Failed to read request body", http.StatusBadRequest)
+			return
+		}
 	} else {
-		var err error
-		_, ctx, err = user.ExtractFromGRPCRequest(ctx)
-		if err != nil {
-			level.Error(h.log).Log("msg", "failed to extract tenant ID from gRPC request", "err", err)
-			return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to extract tenant ID from GRPC request: %w", err)
+		var readErr error
+		body, readErr = io.ReadAll(r.Body)
+		if readErr != nil {
+			level.Error(h.log).Log("msg", "failed to read request body", "err", readErr)
+			http.Error(w, "Failed to read request body", http.StatusBadRequest)
+			return
 		}
 	}
+
+	// Unmarshal the protobuf request
+	req := &pprofileotlp.ExportProfilesServiceRequest{}
+
+	if r.Header.Get("Content-Type") == "application/json" {
+		if err := protojson.Unmarshal(body, req); err != nil {
+			level.Error(h.log).Log("msg", "failed to unmarshal JSON request", "err", err)
+			http.Error(w, "Failed to parse JSON request", http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := proto.Unmarshal(body, req); err != nil {
+			level.Error(h.log).Log("msg", "failed to unmarshal protobuf request", "err", err)
+			http.Error(w, "Failed to parse protobuf request", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Process the request using the existing export method
+	resp, err := h.export(ctx, req)
+	if err != nil {
+		level.Error(h.log).Log("msg", "failed to process profiles", "err", err)
+		// Convert gRPC status to HTTP status
+		st, ok := status.FromError(err)
+		if ok {
+			switch st.Code() {
+			case codes.InvalidArgument:
+				http.Error(w, st.Message(), http.StatusBadRequest)
+			case codes.Unauthenticated:
+				http.Error(w, st.Message(), http.StatusUnauthorized)
+			case codes.PermissionDenied:
+				http.Error(w, st.Message(), http.StatusForbidden)
+			default:
+				http.Error(w, st.Message(), http.StatusInternalServerError)
+			}
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Marshal the response
+	respBytes, err := proto.Marshal(resp)
+	if err != nil {
+		level.Error(h.log).Log("msg", "failed to marshal response", "err", err)
+		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		return
+	}
+
+	// Write the response
+	w.Header().Set("Content-Type", "application/x-protobuf")
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(respBytes); err != nil {
+		level.Error(h.log).Log("msg", "failed to write response", "err", err)
+	}
+}
+
+// Export is the gRPC handler for the ProfilesService Export RPC.
+// Extracts tenant ID from gRPC request metadata before processing.
+func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
+	// Extract tenant ID from gRPC request
+	ctx, err := h.extractTenantIDFromGRPCRequest(ctx)
+	if err != nil {
+		level.Error(h.log).Log("msg", "failed to extract tenant ID from gRPC request", "err", err)
+		return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to extract tenant ID from gRPC request: %w", err)
+	}
+
+	return h.export(ctx, er)
+}
+
+// export is the common implementation for processing OTLP profile export requests.
+// The context must already have the tenant ID injected before calling this method.
+func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
 
 	dc := er.Dictionary
 	if dc == nil {

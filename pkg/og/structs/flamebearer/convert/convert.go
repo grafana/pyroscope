@@ -197,6 +197,10 @@ func getProfileType(name string, sampleType int, p *profilev1.Profile) (*typesv1
 		return nil, fmt.Errorf("invalid sampleID: %d", sampleType)
 	}
 
+	if p.PeriodType == nil {
+		return nil, fmt.Errorf("PeriodType is nil")
+	}
+
 	invalidStr := func(i int) bool {
 		return i < 0 || i > len(p.StringTable)
 	}

@@ -175,7 +175,7 @@ func Test_validateUpsert(t *testing.T) {
 			WantErr: `matcher "" is invalid: unknown position: parse error: unexpected end of input`,
 		},
 		{
-			Name: "invalid_group_by",
+			Name: "invalid_group_by_empty",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "profiles_recorded_my_metric",
 				Matchers:   []string{},
@@ -187,7 +187,43 @@ func Test_validateUpsert(t *testing.T) {
 			WantErr: `group_by label "" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
 		},
 		{
-			Name: "invalid_external_label",
+			Name: "invalid_group_by_with_dot",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName: "profiles_recorded_my_metric",
+				Matchers:   []string{},
+				GroupBy: []string{
+					"service.name",
+				},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: `group_by label "service.name" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
+		},
+		{
+			Name: "invalid_group_by_with_utf8",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName: "profiles_recorded_my_metric",
+				Matchers:   []string{},
+				GroupBy: []string{
+					"世界",
+				},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: `group_by label "世界" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
+		},
+		{
+			Name: "invalid_group_by_starts_with_number",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName: "profiles_recorded_my_metric",
+				Matchers:   []string{},
+				GroupBy: []string{
+					"123invalid",
+				},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: `group_by label "123invalid" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
+		},
+		{
+			Name: "invalid_external_label_utf8",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "profiles_recorded_my_metric",
 				Matchers:   []string{},
@@ -199,7 +235,44 @@ func Test_validateUpsert(t *testing.T) {
 					},
 				},
 			},
-			WantErr: "external_labels name \"\\xc0\\xaf\" must be a valid utf-8 string\nexternal_labels value \"\\xc0\\xaf\" must be a valid utf-8 string",
+			WantErr: `external_labels name "\xc0\xaf" must match ^[a-zA-Z_][a-zA-Z0-9_]*$
+external_labels value "\xc0\xaf" must be a valid utf-8 string`,
+		},
+		{
+			Name: "invalid_external_label_with_dot",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName: "profiles_recorded_my_metric",
+				Matchers:   []string{},
+				GroupBy:    []string{},
+				ExternalLabels: []*typesv1.LabelPair{
+					{Name: "service.name", Value: "foo"},
+				},
+			},
+			WantErr: `external_labels name "service.name" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
+		},
+		{
+			Name: "invalid_external_label_with_utf8_name",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName: "profiles_recorded_my_metric",
+				Matchers:   []string{},
+				GroupBy:    []string{},
+				ExternalLabels: []*typesv1.LabelPair{
+					{Name: "世界", Value: "value"},
+				},
+			},
+			WantErr: `external_labels name "世界" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
+		},
+		{
+			Name: "invalid_external_label_starts_with_number",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName: "profiles_recorded_my_metric",
+				Matchers:   []string{},
+				GroupBy:    []string{},
+				ExternalLabels: []*typesv1.LabelPair{
+					{Name: "123invalid", Value: "value"},
+				},
+			},
+			WantErr: `external_labels name "123invalid" must match ^[a-zA-Z_][a-zA-Z0-9_]*$`,
 		},
 		{
 			Name: "invalid_generation",

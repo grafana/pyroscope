@@ -1,0 +1,63 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices"],
+  "timezone": "UTC",
+  "schedule": ["before 4am on monday"],
+  "prConcurrentLimit": 10,
+  "ignoreDeps": [],
+  "separateMajorMinor": true,
+  "separateMultipleMajor": true,
+  "packageRules": [
+    {
+      "description": "Group all Go module updates (main project)",
+      "matchManagers": ["gomod"],
+      "matchFileNames": ["go.mod", "api/go.mod", "lidia/go.mod"],
+      "groupName": "gomod",
+      "schedule": ["before 4am on monday"]
+    },
+    {
+      "description": "Group all npm updates",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["package.json"],
+      "groupName": "npm",
+      "schedule": ["before 4am on monday"]
+    },
+    {
+      "description": "Group all Docker updates",
+      "matchManagers": ["dockerfile"],
+      "matchFileNames": ["cmd/pyroscope/**"],
+      "groupName": "docker",
+      "schedule": ["before 4am on the first day of the month"]
+    },
+    {
+      "description": "Group all GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "schedule": ["before 4am on monday"]
+    },
+    {
+      "description": "Go modules examples - only pyroscope-go package",
+      "matchManagers": ["gomod"],
+      "matchFileNames": [
+        "examples/golang-pgo/go.mod",
+        "examples/language-sdk-instrumentation/golang-push/rideshare-alloy/go.mod",
+        "examples/language-sdk-instrumentation/golang-push/rideshare-k6/go.mod",
+        "examples/language-sdk-instrumentation/golang-push/rideshare/go.mod",
+        "examples/language-sdk-instrumentation/golang-push/simple/go.mod",
+        "examples/tracing/golang-push/go.mod"
+      ],
+      "allowedVersions": "/.*/",
+      "matchPackageNames": ["github.com/grafana/pyroscope-go"],
+      "groupName": "examples-gomod",
+      "schedule": ["before 4am on monday"]
+    },
+    {
+      "description": "Automatically merge patch updates",
+      "matchUpdateTypes": ["patch"],
+      "automerge": false,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "platformAutomerge": true
+    }
+  ]
+}

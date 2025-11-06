@@ -8,8 +8,6 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/grafana/pyroscope/pkg/og/util/arenahelper"
-
 	"github.com/grafana/pyroscope/pkg/og/structs/merge"
 )
 
@@ -50,8 +48,7 @@ const semicolon = byte(';')
 
 type Tree struct {
 	sync.RWMutex
-	root  *treeNode
-	arena arenahelper.ArenaWrapper
+	root *treeNode
 }
 
 func New() *Tree {

@@ -94,7 +94,7 @@ To opt out, refer to [Disable the anonymous usage statistics reporting](../confi
     docker run --rm --name=grafana \
       --network=pyroscope-demo \
       -p 3000:3000 \
-      -e "GF_INSTALL_PLUGINS=grafana-pyroscope-app"\
+      -e "GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app"\
       -e "GF_AUTH_ANONYMOUS_ENABLED=true" \
       -e "GF_AUTH_ANONYMOUS_ORG_ROLE=Admin" \
       -e "GF_AUTH_DISABLE_LOGIN_FORM=true" \

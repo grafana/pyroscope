@@ -64,12 +64,25 @@ func newRecordingRuleWithBuilder(rule *settingsv1.RecordingRule, sb *labels.Scra
 		}
 	}
 
+	// validate group_by label names for Prometheus compatibility
+	for _, labelName := range rule.GroupBy {
+		name := prometheusmodel.LabelName(labelName)
+		if !prometheusmodel.LegacyValidation.IsValidLabelName(string(name)) {
+			return nil, fmt.Errorf("group_by label %q must match %s", labelName, prometheusmodel.LabelNameRE.String())
+		}
+	}
+
 	sb.Reset()
-	// ensure no __name__ or profiles_rule_id labels already exist
 	for _, lbl := range rule.ExternalLabels {
+		// ensure no __name__ or profiles_rule_id labels already exist
 		if uniqueLabels[lbl.Name] {
 			// skip
 			continue
+		}
+		// validate external label names for Prometheus compatibility
+		name := prometheusmodel.LabelName(lbl.Name)
+		if !prometheusmodel.LegacyValidation.IsValidLabelName(string(name)) {
+			return nil, fmt.Errorf("external_labels name %q must match %s", lbl.Name, prometheusmodel.LabelNameRE.String())
 		}
 		sb.Add(lbl.Name, lbl.Value)
 	}
@@ -102,7 +115,7 @@ func parseMatchers(matchers []string) ([]*labels.Matcher, error) {
 }
 
 func ValidateMetricName(name string) error {
-	if !prometheusmodel.UTF8Validation.IsValidMetricName(name) {
+	if !prometheusmodel.LegacyValidation.IsValidMetricName(name) {
 		return fmt.Errorf("invalid metric name: %s", name)
 	}
 	if !strings.HasPrefix(name, metricNamePrefix) {

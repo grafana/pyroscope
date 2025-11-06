@@ -24,6 +24,8 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/prometheus/common/expfmt"
 
@@ -242,7 +244,7 @@ func (p *PyroscopeTest) NewRequestBuilder(t *testing.T) *RequestBuilder {
 }
 
 func (p *PyroscopeTest) TempAppName() string {
-	return fmt.Sprintf("pprof.integration.%d",
+	return fmt.Sprintf("pprof-integration-%d",
 		rand.Uint64())
 }
 
@@ -356,6 +358,18 @@ func (b *RequestBuilder) IngestJFRRequestBody(jfr []byte, labels []byte) *http.R
 	req, err := http.NewRequest("POST", url, bytes.NewReader(bs))
 	require.NoError(b.t, err)
 	req.Header.Set("Content-Type", ct)
+
+	return req
+}
+
+func (b *RequestBuilder) IngestSpeedscopeRequest(speedscopePath string) *http.Request {
+	speedscopeData, err := os.ReadFile(speedscopePath)
+	require.NoError(b.t, err)
+
+	url := b.url + "/ingest?name=" + b.AppName + "&format=speedscope"
+	req, err := http.NewRequest("POST", url, bytes.NewReader(speedscopeData))
+	require.NoError(b.t, err)
+	req.Header.Set("Content-Type", "application/json")
 
 	return req
 }
@@ -507,4 +521,28 @@ func (b *RequestBuilder) OtelPushClient() profilesv1.ProfilesServiceClient {
 	require.NoError(b.t, err)
 
 	return profilesv1.NewProfilesServiceClient(conn)
+}
+
+// OtelPushHTTPProtobuf creates an HTTP request for OTLP ingestion with binary/protobuf content type
+func (b *RequestBuilder) OtelPushHTTPProtobuf(profile *profilesv1.ExportProfilesServiceRequest) *http.Request {
+	profileBytes, err := proto.Marshal(profile)
+	require.NoError(b.t, err)
+
+	url := b.url + "/v1development/profiles"
+	req, err := http.NewRequest("POST", url, bytes.NewReader(profileBytes))
+	require.NoError(b.t, err)
+	req.Header.Set("Content-Type", "application/x-protobuf")
+	return req
+}
+
+// OtelPushHTTPJSON creates an HTTP request for OTLP ingestion with JSON content type
+func (b *RequestBuilder) OtelPushHTTPJSON(profile *profilesv1.ExportProfilesServiceRequest) *http.Request {
+	profileBytes, err := protojson.Marshal(profile)
+	require.NoError(b.t, err)
+
+	url := b.url + "/v1development/profiles"
+	req, err := http.NewRequest("POST", url, bytes.NewReader(profileBytes))
+	require.NoError(b.t, err)
+	req.Header.Set("Content-Type", "application/json")
+	return req
 }

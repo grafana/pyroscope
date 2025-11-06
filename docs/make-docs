@@ -8,6 +8,14 @@
 # [Semantic versioning](https://semver.org/) is used to help the reader identify the significance of changes.
 # Changes are relevant to this script and the support docs.mk GNU Make interface.
 #
+# ## 10.0.0 (2025-10-13)
+#
+# ### Changed
+#
+# - Hugo no longer supports the `--debug` option, use `--logLevel debug` instead.
+#
+#   Thank you to @karlskewes for their contribution!
+#
 # ## 9.0.0 (2025-04-05)
 #
 # ### Removed

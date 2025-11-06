@@ -55,7 +55,6 @@ import (
 	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
-	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
@@ -355,7 +354,7 @@ type Pyroscope struct {
 	RuntimeConfig  *runtimeconfig.Manager
 	Overrides      *validation.Overrides
 	Compactor      *compactor.MultitenantCompactor
-	admin          *operations.Admin
+	admin          api.AdminService
 	versions       *apiversion.Service
 	serviceManager *services.Manager
 
@@ -618,8 +617,17 @@ func (f *Pyroscope) Run() error {
 		}
 	}
 
-	if err = f.API.RegisterCatchAll(); err != nil {
-		return err
+	// only query-frontend, query-backend, querier and target all should register the UI
+	if slices.Contains(f.Cfg.Target, All) ||
+		slices.Contains(f.Cfg.Target, QueryFrontend) ||
+		slices.Contains(f.Cfg.Target, QueryBackend) ||
+		slices.Contains(f.Cfg.Target, Querier) {
+
+		if err = f.API.RegisterCatchAll(); err != nil {
+			return err
+		}
+	} else {
+		f.API.RegisterRedirectToAdmin()
 	}
 
 	serviceFailed := func(service services.Service) {

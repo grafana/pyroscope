@@ -177,11 +177,14 @@ func (o *SampleObserver) initSeriesState(row block.ProfileEntry) {
 	}
 }
 
-// ObserveSymbols will skip observation if no rule evaluated true for matchers.
+// ObserveSymbols will observe symbols as soon as there's a function rule targeting this dataset.
+// Symbols are observed only once, and the current rule may have symbols that a future matching rule needs.
+// This is suboptimal as we may read more symbols than needed. However, the current interface does not let us do better,
+// and a bigger refactor may be needed to address this issue.
 // At the end of this process we'll have a map stacktraceId -> matching rule, so later we can get stacktraces from the
 // row and quickly look up for matching rules
 func (o *SampleObserver) ObserveSymbols(strings []string, functions []schemav1.InMemoryFunction, locations []schemav1.InMemoryLocation, stacktraceValues [][]int32, stacktraceIds []uint32) {
-	if !o.state.recordSymbols {
+	if len(o.state.targetStrings) == 0 {
 		return
 	}
 

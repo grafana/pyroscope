@@ -42,6 +42,10 @@ type mockServer struct {
 	address string
 }
 
+func (m *mockServer) GetTenants(ctx context.Context, request *metastorev1.GetTenantsRequest) (*metastorev1.GetTenantsResponse, error) {
+	return m.tenant.GetTenants(ctx, request)
+}
+
 func (m *mockServer) GetTenant(ctx context.Context, request *metastorev1.GetTenantRequest) (*metastorev1.GetTenantResponse, error) {
 	return m.tenant.GetTenant(ctx, request)
 }

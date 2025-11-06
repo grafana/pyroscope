@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html class="h-100" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Bucket Blocks Explorer (v2): TSDB Index</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+
+    <style>
+        .info-card {
+            margin-bottom: 20px;
+        }
+        .label-value-set {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #495057;
+            border-radius: 4px;
+        }
+        .label-name-header {
+            font-weight: 600;
+            color: #0dcaf0;
+            margin-bottom: 5px;
+        }
+        .value-list {
+            margin-left: 20px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            color: #adb5bd;
+        }
+        .symbol-list {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            color: #adb5bd;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .count-badge {
+            background-color: #198754;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column h-100">
+<main class="flex-shrink-0">
+    <div class="container">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h3>Bucket Blocks Explorer (v2): TSDB Index</h3>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/ops/object-store/tenants">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <p>
+                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to dataset</a>
+            </p>
+
+            <div class="card bg-dark border-secondary info-card">
+                <div class="card-header">
+                    <h5 class="mb-0">Dataset Information</h5>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>Dataset Name: {{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}<em>(empty)</em>{{ end }}</li>
+                        <li>Dataset Tenant: {{ .Dataset.Tenant }}</li>
+                        <li>Block ID: {{ .BlockID }}</li>
+                        <li>Shard: {{ .Shard }}</li>
+                    </ul>
+                </div>
+            </div>
+
+            {{ if .TSDBIndex }}
+                <div class="card bg-dark border-secondary info-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Index Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Time Range:</strong></p>
+                                <ul>
+                                    <li>From: {{ .TSDBIndex.From }}</li>
+                                    <li>Through: {{ .TSDBIndex.Through }}</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Statistics:</strong></p>
+                                <ul>
+                                    <li>Number of Series: {{ len .TSDBIndex.Series }}</li>
+                                    <li>Number of Labels: {{ len .TSDBIndex.LabelValueSets }}</li>
+                                    <li>Number of Symbols: {{ len .TSDBIndex.Symbols }}</li>
+                                    <li>Checksum: {{ printf "%08x" .TSDBIndex.Checksum }}</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card bg-dark border-secondary info-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Series</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ if .TSDBIndex.Series }}
+                            <div class="table-responsive">
+                                <table class="table table-striped table-sm table-dark">
+                                    <thead>
+                                        <tr>
+                                            <th>Series Index</th>
+                                            <th>Series Ref</th>
+                                            <th>Labels</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{ range .TSDBIndex.Series }}
+                                        <tr>
+                                            <td><code>{{ .SeriesIndex }}</code></td>
+                                            <td><code class="text-muted small">{{ .SeriesRef }}</code></td>
+                                            <td>
+                                                {{ if .Labels }}
+                                                    {{ range $i, $label := .Labels }}
+                                                        {{ if $i }}, {{ end }}<span class="font-monospace small">{{ $label.Key }}={{ $label.Value }}</span>
+                                                    {{ end }}
+                                                {{ else }}
+                                                    <span class="text-muted">-</span>
+                                                {{ end }}
+                                            </td>
+                                        </tr>
+                                        {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {{ else }}
+                            <div class="alert alert-info" role="alert">
+                                No series found.
+                            </div>
+                        {{ end }}
+                    </div>
+                </div>
+
+                <div class="card bg-dark border-secondary info-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Labels</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ if .TSDBIndex.LabelValueSets }}
+                            {{ range .TSDBIndex.LabelValueSets }}
+                                <div class="label-value-set">
+                                    <div class="label-name-header">
+                                        {{ .LabelName }}
+                                        <span class="count-badge">{{ len .LabelValues }} values</span>
+                                    </div>
+                                    <div class="value-list">
+                                        {{ range .LabelValues }}
+                                            <div>{{ . }}</div>
+                                        {{ end }}
+                                    </div>
+                                </div>
+                            {{ end }}
+                        {{ else }}
+                            <div class="alert alert-info" role="alert">
+                                No labels found.
+                            </div>
+                        {{ end }}
+                    </div>
+                </div>
+
+                <div class="card bg-dark border-secondary info-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Symbol Table</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ if .TSDBIndex.Symbols }}
+                            <div class="symbol-list">
+                                {{ range .TSDBIndex.Symbols }}
+                                    <div>{{ . }}</div>
+                                {{ end }}
+                            </div>
+                        {{ else }}
+                            <div class="alert alert-info" role="alert">
+                                No symbols found.
+                            </div>
+                        {{ end }}
+                    </div>
+                </div>
+            {{ else }}
+                <div class="alert alert-warning" role="alert">
+                    No index information available.
+                </div>
+            {{ end }}
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3 bg-dark">
+    <div class="container">
+        <small class="text-white-50">Status @ {{ .Now }}</small>
+    </div>
+</footer>
+</body>
+</html>

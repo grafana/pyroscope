@@ -676,6 +676,7 @@ func (sw *segmentsWriter) storeMetadata(ctx context.Context, meta *metastorev1.B
 	}()
 
 	if err = s.sw.storeMetadataDLQ(ctx, meta); err == nil {
+		level.Debug(s.logger).Log("msg", "successfully wrote block metadata to DLQ", "block_id", meta.Id)
 		return nil
 	}
 

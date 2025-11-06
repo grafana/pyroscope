@@ -7,15 +7,27 @@ on:
       - "release-[0-9]+.[0-9]+"
 
 jobs:
-  call-update-helm-repo:
+  call-update-helm-repo-pyroscope:
+    uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@191acd56a41783452d6e583fcad195de27959044
     permissions:
       contents: "write"
       id-token: "write"
       packages: "write"
-    uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@b672274878f23b6817e406922775fbfee6352a1a
     with:
       charts_dir: operations/pyroscope/helm/
       cr_configfile: operations/pyroscope/helm/cr.yaml
       ct_configfile: operations/pyroscope/helm/ct.yaml
+    secrets:
+      vault_repo_secret_name: grafana-pyroscope-releases
+  call-update-helm-repo-pyroscope-monitoring:
+    uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@191acd56a41783452d6e583fcad195de27959044
+    permissions:
+      contents: "write"
+      id-token: "write"
+      packages: "write"
+    with:
+      charts_dir: operations/pyroscope/helm/
+      cr_configfile: operations/monitoring/helm/cr.yaml
+      ct_configfile: operations/monitoring/helm/ct.yaml
     secrets:
       vault_repo_secret_name: grafana-pyroscope-releases

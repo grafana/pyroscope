@@ -30,6 +30,11 @@ func (q *QueryFrontend) SelectMergeSpanProfile(
 		return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{}), nil
 	}
 
+	_, err = phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	maxNodes, err := validation.ValidateMaxNodes(q.limits, tenantIDs, c.Msg.GetMaxNodes())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

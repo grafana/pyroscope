@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/clientpool"
+	"github.com/grafana/pyroscope/pkg/featureflags"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
@@ -170,6 +172,206 @@ func Test_QueryLabelNames(t *testing.T) {
 	require.Equal(t, []string{"bar", "buzz", "foo"}, out.Msg.Names)
 }
 
+func Test_filterLabelNames(t *testing.T) {
+	tests := []struct {
+		name       string
+		labelNames []string
+		want       []string
+	}{
+		{
+			name:       "empty slice",
+			labelNames: []string{},
+			want:       []string{},
+		},
+		{
+			name:       "nil slice",
+			labelNames: nil,
+			want:       []string{},
+		},
+		{
+			name:       "all valid label names",
+			labelNames: []string{"foo", "bar", "service_name", "ServiceName123"},
+			want:       []string{"foo", "bar", "service_name", "ServiceName123"},
+		},
+		{
+			name:       "all invalid label names",
+			labelNames: []string{"123service", "service-name", "service name", "世界"},
+			want:       []string{},
+		},
+		{
+			name:       "mix of valid and invalid label names",
+			labelNames: []string{"foo", "123invalid", "bar", "invalid-name", "buzz", "世界"},
+			want:       []string{"foo", "bar", "buzz"},
+		},
+		{
+			name:       "label names with dots (valid but get sanitized)",
+			labelNames: []string{"service.name", "app.version", "valid_label"},
+			want:       []string{"service.name", "app.version", "valid_label"},
+		},
+		{
+			name:       "single valid label",
+			labelNames: []string{"service"},
+			want:       []string{"service"},
+		},
+		{
+			name:       "single invalid label",
+			labelNames: []string{"123invalid"},
+			want:       []string{},
+		},
+		{
+			name:       "labels with underscores",
+			labelNames: []string{"_", "__a", "__a__", "_service_name_"},
+			want:       []string{"_", "__a", "__a__", "_service_name_"},
+		},
+		{
+			name:       "mixed valid labels with dots and underscores",
+			labelNames: []string{"a.b.c", "a_b_c", "a.b_c.d"},
+			want:       []string{"a.b.c", "a_b_c", "a.b_c.d"},
+		},
+		{
+			name:       "labels starting with dots (valid, dots are sanitized)",
+			labelNames: []string{".abc", "..def", ".g.h.i"},
+			want:       []string{".abc", "..def", ".g.h.i"},
+		},
+		{
+			name:       "labels starting with invalid characters",
+			labelNames: []string{"-abc", "0abc", "123xyz"},
+			want:       []string{},
+		},
+		{
+			name:       "empty string in slice (invalid)",
+			labelNames: []string{"foo", "", "bar"},
+			want:       []string{"foo", "bar"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := filterLabelNames(tt.labelNames)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_QueryLabelNames_WithFiltering(t *testing.T) {
+	req := connect.NewRequest(&typesv1.LabelNamesRequest{})
+
+	tests := []struct {
+		name                string
+		allowUtf8LabelNames bool
+		setCapabilities     bool
+		ingesterLabelNames  map[string][]string
+		expectedLabelNames  []string
+	}{
+		{
+			name:                "UTF8 labels allowed when enabled",
+			allowUtf8LabelNames: true,
+			setCapabilities:     true,
+			ingesterLabelNames: map[string][]string{
+				"1": {"foo", "bar", "世界"},
+				"2": {"foo", "bar", "世界"},
+				"3": {"foo", "bar", "世界"},
+			},
+			// UTF8 labels pass through when UTF8 is enabled
+			expectedLabelNames: []string{"bar", "foo", "世界"},
+		},
+		{
+			name:                "UTF8 labels filtered when disabled",
+			allowUtf8LabelNames: false,
+			setCapabilities:     true,
+			ingesterLabelNames: map[string][]string{
+				"1": {"foo", "bar", "世界"},
+				"2": {"foo", "bar", "世界"},
+				"3": {"foo", "bar", "世界"},
+			},
+			// Only legacy-valid labels pass through (UTF8 filtered out)
+			expectedLabelNames: []string{"bar", "foo"},
+		},
+		{
+			name:                "all labels pass through when UTF8 enabled including invalid ones",
+			allowUtf8LabelNames: true,
+			setCapabilities:     true,
+			ingesterLabelNames: map[string][]string{
+				"1": {"foo", "123invalid"},
+				"2": {"foo", "123invalid"},
+				"3": {"foo", "123invalid"},
+			},
+			// When UTF8 is enabled, NO filtering happens - even invalid labels pass through
+			expectedLabelNames: []string{"123invalid", "foo"},
+		},
+		{
+			name:            "filtering enabled when no capabilities set",
+			setCapabilities: false,
+			ingesterLabelNames: map[string][]string{
+				"1": {"valid_name", "123invalid", "世界"},
+				"2": {"valid_name", "123invalid", "世界"},
+				"3": {"valid_name", "123invalid", "世界"},
+			},
+			// No capabilities means legacy-only mode - UTF8 and invalid labels filtered
+			expectedLabelNames: []string{"valid_name"},
+		},
+		{
+			name:                "all valid legacy labels pass through when filtering enabled",
+			allowUtf8LabelNames: false,
+			setCapabilities:     true,
+			ingesterLabelNames: map[string][]string{
+				"1": {"foo", "bar"},
+				"2": {"bar", "buzz"},
+				"3": {"buzz", "foo"},
+			},
+			expectedLabelNames: []string{"bar", "buzz", "foo"},
+		},
+		{
+			name:                "labels with dots pass through in both modes",
+			allowUtf8LabelNames: false,
+			setCapabilities:     true,
+			ingesterLabelNames: map[string][]string{
+				"1": {"service.name", "app.version"},
+				"2": {"host.name", "service.name"},
+				"3": {"app.version", "host.name"},
+			},
+			// Dots are valid legacy characters (get sanitized to underscores)
+			expectedLabelNames: []string{"app.version", "host.name", "service.name"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			querier, err := New(&NewQuerierParams{
+				Cfg: Config{
+					PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+				},
+				IngestersRing: testhelper.NewMockRing([]ring.InstanceDesc{
+					{Addr: "1"},
+					{Addr: "2"},
+					{Addr: "3"},
+				}, 3),
+				PoolFactory: &poolFactory{f: func(addr string) (client.PoolClient, error) {
+					q := newFakeQuerier()
+					if labelNames, ok := tc.ingesterLabelNames[addr]; ok {
+						q.On("LabelNames", mock.Anything, mock.Anything).Return(
+							connect.NewResponse(&typesv1.LabelNamesResponse{Names: labelNames}), nil)
+					}
+					return q, nil
+				}},
+				Logger: log.NewLogfmtLogger(os.Stdout),
+			})
+			require.NoError(t, err)
+
+			ctx := context.Background()
+			if tc.setCapabilities {
+				ctx = featureflags.WithClientCapabilities(ctx, featureflags.ClientCapabilities{
+					AllowUtf8LabelNames: tc.allowUtf8LabelNames,
+				})
+			}
+
+			out, err := querier.LabelNames(ctx, req)
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedLabelNames, out.Msg.Names)
+		})
+	}
+}
+
 func Test_Series(t *testing.T) {
 	foobarlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "bar")
 	foobuzzlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "buzz")
@@ -191,10 +393,13 @@ func Test_Series(t *testing.T) {
 			q := newFakeQuerier()
 			switch addr {
 			case "1":
+				q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}}), nil)
 				q.On("Series", mock.Anything, mock.Anything).Return(ingesterResponse, nil)
 			case "2":
+				q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}}), nil)
 				q.On("Series", mock.Anything, mock.Anything).Return(ingesterResponse, nil)
 			case "3":
+				q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}}), nil)
 				q.On("Series", mock.Anything, mock.Anything).Return(ingesterResponse, nil)
 			}
 			return q, nil
@@ -209,6 +414,139 @@ func Test_Series(t *testing.T) {
 		{Labels: foobarlabels.Labels()},
 		{Labels: foobuzzlabels.Labels()},
 	}, out.Msg.LabelsSet)
+}
+
+func Test_Series_WithLabelNameFiltering(t *testing.T) {
+	tests := []struct {
+		name                string
+		allowUtf8LabelNames bool
+		setCapabilities     bool
+		requestLabelNames   []string
+		expectedLabelNames  []string
+	}{
+		{
+			name:                "all label names pass through when UTF8 enabled",
+			allowUtf8LabelNames: true,
+			setCapabilities:     true,
+			requestLabelNames:   []string{"valid_name", "123invalid", "invalid-hyphen", "世界"},
+			expectedLabelNames:  []string{"valid_name", "123invalid", "invalid-hyphen", "世界"},
+		},
+		{
+			name:                "invalid label names filtered when UTF8 disabled",
+			allowUtf8LabelNames: false,
+			setCapabilities:     true,
+			requestLabelNames:   []string{"valid_name", "123invalid", "invalid-hyphen", "世界"},
+			expectedLabelNames:  []string{"valid_name"},
+		},
+		{
+			name:                "UTF8 labels filtered when UTF8 disabled",
+			allowUtf8LabelNames: false,
+			setCapabilities:     true,
+			requestLabelNames:   []string{"foo", "bar", "世界", "日本語"},
+			expectedLabelNames:  []string{"foo", "bar"},
+		},
+		{
+			name:               "filtering enabled when no capabilities set",
+			setCapabilities:    false,
+			requestLabelNames:  []string{"foo", "123invalid", "世界"},
+			expectedLabelNames: []string{"foo"},
+		},
+		{
+			name:                "all valid labels pass through",
+			allowUtf8LabelNames: false,
+			setCapabilities:     true,
+			requestLabelNames:   []string{"foo", "bar", "service_name"},
+			expectedLabelNames:  []string{"foo", "bar", "service_name"},
+		},
+		{
+			name:                "labels with dots pass through",
+			allowUtf8LabelNames: false,
+			setCapabilities:     true,
+			requestLabelNames:   []string{"service.name", "app.version"},
+			expectedLabelNames:  []string{"service.name", "app.version"},
+		},
+		{
+			name:                "empty label names with UTF8 disabled queries all labels and filters",
+			allowUtf8LabelNames: false,
+			setCapabilities:     true,
+			requestLabelNames:   []string{},
+			expectedLabelNames:  []string{"bar", "foo"},
+		},
+		{
+			name:                "empty label names with UTF8 enabled returns ingester labels without filtering",
+			allowUtf8LabelNames: true,
+			setCapabilities:     true,
+			requestLabelNames:   []string{},
+			expectedLabelNames:  []string{"日本語", "bar"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ingesterLabels := []string{"日本語", "bar"}
+			var capturedLabelNames []string
+			var capturedMutex sync.Mutex
+
+			querier, err := New(&NewQuerierParams{
+				Cfg: Config{
+					PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+				},
+				IngestersRing: testhelper.NewMockRing([]ring.InstanceDesc{
+					{Addr: "1"},
+					{Addr: "2"},
+					{Addr: "3"},
+				}, 3),
+				PoolFactory: &poolFactory{f: func(addr string) (client.PoolClient, error) {
+					q := newFakeQuerier()
+
+					q.On("Series", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+						req := args.Get(1).(*connect.Request[ingestv1.SeriesRequest])
+						capturedMutex.Lock()
+						defer capturedMutex.Unlock()
+
+						// If no labels passed to ingester series request,
+						// ingester returns all ingester labels
+						if len(req.Msg.LabelNames) == 0 {
+							capturedLabelNames = ingesterLabels
+						} else {
+							capturedLabelNames = req.Msg.LabelNames
+						}
+					}).Return(connect.NewResponse(&ingestv1.SeriesResponse{}), nil)
+
+					if len(tc.requestLabelNames) == 0 {
+						q.On("LabelNames", mock.Anything, mock.Anything).Return(
+							connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar", "世界"}}), nil)
+					}
+
+					return q, nil
+				}},
+				Logger: log.NewLogfmtLogger(os.Stdout),
+			})
+			require.NoError(t, err)
+
+			ctx := context.Background()
+			if tc.setCapabilities {
+				ctx = featureflags.WithClientCapabilities(ctx, featureflags.ClientCapabilities{
+					AllowUtf8LabelNames: tc.allowUtf8LabelNames,
+				})
+			}
+
+			req := connect.NewRequest(&querierv1.SeriesRequest{
+				Matchers:   []string{`{foo="bar"}`},
+				LabelNames: tc.requestLabelNames,
+			})
+
+			_, err = querier.Series(ctx, req)
+			require.NoError(t, err)
+
+			// Verify that the label names were filtered correctly before being sent to ingester
+			capturedMutex.Lock()
+			actualLabelNames := capturedLabelNames
+			capturedMutex.Unlock()
+			require.Equal(t, tc.expectedLabelNames, actualLabelNames,
+				"Expected label names sent to ingester to be %v, but got %v", tc.expectedLabelNames, actualLabelNames)
+		})
+	}
 }
 
 func newBlockMeta(ulids ...string) *connect.Response[ingestv1.BlockMetadataResponse] {

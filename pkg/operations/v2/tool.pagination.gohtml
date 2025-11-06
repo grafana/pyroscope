@@ -1,0 +1,55 @@
+{{/*
+    Required parameters (pass via dict):
+    - BaseURL: string - the base URL without query params (e.g., "?dataset=foo&shard=1")
+    - Page: int - current page number
+    - PageSize: int - items per page
+    - TotalPages: int - total number of pages
+    - HasPrevPage: bool - whether there's a previous page
+    - HasNextPage: bool - whether there's a next page
+*/}}
+
+{{ define "pagination" }}
+    {{ $baseURL := .BaseURL }}
+    {{ $currentPage := .Page }}
+    {{ $pageSize := .PageSize }}
+    {{ $totalPages := .TotalPages }}
+    {{ $hasPrev := .HasPrevPage }}
+    {{ $hasNext := .HasNextPage }}
+
+    <nav aria-label="Pagination">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {{ if not $hasPrev }}disabled{{ end }}">
+                <a class="page-link" href="{{ $baseURL }}&page=1&page_size={{ $pageSize }}">First</a>
+            </li>
+            <li class="page-item {{ if not $hasPrev }}disabled{{ end }}">
+                <a class="page-link" href="{{ $baseURL }}&page={{ add $currentPage -1 }}&page_size={{ $pageSize }}">Previous</a>
+            </li>
+
+            {{ $startPage := add $currentPage -2 }}
+            {{ if lt $startPage 1 }}{{ $startPage = 1 }}{{ end }}
+            {{ $endPage := add $currentPage 2 }}
+            {{ if gt $endPage $totalPages }}{{ $endPage = $totalPages }}{{ end }}
+
+            {{ if gt $startPage 1 }}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {{ end }}
+
+            {{ range $page := seq $startPage $endPage }}
+                <li class="page-item {{ if eq $page $currentPage }}active{{ end }}">
+                    <a class="page-link" href="{{ $baseURL }}&page={{ $page }}&page_size={{ $pageSize }}">{{ $page }}</a>
+                </li>
+            {{ end }}
+
+            {{ if lt $endPage $totalPages }}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {{ end }}
+
+            <li class="page-item {{ if not $hasNext }}disabled{{ end }}">
+                <a class="page-link" href="{{ $baseURL }}&page={{ add $currentPage 1 }}&page_size={{ $pageSize }}">Next</a>
+            </li>
+            <li class="page-item {{ if not $hasNext }}disabled{{ end }}">
+                <a class="page-link" href="{{ $baseURL }}&page={{ $totalPages }}&page_size={{ $pageSize }}">Last</a>
+            </li>
+        </ul>
+    </nav>
+{{ end }}

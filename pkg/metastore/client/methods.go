@@ -152,6 +152,12 @@ func (c *Client) PollCompactionJobs(ctx context.Context, in *metastorev1.PollCom
 	})
 }
 
+func (c *Client) GetTenants(ctx context.Context, in *metastorev1.GetTenantsRequest, opts ...grpc.CallOption) (*metastorev1.GetTenantsResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.GetTenantsResponse, error) {
+		return instance.GetTenants(ctx, in, opts...)
+	})
+}
+
 func (c *Client) GetTenant(ctx context.Context, in *metastorev1.GetTenantRequest, opts ...grpc.CallOption) (*metastorev1.GetTenantResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.GetTenantResponse, error) {
 		return instance.GetTenant(ctx, in, opts...)

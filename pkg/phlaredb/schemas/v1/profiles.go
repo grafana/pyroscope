@@ -195,7 +195,7 @@ type Sample struct {
 }
 
 type Profile struct {
-	// A unique UUID per ingested profile
+	// A UUID per ingested profile
 	ID uuid.UUID `parquet:",uuid"`
 
 	// SeriesIndex references the underlying series and is generated when
@@ -319,7 +319,7 @@ func (r *SliceRowReader[T]) ReadRows(rows []parquet.Row) (n int, err error) {
 }
 
 type InMemoryProfile struct {
-	// A unique UUID per ingested profile
+	// A UUID per ingested profile
 	ID uuid.UUID
 
 	// SeriesIndex references the underlying series and is generated when

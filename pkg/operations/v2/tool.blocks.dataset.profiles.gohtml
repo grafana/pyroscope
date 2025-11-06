@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html class="h-100" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Bucket Blocks Explorer (v2): Dataset Profiles - {{ .Dataset.Name }}</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+</head>
+<body class="d-flex flex-column h-100">
+<main class="flex-shrink-0">
+    <div class="container">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h3>Bucket Blocks Explorer (v2): Dataset Profiles</h3>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/ops/object-store/tenants">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <p>
+                <a href="/ops/object-store/tenants/{{ .User }}/blocks/{{ .BlockID }}/datasets?dataset={{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ .Shard }}&block_tenant={{ .BlockTenant }}">Back to dataset</a>
+            </p>
+
+            <div class="card bg-dark border-secondary info-card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Dataset Information</h5>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>Dataset Name: {{ if .Dataset.Name }}{{ .Dataset.Name }}{{ else }}<em>(empty)</em>{{ end }}</li>
+                        <li>Dataset Tenant: {{ .Dataset.Tenant }}</li>
+                        <li>Block ID: {{ .BlockID }}</li>
+                        <li>Shard: {{ .Shard }}</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+                <h5 class="mb-0">Profiles</h5>
+                <div class="text-muted">
+                    Total: <strong>{{ .TotalCount }}</strong> profiles
+                    {{ if gt .TotalCount 0 }}
+                        | Showing {{ add (mul (add .Page -1) .PageSize) 1 }}-{{ if lt (mul .Page .PageSize) .TotalCount }}{{ mul .Page .PageSize }}{{ else }}{{ .TotalCount }}{{ end }}
+                    {{ end }}
+                </div>
+            </div>
+
+            {{ if .Profiles }}
+                {{ if gt .TotalPages 1 }}
+                <div class="mb-3">
+                    {{ $datasetName := "_empty" }}
+                    {{ if .Dataset.Name }}{{ $datasetName = .Dataset.Name }}{{ end }}
+                    {{ template "pagination" dict "BaseURL" (printf "?dataset=%s&shard=%d&block_tenant=%s" $datasetName .Shard .BlockTenant) "Page" .Page "PageSize" .PageSize "TotalPages" .TotalPages "HasPrevPage" .HasPrevPage "HasNextPage" .HasNextPage }}
+                </div>
+                {{ end }}
+
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm table-dark">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Series Index</th>
+                                <th>Profile Type</th>
+                                <th>Samples</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .Profiles }}
+                            <tr>
+                                <td><code class="small">{{ .Timestamp }}</code></td>
+                                <td><code>{{ .SeriesIndex }}</code></td>
+                                <td>{{ if .ProfileType }}<code class="small">{{ .ProfileType }}</code>{{ else }}<span class="text-muted">-</span>{{ end }}</td>
+                                <td>{{ .SampleCount }}</td>
+                                <td>
+                                    <a href="/ops/object-store/tenants/{{ $.User }}/blocks/{{ $.BlockID }}/datasets/profiles/call-tree?dataset={{ if $.Dataset.Name }}{{ $.Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ $.Shard }}&block_tenant={{ $.BlockTenant }}&row={{ .RowNumber }}"
+                                       class="btn btn-sm btn-success me-1">
+                                        <i class="bi bi-eye"></i> Call Tree
+                                    </a>
+                                    <a href="/ops/object-store/tenants/{{ $.User }}/blocks/{{ $.BlockID }}/datasets/profiles/download?dataset={{ if $.Dataset.Name }}{{ $.Dataset.Name }}{{ else }}_empty{{ end }}&shard={{ $.Shard }}&block_tenant={{ $.BlockTenant }}&row={{ .RowNumber }}"
+                                       class="btn btn-sm btn-primary"
+                                       download>
+                                        <i class="bi bi-download"></i> Download
+                                    </a>
+                                </td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+
+                {{ if gt .TotalPages 1 }}
+                    {{ $datasetName := "_empty" }}
+                    {{ if .Dataset.Name }}{{ $datasetName = .Dataset.Name }}{{ end }}
+                    {{ template "pagination" dict "BaseURL" (printf "?dataset=%s&shard=%d&block_tenant=%s" $datasetName .Shard .BlockTenant) "Page" .Page "PageSize" .PageSize "TotalPages" .TotalPages "HasPrevPage" .HasPrevPage "HasNextPage" .HasNextPage }}
+                {{ end }}
+            {{ else }}
+                <div class="alert alert-warning" role="alert">
+                    No profiles found in this dataset.
+                </div>
+            {{ end }}
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3 bg-dark">
+    <div class="container">
+        <small class="text-white-50">Status @ {{ .Now }}</small>
+    </div>
+</footer>
+</body>
+</html>

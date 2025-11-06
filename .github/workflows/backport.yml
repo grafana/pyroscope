@@ -12,7 +12,7 @@ jobs:
     # Also only run if the PR is merged, as an extra safe-guard.
     if: ${{ ! github.event.pull_request.head.repo.fork && github.event.pull_request.merged == true }}
 
-    runs-on: ubuntu-x64-small
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
     permissions:
       contents: "read"
       id-token: "write"
@@ -30,7 +30,7 @@ jobs:
         run: npm install --production --prefix ./actions
 
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760
+        uses: grafana/shared-workflows/actions/get-vault-secrets@c8ac4a279df46ebd1f85064119a0835098b88092
         with:
           repo_secrets: |
             GITHUB_APP_ID=pyroscope-development-app:app-id

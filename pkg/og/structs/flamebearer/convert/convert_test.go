@@ -4,8 +4,12 @@ import (
 	"io/ioutil"
 	"reflect"
 
+	"google.golang.org/protobuf/proto"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )
 
 var _ = Describe("Server", func() {
@@ -602,6 +606,42 @@ var _ = Describe("Convert", func() {
 		b, err := f(m.Data, "appname", 1024)
 		Expect(err).To(BeNil())
 		Expect(b).ToNot(BeNil())
+	})
+
+	It("handles pprof invalid fields gracefully", func() {
+		p := &profilev1.Profile{
+			SampleType: []*profilev1.ValueType{
+				{Type: 1, Unit: 2},
+			},
+			Sample: []*profilev1.Sample{
+				{LocationId: []uint64{1}, Value: []int64{100}},
+			},
+			Location: []*profilev1.Location{
+				{Id: 1, Address: 0x1000, Line: []*profilev1.Line{{FunctionId: 1, Line: 10}}},
+			},
+			Function: []*profilev1.Function{
+				{Id: 1, Name: 1},
+			},
+			StringTable: []string{"", "cpu", "count", "main"},
+			PeriodType:  nil, // This is the problematic case
+		}
+
+		data, err := proto.Marshal(p)
+		Expect(err).To(BeNil())
+
+		m := ProfileFile{
+			Type: "pprof",
+			Data: data,
+		}
+
+		f, err := converter(m)
+		Expect(err).To(BeNil())
+		Expect(f).ToNot(BeNil())
+
+		b, err := f(m.Data, "test-profile", 1024)
+		Expect(err).ToNot(BeNil())
+		Expect(err.Error()).To(ContainSubstring("PeriodType is nil"))
+		Expect(b).To(BeNil())
 	})
 
 	Describe("JSON", func() {

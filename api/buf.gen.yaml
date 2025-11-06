@@ -5,6 +5,7 @@ managed:
     default: github.com/grafana/pyroscope/api/gen/proto/go
     except:
       - buf.build/googleapis/googleapis
+      - buf.build/gnostic/gnostic
 
 plugins:
   - name: go
@@ -34,3 +35,11 @@ plugins:
     out: openapiv2/gen/
     strategy: all
     opt: allow_merge=true,merge_file_name=phlare
+
+  - name: connect-openapi
+    out: connect-openapi/gen/
+    opt:
+      #- debug
+      - content-types=json
+      - trim-unused-types
+      - base=connect-openapi/base.yaml

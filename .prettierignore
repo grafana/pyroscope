@@ -17,3 +17,5 @@ pkg/test/**
 examples/**
 .devcontainer/**
 .vscode/**
+renovate.json
+renovate.json5

@@ -16,7 +16,7 @@ datasources:
     type: prometheus
     name: Prometheus
     access: proxy
-    url: http://host.docker.internal:9099
+    url: http://prometheus:9090
     basicAuth: true #username: admin, password: admin
     basicAuthUser: admin
     jsonData:
