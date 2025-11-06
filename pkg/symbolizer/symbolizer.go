@@ -382,14 +382,18 @@ func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
 func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte, error) {
 	if client, ok := s.client.(*DebuginfodHTTPClient); ok {
 		if found, _ := client.notFoundCache.Get(buildID); found {
+			s.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Inc()
 			return nil, buildIDNotFoundError{buildID: buildID}
 		}
+		s.metrics.cacheOperations.WithLabelValues("not_found", "get", "miss").Inc()
 	}
 
 	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, buildID)
 	if err == nil {
+		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", statusSuccess).Inc()
 		return lidiaBytes, nil
 	}
+	s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "miss").Inc()
 
 	lidiaBytes, err = s.fetchLidiaFromDebuginfod(ctx, buildID)
 	if err != nil {
@@ -398,6 +402,9 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 
 	if err := s.bucket.Upload(ctx, buildID, bytes.NewReader(lidiaBytes)); err != nil {
 		level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", buildID, "err", err)
+		s.metrics.cacheOperations.WithLabelValues("object_storage", "set", "error").Inc()
+	} else {
+		s.metrics.cacheOperations.WithLabelValues("object_storage", "set", statusSuccess).Inc()
 	}
 
 	return lidiaBytes, nil
