@@ -13,8 +13,30 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: configure
-      run: ./configure
+    - name: Prepare build (Autotools)
+      run: |
+        set -e
+        if [ -f configure ]; then
+          echo "Running ./configure"
+          chmod +x configure
+          ./configure
+        elif [ -f autogen.sh ]; then
+          echo "Running ./autogen.sh"
+          chmod +x autogen.sh
+          ./autogen.sh
+        elif [ -f configure.ac ] || [ -f configure.in ]; then
+          echo "Running autoreconf -i"
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake libtool pkg-config build-essential
+          autoreconf -i
+          chmod +x configure
+          ./configure
+        else
+          echo "No Autotools entrypoint found (configure, autogen.sh, or configure.ac)." >&2
+          echo "Repository root listing:";
+          ls -la
+          exit 1
+        fi
     - name: make
       run: make
     - name: make check
