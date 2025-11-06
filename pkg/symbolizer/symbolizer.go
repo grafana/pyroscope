@@ -384,11 +384,12 @@ func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
 
 func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte, error) {
 	if client, ok := s.client.(*DebuginfodHTTPClient); ok {
-		if found, _ := client.notFoundCache.Get(buildID); found {
-			s.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Inc()
-			return nil, buildIDNotFoundError{buildID: buildID}
+		if sanitizedBuildID, err := sanitizeBuildID(buildID); err == nil {
+			if found, _ := client.notFoundCache.Get(sanitizedBuildID); found {
+				s.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Inc()
+				return nil, buildIDNotFoundError{buildID: buildID}
+			}
 		}
-		s.metrics.cacheOperations.WithLabelValues("not_found", "get", "miss").Inc()
 	}
 
 	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, buildID)
