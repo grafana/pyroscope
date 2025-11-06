@@ -35,9 +35,20 @@ For help writing release notes, refer to the [Writers' Toolkit](https://grafana.
 
 Please do not delete GitHub releases that were once public.
 
-To release a patch version, simply merge fixes to the release branch then create and push a new tag. (e.g. `v0.x.1`). Any bugfixes or other entries should be added to the existing release notes for that version under a new heading with the version number.
+### Website release notes
 
-> For helm charts, you need to merge a PR that bumps the chart version in the main branch (no tagging required), the CI will automatically publish the chart to the [helm repository](https://grafana.github.io/helm-charts).
+Create a new branch and add release notes in `docs/sources/release-notes`.
+Once the PR is approved, cherry-pick this commit on to the `release/vX.Y` branch 
+to trigger the `publish-technical-documentation-release.yml` action.
+
+### Helm charts update
+
+Merge a PR that bumps the chart version in the main branch (no tagging required), the CI will automatically publish the chart to the [helm repository](https://grafana.github.io/helm-charts). 
+You can combine this update and the [Website release notes](#website-release-notes) updates in to the same PR.
+
+### Patch version release
+
+To release a patch version, simply merge fixes to the release branch then create and push a new tag. (e.g. `v0.x.1`). Any bugfixes or other entries should be added to the existing release notes for that version under a new heading with the version number.
 
 ## Manual Release Process
 
