@@ -38,7 +38,7 @@ Please do not delete GitHub releases that were once public.
 ### Website release notes
 
 Create a new branch and add release notes in `docs/sources/release-notes`.
-Once the PR is approved, cherry-pick this commit on to the `release/vX.Y` branch 
+Once the PR is merged, cherry-pick this commit on to the `release/vX.Y` branch 
 to trigger the `publish-technical-documentation-release.yml` action.
 
 ### Helm charts update
