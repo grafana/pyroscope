@@ -27,11 +27,20 @@ type DebuginfodClient interface {
 }
 
 type Config struct {
-	DebuginfodURL string `yaml:"debuginfod_url"`
+	DebuginfodURL            string `yaml:"debuginfod_url"`
+	MaxDebuginfodConcurrency int    `yaml:"max_debuginfod_concurrency" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
+	f.IntVar(&cfg.MaxDebuginfodConcurrency, "symbolizer.max-debuginfod-concurrency", 10, "Maximum number of concurrent symbolization requests to debuginfod server.")
+}
+
+func (cfg *Config) Validate() error {
+	if cfg.MaxDebuginfodConcurrency < 1 {
+		return fmt.Errorf("invalid max-debuginfod-concurrency value, must be positive")
+	}
+	return nil
 }
 
 type Symbolizer struct {
@@ -39,9 +48,14 @@ type Symbolizer struct {
 	client  DebuginfodClient
 	bucket  objstore.Bucket
 	metrics *metrics
+	cfg     Config
 }
 
 func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*Symbolizer, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	metrics := newMetrics(reg)
 
 	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics)
@@ -54,6 +68,7 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objsto
 		client:  client,
 		bucket:  bucket,
 		metrics: metrics,
+		cfg:     cfg,
 	}, nil
 }
 
@@ -101,8 +116,7 @@ func (s *Symbolizer) symbolizeMappingsConcurrently(
 	profile *googlev1.Profile,
 	locationsByMapping map[uint64][]*googlev1.Location,
 ) ([]symbolizedLocation, error) {
-	// Concurrency limit to avoid overwhelming debuginfod server
-	const maxConcurrency = 10
+	maxConcurrency := s.cfg.MaxDebuginfodConcurrency
 
 	type mappingJob struct {
 		mappingID uint64
