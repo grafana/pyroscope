@@ -82,6 +82,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/querier.v1.DiffResponse'
+  /querier.v1.QuerierService/GetProfile:
+    post:
+      tags:
+        - scope/public
+        - querier.v1.QuerierService
+      summary: GetProfile retrieves an individual profile by its UUID.  If the profile was split during ingestion (e.g., by span_id), all parts  will be merged before returning.
+      description: |-
+        GetProfile retrieves an individual profile by its UUID.
+         If the profile was split during ingestion (e.g., by span_id), all parts
+         will be merged before returning.
+      operationId: querier.v1.QuerierService.GetProfile
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.GetProfileRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/querier.v1.GetProfileResponse'
   /querier.v1.QuerierService/GetProfileStats:
     post:
       tags:
@@ -1024,6 +1064,38 @@ components:
           format: int64
       title: FlameGraphDiff
       additionalProperties: false
+    querier.v1.GetProfileRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          examples:
+            - 7c9e6679-7425-40de-944b-e07fc1f90ae7
+          title: id
+          description: Profile UUID from Exemplar.id field (required)
+        timestamp:
+          type:
+            - integer
+            - string
+          examples:
+            - "1730000023000"
+          title: timestamp
+          format: int64
+          description: |-
+            Profile timestamp in milliseconds since epoch.
+             Used to narrow down which blocks to query. If not provided, all blocks will be scanned which is expensive.
+             This timestamp is available from Exemplar.timestamp in the SelectSeries response.
+      title: GetProfileRequest
+      additionalProperties: false
+    querier.v1.GetProfileResponse:
+      type: object
+      properties:
+        profile:
+          title: profile
+          description: Complete pprof profile (merged if it was split during ingestion)
+          $ref: '#/components/schemas/google.v1.Profile'
+      title: GetProfileResponse
+      additionalProperties: false
     querier.v1.Level:
       type: object
       properties:
@@ -1491,6 +1563,48 @@ components:
           title: labels_set
       title: SeriesResponse
       additionalProperties: false
+    types.v1.Exemplar:
+      type: object
+      properties:
+        timestamp:
+          type:
+            - integer
+            - string
+          examples:
+            - "1730000023000"
+          title: timestamp
+          format: int64
+          description: Milliseconds since epoch when the profile was captured.
+        id:
+          type: string
+          examples:
+            - 7c9e6679-7425-40de-944b-e07fc1f90ae7
+          title: id
+          description: Unique identifier for the profile (UUID).
+        value:
+          type:
+            - integer
+            - string
+          examples:
+            - "2450000000"
+          title: value
+          format: int64
+          description: Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+          description: |-
+            Optional dynamic labels that were used to split the profile during ingestion
+             (e.g., trace_id, span_id). Static series labels are not included as they're
+             already present in the parent Series.
+      title: Exemplar
+      additionalProperties: false
+      description: |-
+        Exemplar represents metadata for an individual profile sample.
+         Exemplars allow users to drill down from aggregated timeline views
+         to specific profile instances.
     types.v1.GetProfileStatsRequest:
       type: object
       title: GetProfileStatsRequest
@@ -1672,6 +1786,12 @@ components:
           items:
             $ref: '#/components/schemas/types.v1.ProfileAnnotation'
           title: annotations
+        exemplars:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Exemplar'
+          title: exemplars
+          description: Exemplars are samples of individual profiles that contributed to this aggregated point
       title: Point
       additionalProperties: false
     types.v1.ProfileAnnotation:

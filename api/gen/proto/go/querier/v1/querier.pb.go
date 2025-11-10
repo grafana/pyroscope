@@ -1429,6 +1429,107 @@ func (x *QueryImpact) GetDeduplicationNeeded() bool {
 	return false
 }
 
+type GetProfileRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Profile UUID from Exemplar.id field (required)
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Profile timestamp in milliseconds since epoch.
+	// Used to narrow down which blocks to query. If not provided, all blocks will be scanned which is expensive.
+	// This timestamp is available from Exemplar.timestamp in the SelectSeries response.
+	Timestamp     int64 `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetProfileRequest) Reset() {
+	*x = GetProfileRequest{}
+	mi := &file_querier_v1_querier_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetProfileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetProfileRequest) ProtoMessage() {}
+
+func (x *GetProfileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetProfileRequest.ProtoReflect.Descriptor instead.
+func (*GetProfileRequest) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GetProfileRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *GetProfileRequest) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+type GetProfileResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Complete pprof profile (merged if it was split during ingestion)
+	Profile       *v11.Profile `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetProfileResponse) Reset() {
+	*x = GetProfileResponse{}
+	mi := &file_querier_v1_querier_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetProfileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetProfileResponse) ProtoMessage() {}
+
+func (x *GetProfileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetProfileResponse.ProtoReflect.Descriptor instead.
+func (*GetProfileResponse) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GetProfileResponse) GetProfile() *v11.Profile {
+	if x != nil {
+		return x.Profile
+	}
+	return nil
+}
+
 var File_querier_v1_querier_proto protoreflect.FileDescriptor
 
 const file_querier_v1_querier_proto_rawDesc = "" +
@@ -1552,11 +1653,16 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\vQueryImpact\x128\n" +
 	"\x19total_bytes_in_time_range\x18\x02 \x01(\x04R\x15totalBytesInTimeRange\x120\n" +
 	"\x14total_queried_series\x18\x03 \x01(\x04R\x12totalQueriedSeries\x121\n" +
-	"\x14deduplication_needed\x18\x04 \x01(\bR\x13deduplicationNeeded*g\n" +
+	"\x14deduplication_needed\x18\x04 \x01(\bR\x13deduplicationNeeded\"\x84\x01\n" +
+	"\x11GetProfileRequest\x12;\n" +
+	"\x02id\x18\x01 \x01(\tB+\xbaG(:&\x12$7c9e6679-7425-40de-944b-e07fc1f90ae7R\x02id\x122\n" +
+	"\ttimestamp\x18\x02 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1730000023000R\ttimestamp\"B\n" +
+	"\x12GetProfileResponse\x12,\n" +
+	"\aprofile\x18\x01 \x01(\v2\x12.google.v1.ProfileR\aprofile*g\n" +
 	"\rProfileFormat\x12\x1e\n" +
 	"\x1aPROFILE_FORMAT_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19PROFILE_FORMAT_FLAMEGRAPH\x10\x01\x12\x17\n" +
-	"\x13PROFILE_FORMAT_TREE\x10\x022\xfc\b\n" +
+	"\x13PROFILE_FORMAT_TREE\x10\x022\xdc\t\n" +
 	"\x0eQuerierService\x12d\n" +
 	"\fProfileTypes\x12\x1f.querier.v1.ProfileTypesRequest\x1a .querier.v1.ProfileTypesResponse\"\x11\xbaG\x0e\n" +
 	"\fscope/public\x12]\n" +
@@ -1580,7 +1686,10 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x0fGetProfileStats\x12 .types.v1.GetProfileStatsRequest\x1a!.types.v1.GetProfileStatsResponse\"\x13\xbaG\x10\n" +
 	"\x0escope/internal\x12f\n" +
 	"\fAnalyzeQuery\x12\x1f.querier.v1.AnalyzeQueryRequest\x1a .querier.v1.AnalyzeQueryResponse\"\x13\xbaG\x10\n" +
-	"\x0escope/internalB\xab\x01\n" +
+	"\x0escope/internal\x12^\n" +
+	"\n" +
+	"GetProfile\x12\x1d.querier.v1.GetProfileRequest\x1a\x1e.querier.v1.GetProfileResponse\"\x11\xbaG\x0e\n" +
+	"\fscope/publicB\xab\x01\n" +
 	"\x0ecom.querier.v1B\fQuerierProtoP\x01ZBgithub.com/grafana/pyroscope/api/gen/proto/go/querier/v1;querierv1\xa2\x02\x03QXX\xaa\x02\n" +
 	"Querier.V1\xca\x02\n" +
 	"Querier\\V1\xe2\x02\x16Querier\\V1\\GPBMetadata\xea\x02\vQuerier::V1b\x06proto3"
@@ -1598,7 +1707,7 @@ func file_querier_v1_querier_proto_rawDescGZIP() []byte {
 }
 
 var file_querier_v1_querier_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_querier_v1_querier_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_querier_v1_querier_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_querier_v1_querier_proto_goTypes = []any{
 	(ProfileFormat)(0),                     // 0: querier.v1.ProfileFormat
 	(*ProfileTypesRequest)(nil),            // 1: querier.v1.ProfileTypesRequest
@@ -1621,24 +1730,26 @@ var file_querier_v1_querier_proto_goTypes = []any{
 	(*AnalyzeQueryResponse)(nil),           // 18: querier.v1.AnalyzeQueryResponse
 	(*QueryScope)(nil),                     // 19: querier.v1.QueryScope
 	(*QueryImpact)(nil),                    // 20: querier.v1.QueryImpact
-	(*v1.ProfileType)(nil),                 // 21: types.v1.ProfileType
-	(*v1.Labels)(nil),                      // 22: types.v1.Labels
-	(*v1.StackTraceSelector)(nil),          // 23: types.v1.StackTraceSelector
-	(v1.TimeSeriesAggregationType)(0),      // 24: types.v1.TimeSeriesAggregationType
-	(*v1.Series)(nil),                      // 25: types.v1.Series
-	(*v1.LabelValuesRequest)(nil),          // 26: types.v1.LabelValuesRequest
-	(*v1.LabelNamesRequest)(nil),           // 27: types.v1.LabelNamesRequest
-	(*v1.GetProfileStatsRequest)(nil),      // 28: types.v1.GetProfileStatsRequest
-	(*v1.LabelValuesResponse)(nil),         // 29: types.v1.LabelValuesResponse
-	(*v1.LabelNamesResponse)(nil),          // 30: types.v1.LabelNamesResponse
-	(*v11.Profile)(nil),                    // 31: google.v1.Profile
-	(*v1.GetProfileStatsResponse)(nil),     // 32: types.v1.GetProfileStatsResponse
+	(*GetProfileRequest)(nil),              // 21: querier.v1.GetProfileRequest
+	(*GetProfileResponse)(nil),             // 22: querier.v1.GetProfileResponse
+	(*v1.ProfileType)(nil),                 // 23: types.v1.ProfileType
+	(*v1.Labels)(nil),                      // 24: types.v1.Labels
+	(*v1.StackTraceSelector)(nil),          // 25: types.v1.StackTraceSelector
+	(v1.TimeSeriesAggregationType)(0),      // 26: types.v1.TimeSeriesAggregationType
+	(*v1.Series)(nil),                      // 27: types.v1.Series
+	(*v11.Profile)(nil),                    // 28: google.v1.Profile
+	(*v1.LabelValuesRequest)(nil),          // 29: types.v1.LabelValuesRequest
+	(*v1.LabelNamesRequest)(nil),           // 30: types.v1.LabelNamesRequest
+	(*v1.GetProfileStatsRequest)(nil),      // 31: types.v1.GetProfileStatsRequest
+	(*v1.LabelValuesResponse)(nil),         // 32: types.v1.LabelValuesResponse
+	(*v1.LabelNamesResponse)(nil),          // 33: types.v1.LabelNamesResponse
+	(*v1.GetProfileStatsResponse)(nil),     // 34: types.v1.GetProfileStatsResponse
 }
 var file_querier_v1_querier_proto_depIdxs = []int32{
-	21, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
-	22, // 1: querier.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
+	23, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
+	24, // 1: querier.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
 	0,  // 2: querier.v1.SelectMergeStacktracesRequest.format:type_name -> querier.v1.ProfileFormat
-	23, // 3: querier.v1.SelectMergeStacktracesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	25, // 3: querier.v1.SelectMergeStacktracesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
 	11, // 4: querier.v1.SelectMergeStacktracesResponse.flamegraph:type_name -> querier.v1.FlameGraph
 	0,  // 5: querier.v1.SelectMergeSpanProfileRequest.format:type_name -> querier.v1.ProfileFormat
 	11, // 6: querier.v1.SelectMergeSpanProfileResponse.flamegraph:type_name -> querier.v1.FlameGraph
@@ -1647,39 +1758,42 @@ var file_querier_v1_querier_proto_depIdxs = []int32{
 	12, // 9: querier.v1.DiffResponse.flamegraph:type_name -> querier.v1.FlameGraphDiff
 	13, // 10: querier.v1.FlameGraph.levels:type_name -> querier.v1.Level
 	13, // 11: querier.v1.FlameGraphDiff.levels:type_name -> querier.v1.Level
-	23, // 12: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	24, // 13: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
-	23, // 14: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	25, // 15: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
+	25, // 12: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	26, // 13: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
+	25, // 14: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	27, // 15: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
 	19, // 16: querier.v1.AnalyzeQueryResponse.query_scopes:type_name -> querier.v1.QueryScope
 	20, // 17: querier.v1.AnalyzeQueryResponse.query_impact:type_name -> querier.v1.QueryImpact
-	1,  // 18: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
-	26, // 19: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
-	27, // 20: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
-	3,  // 21: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
-	5,  // 22: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
-	7,  // 23: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
-	14, // 24: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
-	15, // 25: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
-	9,  // 26: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
-	28, // 27: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
-	17, // 28: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
-	2,  // 29: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
-	29, // 30: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
-	30, // 31: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
-	4,  // 32: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
-	6,  // 33: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
-	8,  // 34: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
-	31, // 35: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
-	16, // 36: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
-	10, // 37: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
-	32, // 38: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
-	18, // 39: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
-	29, // [29:40] is the sub-list for method output_type
-	18, // [18:29] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	28, // 18: querier.v1.GetProfileResponse.profile:type_name -> google.v1.Profile
+	1,  // 19: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
+	29, // 20: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
+	30, // 21: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
+	3,  // 22: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
+	5,  // 23: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
+	7,  // 24: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
+	14, // 25: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
+	15, // 26: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
+	9,  // 27: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
+	31, // 28: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
+	17, // 29: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
+	21, // 30: querier.v1.QuerierService.GetProfile:input_type -> querier.v1.GetProfileRequest
+	2,  // 31: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
+	32, // 32: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
+	33, // 33: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
+	4,  // 34: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
+	6,  // 35: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
+	8,  // 36: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
+	28, // 37: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
+	16, // 38: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
+	10, // 39: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
+	34, // 40: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
+	18, // 41: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
+	22, // 42: querier.v1.QuerierService.GetProfile:output_type -> querier.v1.GetProfileResponse
+	31, // [31:43] is the sub-list for method output_type
+	19, // [19:31] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_querier_v1_querier_proto_init() }
@@ -1697,7 +1811,7 @@ func file_querier_v1_querier_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_querier_v1_querier_proto_rawDesc), len(file_querier_v1_querier_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   20,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

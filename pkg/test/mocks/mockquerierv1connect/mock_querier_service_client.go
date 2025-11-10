@@ -147,6 +147,65 @@ func (_c *MockQuerierServiceClient_Diff_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// GetProfile provides a mock function with given fields: _a0, _a1
+func (_m *MockQuerierServiceClient) GetProfile(_a0 context.Context, _a1 *connect.Request[querierv1.GetProfileRequest]) (*connect.Response[querierv1.GetProfileResponse], error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetProfile")
+	}
+
+	var r0 *connect.Response[querierv1.GetProfileResponse]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[querierv1.GetProfileRequest]) (*connect.Response[querierv1.GetProfileResponse], error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[querierv1.GetProfileRequest]) *connect.Response[querierv1.GetProfileResponse]); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*connect.Response[querierv1.GetProfileResponse])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *connect.Request[querierv1.GetProfileRequest]) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerierServiceClient_GetProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetProfile'
+type MockQuerierServiceClient_GetProfile_Call struct {
+	*mock.Call
+}
+
+// GetProfile is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *connect.Request[querierv1.GetProfileRequest]
+func (_e *MockQuerierServiceClient_Expecter) GetProfile(_a0 interface{}, _a1 interface{}) *MockQuerierServiceClient_GetProfile_Call {
+	return &MockQuerierServiceClient_GetProfile_Call{Call: _e.mock.On("GetProfile", _a0, _a1)}
+}
+
+func (_c *MockQuerierServiceClient_GetProfile_Call) Run(run func(_a0 context.Context, _a1 *connect.Request[querierv1.GetProfileRequest])) *MockQuerierServiceClient_GetProfile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*connect.Request[querierv1.GetProfileRequest]))
+	})
+	return _c
+}
+
+func (_c *MockQuerierServiceClient_GetProfile_Call) Return(_a0 *connect.Response[querierv1.GetProfileResponse], _a1 error) *MockQuerierServiceClient_GetProfile_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerierServiceClient_GetProfile_Call) RunAndReturn(run func(context.Context, *connect.Request[querierv1.GetProfileRequest]) (*connect.Response[querierv1.GetProfileResponse], error)) *MockQuerierServiceClient_GetProfile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetProfileStats provides a mock function with given fields: _a0, _a1
 func (_m *MockQuerierServiceClient) GetProfileStats(_a0 context.Context, _a1 *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
 	ret := _m.Called(_a0, _a1)

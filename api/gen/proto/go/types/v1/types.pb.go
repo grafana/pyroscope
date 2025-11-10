@@ -307,8 +307,10 @@ type Point struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Value float64                `protobuf:"fixed64,1,opt,name=value,proto3" json:"value,omitempty"`
 	// Milliseconds unix timestamp
-	Timestamp     int64                `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	Annotations   []*ProfileAnnotation `protobuf:"bytes,3,rep,name=annotations,proto3" json:"annotations,omitempty"`
+	Timestamp   int64                `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Annotations []*ProfileAnnotation `protobuf:"bytes,3,rep,name=annotations,proto3" json:"annotations,omitempty"`
+	// Exemplars are samples of individual profiles that contributed to this aggregated point
+	Exemplars     []*Exemplar `protobuf:"bytes,4,rep,name=exemplars,proto3" json:"exemplars,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -360,6 +362,13 @@ func (x *Point) GetTimestamp() int64 {
 func (x *Point) GetAnnotations() []*ProfileAnnotation {
 	if x != nil {
 		return x.Annotations
+	}
+	return nil
+}
+
+func (x *Point) GetExemplars() []*Exemplar {
+	if x != nil {
+		return x.Exemplars
 	}
 	return nil
 }
@@ -1041,6 +1050,83 @@ func (x *GetProfileStatsResponse) GetNewestProfileTime() int64 {
 	return 0
 }
 
+// Exemplar represents metadata for an individual profile sample.
+// Exemplars allow users to drill down from aggregated timeline views
+// to specific profile instances.
+type Exemplar struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Milliseconds since epoch when the profile was captured.
+	Timestamp int64 `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	// Unique identifier for the profile (UUID).
+	Id string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	// Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
+	Value uint64 `protobuf:"varint,3,opt,name=value,proto3" json:"value,omitempty"`
+	// Optional dynamic labels that were used to split the profile during ingestion
+	// (e.g., trace_id, span_id). Static series labels are not included as they're
+	// already present in the parent Series.
+	Labels        []*LabelPair `protobuf:"bytes,4,rep,name=labels,proto3" json:"labels,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Exemplar) Reset() {
+	*x = Exemplar{}
+	mi := &file_types_v1_types_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Exemplar) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Exemplar) ProtoMessage() {}
+
+func (x *Exemplar) ProtoReflect() protoreflect.Message {
+	mi := &file_types_v1_types_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Exemplar.ProtoReflect.Descriptor instead.
+func (*Exemplar) Descriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *Exemplar) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *Exemplar) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Exemplar) GetValue() uint64 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
+func (x *Exemplar) GetLabels() []*LabelPair {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
 var File_types_v1_types_proto protoreflect.FileDescriptor
 
 const file_types_v1_types_proto_rawDesc = "" +
@@ -1065,11 +1151,12 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\x06labels\x18\x01 \x03(\v2\x13.types.v1.LabelPairR\x06labels\"^\n" +
 	"\x06Series\x12+\n" +
 	"\x06labels\x18\x01 \x03(\v2\x13.types.v1.LabelPairR\x06labels\x12'\n" +
-	"\x06points\x18\x02 \x03(\v2\x0f.types.v1.PointR\x06points\"z\n" +
+	"\x06points\x18\x02 \x03(\v2\x0f.types.v1.PointR\x06points\"\xac\x01\n" +
 	"\x05Point\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\x01R\x05value\x12\x1c\n" +
 	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12=\n" +
-	"\vannotations\x18\x03 \x03(\v2\x1b.types.v1.ProfileAnnotationR\vannotations\";\n" +
+	"\vannotations\x18\x03 \x03(\v2\x1b.types.v1.ProfileAnnotationR\vannotations\x120\n" +
+	"\texemplars\x18\x04 \x03(\v2\x12.types.v1.ExemplarR\texemplars\";\n" +
 	"\x11ProfileAnnotation\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\"\xad\x01\n" +
@@ -1110,7 +1197,13 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\x17GetProfileStatsResponse\x12#\n" +
 	"\rdata_ingested\x18\x01 \x01(\bR\fdataIngested\x12.\n" +
 	"\x13oldest_profile_time\x18\x02 \x01(\x03R\x11oldestProfileTime\x12.\n" +
-	"\x13newest_profile_time\x18\x03 \x01(\x03R\x11newestProfileTime*k\n" +
+	"\x13newest_profile_time\x18\x03 \x01(\x03R\x11newestProfileTime\"\xd1\x01\n" +
+	"\bExemplar\x122\n" +
+	"\ttimestamp\x18\x01 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1730000023000R\ttimestamp\x12;\n" +
+	"\x02id\x18\x02 \x01(\tB+\xbaG(:&\x12$7c9e6679-7425-40de-944b-e07fc1f90ae7R\x02id\x12'\n" +
+	"\x05value\x18\x03 \x01(\x04B\x11\xbaG\x0e:\f\x12\n" +
+	"2450000000R\x05value\x12+\n" +
+	"\x06labels\x18\x04 \x03(\v2\x13.types.v1.LabelPairR\x06labels*k\n" +
 	"\x19TimeSeriesAggregationType\x12$\n" +
 	" TIME_SERIES_AGGREGATION_TYPE_SUM\x10\x00\x12(\n" +
 	"$TIME_SERIES_AGGREGATION_TYPE_AVERAGE\x10\x01B\x9b\x01\n" +
@@ -1130,7 +1223,7 @@ func file_types_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_types_v1_types_proto_goTypes = []any{
 	(TimeSeriesAggregationType)(0),  // 0: types.v1.TimeSeriesAggregationType
 	(*LabelPair)(nil),               // 1: types.v1.LabelPair
@@ -1150,21 +1243,24 @@ var file_types_v1_types_proto_goTypes = []any{
 	(*GoPGO)(nil),                   // 15: types.v1.GoPGO
 	(*GetProfileStatsRequest)(nil),  // 16: types.v1.GetProfileStatsRequest
 	(*GetProfileStatsResponse)(nil), // 17: types.v1.GetProfileStatsResponse
+	(*Exemplar)(nil),                // 18: types.v1.Exemplar
 }
 var file_types_v1_types_proto_depIdxs = []int32{
 	1,  // 0: types.v1.Labels.labels:type_name -> types.v1.LabelPair
 	1,  // 1: types.v1.Series.labels:type_name -> types.v1.LabelPair
 	5,  // 2: types.v1.Series.points:type_name -> types.v1.Point
 	6,  // 3: types.v1.Point.annotations:type_name -> types.v1.ProfileAnnotation
-	12, // 4: types.v1.BlockInfo.compaction:type_name -> types.v1.BlockCompaction
-	1,  // 5: types.v1.BlockInfo.labels:type_name -> types.v1.LabelPair
-	14, // 6: types.v1.StackTraceSelector.call_site:type_name -> types.v1.Location
-	15, // 7: types.v1.StackTraceSelector.go_pgo:type_name -> types.v1.GoPGO
-	8,  // [8:8] is the sub-list for method output_type
-	8,  // [8:8] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	18, // 4: types.v1.Point.exemplars:type_name -> types.v1.Exemplar
+	12, // 5: types.v1.BlockInfo.compaction:type_name -> types.v1.BlockCompaction
+	1,  // 6: types.v1.BlockInfo.labels:type_name -> types.v1.LabelPair
+	14, // 7: types.v1.StackTraceSelector.call_site:type_name -> types.v1.Location
+	15, // 8: types.v1.StackTraceSelector.go_pgo:type_name -> types.v1.GoPGO
+	1,  // 9: types.v1.Exemplar.labels:type_name -> types.v1.LabelPair
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_types_v1_types_proto_init() }
@@ -1178,7 +1274,7 @@ func file_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_types_v1_types_proto_rawDesc), len(file_types_v1_types_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -248,3 +248,11 @@ func (r *Router) ProfileTypes(
 			return &querierv1.ProfileTypesResponse{ProfileTypes: pTypes}, nil
 		})
 }
+
+func (r *Router) GetProfile(
+	ctx context.Context,
+	c *connect.Request[querierv1.GetProfileRequest],
+) (*connect.Response[querierv1.GetProfileResponse], error) {
+	// GetProfile is a v2-only feature.
+	return r.newFrontend.GetProfile(ctx, c)
+}

@@ -185,6 +185,43 @@ print(resp.content)
 ```
 
 {{% /code %}}
+#### `/querier.v1.QuerierService/GetProfile`
+
+GetProfile retrieves an individual profile by its UUID.
+ If the profile was split during ingestion (e.g., by span_id), all parts
+ will be merged before returning.
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`id` | Profile UUID from Exemplar.id field (required) | `7c9e6679-7425-40de-944b-e07fc1f90ae7` |
+|`timestamp` | Profile timestamp in milliseconds since epoch.  Used to narrow down which blocks to query. If not provided, all blocks will be scanned which is expensive.  This timestamp is available from Exemplar.timestamp in the SelectSeries response. | `1730000023000` |
+
+{{% code %}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "timestamp": "1730000023000"
+    }' \
+  http://localhost:4040/querier.v1.QuerierService/GetProfile
+```
+
+```python
+import requests
+body = {
+    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "timestamp": "1730000023000"
+  }
+url = 'http://localhost:4040/querier.v1.QuerierService/GetProfile'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{% /code %}}
 #### `/querier.v1.QuerierService/LabelNames`
 
 LabelNames returns a list of the existing label names.

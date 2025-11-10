@@ -36,6 +36,8 @@ message Point {
   // Milliseconds unix timestamp
   int64 timestamp = 2;
   repeated ProfileAnnotation annotations = 3;
+  // Exemplars are samples of individual profiles that contributed to this aggregated point
+  repeated Exemplar exemplars = 4;
 }
 
 // Annotations provide additional metadata for a profile.
@@ -132,4 +134,23 @@ message GetProfileStatsResponse {
   int64 oldest_profile_time = 2;
   // Milliseconds since epoch.
   int64 newest_profile_time = 3;
+}
+
+// Exemplar represents metadata for an individual profile sample.
+// Exemplars allow users to drill down from aggregated timeline views
+// to specific profile instances.
+message Exemplar {
+  // Milliseconds since epoch when the profile was captured.
+  int64 timestamp = 1 [(gnostic.openapi.v3.property).example = {yaml: "1730000023000"}];
+
+  // Unique identifier for the profile (UUID).
+  string id = 2 [(gnostic.openapi.v3.property).example = {yaml: "7c9e6679-7425-40de-944b-e07fc1f90ae7"}];
+
+  // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
+  uint64 value = 3 [(gnostic.openapi.v3.property).example = {yaml: "2450000000"}];
+
+  // Optional dynamic labels that were used to split the profile during ingestion
+  // (e.g., trace_id, span_id). Static series labels are not included as they're
+  // already present in the parent Series.
+  repeated LabelPair labels = 4;
 }

@@ -211,6 +211,19 @@ func (l LogSpanParametersWrapper) AnalyzeQuery(ctx context.Context, c *connect.R
 	return l.client.AnalyzeQuery(ctx, c)
 }
 
+func (l LogSpanParametersWrapper) GetProfile(ctx context.Context, c *connect.Request[querierv1.GetProfileRequest]) (*connect.Response[querierv1.GetProfileResponse], error) {
+	spanName := "GetProfile"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
+	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
+		"id", c.Msg.Id,
+		"timestamp", model.Time(c.Msg.Timestamp).Time().String(),
+	)
+	defer sp.Finish()
+
+	return l.client.GetProfile(ctx, c)
+}
+
 type LazyJoin struct {
 	strs []string
 	sep  string
