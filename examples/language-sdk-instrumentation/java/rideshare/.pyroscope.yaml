@@ -1,0 +1,21 @@
+source_code:
+  language: java
+  mappings:
+    - path: org/example/rideshare
+      type: local
+      local:
+        path: src/main/java/org/example/rideshare
+    - path: java
+      type: github
+      github:
+        owner: openjdk
+        repo: jdk
+        ref: jdk-17+0
+        path: src/java.base/share/classes/java
+    - path: org/springframework/http
+      type: github
+      github:
+        owner: spring-projects
+        repo: spring-framework
+        ref: v5.3.20
+        path: spring-web/src/main/java/org/springframework/http
