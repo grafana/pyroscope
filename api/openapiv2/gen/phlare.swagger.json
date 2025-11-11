@@ -984,7 +984,7 @@
             "type": "object",
             "$ref": "#/definitions/v1LabelPair"
           },
-          "description": "Optional dynamic labels that were used to split the profile during ingestion\n(e.g., trace_id, span_id). Static series labels are not included as they're\nalready present in the parent Series."
+          "description": "Series labels that are NOT included in the group_by query parameter.\nThese labels complete the full series identity of this exemplar's profile.\nFor example, if group_by=[\"service\"], this would contain labels like \"pod\",\n\"namespace\", \"region\" that were omitted from grouping. This allows identifying\nwhich specific series instance this profile sample came from."
         }
       },
       "description": "Exemplar represents metadata for an individual profile sample.\nExemplars allow users to drill down from aggregated timeline views\nto specific profile instances."

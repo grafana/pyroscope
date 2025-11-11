@@ -1596,9 +1596,11 @@ components:
             $ref: '#/components/schemas/types.v1.LabelPair'
           title: labels
           description: |-
-            Optional dynamic labels that were used to split the profile during ingestion
-             (e.g., trace_id, span_id). Static series labels are not included as they're
-             already present in the parent Series.
+            Series labels that are NOT included in the group_by query parameter.
+             These labels complete the full series identity of this exemplar's profile.
+             For example, if group_by=["service"], this would contain labels like "pod",
+             "namespace", "region" that were omitted from grouping. This allows identifying
+             which specific series instance this profile sample came from.
       title: Exemplar
       additionalProperties: false
       description: |-

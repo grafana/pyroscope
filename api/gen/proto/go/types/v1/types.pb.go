@@ -1061,9 +1061,11 @@ type Exemplar struct {
 	Id string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	// Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
 	Value uint64 `protobuf:"varint,3,opt,name=value,proto3" json:"value,omitempty"`
-	// Optional dynamic labels that were used to split the profile during ingestion
-	// (e.g., trace_id, span_id). Static series labels are not included as they're
-	// already present in the parent Series.
+	// Series labels that are NOT included in the group_by query parameter.
+	// These labels complete the full series identity of this exemplar's profile.
+	// For example, if group_by=["service"], this would contain labels like "pod",
+	// "namespace", "region" that were omitted from grouping. This allows identifying
+	// which specific series instance this profile sample came from.
 	Labels        []*LabelPair `protobuf:"bytes,4,rep,name=labels,proto3" json:"labels,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
