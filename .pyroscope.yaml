@@ -1,0 +1,11 @@
+source_code:
+  language: go
+  mappings:
+    - path: GOROOT
+      type: github
+      type: github
+      github:
+        owner: golang
+        repo: go
+        ref: go1.24.8
+        path: src
