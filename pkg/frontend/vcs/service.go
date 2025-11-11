@@ -182,7 +182,7 @@ func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 		return nil, err
 	}
 
-	file, err := source.NewFileFinder(
+	file, err := source.NewConfigAwareFileFinder(
 		ghClient,
 		gitURL,
 		req.Msg.LocalPath,
