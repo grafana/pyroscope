@@ -15,6 +15,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
@@ -26,11 +27,20 @@ type DebuginfodClient interface {
 }
 
 type Config struct {
-	DebuginfodURL string `yaml:"debuginfod_url"`
+	DebuginfodURL            string `yaml:"debuginfod_url"`
+	MaxDebuginfodConcurrency int    `yaml:"max_debuginfod_concurrency" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
+	f.IntVar(&cfg.MaxDebuginfodConcurrency, "symbolizer.max-debuginfod-concurrency", 10, "Maximum number of concurrent symbolization requests to debuginfod server.")
+}
+
+func (cfg *Config) Validate() error {
+	if cfg.MaxDebuginfodConcurrency < 1 {
+		return fmt.Errorf("invalid max-debuginfod-concurrency value, must be positive")
+	}
+	return nil
 }
 
 type Symbolizer struct {
@@ -38,9 +48,14 @@ type Symbolizer struct {
 	client  DebuginfodClient
 	bucket  objstore.Bucket
 	metrics *metrics
+	cfg     Config
 }
 
 func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*Symbolizer, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	metrics := newMetrics(reg)
 
 	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics)
@@ -53,6 +68,7 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objsto
 		client:  client,
 		bucket:  bucket,
 		metrics: metrics,
+		cfg:     cfg,
 	}, nil
 }
 
@@ -84,36 +100,103 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 		stringMap[str] = int64(i)
 	}
 
-	var allSymbolizedLocs []symbolizedLocation
-
-	for mappingID, locations := range locationsByMapping {
-		mapping := profile.Mapping[mappingID-1]
-
-		binaryName, err := s.extractBinaryName(profile, mapping)
-		if err != nil {
-			return fmt.Errorf("extract binary name: %w", err)
-		}
-
-		buildID, err := s.extractBuildID(profile, mapping)
-		if err != nil {
-			return fmt.Errorf("extract build ID: %w", err)
-		}
-
-		req := s.createSymbolizationRequest(binaryName, buildID, locations)
-		s.symbolize(ctx, &req)
-
-		for i, loc := range locations {
-			allSymbolizedLocs = append(allSymbolizedLocs, symbolizedLocation{
-				loc:     loc,
-				symLoc:  req.locations[i],
-				mapping: mapping,
-			})
-		}
+	allSymbolizedLocs, err := s.symbolizeMappingsConcurrently(ctx, profile, locationsByMapping)
+	if err != nil {
+		return fmt.Errorf("symbolizing mappings: %w", err)
 	}
 
 	s.updateAllSymbolsInProfile(profile, allSymbolizedLocs, stringMap)
 
 	return nil
+}
+
+// symbolizeMappingsConcurrently symbolizes multiple mappings concurrently with a concurrency limit.
+func (s *Symbolizer) symbolizeMappingsConcurrently(
+	ctx context.Context,
+	profile *googlev1.Profile,
+	locationsByMapping map[uint64][]*googlev1.Location,
+) ([]symbolizedLocation, error) {
+	maxConcurrency := s.cfg.MaxDebuginfodConcurrency
+	if maxConcurrency <= 0 {
+		maxConcurrency = 10
+	}
+
+	type mappingJob struct {
+		mappingID uint64
+		locations []*googlev1.Location
+	}
+
+	type mappingResult struct {
+		mappingID uint64
+		locations []symbolizedLocation
+	}
+
+	totalLocs := 0
+	jobs := make(chan mappingJob, len(locationsByMapping))
+	for mappingID, locations := range locationsByMapping {
+		totalLocs += len(locations)
+		jobs <- mappingJob{mappingID: mappingID, locations: locations}
+	}
+	close(jobs)
+
+	// Process jobs concurrently with errgroup for proper error handling
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(maxConcurrency)
+
+	// Results channel with buffer to avoid blocking jobs
+	results := make(chan mappingResult, len(locationsByMapping))
+
+	for job := range jobs {
+		job := job
+		g.Go(func() error {
+			mapping := profile.Mapping[job.mappingID-1]
+
+			binaryName, err := s.extractBinaryName(profile, mapping)
+			if err != nil {
+				return fmt.Errorf("extract binary name for mapping %d: %w", job.mappingID, err)
+			}
+
+			buildID, err := s.extractBuildID(profile, mapping)
+			if err != nil {
+				return fmt.Errorf("extract build ID for mapping %d: %w", job.mappingID, err)
+			}
+
+			req := s.createSymbolizationRequest(binaryName, buildID, job.locations)
+			s.symbolize(ctx, &req)
+
+			// Collect symbolized locations for this mapping
+			symbolizedLocs := make([]symbolizedLocation, len(job.locations))
+			for i, loc := range job.locations {
+				symbolizedLocs[i] = symbolizedLocation{
+					loc:     loc,
+					symLoc:  req.locations[i],
+					mapping: mapping,
+				}
+			}
+
+			select {
+			case results <- mappingResult{mappingID: job.mappingID, locations: symbolizedLocs}:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+
+			return nil
+		})
+	}
+
+	err := g.Wait()
+	close(results)
+
+	if err != nil {
+		return nil, err
+	}
+
+	allSymbolizedLocs := make([]symbolizedLocation, 0, totalLocs)
+	for result := range results {
+		allSymbolizedLocs = append(allSymbolizedLocs, result.locations...)
+	}
+
+	return allSymbolizedLocs, nil
 }
 
 // groupLocationsByMapping groups locations by their mapping ID
@@ -301,11 +384,12 @@ func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
 
 func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte, error) {
 	if client, ok := s.client.(*DebuginfodHTTPClient); ok {
-		if found, _ := client.notFoundCache.Get(buildID); found {
-			s.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Inc()
-			return nil, buildIDNotFoundError{buildID: buildID}
+		if sanitizedBuildID, err := sanitizeBuildID(buildID); err == nil {
+			if found, _ := client.notFoundCache.Get(sanitizedBuildID); found {
+				s.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Inc()
+				return nil, buildIDNotFoundError{buildID: buildID}
+			}
 		}
-		s.metrics.cacheOperations.WithLabelValues("not_found", "get", "miss").Inc()
 	}
 
 	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, buildID)
