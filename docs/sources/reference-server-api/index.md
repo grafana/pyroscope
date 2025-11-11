@@ -312,6 +312,57 @@ print(resp.content)
 ```
 
 {{< /code >}}
+#### `/querier.v1.QuerierService/SelectHeatmap`
+
+SelectHeatmap returns a heatmap visualization for the requested profiles.
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`start` | Milliseconds since epoch. | `1676282400000` |
+|`end` | Milliseconds since epoch. | `1676289600000` |
+|`groupBy` | Group by labels | `["pod"]` |
+|`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
+|`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
+|`queryType` |  |  |
+|`step` | Query resolution step width in seconds |  |
+
+{{< code >}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "end": '$(date +%s)000',
+      "groupBy": [
+        "pod"
+      ],
+      "labelSelector": "{namespace=\"my-namespace\"}",
+      "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+      "start": '$(expr $(date +%s) - 3600 )000'
+    }' \
+  http://localhost:4040/querier.v1.QuerierService/SelectHeatmap
+```
+
+```python
+import requests
+import datetime
+body = {
+    "end": int(datetime.datetime.now().timestamp() * 1000),
+    "groupBy": [
+      "pod"
+    ],
+    "labelSelector": "{namespace=\"my-namespace\"}",
+    "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+  }
+url = 'http://localhost:4040/querier.v1.QuerierService/SelectHeatmap'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{< /code >}}
 #### `/querier.v1.QuerierService/SelectMergeProfile`
 
 SelectMergeProfile returns matching profiles aggregated in pprof format. It

@@ -1190,6 +1190,121 @@ func (x *Exemplar) GetLabels() []*LabelPair {
 	return nil
 }
 
+type HeatmapSeries struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Labels        []*LabelPair           `protobuf:"bytes,1,rep,name=labels,proto3" json:"labels,omitempty"`
+	Slots         []*HeatmapSlot         `protobuf:"bytes,2,rep,name=slots,proto3" json:"slots,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HeatmapSeries) Reset() {
+	*x = HeatmapSeries{}
+	mi := &file_types_v1_types_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HeatmapSeries) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HeatmapSeries) ProtoMessage() {}
+
+func (x *HeatmapSeries) ProtoReflect() protoreflect.Message {
+	mi := &file_types_v1_types_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HeatmapSeries.ProtoReflect.Descriptor instead.
+func (*HeatmapSeries) Descriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *HeatmapSeries) GetLabels() []*LabelPair {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *HeatmapSeries) GetSlots() []*HeatmapSlot {
+	if x != nil {
+		return x.Slots
+	}
+	return nil
+}
+
+type HeatmapSlot struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Milliseconds unix timestamp
+	Timestamp int64 `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	// Minimum y value
+	YMin []float64 `protobuf:"fixed64,2,rep,packed,name=y_min,json=yMin,proto3" json:"y_min,omitempty"`
+	// How many matches
+	Counts        []int32 `protobuf:"varint,3,rep,packed,name=counts,proto3" json:"counts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HeatmapSlot) Reset() {
+	*x = HeatmapSlot{}
+	mi := &file_types_v1_types_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HeatmapSlot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HeatmapSlot) ProtoMessage() {}
+
+func (x *HeatmapSlot) ProtoReflect() protoreflect.Message {
+	mi := &file_types_v1_types_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HeatmapSlot.ProtoReflect.Descriptor instead.
+func (*HeatmapSlot) Descriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *HeatmapSlot) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *HeatmapSlot) GetYMin() []float64 {
+	if x != nil {
+		return x.YMin
+	}
+	return nil
+}
+
+func (x *HeatmapSlot) GetCounts() []int32 {
+	if x != nil {
+		return x.Counts
+	}
+	return nil
+}
+
 var File_types_v1_types_proto protoreflect.FileDescriptor
 
 const file_types_v1_types_proto_rawDesc = "" +
@@ -1268,7 +1383,14 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\aspan_id\x18\x03 \x01(\tB\x17\xbaG\x14:\x12\x12\x1000f067aa0ba902b7R\x06spanId\x12'\n" +
 	"\x05value\x18\x04 \x01(\x04B\x11\xbaG\x0e:\f\x12\n" +
 	"2450000000R\x05value\x12+\n" +
-	"\x06labels\x18\x05 \x03(\v2\x13.types.v1.LabelPairR\x06labels*k\n" +
+	"\x06labels\x18\x05 \x03(\v2\x13.types.v1.LabelPairR\x06labels\"i\n" +
+	"\rHeatmapSeries\x12+\n" +
+	"\x06labels\x18\x01 \x03(\v2\x13.types.v1.LabelPairR\x06labels\x12+\n" +
+	"\x05slots\x18\x02 \x03(\v2\x15.types.v1.HeatmapSlotR\x05slots\"X\n" +
+	"\vHeatmapSlot\x12\x1c\n" +
+	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12\x13\n" +
+	"\x05y_min\x18\x02 \x03(\x01R\x04yMin\x12\x16\n" +
+	"\x06counts\x18\x03 \x03(\x05R\x06counts*k\n" +
 	"\x19TimeSeriesAggregationType\x12$\n" +
 	" TIME_SERIES_AGGREGATION_TYPE_SUM\x10\x00\x12(\n" +
 	"$TIME_SERIES_AGGREGATION_TYPE_AVERAGE\x10\x01*{\n" +
@@ -1293,7 +1415,7 @@ func file_types_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_types_v1_types_proto_goTypes = []any{
 	(TimeSeriesAggregationType)(0),  // 0: types.v1.TimeSeriesAggregationType
 	(ExemplarType)(0),               // 1: types.v1.ExemplarType
@@ -1315,6 +1437,8 @@ var file_types_v1_types_proto_goTypes = []any{
 	(*GetProfileStatsRequest)(nil),  // 17: types.v1.GetProfileStatsRequest
 	(*GetProfileStatsResponse)(nil), // 18: types.v1.GetProfileStatsResponse
 	(*Exemplar)(nil),                // 19: types.v1.Exemplar
+	(*HeatmapSeries)(nil),           // 20: types.v1.HeatmapSeries
+	(*HeatmapSlot)(nil),             // 21: types.v1.HeatmapSlot
 }
 var file_types_v1_types_proto_depIdxs = []int32{
 	2,  // 0: types.v1.Labels.labels:type_name -> types.v1.LabelPair
@@ -1327,11 +1451,13 @@ var file_types_v1_types_proto_depIdxs = []int32{
 	15, // 7: types.v1.StackTraceSelector.call_site:type_name -> types.v1.Location
 	16, // 8: types.v1.StackTraceSelector.go_pgo:type_name -> types.v1.GoPGO
 	2,  // 9: types.v1.Exemplar.labels:type_name -> types.v1.LabelPair
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	2,  // 10: types.v1.HeatmapSeries.labels:type_name -> types.v1.LabelPair
+	21, // 11: types.v1.HeatmapSeries.slots:type_name -> types.v1.HeatmapSlot
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_types_v1_types_proto_init() }
@@ -1345,7 +1471,7 @@ func file_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_types_v1_types_proto_rawDesc), len(file_types_v1_types_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   18,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

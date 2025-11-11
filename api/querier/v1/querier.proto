@@ -49,6 +49,10 @@ service QuerierService {
   rpc SelectSeries(SelectSeriesRequest) returns (SelectSeriesResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/public";
   }
+  // SelectHeatmap returns a heatmap visualization for the requested profiles.
+  rpc SelectHeatmap(SelectHeatmapRequest) returns (SelectHeatmapResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
 
   // Diff returns a diff of two profiles
   rpc Diff(DiffRequest) returns (DiffResponse) {
@@ -227,6 +231,34 @@ message SelectSeriesRequest {
 
 message SelectSeriesResponse {
   repeated types.v1.Series series = 1;
+}
+
+enum HeatmapQueryType {
+  HEATMAP_QUERY_TYPE_UNSPECIFIED = 0;
+  HEATMAP_QUERY_TYPE_INDIVIDUAL = 1;
+  HEATMAP_QUERY_TYPE_SPAN = 2;
+}
+
+message SelectHeatmapRequest {
+  // Profile Type ID string in the form
+  // <name>:<type>:<unit>:<period_type>:<period_unit>.
+  string profile_typeID = 1 [(gnostic.openapi.v3.property).example = {yaml: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"}];
+  // Label selector string
+  string label_selector = 2 [(gnostic.openapi.v3.property).example = {yaml: "'{namespace=\"my-namespace\"}'"}];
+  // Milliseconds since epoch.
+  int64 start = 3 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
+  // Milliseconds since epoch.
+  int64 end = 4 [(gnostic.openapi.v3.property).example = {yaml: "1676289600000"}];
+  // Query resolution step width in seconds
+  double step = 5;
+  // Group by labels
+  repeated string group_by = 6 [(gnostic.openapi.v3.property).example = {yaml: "['pod']"}];
+  // Query type: individual profiles or span profiles
+  HeatmapQueryType query_type = 7;
+}
+
+message SelectHeatmapResponse {
+  repeated types.v1.HeatmapSeries series = 1;
 }
 
 message AnalyzeQueryRequest {
