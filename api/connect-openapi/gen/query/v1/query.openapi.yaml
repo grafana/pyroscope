@@ -342,6 +342,28 @@ components:
              denormalized relationships is not a concern.
       title: Dataset
       additionalProperties: false
+    querier.v1.HeatmapQueryType:
+      type: string
+      title: HeatmapQueryType
+      enum:
+        - HEATMAP_QUERY_TYPE_UNSPECIFIED
+        - HEATMAP_QUERY_TYPE_INDIVIDUAL
+        - HEATMAP_QUERY_TYPE_SPAN
+    query.v1.AttributeTable:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: string
+          title: keys
+        values:
+          type: array
+          items:
+            type: string
+          title: values
+      title: AttributeTable
+      additionalProperties: false
     query.v1.Diagnostics:
       type: object
       properties:
@@ -351,6 +373,100 @@ components:
       title: Diagnostics
       additionalProperties: false
       description: Diagnostic messages, events, statistics, analytics, etc.
+    query.v1.HeatmapPoint:
+      type: object
+      properties:
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: Milliseconds since epoch when the profile was captured.
+        profileId:
+          type:
+            - integer
+            - string
+          title: profile_id
+          format: int64
+          description: Unique identifier for the profile (UUID), reference into AttributeTable with only value set
+        spanId:
+          type:
+            - integer
+            - string
+          title: span_id
+          format: int64
+          description: Span ID if this profile was split by span during ingestion
+        value:
+          type:
+            - integer
+            - string
+          title: value
+          format: int64
+          description: Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
+        attributeRefs:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: attribute_refs
+          description: labels as references into AttributeTable
+      title: HeatmapPoint
+      additionalProperties: false
+    query.v1.HeatmapQuery:
+      type: object
+      properties:
+        step:
+          type: number
+          title: step
+          format: double
+        groupBy:
+          type: array
+          items:
+            type: string
+          title: group_by
+        queryType:
+          title: query_type
+          $ref: '#/components/schemas/querier.v1.HeatmapQueryType'
+      title: HeatmapQuery
+      additionalProperties: false
+    query.v1.HeatmapReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.HeatmapQuery'
+        heatmapSeries:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.HeatmapSeries'
+          title: heatmap_series
+        attributeTable:
+          title: attribute_table
+          $ref: '#/components/schemas/query.v1.AttributeTable'
+      title: HeatmapReport
+      additionalProperties: false
+    query.v1.HeatmapSeries:
+      type: object
+      properties:
+        attributeRefs:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: attribute_refs
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.HeatmapPoint'
+          title: points
+          description: Points are timestamp, then span_id, then porfile_id ordered
+      title: HeatmapSeries
+      additionalProperties: false
     query.v1.InvokeOptions:
       type: object
       properties:
@@ -509,12 +625,15 @@ components:
           $ref: '#/components/schemas/query.v1.TreeQuery'
         pprof:
           title: pprof
+          $ref: '#/components/schemas/query.v1.PprofQuery'
+        heatmap:
+          title: heatmap
           description: |-
             function_details
              call_graph
              top_table
              ...
-          $ref: '#/components/schemas/query.v1.PprofQuery'
+          $ref: '#/components/schemas/query.v1.HeatmapQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -602,6 +721,7 @@ components:
         - QUERY_TIME_SERIES
         - QUERY_TREE
         - QUERY_PPROF
+        - QUERY_HEATMAP
     query.v1.Report:
       type: object
       properties:
@@ -629,6 +749,9 @@ components:
         pprof:
           title: pprof
           $ref: '#/components/schemas/query.v1.PprofReport'
+        heatmap:
+          title: heatmap
+          $ref: '#/components/schemas/query.v1.HeatmapReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -642,6 +765,7 @@ components:
         - REPORT_TIME_SERIES
         - REPORT_TREE
         - REPORT_PPROF
+        - REPORT_HEATMAP
     query.v1.SeriesLabelsQuery:
       type: object
       properties:
