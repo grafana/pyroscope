@@ -245,6 +245,7 @@ func TestSymbolizePprof(t *testing.T) {
 				client:  mockClient,
 				bucket:  mockBucket,
 				metrics: newMetrics(nil),
+				cfg:     Config{MaxDebuginfodConcurrency: 1},
 			}
 
 			err := s.SymbolizePprof(context.Background(), tt.profile)
@@ -284,6 +285,7 @@ func TestSymbolizationKeepsSequentialFunctionIDs(t *testing.T) {
 		client:  mockClient,
 		bucket:  mockBucket,
 		metrics: newMetrics(nil),
+		cfg:     Config{MaxDebuginfodConcurrency: 1},
 	}
 
 	err := s.SymbolizePprof(context.Background(), profile)
@@ -320,6 +322,7 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 		client:  nil,
 		bucket:  mockBucket,
 		metrics: newMetrics(prometheus.NewRegistry()),
+		cfg:     Config{MaxDebuginfodConcurrency: 1},
 	}
 
 	req := &request{
@@ -364,6 +367,7 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 		client:  mockClient,
 		bucket:  mockBucket,
 		metrics: newMetrics(prometheus.NewRegistry()),
+		cfg:     Config{MaxDebuginfodConcurrency: 1},
 	}
 
 	elfTestFile := openTestFile(t)
@@ -619,5 +623,42 @@ func createRequest(t *testing.T, buildID string, address uint64) *request {
 				address: address,
 			},
 		},
+	}
+}
+
+func TestConfigValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		setup   func(cfg *Config)
+		wantErr bool
+	}{
+		{
+			name:    "valid config with positive concurrency",
+			setup:   func(cfg *Config) { cfg.MaxDebuginfodConcurrency = 10 },
+			wantErr: false,
+		},
+		{
+			name:    "invalid config with zero concurrency",
+			setup:   func(cfg *Config) { cfg.MaxDebuginfodConcurrency = 0 },
+			wantErr: true,
+		},
+		{
+			name:    "invalid config with negative concurrency",
+			setup:   func(cfg *Config) { cfg.MaxDebuginfodConcurrency = -1 },
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := Config{}
+			tt.setup(&cfg)
+			err := cfg.Validate()
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
 	}
 }

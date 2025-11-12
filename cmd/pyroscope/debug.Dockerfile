@@ -1,4 +1,4 @@
-FROM gcr.io/distroless/static:debug@sha256:c7f818f4678fe4ceb0412a370e8e41ca373d5dde25039b84f9cccb72ef558542
+FROM gcr.io/distroless/static:debug@sha256:7dc183cc0aea6abd9d105135e49d37b7474a79391ebea7eb55557cd4486d2225
 
 SHELL [ "/busybox/sh", "-c" ]
 

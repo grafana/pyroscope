@@ -5,12 +5,9 @@
   "schedule": ["before 4am on monday"],
   "prConcurrentLimit": 10,
   "ignoreDeps": [],
+  "separateMajorMinor": true,
+  "separateMultipleMajor": true,
   "packageRules": [
-    {
-      "description": "Ignore major updates for all dependencies",
-      "matchUpdateTypes": ["major"],
-      "enabled": false
-    },
     {
       "description": "Group all Go module updates (main project)",
       "matchManagers": ["gomod"],
@@ -31,11 +28,6 @@
       "matchFileNames": ["cmd/pyroscope/**"],
       "groupName": "docker",
       "schedule": ["before 4am on the first day of the month"]
-    },
-    {
-      "description": "Dev containers updates",
-      "matchManagers": ["devcontainer"],
-      "schedule": ["before 4am on monday"]
     },
     {
       "description": "Group all GitHub Actions updates",
@@ -60,26 +52,12 @@
       "schedule": ["before 4am on monday"]
     },
     {
-      "description": "Ignore all other dependencies in examples directories except pyroscope-go",
-      "matchManagers": ["gomod"],
-      "matchFileNames": [
-        "examples/golang-pgo/go.mod",
-        "examples/language-sdk-instrumentation/golang-push/rideshare-alloy/go.mod",
-        "examples/language-sdk-instrumentation/golang-push/rideshare-k6/go.mod",
-        "examples/language-sdk-instrumentation/golang-push/rideshare/go.mod",
-        "examples/language-sdk-instrumentation/golang-push/simple/go.mod",
-        "examples/tracing/golang-push/go.mod"
-      ],
-      "enabled": false,
-      "matchPackageNames": ["!github.com/grafana/pyroscope-go"]
-    },
-    {
       "description": "Automatically merge patch updates",
       "matchUpdateTypes": ["patch"],
       "automerge": false,
       "automergeType": "pr",
       "automergeStrategy": "squash",
-      "platformAutomerge": false
+      "platformAutomerge": true
     }
   ]
 }

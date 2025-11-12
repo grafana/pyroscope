@@ -40,7 +40,7 @@ var _ = Describe("Speedscope", func() {
 		input := ingester.actual[0]
 
 		Expect(input.Units).To(Equal(metadata.SamplesUnits))
-		Expect(input.LabelSet.Normalized()).To(Equal("foo{}"))
+		Expect(input.LabelSet.Normalized()).To(Equal("foo{profile_name=simple.txt}"))
 		expectedResult := `a;b 500
 a;b;c 500
 a;b;d 400
@@ -67,12 +67,18 @@ a;b;d 400
 
 		input := ingester.actual[0]
 		Expect(input.Units).To(Equal(metadata.SamplesUnits))
-		Expect(input.LabelSet.Normalized()).To(Equal("foo.seconds{x=y}"))
+		Expect(input.LabelSet.Normalized()).To(Equal("foo.seconds{profile_name=one,x=y}"))
 		expectedResult := `a;b 500
 a;b;c 500
 a;b;d 400
 `
 		Expect(input.Val.String()).To(Equal(expectedResult))
 		Expect(input.SampleRate).To(Equal(uint32(100)))
+
+		input2 := ingester.actual[1]
+		Expect(input2.Units).To(Equal(metadata.SamplesUnits))
+		Expect(input2.LabelSet.Normalized()).To(Equal("foo.seconds{profile_name=two,x=y}"))
+		Expect(input2.Val.String()).To(Equal(expectedResult))
+		Expect(input2.SampleRate).To(Equal(uint32(100)))
 	})
 })

@@ -6,10 +6,10 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.15.1
+    helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -28,10 +28,10 @@ metadata:
   name: pyroscope-dev-alloy
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.3.1
+    helm.sh/chart: alloy-1.4.0
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.11.2"
+    app.kubernetes.io/version: "v1.11.3"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
@@ -43,10 +43,10 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.15.1
+    helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: pyroscope/templates/configmap-alloy.yaml
@@ -56,10 +56,10 @@ metadata:
   name: alloy-config-pyroscope
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.15.1
+    helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 data:
   config.alloy: |
@@ -914,10 +914,10 @@ metadata:
   name: pyroscope-dev-overrides-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.15.1
+    helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 data:
   overrides.yaml: |
@@ -931,10 +931,10 @@ metadata:
   name: pyroscope-dev-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.15.1
+    helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
@@ -946,99 +946,105 @@ kind: ClusterRole
 metadata:
   name: pyroscope-dev-alloy
   labels:
-    helm.sh/chart: alloy-1.3.1
+    helm.sh/chart: alloy-1.4.0
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.11.2"
+    app.kubernetes.io/version: "v1.11.3"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
 rules:
-  # Rules which allow discovery.kubernetes to function.
   - apiGroups:
-      - ""
-      - "discovery.k8s.io"
-      - "networking.k8s.io"
+    - ""
+    - discovery.k8s.io
+    - networking.k8s.io
     resources:
-      - endpoints
-      - endpointslices
-      - ingresses
-      - nodes
-      - nodes/proxy
-      - nodes/metrics
-      - pods
-      - services
+    - endpoints
+    - endpointslices
+    - ingresses
+    - pods
+    - services
     verbs:
-      - get
-      - list
-      - watch
-  # Rules which allow loki.source.kubernetes and loki.source.podlogs to work.
+    - get
+    - list
+    - watch
   - apiGroups:
-      - ""
+    - ""
     resources:
-      - pods
-      - pods/log
-      - namespaces
+    - pods
+    - pods/log
+    - namespaces
     verbs:
-      - get
-      - list
-      - watch
+    - get
+    - list
+    - watch
   - apiGroups:
-      - "monitoring.grafana.com"
+    - monitoring.grafana.com
     resources:
-      - podlogs
+    - podlogs
     verbs:
-      - get
-      - list
-      - watch
-  # Rules which allow mimir.rules.kubernetes to work.
-  - apiGroups: ["monitoring.coreos.com"]
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - monitoring.coreos.com
     resources:
-      - prometheusrules
+    - prometheusrules
     verbs:
-      - get
-      - list
-      - watch
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - monitoring.coreos.com
+    resources:
+    - podmonitors
+    - servicemonitors
+    - probes
+    - scrapeconfigs
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - events
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - configmaps
+    - secrets
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - apps
+    - extensions
+    resources:
+    - replicasets
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - nodes
+    - nodes/proxy
+    - nodes/metrics
+    verbs:
+    - get
+    - list
+    - watch
   - nonResourceURLs:
-      - /metrics
+    - /metrics
     verbs:
-      - get
-  # Rules for prometheus.kubernetes.*
-  - apiGroups: ["monitoring.coreos.com"]
-    resources:
-      - podmonitors
-      - servicemonitors
-      - probes
-      - scrapeconfigs
-    verbs:
-      - get
-      - list
-      - watch
-  # Rules which allow eventhandler to work.
-  - apiGroups:
-      - ""
-    resources:
-      - events
-    verbs:
-      - get
-      - list
-      - watch
-  # needed for remote.kubernetes.*
-  - apiGroups: [""]
-    resources:
-      - "configmaps"
-      - "secrets"
-    verbs:
-      - get
-      - list
-      - watch
-  # needed for otelcol.processor.k8sattributes
-  - apiGroups: ["apps"]
-    resources: ["replicasets"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["extensions"]
-    resources: ["replicasets"]
-    verbs: ["get", "list", "watch"]
+    - get
 ---
 # Source: pyroscope/charts/alloy/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1046,10 +1052,10 @@ kind: ClusterRoleBinding
 metadata:
   name: pyroscope-dev-alloy
   labels:
-    helm.sh/chart: alloy-1.3.1
+    helm.sh/chart: alloy-1.4.0
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.11.2"
+    app.kubernetes.io/version: "v1.11.3"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
@@ -1068,10 +1074,10 @@ kind: Role
 metadata:
   name: pyroscope-dev-discovery
   labels:
-    helm.sh/chart: pyroscope-1.15.1
+    helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 rules:
 - apiGroups:
@@ -1093,10 +1099,10 @@ kind: RoleBinding
 metadata:
   name: pyroscope-dev-discovery
   labels:
-    helm.sh/chart: pyroscope-1.15.1
+    helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -1114,10 +1120,10 @@ metadata:
   name: pyroscope-dev-alloy-cluster
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.3.1
+    helm.sh/chart: alloy-1.4.0
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.11.2"
+    app.kubernetes.io/version: "v1.11.3"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: networking
@@ -1147,10 +1153,10 @@ metadata:
   name: pyroscope-dev-alloy
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.3.1
+    helm.sh/chart: alloy-1.4.0
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.11.2"
+    app.kubernetes.io/version: "v1.11.3"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: networking
@@ -1172,10 +1178,10 @@ metadata:
   name: pyroscope-dev-memberlist
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.15.1
+    helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -1199,10 +1205,10 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.15.1
+    helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1232,10 +1238,10 @@ metadata:
   name: pyroscope-dev-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.15.1
+    helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1267,10 +1273,10 @@ metadata:
   name: pyroscope-dev-alloy
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.3.1
+    helm.sh/chart: alloy-1.4.0
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.11.2"
+    app.kubernetes.io/version: "v1.11.3"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
 spec:
@@ -1301,7 +1307,7 @@ spec:
       serviceAccountName: pyroscope-dev-alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.11.2
+          image: docker.io/grafana/alloy:v1.11.3
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -1357,10 +1363,10 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.15.1
+    helm.sh/chart: pyroscope-1.16.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.15.0"
+    app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1375,9 +1381,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 25ba7776359647d20b4ce86f342529fdc9ad9af7153c79ae7521a2dd6fcb18d6
+        checksum/config: 37335c4a80c2faac286d62fb50b700f58d0084fed2494193bfe05e41569d9ab1
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v1.15.0"
+        profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1400,7 +1406,7 @@ spec:
         - name: "pyroscope"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.15.0"
+          image: "grafana/pyroscope:1.16.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=all"

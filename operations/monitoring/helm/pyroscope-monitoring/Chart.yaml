@@ -1,0 +1,14 @@
+apiVersion: v2
+name: pyroscope-monitoring
+description: A Helm chart for monitoring Grafana Pyroscope. This helm chart uses otel-lgtm to monitor the health of the Grafana Pyroscope backend.
+type: application
+
+version: 0.1.1
+appVersion: "0.0.0"
+
+dependencies:
+  - name: k8s-monitoring
+    alias: monitoring
+    version: 3.5.3
+    repository: https://grafana.github.io/helm-charts
+    condition: monitoring.enabled

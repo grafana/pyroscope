@@ -1,0 +1,30 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}
+
+> ⚠️ **Note:** This monitoring setup is not production grade and is intended for development and testing purposes only.
+
+## Dashboards
+
+This chart provisions the following Grafana dashboards under the "Pyroscope" folder:
+
+- **operational** - General operational metrics dashboard
+- **v2-metastore** - Metastore-related metrics dashboard (only relevant with v2 storage layer)
+- **v2-read-path** - Read path performance dashboard (focusing on v2 storage layer)
+- **v2-write-path** - Write path performance dashboard (focusing on v2 storage layer)
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}
+

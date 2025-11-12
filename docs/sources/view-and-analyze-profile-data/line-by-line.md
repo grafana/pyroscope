@@ -16,7 +16,7 @@ Using this app, you can map your code directly within Grafana and visualize reso
 With these powerful capabilities, you can gain deep insights into your code's execution and identify performance bottlenecks.
 
 Every profile type works for the integration for code written in Go.
-For information on profile types and the profiles available with Go, refer to [Profiling types and their uses](../introduction/profiling-types/).
+For information on profile types and the profiles available with Go, refer to [Profiling types and their uses](../../introduction/profiling-types/).
 
 ![Example of a flame graph with the function details populated](/media/docs/grafana-cloud/profiles/screenshot-profiles-github-integration.png)
 

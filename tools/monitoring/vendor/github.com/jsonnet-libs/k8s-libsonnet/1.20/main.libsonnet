@@ -1,1 +1,0 @@
-(import 'gen.libsonnet') + (import '_custom/apps.libsonnet') + (import '_custom/autoscaling.libsonnet') + (import '_custom/batch.libsonnet') + (import '_custom/core.libsonnet') + (import '_custom/list.libsonnet') + (import '_custom/mapContainers.libsonnet') + (import '_custom/rbac.libsonnet') + (import '_custom/volumeMounts.libsonnet')
