@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/sync/errgroup"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
@@ -23,6 +24,12 @@ type gitHubCommitGetter interface {
 // This function provides partial success behavior, returning any commits
 // that were successfully fetched along with errors for those that failed.
 func getCommits(ctx context.Context, client gitHubCommitGetter, owner, repo string, refs []string) ([]*vcsv1.CommitInfo, []error, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "getCommits")
+	defer sp.Finish()
+	sp.SetTag("owner", owner)
+	sp.SetTag("repo", repo)
+	sp.SetTag("ref_count", len(refs))
+
 	type result struct {
 		commit *vcsv1.CommitInfo
 		err    error
@@ -71,6 +78,12 @@ func getCommits(ctx context.Context, client gitHubCommitGetter, owner, repo stri
 // tryGetCommit attempts to retrieve a commit using different ref formats (commit hash, branch, tag).
 // It tries each format in order and returns the first successful result.
 func tryGetCommit(ctx context.Context, client gitHubCommitGetter, owner, repo, ref string) (*vcsv1.CommitInfo, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "tryGetCommit")
+	defer sp.Finish()
+	sp.SetTag("owner", owner)
+	sp.SetTag("repo", repo)
+	sp.SetTag("ref", ref)
+
 	refFormats := []string{
 		ref,            // Try as a commit hash
 		"heads/" + ref, // Try as a branch
