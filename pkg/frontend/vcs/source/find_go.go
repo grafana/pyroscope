@@ -112,8 +112,15 @@ func (ff FileFinder) tryFindGoFile(ctx context.Context, maxAttempts int) (*vcsv1
 	if maxAttempts <= 0 {
 		return nil, errors.New("invalid max attempts")
 	}
-	// Try to find the file in the repo.
-	path := strings.TrimPrefix(ff.path, strings.Join([]string{ff.repo.GetHostName(), ff.repo.GetOwnerName(), ff.repo.GetRepoName()}, "/"))
+
+	// trim repo path (e.g. "github.com/grafana/pyroscope/") in path
+	path := ff.path
+	repoPath := strings.Join([]string{ff.repo.GetHostName(), ff.repo.GetOwnerName(), ff.repo.GetRepoName(), ""}, "/")
+	if pos := strings.Index(path, repoPath); pos != -1 {
+		path = path[len(repoPath)+pos:]
+	}
+
+	// now try to find file in repo
 	path = strings.TrimLeft(path, "/")
 	attempts := 0
 	for {
