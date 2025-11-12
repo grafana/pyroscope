@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/go-github/v58/github"
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/oauth2"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
@@ -32,6 +33,12 @@ type githubClient struct {
 }
 
 func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) (*vcsv1.CommitInfo, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "githubClient.GetCommit")
+	defer sp.Finish()
+	sp.SetTag("owner", owner)
+	sp.SetTag("repo", repo)
+	sp.SetTag("ref", ref)
+
 	commit, _, err := gh.repoService.GetCommit(ctx, owner, repo, ref, nil)
 	if err != nil {
 		var githubErr *github.ErrorResponse
@@ -67,6 +74,13 @@ func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) 
 }
 
 func (gh *githubClient) GetFile(ctx context.Context, req FileRequest) (File, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "githubClient.GetFile")
+	defer sp.Finish()
+	sp.SetTag("owner", req.Owner)
+	sp.SetTag("repo", req.Repo)
+	sp.SetTag("path", req.Path)
+	sp.SetTag("ref", req.Ref)
+
 	// We could abstract away git provider using git protocol
 	// git clone https://x-access-token:<token>@github.com/owner/repo.git
 	// For now we use the github client.

@@ -57,8 +57,18 @@ func Test_tryFindGoFile(t *testing.T) {
 			expectedError:         nil,
 		},
 		{
-			name:                  "path with repository preffix",
+			name:                  "path with relative repository prefix",
 			searchedPath:          "github.com/grafana/pyroscope/main.go",
+			rootPath:              "",
+			repo:                  pyroscopeRepo,
+			clientMock:            &VCSClientMock{fileToFind: "/main.go"},
+			attempts:              1,
+			expectedSearchedPaths: []string{"/main.go"},
+			expectedError:         nil,
+		},
+		{
+			name:                  "path with absolute repository prefix",
+			searchedPath:          "/Users/pyroscope/git/github.com/grafana/pyroscope/main.go",
 			rootPath:              "",
 			repo:                  pyroscopeRepo,
 			clientMock:            &VCSClientMock{fileToFind: "/main.go"},
@@ -79,14 +89,14 @@ func Test_tryFindGoFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctxMock := context.Context(nil)
+			ctx := context.Background()
 			sut := FileFinder{
 				path:     tt.searchedPath,
 				rootPath: tt.rootPath,
 				repo:     tt.repo,
 				client:   tt.clientMock,
 			}
-			_, err := sut.tryFindGoFile(ctxMock, tt.attempts)
+			_, err := sut.tryFindGoFile(ctx, tt.attempts)
 			assert.Equal(t, tt.expectedSearchedPaths, (*tt.clientMock).searchedSequence)
 			assert.Equal(t, tt.expectedError, err)
 		})

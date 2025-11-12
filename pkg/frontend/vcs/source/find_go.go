@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log/level"
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 
@@ -23,6 +24,10 @@ const (
 
 // findGoFile finds a go file in a vcs repository.
 func (ff FileFinder) findGoFile(ctx context.Context) (*vcsv1.GetFileResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "findGoFile")
+	defer sp.Finish()
+	sp.SetTag("path", ff.path)
+
 	if url, ok := golang.StandardLibraryURL(ff.path); ok {
 		return ff.fetchURL(ctx, url, false)
 	}
@@ -50,6 +55,12 @@ func (ff FileFinder) findGoFile(ctx context.Context) (*vcsv1.GetFileResponse, er
 }
 
 func (ff FileFinder) fetchGoMod(ctx context.Context) (*modfile.File, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "fetchGoMod")
+	defer sp.Finish()
+	sp.SetTag("owner", ff.repo.GetOwnerName())
+	sp.SetTag("repo", ff.repo.GetRepoName())
+	sp.SetTag("ref", ff.ref)
+
 	content, err := ff.client.GetFile(ctx, client.FileRequest{
 		Owner: ff.repo.GetOwnerName(),
 		Repo:  ff.repo.GetRepoName(),
@@ -63,6 +74,10 @@ func (ff FileFinder) fetchGoMod(ctx context.Context) (*modfile.File, error) {
 }
 
 func (ff FileFinder) fetchGoDependencyFile(ctx context.Context, module golang.Module) (*vcsv1.GetFileResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "fetchGoDependencyFile")
+	defer sp.Finish()
+	sp.SetTag("module_path", module.Path)
+
 	switch {
 	case module.IsGitHub():
 		return ff.fetchGithubModuleFile(ctx, module)
@@ -73,12 +88,21 @@ func (ff FileFinder) fetchGoDependencyFile(ctx context.Context, module golang.Mo
 }
 
 func (ff FileFinder) fetchGithubModuleFile(ctx context.Context, mod golang.Module) (*vcsv1.GetFileResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "fetchGithubModuleFile")
+	defer sp.Finish()
+	sp.SetTag("module_path", mod.Path)
+
 	// todo: what if this is not a github repo?
 	// 		VSClient should support querying multiple repo providers.
 	githubFile, err := mod.GithubFile()
 	if err != nil {
 		return nil, err
 	}
+	sp.SetTag("owner", githubFile.Owner)
+	sp.SetTag("repo", githubFile.Repo)
+	sp.SetTag("path", githubFile.Path)
+	sp.SetTag("ref", githubFile.Ref)
+
 	content, err := ff.client.GetFile(ctx, client.FileRequest{
 		Owner: githubFile.Owner,
 		Repo:  githubFile.Repo,
@@ -92,10 +116,15 @@ func (ff FileFinder) fetchGithubModuleFile(ctx context.Context, mod golang.Modul
 }
 
 func (ff FileFinder) fetchGoogleSourceDependencyFile(ctx context.Context, mod golang.Module) (*vcsv1.GetFileResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "fetchGoogleSourceDependencyFile")
+	defer sp.Finish()
+	sp.SetTag("module_path", mod.Path)
+
 	url, err := mod.GoogleSourceURL()
 	if err != nil {
 		return nil, err
 	}
+	sp.SetTag("url", url)
 	return ff.fetchURL(ctx, url, true)
 }
 
@@ -112,8 +141,15 @@ func (ff FileFinder) tryFindGoFile(ctx context.Context, maxAttempts int) (*vcsv1
 	if maxAttempts <= 0 {
 		return nil, errors.New("invalid max attempts")
 	}
-	// Try to find the file in the repo.
-	path := strings.TrimPrefix(ff.path, strings.Join([]string{ff.repo.GetHostName(), ff.repo.GetOwnerName(), ff.repo.GetRepoName()}, "/"))
+
+	// trim repo path (e.g. "github.com/grafana/pyroscope/") in path
+	path := ff.path
+	repoPath := strings.Join([]string{ff.repo.GetHostName(), ff.repo.GetOwnerName(), ff.repo.GetRepoName(), ""}, "/")
+	if pos := strings.Index(path, repoPath); pos != -1 {
+		path = path[len(repoPath)+pos:]
+	}
+
+	// now try to find file in repo
 	path = strings.TrimLeft(path, "/")
 	attempts := 0
 	for {
