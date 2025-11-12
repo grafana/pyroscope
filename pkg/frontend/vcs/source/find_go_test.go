@@ -89,14 +89,14 @@ func Test_tryFindGoFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctxMock := context.Context(nil)
+			ctx := context.Background()
 			sut := FileFinder{
 				path:     tt.searchedPath,
 				rootPath: tt.rootPath,
 				repo:     tt.repo,
 				client:   tt.clientMock,
 			}
-			_, err := sut.tryFindGoFile(ctxMock, tt.attempts)
+			_, err := sut.tryFindGoFile(ctx, tt.attempts)
 			assert.Equal(t, tt.expectedSearchedPaths, (*tt.clientMock).searchedSequence)
 			assert.Equal(t, tt.expectedError, err)
 		})
