@@ -144,15 +144,18 @@ message Exemplar {
   int64 timestamp = 1 [(gnostic.openapi.v3.property).example = {yaml: "1730000023000"}];
 
   // Unique identifier for the profile (UUID).
-  string id = 2 [(gnostic.openapi.v3.property).example = {yaml: "7c9e6679-7425-40de-944b-e07fc1f90ae7"}];
+  string profile_id = 2 [(gnostic.openapi.v3.property).example = {yaml: "7c9e6679-7425-40de-944b-e07fc1f90ae7"}];
+
+  // Span ID if this profile was split by span during ingestion.
+  string span_id = 3 [(gnostic.openapi.v3.property).example = {yaml: "00f067aa0ba902b7"}];
 
   // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
-  uint64 value = 3 [(gnostic.openapi.v3.property).example = {yaml: "2450000000"}];
+  uint64 value = 4 [(gnostic.openapi.v3.property).example = {yaml: "2450000000"}];
 
   // Series labels that are NOT included in the group_by query parameter.
   // These labels complete the full series identity of this exemplar's profile.
   // For example, if group_by=["service"], this would contain labels like "pod",
   // "namespace", "region" that were omitted from grouping. This allows identifying
   // which specific series instance this profile sample came from.
-  repeated LabelPair labels = 4;
+  repeated LabelPair labels = 5;
 }

@@ -1058,15 +1058,17 @@ type Exemplar struct {
 	// Milliseconds since epoch when the profile was captured.
 	Timestamp int64 `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	// Unique identifier for the profile (UUID).
-	Id string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	ProfileId string `protobuf:"bytes,2,opt,name=profile_id,json=profileId,proto3" json:"profile_id,omitempty"`
+	// Span ID if this profile was split by span during ingestion.
+	SpanId string `protobuf:"bytes,3,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
 	// Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
-	Value uint64 `protobuf:"varint,3,opt,name=value,proto3" json:"value,omitempty"`
+	Value uint64 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
 	// Series labels that are NOT included in the group_by query parameter.
 	// These labels complete the full series identity of this exemplar's profile.
 	// For example, if group_by=["service"], this would contain labels like "pod",
 	// "namespace", "region" that were omitted from grouping. This allows identifying
 	// which specific series instance this profile sample came from.
-	Labels        []*LabelPair `protobuf:"bytes,4,rep,name=labels,proto3" json:"labels,omitempty"`
+	Labels        []*LabelPair `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1108,9 +1110,16 @@ func (x *Exemplar) GetTimestamp() int64 {
 	return 0
 }
 
-func (x *Exemplar) GetId() string {
+func (x *Exemplar) GetProfileId() string {
 	if x != nil {
-		return x.Id
+		return x.ProfileId
+	}
+	return ""
+}
+
+func (x *Exemplar) GetSpanId() string {
+	if x != nil {
+		return x.SpanId
 	}
 	return ""
 }
@@ -1199,13 +1208,15 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\x17GetProfileStatsResponse\x12#\n" +
 	"\rdata_ingested\x18\x01 \x01(\bR\fdataIngested\x12.\n" +
 	"\x13oldest_profile_time\x18\x02 \x01(\x03R\x11oldestProfileTime\x12.\n" +
-	"\x13newest_profile_time\x18\x03 \x01(\x03R\x11newestProfileTime\"\xd1\x01\n" +
+	"\x13newest_profile_time\x18\x03 \x01(\x03R\x11newestProfileTime\"\x92\x02\n" +
 	"\bExemplar\x122\n" +
-	"\ttimestamp\x18\x01 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1730000023000R\ttimestamp\x12;\n" +
-	"\x02id\x18\x02 \x01(\tB+\xbaG(:&\x12$7c9e6679-7425-40de-944b-e07fc1f90ae7R\x02id\x12'\n" +
-	"\x05value\x18\x03 \x01(\x04B\x11\xbaG\x0e:\f\x12\n" +
+	"\ttimestamp\x18\x01 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1730000023000R\ttimestamp\x12J\n" +
+	"\n" +
+	"profile_id\x18\x02 \x01(\tB+\xbaG(:&\x12$7c9e6679-7425-40de-944b-e07fc1f90ae7R\tprofileId\x120\n" +
+	"\aspan_id\x18\x03 \x01(\tB\x17\xbaG\x14:\x12\x12\x1000f067aa0ba902b7R\x06spanId\x12'\n" +
+	"\x05value\x18\x04 \x01(\x04B\x11\xbaG\x0e:\f\x12\n" +
 	"2450000000R\x05value\x12+\n" +
-	"\x06labels\x18\x04 \x03(\v2\x13.types.v1.LabelPairR\x06labels*k\n" +
+	"\x06labels\x18\x05 \x03(\v2\x13.types.v1.LabelPairR\x06labels*k\n" +
 	"\x19TimeSeriesAggregationType\x12$\n" +
 	" TIME_SERIES_AGGREGATION_TYPE_SUM\x10\x00\x12(\n" +
 	"$TIME_SERIES_AGGREGATION_TYPE_AVERAGE\x10\x01B\x9b\x01\n" +

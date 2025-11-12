@@ -969,9 +969,13 @@
           "format": "int64",
           "description": "Milliseconds since epoch when the profile was captured."
         },
-        "id": {
+        "profileId": {
           "type": "string",
           "description": "Unique identifier for the profile (UUID)."
+        },
+        "spanId": {
+          "type": "string",
+          "description": "Span ID if this profile was split by span during ingestion."
         },
         "value": {
           "type": "string",
@@ -1222,15 +1226,6 @@
         "URL": {
           "type": "string",
           "title": "the full URL to the file"
-        }
-      }
-    },
-    "v1GetProfileResponse": {
-      "type": "object",
-      "properties": {
-        "profile": {
-          "$ref": "#/definitions/googlev1Profile",
-          "title": "Complete pprof profile (merged if it was split during ingestion)"
         }
       }
     },
@@ -2176,6 +2171,13 @@
         "stackTraceSelector": {
           "$ref": "#/definitions/v1StackTraceSelector",
           "description": "Select stack traces that match the provided selector."
+        },
+        "profileIdSelector": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "List of Profile UUIDs to query"
         }
       }
     },

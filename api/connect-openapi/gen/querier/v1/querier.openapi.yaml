@@ -82,46 +82,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/querier.v1.DiffResponse'
-  /querier.v1.QuerierService/GetProfile:
-    post:
-      tags:
-        - scope/public
-        - querier.v1.QuerierService
-      summary: GetProfile retrieves an individual profile by its UUID.  If the profile was split during ingestion (e.g., by span_id), all parts  will be merged before returning.
-      description: |-
-        GetProfile retrieves an individual profile by its UUID.
-         If the profile was split during ingestion (e.g., by span_id), all parts
-         will be merged before returning.
-      operationId: querier.v1.QuerierService.GetProfile
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/querier.v1.GetProfileRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/querier.v1.GetProfileResponse'
   /querier.v1.QuerierService/GetProfileStats:
     post:
       tags:
@@ -1064,38 +1024,6 @@ components:
           format: int64
       title: FlameGraphDiff
       additionalProperties: false
-    querier.v1.GetProfileRequest:
-      type: object
-      properties:
-        id:
-          type: string
-          examples:
-            - 7c9e6679-7425-40de-944b-e07fc1f90ae7
-          title: id
-          description: Profile UUID from Exemplar.id field (required)
-        timestamp:
-          type:
-            - integer
-            - string
-          examples:
-            - "1730000023000"
-          title: timestamp
-          format: int64
-          description: |-
-            Profile timestamp in milliseconds since epoch.
-             Used to narrow down which blocks to query. If not provided, all blocks will be scanned which is expensive.
-             This timestamp is available from Exemplar.timestamp in the SelectSeries response.
-      title: GetProfileRequest
-      additionalProperties: false
-    querier.v1.GetProfileResponse:
-      type: object
-      properties:
-        profile:
-          title: profile
-          description: Complete pprof profile (merged if it was split during ingestion)
-          $ref: '#/components/schemas/google.v1.Profile'
-      title: GetProfileResponse
-      additionalProperties: false
     querier.v1.Level:
       type: object
       properties:
@@ -1417,6 +1345,16 @@ components:
           description: Select stack traces that match the provided selector.
           nullable: true
           $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        profileIdSelector:
+          type: array
+          examples:
+            - - 7c9e6679-7425-40de-944b-e07fc1f90ae7
+          items:
+            type: string
+            examples:
+              - - 7c9e6679-7425-40de-944b-e07fc1f90ae7
+          title: profile_id_selector
+          description: List of Profile UUIDs to query
       title: SelectMergeStacktracesRequest
       additionalProperties: false
     querier.v1.SelectMergeStacktracesResponse:
@@ -1575,12 +1513,18 @@ components:
           title: timestamp
           format: int64
           description: Milliseconds since epoch when the profile was captured.
-        id:
+        profileId:
           type: string
           examples:
             - 7c9e6679-7425-40de-944b-e07fc1f90ae7
-          title: id
+          title: profile_id
           description: Unique identifier for the profile (UUID).
+        spanId:
+          type: string
+          examples:
+            - 00f067aa0ba902b7
+          title: span_id
+          description: Span ID if this profile was split by span during ingestion.
         value:
           type:
             - integer

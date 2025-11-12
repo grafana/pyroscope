@@ -737,12 +737,18 @@ components:
           title: timestamp
           format: int64
           description: Milliseconds since epoch when the profile was captured.
-        id:
+        profileId:
           type: string
           examples:
             - 7c9e6679-7425-40de-944b-e07fc1f90ae7
-          title: id
+          title: profile_id
           description: Unique identifier for the profile (UUID).
+        spanId:
+          type: string
+          examples:
+            - 00f067aa0ba902b7
+          title: span_id
+          description: Span ID if this profile was split by span during ingestion.
         value:
           type:
             - integer

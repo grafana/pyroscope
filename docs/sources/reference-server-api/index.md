@@ -126,6 +126,7 @@ A request body with the following fields is required:
 |`left.format` |  |  |
 |`left.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`left.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
+|`left.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
 |`left.profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
 |`left.stackTraceSelector.callSite[].name` |  |  |
 |`left.stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
@@ -135,6 +136,7 @@ A request body with the following fields is required:
 |`right.format` |  |  |
 |`right.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`right.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
+|`right.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
 |`right.profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
 |`right.stackTraceSelector.callSite[].name` |  |  |
 |`right.stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
@@ -148,12 +150,18 @@ curl \
       "left": {
         "end": '$(date +%s)000',
         "labelSelector": "{namespace=\"my-namespace\"}",
+        "profileIdSelector": [
+          "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        ],
         "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
         "start": '$(expr $(date +%s) - 3600 )000'
       },
       "right": {
         "end": '$(date +%s)000',
         "labelSelector": "{namespace=\"my-namespace\"}",
+        "profileIdSelector": [
+          "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        ],
         "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
         "start": '$(expr $(date +%s) - 3600 )000'
       }
@@ -168,54 +176,23 @@ body = {
     "left": {
       "end": int(datetime.datetime.now().timestamp() * 1000),
       "labelSelector": "{namespace=\"my-namespace\"}",
+      "profileIdSelector": [
+        "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      ],
       "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
       "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
     },
     "right": {
       "end": int(datetime.datetime.now().timestamp() * 1000),
       "labelSelector": "{namespace=\"my-namespace\"}",
+      "profileIdSelector": [
+        "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      ],
       "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
       "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
     }
   }
 url = 'http://localhost:4040/querier.v1.QuerierService/Diff'
-resp = requests.post(url, json=body)
-print(resp)
-print(resp.content)
-```
-
-{{% /code %}}
-#### `/querier.v1.QuerierService/GetProfile`
-
-GetProfile retrieves an individual profile by its UUID.
- If the profile was split during ingestion (e.g., by span_id), all parts
- will be merged before returning.
-
-A request body with the following fields is required:
-
-|Field | Description | Example |
-|:-----|:------------|:--------|
-|`id` | Profile UUID from Exemplar.id field (required) | `7c9e6679-7425-40de-944b-e07fc1f90ae7` |
-|`timestamp` | Profile timestamp in milliseconds since epoch.  Used to narrow down which blocks to query. If not provided, all blocks will be scanned which is expensive.  This timestamp is available from Exemplar.timestamp in the SelectSeries response. | `1730000023000` |
-
-{{% code %}}
-```curl
-curl \
-  -H "Content-Type: application/json" \
-  -d '{
-      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-      "timestamp": "1730000023000"
-    }' \
-  http://localhost:4040/querier.v1.QuerierService/GetProfile
-```
-
-```python
-import requests
-body = {
-    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-    "timestamp": "1730000023000"
-  }
-url = 'http://localhost:4040/querier.v1.QuerierService/GetProfile'
 resp = requests.post(url, json=body)
 print(resp)
 print(resp.content)
@@ -453,6 +430,7 @@ A request body with the following fields is required:
 |`format` |  |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
+|`profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
 |`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
 |`stackTraceSelector.callSite[].name` |  |  |
 |`stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
@@ -465,6 +443,9 @@ curl \
   -d '{
       "end": '$(date +%s)000',
       "labelSelector": "{namespace=\"my-namespace\"}",
+      "profileIdSelector": [
+        "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      ],
       "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
       "start": '$(expr $(date +%s) - 3600 )000'
     }' \
@@ -477,6 +458,9 @@ import datetime
 body = {
     "end": int(datetime.datetime.now().timestamp() * 1000),
     "labelSelector": "{namespace=\"my-namespace\"}",
+    "profileIdSelector": [
+      "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+    ],
     "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
     "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
   }

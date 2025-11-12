@@ -407,7 +407,8 @@ func (m *Exemplar) CloneVT() *Exemplar {
 	}
 	r := new(Exemplar)
 	r.Timestamp = m.Timestamp
-	r.Id = m.Id
+	r.ProfileId = m.ProfileId
+	r.SpanId = m.SpanId
 	r.Value = m.Value
 	if rhs := m.Labels; rhs != nil {
 		tmpContainer := make([]*LabelPair, len(rhs))
@@ -968,7 +969,10 @@ func (this *Exemplar) EqualVT(that *Exemplar) bool {
 	if this.Timestamp != that.Timestamp {
 		return false
 	}
-	if this.Id != that.Id {
+	if this.ProfileId != that.ProfileId {
+		return false
+	}
+	if this.SpanId != that.SpanId {
 		return false
 	}
 	if this.Value != that.Value {
@@ -1931,18 +1935,25 @@ func (m *Exemplar) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			i -= size
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 			i--
-			dAtA[i] = 0x22
+			dAtA[i] = 0x2a
 		}
 	}
 	if m.Value != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Value))
 		i--
-		dAtA[i] = 0x18
+		dAtA[i] = 0x20
 	}
-	if len(m.Id) > 0 {
-		i -= len(m.Id)
-		copy(dAtA[i:], m.Id)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Id)))
+	if len(m.SpanId) > 0 {
+		i -= len(m.SpanId)
+		copy(dAtA[i:], m.SpanId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.SpanId)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.ProfileId) > 0 {
+		i -= len(m.ProfileId)
+		copy(dAtA[i:], m.ProfileId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileId)))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -2313,7 +2324,11 @@ func (m *Exemplar) SizeVT() (n int) {
 	if m.Timestamp != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Timestamp))
 	}
-	l = len(m.Id)
+	l = len(m.ProfileId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.SpanId)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
@@ -4425,7 +4440,7 @@ func (m *Exemplar) UnmarshalVT(dAtA []byte) error {
 			}
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileId", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -4453,9 +4468,41 @@ func (m *Exemplar) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Id = string(dAtA[iNdEx:postIndex])
+			m.ProfileId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SpanId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SpanId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
 			}
@@ -4474,7 +4521,7 @@ func (m *Exemplar) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Labels", wireType)
 			}

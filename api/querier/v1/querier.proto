@@ -62,13 +62,6 @@ service QuerierService {
   rpc AnalyzeQuery(AnalyzeQueryRequest) returns (AnalyzeQueryResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/internal";
   }
-
-  // GetProfile retrieves an individual profile by its UUID.
-  // If the profile was split during ingestion (e.g., by span_id), all parts
-  // will be merged before returning.
-  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {
-    option (gnostic.openapi.v3.operation).tags = "scope/public";
-  }
 }
 
 message ProfileTypesRequest {
@@ -119,6 +112,8 @@ message SelectMergeStacktracesRequest {
   ProfileFormat format = 6;
   // Select stack traces that match the provided selector.
   optional types.v1.StackTraceSelector stack_trace_selector = 7;
+  // List of Profile UUIDs to query
+  repeated string profile_id_selector = 8 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e6679-7425-40de-944b-e07fc1f90ae7']"}];
 }
 
 enum ProfileFormat {
@@ -260,19 +255,4 @@ message QueryImpact {
   uint64 total_bytes_in_time_range = 2;
   uint64 total_queried_series = 3;
   bool deduplication_needed = 4;
-}
-
-message GetProfileRequest {
-  // Profile UUID from Exemplar.id field (required)
-  string id = 1 [(gnostic.openapi.v3.property).example = {yaml: "7c9e6679-7425-40de-944b-e07fc1f90ae7"}];
-
-  // Profile timestamp in milliseconds since epoch.
-  // Used to narrow down which blocks to query. If not provided, all blocks will be scanned which is expensive.
-  // This timestamp is available from Exemplar.timestamp in the SelectSeries response.
-  int64 timestamp = 2 [(gnostic.openapi.v3.property).example = {yaml: "1730000023000"}];
-}
-
-message GetProfileResponse {
-  // Complete pprof profile (merged if it was split during ingestion)
-  google.v1.Profile profile = 1;
 }
