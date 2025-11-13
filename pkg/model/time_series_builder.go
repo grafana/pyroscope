@@ -17,8 +17,7 @@ type TimeSeriesBuilder struct {
 
 	series seriesByLabels
 
-	exemplarCandidates map[string]map[int64][]exemplarCandidate
-	// TODO: Make maxExemplarsPerPoint configurable
+	exemplarCandidates   map[string]map[int64][]exemplarCandidate
 	maxExemplarsPerPoint int
 }
 
@@ -34,7 +33,7 @@ func (s *TimeSeriesBuilder) Init(by ...string) {
 	s.labelBuf = make([]byte, 0, 1024)
 	s.by = by
 	s.exemplarCandidates = make(map[string]map[int64][]exemplarCandidate)
-	s.maxExemplarsPerPoint = 1
+	s.maxExemplarsPerPoint = DefaultMaxExemplarsPerPoint
 }
 
 func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, value float64, annotations schemav1.Annotations, profileID string) {
@@ -187,11 +186,4 @@ func (m seriesByLabels) normalize() []*typesv1.Series {
 		})
 	}
 	return result
-}
-
-// exemplarCandidate represents a profile that could become an exemplar.
-type exemplarCandidate struct {
-	profileID string
-	value     uint64
-	labels    Labels
 }

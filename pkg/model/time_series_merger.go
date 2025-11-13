@@ -135,7 +135,36 @@ func (m *TimeSeriesMerger) mergePoints(points []*typesv1.Point) int {
 			// Duplicate annotations are semantically correct and provide useful information.
 			// Users of the data can decide whether to discard or make use of duplicates.
 			points[j].Annotations = append(points[j].Annotations, points[i].Annotations...)
+
+			points[j].Exemplars = mergeExemplars(points[j].Exemplars, points[i].Exemplars)
 		}
 	}
 	return j + 1
+}
+
+// mergeExemplars combines two exemplar lists, keeping only the highest-value exemplar per profile_id.
+func mergeExemplars(a, b []*typesv1.Exemplar) []*typesv1.Exemplar {
+	if len(a) == 0 {
+		return b
+	}
+	if len(b) == 0 {
+		return a
+	}
+
+	byProfileID := make(map[string]*typesv1.Exemplar)
+	for _, ex := range a {
+		byProfileID[ex.ProfileId] = ex
+	}
+	for _, ex := range b {
+		existing, found := byProfileID[ex.ProfileId]
+		if !found || ex.Value > existing.Value {
+			byProfileID[ex.ProfileId] = ex
+		}
+	}
+
+	result := make([]*typesv1.Exemplar, 0, len(byProfileID))
+	for _, ex := range byProfileID {
+		result = append(result, ex)
+	}
+	return result
 }

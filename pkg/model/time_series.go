@@ -11,13 +11,17 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
+// DefaultMaxExemplarsPerPoint is the default maximum number of exemplars tracked per point.
+// TODO: make it configurable via tenant limits.
+const DefaultMaxExemplarsPerPoint = 1
+
 type TimeSeriesValue struct {
 	Ts          int64
 	Lbs         []*typesv1.LabelPair
 	LabelsHash  uint64
 	Value       float64
 	Annotations []*typesv1.ProfileAnnotation
-	ProfileID   string
+	Exemplars   []*exemplarCandidate
 }
 
 func (p TimeSeriesValue) Labels() Labels        { return p.Lbs }
@@ -48,6 +52,18 @@ func (s *TimeSeriesIterator) Next() bool {
 	s.curr.Ts = p.Timestamp
 	s.curr.Value = p.Value
 	s.curr.Annotations = p.Annotations
+
+	s.curr.Exemplars = nil
+	if len(p.Exemplars) > 0 {
+		s.curr.Exemplars = make([]*exemplarCandidate, 0, len(p.Exemplars))
+		for _, ex := range p.Exemplars {
+			s.curr.Exemplars = append(s.curr.Exemplars, &exemplarCandidate{
+				profileID: ex.ProfileId,
+				value:     ex.Value,
+				labels:    ex.Labels,
+			})
+		}
+	}
 	return true
 }
 
@@ -71,25 +87,35 @@ type TimeSeriesAggregator interface {
 }
 
 func NewTimeSeriesAggregator(aggregation *typesv1.TimeSeriesAggregationType) TimeSeriesAggregator {
+	return NewTimeSeriesAggregatorWithLimit(aggregation, DefaultMaxExemplarsPerPoint)
+}
+
+func NewTimeSeriesAggregatorWithLimit(aggregation *typesv1.TimeSeriesAggregationType, maxExemplarsPerPoint int) TimeSeriesAggregator {
 	if aggregation == nil {
-		return &sumTimeSeriesAggregator{ts: -1}
+		return &sumTimeSeriesAggregator{ts: -1, maxExemplarsPerPoint: maxExemplarsPerPoint}
 	}
 	if *aggregation == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE {
-		return &avgTimeSeriesAggregator{ts: -1}
+		return &avgTimeSeriesAggregator{ts: -1, maxExemplarsPerPoint: maxExemplarsPerPoint}
 	}
-	return &sumTimeSeriesAggregator{ts: -1}
+	return &sumTimeSeriesAggregator{ts: -1, maxExemplarsPerPoint: maxExemplarsPerPoint}
 }
 
 type sumTimeSeriesAggregator struct {
-	ts          int64
-	sum         float64
-	annotations []*typesv1.ProfileAnnotation
+	ts                   int64
+	sum                  float64
+	annotations          []*typesv1.ProfileAnnotation
+	exemplars            []*exemplarCandidate
+	maxExemplarsPerPoint int
 }
 
 func (a *sumTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
 	a.ts = ts
 	a.sum += point.Value
 	a.annotations = append(a.annotations, point.Annotations...)
+
+	if len(point.Exemplars) > 0 {
+		a.exemplars = trackTopNExemplars(a.exemplars, point.Exemplars, a.maxExemplarsPerPoint)
+	}
 }
 
 func (a *sumTimeSeriesAggregator) GetAndReset() *typesv1.Point {
@@ -97,13 +123,31 @@ func (a *sumTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 	sumCopy := a.sum
 	annotationsCopy := make([]*typesv1.ProfileAnnotation, len(a.annotations))
 	copy(annotationsCopy, a.annotations)
+
+	var exemplars []*typesv1.Exemplar
+	if len(a.exemplars) > 0 {
+		exemplars = make([]*typesv1.Exemplar, 0, len(a.exemplars))
+		for _, ex := range a.exemplars {
+			exemplars = append(exemplars, &typesv1.Exemplar{
+				Timestamp: tsCopy,
+				ProfileId: ex.profileID,
+				SpanId:    "",
+				Value:     ex.value,
+				Labels:    ex.labels,
+			})
+		}
+	}
+
 	a.ts = -1
 	a.sum = 0
 	a.annotations = a.annotations[:0]
+	a.exemplars = nil
+
 	return &typesv1.Point{
 		Timestamp:   tsCopy,
 		Value:       sumCopy,
 		Annotations: annotationsCopy,
+		Exemplars:   exemplars,
 	}
 }
 
@@ -111,10 +155,12 @@ func (a *sumTimeSeriesAggregator) IsEmpty() bool       { return a.ts == -1 }
 func (a *sumTimeSeriesAggregator) GetTimestamp() int64 { return a.ts }
 
 type avgTimeSeriesAggregator struct {
-	ts          int64
-	sum         float64
-	count       int64
-	annotations []*typesv1.ProfileAnnotation
+	ts                   int64
+	sum                  float64
+	count                int64
+	annotations          []*typesv1.ProfileAnnotation
+	exemplars            []*exemplarCandidate // Track top-N exemplars
+	maxExemplarsPerPoint int
 }
 
 func (a *avgTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
@@ -122,6 +168,10 @@ func (a *avgTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
 	a.sum += point.Value
 	a.count++
 	a.annotations = append(a.annotations, point.Annotations...)
+
+	if len(point.Exemplars) > 0 {
+		a.exemplars = trackTopNExemplars(a.exemplars, point.Exemplars, a.maxExemplarsPerPoint)
+	}
 }
 
 func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
@@ -129,14 +179,32 @@ func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 	tsCopy := a.ts
 	annotationsCopy := make([]*typesv1.ProfileAnnotation, len(a.annotations))
 	copy(annotationsCopy, a.annotations)
+
+	var exemplars []*typesv1.Exemplar
+	if len(a.exemplars) > 0 {
+		exemplars = make([]*typesv1.Exemplar, 0, len(a.exemplars))
+		for _, ex := range a.exemplars {
+			exemplars = append(exemplars, &typesv1.Exemplar{
+				Timestamp: tsCopy,
+				ProfileId: ex.profileID,
+				SpanId:    "",
+				Value:     ex.value,
+				Labels:    ex.labels,
+			})
+		}
+	}
+
 	a.ts = -1
 	a.sum = 0
 	a.count = 0
 	a.annotations = a.annotations[:0]
+	a.exemplars = nil
+
 	return &typesv1.Point{
 		Timestamp:   tsCopy,
 		Value:       avg,
 		Annotations: annotationsCopy,
+		Exemplars:   exemplars,
 	}
 }
 
@@ -147,6 +215,11 @@ func (a *avgTimeSeriesAggregator) GetTimestamp() int64 { return a.ts }
 // Series contains points spaced by step from start to end.
 // Profiles from the same step are aggregated into one point.
 func RangeSeries(it iter.Iterator[TimeSeriesValue], start, end, step int64, aggregation *typesv1.TimeSeriesAggregationType) []*typesv1.Series {
+	return rangeSeriesWithLimit(it, start, end, step, aggregation, DefaultMaxExemplarsPerPoint)
+}
+
+// rangeSeriesWithLimit is an internal function that allows specifying maxExemplarsPerPoint.
+func rangeSeriesWithLimit(it iter.Iterator[TimeSeriesValue], start, end, step int64, aggregation *typesv1.TimeSeriesAggregationType, maxExemplarsPerPoint int) []*typesv1.Series {
 	defer it.Close()
 	seriesMap := make(map[uint64]*typesv1.Series)
 	aggregators := make(map[uint64]TimeSeriesAggregator)
@@ -162,7 +235,7 @@ Outer:
 			point := it.At()
 			aggregator, ok := aggregators[point.LabelsHash]
 			if !ok {
-				aggregator = NewTimeSeriesAggregator(aggregation)
+				aggregator = NewTimeSeriesAggregatorWithLimit(aggregation, maxExemplarsPerPoint)
 				aggregators[point.LabelsHash] = aggregator
 			}
 			if point.Ts > currentStep {
@@ -213,4 +286,46 @@ Outer:
 		return CompareLabelPairs(series[i].Labels, series[j].Labels) < 0
 	})
 	return series
+}
+
+// exemplarCandidate represents a profile candidate for exemplar selection.
+type exemplarCandidate struct {
+	profileID string
+	value     uint64
+	labels    Labels
+}
+
+// trackTopNExemplars maintains a list of top-N exemplars by value, keeping the highest-value
+// exemplar per profile_id (deduplicating by profile_id, keeping highest value).
+// If a profile_id already exists with a lower value, it's replaced.
+// If the list is full and the new candidate has a higher value than the weakest, it replaces the weakest.
+func trackTopNExemplars(existing []*exemplarCandidate, candidates []*exemplarCandidate, maxExemplars int) []*exemplarCandidate {
+	if len(candidates) == 0 {
+		return existing
+	}
+
+	byProfileID := make(map[string]*exemplarCandidate)
+	for _, ex := range existing {
+		byProfileID[ex.profileID] = ex
+	}
+	for _, candidate := range candidates {
+		existing, found := byProfileID[candidate.profileID]
+		if !found || candidate.value > existing.value {
+			byProfileID[candidate.profileID] = candidate
+		}
+	}
+
+	result := make([]*exemplarCandidate, 0, len(byProfileID))
+	for _, ex := range byProfileID {
+		result = append(result, ex)
+	}
+
+	if len(result) > maxExemplars {
+		sort.Slice(result, func(i, j int) bool {
+			return result[i].value > result[j].value
+		})
+		result = result[:maxExemplars]
+	}
+
+	return result
 }
