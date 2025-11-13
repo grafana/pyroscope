@@ -17,6 +17,7 @@ type TimeSeriesValue struct {
 	LabelsHash  uint64
 	Value       float64
 	Annotations []*typesv1.ProfileAnnotation
+	ProfileID   string
 }
 
 func (p TimeSeriesValue) Labels() Labels        { return p.Lbs }

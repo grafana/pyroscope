@@ -23,6 +23,7 @@ type ProfileEntry struct {
 	Fingerprint model.Fingerprint
 	Labels      phlaremodel.Labels
 	Partition   uint64
+	ID          string
 }
 
 func (e ProfileEntry) RowNumber() int64 { return e.RowNum }
@@ -39,15 +40,19 @@ func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[Pro
 	results = parquetquery.NewBinaryJoinIterator(0, results,
 		q.ds.Profiles().Column(q.ctx, "StacktracePartition", nil),
 	)
+	results = parquetquery.NewBinaryJoinIterator(0, results,
+		q.ds.Profiles().Column(q.ctx, schemav1.IDColumnName, nil),
+	)
 
-	buf := make([][]parquet.Value, 3)
+	buf := make([][]parquet.Value, 4)
 	entries := iter.NewAsyncBatchIterator[*parquetquery.IteratorResult, ProfileEntry](
 		results, bigBatchSize,
 		func(r *parquetquery.IteratorResult) ProfileEntry {
 			buf = r.Columns(buf,
 				schemav1.SeriesIndexColumnName,
 				schemav1.TimeNanosColumnName,
-				schemav1.StacktracePartitionColumnName)
+				schemav1.StacktracePartitionColumnName,
+				schemav1.IDColumnName)
 			x := series[buf[0][0].Uint32()]
 			return ProfileEntry{
 				RowNum:      r.RowNumber[0],
@@ -55,6 +60,7 @@ func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[Pro
 				Fingerprint: x.fingerprint,
 				Labels:      x.labels,
 				Partition:   buf[2][0].Uint64(),
+				ID:          buf[3][0].String(),
 			}
 		},
 		func([]ProfileEntry) {},
