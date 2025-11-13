@@ -8,6 +8,14 @@
 # [Semantic versioning](https://semver.org/) is used to help the reader identify the significance of changes.
 # Changes are relevant to this script and the support docs.mk GNU Make interface.
 #
+# ## 10.1.0 (2025-11-11)
+#
+# ### Fixed
+#
+# - Extend readiness probes to prevent confusing output.
+#
+#   Before, the probes could fail too soon and long an error message which contradicted the service starting up.
+#
 # ## 10.0.0 (2025-10-13)
 #
 # ### Changed
@@ -732,6 +740,10 @@ await_build() {
   url="$1"
   req="$(if command -v curl >/dev/null 2>&1; then echo 'curl -s -o /dev/null'; else echo 'wget -q'; fi)"
 
+  # Initial delay to allow container to start before beginning healthchecks
+  sleep 3
+
+  # Fast retries for initial startup (10 attempts, 1 second apart)
   i=1
   max=10
   while [ "${i}" -ne "${max}" ]
@@ -760,6 +772,37 @@ POSIX_HERESTRING
     fi
   done
 
+  # Continue checking with longer intervals for slower builds
+  # This prevents false positives for large builds that take longer to start
+  i=1
+  max=20
+  while [ "${i}" -ne "${max}" ]
+  do
+    sleep 2
+    debg "Continuing to check web server (build may be taking longer than expected)."
+    i=$((i + 1))
+
+    if ${req} "${url}"; then
+      printf '\r\nView documentation locally:\r\n'
+      for x in ${url_src_dst_vers}; do
+        IFS='^' read -r url _ _ <<POSIX_HERESTRING
+$x
+POSIX_HERESTRING
+
+        if [ -n "${url}" ]; then
+          if [ "${url}" != arbitrary ]; then
+            printf '\r  %s\r\n' "${url}"
+          fi
+        fi
+      done
+      printf '\r\nPress Ctrl+C to stop the server\r\n'
+
+      unset i max req url
+      return
+    fi
+  done
+
+  # Only log error after extended checking period (total ~60 seconds)
   printf '\r\n'
   errr 'The build was interrupted or a build error occurred, check the previous logs for possible causes.'
   note 'You might need to use Ctrl+C to end the process.'
