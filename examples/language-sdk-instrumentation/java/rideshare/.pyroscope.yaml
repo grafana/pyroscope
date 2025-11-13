@@ -1,21 +1,27 @@
 source_code:
-  language: java
   mappings:
-    - path: org/example/rideshare
-      type: local
-      local:
-        path: src/main/java/org/example/rideshare
-    - path: java
-      type: github
-      github:
-        owner: openjdk
-        repo: jdk
-        ref: jdk-17+0
-        path: src/java.base/share/classes/java
-    - path: org/springframework/http
-      type: github
-      github:
-        owner: spring-projects
-        repo: spring-framework
-        ref: v5.3.20
-        path: spring-web/src/main/java/org/springframework/http
+    - function_name:
+        - prefix: org/example/rideshare
+      language: java
+      source:
+        local:
+          path: src/main/java/org/example/rideshare
+    - function_name:
+        - prefix: java
+      language: java
+      source:
+        github:
+          owner: openjdk
+          repo: jdk
+          ref: jdk-17+0
+          path: src/java.base/share/classes/java
+    - function_name:
+        - prefix: org/springframework/http
+        - prefix: org/springframework/web
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-framework
+          ref: v5.3.20
+          path: spring-web/src/main/java/org

@@ -15,6 +15,7 @@ import (
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/source/golang"
 )
 
@@ -23,20 +24,21 @@ const (
 )
 
 // findGoFile finds a go file in a vcs repository.
-func (ff FileFinder) findGoFile(ctx context.Context) (*vcsv1.GetFileResponse, error) {
+func (ff FileFinder) findGoFile(ctx context.Context, mappings ...*config.MappingConfig) (*vcsv1.GetFileResponse, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "findGoFile")
 	defer sp.Finish()
-	sp.SetTag("path", ff.path)
+	sp.SetTag("file.path", ff.file.Path)
+	sp.SetTag("file.function_name", ff.file.FunctionName)
 
-	if url, ok := golang.StandardLibraryURL(ff.path); ok {
+	if url, ok := golang.StandardLibraryURL(ff.file.Path); ok {
 		return ff.fetchURL(ctx, url, false)
 	}
 
-	if relativePath, ok := golang.VendorRelativePath(ff.path); ok {
+	if relativePath, ok := golang.VendorRelativePath(ff.file.Path); ok {
 		return ff.fetchRepoFile(ctx, relativePath, ff.ref)
 	}
 
-	modFile, ok := golang.ParseModuleFromPath(ff.path)
+	modFile, ok := golang.ParseModuleFromPath(ff.file.Path)
 	if ok {
 		mainModule := module.Version{
 			Path:    path.Join(ff.repo.GetHostName(), ff.repo.GetOwnerName(), ff.repo.GetRepoName()),
@@ -143,7 +145,7 @@ func (ff FileFinder) tryFindGoFile(ctx context.Context, maxAttempts int) (*vcsv1
 	}
 
 	// trim repo path (e.g. "github.com/grafana/pyroscope/") in path
-	path := ff.path
+	path := ff.file.Path
 	repoPath := strings.Join([]string{ff.repo.GetHostName(), ff.repo.GetOwnerName(), ff.repo.GetRepoName(), ""}, "/")
 	if pos := strings.Index(path, repoPath); pos != -1 {
 		path = path[len(repoPath)+pos:]
