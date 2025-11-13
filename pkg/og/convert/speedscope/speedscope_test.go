@@ -107,15 +107,17 @@ a;b;d 400
 		err = profile.Parse(context.Background(), ingester, nil, md)
 		Expect(err).ToNot(HaveOccurred())
 
-		// Two profiles merged in to one
+		// Three profiles merged in to one
 		Expect(ingester.actual).To(HaveLen(1))
 
 		input := ingester.actual[0]
 		Expect(input.Units).To(Equal(metadata.SamplesUnits))
+		// Note that profiles with different `endValue`s are merged
+		// since `endValue` not represented in pprof
 		Expect(input.LabelSet.Normalized()).To(Equal("foo{profile_name=one,x=y}"))
-		expectedResult := `a;b 1000
-a;b;c 1000
-a;b;d 800
+		expectedResult := `a;b 1500
+a;b;c 1500
+a;b;d 1200
 `
 		Expect(input.Val.String()).To(Equal(expectedResult))
 		Expect(input.SampleRate).To(Equal(uint32(100)))

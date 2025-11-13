@@ -1,9 +1,11 @@
 package speedscope
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage"
@@ -75,7 +77,6 @@ func mergeProfiles(profiles []profile) []profile {
 		t          string
 		unit       unit
 		startValue float64
-		endValue   float64
 	}
 
 	merged := make(map[mergeKey]profile)
@@ -85,7 +86,6 @@ func mergeProfiles(profiles []profile) []profile {
 			t:          prof.Type,
 			unit:       prof.Unit,
 			startValue: prof.StartValue,
-			endValue:   prof.EndValue,
 		}
 
 		if mergedProf, ok := merged[k]; ok {
@@ -98,7 +98,11 @@ func mergeProfiles(profiles []profile) []profile {
 		}
 	}
 
-	return maps.Values(merged)
+	m := maps.Values(merged)
+	slices.SortFunc(m, func(a, b profile) int {
+		return cmp.Compare(a.StartValue, b.StartValue)
+	})
+	return m
 }
 
 func parseOne(prof *profile, putInput storage.PutInput, frames []frame, multi bool) (*storage.PutInput, error) {
