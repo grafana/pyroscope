@@ -1,10 +1,10 @@
 source_code:
-  language: go
   mappings:
-    - path: GOROOT
-      type: github
-      type: github
-      github:
+    - path:
+        - prefix: GOROOT
+      language: go
+      source:
+       github:
         owner: golang
         repo: go
         ref: go1.24.8

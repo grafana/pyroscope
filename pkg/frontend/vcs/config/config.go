@@ -1,10 +1,28 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"slices"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
+
+type Language string
+
+const (
+	PyroscopeConfigPath = ".pyroscope.yaml"
+
+	LanguageUnknown = Language("")
+	LanguageGo      = Language("go")
+	LanguageJava    = Language("java")
+)
+
+var validLanguages = []Language{
+	LanguageGo,
+	LanguageJava,
+}
 
 // PyroscopeConfig represents the structure of .pyroscope.yaml configuration file
 type PyroscopeConfig struct {
@@ -13,15 +31,26 @@ type PyroscopeConfig struct {
 
 // SourceCodeConfig contains source code mapping configuration
 type SourceCodeConfig struct {
-	Language string            `yaml:"language"`
-	Mappings []MappingConfig   `yaml:"mappings"`
+	Mappings []MappingConfig `yaml:"mappings"`
 }
 
 // MappingConfig represents a single source code path mapping
 type MappingConfig struct {
-	Path   string              `yaml:"path"`
-	Type   string              `yaml:"type"`
-	Local  *LocalMappingConfig `yaml:"local,omitempty"`
+	Path         []Match `yaml:"path"`
+	FunctionName []Match `yaml:"function_name"`
+	Language     string  `yaml:"language"`
+
+	Source Source `yaml:"source"`
+}
+
+// Match represents how mappings a single source code path mapping
+type Match struct {
+	Prefix string `yaml:"prefix"`
+}
+
+// Source represents how mappings retrieve the source
+type Source struct {
+	Local  *LocalMappingConfig  `yaml:"local,omitempty"`
 	GitHub *GitHubMappingConfig `yaml:"github,omitempty"`
 }
 
@@ -38,7 +67,7 @@ type GitHubMappingConfig struct {
 	Path  string `yaml:"path"`
 }
 
-// ParsePyroscopeConfig parses a .pyroscope.yaml configuration from bytes
+// ParsePyroscopeConfig parses a configuration from bytes
 func ParsePyroscopeConfig(data []byte) (*PyroscopeConfig, error) {
 	var config PyroscopeConfig
 	if err := yaml.Unmarshal(data, &config); err != nil {
@@ -55,99 +84,107 @@ func ParsePyroscopeConfig(data []byte) (*PyroscopeConfig, error) {
 
 // Validate checks if the configuration is valid
 func (c *PyroscopeConfig) Validate() error {
-	if c.SourceCode.Language == "" {
-		return fmt.Errorf("source_code.language is required")
-	}
-
+	var errs []error
 	for i, mapping := range c.SourceCode.Mappings {
 		if err := mapping.Validate(); err != nil {
-			return fmt.Errorf("mapping[%d]: %w", i, err)
+			errs = append(errs, fmt.Errorf("mapping[%d]: %w", i, err))
 		}
 	}
-
-	return nil
+	return errors.Join(errs...)
 }
 
 // Validate checks if a mapping configuration is valid
 func (m *MappingConfig) Validate() error {
-	if m.Path == "" {
-		return fmt.Errorf("path is required")
+	var errs []error
+
+	if len(m.Path) == 0 && len(m.FunctionName) == 0 {
+		errs = append(errs, fmt.Errorf("at least one path or a function_name match is required"))
 	}
 
-	if m.Type == "" {
-		return fmt.Errorf("type is required")
+	if !slices.Contains(validLanguages, Language(m.Language)) {
+		errs = append(errs, fmt.Errorf("language '%s' unsupported, valid languages are %v", m.Language, validLanguages))
 	}
 
-	switch m.Type {
-	case "local":
-		if m.Local == nil {
-			return fmt.Errorf("local configuration is required when type is 'local'")
-		}
-		if m.Local.Path == "" {
-			return fmt.Errorf("local.path is required")
-		}
-	case "github":
-		if m.GitHub == nil {
-			return fmt.Errorf("github configuration is required when type is 'github'")
-		}
-		if m.GitHub.Owner == "" {
-			return fmt.Errorf("github.owner is required")
-		}
-		if m.GitHub.Repo == "" {
-			return fmt.Errorf("github.repo is required")
-		}
-		if m.GitHub.Ref == "" {
-			return fmt.Errorf("github.ref is required")
-		}
-		if m.GitHub.Path == "" {
-			return fmt.Errorf("github.path is required")
-		}
-	default:
-		return fmt.Errorf("unsupported type '%s', must be 'local' or 'github'", m.Type)
+	if err := m.Source.Validate(); err != nil {
+		errs = append(errs, err)
 	}
 
+	return errors.Join(errs...)
+}
+
+// Validate checks if a source configuration is valid
+func (m *Source) Validate() error {
+	var (
+		instances int
+		errs      []error
+	)
+
+	if m.GitHub != nil {
+		instances++
+		if err := m.GitHub.Validate(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if m.Local != nil {
+		instances++
+		if err := m.Local.Validate(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if instances == 0 {
+		errs = append(errs, errors.New("no source type supplied, you need to supply exactly one source type"))
+	} else if instances != 1 {
+		errs = append(errs, errors.New("more than one source type supplied, you need to supply exactly one source type"))
+	}
+
+	return errors.Join(errs...)
+}
+
+func (m *GitHubMappingConfig) Validate() error {
 	return nil
 }
 
-// FindMapping finds a mapping configuration that matches the given path
+func (m *LocalMappingConfig) Validate() error {
+	return nil
+}
+
+type FileSpec struct {
+	Path         string
+	FunctionName string
+}
+
+// FindMapping finds a mapping configuration that matches the given FileSpec
 // Returns nil if no matching mapping is found
-func (c *PyroscopeConfig) FindMapping(path string) *MappingConfig {
+func (c *PyroscopeConfig) FindMapping(file FileSpec) *MappingConfig {
 	// Find the longest matching prefix
 	var bestMatch *MappingConfig
-	var bestMatchLen int
-
-	for i := range c.SourceCode.Mappings {
-		mapping := &c.SourceCode.Mappings[i]
-		if len(mapping.Path) > bestMatchLen && hasPrefix(path, mapping.Path) {
-			bestMatch = mapping
-			bestMatchLen = len(mapping.Path)
+	var bestMatchLen int = -1
+	for _, m := range c.SourceCode.Mappings {
+		if result := m.Match(file); result > bestMatchLen {
+			bestMatch = &m
+			bestMatchLen = result
 		}
 	}
-
 	return bestMatch
 }
 
-// hasPrefix checks if path starts with prefix, considering path separators
-func hasPrefix(path, prefix string) bool {
-	// Empty prefix doesn't match anything
-	if prefix == "" {
-		return false
+// Returns -1 if no match, otherwise the number of characters that matched
+func (m *MappingConfig) Match(file FileSpec) int {
+	result := -1
+	for _, fun := range m.FunctionName {
+		if strings.HasPrefix(file.FunctionName, fun.Prefix) {
+			if len(fun.Prefix) > result {
+				result = len(fun.Prefix)
+			}
+		}
 	}
-
-	if len(path) < len(prefix) {
-		return false
+	for _, path := range m.Path {
+		if strings.HasPrefix(file.Path, path.Prefix) {
+			if len(path.Prefix) > result {
+				result = len(path.Prefix)
+			}
+		}
 	}
-
-	if path[:len(prefix)] != prefix {
-		return false
-	}
-
-	// Exact match
-	if len(path) == len(prefix) {
-		return true
-	}
-
-	// Check that the next character is a path separator
-	nextChar := path[len(prefix)]
-	return nextChar == '/' || nextChar == '\\'
+	return result
 }
