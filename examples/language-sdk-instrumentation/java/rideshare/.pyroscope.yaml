@@ -25,3 +25,12 @@ source_code:
           repo: spring-framework
           ref: v5.3.20
           path: spring-web/src/main/java
+    - function_name:
+        - prefix: org/springframework/web/servlet
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-framework
+          ref: v5.3.20
+          path: spring-webmvc/src/main/java
