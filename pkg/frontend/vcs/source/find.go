@@ -131,6 +131,9 @@ func (ff *FileFinder) loadConfig(ctx context.Context) {
 
 // fetchRepoFile fetches the file content from the configured repository.
 func (arg FileFinder) fetchRepoFile(ctx context.Context, path, ref string) (*vcsv1.GetFileResponse, error) {
+	if arg.rootPath != "" {
+		path = filepath.Join(arg.rootPath, path)
+	}
 	content, err := arg.client.GetFile(ctx, client.FileRequest{
 		Owner: arg.repo.GetOwnerName(),
 		Repo:  arg.repo.GetRepoName(),
