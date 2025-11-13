@@ -5,7 +5,7 @@ source_code:
       language: java
       source:
         local:
-          path: src/main/java/org/example/rideshare
+          path: src/main/java
     - function_name:
         - prefix: java
       language: java
@@ -14,7 +14,7 @@ source_code:
           owner: openjdk
           repo: jdk
           ref: jdk-17+0
-          path: src/java.base/share/classes/java
+          path: src/java.base/share/classes
     - function_name:
         - prefix: org/springframework/http
         - prefix: org/springframework/web
@@ -24,4 +24,4 @@ source_code:
           owner: spring-projects
           repo: spring-framework
           ref: v5.3.20
-          path: spring-web/src/main/java/org
+          path: spring-web/src/main/java
