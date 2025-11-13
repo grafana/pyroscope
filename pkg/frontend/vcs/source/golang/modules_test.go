@@ -104,6 +104,28 @@ func TestParseModulePath(t *testing.T) {
 			false,
 			Module{},
 		},
+		{
+			"/Users/pyroscope/.golang/packages/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.6.darwin-arm64/src/net/http/server.go",
+			true,
+			Module{
+				Version: module.Version{
+					Path:    "golang.org/toolchain",
+					Version: "v0.0.1-go1.24.6.darwin-arm64",
+				},
+				FilePath: "src/net/http/server.go",
+			},
+		},
+		{
+			"/Users/pyroscope/.golang/packages/pkg/mod/github.com/opentracing-contrib/go-stdlib@v1.0.0/nethttp/server.go",
+			true,
+			Module{
+				Version: module.Version{
+					Path:    "github.com/opentracing-contrib/go-stdlib",
+					Version: "v1.0.0",
+				},
+				FilePath: "nethttp/server.go",
+			},
+		},
 	} {
 		t.Run(tt.input, func(t *testing.T) {
 			mod, ok := ParseModuleFromPath(tt.input)

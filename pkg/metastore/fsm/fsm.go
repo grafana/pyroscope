@@ -13,16 +13,26 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 	"go.etcd.io/bbolt/errors"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/grafana/pyroscope/pkg/metastore/tracing"
 )
+
+type ContextRegistry interface {
+	Retrieve(id string) (context.Context, bool)
+	Delete(id string)
+	Size() int
+}
 
 // RaftHandler is a function that processes a Raft command.
 // The implementation MUST be idempotent.
-type RaftHandler[Req, Resp proto.Message] func(*bbolt.Tx, *raft.Log, Req) (Resp, error)
+// The context parameter is used for tracing purposes and is only available on the leader.
+type RaftHandler[Req, Resp proto.Message] func(context.Context, *bbolt.Tx, *raft.Log, Req) (Resp, error)
 
 // StateRestorer is called during the FSM initialization
 // to restore the state from a snapshot.
@@ -56,9 +66,10 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 
 // FSM implements the raft.FSM interface.
 type FSM struct {
-	logger  log.Logger
-	config  Config
-	metrics *metrics
+	logger          log.Logger
+	config          Config
+	contextRegistry ContextRegistry
+	metrics         *metrics
 
 	mu   sync.RWMutex
 	txns sync.WaitGroup
@@ -71,14 +82,15 @@ type FSM struct {
 	appliedIndex uint64
 }
 
-type handler func(tx *bbolt.Tx, cmd *raft.Log, raw []byte) (proto.Message, error)
+type handler func(ctx context.Context, tx *tracingTx, cmd *raft.Log, raw []byte) (proto.Message, error)
 
-func New(logger log.Logger, reg prometheus.Registerer, config Config) (*FSM, error) {
+func New(logger log.Logger, reg prometheus.Registerer, config Config, contextRegistry ContextRegistry) (*FSM, error) {
 	fsm := FSM{
-		logger:   logger,
-		config:   config,
-		metrics:  newMetrics(reg),
-		handlers: make(map[RaftLogEntryType]handler),
+		logger:          logger,
+		config:          config,
+		contextRegistry: contextRegistry,
+		metrics:         newMetrics(reg),
+		handlers:        make(map[RaftLogEntryType]handler),
 	}
 	db := newDB(logger, fsm.metrics, config)
 	if err := db.open(false); err != nil {
@@ -93,12 +105,12 @@ func (fsm *FSM) RegisterRestorer(r ...StateRestorer) {
 }
 
 func RegisterRaftCommandHandler[Req, Resp proto.Message](fsm *FSM, t RaftLogEntryType, handler RaftHandler[Req, Resp]) {
-	fsm.handlers[t] = func(tx *bbolt.Tx, cmd *raft.Log, raw []byte) (proto.Message, error) {
+	fsm.handlers[t] = func(ctx context.Context, tx *tracingTx, cmd *raft.Log, raw []byte) (proto.Message, error) {
 		req, err := unmarshal[Req](raw)
 		if err != nil {
 			return nil, err
 		}
-		return handler(tx, cmd, req)
+		return handler(ctx, tx.Tx, cmd, req)
 	}
 }
 
@@ -234,6 +246,18 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 	if err := e.UnmarshalBinary(cmd.Data); err != nil {
 		return errResponse(cmd, err)
 	}
+
+	ctx := context.Background()
+	if ctxID := string(cmd.Extensions); ctxID != "" {
+		var found bool
+		if ctx, found = fsm.contextRegistry.Retrieve(ctxID); found {
+			defer fsm.contextRegistry.Delete(ctxID)
+		}
+	}
+
+	span, ctx := tracing.StartSpanFromContext(ctx, "fsm.applyCommand")
+	defer span.Finish()
+
 	if cmd.Index <= fsm.appliedIndex {
 		// Skip already applied commands at WAL restore.
 		// Note that the 0 index is a noop and is never applied to FSM.
@@ -253,12 +277,16 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 
 	// Apply is never called concurrently with Restore, so we don't need
 	// to lock the FSM: db.boltdb is guaranteed to be in a consistent state.
-	tx, err := fsm.db.boltdb.Begin(true)
+	rawTx, err := fsm.db.boltdb.Begin(true)
 	if err != nil {
 		panic(fmt.Sprint("failed to begin write transaction:", err))
 	}
 
-	data, err := handle(tx, cmd, e.Data)
+	txSpan, ctx := opentracing.StartSpanFromContext(ctx, "boltdb.transaction")
+	txSpan.SetTag("writable", rawTx.Writable())
+	tx := newTracingTx(rawTx, txSpan, ctx)
+
+	data, err := handle(ctx, tx, cmd, e.Data)
 	if err != nil {
 		_ = tx.Rollback()
 		// NOTE(kolesnikovae): This has to be a hard failure as we assume
@@ -266,7 +294,7 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		panic(fmt.Sprint("failed to apply command:", err))
 	}
 
-	if err = fsm.storeAppliedIndex(tx, cmd.Term, cmd.Index); err != nil {
+	if err = fsm.storeAppliedIndex(tx.Tx, cmd.Term, cmd.Index); err != nil {
 		panic(fmt.Sprint("failed to store applied index: %w", err))
 	}
 
