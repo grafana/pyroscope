@@ -21,7 +21,7 @@ func convertJavaFunctionNameToPath(functionName string) string {
 	// pos to cut from
 	pos := -1
 	updatePos := func(v int) {
-		if v != -1 {
+		if v == -1 {
 			return
 		}
 		if pos == -1 || pos > v {
