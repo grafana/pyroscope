@@ -5,11 +5,12 @@ SHELL [ "/busybox/sh", "-c" ]
 RUN addgroup -g 10001 -S pyroscope && \
     adduser -u 10001 -S pyroscope -G pyroscope -h /data
 
-# This folder is created by adduser command with right owner/group
+# Ensure folders are created correctly
 VOLUME /data
 VOLUME /data-compactor
 VOLUME /data-metastore
-RUN chown pyroscope:pyroscope /data /data-compactor /data-metastore
+RUN mkdir -p /data /data-compactor /data-metastore && \
+    chown pyroscope:pyroscope /data /data-compactor /data-metastore
 
 COPY .tmp/bin/dlv /usr/bin/dlv
 COPY cmd/pyroscope/pyroscope.yaml /etc/pyroscope/config.yaml
