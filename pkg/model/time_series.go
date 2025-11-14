@@ -290,9 +290,10 @@ Outer:
 
 // exemplarCandidate represents a profile candidate for exemplar selection.
 type exemplarCandidate struct {
-	profileID string
-	value     uint64
-	labels    Labels
+	profileID   string
+	value       uint64
+	fingerprint model.Fingerprint
+	labels      Labels
 }
 
 // trackTopNExemplars maintains a list of top-N exemplars by value, keeping the highest-value

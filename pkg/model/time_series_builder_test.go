@@ -81,95 +81,80 @@ func TestTimeSeriesBuilder_MultipleExemplarsPerPoint(t *testing.T) {
 	assert.NotContains(t, profileIDs, "profile-1")
 }
 
-func TestTimeSeriesBuilder_LabelFiltering(t *testing.T) {
-	tests := []struct {
-		name               string
-		groupBy            []string
-		inputLabels        Labels
-		expectedInExemplar map[string]string
-		expectedExcluded   []string
-	}{
-		{
-			name:    "single grouped label excluded",
-			groupBy: []string{"service_name"},
-			inputLabels: Labels{
-				{Name: "service_name", Value: "api"},
-				{Name: "env", Value: "prod"},
-				{Name: "pod", Value: "pod-123"},
-			},
-			expectedInExemplar: map[string]string{
-				"env": "prod",
-				"pod": "pod-123",
-			},
-			expectedExcluded: []string{"service_name"},
-		},
-		{
-			name:    "multiple grouped labels excluded",
-			groupBy: []string{"service_name", "env"},
-			inputLabels: Labels{
-				{Name: "service_name", Value: "api"},
-				{Name: "env", Value: "prod"},
-				{Name: "pod", Value: "pod-123"},
-				{Name: "region", Value: "us-east"},
-			},
-			expectedInExemplar: map[string]string{
-				"pod":    "pod-123",
-				"region": "us-east",
-			},
-			expectedExcluded: []string{"service_name", "env"},
-		},
-		{
-			name:    "no grouping includes all labels",
-			groupBy: []string{},
-			inputLabels: Labels{
-				{Name: "service_name", Value: "api"},
-				{Name: "env", Value: "prod"},
-				{Name: "pod", Value: "pod-123"},
-			},
-			expectedInExemplar: map[string]string{
-				"service_name": "api",
-				"env":          "prod",
-				"pod":          "pod-123",
-			},
-			expectedExcluded: []string{},
-		},
-	}
+func TestTimeSeriesBuilder_ExemplarLabelEnrichment(t *testing.T) {
+	t.Run("BuildWithFullLabels attaches provided labels", func(t *testing.T) {
+		builder := NewTimeSeriesBuilder("service_name")
+		fp := model.Fingerprint(1)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			builder := NewTimeSeriesBuilder(tt.groupBy...)
+		fullLabels := Labels{
+			{Name: "service_name", Value: "api"},
+			{Name: "env", Value: "prod"},
+			{Name: "pod", Value: "pod-123"},
+		}
 
-			builder.Add(
-				model.Fingerprint(1),
-				tt.inputLabels,
-				1000,
-				100.0,
-				schemav1.Annotations{},
-				"profile-1",
-			)
+		builder.Add(fp, fullLabels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
 
-			series := builder.Build()
-			require.Len(t, series, 1)
-			require.Len(t, series[0].Points, 1)
-			require.Len(t, series[0].Points[0].Exemplars, 1)
-
-			exemplar := series[0].Points[0].Exemplars[0]
-			exemplarLabels := make(map[string]string)
-			for _, lp := range exemplar.Labels {
-				exemplarLabels[lp.Name] = lp.Value
-			}
-
-			for name, expectedValue := range tt.expectedInExemplar {
-				assert.Equal(t, expectedValue, exemplarLabels[name])
-			}
-
-			for _, name := range tt.expectedExcluded {
-				assert.NotContains(t, exemplarLabels, name)
-			}
-
-			assert.Len(t, exemplarLabels, len(tt.expectedInExemplar))
+		series := builder.BuildWithFullLabels(map[model.Fingerprint]Labels{
+			fp: fullLabels,
 		})
+
+		require.Len(t, series, 1)
+		require.Len(t, series[0].Points, 1)
+		require.Len(t, series[0].Points[0].Exemplars, 1)
+
+		exemplar := series[0].Points[0].Exemplars[0]
+		assert.Len(t, exemplar.Labels, 3)
+		assert.Equal(t, "api", findLabelValue(exemplar.Labels, "service_name"))
+		assert.Equal(t, "prod", findLabelValue(exemplar.Labels, "env"))
+		assert.Equal(t, "pod-123", findLabelValue(exemplar.Labels, "pod"))
+	})
+
+	t.Run("Build without labels map leaves exemplars with nil labels", func(t *testing.T) {
+		builder := NewTimeSeriesBuilder("service_name")
+		fp := model.Fingerprint(1)
+
+		labels := Labels{
+			{Name: "service_name", Value: "api"},
+			{Name: "env", Value: "prod"},
+		}
+
+		builder.Add(fp, labels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
+
+		series := builder.Build()
+		require.Len(t, series, 1)
+		require.Len(t, series[0].Points, 1)
+		require.Len(t, series[0].Points[0].Exemplars, 1)
+
+		exemplar := series[0].Points[0].Exemplars[0]
+		assert.Nil(t, exemplar.Labels)
+	})
+
+	t.Run("Missing fingerprint in map results in nil labels", func(t *testing.T) {
+		builder := NewTimeSeriesBuilder("service_name")
+		fp := model.Fingerprint(1)
+
+		labels := Labels{
+			{Name: "service_name", Value: "api"},
+		}
+
+		builder.Add(fp, labels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
+		series := builder.BuildWithFullLabels(map[model.Fingerprint]Labels{
+			model.Fingerprint(999): labels,
+		})
+		require.Len(t, series, 1)
+
+		exemplar := series[0].Points[0].Exemplars[0]
+		assert.Nil(t, exemplar.Labels)
+	})
+}
+
+func findLabelValue(labels []*typesv1.LabelPair, name string) string {
+	for _, lp := range labels {
+		if lp.Name == name {
+			return lp.Value
+		}
 	}
+	return ""
 }
 
 func TestTimeSeriesBuilder_MultipleSeries(t *testing.T) {

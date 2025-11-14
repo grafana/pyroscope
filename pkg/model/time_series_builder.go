@@ -60,7 +60,7 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 					},
 				},
 			}
-			s.trackExemplar(labelsByString, ts, profileID, value, lbs)
+			s.trackExemplar(labelsByString, ts, profileID, value, fp)
 			return
 		}
 	}
@@ -70,12 +70,12 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 		Value:       value,
 		Annotations: pAnnotations,
 	})
-	s.trackExemplar(labelsByString, ts, profileID, value, lbs)
+	s.trackExemplar(labelsByString, ts, profileID, value, fp)
 }
 
 // trackExemplar tracks a profile as a potential exemplar for a specific Point.
 // Keeps the top-N highest-value profiles per point (N = maxExemplarsPerPoint).
-func (s *TimeSeriesBuilder) trackExemplar(seriesKey string, ts int64, profileID string, value float64, fullLabels Labels) {
+func (s *TimeSeriesBuilder) trackExemplar(seriesKey string, ts int64, profileID string, value float64, fp model.Fingerprint) {
 	if profileID == "" {
 		return
 	}
@@ -85,9 +85,9 @@ func (s *TimeSeriesBuilder) trackExemplar(seriesKey string, ts int64, profileID 
 	}
 
 	candidate := exemplarCandidate{
-		profileID: profileID,
-		value:     uint64(value),
-		labels:    fullLabels,
+		profileID:   profileID,
+		value:       uint64(value),
+		fingerprint: fp,
 	}
 
 	candidates := s.exemplarCandidates[seriesKey][ts]
@@ -114,12 +114,38 @@ func (s *TimeSeriesBuilder) trackExemplar(seriesKey string, ts int64, profileID 
 
 func (s *TimeSeriesBuilder) Build() []*typesv1.Series {
 	series := s.series.normalize()
-	s.attachExemplars(series)
+	s.attachExemplars(series, nil)
 	return series
 }
 
-// attachExemplars adds exemplars to Points based on tracked candidates
-func (s *TimeSeriesBuilder) attachExemplars(series []*typesv1.Series) {
+// BuildWithFullLabels builds the series and enriches exemplars with labels.
+func (s *TimeSeriesBuilder) BuildWithFullLabels(fullLabelsByFingerprint map[model.Fingerprint]Labels) []*typesv1.Series {
+	series := s.series.normalize()
+	s.attachExemplars(series, fullLabelsByFingerprint)
+	return series
+}
+
+// GetExemplarFingerprints returns all unique fingerprints that have exemplars.
+func (s *TimeSeriesBuilder) GetExemplarFingerprints() []model.Fingerprint {
+	fingerprintSet := make(map[model.Fingerprint]struct{})
+	for _, exemplarsByTimestamp := range s.exemplarCandidates {
+		for _, candidates := range exemplarsByTimestamp {
+			for _, candidate := range candidates {
+				fingerprintSet[candidate.fingerprint] = struct{}{}
+			}
+		}
+	}
+
+	fingerprints := make([]model.Fingerprint, 0, len(fingerprintSet))
+	for fp := range fingerprintSet {
+		fingerprints = append(fingerprints, fp)
+	}
+	return fingerprints
+}
+
+// attachExemplars adds exemplars to Points based on tracked candidates.
+// If fullLabelsByFingerprint is provided, exemplars are enriched with full labels.
+func (s *TimeSeriesBuilder) attachExemplars(series []*typesv1.Series, fullLabelsByFingerprint map[model.Fingerprint]Labels) {
 	seriesMap := make(map[string]*typesv1.Series)
 	for _, ser := range series {
 		seriesMap[string(Labels(ser.Labels).BytesWithLabels(nil, s.by...))] = ser
@@ -140,20 +166,24 @@ func (s *TimeSeriesBuilder) attachExemplars(series []*typesv1.Series) {
 
 			point.Exemplars = make([]*typesv1.Exemplar, 0, len(candidates))
 			for _, candidate := range candidates {
+				var labels Labels
+				if fullLabelsByFingerprint != nil {
+					labels = fullLabelsByFingerprint[candidate.fingerprint]
+				}
 				point.Exemplars = append(point.Exemplars, &typesv1.Exemplar{
 					Timestamp: point.Timestamp,
 					ProfileId: candidate.profileID,
 					SpanId:    "",
 					Value:     candidate.value,
-					Labels:    filterNonGroupedLabels(candidate.labels, s.by),
+					Labels:    labels,
 				})
 			}
 		}
 	}
 }
 
-// filterNonGroupedLabels returns only labels that are NOT in the groupBy list.
-func filterNonGroupedLabels(fullLabels Labels, groupBy []string) []*typesv1.LabelPair {
+// FilterNonGroupedLabels returns only labels that are NOT in the groupBy list.
+func FilterNonGroupedLabels(fullLabels Labels, groupBy []string) []*typesv1.LabelPair {
 	if len(groupBy) == 0 {
 		return fullLabels
 	}

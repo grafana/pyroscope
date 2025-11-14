@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
+	"github.com/prometheus/common/model"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -15,6 +16,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
 
 func init() {
@@ -80,6 +82,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 				profileID = u.String()
 			}
 		}
+
 		builder.Add(
 			row.Row.Fingerprint,
 			row.Row.Labels,
@@ -93,10 +96,15 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 		return nil, err
 	}
 
+	fullLabelsByFingerprint, err := getFullLabelsForExemplars(q, builder)
+	if err != nil {
+		return nil, err
+	}
+
 	resp := &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
 			Query:      query.TimeSeries.CloneVT(),
-			TimeSeries: builder.Build(),
+			TimeSeries: builder.BuildWithFullLabels(fullLabelsByFingerprint),
 		},
 	}
 
@@ -135,16 +143,88 @@ func (a *timeSeriesAggregator) build() *queryv1.Report {
 	sum := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
 	stepMilli := time.Duration(a.query.GetStep() * float64(time.Second)).Milliseconds()
 	seriesIterator := phlaremodel.NewTimeSeriesMergeIterator(a.series.TimeSeries())
+	series := phlaremodel.RangeSeries(
+		seriesIterator,
+		a.startTime,
+		a.endTime,
+		stepMilli,
+		&sum,
+	)
+
+	if len(a.query.GroupBy) > 0 {
+		series = a.filterLabels(series, a.query.GroupBy)
+	}
+
 	return &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
-			Query: a.query,
-			TimeSeries: phlaremodel.RangeSeries(
-				seriesIterator,
-				a.startTime,
-				a.endTime,
-				stepMilli,
-				&sum,
-			),
+			Query:      a.query,
+			TimeSeries: series,
 		},
 	}
+}
+
+// filterLabels filters both series labels and exemplar labels based on groupBy.
+// Series labels are filtered to only include groupBy labels.
+// Exemplar labels are filtered to exclude groupBy labels.
+func (a *timeSeriesAggregator) filterLabels(series []*typesv1.Series, groupBy []string) []*typesv1.Series {
+	for _, s := range series {
+		s.Labels = phlaremodel.Labels(s.Labels).WithLabels(groupBy...)
+		for _, point := range s.Points {
+			for _, exemplar := range point.Exemplars {
+				exemplar.Labels = phlaremodel.FilterNonGroupedLabels(
+					exemplar.Labels,
+					groupBy,
+				)
+			}
+		}
+	}
+	return series
+}
+
+// getFullLabelsForExemplars fetches full (unfiltered) labels from the index for only the fingerprints that have
+// exemplars.
+func getFullLabelsForExemplars(q *queryContext, builder *phlaremodel.TimeSeriesBuilder) (map[model.Fingerprint]phlaremodel.Labels, error) {
+	exemplarFingerprints := builder.GetExemplarFingerprints()
+	if len(exemplarFingerprints) == 0 {
+		return nil, nil
+	}
+
+	exemplarFingerprintSet := make(map[model.Fingerprint]struct{}, len(exemplarFingerprints))
+	for _, fp := range exemplarFingerprints {
+		exemplarFingerprintSet[fp] = struct{}{}
+	}
+
+	fullLabelsByFingerprint := make(map[model.Fingerprint]phlaremodel.Labels, len(exemplarFingerprints))
+
+	postings, err := getPostings(q.ds.Index(), q.req.matchers...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = postings.Close()
+	}()
+
+	chunks := make([]index.ChunkMeta, 1)
+	lbs := make(phlaremodel.Labels, 0, 10)
+
+	for postings.Next() {
+		fp, err := q.ds.Index().SeriesBy(postings.At(), &lbs, &chunks)
+		if err != nil {
+			return nil, err
+		}
+
+		fingerprint := model.Fingerprint(fp)
+		if _, needed := exemplarFingerprintSet[fingerprint]; needed {
+			fullLabelsByFingerprint[fingerprint] = lbs.Clone()
+			if len(fullLabelsByFingerprint) == len(exemplarFingerprints) {
+				break
+			}
+		}
+	}
+
+	if err = postings.Err(); err != nil {
+		return nil, err
+	}
+
+	return fullLabelsByFingerprint, nil
 }
