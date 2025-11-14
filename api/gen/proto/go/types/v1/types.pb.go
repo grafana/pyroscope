@@ -68,6 +68,58 @@ func (TimeSeriesAggregationType) EnumDescriptor() ([]byte, []int) {
 	return file_types_v1_types_proto_rawDescGZIP(), []int{0}
 }
 
+type ExemplarType int32
+
+const (
+	ExemplarType_EXEMPLAR_TYPE_UNSPECIFIED ExemplarType = 0
+	ExemplarType_EXEMPLAR_TYPE_NONE        ExemplarType = 1
+	ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL  ExemplarType = 2
+	ExemplarType_EXEMPLAR_TYPE_SPAN        ExemplarType = 3
+)
+
+// Enum value maps for ExemplarType.
+var (
+	ExemplarType_name = map[int32]string{
+		0: "EXEMPLAR_TYPE_UNSPECIFIED",
+		1: "EXEMPLAR_TYPE_NONE",
+		2: "EXEMPLAR_TYPE_INDIVIDUAL",
+		3: "EXEMPLAR_TYPE_SPAN",
+	}
+	ExemplarType_value = map[string]int32{
+		"EXEMPLAR_TYPE_UNSPECIFIED": 0,
+		"EXEMPLAR_TYPE_NONE":        1,
+		"EXEMPLAR_TYPE_INDIVIDUAL":  2,
+		"EXEMPLAR_TYPE_SPAN":        3,
+	}
+)
+
+func (x ExemplarType) Enum() *ExemplarType {
+	p := new(ExemplarType)
+	*p = x
+	return p
+}
+
+func (x ExemplarType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ExemplarType) Descriptor() protoreflect.EnumDescriptor {
+	return file_types_v1_types_proto_enumTypes[1].Descriptor()
+}
+
+func (ExemplarType) Type() protoreflect.EnumType {
+	return &file_types_v1_types_proto_enumTypes[1]
+}
+
+func (x ExemplarType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ExemplarType.Descriptor instead.
+func (ExemplarType) EnumDescriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{1}
+}
+
 type LabelPair struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Label name
@@ -1219,7 +1271,12 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\x06labels\x18\x05 \x03(\v2\x13.types.v1.LabelPairR\x06labels*k\n" +
 	"\x19TimeSeriesAggregationType\x12$\n" +
 	" TIME_SERIES_AGGREGATION_TYPE_SUM\x10\x00\x12(\n" +
-	"$TIME_SERIES_AGGREGATION_TYPE_AVERAGE\x10\x01B\x9b\x01\n" +
+	"$TIME_SERIES_AGGREGATION_TYPE_AVERAGE\x10\x01*{\n" +
+	"\fExemplarType\x12\x1d\n" +
+	"\x19EXEMPLAR_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12EXEMPLAR_TYPE_NONE\x10\x01\x12\x1c\n" +
+	"\x18EXEMPLAR_TYPE_INDIVIDUAL\x10\x02\x12\x16\n" +
+	"\x12EXEMPLAR_TYPE_SPAN\x10\x03B\x9b\x01\n" +
 	"\fcom.types.v1B\n" +
 	"TypesProtoP\x01Z>github.com/grafana/pyroscope/api/gen/proto/go/types/v1;typesv1\xa2\x02\x03TXX\xaa\x02\bTypes.V1\xca\x02\bTypes\\V1\xe2\x02\x14Types\\V1\\GPBMetadata\xea\x02\tTypes::V1b\x06proto3"
 
@@ -1235,40 +1292,41 @@ func file_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_types_v1_types_proto_rawDescData
 }
 
-var file_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_types_v1_types_proto_goTypes = []any{
 	(TimeSeriesAggregationType)(0),  // 0: types.v1.TimeSeriesAggregationType
-	(*LabelPair)(nil),               // 1: types.v1.LabelPair
-	(*ProfileType)(nil),             // 2: types.v1.ProfileType
-	(*Labels)(nil),                  // 3: types.v1.Labels
-	(*Series)(nil),                  // 4: types.v1.Series
-	(*Point)(nil),                   // 5: types.v1.Point
-	(*ProfileAnnotation)(nil),       // 6: types.v1.ProfileAnnotation
-	(*LabelValuesRequest)(nil),      // 7: types.v1.LabelValuesRequest
-	(*LabelValuesResponse)(nil),     // 8: types.v1.LabelValuesResponse
-	(*LabelNamesRequest)(nil),       // 9: types.v1.LabelNamesRequest
-	(*LabelNamesResponse)(nil),      // 10: types.v1.LabelNamesResponse
-	(*BlockInfo)(nil),               // 11: types.v1.BlockInfo
-	(*BlockCompaction)(nil),         // 12: types.v1.BlockCompaction
-	(*StackTraceSelector)(nil),      // 13: types.v1.StackTraceSelector
-	(*Location)(nil),                // 14: types.v1.Location
-	(*GoPGO)(nil),                   // 15: types.v1.GoPGO
-	(*GetProfileStatsRequest)(nil),  // 16: types.v1.GetProfileStatsRequest
-	(*GetProfileStatsResponse)(nil), // 17: types.v1.GetProfileStatsResponse
-	(*Exemplar)(nil),                // 18: types.v1.Exemplar
+	(ExemplarType)(0),               // 1: types.v1.ExemplarType
+	(*LabelPair)(nil),               // 2: types.v1.LabelPair
+	(*ProfileType)(nil),             // 3: types.v1.ProfileType
+	(*Labels)(nil),                  // 4: types.v1.Labels
+	(*Series)(nil),                  // 5: types.v1.Series
+	(*Point)(nil),                   // 6: types.v1.Point
+	(*ProfileAnnotation)(nil),       // 7: types.v1.ProfileAnnotation
+	(*LabelValuesRequest)(nil),      // 8: types.v1.LabelValuesRequest
+	(*LabelValuesResponse)(nil),     // 9: types.v1.LabelValuesResponse
+	(*LabelNamesRequest)(nil),       // 10: types.v1.LabelNamesRequest
+	(*LabelNamesResponse)(nil),      // 11: types.v1.LabelNamesResponse
+	(*BlockInfo)(nil),               // 12: types.v1.BlockInfo
+	(*BlockCompaction)(nil),         // 13: types.v1.BlockCompaction
+	(*StackTraceSelector)(nil),      // 14: types.v1.StackTraceSelector
+	(*Location)(nil),                // 15: types.v1.Location
+	(*GoPGO)(nil),                   // 16: types.v1.GoPGO
+	(*GetProfileStatsRequest)(nil),  // 17: types.v1.GetProfileStatsRequest
+	(*GetProfileStatsResponse)(nil), // 18: types.v1.GetProfileStatsResponse
+	(*Exemplar)(nil),                // 19: types.v1.Exemplar
 }
 var file_types_v1_types_proto_depIdxs = []int32{
-	1,  // 0: types.v1.Labels.labels:type_name -> types.v1.LabelPair
-	1,  // 1: types.v1.Series.labels:type_name -> types.v1.LabelPair
-	5,  // 2: types.v1.Series.points:type_name -> types.v1.Point
-	6,  // 3: types.v1.Point.annotations:type_name -> types.v1.ProfileAnnotation
-	18, // 4: types.v1.Point.exemplars:type_name -> types.v1.Exemplar
-	12, // 5: types.v1.BlockInfo.compaction:type_name -> types.v1.BlockCompaction
-	1,  // 6: types.v1.BlockInfo.labels:type_name -> types.v1.LabelPair
-	14, // 7: types.v1.StackTraceSelector.call_site:type_name -> types.v1.Location
-	15, // 8: types.v1.StackTraceSelector.go_pgo:type_name -> types.v1.GoPGO
-	1,  // 9: types.v1.Exemplar.labels:type_name -> types.v1.LabelPair
+	2,  // 0: types.v1.Labels.labels:type_name -> types.v1.LabelPair
+	2,  // 1: types.v1.Series.labels:type_name -> types.v1.LabelPair
+	6,  // 2: types.v1.Series.points:type_name -> types.v1.Point
+	7,  // 3: types.v1.Point.annotations:type_name -> types.v1.ProfileAnnotation
+	19, // 4: types.v1.Point.exemplars:type_name -> types.v1.Exemplar
+	13, // 5: types.v1.BlockInfo.compaction:type_name -> types.v1.BlockCompaction
+	2,  // 6: types.v1.BlockInfo.labels:type_name -> types.v1.LabelPair
+	15, // 7: types.v1.StackTraceSelector.call_site:type_name -> types.v1.Location
+	16, // 8: types.v1.StackTraceSelector.go_pgo:type_name -> types.v1.GoPGO
+	2,  // 9: types.v1.Exemplar.labels:type_name -> types.v1.LabelPair
 	10, // [10:10] is the sub-list for method output_type
 	10, // [10:10] is the sub-list for method input_type
 	10, // [10:10] is the sub-list for extension type_name
@@ -1286,7 +1344,7 @@ func file_types_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_types_v1_types_proto_rawDesc), len(file_types_v1_types_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,

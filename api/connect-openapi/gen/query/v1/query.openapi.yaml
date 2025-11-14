@@ -678,9 +678,9 @@ components:
             - string
           title: limit
           format: int64
-        includeExemplars:
-          type: boolean
-          title: include_exemplars
+        exemplarType:
+          title: exemplar_type
+          $ref: '#/components/schemas/types.v1.ExemplarType'
       title: TimeSeriesQuery
       additionalProperties: false
     query.v1.TimeSeriesReport:
@@ -778,6 +778,14 @@ components:
         Exemplar represents metadata for an individual profile sample.
          Exemplars allow users to drill down from aggregated timeline views
          to specific profile instances.
+    types.v1.ExemplarType:
+      type: string
+      title: ExemplarType
+      enum:
+        - EXEMPLAR_TYPE_UNSPECIFIED
+        - EXEMPLAR_TYPE_NONE
+        - EXEMPLAR_TYPE_INDIVIDUAL
+        - EXEMPLAR_TYPE_SPAN
     types.v1.GoPGO:
       type: object
       properties:

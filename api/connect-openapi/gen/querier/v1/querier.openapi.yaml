@@ -1436,10 +1436,11 @@ components:
           format: int64
           description: Select the top N series by total value.
           nullable: true
-        includeExemplars:
-          type: boolean
-          title: include_exemplars
+        exemplarType:
+          title: exemplar_type
+          description: Type of exemplars to include in the response.
           nullable: true
+          $ref: '#/components/schemas/types.v1.ExemplarType'
       title: SelectSeriesRequest
       additionalProperties: false
     querier.v1.SelectSeriesResponse:
@@ -1555,6 +1556,14 @@ components:
         Exemplar represents metadata for an individual profile sample.
          Exemplars allow users to drill down from aggregated timeline views
          to specific profile instances.
+    types.v1.ExemplarType:
+      type: string
+      title: ExemplarType
+      enum:
+        - EXEMPLAR_TYPE_UNSPECIFIED
+        - EXEMPLAR_TYPE_NONE
+        - EXEMPLAR_TYPE_INDIVIDUAL
+        - EXEMPLAR_TYPE_SPAN
     types.v1.GetProfileStatsRequest:
       type: object
       title: GetProfileStatsRequest

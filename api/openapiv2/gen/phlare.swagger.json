@@ -993,6 +993,16 @@
       },
       "description": "Exemplar represents metadata for an individual profile sample.\nExemplars allow users to drill down from aggregated timeline views\nto specific profile instances."
     },
+    "v1ExemplarType": {
+      "type": "string",
+      "enum": [
+        "EXEMPLAR_TYPE_UNSPECIFIED",
+        "EXEMPLAR_TYPE_NONE",
+        "EXEMPLAR_TYPE_INDIVIDUAL",
+        "EXEMPLAR_TYPE_SPAN"
+      ],
+      "default": "EXEMPLAR_TYPE_UNSPECIFIED"
+    },
     "v1FeatureFlag": {
       "type": "object",
       "properties": {
@@ -2461,8 +2471,8 @@
           "type": "string",
           "format": "int64"
         },
-        "includeExemplars": {
-          "type": "boolean"
+        "exemplarType": {
+          "$ref": "#/definitions/v1ExemplarType"
         }
       }
     },

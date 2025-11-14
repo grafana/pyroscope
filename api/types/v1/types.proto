@@ -102,6 +102,13 @@ enum TimeSeriesAggregationType {
   TIME_SERIES_AGGREGATION_TYPE_AVERAGE = 1;
 }
 
+enum ExemplarType {
+  EXEMPLAR_TYPE_UNSPECIFIED = 0;
+  EXEMPLAR_TYPE_NONE = 1;
+  EXEMPLAR_TYPE_INDIVIDUAL = 2;
+  EXEMPLAR_TYPE_SPAN = 3;
+}
+
 // StackTraceSelector is used for filtering stack traces by locations.
 message StackTraceSelector {
   // Stack trace of the call site. Root at call_site[0].

@@ -417,9 +417,9 @@ func (m *SelectSeriesRequest) CloneVT() *SelectSeriesRequest {
 		tmpVal := *rhs
 		r.Limit = &tmpVal
 	}
-	if rhs := m.IncludeExemplars; rhs != nil {
+	if rhs := m.ExemplarType; rhs != nil {
 		tmpVal := *rhs
-		r.IncludeExemplars = &tmpVal
+		r.ExemplarType = &tmpVal
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -1074,7 +1074,7 @@ func (this *SelectSeriesRequest) EqualVT(that *SelectSeriesRequest) bool {
 	if p, q := this.Limit, that.Limit; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
-	if p, q := this.IncludeExemplars, that.IncludeExemplars; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+	if p, q := this.ExemplarType, that.ExemplarType; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2635,13 +2635,8 @@ func (m *SelectSeriesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.IncludeExemplars != nil {
-		i--
-		if *m.IncludeExemplars {
-			dAtA[i] = 1
-		} else {
-			dAtA[i] = 0
-		}
+	if m.ExemplarType != nil {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.ExemplarType))
 		i--
 		dAtA[i] = 0x50
 	}
@@ -3413,8 +3408,8 @@ func (m *SelectSeriesRequest) SizeVT() (n int) {
 	if m.Limit != nil {
 		n += 1 + protohelpers.SizeOfVarint(uint64(*m.Limit))
 	}
-	if m.IncludeExemplars != nil {
-		n += 2
+	if m.ExemplarType != nil {
+		n += 1 + protohelpers.SizeOfVarint(uint64(*m.ExemplarType))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -5863,9 +5858,9 @@ func (m *SelectSeriesRequest) UnmarshalVT(dAtA []byte) error {
 			m.Limit = &v
 		case 10:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field IncludeExemplars", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ExemplarType", wireType)
 			}
-			var v int
+			var v v1.ExemplarType
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return protohelpers.ErrIntOverflow
@@ -5875,13 +5870,12 @@ func (m *SelectSeriesRequest) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				v |= int(b&0x7F) << shift
+				v |= v1.ExemplarType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			b := bool(v != 0)
-			m.IncludeExemplars = &b
+			m.ExemplarType = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
