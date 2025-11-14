@@ -1,0 +1,59 @@
+{
+  "org.springframework.boot": {
+    "owner": "spring-projects",
+    "repo": "spring-boot",
+    "path_mappings": {
+      "spring-boot": "spring-boot-project/spring-boot/src/main/java",
+      "spring-boot-autoconfigure": "spring-boot-project/spring-boot-autoconfigure/src/main/java",
+      "spring-boot-starter": "spring-boot-project/spring-boot-starters/spring-boot-starter/src/main/java",
+      "spring-boot-starter-web": "spring-boot-project/spring-boot-starters/spring-boot-starter-web/src/main/java"
+    },
+    "default_path": "spring-boot-project/spring-boot/src/main/java"
+  },
+  "org.springframework": {
+    "owner": "spring-projects",
+    "repo": "spring-framework",
+    "path_mappings": {
+      "spring-web": "spring-web/src/main/java",
+      "spring-webmvc": "spring-webmvc/src/main/java",
+      "spring-webflux": "spring-webflux/src/main/java",
+      "spring-core": "spring-core/src/main/java",
+      "spring-beans": "spring-beans/src/main/java",
+      "spring-context": "spring-context/src/main/java",
+      "spring-aop": "spring-aop/src/main/java",
+      "spring-expression": "spring-expression/src/main/java"
+    },
+    "default_path": "spring-framework/src/main/java"
+  },
+  "java": {
+    "owner": "openjdk",
+    "repo": "jdk",
+    "path_mappings": {},
+    "default_path": "src/java.base/share/classes"
+  },
+  "sun": {
+    "owner": "openjdk",
+    "repo": "jdk",
+    "path_mappings": {},
+    "default_path": "src/java.base/share/classes"
+  },
+  "javax": {
+    "owner": "openjdk",
+    "repo": "jdk",
+    "path_mappings": {},
+    "default_path": "src/java.base/share/classes"
+  },
+  "org.apache.tomcat": {
+    "owner": "apache",
+    "repo": "tomcat",
+    "path_mappings": {},
+    "default_path": "java"
+  },
+  "org.apache.tomcat.embed": {
+    "owner": "apache",
+    "repo": "tomcat",
+    "path_mappings": {},
+    "default_path": "java"
+  }
+}
+
