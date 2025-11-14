@@ -1015,9 +1015,10 @@ type SelectSeriesRequest struct {
 	// Select stack traces that match the provided selector.
 	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,8,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
 	// Select the top N series by total value.
-	Limit         *int64 `protobuf:"varint,9,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Limit            *int64 `protobuf:"varint,9,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
+	IncludeExemplars *bool  `protobuf:"varint,10,opt,name=include_exemplars,json=includeExemplars,proto3,oneof" json:"include_exemplars,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *SelectSeriesRequest) Reset() {
@@ -1111,6 +1112,13 @@ func (x *SelectSeriesRequest) GetLimit() int64 {
 		return *x.Limit
 	}
 	return 0
+}
+
+func (x *SelectSeriesRequest) GetIncludeExemplars() bool {
+	if x != nil && x.IncludeExemplars != nil {
+		return *x.IncludeExemplars
+	}
+	return false
 }
 
 type SelectSeriesResponse struct {
@@ -1523,7 +1531,7 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x14stack_trace_selector\x18\x06 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x01R\x12stackTraceSelector\x88\x01\x01B\f\n" +
 	"\n" +
 	"_max_nodesB\x17\n" +
-	"\x15_stack_trace_selector\"\xbe\x04\n" +
+	"\x15_stack_trace_selector\"\x86\x05\n" +
 	"\x13SelectSeriesRequest\x12Y\n" +
 	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
 	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12*\n" +
@@ -1533,10 +1541,13 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x04step\x18\x06 \x01(\x01R\x04step\x12J\n" +
 	"\vaggregation\x18\a \x01(\x0e2#.types.v1.TimeSeriesAggregationTypeH\x00R\vaggregation\x88\x01\x01\x12S\n" +
 	"\x14stack_trace_selector\x18\b \x01(\v2\x1c.types.v1.StackTraceSelectorH\x01R\x12stackTraceSelector\x88\x01\x01\x12\x19\n" +
-	"\x05limit\x18\t \x01(\x03H\x02R\x05limit\x88\x01\x01B\x0e\n" +
+	"\x05limit\x18\t \x01(\x03H\x02R\x05limit\x88\x01\x01\x120\n" +
+	"\x11include_exemplars\x18\n" +
+	" \x01(\bH\x03R\x10includeExemplars\x88\x01\x01B\x0e\n" +
 	"\f_aggregationB\x17\n" +
 	"\x15_stack_trace_selectorB\b\n" +
-	"\x06_limit\"@\n" +
+	"\x06_limitB\x14\n" +
+	"\x12_include_exemplars\"@\n" +
 	"\x14SelectSeriesResponse\x12(\n" +
 	"\x06series\x18\x01 \x03(\v2\x10.types.v1.SeriesR\x06series\"S\n" +
 	"\x13AnalyzeQueryRequest\x12\x14\n" +

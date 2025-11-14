@@ -484,6 +484,7 @@ A request body with the following fields is required:
 |`end` | Milliseconds since epoch. | `1676289600000` |
 |`aggregation` |  |  |
 |`groupBy` |  | `["pod"]` |
+|`includeExemplars` |  |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`limit` | Select the top N series by total value. |  |
 |`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
