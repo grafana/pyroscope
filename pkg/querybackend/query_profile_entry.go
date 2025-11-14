@@ -1,7 +1,6 @@
 package querybackend
 
 import (
-	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -24,7 +23,6 @@ type ProfileEntry struct {
 	Fingerprint model.Fingerprint
 	Labels      phlaremodel.Labels
 	Partition   uint64
-	ID          string
 }
 
 func (e ProfileEntry) RowNumber() int64 { return e.RowNum }
@@ -41,33 +39,22 @@ func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[Pro
 	results = parquetquery.NewBinaryJoinIterator(0, results,
 		q.ds.Profiles().Column(q.ctx, "StacktracePartition", nil),
 	)
-	results = parquetquery.NewBinaryJoinIterator(0, results,
-		q.ds.Profiles().Column(q.ctx, schemav1.IDColumnName, nil),
-	)
 
-	buf := make([][]parquet.Value, 4)
+	buf := make([][]parquet.Value, 3)
 	entries := iter.NewAsyncBatchIterator[*parquetquery.IteratorResult, ProfileEntry](
 		results, bigBatchSize,
 		func(r *parquetquery.IteratorResult) ProfileEntry {
 			buf = r.Columns(buf,
 				schemav1.SeriesIndexColumnName,
 				schemav1.TimeNanosColumnName,
-				schemav1.StacktracePartitionColumnName,
-				schemav1.IDColumnName)
+				schemav1.StacktracePartitionColumnName)
 			x := series[buf[0][0].Uint32()]
-			var profileID string
-			if len(buf[3]) > 0 {
-				var u uuid.UUID
-				copy(u[:], buf[3][0].ByteArray())
-				profileID = u.String()
-			}
 			return ProfileEntry{
 				RowNum:      r.RowNumber[0],
 				Timestamp:   model.TimeFromUnixNano(buf[1][0].Int64()),
 				Fingerprint: x.fingerprint,
 				Labels:      x.labels,
 				Partition:   buf[2][0].Uint64(),
-				ID:          profileID,
 			}
 		},
 		func([]ProfileEntry) {},

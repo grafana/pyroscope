@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
 
@@ -44,6 +45,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 	// these columns might not be present
 	annotationKeysColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationKeyColumnPath)
 	annotationValuesColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath)
+	idColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), []string{schemav1.IDColumnName})
 
 	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
 		q.ctx,
@@ -53,6 +55,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 		column.ColumnIndex,
 		annotationKeysColumn.ColumnIndex,
 		annotationValuesColumn.ColumnIndex,
+		idColumn.ColumnIndex,
 	)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
@@ -63,12 +66,18 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 			Keys:   make([]string, 0),
 			Values: make([]string, 0),
 		}
+		var profileID string
 		for _, e := range row.Values {
 			if e[0].Column() == annotationKeysColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
 				annotations.Keys = append(annotations.Keys, e[0].String())
 			}
 			if e[0].Column() == annotationValuesColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
 				annotations.Values = append(annotations.Values, e[0].String())
+			}
+			if e[0].Column() == idColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
+				var u uuid.UUID
+				copy(u[:], e[0].ByteArray())
+				profileID = u.String()
 			}
 		}
 		builder.Add(
@@ -77,7 +86,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 			int64(row.Row.Timestamp),
 			float64(row.Values[0][0].Int64()),
 			annotations,
-			row.Row.ID,
+			profileID,
 		)
 	}
 	if err = rows.Err(); err != nil {
