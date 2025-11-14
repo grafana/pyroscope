@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/lidia"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
@@ -661,4 +662,82 @@ func TestConfigValidate(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestUpdateAllSymbolsInProfile verifies that line numbers, file paths, and StartLine
+// are properly passed through from SourceInfoFrame to the profile.
+func TestUpdateAllSymbolsInProfile(t *testing.T) {
+	s := &Symbolizer{logger: log.NewNopLogger()}
+	stringMap := make(map[string]int64)
+
+	t.Run("basic symbolization", func(t *testing.T) {
+		profile := &googlev1.Profile{
+			Mapping:     []*googlev1.Mapping{{Id: 1, HasFunctions: false}},
+			Location:    []*googlev1.Location{{Id: 1, MappingId: 1, Address: 0x1500}},
+			StringTable: []string{""},
+			Function:    []*googlev1.Function{},
+		}
+
+		symbolizedLocs := []symbolizedLocation{{
+			loc: profile.Location[0],
+			symLoc: &location{
+				address: 0x1500,
+				lines: []lidia.SourceInfoFrame{{
+					LineNumber: 42, FunctionName: "testFunction", FilePath: "/path/to/test.go",
+				}},
+			},
+			mapping: profile.Mapping[0],
+		}}
+
+		s.updateAllSymbolsInProfile(profile, symbolizedLocs, stringMap)
+
+		require.True(t, profile.Mapping[0].HasFunctions)
+		require.Len(t, profile.Location[0].Line, 1)
+		require.Len(t, profile.Function, 1)
+
+		line := profile.Location[0].Line[0]
+		fn := profile.Function[0]
+
+		require.Equal(t, int64(42), line.Line)
+		require.Equal(t, int64(42), fn.StartLine)
+		require.Equal(t, "testFunction", profile.StringTable[fn.Name])
+		require.Equal(t, "/path/to/test.go", profile.StringTable[fn.Filename])
+	})
+
+	t.Run("minimum StartLine for same function", func(t *testing.T) {
+		profile := &googlev1.Profile{
+			Mapping: []*googlev1.Mapping{{Id: 1, HasFunctions: false}},
+			Location: []*googlev1.Location{
+				{Id: 1, MappingId: 1, Address: 0x1500},
+				{Id: 2, MappingId: 1, Address: 0x1600},
+			},
+			StringTable: []string{""},
+			Function:    []*googlev1.Function{},
+		}
+
+		symbolizedLocs := []symbolizedLocation{
+			{
+				loc: profile.Location[0],
+				symLoc: &location{address: 0x1500, lines: []lidia.SourceInfoFrame{{
+					LineNumber: 100, FunctionName: "testFunction", FilePath: "/path/to/test.go",
+				}}},
+				mapping: profile.Mapping[0],
+			},
+			{
+				loc: profile.Location[1],
+				symLoc: &location{address: 0x1600, lines: []lidia.SourceInfoFrame{{
+					LineNumber: 50, FunctionName: "testFunction", FilePath: "/path/to/test.go",
+				}}},
+				mapping: profile.Mapping[0],
+			},
+		}
+
+		s.updateAllSymbolsInProfile(profile, symbolizedLocs, stringMap)
+
+		require.Len(t, profile.Function, 1)
+		// StartLine properly updated
+		require.Equal(t, int64(50), profile.Function[0].StartLine)
+		require.Equal(t, int64(100), profile.Location[0].Line[0].Line)
+		require.Equal(t, int64(50), profile.Location[1].Line[0].Line)
+	})
 }
