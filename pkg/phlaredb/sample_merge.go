@@ -209,6 +209,7 @@ func mergeByLabels[T Profile](
 			int64(p.Timestamp()),
 			float64(total),
 			annotations,
+			"",
 		)
 	}
 	return seriesBuilder.Build(), profiles.Err()
@@ -242,7 +243,7 @@ func mergeByLabelsWithStackTraceSelector[T Profile](
 			return nil, err
 		}
 		// TODO aleks-p: add annotation support?
-		seriesBuilder.Add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total), v1.Annotations{})
+		seriesBuilder.Add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total), v1.Annotations{}, "")
 	}
 
 	return seriesBuilder.Build(), profiles.Err()

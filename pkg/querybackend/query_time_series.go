@@ -77,6 +77,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 			int64(row.Row.Timestamp),
 			float64(row.Values[0][0].Int64()),
 			annotations,
+			row.Row.ID,
 		)
 	}
 	if err = rows.Err(); err != nil {
