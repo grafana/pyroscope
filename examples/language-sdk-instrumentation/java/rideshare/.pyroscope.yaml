@@ -1,36 +1,140 @@
 source_code:
   mappings:
-    - function_name:
-        - prefix: org/example/rideshare
-      language: java
-      source:
-        local:
-          path: src/main/java
-    - function_name:
-        - prefix: java
-      language: java
-      source:
-        github:
-          owner: openjdk
-          repo: jdk
-          ref: jdk-17+0
-          path: src/java.base/share/classes
-    - function_name:
-        - prefix: org/springframework/http
-        - prefix: org/springframework/web
-      language: java
-      source:
-        github:
-          owner: spring-projects
-          repo: spring-framework
-          ref: v5.3.20
-          path: spring-web/src/main/java
-    - function_name:
-        - prefix: org/springframework/web/servlet
-      language: java
-      source:
-        github:
-          owner: spring-projects
-          repo: spring-framework
-          ref: v5.3.20
-          path: spring-webmvc/src/main/java
+  - function_name:
+    - prefix: org/example/rideshare
+    language: java
+    source:
+      local:
+        path: src/main/java
+  - function_name:
+    - prefix: agent
+    language: java
+    source:
+      github:
+        owner: microsoft
+        repo: ai-agents-for-beginners
+        ref: 2.1.2
+        path: src/main/java
+  - function_name:
+    - prefix: org/jetbrains
+    language: java
+    source:
+      github:
+        owner: doctrine
+        repo: annotations
+        ref: '13.0'
+        path: src/main/java
+  - function_name:
+    - prefix: annotations
+    language: java
+    source:
+      github:
+        owner: doctrine
+        repo: annotations
+        ref: 26.0.2
+        path: src/main/java
+  - function_name:
+    - prefix: com/fasterxml/jackson/annotation
+    - prefix: javax/xml/datatype
+    - prefix: javax/xml/namespace
+    - prefix: javax/xml/parsers
+    - prefix: javax/xml/transform
+    - prefix: org/w3c/dom
+    - prefix: org/xml/sax
+    language: java
+    source:
+      github:
+        owner: FasterXML
+        repo: jackson
+        ref: 2.13.3
+        path: src/main/java
+  - function_name:
+    - prefix: com/fasterxml/jackson/core
+    language: java
+    source:
+      github:
+        owner: FasterXML
+        repo: jackson-core
+        ref: 2.13.3
+        path: src/main/java
+  - function_name:
+    - prefix: org/apache/logging/log4j
+    - prefix: org/osgi/framework
+    - prefix: org/slf4j/spi
+    - prefix: sun/reflect
+    language: java
+    source:
+      github:
+        owner: log4js-node
+        repo: log4js-node
+        ref: 2.17.2
+        path: src/main/java
+  - function_name:
+    - prefix: org/yaml/snakeyaml
+    language: java
+    source:
+      github:
+        owner: snakeyaml
+        repo: snakeyaml
+        ref: '1.30'
+        path: src/main/java
+  - function_name:
+    - prefix: org/springframework
+    language: java
+    source:
+      github:
+        owner: spring-projects
+        repo: spring-framework
+        ref: 5.3.20
+        path: spring-aop/src/main/java
+  - function_name:
+    - prefix: org/springframework/boot
+    language: java
+    source:
+      github:
+        owner: spring-projects
+        repo: spring-boot
+        ref: 2.7.0
+        path: spring-boot-project/spring-boot/src/main/java
+  - function_name:
+    - prefix: javax/annotation/security
+    - prefix: javax/crypto/spec
+    - prefix: javax/ejb
+    - prefix: javax/el
+    - prefix: javax/imageio
+    - prefix: javax/mail/internet
+    - prefix: javax/management/loading
+    - prefix: javax/management/modelmbean
+    - prefix: javax/management/openmbean
+    - prefix: javax/naming/directory
+    - prefix: javax/naming/ldap
+    - prefix: javax/naming/spi
+    - prefix: javax/net/ssl
+    - prefix: javax/persistence
+    - prefix: javax/security/auth
+    - prefix: javax/security/cert
+    - prefix: javax/servlet/annotation
+    - prefix: javax/servlet/descriptor
+    - prefix: javax/servlet/http
+    - prefix: javax/servlet/resources
+    - prefix: javax/sql
+    - prefix: javax/websocket/server
+    - prefix: javax/wsdl/extensions
+    - prefix: javax/wsdl/factory
+    - prefix: javax/wsdl/xml
+    - prefix: javax/xml/rpc
+    - prefix: javax/xml/ws
+    - prefix: org/apache/catalina
+    - prefix: org/apache/coyote/http11/upgrade
+    - prefix: org/apache/el
+    - prefix: org/apache/juli/logging
+    - prefix: org/apache/naming
+    - prefix: org/apache/tomcat
+    - prefix: org/ietf/jgss
+    language: java
+    source:
+      github:
+        owner: apache
+        repo: tomcat
+        ref: 9.0.63
+        path: java
