@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/gogo/status"
 	"github.com/google/pprof/profile"
+	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -31,12 +32,16 @@ import (
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
-func NewHTTPHandlers(client querierv1connect.QuerierServiceClient) *QueryHandlers {
-	return &QueryHandlers{client}
+func NewHTTPHandlers(client querierv1connect.QuerierServiceClient, limits Limits) *QueryHandlers {
+	return &QueryHandlers{
+		client: client,
+		limits: limits,
+	}
 }
 
 type QueryHandlers struct {
 	client querierv1connect.QuerierServiceClient
+	limits Limits
 }
 
 // LabelValues only returns the label values for the given label name.
@@ -186,7 +191,13 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 		return err
 	})
 
-	timelineStep := timeline.CalcPointInterval(selectParams.Start, selectParams.End)
+	// Get tenant-specific min step duration from limits
+	tenantID, err := tenant.TenantID(req.Context())
+	if err != nil {
+		tenantID = "" // Use default limits if tenant ID cannot be extracted
+	}
+	minStepDuration := q.limits.MinStepDuration(tenantID)
+	timelineStep := timeline.CalcPointInterval(selectParams.Start, selectParams.End, minStepDuration)
 	var resSeries *connect.Response[querierv1.SelectSeriesResponse]
 	g.Go(func() error {
 		var err error
