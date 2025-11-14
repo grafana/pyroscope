@@ -2460,6 +2460,9 @@
         "limit": {
           "type": "string",
           "format": "int64"
+        },
+        "includeExemplars": {
+          "type": "boolean"
         }
       }
     },

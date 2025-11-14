@@ -161,6 +161,7 @@ message TimeSeriesQuery {
   double step = 1;
   repeated string group_by = 2;
   int64 limit = 3;
+  bool include_exemplars = 4;
 }
 
 message TimeSeriesReport {

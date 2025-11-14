@@ -11,6 +11,7 @@ import (
 	"github.com/go-kit/log"
 	giturl "github.com/kubescape/go-git-url"
 	"github.com/kubescape/go-git-url/apis"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 
@@ -37,6 +38,9 @@ func New(logger log.Logger, reg prometheus.Registerer) *Service {
 }
 
 func (q *Service) GithubApp(ctx context.Context, req *connect.Request[vcsv1.GithubAppRequest]) (*connect.Response[vcsv1.GithubAppResponse], error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "GithubApp")
+	defer sp.Finish()
+
 	err := isGitHubIntegrationConfigured()
 	if err != nil {
 		q.logger.Log("err", err, "msg", "GitHub integration is not configured")
@@ -50,6 +54,9 @@ func (q *Service) GithubApp(ctx context.Context, req *connect.Request[vcsv1.Gith
 }
 
 func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.GithubLoginRequest]) (*connect.Response[vcsv1.GithubLoginResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "GithubLogin")
+	defer sp.Finish()
+
 	cfg, err := githubOAuthConfig()
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to get GitHub OAuth config")
@@ -90,6 +97,9 @@ func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.Gi
 }
 
 func (q *Service) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.GithubRefreshRequest]) (*connect.Response[vcsv1.GithubRefreshResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "GithubRefresh")
+	defer sp.Finish()
+
 	token, err := tokenFromRequest(ctx, req)
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to extract token from request")
@@ -138,6 +148,13 @@ func (q *Service) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.
 }
 
 func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFileRequest]) (*connect.Response[vcsv1.GetFileResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "GetFile")
+	defer sp.Finish()
+	sp.SetTag("repository_url", req.Msg.RepositoryURL)
+	sp.SetTag("local_path", req.Msg.LocalPath)
+	sp.SetTag("root_path", req.Msg.RootPath)
+	sp.SetTag("ref", req.Msg.Ref)
+
 	token, err := tokenFromRequest(ctx, req)
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to extract token from request")
@@ -184,6 +201,11 @@ func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 }
 
 func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetCommitRequest]) (*connect.Response[vcsv1.GetCommitResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "GetCommit")
+	defer sp.Finish()
+	sp.SetTag("repository_url", req.Msg.RepositoryURL)
+	sp.SetTag("ref", req.Msg.Ref)
+
 	token, err := tokenFromRequest(ctx, req)
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to extract token from request")
@@ -228,6 +250,9 @@ func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetC
 }
 
 func (q *Service) GetCommits(ctx context.Context, req *connect.Request[vcsv1.GetCommitsRequest]) (*connect.Response[vcsv1.GetCommitsResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "GetCommits")
+	defer sp.Finish()
+
 	token, err := tokenFromRequest(ctx, req)
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to extract token from request")

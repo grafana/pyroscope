@@ -1436,6 +1436,10 @@ components:
           format: int64
           description: Select the top N series by total value.
           nullable: true
+        includeExemplars:
+          type: boolean
+          title: include_exemplars
+          nullable: true
       title: SelectSeriesRequest
       additionalProperties: false
     querier.v1.SelectSeriesResponse:

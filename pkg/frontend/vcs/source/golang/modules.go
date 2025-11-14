@@ -43,6 +43,12 @@ func ParseModuleFromPath(path string) (Module, bool) {
 	}
 	filePath := parts[1][first+1:]
 	modulePath := parts[0]
+
+	// The go mod folder typically starts with "pkg/mod". If that segment can be found, shorten the module path, so no other folders with dots get accidentally picked up.
+	if pos := strings.Index(modulePath, "/pkg/mod/"); pos > 0 {
+		modulePath = modulePath[pos:]
+	}
+
 	// searching for the first domain name
 	domainParts := strings.Split(modulePath, "/")
 	for i, part := range domainParts {

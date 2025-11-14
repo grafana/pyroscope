@@ -678,6 +678,9 @@ components:
             - string
           title: limit
           format: int64
+        includeExemplars:
+          type: boolean
+          title: include_exemplars
       title: TimeSeriesQuery
       additionalProperties: false
     query.v1.TimeSeriesReport:
