@@ -294,13 +294,13 @@ func TestFindMapping(t *testing.T) {
 				require.NotNil(t, result)
 				require.Len(t, result.Path, 1)
 				assert.Equal(t, tt.expectedPrefix, result.Path[0].Prefix)
-				if tt.expectedSource == "local" {
+				switch tt.expectedSource {
+				case "local":
 					assert.NotNil(t, result.Source.Local)
-				} else if tt.expectedSource == "github" {
+				case "github":
 					assert.NotNil(t, result.Source.GitHub)
 				}
 			}
 		})
 	}
 }
-

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -30,8 +31,8 @@ func (ff FileFinder) findGoFile(ctx context.Context, mappings ...*config.Mapping
 	sp.SetTag("file.path", ff.file.Path)
 	sp.SetTag("file.function_name", ff.file.FunctionName)
 
-	if url, ok := golang.StandardLibraryURL(ff.file.Path); ok {
-		return ff.fetchURL(ctx, url, false)
+	if path, version, ok := golang.IsStandardLibraryPath(ff.file.Path); ok {
+		return ff.fetchGoStdlib(ctx, path, version)
 	}
 
 	if relativePath, ok := golang.VendorRelativePath(ff.file.Path); ok {
@@ -54,6 +55,36 @@ func (ff FileFinder) findGoFile(ctx context.Context, mappings ...*config.Mapping
 		return ff.fetchGoDependencyFile(ctx, modFile)
 	}
 	return ff.tryFindGoFile(ctx, 30)
+}
+
+func (ff FileFinder) fetchGoStdlib(ctx context.Context, path string, version string) (*vcsv1.GetFileResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "fetchGoStdlib")
+	defer sp.Finish()
+
+	// if there is no version detected, use the one from .pyroscope.yaml
+	if version == "" {
+		mapping := ff.config.FindMapping(config.FileSpec{Path: "$GOROOT/src"})
+		if mapping != nil {
+			return ff.fetchMappingFile(ctx, mapping, path)
+		}
+	}
+
+	// use master branch as fallback
+	ref := "master"
+	if version != "" {
+		ref = "go" + version
+	}
+
+	content, err := ff.client.GetFile(ctx, client.FileRequest{
+		Owner: "golang",
+		Repo:  "go",
+		Path:  filepath.Join("src", path),
+		Ref:   ref,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return newFileResponse(content.Content, content.URL)
 }
 
 func (ff FileFinder) fetchGoMod(ctx context.Context) (*modfile.File, error) {
