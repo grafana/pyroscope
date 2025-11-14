@@ -67,12 +67,13 @@ func registerQueryType(
 	rt queryv1.ReportType,
 	q queryHandler,
 	a aggregatorProvider,
+	alwaysAggregate bool, // this option will always call the aggregate method for this report type, so it will also run when there is only one report
 	deps ...block.Section,
 ) {
 	registerQueryReportType(qt, rt)
 	registerQueryHandler(qt, q)
 	registerQueryDependencies(qt, deps...)
-	registerAggregator(rt, a)
+	registerAggregator(rt, a, alwaysAggregate)
 }
 
 type blockContext struct {

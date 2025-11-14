@@ -10,6 +10,7 @@ import (
 var (
 	aggregatorMutex = new(sync.RWMutex)
 	aggregators     = map[queryv1.ReportType]aggregatorProvider{}
+	alwaysAggregate = map[queryv1.ReportType]struct{}{}
 	queryReportType = map[queryv1.QueryType]queryv1.ReportType{}
 )
 
@@ -23,7 +24,7 @@ type aggregator interface {
 	build() *queryv1.Report
 }
 
-func registerAggregator(t queryv1.ReportType, ap aggregatorProvider) {
+func registerAggregator(t queryv1.ReportType, ap aggregatorProvider, always bool) {
 	aggregatorMutex.Lock()
 	defer aggregatorMutex.Unlock()
 	_, ok := aggregators[t]
@@ -31,6 +32,21 @@ func registerAggregator(t queryv1.ReportType, ap aggregatorProvider) {
 		panic(fmt.Sprintf("%s: aggregator already registered", t))
 	}
 	aggregators[t] = ap
+
+	if always {
+		_, ok := alwaysAggregate[t]
+		if ok {
+			panic(fmt.Sprintf("%s: aggregator already registered to always aggregat", t))
+		}
+		alwaysAggregate[t] = struct{}{}
+	}
+}
+
+func isAlwaysAggregate(t queryv1.ReportType) bool {
+	aggregatorMutex.RLock()
+	defer aggregatorMutex.RUnlock()
+	_, result := alwaysAggregate[t]
+	return result
 }
 
 func getAggregator(r *queryv1.InvokeRequest, x *queryv1.Report) (aggregator, error) {
@@ -97,13 +113,16 @@ func (ra *reportAggregator) aggregateReport(r *queryv1.Report) (err error) {
 	ra.sm.Lock()
 	v, found := ra.staged[r.ReportType]
 	if !found {
-		// We delay aggregation until we have at least two
-		// reports of the same type. Otherwise, we just store
-		// the report and will return it as is, if it is the
-		// only one.
-		ra.staged[r.ReportType] = r
-		ra.sm.Unlock()
-		return nil
+		// For most ReportTypes we delay aggregation until we have at least two
+		// reports of the same type. In case there is only one we will
+		// return it as is.
+		// Some ReportTypes need to call the aggregator for correctness, in that case we call it right away.
+		if !isAlwaysAggregate(r.ReportType) {
+			ra.staged[r.ReportType] = r
+			ra.sm.Unlock()
+			return nil
+		}
+		ra.staged[r.ReportType] = nil
 	}
 	// Found a staged report of the same type.
 	if v != nil {

@@ -18,6 +18,7 @@ func init() {
 		queryv1.ReportType_REPORT_LABEL_NAMES,
 		queryLabelNames,
 		newLabelNameAggregator,
+		false,
 		[]block.Section{block.SectionTSDB}...,
 	)
 }

@@ -20,6 +20,7 @@ func init() {
 		queryv1.ReportType_REPORT_LABEL_VALUES,
 		queryLabelValues,
 		newLabelValueAggregator,
+		false,
 		[]block.Section{block.SectionTSDB}...,
 	)
 }
