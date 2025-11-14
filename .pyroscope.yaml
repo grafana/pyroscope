@@ -1,7 +1,7 @@
 source_code:
   mappings:
     - path:
-        - prefix: GOROOT
+        - prefix: $GOROOT/src
       language: go
       source:
        github:

@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opentracing/opentracing-go"
+
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
-	"github.com/opentracing/opentracing-go"
 )
 
 const (

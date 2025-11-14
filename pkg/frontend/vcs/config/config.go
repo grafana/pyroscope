@@ -159,7 +159,7 @@ type FileSpec struct {
 func (c *PyroscopeConfig) FindMapping(file FileSpec) *MappingConfig {
 	// Find the longest matching prefix
 	var bestMatch *MappingConfig
-	var bestMatchLen int = -1
+	var bestMatchLen = -1
 	for _, m := range c.SourceCode.Mappings {
 		if result := m.Match(file); result > bestMatchLen {
 			bestMatch = &m
