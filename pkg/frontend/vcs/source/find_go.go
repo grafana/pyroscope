@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	ExtGo = ".go"
+	ExtGo  = ".go"
+	ExtAsm = ".s" // Assembler files in go
 )
 
 // findGoFile finds a go file in a vcs repository.
