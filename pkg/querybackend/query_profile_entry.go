@@ -1,6 +1,7 @@
 package querybackend
 
 import (
+	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -54,13 +55,19 @@ func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[Pro
 				schemav1.StacktracePartitionColumnName,
 				schemav1.IDColumnName)
 			x := series[buf[0][0].Uint32()]
+			var profileID string
+			if len(buf[3]) > 0 {
+				var u uuid.UUID
+				copy(u[:], buf[3][0].ByteArray())
+				profileID = u.String()
+			}
 			return ProfileEntry{
 				RowNum:      r.RowNumber[0],
 				Timestamp:   model.TimeFromUnixNano(buf[1][0].Int64()),
 				Fingerprint: x.fingerprint,
 				Labels:      x.labels,
 				Partition:   buf[2][0].Uint64(),
-				ID:          buf[3][0].String(),
+				ID:          profileID,
 			}
 		},
 		func([]ProfileEntry) {},
