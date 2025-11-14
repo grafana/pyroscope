@@ -68,6 +68,58 @@ func (TimeSeriesAggregationType) EnumDescriptor() ([]byte, []int) {
 	return file_types_v1_types_proto_rawDescGZIP(), []int{0}
 }
 
+type ExemplarType int32
+
+const (
+	ExemplarType_EXEMPLAR_TYPE_UNSPECIFIED ExemplarType = 0
+	ExemplarType_EXEMPLAR_TYPE_NONE        ExemplarType = 1
+	ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL  ExemplarType = 2
+	ExemplarType_EXEMPLAR_TYPE_SPAN        ExemplarType = 3
+)
+
+// Enum value maps for ExemplarType.
+var (
+	ExemplarType_name = map[int32]string{
+		0: "EXEMPLAR_TYPE_UNSPECIFIED",
+		1: "EXEMPLAR_TYPE_NONE",
+		2: "EXEMPLAR_TYPE_INDIVIDUAL",
+		3: "EXEMPLAR_TYPE_SPAN",
+	}
+	ExemplarType_value = map[string]int32{
+		"EXEMPLAR_TYPE_UNSPECIFIED": 0,
+		"EXEMPLAR_TYPE_NONE":        1,
+		"EXEMPLAR_TYPE_INDIVIDUAL":  2,
+		"EXEMPLAR_TYPE_SPAN":        3,
+	}
+)
+
+func (x ExemplarType) Enum() *ExemplarType {
+	p := new(ExemplarType)
+	*p = x
+	return p
+}
+
+func (x ExemplarType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ExemplarType) Descriptor() protoreflect.EnumDescriptor {
+	return file_types_v1_types_proto_enumTypes[1].Descriptor()
+}
+
+func (ExemplarType) Type() protoreflect.EnumType {
+	return &file_types_v1_types_proto_enumTypes[1]
+}
+
+func (x ExemplarType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ExemplarType.Descriptor instead.
+func (ExemplarType) EnumDescriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{1}
+}
+
 type LabelPair struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Label name
@@ -307,8 +359,10 @@ type Point struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Value float64                `protobuf:"fixed64,1,opt,name=value,proto3" json:"value,omitempty"`
 	// Milliseconds unix timestamp
-	Timestamp     int64                `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	Annotations   []*ProfileAnnotation `protobuf:"bytes,3,rep,name=annotations,proto3" json:"annotations,omitempty"`
+	Timestamp   int64                `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Annotations []*ProfileAnnotation `protobuf:"bytes,3,rep,name=annotations,proto3" json:"annotations,omitempty"`
+	// Exemplars are samples of individual profiles that contributed to this aggregated point
+	Exemplars     []*Exemplar `protobuf:"bytes,4,rep,name=exemplars,proto3" json:"exemplars,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -360,6 +414,13 @@ func (x *Point) GetTimestamp() int64 {
 func (x *Point) GetAnnotations() []*ProfileAnnotation {
 	if x != nil {
 		return x.Annotations
+	}
+	return nil
+}
+
+func (x *Point) GetExemplars() []*Exemplar {
+	if x != nil {
+		return x.Exemplars
 	}
 	return nil
 }
@@ -1041,6 +1102,94 @@ func (x *GetProfileStatsResponse) GetNewestProfileTime() int64 {
 	return 0
 }
 
+// Exemplar represents metadata for an individual profile sample.
+// Exemplars allow users to drill down from aggregated timeline views
+// to specific profile instances.
+type Exemplar struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Milliseconds since epoch when the profile was captured.
+	Timestamp int64 `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	// Unique identifier for the profile (UUID).
+	ProfileId string `protobuf:"bytes,2,opt,name=profile_id,json=profileId,proto3" json:"profile_id,omitempty"`
+	// Span ID if this profile was split by span during ingestion.
+	SpanId string `protobuf:"bytes,3,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
+	// Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
+	Value uint64 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
+	// Series labels that are NOT included in the group_by query parameter.
+	// These labels complete the full series identity of this exemplar's profile.
+	// For example, if group_by=["service"], this would contain labels like "pod",
+	// "namespace", "region" that were omitted from grouping. This allows identifying
+	// which specific series instance this profile sample came from.
+	Labels        []*LabelPair `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Exemplar) Reset() {
+	*x = Exemplar{}
+	mi := &file_types_v1_types_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Exemplar) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Exemplar) ProtoMessage() {}
+
+func (x *Exemplar) ProtoReflect() protoreflect.Message {
+	mi := &file_types_v1_types_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Exemplar.ProtoReflect.Descriptor instead.
+func (*Exemplar) Descriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *Exemplar) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *Exemplar) GetProfileId() string {
+	if x != nil {
+		return x.ProfileId
+	}
+	return ""
+}
+
+func (x *Exemplar) GetSpanId() string {
+	if x != nil {
+		return x.SpanId
+	}
+	return ""
+}
+
+func (x *Exemplar) GetValue() uint64 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
+func (x *Exemplar) GetLabels() []*LabelPair {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
 var File_types_v1_types_proto protoreflect.FileDescriptor
 
 const file_types_v1_types_proto_rawDesc = "" +
@@ -1065,11 +1214,12 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\x06labels\x18\x01 \x03(\v2\x13.types.v1.LabelPairR\x06labels\"^\n" +
 	"\x06Series\x12+\n" +
 	"\x06labels\x18\x01 \x03(\v2\x13.types.v1.LabelPairR\x06labels\x12'\n" +
-	"\x06points\x18\x02 \x03(\v2\x0f.types.v1.PointR\x06points\"z\n" +
+	"\x06points\x18\x02 \x03(\v2\x0f.types.v1.PointR\x06points\"\xac\x01\n" +
 	"\x05Point\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\x01R\x05value\x12\x1c\n" +
 	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12=\n" +
-	"\vannotations\x18\x03 \x03(\v2\x1b.types.v1.ProfileAnnotationR\vannotations\";\n" +
+	"\vannotations\x18\x03 \x03(\v2\x1b.types.v1.ProfileAnnotationR\vannotations\x120\n" +
+	"\texemplars\x18\x04 \x03(\v2\x12.types.v1.ExemplarR\texemplars\";\n" +
 	"\x11ProfileAnnotation\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\"\xad\x01\n" +
@@ -1110,10 +1260,23 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\x17GetProfileStatsResponse\x12#\n" +
 	"\rdata_ingested\x18\x01 \x01(\bR\fdataIngested\x12.\n" +
 	"\x13oldest_profile_time\x18\x02 \x01(\x03R\x11oldestProfileTime\x12.\n" +
-	"\x13newest_profile_time\x18\x03 \x01(\x03R\x11newestProfileTime*k\n" +
+	"\x13newest_profile_time\x18\x03 \x01(\x03R\x11newestProfileTime\"\x92\x02\n" +
+	"\bExemplar\x122\n" +
+	"\ttimestamp\x18\x01 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1730000023000R\ttimestamp\x12J\n" +
+	"\n" +
+	"profile_id\x18\x02 \x01(\tB+\xbaG(:&\x12$7c9e6679-7425-40de-944b-e07fc1f90ae7R\tprofileId\x120\n" +
+	"\aspan_id\x18\x03 \x01(\tB\x17\xbaG\x14:\x12\x12\x1000f067aa0ba902b7R\x06spanId\x12'\n" +
+	"\x05value\x18\x04 \x01(\x04B\x11\xbaG\x0e:\f\x12\n" +
+	"2450000000R\x05value\x12+\n" +
+	"\x06labels\x18\x05 \x03(\v2\x13.types.v1.LabelPairR\x06labels*k\n" +
 	"\x19TimeSeriesAggregationType\x12$\n" +
 	" TIME_SERIES_AGGREGATION_TYPE_SUM\x10\x00\x12(\n" +
-	"$TIME_SERIES_AGGREGATION_TYPE_AVERAGE\x10\x01B\x9b\x01\n" +
+	"$TIME_SERIES_AGGREGATION_TYPE_AVERAGE\x10\x01*{\n" +
+	"\fExemplarType\x12\x1d\n" +
+	"\x19EXEMPLAR_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12EXEMPLAR_TYPE_NONE\x10\x01\x12\x1c\n" +
+	"\x18EXEMPLAR_TYPE_INDIVIDUAL\x10\x02\x12\x16\n" +
+	"\x12EXEMPLAR_TYPE_SPAN\x10\x03B\x9b\x01\n" +
 	"\fcom.types.v1B\n" +
 	"TypesProtoP\x01Z>github.com/grafana/pyroscope/api/gen/proto/go/types/v1;typesv1\xa2\x02\x03TXX\xaa\x02\bTypes.V1\xca\x02\bTypes\\V1\xe2\x02\x14Types\\V1\\GPBMetadata\xea\x02\tTypes::V1b\x06proto3"
 
@@ -1129,42 +1292,46 @@ func file_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_types_v1_types_proto_rawDescData
 }
 
-var file_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_types_v1_types_proto_goTypes = []any{
 	(TimeSeriesAggregationType)(0),  // 0: types.v1.TimeSeriesAggregationType
-	(*LabelPair)(nil),               // 1: types.v1.LabelPair
-	(*ProfileType)(nil),             // 2: types.v1.ProfileType
-	(*Labels)(nil),                  // 3: types.v1.Labels
-	(*Series)(nil),                  // 4: types.v1.Series
-	(*Point)(nil),                   // 5: types.v1.Point
-	(*ProfileAnnotation)(nil),       // 6: types.v1.ProfileAnnotation
-	(*LabelValuesRequest)(nil),      // 7: types.v1.LabelValuesRequest
-	(*LabelValuesResponse)(nil),     // 8: types.v1.LabelValuesResponse
-	(*LabelNamesRequest)(nil),       // 9: types.v1.LabelNamesRequest
-	(*LabelNamesResponse)(nil),      // 10: types.v1.LabelNamesResponse
-	(*BlockInfo)(nil),               // 11: types.v1.BlockInfo
-	(*BlockCompaction)(nil),         // 12: types.v1.BlockCompaction
-	(*StackTraceSelector)(nil),      // 13: types.v1.StackTraceSelector
-	(*Location)(nil),                // 14: types.v1.Location
-	(*GoPGO)(nil),                   // 15: types.v1.GoPGO
-	(*GetProfileStatsRequest)(nil),  // 16: types.v1.GetProfileStatsRequest
-	(*GetProfileStatsResponse)(nil), // 17: types.v1.GetProfileStatsResponse
+	(ExemplarType)(0),               // 1: types.v1.ExemplarType
+	(*LabelPair)(nil),               // 2: types.v1.LabelPair
+	(*ProfileType)(nil),             // 3: types.v1.ProfileType
+	(*Labels)(nil),                  // 4: types.v1.Labels
+	(*Series)(nil),                  // 5: types.v1.Series
+	(*Point)(nil),                   // 6: types.v1.Point
+	(*ProfileAnnotation)(nil),       // 7: types.v1.ProfileAnnotation
+	(*LabelValuesRequest)(nil),      // 8: types.v1.LabelValuesRequest
+	(*LabelValuesResponse)(nil),     // 9: types.v1.LabelValuesResponse
+	(*LabelNamesRequest)(nil),       // 10: types.v1.LabelNamesRequest
+	(*LabelNamesResponse)(nil),      // 11: types.v1.LabelNamesResponse
+	(*BlockInfo)(nil),               // 12: types.v1.BlockInfo
+	(*BlockCompaction)(nil),         // 13: types.v1.BlockCompaction
+	(*StackTraceSelector)(nil),      // 14: types.v1.StackTraceSelector
+	(*Location)(nil),                // 15: types.v1.Location
+	(*GoPGO)(nil),                   // 16: types.v1.GoPGO
+	(*GetProfileStatsRequest)(nil),  // 17: types.v1.GetProfileStatsRequest
+	(*GetProfileStatsResponse)(nil), // 18: types.v1.GetProfileStatsResponse
+	(*Exemplar)(nil),                // 19: types.v1.Exemplar
 }
 var file_types_v1_types_proto_depIdxs = []int32{
-	1,  // 0: types.v1.Labels.labels:type_name -> types.v1.LabelPair
-	1,  // 1: types.v1.Series.labels:type_name -> types.v1.LabelPair
-	5,  // 2: types.v1.Series.points:type_name -> types.v1.Point
-	6,  // 3: types.v1.Point.annotations:type_name -> types.v1.ProfileAnnotation
-	12, // 4: types.v1.BlockInfo.compaction:type_name -> types.v1.BlockCompaction
-	1,  // 5: types.v1.BlockInfo.labels:type_name -> types.v1.LabelPair
-	14, // 6: types.v1.StackTraceSelector.call_site:type_name -> types.v1.Location
-	15, // 7: types.v1.StackTraceSelector.go_pgo:type_name -> types.v1.GoPGO
-	8,  // [8:8] is the sub-list for method output_type
-	8,  // [8:8] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	2,  // 0: types.v1.Labels.labels:type_name -> types.v1.LabelPair
+	2,  // 1: types.v1.Series.labels:type_name -> types.v1.LabelPair
+	6,  // 2: types.v1.Series.points:type_name -> types.v1.Point
+	7,  // 3: types.v1.Point.annotations:type_name -> types.v1.ProfileAnnotation
+	19, // 4: types.v1.Point.exemplars:type_name -> types.v1.Exemplar
+	13, // 5: types.v1.BlockInfo.compaction:type_name -> types.v1.BlockCompaction
+	2,  // 6: types.v1.BlockInfo.labels:type_name -> types.v1.LabelPair
+	15, // 7: types.v1.StackTraceSelector.call_site:type_name -> types.v1.Location
+	16, // 8: types.v1.StackTraceSelector.go_pgo:type_name -> types.v1.GoPGO
+	2,  // 9: types.v1.Exemplar.labels:type_name -> types.v1.LabelPair
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_types_v1_types_proto_init() }
@@ -1177,8 +1344,8 @@ func file_types_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_types_v1_types_proto_rawDesc), len(file_types_v1_types_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   17,
+			NumEnums:      2,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

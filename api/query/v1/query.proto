@@ -161,6 +161,7 @@ message TimeSeriesQuery {
   double step = 1;
   repeated string group_by = 2;
   int64 limit = 3;
+  types.v1.ExemplarType exemplar_type = 4;
 }
 
 message TimeSeriesReport {

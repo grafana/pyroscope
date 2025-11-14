@@ -148,6 +148,11 @@ func (m *SelectMergeStacktracesRequest) CloneVT() *SelectMergeStacktracesRequest
 			r.StackTraceSelector = proto.Clone(rhs).(*v1.StackTraceSelector)
 		}
 	}
+	if rhs := m.ProfileIdSelector; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.ProfileIdSelector = tmpContainer
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -411,6 +416,10 @@ func (m *SelectSeriesRequest) CloneVT() *SelectSeriesRequest {
 	if rhs := m.Limit; rhs != nil {
 		tmpVal := *rhs
 		r.Limit = &tmpVal
+	}
+	if rhs := m.ExemplarType; rhs != nil {
+		tmpVal := *rhs
+		r.ExemplarType = &tmpVal
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -705,6 +714,15 @@ func (this *SelectMergeStacktracesRequest) EqualVT(that *SelectMergeStacktracesR
 		}
 	} else if !proto.Equal(this.StackTraceSelector, that.StackTraceSelector) {
 		return false
+	}
+	if len(this.ProfileIdSelector) != len(that.ProfileIdSelector) {
+		return false
+	}
+	for i, vx := range this.ProfileIdSelector {
+		vy := that.ProfileIdSelector[i]
+		if vx != vy {
+			return false
+		}
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -1054,6 +1072,9 @@ func (this *SelectSeriesRequest) EqualVT(that *SelectSeriesRequest) bool {
 		return false
 	}
 	if p, q := this.Limit, that.Limit; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
+	if p, q := this.ExemplarType, that.ExemplarType; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1968,6 +1989,15 @@ func (m *SelectMergeStacktracesRequest) MarshalToSizedBufferVT(dAtA []byte) (int
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.ProfileIdSelector) > 0 {
+		for iNdEx := len(m.ProfileIdSelector) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ProfileIdSelector[iNdEx])
+			copy(dAtA[i:], m.ProfileIdSelector[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileIdSelector[iNdEx])))
+			i--
+			dAtA[i] = 0x42
+		}
+	}
 	if m.StackTraceSelector != nil {
 		if vtmsg, ok := interface{}(m.StackTraceSelector).(interface {
 			MarshalToSizedBufferVT([]byte) (int, error)
@@ -2605,6 +2635,11 @@ func (m *SelectSeriesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.ExemplarType != nil {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.ExemplarType))
+		i--
+		dAtA[i] = 0x50
+	}
 	if m.Limit != nil {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.Limit))
 		i--
@@ -3098,6 +3133,12 @@ func (m *SelectMergeStacktracesRequest) SizeVT() (n int) {
 		}
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
+	if len(m.ProfileIdSelector) > 0 {
+		for _, s := range m.ProfileIdSelector {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -3366,6 +3407,9 @@ func (m *SelectSeriesRequest) SizeVT() (n int) {
 	}
 	if m.Limit != nil {
 		n += 1 + protohelpers.SizeOfVarint(uint64(*m.Limit))
+	}
+	if m.ExemplarType != nil {
+		n += 1 + protohelpers.SizeOfVarint(uint64(*m.ExemplarType))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -4131,6 +4175,38 @@ func (m *SelectMergeStacktracesRequest) UnmarshalVT(dAtA []byte) error {
 					return err
 				}
 			}
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileIdSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileIdSelector = append(m.ProfileIdSelector, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -5780,6 +5856,26 @@ func (m *SelectSeriesRequest) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.Limit = &v
+		case 10:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExemplarType", wireType)
+			}
+			var v v1.ExemplarType
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= v1.ExemplarType(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.ExemplarType = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
