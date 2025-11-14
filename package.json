@@ -52,7 +52,7 @@
     "esbuild-loader": "^3.0.1",
     "eslint": "^8.40.0",
     "eslint-config-airbnb": "18.2.1",
-    "eslint-config-airbnb-typescript": "^14.0.0",
+    "eslint-config-airbnb-typescript": "^18.0.0",
     "eslint-config-airbnb-typescript-prettier": "^4.2.0",
     "eslint-import-resolver-lerna": "^2.0.0",
     "eslint-import-resolver-typescript": "^3.5.5",
