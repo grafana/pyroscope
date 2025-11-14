@@ -1260,7 +1260,7 @@
       "properties": {
         "clientID": {
           "type": "string",
-          "description": "clientID must be propagated when calling https://github.com/login/oauth/authorize\nin the client_id query parameter."
+          "description": "clientID must be propagated when calling\nhttps://github.com/login/oauth/authorize in the client_id query parameter."
         },
         "callbackURL": {
           "type": "string",
@@ -1273,7 +1273,7 @@
       "properties": {
         "cookie": {
           "type": "string",
-          "title": "Deprecated\nIn future version, this cookie won't be sent. Now, old cookie is sent alongside the new expected\ndata (token, token_expires_at and refresh_token_expires_at). Frontend will be responsible of computing\nits own cookie from the new data.\nRemove after completing https://github.com/grafana/explore-profiles/issues/187"
+          "title": "Deprecated\nIn future version, this cookie won't be sent. Now, old cookie is sent\nalongside the new expected data (token, token_expires_at and\nrefresh_token_expires_at). Frontend will be responsible of computing its\nown cookie from the new data. Remove after completing\nhttps://github.com/grafana/explore-profiles/issues/187"
         },
         "token": {
           "type": "string",
@@ -1296,7 +1296,7 @@
       "properties": {
         "cookie": {
           "type": "string",
-          "title": "Deprecated\nIn future version, this cookie won't be sent. Now, old cookie is sent alongside the new expected\ndata (token, token_expires_at and refresh_token_expires_at). Frontend will be responsible of computing\nits own cookie from the new data.\nRemove after completing https://github.com/grafana/explore-profiles/issues/187"
+          "title": "Deprecated\nIn future version, this cookie won't be sent. Now, old cookie is sent\nalongside the new expected data (token, token_expires_at and\nrefresh_token_expires_at). Frontend will be responsible of computing its\nown cookie from the new data. Remove after completing\nhttps://github.com/grafana/explore-profiles/issues/187"
         },
         "token": {
           "type": "string",
