@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
 )
 
 type VCSClientMock struct {
@@ -91,7 +92,7 @@ func Test_tryFindGoFile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			sut := FileFinder{
-				path:     tt.searchedPath,
+				file:     config.FileSpec{Path: tt.searchedPath},
 				rootPath: tt.rootPath,
 				repo:     tt.repo,
 				client:   tt.clientMock,

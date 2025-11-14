@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -15,28 +16,31 @@ import (
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/source/golang"
 )
 
 const (
-	ExtGo = ".go"
+	ExtGo  = ".go"
+	ExtAsm = ".s" // Assembler files in go
 )
 
 // findGoFile finds a go file in a vcs repository.
-func (ff FileFinder) findGoFile(ctx context.Context) (*vcsv1.GetFileResponse, error) {
+func (ff FileFinder) findGoFile(ctx context.Context, mappings ...*config.MappingConfig) (*vcsv1.GetFileResponse, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "findGoFile")
 	defer sp.Finish()
-	sp.SetTag("path", ff.path)
+	sp.SetTag("file.path", ff.file.Path)
+	sp.SetTag("file.function_name", ff.file.FunctionName)
 
-	if url, ok := golang.StandardLibraryURL(ff.path); ok {
-		return ff.fetchURL(ctx, url, false)
+	if path, version, ok := golang.IsStandardLibraryPath(ff.file.Path); ok {
+		return ff.fetchGoStdlib(ctx, path, version)
 	}
 
-	if relativePath, ok := golang.VendorRelativePath(ff.path); ok {
+	if relativePath, ok := golang.VendorRelativePath(ff.file.Path); ok {
 		return ff.fetchRepoFile(ctx, relativePath, ff.ref)
 	}
 
-	modFile, ok := golang.ParseModuleFromPath(ff.path)
+	modFile, ok := golang.ParseModuleFromPath(ff.file.Path)
 	if ok {
 		mainModule := module.Version{
 			Path:    path.Join(ff.repo.GetHostName(), ff.repo.GetOwnerName(), ff.repo.GetRepoName()),
@@ -52,6 +56,36 @@ func (ff FileFinder) findGoFile(ctx context.Context) (*vcsv1.GetFileResponse, er
 		return ff.fetchGoDependencyFile(ctx, modFile)
 	}
 	return ff.tryFindGoFile(ctx, 30)
+}
+
+func (ff FileFinder) fetchGoStdlib(ctx context.Context, path string, version string) (*vcsv1.GetFileResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "fetchGoStdlib")
+	defer sp.Finish()
+
+	// if there is no version detected, use the one from .pyroscope.yaml
+	if version == "" {
+		mapping := ff.config.FindMapping(config.FileSpec{Path: "$GOROOT/src"})
+		if mapping != nil {
+			return ff.fetchMappingFile(ctx, mapping, path)
+		}
+	}
+
+	// use master branch as fallback
+	ref := "master"
+	if version != "" {
+		ref = "go" + version
+	}
+
+	content, err := ff.client.GetFile(ctx, client.FileRequest{
+		Owner: "golang",
+		Repo:  "go",
+		Path:  filepath.Join("src", path),
+		Ref:   ref,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return newFileResponse(content.Content, content.URL)
 }
 
 func (ff FileFinder) fetchGoMod(ctx context.Context) (*modfile.File, error) {
@@ -143,7 +177,7 @@ func (ff FileFinder) tryFindGoFile(ctx context.Context, maxAttempts int) (*vcsv1
 	}
 
 	// trim repo path (e.g. "github.com/grafana/pyroscope/") in path
-	path := ff.path
+	path := ff.file.Path
 	repoPath := strings.Join([]string{ff.repo.GetHostName(), ff.repo.GetOwnerName(), ff.repo.GetRepoName(), ""}, "/")
 	if pos := strings.Index(path, repoPath); pos != -1 {
 		path = path[len(repoPath)+pos:]
