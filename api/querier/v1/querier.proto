@@ -220,7 +220,7 @@ message SelectSeriesRequest {
   // Select the top N series by total value.
   optional int64 limit = 9;
   // Type of exemplars to include in the response.
-  optional types.v1.ExemplarType exemplar_type = 10;
+  types.v1.ExemplarType exemplar_type = 10;
 }
 
 message SelectSeriesResponse {

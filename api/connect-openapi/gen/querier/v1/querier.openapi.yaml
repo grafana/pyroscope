@@ -1439,7 +1439,6 @@ components:
         exemplarType:
           title: exemplar_type
           description: Type of exemplars to include in the response.
-          nullable: true
           $ref: '#/components/schemas/types.v1.ExemplarType'
       title: SelectSeriesRequest
       additionalProperties: false

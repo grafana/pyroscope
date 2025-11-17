@@ -1017,7 +1017,7 @@ type SelectSeriesRequest struct {
 	// Select the top N series by total value.
 	Limit *int64 `protobuf:"varint,9,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
 	// Type of exemplars to include in the response.
-	ExemplarType  *v1.ExemplarType `protobuf:"varint,10,opt,name=exemplar_type,json=exemplarType,proto3,enum=types.v1.ExemplarType,oneof" json:"exemplar_type,omitempty"`
+	ExemplarType  v1.ExemplarType `protobuf:"varint,10,opt,name=exemplar_type,json=exemplarType,proto3,enum=types.v1.ExemplarType" json:"exemplar_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1116,8 +1116,8 @@ func (x *SelectSeriesRequest) GetLimit() int64 {
 }
 
 func (x *SelectSeriesRequest) GetExemplarType() v1.ExemplarType {
-	if x != nil && x.ExemplarType != nil {
-		return *x.ExemplarType
+	if x != nil {
+		return x.ExemplarType
 	}
 	return v1.ExemplarType(0)
 }
@@ -1532,7 +1532,7 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x14stack_trace_selector\x18\x06 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x01R\x12stackTraceSelector\x88\x01\x01B\f\n" +
 	"\n" +
 	"_max_nodesB\x17\n" +
-	"\x15_stack_trace_selector\"\x92\x05\n" +
+	"\x15_stack_trace_selector\"\xfb\x04\n" +
 	"\x13SelectSeriesRequest\x12Y\n" +
 	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
 	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12*\n" +
@@ -1542,13 +1542,12 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x04step\x18\x06 \x01(\x01R\x04step\x12J\n" +
 	"\vaggregation\x18\a \x01(\x0e2#.types.v1.TimeSeriesAggregationTypeH\x00R\vaggregation\x88\x01\x01\x12S\n" +
 	"\x14stack_trace_selector\x18\b \x01(\v2\x1c.types.v1.StackTraceSelectorH\x01R\x12stackTraceSelector\x88\x01\x01\x12\x19\n" +
-	"\x05limit\x18\t \x01(\x03H\x02R\x05limit\x88\x01\x01\x12@\n" +
+	"\x05limit\x18\t \x01(\x03H\x02R\x05limit\x88\x01\x01\x12;\n" +
 	"\rexemplar_type\x18\n" +
-	" \x01(\x0e2\x16.types.v1.ExemplarTypeH\x03R\fexemplarType\x88\x01\x01B\x0e\n" +
+	" \x01(\x0e2\x16.types.v1.ExemplarTypeR\fexemplarTypeB\x0e\n" +
 	"\f_aggregationB\x17\n" +
 	"\x15_stack_trace_selectorB\b\n" +
-	"\x06_limitB\x10\n" +
-	"\x0e_exemplar_type\"@\n" +
+	"\x06_limit\"@\n" +
 	"\x14SelectSeriesResponse\x12(\n" +
 	"\x06series\x18\x01 \x03(\v2\x10.types.v1.SeriesR\x06series\"S\n" +
 	"\x13AnalyzeQueryRequest\x12\x14\n" +
