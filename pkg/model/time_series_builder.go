@@ -10,6 +10,10 @@ import (
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
+// MaxExemplarCandidatesPerPoint is the maximum number of exemplar candidates
+// to collect per point in the Builder.
+const MaxExemplarCandidatesPerPoint = 10000
+
 type TimeSeriesBuilder struct {
 	labelsByFingerprint map[model.Fingerprint]string
 	labelBuf            []byte
@@ -17,8 +21,8 @@ type TimeSeriesBuilder struct {
 
 	series seriesByLabels
 
-	exemplarCandidates   map[string]map[int64][]exemplarCandidate
-	maxExemplarsPerPoint int
+	exemplarCandidates    map[string]map[int64][]exemplarCandidate
+	maxExemplarCandidates int
 }
 
 func NewTimeSeriesBuilder(by ...string) *TimeSeriesBuilder {
@@ -33,7 +37,6 @@ func (s *TimeSeriesBuilder) Init(by ...string) {
 	s.labelBuf = make([]byte, 0, 1024)
 	s.by = by
 	s.exemplarCandidates = make(map[string]map[int64][]exemplarCandidate)
-	s.maxExemplarsPerPoint = DefaultMaxExemplarsPerPoint
 }
 
 func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, value float64, annotations schemav1.Annotations, profileID string) {
@@ -74,7 +77,7 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 }
 
 // trackExemplar tracks a profile as a potential exemplar for a specific Point.
-// Keeps the top-N highest-value profiles per point (N = maxExemplarsPerPoint).
+// Keeps up to maxExemplarCandidates (or MaxExemplarCandidatesPerPoint if not set).
 func (s *TimeSeriesBuilder) trackExemplar(seriesKey string, ts int64, profileID string, value float64, fp model.Fingerprint) {
 	if profileID == "" {
 		return
@@ -84,32 +87,24 @@ func (s *TimeSeriesBuilder) trackExemplar(seriesKey string, ts int64, profileID 
 		s.exemplarCandidates[seriesKey] = make(map[int64][]exemplarCandidate)
 	}
 
+	candidates := s.exemplarCandidates[seriesKey][ts]
+
+	limit := s.maxExemplarCandidates
+	if limit == 0 {
+		limit = MaxExemplarCandidatesPerPoint
+	}
+
+	if len(candidates) >= limit {
+		return
+	}
+
 	candidate := exemplarCandidate{
 		profileID:   profileID,
 		value:       uint64(value),
 		fingerprint: fp,
 	}
 
-	candidates := s.exemplarCandidates[seriesKey][ts]
-
-	if len(candidates) < s.maxExemplarsPerPoint {
-		s.exemplarCandidates[seriesKey][ts] = append(candidates, candidate)
-		return
-	}
-
-	// Find the weakest candidate
-	minIdx := 0
-	minValue := candidates[0].value
-	for i := 1; i < len(candidates); i++ {
-		if candidates[i].value < minValue {
-			minIdx = i
-			minValue = candidates[i].value
-		}
-	}
-
-	if candidate.value > minValue {
-		candidates[minIdx] = candidate
-	}
+	s.exemplarCandidates[seriesKey][ts] = append(candidates, candidate)
 }
 
 func (s *TimeSeriesBuilder) Build() []*typesv1.Series {

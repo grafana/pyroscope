@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/prometheus/common/model"
@@ -30,7 +31,7 @@ func TestTimeSeriesBuilder_NoExemplarsForEmptyProfileID(t *testing.T) {
 	}
 }
 
-func TestTimeSeriesBuilder_KeepsHighestValueExemplar(t *testing.T) {
+func TestTimeSeriesBuilder_KeepsAllExemplars(t *testing.T) {
 	builder := NewTimeSeriesBuilder()
 	labels := Labels{
 		{Name: "service_name", Value: "api"},
@@ -45,15 +46,24 @@ func TestTimeSeriesBuilder_KeepsHighestValueExemplar(t *testing.T) {
 	require.Len(t, series[0].Points, 3)
 
 	for _, point := range series[0].Points {
-		require.Len(t, point.Exemplars, 1)
-		assert.Equal(t, "profile-high", point.Exemplars[0].ProfileId)
-		assert.Equal(t, uint64(500), point.Exemplars[0].Value)
+		require.Len(t, point.Exemplars, 3)
+
+		profileIDs := make(map[string]uint64)
+		for _, ex := range point.Exemplars {
+			profileIDs[ex.ProfileId] = ex.Value
+		}
+
+		assert.Contains(t, profileIDs, "profile-low")
+		assert.Equal(t, uint64(100), profileIDs["profile-low"])
+		assert.Contains(t, profileIDs, "profile-high")
+		assert.Equal(t, uint64(500), profileIDs["profile-high"])
+		assert.Contains(t, profileIDs, "profile-mid")
+		assert.Equal(t, uint64(200), profileIDs["profile-mid"])
 	}
 }
 
-func TestTimeSeriesBuilder_MultipleExemplarsPerPoint(t *testing.T) {
+func TestTimeSeriesBuilder_KeepsAllExemplarsWithMultiplePoints(t *testing.T) {
 	builder := NewTimeSeriesBuilder()
-	builder.maxExemplarsPerPoint = 2
 	labels := Labels{
 		{Name: "service_name", Value: "api"},
 	}
@@ -67,18 +77,19 @@ func TestTimeSeriesBuilder_MultipleExemplarsPerPoint(t *testing.T) {
 	require.Len(t, series[0].Points, 3)
 
 	point := series[0].Points[0]
-	require.Len(t, point.Exemplars, 2)
+	require.Len(t, point.Exemplars, 3)
 
 	profileIDs := make(map[string]uint64)
 	for _, ex := range point.Exemplars {
 		profileIDs[ex.ProfileId] = ex.Value
 	}
 
+	assert.Contains(t, profileIDs, "profile-1")
+	assert.Equal(t, uint64(100), profileIDs["profile-1"])
 	assert.Contains(t, profileIDs, "profile-2")
 	assert.Equal(t, uint64(500), profileIDs["profile-2"])
 	assert.Contains(t, profileIDs, "profile-3")
 	assert.Equal(t, uint64(200), profileIDs["profile-3"])
-	assert.NotContains(t, profileIDs, "profile-1")
 }
 
 func TestTimeSeriesBuilder_ExemplarLabelEnrichment(t *testing.T) {
@@ -155,6 +166,25 @@ func findLabelValue(labels []*typesv1.LabelPair, name string) string {
 		}
 	}
 	return ""
+}
+
+func TestTimeSeriesBuilder_RespectsMaxExemplarLimit(t *testing.T) {
+	builder := NewTimeSeriesBuilder()
+	builder.maxExemplarCandidates = 2
+	labels := Labels{
+		{Name: "service_name", Value: "api"},
+	}
+
+	for i := 0; i < 3; i++ {
+		profileID := fmt.Sprintf("profile-%d", i)
+		builder.Add(1, labels, 1000, float64(i), schemav1.Annotations{}, profileID)
+	}
+
+	series := builder.Build()
+	require.Len(t, series, 1)
+	point := series[0].Points[0]
+
+	assert.Len(t, point.Exemplars, 2)
 }
 
 func TestTimeSeriesBuilder_MultipleSeries(t *testing.T) {

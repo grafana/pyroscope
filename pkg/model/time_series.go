@@ -114,7 +114,7 @@ func (a *sumTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
 	a.annotations = append(a.annotations, point.Annotations...)
 
 	if len(point.Exemplars) > 0 {
-		a.exemplars = trackTopNExemplars(a.exemplars, point.Exemplars, a.maxExemplarsPerPoint)
+		a.exemplars = mergeExemplarCandidates(a.exemplars, point.Exemplars)
 	}
 }
 
@@ -126,8 +126,9 @@ func (a *sumTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 
 	var exemplars []*typesv1.Exemplar
 	if len(a.exemplars) > 0 {
-		exemplars = make([]*typesv1.Exemplar, 0, len(a.exemplars))
-		for _, ex := range a.exemplars {
+		topExemplars := selectTopNExemplars(a.exemplars, a.maxExemplarsPerPoint)
+		exemplars = make([]*typesv1.Exemplar, 0, len(topExemplars))
+		for _, ex := range topExemplars {
 			exemplars = append(exemplars, &typesv1.Exemplar{
 				Timestamp: tsCopy,
 				ProfileId: ex.profileID,
@@ -170,7 +171,7 @@ func (a *avgTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
 	a.annotations = append(a.annotations, point.Annotations...)
 
 	if len(point.Exemplars) > 0 {
-		a.exemplars = trackTopNExemplars(a.exemplars, point.Exemplars, a.maxExemplarsPerPoint)
+		a.exemplars = mergeExemplarCandidates(a.exemplars, point.Exemplars)
 	}
 }
 
@@ -182,8 +183,9 @@ func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 
 	var exemplars []*typesv1.Exemplar
 	if len(a.exemplars) > 0 {
-		exemplars = make([]*typesv1.Exemplar, 0, len(a.exemplars))
-		for _, ex := range a.exemplars {
+		topExemplars := selectTopNExemplars(a.exemplars, a.maxExemplarsPerPoint)
+		exemplars = make([]*typesv1.Exemplar, 0, len(topExemplars))
+		for _, ex := range topExemplars {
 			exemplars = append(exemplars, &typesv1.Exemplar{
 				Timestamp: tsCopy,
 				ProfileId: ex.profileID,
@@ -296,11 +298,8 @@ type exemplarCandidate struct {
 	labels      Labels
 }
 
-// trackTopNExemplars maintains a list of top-N exemplars by value, keeping the highest-value
-// exemplar per profile_id (deduplicating by profile_id, keeping highest value).
-// If a profile_id already exists with a lower value, it's replaced.
-// If the list is full and the new candidate has a higher value than the weakest, it replaces the weakest.
-func trackTopNExemplars(existing []*exemplarCandidate, candidates []*exemplarCandidate, maxExemplars int) []*exemplarCandidate {
+// mergeExemplarCandidates merges new exemplar candidates with existing ones.
+func mergeExemplarCandidates(existing []*exemplarCandidate, candidates []*exemplarCandidate) []*exemplarCandidate {
 	if len(candidates) == 0 {
 		return existing
 	}
@@ -309,10 +308,14 @@ func trackTopNExemplars(existing []*exemplarCandidate, candidates []*exemplarCan
 	for _, ex := range existing {
 		byProfileID[ex.profileID] = ex
 	}
+
+	// Sum values for same profileID
 	for _, candidate := range candidates {
 		existing, found := byProfileID[candidate.profileID]
-		if !found || candidate.value > existing.value {
+		if !found {
 			byProfileID[candidate.profileID] = candidate
+		} else {
+			existing.value += candidate.value
 		}
 	}
 
@@ -321,12 +324,17 @@ func trackTopNExemplars(existing []*exemplarCandidate, candidates []*exemplarCan
 		result = append(result, ex)
 	}
 
-	if len(result) > maxExemplars {
-		sort.Slice(result, func(i, j int) bool {
-			return result[i].value > result[j].value
-		})
-		result = result[:maxExemplars]
+	return result
+}
+
+// selectTopNExemplars selects the top-N exemplars by value from the candidates.
+func selectTopNExemplars(candidates []*exemplarCandidate, maxExemplars int) []*exemplarCandidate {
+	if len(candidates) <= maxExemplars {
+		return candidates
 	}
 
-	return result
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].value > candidates[j].value
+	})
+	return candidates[:maxExemplars]
 }
