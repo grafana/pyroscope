@@ -47,7 +47,12 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 	// these columns might not be present
 	annotationKeysColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationKeyColumnPath)
 	annotationValuesColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath)
-	idColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), []string{schemav1.IDColumnName})
+
+	includeExemplars := query.TimeSeries.ExemplarType == typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL
+	var idColumn parquet.LeafColumn
+	if includeExemplars {
+		idColumn, _ = schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), []string{schemav1.IDColumnName})
+	}
 
 	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
 		q.ctx,
@@ -76,7 +81,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 			if e[0].Column() == annotationValuesColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
 				annotations.Values = append(annotations.Values, e[0].String())
 			}
-			if e[0].Column() == idColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
+			if includeExemplars && e[0].Column() == idColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
 				var u uuid.UUID
 				copy(u[:], e[0].ByteArray())
 				profileID = u.String()
@@ -96,15 +101,21 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 		return nil, err
 	}
 
-	fullLabelsByFingerprint, err := getFullLabelsForExemplars(q, builder)
-	if err != nil {
-		return nil, err
+	var timeSeries []*typesv1.Series
+	if includeExemplars {
+		fullLabelsByFingerprint, err := getFullLabelsForExemplars(q, builder)
+		if err != nil {
+			return nil, err
+		}
+		timeSeries = builder.BuildWithFullLabels(fullLabelsByFingerprint)
+	} else {
+		timeSeries = builder.Build()
 	}
 
 	resp := &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
 			Query:      query.TimeSeries.CloneVT(),
-			TimeSeries: builder.BuildWithFullLabels(fullLabelsByFingerprint),
+			TimeSeries: timeSeries,
 		},
 	}
 

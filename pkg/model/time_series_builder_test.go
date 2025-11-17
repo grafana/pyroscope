@@ -22,7 +22,7 @@ func TestTimeSeriesBuilder_NoExemplarsForEmptyProfileID(t *testing.T) {
 	builder.Add(1, labels, 1000, 100.0, schemav1.Annotations{}, "")
 	builder.Add(1, labels, 1000, 200.0, schemav1.Annotations{}, "")
 
-	series := builder.Build()
+	series := builder.BuildWithFullLabels(nil)
 	require.Len(t, series, 1)
 	require.Len(t, series[0].Points, 2)
 
@@ -41,7 +41,7 @@ func TestTimeSeriesBuilder_KeepsAllExemplars(t *testing.T) {
 	builder.Add(1, labels, 1000, 500.0, schemav1.Annotations{}, "profile-high")
 	builder.Add(1, labels, 1000, 200.0, schemav1.Annotations{}, "profile-mid")
 
-	series := builder.Build()
+	series := builder.BuildWithFullLabels(nil)
 	require.Len(t, series, 1)
 	require.Len(t, series[0].Points, 3)
 
@@ -72,7 +72,7 @@ func TestTimeSeriesBuilder_KeepsAllExemplarsWithMultiplePoints(t *testing.T) {
 	builder.Add(1, labels, 1000, 500.0, schemav1.Annotations{}, "profile-2")
 	builder.Add(1, labels, 1000, 200.0, schemav1.Annotations{}, "profile-3")
 
-	series := builder.Build()
+	series := builder.BuildWithFullLabels(nil)
 	require.Len(t, series, 1)
 	require.Len(t, series[0].Points, 3)
 
@@ -131,7 +131,7 @@ func TestTimeSeriesBuilder_ExemplarLabelEnrichment(t *testing.T) {
 
 		builder.Add(fp, labels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
 
-		series := builder.Build()
+		series := builder.BuildWithFullLabels(nil)
 		require.Len(t, series, 1)
 		require.Len(t, series[0].Points, 1)
 		require.Len(t, series[0].Points[0].Exemplars, 1)
@@ -180,7 +180,7 @@ func TestTimeSeriesBuilder_RespectsMaxExemplarLimit(t *testing.T) {
 		builder.Add(1, labels, 1000, float64(i), schemav1.Annotations{}, profileID)
 	}
 
-	series := builder.Build()
+	series := builder.BuildWithFullLabels(nil)
 	require.Len(t, series, 1)
 	point := series[0].Points[0]
 
@@ -201,7 +201,7 @@ func TestTimeSeriesBuilder_MultipleSeries(t *testing.T) {
 	builder.Add(1, labels1, 1000, 100.0, schemav1.Annotations{}, "prod-profile")
 	builder.Add(2, labels2, 1000, 200.0, schemav1.Annotations{}, "staging-profile")
 
-	series := builder.Build()
+	series := builder.BuildWithFullLabels(nil)
 	require.Len(t, series, 2)
 
 	seriesByEnv := make(map[string]*typesv1.Series)
@@ -225,4 +225,48 @@ func TestTimeSeriesBuilder_MultipleSeries(t *testing.T) {
 	require.Len(t, stagingSeries.Points, 1)
 	require.Len(t, stagingSeries.Points[0].Exemplars, 1)
 	assert.Equal(t, "staging-profile", stagingSeries.Points[0].Exemplars[0].ProfileId)
+}
+
+func TestTimeSeriesBuilder_BuildMethodsExemplarBehavior(t *testing.T) {
+	builder := NewTimeSeriesBuilder()
+	labels := Labels{
+		{Name: "service_name", Value: "api"},
+	}
+	fp := model.Fingerprint(labels.Hash())
+
+	builder.Add(fp, labels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
+
+	t.Run("Build() does not attach exemplars", func(t *testing.T) {
+		series := builder.Build()
+		require.Len(t, series, 1)
+		require.Len(t, series[0].Points, 1)
+		assert.Len(t, series[0].Points[0].Exemplars, 0)
+	})
+
+	t.Run("BuildWithFullLabels(nil) attaches exemplars with nil labels", func(t *testing.T) {
+		series := builder.BuildWithFullLabels(nil)
+		require.Len(t, series, 1)
+		require.Len(t, series[0].Points, 1)
+		require.Len(t, series[0].Points[0].Exemplars, 1)
+		assert.Equal(t, "profile-1", series[0].Points[0].Exemplars[0].ProfileId)
+		assert.Nil(t, series[0].Points[0].Exemplars[0].Labels)
+	})
+
+	t.Run("BuildWithFullLabels(map) attaches exemplars with full labels", func(t *testing.T) {
+		fullLabels := Labels{
+			{Name: "service_name", Value: "api"},
+			{Name: "pod", Value: "pod-123"},
+			{Name: "region", Value: "us-east"},
+		}
+		fullLabelsByFingerprint := map[model.Fingerprint]Labels{
+			fp: fullLabels,
+		}
+
+		series := builder.BuildWithFullLabels(fullLabelsByFingerprint)
+		require.Len(t, series, 1)
+		require.Len(t, series[0].Points, 1)
+		require.Len(t, series[0].Points[0].Exemplars, 1)
+		assert.Equal(t, "profile-1", series[0].Points[0].Exemplars[0].ProfileId)
+		assert.Equal(t, fullLabels, Labels(series[0].Points[0].Exemplars[0].Labels))
+	})
 }

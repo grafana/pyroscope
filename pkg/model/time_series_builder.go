@@ -108,9 +108,7 @@ func (s *TimeSeriesBuilder) trackExemplar(seriesKey string, ts int64, profileID 
 }
 
 func (s *TimeSeriesBuilder) Build() []*typesv1.Series {
-	series := s.series.normalize()
-	s.attachExemplars(series, nil)
-	return series
+	return s.series.normalize()
 }
 
 // BuildWithFullLabels builds the series and enriches exemplars with labels.
