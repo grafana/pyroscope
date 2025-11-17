@@ -128,7 +128,7 @@ func (ra *reportAggregator) aggregateReport(r *queryv1.Report) (err error) {
 		err = ra.aggregateReportNoCheck(r)
 		ra.staged[r.ReportType] = nil
 		ra.sm.Unlock()
-		return nil
+		return err
 	}
 	// Found a staged report of the same type.
 	if v != nil {
