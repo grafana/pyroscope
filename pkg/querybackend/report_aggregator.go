@@ -116,13 +116,19 @@ func (ra *reportAggregator) aggregateReport(r *queryv1.Report) (err error) {
 		// For most ReportTypes we delay aggregation until we have at least two
 		// reports of the same type. In case there is only one we will
 		// return it as is.
-		// Some ReportTypes need to call the aggregator for correctness, in that case we call it right away.
 		if !isAlwaysAggregate(r.ReportType) {
 			ra.staged[r.ReportType] = r
 			ra.sm.Unlock()
 			return nil
 		}
+
+		// Some ReportTypes need to call the aggregator for correctness even when
+		// there is only single instance, in that case call the aggregator right
+		// away and mark the report type appropriately in the staged map.
+		err = ra.aggregateReportNoCheck(r)
 		ra.staged[r.ReportType] = nil
+		ra.sm.Unlock()
+		return nil
 	}
 	// Found a staged report of the same type.
 	if v != nil {
