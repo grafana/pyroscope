@@ -275,6 +275,7 @@ func (s *Symbolizer) updateAllSymbolsInProfile(
 ) {
 	funcMap := make(map[funcKey]uint64)
 	maxFuncID := uint64(len(profile.Function))
+	funcPtrMap := make(map[uint64]*googlev1.Function)
 
 	for _, item := range symbolizedLocs {
 		loc := item.loc
@@ -308,15 +309,31 @@ func (s *Symbolizer) updateAllSymbolsInProfile(
 			if !ok {
 				maxFuncID++
 				funcID = maxFuncID
-				profile.Function = append(profile.Function, &googlev1.Function{
-					Id:   funcID,
-					Name: nameIdx,
-				})
+				fn := &googlev1.Function{
+					Id:        funcID,
+					Name:      nameIdx,
+					Filename:  filenameIdx,
+					StartLine: int64(line.LineNumber),
+				}
+				profile.Function = append(profile.Function, fn)
 				funcMap[key] = funcID
+				funcPtrMap[funcID] = fn
+			} else {
+				// Update StartLine to be the minimum line number seen for this function
+				if line.LineNumber > 0 {
+					if fn, ok := funcPtrMap[funcID]; ok {
+						currentStartLine := fn.StartLine
+						// 0 means "not set" in proto
+						if currentStartLine == 0 || int64(line.LineNumber) < currentStartLine {
+							fn.StartLine = int64(line.LineNumber)
+						}
+					}
+				}
 			}
 
 			profile.Location[locIdx].Line[j] = &googlev1.Line{
 				FunctionId: funcID,
+				Line:       int64(line.LineNumber),
 			}
 		}
 

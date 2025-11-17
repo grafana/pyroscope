@@ -70,17 +70,17 @@ If you're using the official Helm chart, follow these steps to configure the Git
         GITHUB_CLIENT_ID:
           valueFrom:
             secretKeyRef:
-              secret: pyroscope-github
+              name: pyroscope-github
               key: client_id
         GITHUB_CLIENT_SECRET:
           valueFrom:
             secretKeyRef:
-              secret: pyroscope-github
+              name: pyroscope-github
               key: client_secret
         GITHUB_SESSION_SECRET:
           valueFrom:
             secretKeyRef:
-              secret: pyroscope-github
+              name: pyroscope-github
               key: session_secret
     ```
 

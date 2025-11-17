@@ -219,7 +219,8 @@ message SelectSeriesRequest {
   optional types.v1.StackTraceSelector stack_trace_selector = 8;
   // Select the top N series by total value.
   optional int64 limit = 9;
-  optional bool include_exemplars = 10;
+  // Type of exemplars to include in the response.
+  types.v1.ExemplarType exemplar_type = 10;
 }
 
 message SelectSeriesResponse {
