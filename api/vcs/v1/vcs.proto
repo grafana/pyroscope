@@ -13,8 +13,8 @@ service VCSService {
 message GithubAppRequest {}
 
 message GithubAppResponse {
-  // clientID must be propagated when calling https://github.com/login/oauth/authorize
-  // in the client_id query parameter.
+  // clientID must be propagated when calling
+  // https://github.com/login/oauth/authorize in the client_id query parameter.
   string clientID = 1;
   // If callbackURL is not empty, the URL should be propagated when
   // calling https://github.com/login/oauth/authorize in the
@@ -28,10 +28,11 @@ message GithubLoginRequest {
 
 message GithubLoginResponse {
   // Deprecated
-  // In future version, this cookie won't be sent. Now, old cookie is sent alongside the new expected
-  // data (token, token_expires_at and refresh_token_expires_at). Frontend will be responsible of computing
-  // its own cookie from the new data.
-  // Remove after completing https://github.com/grafana/explore-profiles/issues/187
+  // In future version, this cookie won't be sent. Now, old cookie is sent
+  // alongside the new expected data (token, token_expires_at and
+  // refresh_token_expires_at). Frontend will be responsible of computing its
+  // own cookie from the new data. Remove after completing
+  // https://github.com/grafana/explore-profiles/issues/187
   string cookie = 1;
   // base64 encoded encrypted token
   string token = 2;
@@ -45,10 +46,11 @@ message GithubRefreshRequest {}
 
 message GithubRefreshResponse {
   // Deprecated
-  // In future version, this cookie won't be sent. Now, old cookie is sent alongside the new expected
-  // data (token, token_expires_at and refresh_token_expires_at). Frontend will be responsible of computing
-  // its own cookie from the new data.
-  // Remove after completing https://github.com/grafana/explore-profiles/issues/187
+  // In future version, this cookie won't be sent. Now, old cookie is sent
+  // alongside the new expected data (token, token_expires_at and
+  // refresh_token_expires_at). Frontend will be responsible of computing its
+  // own cookie from the new data. Remove after completing
+  // https://github.com/grafana/explore-profiles/issues/187
   string cookie = 1;
   // base64 encoded encrypted token
   string token = 2;
@@ -67,6 +69,8 @@ message GetFileRequest {
   string localPath = 3;
   // the root path where the project lives inside the repository
   string rootPath = 4;
+  // the function name as provided by the symbols
+  string functionName = 5;
 }
 
 message GetFileResponse {

@@ -409,6 +409,10 @@ components:
           type: string
           title: rootPath
           description: the root path where the project lives inside the repository
+        functionName:
+          type: string
+          title: functionName
+          description: the function name as provided by the symbols
       title: GetFileRequest
       additionalProperties: false
     vcs.v1.GetFileResponse:
@@ -435,8 +439,8 @@ components:
           type: string
           title: clientID
           description: |-
-            clientID must be propagated when calling https://github.com/login/oauth/authorize
-             in the client_id query parameter.
+            clientID must be propagated when calling
+             https://github.com/login/oauth/authorize in the client_id query parameter.
         callbackURL:
           type: string
           title: callbackURL
@@ -462,10 +466,11 @@ components:
           title: cookie
           description: |-
             Deprecated
-             In future version, this cookie won't be sent. Now, old cookie is sent alongside the new expected
-             data (token, token_expires_at and refresh_token_expires_at). Frontend will be responsible of computing
-             its own cookie from the new data.
-             Remove after completing https://github.com/grafana/explore-profiles/issues/187
+             In future version, this cookie won't be sent. Now, old cookie is sent
+             alongside the new expected data (token, token_expires_at and
+             refresh_token_expires_at). Frontend will be responsible of computing its
+             own cookie from the new data. Remove after completing
+             https://github.com/grafana/explore-profiles/issues/187
         token:
           type: string
           title: token
@@ -498,10 +503,11 @@ components:
           title: cookie
           description: |-
             Deprecated
-             In future version, this cookie won't be sent. Now, old cookie is sent alongside the new expected
-             data (token, token_expires_at and refresh_token_expires_at). Frontend will be responsible of computing
-             its own cookie from the new data.
-             Remove after completing https://github.com/grafana/explore-profiles/issues/187
+             In future version, this cookie won't be sent. Now, old cookie is sent
+             alongside the new expected data (token, token_expires_at and
+             refresh_token_expires_at). Frontend will be responsible of computing its
+             own cookie from the new data. Remove after completing
+             https://github.com/grafana/explore-profiles/issues/187
         token:
           type: string
           title: token
