@@ -129,6 +129,13 @@ func (h *Head) Flush(ctx context.Context) (res *FlushedHead, err error) {
 
 	blockSize := len(res.Index) + len(res.Profiles) + len(res.Symbols)
 	h.metrics.flushedBlocks.WithLabelValues("success").Inc()
+
+	unsymbolized := "false"
+	if res.Unsymbolized {
+		unsymbolized = "true"
+	}
+
+	h.metrics.flushedBlocksUnsymbolized.WithLabelValues(unsymbolized).Inc()
 	h.metrics.flushedBlockSamples.Observe(float64(res.Meta.NumSamples))
 	h.metrics.flusehdBlockProfiles.Observe(float64(res.Meta.NumProfiles))
 	h.metrics.flushedBlockSeries.Observe(float64(res.Meta.NumSeries))
