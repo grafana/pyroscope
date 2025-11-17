@@ -664,6 +664,11 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		req.Msg.MaxNodes = &mn
 	}
 
+	// TODO: remove when profile_id_selector is implemented
+	if len(req.Msg.ProfileIdSelector) > 0 {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("profile_id_selector is not yet implemented"))
+	}
+
 	t, err := q.selectTree(ctx, req.Msg)
 	if err != nil {
 		return nil, err
@@ -1007,6 +1012,12 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 
 	if req.Msg.Step == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be non-zero"))
+	}
+
+	// SelectSeries (v1 API) does not support exemplars
+	if req.Msg.ExemplarType == typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL ||
+		req.Msg.ExemplarType == typesv1.ExemplarType_EXEMPLAR_TYPE_SPAN {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("exemplars are not supported in SelectSeries API, use the v2 query API instead"))
 	}
 
 	stepMs := time.Duration(req.Msg.Step * float64(time.Second)).Milliseconds()
