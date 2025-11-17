@@ -30,7 +30,22 @@ func init() {
 }
 
 func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
-	entries, err := profileEntryIterator(q, query.TimeSeries.GroupBy...)
+	opts := []profileIteratorOption{
+		withFetchPartition(false), // partition data not needed, as we don't access stacktraces at all
+	}
+	exemplarsEnabled := true
+	if exemplarsEnabled {
+		opts = append(opts,
+			withAllLabels(),
+			withFetchProfileIDs(true),
+		)
+	} else {
+		opts = append(opts,
+			withGroupByLabels(query.TimeSeries.GroupBy...),
+		)
+	}
+
+	entries, err := profileEntryIterator(q, opts...)
 	if err != nil {
 		return nil, err
 	}

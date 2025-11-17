@@ -1,6 +1,7 @@
 package querybackend
 
 import (
+	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -23,39 +24,142 @@ type ProfileEntry struct {
 	Fingerprint model.Fingerprint
 	Labels      phlaremodel.Labels
 	Partition   uint64
+	ID          string
 }
 
 func (e ProfileEntry) RowNumber() int64 { return e.RowNum }
 
-func profileEntryIterator(q *queryContext, groupBy ...string) (iter.Iterator[ProfileEntry], error) {
-	series, err := getSeries(q.ds.Index(), q.req.matchers, groupBy...)
+type profileIteratorOption struct {
+	iterator func(*iteratorOpts)
+	series   func(*seriesOpts)
+}
+
+func withAllLabels() profileIteratorOption {
+	return profileIteratorOption{
+		series: func(opts *seriesOpts) {
+			opts.allLabels = true
+		},
+	}
+}
+
+func withGroupByLabels(by ...string) profileIteratorOption {
+	return profileIteratorOption{
+		series: func(opts *seriesOpts) {
+			opts.groupBy = by
+		},
+	}
+}
+
+func withFetchPartition(v bool) profileIteratorOption {
+	return profileIteratorOption{
+		iterator: func(opts *iteratorOpts) {
+			opts.fetchPartition = v
+		},
+	}
+}
+
+func withFetchProfileIDs(v bool) profileIteratorOption {
+	return profileIteratorOption{
+		iterator: func(opts *iteratorOpts) {
+			opts.fetchProfileIDs = v
+		},
+	}
+}
+
+func withProfileIDSelector(ids ...string) profileIteratorOption {
+	return profileIteratorOption{
+		iterator: func(opts *iteratorOpts) {
+			opts.profileIDSelector = ids
+		},
+	}
+}
+
+type iteratorOpts struct {
+	profileIDSelector []string
+	fetchProfileIDs   bool
+	fetchPartition    bool
+}
+
+func iteratorOptsFromOptions(options []profileIteratorOption) iteratorOpts {
+	opts := iteratorOpts{
+		fetchPartition: true,
+	}
+	for _, f := range options {
+		if f.iterator != nil {
+			f.iterator(&opts)
+		}
+	}
+	return opts
+}
+
+func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (iter.Iterator[ProfileEntry], error) {
+	opts := iteratorOptsFromOptions(options)
+
+	series, err := getSeries(q.ds.Index(), q.req.matchers, options...)
 	if err != nil {
 		return nil, err
 	}
 	results := parquetquery.NewBinaryJoinIterator(0,
-		q.ds.Profiles().Column(q.ctx, "SeriesIndex", parquetquery.NewMapPredicate(series)),
-		q.ds.Profiles().Column(q.ctx, "TimeNanos", parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime)),
+		q.ds.Profiles().Column(q.ctx, schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(series)),
+		q.ds.Profiles().Column(q.ctx, schemav1.TimeNanosColumnName, parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime)),
 	)
-	results = parquetquery.NewBinaryJoinIterator(0, results,
-		q.ds.Profiles().Column(q.ctx, "StacktracePartition", nil),
-	)
+
+	columns := []string{
+		schemav1.SeriesIndexColumnName,
+		schemav1.TimeNanosColumnName,
+	}
+	processor := []func([][]parquet.Value, *ProfileEntry){}
+
+	// fetch partition if requested
+	if opts.fetchPartition {
+		results = parquetquery.NewBinaryJoinIterator(0, results,
+			q.ds.Profiles().Column(q.ctx, schemav1.StacktracePartitionColumnName, nil),
+		)
+		offset := len(columns)
+		columns = append(columns, schemav1.StacktracePartitionColumnName)
+		processor = append(processor, func(buf [][]parquet.Value, e *ProfileEntry) {
+			e.Partition = buf[offset][0].Uint64()
+		})
+	}
+	// fetch profile id if requested or part of the predicate
+	if opts.fetchProfileIDs || len(opts.profileIDSelector) > 0 {
+		var predicate parquetquery.Predicate
+		var u uuid.UUID
+		if len(opts.profileIDSelector) > 0 {
+			predicate = parquetquery.NewStringInPredicate(opts.profileIDSelector)
+		}
+		results = parquetquery.NewBinaryJoinIterator(0, results,
+			q.ds.Profiles().Column(q.ctx, schemav1.IDColumnName, predicate),
+		)
+		offset := len(columns)
+		columns = append(columns, schemav1.IDColumnName)
+		processor = append(processor, func(buf [][]parquet.Value, e *ProfileEntry) {
+			b := buf[offset][0].Bytes()
+			if len(b) != 16 {
+				return
+			}
+			copy(u[:], b)
+			e.ID = u.String()
+		})
+	}
 
 	buf := make([][]parquet.Value, 3)
 	entries := iter.NewAsyncBatchIterator[*parquetquery.IteratorResult, ProfileEntry](
 		results, bigBatchSize,
 		func(r *parquetquery.IteratorResult) ProfileEntry {
-			buf = r.Columns(buf,
-				schemav1.SeriesIndexColumnName,
-				schemav1.TimeNanosColumnName,
-				schemav1.StacktracePartitionColumnName)
+			buf = r.Columns(buf, columns...)
 			x := series[buf[0][0].Uint32()]
-			return ProfileEntry{
+			e := ProfileEntry{
 				RowNum:      r.RowNumber[0],
 				Timestamp:   model.TimeFromUnixNano(buf[1][0].Int64()),
 				Fingerprint: x.fingerprint,
 				Labels:      x.labels,
 				Partition:   buf[2][0].Uint64(),
 			}
+			for _, proc := range processor {
+				proc(buf, &e)
+			}
+			return e
 		},
 		func([]ProfileEntry) {},
 	)
@@ -67,7 +171,19 @@ type series struct {
 	labels      phlaremodel.Labels
 }
 
-func getSeries(reader phlaredb.IndexReader, matchers []*labels.Matcher, by ...string) (map[uint32]series, error) {
+type seriesOpts struct {
+	allLabels bool // when this is true, groupBy is ignored
+	groupBy   []string
+}
+
+func getSeries(reader phlaredb.IndexReader, matchers []*labels.Matcher, options ...profileIteratorOption) (map[uint32]series, error) {
+	var opts seriesOpts
+	for _, f := range options {
+		if f.series != nil {
+			f.series(&opts)
+		}
+	}
+
 	postings, err := getPostings(reader, matchers...)
 	if err != nil {
 		return nil, err
@@ -76,7 +192,12 @@ func getSeries(reader phlaredb.IndexReader, matchers []*labels.Matcher, by ...st
 	s := make(map[uint32]series)
 	l := make(phlaremodel.Labels, 0, 6)
 	for postings.Next() {
-		fp, err := reader.SeriesBy(postings.At(), &l, &chunks, by...)
+		var fp uint64
+		if opts.allLabels {
+			fp, err = reader.Series(postings.At(), &l, &chunks)
+		} else {
+			fp, err = reader.SeriesBy(postings.At(), &l, &chunks, opts.groupBy...)
+		}
 		if err != nil {
 			return nil, err
 		}
