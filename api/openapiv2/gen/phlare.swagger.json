@@ -961,6 +961,48 @@
         }
       }
     },
+    "v1Exemplar": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Milliseconds since epoch when the profile was captured."
+        },
+        "profileId": {
+          "type": "string",
+          "description": "Unique identifier for the profile (UUID)."
+        },
+        "spanId": {
+          "type": "string",
+          "description": "Span ID if this profile was split by span during ingestion."
+        },
+        "value": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated)."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          },
+          "description": "Series labels that are NOT included in the group_by query parameter.\nThese labels complete the full series identity of this exemplar's profile.\nFor example, if group_by=[\"service\"], this would contain labels like \"pod\",\n\"namespace\", \"region\" that were omitted from grouping. This allows identifying\nwhich specific series instance this profile sample came from."
+        }
+      },
+      "description": "Exemplar represents metadata for an individual profile sample.\nExemplars allow users to drill down from aggregated timeline views\nto specific profile instances."
+    },
+    "v1ExemplarType": {
+      "type": "string",
+      "enum": [
+        "EXEMPLAR_TYPE_UNSPECIFIED",
+        "EXEMPLAR_TYPE_NONE",
+        "EXEMPLAR_TYPE_INDIVIDUAL",
+        "EXEMPLAR_TYPE_SPAN"
+      ],
+      "default": "EXEMPLAR_TYPE_UNSPECIFIED"
+    },
     "v1FeatureFlag": {
       "type": "object",
       "properties": {
@@ -1653,6 +1695,14 @@
             "type": "object",
             "$ref": "#/definitions/v1ProfileAnnotation"
           }
+        },
+        "exemplars": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Exemplar"
+          },
+          "title": "Exemplars are samples of individual profiles that contributed to this aggregated point"
         }
       }
     },
@@ -2131,6 +2181,13 @@
         "stackTraceSelector": {
           "$ref": "#/definitions/v1StackTraceSelector",
           "description": "Select stack traces that match the provided selector."
+        },
+        "profileIdSelector": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "List of Profile UUIDs to query"
         }
       }
     },
@@ -2413,6 +2470,9 @@
         "limit": {
           "type": "string",
           "format": "int64"
+        },
+        "exemplarType": {
+          "$ref": "#/definitions/v1ExemplarType"
         }
       }
     },

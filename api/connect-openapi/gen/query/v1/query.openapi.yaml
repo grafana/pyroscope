@@ -678,6 +678,9 @@ components:
             - string
           title: limit
           format: int64
+        exemplarType:
+          title: exemplar_type
+          $ref: '#/components/schemas/types.v1.ExemplarType'
       title: TimeSeriesQuery
       additionalProperties: false
     query.v1.TimeSeriesReport:
@@ -725,6 +728,64 @@ components:
           format: byte
       title: TreeReport
       additionalProperties: false
+    types.v1.Exemplar:
+      type: object
+      properties:
+        timestamp:
+          type:
+            - integer
+            - string
+          examples:
+            - "1730000023000"
+          title: timestamp
+          format: int64
+          description: Milliseconds since epoch when the profile was captured.
+        profileId:
+          type: string
+          examples:
+            - 7c9e6679-7425-40de-944b-e07fc1f90ae7
+          title: profile_id
+          description: Unique identifier for the profile (UUID).
+        spanId:
+          type: string
+          examples:
+            - 00f067aa0ba902b7
+          title: span_id
+          description: Span ID if this profile was split by span during ingestion.
+        value:
+          type:
+            - integer
+            - string
+          examples:
+            - "2450000000"
+          title: value
+          format: int64
+          description: Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+          description: |-
+            Series labels that are NOT included in the group_by query parameter.
+             These labels complete the full series identity of this exemplar's profile.
+             For example, if group_by=["service"], this would contain labels like "pod",
+             "namespace", "region" that were omitted from grouping. This allows identifying
+             which specific series instance this profile sample came from.
+      title: Exemplar
+      additionalProperties: false
+      description: |-
+        Exemplar represents metadata for an individual profile sample.
+         Exemplars allow users to drill down from aggregated timeline views
+         to specific profile instances.
+    types.v1.ExemplarType:
+      type: string
+      title: ExemplarType
+      enum:
+        - EXEMPLAR_TYPE_UNSPECIFIED
+        - EXEMPLAR_TYPE_NONE
+        - EXEMPLAR_TYPE_INDIVIDUAL
+        - EXEMPLAR_TYPE_SPAN
     types.v1.GoPGO:
       type: object
       properties:
@@ -795,6 +856,12 @@ components:
           items:
             $ref: '#/components/schemas/types.v1.ProfileAnnotation'
           title: annotations
+        exemplars:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Exemplar'
+          title: exemplars
+          description: Exemplars are samples of individual profiles that contributed to this aggregated point
       title: Point
       additionalProperties: false
     types.v1.ProfileAnnotation:
