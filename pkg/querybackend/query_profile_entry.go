@@ -1,6 +1,9 @@
 package querybackend
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
@@ -66,16 +69,26 @@ func withFetchProfileIDs(v bool) profileIteratorOption {
 	}
 }
 
-func withProfileIDSelector(ids ...string) profileIteratorOption {
+func withProfileIDSelector(ids ...string) (profileIteratorOption, error) {
+	// convert profile ids into uuids
+	uuids := make([]string, 0, len(ids))
+	for _, id := range ids {
+		u, err := uuid.Parse(id)
+		if err != nil {
+			return profileIteratorOption{}, err
+		}
+		uuids = append(uuids, string(u[:]))
+	}
+
 	return profileIteratorOption{
 		iterator: func(opts *iteratorOpts) {
-			opts.profileIDSelector = ids
+			opts.profileIDSelector = uuids
 		},
-	}
+	}, nil
 }
 
 type iteratorOpts struct {
-	profileIDSelector []string
+	profileIDSelector []string // this is a slice of the byte form of the UUID
 	fetchProfileIDs   bool
 	fetchPartition    bool
 }
@@ -92,6 +105,51 @@ func iteratorOptsFromOptions(options []profileIteratorOption) iteratorOpts {
 	return opts
 }
 
+type queryColumn struct {
+	name      string
+	predicate parquetquery.Predicate
+	priority  int
+}
+
+type queryColumns []queryColumn
+
+func (c queryColumns) names() []string {
+	result := make([]string, len(c))
+	for idx := range result {
+		result[idx] = c[idx].name
+	}
+	return result
+}
+
+func (c queryColumns) join(q *queryContext) parquetquery.Iterator {
+	var result parquetquery.Iterator
+
+	// sort columns by priority, without modifying queryColumn slice
+	order := make([]int, len(c))
+	for idx := range order {
+		order[idx] = idx
+	}
+	slices.SortFunc(order, func(a, b int) int {
+		if r := c[a].priority - c[b].priority; r != 0 {
+			return r
+		}
+		return strings.Compare(c[a].name, c[b].name)
+	})
+
+	for _, idx := range order {
+		it := q.ds.Profiles().Column(q.ctx, c[idx].name, c[idx].predicate)
+		if result == nil {
+			result = it
+			continue
+		}
+		result = parquetquery.NewBinaryJoinIterator(0,
+			result,
+			it,
+		)
+	}
+	return result
+}
+
 func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (iter.Iterator[ProfileEntry], error) {
 	opts := iteratorOptsFromOptions(options)
 
@@ -99,40 +157,40 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 	if err != nil {
 		return nil, err
 	}
-	results := parquetquery.NewBinaryJoinIterator(0,
-		q.ds.Profiles().Column(q.ctx, schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(series)),
-		q.ds.Profiles().Column(q.ctx, schemav1.TimeNanosColumnName, parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime)),
-	)
 
-	columns := []string{
-		schemav1.SeriesIndexColumnName,
-		schemav1.TimeNanosColumnName,
+	columns := queryColumns{
+		{schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(series), 10},
+		{schemav1.TimeNanosColumnName, parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime), 15},
 	}
 	processor := []func([][]parquet.Value, *ProfileEntry){}
 
 	// fetch partition if requested
 	if opts.fetchPartition {
-		results = parquetquery.NewBinaryJoinIterator(0, results,
-			q.ds.Profiles().Column(q.ctx, schemav1.StacktracePartitionColumnName, nil),
-		)
 		offset := len(columns)
-		columns = append(columns, schemav1.StacktracePartitionColumnName)
+		columns = append(
+			columns,
+			queryColumn{schemav1.StacktracePartitionColumnName, nil, 20},
+		)
 		processor = append(processor, func(buf [][]parquet.Value, e *ProfileEntry) {
 			e.Partition = buf[offset][0].Uint64()
 		})
 	}
 	// fetch profile id if requested or part of the predicate
 	if opts.fetchProfileIDs || len(opts.profileIDSelector) > 0 {
-		var predicate parquetquery.Predicate
-		var u uuid.UUID
+		var (
+			predicate parquetquery.Predicate
+			priority  = 20
+		)
 		if len(opts.profileIDSelector) > 0 {
 			predicate = parquetquery.NewStringInPredicate(opts.profileIDSelector)
+			priority = 5
 		}
-		results = parquetquery.NewBinaryJoinIterator(0, results,
-			q.ds.Profiles().Column(q.ctx, schemav1.IDColumnName, predicate),
-		)
 		offset := len(columns)
-		columns = append(columns, schemav1.IDColumnName)
+		columns = append(
+			columns,
+			queryColumn{schemav1.IDColumnName, predicate, priority},
+		)
+		var u uuid.UUID
 		processor = append(processor, func(buf [][]parquet.Value, e *ProfileEntry) {
 			b := buf[offset][0].Bytes()
 			if len(b) != 16 {
@@ -143,18 +201,19 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 		})
 	}
 
-	buf := make([][]parquet.Value, 3)
+	buf := make([][]parquet.Value, len(columns))
+	columnNames := columns.names()
+
 	entries := iter.NewAsyncBatchIterator[*parquetquery.IteratorResult, ProfileEntry](
-		results, bigBatchSize,
+		columns.join(q), bigBatchSize,
 		func(r *parquetquery.IteratorResult) ProfileEntry {
-			buf = r.Columns(buf, columns...)
+			buf = r.Columns(buf, columnNames...)
 			x := series[buf[0][0].Uint32()]
 			e := ProfileEntry{
 				RowNum:      r.RowNumber[0],
 				Timestamp:   model.TimeFromUnixNano(buf[1][0].Int64()),
 				Fingerprint: x.fingerprint,
 				Labels:      x.labels,
-				Partition:   buf[2][0].Uint64(),
 			}
 			for _, proc := range processor {
 				proc(buf, &e)

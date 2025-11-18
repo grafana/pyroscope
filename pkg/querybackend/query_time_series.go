@@ -31,7 +31,7 @@ func init() {
 
 func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
 	opts := []profileIteratorOption{
-		withFetchPartition(false), // partition data not needed, as we don't access stacktraces at all
+		withFetchPartition(false), // Partition data not needed, as we don't access stacktraces at all
 	}
 	exemplarsEnabled := true
 	if exemplarsEnabled {
