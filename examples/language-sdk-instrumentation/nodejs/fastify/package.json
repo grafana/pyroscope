@@ -1,0 +1,23 @@
+{
+  "name": "rideshare-app-fastify",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:local": "PYROSCOPE_URL=http://localhost:4040 yarn start",
+    "up": "yarn down && docker compose up --build --force-recreate --no-deps",
+    "down": "docker compose down"
+  },
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@pyroscope/nodejs": "v0.4.8",
+    "fastify": "^5.6.1"
+  },
+  "resolutions": {
+    "protobufjs": "^7.2.5",
+    "tar": "^6.2.1"
+  }
+}

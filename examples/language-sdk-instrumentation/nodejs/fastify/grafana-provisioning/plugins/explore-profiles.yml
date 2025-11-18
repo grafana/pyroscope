@@ -1,0 +1,11 @@
+---
+apiVersion: 1
+apps:
+  - type: grafana-pyroscope-app
+    jsonData:
+      backendUrl: http://pyroscope:4040
+      # uncomment this if sending data to Grafana Cloud
+      # basicAuthUser: '123456'
+    secureJsonData:
+      # uncomment this if sending data to Grafana Cloud
+      # basicAuthPassword: PASSWORD
