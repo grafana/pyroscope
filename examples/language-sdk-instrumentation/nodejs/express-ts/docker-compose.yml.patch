@@ -1,0 +1,13 @@
+diff --git a/examples/language-sdk-instrumentation/nodejs/express-ts/docker-compose.yml b/examples/language-sdk-instrumentation/nodejs/express-ts/docker-compose.yml
+index 7095b9486..fab2172f9 100644
+--- a/examples/language-sdk-instrumentation/nodejs/express-ts/docker-compose.yml
++++ b/examples/language-sdk-instrumentation/nodejs/express-ts/docker-compose.yml
+@@ -10,6 +10,8 @@ services:
+     - REGION=us-east
+     build:
+       context: .
++    volumes:
++      - .:/app
+   eu-north:
+     ports:
+     - 5000
