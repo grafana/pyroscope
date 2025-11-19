@@ -2,12 +2,12 @@
 
 ## Automatic Release Process
 
-To release a new version of the project you need to follow the following steps:
-
-1. Create a new branch for the release (e.g., `release/vX.Y`)
-2. Create the tag for the release (e.g., `vX.Y.Z`)
-3. Push the release branch and tag to the remote
-4. Create a GitHub label for backports:
+1. Update [release notes](#release-notes)
+2. Create a new branch for the release (e.g., `release/vX.Y`). Make sure the release notes are present on this branch or
+[backported](#backport) later.
+3. Create the tag for the release (e.g., `vX.Y.Z`)
+4. Push the release branch and tag to the remote. Note that the tag will kick off a real release via goreleaser.
+5. Create a GitHub label for backports:
 
    ```gh label create "backport release/vX.Y" -d "This label will backport a merged PR to the release/vX.Y branch" -c "#0052cc"```
 
@@ -22,6 +22,10 @@ The CI will automatically handle the build and create a draft GitHub release.
 
 Once ready, you can edit and publish the draft release on GitHub.
 
+Please do not delete GitHub releases that were once public.
+
+### Release notes
+
 The list of changes from the GitHub release form the basis of the public-facing release notes. Release notes are added to the [public Pyroscope documentation](https://grafana.com/docs/pyroscope/latest/release-notes/). These release notes follow the same pattern for each release:
 
 1. Copy the previous release's page (i.e., V1-3.md) to the new release number. Change the version information and [page weight](https://grafana.com/docs/writers-toolkit/write/front-matter/#weight) in the file's frontmatter.
@@ -33,22 +37,23 @@ The list of changes from the GitHub release form the basis of the public-facing 
 
 For help writing release notes, refer to the [Writers' Toolkit](https://grafana.com/docs/writers-toolkit/write/).
 
-Please do not delete GitHub releases that were once public.
-
-### Website release notes
-
-Create a new branch and add release notes in `docs/sources/release-notes`.
-Once the PR is merged, cherry-pick this commit on to the `release/vX.Y` branch 
-to trigger the `publish-technical-documentation-release.yml` action.
-
 ### Helm charts update
 
 Merge a PR that bumps the chart version in the main branch (no tagging required), the CI will automatically publish the chart to the [helm repository](https://grafana.github.io/helm-charts). 
-You can combine this update and the [Website release notes](#website-release-notes) updates in to the same PR.
 
-### Patch version release
+## Backport
 
-To release a patch version, simply merge fixes to the release branch then create and push a new tag. (e.g. `v0.x.1`). Any bugfixes or other entries should be added to the existing release notes for that version under a new heading with the version number.
+A PR to be backported must have the appropriate `backport release/vX.Y` label(s) AND one of [these expected labels](https://github.com/grafana/grafana-github-actions/blob/7d2b4af1112747f82e12adfbc00be44fecb3b616/backport/backport.ts#L16):
+`['type/docs', 'type/bug', 'product-approved', 'type/ci']`. Note that these labels must be present before the PR is merged.
+
+[Example backport PR](https://github.com/grafana/pyroscope/pull/4352)
+
+## Patch releases
+
+Any bugfixes or other entries should be added to the existing release notes for that version under a new heading with
+the version number. The changes should be on the appropriate release branch.
+
+Once merged, a `vX.Y.Z` patch release tag must be created and pushed to remote to create a new release.
 
 ## Manual Release Process
 
