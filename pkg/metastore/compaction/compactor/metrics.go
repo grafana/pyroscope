@@ -112,9 +112,9 @@ func (c *globalQueueStatsCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *globalQueueStatsCollector) Collect(ch chan<- prometheus.Metric) {
 	numLevels := len(c.compactionQueue.config.Levels)
 	for levelIdx := 0; levelIdx < numLevels; levelIdx++ {
-		var blocksTotal int32
-		var queuesTotal int
-		var backlogJobsTotal int
+		var blocksForLevel int32
+		var queuesForLevel int
+		var backlogJobsForLevel int
 
 		levelLabel := strconv.Itoa(levelIdx)
 
@@ -123,21 +123,22 @@ func (c *globalQueueStatsCollector) Collect(ch chan<- prometheus.Metric) {
 
 			maxBlocks := queue.config.maxBlocks(uint32(levelIdx))
 			if maxBlocks == 0 {
-				maxBlocks = 1
+				// This is likely a misconfiguration, we'll just skip it.
+				continue
 			}
 
 			for _, staged := range queue.staged {
 				blocks := staged.stats.blocks.Load()
-				blocksTotal += blocks
-				queuesTotal++
+				blocksForLevel += blocks
+				queuesForLevel++
 
-				queueJobs := int(blocks) / int(maxBlocks)
-				backlogJobsTotal += queueJobs
+				backlogJobs := int(blocks) / int(maxBlocks)
+				backlogJobsForLevel += backlogJobs
 			}
 		}
 
-		ch <- prometheus.MustNewConstMetric(c.blocks, prometheus.GaugeValue, float64(blocksTotal), levelLabel)
-		ch <- prometheus.MustNewConstMetric(c.queues, prometheus.GaugeValue, float64(queuesTotal), levelLabel)
-		ch <- prometheus.MustNewConstMetric(c.backlogJobs, prometheus.GaugeValue, float64(backlogJobsTotal), levelLabel)
+		ch <- prometheus.MustNewConstMetric(c.blocks, prometheus.GaugeValue, float64(blocksForLevel), levelLabel)
+		ch <- prometheus.MustNewConstMetric(c.queues, prometheus.GaugeValue, float64(queuesForLevel), levelLabel)
+		ch <- prometheus.MustNewConstMetric(c.backlogJobs, prometheus.GaugeValue, float64(backlogJobsForLevel), levelLabel)
 	}
 }
