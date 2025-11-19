@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
-	"github.com/prometheus/common/model"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -16,7 +15,6 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
 
 func init() {
@@ -33,7 +31,7 @@ func init() {
 }
 
 func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
-	entries, err := profileEntryIterator(q, query.TimeSeries.GroupBy...)
+	entries, err := profileEntryIterator(q)
 	if err != nil {
 		return nil, err
 	}
@@ -49,9 +47,17 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 	annotationValuesColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath)
 
 	includeExemplars := query.TimeSeries.ExemplarType == typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL
+
+	columnIndices := []int{
+		column.ColumnIndex,
+		annotationKeysColumn.ColumnIndex,
+		annotationValuesColumn.ColumnIndex,
+	}
+
 	var idColumn parquet.LeafColumn
 	if includeExemplars {
 		idColumn, _ = schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), []string{schemav1.IDColumnName})
+		columnIndices = append(columnIndices, idColumn.ColumnIndex)
 	}
 
 	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
@@ -59,10 +65,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 		entries,
 		q.ds.Profiles().RowGroups(),
 		bigBatchSize,
-		column.ColumnIndex,
-		annotationKeysColumn.ColumnIndex,
-		annotationValuesColumn.ColumnIndex,
-		idColumn.ColumnIndex,
+		columnIndices...,
 	)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
@@ -81,7 +84,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 			if e[0].Column() == annotationValuesColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
 				annotations.Values = append(annotations.Values, e[0].String())
 			}
-			if includeExemplars && e[0].Column() == idColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
+			if includeExemplars && e[0].Column() == idColumn.ColumnIndex && e[0].Kind() == parquet.UUID().Type().Kind() {
 				var u uuid.UUID
 				copy(u[:], e[0].ByteArray())
 				profileID = u.String()
@@ -103,11 +106,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 
 	var timeSeries []*typesv1.Series
 	if includeExemplars {
-		fullLabelsByFingerprint, err := getFullLabelsForExemplars(q, builder)
-		if err != nil {
-			return nil, err
-		}
-		timeSeries = builder.BuildWithFullLabels(fullLabelsByFingerprint)
+		timeSeries = builder.BuildWithExemplars()
 	} else {
 		timeSeries = builder.Build()
 	}
@@ -190,52 +189,4 @@ func (a *timeSeriesAggregator) filterLabels(series []*typesv1.Series, groupBy []
 		}
 	}
 	return series
-}
-
-// getFullLabelsForExemplars fetches full (unfiltered) labels from the index for only the fingerprints that have
-// exemplars.
-func getFullLabelsForExemplars(q *queryContext, builder *phlaremodel.TimeSeriesBuilder) (map[model.Fingerprint]phlaremodel.Labels, error) {
-	exemplarFingerprints := builder.GetExemplarFingerprints()
-	if len(exemplarFingerprints) == 0 {
-		return nil, nil
-	}
-
-	exemplarFingerprintSet := make(map[model.Fingerprint]struct{}, len(exemplarFingerprints))
-	for _, fp := range exemplarFingerprints {
-		exemplarFingerprintSet[fp] = struct{}{}
-	}
-
-	fullLabelsByFingerprint := make(map[model.Fingerprint]phlaremodel.Labels, len(exemplarFingerprints))
-
-	postings, err := getPostings(q.ds.Index(), q.req.matchers...)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = postings.Close()
-	}()
-
-	chunks := make([]index.ChunkMeta, 1)
-	lbs := make(phlaremodel.Labels, 0, 10)
-
-	for postings.Next() {
-		fp, err := q.ds.Index().SeriesBy(postings.At(), &lbs, &chunks)
-		if err != nil {
-			return nil, err
-		}
-
-		fingerprint := model.Fingerprint(fp)
-		if _, needed := exemplarFingerprintSet[fingerprint]; needed {
-			fullLabelsByFingerprint[fingerprint] = lbs.Clone()
-			if len(fullLabelsByFingerprint) == len(exemplarFingerprints) {
-				break
-			}
-		}
-	}
-
-	if err = postings.Err(); err != nil {
-		return nil, err
-	}
-
-	return fullLabelsByFingerprint, nil
 }

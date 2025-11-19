@@ -6,9 +6,6 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/testhelper"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_RangeSeriesSum(t *testing.T) {
@@ -275,7 +272,7 @@ func Test_RangeSeriesWithExemplars(t *testing.T) {
 			}},
 		},
 		{
-			name: "same profileID across blocks - aggregates values correctly",
+			name: "same profileID across blocks - keeps highest value and intersects labels",
 			series: []*typesv1.Series{{
 				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
 				Points: []*typesv1.Point{
@@ -319,8 +316,9 @@ func Test_RangeSeriesWithExemplars(t *testing.T) {
 						Timestamp:   1000,
 						Value:       345.0, // 100+140+105
 						Annotations: []*typesv1.ProfileAnnotation{},
+						// Profile-X has highest value (100 from block A), but labels differ across blocks (A/B/C), so intersection is nil
 						Exemplars: []*typesv1.Exemplar{
-							{ProfileId: "Profile-Y", Value: 170, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "A"}}},
+							{ProfileId: "Profile-X", Value: 100, Timestamp: 1000},
 						},
 					},
 				},
@@ -338,88 +336,4 @@ func Test_RangeSeriesWithExemplars(t *testing.T) {
 			testhelper.EqualProto(t, tc.out, result)
 		})
 	}
-}
-
-func TestMergeAndSelectExemplars_SumsValuesForSameProfileID(t *testing.T) {
-	t.Run("top-2 selection after aggregation", func(t *testing.T) {
-		var existing []*exemplarCandidate
-
-		blockA := []*exemplarCandidate{
-			{profileID: "A", value: 50},
-			{profileID: "B", value: 30},
-			{profileID: "C", value: 20},
-		}
-		existing = mergeExemplarCandidates(existing, blockA)
-
-		blockB := []*exemplarCandidate{
-			{profileID: "A", value: 10},
-			{profileID: "B", value: 40},
-			{profileID: "C", value: 50},
-		}
-		merged := mergeExemplarCandidates(existing, blockB)
-
-		result := selectTopNExemplars(merged, 2)
-
-		require.Len(t, result, 2)
-
-		byProfileID := make(map[string]uint64)
-		for _, ex := range result {
-			byProfileID[ex.profileID] = ex.value
-		}
-
-		assert.Contains(t, byProfileID, "B")
-		assert.Equal(t, uint64(70), byProfileID["B"])
-		assert.Contains(t, byProfileID, "C")
-		assert.Equal(t, uint64(70), byProfileID["C"])
-	})
-
-	t.Run("single block backward compatibility", func(t *testing.T) {
-		candidates := []*exemplarCandidate{
-			{profileID: "prof-1", value: 100},
-			{profileID: "prof-2", value: 300},
-			{profileID: "prof-3", value: 200},
-		}
-
-		merged := mergeExemplarCandidates(nil, candidates)
-		result := selectTopNExemplars(merged, 1)
-
-		require.Len(t, result, 1)
-		assert.Equal(t, "prof-2", result[0].profileID)
-		assert.Equal(t, uint64(300), result[0].value)
-	})
-
-	t.Run("duplicate profileID in same batch gets summed", func(t *testing.T) {
-		candidates := []*exemplarCandidate{
-			{profileID: "prof-A", value: 100},
-			{profileID: "prof-A", value: 50},
-			{profileID: "prof-B", value: 120},
-		}
-
-		merged := mergeExemplarCandidates(nil, candidates)
-		result := selectTopNExemplars(merged, 1)
-
-		require.Len(t, result, 1)
-		assert.Equal(t, "prof-A", result[0].profileID)
-		assert.Equal(t, uint64(150), result[0].value)
-	})
-
-	t.Run("empty exemplars", func(t *testing.T) {
-		result := mergeExemplarCandidates(nil, nil)
-		assert.Nil(t, result)
-
-		result = mergeExemplarCandidates(nil, []*exemplarCandidate{})
-		assert.Nil(t, result)
-	})
-
-	t.Run("fewer exemplars than max", func(t *testing.T) {
-		candidates := []*exemplarCandidate{
-			{profileID: "prof-1", value: 100},
-		}
-
-		merged := mergeExemplarCandidates(nil, candidates)
-		result := selectTopNExemplars(merged, 5)
-
-		require.Len(t, result, 1)
-		assert.Equal(t, "prof-1", result[0].profileID)
-	})
 }

@@ -142,7 +142,8 @@ func (m *TimeSeriesMerger) mergePoints(points []*typesv1.Point) int {
 	return j + 1
 }
 
-// mergeExemplars combines two exemplar lists, keeping only the highest-value exemplar per profile_id.
+// mergeExemplars combines two exemplar lists.
+// For exemplars with the same profileID, it keeps the highest value and intersects labels.
 func mergeExemplars(a, b []*typesv1.Exemplar) []*typesv1.Exemplar {
 	if len(a) == 0 {
 		return b
@@ -151,20 +152,46 @@ func mergeExemplars(a, b []*typesv1.Exemplar) []*typesv1.Exemplar {
 		return a
 	}
 
-	byProfileID := make(map[string]*typesv1.Exemplar)
-	for _, ex := range a {
-		byProfileID[ex.ProfileId] = ex
+	type exemplarGroup struct {
+		exemplar  *typesv1.Exemplar
+		labelSets []Labels
 	}
+	byProfileID := make(map[string]*exemplarGroup)
+
+	for _, ex := range a {
+		byProfileID[ex.ProfileId] = &exemplarGroup{
+			exemplar:  ex,
+			labelSets: []Labels{ex.Labels},
+		}
+	}
+
 	for _, ex := range b {
 		existing, found := byProfileID[ex.ProfileId]
-		if !found || ex.Value > existing.Value {
-			byProfileID[ex.ProfileId] = ex
+		if !found {
+			byProfileID[ex.ProfileId] = &exemplarGroup{
+				exemplar:  ex,
+				labelSets: []Labels{Labels(ex.Labels)},
+			}
+		} else {
+			if ex.Value > existing.exemplar.Value {
+				existing.exemplar = ex
+			}
+			existing.labelSets = append(existing.labelSets, Labels(ex.Labels))
 		}
 	}
 
 	result := make([]*typesv1.Exemplar, 0, len(byProfileID))
-	for _, ex := range byProfileID {
+	for _, group := range byProfileID {
+		ex := group.exemplar
+		if len(group.labelSets) > 1 {
+			ex.Labels = IntersectAll(group.labelSets)
+		}
 		result = append(result, ex)
 	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ProfileId < result[j].ProfileId
+	})
+
 	return result
 }

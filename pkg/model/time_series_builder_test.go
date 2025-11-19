@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/prometheus/common/model"
@@ -22,169 +21,182 @@ func TestTimeSeriesBuilder_NoExemplarsForEmptyProfileID(t *testing.T) {
 	builder.Add(1, labels, 1000, 100.0, schemav1.Annotations{}, "")
 	builder.Add(1, labels, 1000, 200.0, schemav1.Annotations{}, "")
 
-	series := builder.BuildWithFullLabels(nil)
+	series := builder.BuildWithExemplars()
 	require.Len(t, series, 1)
 	require.Len(t, series[0].Points, 2)
 
 	for _, point := range series[0].Points {
-		assert.Empty(t, point.Exemplars, "V1 queries should not have exemplars")
+		assert.Empty(t, point.Exemplars, "Empty profileID should not create exemplars")
 	}
 }
 
-func TestTimeSeriesBuilder_KeepsAllExemplars(t *testing.T) {
-	builder := NewTimeSeriesBuilder()
-	labels := Labels{
-		{Name: "service_name", Value: "api"},
-	}
-
-	builder.Add(1, labels, 1000, 100.0, schemav1.Annotations{}, "profile-low")
-	builder.Add(1, labels, 1000, 500.0, schemav1.Annotations{}, "profile-high")
-	builder.Add(1, labels, 1000, 200.0, schemav1.Annotations{}, "profile-mid")
-
-	series := builder.BuildWithFullLabels(nil)
-	require.Len(t, series, 1)
-	require.Len(t, series[0].Points, 3)
-
-	for _, point := range series[0].Points {
-		require.Len(t, point.Exemplars, 3)
-
-		profileIDs := make(map[string]uint64)
-		for _, ex := range point.Exemplars {
-			profileIDs[ex.ProfileId] = ex.Value
-		}
-
-		assert.Contains(t, profileIDs, "profile-low")
-		assert.Equal(t, uint64(100), profileIDs["profile-low"])
-		assert.Contains(t, profileIDs, "profile-high")
-		assert.Equal(t, uint64(500), profileIDs["profile-high"])
-		assert.Contains(t, profileIDs, "profile-mid")
-		assert.Equal(t, uint64(200), profileIDs["profile-mid"])
-	}
-}
-
-func TestTimeSeriesBuilder_KeepsAllExemplarsWithMultiplePoints(t *testing.T) {
+func TestTimeSeriesBuilder_Build_NoExemplars(t *testing.T) {
 	builder := NewTimeSeriesBuilder()
 	labels := Labels{
 		{Name: "service_name", Value: "api"},
 	}
 
 	builder.Add(1, labels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
-	builder.Add(1, labels, 1000, 500.0, schemav1.Annotations{}, "profile-2")
-	builder.Add(1, labels, 1000, 200.0, schemav1.Annotations{}, "profile-3")
 
-	series := builder.BuildWithFullLabels(nil)
+	series := builder.Build()
 	require.Len(t, series, 1)
-	require.Len(t, series[0].Points, 3)
-
-	point := series[0].Points[0]
-	require.Len(t, point.Exemplars, 3)
-
-	profileIDs := make(map[string]uint64)
-	for _, ex := range point.Exemplars {
-		profileIDs[ex.ProfileId] = ex.Value
-	}
-
-	assert.Contains(t, profileIDs, "profile-1")
-	assert.Equal(t, uint64(100), profileIDs["profile-1"])
-	assert.Contains(t, profileIDs, "profile-2")
-	assert.Equal(t, uint64(500), profileIDs["profile-2"])
-	assert.Contains(t, profileIDs, "profile-3")
-	assert.Equal(t, uint64(200), profileIDs["profile-3"])
+	require.Len(t, series[0].Points, 1)
+	assert.Empty(t, series[0].Points[0].Exemplars, "Build() should not attach exemplars")
 }
 
-func TestTimeSeriesBuilder_ExemplarLabelEnrichment(t *testing.T) {
-	t.Run("BuildWithFullLabels attaches provided labels", func(t *testing.T) {
-		builder := NewTimeSeriesBuilder("service_name")
-		fp := model.Fingerprint(1)
-
-		fullLabels := Labels{
-			{Name: "service_name", Value: "api"},
-			{Name: "env", Value: "prod"},
-			{Name: "pod", Value: "pod-123"},
-		}
-
-		builder.Add(fp, fullLabels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
-
-		series := builder.BuildWithFullLabels(map[model.Fingerprint]Labels{
-			fp: fullLabels,
-		})
-
-		require.Len(t, series, 1)
-		require.Len(t, series[0].Points, 1)
-		require.Len(t, series[0].Points[0].Exemplars, 1)
-
-		exemplar := series[0].Points[0].Exemplars[0]
-		assert.Len(t, exemplar.Labels, 3)
-		assert.Equal(t, "api", findLabelValue(exemplar.Labels, "service_name"))
-		assert.Equal(t, "prod", findLabelValue(exemplar.Labels, "env"))
-		assert.Equal(t, "pod-123", findLabelValue(exemplar.Labels, "pod"))
-	})
-
-	t.Run("Build without labels map leaves exemplars with nil labels", func(t *testing.T) {
-		builder := NewTimeSeriesBuilder("service_name")
-		fp := model.Fingerprint(1)
-
-		labels := Labels{
-			{Name: "service_name", Value: "api"},
-			{Name: "env", Value: "prod"},
-		}
-
-		builder.Add(fp, labels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
-
-		series := builder.BuildWithFullLabels(nil)
-		require.Len(t, series, 1)
-		require.Len(t, series[0].Points, 1)
-		require.Len(t, series[0].Points[0].Exemplars, 1)
-
-		exemplar := series[0].Points[0].Exemplars[0]
-		assert.Nil(t, exemplar.Labels)
-	})
-
-	t.Run("Missing fingerprint in map results in nil labels", func(t *testing.T) {
-		builder := NewTimeSeriesBuilder("service_name")
-		fp := model.Fingerprint(1)
-
-		labels := Labels{
-			{Name: "service_name", Value: "api"},
-		}
-
-		builder.Add(fp, labels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
-		series := builder.BuildWithFullLabels(map[model.Fingerprint]Labels{
-			model.Fingerprint(999): labels,
-		})
-		require.Len(t, series, 1)
-
-		exemplar := series[0].Points[0].Exemplars[0]
-		assert.Nil(t, exemplar.Labels)
-	})
-}
-
-func findLabelValue(labels []*typesv1.LabelPair, name string) string {
-	for _, lp := range labels {
-		if lp.Name == name {
-			return lp.Value
-		}
-	}
-	return ""
-}
-
-func TestTimeSeriesBuilder_RespectsMaxExemplarLimit(t *testing.T) {
+func TestTimeSeriesBuilder_BuildWithExemplars_AttachesExemplars(t *testing.T) {
 	builder := NewTimeSeriesBuilder()
-	builder.maxExemplarCandidates = 2
+	labels := Labels{
+		{Name: "service_name", Value: "api"},
+		{Name: "pod", Value: "pod-123"},
+	}
+
+	builder.Add(1, labels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
+
+	series := builder.BuildWithExemplars()
+	require.Len(t, series, 1)
+	require.Len(t, series[0].Points, 1)
+	require.Len(t, series[0].Points[0].Exemplars, 1)
+
+	exemplar := series[0].Points[0].Exemplars[0]
+	assert.Equal(t, "profile-1", exemplar.ProfileId)
+	assert.Equal(t, uint64(100), exemplar.Value)
+	assert.Equal(t, int64(1000), exemplar.Timestamp)
+
+	// Check full labels are preserved
+	assert.Len(t, exemplar.Labels, 2)
+	assert.Equal(t, "api", findLabelValue(exemplar.Labels, "service_name"))
+	assert.Equal(t, "pod-123", findLabelValue(exemplar.Labels, "pod"))
+}
+
+func TestTimeSeriesBuilder_MultipleExemplarsAtSameTimestamp(t *testing.T) {
+	builder := NewTimeSeriesBuilder()
 	labels := Labels{
 		{Name: "service_name", Value: "api"},
 	}
 
-	for i := 0; i < 3; i++ {
-		profileID := fmt.Sprintf("profile-%d", i)
-		builder.Add(1, labels, 1000, float64(i), schemav1.Annotations{}, profileID)
+	// Same timestamp = same point, multiple exemplars
+	builder.Add(1, labels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
+	builder.Add(1, labels, 1000, 200.0, schemav1.Annotations{}, "profile-2")
+	builder.Add(1, labels, 1000, 300.0, schemav1.Annotations{}, "profile-3")
+
+	series := builder.BuildWithExemplars()
+	require.Len(t, series, 1)
+	require.Len(t, series[0].Points, 3, "Should have 3 points (one per Add call)")
+
+	// All 3 points at timestamp 1000 should have all 3 exemplars
+	point := series[0].Points[0]
+	require.Len(t, point.Exemplars, 3, "Point at timestamp 1000 should have all 3 exemplars")
+
+	profileIDs := make(map[string]bool)
+	for _, ex := range point.Exemplars {
+		profileIDs[ex.ProfileId] = true
+	}
+	assert.True(t, profileIDs["profile-1"])
+	assert.True(t, profileIDs["profile-2"])
+	assert.True(t, profileIDs["profile-3"])
+}
+
+func TestTimeSeriesBuilder_GroupBy(t *testing.T) {
+	builder := NewTimeSeriesBuilder("service_name")
+
+	labels1 := Labels{
+		{Name: "service_name", Value: "api"},
+		{Name: "pod", Value: "pod-1"},
+	}
+	labels2 := Labels{
+		{Name: "service_name", Value: "api"},
+		{Name: "pod", Value: "pod-2"},
 	}
 
-	series := builder.BuildWithFullLabels(nil)
-	require.Len(t, series, 1)
-	point := series[0].Points[0]
+	builder.Add(1, labels1, 1000, 100.0, schemav1.Annotations{}, "profile-1")
+	builder.Add(2, labels2, 1000, 200.0, schemav1.Annotations{}, "profile-2")
 
-	assert.Len(t, point.Exemplars, 2)
+	series := builder.BuildWithExemplars()
+
+	// Should be grouped into 1 series by service_name
+	require.Len(t, series, 1)
+	assert.Len(t, series[0].Labels, 1)
+	assert.Equal(t, "service_name", series[0].Labels[0].Name)
+	assert.Equal(t, "api", series[0].Labels[0].Value)
+
+	// Should have 2 points
+	require.Len(t, series[0].Points, 2)
+
+	// Both exemplars should be at timestamp 1000, grouped together
+	point := series[0].Points[0]
+	require.Len(t, point.Exemplars, 2, "Should have 2 exemplars at the same timestamp")
+
+	// Exemplars should retain full labels including pod
+	for _, ex := range point.Exemplars {
+		assert.Len(t, ex.Labels, 2, "Exemplars should have full labels")
+		assert.NotEmpty(t, findLabelValue(ex.Labels, "pod"), "Exemplar should have pod label")
+	}
+}
+
+func TestTimeSeriesBuilder_ExemplarDeduplication(t *testing.T) {
+	builder := NewTimeSeriesBuilder()
+
+	// Same profileID at same timestamp with same labels
+	labels := Labels{
+		{Name: "service_name", Value: "api"},
+		{Name: "pod", Value: "pod-1"},
+	}
+
+	builder.Add(1, labels, 1000, 100.0, schemav1.Annotations{}, "profile-dup")
+	builder.Add(1, labels, 1000, 200.0, schemav1.Annotations{}, "profile-dup")
+
+	series := builder.BuildWithExemplars()
+	require.Len(t, series, 1)
+	require.Len(t, series[0].Points, 2)
+
+	// Should deduplicate to 1 exemplar per point
+	for _, point := range series[0].Points {
+		require.Len(t, point.Exemplars, 1, "Duplicate exemplars should be merged")
+		assert.Equal(t, "profile-dup", point.Exemplars[0].ProfileId)
+	}
+}
+
+func TestTimeSeriesBuilder_ExemplarLabelIntersection(t *testing.T) {
+	builder := NewTimeSeriesBuilder()
+
+	// Same profileID at same timestamp but different dynamic labels
+	labels1 := Labels{
+		{Name: "service_name", Value: "api"},
+		{Name: "pod", Value: "pod-1"},
+		{Name: "region", Value: "us-east"},
+	}
+	labels2 := Labels{
+		{Name: "service_name", Value: "api"},
+		{Name: "pod", Value: "pod-2"}, // Different pod
+		{Name: "region", Value: "us-east"},
+	}
+
+	fp1 := model.Fingerprint(labels1.Hash())
+	fp2 := model.Fingerprint(labels2.Hash())
+
+	builder.Add(fp1, labels1, 1000, 100.0, schemav1.Annotations{}, "profile-dup")
+	builder.Add(fp2, labels2, 1000, 200.0, schemav1.Annotations{}, "profile-dup")
+
+	series := builder.BuildWithExemplars()
+	require.Len(t, series, 1)
+	require.Len(t, series[0].Points, 2)
+
+	// Find the exemplar (should be on one of the points)
+	var exemplar *typesv1.Exemplar
+	for _, point := range series[0].Points {
+		if len(point.Exemplars) > 0 {
+			exemplar = point.Exemplars[0]
+			break
+		}
+	}
+	require.NotNil(t, exemplar, "Should have at least one exemplar")
+
+	// Should only have labels that match (service_name and region, not pod)
+	assert.Equal(t, "profile-dup", exemplar.ProfileId)
+	assert.Equal(t, "api", findLabelValue(exemplar.Labels, "service_name"))
+	assert.Equal(t, "us-east", findLabelValue(exemplar.Labels, "region"))
+	assert.Empty(t, findLabelValue(exemplar.Labels, "pod"), "Dynamic label should be removed")
 }
 
 func TestTimeSeriesBuilder_MultipleSeries(t *testing.T) {
@@ -201,7 +213,7 @@ func TestTimeSeriesBuilder_MultipleSeries(t *testing.T) {
 	builder.Add(1, labels1, 1000, 100.0, schemav1.Annotations{}, "prod-profile")
 	builder.Add(2, labels2, 1000, 200.0, schemav1.Annotations{}, "staging-profile")
 
-	series := builder.BuildWithFullLabels(nil)
+	series := builder.BuildWithExemplars()
 	require.Len(t, series, 2)
 
 	seriesByEnv := make(map[string]*typesv1.Series)
@@ -227,46 +239,11 @@ func TestTimeSeriesBuilder_MultipleSeries(t *testing.T) {
 	assert.Equal(t, "staging-profile", stagingSeries.Points[0].Exemplars[0].ProfileId)
 }
 
-func TestTimeSeriesBuilder_BuildMethodsExemplarBehavior(t *testing.T) {
-	builder := NewTimeSeriesBuilder()
-	labels := Labels{
-		{Name: "service_name", Value: "api"},
+func findLabelValue(labels []*typesv1.LabelPair, name string) string {
+	for _, lp := range labels {
+		if lp.Name == name {
+			return lp.Value
+		}
 	}
-	fp := model.Fingerprint(labels.Hash())
-
-	builder.Add(fp, labels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
-
-	t.Run("Build() does not attach exemplars", func(t *testing.T) {
-		series := builder.Build()
-		require.Len(t, series, 1)
-		require.Len(t, series[0].Points, 1)
-		assert.Len(t, series[0].Points[0].Exemplars, 0)
-	})
-
-	t.Run("BuildWithFullLabels(nil) attaches exemplars with nil labels", func(t *testing.T) {
-		series := builder.BuildWithFullLabels(nil)
-		require.Len(t, series, 1)
-		require.Len(t, series[0].Points, 1)
-		require.Len(t, series[0].Points[0].Exemplars, 1)
-		assert.Equal(t, "profile-1", series[0].Points[0].Exemplars[0].ProfileId)
-		assert.Nil(t, series[0].Points[0].Exemplars[0].Labels)
-	})
-
-	t.Run("BuildWithFullLabels(map) attaches exemplars with full labels", func(t *testing.T) {
-		fullLabels := Labels{
-			{Name: "service_name", Value: "api"},
-			{Name: "pod", Value: "pod-123"},
-			{Name: "region", Value: "us-east"},
-		}
-		fullLabelsByFingerprint := map[model.Fingerprint]Labels{
-			fp: fullLabels,
-		}
-
-		series := builder.BuildWithFullLabels(fullLabelsByFingerprint)
-		require.Len(t, series, 1)
-		require.Len(t, series[0].Points, 1)
-		require.Len(t, series[0].Points[0].Exemplars, 1)
-		assert.Equal(t, "profile-1", series[0].Points[0].Exemplars[0].ProfileId)
-		assert.Equal(t, fullLabels, Labels(series[0].Points[0].Exemplars[0].Labels))
-	})
+	return ""
 }

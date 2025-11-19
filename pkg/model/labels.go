@@ -584,3 +584,28 @@ func ServiceVersionFromLabels(lbls Labels) (ServiceVersion, bool) {
 		RootPath:   rootPath,
 	}, repo != "" || gitref != "" || rootPath != ""
 }
+
+// IntersectAll returns only the labels that are present in all label sets
+// with the same value. Used for merging exemplars with dynamic labels.
+// Reuses the existing Intersect method by iteratively intersecting all label sets.
+func IntersectAll(labelSets []Labels) Labels {
+	if len(labelSets) == 0 {
+		return nil
+	}
+	if len(labelSets) == 1 {
+		return labelSets[0]
+	}
+
+	result := labelSets[0].Clone()
+	for i := 1; i < len(labelSets); i++ {
+		result = result.Intersect(labelSets[i])
+		if len(result) == 0 {
+			return nil
+		}
+	}
+
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}

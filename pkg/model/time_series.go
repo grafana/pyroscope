@@ -21,7 +21,7 @@ type TimeSeriesValue struct {
 	LabelsHash  uint64
 	Value       float64
 	Annotations []*typesv1.ProfileAnnotation
-	Exemplars   []*exemplarCandidate
+	Exemplars   []*typesv1.Exemplar
 }
 
 func (p TimeSeriesValue) Labels() Labels        { return p.Lbs }
@@ -53,17 +53,7 @@ func (s *TimeSeriesIterator) Next() bool {
 	s.curr.Value = p.Value
 	s.curr.Annotations = p.Annotations
 
-	s.curr.Exemplars = nil
-	if len(p.Exemplars) > 0 {
-		s.curr.Exemplars = make([]*exemplarCandidate, 0, len(p.Exemplars))
-		for _, ex := range p.Exemplars {
-			s.curr.Exemplars = append(s.curr.Exemplars, &exemplarCandidate{
-				profileID: ex.ProfileId,
-				value:     ex.Value,
-				labels:    ex.Labels,
-			})
-		}
-	}
+	s.curr.Exemplars = p.Exemplars
 	return true
 }
 
@@ -104,7 +94,7 @@ type sumTimeSeriesAggregator struct {
 	ts                   int64
 	sum                  float64
 	annotations          []*typesv1.ProfileAnnotation
-	exemplars            []*exemplarCandidate
+	exemplars            []*typesv1.Exemplar
 	maxExemplarsPerPoint int
 }
 
@@ -114,7 +104,7 @@ func (a *sumTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
 	a.annotations = append(a.annotations, point.Annotations...)
 
 	if len(point.Exemplars) > 0 {
-		a.exemplars = mergeExemplarCandidates(a.exemplars, point.Exemplars)
+		a.exemplars = mergeExemplars(a.exemplars, point.Exemplars)
 	}
 }
 
@@ -126,16 +116,9 @@ func (a *sumTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 
 	var exemplars []*typesv1.Exemplar
 	if len(a.exemplars) > 0 {
-		topExemplars := selectTopNExemplars(a.exemplars, a.maxExemplarsPerPoint)
-		exemplars = make([]*typesv1.Exemplar, 0, len(topExemplars))
-		for _, ex := range topExemplars {
-			exemplars = append(exemplars, &typesv1.Exemplar{
-				Timestamp: tsCopy,
-				ProfileId: ex.profileID,
-				SpanId:    "",
-				Value:     ex.value,
-				Labels:    ex.labels,
-			})
+		exemplars = selectTopNExemplarsProto(a.exemplars, a.maxExemplarsPerPoint)
+		for _, ex := range exemplars {
+			ex.Timestamp = tsCopy
 		}
 	}
 
@@ -160,7 +143,7 @@ type avgTimeSeriesAggregator struct {
 	sum                  float64
 	count                int64
 	annotations          []*typesv1.ProfileAnnotation
-	exemplars            []*exemplarCandidate // Track top-N exemplars
+	exemplars            []*typesv1.Exemplar
 	maxExemplarsPerPoint int
 }
 
@@ -171,7 +154,7 @@ func (a *avgTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
 	a.annotations = append(a.annotations, point.Annotations...)
 
 	if len(point.Exemplars) > 0 {
-		a.exemplars = mergeExemplarCandidates(a.exemplars, point.Exemplars)
+		a.exemplars = mergeExemplars(a.exemplars, point.Exemplars)
 	}
 }
 
@@ -183,16 +166,9 @@ func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 
 	var exemplars []*typesv1.Exemplar
 	if len(a.exemplars) > 0 {
-		topExemplars := selectTopNExemplars(a.exemplars, a.maxExemplarsPerPoint)
-		exemplars = make([]*typesv1.Exemplar, 0, len(topExemplars))
-		for _, ex := range topExemplars {
-			exemplars = append(exemplars, &typesv1.Exemplar{
-				Timestamp: tsCopy,
-				ProfileId: ex.profileID,
-				SpanId:    "",
-				Value:     ex.value,
-				Labels:    ex.labels,
-			})
+		exemplars = selectTopNExemplarsProto(a.exemplars, a.maxExemplarsPerPoint)
+		for _, ex := range exemplars {
+			ex.Timestamp = tsCopy
 		}
 	}
 
@@ -290,51 +266,14 @@ Outer:
 	return series
 }
 
-// exemplarCandidate represents a profile candidate for exemplar selection.
-type exemplarCandidate struct {
-	profileID   string
-	value       uint64
-	fingerprint model.Fingerprint
-	labels      Labels
-}
-
-// mergeExemplarCandidates merges new exemplar candidates with existing ones.
-func mergeExemplarCandidates(existing []*exemplarCandidate, candidates []*exemplarCandidate) []*exemplarCandidate {
-	if len(candidates) == 0 {
-		return existing
+// selectTopNExemplarsProto selects the top-N exemplars by value.
+func selectTopNExemplarsProto(exemplars []*typesv1.Exemplar, maxExemplars int) []*typesv1.Exemplar {
+	if len(exemplars) <= maxExemplars {
+		return exemplars
 	}
 
-	byProfileID := make(map[string]*exemplarCandidate)
-	for _, ex := range existing {
-		byProfileID[ex.profileID] = ex
-	}
-
-	// Sum values for same profileID
-	for _, candidate := range candidates {
-		existing, found := byProfileID[candidate.profileID]
-		if !found {
-			byProfileID[candidate.profileID] = candidate
-		} else {
-			existing.value += candidate.value
-		}
-	}
-
-	result := make([]*exemplarCandidate, 0, len(byProfileID))
-	for _, ex := range byProfileID {
-		result = append(result, ex)
-	}
-
-	return result
-}
-
-// selectTopNExemplars selects the top-N exemplars by value from the candidates.
-func selectTopNExemplars(candidates []*exemplarCandidate, maxExemplars int) []*exemplarCandidate {
-	if len(candidates) <= maxExemplars {
-		return candidates
-	}
-
-	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].value > candidates[j].value
+	sort.Slice(exemplars, func(i, j int) bool {
+		return exemplars[i].Value > exemplars[j].Value
 	})
-	return candidates[:maxExemplars]
+	return exemplars[:maxExemplars]
 }
