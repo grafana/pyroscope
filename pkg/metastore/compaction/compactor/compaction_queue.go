@@ -23,9 +23,10 @@ type compactionKey struct {
 }
 
 type compactionQueue struct {
-	config     Config
-	registerer prometheus.Registerer
-	levels     []*blockQueue
+	config         Config
+	registerer     prometheus.Registerer
+	levels         []*blockQueue
+	statsCollector *globalQueueStatsCollector
 }
 
 // blockQueue stages blocks as they are being added. Once a batch of blocks
@@ -103,10 +104,15 @@ type batch struct {
 }
 
 func newCompactionQueue(config Config, registerer prometheus.Registerer) *compactionQueue {
-	return &compactionQueue{
+	q := &compactionQueue{
 		config:     config,
 		registerer: registerer,
 	}
+	if registerer != nil {
+		q.statsCollector = newBlockQueueStatsCollector(q)
+		util.RegisterOrGet(registerer, q.statsCollector)
+	}
+	return q
 }
 
 func (q *compactionQueue) reset() {
