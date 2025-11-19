@@ -97,7 +97,7 @@ func newBlockQueueStatsCollector(compactionQueue *compactionQueue) *globalQueueS
 
 		backlogJobs: prometheus.NewDesc(
 			globalQueueMetricsPrefix+"backlog_jobs_current",
-			"The current total number of backlog compaction jobs.",
+			"The current estimated number of compaction jobs that are yet to be created.",
 			variableLabels, nil,
 		),
 	}
