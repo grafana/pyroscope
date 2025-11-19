@@ -23,6 +23,7 @@ func init() {
 		queryv1.ReportType_REPORT_TIME_SERIES,
 		queryTimeSeries,
 		newTimeSeriesAggregator,
+		true,
 		[]block.Section{
 			block.SectionTSDB,
 			block.SectionProfiles,

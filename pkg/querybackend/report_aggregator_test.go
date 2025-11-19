@@ -50,7 +50,7 @@ func mockAggregatorProvider(req *queryv1.InvokeRequest) aggregator {
 
 func TestReportAggregator_SingleReport(t *testing.T) {
 	reportType := queryv1.ReportType(999) // use a high number that won't conflict with other registrations
-	registerAggregator(reportType, mockAggregatorProvider)
+	registerAggregator(reportType, mockAggregatorProvider, false)
 	defer func() {
 		aggregatorMutex.Lock()
 		delete(aggregators, reportType)
@@ -78,7 +78,7 @@ func TestReportAggregator_SingleReport(t *testing.T) {
 
 func TestReportAggregator_TwoReports(t *testing.T) {
 	reportType := queryv1.ReportType(999)
-	registerAggregator(reportType, mockAggregatorProvider)
+	registerAggregator(reportType, mockAggregatorProvider, false)
 	defer func() {
 		aggregatorMutex.Lock()
 		delete(aggregators, reportType)
@@ -115,8 +115,8 @@ func TestReportAggregator_MultipleTypes(t *testing.T) {
 	type1 := queryv1.ReportType(999)
 	type2 := queryv1.ReportType(998)
 
-	registerAggregator(type1, mockAggregatorProvider)
-	registerAggregator(type2, mockAggregatorProvider)
+	registerAggregator(type1, mockAggregatorProvider, false)
+	registerAggregator(type2, mockAggregatorProvider, false)
 	defer func() {
 		aggregatorMutex.Lock()
 		delete(aggregators, type1)
@@ -167,7 +167,7 @@ func TestReportAggregator_NilReport(t *testing.T) {
 
 func TestReportAggregator_AggregateResponse(t *testing.T) {
 	reportType := queryv1.ReportType(999)
-	registerAggregator(reportType, mockAggregatorProvider)
+	registerAggregator(reportType, mockAggregatorProvider, false)
 	defer func() {
 		aggregatorMutex.Lock()
 		delete(aggregators, reportType)
@@ -194,7 +194,7 @@ func TestReportAggregator_AggregateResponse(t *testing.T) {
 
 func TestReportAggregator_ConcurrentAccess(t *testing.T) {
 	reportType := queryv1.ReportType(999)
-	registerAggregator(reportType, mockAggregatorProvider)
+	registerAggregator(reportType, mockAggregatorProvider, false)
 	defer func() {
 		aggregatorMutex.Lock()
 		delete(aggregators, reportType)
@@ -230,7 +230,7 @@ func TestReportAggregator_ConcurrentAccess(t *testing.T) {
 
 func TestGetAggregator(t *testing.T) {
 	reportType := queryv1.ReportType(999)
-	registerAggregator(reportType, mockAggregatorProvider)
+	registerAggregator(reportType, mockAggregatorProvider, false)
 	defer func() {
 		aggregatorMutex.Lock()
 		delete(aggregators, reportType)
@@ -256,9 +256,9 @@ func TestGetAggregator_UnknownReportType(t *testing.T) {
 func TestRegisterAggregator_Duplicate(t *testing.T) {
 	reportType := queryv1.ReportType(999)
 
-	registerAggregator(reportType, mockAggregatorProvider)
+	registerAggregator(reportType, mockAggregatorProvider, false)
 	assert.Panics(t, func() {
-		registerAggregator(reportType, mockAggregatorProvider)
+		registerAggregator(reportType, mockAggregatorProvider, false)
 	})
 
 	aggregatorMutex.Lock()

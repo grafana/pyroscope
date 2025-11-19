@@ -239,18 +239,20 @@ func (s *testSuite) Test_SeriesLabels() {
 	s.Assert().JSONEq(string(expected), string(actual))
 }
 
+var startTime = time.Unix(1739263329, 0)
+
 func (s *testSuite) Test_QueryTimeSeries() {
 	query := &queryv1.Query{
 		QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
 		TimeSeries: &queryv1.TimeSeriesQuery{
 			GroupBy: []string{"service_name"},
-			Step:    1.0, // 1 second step
+			Step:    30.0,
 		},
 	}
 
 	req := &queryv1.InvokeRequest{
-		StartTime:     time.Now().Add(-1 * time.Hour).UnixMilli(),
-		EndTime:       time.Now().UnixMilli(),
+		StartTime:     startTime.UnixMilli(),
+		EndTime:       startTime.Add(time.Hour).UnixMilli(),
 		Query:         []*queryv1.Query{query},
 		QueryPlan:     s.plan,
 		LabelSelector: "{}",
@@ -262,6 +264,47 @@ func (s *testSuite) Test_QueryTimeSeries() {
 	s.Require().NotNil(resp)
 	s.Require().Len(resp.Reports, 1)
 	s.Require().NotNil(resp.Reports[0].TimeSeries)
+
+	actual, _ := json.Marshal(resp.Reports[0].TimeSeries.TimeSeries)
+	expected, err := os.ReadFile("testdata/fixtures/time_series.json")
+	s.Require().NoError(err)
+	s.Assert().JSONEq(string(expected), string(actual))
+}
+
+// When there is only one report we don't run the aggregate method. This check ensures that the timeseries, is still correctly formatted.
+func (s *testSuite) Test_QueryTimeSeriesOneReport() {
+	query := &queryv1.Query{
+		QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
+		TimeSeries: &queryv1.TimeSeriesQuery{
+			GroupBy: []string{"service_name"},
+			Step:    30.0,
+		},
+	}
+
+	// shorten plan so there is only one report
+	shorterPlan := s.plan.CloneVT()
+	shorterPlan.Root = s.plan.Root.CloneVT()
+	shorterPlan.Root.Blocks = s.plan.Root.Blocks[:1]
+
+	req := &queryv1.InvokeRequest{
+		StartTime:     startTime.UnixMilli(),
+		EndTime:       startTime.Add(time.Hour).UnixMilli(),
+		Query:         []*queryv1.Query{query},
+		QueryPlan:     shorterPlan,
+		LabelSelector: "{}",
+		Tenant:        s.tenant,
+	}
+
+	resp, err := s.reader.Invoke(s.ctx, req)
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().Len(resp.Reports, 1)
+	s.Require().NotNil(resp.Reports[0].TimeSeries)
+
+	actual, _ := json.Marshal(resp.Reports[0].TimeSeries.TimeSeries)
+	expected, err := os.ReadFile("testdata/fixtures/time_series_first_block.json")
+	s.Require().NoError(err)
+	s.Assert().JSONEq(string(expected), string(actual))
 }
 
 func (s *testSuite) Test_QueryTree_All_Tenant_Isolation() {
