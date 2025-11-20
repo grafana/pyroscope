@@ -14,11 +14,11 @@ jobs:
       id-token: write
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: 'false'
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@c8ac4a279df46ebd1f85064119a0835098b88092
+        uses: grafana/shared-workflows/actions/get-vault-secrets@0c35ca9c1d8794ccf9cfcfdcdd6b02261c7d0183
         with:
           repo_secrets: |
             GITHUB_APP_ID=pyroscope-development-app:app-id
@@ -48,7 +48,7 @@ jobs:
           git config --local user.name "${APP_BOT}"
           git config --local user.email "${{ steps.get-user-id.outputs.user-id }}+${APP_BOT}@users.noreply.github.com"
           git remote set-url "origin" https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/${{ github.repository }}.git > /dev/null 2> /dev/null
-      - uses: grafana/writers-toolkit/update-make-docs@9387a2a634137ff88feb4f68ddfd72a04564278d
+      - uses: grafana/writers-toolkit/update-make-docs@cbf55295306306a843cde714efdd5a399d5b743e
         with:
           pr_options: >
             --label type/docs
