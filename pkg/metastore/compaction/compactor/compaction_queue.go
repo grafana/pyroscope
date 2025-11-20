@@ -109,6 +109,7 @@ type batch struct {
 func newCompactionQueue(config Config, registerer prometheus.Registerer) *compactionQueue {
 	globalStats := &globalQueueStats{
 		blocksPerLevel: make([]atomic.Int32, len(config.Levels)),
+		queuesPerLevel: make([]atomic.Int32, len(config.Levels)),
 	}
 	q := &compactionQueue{
 		config:      config,
@@ -187,7 +188,7 @@ func (q *blockQueue) stagedBlocks(k compactionKey) *stagedBlocks {
 		staged.resetBatch()
 		q.staged[k] = staged
 		heap.Push(q.updates, staged)
-		q.globalStats.queues.Add(1)
+		q.globalStats.AddQueues(q.level, 1)
 		if q.registerer != nil {
 			staged.collector = newQueueStatsCollector(staged)
 			util.RegisterOrGet(q.registerer, staged.collector)
@@ -205,7 +206,7 @@ func (q *blockQueue) removeStaged(s *stagedBlocks) {
 		panic("bug: attempt to delete compaction queue with an invalid priority index")
 	}
 	heap.Remove(q.updates, s.heapIndex)
-	q.globalStats.queues.Add(-1)
+	q.globalStats.AddQueues(q.level, -1)
 }
 
 func (s *stagedBlocks) push(block blockEntry) bool {
@@ -220,7 +221,7 @@ func (s *stagedBlocks) push(block blockEntry) bool {
 	}
 	s.batch.size++
 	s.stats.blocks.Add(1)
-	s.queue.globalStats.AddBlock(s.queue.level, 1)
+	s.queue.globalStats.AddBlocks(s.queue.level, 1)
 	if s.queue.config.exceedsMaxSize(s.batch) ||
 		s.queue.config.exceedsMaxAge(s.batch, s.updatedAt) {
 		s.flush()
@@ -263,7 +264,7 @@ func (s *stagedBlocks) delete(block string) blockEntry {
 	ref.batch.blocks[ref.index] = zeroBlockEntry
 	ref.batch.size--
 	s.stats.blocks.Add(-1)
-	s.queue.globalStats.AddBlock(s.queue.level, -1)
+	s.queue.globalStats.AddBlocks(s.queue.level, -1)
 	if ref.batch.size == 0 {
 		if ref.batch != s.batch {
 			// We should never ever try to delete the staging batch from the
