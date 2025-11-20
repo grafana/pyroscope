@@ -117,10 +117,10 @@ func (q *QueryFrontend) Query(
 		modifiedQueries[i] = originalQuery.CloneVT()
 
 		// If we need symbolization and this is a TREE query, convert it to PPROF
-		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE && originalQuery.Tree != nil {
+		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
-				MaxNodes: originalQuery.Tree.MaxNodes,
+				MaxNodes: originalQuery.Tree.GetMaxNodes(),
 			}
 			modifiedQueries[i].Tree = nil
 		}
@@ -299,7 +299,7 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 
 		// Convert back to tree if originally a tree
 		if i < len(originalQueries) && originalQueries[i].QueryType == queryv1.QueryType_QUERY_TREE {
-			treeBytes, err := model.TreeFromBackendProfile(&prof, originalQueries[i].Tree.MaxNodes)
+			treeBytes, err := model.TreeFromBackendProfile(&prof, originalQueries[i].Tree.GetMaxNodes())
 			if err != nil {
 				return fmt.Errorf("failed to build tree: %w", err)
 			}
