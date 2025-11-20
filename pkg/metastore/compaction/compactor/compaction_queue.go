@@ -45,7 +45,6 @@ type blockQueue struct {
 	config      Config
 	registerer  prometheus.Registerer
 	staged      map[compactionKey]*stagedBlocks
-	level       uint32
 	globalStats *globalQueueStats
 	// Batches ordered by arrival.
 	head, tail *batch
@@ -107,10 +106,7 @@ type batch struct {
 }
 
 func newCompactionQueue(config Config, registerer prometheus.Registerer) *compactionQueue {
-	globalStats := &globalQueueStats{
-		blocksPerLevel: make([]atomic.Int32, len(config.Levels)),
-		queuesPerLevel: make([]atomic.Int32, len(config.Levels)),
-	}
+	globalStats := newGlobalQueueStats(len(config.Levels))
 	q := &compactionQueue{
 		config:      config,
 		registerer:  registerer,
@@ -159,18 +155,17 @@ func (q *compactionQueue) blockQueue(l uint32) *blockQueue {
 	}
 	level := q.levels[l]
 	if level == nil {
-		level = newBlockQueue(q.config, q.registerer, l, q.globalStats)
+		level = newBlockQueue(q.config, q.registerer, q.globalStats)
 		q.levels[l] = level
 	}
 	return level
 }
 
-func newBlockQueue(config Config, registerer prometheus.Registerer, level uint32, globalStats *globalQueueStats) *blockQueue {
+func newBlockQueue(config Config, registerer prometheus.Registerer, globalStats *globalQueueStats) *blockQueue {
 	return &blockQueue{
 		config:      config,
 		registerer:  registerer,
 		staged:      make(map[compactionKey]*stagedBlocks),
-		level:       level,
 		globalStats: globalStats,
 		updates:     new(priorityBlockQueue),
 	}
@@ -188,7 +183,7 @@ func (q *blockQueue) stagedBlocks(k compactionKey) *stagedBlocks {
 		staged.resetBatch()
 		q.staged[k] = staged
 		heap.Push(q.updates, staged)
-		q.globalStats.AddQueues(q.level, 1)
+		q.globalStats.AddQueues(k, 1)
 		if q.registerer != nil {
 			staged.collector = newQueueStatsCollector(staged)
 			util.RegisterOrGet(q.registerer, staged.collector)
@@ -206,7 +201,7 @@ func (q *blockQueue) removeStaged(s *stagedBlocks) {
 		panic("bug: attempt to delete compaction queue with an invalid priority index")
 	}
 	heap.Remove(q.updates, s.heapIndex)
-	q.globalStats.AddQueues(q.level, -1)
+	q.globalStats.AddQueues(s.key, -1)
 }
 
 func (s *stagedBlocks) push(block blockEntry) bool {
@@ -221,7 +216,7 @@ func (s *stagedBlocks) push(block blockEntry) bool {
 	}
 	s.batch.size++
 	s.stats.blocks.Add(1)
-	s.queue.globalStats.AddBlocks(s.queue.level, 1)
+	s.queue.globalStats.AddBlocks(s.key, 1)
 	if s.queue.config.exceedsMaxSize(s.batch) ||
 		s.queue.config.exceedsMaxAge(s.batch, s.updatedAt) {
 		s.flush()
@@ -264,7 +259,7 @@ func (s *stagedBlocks) delete(block string) blockEntry {
 	ref.batch.blocks[ref.index] = zeroBlockEntry
 	ref.batch.size--
 	s.stats.blocks.Add(-1)
-	s.queue.globalStats.AddBlocks(s.queue.level, -1)
+	s.queue.globalStats.AddBlocks(s.key, -1)
 	if ref.batch.size == 0 {
 		if ref.batch != s.batch {
 			// We should never ever try to delete the staging batch from the
