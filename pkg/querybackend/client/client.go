@@ -2,6 +2,8 @@ package querybackendclient
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
@@ -15,8 +17,8 @@ type Client struct {
 	grpcClient queryv1.QueryBackendServiceClient
 }
 
-func New(address string, grpcClientConfig grpcclient.Config, dialOpts ...grpc.DialOption) (*Client, error) {
-	conn, err := dial(address, grpcClientConfig, dialOpts...)
+func New(address string, grpcClientConfig grpcclient.Config, timeout time.Duration, dialOpts ...grpc.DialOption) (*Client, error) {
+	conn, err := dial(address, grpcClientConfig, timeout, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -26,14 +28,15 @@ func New(address string, grpcClientConfig grpcclient.Config, dialOpts ...grpc.Di
 	return &c, nil
 }
 
-func dial(address string, grpcClientConfig grpcclient.Config, dialOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func dial(address string, grpcClientConfig grpcclient.Config, timeout time.Duration, dialOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	options, err := grpcClientConfig.DialOption(nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 	// TODO: https://github.com/grpc/grpc-proto/blob/master/grpc/service_config/service_config.proto
+	serviceConfig := fmt.Sprintf(grpcServiceConfigTemplate, timeout.Seconds())
 	options = append(options,
-		grpc.WithDefaultServiceConfig(grpcServiceConfig),
+		grpc.WithDefaultServiceConfig(serviceConfig),
 		grpc.WithMaxCallAttempts(500),
 	)
 	options = append(options, dialOpts...)
@@ -48,7 +51,7 @@ func (b *Client) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*query
 	return b.grpcClient.Invoke(ctx, req)
 }
 
-const grpcServiceConfig = `{
+const grpcServiceConfigTemplate = `{
     "loadBalancingPolicy":"round_robin",
     "methodConfig": [{
         "name": [{"service": ""}],
@@ -63,6 +66,6 @@ const grpcServiceConfig = `{
               "RESOURCE_EXHAUSTED"
             ]
         },
-        "timeout": "30s"
+        "timeout": "%.0fs"
     }]
 }`

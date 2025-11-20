@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/grpcclient"
@@ -20,10 +21,12 @@ import (
 type Config struct {
 	Address          string            `yaml:"address"`
 	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
+	ClientTimeout    time.Duration     `yaml:"client_timeout"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.Address, "query-backend.address", "localhost:9095", "")
+	f.DurationVar(&cfg.ClientTimeout, "query-backend.client-timeout", 30*time.Second, "Timeout for query-backend client requests.")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-backend.grpc-client-config", f)
 }
 

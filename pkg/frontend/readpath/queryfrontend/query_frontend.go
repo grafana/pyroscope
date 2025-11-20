@@ -27,7 +27,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/querybackend/queryplan"
-	"github.com/grafana/pyroscope/pkg/util/validation"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
@@ -119,14 +118,9 @@ func (q *QueryFrontend) Query(
 
 		// If we need symbolization and this is a TREE query, convert it to PPROF
 		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
-			maxNodes := int64(validation.SmallestPositiveNonZeroIntPerTenant(tenants, q.limits.MaxFlameGraphNodesMax))
-			if maxNodes == 0 {
-				maxNodes = int64(validation.SmallestPositiveNonZeroIntPerTenant(tenants, q.limits.MaxFlameGraphNodesDefault))
-			}
-
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
-				MaxNodes: maxNodes,
+				MaxNodes: originalQuery.Tree.MaxNodes,
 			}
 			modifiedQueries[i].Tree = nil
 		}
