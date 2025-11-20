@@ -22,6 +22,7 @@ func init() {
 		queryv1.ReportType_REPORT_TIME_SERIES,
 		queryTimeSeries,
 		newTimeSeriesAggregator,
+		true,
 		[]block.Section{
 			block.SectionTSDB,
 			block.SectionProfiles,
@@ -30,7 +31,22 @@ func init() {
 }
 
 func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
-	entries, err := profileEntryIterator(q, query.TimeSeries.GroupBy...)
+	opts := []profileIteratorOption{
+		withFetchPartition(false), // Partition data not needed, as we don't access stacktraces at all
+	}
+	exemplarsEnabled := false // TODO: This will be enabled as part of #4615
+	if exemplarsEnabled {
+		opts = append(opts,
+			withAllLabels(),
+			withFetchProfileIDs(true),
+		)
+	} else {
+		opts = append(opts,
+			withGroupByLabels(query.TimeSeries.GroupBy...),
+		)
+	}
+
+	entries, err := profileEntryIterator(q, opts...)
 	if err != nil {
 		return nil, err
 	}
