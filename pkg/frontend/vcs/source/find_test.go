@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/go-kit/log"
@@ -17,49 +18,66 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
 )
 
-func newTestVCSClient(b testing.TB) *testVCSClient {
-	return &testVCSClient{
+func newMockVCSClient() *mockVCSClient {
+	return &mockVCSClient{
 		files: make(map[client.FileRequest]client.File),
-		t:     b,
 	}
 }
 
-type testVCSClient struct {
-	files map[client.FileRequest]client.File
-	t     testing.TB
-}
-
-func (m *testVCSClient) GetFile(ctx context.Context, req client.FileRequest) (client.File, error) {
-	if file, ok := m.files[req]; ok {
-		return file, nil
-	}
-	m.t.Logf("file not found: %+v", req)
-	return client.File{}, client.ErrNotFound
-}
-
-// mockFileResponse represents a file to be mocked
 type mockFileResponse struct {
 	request client.FileRequest
 	content string
 }
 
-// setupMockFiles is a shared function to setup mock responses for GetFile calls
-func (m *testVCSClient) addFiles(files ...mockFileResponse) {
+func newFile(path string) mockFileResponse {
+	return mockFileResponse{
+		request: client.FileRequest{
+			Path: path,
+		},
+		content: "# Content of " + path,
+	}
+}
+
+func (f *mockFileResponse) url() string {
+	return fmt.Sprintf(
+		"https://github.com/%s/%s/blob/%s/%s",
+		f.request.Owner,
+		f.request.Repo,
+		f.request.Ref,
+		f.request.Path,
+	)
+}
+
+type mockVCSClient struct {
+	mtx              sync.Mutex
+	files            map[client.FileRequest]client.File
+	searchedSequence []string
+}
+
+func (c *mockVCSClient) GetFile(ctx context.Context, req client.FileRequest) (client.File, error) {
+	c.mtx.Lock()
+	c.searchedSequence = append(c.searchedSequence, req.Path)
+	file, ok := c.files[req]
+	c.mtx.Unlock()
+	if ok {
+		return file, nil
+	}
+	return client.File{}, client.ErrNotFound
+}
+
+func (c *mockVCSClient) addFiles(files ...mockFileResponse) *mockVCSClient {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
 	for _, file := range files {
 		file.request.Owner = defaultOwner(file.request.Owner)
 		file.request.Repo = defaultRepo(file.request.Repo)
 		file.request.Ref = defaultRef(file.request.Ref)
-		m.files[file.request] = client.File{
+		c.files[file.request] = client.File{
 			Content: file.content,
-			URL: fmt.Sprintf(
-				"https://github.com/%s/%s/blob/%s/%s",
-				file.request.Owner,
-				file.request.Repo,
-				file.request.Ref,
-				file.request.Path,
-			),
+			URL:     file.url(),
 		}
 	}
+	return c
 }
 
 func defaultOwner(s string) string {
@@ -393,7 +411,7 @@ require (
 			ctx := context.Background()
 
 			// Setup mock VCS client
-			mockClient := newTestVCSClient(t)
+			mockClient := newMockVCSClient()
 
 			// Populate pyroscopeYAML content into first mock file (if present)
 			mockFiles := append(tt.mockFiles, mockFileResponse{

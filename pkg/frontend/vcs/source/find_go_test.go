@@ -11,20 +11,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
 )
 
-type VCSClientMock struct {
-	fileToFind       string
-	searchedSequence []string
-}
-
-func (c *VCSClientMock) GetFile(ctx context.Context, req client.FileRequest) (client.File, error) {
-	c.searchedSequence = append(c.searchedSequence, req.Path)
-	if req.Path == c.fileToFind {
-		return client.File{}, nil
-	} else {
-		return client.File{}, client.ErrNotFound
-	}
-}
-
 func Test_tryFindGoFile(t *testing.T) {
 	pyroscopeRepo, _ := giturl.NewGitURL("http://github.com/grafana/pyroscope")
 	tests := []struct {
@@ -32,7 +18,7 @@ func Test_tryFindGoFile(t *testing.T) {
 		searchedPath          string
 		rootPath              string
 		repo                  giturl.IGitURL
-		clientMock            *VCSClientMock
+		clientMock            *mockVCSClient
 		attempts              int
 		expectedSearchedPaths []string
 		expectedError         error
@@ -42,7 +28,7 @@ func Test_tryFindGoFile(t *testing.T) {
 			searchedPath:          "/var/service1/src/main.go",
 			rootPath:              "",
 			repo:                  pyroscopeRepo,
-			clientMock:            &VCSClientMock{fileToFind: "/main.go"},
+			clientMock:            newMockVCSClient().addFiles(newFile("main.go")),
 			attempts:              5,
 			expectedSearchedPaths: []string{"var/service1/src/main.go", "service1/src/main.go", "src/main.go", "main.go"},
 			expectedError:         nil,
@@ -52,7 +38,7 @@ func Test_tryFindGoFile(t *testing.T) {
 			searchedPath:          "/src/main.go",
 			rootPath:              "service/example",
 			repo:                  pyroscopeRepo,
-			clientMock:            &VCSClientMock{fileToFind: "service/example/main.go"},
+			clientMock:            newMockVCSClient().addFiles(newFile("service/example/main.go")),
 			attempts:              5,
 			expectedSearchedPaths: []string{"service/example/src/main.go", "service/example/main.go"},
 			expectedError:         nil,
@@ -62,7 +48,7 @@ func Test_tryFindGoFile(t *testing.T) {
 			searchedPath:          "github.com/grafana/pyroscope/main.go",
 			rootPath:              "",
 			repo:                  pyroscopeRepo,
-			clientMock:            &VCSClientMock{fileToFind: "/main.go"},
+			clientMock:            newMockVCSClient().addFiles(newFile("main.go")),
 			attempts:              1,
 			expectedSearchedPaths: []string{"main.go"},
 			expectedError:         nil,
@@ -72,7 +58,7 @@ func Test_tryFindGoFile(t *testing.T) {
 			searchedPath:          "/Users/pyroscope/git/github.com/grafana/pyroscope/main.go",
 			rootPath:              "",
 			repo:                  pyroscopeRepo,
-			clientMock:            &VCSClientMock{fileToFind: "/main.go"},
+			clientMock:            newMockVCSClient().addFiles(newFile("main.go")),
 			attempts:              1,
 			expectedSearchedPaths: []string{"main.go"},
 			expectedError:         nil,
@@ -82,7 +68,7 @@ func Test_tryFindGoFile(t *testing.T) {
 			searchedPath:          "/var/service1/src/main.go",
 			rootPath:              "",
 			repo:                  pyroscopeRepo,
-			clientMock:            &VCSClientMock{fileToFind: "/main.go"},
+			clientMock:            newMockVCSClient().addFiles(newFile("main.go")),
 			attempts:              3,
 			expectedSearchedPaths: []string{"var/service1/src/main.go", "service1/src/main.go", "src/main.go"},
 			expectedError:         client.ErrNotFound,
@@ -94,6 +80,7 @@ func Test_tryFindGoFile(t *testing.T) {
 			sut := FileFinder{
 				file:     config.FileSpec{Path: tt.searchedPath},
 				rootPath: tt.rootPath,
+				ref:      defaultRef(""),
 				repo:     tt.repo,
 				client:   tt.clientMock,
 			}
