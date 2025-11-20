@@ -2,6 +2,7 @@ package compactor
 
 import (
 	"strconv"
+	"sync"
 	"sync/atomic"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -69,16 +70,28 @@ func (b *queueStatsCollector) Collect(m chan<- prometheus.Metric) {
 }
 
 type globalQueueStats struct {
-	blocksPerLevel []atomic.Int32
-	queuesPerLevel []atomic.Int32
+	blocksPerLevel       []atomic.Int32
+	queuesPerLevel       []atomic.Int32
+	blocksPerLevelAndKey []sync.Map
 }
 
-func (g *globalQueueStats) AddBlocks(level uint32, delta int32) {
-	g.blocksPerLevel[level].Add(delta)
+func newGlobalQueueStats(numLevels int) *globalQueueStats {
+	return &globalQueueStats{
+		blocksPerLevel:       make([]atomic.Int32, numLevels),
+		queuesPerLevel:       make([]atomic.Int32, numLevels),
+		blocksPerLevelAndKey: make([]sync.Map, numLevels),
+	}
 }
 
-func (g *globalQueueStats) AddQueues(level uint32, delta int32) {
-	g.queuesPerLevel[level].Add(delta)
+func (g *globalQueueStats) AddBlocks(key compactionKey, delta int32) {
+	b, _ := g.blocksPerLevelAndKey[key.level].LoadOrStore(key, &atomic.Int32{})
+	counter := b.(*atomic.Int32)
+	counter.Add(delta)
+	g.blocksPerLevel[key.level].Add(delta)
+}
+
+func (g *globalQueueStats) AddQueues(key compactionKey, delta int32) {
+	g.queuesPerLevel[key.level].Add(delta)
 }
 
 type globalQueueStatsCollector struct {
@@ -133,7 +146,15 @@ func (c *globalQueueStatsCollector) Collect(ch chan<- prometheus.Metric) {
 		maxBlocks := levelConfig.MaxBlocks
 		var backlogJobs int
 		if maxBlocks != 0 {
-			backlogJobs = int(blocksAtLevel) / int(maxBlocks)
+			c.compactionQueue.globalStats.blocksPerLevelAndKey[levelIdx].Range(func(k, v interface{}) bool {
+				blocks := v.(*atomic.Int32).Load()
+				if blocks == 0 {
+					c.compactionQueue.globalStats.blocksPerLevelAndKey[levelIdx].Delete(k)
+				} else {
+					backlogJobs += int(blocks) / int(maxBlocks)
+				}
+				return true
+			})
 		}
 
 		ch <- prometheus.MustNewConstMetric(c.blocks, prometheus.GaugeValue, float64(blocksAtLevel), levelLabel)
