@@ -16,7 +16,10 @@ import (
 func testBlockEntry(id int) blockEntry { return blockEntry{id: strconv.Itoa(id)} }
 
 func testBlockQueue(cfg Config) *blockQueue {
-	stats := &globalQueueStats{blocksPerLevel: make([]atomic.Int32, len(cfg.Levels))}
+	stats := &globalQueueStats{
+		blocksPerLevel: make([]atomic.Int32, len(cfg.Levels)),
+		queuesPerLevel: make([]atomic.Int32, len(cfg.Levels)),
+	}
 	return newBlockQueue(cfg, nil, 0, stats)
 }
 

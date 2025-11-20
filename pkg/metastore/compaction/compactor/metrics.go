@@ -69,14 +69,16 @@ func (b *queueStatsCollector) Collect(m chan<- prometheus.Metric) {
 }
 
 type globalQueueStats struct {
-	blocks         atomic.Int32
-	queues         atomic.Int32
-	blocksPerLevel []atomic.Int32 // Indexed by level for backlog calculation
+	blocksPerLevel []atomic.Int32
+	queuesPerLevel []atomic.Int32
 }
 
-func (g *globalQueueStats) AddBlock(level uint32, delta int32) {
-	g.blocks.Add(1)
+func (g *globalQueueStats) AddBlocks(level uint32, delta int32) {
 	g.blocksPerLevel[level].Add(delta)
+}
+
+func (g *globalQueueStats) AddQueues(level uint32, delta int32) {
+	g.queuesPerLevel[level].Add(delta)
 }
 
 type globalQueueStatsCollector struct {
@@ -90,25 +92,27 @@ type globalQueueStatsCollector struct {
 const globalQueueMetricsPrefix = "compaction_global_queue_"
 
 func newGlobalQueueStatsCollector(compactionQueue *compactionQueue) *globalQueueStatsCollector {
+	variableLabels := []string{"level"}
+
 	return &globalQueueStatsCollector{
 		compactionQueue: compactionQueue,
 
 		blocks: prometheus.NewDesc(
 			globalQueueMetricsPrefix+"blocks_current",
 			"The current total number of blocks across all queues.",
-			nil, nil,
+			variableLabels, nil,
 		),
 
 		queues: prometheus.NewDesc(
 			globalQueueMetricsPrefix+"queues_current",
 			"The current total number of queues.",
-			nil, nil,
+			variableLabels, nil,
 		),
 
 		backlogJobs: prometheus.NewDesc(
 			globalQueueMetricsPrefix+"backlog_jobs_current",
 			"The current estimated number of compaction jobs that are yet to be created.",
-			nil, nil,
+			variableLabels, nil,
 		),
 	}
 }
@@ -120,21 +124,20 @@ func (c *globalQueueStatsCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *globalQueueStatsCollector) Collect(ch chan<- prometheus.Metric) {
-	blocks := c.compactionQueue.globalStats.blocks.Load()
-	queues := c.compactionQueue.globalStats.queues.Load()
-
-	var totalBacklogJobs int
 	for levelIdx, levelConfig := range c.compactionQueue.config.Levels {
 		blocksAtLevel := c.compactionQueue.globalStats.blocksPerLevel[levelIdx].Load()
-		maxBlocks := levelConfig.MaxBlocks
-		if maxBlocks == 0 {
-			// This is likely a misconfiguration, we'll just skip it.
-			continue
-		}
-		totalBacklogJobs += int(blocksAtLevel) / int(maxBlocks)
-	}
+		queuesAtLevel := c.compactionQueue.globalStats.queuesPerLevel[levelIdx].Load()
 
-	ch <- prometheus.MustNewConstMetric(c.blocks, prometheus.GaugeValue, float64(blocks))
-	ch <- prometheus.MustNewConstMetric(c.queues, prometheus.GaugeValue, float64(queues))
-	ch <- prometheus.MustNewConstMetric(c.backlogJobs, prometheus.GaugeValue, float64(totalBacklogJobs))
+		levelLabel := strconv.Itoa(levelIdx)
+
+		maxBlocks := levelConfig.MaxBlocks
+		var backlogJobs int
+		if maxBlocks != 0 {
+			backlogJobs = int(blocksAtLevel) / int(maxBlocks)
+		}
+
+		ch <- prometheus.MustNewConstMetric(c.blocks, prometheus.GaugeValue, float64(blocksAtLevel), levelLabel)
+		ch <- prometheus.MustNewConstMetric(c.queues, prometheus.GaugeValue, float64(queuesAtLevel), levelLabel)
+		ch <- prometheus.MustNewConstMetric(c.backlogJobs, prometheus.GaugeValue, float64(backlogJobs), levelLabel)
+	}
 }
