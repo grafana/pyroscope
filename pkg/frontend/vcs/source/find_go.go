@@ -32,6 +32,24 @@ func (ff FileFinder) findGoFile(ctx context.Context, mappings ...*config.Mapping
 	sp.SetTag("file.path", ff.file.Path)
 	sp.SetTag("file.function_name", ff.file.FunctionName)
 
+	// if we have mappings try those first
+	for _, m := range mappings {
+		pos := m.Match(ff.file)
+		if pos < 0 || pos > len(ff.file.Path) {
+			level.Warn(ff.logger).Log("msg", "mapping cut off out of bounds", "pos", pos, "file_path", ff.file.Path)
+			continue
+		}
+		resp, err := ff.fetchMappingFile(ctx, m, strings.TrimLeft(ff.file.Path[pos:], "/"))
+		if err != nil {
+			if errors.Is(err, client.ErrNotFound) {
+				continue
+			}
+			level.Warn(ff.logger).Log("msg", "failed to fetch mapping file", "err", err)
+			continue
+		}
+		return resp, nil
+	}
+
 	if path, version, ok := golang.IsStandardLibraryPath(ff.file.Path); ok {
 		return ff.fetchGoStdlib(ctx, path, version)
 	}
@@ -187,10 +205,14 @@ func (ff FileFinder) tryFindGoFile(ctx context.Context, maxAttempts int) (*vcsv1
 	path = strings.TrimLeft(path, "/")
 	attempts := 0
 	for {
+		reqPath := path
+		if ff.rootPath != "" {
+			reqPath = strings.Join([]string{ff.rootPath, path}, "/")
+		}
 		content, err := ff.client.GetFile(ctx, client.FileRequest{
 			Owner: ff.repo.GetOwnerName(),
 			Repo:  ff.repo.GetRepoName(),
-			Path:  strings.Join([]string{ff.rootPath, path}, "/"),
+			Path:  reqPath,
 			Ref:   ff.ref,
 		})
 		attempts++

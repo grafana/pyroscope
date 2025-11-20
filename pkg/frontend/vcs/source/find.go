@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -137,7 +138,7 @@ func (arg FileFinder) fetchRepoFile(ctx context.Context, path, ref string) (*vcs
 	content, err := arg.client.GetFile(ctx, client.FileRequest{
 		Owner: arg.repo.GetOwnerName(),
 		Repo:  arg.repo.GetRepoName(),
-		Path:  path,
+		Path:  strings.TrimLeft(path, "/"),
 		Ref:   ref,
 	})
 	if err != nil {
@@ -183,14 +184,20 @@ func newFileResponse(content, url string) (*vcsv1.GetFileResponse, error) {
 
 func (ff FileFinder) fetchMappingFile(ctx context.Context, m *config.MappingConfig, path string) (*vcsv1.GetFileResponse, error) {
 	if s := m.Source.Local; s != nil {
-		return ff.fetchRepoFile(ctx, filepath.Join(s.Path, path), ff.ref)
+		if s.Path != "" {
+			path = filepath.Join(s.Path, path)
+		}
+		return ff.fetchRepoFile(ctx, path, ff.ref)
 	}
 	if s := m.Source.GitHub; s != nil {
+		if s.Path != "" {
+			path = filepath.Join(s.Path, path)
+		}
 		content, err := ff.client.GetFile(ctx, client.FileRequest{
 			Owner: s.Owner,
 			Repo:  s.Repo,
 			Ref:   s.Ref,
-			Path:  filepath.Join(s.Path, path),
+			Path:  path,
 		})
 		if err != nil {
 			return nil, err
