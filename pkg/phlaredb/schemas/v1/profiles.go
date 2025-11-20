@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	IDColumnName                  = "ID"
 	SeriesIndexColumnName         = "SeriesIndex"
 	TimeNanosColumnName           = "TimeNanos"
 	StacktracePartitionColumnName = "StacktracePartition"
