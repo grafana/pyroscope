@@ -44,7 +44,7 @@ func Test_tryFindGoFile(t *testing.T) {
 			repo:                  pyroscopeRepo,
 			clientMock:            &VCSClientMock{fileToFind: "/main.go"},
 			attempts:              5,
-			expectedSearchedPaths: []string{"/var/service1/src/main.go", "/service1/src/main.go", "/src/main.go", "/main.go"},
+			expectedSearchedPaths: []string{"var/service1/src/main.go", "service1/src/main.go", "src/main.go", "main.go"},
 			expectedError:         nil,
 		},
 		{
@@ -64,7 +64,7 @@ func Test_tryFindGoFile(t *testing.T) {
 			repo:                  pyroscopeRepo,
 			clientMock:            &VCSClientMock{fileToFind: "/main.go"},
 			attempts:              1,
-			expectedSearchedPaths: []string{"/main.go"},
+			expectedSearchedPaths: []string{"main.go"},
 			expectedError:         nil,
 		},
 		{
@@ -74,7 +74,7 @@ func Test_tryFindGoFile(t *testing.T) {
 			repo:                  pyroscopeRepo,
 			clientMock:            &VCSClientMock{fileToFind: "/main.go"},
 			attempts:              1,
-			expectedSearchedPaths: []string{"/main.go"},
+			expectedSearchedPaths: []string{"main.go"},
 			expectedError:         nil,
 		},
 		{
@@ -84,7 +84,7 @@ func Test_tryFindGoFile(t *testing.T) {
 			repo:                  pyroscopeRepo,
 			clientMock:            &VCSClientMock{fileToFind: "/main.go"},
 			attempts:              3,
-			expectedSearchedPaths: []string{"/var/service1/src/main.go", "/service1/src/main.go", "/src/main.go"},
+			expectedSearchedPaths: []string{"var/service1/src/main.go", "service1/src/main.go", "src/main.go"},
 			expectedError:         client.ErrNotFound,
 		},
 	}
