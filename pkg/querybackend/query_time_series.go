@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
 
@@ -23,6 +22,7 @@ func init() {
 		queryv1.ReportType_REPORT_TIME_SERIES,
 		queryTimeSeries,
 		newTimeSeriesAggregator,
+		true,
 		[]block.Section{
 			block.SectionTSDB,
 			block.SectionProfiles,
@@ -31,7 +31,23 @@ func init() {
 }
 
 func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
-	entries, err := profileEntryIterator(q)
+	opts := []profileIteratorOption{
+		withFetchPartition(false), // Partition data not needed, as we don't access stacktraces at all
+	}
+
+	includeExemplars := query.TimeSeries.ExemplarType == typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL
+	if includeExemplars {
+		opts = append(opts,
+			withAllLabels(),
+			withFetchProfileIDs(true),
+		)
+	} else {
+		opts = append(opts,
+			withGroupByLabels(query.TimeSeries.GroupBy...),
+		)
+	}
+
+	entries, err := profileEntryIterator(q, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,26 +62,14 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 	annotationKeysColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationKeyColumnPath)
 	annotationValuesColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath)
 
-	includeExemplars := query.TimeSeries.ExemplarType == typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL
-
-	columnIndices := []int{
-		column.ColumnIndex,
-		annotationKeysColumn.ColumnIndex,
-		annotationValuesColumn.ColumnIndex,
-	}
-
-	var idColumn parquet.LeafColumn
-	if includeExemplars {
-		idColumn, _ = schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), []string{schemav1.IDColumnName})
-		columnIndices = append(columnIndices, idColumn.ColumnIndex)
-	}
-
 	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
 		q.ctx,
 		entries,
 		q.ds.Profiles().RowGroups(),
 		bigBatchSize,
-		columnIndices...,
+		column.ColumnIndex,
+		annotationKeysColumn.ColumnIndex,
+		annotationValuesColumn.ColumnIndex,
 	)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
@@ -76,18 +80,12 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 			Keys:   make([]string, 0),
 			Values: make([]string, 0),
 		}
-		var profileID string
 		for _, e := range row.Values {
 			if e[0].Column() == annotationKeysColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
 				annotations.Keys = append(annotations.Keys, e[0].String())
 			}
 			if e[0].Column() == annotationValuesColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
 				annotations.Values = append(annotations.Values, e[0].String())
-			}
-			if includeExemplars && e[0].Column() == idColumn.ColumnIndex && e[0].Kind() == parquet.UUID().Type().Kind() {
-				var u uuid.UUID
-				copy(u[:], e[0].ByteArray())
-				profileID = u.String()
 			}
 		}
 
@@ -97,7 +95,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 			int64(row.Row.Timestamp),
 			float64(row.Values[0][0].Int64()),
 			annotations,
-			profileID,
+			row.Row.ID, // Profile ID comes from ProfileEntry now
 		)
 	}
 	if err = rows.Err(); err != nil {

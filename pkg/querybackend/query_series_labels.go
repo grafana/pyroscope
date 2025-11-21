@@ -21,6 +21,7 @@ func init() {
 		queryv1.ReportType_REPORT_SERIES_LABELS,
 		querySeriesLabels,
 		newSeriesLabelsAggregator,
+		false,
 		[]block.Section{block.SectionTSDB}...,
 	)
 }

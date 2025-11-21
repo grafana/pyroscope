@@ -8,7 +8,7 @@ on:
 
 jobs:
   call-update-helm-repo-pyroscope:
-    uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@191acd56a41783452d6e583fcad195de27959044
+    uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@023f523f9fa2cb37c58141650af2fea728296707
     permissions:
       contents: "write"
       id-token: "write"
@@ -20,7 +20,7 @@ jobs:
     secrets:
       vault_repo_secret_name: grafana-pyroscope-releases
   call-update-helm-repo-pyroscope-monitoring:
-    uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@191acd56a41783452d6e583fcad195de27959044
+    uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@023f523f9fa2cb37c58141650af2fea728296707
     permissions:
       contents: "write"
       id-token: "write"

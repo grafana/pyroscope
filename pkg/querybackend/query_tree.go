@@ -19,6 +19,7 @@ func init() {
 		queryv1.ReportType_REPORT_TREE,
 		queryTree,
 		newTreeAggregator,
+		false,
 		[]block.Section{
 			block.SectionTSDB,
 			block.SectionProfiles,

@@ -21,6 +21,7 @@ func init() {
 		queryv1.ReportType_REPORT_PPROF,
 		queryPprof,
 		newPprofAggregator,
+		false,
 		[]block.Section{
 			block.SectionTSDB,
 			block.SectionProfiles,
