@@ -100,6 +100,7 @@ func main() {
 
 func run(profilePath, configPath, repoURL, ref, rootPath, githubToken, outputFormat string, verbose bool) error {
 	// Read and parse config
+	fmt.Fprintf(os.Stderr, "Reading configuration from %s...\n", configPath)
 	configData, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
@@ -109,23 +110,29 @@ func run(profilePath, configPath, repoURL, ref, rootPath, githubToken, outputFor
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
+	fmt.Fprintf(os.Stderr, "✓ Loaded configuration with %d mapping(s)\n", len(cfg.SourceCode.Mappings))
 
 	// Read profile
+	fmt.Fprintf(os.Stderr, "Reading profile from %s...\n", profilePath)
 	profile, err := pprof.OpenFile(profilePath)
 	if err != nil {
 		return fmt.Errorf("failed to read profile: %w", err)
 	}
 
 	// Extract unique functions
+	fmt.Fprintf(os.Stderr, "Extracting functions from profile...\n")
 	functions := extractFunctions(profile.Profile)
+	fmt.Fprintf(os.Stderr, "✓ Found %d unique function(s)\n", len(functions))
 
 	// Parse repository URL
+	fmt.Fprintf(os.Stderr, "Parsing repository URL...\n")
 	gitURL, err := giturl.NewGitURL(repoURL)
 	if err != nil {
 		return fmt.Errorf("failed to parse repository URL: %w", err)
 	}
 
 	// Setup GitHub client
+	fmt.Fprintf(os.Stderr, "Setting up GitHub client...\n")
 	tokenStr := githubToken
 	if tokenStr == "" {
 		tokenStr = os.Getenv("GITHUB_TOKEN")
@@ -140,6 +147,7 @@ func run(profilePath, configPath, repoURL, ref, rootPath, githubToken, outputFor
 	if err != nil {
 		return fmt.Errorf("failed to create GitHub client: %w", err)
 	}
+	fmt.Fprintf(os.Stderr, "✓ GitHub client ready\n")
 
 	// Create hybrid client
 	configPathInRepo := config.PyroscopeConfigPath
@@ -153,9 +161,11 @@ func run(profilePath, configPath, repoURL, ref, rootPath, githubToken, outputFor
 	}
 
 	// Analyze coverage
+	fmt.Fprintf(os.Stderr, "\nAnalyzing coverage (this may take a while)...\n")
 	report := analyzeCoverage(context.Background(), functions, cfg, hybridClient, gitURL, rootPath, ref, log.NewNopLogger())
 
 	// Generate output
+	fmt.Fprintf(os.Stderr, "\nGenerating report...\n")
 	return generateOutput(report, outputFormat, verbose)
 }
 
@@ -202,7 +212,15 @@ func analyzeCoverage(ctx context.Context, functions []config.FileSpec, cfg *conf
 
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 
-	for _, fn := range functions {
+	total := len(functions)
+	for i, fn := range functions {
+		// Show progress
+		fmt.Fprintf(os.Stderr, "Processing function %d/%d: %s", i+1, total, fn.FunctionName)
+		if fn.Path != "" {
+			fmt.Fprintf(os.Stderr, " (%s)", fn.Path)
+		}
+		fmt.Fprintf(os.Stderr, "... ")
+
 		result := functionResult{
 			FunctionName: fn.FunctionName,
 			Path:         fn.Path,
@@ -228,6 +246,7 @@ func analyzeCoverage(ctx context.Context, functions []config.FileSpec, cfg *conf
 		if err != nil {
 			result.Covered = false
 			result.Error = err.Error()
+			fmt.Fprintf(os.Stderr, "✗\n")
 			// Check if it used fallback (no mapping found)
 			if !result.UsedMapping {
 				result.UsedFallback = true
@@ -236,6 +255,7 @@ func analyzeCoverage(ctx context.Context, functions []config.FileSpec, cfg *conf
 		} else {
 			result.Covered = true
 			result.ResolvedURL = response.URL
+			fmt.Fprintf(os.Stderr, "✓\n")
 			report.CoveredFunctions++
 			if result.UsedMapping {
 				report.FunctionsWithMapping++
@@ -252,6 +272,9 @@ func analyzeCoverage(ctx context.Context, functions []config.FileSpec, cfg *conf
 	if report.TotalFunctions > 0 {
 		report.CoveragePercentage = float64(report.CoveredFunctions) / float64(report.TotalFunctions) * 100
 	}
+
+	fmt.Fprintf(os.Stderr, "\n✓ Analysis complete: %d/%d functions covered (%.2f%%)\n", 
+		report.CoveredFunctions, report.TotalFunctions, report.CoveragePercentage)
 
 	return report
 }
