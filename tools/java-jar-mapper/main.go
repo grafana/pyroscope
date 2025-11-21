@@ -337,14 +337,11 @@ func processThirdPartyJAR(jarPath string) (*config.MappingConfig, error) {
 	}
 
 	// Source path - detect if this is likely a multi-module project
-	// Multi-module projects typically have a parent POM, and the artifactId is the module name
-	// Also check if artifactId contains hyphens (common in multi-module projects like spring-webmvc)
-	sourcePath := "src/main/java"
-	if pomStruct.Parent.GroupID != "" || (strings.Contains(artifactId, "-") && len(artifactId) > 5) {
-		// Likely a multi-module project - use artifactId as module prefix
-		// The file finder will also try without this prefix as a fallback
-		sourcePath = filepath.Join(artifactId, "src/main/java")
-	}
+	// Multi-module Maven projects typically have:
+	// 1. A parent POM (indicates it's a child module)
+	// 2. ArtifactId that suggests it's a module (contains hyphens, matches common patterns)
+	// 3. GroupId that matches the parent (common pattern)
+	sourcePath := determineSourcePath(artifactId, pomStruct, groupId)
 
 	mapping := &config.MappingConfig{
 		FunctionName: make([]config.Match, len(prefixes)),
@@ -364,6 +361,32 @@ func processThirdPartyJAR(jarPath string) (*config.MappingConfig, error) {
 	}
 
 	return mapping, nil
+}
+
+// determineSourcePath determines the correct source path for a Java project
+// It detects if this is a multi-module Maven project and includes the module name in the path
+// This encapsulates all the logic for determining module paths that was previously in find_java.go
+func determineSourcePath(artifactId string, pomStruct POM, groupId string) string {
+	// Default path for single-module projects
+	sourcePath := "src/main/java"
+
+	// Multi-module Maven projects typically have:
+	// 1. A parent POM (indicates it's a child module) - this is the strongest indicator
+	// 2. ArtifactId that contains hyphens (common pattern for modules like spring-webmvc, jackson-databind)
+	//
+	// If either condition is true, use artifactId as the module prefix
+	// This handles cases like:
+	// - spring-webmvc (has parent, contains hyphen)
+	// - spring-web (has parent, contains hyphen)
+	// - jackson-databind (has parent, contains hyphen)
+	hasParent := pomStruct.Parent.GroupID != ""
+	looksLikeModule := strings.Contains(artifactId, "-") && len(artifactId) > 5
+
+	if hasParent || looksLikeModule {
+		sourcePath = filepath.Join(artifactId, "src/main/java")
+	}
+
+	return sourcePath
 }
 
 func extractClassPrefixes(jarPath string) ([]string, error) {
