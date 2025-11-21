@@ -737,14 +737,12 @@ func searchMavenCentralForPOM(artifactId, version string) ([]byte, error) {
 	return nil, fmt.Errorf("no POM with SCM information found in search results")
 }
 
-// DepsDevResponse represents the response from deps.dev API
-type DepsDevResponse struct {
-	Project struct {
-		Links []struct {
-			Label string `json:"label"`
-			URL   string `json:"url"`
-		} `json:"links"`
-	} `json:"project"`
+// DepsDevVersionResponse represents the response from deps.dev API version endpoint
+type DepsDevVersionResponse struct {
+	Links []struct {
+		Label string `json:"label"`
+		URL   string `json:"url"`
+	} `json:"links"`
 }
 
 // queryDepsDevForGitHubRepo queries deps.dev API to find GitHub repository
@@ -753,13 +751,11 @@ func queryDepsDevForGitHubRepo(groupId, artifactId, version string) (owner, repo
 		Timeout: 5 * time.Second,
 	}
 
-	// Try multiple potential deps.dev API endpoints
-	projectKey := fmt.Sprintf("%s:%s", groupId, artifactId)
+	// Use the correct deps.dev API endpoint format: /v3/systems/{system}/packages/{package}/versions/{version}
+	packageKey := fmt.Sprintf("%s:%s", groupId, artifactId)
 	endpoints := []string{
-		fmt.Sprintf("https://api.deps.dev/v3alpha/systems/maven/projects/%s", url.PathEscape(projectKey)),
-		fmt.Sprintf("https://deps.dev/_/api/v3alpha/systems/maven/projects/%s", url.PathEscape(projectKey)),
-		fmt.Sprintf("https://api.deps.dev/v3/systems/maven/projects/%s", url.PathEscape(projectKey)),
-		fmt.Sprintf("https://deps.dev/_/api/v3/systems/maven/projects/%s", url.PathEscape(projectKey)),
+		fmt.Sprintf("https://api.deps.dev/v3/systems/maven/packages/%s/versions/%s", url.PathEscape(packageKey), url.PathEscape(version)),
+		fmt.Sprintf("https://api.deps.dev/v3alpha/systems/maven/packages/%s/versions/%s", url.PathEscape(packageKey), url.PathEscape(version)),
 	}
 
 	var lastErr error
@@ -772,14 +768,15 @@ func queryDepsDevForGitHubRepo(groupId, artifactId, version string) (owner, repo
 		defer depsResp.Body.Close()
 
 		if depsResp.StatusCode == http.StatusOK {
-			var depsDevResp DepsDevResponse
+			var depsDevResp DepsDevVersionResponse
 			if err := json.NewDecoder(depsResp.Body).Decode(&depsDevResp); err != nil {
 				lastErr = fmt.Errorf("failed to parse deps.dev response: %w", err)
 				continue
 			}
 
-			// Look for GitHub link in project links
-			for _, link := range depsDevResp.Project.Links {
+			// Look for GitHub link in version links
+			// Prefer SOURCE_REPO, then HOMEPAGE, then any link with github.com
+			for _, link := range depsDevResp.Links {
 				if strings.Contains(link.URL, "github.com") {
 					// Extract GitHub repo from URL
 					owner, repo, err := extractGitHubRepoFromURL(link.URL)
@@ -788,7 +785,7 @@ func queryDepsDevForGitHubRepo(groupId, artifactId, version string) (owner, repo
 					}
 				}
 			}
-			lastErr = fmt.Errorf("no GitHub repository found in deps.dev project links")
+			lastErr = fmt.Errorf("no GitHub repository found in deps.dev version links")
 		} else if depsResp.StatusCode != http.StatusNotFound {
 			lastErr = fmt.Errorf("deps.dev API returned HTTP %d", depsResp.StatusCode)
 		}
