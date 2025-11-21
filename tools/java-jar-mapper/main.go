@@ -2,16 +2,19 @@ package main
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"encoding/xml"
 	"flag"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
 	"gopkg.in/yaml.v3"
@@ -19,9 +22,9 @@ import (
 
 func main() {
 	var (
-		jarPath  = flag.String("jar", "", "Path to the Java JAR file to analyze")
-		output   = flag.String("output", "", "Output file path (default: stdout)")
-		help     = flag.Bool("help", false, "Show help")
+		jarPath = flag.String("jar", "", "Path to the Java JAR file to analyze")
+		output  = flag.String("output", "", "Output file path (default: stdout)")
+		help    = flag.Bool("help", false, "Show help")
 	)
 	flag.Parse()
 
@@ -62,7 +65,7 @@ func processJAR(jarPath, outputPath string) error {
 	// Process each JAR
 	for _, jarFile := range thirdPartyJARs {
 		fmt.Printf("Processing JAR: %s\n", filepath.Base(jarFile))
-		
+
 		mapping, err := processThirdPartyJAR(jarFile)
 		if err != nil {
 			fmt.Printf("✗ Skipping %s: %v\n", filepath.Base(jarFile), err)
@@ -72,9 +75,9 @@ func processJAR(jarPath, outputPath string) error {
 
 		if mapping != nil {
 			mappings = append(mappings, *mapping)
-			fmt.Printf("✓ Successfully mapped %s to %s/%s\n", 
-				filepath.Base(jarFile), 
-				mapping.Source.GitHub.Owner, 
+			fmt.Printf("✓ Successfully mapped %s to %s/%s\n",
+				filepath.Base(jarFile),
+				mapping.Source.GitHub.Owner,
 				mapping.Source.GitHub.Repo)
 			successCount++
 		} else {
@@ -82,7 +85,7 @@ func processJAR(jarPath, outputPath string) error {
 		}
 	}
 
-	fmt.Printf("\nProcessed %d JARs: %d successful, %d failed\n", 
+	fmt.Printf("\nProcessed %d JARs: %d successful, %d failed\n",
 		len(thirdPartyJARs), successCount, failCount)
 
 	// Generate YAML output
@@ -120,7 +123,7 @@ func extractThirdPartyJARs(jarPath string) ([]string, string, error) {
 
 	jarPattern := regexp.MustCompile(`BOOT-INF/lib/.*\.jar$`)
 	var jarFiles []string
-	
+
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -261,7 +264,7 @@ func extractClassPrefixes(jarPath string) ([]string, error) {
 
 	classPattern := regexp.MustCompile(`^([^/]+(/[^/]+)*)/[^/]+\.class$`)
 	var packages []string
-	
+
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -286,7 +289,7 @@ func findCommonPrefixes(packages []string) []string {
 
 	// Count occurrences of each prefix
 	prefixCount := make(map[string]int)
-	
+
 	for _, pkg := range packages {
 		parts := strings.Split(pkg, "/")
 		for i := 1; i <= len(parts); i++ {
@@ -298,7 +301,7 @@ func findCommonPrefixes(packages []string) []string {
 	// Find prefixes that appear in multiple packages (at least 2)
 	var commonPrefixes []string
 	seen := make(map[string]bool)
-	
+
 	for prefix, count := range prefixCount {
 		if count >= 2 && !seen[prefix] {
 			commonPrefixes = append(commonPrefixes, prefix)
@@ -363,16 +366,16 @@ func extractManifest(jarPath string) (map[string]string, error) {
 func parseManifest(data string) map[string]string {
 	result := make(map[string]string)
 	lines := strings.Split(data, "\n")
-	
+
 	var currentKey string
 	var currentValue strings.Builder
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		
+
 		if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
 			// Continuation line
 			if currentKey != "" {
@@ -384,7 +387,7 @@ func parseManifest(data string) map[string]string {
 			if currentKey != "" {
 				result[currentKey] = currentValue.String()
 			}
-			
+
 			parts := strings.SplitN(line, ":", 2)
 			if len(parts) == 2 {
 				currentKey = parts[0]
@@ -393,11 +396,11 @@ func parseManifest(data string) map[string]string {
 			}
 		}
 	}
-	
+
 	if currentKey != "" {
 		result[currentKey] = currentValue.String()
 	}
-	
+
 	return result
 }
 
@@ -418,6 +421,11 @@ func fetchPOMFromMavenCentral(artifactId, version string) ([]byte, error) {
 		}
 	}
 
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
 	var lastErr error
 	var lastURL string
 	for _, groupId := range groupIds {
@@ -427,7 +435,7 @@ func fetchPOMFromMavenCentral(artifactId, version string) ([]byte, error) {
 			groupIdPath, artifactId, version, artifactId, version)
 		lastURL = url
 
-		resp, err := http.Get(url)
+		resp, err := client.Get(url)
 		if err != nil {
 			lastErr = fmt.Errorf("HTTP request failed: %w", err)
 			continue
@@ -446,7 +454,82 @@ func fetchPOMFromMavenCentral(artifactId, version string) ([]byte, error) {
 		lastErr = fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
 
+	// If direct groupId guessing failed, try Maven Central search API
+	pom, err := searchMavenCentralForPOM(artifactId, version)
+	if err == nil {
+		return pom, nil
+	}
+
 	return nil, fmt.Errorf("failed to fetch POM from %s (HTTP %v)", lastURL, lastErr)
+}
+
+// MavenSearchResponse represents the response from Maven Central search API
+type MavenSearchResponse struct {
+	Response struct {
+		Docs []struct {
+			GroupID    string `json:"g"`
+			ArtifactID string `json:"a"`
+			Version    string `json:"latestVersion"`
+		} `json:"docs"`
+	} `json:"response"`
+}
+
+// searchMavenCentralForPOM searches Maven Central for a POM with SCM information
+func searchMavenCentralForPOM(artifactId, version string) ([]byte, error) {
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	// Search for artifactId
+	searchURL := fmt.Sprintf("https://search.maven.org/solrsearch/select?q=a:%s&rows=20", url.QueryEscape(artifactId))
+
+	resp, err := client.Get(searchURL)
+	if err != nil {
+		return nil, fmt.Errorf("search API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("search API returned HTTP %d", resp.StatusCode)
+	}
+
+	var searchResp MavenSearchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
+		return nil, fmt.Errorf("failed to parse search response: %w", err)
+	}
+
+	// Try each result - fetch POM with exact version
+	for _, doc := range searchResp.Response.Docs {
+		// Fetch the POM for this groupId/artifactId/version
+		groupIdPath := strings.ReplaceAll(doc.GroupID, ".", "/")
+		pomURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s/%s-%s.pom",
+			groupIdPath, doc.ArtifactID, version, doc.ArtifactID, version)
+
+		pomResp, err := client.Get(pomURL)
+		if err != nil {
+			continue
+		}
+		defer pomResp.Body.Close()
+
+		if pomResp.StatusCode != http.StatusOK {
+			continue
+		}
+
+		pomData, err := io.ReadAll(pomResp.Body)
+		if err != nil {
+			continue
+		}
+
+		// Check if this POM has SCM information
+		scmInfo, err := parseSCMFromPOM(pomData)
+		if err == nil && scmInfo != nil {
+			// Found a POM with SCM info, return it
+			return pomData, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no POM with SCM information found in search results")
 }
 
 type POM struct {
@@ -455,9 +538,9 @@ type POM struct {
 }
 
 type SCM struct {
-	URL         string `xml:"url"`
-	Connection  string `xml:"connection"`
-	Tag         string `xml:"tag"`
+	URL        string `xml:"url"`
+	Connection string `xml:"connection"`
+	Tag        string `xml:"tag"`
 }
 
 func parseSCMFromPOM(pomData []byte) (*SCM, error) {
@@ -505,4 +588,3 @@ func extractGitHubRepo(scm *SCM) (owner, repo string, err error) {
 
 	return "", "", fmt.Errorf("could not extract GitHub repo from URL: %s", url)
 }
-
