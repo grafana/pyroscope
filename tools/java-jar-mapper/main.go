@@ -222,16 +222,107 @@ func processThirdPartyJAR(jarPath string) (*config.MappingConfig, error) {
 		return nil, err
 	}
 
-	// Parse POM for SCM info
-	scmInfo, err := parseSCMFromPOM(pom)
-	if err != nil {
-		return nil, fmt.Errorf("POM missing SCM information: %w", err)
+	// Extract groupId from POM for potential deps.dev query
+	groupId, _ := extractGroupIdFromPOM(pom)
+
+	// Parse POM for SCM info and URL
+	var pomStruct POM
+	if err := xml.Unmarshal(pom, &pomStruct); err != nil {
+		return nil, fmt.Errorf("failed to parse POM: %w", err)
 	}
 
-	// Extract GitHub repo from SCM
-	owner, repo, err := extractGitHubRepo(scmInfo)
-	if err != nil {
-		return nil, fmt.Errorf("invalid GitHub URL format (%s): %w", scmInfo.URL, err)
+	var owner, repo string
+
+	// Try SCM first
+	if pomStruct.SCM.URL != "" || pomStruct.SCM.Connection != "" {
+		scmInfo := &pomStruct.SCM
+		if scmInfo.URL == "" {
+			scmInfo.URL = scmInfo.Connection
+		}
+		var err error
+		owner, repo, err = extractGitHubRepo(scmInfo)
+		if err == nil {
+			// Successfully extracted from SCM
+		} else {
+			// SCM exists but not GitHub, try POM URL field
+			if pomStruct.URL != "" {
+				owner, repo, err = extractGitHubRepoFromURL(pomStruct.URL)
+			}
+			// If still failed, try deps.dev
+			if err != nil && groupId != "" {
+				owner, repo, err = queryDepsDevForGitHubRepo(groupId, artifactId, version)
+				if err != nil {
+					return nil, fmt.Errorf("invalid GitHub URL format (%s) and deps.dev query failed: %w", scmInfo.URL, err)
+				}
+			} else if err != nil {
+				return nil, fmt.Errorf("invalid GitHub URL format (%s) and could not extract groupId for deps.dev query", scmInfo.URL)
+			}
+		}
+	} else {
+		// No SCM, try parent POM first
+		var err error
+		if pomStruct.Parent.GroupID != "" && pomStruct.Parent.ArtifactID != "" && pomStruct.Parent.Version != "" {
+			parentPOM, parentErr := fetchPOMFromMavenCentralByCoords(pomStruct.Parent.GroupID, pomStruct.Parent.ArtifactID, pomStruct.Parent.Version)
+			if parentErr == nil {
+				var parentPOMStruct POM
+				if xml.Unmarshal(parentPOM, &parentPOMStruct) == nil {
+					if parentPOMStruct.SCM.URL != "" || parentPOMStruct.SCM.Connection != "" {
+						scmInfo := &parentPOMStruct.SCM
+						if scmInfo.URL == "" {
+							scmInfo.URL = scmInfo.Connection
+						}
+						owner, repo, err = extractGitHubRepo(scmInfo)
+						if err == nil {
+							// Successfully extracted from parent SCM
+						}
+					}
+					if err != nil && parentPOMStruct.URL != "" {
+						owner, repo, err = extractGitHubRepoFromURL(parentPOMStruct.URL)
+					}
+					// If parent POM also has a parent, try that too (up to one level deep)
+					if err != nil && parentPOMStruct.Parent.GroupID != "" && parentPOMStruct.Parent.ArtifactID != "" && parentPOMStruct.Parent.Version != "" {
+						grandParentPOM, grandParentErr := fetchPOMFromMavenCentralByCoords(parentPOMStruct.Parent.GroupID, parentPOMStruct.Parent.ArtifactID, parentPOMStruct.Parent.Version)
+						if grandParentErr == nil {
+							var grandParentPOMStruct POM
+							if xml.Unmarshal(grandParentPOM, &grandParentPOMStruct) == nil {
+								if grandParentPOMStruct.SCM.URL != "" || grandParentPOMStruct.SCM.Connection != "" {
+									scmInfo := &grandParentPOMStruct.SCM
+									if scmInfo.URL == "" {
+										scmInfo.URL = scmInfo.Connection
+									}
+									owner, repo, err = extractGitHubRepo(scmInfo)
+									if err == nil {
+										// Successfully extracted from grandparent SCM
+									}
+								}
+								if err != nil && grandParentPOMStruct.URL != "" {
+									owner, repo, err = extractGitHubRepoFromURL(grandParentPOMStruct.URL)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// If parent didn't work, try POM URL field
+		if err != nil && pomStruct.URL != "" {
+			owner, repo, err = extractGitHubRepoFromURL(pomStruct.URL)
+		}
+		// If still failed, try deps.dev
+		if err != nil && groupId != "" {
+			owner, repo, err = queryDepsDevForGitHubRepo(groupId, artifactId, version)
+			if err != nil {
+				return nil, fmt.Errorf("POM missing SCM information and deps.dev query failed: %w", err)
+			}
+		} else if err != nil {
+			return nil, fmt.Errorf("POM missing SCM information and could not extract groupId for deps.dev query")
+		}
+	}
+
+	// Validate that we have valid owner and repo
+	if owner == "" || repo == "" {
+		return nil, fmt.Errorf("failed to extract valid GitHub owner/repo (owner: %q, repo: %q)", owner, repo)
 	}
 
 	// Determine ref (use version from manifest)
@@ -487,7 +578,8 @@ func fetchPOMFromMavenCentral(artifactId, version string) ([]byte, error) {
 	}
 
 	// If direct groupId guessing failed, try Maven Central search API
-	pom, err := searchMavenCentralForPOM(artifactId, version)
+	// This will return a POM even if it doesn't have SCM (we'll use deps.dev for that)
+	pom, err := searchMavenCentralForPOMAny(artifactId, version)
 	if err == nil {
 		return pom, nil
 	}
@@ -504,6 +596,87 @@ type MavenSearchResponse struct {
 			Version    string `json:"latestVersion"`
 		} `json:"docs"`
 	} `json:"response"`
+}
+
+// searchMavenCentralForPOMAny searches Maven Central for any POM (not requiring SCM)
+func searchMavenCentralForPOMAny(artifactId, version string) ([]byte, error) {
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	// Search for artifactId
+	searchURL := fmt.Sprintf("https://search.maven.org/solrsearch/select?q=a:%s&rows=20", url.QueryEscape(artifactId))
+
+	resp, err := client.Get(searchURL)
+	if err != nil {
+		return nil, fmt.Errorf("search API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("search API returned HTTP %d", resp.StatusCode)
+	}
+
+	var searchResp MavenSearchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
+		return nil, fmt.Errorf("failed to parse search response: %w", err)
+	}
+
+	// Try each result - fetch POM with exact version
+	for _, doc := range searchResp.Response.Docs {
+		// Fetch the POM for this groupId/artifactId/version
+		groupIdPath := strings.ReplaceAll(doc.GroupID, ".", "/")
+		pomURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s/%s-%s.pom",
+			groupIdPath, doc.ArtifactID, version, doc.ArtifactID, version)
+
+		pomResp, err := client.Get(pomURL)
+		if err != nil {
+			continue
+		}
+		defer pomResp.Body.Close()
+
+		if pomResp.StatusCode != http.StatusOK {
+			continue
+		}
+
+		pomData, err := io.ReadAll(pomResp.Body)
+		if err != nil {
+			continue
+		}
+
+		// Return the first valid POM found (don't require SCM)
+		return pomData, nil
+	}
+
+	return nil, fmt.Errorf("no POM found in search results")
+}
+
+// fetchPOMFromMavenCentralByCoords fetches a POM using exact Maven coordinates
+func fetchPOMFromMavenCentralByCoords(groupId, artifactId, version string) ([]byte, error) {
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	groupIdPath := strings.ReplaceAll(groupId, ".", "/")
+	url := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s/%s-%s.pom",
+		groupIdPath, artifactId, version, artifactId, version)
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+	return data, nil
 }
 
 // searchMavenCentralForPOM searches Maven Central for a POM with SCM information
@@ -564,9 +737,143 @@ func searchMavenCentralForPOM(artifactId, version string) ([]byte, error) {
 	return nil, fmt.Errorf("no POM with SCM information found in search results")
 }
 
+// DepsDevResponse represents the response from deps.dev API
+type DepsDevResponse struct {
+	Project struct {
+		Links []struct {
+			Label string `json:"label"`
+			URL   string `json:"url"`
+		} `json:"links"`
+	} `json:"project"`
+}
+
+// queryDepsDevForGitHubRepo queries deps.dev API to find GitHub repository
+func queryDepsDevForGitHubRepo(groupId, artifactId, version string) (owner, repo string, err error) {
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	// Try multiple potential deps.dev API endpoints
+	projectKey := fmt.Sprintf("%s:%s", groupId, artifactId)
+	endpoints := []string{
+		fmt.Sprintf("https://api.deps.dev/v3alpha/systems/maven/projects/%s", url.PathEscape(projectKey)),
+		fmt.Sprintf("https://deps.dev/_/api/v3alpha/systems/maven/projects/%s", url.PathEscape(projectKey)),
+		fmt.Sprintf("https://api.deps.dev/v3/systems/maven/projects/%s", url.PathEscape(projectKey)),
+		fmt.Sprintf("https://deps.dev/_/api/v3/systems/maven/projects/%s", url.PathEscape(projectKey)),
+	}
+
+	var lastErr error
+	for _, depsDevURL := range endpoints {
+		depsResp, err := client.Get(depsDevURL)
+		if err != nil {
+			lastErr = fmt.Errorf("deps.dev API request failed: %w", err)
+			continue
+		}
+		defer depsResp.Body.Close()
+
+		if depsResp.StatusCode == http.StatusOK {
+			var depsDevResp DepsDevResponse
+			if err := json.NewDecoder(depsResp.Body).Decode(&depsDevResp); err != nil {
+				lastErr = fmt.Errorf("failed to parse deps.dev response: %w", err)
+				continue
+			}
+
+			// Look for GitHub link in project links
+			for _, link := range depsDevResp.Project.Links {
+				if strings.Contains(link.URL, "github.com") {
+					// Extract GitHub repo from URL
+					owner, repo, err := extractGitHubRepoFromURL(link.URL)
+					if err == nil {
+						return owner, repo, nil
+					}
+				}
+			}
+			lastErr = fmt.Errorf("no GitHub repository found in deps.dev project links")
+		} else if depsResp.StatusCode != http.StatusNotFound {
+			lastErr = fmt.Errorf("deps.dev API returned HTTP %d", depsResp.StatusCode)
+		}
+	}
+
+	// If all API endpoints failed, try fetching the HTML page and parsing it
+	// This is a fallback for when the API is not available
+	// Note: deps.dev uses React, so GitHub links may be in JSON data embedded in the page
+	htmlURL := fmt.Sprintf("https://deps.dev/maven/%s/%s/%s", strings.ReplaceAll(groupId, ".", "/"), artifactId, version)
+	htmlResp, err := client.Get(htmlURL)
+	if err == nil {
+		defer htmlResp.Body.Close()
+		if htmlResp.StatusCode == http.StatusOK {
+			htmlData, err := io.ReadAll(htmlResp.Body)
+			if err == nil {
+				htmlStr := string(htmlData)
+
+				// Try multiple patterns to find GitHub URLs in the HTML
+				// Look for embedded JSON data that might contain GitHub links
+				patterns := []*regexp.Regexp{
+					// JSON format: "url": "https://github.com/owner/repo"
+					regexp.MustCompile(`"url"\s*:\s*"https?://github\.com/([^/]+)/([^/"]+)"`),
+					// href attributes
+					regexp.MustCompile(`href=["']https?://github\.com/([^/]+)/([^/"']+)(?:\.git)?["']`),
+					// General GitHub URL patterns
+					regexp.MustCompile(`github\.com[:/]([^/]+)/([^/]+?)(?:["'\s>]|\.git|/issues|/releases)`),
+				}
+
+				for _, pattern := range patterns {
+					matches := pattern.FindStringSubmatch(htmlStr)
+					if len(matches) >= 3 {
+						owner = strings.TrimSpace(matches[1])
+						repo = strings.TrimSpace(strings.TrimSuffix(matches[2], ".git"))
+						// Basic validation: owner and repo should be non-empty and valid
+						if owner != "" && repo != "" && owner != "/" && repo != "/" && !strings.Contains(owner, " ") && !strings.Contains(repo, " ") {
+							return owner, repo, nil
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return "", "", fmt.Errorf("deps.dev query failed: %v", lastErr)
+}
+
+// extractGitHubRepoFromURL extracts owner and repo from a GitHub URL
+func extractGitHubRepoFromURL(urlStr string) (owner, repo string, err error) {
+	// Only process if URL contains github.com
+	if !strings.Contains(urlStr, "github.com") {
+		return "", "", fmt.Errorf("URL does not contain github.com: %s", urlStr)
+	}
+
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$`),
+		regexp.MustCompile(`github\.com[:/]([^/]+)/([^/]+)`),
+	}
+
+	for _, pattern := range patterns {
+		matches := pattern.FindStringSubmatch(urlStr)
+		if len(matches) >= 3 {
+			owner = strings.TrimSpace(matches[1])
+			repo = strings.TrimSpace(strings.TrimSuffix(matches[2], ".git"))
+			// Validate that owner and repo are non-empty and don't contain invalid characters
+			if owner != "" && repo != "" && owner != "/" && repo != "/" {
+				return owner, repo, nil
+			}
+		}
+	}
+
+	return "", "", fmt.Errorf("could not extract GitHub repo from URL: %s", urlStr)
+}
+
 type POM struct {
 	XMLName xml.Name `xml:"project"`
+	GroupID string   `xml:"groupId"`
+	URL     string   `xml:"url"`
 	SCM     SCM      `xml:"scm"`
+	Parent  Parent   `xml:"parent"`
+}
+
+type Parent struct {
+	GroupID    string `xml:"groupId"`
+	ArtifactID string `xml:"artifactId"`
+	Version    string `xml:"version"`
 }
 
 type SCM struct {
@@ -591,6 +898,14 @@ func parseSCMFromPOM(pomData []byte) (*SCM, error) {
 	}
 
 	return scm, nil
+}
+
+func extractGroupIdFromPOM(pomData []byte) (string, error) {
+	var pom POM
+	if err := xml.Unmarshal(pomData, &pom); err != nil {
+		return "", fmt.Errorf("invalid POM XML: %w", err)
+	}
+	return pom.GroupID, nil
 }
 
 func extractGitHubRepo(scm *SCM) (owner, repo string, err error) {
