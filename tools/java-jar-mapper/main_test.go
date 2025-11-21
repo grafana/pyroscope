@@ -79,8 +79,8 @@ Implementation-Title: spring-web
 Implementation-Version: 5.3.20
 `,
 			want: map[string]string{
-				"Manifest-Version":    "1.0",
-				"Implementation-Title": "spring-web",
+				"Manifest-Version":       "1.0",
+				"Implementation-Title":   "spring-web",
 				"Implementation-Version": "5.3.20",
 			},
 		},
@@ -93,16 +93,16 @@ Bundle-Description: Spring Framework Web
  Support Classes
 `,
 			want: map[string]string{
-				"Manifest-Version":    "1.0",
-				"Implementation-Title": "spring-web",
+				"Manifest-Version":       "1.0",
+				"Implementation-Title":   "spring-web",
 				"Implementation-Version": "5.3.20",
-				"Bundle-Description":  "Spring Framework Web",
+				"Bundle-Description":     "Spring Framework Web",
 			},
 		},
 		{
-			name: "empty manifest",
+			name:     "empty manifest",
 			manifest: ``,
-			want: map[string]string{},
+			want:     map[string]string{},
 		},
 		{
 			name: "manifest with empty lines",
@@ -112,7 +112,7 @@ Implementation-Title: spring-web
 
 `,
 			want: map[string]string{
-				"Manifest-Version":    "1.0",
+				"Manifest-Version":     "1.0",
 				"Implementation-Title": "spring-web",
 			},
 		},
@@ -219,11 +219,11 @@ func TestParseSCMFromPOM(t *testing.T) {
 
 func TestExtractGitHubRepo(t *testing.T) {
 	tests := []struct {
-		name    string
-		scm     *SCM
+		name      string
+		scm       *SCM
 		wantOwner string
-		wantRepo string
-		wantErr bool
+		wantRepo  string
+		wantErr   bool
 	}{
 		{
 			name: "HTTPS URL",
@@ -342,8 +342,8 @@ Implementation-Version: 5.3.20
 			name:    "valid JAR with manifest",
 			jarPath: jarPath,
 			want: map[string]string{
-				"Manifest-Version":    "1.0",
-				"Implementation-Title": "spring-web",
+				"Manifest-Version":       "1.0",
+				"Implementation-Title":   "spring-web",
 				"Implementation-Version": "5.3.20",
 			},
 			wantErr: false,
@@ -449,7 +449,7 @@ func TestExtractClassPrefixesFromJAR(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	jarPath := filepath.Join(tmpDir, "test.jar")
-	
+
 	// Create a zip file manually (we can't use jar command in tests)
 	file, err := os.Create(jarPath)
 	if err != nil {
@@ -458,14 +458,14 @@ func TestExtractClassPrefixesFromJAR(t *testing.T) {
 	defer file.Close()
 
 	writer := zip.NewWriter(file)
-	
+
 	// Add some class files
 	classes := []string{
 		"org/springframework/web/HttpServlet.class",
 		"org/springframework/web/Filter.class",
 		"org/springframework/http/Request.class",
 	}
-	
+
 	for _, className := range classes {
 		f, err := writer.Create(className)
 		if err != nil {
@@ -473,7 +473,7 @@ func TestExtractClassPrefixesFromJAR(t *testing.T) {
 		}
 		f.Write([]byte("fake class data"))
 	}
-	
+
 	writer.Close()
 	file.Close()
 
@@ -489,11 +489,11 @@ func TestExtractClassPrefixesFromJAR(t *testing.T) {
 		t.Errorf("extractClassPrefixes() error = %v", err)
 		return
 	}
-	
+
 	if len(prefixes) == 0 {
 		t.Error("extractClassPrefixes() returned no prefixes, expected some")
 	}
-	
+
 	// Verify we got expected prefixes
 	expectedPrefixes := []string{"org/springframework/web", "org/springframework/http", "org/springframework", "org"}
 	found := false
@@ -524,14 +524,14 @@ Created-By: Apache Maven
 `
 
 	result := parseManifest(manifest)
-	
+
 	// The current implementation only continues the first continuation line
 	// because it stops at empty lines. Let's test what it actually does.
 	expected := "Spring Framework Web"
 	if result["Bundle-Description"] != expected {
 		t.Errorf("parseManifest() continuation line failed, got: %q, want: %q", result["Bundle-Description"], expected)
 	}
-	
+
 	if result["Created-By"] != "Apache Maven" {
 		t.Errorf("parseManifest() Created-By failed, got: %q", result["Created-By"])
 	}
@@ -544,27 +544,26 @@ func TestFindCommonPrefixesFiltering(t *testing.T) {
 		"org/springframework/web/servlet/HandlerMapping",
 		"org/springframework/web/filter/CharacterEncodingFilter",
 	}
-	
+
 	prefixes := findCommonPrefixes(packages)
-	
+
 	// Only "org/springframework/web/servlet" appears 2+ times
 	// "org/springframework/web/filter" appears only once
 	// So only "org/springframework/web/servlet" should be in the result
 	hasWebServlet := false
-	
+
 	for _, prefix := range prefixes {
 		if prefix == "org/springframework/web/servlet" {
 			hasWebServlet = true
 		}
 	}
-	
+
 	if !hasWebServlet {
 		t.Error("findCommonPrefixes() should include org/springframework/web/servlet")
 	}
-	
+
 	// Verify it's the only one (or at least the main one)
 	if len(prefixes) == 0 {
 		t.Error("findCommonPrefixes() should return at least one prefix")
 	}
 }
-

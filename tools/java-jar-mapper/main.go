@@ -217,13 +217,15 @@ func processThirdPartyJAR(jarPath string) (*config.MappingConfig, error) {
 	}
 
 	// Query Maven Central
-	pom, err := fetchPOMFromMavenCentral(artifactId, version)
+	pom, groupId, err := fetchPOMFromMavenCentral(artifactId, version)
 	if err != nil {
 		return nil, err
 	}
 
-	// Extract groupId from POM for potential deps.dev query
-	groupId, _ := extractGroupIdFromPOM(pom)
+	// If groupId is still empty, try to extract from POM
+	if groupId == "" {
+		groupId, _ = extractGroupIdFromPOM(pom)
+	}
 
 	// Parse POM for SCM info and URL
 	var pomStruct POM
@@ -334,8 +336,15 @@ func processThirdPartyJAR(jarPath string) (*config.MappingConfig, error) {
 		ref = "v" + ref
 	}
 
-	// Source path (hardcoded for MVP)
+	// Source path - detect if this is likely a multi-module project
+	// Multi-module projects typically have a parent POM, and the artifactId is the module name
+	// Also check if artifactId contains hyphens (common in multi-module projects like spring-webmvc)
 	sourcePath := "src/main/java"
+	if pomStruct.Parent.GroupID != "" || (strings.Contains(artifactId, "-") && len(artifactId) > 5) {
+		// Likely a multi-module project - use artifactId as module prefix
+		// The file finder will also try without this prefix as a fallback
+		sourcePath = filepath.Join(artifactId, "src/main/java")
+	}
 
 	mapping := &config.MappingConfig{
 		FunctionName: make([]config.Match, len(prefixes)),
@@ -420,9 +429,23 @@ func findCommonPrefixes(packages []string) []string {
 		}
 	}
 
+	// Build a set of actual package names (not just prefixes)
+	packageSet := make(map[string]bool)
+	for _, pkg := range packages {
+		packageSet[pkg] = true
+	}
+
 	// Remove prefixes that are substrings of longer prefixes
+	// BUT keep prefixes that are actual packages (have classes directly in them)
 	var filtered []string
 	for _, prefix := range commonPrefixes {
+		// If this prefix is an actual package (has classes directly in it), keep it
+		if packageSet[prefix] {
+			filtered = append(filtered, prefix)
+			continue
+		}
+
+		// Otherwise, only keep it if it's not a substring of a longer prefix
 		isSubstring := false
 		for _, other := range commonPrefixes {
 			if prefix != other && strings.HasPrefix(other, prefix+"/") {
@@ -527,7 +550,7 @@ func parseManifest(data string) map[string]string {
 	return result
 }
 
-func fetchPOMFromMavenCentral(artifactId, version string) ([]byte, error) {
+func fetchPOMFromMavenCentral(artifactId, version string) ([]byte, string, error) {
 	// Try common groupId patterns
 	groupIds := []string{
 		strings.ToLower(artifactId),
@@ -571,7 +594,7 @@ func fetchPOMFromMavenCentral(artifactId, version string) ([]byte, error) {
 				lastErr = fmt.Errorf("failed to read response: %w", err)
 				continue
 			}
-			return data, nil
+			return data, groupId, nil
 		}
 
 		lastErr = fmt.Errorf("HTTP %d", resp.StatusCode)
@@ -579,12 +602,12 @@ func fetchPOMFromMavenCentral(artifactId, version string) ([]byte, error) {
 
 	// If direct groupId guessing failed, try Maven Central search API
 	// This will return a POM even if it doesn't have SCM (we'll use deps.dev for that)
-	pom, err := searchMavenCentralForPOMAny(artifactId, version)
+	pom, groupId, err := searchMavenCentralForPOMAny(artifactId, version)
 	if err == nil {
-		return pom, nil
+		return pom, groupId, nil
 	}
 
-	return nil, fmt.Errorf("failed to fetch POM from %s (HTTP %v)", lastURL, lastErr)
+	return nil, "", fmt.Errorf("failed to fetch POM from %s (HTTP %v)", lastURL, lastErr)
 }
 
 // MavenSearchResponse represents the response from Maven Central search API
@@ -599,7 +622,8 @@ type MavenSearchResponse struct {
 }
 
 // searchMavenCentralForPOMAny searches Maven Central for any POM (not requiring SCM)
-func searchMavenCentralForPOMAny(artifactId, version string) ([]byte, error) {
+// Returns the POM data and the groupId from the search results
+func searchMavenCentralForPOMAny(artifactId, version string) ([]byte, string, error) {
 	// Create HTTP client with timeout
 	client := &http.Client{
 		Timeout: 5 * time.Second,
@@ -610,17 +634,17 @@ func searchMavenCentralForPOMAny(artifactId, version string) ([]byte, error) {
 
 	resp, err := client.Get(searchURL)
 	if err != nil {
-		return nil, fmt.Errorf("search API request failed: %w", err)
+		return nil, "", fmt.Errorf("search API request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("search API returned HTTP %d", resp.StatusCode)
+		return nil, "", fmt.Errorf("search API returned HTTP %d", resp.StatusCode)
 	}
 
 	var searchResp MavenSearchResponse
 	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
-		return nil, fmt.Errorf("failed to parse search response: %w", err)
+		return nil, "", fmt.Errorf("failed to parse search response: %w", err)
 	}
 
 	// Try each result - fetch POM with exact version
@@ -645,11 +669,11 @@ func searchMavenCentralForPOMAny(artifactId, version string) ([]byte, error) {
 			continue
 		}
 
-		// Return the first valid POM found (don't require SCM)
-		return pomData, nil
+		// Return the first valid POM found along with the groupId from search results
+		return pomData, doc.GroupID, nil
 	}
 
-	return nil, fmt.Errorf("no POM found in search results")
+	return nil, "", fmt.Errorf("no POM found in search results")
 }
 
 // fetchPOMFromMavenCentralByCoords fetches a POM using exact Maven coordinates
