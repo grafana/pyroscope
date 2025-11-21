@@ -48,29 +48,25 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 
 	series, exists := s.series[seriesKey]
 	if !exists {
-		s.series[seriesKey] = &typesv1.Series{
+		series = &typesv1.Series{
 			Labels: lbs.WithLabels(s.by...),
-			Points: []*typesv1.Point{
-				{
-					Timestamp:   ts,
-					Value:       value,
-					Annotations: pAnnotations,
-				},
-			},
+			Points: make([]*typesv1.Point, 0),
 		}
-	} else {
-		series.Points = append(series.Points, &typesv1.Point{
-			Timestamp:   ts,
-			Value:       value,
-			Annotations: pAnnotations,
-		})
+		s.series[seriesKey] = series
 	}
+
+	series.Points = append(series.Points, &typesv1.Point{
+		Timestamp:   ts,
+		Value:       value,
+		Annotations: pAnnotations,
+	})
 
 	if profileID != "" {
 		if s.exemplarBuilders[seriesKey] == nil {
 			s.exemplarBuilders[seriesKey] = NewExemplarBuilder()
 		}
-		s.exemplarBuilders[seriesKey].Add(fp, lbs, ts, profileID, uint64(value))
+		exemplarLabels := lbs.WithoutLabels(s.by...)
+		s.exemplarBuilders[seriesKey].Add(fp, exemplarLabels, ts, profileID, uint64(value))
 	}
 }
 
@@ -106,37 +102,26 @@ func (s *TimeSeriesBuilder) attachExemplars(series []*typesv1.Series) {
 			continue
 		}
 
-		exemplarsByTimestamp := make(map[int64][]*typesv1.Exemplar)
-		for _, ex := range exemplars {
-			exemplarsByTimestamp[ex.Timestamp] = append(exemplarsByTimestamp[ex.Timestamp], ex)
-		}
-
+		// Attach exemplars to points with matching timestamps
+		// Both exemplars and points are sorted by timestamp
+		exIdx := 0
 		for _, point := range ser.Points {
-			if exs, found := exemplarsByTimestamp[point.Timestamp]; found {
-				point.Exemplars = exs
+			// Skip exemplars with timestamp < point timestamp
+			for exIdx < len(exemplars) && exemplars[exIdx].Timestamp < point.Timestamp {
+				exIdx++
+			}
+
+			// Collect all exemplars with timestamp == point timestamp
+			var pointExemplars []*typesv1.Exemplar
+			for i := exIdx; i < len(exemplars) && exemplars[i].Timestamp == point.Timestamp; i++ {
+				pointExemplars = append(pointExemplars, exemplars[i])
+			}
+
+			if len(pointExemplars) > 0 {
+				point.Exemplars = pointExemplars
 			}
 		}
 	}
-}
-
-// FilterNonGroupedLabels returns only labels that are NOT in the groupBy list.
-func FilterNonGroupedLabels(fullLabels Labels, groupBy []string) []*typesv1.LabelPair {
-	if len(groupBy) == 0 {
-		return fullLabels
-	}
-
-	grouped := make(map[string]struct{}, len(groupBy))
-	for _, name := range groupBy {
-		grouped[name] = struct{}{}
-	}
-
-	result := make([]*typesv1.LabelPair, 0, len(fullLabels))
-	for _, label := range fullLabels {
-		if _, isGrouped := grouped[label.Name]; !isGrouped {
-			result = append(result, label)
-		}
-	}
-	return result
 }
 
 type seriesByLabels map[string]*typesv1.Series

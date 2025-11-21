@@ -63,7 +63,6 @@ func TestTimeSeriesBuilder_BuildWithExemplars_AttachesExemplars(t *testing.T) {
 	assert.Equal(t, uint64(100), exemplar.Value)
 	assert.Equal(t, int64(1000), exemplar.Timestamp)
 
-	// Check full labels are preserved
 	assert.Len(t, exemplar.Labels, 2)
 	assert.Equal(t, "api", findLabelValue(exemplar.Labels, "service_name"))
 	assert.Equal(t, "pod-123", findLabelValue(exemplar.Labels, "pod"))
@@ -75,31 +74,29 @@ func TestTimeSeriesBuilder_MultipleExemplarsAtSameTimestamp(t *testing.T) {
 		{Name: "service_name", Value: "api"},
 	}
 
-	// Same timestamp = same point, multiple exemplars
 	builder.Add(1, labels, 1000, 100.0, schemav1.Annotations{}, "profile-1")
 	builder.Add(1, labels, 1000, 200.0, schemav1.Annotations{}, "profile-2")
 	builder.Add(1, labels, 1000, 300.0, schemav1.Annotations{}, "profile-3")
 
 	series := builder.BuildWithExemplars()
 	require.Len(t, series, 1)
-	require.Len(t, series[0].Points, 3, "Should have 3 points (one per Add call)")
+	require.Len(t, series[0].Points, 3)
 
 	// All 3 points at timestamp 1000 should have all 3 exemplars
-	point := series[0].Points[0]
-	require.Len(t, point.Exemplars, 3, "Point at timestamp 1000 should have all 3 exemplars")
-
-	profileIDs := make(map[string]bool)
-	for _, ex := range point.Exemplars {
-		profileIDs[ex.ProfileId] = true
+	for _, point := range series[0].Points {
+		require.Len(t, point.Exemplars, 3)
+		profileIDs := make(map[string]bool)
+		for _, ex := range point.Exemplars {
+			profileIDs[ex.ProfileId] = true
+		}
+		assert.True(t, profileIDs["profile-1"])
+		assert.True(t, profileIDs["profile-2"])
+		assert.True(t, profileIDs["profile-3"])
 	}
-	assert.True(t, profileIDs["profile-1"])
-	assert.True(t, profileIDs["profile-2"])
-	assert.True(t, profileIDs["profile-3"])
 }
 
 func TestTimeSeriesBuilder_GroupBy(t *testing.T) {
 	builder := NewTimeSeriesBuilder("service_name")
-
 	labels1 := Labels{
 		{Name: "service_name", Value: "api"},
 		{Name: "pod", Value: "pod-1"},
@@ -120,24 +117,22 @@ func TestTimeSeriesBuilder_GroupBy(t *testing.T) {
 	assert.Equal(t, "service_name", series[0].Labels[0].Name)
 	assert.Equal(t, "api", series[0].Labels[0].Value)
 
-	// Should have 2 points
 	require.Len(t, series[0].Points, 2)
 
 	// Both exemplars should be at timestamp 1000, grouped together
 	point := series[0].Points[0]
-	require.Len(t, point.Exemplars, 2, "Should have 2 exemplars at the same timestamp")
+	require.Len(t, point.Exemplars, 2)
 
-	// Exemplars should retain full labels including pod
+	// Exemplars should have only non-grouped labels (pod), not service_name
 	for _, ex := range point.Exemplars {
-		assert.Len(t, ex.Labels, 2, "Exemplars should have full labels")
-		assert.NotEmpty(t, findLabelValue(ex.Labels, "pod"), "Exemplar should have pod label")
+		assert.Len(t, ex.Labels, 1)
+		assert.NotEmpty(t, findLabelValue(ex.Labels, "pod"))
+		assert.Empty(t, findLabelValue(ex.Labels, "service_name"))
 	}
 }
 
 func TestTimeSeriesBuilder_ExemplarDeduplication(t *testing.T) {
 	builder := NewTimeSeriesBuilder()
-
-	// Same profileID at same timestamp with same labels
 	labels := Labels{
 		{Name: "service_name", Value: "api"},
 		{Name: "pod", Value: "pod-1"},
@@ -152,15 +147,13 @@ func TestTimeSeriesBuilder_ExemplarDeduplication(t *testing.T) {
 
 	// Should deduplicate to 1 exemplar per point
 	for _, point := range series[0].Points {
-		require.Len(t, point.Exemplars, 1, "Duplicate exemplars should be merged")
+		require.Len(t, point.Exemplars, 1)
 		assert.Equal(t, "profile-dup", point.Exemplars[0].ProfileId)
 	}
 }
 
 func TestTimeSeriesBuilder_ExemplarLabelIntersection(t *testing.T) {
 	builder := NewTimeSeriesBuilder()
-
-	// Same profileID at same timestamp but different dynamic labels
 	labels1 := Labels{
 		{Name: "service_name", Value: "api"},
 		{Name: "pod", Value: "pod-1"},

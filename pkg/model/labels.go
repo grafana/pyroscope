@@ -609,3 +609,27 @@ func IntersectAll(labelSets []Labels) Labels {
 	}
 	return result
 }
+
+// WithoutLabels returns a new Labels with the specified label names removed.
+func (ls Labels) WithoutLabels(names ...string) Labels {
+	if len(names) == 0 {
+		return ls
+	}
+
+	toRemove := make(Labels, 0, len(names))
+	for _, name := range names {
+		for _, l := range ls {
+			if l.Name == name {
+				toRemove = append(toRemove, l)
+				break
+			}
+		}
+	}
+
+	if len(toRemove) == 0 {
+		return ls
+	}
+
+	result := ls.Clone()
+	return result.Subtract(toRemove)
+}

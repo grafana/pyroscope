@@ -159,32 +159,10 @@ func (a *timeSeriesAggregator) build() *queryv1.Report {
 		&sum,
 	)
 
-	if len(a.query.GroupBy) > 0 {
-		series = a.filterLabels(series, a.query.GroupBy)
-	}
-
 	return &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
 			Query:      a.query,
 			TimeSeries: series,
 		},
 	}
-}
-
-// filterLabels filters both series labels and exemplar labels based on groupBy.
-// Series labels are filtered to only include groupBy labels.
-// Exemplar labels are filtered to exclude groupBy labels.
-func (a *timeSeriesAggregator) filterLabels(series []*typesv1.Series, groupBy []string) []*typesv1.Series {
-	for _, s := range series {
-		s.Labels = phlaremodel.Labels(s.Labels).WithLabels(groupBy...)
-		for _, point := range s.Points {
-			for _, exemplar := range point.Exemplars {
-				exemplar.Labels = phlaremodel.FilterNonGroupedLabels(
-					exemplar.Labels,
-					groupBy,
-				)
-			}
-		}
-	}
-	return series
 }
