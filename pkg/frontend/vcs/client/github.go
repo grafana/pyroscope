@@ -44,16 +44,27 @@ func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) 
 		var githubErr *github.ErrorResponse
 		if errors.As(err, &githubErr) {
 			code := connectgrpc.HTTPToCode(int32(githubErr.Response.StatusCode))
+			sp.SetTag("error", true)
+			sp.SetTag("error.message", err.Error())
+			sp.SetTag("http.status_code", githubErr.Response.StatusCode)
 			return nil, connect.NewError(code, err)
 		}
+		sp.SetTag("error", true)
+		sp.SetTag("error.message", err.Error())
 		return nil, err
 	}
 	// error if message is nil
 	if commit.Commit == nil || commit.Commit.Message == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("commit contains no message"))
+		err := connect.NewError(connect.CodeInternal, errors.New("commit contains no message"))
+		sp.SetTag("error", true)
+		sp.SetTag("error.message", err.Error())
+		return nil, err
 	}
 	if commit.Commit == nil || commit.Commit.Author == nil || commit.Commit.Author.Date == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("commit contains no date"))
+		err := connect.NewError(connect.CodeInternal, errors.New("commit contains no date"))
+		sp.SetTag("error", true)
+		sp.SetTag("error.message", err.Error())
+		return nil, err
 	}
 
 	commitInfo := &vcsv1.CommitInfo{
@@ -89,22 +100,35 @@ func (gh *githubClient) GetFile(ctx context.Context, req FileRequest) (File, err
 	if err != nil {
 		var githubErr *github.ErrorResponse
 		if errors.As(err, &githubErr) && githubErr.Response.StatusCode == http.StatusNotFound {
-			return File{}, fmt.Errorf("%w: %s", ErrNotFound, err)
+			err := fmt.Errorf("%w: %s", ErrNotFound, err)
+			sp.SetTag("error", true)
+			sp.SetTag("error.message", err.Error())
+			sp.SetTag("http.status_code", http.StatusNotFound)
+			return File{}, err
 		}
+		sp.SetTag("error", true)
+		sp.SetTag("error.message", err.Error())
 		return File{}, err
 	}
 
 	if file == nil {
+		sp.SetTag("error", true)
+		sp.SetTag("error.message", ErrNotFound.Error())
 		return File{}, ErrNotFound
 	}
 
 	// We only support files retrieval.
 	if file.Type != nil && *file.Type != "file" {
-		return File{}, connect.NewError(connect.CodeInvalidArgument, errors.New("path is not a file"))
+		err := connect.NewError(connect.CodeInvalidArgument, errors.New("path is not a file"))
+		sp.SetTag("error", true)
+		sp.SetTag("error.message", err.Error())
+		return File{}, err
 	}
 
 	content, err := file.GetContent()
 	if err != nil {
+		sp.SetTag("error", true)
+		sp.SetTag("error.message", err.Error())
 		return File{}, err
 	}
 
