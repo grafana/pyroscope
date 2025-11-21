@@ -195,18 +195,29 @@ func processThirdPartyJAR(jarPath string) (*config.MappingConfig, error) {
 		return nil, fmt.Errorf("missing MANIFEST.MF: %w", err)
 	}
 
-	title, ok := manifest["Implementation-Title"]
-	if !ok || title == "" {
-		return nil, fmt.Errorf("missing Implementation-Title in manifest")
-	}
-
 	version, ok := manifest["Implementation-Version"]
 	if !ok || version == "" {
 		return nil, fmt.Errorf("missing Implementation-Version in manifest")
 	}
 
+	// Extract artifactId from filename (more reliable than Implementation-Title)
+	baseName := filepath.Base(jarPath)
+	baseName = strings.TrimSuffix(baseName, ".jar")
+	// Try to remove version suffix (pattern: -X.Y.Z or -X.Y)
+	// This is a simple heuristic: remove last hyphen-separated parts that look like versions
+	artifactId := baseName
+	parts := strings.Split(baseName, "-")
+	if len(parts) > 1 {
+		// Check if last part looks like a version (contains digits)
+		lastPart := parts[len(parts)-1]
+		if strings.ContainsAny(lastPart, "0123456789") {
+			// Remove version parts
+			artifactId = strings.Join(parts[:len(parts)-1], "-")
+		}
+	}
+
 	// Query Maven Central
-	pom, err := fetchPOMFromMavenCentral(title, version)
+	pom, err := fetchPOMFromMavenCentral(artifactId, version)
 	if err != nil {
 		return nil, err
 	}
@@ -385,20 +396,41 @@ func parseManifest(data string) map[string]string {
 		} else {
 			// New key-value pair
 			if currentKey != "" {
-				result[currentKey] = currentValue.String()
+				// Only store if we haven't seen this key before (take first occurrence)
+				if _, exists := result[currentKey]; !exists {
+					result[currentKey] = currentValue.String()
+				}
 			}
 
 			parts := strings.SplitN(line, ":", 2)
 			if len(parts) == 2 {
-				currentKey = parts[0]
-				currentValue.Reset()
-				currentValue.WriteString(strings.TrimSpace(parts[1]))
+				key := parts[0]
+				// If we see a "Name:" line, we're entering a named section
+				// Skip keys in named sections if we already have them from main section
+				if key == "Name" {
+					// Reset current key to stop processing continuation lines
+					currentKey = ""
+					currentValue.Reset()
+					continue
+				}
+				// Only process this key if we haven't seen it before
+				if _, exists := result[key]; !exists {
+					currentKey = key
+					currentValue.Reset()
+					currentValue.WriteString(strings.TrimSpace(parts[1]))
+				} else {
+					// Skip this key, we already have it
+					currentKey = ""
+					currentValue.Reset()
+				}
 			}
 		}
 	}
 
 	if currentKey != "" {
-		result[currentKey] = currentValue.String()
+		if _, exists := result[currentKey]; !exists {
+			result[currentKey] = currentValue.String()
+		}
 	}
 
 	return result
@@ -562,9 +594,9 @@ func parseSCMFromPOM(pomData []byte) (*SCM, error) {
 }
 
 func extractGitHubRepo(scm *SCM) (owner, repo string, err error) {
-	url := scm.URL
+	url := strings.TrimSpace(scm.URL)
 	if url == "" {
-		url = scm.Connection
+		url = strings.TrimSpace(scm.Connection)
 	}
 
 	// Handle different URL formats
