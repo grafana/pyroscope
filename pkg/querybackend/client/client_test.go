@@ -94,7 +94,7 @@ func Test_Concurrency(t *testing.T) {
 	resolver.Register(&multiResolverBuilder{targets: addresses})
 	backendAddress := "multi:///"
 
-	cl, err := New(backendAddress, grpcClientCfg, dialOpt)
+	cl, err := New(backendAddress, grpcClientCfg, 30*time.Second, dialOpt)
 	require.NoError(t, err)
 
 	for i := 0; i < nServers; i++ {
