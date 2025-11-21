@@ -154,3 +154,186 @@ func Test_RangeSeriesAvg(t *testing.T) {
 		})
 	}
 }
+
+func Test_RangeSeriesWithExemplars(t *testing.T) {
+	sum := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
+
+	for _, tc := range []struct {
+		name         string
+		series       []*typesv1.Series
+		start        int64
+		end          int64
+		step         int64
+		aggregation  *typesv1.TimeSeriesAggregationType
+		maxExemplars int // 0 means use default
+		out          []*typesv1.Series
+	}{
+		{
+			name: "exemplar tracking keeps highest value",
+			series: []*typesv1.Series{{
+				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+				Points: []*typesv1.Point{
+					{Timestamp: 1000, Value: 100.0, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-1", Value: 100, Timestamp: 1000}}},
+					{Timestamp: 1000, Value: 300.0, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-2", Value: 300, Timestamp: 1000}}},
+					{Timestamp: 2000, Value: 200.0, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-3", Value: 200, Timestamp: 2000}}},
+				},
+			}},
+			start:       1000,
+			end:         3000,
+			step:        1000,
+			aggregation: &sum,
+			out: []*typesv1.Series{{
+				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+				Points: []*typesv1.Point{
+					{Timestamp: 1000, Value: 400.0, Annotations: []*typesv1.ProfileAnnotation{}, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-2", Value: 300, Timestamp: 1000}}},
+					{Timestamp: 2000, Value: 200.0, Annotations: []*typesv1.ProfileAnnotation{}, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-3", Value: 200, Timestamp: 2000}}},
+				},
+			}},
+		},
+		{
+			name: "exemplar labels preserved through re-aggregation",
+			series: []*typesv1.Series{{
+				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+				Points: []*typesv1.Point{
+					{
+						Timestamp: 1000,
+						Value:     100.0,
+						Exemplars: []*typesv1.Exemplar{{
+							ProfileId: "prof-1",
+							Value:     100,
+							Timestamp: 1000,
+							Labels:    []*typesv1.LabelPair{{Name: "pod", Value: "pod-123"}, {Name: "region", Value: "us-east"}},
+						}},
+					},
+				},
+			}},
+			start:       1000,
+			end:         2000,
+			step:        1000,
+			aggregation: &sum,
+			out: []*typesv1.Series{{
+				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+				Points: []*typesv1.Point{
+					{
+						Timestamp:   1000,
+						Value:       100.0,
+						Annotations: []*typesv1.ProfileAnnotation{},
+						Exemplars: []*typesv1.Exemplar{{
+							ProfileId: "prof-1",
+							Value:     100,
+							Timestamp: 1000,
+							Labels:    []*typesv1.LabelPair{{Name: "pod", Value: "pod-123"}, {Name: "region", Value: "us-east"}},
+						}},
+					},
+				},
+			}},
+		},
+		{
+			name: "multi-block path supports top-2 exemplars",
+			series: []*typesv1.Series{{
+				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+				Points: []*typesv1.Point{
+					{
+						Timestamp: 1000,
+						Value:     100.0,
+						Exemplars: []*typesv1.Exemplar{
+							{ProfileId: "prof-1", Value: 100, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "pod", Value: "pod-1"}}},
+							{ProfileId: "prof-2", Value: 200, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "pod", Value: "pod-2"}}},
+						},
+					},
+					{
+						Timestamp: 1000,
+						Value:     150.0,
+						Exemplars: []*typesv1.Exemplar{
+							{ProfileId: "prof-3", Value: 300, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "pod", Value: "pod-3"}}},
+							{ProfileId: "prof-4", Value: 50, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "pod", Value: "pod-4"}}},
+						},
+					},
+				},
+			}},
+			start:        1000,
+			end:          2000,
+			step:         1000,
+			aggregation:  &sum,
+			maxExemplars: 2,
+			out: []*typesv1.Series{{
+				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+				Points: []*typesv1.Point{
+					{
+						Timestamp:   1000,
+						Value:       250.0,
+						Annotations: []*typesv1.ProfileAnnotation{},
+						Exemplars: []*typesv1.Exemplar{
+							{ProfileId: "prof-3", Value: 300, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "pod", Value: "pod-3"}}},
+							{ProfileId: "prof-2", Value: 200, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "pod", Value: "pod-2"}}},
+						},
+					},
+				},
+			}},
+		},
+		{
+			name: "same profileID across blocks - keeps highest value and intersects labels",
+			series: []*typesv1.Series{{
+				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+				Points: []*typesv1.Point{
+					{
+						Timestamp: 1000,
+						Value:     100.0,
+						Exemplars: []*typesv1.Exemplar{
+							{ProfileId: "Profile-X", Value: 100, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "A"}}},
+							{ProfileId: "Profile-Y", Value: 60, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "A"}}},
+							{ProfileId: "Profile-Z", Value: 40, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "A"}}},
+						},
+					},
+					{
+						Timestamp: 1000,
+						Value:     140.0,
+						Exemplars: []*typesv1.Exemplar{
+							{ProfileId: "Profile-X", Value: 20, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "B"}}},
+							{ProfileId: "Profile-Y", Value: 30, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "B"}}},
+							{ProfileId: "Profile-Z", Value: 90, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "B"}}},
+						},
+					},
+					{
+						Timestamp: 1000,
+						Value:     105.0,
+						Exemplars: []*typesv1.Exemplar{
+							{ProfileId: "Profile-X", Value: 10, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "C"}}},
+							{ProfileId: "Profile-Y", Value: 80, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "C"}}},
+							{ProfileId: "Profile-Z", Value: 15, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "C"}}},
+						},
+					},
+				},
+			}},
+			start:       1000,
+			end:         2000,
+			step:        1000,
+			aggregation: &sum,
+			out: []*typesv1.Series{{
+				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+				Points: []*typesv1.Point{
+					{
+						Timestamp:   1000,
+						Value:       345.0, // 100+140+105
+						Annotations: []*typesv1.ProfileAnnotation{},
+						// Profile-X has highest value (100 from block A), but labels differ across blocks (A/B/C), so intersection is nil
+						Exemplars: []*typesv1.Exemplar{
+							{ProfileId: "Profile-X", Value: 100, Timestamp: 1000},
+						},
+					},
+				},
+			}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			iter := NewTimeSeriesMergeIterator(tc.series)
+			var result []*typesv1.Series
+			if tc.maxExemplars > 0 {
+				result = rangeSeriesWithLimit(iter, tc.start, tc.end, tc.step, tc.aggregation, tc.maxExemplars)
+			} else {
+				result = RangeSeries(iter, tc.start, tc.end, tc.step, tc.aggregation)
+			}
+			testhelper.EqualProto(t, tc.out, result)
+		})
+	}
+}

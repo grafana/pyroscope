@@ -34,8 +34,9 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 	opts := []profileIteratorOption{
 		withFetchPartition(false), // Partition data not needed, as we don't access stacktraces at all
 	}
-	exemplarsEnabled := false // TODO: This will be enabled as part of #4615
-	if exemplarsEnabled {
+
+	includeExemplars := query.TimeSeries.ExemplarType == typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL
+	if includeExemplars {
 		opts = append(opts,
 			withAllLabels(),
 			withFetchProfileIDs(true),
@@ -87,22 +88,31 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 				annotations.Values = append(annotations.Values, e[0].String())
 			}
 		}
+
 		builder.Add(
 			row.Row.Fingerprint,
 			row.Row.Labels,
 			int64(row.Row.Timestamp),
 			float64(row.Values[0][0].Int64()),
 			annotations,
+			row.Row.ID, // Profile ID comes from ProfileEntry now
 		)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
+	var timeSeries []*typesv1.Series
+	if includeExemplars {
+		timeSeries = builder.BuildWithExemplars()
+	} else {
+		timeSeries = builder.Build()
+	}
+
 	resp := &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
 			Query:      query.TimeSeries.CloneVT(),
-			TimeSeries: builder.Build(),
+			TimeSeries: timeSeries,
 		},
 	}
 
@@ -141,16 +151,18 @@ func (a *timeSeriesAggregator) build() *queryv1.Report {
 	sum := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
 	stepMilli := time.Duration(a.query.GetStep() * float64(time.Second)).Milliseconds()
 	seriesIterator := phlaremodel.NewTimeSeriesMergeIterator(a.series.TimeSeries())
+	series := phlaremodel.RangeSeries(
+		seriesIterator,
+		a.startTime,
+		a.endTime,
+		stepMilli,
+		&sum,
+	)
+
 	return &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
-			Query: a.query,
-			TimeSeries: phlaremodel.RangeSeries(
-				seriesIterator,
-				a.startTime,
-				a.endTime,
-				stepMilli,
-				&sum,
-			),
+			Query:      a.query,
+			TimeSeries: series,
 		},
 	}
 }

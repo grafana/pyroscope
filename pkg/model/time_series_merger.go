@@ -135,7 +135,63 @@ func (m *TimeSeriesMerger) mergePoints(points []*typesv1.Point) int {
 			// Duplicate annotations are semantically correct and provide useful information.
 			// Users of the data can decide whether to discard or make use of duplicates.
 			points[j].Annotations = append(points[j].Annotations, points[i].Annotations...)
+
+			points[j].Exemplars = mergeExemplars(points[j].Exemplars, points[i].Exemplars)
 		}
 	}
 	return j + 1
+}
+
+// mergeExemplars combines two exemplar lists.
+// For exemplars with the same profileID, it keeps the highest value and intersects labels.
+func mergeExemplars(a, b []*typesv1.Exemplar) []*typesv1.Exemplar {
+	if len(a) == 0 {
+		return b
+	}
+	if len(b) == 0 {
+		return a
+	}
+
+	type exemplarGroup struct {
+		exemplar  *typesv1.Exemplar
+		labelSets []Labels
+	}
+	byProfileID := make(map[string]*exemplarGroup)
+
+	for _, ex := range a {
+		byProfileID[ex.ProfileId] = &exemplarGroup{
+			exemplar:  ex,
+			labelSets: []Labels{ex.Labels},
+		}
+	}
+
+	for _, ex := range b {
+		existing, found := byProfileID[ex.ProfileId]
+		if !found {
+			byProfileID[ex.ProfileId] = &exemplarGroup{
+				exemplar:  ex,
+				labelSets: []Labels{Labels(ex.Labels)},
+			}
+		} else {
+			if ex.Value > existing.exemplar.Value {
+				existing.exemplar = ex
+			}
+			existing.labelSets = append(existing.labelSets, Labels(ex.Labels))
+		}
+	}
+
+	result := make([]*typesv1.Exemplar, 0, len(byProfileID))
+	for _, group := range byProfileID {
+		ex := group.exemplar
+		if len(group.labelSets) > 1 {
+			ex.Labels = IntersectAll(group.labelSets)
+		}
+		result = append(result, ex)
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ProfileId < result[j].ProfileId
+	})
+
+	return result
 }

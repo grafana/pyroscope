@@ -584,3 +584,52 @@ func ServiceVersionFromLabels(lbls Labels) (ServiceVersion, bool) {
 		RootPath:   rootPath,
 	}, repo != "" || gitref != "" || rootPath != ""
 }
+
+// IntersectAll returns only the labels that are present in all label sets
+// with the same value. Used for merging exemplars with dynamic labels.
+// Reuses the existing Intersect method by iteratively intersecting all label sets.
+func IntersectAll(labelSets []Labels) Labels {
+	if len(labelSets) == 0 {
+		return nil
+	}
+	if len(labelSets) == 1 {
+		return labelSets[0]
+	}
+
+	result := labelSets[0].Clone()
+	for i := 1; i < len(labelSets); i++ {
+		result = result.Intersect(labelSets[i])
+		if len(result) == 0 {
+			return nil
+		}
+	}
+
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+// WithoutLabels returns a new Labels with the specified label names removed.
+func (ls Labels) WithoutLabels(names ...string) Labels {
+	if len(names) == 0 {
+		return ls
+	}
+
+	toRemove := make(Labels, 0, len(names))
+	for _, name := range names {
+		for _, l := range ls {
+			if l.Name == name {
+				toRemove = append(toRemove, l)
+				break
+			}
+		}
+	}
+
+	if len(toRemove) == 0 {
+		return ls
+	}
+
+	result := ls.Clone()
+	return result.Subtract(toRemove)
+}
