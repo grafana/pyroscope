@@ -14,8 +14,13 @@ import (
 
 func testBlockEntry(id int) blockEntry { return blockEntry{id: strconv.Itoa(id)} }
 
+func testBlockQueue(cfg Config) *blockQueue {
+	stats := newGlobalQueueStats(len(cfg.Levels))
+	return newBlockQueue(cfg, nil, stats)
+}
+
 func TestBlockQueue_Push(t *testing.T) {
-	q := newBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 3}}}, nil)
+	q := testBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 3}}})
 	key := compactionKey{tenant: "t", shard: 1}
 
 	result := q.stagedBlocks(key).push(testBlockEntry(1))
@@ -46,7 +51,7 @@ func TestBlockQueue_Push(t *testing.T) {
 }
 
 func TestBlockQueue_DuplicateBlock(t *testing.T) {
-	q := newBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 3}}}, nil)
+	q := testBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 3}}})
 	key := compactionKey{tenant: "t", shard: 1}
 
 	require.True(t, q.stagedBlocks(key).push(testBlockEntry(1)))
@@ -56,7 +61,7 @@ func TestBlockQueue_DuplicateBlock(t *testing.T) {
 }
 
 func TestBlockQueue_Remove(t *testing.T) {
-	q := newBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 3}}}, nil)
+	q := testBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 3}}})
 	key := compactionKey{tenant: "t", shard: 1}
 	q.stagedBlocks(key).push(testBlockEntry(1))
 	q.stagedBlocks(key).push(testBlockEntry(2))
@@ -73,7 +78,7 @@ func TestBlockQueue_Remove(t *testing.T) {
 }
 
 func TestBlockQueue_RemoveNotFound(t *testing.T) {
-	q := newBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 3}}}, nil)
+	q := testBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 3}}})
 	key := compactionKey{tenant: "t", shard: 1}
 	remove(q, key, "1")
 	q.stagedBlocks(key).push(testBlockEntry(1))
@@ -85,7 +90,7 @@ func TestBlockQueue_RemoveNotFound(t *testing.T) {
 }
 
 func TestBlockQueue_Linking(t *testing.T) {
-	q := newBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 2}}}, nil)
+	q := testBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 2}}})
 	key := compactionKey{tenant: "t", shard: 1}
 
 	q.stagedBlocks(key).push(testBlockEntry(1))
@@ -154,7 +159,7 @@ func TestBlockQueue_EmptyQueue(t *testing.T) {
 		numBlocksPerKey = 100
 	)
 
-	q := newBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 3}}}, nil)
+	q := testBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 3}}})
 	keys := make([]compactionKey, numKeys)
 	for i := 0; i < numKeys; i++ {
 		keys[i] = compactionKey{
@@ -254,7 +259,7 @@ func TestBlockQueue_FlushByAge(t *testing.T) {
 }
 
 func TestBlockQueue_BatchIterator(t *testing.T) {
-	q := newBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 3}}}, nil)
+	q := testBlockQueue(Config{Levels: []LevelConfig{{MaxBlocks: 3}}})
 	keys := []compactionKey{
 		{tenant: "t-1", shard: 1},
 		{tenant: "t-2", shard: 2},
