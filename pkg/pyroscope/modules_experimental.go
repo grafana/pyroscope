@@ -369,6 +369,7 @@ func (f *Pyroscope) initQueryBackendClient() (services.Service, error) {
 	c, err := querybackendclient.New(
 		f.Cfg.QueryBackend.Address,
 		f.Cfg.QueryBackend.GRPCClientConfig,
+		f.Cfg.QueryBackend.ClientTimeout,
 	)
 	if err != nil {
 		return nil, err
