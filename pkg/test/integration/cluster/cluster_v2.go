@@ -15,6 +15,7 @@ import (
 func WithV2() ClusterOption {
 	return func(c *Cluster) {
 		c.v2 = true
+		c.microservices = true
 		c.expectedComponents = []string{
 			"distributor",
 			"distributor",
