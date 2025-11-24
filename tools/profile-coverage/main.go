@@ -167,40 +167,39 @@ func run(profilePath, configPath, repoURL, ref, rootPath, githubToken, outputFor
 	functions := extractFunctions(profile.Profile)
 	fmt.Fprintf(os.Stderr, "✓ Found %d unique function(s)\n", len(functions))
 
-	// Filter to top N functions by sample count if requested
-	if topN > 0 {
-		fmt.Fprintf(os.Stderr, "Calculating sample counts to identify top %d functions...\n", topN)
-		sampleCounts := calculateSampleCountsMap(profile.Profile)
+	// Calculate sample counts and sort functions by sample count (descending)
+	fmt.Fprintf(os.Stderr, "Calculating sample counts and sorting functions...\n")
+	sampleCounts := calculateSampleCountsMap(profile.Profile)
 
-		// Create a slice of functions with their sample counts for sorting
-		type funcWithCount struct {
-			fn    config.FileSpec
-			count int64
-		}
-		funcsWithCounts := make([]funcWithCount, 0, len(functions))
-		for _, fn := range functions {
-			key := fmt.Sprintf("%s|%s", fn.FunctionName, fn.Path)
-			count := sampleCounts[key]
-			funcsWithCounts = append(funcsWithCounts, funcWithCount{fn: fn, count: count})
-		}
+	// Create a slice of functions with their sample counts for sorting
+	type funcWithCount struct {
+		fn    config.FileSpec
+		count int64
+	}
+	funcsWithCounts := make([]funcWithCount, 0, len(functions))
+	for _, fn := range functions {
+		key := fmt.Sprintf("%s|%s", fn.FunctionName, fn.Path)
+		count := sampleCounts[key]
+		funcsWithCounts = append(funcsWithCounts, funcWithCount{fn: fn, count: count})
+	}
 
-		// Sort by sample count in descending order
-		sort.Slice(funcsWithCounts, func(i, j int) bool {
-			return funcsWithCounts[i].count > funcsWithCounts[j].count
-		})
+	// Sort by sample count in descending order
+	sort.Slice(funcsWithCounts, func(i, j int) bool {
+		return funcsWithCounts[i].count > funcsWithCounts[j].count
+	})
 
-		// Take top N
-		if topN < len(funcsWithCounts) {
-			funcsWithCounts = funcsWithCounts[:topN]
-		}
+	// Filter to top N if requested
+	if topN > 0 && topN < len(funcsWithCounts) {
+		funcsWithCounts = funcsWithCounts[:topN]
+		fmt.Fprintf(os.Stderr, "✓ Filtered to top %d functions by sample count\n", len(funcsWithCounts))
+	} else {
+		fmt.Fprintf(os.Stderr, "✓ Sorted %d functions by sample count\n", len(funcsWithCounts))
+	}
 
-		// Extract just the functions
-		functions = make([]config.FileSpec, len(funcsWithCounts))
-		for i, fwc := range funcsWithCounts {
-			functions[i] = fwc.fn
-		}
-
-		fmt.Fprintf(os.Stderr, "✓ Filtered to top %d functions by sample count\n", len(functions))
+	// Extract just the functions (now sorted by sample count)
+	functions = make([]config.FileSpec, len(funcsWithCounts))
+	for i, fwc := range funcsWithCounts {
+		functions[i] = fwc.fn
 	}
 
 	// Parse repository URL
