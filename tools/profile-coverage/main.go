@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -31,7 +32,7 @@ type hybridVCSClient struct {
 func (c *hybridVCSClient) GetFile(ctx context.Context, req client.FileRequest) (client.File, error) {
 	// Intercept .pyroscope.yaml requests
 	// Check if this is a request for the config file
-	if req.Path == c.configPath || 
+	if req.Path == c.configPath ||
 		req.Path == config.PyroscopeConfigPath ||
 		strings.HasSuffix(req.Path, ".pyroscope.yaml") ||
 		strings.HasSuffix(req.Path, "/.pyroscope.yaml") {
@@ -52,16 +53,17 @@ type functionResult struct {
 	ResolvedURL  string
 	UsedMapping  bool
 	UsedFallback bool
+	SampleCount  int64
 }
 
 type coverageReport struct {
-	TotalFunctions      int
-	CoveredFunctions     int
-	UncoveredFunctions   int
-	CoveragePercentage  float64
-	FunctionsWithMapping int
+	TotalFunctions        int
+	CoveredFunctions      int
+	UncoveredFunctions    int
+	CoveragePercentage    float64
+	FunctionsWithMapping  int
 	FunctionsWithFallback int
-	Results             []functionResult
+	Results               []functionResult
 }
 
 func main() {
@@ -202,7 +204,7 @@ func run(profilePath, configPath, repoURL, ref, rootPath, githubToken, outputFor
 
 	// Analyze coverage
 	fmt.Fprintf(os.Stderr, "\nAnalyzing coverage (this may take a while)...\n")
-	report := analyzeCoverage(context.Background(), functions, cfg, hybridClient, gitURL, rootPath, ref, log.NewNopLogger())
+	report := analyzeCoverage(context.Background(), profile.Profile, functions, cfg, hybridClient, gitURL, rootPath, ref, log.NewNopLogger())
 
 	// Generate output
 	fmt.Fprintf(os.Stderr, "\nGenerating report...\n")
@@ -244,13 +246,16 @@ func extractFunctions(profile *profilev1.Profile) []config.FileSpec {
 	return functions
 }
 
-func analyzeCoverage(ctx context.Context, functions []config.FileSpec, cfg *config.PyroscopeConfig, vcsClient source.VCSClient, repo giturl.IGitURL, rootPath, ref string, logger log.Logger) *coverageReport {
+func analyzeCoverage(ctx context.Context, profile *profilev1.Profile, functions []config.FileSpec, cfg *config.PyroscopeConfig, vcsClient source.VCSClient, repo giturl.IGitURL, rootPath, ref string, logger log.Logger) *coverageReport {
 	report := &coverageReport{
 		TotalFunctions: len(functions),
 		Results:        make([]functionResult, 0, len(functions)),
 	}
 
 	httpClient := &http.Client{Timeout: 30 * time.Second}
+
+	// Build a map of function key (name|path) to coverage result
+	functionCoverage := make(map[string]bool)
 
 	total := len(functions)
 	for i, fn := range functions {
@@ -305,6 +310,10 @@ func analyzeCoverage(ctx context.Context, functions []config.FileSpec, cfg *conf
 			}
 		}
 
+		// Store coverage status for this function
+		key := fmt.Sprintf("%s|%s", fn.FunctionName, fn.Path)
+		functionCoverage[key] = result.Covered
+
 		report.Results = append(report.Results, result)
 	}
 
@@ -313,10 +322,79 @@ func analyzeCoverage(ctx context.Context, functions []config.FileSpec, cfg *conf
 		report.CoveragePercentage = float64(report.CoveredFunctions) / float64(report.TotalFunctions) * 100
 	}
 
-	fmt.Fprintf(os.Stderr, "\n✓ Analysis complete: %d/%d functions covered (%.2f%%)\n", 
+	// Calculate sample counts for each function
+	report.calculateSampleCounts(profile)
+
+	// Sort results by sample count in descending order
+	report.sortBySampleCount()
+
+	fmt.Fprintf(os.Stderr, "\n✓ Analysis complete: %d/%d functions covered (%.2f%%)\n",
 		report.CoveredFunctions, report.TotalFunctions, report.CoveragePercentage)
 
 	return report
+}
+
+// calculateSampleCounts calculates the total sample count for each function
+func (r *coverageReport) calculateSampleCounts(profile *profilev1.Profile) {
+	// Build a map of function key to sample count
+	functionSampleCounts := make(map[string]int64)
+
+	// Process each sample in the profile
+	for _, sample := range profile.Sample {
+		// Sum all sample values (there can be multiple sample types)
+		var sampleValue int64
+		for _, value := range sample.Value {
+			sampleValue += value
+		}
+
+		if sampleValue == 0 {
+			continue
+		}
+
+		// Count samples for each function in the stack
+		seenFunctions := make(map[string]bool)
+		for _, locationID := range sample.LocationId {
+			if int(locationID) >= len(profile.Location) {
+				continue
+			}
+			location := profile.Location[int(locationID)]
+			for _, line := range location.Line {
+				if int(line.FunctionId) >= len(profile.Function) {
+					continue
+				}
+				fn := profile.Function[int(line.FunctionId)]
+
+				// Extract function name and path
+				var functionName, filePath string
+				if fn.Name > 0 && int(fn.Name) < len(profile.StringTable) {
+					functionName = profile.StringTable[fn.Name]
+				}
+				if fn.Filename > 0 && int(fn.Filename) < len(profile.StringTable) {
+					filePath = profile.StringTable[fn.Filename]
+				}
+
+				// Use function key to avoid double counting in the same sample
+				key := fmt.Sprintf("%s|%s", functionName, filePath)
+				if !seenFunctions[key] {
+					functionSampleCounts[key] += sampleValue
+					seenFunctions[key] = true
+				}
+			}
+		}
+	}
+
+	// Update results with sample counts
+	for i := range r.Results {
+		key := fmt.Sprintf("%s|%s", r.Results[i].FunctionName, r.Results[i].Path)
+		r.Results[i].SampleCount = functionSampleCounts[key]
+	}
+}
+
+// sortBySampleCount sorts the results by sample count in descending order
+func (r *coverageReport) sortBySampleCount() {
+	sort.Slice(r.Results, func(i, j int) bool {
+		return r.Results[i].SampleCount > r.Results[j].SampleCount
+	})
 }
 
 func generateOutput(report *coverageReport, format string, verbose bool) error {
@@ -355,27 +433,21 @@ func outputText(report *coverageReport) {
 }
 
 func outputDetailed(report *coverageReport, verbose bool) {
-	fmt.Println("=== Detailed Results ===")
+	fmt.Println("=== Detailed Results (ordered by sample count) ===")
 	fmt.Println()
 
-	covered := []functionResult{}
-	uncovered := []functionResult{}
-
+	// Results are already sorted by sample count in descending order
 	for _, result := range report.Results {
 		if result.Covered {
-			covered = append(covered, result)
+			fmt.Printf("  ✓ %s", result.FunctionName)
 		} else {
-			uncovered = append(uncovered, result)
+			fmt.Printf("  ✗ %s", result.FunctionName)
 		}
-	}
-
-	if len(covered) > 0 {
-		fmt.Printf("Covered Functions (%d):\n", len(covered))
-		for _, result := range covered {
-			fmt.Printf("  ✓ %s\n", result.FunctionName)
-			if result.Path != "" {
-				fmt.Printf("    Path: %s\n", result.Path)
-			}
+		fmt.Printf(" (samples: %d)\n", result.SampleCount)
+		if result.Path != "" {
+			fmt.Printf("    Path: %s\n", result.Path)
+		}
+		if result.Covered {
 			if result.ResolvedURL != "" {
 				fmt.Printf("    URL: %s\n", result.ResolvedURL)
 			}
@@ -384,25 +456,15 @@ func outputDetailed(report *coverageReport, verbose bool) {
 			} else if result.UsedFallback {
 				fmt.Printf("    Used fallback: yes\n")
 			}
-			fmt.Println()
-		}
-	}
-
-	if len(uncovered) > 0 {
-		fmt.Printf("Uncovered Functions (%d):\n", len(uncovered))
-		for _, result := range uncovered {
-			fmt.Printf("  ✗ %s\n", result.FunctionName)
-			if result.Path != "" {
-				fmt.Printf("    Path: %s\n", result.Path)
-			}
+		} else {
 			if verbose && result.Error != "" {
 				fmt.Printf("    Error: %s\n", result.Error)
 			}
 			if !result.UsedMapping {
 				fmt.Printf("    No mapping found\n")
 			}
-			fmt.Println()
 		}
+		fmt.Println()
 	}
 }
 
@@ -426,7 +488,7 @@ func listAllFunctions(profilePath, outputFormat string) error {
 	switch outputFormat {
 	case "json":
 		type functionList struct {
-			TotalFunctions int                `json:"total_functions"`
+			TotalFunctions int               `json:"total_functions"`
 			Functions      []config.FileSpec `json:"functions"`
 		}
 		list := functionList{
@@ -630,4 +692,3 @@ func outputSingleFunctionResults(results []functionResult, format string, verbos
 		return nil
 	}
 }
-
