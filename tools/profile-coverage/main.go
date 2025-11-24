@@ -384,6 +384,17 @@ func calculateSampleCountsMap(profile *profilev1.Profile) map[string]int64 {
 	// Build a map of function key to sample count
 	functionSampleCounts := make(map[string]int64)
 
+	// Build maps for efficient lookup by ID (IDs are 1-indexed and may not be sequential)
+	locationMap := make(map[uint64]*profilev1.Location)
+	for _, loc := range profile.Location {
+		locationMap[loc.Id] = loc
+	}
+
+	functionMap := make(map[uint64]*profilev1.Function)
+	for _, fn := range profile.Function {
+		functionMap[fn.Id] = fn
+	}
+
 	// Process each sample in the profile
 	for _, sample := range profile.Sample {
 		// Sum all sample values (there can be multiple sample types)
@@ -399,15 +410,18 @@ func calculateSampleCountsMap(profile *profilev1.Profile) map[string]int64 {
 		// Count samples for each function in the stack
 		seenFunctions := make(map[string]bool)
 		for _, locationID := range sample.LocationId {
-			if int(locationID) >= len(profile.Location) {
+			location, ok := locationMap[locationID]
+			if !ok {
 				continue
 			}
-			location := profile.Location[int(locationID)]
 			for _, line := range location.Line {
-				if int(line.FunctionId) >= len(profile.Function) {
+				if line.FunctionId == 0 {
 					continue
 				}
-				fn := profile.Function[int(line.FunctionId)]
+				fn, ok := functionMap[line.FunctionId]
+				if !ok {
+					continue
+				}
 
 				// Extract function name and path
 				var functionName, filePath string
