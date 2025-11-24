@@ -22,10 +22,11 @@ import (
 
 // JarMapping represents a hardcoded mapping for a JAR file
 type JarMapping struct {
-	Jar   string `json:"jar"`   // JAR name (artifactId) to match
-	Owner string `json:"owner"` // GitHub owner
-	Repo  string `json:"repo"`  // GitHub repository
-	Path  string `json:"path"`  // Source path in repository
+	Jar       string  `json:"jar"`       // JAR name (artifactId) to match
+	Owner     string  `json:"owner"`    // GitHub owner
+	Repo      string  `json:"repo"`     // GitHub repository
+	Path      string  `json:"path"`     // Source path in repository
+	RefPrefix *string `json:"refPrefix"` // Optional prefix for ref (e.g., "v" for "v1.0.0", "" for "1.0.0"). If nil, defaults to "v".
 	// Ref is always inferred from the JAR file's version
 }
 
@@ -274,24 +275,32 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 		return nil, fmt.Errorf("missing MANIFEST.MF: %w", err)
 	}
 
-	version, ok := manifest["Implementation-Version"]
-	if !ok || version == "" {
-		return nil, fmt.Errorf("missing Implementation-Version in manifest")
-	}
-
-	// Extract artifactId from filename (more reliable than Implementation-Title)
+	// Extract artifactId and version from filename first
 	baseName := filepath.Base(jarPath)
 	baseName = strings.TrimSuffix(baseName, ".jar")
 	// Try to remove version suffix (pattern: -X.Y.Z or -X.Y)
 	// This is a simple heuristic: remove last hyphen-separated parts that look like versions
 	artifactId := baseName
+	var versionFromFilename string
 	parts := strings.Split(baseName, "-")
 	if len(parts) > 1 {
 		// Check if last part looks like a version (contains digits)
 		lastPart := parts[len(parts)-1]
 		if strings.ContainsAny(lastPart, "0123456789") {
-			// Remove version parts
+			// Extract version from filename
+			versionFromFilename = lastPart
+			// Remove version parts to get artifactId
 			artifactId = strings.Join(parts[:len(parts)-1], "-")
+		}
+	}
+
+	// Try to get version from manifest, fallback to filename
+	version, ok := manifest["Implementation-Version"]
+	if !ok || version == "" {
+		if versionFromFilename != "" {
+			version = versionFromFilename
+		} else {
+			return nil, fmt.Errorf("missing Implementation-Version in manifest and could not extract from filename")
 		}
 	}
 
@@ -302,10 +311,15 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 	// Check for hardcoded mapping first
 	if mapping := findJarMapping(artifactId); mapping != nil {
 		fmt.Fprintf(os.Stderr, "  Found hardcoded mapping: %s/%s\n", mapping.Owner, mapping.Repo)
-		// Always infer ref from JAR version - add 'v' prefix if not present
+		// For hardcoded mappings, use version with optional prefix from mapping
 		ref := version
-		if !strings.HasPrefix(ref, "v") {
-			ref = "v" + ref
+		refPrefix := "v" // Default to "v" prefix (most repos use this)
+		if mapping.RefPrefix != nil {
+			// Use explicitly specified prefix (can be "" for no prefix)
+			refPrefix = *mapping.RefPrefix
+		}
+		if refPrefix != "" && !strings.HasPrefix(ref, refPrefix) {
+			ref = refPrefix + ref
 		}
 
 		mappingConfig := &config.MappingConfig{
