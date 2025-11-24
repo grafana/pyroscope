@@ -39,10 +39,11 @@ var jarMappings *JarMappingsConfig
 
 func main() {
 	var (
-		jarPath     = flag.String("jar", "", "Path to the Java JAR file to analyze")
-		output      = flag.String("output", "", "Output file path (default: stdout)")
-		useMacaron  = flag.Bool("use-macaron", false, "Enable Macaron fallback when mapping fails")
-		help        = flag.Bool("help", false, "Show help")
+		jarPath    = flag.String("jar", "", "Path to the Java JAR file to analyze")
+		output     = flag.String("output", "", "Output file path (default: stdout)")
+		useMacaron = flag.Bool("use-macaron", false, "Enable Macaron fallback when mapping fails")
+		jdkVersion = flag.String("jdk-version", "", "JDK version for JDK function mappings (e.g., '8', '11', '17', '21'). If not specified, JDK mappings will not be generated.")
+		help       = flag.Bool("help", false, "Show help")
 	)
 	flag.Parse()
 
@@ -53,7 +54,7 @@ func main() {
 		fmt.Println("found in a Java JAR file.")
 		fmt.Println()
 		fmt.Println("Usage:")
-		fmt.Printf("  %s -jar <jar-file> [-output <output-file>] [-use-macaron]\n", os.Args[0])
+		fmt.Printf("  %s -jar <jar-file> [-output <output-file>] [-use-macaron] [-jdk-version <version>]\n", os.Args[0])
 		fmt.Println()
 		fmt.Println("Flags:")
 		flag.PrintDefaults()
@@ -66,7 +67,7 @@ func main() {
 		// Continue anyway, mappings are optional
 	}
 
-	if err := processJAR(*jarPath, *output, *useMacaron); err != nil {
+	if err := processJAR(*jarPath, *output, *useMacaron, *jdkVersion); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -128,7 +129,7 @@ func findJarMapping(artifactId string) *JarMapping {
 	return nil
 }
 
-func processJAR(jarPath, outputPath string, useMacaron bool) error {
+func processJAR(jarPath, outputPath string, useMacaron bool, jdkVersion string) error {
 	// Extract 3rd party JARs
 	thirdPartyJARs, tmpDir, err := extractThirdPartyJARs(jarPath)
 	if err != nil {
@@ -167,6 +168,26 @@ func processJAR(jarPath, outputPath string, useMacaron bool) error {
 
 	fmt.Printf("\nProcessed %d JARs: %d successful, %d failed\n",
 		len(thirdPartyJARs), successCount, failCount)
+
+	// Auto-detect JDK version if not specified
+	if jdkVersion == "" {
+		detectedVersion := detectJDKVersion(jarPath)
+		if detectedVersion != "" {
+			jdkVersion = detectedVersion
+			fmt.Printf("Auto-detected JDK version: %s\n", jdkVersion)
+		}
+	}
+
+	// Add JDK mappings if JDK version is available (either specified or auto-detected)
+	if jdkVersion != "" {
+		jdkMappings := generateJDKMappings(jdkVersion)
+		if len(jdkMappings) > 0 {
+			mappings = append(mappings, jdkMappings...)
+			fmt.Printf("Added %d JDK mapping(s) for JDK %s\n", len(jdkMappings), jdkVersion)
+		}
+	} else {
+		fmt.Printf("JDK version not specified and could not be auto-detected. Skipping JDK mappings.\n")
+	}
 
 	// Generate YAML output
 	cfg := config.PyroscopeConfig{
@@ -1442,4 +1463,193 @@ func extractGitHubRepo(scm *SCM) (owner, repo string, err error) {
 	}
 
 	return "", "", fmt.Errorf("could not extract GitHub repo from URL: %s", url)
+}
+
+// generateJDKMappings generates mappings for JDK packages (java/, jdk/, javax/, sun/)
+// jdkVersion should be a major version number like "8", "11", "17", "21", etc.
+func generateJDKMappings(jdkVersion string) []config.MappingConfig {
+	var mappings []config.MappingConfig
+
+	// Determine OpenJDK repository and path based on JDK version
+	var repo, path, ref string
+	versionNum := 0
+	fmt.Sscanf(jdkVersion, "%d", &versionNum)
+
+	if versionNum == 8 {
+		// Java 8 uses jdk8u repository with different path structure
+		repo = "jdk8u"
+		path = "jdk/src/share/classes"
+		// Use a common Java 8 tag (jdk8u402-b06 is a recent LTS update)
+		ref = "jdk8u402-b06"
+	} else if versionNum >= 9 {
+		// Java 9+ uses main jdk repository
+		repo = "jdk"
+		path = "src/java.base/share/classes"
+		// Use tag format jdk-XX+XX (e.g., jdk-11+28, jdk-17+35)
+		// For simplicity, use a common tag for each major version
+		// Users can override this if needed
+		ref = fmt.Sprintf("jdk-%d+28", versionNum)
+	} else {
+		// Unsupported version, return empty
+		fmt.Fprintf(os.Stderr, "Warning: Unsupported JDK version %s, skipping JDK mappings\n", jdkVersion)
+		return mappings
+	}
+
+	// JDK package prefixes to map
+	// These cover the most common JDK packages that appear in profiles
+	jdkPrefixes := []string{
+		"java/lang",
+		"java/util",
+		"java/io",
+		"java/net",
+		"java/time",
+		"java/reflect",
+		"java/security",
+		"java/math",
+		"java/text",
+		"java/nio",
+		"java/concurrent",
+		"java/beans",
+		"java/awt",
+		"java/applet",
+		"javax/annotation",
+		"javax/crypto",
+		"javax/net",
+		"javax/security",
+		"javax/sql",
+		"javax/xml",
+		"jdk/internal",
+		"jdk/nashorn",
+		"sun/misc",
+		"sun/nio",
+		"sun/reflect",
+		"sun/security",
+		"sun/util",
+	}
+
+	// Create a single mapping with all JDK prefixes
+	// This is more efficient than creating separate mappings for each prefix
+	matchConfigs := make([]config.Match, len(jdkPrefixes))
+	for i, prefix := range jdkPrefixes {
+		matchConfigs[i] = config.Match{Prefix: prefix}
+	}
+
+	mapping := config.MappingConfig{
+		FunctionName: matchConfigs,
+		Language:     "java",
+		Source: config.Source{
+			GitHub: &config.GitHubMappingConfig{
+				Owner: "openjdk",
+				Repo:  repo,
+				Ref:   ref,
+				Path:  path,
+			},
+		},
+	}
+
+	mappings = append(mappings, mapping)
+	return mappings
+}
+
+// detectJDKVersion attempts to detect the JDK version from the JAR manifest
+// Returns empty string if detection fails
+func detectJDKVersion(jarPath string) string {
+	manifest, err := extractManifest(jarPath)
+	if err != nil {
+		// Manifest extraction failed, try other methods
+		return detectJDKVersionFromSystem()
+	}
+
+	// Try X-Compile-Target-JDK first (most reliable)
+	if version := manifest["X-Compile-Target-JDK"]; version != "" {
+		// Extract major version number (e.g., "8" from "1.8" or "8")
+		majorVersion := extractMajorJDKVersion(version)
+		if majorVersion != "" {
+			return majorVersion
+		}
+	}
+
+	// Try X-Compile-Source-JDK
+	if version := manifest["X-Compile-Source-JDK"]; version != "" {
+		majorVersion := extractMajorJDKVersion(version)
+		if majorVersion != "" {
+			return majorVersion
+		}
+	}
+
+	// Try Build-Jdk (Maven format)
+	if version := manifest["Build-Jdk"]; version != "" {
+		majorVersion := extractMajorJDKVersion(version)
+		if majorVersion != "" {
+			return majorVersion
+		}
+	}
+
+	// Try Build-Jdk-Spec (Maven format)
+	if version := manifest["Build-Jdk-Spec"]; version != "" {
+		majorVersion := extractMajorJDKVersion(version)
+		if majorVersion != "" {
+			return majorVersion
+		}
+	}
+
+	// Fallback to system detection
+	return detectJDKVersionFromSystem()
+}
+
+// extractMajorJDKVersion extracts the major version number from various JDK version formats
+// Handles formats like: "1.8", "8", "11", "17.0.1", "21.0.2", etc.
+func extractMajorJDKVersion(version string) string {
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return ""
+	}
+
+	// Handle "1.8" or "1.7" format (Java 8 and earlier)
+	if strings.HasPrefix(version, "1.") {
+		parts := strings.Split(version, ".")
+		if len(parts) >= 2 {
+			return parts[1] // Return "8" from "1.8"
+		}
+	}
+
+	// Handle modern format: "8", "11", "17", "21", etc.
+	// Extract first number
+	parts := strings.Split(version, ".")
+	if len(parts) > 0 {
+		return parts[0]
+	}
+
+	return ""
+}
+
+// detectJDKVersionFromSystem attempts to detect JDK version from system
+// This is a fallback when JAR manifest doesn't contain version info
+func detectJDKVersionFromSystem() string {
+	// Try to get version from java.version system property via exec
+	// This is a best-effort approach
+	cmd := exec.Command("java", "-XshowSettings:properties", "-version")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return ""
+	}
+
+	// Parse output for java.version
+	outputStr := string(output)
+	lines := strings.Split(outputStr, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "java.version") {
+			// Extract version from line like "    java.version = 11.0.19"
+			parts := strings.Split(line, "=")
+			if len(parts) == 2 {
+				version := strings.TrimSpace(parts[1])
+				majorVersion := extractMajorJDKVersion(version)
+				if majorVersion != "" {
+					return majorVersion
+				}
+			}
+		}
+	}
+
+	return ""
 }
