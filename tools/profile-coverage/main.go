@@ -78,6 +78,7 @@ func main() {
 		verbose       = flag.Bool("verbose", false, "Show detailed error messages")
 		listFunctions = flag.Bool("list-functions", false, "List all functions in the profile and exit")
 		functionName  = flag.String("function", "", "Check coverage for a specific function (by name or path)")
+		topN          = flag.Int("top", 0, "Only process the top N functions by sample count (0 = process all)")
 		help          = flag.Bool("help", false, "Show help")
 	)
 	flag.Parse()
@@ -134,13 +135,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := run(*profilePath, *configPath, *repoURL, *ref, *rootPath, *githubToken, *outputFormat, *verbose); err != nil {
+	if err := run(*profilePath, *configPath, *repoURL, *ref, *rootPath, *githubToken, *outputFormat, *verbose, *topN); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(profilePath, configPath, repoURL, ref, rootPath, githubToken, outputFormat string, verbose bool) error {
+func run(profilePath, configPath, repoURL, ref, rootPath, githubToken, outputFormat string, verbose bool, topN int) error {
 	// Read and parse config
 	fmt.Fprintf(os.Stderr, "Reading configuration from %s...\n", configPath)
 	configData, err := os.ReadFile(configPath)
@@ -165,6 +166,42 @@ func run(profilePath, configPath, repoURL, ref, rootPath, githubToken, outputFor
 	fmt.Fprintf(os.Stderr, "Extracting functions from profile...\n")
 	functions := extractFunctions(profile.Profile)
 	fmt.Fprintf(os.Stderr, "✓ Found %d unique function(s)\n", len(functions))
+
+	// Filter to top N functions by sample count if requested
+	if topN > 0 {
+		fmt.Fprintf(os.Stderr, "Calculating sample counts to identify top %d functions...\n", topN)
+		sampleCounts := calculateSampleCountsMap(profile.Profile)
+
+		// Create a slice of functions with their sample counts for sorting
+		type funcWithCount struct {
+			fn    config.FileSpec
+			count int64
+		}
+		funcsWithCounts := make([]funcWithCount, 0, len(functions))
+		for _, fn := range functions {
+			key := fmt.Sprintf("%s|%s", fn.FunctionName, fn.Path)
+			count := sampleCounts[key]
+			funcsWithCounts = append(funcsWithCounts, funcWithCount{fn: fn, count: count})
+		}
+
+		// Sort by sample count in descending order
+		sort.Slice(funcsWithCounts, func(i, j int) bool {
+			return funcsWithCounts[i].count > funcsWithCounts[j].count
+		})
+
+		// Take top N
+		if topN < len(funcsWithCounts) {
+			funcsWithCounts = funcsWithCounts[:topN]
+		}
+
+		// Extract just the functions
+		functions = make([]config.FileSpec, len(funcsWithCounts))
+		for i, fwc := range funcsWithCounts {
+			functions[i] = fwc.fn
+		}
+
+		fmt.Fprintf(os.Stderr, "✓ Filtered to top %d functions by sample count\n", len(functions))
+	}
 
 	// Parse repository URL
 	fmt.Fprintf(os.Stderr, "Parsing repository URL...\n")
