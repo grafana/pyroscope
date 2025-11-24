@@ -1,3 +1,4 @@
+version: v1
 source_code:
   mappings:
     - function_name:
