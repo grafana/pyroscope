@@ -217,11 +217,16 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 		}
 	}
 
+	fmt.Fprintf(os.Stderr, "Processing JAR: %s\n", filepath.Base(jarPath))
+	fmt.Fprintf(os.Stderr, "  Extracted artifactId: %s\n", artifactId)
+	fmt.Fprintf(os.Stderr, "  Extracted version: %s\n", version)
+
 	var owner, repo string
 	var pom []byte
 	var groupId string
 
 	// Query Maven Central
+	fmt.Fprintf(os.Stderr, "  Attempting to fetch POM from Maven Central...\n")
 	pom, groupId, err = fetchPOMFromMavenCentral(artifactId, version)
 	if err != nil {
 		// If POM fetching failed and Macaron is enabled, try Macaron with common groupId patterns
@@ -272,6 +277,8 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 		groupId, _ = extractGroupIdFromPOM(pom)
 	}
 
+	fmt.Fprintf(os.Stderr, "  Found groupId: %s\n", groupId)
+
 	// Parse POM for SCM info and URL
 	var pomStruct POM
 	if err := xml.Unmarshal(pom, &pomStruct); err != nil {
@@ -280,6 +287,7 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 
 	// Try SCM first
 	if pomStruct.SCM.URL != "" || pomStruct.SCM.Connection != "" {
+		fmt.Fprintf(os.Stderr, "  POM has SCM info: URL=%s, Connection=%s\n", pomStruct.SCM.URL, pomStruct.SCM.Connection)
 		scmInfo := &pomStruct.SCM
 		if scmInfo.URL == "" {
 			scmInfo.URL = scmInfo.Connection
@@ -287,14 +295,18 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 		var err error
 		owner, repo, err = extractGitHubRepo(scmInfo)
 		if err == nil {
+			fmt.Fprintf(os.Stderr, "  Successfully extracted GitHub repo from SCM: %s/%s\n", owner, repo)
 			// Successfully extracted from SCM
 		} else {
+			fmt.Fprintf(os.Stderr, "  SCM URL is not GitHub, trying POM URL field...\n")
 			// SCM exists but not GitHub, try POM URL field
 			if pomStruct.URL != "" {
+				fmt.Fprintf(os.Stderr, "  POM URL field: %s\n", pomStruct.URL)
 				owner, repo, err = extractGitHubRepoFromURL(pomStruct.URL)
 			}
 			// If still failed, try deps.dev
 			if err != nil && groupId != "" {
+				fmt.Fprintf(os.Stderr, "  Falling back to deps.dev...\n")
 				owner, repo, err = queryDepsDevForGitHubRepo(groupId, artifactId, version)
 				if err != nil {
 					// Try Macaron as final fallback
@@ -327,8 +339,10 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 		}
 	} else {
 		// No SCM, try parent POM first
+		fmt.Fprintf(os.Stderr, "  POM has no SCM info, trying parent POM...\n")
 		var err error
 		if pomStruct.Parent.GroupID != "" && pomStruct.Parent.ArtifactID != "" && pomStruct.Parent.Version != "" {
+			fmt.Fprintf(os.Stderr, "  Parent POM: %s:%s:%s\n", pomStruct.Parent.GroupID, pomStruct.Parent.ArtifactID, pomStruct.Parent.Version)
 			parentPOM, parentErr := fetchPOMFromMavenCentralByCoords(pomStruct.Parent.GroupID, pomStruct.Parent.ArtifactID, pomStruct.Parent.Version)
 			if parentErr == nil {
 				var parentPOMStruct POM
@@ -374,10 +388,12 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 
 		// If parent didn't work, try POM URL field
 		if err != nil && pomStruct.URL != "" {
+			fmt.Fprintf(os.Stderr, "  Trying POM URL field: %s\n", pomStruct.URL)
 			owner, repo, err = extractGitHubRepoFromURL(pomStruct.URL)
 		}
 		// If still failed, try deps.dev
 		if err != nil && groupId != "" {
+			fmt.Fprintf(os.Stderr, "  Falling back to deps.dev...\n")
 			owner, repo, err = queryDepsDevForGitHubRepo(groupId, artifactId, version)
 			if err != nil {
 				// Try Macaron as final fallback
@@ -701,6 +717,7 @@ func fetchPOMFromMavenCentral(artifactId, version string) ([]byte, string, error
 		url := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s/%s-%s.pom",
 			groupIdPath, artifactId, version, artifactId, version)
 		lastURL = url
+		fmt.Fprintf(os.Stderr, "    Trying POM URL: %s\n", url)
 
 		resp, err := client.Get(url)
 		if err != nil {
@@ -710,6 +727,7 @@ func fetchPOMFromMavenCentral(artifactId, version string) ([]byte, string, error
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusOK {
+			fmt.Fprintf(os.Stderr, "    ✓ Found POM at: %s\n", url)
 			data, err := io.ReadAll(resp.Body)
 			if err != nil {
 				lastErr = fmt.Errorf("failed to read response: %w", err)
@@ -723,8 +741,10 @@ func fetchPOMFromMavenCentral(artifactId, version string) ([]byte, string, error
 
 	// If direct groupId guessing failed, try Maven Central search API
 	// This will return a POM even if it doesn't have SCM (we'll use deps.dev for that)
+	fmt.Fprintf(os.Stderr, "    All direct POM URLs failed, trying Maven Central search API...\n")
 	pom, groupId, err := searchMavenCentralForPOMAny(artifactId, version)
 	if err == nil {
+		fmt.Fprintf(os.Stderr, "    ✓ Found POM via search API, groupId: %s\n", groupId)
 		return pom, groupId, nil
 	}
 
@@ -924,6 +944,12 @@ func queryDepsDevForGitHubRepo(groupId, artifactId, version string) (owner, repo
 		fmt.Sprintf("https://api.deps.dev/v3alpha/systems/maven/packages/%s/versions/%s", url.PathEscape(packageKey), url.PathEscape(version)),
 	}
 
+	fmt.Fprintf(os.Stderr, "Querying deps.dev for groupId=%s, artifactId=%s, version=%s\n", groupId, artifactId, version)
+	fmt.Fprintf(os.Stderr, "  API endpoints:\n")
+	for _, endpoint := range endpoints {
+		fmt.Fprintf(os.Stderr, "    - %s\n", endpoint)
+	}
+
 	var lastErr error
 	for _, depsDevURL := range endpoints {
 		depsResp, err := client.Get(depsDevURL)
@@ -961,6 +987,7 @@ func queryDepsDevForGitHubRepo(groupId, artifactId, version string) (owner, repo
 	// This is a fallback for when the API is not available
 	// Note: deps.dev uses React, so GitHub links may be in JSON data embedded in the page
 	htmlURL := fmt.Sprintf("https://deps.dev/maven/%s/%s/%s", strings.ReplaceAll(groupId, ".", "/"), artifactId, version)
+	fmt.Fprintf(os.Stderr, "  HTML fallback: %s\n", htmlURL)
 	htmlResp, err := client.Get(htmlURL)
 	if err == nil {
 		defer htmlResp.Body.Close()
