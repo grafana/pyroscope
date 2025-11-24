@@ -19,7 +19,7 @@ jobs:
         with:
           persist-credentials: 'false'
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@0c35ca9c1d8794ccf9cfcfdcdd6b02261c7d0183
+        uses: grafana/shared-workflows/actions/get-vault-secrets@eb33f84481d38701f4d2c587a4817ce332784f5f
         with:
           repo_secrets: |
             GITHUB_APP_ID=pyroscope-development-app:app-id
