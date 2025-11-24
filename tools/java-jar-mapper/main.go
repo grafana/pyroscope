@@ -20,6 +20,22 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// JarMapping represents a hardcoded mapping for a JAR file
+type JarMapping struct {
+	Jar   string `json:"jar"`   // JAR name (artifactId) to match
+	Owner string `json:"owner"` // GitHub owner
+	Repo  string `json:"repo"`  // GitHub repository
+	Path  string `json:"path"`  // Source path in repository
+	// Ref is always inferred from the JAR file's version
+}
+
+// JarMappingsConfig represents the JSON configuration file
+type JarMappingsConfig struct {
+	Mappings []JarMapping `json:"mappings"`
+}
+
+var jarMappings *JarMappingsConfig
+
 func main() {
 	var (
 		jarPath     = flag.String("jar", "", "Path to the Java JAR file to analyze")
@@ -43,10 +59,72 @@ func main() {
 		return
 	}
 
+	// Load hardcoded JAR mappings
+	if err := loadJarMappings(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to load JAR mappings: %v\n", err)
+		// Continue anyway, mappings are optional
+	}
+
 	if err := processJAR(*jarPath, *output, *useMacaron); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// loadJarMappings loads the hardcoded JAR mappings from JSON file
+func loadJarMappings() error {
+	// Try to find the mappings file relative to the executable
+	exePath, err := os.Executable()
+	if err != nil {
+		// Fallback to current directory
+		exePath = "."
+	}
+	exeDir := filepath.Dir(exePath)
+
+	// Try multiple locations
+	possiblePaths := []string{
+		filepath.Join(exeDir, "jar-mappings.json"),
+		filepath.Join(exeDir, "tools", "java-jar-mapper", "jar-mappings.json"),
+		"tools/java-jar-mapper/jar-mappings.json",
+		"jar-mappings.json",
+	}
+
+	var data []byte
+	var found bool
+	for _, path := range possiblePaths {
+		if data, err = os.ReadFile(path); err == nil {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		// Mappings file is optional, return nil if not found
+		return nil
+	}
+
+	var config JarMappingsConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("failed to parse JAR mappings JSON: %w", err)
+	}
+
+	jarMappings = &config
+	return nil
+}
+
+// findJarMapping looks up a hardcoded mapping for the given artifactId
+func findJarMapping(artifactId string) *JarMapping {
+	if jarMappings == nil {
+		return nil
+	}
+
+	for i := range jarMappings.Mappings {
+		if jarMappings.Mappings[i].Jar == artifactId {
+			return &jarMappings.Mappings[i]
+		}
+	}
+
+	return nil
 }
 
 func processJAR(jarPath, outputPath string, useMacaron bool) error {
@@ -220,6 +298,35 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 	fmt.Fprintf(os.Stderr, "Processing JAR: %s\n", filepath.Base(jarPath))
 	fmt.Fprintf(os.Stderr, "  Extracted artifactId: %s\n", artifactId)
 	fmt.Fprintf(os.Stderr, "  Extracted version: %s\n", version)
+
+	// Check for hardcoded mapping first
+	if mapping := findJarMapping(artifactId); mapping != nil {
+		fmt.Fprintf(os.Stderr, "  Found hardcoded mapping: %s/%s\n", mapping.Owner, mapping.Repo)
+		// Always infer ref from JAR version - add 'v' prefix if not present
+		ref := version
+		if !strings.HasPrefix(ref, "v") {
+			ref = "v" + ref
+		}
+
+		mappingConfig := &config.MappingConfig{
+			FunctionName: make([]config.Match, len(prefixes)),
+			Language:     "java",
+			Source: config.Source{
+				GitHub: &config.GitHubMappingConfig{
+					Owner: mapping.Owner,
+					Repo:  mapping.Repo,
+					Ref:   ref,
+					Path:  mapping.Path,
+				},
+			},
+		}
+
+		for i, prefix := range prefixes {
+			mappingConfig.FunctionName[i] = config.Match{Prefix: prefix}
+		}
+
+		return mappingConfig, nil
+	}
 
 	var owner, repo string
 	var pom []byte
