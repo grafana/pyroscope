@@ -19,6 +19,13 @@ const (
 	LanguageJava    = Language("java")
 )
 
+type Version string
+
+const (
+	VersionUnknown = Version("")
+	VersionV1      = Version("v1")
+)
+
 var validLanguages = []Language{
 	LanguageGo,
 	LanguageJava,
@@ -26,6 +33,7 @@ var validLanguages = []Language{
 
 // PyroscopeConfig represents the structure of .pyroscope.yaml configuration file
 type PyroscopeConfig struct {
+	Version    Version
 	SourceCode SourceCodeConfig `yaml:"source_code"`
 }
 
@@ -84,6 +92,14 @@ func ParsePyroscopeConfig(data []byte) (*PyroscopeConfig, error) {
 
 // Validate checks if the configuration is valid
 func (c *PyroscopeConfig) Validate() error {
+	if c.Version == VersionUnknown {
+		c.Version = VersionV1
+	}
+
+	if c.Version != VersionV1 {
+		return fmt.Errorf("invalid version '%s', supported versions are '%s'", c.Version, VersionV1)
+	}
+
 	var errs []error
 	for i, mapping := range c.SourceCode.Mappings {
 		if err := mapping.Validate(); err != nil {

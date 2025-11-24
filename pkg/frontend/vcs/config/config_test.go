@@ -175,6 +175,13 @@ func TestParsePyroscopeConfig(t *testing.T) {
 		_, err := ParsePyroscopeConfig([]byte(yaml))
 		require.Error(t, err)
 	})
+
+	t.Run("wrong version", func(t *testing.T) {
+		yaml := `version: v1alpha1
+`
+		_, err := ParsePyroscopeConfig([]byte(yaml))
+		require.Error(t, err)
+	})
 }
 
 func TestFindMapping(t *testing.T) {
