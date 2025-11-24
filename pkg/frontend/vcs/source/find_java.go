@@ -2,12 +2,15 @@ package source
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/go-kit/log/level"
 	"github.com/opentracing/opentracing-go"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
 )
 
@@ -53,7 +56,15 @@ func (ff FileFinder) findJavaFile(ctx context.Context, mappings ...*config.Mappi
 
 	javaPath := convertJavaFunctionNameToPath(ff.file.FunctionName)
 	for _, m := range mappings {
-		return ff.fetchMappingFile(ctx, m, javaPath)
+		resp, err := ff.fetchMappingFile(ctx, m, javaPath)
+		if err != nil {
+			if errors.Is(err, client.ErrNotFound) {
+				continue
+			}
+			level.Warn(ff.logger).Log("msg", "failed to fetch mapping file", "err", err)
+			continue
+		}
+		return resp, nil
 	}
 
 	return nil, fmt.Errorf("no mappings provided, file not resolvable")
