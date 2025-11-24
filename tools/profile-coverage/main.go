@@ -430,6 +430,25 @@ func outputText(report *coverageReport) {
 	fmt.Printf("Functions with Mapping: %d\n", report.FunctionsWithMapping)
 	fmt.Printf("Functions with Fallback: %d\n", report.FunctionsWithFallback)
 	fmt.Println()
+
+	// Show top functions by sample count
+	fmt.Println("=== Top Functions by Sample Count ===")
+	maxShow := 20
+	if len(report.Results) < maxShow {
+		maxShow = len(report.Results)
+	}
+	for i := 0; i < maxShow; i++ {
+		result := report.Results[i]
+		status := "✗"
+		if result.Covered {
+			status = "✓"
+		}
+		fmt.Printf("%s %s (samples: %d)\n", status, result.FunctionName, result.SampleCount)
+	}
+	if len(report.Results) > maxShow {
+		fmt.Printf("... and %d more functions\n", len(report.Results)-maxShow)
+	}
+	fmt.Println()
 }
 
 func outputDetailed(report *coverageReport, verbose bool) {
