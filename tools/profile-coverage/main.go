@@ -257,14 +257,21 @@ func analyzeCoverage(ctx context.Context, profile *profilev1.Profile, functions 
 	// Build a map of function key (name|path) to coverage result
 	functionCoverage := make(map[string]bool)
 
+	// Calculate sample counts before processing so we can display them
+	functionSampleCounts := calculateSampleCountsMap(profile)
+
 	total := len(functions)
 	for i, fn := range functions {
+		// Get sample count for this function
+		key := fmt.Sprintf("%s|%s", fn.FunctionName, fn.Path)
+		sampleCount := functionSampleCounts[key]
+
 		// Show progress
 		fmt.Fprintf(os.Stderr, "Processing function %d/%d: %s", i+1, total, fn.FunctionName)
 		if fn.Path != "" {
 			fmt.Fprintf(os.Stderr, " (%s)", fn.Path)
 		}
-		fmt.Fprintf(os.Stderr, "... ")
+		fmt.Fprintf(os.Stderr, " (samples: %d)... ", sampleCount)
 
 		result := functionResult{
 			FunctionName: fn.FunctionName,
@@ -311,8 +318,10 @@ func analyzeCoverage(ctx context.Context, profile *profilev1.Profile, functions 
 		}
 
 		// Store coverage status for this function
-		key := fmt.Sprintf("%s|%s", fn.FunctionName, fn.Path)
 		functionCoverage[key] = result.Covered
+
+		// Set sample count from pre-calculated map
+		result.SampleCount = sampleCount
 
 		report.Results = append(report.Results, result)
 	}
@@ -322,8 +331,7 @@ func analyzeCoverage(ctx context.Context, profile *profilev1.Profile, functions 
 		report.CoveragePercentage = float64(report.CoveredFunctions) / float64(report.TotalFunctions) * 100
 	}
 
-	// Calculate sample counts for each function
-	report.calculateSampleCounts(profile)
+	// Sample counts are already set, no need to recalculate
 
 	// Sort results by sample count in descending order
 	report.sortBySampleCount()
@@ -334,8 +342,8 @@ func analyzeCoverage(ctx context.Context, profile *profilev1.Profile, functions 
 	return report
 }
 
-// calculateSampleCounts calculates the total sample count for each function
-func (r *coverageReport) calculateSampleCounts(profile *profilev1.Profile) {
+// calculateSampleCountsMap calculates the total sample count for each function and returns a map
+func calculateSampleCountsMap(profile *profilev1.Profile) map[string]int64 {
 	// Build a map of function key to sample count
 	functionSampleCounts := make(map[string]int64)
 
@@ -383,11 +391,7 @@ func (r *coverageReport) calculateSampleCounts(profile *profilev1.Profile) {
 		}
 	}
 
-	// Update results with sample counts
-	for i := range r.Results {
-		key := fmt.Sprintf("%s|%s", r.Results[i].FunctionName, r.Results[i].Path)
-		r.Results[i].SampleCount = functionSampleCounts[key]
-	}
+	return functionSampleCounts
 }
 
 // sortBySampleCount sorts the results by sample count in descending order
