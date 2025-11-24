@@ -81,7 +81,9 @@ func (ff *FileFinder) Find(ctx context.Context) (*vcsv1.GetFileResponse, error) 
 
 func (ff FileFinder) findFallback(ctx context.Context) (*vcsv1.GetFileResponse, error) {
 	switch filepath.Ext(ff.file.Path) {
-	case ExtGo, ExtAsm:
+	case ExtGo:
+		return ff.findGoFile(ctx)
+	case ExtAsm: // Note: When adding wider language support this needs to be revisited
 		return ff.findGoFile(ctx)
 	// todo: add more languages support
 	default:
