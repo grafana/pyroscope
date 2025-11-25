@@ -326,6 +326,7 @@ func (q *blockQueue) pushBatch(b *batch) bool {
 	b.staged.tail = b
 
 	b.staged.stats.batches.Add(1)
+	q.globalStats.AddBatches(b.staged.key, 1)
 	return true
 }
 
@@ -372,6 +373,7 @@ func (q *blockQueue) removeBatch(b *batch) bool {
 	b.prev = nil
 
 	b.staged.stats.batches.Add(-1)
+	q.globalStats.AddBatches(b.staged.key, -1)
 	return true
 }
 

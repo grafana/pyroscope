@@ -52,8 +52,8 @@ func TestBlockQueueAggregatedMetrics(t *testing.T) {
 		t.Fatalf("failed to gather metrics: %v", err)
 	}
 
-	var blocksTotal, queuesTotal, backlogJobsTotal float64
-	var foundBlocks, foundQueues, foundJobs bool
+	var blocksTotal, queuesTotal, batchesTotal float64
+	var foundBlocks, foundQueues, foundBatches bool
 
 	for _, mf := range metrics {
 		if mf.GetName() == "compaction_global_queue_blocks_current" {
@@ -69,10 +69,10 @@ func TestBlockQueueAggregatedMetrics(t *testing.T) {
 			}
 		}
 
-		if mf.GetName() == "compaction_global_queue_backlog_jobs_current" {
+		if mf.GetName() == "compaction_global_queue_batches_current" {
 			for _, m := range mf.GetMetric() {
-				backlogJobsTotal += m.GetGauge().GetValue()
-				foundJobs = true
+				batchesTotal += m.GetGauge().GetValue()
+				foundBatches = true
 			}
 		}
 	}
@@ -83,8 +83,8 @@ func TestBlockQueueAggregatedMetrics(t *testing.T) {
 	if !foundQueues {
 		t.Fatal("compaction_global_queue_queues metric not found")
 	}
-	if !foundJobs {
-		t.Fatal("compaction_global_queue_backlog_jobs metric not found")
+	if !foundBatches {
+		t.Fatal("compaction_global_queue_batches_current metric not found")
 	}
 
 	if blocksTotal != 7 {
@@ -97,11 +97,11 @@ func TestBlockQueueAggregatedMetrics(t *testing.T) {
 
 	// testConfig.Levels[0].MaxBlocks = 3
 	// testConfig.Levels[1].MaxBlocks = 2
-	// (A,0): 3 blocks → 3/3 = 1 backlog job
-	// (A,1): 1 block → 1/2 = 0 backlog jobs
-	// (B,1): 3 blocks → 3/2 = 1 backlog job
-	// Total = 2 backlog jobs
-	if backlogJobsTotal != 2 {
-		t.Errorf("expected 2 total backlog jobs, got %v", backlogJobsTotal)
+	// (A,0): 3 blocks → 3/3 = 1 batch
+	// (A,1): 1 block → 1/2 = 0 batches
+	// (B,1): 3 blocks → 3/2 = 1 batch
+	// Total = 2 batches
+	if batchesTotal != 2 {
+		t.Errorf("expected 2 total batches, got %v", batchesTotal)
 	}
 }

@@ -2,7 +2,6 @@ package compactor
 
 import (
 	"strconv"
-	"sync"
 	"sync/atomic"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -70,23 +69,20 @@ func (b *queueStatsCollector) Collect(m chan<- prometheus.Metric) {
 }
 
 type globalQueueStats struct {
-	blocksPerLevel       []atomic.Int32
-	queuesPerLevel       []atomic.Int32
-	blocksPerLevelAndKey []sync.Map
+	blocksPerLevel  []atomic.Int32
+	queuesPerLevel  []atomic.Int32
+	batchesPerLevel []atomic.Int32
 }
 
 func newGlobalQueueStats(numLevels int) *globalQueueStats {
 	return &globalQueueStats{
-		blocksPerLevel:       make([]atomic.Int32, numLevels),
-		queuesPerLevel:       make([]atomic.Int32, numLevels),
-		blocksPerLevelAndKey: make([]sync.Map, numLevels),
+		blocksPerLevel:  make([]atomic.Int32, numLevels),
+		queuesPerLevel:  make([]atomic.Int32, numLevels),
+		batchesPerLevel: make([]atomic.Int32, numLevels),
 	}
 }
 
 func (g *globalQueueStats) AddBlocks(key compactionKey, delta int32) {
-	b, _ := g.blocksPerLevelAndKey[key.level].LoadOrStore(key, &atomic.Int32{})
-	counter := b.(*atomic.Int32)
-	counter.Add(delta)
 	g.blocksPerLevel[key.level].Add(delta)
 }
 
@@ -94,12 +90,16 @@ func (g *globalQueueStats) AddQueues(key compactionKey, delta int32) {
 	g.queuesPerLevel[key.level].Add(delta)
 }
 
+func (g *globalQueueStats) AddBatches(key compactionKey, delta int32) {
+	g.batchesPerLevel[key.level].Add(delta)
+}
+
 type globalQueueStatsCollector struct {
 	compactionQueue *compactionQueue
 
-	blocks      *prometheus.Desc
-	queues      *prometheus.Desc
-	backlogJobs *prometheus.Desc
+	blocks  *prometheus.Desc
+	queues  *prometheus.Desc
+	batches *prometheus.Desc
 }
 
 const globalQueueMetricsPrefix = "compaction_global_queue_"
@@ -112,19 +112,19 @@ func newGlobalQueueStatsCollector(compactionQueue *compactionQueue) *globalQueue
 
 		blocks: prometheus.NewDesc(
 			globalQueueMetricsPrefix+"blocks_current",
-			"The current total number of blocks across all queues.",
+			"The current number of blocks across all queues, for a compaction level.",
 			variableLabels, nil,
 		),
 
 		queues: prometheus.NewDesc(
 			globalQueueMetricsPrefix+"queues_current",
-			"The current total number of queues.",
+			"The current number of queues, for a compaction level.",
 			variableLabels, nil,
 		),
 
-		backlogJobs: prometheus.NewDesc(
-			globalQueueMetricsPrefix+"backlog_jobs_current",
-			"The current estimated number of compaction jobs that are yet to be created.",
+		batches: prometheus.NewDesc(
+			globalQueueMetricsPrefix+"batches_current",
+			"The current number of batches (jobs that are not yet created), for a compaction level.",
 			variableLabels, nil,
 		),
 	}
@@ -133,32 +133,19 @@ func newGlobalQueueStatsCollector(compactionQueue *compactionQueue) *globalQueue
 func (c *globalQueueStatsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.blocks
 	ch <- c.queues
-	ch <- c.backlogJobs
+	ch <- c.batches
 }
 
 func (c *globalQueueStatsCollector) Collect(ch chan<- prometheus.Metric) {
-	for levelIdx, levelConfig := range c.compactionQueue.config.Levels {
+	for levelIdx := range c.compactionQueue.config.Levels {
 		blocksAtLevel := c.compactionQueue.globalStats.blocksPerLevel[levelIdx].Load()
 		queuesAtLevel := c.compactionQueue.globalStats.queuesPerLevel[levelIdx].Load()
+		batchesAtLevel := c.compactionQueue.globalStats.batchesPerLevel[levelIdx].Load()
 
 		levelLabel := strconv.Itoa(levelIdx)
 
-		maxBlocks := levelConfig.MaxBlocks
-		var backlogJobs int
-		if maxBlocks != 0 {
-			c.compactionQueue.globalStats.blocksPerLevelAndKey[levelIdx].Range(func(k, v interface{}) bool {
-				blocks := v.(*atomic.Int32).Load()
-				if blocks == 0 {
-					c.compactionQueue.globalStats.blocksPerLevelAndKey[levelIdx].Delete(k)
-				} else {
-					backlogJobs += int(blocks) / int(maxBlocks)
-				}
-				return true
-			})
-		}
-
 		ch <- prometheus.MustNewConstMetric(c.blocks, prometheus.GaugeValue, float64(blocksAtLevel), levelLabel)
 		ch <- prometheus.MustNewConstMetric(c.queues, prometheus.GaugeValue, float64(queuesAtLevel), levelLabel)
-		ch <- prometheus.MustNewConstMetric(c.backlogJobs, prometheus.GaugeValue, float64(backlogJobs), levelLabel)
+		ch <- prometheus.MustNewConstMetric(c.batches, prometheus.GaugeValue, float64(batchesAtLevel), levelLabel)
 	}
 }
