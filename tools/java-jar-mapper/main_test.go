@@ -567,3 +567,65 @@ func TestFindCommonPrefixesFiltering(t *testing.T) {
 		t.Error("findCommonPrefixes() should return at least one prefix")
 	}
 }
+
+func TestDetermineRef(t *testing.T) {
+	tests := []struct {
+		name    string
+		version string
+		owner   string
+		repo    string
+		want    string
+	}{
+		{
+			name:    "version already has v prefix",
+			version: "v5.3.20",
+			owner:   "spring-projects",
+			repo:    "spring-framework",
+			want:    "v5.3.20",
+		},
+		{
+			name:    "version without v prefix, default repo",
+			version: "5.3.20",
+			owner:   "spring-projects",
+			repo:    "spring-framework",
+			want:    "v5.3.20",
+		},
+		{
+			name:    "apache tomcat (no v prefix)",
+			version: "9.0.63",
+			owner:   "apache",
+			repo:    "tomcat",
+			want:    "9.0.63",
+		},
+		{
+			name:    "apache tomcat with v prefix in version",
+			version: "v9.0.63",
+			owner:   "apache",
+			repo:    "tomcat",
+			want:    "v9.0.63",
+		},
+		{
+			name:    "other repo without v prefix",
+			version: "2.13.3",
+			owner:   "FasterXML",
+			repo:    "jackson-core",
+			want:    "v2.13.3",
+		},
+		{
+			name:    "empty version",
+			version: "",
+			owner:   "spring-projects",
+			repo:    "spring-framework",
+			want:    "v",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := determineRef(tt.version, tt.owner, tt.repo)
+			if got != tt.want {
+				t.Errorf("determineRef(%q, %q, %q) = %q, want %q", tt.version, tt.owner, tt.repo, got, tt.want)
+			}
+		})
+	}
+}

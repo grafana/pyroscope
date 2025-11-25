@@ -4,22 +4,19 @@
       "jar": "tomcat-embed-core",
       "owner": "apache",
       "repo": "tomcat",
-      "path": "java",
-      "refPrefix": ""
+      "path": "java"
     },
     {
       "jar": "tomcat-embed-el",
       "owner": "apache",
       "repo": "tomcat",
-      "path": "java/org/apache/el",
-      "refPrefix": ""
+      "path": "java/org/apache/el"
     },
     {
       "jar": "tomcat-embed-websocket",
       "owner": "apache",
       "repo": "tomcat",
-      "path": "java",
-      "refPrefix": ""
+      "path": "java"
     },
     {
       "jar": "spring-expression",

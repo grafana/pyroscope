@@ -22,11 +22,10 @@ import (
 
 // JarMapping represents a hardcoded mapping for a JAR file
 type JarMapping struct {
-	Jar       string  `json:"jar"`       // JAR name (artifactId) to match
-	Owner     string  `json:"owner"`    // GitHub owner
-	Repo      string  `json:"repo"`     // GitHub repository
-	Path      string  `json:"path"`     // Source path in repository
-	RefPrefix *string `json:"refPrefix"` // Optional prefix for ref (e.g., "v" for "v1.0.0", "" for "1.0.0"). If nil, defaults to "v".
+	Jar   string `json:"jar"`   // JAR name (artifactId) to match
+	Owner string `json:"owner"` // GitHub owner
+	Repo  string `json:"repo"`  // GitHub repository
+	Path  string `json:"path"`  // Source path in repository
 	// Ref is always inferred from the JAR file's version
 }
 
@@ -41,7 +40,6 @@ func main() {
 	var (
 		jarPath    = flag.String("jar", "", "Path to the Java JAR file to analyze")
 		output     = flag.String("output", "", "Output file path (default: stdout)")
-		useMacaron = flag.Bool("use-macaron", false, "Enable Macaron fallback when mapping fails")
 		jdkVersion = flag.String("jdk-version", "", "JDK version for JDK function mappings (e.g., '8', '11', '17', '21'). If not specified, JDK mappings will not be generated.")
 		help       = flag.Bool("help", false, "Show help")
 	)
@@ -54,7 +52,7 @@ func main() {
 		fmt.Println("found in a Java JAR file.")
 		fmt.Println()
 		fmt.Println("Usage:")
-		fmt.Printf("  %s -jar <jar-file> [-output <output-file>] [-use-macaron] [-jdk-version <version>]\n", os.Args[0])
+		fmt.Printf("  %s -jar <jar-file> [-output <output-file>] [-jdk-version <version>]\n", os.Args[0])
 		fmt.Println()
 		fmt.Println("Flags:")
 		flag.PrintDefaults()
@@ -67,7 +65,7 @@ func main() {
 		// Continue anyway, mappings are optional
 	}
 
-	if err := processJAR(*jarPath, *output, *useMacaron, *jdkVersion); err != nil {
+	if err := processJAR(*jarPath, *output, *jdkVersion); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -129,7 +127,7 @@ func findJarMapping(artifactId string) *JarMapping {
 	return nil
 }
 
-func processJAR(jarPath, outputPath string, useMacaron bool, jdkVersion string) error {
+func processJAR(jarPath, outputPath string, jdkVersion string) error {
 	// Extract 3rd party JARs
 	thirdPartyJARs, tmpDir, err := extractThirdPartyJARs(jarPath)
 	if err != nil {
@@ -147,7 +145,7 @@ func processJAR(jarPath, outputPath string, useMacaron bool, jdkVersion string) 
 	for _, jarFile := range thirdPartyJARs {
 		fmt.Printf("Processing JAR: %s\n", filepath.Base(jarFile))
 
-		mapping, err := processThirdPartyJAR(jarFile, useMacaron)
+		mapping, err := processThirdPartyJAR(jarFile)
 		if err != nil {
 			fmt.Printf("✗ Skipping %s: %v\n", filepath.Base(jarFile), err)
 			failCount++
@@ -280,7 +278,30 @@ func extractFile(f *zip.File, destPath string) error {
 	return err
 }
 
-func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfig, error) {
+// determineRef determines the appropriate ref (tag) format for a GitHub repository.
+// It auto-detects whether to use a "v" prefix based on the version and repository.
+func determineRef(version, owner, repo string) string {
+	// If version already has "v" prefix, use it as-is
+	if strings.HasPrefix(version, "v") {
+		return version
+	}
+
+	// Some repositories don't use "v" prefix for tags
+	// Known repos that don't use "v" prefix: apache/tomcat
+	noVPrefixRepos := map[string]bool{
+		"apache/tomcat": true,
+	}
+
+	repoKey := owner + "/" + repo
+	if noVPrefixRepos[repoKey] {
+		return version
+	}
+
+	// Default: add "v" prefix (most repos use this)
+	return "v" + version
+}
+
+func processThirdPartyJAR(jarPath string) (*config.MappingConfig, error) {
 	// Extract class names and find prefixes
 	prefixes, err := extractClassPrefixes(jarPath)
 	if err != nil {
@@ -332,16 +353,8 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 	// Check for hardcoded mapping first
 	if mapping := findJarMapping(artifactId); mapping != nil {
 		fmt.Fprintf(os.Stderr, "  Found hardcoded mapping: %s/%s\n", mapping.Owner, mapping.Repo)
-		// For hardcoded mappings, use version with optional prefix from mapping
-		ref := version
-		refPrefix := "v" // Default to "v" prefix (most repos use this)
-		if mapping.RefPrefix != nil {
-			// Use explicitly specified prefix (can be "" for no prefix)
-			refPrefix = *mapping.RefPrefix
-		}
-		if refPrefix != "" && !strings.HasPrefix(ref, refPrefix) {
-			ref = refPrefix + ref
-		}
+		// Auto-detect ref prefix based on repository and version
+		ref := determineRef(version, mapping.Owner, mapping.Repo)
 
 		mappingConfig := &config.MappingConfig{
 			FunctionName: make([]config.Match, len(prefixes)),
@@ -371,46 +384,6 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 	fmt.Fprintf(os.Stderr, "  Attempting to fetch POM from Maven Central...\n")
 	pom, groupId, err = fetchPOMFromMavenCentral(artifactId, version)
 	if err != nil {
-		// If POM fetching failed and Macaron is enabled, try Macaron with common groupId patterns
-		if useMacaron {
-			// Try common groupId patterns for Macaron
-			commonGroupIds := generateCommonGroupIds(artifactId)
-			for i, guessedGroupId := range commonGroupIds {
-				// Only show output on the last attempt to reduce noise
-				verbose := (i == len(commonGroupIds)-1)
-				if macaronOwner, macaronRepo, macaronErr := queryMacaronForGitHubRepo(guessedGroupId, artifactId, version, verbose); macaronErr == nil {
-					// Success! Use Macaron result
-					owner, repo = macaronOwner, macaronRepo
-					groupId = guessedGroupId
-					// We still need to create a minimal POM structure for determineSourcePath
-					// But we can proceed with the mapping
-					pomStruct := POM{GroupID: groupId}
-					sourcePath := determineSourcePath(artifactId, pomStruct, groupId)
-					ref := version
-					if !strings.HasPrefix(ref, "v") {
-						ref = "v" + ref
-					}
-					mapping := &config.MappingConfig{
-						FunctionName: make([]config.Match, len(prefixes)),
-						Language:     "java",
-						Source: config.Source{
-							GitHub: &config.GitHubMappingConfig{
-								Owner: owner,
-								Repo:  repo,
-								Ref:   ref,
-								Path:  sourcePath,
-							},
-						},
-					}
-					for i, prefix := range prefixes {
-						mapping.FunctionName[i] = config.Match{Prefix: prefix}
-					}
-					return mapping, nil
-				}
-			}
-			// Macaron failed for all groupId guesses
-			return nil, fmt.Errorf("failed to fetch POM and Macaron fallback failed for all groupId patterns: %w", err)
-		}
 		return nil, err
 	}
 
@@ -451,32 +424,13 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 				fmt.Fprintf(os.Stderr, "  Falling back to deps.dev...\n")
 				owner, repo, err = queryDepsDevForGitHubRepo(groupId, artifactId, version)
 				if err != nil {
-					// Try Macaron as final fallback
-					if useMacaron {
-						if macaronOwner, macaronRepo, macaronErr := queryMacaronForGitHubRepo(groupId, artifactId, version, true); macaronErr == nil {
-							owner, repo = macaronOwner, macaronRepo
-							err = nil
-						} else {
-							return nil, fmt.Errorf("invalid GitHub URL format (%s), deps.dev query failed, and Macaron fallback failed: %w (macaron: %v)", scmInfo.URL, err, macaronErr)
-						}
-					} else {
-						return nil, fmt.Errorf("invalid GitHub URL format (%s) and deps.dev query failed", scmInfo.URL)
-					}
+					return nil, fmt.Errorf("invalid GitHub URL format (%s) and deps.dev query failed: %w", scmInfo.URL, err)
 				}
 			} else if err != nil {
-				// Try Macaron as final fallback if we have groupId
-				if groupId != "" && useMacaron {
-					if macaronOwner, macaronRepo, macaronErr := queryMacaronForGitHubRepo(groupId, artifactId, version, true); macaronErr == nil {
-						owner, repo = macaronOwner, macaronRepo
-						err = nil
-					} else {
-						return nil, fmt.Errorf("invalid GitHub URL format (%s), could not extract groupId for deps.dev query, and Macaron fallback failed: %v", scmInfo.URL, macaronErr)
-					}
-				} else if groupId == "" {
-					return nil, fmt.Errorf("invalid GitHub URL format (%s) and could not extract groupId for deps.dev or Macaron query", scmInfo.URL)
-				} else {
+				if groupId == "" {
 					return nil, fmt.Errorf("invalid GitHub URL format (%s) and could not extract groupId for deps.dev query", scmInfo.URL)
 				}
+				return nil, fmt.Errorf("invalid GitHub URL format (%s) and deps.dev query failed", scmInfo.URL)
 			}
 		}
 	} else {
@@ -538,59 +492,23 @@ func processThirdPartyJAR(jarPath string, useMacaron bool) (*config.MappingConfi
 			fmt.Fprintf(os.Stderr, "  Falling back to deps.dev...\n")
 			owner, repo, err = queryDepsDevForGitHubRepo(groupId, artifactId, version)
 			if err != nil {
-				// Try Macaron as final fallback
-				if useMacaron {
-					if macaronOwner, macaronRepo, macaronErr := queryMacaronForGitHubRepo(groupId, artifactId, version, true); macaronErr == nil {
-						owner, repo = macaronOwner, macaronRepo
-						err = nil
-					} else {
-						return nil, fmt.Errorf("POM missing SCM information, deps.dev query failed, and Macaron fallback failed: %w (macaron: %v)", err, macaronErr)
-					}
-				} else {
-					return nil, fmt.Errorf("POM missing SCM information and deps.dev query failed: %w", err)
-				}
+				return nil, fmt.Errorf("POM missing SCM information and deps.dev query failed: %w", err)
 			}
 		} else if err != nil {
-			// Try Macaron as final fallback if we have groupId
-			if groupId != "" && useMacaron {
-				if macaronOwner, macaronRepo, macaronErr := queryMacaronForGitHubRepo(groupId, artifactId, version, true); macaronErr == nil {
-					owner, repo = macaronOwner, macaronRepo
-					err = nil
-				} else {
-					return nil, fmt.Errorf("POM missing SCM information, could not extract groupId for deps.dev query, and Macaron fallback failed: %v", macaronErr)
-				}
-			} else if groupId == "" {
-				return nil, fmt.Errorf("POM missing SCM information and could not extract groupId for deps.dev or Macaron query")
-			} else {
+			if groupId == "" {
 				return nil, fmt.Errorf("POM missing SCM information and could not extract groupId for deps.dev query")
 			}
+			return nil, fmt.Errorf("POM missing SCM information and deps.dev query failed: %w", err)
 		}
 	}
 
 	// Validate that we have valid owner and repo
-	// If all previous methods failed, try Macaron as a fallback
 	if owner == "" || repo == "" {
-		if groupId != "" && useMacaron {
-			var err error
-			owner, repo, err = queryMacaronForGitHubRepo(groupId, artifactId, version, true)
-			if err != nil {
-				return nil, fmt.Errorf("failed to extract valid GitHub owner/repo (owner: %q, repo: %q) and Macaron fallback failed: %w", owner, repo, err)
-			}
-		} else if groupId == "" {
-			return nil, fmt.Errorf("failed to extract valid GitHub owner/repo (owner: %q, repo: %q) and could not extract groupId for Macaron fallback", owner, repo)
-		} else {
-			return nil, fmt.Errorf("failed to extract valid GitHub owner/repo (owner: %q, repo: %q)", owner, repo)
-		}
+		return nil, fmt.Errorf("failed to extract valid GitHub owner/repo (owner: %q, repo: %q)", owner, repo)
 	}
 
 	// Determine ref (use version from manifest)
-	ref := version
-	if strings.HasPrefix(ref, "v") {
-		// Already has v prefix
-	} else {
-		// Try adding v prefix
-		ref = "v" + ref
-	}
+	ref := determineRef(version, owner, repo)
 
 	// Source path - detect if this is likely a multi-module project
 	// Multi-module Maven projects typically have:
@@ -893,26 +811,6 @@ func fetchPOMFromMavenCentral(artifactId, version string) ([]byte, string, error
 	return nil, "", fmt.Errorf("failed to fetch POM from %s (HTTP %v)", lastURL, lastErr)
 }
 
-// generateCommonGroupIds generates common groupId patterns for a given artifactId
-// This is used when POM fetching fails and we need to try Macaron with guessed groupIds
-func generateCommonGroupIds(artifactId string) []string {
-	groupIds := []string{
-		strings.ToLower(artifactId),
-		strings.ReplaceAll(strings.ToLower(artifactId), "-", "."),
-		"org." + strings.ToLower(artifactId),
-		"com." + strings.ToLower(artifactId),
-	}
-
-	// If artifactId contains dots, try using it as groupId prefix
-	if strings.Contains(artifactId, ".") {
-		parts := strings.Split(artifactId, ".")
-		if len(parts) > 1 {
-			groupIds = append([]string{strings.Join(parts[:len(parts)-1], ".")}, groupIds...)
-		}
-	}
-
-	return groupIds
-}
 
 // MavenSearchResponse represents the response from Maven Central search API
 type MavenSearchResponse struct {
@@ -1005,64 +903,6 @@ func fetchPOMFromMavenCentralByCoords(groupId, artifactId, version string) ([]by
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 	return data, nil
-}
-
-// searchMavenCentralForPOM searches Maven Central for a POM with SCM information
-func searchMavenCentralForPOM(artifactId, version string) ([]byte, error) {
-	// Create HTTP client with timeout
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
-
-	// Search for artifactId
-	searchURL := fmt.Sprintf("https://search.maven.org/solrsearch/select?q=a:%s&rows=20", url.QueryEscape(artifactId))
-
-	resp, err := client.Get(searchURL)
-	if err != nil {
-		return nil, fmt.Errorf("search API request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("search API returned HTTP %d", resp.StatusCode)
-	}
-
-	var searchResp MavenSearchResponse
-	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
-		return nil, fmt.Errorf("failed to parse search response: %w", err)
-	}
-
-	// Try each result - fetch POM with exact version
-	for _, doc := range searchResp.Response.Docs {
-		// Fetch the POM for this groupId/artifactId/version
-		groupIdPath := strings.ReplaceAll(doc.GroupID, ".", "/")
-		pomURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s/%s-%s.pom",
-			groupIdPath, doc.ArtifactID, version, doc.ArtifactID, version)
-
-		pomResp, err := client.Get(pomURL)
-		if err != nil {
-			continue
-		}
-		defer pomResp.Body.Close()
-
-		if pomResp.StatusCode != http.StatusOK {
-			continue
-		}
-
-		pomData, err := io.ReadAll(pomResp.Body)
-		if err != nil {
-			continue
-		}
-
-		// Check if this POM has SCM information
-		scmInfo, err := parseSCMFromPOM(pomData)
-		if err == nil && scmInfo != nil {
-			// Found a POM with SCM info, return it
-			return pomData, nil
-		}
-	}
-
-	return nil, fmt.Errorf("no POM with SCM information found in search results")
 }
 
 // DepsDevVersionResponse represents the response from deps.dev API version endpoint
@@ -1167,202 +1007,6 @@ func queryDepsDevForGitHubRepo(groupId, artifactId, version string) (owner, repo
 	return "", "", fmt.Errorf("deps.dev query failed: %v", lastErr)
 }
 
-// MacaronSourceResponse represents the response from Macaron find-source command
-// Macaron may output JSON or structured text, so we'll try to parse both
-type MacaronSourceResponse struct {
-	Repository string `json:"repository"`
-	URL        string `json:"url"`
-	Source     struct {
-		Repository string `json:"repository"`
-		URL        string `json:"url"`
-	} `json:"source"`
-}
-
-// findMacaronScript finds the Macaron script in various locations
-func findMacaronScript() (string, error) {
-	// First, check environment variable
-	if envPath := os.Getenv("MACARON_SCRIPT"); envPath != "" {
-		if _, err := os.Stat(envPath); err == nil {
-			return envPath, nil
-		}
-	}
-
-	// Try current directory and relative paths
-	possiblePaths := []string{
-		"./run_macaron.sh",
-		"run_macaron.sh",
-		"../run_macaron.sh",
-		"../../run_macaron.sh",
-	}
-	for _, path := range possiblePaths {
-		if _, err := os.Stat(path); err == nil {
-			return path, nil
-		}
-	}
-
-	// Try to find in PATH
-	if path, err := exec.LookPath("run_macaron.sh"); err == nil {
-		return path, nil
-	}
-	if path, err := exec.LookPath("macaron"); err == nil {
-		return path, nil
-	}
-
-	return "", fmt.Errorf("macaron script not found (checked: ./run_macaron.sh, relative paths, PATH, and MACARON_SCRIPT env var). Set MACARON_SCRIPT environment variable to the path of run_macaron.sh or ensure it's in PATH")
-}
-
-// queryMacaronForGitHubRepo queries Macaron find-source command to find GitHub repository
-// verbose controls whether to print Macaron output to stderr
-func queryMacaronForGitHubRepo(groupId, artifactId, version string, verbose bool) (owner, repo string, err error) {
-	// Construct PURL: pkg:maven/<groupId>/<artifactId>@<version>
-	purl := fmt.Sprintf("pkg:maven/%s/%s@%s", groupId, artifactId, version)
-
-	// Find Macaron script
-	macaronScript, err := findMacaronScript()
-	if err != nil {
-		return "", "", err
-	}
-
-	// Execute Macaron find-source command
-	cmd := exec.Command(macaronScript, "find-source", "-purl", purl)
-	output, err := cmd.CombinedOutput()
-	outputStr := string(output)
-
-	// Print Macaron output for debugging (only if verbose)
-	if verbose {
-		fmt.Fprintf(os.Stderr, "Macaron output for %s:\n%s\n", purl, outputStr)
-	}
-
-	// Check if command failed (non-zero exit code)
-	// Warnings don't necessarily mean failure, so we'll try to parse output anyway
-	if err != nil {
-		// If there's an error, check if we can still extract useful info from output
-		// Some commands output warnings to stderr but still produce valid output
-		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() != 0 {
-			// Non-zero exit code - try to parse anyway in case there's useful info
-			// but if parsing fails, return the error
-		} else {
-			// Other error (like command not found)
-			return "", "", fmt.Errorf("macaron command failed: %w (output: %s)", err, outputStr)
-		}
-	}
-
-	// Filter out warning lines for cleaner parsing
-	// Macaron may output warnings like "[WARNING]: ..." that we should ignore
-	lines := strings.Split(outputStr, "\n")
-	var filteredLines []string
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		// Skip empty lines and warning lines
-		if line == "" {
-			continue
-		}
-		// Skip common warning patterns
-		if strings.HasPrefix(line, "[WARNING]:") || 
-		   strings.HasPrefix(line, "[ERROR]:") ||
-		   strings.HasPrefix(line, "WARNING:") ||
-		   strings.HasPrefix(line, "ERROR:") {
-			continue
-		}
-		filteredLines = append(filteredLines, line)
-	}
-	// Reconstruct output without warnings
-	outputStr = strings.Join(filteredLines, "\n")
-
-	// Try to parse as JSON first (use filtered output)
-	if outputStr != "" {
-		var macaronResp MacaronSourceResponse
-		if jsonErr := json.Unmarshal([]byte(outputStr), &macaronResp); jsonErr == nil {
-			// Try to extract from JSON structure
-			repoURL := macaronResp.Repository
-			if repoURL == "" {
-				repoURL = macaronResp.URL
-			}
-			if repoURL == "" {
-				repoURL = macaronResp.Source.Repository
-				if repoURL == "" {
-					repoURL = macaronResp.Source.URL
-				}
-			}
-			if repoURL != "" {
-				return extractGitHubRepoFromURL(repoURL)
-			}
-		}
-	}
-
-	// Also try parsing the original output (before filtering) in case JSON spans multiple lines
-	if len(output) > 0 {
-		var macaronResp MacaronSourceResponse
-		if jsonErr := json.Unmarshal(output, &macaronResp); jsonErr == nil {
-			repoURL := macaronResp.Repository
-			if repoURL == "" {
-				repoURL = macaronResp.URL
-			}
-			if repoURL == "" {
-				repoURL = macaronResp.Source.Repository
-				if repoURL == "" {
-					repoURL = macaronResp.Source.URL
-				}
-			}
-			if repoURL != "" {
-				return extractGitHubRepoFromURL(repoURL)
-			}
-		}
-	}
-
-	// If JSON parsing failed or didn't contain repo info, try text parsing
-	// Look for GitHub URLs in the output
-	patterns := []*regexp.Regexp{
-		// Direct GitHub URL patterns (most specific first)
-		regexp.MustCompile(`https?://github\.com/([^/\s"']+)/([^/\s"']+?)(?:\.git)?(?:/|"|'|\s|$)`),
-		regexp.MustCompile(`github\.com[:/]([^/\s"']+)/([^/\s"']+?)(?:\.git)?(?:/|"|'|\s|$)`),
-		// Repository field patterns
-		regexp.MustCompile(`(?i)repository["\s:]+(?:https?://)?github\.com/([^/\s"']+)/([^/\s"']+?)(?:\.git)?`),
-		regexp.MustCompile(`(?i)url["\s:]+(?:https?://)?github\.com/([^/\s"']+)/([^/\s"']+?)(?:\.git)?`),
-		// Source repository patterns
-		regexp.MustCompile(`(?i)source["\s:]+(?:https?://)?github\.com/([^/\s"']+)/([^/\s"']+?)(?:\.git)?`),
-		// More general patterns
-		regexp.MustCompile(`github\.com/([^/\s"']+)/([^/\s"']+?)(?:\.git)?`),
-	}
-
-	// Try filtered output first (without warnings)
-	for _, pattern := range patterns {
-		matches := pattern.FindStringSubmatch(outputStr)
-		if len(matches) >= 3 {
-			owner = strings.TrimSpace(matches[1])
-			repo = strings.TrimSpace(strings.TrimSuffix(matches[2], ".git"))
-			// Validate that owner and repo are non-empty and valid
-			if owner != "" && repo != "" && owner != "/" && repo != "/" && !strings.Contains(owner, " ") && !strings.Contains(repo, " ") {
-				return owner, repo, nil
-			}
-		}
-	}
-
-	// If filtered output didn't work, try original output (in case URL is in a warning line)
-	originalOutputStr := string(output)
-	for _, pattern := range patterns {
-		matches := pattern.FindStringSubmatch(originalOutputStr)
-		if len(matches) >= 3 {
-			owner = strings.TrimSpace(matches[1])
-			repo = strings.TrimSpace(strings.TrimSuffix(matches[2], ".git"))
-			// Validate that owner and repo are non-empty and valid
-			if owner != "" && repo != "" && owner != "/" && repo != "/" && !strings.Contains(owner, " ") && !strings.Contains(repo, " ") {
-				return owner, repo, nil
-			}
-		}
-	}
-
-	// If we still couldn't find it, return error with truncated output (to avoid huge error messages)
-	errorOutput := outputStr
-	if errorOutput == "" {
-		errorOutput = originalOutputStr
-	}
-	// Truncate if too long
-	if len(errorOutput) > 500 {
-		errorOutput = errorOutput[:500] + "... (truncated)"
-	}
-	return "", "", fmt.Errorf("could not extract GitHub repository from Macaron output: %s", errorOutput)
-}
 
 // extractGitHubRepoFromURL extracts owner and repo from a GitHub URL
 func extractGitHubRepoFromURL(urlStr string) (owner, repo string, err error) {
