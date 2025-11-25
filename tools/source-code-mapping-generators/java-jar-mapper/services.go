@@ -220,7 +220,7 @@ func (s *MavenService) ResolveRepo(groupId, artifactId, version string) (owner, 
 	if groupId != "" {
 		pomData, err = s.FetchPOMByCoords(groupId, artifactId, version)
 	} else {
-		pomData, groupId, err = s.FetchPOM(artifactId, version)
+		pomData, _, err = s.FetchPOM(artifactId, version)
 	}
 	if err != nil {
 		return "", "", fmt.Errorf("failed to fetch POM: %w", err)

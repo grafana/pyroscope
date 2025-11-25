@@ -9,8 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
 	"gopkg.in/yaml.v3"
+
+	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
 )
 
 //go:embed jar-mappings.json

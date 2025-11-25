@@ -374,7 +374,10 @@ func TestJARAnalyzer_ExtractClassPrefixes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create class file: %v", err)
 		}
-		f.Write([]byte("fake class data"))
+		_, err = f.Write([]byte("fake class data"))
+		if err != nil {
+			t.Fatalf("Failed to write: %v", err)
+		}
 	}
 
 	writer.Close()
@@ -931,7 +934,10 @@ func TestJARExtractor_ExtractThirdPartyJARs(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create nested JAR: %v", err)
 		}
-		f.Write([]byte("fake jar content"))
+		_, err = f.Write([]byte("fake jar content"))
+		if err != nil {
+			t.Fatalf("Failed to write: %v", err)
+		}
 	}
 
 	writer.Close()
@@ -945,7 +951,7 @@ func TestJARExtractor_ExtractThirdPartyJARs(t *testing.T) {
 		}
 		t.Fatalf("ExtractThirdPartyJARs() error = %v", err)
 	}
-	defer cleanup()
+	defer cleanup() //nolint:errcheck
 
 	if len(jars) == 0 {
 		t.Error("ExtractThirdPartyJARs() returned no JARs, expected some")

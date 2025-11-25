@@ -64,7 +64,7 @@ func (p *Processor) ProcessJAR(jarPath string) (*config.MappingConfig, error) {
 
 func (p *Processor) processJARWithHardcodedMapping(jarMapping *JarMapping, prefixes []string, version string) *config.MappingConfig {
 	fmt.Fprintf(os.Stderr, "  Found hardcoded mapping: %s/%s\n", jarMapping.Owner, jarMapping.Repo)
-	ref := determineRef(version, jarMapping.Owner, jarMapping.Repo)
+	ref := determineRef(version)
 
 	mappingConfig := &config.MappingConfig{
 		FunctionName: make([]config.Match, len(prefixes)),
@@ -118,7 +118,7 @@ func (p *Processor) processJARWithPOMLookup(artifactId, version string, prefixes
 		return nil, fmt.Errorf("failed to extract valid GitHub owner/repo (owner: %q, repo: %q)", owner, repo)
 	}
 
-	ref := determineRef(version, owner, repo)
+	ref := determineRef(version)
 	sourcePath := DetermineSourcePath(artifactId, pomStruct)
 
 	return p.buildMappingConfig(prefixes, owner, repo, ref, sourcePath), nil
@@ -149,7 +149,7 @@ func (p *Processor) buildMappingConfig(prefixes []string, owner, repo, ref, sour
 	return mapping
 }
 
-func determineRef(version, owner, repo string) string {
+func determineRef(version string) string {
 	if strings.HasPrefix(version, "v") {
 		return version
 	}
@@ -175,7 +175,7 @@ func (s *MappingService) ProcessJAR(jarPath string) ([]config.MappingConfig, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract 3rd party JARs: %w", err)
 	}
-	defer cleanup()
+	defer cleanup() //nolint:errcheck
 
 	fmt.Printf("Found %d 3rd party JARs\n", len(thirdPartyJARs))
 
