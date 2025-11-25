@@ -117,9 +117,6 @@ func (a *sumTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 	var exemplars []*typesv1.Exemplar
 	if len(a.exemplars) > 0 {
 		exemplars = selectTopNExemplarsProto(a.exemplars, a.maxExemplarsPerPoint)
-		for _, ex := range exemplars {
-			ex.Timestamp = tsCopy
-		}
 	}
 
 	a.ts = -1
@@ -167,9 +164,6 @@ func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 	var exemplars []*typesv1.Exemplar
 	if len(a.exemplars) > 0 {
 		exemplars = selectTopNExemplarsProto(a.exemplars, a.maxExemplarsPerPoint)
-		for _, ex := range exemplars {
-			ex.Timestamp = tsCopy
-		}
 	}
 
 	a.ts = -1
