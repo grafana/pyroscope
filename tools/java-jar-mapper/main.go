@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -187,6 +188,58 @@ func processJAR(jarPath, outputPath string, jdkVersion string) error {
 		fmt.Printf("JDK version not specified and could not be auto-detected. Skipping JDK mappings.\n")
 	}
 
+	// Sort mappings to ensure deterministic output order
+	// Sort by: owner, repo, ref, then by first function name prefix
+	sort.Slice(mappings, func(i, j int) bool {
+		mi, mj := mappings[i], mappings[j]
+		
+		// Compare GitHub owner
+		ownerI, ownerJ := "", ""
+		if mi.Source.GitHub != nil {
+			ownerI = mi.Source.GitHub.Owner
+		}
+		if mj.Source.GitHub != nil {
+			ownerJ = mj.Source.GitHub.Owner
+		}
+		if ownerI != ownerJ {
+			return ownerI < ownerJ
+		}
+		
+		// Compare repo
+		repoI, repoJ := "", ""
+		if mi.Source.GitHub != nil {
+			repoI = mi.Source.GitHub.Repo
+		}
+		if mj.Source.GitHub != nil {
+			repoJ = mj.Source.GitHub.Repo
+		}
+		if repoI != repoJ {
+			return repoI < repoJ
+		}
+		
+		// Compare ref
+		refI, refJ := "", ""
+		if mi.Source.GitHub != nil {
+			refI = mi.Source.GitHub.Ref
+		}
+		if mj.Source.GitHub != nil {
+			refJ = mj.Source.GitHub.Ref
+		}
+		if refI != refJ {
+			return refI < refJ
+		}
+		
+		// Compare first function name prefix
+		prefixI, prefixJ := "", ""
+		if len(mi.FunctionName) > 0 {
+			prefixI = mi.FunctionName[0].Prefix
+		}
+		if len(mj.FunctionName) > 0 {
+			prefixJ = mj.FunctionName[0].Prefix
+		}
+		return prefixI < prefixJ
+	})
+
 	// Generate YAML output
 	cfg := config.PyroscopeConfig{
 		SourceCode: config.SourceCodeConfig{
@@ -231,6 +284,9 @@ func extractThirdPartyJARs(jarPath string) ([]string, string, error) {
 		}
 	}
 
+	// Sort JAR files to ensure deterministic processing order
+	sort.Strings(jarFiles)
+
 	// Extract JARs to temporary directory
 	tmpDir, err := os.MkdirTemp("", "jar-mapper-*")
 	if err != nil {
@@ -244,17 +300,20 @@ func extractThirdPartyJARs(jarPath string) ([]string, string, error) {
 	}
 	defer mainJAR.Close()
 
+	// Create a map of file names to zip.File for deterministic lookups
+	fileMap := make(map[string]*zip.File)
+	for i := range mainJAR.File {
+		fileMap[mainJAR.File[i].Name] = mainJAR.File[i]
+	}
+
 	for _, jarFile := range jarFiles {
-		for _, f := range mainJAR.File {
-			if f.Name == jarFile {
-				extractedPath := filepath.Join(tmpDir, filepath.Base(jarFile))
-				if err := extractFile(f, extractedPath); err != nil {
-					fmt.Printf("Warning: failed to extract %s: %v\n", jarFile, err)
-					continue
-				}
-				extractedJARs = append(extractedJARs, extractedPath)
-				break
+		if f, ok := fileMap[jarFile]; ok {
+			extractedPath := filepath.Join(tmpDir, filepath.Base(jarFile))
+			if err := extractFile(f, extractedPath); err != nil {
+				fmt.Printf("Warning: failed to extract %s: %v\n", jarFile, err)
+				continue
 			}
+			extractedJARs = append(extractedJARs, extractedPath)
 		}
 	}
 
@@ -362,7 +421,12 @@ func processThirdPartyJAR(jarPath string) (*config.MappingConfig, error) {
 			},
 		}
 
-		for i, prefix := range prefixes {
+		// Sort prefixes to ensure deterministic output
+		sortedPrefixes := make([]string, len(prefixes))
+		copy(sortedPrefixes, prefixes)
+		sort.Strings(sortedPrefixes)
+
+		for i, prefix := range sortedPrefixes {
 			mappingConfig.FunctionName[i] = config.Match{Prefix: prefix}
 		}
 
@@ -523,7 +587,12 @@ func processThirdPartyJAR(jarPath string) (*config.MappingConfig, error) {
 		},
 	}
 
-	for i, prefix := range prefixes {
+	// Sort prefixes to ensure deterministic output
+	sortedPrefixes := make([]string, len(prefixes))
+	copy(sortedPrefixes, prefixes)
+	sort.Strings(sortedPrefixes)
+
+	for i, prefix := range sortedPrefixes {
 		mapping.FunctionName[i] = config.Match{Prefix: prefix}
 	}
 
@@ -564,19 +633,26 @@ func extractClassPrefixes(jarPath string) ([]string, error) {
 	}
 
 	classPattern := regexp.MustCompile(`^([^/]+(/[^/]+)*)/[^/]+\.class$`)
-	var packages []string
+	packageSet := make(map[string]bool) // Use a set to deduplicate
 
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if matches := classPattern.FindStringSubmatch(line); matches != nil {
-			packages = append(packages, matches[1])
+			packageSet[matches[1]] = true
 		}
 	}
 
-	if len(packages) == 0 {
+	if len(packageSet) == 0 {
 		return nil, fmt.Errorf("no class files found")
 	}
+
+	// Convert set to sorted slice for deterministic processing
+	packages := make([]string, 0, len(packageSet))
+	for pkg := range packageSet {
+		packages = append(packages, pkg)
+	}
+	sort.Strings(packages)
 
 	// Find common prefixes
 	prefixes := findCommonPrefixes(packages)
@@ -600,24 +676,32 @@ func findCommonPrefixes(packages []string) []string {
 	}
 
 	// Find prefixes that appear in multiple packages (at least 2)
+	// Sort keys first to ensure deterministic iteration
+	prefixKeys := make([]string, 0, len(prefixCount))
+	for prefix := range prefixCount {
+		prefixKeys = append(prefixKeys, prefix)
+	}
+	sort.Strings(prefixKeys)
+
 	var commonPrefixes []string
 	seen := make(map[string]bool)
 
-	for prefix, count := range prefixCount {
+	for _, prefix := range prefixKeys {
+		count := prefixCount[prefix]
 		if count >= 2 && !seen[prefix] {
 			commonPrefixes = append(commonPrefixes, prefix)
 			seen[prefix] = true
 		}
 	}
 
-	// Sort by length (longest first) to prefer more specific prefixes
-	for i := 0; i < len(commonPrefixes); i++ {
-		for j := i + 1; j < len(commonPrefixes); j++ {
-			if len(commonPrefixes[i]) < len(commonPrefixes[j]) {
-				commonPrefixes[i], commonPrefixes[j] = commonPrefixes[j], commonPrefixes[i]
-			}
+	// Sort deterministically: first by length (longest first), then alphabetically
+	sort.Slice(commonPrefixes, func(i, j int) bool {
+		lenI, lenJ := len(commonPrefixes[i]), len(commonPrefixes[j])
+		if lenI != lenJ {
+			return lenI > lenJ // Longer prefixes first
 		}
-	}
+		return commonPrefixes[i] < commonPrefixes[j] // Alphabetical for same length
+	})
 
 	// Build a set of actual package names (not just prefixes)
 	packageSet := make(map[string]bool)
@@ -842,12 +926,38 @@ func searchMavenCentralForPOMAny(artifactId, version string) ([]byte, string, er
 		return nil, "", fmt.Errorf("failed to parse search response: %w", err)
 	}
 
-	// Try each result - fetch POM with exact version
+	// Filter to only docs that match the exact artifactId we're looking for
+	// and sort by groupId to ensure deterministic processing
+	var matchingDocs []struct {
+		GroupID    string
+		ArtifactID string
+		Version    string
+	}
 	for _, doc := range searchResp.Response.Docs {
+		if doc.ArtifactID == artifactId {
+			matchingDocs = append(matchingDocs, struct {
+				GroupID    string
+				ArtifactID string
+				Version    string
+			}{
+				GroupID:    doc.GroupID,
+				ArtifactID: doc.ArtifactID,
+				Version:    doc.Version,
+			})
+		}
+	}
+
+	// Sort by groupId to ensure deterministic processing
+	sort.Slice(matchingDocs, func(i, j int) bool {
+		return matchingDocs[i].GroupID < matchingDocs[j].GroupID
+	})
+
+	// Try each matching result - fetch POM with exact version
+	for _, doc := range matchingDocs {
 		// Fetch the POM for this groupId/artifactId/version
 		groupIdPath := strings.ReplaceAll(doc.GroupID, ".", "/")
 		pomURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s/%s-%s.pom",
-			groupIdPath, doc.ArtifactID, version, doc.ArtifactID, version)
+			groupIdPath, artifactId, version, artifactId, version)
 
 		pomResp, err := client.Get(pomURL)
 		if err != nil {
@@ -864,7 +974,7 @@ func searchMavenCentralForPOMAny(artifactId, version string) ([]byte, string, er
 			continue
 		}
 
-		// Return the first valid POM found along with the groupId from search results
+		// Return the first valid POM found (after sorting, this will be deterministic)
 		return pomData, doc.GroupID, nil
 	}
 
