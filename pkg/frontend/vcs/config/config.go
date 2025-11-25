@@ -44,7 +44,7 @@ type SourceCodeConfig struct {
 
 // MappingConfig represents a single source code path mapping
 type MappingConfig struct {
-	Path         []Match `yaml:"path"`
+	Path         []Match `yaml:"path,omitempty"`
 	FunctionName []Match `yaml:"function_name"`
 	Language     string  `yaml:"language"`
 

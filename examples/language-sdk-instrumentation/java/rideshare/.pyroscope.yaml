@@ -8,6 +8,125 @@ source_code:
         local:
           path: src/main/java
     - function_name:
+        - prefix: com/fasterxml/jackson/core
+        - prefix: com/fasterxml/jackson/core/json
+      language: java
+      source:
+        github:
+          owner: FasterXML
+          repo: jackson-core
+          ref: v2.13.3
+          path: src/main/java
+    - function_name:
+        - prefix: com/fasterxml/jackson/databind
+        - prefix: com/fasterxml/jackson/databind/deser
+        - prefix: com/fasterxml/jackson/databind/jsontype
+        - prefix: com/fasterxml/jackson/databind/ser
+      language: java
+      source:
+        github:
+          owner: FasterXML
+          repo: jackson-databind
+          ref: v2.13.3
+          path: src/main/java
+    - function_name:
+        - prefix: com/fasterxml/jackson/datatype/jsr310
+        - prefix: com/fasterxml/jackson/datatype/jsr310/deser
+        - prefix: com/fasterxml/jackson/datatype/jsr310/ser
+      language: java
+      source:
+        github:
+          owner: FasterXML
+          repo: jackson-modules-java8
+          ref: v2.13.3
+          path: jsr310/src/main/java
+    - function_name:
+        - prefix: javax/security/auth/message
+        - prefix: javax/servlet
+        - prefix: org/apache/catalina
+        - prefix: org/apache/catalina/authenticator
+        - prefix: org/apache/catalina/manager
+        - prefix: org/apache/catalina/valves
+        - prefix: org/apache/catalina/webresources
+        - prefix: org/apache/coyote
+        - prefix: org/apache/coyote/http11
+        - prefix: org/apache/juli
+        - prefix: org/apache/naming
+        - prefix: org/apache/naming/factory
+        - prefix: org/apache/tomcat
+        - prefix: org/apache/tomcat/util
+        - prefix: org/apache/tomcat/util/bcel
+        - prefix: org/apache/tomcat/util/descriptor
+        - prefix: org/apache/tomcat/util/http
+        - prefix: org/apache/tomcat/util/http/fileupload
+        - prefix: org/apache/tomcat/util/http/fileupload/util
+        - prefix: org/apache/tomcat/util/modeler
+        - prefix: org/apache/tomcat/util/net
+        - prefix: org/apache/tomcat/util/net/openssl
+      language: java
+      source:
+        github:
+          owner: apache
+          repo: tomcat
+          ref: v9.0.63
+          path: java
+    - function_name:
+        - prefix: javax/websocket
+        - prefix: org/apache/tomcat/websocket
+      language: java
+      source:
+        github:
+          owner: apache
+          repo: tomcat
+          ref: v9.0.63
+          path: java
+    - function_name:
+        - prefix: org/apache/el
+      language: java
+      source:
+        github:
+          owner: apache
+          repo: tomcat
+          ref: v9.0.63
+          path: java/org/apache/el
+    - function_name:
+        - prefix: ch/qos/logback/classic
+        - prefix: ch/qos/logback/classic/joran
+        - prefix: ch/qos/logback/classic/net
+        - prefix: ch/qos/logback/classic/pattern
+        - prefix: ch/qos/logback/classic/selector
+      language: java
+      source:
+        github:
+          owner: ceki
+          repo: logback
+          ref: v1.2.11
+          path: logback-classic/src/main/java
+    - function_name:
+        - prefix: ch/qos/logback/core
+        - prefix: ch/qos/logback/core/joran
+        - prefix: ch/qos/logback/core/joran/event
+        - prefix: ch/qos/logback/core/joran/util
+        - prefix: ch/qos/logback/core/net
+        - prefix: ch/qos/logback/core/pattern
+        - prefix: ch/qos/logback/core/rolling
+      language: java
+      source:
+        github:
+          owner: ceki
+          repo: logback
+          ref: v1.2.11
+          path: logback-core/src/main/java
+    - function_name:
+        - prefix: javax/annotation
+      language: java
+      source:
+        github:
+          owner: eclipse-ee4j
+          repo: common-annotations-api
+          ref: v1.3.5
+          path: jakarta.annotation-api/src/main/java
+    - function_name:
         - prefix: java
       language: java
       source:
@@ -16,6 +135,252 @@ source_code:
           repo: jdk
           ref: jdk-17+0
           path: src/java.base/share/classes
+    - function_name:
+        - prefix: java/lang
+        - prefix: java/util
+        - prefix: java/io
+        - prefix: java/net
+        - prefix: java/time
+        - prefix: java/reflect
+        - prefix: java/security
+        - prefix: java/math
+        - prefix: java/text
+        - prefix: java/nio
+        - prefix: java/concurrent
+        - prefix: java/beans
+        - prefix: java/awt
+        - prefix: java/applet
+        - prefix: javax/annotation
+        - prefix: javax/crypto
+        - prefix: javax/net
+        - prefix: javax/security
+        - prefix: javax/sql
+        - prefix: javax/xml
+        - prefix: jdk/internal
+        - prefix: jdk/nashorn
+        - prefix: sun/misc
+        - prefix: sun/nio
+        - prefix: sun/reflect
+        - prefix: sun/security
+        - prefix: sun/util
+      language: java
+      source:
+        github:
+          owner: openjdk
+          repo: jdk
+          ref: jdk-25+28
+          path: src/java.base/share/classes
+    - function_name:
+        - prefix: META-INF/versions
+        - prefix: io/pyroscope
+        - prefix: io/pyroscope/javaagent
+        - prefix: io/pyroscope/labels
+        - prefix: io/pyroscope/vendor/com/google/protobuf
+        - prefix: io/pyroscope/vendor/com/squareup/moshi
+        - prefix: io/pyroscope/vendor/kotlin
+        - prefix: io/pyroscope/vendor/kotlin/collections
+        - prefix: io/pyroscope/vendor/kotlin/coroutines
+        - prefix: io/pyroscope/vendor/kotlin/internal
+        - prefix: io/pyroscope/vendor/kotlin/io
+        - prefix: io/pyroscope/vendor/kotlin/jvm
+        - prefix: io/pyroscope/vendor/kotlin/jvm/internal
+        - prefix: io/pyroscope/vendor/kotlin/random
+        - prefix: io/pyroscope/vendor/okhttp3
+        - prefix: io/pyroscope/vendor/okhttp3/internal
+        - prefix: io/pyroscope/vendor/okhttp3/internal/platform
+        - prefix: io/pyroscope/vendor/okio
+      language: java
+      source:
+        github:
+          owner: pyroscope-io
+          repo: pyroscope-java
+          ref: v2.1.2
+          path: src/main/java
+    - function_name:
+        - prefix: ch/qos/logback/classic
+        - prefix: ch/qos/logback/classic/joran
+        - prefix: ch/qos/logback/classic/net
+        - prefix: ch/qos/logback/classic/pattern
+        - prefix: ch/qos/logback/classic/selector
+      language: java
+      source:
+        github:
+          owner: qos-ch
+          repo: logback
+          ref: v1.2.11
+          path: logback-classic/src/main/java
+    - function_name:
+        - prefix: ch/qos/logback/core
+        - prefix: ch/qos/logback/core/joran
+        - prefix: ch/qos/logback/core/joran/event
+        - prefix: ch/qos/logback/core/joran/util
+        - prefix: ch/qos/logback/core/net
+        - prefix: ch/qos/logback/core/pattern
+        - prefix: ch/qos/logback/core/rolling
+      language: java
+      source:
+        github:
+          owner: qos-ch
+          repo: logback
+          ref: v1.2.11
+          path: logback-core/src/main/java
+    - function_name:
+        - prefix: org/slf4j
+      language: java
+      source:
+        github:
+          owner: qos-ch
+          repo: slf4j
+          ref: v1.7.36
+          path: slf4j-api/src/main/java
+    - function_name:
+        - prefix: org/yaml/snakeyaml
+        - prefix: org/yaml/snakeyaml/external
+      language: java
+      source:
+        github:
+          owner: snakeyaml
+          repo: snakeyaml
+          ref: v1.30
+          path: src/main/java
+    - function_name:
+        - prefix: org/springframework/boot
+        - prefix: org/springframework/boot/context
+        - prefix: org/springframework/boot/context/properties
+        - prefix: org/springframework/boot/context/properties/bind
+        - prefix: org/springframework/boot/diagnostics
+        - prefix: org/springframework/boot/jdbc
+        - prefix: org/springframework/boot/logging
+        - prefix: org/springframework/boot/orm/jpa
+        - prefix: org/springframework/boot/r2dbc
+        - prefix: org/springframework/boot/rsocket
+        - prefix: org/springframework/boot/security
+        - prefix: org/springframework/boot/sql/init
+        - prefix: org/springframework/boot/validation
+        - prefix: org/springframework/boot/web/embedded
+        - prefix: org/springframework/boot/web/reactive
+        - prefix: org/springframework/boot/web/servlet
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-boot
+          ref: v2.7.0
+          path: spring-boot-project/spring-boot/src/main/java
+    - function_name:
+        - prefix: org/springframework/boot/autoconfigure
+        - prefix: org/springframework/boot/autoconfigure/data
+        - prefix: org/springframework/boot/autoconfigure/graphql
+        - prefix: org/springframework/boot/autoconfigure/http
+        - prefix: org/springframework/boot/autoconfigure/jdbc
+        - prefix: org/springframework/boot/autoconfigure/jms
+        - prefix: org/springframework/boot/autoconfigure/ldap
+        - prefix: org/springframework/boot/autoconfigure/mongo
+        - prefix: org/springframework/boot/autoconfigure/security
+        - prefix: org/springframework/boot/autoconfigure/security/oauth2/client
+        - prefix: org/springframework/boot/autoconfigure/security/oauth2/resource
+        - prefix: org/springframework/boot/autoconfigure/transaction
+        - prefix: org/springframework/boot/autoconfigure/web
+        - prefix: org/springframework/boot/autoconfigure/web/reactive
+        - prefix: org/springframework/boot/autoconfigure/web/servlet
+        - prefix: org/springframework/boot/autoconfigure/webservices
+        - prefix: org/springframework/boot/autoconfigure/websocket
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-boot
+          ref: v2.7.0
+          path: spring-boot-project/spring-boot-autoconfigure/src/main/java
+    - function_name:
+        - prefix: org/aopalliance
+        - prefix: org/springframework/aop
+        - prefix: org/springframework/aop/aspectj
+        - prefix: org/springframework/aop/framework
+        - prefix: org/springframework/aop/framework/autoproxy
+        - prefix: org/springframework/aop/support
+        - prefix: org/springframework/aop/target
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-framework
+          ref: v5.3.20
+          path: spring-aop/src/main/java
+    - function_name:
+        - prefix: org/apache/commons/logging
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-framework
+          ref: v5.3.20
+          path: spring-jcl/src/main/java
+    - function_name:
+        - prefix: org/springframework/beans
+        - prefix: org/springframework/beans/factory
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-framework
+          ref: v5.3.20
+          path: spring-beans/src/main/java
+    - function_name:
+        - prefix: org/springframework/cache
+        - prefix: org/springframework/context
+        - prefix: org/springframework/ejb
+        - prefix: org/springframework/format
+        - prefix: org/springframework/format/datetime
+        - prefix: org/springframework/format/number
+        - prefix: org/springframework/instrument/classloading
+        - prefix: org/springframework/jmx
+        - prefix: org/springframework/jmx/export
+        - prefix: org/springframework/jndi
+        - prefix: org/springframework/remoting
+        - prefix: org/springframework/scheduling
+        - prefix: org/springframework/scripting
+        - prefix: org/springframework/ui
+        - prefix: org/springframework/ui/context
+        - prefix: org/springframework/validation
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-framework
+          ref: v5.3.20
+          path: spring-context/src/main/java
+    - function_name:
+        - prefix: org/springframework/cglib
+        - prefix: org/springframework/cglib/core
+        - prefix: org/springframework/cglib/transform
+        - prefix: org/springframework/core
+        - prefix: org/springframework/core/convert
+        - prefix: org/springframework/core/io
+        - prefix: org/springframework/core/metrics
+        - prefix: org/springframework/core/serializer
+        - prefix: org/springframework/core/task
+        - prefix: org/springframework/core/type
+        - prefix: org/springframework/objenesis
+        - prefix: org/springframework/objenesis/instantiator
+        - prefix: org/springframework/util
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-framework
+          ref: v5.3.20
+          path: spring-core/src/main/java
+    - function_name:
+        - prefix: org/springframework/expression
+        - prefix: org/springframework/expression/spel
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-framework
+          ref: v5.3.20
+          path: spring-expression/src/main/java
     - function_name:
         - prefix: org/springframework/http
         - prefix: org/springframework/web

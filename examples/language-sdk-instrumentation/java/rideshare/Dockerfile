@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM openjdk:17-slim-bullseye as builder
+FROM --platform=$BUILDPLATFORM openjdk:17.0.2-slim-bullseye as builder
 
 WORKDIR /opt/app
 
@@ -17,7 +17,7 @@ COPY src src
 RUN ./gradlew assemble --no-daemon
 
 
-FROM  openjdk:17-slim-bullseye
+FROM  openjdk:17.0.2-slim-bullseye
 
 RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates
 
