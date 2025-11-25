@@ -584,18 +584,18 @@ func TestDetermineRef(t *testing.T) {
 			want:    "v5.3.20",
 		},
 		{
-			name:    "version without v prefix, default repo",
+			name:    "version without v prefix - adds v by default",
 			version: "5.3.20",
 			owner:   "spring-projects",
 			repo:    "spring-framework",
-			want:    "v5.3.20",
+			want:    "v5.3.20", // Adds "v" prefix by default (most repos use this)
 		},
 		{
-			name:    "apache tomcat (no v prefix)",
+			name:    "apache tomcat without v prefix - adds v for YAML output",
 			version: "9.0.63",
 			owner:   "apache",
 			repo:    "tomcat",
-			want:    "9.0.63",
+			want:    "v9.0.63", // Adds "v" for YAML, but VCS layer will try both
 		},
 		{
 			name:    "apache tomcat with v prefix in version",
@@ -605,18 +605,18 @@ func TestDetermineRef(t *testing.T) {
 			want:    "v9.0.63",
 		},
 		{
-			name:    "other repo without v prefix",
+			name:    "other repo without v prefix - adds v by default",
 			version: "2.13.3",
 			owner:   "FasterXML",
 			repo:    "jackson-core",
-			want:    "v2.13.3",
+			want:    "v2.13.3", // Adds "v" prefix by default
 		},
 		{
 			name:    "empty version",
 			version: "",
 			owner:   "spring-projects",
 			repo:    "spring-framework",
-			want:    "v",
+			want:    "v", // Adds "v" even for empty string
 		},
 	}
 

@@ -279,25 +279,18 @@ func extractFile(f *zip.File, destPath string) error {
 }
 
 // determineRef determines the appropriate ref (tag) format for a GitHub repository.
-// It auto-detects whether to use a "v" prefix based on the version and repository.
+// If the version already has "v" prefix, it's returned as-is.
+// Otherwise, "v" prefix is added by default (most repos use this format).
+// The VCS layer will automatically try both "v" and non-"v" prefix versions when fetching files/commits,
+// so this is just for the YAML output to use the most common format.
 func determineRef(version, owner, repo string) string {
-	// If version already has "v" prefix, use it as-is
+	// If version already has "v" prefix, return as-is
 	if strings.HasPrefix(version, "v") {
 		return version
 	}
 
-	// Some repositories don't use "v" prefix for tags
-	// Known repos that don't use "v" prefix: apache/tomcat
-	noVPrefixRepos := map[string]bool{
-		"apache/tomcat": true,
-	}
-
-	repoKey := owner + "/" + repo
-	if noVPrefixRepos[repoKey] {
-		return version
-	}
-
-	// Default: add "v" prefix (most repos use this)
+	// Default: add "v" prefix (most repos use this format)
+	// The VCS layer will try both "v" and non-"v" versions, so repos that don't use "v" will still work
 	return "v" + version
 }
 
