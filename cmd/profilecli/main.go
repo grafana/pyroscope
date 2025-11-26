@@ -105,6 +105,9 @@ func main() {
 	readyCmd := app.Command("ready", "Check Pyroscope health.")
 	readyParams := addReadyParams(readyCmd)
 
+	sourceCodeCoverageCmd := app.Command("source-code-coverage", "Measure the coverage of .pyroscope.yaml source code mappings for translating function names/paths from a pprof profile to VCS source files.")
+	sourceCodeCoverageParams := addSourceCodeCoverageParams(sourceCodeCoverageCmd)
+
 	raftCmd := adminCmd.Command("raft", "Operate on Raft cluster.")
 	raftInfoCmd := raftCmd.Command("info", "Print info about a Raft node.")
 	raftInfoParams := addRaftInfoParams(raftInfoCmd)
@@ -194,6 +197,10 @@ func main() {
 		}
 	case readyCmd.FullCommand():
 		if err := ready(ctx, readyParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case sourceCodeCoverageCmd.FullCommand():
+		if err := sourceCodeCoverage(ctx, sourceCodeCoverageParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case raftInfoCmd.FullCommand():
