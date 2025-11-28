@@ -1,0 +1,118 @@
+{
+  "mappings": [
+    {
+      "jar": "tomcat-embed-core",
+      "owner": "apache",
+      "repo": "tomcat",
+      "path": "java"
+    },
+    {
+      "jar": "tomcat-embed-el",
+      "owner": "apache",
+      "repo": "tomcat",
+      "path": "java/org/apache/el"
+    },
+    {
+      "jar": "tomcat-embed-websocket",
+      "owner": "apache",
+      "repo": "tomcat",
+      "path": "java"
+    },
+    {
+      "jar": "spring-expression",
+      "owner": "spring-projects",
+      "repo": "spring-framework",
+      "path": "spring-expression/src/main/java"
+    },
+    {
+      "jar": "spring-web",
+      "owner": "spring-projects",
+      "repo": "spring-framework",
+      "path": "spring-web/src/main/java"
+    },
+    {
+      "jar": "spring-webmvc",
+      "owner": "spring-projects",
+      "repo": "spring-framework",
+      "path": "spring-webmvc/src/main/java"
+    },
+    {
+      "jar": "spring-core",
+      "owner": "spring-projects",
+      "repo": "spring-framework",
+      "path": "spring-core/src/main/java"
+    },
+    {
+      "jar": "spring-beans",
+      "owner": "spring-projects",
+      "repo": "spring-framework",
+      "path": "spring-beans/src/main/java"
+    },
+    {
+      "jar": "spring-context",
+      "owner": "spring-projects",
+      "repo": "spring-framework",
+      "path": "spring-context/src/main/java"
+    },
+    {
+      "jar": "spring-aop",
+      "owner": "spring-projects",
+      "repo": "spring-framework",
+      "path": "spring-aop/src/main/java"
+    },
+    {
+      "jar": "spring-jcl",
+      "owner": "spring-projects",
+      "repo": "spring-framework",
+      "path": "spring-jcl/src/main/java"
+    },
+    {
+      "jar": "jackson-annotations",
+      "owner": "FasterXML",
+      "repo": "jackson-annotations",
+      "path": "src/main/java"
+    },
+    {
+      "jar": "jackson-core",
+      "owner": "FasterXML",
+      "repo": "jackson-core",
+      "path": "src/main/java"
+    },
+    {
+      "jar": "jackson-databind",
+      "owner": "FasterXML",
+      "repo": "jackson-databind",
+      "path": "src/main/java"
+    },
+    {
+      "jar": "jackson-datatype-jdk8",
+      "owner": "FasterXML",
+      "repo": "jackson-modules-java8",
+      "path": "jdk8/src/main/java"
+    },
+    {
+      "jar": "jackson-datatype-jsr310",
+      "owner": "FasterXML",
+      "repo": "jackson-modules-java8",
+      "path": "jsr310/src/main/java"
+    },
+    {
+      "jar": "jackson-module-parameter-names",
+      "owner": "FasterXML",
+      "repo": "jackson-modules-java8",
+      "path": "parameter-names/src/main/java"
+    },
+    {
+      "jar": "spring-boot",
+      "owner": "spring-projects",
+      "repo": "spring-boot",
+      "path": "spring-boot-project/spring-boot/src/main/java"
+    },
+    {
+      "jar": "spring-boot-autoconfigure",
+      "owner": "spring-projects",
+      "repo": "spring-boot",
+      "path": "spring-boot-project/spring-boot-autoconfigure/src/main/java"
+    }
+  ]
+}
