@@ -81,7 +81,7 @@ func (ff FileFinder) fetchGoStdlib(ctx context.Context, path string, version str
 	defer sp.Finish()
 
 	// if there is no version detected, use the one from .pyroscope.yaml
-	if version == "" {
+	if version == "" && ff.config != nil {
 		mapping := ff.config.FindMapping(config.FileSpec{Path: "$GOROOT/src"})
 		if mapping != nil {
 			return ff.fetchMappingFile(ctx, mapping, path)
