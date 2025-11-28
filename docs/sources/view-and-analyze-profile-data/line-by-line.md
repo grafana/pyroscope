@@ -15,16 +15,16 @@ The Grafana Pyroscope GitHub integration offers seamless integration between you
 Using this app, you can map your code directly within Grafana and visualize resource performance line by line.
 With these powerful capabilities, you can gain deep insights into your code's execution and identify performance bottlenecks.
 
-Every profile type works for the integration for code written in Go.
-For information on profile types and the profiles available with Go, refer to [Profiling types and their uses](../../introduction/profiling-types/).
+Every profile type works with the integration for code written in Go and Java.
+
+For information on profile types and the profiles available with Go and Java, refer to [Profiling types and their uses](../../introduction/profiling-types/).
 
 ![Example of a flame graph with the function details populated](/media/docs/grafana-cloud/profiles/screenshot-profiles-github-integration.png)
 
 ## How it works
 
 The Pyroscope GitHub integration uses labels configured in the application being profiled to associate profiles with source code.
-The integration is only available for Go applications.
-The Go profiler can map symbolic information, such as function names and line numbers, to source code.
+The integration is available for Java and Go applications.
 
 The Pyroscope GitHub integration uses three labels, `service_repository`, `service_git_ref`, and `service_root_path`, to add commit information, repository link, and an enhanced source code preview to the **Function Details** screen.
 
@@ -40,13 +40,13 @@ To use the Pyroscope integration for GitHub, you need an application that emits 
 
 {{< admonition type="warning" >}}
   - Applications in other languages aren't supported
-  - eBPF profiled Go workloads aren't supported
+  - eBPF profiled Go and Java workloads aren't supported
 {{< /admonition >}}
 
 - A Go application which is profiled by Grafana Alloy's `pyroscope.scrape` or using the [Go Push SDK](../../configure-client/language-sdks/go_push/).
+- A Java application which is profiled by Grafana Alloy's `pyroscope.java` or using the [Java SDK](../../configure-client/language-sdks/java). For Java applications, a committed `.pyroscope.yaml` file is required to map package names to source code locations (see [Advanced source code mapping with `.pyroscope.yaml`](#advanced-source-code-mapping-with-pyroscopeyaml)).
 
-
-Your Go application provides the following labels (tags):
+Your application provides the following labels (tags):
 
 - `service_git_ref` points to the Git commit or [reference](https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#about-git-references) from which the binary was built
 - `service_repository` is the GitHub repository that hosts the source code
@@ -151,7 +151,7 @@ After authorizing the Pyroscope Grafana integration, you see more details in the
 
 ### Function Details
 
-The Function Details section provide information about the function you selected from the flame graph.
+The Function Details section provides information about the function you selected from the flame graph.
 
 {{< figure max-width="80%" class="center" caption-align="center" src="/media/docs/grafana-cloud/profiles/screenshot-profiles-github-funct-details-v3.png" caption="Function Details panel from a connected Pyroscope GitHub integration." >}}
 
@@ -167,5 +167,220 @@ Refer to [Understand Self versus Total metrics in profiling with Pyroscope](http
 | Repository                 | The repository configured for the selected service                                                                                                                                               |                                                                              |
 | Commit                     | The version of the application (commit) where the function is defined. Use the drop-down menu to target a specific commit.                                                                       | Click the Commit ID to view the commit in the repository.                    |
 | Breakdown per line (table) | Provides the function location in the code and self and total values.                                                                                                                            |                                                                              |
-| Self                       | ‘Self’ refers to the resource usage (CPU time, memory allocation, etc.) directly attributed to a specific function or a code segment, excluding the resources used by its sub-functions or calls | This value can be a time or memory amount depending on the profile selected. |
-| Total                      | ‘Total’ encompasses the combined resource usage of a function along with all the functions it calls.                                                                                             | This value can be a time or memory amount depending on the profile selected. |
+| Self                       | 'Self' refers to the resource usage (CPU time, memory allocation, etc.) directly attributed to a specific function or a code segment, excluding the resources used by its sub-functions or calls | This value can be a time or memory amount depending on the profile selected. |
+| Total                      | 'Total' encompasses the combined resource usage of a function along with all the functions it calls.                                                                                             | This value can be a time or memory amount depending on the profile selected. |
+
+## Advanced source code mapping with `.pyroscope.yaml`
+
+For more complex applications with multiple dependencies and external libraries, you can configure custom source code mappings using a `.pyroscope.yaml` configuration file in your repository. This feature enables Pyroscope to resolve and display source code from:
+
+- Multiple GitHub repositories (for example, third-party dependencies)
+- Different versions and branches of dependencies
+- Standard library code (Go, Java)
+- Vendor directories and local paths
+
+### How source code mapping works
+
+When you click on a function in the flame graph, Pyroscope performs the following steps to retrieve the source code:
+
+1. **Load configuration**: Pyroscope checks for a `.pyroscope.yaml` file in your repository root
+2. **Match file location**: The system matches the file path or function name from the profiling data against the configured mappings using a longest-prefix-match algorithm
+3. **Resolve source location**: Based on the matched mapping, Pyroscope determines whether to fetch code from:
+   - A local path within your repository
+   - An external GitHub repository at a specific version
+   - The Go standard library
+   - Go module dependencies
+4. **Fetch and display**: The source code is retrieved and displayed in the Function Details panel with line-by-line profiling data
+
+### Supported languages
+
+The `.pyroscope.yaml` configuration currently supports:
+
+- **Go**: Full support including standard library, Go modules, and vendor directories
+- **Java**: Requires explicit mappings for application code and dependencies
+
+{{< admonition type="note" >}}
+For Go applications without a `.pyroscope.yaml` file, Pyroscope can automatically resolve standard library code and Go module dependencies. Java applications require explicit configuration.
+{{< /admonition >}}
+
+### Configuration file format
+
+Create a `.pyroscope.yaml` file in the root of your repository (or in the path specified by `service_root_path` if configured) with the following structure:
+
+```yaml
+version: v1                    # Config format version (currently only v1 is supported)
+source_code:
+  mappings:                    # Array of source-to-repository mappings
+    - path:                    # Match files by path prefix (optional if function_name is specified)
+        - prefix: path/to/match
+        - prefix: another/path
+      function_name:           # Match by function name prefix (optional if path is specified)
+        - prefix: function/prefix
+      language: go             # Required: "go" or "java"
+      source:                  # Define where to fetch the source code
+        local:
+          path: src/main/java  # Path relative to the location of the .pyroscope.yaml file
+        # OR
+        github:
+          owner: organization  # GitHub repository owner
+          repo: repository     # GitHub repository name
+          ref: v1.0.0         # Branch, tag, or commit SHA
+          path: src            # Path within the external repository
+```
+
+### Configuration rules
+
+- Each mapping must specify either a `local` or `github` source (not both)
+- Multiple `path` or `function_name` prefixes can be specified per mapping (they are OR'd together)
+- Mappings are evaluated using longest-prefix-match (more specific mappings take precedence)
+- If no mapping matches, Pyroscope falls back to language-specific default behavior (automatic resolution for Go; Java requires explicit mappings)
+
+### Example: Go standard library mapping
+
+Map the Go standard library to a specific Go version:
+
+```yaml
+version: v1
+source_code:
+  mappings:
+    - path:
+        - prefix: $GOROOT/src
+      language: go
+      source:
+        github:
+          owner: golang
+          repo: go
+          ref: go1.24.10
+          path: src
+```
+
+This configuration ensures that when you view standard library functions like `fmt.Println` or `net/http.Server`, Pyroscope fetches the source code from the `golang/go` repository at version 1.24.10.
+
+### Example: Java application with dependencies
+
+Configure mappings for a Java Spring application:
+
+```yaml
+version: v1
+source_code:
+  mappings:
+    # Local application code
+    - function_name:
+        - prefix: org/example/myapp
+      language: java
+      source:
+        local:
+          path: src/main/java
+
+    # JDK standard library
+    - function_name:
+        - prefix: java
+        - prefix: javax
+      language: java
+      source:
+        github:
+          owner: openjdk
+          repo: jdk
+          ref: jdk-17+0
+          path: src/java.base/share/classes
+
+    # Spring Framework dependencies
+    - function_name:
+        - prefix: org/springframework/web/servlet
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-framework
+          ref: v5.3.20
+          path: spring-webmvc/src/main/java
+
+    - function_name:
+        - prefix: org/springframework/web
+        - prefix: org/springframework/http
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-framework
+          ref: v5.3.20
+          path: spring-web/src/main/java
+```
+
+This configuration demonstrates:
+
+- **Longest-prefix matching**: `org/springframework/web/servlet` matches the more specific mapping, while `org/springframework/web/client` matches the less specific one
+- **Multiple prefixes**: HTTP and web packages from Spring are grouped together
+- **Mixed sources**: Local application code and external dependencies
+
+### Example: Go application with vendor dependencies
+
+Map vendored dependencies and modules:
+
+```yaml
+version: v1
+source_code:
+  mappings:
+    # Vendor directory (for dependencies copied into your repo)
+    - path:
+        - prefix: vendor/
+      language: go
+      source:
+        local:
+          path: vendor
+
+    # External dependency at specific version
+    - path:
+        - prefix: github.com/prometheus/client_golang
+      language: go
+      source:
+        github:
+          owner: prometheus
+          repo: client_golang
+          ref: v1.19.0
+          path: ""
+```
+
+### Language-specific behavior
+
+#### Go
+
+For Go applications, Pyroscope provides intelligent fallback behavior even without a `.pyroscope.yaml` file:
+
+- **Standard library**: Automatically detected and mapped to the appropriate `golang/go` repository version
+- **Go modules**: Parsed from `go.mod` in your repository, with automatic version resolution
+- **Vanity URLs**: Resolved to canonical repositories (for example, `gopkg.in`, `google.golang.org`)
+- **Vendor directories**: Files in `vendor/` are searched relative to repository root
+
+The system extracts Go version information from paths like `/usr/local/go/go1.24.10/src/fmt/print.go`.
+
+#### Java
+
+Java applications **require** explicit mappings in `.pyroscope.yaml`:
+
+- **Function name conversion**: Java function names like `org/example/App$Inner.method` are automatically converted to `org/example/App.java`
+- **No fallback**: Unlike Go, Java files cannot be resolved without configuration
+- **Inner classes**: Automatically handled (inner class markers are stripped)
+
+### Troubleshooting
+
+**No source code displayed**
+
+- Verify the `.pyroscope.yaml` file is in your repository root
+- Check that the `path` or `function_name` prefixes match your profiling data
+- For Java applications, ensure all dependencies have mappings configured
+- Confirm GitHub OAuth authorization is active and hasn't expired
+
+**Wrong version displayed**
+
+- Check the `ref` field in your mapping points to the correct branch, tag, or commit
+- For Go standard library, verify the Go version in your mapping matches your application's Go version
+- Use explicit commit SHAs for reproducibility
+
+**Mapping precedence issues**
+
+Pyroscope uses longest-prefix-match. If a more specific mapping isn't being used:
+
+- Verify the prefix exactly matches the beginning of the path or function name
+- Check that more specific mappings are listed in the configuration (order doesn't matter, but clarity helps)
+- Test with exact prefixes from your profiling data
