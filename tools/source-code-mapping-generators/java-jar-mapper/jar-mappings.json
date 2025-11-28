@@ -113,6 +113,12 @@
       "owner": "spring-projects",
       "repo": "spring-boot",
       "path": "spring-boot-project/spring-boot-autoconfigure/src/main/java"
+    },
+    {
+      "jar": "agent",
+      "owner": "grafana",
+      "repo": "pyroscope-java",
+      "path": "agent/src/main/java"
     }
   ]
 }

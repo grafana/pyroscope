@@ -210,7 +210,163 @@ func parseManifest(data string) map[string]string {
 	return result
 }
 
-func (a *JARAnalyzer) ExtractArtifactInfo(jarPath string) (artifactId, version string, err error) {
+// MavenCoordinates holds Maven artifact coordinates extracted from pom.properties.
+type MavenCoordinates struct {
+	GroupID    string
+	ArtifactID string
+	Version    string
+}
+
+// ExtractPOMProperties extracts Maven coordinates from the embedded pom.properties file.
+// Maven JARs typically contain META-INF/maven/{groupId}/{artifactId}/pom.properties.
+// For shaded JARs that contain multiple pom.properties files, this function prefers
+// the one whose artifactId matches the JAR filename.
+func (a *JARAnalyzer) ExtractPOMProperties(jarPath string) (*MavenCoordinates, error) {
+	reader, err := zip.OpenReader(jarPath)
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+
+	// Extract base name from JAR filename for matching
+	baseName := filepath.Base(jarPath)
+	baseName = strings.TrimSuffix(baseName, ".jar")
+	// Extract artifactId from filename (remove version suffix like "-1.2.3")
+	expectedArtifactId := extractArtifactIdFromFilename(baseName)
+
+	// Collect all valid pom.properties
+	pomPropsPattern := regexp.MustCompile(`^META-INF/maven/[^/]+/[^/]+/pom\.properties$`)
+	var allCoords []*MavenCoordinates
+	var matchingCoords *MavenCoordinates
+
+	for _, f := range reader.File {
+		if pomPropsPattern.MatchString(f.Name) {
+			rc, err := f.Open()
+			if err != nil {
+				continue
+			}
+			data, err := io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				continue
+			}
+
+			coords := parsePOMProperties(string(data))
+			if coords.GroupID != "" && coords.ArtifactID != "" && coords.Version != "" {
+				allCoords = append(allCoords, coords)
+				// Check if this pom.properties matches the JAR filename
+				if matchingCoords == nil && artifactIdMatchesFilename(coords.ArtifactID, expectedArtifactId, baseName) {
+					matchingCoords = coords
+				}
+			}
+		}
+	}
+
+	// Prefer the pom.properties that matches the JAR filename
+	if matchingCoords != nil {
+		return matchingCoords, nil
+	}
+
+	// If we have pom.properties but none match the filename, this is likely
+	// a shaded JAR where the main artifact's metadata was stripped but
+	// shaded dependency metadata remained. Don't use incorrect coordinates.
+	if len(allCoords) > 0 {
+		return nil, fmt.Errorf("pom.properties found but artifactId %q doesn't match JAR filename %q (likely shaded JAR)",
+			allCoords[0].ArtifactID, baseName)
+	}
+
+	return nil, fmt.Errorf("no pom.properties found in JAR")
+}
+
+// extractArtifactIdFromFilename extracts the artifactId part from a JAR filename.
+// E.g., "spring-web-5.3.20" -> "spring-web", "agent-2.1.2" -> "agent"
+func extractArtifactIdFromFilename(baseName string) string {
+	parts := strings.Split(baseName, "-")
+	if len(parts) <= 1 {
+		return baseName
+	}
+	// Find where version starts (first part that looks like a version number)
+	for i := len(parts) - 1; i > 0; i-- {
+		if looksLikeVersion(parts[i]) {
+			return strings.Join(parts[:i], "-")
+		}
+	}
+	return baseName
+}
+
+// looksLikeVersion checks if a string looks like a version number.
+func looksLikeVersion(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	// Version typically starts with a digit
+	return s[0] >= '0' && s[0] <= '9'
+}
+
+// artifactIdMatchesFilename checks if a pom.properties artifactId matches the JAR filename.
+func artifactIdMatchesFilename(artifactId, expectedArtifactId, baseName string) bool {
+	// Direct match
+	if artifactId == expectedArtifactId {
+		return true
+	}
+	// Check if baseName starts with artifactId (handles version suffix variations)
+	if strings.HasPrefix(baseName, artifactId+"-") || baseName == artifactId {
+		return true
+	}
+	return false
+}
+
+// parsePOMProperties parses a pom.properties file content.
+func parsePOMProperties(data string) *MavenCoordinates {
+	coords := &MavenCoordinates{}
+	lines := strings.Split(data, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		switch key {
+		case "groupId":
+			coords.GroupID = value
+		case "artifactId":
+			coords.ArtifactID = value
+		case "version":
+			coords.Version = value
+		}
+	}
+	return coords
+}
+
+// ExtractMavenCoordinates extracts Maven coordinates using multiple strategies:
+// 1. pom.properties (most reliable for Maven-published JARs)
+// 2. MANIFEST.MF + filename parsing (fallback for other JARs)
+func (a *JARAnalyzer) ExtractMavenCoordinates(jarPath string) (*MavenCoordinates, error) {
+	// Try pom.properties first (most reliable)
+	coords, err := a.ExtractPOMProperties(jarPath)
+	if err == nil && coords.GroupID != "" && coords.ArtifactID != "" && coords.Version != "" {
+		return coords, nil
+	}
+
+	// Fallback to manifest + filename parsing
+	artifactId, version, err := a.extractArtifactInfoFromManifest(jarPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MavenCoordinates{
+		ArtifactID: artifactId,
+		Version:    version,
+		// GroupID unknown from manifest/filename
+	}, nil
+}
+
+func (a *JARAnalyzer) extractArtifactInfoFromManifest(jarPath string) (artifactId, version string, err error) {
 	manifest, err := a.ExtractManifest(jarPath)
 	if err != nil {
 		return "", "", fmt.Errorf("missing MANIFEST.MF: %w", err)
@@ -243,27 +399,70 @@ func (a *JARAnalyzer) ExtractArtifactInfo(jarPath string) (artifactId, version s
 
 type JARExtractor struct{}
 
-// ExtractThirdPartyJARs extracts 3rd party JARs from a Spring Boot JAR file.
+// ExtractThirdPartyJARs extracts 3rd party JARs from a JAR file.
+// For Spring Boot fat JARs, it extracts nested JARs from BOOT-INF/lib/.
+// For regular JARs, it returns the JAR itself for processing.
 func (e *JARExtractor) ExtractThirdPartyJARs(jarPath string) ([]string, string, func() error, error) {
-	cmd := exec.Command("jar", "-tf", jarPath)
-	output, err := cmd.Output()
+	mainJAR, err := zip.OpenReader(jarPath)
 	if err != nil {
-		return nil, "", nil, fmt.Errorf("failed to list JAR contents: %w", err)
+		return nil, "", nil, fmt.Errorf("failed to open JAR: %w", err)
+	}
+	defer mainJAR.Close()
+
+	// Check if this is a Spring Boot fat JAR
+	if isSpringBootFatJAR(mainJAR.File) {
+		return e.extractSpringBootJARs(mainJAR.File)
 	}
 
-	jarPattern := regexp.MustCompile(`BOOT-INF/lib/.*\.jar$`)
-	var jarFiles []string
+	// Regular JAR: return the JAR itself for processing
+	return []string{jarPath}, "", func() error { return nil }, nil
+}
 
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if jarPattern.MatchString(line) {
-			jarFiles = append(jarFiles, line)
+// isSpringBootFatJAR checks if a JAR file is a Spring Boot fat JAR by looking for
+// the BOOT-INF directory structure and nested JARs in BOOT-INF/lib/.
+func isSpringBootFatJAR(files []*zip.File) bool {
+	jarPattern := regexp.MustCompile(`^BOOT-INF/lib/.*\.jar$`)
+	hasBootInf := false
+	hasNestedJARs := false
+
+	for _, f := range files {
+		if strings.HasPrefix(f.Name, "BOOT-INF/") {
+			hasBootInf = true
 		}
+		if jarPattern.MatchString(f.Name) {
+			hasNestedJARs = true
+		}
+		if hasBootInf && hasNestedJARs {
+			return true
+		}
+	}
+
+	return false
+}
+
+// extractSpringBootJARs extracts nested JAR files from BOOT-INF/lib/ in a Spring Boot fat JAR.
+func (e *JARExtractor) extractSpringBootJARs(files []*zip.File) ([]string, string, func() error, error) {
+	jarPattern := regexp.MustCompile(`^BOOT-INF/lib/.*\.jar$`)
+	var jarFiles []string
+	fileMap := make(map[string]*zip.File)
+
+	// Collect all nested JAR files
+	for _, f := range files {
+		if jarPattern.MatchString(f.Name) {
+			jarFiles = append(jarFiles, f.Name)
+			fileMap[f.Name] = f
+		}
+	}
+
+	if len(jarFiles) == 0 {
+		// This shouldn't happen if isSpringBootFatJAR returned true,
+		// but handle it gracefully
+		return nil, "", nil, fmt.Errorf("Spring Boot fat JAR contains no nested JARs in BOOT-INF/lib/")
 	}
 
 	sort.Strings(jarFiles)
 
+	// Create temporary directory for extracted JARs
 	tmpDir, err := os.MkdirTemp("", "jar-mapper-*")
 	if err != nil {
 		return nil, "", nil, fmt.Errorf("failed to create temp directory: %w", err)
@@ -273,27 +472,16 @@ func (e *JARExtractor) ExtractThirdPartyJARs(jarPath string) ([]string, string, 
 		return os.RemoveAll(tmpDir)
 	}
 
+	// Extract each nested JAR to the temp directory
 	var extractedJARs []string
-	mainJAR, err := zip.OpenReader(jarPath)
-	if err != nil {
-		return nil, tmpDir, cleanup, fmt.Errorf("failed to open JAR: %w", err)
-	}
-	defer mainJAR.Close()
-
-	fileMap := make(map[string]*zip.File)
-	for i := range mainJAR.File {
-		fileMap[mainJAR.File[i].Name] = mainJAR.File[i]
-	}
-
 	for _, jarFile := range jarFiles {
-		if f, ok := fileMap[jarFile]; ok {
-			extractedPath := filepath.Join(tmpDir, filepath.Base(jarFile))
-			if err := extractFile(f, extractedPath); err != nil {
-				fmt.Printf("Warning: failed to extract %s: %v\n", jarFile, err)
-				continue
-			}
-			extractedJARs = append(extractedJARs, extractedPath)
+		f := fileMap[jarFile]
+		extractedPath := filepath.Join(tmpDir, filepath.Base(jarFile))
+		if err := extractFile(f, extractedPath); err != nil {
+			fmt.Printf("Warning: failed to extract %s: %v\n", jarFile, err)
+			continue
 		}
+		extractedJARs = append(extractedJARs, extractedPath)
 	}
 
 	return extractedJARs, tmpDir, cleanup, nil

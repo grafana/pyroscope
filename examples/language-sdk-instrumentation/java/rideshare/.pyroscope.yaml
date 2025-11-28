@@ -68,7 +68,7 @@ source_code:
         github:
           owner: apache
           repo: tomcat
-          ref: v9.0.63
+          ref: 9.0.63
           path: java
     - function_name:
         - prefix: javax/websocket
@@ -78,7 +78,7 @@ source_code:
         github:
           owner: apache
           repo: tomcat
-          ref: v9.0.63
+          ref: 9.0.63
           path: java
     - function_name:
         - prefix: org/apache/el
@@ -87,7 +87,7 @@ source_code:
         github:
           owner: apache
           repo: tomcat
-          ref: v9.0.63
+          ref: 9.0.63
           path: java/org/apache/el
     - function_name:
         - prefix: ch/qos/logback/classic
@@ -100,7 +100,7 @@ source_code:
         github:
           owner: ceki
           repo: logback
-          ref: v1.2.11
+          ref: 1.2.11
           path: logback-classic/src/main/java
     - function_name:
         - prefix: ch/qos/logback/core
@@ -115,7 +115,7 @@ source_code:
         github:
           owner: ceki
           repo: logback
-          ref: v1.2.11
+          ref: 1.2.11
           path: logback-core/src/main/java
     - function_name:
         - prefix: javax/annotation
@@ -124,17 +124,34 @@ source_code:
         github:
           owner: eclipse-ee4j
           repo: common-annotations-api
-          ref: v1.3.5
+          ref: 1.3.5
           path: jakarta.annotation-api/src/main/java
     - function_name:
-        - prefix: java
+        - prefix: META-INF/versions
+        - prefix: io/pyroscope
+        - prefix: io/pyroscope/javaagent
+        - prefix: io/pyroscope/labels
+        - prefix: io/pyroscope/vendor/com/google/protobuf
+        - prefix: io/pyroscope/vendor/com/squareup/moshi
+        - prefix: io/pyroscope/vendor/kotlin
+        - prefix: io/pyroscope/vendor/kotlin/collections
+        - prefix: io/pyroscope/vendor/kotlin/coroutines
+        - prefix: io/pyroscope/vendor/kotlin/internal
+        - prefix: io/pyroscope/vendor/kotlin/io
+        - prefix: io/pyroscope/vendor/kotlin/jvm
+        - prefix: io/pyroscope/vendor/kotlin/jvm/internal
+        - prefix: io/pyroscope/vendor/kotlin/random
+        - prefix: io/pyroscope/vendor/okhttp3
+        - prefix: io/pyroscope/vendor/okhttp3/internal
+        - prefix: io/pyroscope/vendor/okhttp3/internal/platform
+        - prefix: io/pyroscope/vendor/okio
       language: java
       source:
         github:
-          owner: openjdk
-          repo: jdk
-          ref: jdk-17+0
-          path: src/java.base/share/classes
+          owner: grafana
+          repo: pyroscope-java
+          ref: v2.1.2
+          path: agent/src/main/java
     - function_name:
         - prefix: java/lang
         - prefix: java/util
@@ -167,63 +184,9 @@ source_code:
       source:
         github:
           owner: openjdk
-          repo: jdk
-          ref: jdk-25+28
+          repo: jdk17
+          ref: master
           path: src/java.base/share/classes
-    - function_name:
-        - prefix: META-INF/versions
-        - prefix: io/pyroscope
-        - prefix: io/pyroscope/javaagent
-        - prefix: io/pyroscope/labels
-        - prefix: io/pyroscope/vendor/com/google/protobuf
-        - prefix: io/pyroscope/vendor/com/squareup/moshi
-        - prefix: io/pyroscope/vendor/kotlin
-        - prefix: io/pyroscope/vendor/kotlin/collections
-        - prefix: io/pyroscope/vendor/kotlin/coroutines
-        - prefix: io/pyroscope/vendor/kotlin/internal
-        - prefix: io/pyroscope/vendor/kotlin/io
-        - prefix: io/pyroscope/vendor/kotlin/jvm
-        - prefix: io/pyroscope/vendor/kotlin/jvm/internal
-        - prefix: io/pyroscope/vendor/kotlin/random
-        - prefix: io/pyroscope/vendor/okhttp3
-        - prefix: io/pyroscope/vendor/okhttp3/internal
-        - prefix: io/pyroscope/vendor/okhttp3/internal/platform
-        - prefix: io/pyroscope/vendor/okio
-      language: java
-      source:
-        github:
-          owner: pyroscope-io
-          repo: pyroscope-java
-          ref: v2.1.2
-          path: src/main/java
-    - function_name:
-        - prefix: ch/qos/logback/classic
-        - prefix: ch/qos/logback/classic/joran
-        - prefix: ch/qos/logback/classic/net
-        - prefix: ch/qos/logback/classic/pattern
-        - prefix: ch/qos/logback/classic/selector
-      language: java
-      source:
-        github:
-          owner: qos-ch
-          repo: logback
-          ref: v1.2.11
-          path: logback-classic/src/main/java
-    - function_name:
-        - prefix: ch/qos/logback/core
-        - prefix: ch/qos/logback/core/joran
-        - prefix: ch/qos/logback/core/joran/event
-        - prefix: ch/qos/logback/core/joran/util
-        - prefix: ch/qos/logback/core/net
-        - prefix: ch/qos/logback/core/pattern
-        - prefix: ch/qos/logback/core/rolling
-      language: java
-      source:
-        github:
-          owner: qos-ch
-          repo: logback
-          ref: v1.2.11
-          path: logback-core/src/main/java
     - function_name:
         - prefix: org/slf4j
       language: java
@@ -233,16 +196,6 @@ source_code:
           repo: slf4j
           ref: v1.7.36
           path: slf4j-api/src/main/java
-    - function_name:
-        - prefix: org/yaml/snakeyaml
-        - prefix: org/yaml/snakeyaml/external
-      language: java
-      source:
-        github:
-          owner: snakeyaml
-          repo: snakeyaml
-          ref: v1.30
-          path: src/main/java
     - function_name:
         - prefix: org/springframework/boot
         - prefix: org/springframework/boot/context
@@ -383,7 +336,23 @@ source_code:
           path: spring-expression/src/main/java
     - function_name:
         - prefix: org/springframework/http
+        - prefix: org/springframework/http/client
+        - prefix: org/springframework/http/codec
+        - prefix: org/springframework/http/converter
+        - prefix: org/springframework/http/server
+        - prefix: org/springframework/remoting
         - prefix: org/springframework/web
+        - prefix: org/springframework/web/bind
+        - prefix: org/springframework/web/client
+        - prefix: org/springframework/web/context
+        - prefix: org/springframework/web/context/request
+        - prefix: org/springframework/web/cors
+        - prefix: org/springframework/web/filter
+        - prefix: org/springframework/web/jsf
+        - prefix: org/springframework/web/method
+        - prefix: org/springframework/web/multipart
+        - prefix: org/springframework/web/server
+        - prefix: org/springframework/web/util
       language: java
       source:
         github:
@@ -393,6 +362,12 @@ source_code:
           path: spring-web/src/main/java
     - function_name:
         - prefix: org/springframework/web/servlet
+        - prefix: org/springframework/web/servlet/config
+        - prefix: org/springframework/web/servlet/function
+        - prefix: org/springframework/web/servlet/mvc
+        - prefix: org/springframework/web/servlet/mvc/method
+        - prefix: org/springframework/web/servlet/tags
+        - prefix: org/springframework/web/servlet/view
       language: java
       source:
         github:

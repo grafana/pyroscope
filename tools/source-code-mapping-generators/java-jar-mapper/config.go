@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -64,23 +62,10 @@ func (s *ConfigService) FindJarMapping(artifactId string) *JarMapping {
 	return nil
 }
 
-func DetermineSourcePath(artifactId string, pomStruct *POM) string {
-	sourcePath := "src/main/java"
-
-	hasParent := pomStruct.Parent.GroupID != ""
-	looksLikeModule := len(artifactId) > 5 && (strings.Contains(artifactId, "-") || strings.Contains(artifactId, "."))
-
-	if hasParent || looksLikeModule {
-		sourcePath = filepath.Join(artifactId, "src/main/java")
-	}
-
-	return sourcePath
-}
-
 func GenerateOrMergeConfig(configPath string, mappings []config.MappingConfig, jdkMappings []config.MappingConfig) error {
 	if len(jdkMappings) > 0 {
 		mappings = append(mappings, jdkMappings...)
-		fmt.Printf("Added %d JDK mapping(s)\n", len(jdkMappings))
+		fmt.Fprintf(os.Stderr, "Added %d JDK mapping(s)\n", len(jdkMappings))
 	}
 
 	var cfg config.PyroscopeConfig

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -12,27 +13,24 @@ import (
 
 // Processor processes individual JAR files to generate mapping configurations.
 type Processor struct {
-	jarAnalyzer    *JARAnalyzer
-	mavenService   *MavenService
-	githubResolver *GitHubResolver
-	pomParser      *POMParser
-	configService  *ConfigService
+	jarAnalyzer      *JARAnalyzer
+	githubResolver   *GitHubResolver
+	configService    *ConfigService
+	githubTagService *GitHubTagService
 }
 
 // NewProcessor creates a new Processor.
 func NewProcessor(
 	jarAnalyzer *JARAnalyzer,
-	mavenService *MavenService,
 	githubResolver *GitHubResolver,
-	pomParser *POMParser,
 	configService *ConfigService,
+	githubTagService *GitHubTagService,
 ) *Processor {
 	return &Processor{
-		jarAnalyzer:    jarAnalyzer,
-		mavenService:   mavenService,
-		githubResolver: githubResolver,
-		pomParser:      pomParser,
-		configService:  configService,
+		jarAnalyzer:      jarAnalyzer,
+		githubResolver:   githubResolver,
+		configService:    configService,
+		githubTagService: githubTagService,
 	}
 }
 
@@ -45,81 +43,66 @@ func (p *Processor) ProcessJAR(jarPath string) (*config.MappingConfig, error) {
 		return nil, fmt.Errorf("no common prefixes found in class names")
 	}
 
-	artifactId, version, err := p.jarAnalyzer.ExtractArtifactInfo(jarPath)
+	coords, err := p.jarAnalyzer.ExtractMavenCoordinates(jarPath)
 	if err != nil {
 		return nil, err
 	}
 
 	fmt.Fprintf(os.Stderr, "Processing JAR: %s\n", filepath.Base(jarPath))
-	fmt.Fprintf(os.Stderr, "  Extracted artifactId: %s\n", artifactId)
-	fmt.Fprintf(os.Stderr, "  Extracted version: %s\n", version)
+	fmt.Fprintf(os.Stderr, "  Coordinates: %s:%s:%s\n", coords.GroupID, coords.ArtifactID, coords.Version)
 
-	jarMapping := p.configService.FindJarMapping(artifactId)
-	if jarMapping != nil {
-		return p.processJARWithHardcodedMapping(jarMapping, prefixes, version), nil
-	}
-
-	return p.processJARWithPOMLookup(artifactId, version, prefixes)
-}
-
-func (p *Processor) processJARWithHardcodedMapping(jarMapping *JarMapping, prefixes []string, version string) *config.MappingConfig {
-	fmt.Fprintf(os.Stderr, "  Found hardcoded mapping: %s/%s\n", jarMapping.Owner, jarMapping.Repo)
-	ref := determineRef(version)
-
-	mappingConfig := &config.MappingConfig{
-		FunctionName: make([]config.Match, len(prefixes)),
-		Language:     "java",
-		Source: config.Source{
-			GitHub: &config.GitHubMappingConfig{
-				Owner: jarMapping.Owner,
-				Repo:  jarMapping.Repo,
-				Ref:   ref,
-				Path:  jarMapping.Path,
-			},
-		},
-	}
-
-	sortedPrefixes := make([]string, len(prefixes))
-	copy(sortedPrefixes, prefixes)
-	sort.Strings(sortedPrefixes)
-
-	for i, prefix := range sortedPrefixes {
-		mappingConfig.FunctionName[i] = config.Match{Prefix: prefix}
-	}
-
-	return mappingConfig
-}
-
-func (p *Processor) processJARWithPOMLookup(artifactId, version string, prefixes []string) (*config.MappingConfig, error) {
-	fmt.Fprintf(os.Stderr, "  Attempting to fetch POM from Maven Central...\n")
-	pomData, groupId, err := p.mavenService.FetchPOM(artifactId, version)
-	if err != nil {
-		return nil, err
-	}
-
-	if groupId == "" {
-		groupId, _ = p.pomParser.ExtractGroupID(pomData)
-	}
-
-	fmt.Fprintf(os.Stderr, "  Found groupId: %s\n", groupId)
-
-	pomStruct, err := p.pomParser.Parse(pomData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse POM: %w", err)
-	}
-
-	jarMapping := p.configService.FindJarMapping(artifactId)
-	owner, repo, err := p.githubResolver.ResolveRepo(jarMapping, pomStruct, groupId, artifactId, version)
+	owner, repo, err := p.githubResolver.ResolveRepo(coords)
 	if err != nil {
 		return nil, err
 	}
 
 	if owner == "" || repo == "" {
-		return nil, fmt.Errorf("failed to extract valid GitHub owner/repo (owner: %q, repo: %q)", owner, repo)
+		return nil, fmt.Errorf("failed to resolve GitHub repo for %s", coords.ArtifactID)
 	}
 
-	ref := determineRef(version)
-	sourcePath := DetermineSourcePath(artifactId, pomStruct)
+	ref := p.determineRef(owner, repo, coords.Version)
+
+	sourcePath := determineSourcePath(coords.ArtifactID)
+
+	// Check for hardcoded path override
+	if p.configService != nil {
+		if mapping := p.configService.FindJarMapping(coords.ArtifactID); mapping != nil && mapping.Path != "" {
+			sourcePath = mapping.Path
+		}
+	}
+
+	return p.buildMappingConfig(prefixes, owner, repo, ref, sourcePath), nil
+}
+
+func (p *Processor) ProcessJARWithCoords(jarPath string, coords *MavenCoordinates) (*config.MappingConfig, error) {
+	prefixes, err := p.jarAnalyzer.ExtractClassPrefixes(jarPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract class names: %w", err)
+	}
+	if len(prefixes) == 0 {
+		return nil, fmt.Errorf("no common prefixes found in class names")
+	}
+
+	fmt.Fprintf(os.Stderr, "Processing JAR: %s\n", filepath.Base(jarPath))
+	fmt.Fprintf(os.Stderr, "  Coordinates: %s:%s:%s\n", coords.GroupID, coords.ArtifactID, coords.Version)
+
+	owner, repo, err := p.githubResolver.ResolveRepo(coords)
+	if err != nil {
+		return nil, err
+	}
+
+	if owner == "" || repo == "" {
+		return nil, fmt.Errorf("failed to resolve GitHub repo for %s", coords.ArtifactID)
+	}
+
+	ref := p.determineRef(owner, repo, coords.Version)
+	sourcePath := determineSourcePath(coords.ArtifactID)
+
+	if p.configService != nil {
+		if mapping := p.configService.FindJarMapping(coords.ArtifactID); mapping != nil && mapping.Path != "" {
+			sourcePath = mapping.Path
+		}
+	}
 
 	return p.buildMappingConfig(prefixes, owner, repo, ref, sourcePath), nil
 }
@@ -149,11 +132,52 @@ func (p *Processor) buildMappingConfig(prefixes []string, owner, repo, ref, sour
 	return mapping
 }
 
-func determineRef(version string) string {
-	if strings.HasPrefix(version, "v") {
+func (p *Processor) determineRef(owner, repo, version string) string {
+	if p.githubTagService == nil {
 		return version
 	}
-	return "v" + version
+
+	ref, err := p.githubTagService.FindTagForVersion(owner, repo, version)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  Warning: failed to query GitHub tags for %s/%s: %v\n", owner, repo, err)
+		return version
+	}
+
+	fmt.Fprintf(os.Stderr, "  Found GitHub tag: %s (for version %s)\n", ref, version)
+	return ref
+}
+
+// determineSourcePath determines the source path for Java code.
+// Since path structures vary widely across projects, we use conservative defaults:
+// - Simple artifactIds: src/main/java (standard Maven layout)
+// - Multi-module projects: empty string (search from repo root)
+// Known projects should use jar-mappings.json for correct paths.
+func determineSourcePath(artifactId string) string {
+	// Strip version suffixes (e.g., "_2.13", "_3", "_1.0")
+	cleanArtifactId := stripVersionSuffix(artifactId)
+
+	// For simple artifactIds without hyphens, use standard Maven src path
+	if !strings.Contains(cleanArtifactId, "-") {
+		return "src/main/java"
+	}
+
+	// For multi-module projects, we can't reliably determine the path
+	// because naming conventions vary widely:
+	//   - spark-core -> core/src/main/java (strips project prefix)
+	//   - spring-web -> spring-web/src/main/java (keeps full name)
+	//   - jackson-core -> src/main/java (single module at root)
+	//
+	// Return empty path to search from repo root
+	return ""
+}
+
+// stripVersionSuffix removes version-like suffixes from artifactId.
+// This handles Scala version suffixes (_2.13, _3) and similar patterns.
+// Pattern: underscore followed by a version number (e.g., _2.13, _3, _1.0)
+var versionSuffixPattern = regexp.MustCompile(`_\d+(\.\d+)*$`)
+
+func stripVersionSuffix(artifactId string) string {
+	return versionSuffixPattern.ReplaceAllString(artifactId, "")
 }
 
 // MappingService orchestrates the mapping generation process.
@@ -177,25 +201,23 @@ func (s *MappingService) ProcessJAR(jarPath string) ([]config.MappingConfig, err
 	}
 	defer cleanup() //nolint:errcheck
 
-	fmt.Printf("Found %d 3rd party JARs\n", len(thirdPartyJARs))
+	fmt.Fprintf(os.Stderr, "Found %d JAR(s) to process\n", len(thirdPartyJARs))
 
 	var mappings []config.MappingConfig
 	successCount := 0
 	failCount := 0
 
 	for _, jarFile := range thirdPartyJARs {
-		fmt.Printf("Processing JAR: %s\n", filepath.Base(jarFile))
-
 		mapping, err := s.processor.ProcessJAR(jarFile)
 		if err != nil {
-			fmt.Printf("✗ Skipping %s: %v\n", filepath.Base(jarFile), err)
+			fmt.Fprintf(os.Stderr, "✗ Skipping %s: %v\n", filepath.Base(jarFile), err)
 			failCount++
 			continue
 		}
 
 		if mapping != nil {
 			mappings = append(mappings, *mapping)
-			fmt.Printf("✓ Successfully mapped %s to %s/%s\n",
+			fmt.Fprintf(os.Stderr, "✓ Successfully mapped %s to %s/%s\n",
 				filepath.Base(jarFile),
 				mapping.Source.GitHub.Owner,
 				mapping.Source.GitHub.Repo)
@@ -205,7 +227,7 @@ func (s *MappingService) ProcessJAR(jarPath string) ([]config.MappingConfig, err
 		}
 	}
 
-	fmt.Printf("\nProcessed %d JARs: %d successful, %d failed\n",
+	fmt.Fprintf(os.Stderr, "\nProcessed %d JARs: %d successful, %d failed\n",
 		len(thirdPartyJARs), successCount, failCount)
 
 	return mappings, nil
@@ -239,7 +261,6 @@ func mappingsEqual(m1, m2 config.MappingConfig) bool {
 	}
 
 	gh1, gh2 := m1.Source.GitHub, m2.Source.GitHub
-
 	if gh1.Owner != gh2.Owner || gh1.Repo != gh2.Repo || gh1.Ref != gh2.Ref {
 		return false
 	}
