@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: 'false'
+          ref: main
       - id: get-secrets
         uses: grafana/shared-workflows/actions/get-vault-secrets@eb33f84481d38701f4d2c587a4817ce332784f5f
         with:
@@ -33,6 +34,8 @@ jobs:
           app-id: ${{ env.GITHUB_APP_ID }}
           private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          permission-contents: write
+          permission-pull-requests: write
           repositories: |
             pyroscope
       - name: Get GitHub App User ID
@@ -49,13 +52,29 @@ jobs:
         run: make update-contributors
 
       - name: Commit and push changes
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
           APP_BOT="${{ steps.generate_token.outputs.app-slug }}[bot]"
           git config --local user.name "${APP_BOT}"
           git config --local user.email "${{ steps.get-user-id.outputs.user-id }}+${APP_BOT}@users.noreply.github.com"
+          
           if ! git diff --exit-code README.md; then
+              BRANCH_NAME="update-contributors-$(date +%Y%m%d)"
+              git checkout -b "${BRANCH_NAME}"
               git add README.md
               git commit -m 'docs: updates the list of contributors in README'
-              gh auth status
-              git push --force https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/${{ github.repository }}.git HEAD:main 2> /dev/null
+              git push https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/${{ github.repository }}.git HEAD:${BRANCH_NAME}
+          
+              # Check if PR already exists for this branch
+              EXISTING_PR=$(gh pr list --head "${BRANCH_NAME}" --json number --jq '.[0].number' || echo "")
+              if [ -z "$EXISTING_PR" ]; then
+                  gh pr create \
+                    --title "docs: updates the list of contributors in README" \
+                    --body "This PR automatically updates the list of contributors in the README." \
+                    --base main \
+                    --head "${BRANCH_NAME}"
+              else
+                  echo "PR #${EXISTING_PR} already exists for this branch"
+              fi
           fi
