@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/grafana/pyroscope/pkg/debuginfo"
+	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/symbolizer"
 	"google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -68,6 +71,7 @@ const (
 	API               string = "api"
 	Version           string = "version"
 	Distributor       string = "distributor"
+	DebugInfo         string = "debug-info"
 	Server            string = "server"
 	IngesterRing      string = "ring"
 	Ingester          string = "ingester"
@@ -325,6 +329,20 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 		return nil, err
 	}
 	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.MultitenancyEnabled, f.Cfg.Server)
+	return d, nil
+}
+
+func (f *Pyroscope) initDebugInfo() (services.Service, error) {
+	if f.storageBucket == nil {
+		return nil, fmt.Errorf("storage bucket is required")
+	}
+	d := debuginfo.NewHandler(
+		log.With(f.logger, "component", "debug-info"),
+		f.Cfg.Server,
+		objstore.NewPrefixedBucket(f.storageBucket, symbolizer.BucketPrefix),
+	)
+
+	f.API.RegisterDebugInfo(d, f.Overrides, f.Cfg.MultitenancyEnabled)
 	return d, nil
 }
 

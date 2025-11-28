@@ -22,6 +22,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore"
 )
 
+const BucketPrefix = "symbolizer"
+
 type DebuginfodClient interface {
 	FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error)
 }
@@ -464,8 +466,9 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 		return nil, fmt.Errorf("read debuginfod data: %w", err)
 	}
 
-	lidiaData, err := s.processELFData(elfData)
+	lidiaData, errMetric, err := ProcessELFData(elfData)
 	if err != nil {
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues(errMetric).Inc()
 		return nil, err
 	}
 
@@ -488,19 +491,17 @@ func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (i
 	return debugReader, nil
 }
 
-func (s *Symbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
+func ProcessELFData(data []byte) (lidiaData []byte, errMetric string, err error) {
 	decompressedData, err := detectCompression(data)
 	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("compression_error").Inc()
-		return nil, fmt.Errorf("detect compression: %w", err)
+		return nil, "compression", fmt.Errorf("detect compression: %w", err)
 	}
 
 	reader := bytes.NewReader(decompressedData)
 
 	elfFile, err := elf.NewFile(reader)
 	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("elf_parsing_error").Inc()
-		return nil, fmt.Errorf("parse ELF file: %w", err)
+		return nil, "elf_parsing", fmt.Errorf("parse ELF file: %w", err)
 	}
 	defer elfFile.Close()
 
@@ -509,10 +510,10 @@ func (s *Symbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
 
 	err = lidia.CreateLidiaFromELF(elfFile, memBuffer, lidia.WithCRC(), lidia.WithFiles(), lidia.WithLines())
 	if err != nil {
-		return nil, fmt.Errorf("create lidia file: %w", err)
+		return nil, "lidia_conversion", fmt.Errorf("create lidia file: %w", err)
 	}
 
-	return memBuffer.Bytes(), nil
+	return memBuffer.Bytes(), "", nil
 }
 
 func (s *Symbolizer) createFallbackSymbol(binaryName string, loc *location) []lidia.SourceInfoFrame {
