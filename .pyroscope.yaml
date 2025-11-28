@@ -1,0 +1,12 @@
+version: v1
+source_code:
+  mappings:
+    - path:
+        - prefix: $GOROOT/src
+      language: go
+      source:
+       github:
+        owner: golang
+        repo: go
+        ref: go1.24.10
+        path: src

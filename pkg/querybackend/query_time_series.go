@@ -7,6 +7,8 @@ import (
 
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -31,11 +33,15 @@ func init() {
 }
 
 func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
+	includeExemplars, err := validateExemplarType(query.TimeSeries.ExemplarType)
+	if err != nil {
+		return nil, err
+	}
+
 	opts := []profileIteratorOption{
 		withFetchPartition(false), // Partition data not needed, as we don't access stacktraces at all
 	}
 
-	includeExemplars := query.TimeSeries.ExemplarType == typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL
 	if includeExemplars {
 		opts = append(opts,
 			withAllLabels(),
@@ -164,5 +170,20 @@ func (a *timeSeriesAggregator) build() *queryv1.Report {
 			Query:      a.query,
 			TimeSeries: series,
 		},
+	}
+}
+
+// validateExemplarType validates the exemplar type and returns whether to include exemplars.
+func validateExemplarType(exemplarType typesv1.ExemplarType) (bool, error) {
+	switch exemplarType {
+	case typesv1.ExemplarType_EXEMPLAR_TYPE_UNSPECIFIED,
+		typesv1.ExemplarType_EXEMPLAR_TYPE_NONE:
+		return false, nil
+	case typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL:
+		return true, nil
+	case typesv1.ExemplarType_EXEMPLAR_TYPE_SPAN:
+		return false, status.Error(codes.Unimplemented, "exemplar type span is not implemented")
+	default:
+		return false, status.Errorf(codes.InvalidArgument, "unknown exemplar type: %v", exemplarType)
 	}
 }

@@ -169,13 +169,13 @@ func Test_RangeSeriesWithExemplars(t *testing.T) {
 		out          []*typesv1.Series
 	}{
 		{
-			name: "exemplar tracking keeps highest value",
+			name: "exemplar timestamps preserved during aggregation",
 			series: []*typesv1.Series{{
 				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
 				Points: []*typesv1.Point{
-					{Timestamp: 1000, Value: 100.0, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-1", Value: 100, Timestamp: 1000}}},
-					{Timestamp: 1000, Value: 300.0, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-2", Value: 300, Timestamp: 1000}}},
-					{Timestamp: 2000, Value: 200.0, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-3", Value: 200, Timestamp: 2000}}},
+					{Timestamp: 947, Value: 100.0, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-1", Value: 100, Timestamp: 947}}},
+					{Timestamp: 987, Value: 300.0, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-2", Value: 300, Timestamp: 987}}},
+					{Timestamp: 1847, Value: 200.0, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-3", Value: 200, Timestamp: 1847}}},
 				},
 			}},
 			start:       1000,
@@ -185,8 +185,8 @@ func Test_RangeSeriesWithExemplars(t *testing.T) {
 			out: []*typesv1.Series{{
 				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
 				Points: []*typesv1.Point{
-					{Timestamp: 1000, Value: 400.0, Annotations: []*typesv1.ProfileAnnotation{}, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-2", Value: 300, Timestamp: 1000}}},
-					{Timestamp: 2000, Value: 200.0, Annotations: []*typesv1.ProfileAnnotation{}, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-3", Value: 200, Timestamp: 2000}}},
+					{Timestamp: 1000, Value: 400.0, Annotations: []*typesv1.ProfileAnnotation{}, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-2", Value: 300, Timestamp: 987}}},
+					{Timestamp: 2000, Value: 200.0, Annotations: []*typesv1.ProfileAnnotation{}, Exemplars: []*typesv1.Exemplar{{ProfileId: "prof-3", Value: 200, Timestamp: 1847}}},
 				},
 			}},
 		},

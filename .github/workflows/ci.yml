@@ -25,9 +25,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24.9
+          go-version: 1.24.10
       - name: Format
         run: make fmt check/unstaged-changes
   check-generated:
@@ -38,9 +38,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24.9
+          go-version: 1.24.10
       - name: Check generated files
         run: make generate check/unstaged-changes
   test:
@@ -61,9 +61,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24.9
+          go-version: 1.24.10
       - name: Go Mod
         run: make check/go/mod
       - name: Test
@@ -76,9 +76,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24.9
+          go-version: 1.24.10
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -107,9 +107,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
       - name: Set up go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24.9
+          go-version: 1.24.10
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
@@ -137,12 +137,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
       - name: Set up go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24.9
+          go-version: 1.24.10
       # login to docker hub
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@0c35ca9c1d8794ccf9cfcfdcdd6b02261c7d0183
+        uses: grafana/shared-workflows/actions/get-vault-secrets@eb33f84481d38701f4d2c587a4817ce332784f5f
         with:
           common_secrets: |
             DOCKERHUB_USERNAME=dockerhub:username
@@ -174,7 +174,7 @@ jobs:
     steps:
     - id: "submit-argowfs-deployment"
       name: "Submit Argo Workflows deployment"
-      uses: grafana/shared-workflows/actions/trigger-argo-workflow@0c35ca9c1d8794ccf9cfcfdcdd6b02261c7d0183
+      uses: grafana/shared-workflows/actions/trigger-argo-workflow@eb33f84481d38701f4d2c587a4817ce332784f5f
       with:
         namespace: "phlare-cd"
         workflow_template: "deploy-pyroscope-dev"
