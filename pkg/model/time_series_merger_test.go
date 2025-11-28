@@ -56,6 +56,263 @@ func Test_SeriesMerger(t *testing.T) {
 	}
 }
 
+func Test_SeriesMerger_Annotations(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   [][]*typesv1.Series
+		out  []*typesv1.Series
+	}{
+		{
+			name: "merge two distinct annotations",
+			in: [][]*typesv1.Series{
+				{
+					{
+						Labels: LabelsFromStrings("foo", "bar"),
+						Points: []*typesv1.Point{
+							{
+								Timestamp: 1,
+								Value:     1,
+								Annotations: []*typesv1.ProfileAnnotation{
+									{Key: "key1", Value: "value1"},
+								},
+							},
+						},
+					},
+				},
+				{
+					{
+						Labels: LabelsFromStrings("foo", "bar"),
+						Points: []*typesv1.Point{
+							{
+								Timestamp: 1,
+								Value:     2,
+								Annotations: []*typesv1.ProfileAnnotation{
+									{Key: "key1", Value: "value2"},
+								},
+							},
+						},
+					},
+				},
+			},
+			out: []*typesv1.Series{
+				{
+					Labels: LabelsFromStrings("foo", "bar"),
+					Points: []*typesv1.Point{
+						{
+							Timestamp: 1,
+							Value:     3,
+							Annotations: []*typesv1.ProfileAnnotation{
+								{Key: "key1", Value: "value1"},
+								{Key: "key1", Value: "value2"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "merge duplicate annotations",
+			in: [][]*typesv1.Series{
+				{
+					{
+						Labels: LabelsFromStrings("foo", "bar"),
+						Points: []*typesv1.Point{
+							{
+								Timestamp: 1,
+								Value:     1,
+								Annotations: []*typesv1.ProfileAnnotation{
+									{Key: "key1", Value: "value1"},
+									{Key: "key2", Value: "value2"},
+								},
+							},
+						},
+					},
+				},
+				{
+					{
+						Labels: LabelsFromStrings("foo", "bar"),
+						Points: []*typesv1.Point{
+							{
+								Timestamp: 1,
+								Value:     2,
+								Annotations: []*typesv1.ProfileAnnotation{
+									{Key: "key1", Value: "value1"},
+									{Key: "key3", Value: "value3"},
+								},
+							},
+						},
+					},
+				},
+			},
+			out: []*typesv1.Series{
+				{
+					Labels: LabelsFromStrings("foo", "bar"),
+					Points: []*typesv1.Point{
+						{
+							Timestamp: 1,
+							Value:     3,
+							Annotations: []*typesv1.ProfileAnnotation{
+								{Key: "key1", Value: "value1"},
+								{Key: "key2", Value: "value2"},
+								{Key: "key3", Value: "value3"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "merge all duplicate annotations",
+			in: [][]*typesv1.Series{
+				{
+					{
+						Labels: LabelsFromStrings("foo", "bar"),
+						Points: []*typesv1.Point{
+							{
+								Timestamp: 1,
+								Value:     1,
+								Annotations: []*typesv1.ProfileAnnotation{
+									{Key: "key1", Value: "value1"},
+									{Key: "key2", Value: "value2"},
+								},
+							},
+						},
+					},
+				},
+				{
+					{
+						Labels: LabelsFromStrings("foo", "bar"),
+						Points: []*typesv1.Point{
+							{
+								Timestamp: 1,
+								Value:     2,
+								Annotations: []*typesv1.ProfileAnnotation{
+									{Key: "key1", Value: "value1"},
+									{Key: "key2", Value: "value2"},
+								},
+							},
+						},
+					},
+				},
+			},
+			out: []*typesv1.Series{
+				{
+					Labels: LabelsFromStrings("foo", "bar"),
+					Points: []*typesv1.Point{
+						{
+							Timestamp: 1,
+							Value:     3,
+							Annotations: []*typesv1.ProfileAnnotation{
+								{Key: "key1", Value: "value1"},
+								{Key: "key2", Value: "value2"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "annotations sorted by key then value",
+			in: [][]*typesv1.Series{
+				{
+					{
+						Labels: LabelsFromStrings("foo", "bar"),
+						Points: []*typesv1.Point{
+							{
+								Timestamp: 1,
+								Value:     1,
+								Annotations: []*typesv1.ProfileAnnotation{
+									{Key: "z", Value: "last"},
+									{Key: "a", Value: "first"},
+								},
+							},
+						},
+					},
+				},
+				{
+					{
+						Labels: LabelsFromStrings("foo", "bar"),
+						Points: []*typesv1.Point{
+							{
+								Timestamp: 1,
+								Value:     2,
+								Annotations: []*typesv1.ProfileAnnotation{
+									{Key: "m", Value: "middle"},
+								},
+							},
+						},
+					},
+				},
+			},
+			out: []*typesv1.Series{
+				{
+					Labels: LabelsFromStrings("foo", "bar"),
+					Points: []*typesv1.Point{
+						{
+							Timestamp: 1,
+							Value:     3,
+							Annotations: []*typesv1.ProfileAnnotation{
+								{Key: "a", Value: "first"},
+								{Key: "m", Value: "middle"},
+								{Key: "z", Value: "last"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "empty annotations on one side",
+			in: [][]*typesv1.Series{
+				{
+					{
+						Labels: LabelsFromStrings("foo", "bar"),
+						Points: []*typesv1.Point{
+							{
+								Timestamp:   1,
+								Value:       1,
+								Annotations: []*typesv1.ProfileAnnotation{},
+							},
+						},
+					},
+				},
+				{
+					{
+						Labels: LabelsFromStrings("foo", "bar"),
+						Points: []*typesv1.Point{
+							{
+								Timestamp: 1,
+								Value:     2,
+								Annotations: []*typesv1.ProfileAnnotation{
+									{Key: "key1", Value: "value1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			out: []*typesv1.Series{
+				{
+					Labels: LabelsFromStrings("foo", "bar"),
+					Points: []*typesv1.Point{
+						{
+							Timestamp: 1,
+							Value:     3,
+							Annotations: []*typesv1.ProfileAnnotation{
+								{Key: "key1", Value: "value1"},
+							},
+						},
+					},
+				},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testhelper.EqualProto(t, tc.out, MergeSeries(nil, tc.in...))
+		})
+	}
+}
+
 func Test_SeriesMerger_Overlap_Sum(t *testing.T) {
 	for _, tc := range []struct {
 		name string

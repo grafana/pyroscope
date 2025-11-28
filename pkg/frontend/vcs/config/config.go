@@ -173,6 +173,10 @@ type FileSpec struct {
 // FindMapping finds a mapping configuration that matches the given FileSpec
 // Returns nil if no matching mapping is found
 func (c *PyroscopeConfig) FindMapping(file FileSpec) *MappingConfig {
+	if c == nil {
+		return nil
+	}
+
 	// Find the longest matching prefix
 	var bestMatch *MappingConfig
 	var bestMatchLen = -1
