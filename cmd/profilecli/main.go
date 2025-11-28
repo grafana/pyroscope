@@ -105,7 +105,8 @@ func main() {
 	readyCmd := app.Command("ready", "Check Pyroscope health.")
 	readyParams := addReadyParams(readyCmd)
 
-	sourceCodeCoverageCmd := app.Command("source-code-coverage", "Measure the coverage of .pyroscope.yaml source code mappings for translating function names/paths from a pprof profile to VCS source files.")
+	sourceCodeCmd := app.Command("source-code", "Operations on source code mappings and configurations.")
+	sourceCodeCoverageCmd := sourceCodeCmd.Command("coverage", "Measure the coverage of .pyroscope.yaml source code mappings for translating function names/paths from a pprof profile to VCS source files.")
 	sourceCodeCoverageParams := addSourceCodeCoverageParams(sourceCodeCoverageCmd)
 
 	raftCmd := adminCmd.Command("raft", "Operate on Raft cluster.")
