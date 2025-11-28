@@ -76,11 +76,11 @@ func addSourceCodeCoverageParams(cmd commander) *sourceCodeCoverageParams {
 	params := new(sourceCodeCoverageParams)
 	cmd.Flag("profile", "Path to pprof profile file").Required().StringVar(&params.ProfilePath)
 	cmd.Flag("config", "Path to .pyroscope.yaml file").StringVar(&params.ConfigPath)
-	cmd.Flag("github-token", "GitHub token for API access (or use GITHUB_TOKEN env var)").StringVar(&params.GithubToken)
 	cmd.Flag("output", "Output format: text or detailed").Default("text").StringVar(&params.OutputFormat)
 	cmd.Flag("list-functions", "List all functions in the profile and exit").BoolVar(&params.ListFunctions)
 	cmd.Flag("function", "Check coverage for a specific function (by name or path)").StringVar(&params.FunctionName)
 	cmd.Flag("top", "Only process the top N functions by sample count (0 = process all)").Default("0").IntVar(&params.TopN)
+	cmd.Flag("github-token", "GitHub token for API access").Envar(envPrefix + "GITHUB_TOKEN").StringVar(&params.GithubToken)
 	return params
 }
 
@@ -130,15 +130,11 @@ func loadConfigAndProfile(configPath, profilePath string) (*config.PyroscopeConf
 
 func setupVCSClient(ctx context.Context, configData []byte, githubToken string) (source.VCSClient, *http.Client, error) {
 	fmt.Fprintf(os.Stderr, "Setting up GitHub client...\n")
-	tokenStr := githubToken
-	if tokenStr == "" {
-		tokenStr = os.Getenv("GITHUB_TOKEN")
-	}
-	if tokenStr == "" {
-		return nil, nil, errors.New("GitHub token required (use --github-token flag or GITHUB_TOKEN env var)")
+	if githubToken == "" {
+		return nil, nil, errors.New("GitHub token required (use --github-token flag or PROFILECLI_GITHUB_TOKEN env var)")
 	}
 
-	token := &oauth2.Token{AccessToken: tokenStr}
+	token := &oauth2.Token{AccessToken: githubToken}
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	ghClient, err := client.GithubClient(ctx, token, httpClient)
 	if err != nil {
