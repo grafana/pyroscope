@@ -11,13 +11,14 @@ import (
 	"fmt"
 	"net/http"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
-
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/server"
+	"github.com/grafana/pyroscope/pkg/debuginfo"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
 	"github.com/grafana/pyroscope/public"
@@ -190,6 +191,15 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 	})
 }
 
+func (a *API) RegisterDebugInfo(d *debuginfo.Handler, limits *validation.Overrides, multitenancyEnabled bool) {
+	// todo unify multitenancy with otlp
+	writePathOpts := a.registerOptionsWritePath(limits)
+	a.RegisterRoute(debuginfogrpc.DebuginfoService_Upload_FullMethodName, d, writePathOpts...)
+	a.RegisterRoute(debuginfogrpc.DebuginfoService_ShouldInitiateUpload_FullMethodName, d, writePathOpts...)
+	a.RegisterRoute(debuginfogrpc.DebuginfoService_InitiateUpload_FullMethodName, d, writePathOpts...)
+	a.RegisterRoute(debuginfogrpc.DebuginfoService_MarkUploadFinished_FullMethodName, d, writePathOpts...)
+}
+
 // RegisterDistributor registers the endpoints associated with the distributor.
 func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, multitenancyEnabled bool, cfg server.Config) {
 	writePathOpts := a.registerOptionsWritePath(limits)
@@ -206,6 +216,7 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation
 
 	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, writePathOpts...)
 	a.RegisterRoute("/v1development/profiles", otlpHandler, writePathOpts...)
+
 }
 
 // RegisterMemberlistKV registers the endpoints associated with the memberlist KV store.
