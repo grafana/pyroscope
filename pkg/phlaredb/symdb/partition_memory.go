@@ -40,7 +40,7 @@ func (p *PartitionWriter) LookupLocations(dst []uint64, stacktraceID uint32) []u
 func newStacktraces() *stacktraces {
 	p := &stacktraces{
 		hashToIdx: make(map[uint64]uint32),
-		tree:      newStacktraceTree(defaultStacktraceTreeSize),
+		tree:      newStacktraceAvlTree(defaultStacktraceTreeSize),
 	}
 	return p
 }
@@ -55,7 +55,7 @@ type stacktraces struct {
 func (p *stacktraces) size() uint64 {
 	p.m.RLock()
 	// TODO: map footprint isn't accounted
-	v := stacktraceTreeNodeSize * cap(p.tree.nodes)
+	v := stacktraceAvlTreeNodeSize * cap(p.tree.nodes)
 	p.m.RUnlock()
 	return uint64(v)
 }
