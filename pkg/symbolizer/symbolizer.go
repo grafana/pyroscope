@@ -409,7 +409,7 @@ func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
 			loc.lines = s.createFallbackSymbol(req.binaryName, loc)
 			continue
 		}
-
+		//todo demangle symbols
 		loc.lines = frames
 	}
 }
