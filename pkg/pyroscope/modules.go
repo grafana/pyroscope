@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/pyroscope/pkg/debuginfo"
-	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/symbolizer"
+	parcadebuginfoglue "github.com/grafana/pyroscope/pkg/debuginfo"
+
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 	"google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -336,14 +336,12 @@ func (f *Pyroscope) initDebugInfo() (services.Service, error) {
 	if f.storageBucket == nil {
 		return nil, fmt.Errorf("storage bucket is required")
 	}
-	d := debuginfo.NewHandler(
-		log.With(f.logger, "component", "debug-info"),
-		f.Cfg.Server,
-		objstore.NewPrefixedBucket(f.storageBucket, symbolizer.BucketPrefix),
-	)
+	s := httpgrpc.NewGrpcServer(f.Cfg.Server)
 
-	f.API.RegisterDebugInfo(d, f.Overrides, f.Cfg.MultitenancyEnabled)
-	return d, nil
+	svc := parcadebuginfoglue.NewParcaDebugInfo(f.logger, f.storageBucket, f.Cfg.Symbolizer, s)
+
+	f.API.RegisterDebugInfo(s, f.Overrides)
+	return svc, nil
 }
 
 func (f *Pyroscope) initMemberlistKV() (services.Service, error) {

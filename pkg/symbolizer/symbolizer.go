@@ -14,6 +14,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/pyroscope/pkg/parca/debuginfo"
+	debuginfopb "github.com/grafana/pyroscope/pkg/parca/gen/proto/go/parca/debuginfo/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
@@ -23,19 +25,24 @@ import (
 )
 
 const BucketPrefix = "symbolizer"
+const BucketPrefixParcaDebugInfo = "parca-debug-info"
 
 type DebuginfodClient interface {
 	FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error)
 }
 
 type Config struct {
-	DebuginfodURL            string `yaml:"debuginfod_url"`
-	MaxDebuginfodConcurrency int    `yaml:"max_debuginfod_concurrency" category:"advanced"`
+	DebuginfodURL            string        `yaml:"debuginfod_url"`
+	MaxDebuginfodConcurrency int           `yaml:"max_debuginfod_concurrency" category:"advanced"`
+	MaxUploadSize            int64         `yaml:"max_upload_size" category:"advanced"`
+	MaxUploadDuration        time.Duration `yaml:"max_upload_duration" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
 	f.IntVar(&cfg.MaxDebuginfodConcurrency, "symbolizer.max-debuginfod-concurrency", 10, "Maximum number of concurrent symbolization requests to debuginfod server.")
+	f.Int64Var(&cfg.MaxUploadSize, "symbolizer.max-upload-size", 100*1024*1024, "Maximum size of a single upload in bytes.")
+	f.DurationVar(&cfg.MaxUploadDuration, "symbolizer.max-upload-duration", time.Minute, "Maximum duration of a single upload.")
 }
 
 func (cfg *Config) Validate() error {
@@ -48,28 +55,34 @@ func (cfg *Config) Validate() error {
 type Symbolizer struct {
 	logger  log.Logger
 	client  DebuginfodClient
+	parca   *debuginfo.Fetcher
 	bucket  objstore.Bucket
 	metrics *metrics
 	cfg     Config
 }
 
-func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*Symbolizer, error) {
+func New(logger log.Logger, cfg Config, reg prometheus.Registerer, lidiaBucket, parcaBucket objstore.Bucket) (*Symbolizer, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
+	m := newMetrics(reg)
 
-	metrics := newMetrics(reg)
-
-	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics)
+	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, m)
 	if err != nil {
 		return nil, err
 	}
 
+	parcaFetcher := debuginfo.NewFetcher(
+		debuginfo.NewParallelDebuginfodClients(nil),
+		parcaBucket,
+	)
+
 	return &Symbolizer{
 		logger:  logger,
 		client:  client,
-		bucket:  bucket,
-		metrics: metrics,
+		parca:   parcaFetcher,
+		bucket:  lidiaBucket,
+		metrics: m,
 		cfg:     cfg,
 	}, nil
 }
@@ -451,7 +464,7 @@ func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID stri
 
 // fetchLidiaFromDebuginfod fetches debug info from debuginfod and converts to Lidia format
 func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID string) ([]byte, error) {
-	debugReader, err := s.fetchFromDebuginfod(ctx, buildID)
+	debugReader, err := s.fetch(ctx, buildID)
 	if err != nil {
 		var bnfErr buildIDNotFoundError
 		if errors.As(err, &bnfErr) {
@@ -473,6 +486,20 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 	}
 
 	return lidiaData, nil
+}
+
+func (s *Symbolizer) fetch(ctx context.Context, buildID string) (io.ReadCloser, error) {
+	if r, err := s.fetchFromParca(ctx, buildID); err == nil {
+		return r, nil
+	}
+	return s.fetchFromDebuginfod(ctx, buildID)
+}
+
+func (s *Symbolizer) fetchFromParca(ctx context.Context, buildID string) (io.ReadCloser, error) {
+	return s.parca.FetchDebuginfo(ctx, &debuginfopb.Debuginfo{
+		Source:  debuginfopb.Debuginfo_SOURCE_UPLOAD,
+		BuildId: buildID,
+	})
 }
 
 func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (io.ReadCloser, error) {
