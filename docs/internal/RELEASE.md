@@ -58,7 +58,7 @@ Once merged, a `vX.Y.Z` patch release tag must be created and pushed to remote t
 ## Manual Release Process
 
 The release process uses [goreleaser](https://goreleaser.com/scm/github/?h=github#github) and can be configured
-using the [.goreleaser.yml](./.goreleaser.yml).
+using the [.goreleaser.yaml](./.goreleaser.yaml).
 
 To create a new release first prepare the release using:
 
