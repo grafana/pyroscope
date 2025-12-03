@@ -564,7 +564,9 @@ func (v *sampleAppender) VisitSampleSeries(labels model.Labels, samples []*profi
 	v.dataset.Ingest(&n, v.id, labels, v.annotations)
 }
 
-func (v *sampleAppender) ValidateLabels(labels model.Labels) (model.Labels, error) { return labels, nil }
+func (v *sampleAppender) ValidateLabels(labels model.Labels) (model.Labels, error) {
+	return labels, nil
+}
 
 func (v *sampleAppender) Discarded(_, _ int) {}
 
