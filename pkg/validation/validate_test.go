@@ -163,10 +163,12 @@ func TestValidateLabels_SanitizedLabelsReturned(t *testing.T) {
 			name: "single dotted label is sanitized",
 			inputLabels: []*typesv1.LabelPair{
 				{Name: model.MetricNameLabel, Value: "cpu"},
-				{Name: "service.name", Value: "my-svc"},
+				{Name: "service_name", Value: "my-svc"},
+				{Name: "label.dot", Value: "val"},
 			},
 			expectedLabels: []*typesv1.LabelPair{
 				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "label_dot", Value: "val"},
 				{Name: "service_name", Value: "my-svc"},
 			},
 		},
@@ -187,11 +189,13 @@ func TestValidateLabels_SanitizedLabelsReturned(t *testing.T) {
 			inputLabels: []*typesv1.LabelPair{
 				{Name: model.MetricNameLabel, Value: "cpu"},
 				{Name: "foo.bar", Value: "val1"},
-				{Name: "service.name", Value: "my-svc"},
+				{Name: "label.dot", Value: "val2"},
+				{Name: "service_name", Value: "my-svc"},
 			},
 			expectedLabels: []*typesv1.LabelPair{
 				{Name: model.MetricNameLabel, Value: "cpu"},
 				{Name: "foo_bar", Value: "val1"},
+				{Name: "label_dot", Value: "val2"},
 				{Name: "service_name", Value: "my-svc"},
 			},
 		},
