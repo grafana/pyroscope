@@ -137,7 +137,7 @@ func TestValidateLabels(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateLabels(MockLimits{
+			_, err := ValidateLabels(MockLimits{
 				MaxLabelNamesPerSeriesValue: 4,
 				MaxLabelNameLengthValue:     12,
 				MaxLabelValueLengthValue:    10,
@@ -148,6 +148,78 @@ func TestValidateLabels(t *testing.T) {
 				require.Equal(t, tt.expectedReason, ReasonOf(err))
 			} else {
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateLabels_SanitizedLabelsReturned(t *testing.T) {
+	for _, tt := range []struct {
+		name           string
+		inputLabels    []*typesv1.LabelPair
+		expectedLabels []*typesv1.LabelPair
+	}{
+		{
+			name: "single dotted label is sanitized",
+			inputLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "service.name", Value: "my-svc"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "service_name", Value: "my-svc"},
+			},
+		},
+		{
+			name: "dotted label merged with existing underscore label",
+			inputLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "service.name", Value: "my-svc"},
+				{Name: "service_name", Value: "my-svc"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "service_name", Value: "my-svc"},
+			},
+		},
+		{
+			name: "multiple dotted labels sanitized",
+			inputLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "foo.bar", Value: "val1"},
+				{Name: "service.name", Value: "my-svc"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "foo_bar", Value: "val1"},
+				{Name: "service_name", Value: "my-svc"},
+			},
+		},
+		{
+			name: "labels without dots unchanged",
+			inputLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "service_name", Value: "my-svc"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "service_name", Value: "my-svc"},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := ValidateLabels(MockLimits{
+				MaxLabelNamesPerSeriesValue: 10,
+				MaxLabelNameLengthValue:     50,
+				MaxLabelValueLengthValue:    50,
+			}, "test-tenant", tt.inputLabels, log.NewNopLogger())
+
+			require.NoError(t, err)
+			require.Equal(t, len(tt.expectedLabels), len(result), "unexpected number of labels")
+
+			for i, expected := range tt.expectedLabels {
+				require.Equal(t, expected.Name, result[i].Name, "label name mismatch at index %d", i)
+				require.Equal(t, expected.Value, result[i].Value, "label value mismatch at index %d", i)
 			}
 		})
 	}

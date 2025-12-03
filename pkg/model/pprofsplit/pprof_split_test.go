@@ -40,7 +40,7 @@ func (m *mockVisitor) VisitSampleSeries(labels phlaremodel.Labels, samples []*pr
 	})
 }
 
-func (m *mockVisitor) ValidateLabels(phlaremodel.Labels) error { return m.err }
+func (m *mockVisitor) ValidateLabels(labels phlaremodel.Labels) (phlaremodel.Labels, error) { return labels, m.err }
 
 func (m *mockVisitor) Discarded(profiles, bytes int) {
 	m.discardedBytes += bytes
