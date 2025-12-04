@@ -73,7 +73,7 @@ type sampleGroup struct {
 	samples []*profilev1.Sample
 }
 
-func (m *sampleSeriesMerger) ValidateLabels(labels phlaremodel.Labels) error {
+func (m *sampleSeriesMerger) ValidateLabels(labels phlaremodel.Labels) (phlaremodel.Labels, error) {
 	return m.visitor.ValidateLabels(labels)
 }
 
