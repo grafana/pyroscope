@@ -1088,6 +1088,96 @@ func TestJdkVersionToMajorVersion(t *testing.T) {
 	}
 }
 
+func TestIsShadedPackage(t *testing.T) {
+	tests := []struct {
+		pkg  string
+		want bool
+	}{
+		{"io/pyroscope/vendor/okhttp3", true},
+		{"io/pyroscope/vendor/com/google/protobuf", true},
+		{"com/google/common/shaded/collect", true},
+		{"org/apache/spark/internal/shaded/io", true},
+		{"org/example/repackaged/guava", true},
+		{"org/example/relocated/jackson", true},
+		{"com/example/thirdparty/lib", true},
+		{"io/pyroscope/javaagent", false},
+		{"io/pyroscope/labels", false},
+		{"org/springframework/web", false},
+		{"com/google/common/collect", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.pkg, func(t *testing.T) {
+			got := isShadedPackage(tt.pkg)
+			if got != tt.want {
+				t.Errorf("isShadedPackage(%q) = %v, want %v", tt.pkg, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExtractMavenCoordinatesFromPath(t *testing.T) {
+	tests := []struct {
+		name    string
+		path    string
+		want    *MavenCoordinates
+		wantErr bool
+	}{
+		{
+			name: "Bazel Maven path - pyroscope agent",
+			path: "/some/path/.runfiles/rules_jvm_external++maven+maven/v1/https/repo1.maven.org/maven2/io/pyroscope/agent/2.1.2/processed_agent-2.1.2.jar",
+			want: &MavenCoordinates{
+				GroupID:    "io.pyroscope",
+				ArtifactID: "agent",
+				Version:    "2.1.2",
+			},
+		},
+		{
+			name: "Bazel Maven path - guava",
+			path: "/path/maven2/com/google/guava/guava/31.1-jre/guava-31.1-jre.jar",
+			want: &MavenCoordinates{
+				GroupID:    "com.google.guava",
+				ArtifactID: "guava",
+				Version:    "31.1-jre",
+			},
+		},
+		{
+			name: "Bazel Maven path - single segment groupId",
+			path: "/path/maven2/junit/junit/4.13.2/junit-4.13.2.jar",
+			want: &MavenCoordinates{
+				GroupID:    "junit",
+				ArtifactID: "junit",
+				Version:    "4.13.2",
+			},
+		},
+		{
+			name: "No maven2 in path",
+			path: "/regular/path/to/some-lib-1.0.0.jar",
+			want: &MavenCoordinates{},
+		},
+		{
+			name: "Path too short after maven2",
+			path: "/path/maven2/incomplete/path.jar",
+			want: &MavenCoordinates{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractMavenCoordinatesFromPath(tt.path)
+			if got.GroupID != tt.want.GroupID {
+				t.Errorf("extractMavenCoordinatesFromPath() groupId = %q, want %q", got.GroupID, tt.want.GroupID)
+			}
+			if got.ArtifactID != tt.want.ArtifactID {
+				t.Errorf("extractMavenCoordinatesFromPath() artifactId = %q, want %q", got.ArtifactID, tt.want.ArtifactID)
+			}
+			if got.Version != tt.want.Version {
+				t.Errorf("extractMavenCoordinatesFromPath() version = %q, want %q", got.Version, tt.want.Version)
+			}
+		})
+	}
+}
+
 func TestParseNextPageURL(t *testing.T) {
 	tests := []struct {
 		name       string

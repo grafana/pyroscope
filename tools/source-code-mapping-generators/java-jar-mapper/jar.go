@@ -69,8 +69,21 @@ func findCommonPrefixes(packages []string) []string {
 		return nil
 	}
 
-	prefixCount := make(map[string]int)
+	// Filter out shaded/vendor packages before counting
+	var filteredPackages []string
 	for _, pkg := range packages {
+		if !isShadedPackage(pkg) {
+			filteredPackages = append(filteredPackages, pkg)
+		}
+	}
+
+	// If all packages were filtered out, fall back to original list
+	if len(filteredPackages) == 0 {
+		filteredPackages = packages
+	}
+
+	prefixCount := make(map[string]int)
+	for _, pkg := range filteredPackages {
 		parts := strings.Split(pkg, "/")
 		for i := 1; i <= len(parts); i++ {
 			prefix := strings.Join(parts[:i], "/")
@@ -127,6 +140,36 @@ func findCommonPrefixes(packages []string) []string {
 	}
 
 	return filtered
+}
+
+// isShadedPackage detects packages that are shaded/relocated dependencies.
+// These are dependencies that have been relocated to a different package during the build
+// and don't exist in the original source repository.
+// Common patterns include:
+//   - vendor/
+//   - shaded/
+//   - repackaged/
+//   - internal/shaded/
+//   - relocated/
+func isShadedPackage(pkg string) bool {
+	shadedPatterns := []string{
+		"/vendor/",
+		"/shaded/",
+		"/repackaged/",
+		"/relocated/",
+		"/internal/shaded/",
+		"/shadow/",
+		"/thirdparty/",
+	}
+
+	pkgLower := strings.ToLower(pkg)
+	for _, pattern := range shadedPatterns {
+		if strings.Contains(pkgLower, pattern) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (a *JARAnalyzer) ExtractManifest(jarPath string) (map[string]string, error) {
@@ -345,11 +388,18 @@ func parsePOMProperties(data string) *MavenCoordinates {
 
 // ExtractMavenCoordinates extracts Maven coordinates using multiple strategies:
 // 1. pom.properties (most reliable for Maven-published JARs)
-// 2. MANIFEST.MF + filename parsing (fallback for other JARs)
+// 2. Bazel path parsing (for JARs in Bazel runfiles with Maven path structure)
+// 3. MANIFEST.MF + filename parsing (fallback for other JARs)
 func (a *JARAnalyzer) ExtractMavenCoordinates(jarPath string) (*MavenCoordinates, error) {
 	// Try pom.properties first (most reliable)
 	coords, err := a.ExtractPOMProperties(jarPath)
 	if err == nil && coords.GroupID != "" && coords.ArtifactID != "" && coords.Version != "" {
+		return coords, nil
+	}
+
+	// Try extracting from Bazel path (e.g., .../maven2/io/pyroscope/agent/2.1.2/...)
+	coords = extractMavenCoordinatesFromPath(jarPath)
+	if coords.GroupID != "" && coords.ArtifactID != "" && coords.Version != "" {
 		return coords, nil
 	}
 
@@ -364,6 +414,55 @@ func (a *JARAnalyzer) ExtractMavenCoordinates(jarPath string) (*MavenCoordinates
 		Version:    version,
 		// GroupID unknown from manifest/filename
 	}, nil
+}
+
+// extractMavenCoordinatesFromPath extracts Maven coordinates from a Bazel-style path.
+// Bazel stores Maven dependencies in paths like:
+//
+//	.../maven2/io/pyroscope/agent/2.1.2/processed_agent-2.1.2.jar
+//	.../maven2/com/google/guava/guava/31.1-jre/guava-31.1-jre.jar
+//
+// The structure is: maven2/{groupId as path}/{artifactId}/{version}/{filename}
+func extractMavenCoordinatesFromPath(jarPath string) *MavenCoordinates {
+	// Normalize path separators
+	jarPath = filepath.ToSlash(jarPath)
+
+	// Find "maven2/" marker in path
+	maven2Idx := strings.Index(jarPath, "maven2/")
+	if maven2Idx == -1 {
+		return &MavenCoordinates{}
+	}
+
+	// Get the path after "maven2/"
+	pathAfterMaven2 := jarPath[maven2Idx+len("maven2/"):]
+
+	// Split into segments: [groupId parts..., artifactId, version, filename]
+	segments := strings.Split(pathAfterMaven2, "/")
+	if len(segments) < 4 {
+		return &MavenCoordinates{}
+	}
+
+	// Last segment is the filename
+	// Second-to-last is version
+	// Third-to-last is artifactId
+	// Everything before that is groupId
+	version := segments[len(segments)-2]
+	artifactId := segments[len(segments)-3]
+	groupIdParts := segments[:len(segments)-3]
+
+	// Validate: version should look like a version
+	if !looksLikeVersion(version) {
+		return &MavenCoordinates{}
+	}
+
+	// Join groupId parts with dots
+	groupId := strings.Join(groupIdParts, ".")
+
+	return &MavenCoordinates{
+		GroupID:    groupId,
+		ArtifactID: artifactId,
+		Version:    version,
+	}
 }
 
 func (a *JARAnalyzer) extractArtifactInfoFromManifest(jarPath string) (artifactId, version string, err error) {
@@ -401,6 +500,7 @@ type JARExtractor struct{}
 
 // ExtractThirdPartyJARs extracts 3rd party JARs from a JAR file.
 // For Spring Boot fat JARs, it extracts nested JARs from BOOT-INF/lib/.
+// For Bazel JARs, it finds dependencies in the .runfiles directory.
 // For regular JARs, it returns the JAR itself for processing.
 func (e *JARExtractor) ExtractThirdPartyJARs(jarPath string) ([]string, string, func() error, error) {
 	mainJAR, err := zip.OpenReader(jarPath)
@@ -414,8 +514,70 @@ func (e *JARExtractor) ExtractThirdPartyJARs(jarPath string) ([]string, string, 
 		return e.extractSpringBootJARs(mainJAR.File)
 	}
 
+	// Check for Bazel runfiles directory (e.g., ProjectRunner.runfiles for ProjectRunner.jar)
+	bazelJARs := e.findBazelRunfileJARs(jarPath)
+	if len(bazelJARs) > 0 {
+		// Return both the main JAR and runfiles JARs
+		allJARs := append([]string{jarPath}, bazelJARs...)
+		return allJARs, "", func() error { return nil }, nil
+	}
+
 	// Regular JAR: return the JAR itself for processing
 	return []string{jarPath}, "", func() error { return nil }, nil
+}
+
+// findBazelRunfileJARs finds 3rd party JARs in Bazel's runfiles directory.
+// Bazel uses {name}.runfiles directory adjacent to {name}.jar for dependencies.
+func (e *JARExtractor) findBazelRunfileJARs(jarPath string) []string {
+	// Try both patterns:
+	// 1. {name}.runfiles (for {name}.jar)
+	// 2. {name}.jar.runfiles
+	baseName := strings.TrimSuffix(jarPath, ".jar")
+	runfilesDirs := []string{
+		baseName + ".runfiles",
+		jarPath + ".runfiles",
+	}
+
+	var jars []string
+	for _, runfilesDir := range runfilesDirs {
+		info, err := os.Stat(runfilesDir)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+
+		// Walk the runfiles directory to find JAR files
+		err = filepath.Walk(runfilesDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return nil // Skip errors
+			}
+			if info.IsDir() {
+				return nil
+			}
+			if !strings.HasSuffix(path, ".jar") {
+				return nil
+			}
+			// Skip JDK/JRE JARs
+			if strings.Contains(path, "local_jdk") || strings.Contains(path, "jre/lib") {
+				return nil
+			}
+			// Skip the main JAR if it appears in runfiles
+			if filepath.Base(path) == filepath.Base(jarPath) {
+				return nil
+			}
+			jars = append(jars, path)
+			return nil
+		})
+		if err != nil {
+			continue
+		}
+
+		// If we found JARs, return them
+		if len(jars) > 0 {
+			return jars
+		}
+	}
+
+	return nil
 }
 
 // isSpringBootFatJAR checks if a JAR file is a Spring Boot fat JAR by looking for
