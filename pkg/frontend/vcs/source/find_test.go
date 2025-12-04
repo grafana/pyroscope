@@ -414,15 +414,18 @@ require (
 			mockClient := newMockVCSClient()
 
 			// Populate pyroscopeYAML content into first mock file (if present)
-			mockFiles := append(tt.mockFiles, mockFileResponse{
-				request: client.FileRequest{
-					Owner: tt.owner,
-					Repo:  tt.repo,
-					Ref:   tt.ref,
-					Path:  filepath.Join(tt.rootPath, ".pyroscope.yaml"),
-				},
-				content: tt.pyroscopeYAML,
-			})
+			mockFiles := tt.mockFiles
+			if tt.pyroscopeYAML != "" {
+				mockFiles = append(mockFiles, mockFileResponse{
+					request: client.FileRequest{
+						Owner: tt.owner,
+						Repo:  tt.repo,
+						Ref:   tt.ref,
+						Path:  filepath.Join(tt.rootPath, ".pyroscope.yaml"),
+					},
+					content: tt.pyroscopeYAML,
+				})
+			}
 			mockClient.addFiles(mockFiles...)
 
 			// Setup repository URL
