@@ -619,7 +619,7 @@ func (e *JARExtractor) extractSpringBootJARs(files []*zip.File) ([]string, strin
 	if len(jarFiles) == 0 {
 		// This shouldn't happen if isSpringBootFatJAR returned true,
 		// but handle it gracefully
-		return nil, "", nil, fmt.Errorf("Spring Boot fat JAR contains no nested JARs in BOOT-INF/lib/")
+		return nil, "", nil, fmt.Errorf("spring boot fat JAR contains no nested JARs in BOOT-INF/lib/")
 	}
 
 	sort.Strings(jarFiles)

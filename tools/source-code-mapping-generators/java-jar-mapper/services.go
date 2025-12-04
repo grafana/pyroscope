@@ -173,7 +173,8 @@ func (s *GitHubTagService) FindTagForVersion(owner, repo, version string) (strin
 		resp, err := makeRequest(refURL)
 		if err == nil {
 			defer resp.Body.Close()
-			if resp.StatusCode == http.StatusOK {
+			switch resp.StatusCode {
+			case http.StatusOK:
 				var refData struct {
 					Ref string `json:"ref"`
 				}
@@ -182,7 +183,7 @@ func (s *GitHubTagService) FindTagForVersion(owner, repo, version string) (strin
 						return strings.TrimPrefix(refData.Ref, "refs/tags/"), nil
 					}
 				}
-			} else if resp.StatusCode == http.StatusForbidden {
+			case http.StatusForbidden:
 				return "", fmt.Errorf("GitHub API rate limited. Set GITHUB_TOKEN environment variable")
 			}
 		}
