@@ -442,7 +442,6 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(API, f.initAPI, modules.UserInvisibleModule)
 	mm.RegisterModule(Version, f.initVersion, modules.UserInvisibleModule)
 	mm.RegisterModule(Distributor, f.initDistributor)
-	mm.RegisterModule(DebugInfo, f.initDebugInfo)
 	mm.RegisterModule(Querier, f.initQuerier)
 	mm.RegisterModule(StoreGateway, f.initStoreGateway)
 	mm.RegisterModule(UsageReport, f.initUsageReport)
@@ -469,13 +468,11 @@ func (f *Pyroscope) setupModuleManager() error {
 			Admin,
 			TenantSettings,
 			AdHocProfiles,
-			DebugInfo,
 		},
 
 		Server:            {GRPCGateway},
 		API:               {Server},
-		Distributor:       {Overrides, IngesterRing, API, UsageReport},
-		DebugInfo:         {Overrides, API, Storage},
+		Distributor:       {Overrides, IngesterRing, API, UsageReport, Storage},
 		Querier:           {Overrides, API, MemberlistKV, IngesterRing, UsageReport, Version, FeatureFlags},
 		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags},
 		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},

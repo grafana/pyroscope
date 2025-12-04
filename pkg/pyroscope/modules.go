@@ -71,7 +71,6 @@ const (
 	API               string = "api"
 	Version           string = "version"
 	Distributor       string = "distributor"
-	DebugInfo         string = "debug-info"
 	Server            string = "server"
 	IngesterRing      string = "ring"
 	Ingester          string = "ingester"
@@ -329,19 +328,17 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 		return nil, err
 	}
 	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.MultitenancyEnabled, f.Cfg.Server)
-	return d, nil
-}
 
-func (f *Pyroscope) initDebugInfo() (services.Service, error) {
-	if f.storageBucket == nil {
-		return nil, fmt.Errorf("storage bucket is required")
+	if f.Cfg.Distributor.DebugInfoEnabled {
+		if f.storageBucket == nil {
+			return nil, fmt.Errorf("storage bucket is required for debug-info")
+		}
+
+		s := httpgrpc.NewGrpcServer(f.Cfg.Server)
+		parcadebuginfoglue.NewParcaDebugInfo(f.logger, f.storageBucket, f.Cfg.Symbolizer, s)
+		f.API.RegisterDebugInfo(s, f.Overrides)
 	}
-	s := httpgrpc.NewGrpcServer(f.Cfg.Server)
-
-	svc := parcadebuginfoglue.NewParcaDebugInfo(f.logger, f.storageBucket, f.Cfg.Symbolizer, s)
-
-	f.API.RegisterDebugInfo(s, f.Overrides)
-	return svc, nil
+	return d, nil
 }
 
 func (f *Pyroscope) initMemberlistKV() (services.Service, error) {
