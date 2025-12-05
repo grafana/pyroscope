@@ -80,8 +80,6 @@ type Config struct {
 
 	// Distributors ring
 	DistributorRing util.CommonRingConfig `yaml:"ring"`
-
-	DebugInfoEnabled bool
 }
 
 // RegisterFlags registers distributor-related flags.
@@ -89,7 +87,6 @@ func (cfg *Config) RegisterFlags(fs *flag.FlagSet, logger log.Logger) {
 	cfg.PoolConfig.RegisterFlagsWithPrefix("distributor", fs)
 	fs.DurationVar(&cfg.PushTimeout, "distributor.push.timeout", 5*time.Second, "Timeout when pushing data to ingester.")
 	cfg.DistributorRing.RegisterFlags("distributor.ring.", "collectors/", "distributors", fs, logger)
-	fs.BoolVar(&cfg.DebugInfoEnabled, "distributor.debug-info-enabled", true, "Enable debug info for distributor.")
 }
 
 // Distributor coordinates replicates and distribution of log streams.

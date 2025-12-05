@@ -34,6 +34,7 @@ import (
 	"github.com/grafana/dskit/spanprofiler"
 	wwtracing "github.com/grafana/dskit/tracing"
 	"github.com/grafana/pyroscope-go"
+	"github.com/grafana/pyroscope/pkg/debuginfo"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -118,6 +119,7 @@ type Config struct {
 	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"  doc:"hidden"`
 	AdaptivePlacement placement.Config        `yaml:"adaptive_placement" doc:"hidden"`
 	Symbolizer        symbolizer.Config       `yaml:"symbolizer"         doc:"hidden"`
+	DebugInfo         debuginfo.Config        `yaml:"-"`
 }
 
 func newDefaultConfig() *Config {
@@ -254,6 +256,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
 		c.LimitsConfig.Symbolizer.RegisterFlags(throwaway)
 		c.Symbolizer.RegisterFlags(throwaway)
+		c.DebugInfo.RegisterFlags(throwaway)
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {

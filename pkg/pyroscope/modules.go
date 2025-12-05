@@ -329,15 +329,11 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 	}
 	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.MultitenancyEnabled, f.Cfg.Server)
 
-	if f.Cfg.Distributor.DebugInfoEnabled {
-		if f.storageBucket == nil {
-			return nil, fmt.Errorf("storage bucket is required for debug-info")
-		}
-
-		s := httpgrpc.NewGrpcServer(f.Cfg.Server)
-		parcadebuginfoglue.NewParcaDebugInfo(f.logger, f.storageBucket, f.Cfg.Symbolizer, s)
-		f.API.RegisterDebugInfo(s, f.Overrides)
+	s := httpgrpc.NewGrpcServer(f.Cfg.Server)
+	if err = parcadebuginfoglue.NewParcaDebugInfo(f.logger, f.storageBucket, f.Cfg.DebugInfo, s); err != nil {
+		return nil, err
 	}
+	f.API.RegisterDebugInfo(s, f.Overrides)
 	return d, nil
 }
 

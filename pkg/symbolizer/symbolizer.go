@@ -32,17 +32,13 @@ type DebuginfodClient interface {
 }
 
 type Config struct {
-	DebuginfodURL            string        `yaml:"debuginfod_url"`
-	MaxDebuginfodConcurrency int           `yaml:"max_debuginfod_concurrency" category:"advanced"`
-	MaxUploadSize            int64         `yaml:"max_upload_size" category:"advanced"`
-	MaxUploadDuration        time.Duration `yaml:"max_upload_duration" category:"advanced"`
+	DebuginfodURL            string `yaml:"debuginfod_url"`
+	MaxDebuginfodConcurrency int    `yaml:"max_debuginfod_concurrency" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
 	f.IntVar(&cfg.MaxDebuginfodConcurrency, "symbolizer.max-debuginfod-concurrency", 10, "Maximum number of concurrent symbolization requests to debuginfod server.")
-	f.Int64Var(&cfg.MaxUploadSize, "symbolizer.max-upload-size", 100*1024*1024, "Maximum size of a single upload in bytes.")
-	f.DurationVar(&cfg.MaxUploadDuration, "symbolizer.max-upload-duration", time.Minute, "Maximum duration of a single upload.")
 }
 
 func (cfg *Config) Validate() error {
