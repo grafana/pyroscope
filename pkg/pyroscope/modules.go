@@ -327,7 +327,7 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.MultitenancyEnabled, f.Cfg.Server)
+	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server)
 
 	s := httpgrpc.NewGrpcServer(f.Cfg.Server)
 	if err = parcadebuginfoglue.NewParcaDebugInfo(f.logger, f.storageBucket, f.Cfg.DebugInfo, s); err != nil {

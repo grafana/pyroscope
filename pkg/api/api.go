@@ -206,10 +206,10 @@ func (a *API) RegisterDebugInfo(d *grpc.Server, limits *validation.Overrides) {
 }
 
 // RegisterDistributor registers the endpoints associated with the distributor.
-func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, multitenancyEnabled bool, cfg server.Config) {
+func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, cfg server.Config) {
 	writePathOpts := a.registerOptionsWritePath(limits)
 	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, a.logger)
-	otlpHandler := otlp.NewOTLPIngestHandler(cfg, d, a.logger, multitenancyEnabled)
+	otlpHandler := otlp.NewOTLPIngestHandler(cfg, d, a.logger)
 
 	a.RegisterRoute("/ingest", pyroscopeHandler, writePathOpts...)
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, writePathOpts...)

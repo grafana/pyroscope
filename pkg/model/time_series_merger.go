@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -132,14 +133,46 @@ func (m *TimeSeriesMerger) mergePoints(points []*typesv1.Point) int {
 		}
 		if m.sum {
 			points[j].Value += points[i].Value
-			// Duplicate annotations are semantically correct and provide useful information.
-			// Users of the data can decide whether to discard or make use of duplicates.
-			points[j].Annotations = append(points[j].Annotations, points[i].Annotations...)
-
+			points[j].Annotations = mergeAnnotations(points[j].Annotations, points[i].Annotations)
 			points[j].Exemplars = mergeExemplars(points[j].Exemplars, points[i].Exemplars)
 		}
 	}
 	return j + 1
+}
+
+func compareAnnotations(a, b *typesv1.ProfileAnnotation) int {
+	if r := strings.Compare(a.Key, b.Key); r != 0 {
+		return r
+	}
+	return strings.Compare(a.Value, b.Value)
+}
+
+func mergeAnnotations(a, b []*typesv1.ProfileAnnotation) []*typesv1.ProfileAnnotation {
+	if len(a) == 0 {
+		return b
+	}
+	if len(b) == 0 {
+		return a
+	}
+
+	// Merge into a single slice
+	merged := append(a, b...)
+
+	// Sort by key and value
+	slices.SortFunc(merged, compareAnnotations)
+
+	// Remove duplicates in-place
+	j := 0
+	for i := 1; i < len(merged); i++ {
+		// Only keep if different from the current unique element
+		if merged[j].Key != merged[i].Key || merged[j].Value != merged[i].Value {
+			j++
+			merged[j] = merged[i]
+		}
+	}
+
+	// Return the slice with only unique elements
+	return merged[:j+1]
 }
 
 // mergeExemplars combines two exemplar lists.

@@ -1174,7 +1174,7 @@ type sampleSeriesVisitor struct {
 	discardedProfiles int
 }
 
-func (v *sampleSeriesVisitor) ValidateLabels(labels phlaremodel.Labels) error {
+func (v *sampleSeriesVisitor) ValidateLabels(labels phlaremodel.Labels) (phlaremodel.Labels, error) {
 	return validation.ValidateLabels(v.limits, v.tenantID, labels, v.logger)
 }
 

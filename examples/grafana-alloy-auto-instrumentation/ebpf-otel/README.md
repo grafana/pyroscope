@@ -10,6 +10,14 @@ These examples demonstrate:
 3. Pyroscope receiving and visualizing the profiles via Grafana
 
 ## Docker example
+
+**Note for ARM64 users**: If running on ARM64 Linux, update the Dockerfile:
+```dockerfile
+# Line 3: Change amd64 to arm64
+RUN wget https://go.dev/dl/go1.22.10.linux-arm64.tar.gz
+RUN tar -C /usr/local -xzf go1.22.10.linux-arm64.tar.gz
+```
+
 1. Start the environment:
 
 ```bash

@@ -1,4 +1,4 @@
-FROM openjdk:17-slim-bullseye
+FROM sapmachine:17-jdk-headless
 
 WORKDIR /opt/app
 

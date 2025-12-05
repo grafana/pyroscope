@@ -17,8 +17,9 @@ type SampleSeriesVisitor interface {
 	VisitProfile(phlaremodel.Labels)
 	VisitSampleSeries(phlaremodel.Labels, []*profilev1.Sample)
 	// ValidateLabels is called to validate the labels before
-	// they are passed to the visitor.
-	ValidateLabels(phlaremodel.Labels) error
+	// they are passed to the visitor. Returns the potentially modified
+	// labels slice (e.g., after sanitization) and any validation error.
+	ValidateLabels(phlaremodel.Labels) (phlaremodel.Labels, error)
 	Discarded(profiles, bytes int)
 }
 
@@ -52,7 +53,9 @@ func VisitSampleSeries(
 		}
 		if len(profile.Sample) > 0 {
 			labels = builder.Labels()
-			if err := visitor.ValidateLabels(labels); err != nil {
+			var err error
+			labels, err = visitor.ValidateLabels(labels)
+			if err != nil {
 				return err
 			}
 			visitor.VisitProfile(labels)
@@ -85,10 +88,11 @@ func VisitSampleSeries(
 	for _, idx := range groupsKept.order {
 		for _, group := range groupsKept.m[idx] {
 			if len(group.sampleGroup.Samples) > 0 {
-				if err := visitor.ValidateLabels(group.labels); err != nil {
+				validatedLabels, err := visitor.ValidateLabels(group.labels)
+				if err != nil {
 					return err
 				}
-				visitor.VisitSampleSeries(group.labels, group.sampleGroup.Samples)
+				visitor.VisitSampleSeries(validatedLabels, group.sampleGroup.Samples)
 			}
 		}
 	}

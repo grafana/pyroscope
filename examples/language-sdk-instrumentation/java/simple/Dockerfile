@@ -1,4 +1,4 @@
-FROM openjdk:11.0.11-jdk
+FROM sapmachine:11-jdk-headless
 
 WORKDIR /opt/app
 
