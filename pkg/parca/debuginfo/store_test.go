@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
@@ -29,7 +30,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	debuginfopb "github.com/grafana/pyroscope/pkg/parca/gen/proto/go/parca/debuginfo/v1alpha1"
+	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
 )
 
 type fakeDebuginfodClients struct {
@@ -101,7 +102,7 @@ func TestStore(t *testing.T) {
 	}
 	grpcServer := grpc.NewServer()
 	defer grpcServer.GracefulStop()
-	debuginfopb.RegisterDebuginfoServiceServer(grpcServer, s)
+	debuginfov1alpha1grpc.RegisterDebuginfoServiceServer(grpcServer, s)
 	go func() {
 		err := grpcServer.Serve(lis)
 		if err != nil {
@@ -113,7 +114,7 @@ func TestStore(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	debuginfoClient := debuginfopb.NewDebuginfoServiceClient(conn)
+	debuginfoClient := debuginfov1alpha1grpc.NewDebuginfoServiceClient(conn)
 	grpcUploadClient := NewGrpcUploadClient(debuginfoClient)
 
 	b := bytes.NewBuffer(nil)

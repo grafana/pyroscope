@@ -11,13 +11,15 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+
 	parcadebuginfoglue "github.com/grafana/pyroscope/pkg/debuginfo"
 
-	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 	"google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
+
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"

@@ -487,8 +487,10 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 }
 
 func (s *Symbolizer) fetch(ctx context.Context, buildID string) (io.ReadCloser, error) {
-	if r, err := s.fetchFromParca(ctx, buildID); err == nil {
-		return r, nil
+	if s.parca != nil {
+		if r, err := s.fetchFromParca(ctx, buildID); err == nil {
+			return r, nil
+		}
 	}
 	return s.fetchFromDebuginfod(ctx, buildID)
 }

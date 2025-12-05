@@ -8,11 +8,12 @@ import (
 
 	"buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/go-kit/log"
+	"go.opentelemetry.io/otel/trace/noop"
+	"google.golang.org/grpc"
+
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/parca/debuginfo"
 	"github.com/grafana/pyroscope/pkg/symbolizer"
-	"go.opentelemetry.io/otel/trace/noop"
-	"google.golang.org/grpc"
 
 	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
 )

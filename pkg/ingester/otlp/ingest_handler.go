@@ -8,10 +8,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
