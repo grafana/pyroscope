@@ -7,6 +7,7 @@ package lidia
 
 import (
 	"debug/elf"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -163,7 +164,7 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 	}
 
 	symbols, err := elfFile.Symbols()
-	if err != nil {
+	if err != nil && !errors.Is(err, elf.ErrNoSymbols) {
 		return fmt.Errorf("failed to read symbols from ELF file: %w", err)
 	}
 
