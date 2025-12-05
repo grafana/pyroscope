@@ -12,16 +12,18 @@ import (
 	"path/filepath"
 	"time"
 
+	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
+
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/pyroscope/pkg/parca/debuginfo"
-	debuginfopb "github.com/grafana/pyroscope/pkg/parca/gen/proto/go/parca/debuginfo/v1alpha1"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/parca/debuginfo"
 )
 
 const BucketPrefix = "symbolizer"

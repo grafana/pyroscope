@@ -18,9 +18,9 @@ import (
 	"errors"
 	"io"
 
-	"github.com/thanos-io/objstore"
+	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
 
-	debuginfopb "github.com/grafana/pyroscope/pkg/parca/gen/proto/go/parca/debuginfo/v1alpha1"
+	"github.com/thanos-io/objstore"
 )
 
 var (

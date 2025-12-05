@@ -21,6 +21,7 @@ import (
 	"path"
 	"time"
 
+	"buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/thanos-io/objstore"
@@ -31,7 +32,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	debuginfopb "github.com/grafana/pyroscope/pkg/parca/gen/proto/go/parca/debuginfo/v1alpha1"
+	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
 )
 
 var ErrDebuginfoNotFound = errors.New("debuginfo not found")
@@ -64,7 +65,7 @@ type MetadataManager interface {
 }
 
 type Store struct {
-	debuginfopb.UnimplementedDebuginfoServiceServer
+	debuginfov1alpha1grpc.UnimplementedDebuginfoServiceServer
 
 	tracer trace.Tracer
 	logger log.Logger
@@ -238,12 +239,12 @@ func (s *Store) ShouldInitiateUpload(ctx context.Context, req *debuginfopb.Shoul
 					ShouldInitiateUpload: true,
 					Reason:               ReasonDebuginfoNotEqual,
 				}, nil
-			case debuginfopb.DebuginfoUpload_STATE_PURGED:
-				// Debuginfo was purged, allow re-uploading
-				return &debuginfopb.ShouldInitiateUploadResponse{
-					ShouldInitiateUpload: true,
-					Reason:               ReasonDebuginfoPurged,
-				}, nil
+			//case debuginfopb.DebuginfoUpload_STATE_PURGED:
+			//	// Debuginfo was purged, allow re-uploading
+			//	return &debuginfopb.ShouldInitiateUploadResponse{
+			//		ShouldInitiateUpload: true,
+			//		Reason:               ReasonDebuginfoPurged,
+			//	}, nil
 			default:
 				return nil, status.Error(codes.Internal, "metadata inconsistency: unknown upload state")
 			}
@@ -367,7 +368,7 @@ func (s *Store) MarkUploadFinished(ctx context.Context, req *debuginfopb.MarkUpl
 	return &debuginfopb.MarkUploadFinishedResponse{}, nil
 }
 
-func (s *Store) Upload(stream debuginfopb.DebuginfoService_UploadServer) error {
+func (s *Store) Upload(stream debuginfov1alpha1grpc.DebuginfoService_UploadServer) error {
 	if s.signedUpload.Enabled {
 		return status.Error(codes.Unimplemented, "signed URL uploads are the only supported upload strategy for this service")
 	}

@@ -26,6 +26,8 @@ import (
 	"sync"
 	"time"
 
+	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
+
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
@@ -37,7 +39,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/pyroscope/pkg/parca/cache"
-	debuginfopb "github.com/grafana/pyroscope/pkg/parca/gen/proto/go/parca/debuginfo/v1alpha1"
 )
 
 type DebuginfodClients interface {

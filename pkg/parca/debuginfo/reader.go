@@ -19,14 +19,14 @@ import (
 	"fmt"
 	"io"
 
+	"buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	debuginfopb "github.com/grafana/pyroscope/pkg/parca/gen/proto/go/parca/debuginfo/v1alpha1"
 )
 
 type UploadReader struct {
-	stream debuginfopb.DebuginfoService_UploadServer
+	stream debuginfov1alpha1grpc.DebuginfoService_UploadServer
 	cur    io.Reader
 	size   uint64
 }

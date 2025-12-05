@@ -1,3 +1,5 @@
+buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.6-20250212095114-4db6f2d46517.1 h1:gXHJuGlWoXUkH9O9Qxw9skNAhIDgNgJx0tYSbI8fjIo=
+buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.6-20250212095114-4db6f2d46517.1/go.mod h1:58eXMQL4tavOGzyXIveWU4f3yTFGmLIHxM9uk11DOIo=
 cloud.google.com/go/accessapproval v1.8.6 h1:UkmDPCKvj24bkGVrvgJPcgSDkmIPw/bAmOiDb9avOiE=
 cloud.google.com/go/accessapproval v1.8.6/go.mod h1:FfmTs7Emex5UvfnnpMkhuNkRCP85URnBFt5ClLxhZaQ=
 cloud.google.com/go/accesscontextmanager v1.9.6 h1:2LnncRqfYB8NEdh9+FeYxAt9POTW/0zVboktnRlO11w=
@@ -608,8 +610,6 @@ google.golang.org/protobuf v1.36.6/go.mod h1:jduwjTPXsFjZGTmRluh+L6NjiWu7pchiJ2/
 google.golang.org/protobuf v1.36.7/go.mod h1:jduwjTPXsFjZGTmRluh+L6NjiWu7pchiJ2/5YcXBHnY=
 google.golang.org/protobuf v1.36.8/go.mod h1:fuxRtAxBytpl4zzqUh6/eyUujkJdNiuEkXntxiD/uRU=
 google.golang.org/protobuf v1.36.9/go.mod h1:fuxRtAxBytpl4zzqUh6/eyUujkJdNiuEkXntxiD/uRU=
-gopkg.in/dnaeon/go-vcr.v3 v3.2.2 h1:bYA+2JpMNv9TVYS5Z49o8YjB0OVX+vpL4Yf4mkdPNAc=
-gopkg.in/dnaeon/go-vcr.v3 v3.2.2/go.mod h1:Oy/wiaJrF0S8WmwjGRpDSL09yGnb9HXV4qP87dHkfFk=
 gopkg.in/errgo.v2 v2.1.0 h1:0vLT13EuvQ0hNvakwLuFZ/jYrLp5F3kcWHXdRggjCE8=
 gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 h1:VpOs+IwYnYBaFnrNAeB8UUWtL3vEUnzSCL1nVjPhqrw=
 gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22/go.mod h1:yeKp02qBN3iKW1OzL3MGk2IdtZzaj7SFntXj72NppTA=

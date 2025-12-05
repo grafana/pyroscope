@@ -24,7 +24,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	debuginfopb "github.com/grafana/pyroscope/pkg/parca/gen/proto/go/parca/debuginfo/v1alpha1"
+	"buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
+	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
 )
 
 var ErrDebuginfoAlreadyExists = errors.New("debug info already exists")
@@ -39,7 +40,7 @@ const (
 )
 
 type GrpcDebuginfoUploadServiceClient interface {
-	Upload(ctx context.Context, opts ...grpc.CallOption) (debuginfopb.DebuginfoService_UploadClient, error)
+	Upload(ctx context.Context, opts ...grpc.CallOption) (debuginfov1alpha1grpc.DebuginfoService_UploadClient, error)
 }
 
 type GrpcUploadClient struct {

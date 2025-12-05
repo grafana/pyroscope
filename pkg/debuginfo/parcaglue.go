@@ -6,13 +6,15 @@ import (
 	"fmt"
 	"time"
 
+	"buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/go-kit/log"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/parca/debuginfo"
-	debuginfogrpc "github.com/grafana/pyroscope/pkg/parca/gen/proto/go/parca/debuginfo/v1alpha1"
 	"github.com/grafana/pyroscope/pkg/symbolizer"
 	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc"
+
+	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
 )
 
 type Config struct {
@@ -29,7 +31,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 
 func NewParcaDebugInfo(l log.Logger, bucket objstore.Bucket, cfg Config, server *grpc.Server) error {
 	if !cfg.Enabled {
-		debuginfogrpc.RegisterDebuginfoServiceServer(server, disabled{})
+		debuginfov1alpha1grpc.RegisterDebuginfoServiceServer(server, disabled{})
 		return nil
 	}
 	if bucket == nil {
@@ -45,14 +47,14 @@ func NewParcaDebugInfo(l log.Logger, bucket objstore.Bucket, cfg Config, server 
 		debuginfo.SignedUpload{Enabled: false},
 		cfg.MaxUploadDuration, cfg.MaxUploadSize)
 
-	debuginfogrpc.RegisterDebuginfoServiceServer(server, store)
+	debuginfov1alpha1grpc.RegisterDebuginfoServiceServer(server, store)
 	return nil
 }
 
 type disabled struct {
-	debuginfogrpc.UnimplementedDebuginfoServiceServer
+	debuginfov1alpha1grpc.UnimplementedDebuginfoServiceServer
 }
 
-func (d disabled) ShouldInitiateUpload(context.Context, *debuginfogrpc.ShouldInitiateUploadRequest) (*debuginfogrpc.ShouldInitiateUploadResponse, error) {
-	return &debuginfogrpc.ShouldInitiateUploadResponse{ShouldInitiateUpload: false, Reason: "debug info upload is disabled"}, nil
+func (d disabled) ShouldInitiateUpload(context.Context, *debuginfopb.ShouldInitiateUploadRequest) (*debuginfopb.ShouldInitiateUploadResponse, error) {
+	return &debuginfopb.ShouldInitiateUploadResponse{ShouldInitiateUpload: false, Reason: "debug info upload is disabled"}, nil
 }

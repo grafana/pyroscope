@@ -21,12 +21,12 @@ import (
 	"io"
 	"path"
 
+	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
+
 	"github.com/go-kit/log"
 	"github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
-
-	debuginfopb "github.com/grafana/pyroscope/pkg/parca/gen/proto/go/parca/debuginfo/v1alpha1"
 )
 
 var (
@@ -105,20 +105,20 @@ func (m *ObjectStoreMetadata) MarkAsUploaded(ctx context.Context, buildID, uploa
 	return m.write(ctx, dbginfo)
 }
 
-func (m *ObjectStoreMetadata) MarkAsPurged(ctx context.Context, buildID string, typ debuginfopb.DebuginfoType) error {
-	dbginfo, err := m.Fetch(ctx, buildID, typ)
-	if err != nil {
-		return err
-	}
-
-	if dbginfo.Upload == nil {
-		return ErrUploadMetadataNotFound
-	}
-
-	dbginfo.Upload.State = debuginfopb.DebuginfoUpload_STATE_PURGED
-
-	return m.write(ctx, dbginfo)
-}
+//func (m *ObjectStoreMetadata) MarkAsPurged(ctx context.Context, buildID string, typ debuginfopb.DebuginfoType) error {
+//	dbginfo, err := m.Fetch(ctx, buildID, typ)
+//	if err != nil {
+//		return err
+//	}
+//
+//	if dbginfo.Upload == nil {
+//		return ErrUploadMetadataNotFound
+//	}
+//
+//	dbginfo.Upload.State = DebuginfoUpload_STATE_PURGED
+//
+//	return m.write(ctx, dbginfo)
+//}
 
 func (m *ObjectStoreMetadata) Fetch(ctx context.Context, buildID string, typ debuginfopb.DebuginfoType) (*debuginfopb.Debuginfo, error) {
 	path := metadataObjectPath(buildID, typ)
