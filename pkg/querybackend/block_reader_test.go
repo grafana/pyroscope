@@ -15,6 +15,7 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/block"
 	"github.com/grafana/pyroscope/pkg/block/metadata"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -326,4 +327,178 @@ func (s *testSuite) Test_QueryTree_All_Tenant_Isolation() {
 	s.Require().NoError(err)
 	s.Require().NotNil(resp)
 	s.Require().Len(resp.Reports, 0)
+}
+
+func (s *testSuite) Test_ProfileIDSelector() {
+	// Get a real profile ID for valid test case
+	validProfileID := s.getProfileIDFromExemplars(s.T())
+
+	// Load baseline fixture for tree comparison
+	baselineTree, err := os.ReadFile("testdata/fixtures/tree_16.txt")
+	s.Require().NoError(err)
+
+	// Get baseline tree for comparison
+	allTreeResp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree:      &queryv1.TreeQuery{MaxNodes: 16},
+		}},
+		Tenant: s.tenant,
+	})
+	s.Require().NoError(err)
+	allTree, err := phlaremodel.UnmarshalTree(allTreeResp.Reports[0].Tree.Tree)
+	s.Require().NoError(err)
+
+	// Get baseline pprof for comparison
+	allPprofResp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		StartTime:     startTime.UnixMilli(),
+		EndTime:       startTime.Add(5 * time.Minute).UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_PPROF,
+			Pprof:     &queryv1.PprofQuery{},
+		}},
+		Tenant: s.tenant,
+	})
+	s.Require().NoError(err)
+	var allProfile profilev1.Profile
+	err = pprof.Unmarshal(allPprofResp.Reports[0].Pprof.Pprof, &allProfile)
+	s.Require().NoError(err)
+
+	tests := []struct {
+		queryType         queryv1.QueryType
+		name              string
+		profileIDSelector []string
+		wantErr           bool
+		expectBaseline    bool
+		expectFiltered    bool
+		expectEmpty       bool
+	}{
+		// Tree query tests
+		{queryv1.QueryType_QUERY_TREE, "tree/invalid UUID returns error", []string{"invalid-uuid"}, true, false, false, false},
+		{queryv1.QueryType_QUERY_TREE, "tree/empty selector returns baseline", []string{}, false, true, false, false},
+		{queryv1.QueryType_QUERY_TREE, "tree/nil selector returns baseline", nil, false, true, false, false},
+		{queryv1.QueryType_QUERY_TREE, "tree/non-existent UUID returns empty result", []string{"00000000-0000-0000-0000-000000000000"}, false, false, false, true},
+		{queryv1.QueryType_QUERY_TREE, "tree/valid UUID filters to single profile", []string{validProfileID}, false, false, true, false},
+
+		// Pprof query tests
+		{queryv1.QueryType_QUERY_PPROF, "pprof/invalid UUID returns error", []string{"not-a-uuid"}, true, false, false, false},
+		{queryv1.QueryType_QUERY_PPROF, "pprof/empty selector returns baseline", []string{}, false, true, false, false},
+		{queryv1.QueryType_QUERY_PPROF, "pprof/nil selector returns baseline", nil, false, true, false, false},
+		{queryv1.QueryType_QUERY_PPROF, "pprof/non-existent UUID returns empty result", []string{"00000000-0000-0000-0000-000000000000"}, false, false, false, true},
+		{queryv1.QueryType_QUERY_PPROF, "pprof/valid UUID filters to single profile", []string{validProfileID}, false, false, true, false},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			var query *queryv1.Query
+			var reqStartTime, reqEndTime int64
+
+			if tt.queryType == queryv1.QueryType_QUERY_TREE {
+				reqEndTime = time.Now().UnixMilli()
+				query = &queryv1.Query{
+					QueryType: queryv1.QueryType_QUERY_TREE,
+					Tree: &queryv1.TreeQuery{
+						MaxNodes:          16,
+						ProfileIdSelector: tt.profileIDSelector,
+					},
+				}
+			} else {
+				reqStartTime = startTime.UnixMilli()
+				reqEndTime = startTime.Add(5 * time.Minute).UnixMilli()
+				query = &queryv1.Query{
+					QueryType: queryv1.QueryType_QUERY_PPROF,
+					Pprof: &queryv1.PprofQuery{
+						ProfileIdSelector: tt.profileIDSelector,
+					},
+				}
+			}
+
+			resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+				StartTime:     reqStartTime,
+				EndTime:       reqEndTime,
+				LabelSelector: "{}",
+				QueryPlan:     s.plan,
+				Query:         []*queryv1.Query{query},
+				Tenant:        s.tenant,
+			})
+
+			if tt.wantErr {
+				s.Require().Error(err)
+				s.Require().Nil(resp)
+				return
+			}
+
+			s.Require().NoError(err)
+			s.Require().NotNil(resp)
+			s.Require().Len(resp.Reports, 1)
+
+			if tt.queryType == queryv1.QueryType_QUERY_TREE {
+				tree, err := phlaremodel.UnmarshalTree(resp.Reports[0].Tree.Tree)
+				s.Require().NoError(err)
+
+				if tt.expectBaseline {
+					s.Assert().Equal(string(baselineTree), tree.String())
+				}
+				if tt.expectEmpty {
+					s.Assert().Zero(tree.Total())
+				}
+				if tt.expectFiltered {
+					s.Assert().Less(tree.Total(), allTree.Total())
+					s.Assert().NotZero(tree.Total())
+				}
+			} else {
+				var profile profilev1.Profile
+				err = pprof.Unmarshal(resp.Reports[0].Pprof.Pprof, &profile)
+				s.Require().NoError(err)
+
+				if tt.expectBaseline {
+					s.Assert().Equal(len(allProfile.Sample), len(profile.Sample))
+				}
+				if tt.expectEmpty {
+					s.Assert().Zero(len(profile.Sample))
+				}
+				if tt.expectFiltered {
+					s.Assert().Less(len(profile.Sample), len(allProfile.Sample))
+					s.Assert().NotZero(len(profile.Sample))
+				}
+			}
+		})
+	}
+}
+
+func (s *testSuite) getProfileIDFromExemplars(t *testing.T) string {
+	t.Helper()
+
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		StartTime:     startTime.UnixMilli(),
+		EndTime:       startTime.Add(5 * time.Minute).UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
+			TimeSeries: &queryv1.TimeSeriesQuery{
+				Step:         30.0,
+				ExemplarType: typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL,
+			},
+		}},
+		Tenant: s.tenant,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+
+	// Find first exemplar with a profile ID
+	for _, serie := range resp.Reports[0].TimeSeries.TimeSeries {
+		for _, point := range serie.Points {
+			if len(point.Exemplars) > 0 && point.Exemplars[0].ProfileId != "" {
+				return point.Exemplars[0].ProfileId
+			}
+		}
+	}
+	s.Require().FailNow("no profile ID found in exemplars")
+	return ""
 }

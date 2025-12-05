@@ -921,8 +921,10 @@ type SelectMergeProfileRequest struct {
 	MaxNodes *int64 `protobuf:"varint,5,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
 	// Select stack traces that match the provided selector.
 	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,6,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// List of Profile UUIDs to query
+	ProfileIdSelector []string `protobuf:"bytes,7,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *SelectMergeProfileRequest) Reset() {
@@ -993,6 +995,13 @@ func (x *SelectMergeProfileRequest) GetMaxNodes() int64 {
 func (x *SelectMergeProfileRequest) GetStackTraceSelector() *v1.StackTraceSelector {
 	if x != nil {
 		return x.StackTraceSelector
+	}
+	return nil
+}
+
+func (x *SelectMergeProfileRequest) GetProfileIdSelector() []string {
+	if x != nil {
+		return x.ProfileIdSelector
 	}
 	return nil
 }
@@ -1522,14 +1531,15 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"rightTicks\x18\x06 \x01(\x03R\n" +
 	"rightTicks\"\x1f\n" +
 	"\x05Level\x12\x16\n" +
-	"\x06values\x18\x01 \x03(\x03R\x06values\"\xb4\x03\n" +
+	"\x06values\x18\x01 \x03(\x03R\x06values\"\x95\x04\n" +
 	"\x19SelectMergeProfileRequest\x12Y\n" +
 	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
 	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12*\n" +
 	"\x05start\x18\x03 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
 	"\x03end\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\x12 \n" +
 	"\tmax_nodes\x18\x05 \x01(\x03H\x00R\bmaxNodes\x88\x01\x01\x12S\n" +
-	"\x14stack_trace_selector\x18\x06 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x01R\x12stackTraceSelector\x88\x01\x01B\f\n" +
+	"\x14stack_trace_selector\x18\x06 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x01R\x12stackTraceSelector\x88\x01\x01\x12_\n" +
+	"\x13profile_id_selector\x18\a \x03(\tB/\xbaG,:*\x12(['7c9e6679-7425-40de-944b-e07fc1f90ae7']R\x11profileIdSelectorB\f\n" +
 	"\n" +
 	"_max_nodesB\x17\n" +
 	"\x15_stack_trace_selector\"\xfb\x04\n" +

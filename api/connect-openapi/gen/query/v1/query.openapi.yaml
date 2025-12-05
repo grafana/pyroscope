@@ -461,9 +461,14 @@ components:
           format: int64
         stackTraceSelector:
           title: stack_trace_selector
-          description: 'TODO(kolesnikovae): Go PGO options.'
           nullable: true
           $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        profileIdSelector:
+          type: array
+          items:
+            type: string
+          title: profile_id_selector
+          description: 'TODO(kolesnikovae): Go PGO options.'
       title: PprofQuery
       additionalProperties: false
     query.v1.PprofReport:
@@ -714,6 +719,11 @@ components:
           title: stack_trace_selector
           nullable: true
           $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        profileIdSelector:
+          type: array
+          items:
+            type: string
+          title: profile_id_selector
       title: TreeQuery
       additionalProperties: false
     query.v1.TreeReport:

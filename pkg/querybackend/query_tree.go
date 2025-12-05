@@ -29,7 +29,16 @@ func init() {
 }
 
 func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
-	entries, err := profileEntryIterator(q)
+	var profileOpts []profileIteratorOption
+	if len(query.Tree.ProfileIdSelector) > 0 {
+		opt, err := withProfileIDSelector(query.Tree.ProfileIdSelector...)
+		if err != nil {
+			return nil, err
+		}
+		profileOpts = append(profileOpts, opt)
+	}
+
+	entries, err := profileEntryIterator(q, profileOpts...)
 	if err != nil {
 		return nil, err
 	}

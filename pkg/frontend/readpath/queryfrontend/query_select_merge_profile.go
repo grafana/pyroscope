@@ -52,6 +52,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 			Pprof: &queryv1.PprofQuery{
 				MaxNodes:           c.Msg.GetMaxNodes(),
 				StackTraceSelector: c.Msg.StackTraceSelector,
+				ProfileIdSelector:  c.Msg.ProfileIdSelector,
 			},
 		}},
 	})

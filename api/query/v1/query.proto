@@ -173,6 +173,7 @@ message TreeQuery {
   int64 max_nodes = 1;
   repeated string span_selector = 2;
   optional types.v1.StackTraceSelector stack_trace_selector = 3;
+  repeated string profile_id_selector = 4;
 }
 
 message TreeReport {
@@ -183,6 +184,7 @@ message TreeReport {
 message PprofQuery {
   int64 max_nodes = 1;
   optional types.v1.StackTraceSelector stack_trace_selector = 2;
+  repeated string profile_id_selector = 3;
   // TODO(kolesnikovae): Go PGO options.
 }
 

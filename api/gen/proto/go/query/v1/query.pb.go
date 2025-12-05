@@ -1245,6 +1245,7 @@ type TreeQuery struct {
 	MaxNodes           int64                   `protobuf:"varint,1,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
 	SpanSelector       []string                `protobuf:"bytes,2,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"`
 	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,3,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
+	ProfileIdSelector  []string                `protobuf:"bytes,4,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1296,6 +1297,13 @@ func (x *TreeQuery) GetSpanSelector() []string {
 func (x *TreeQuery) GetStackTraceSelector() *v11.StackTraceSelector {
 	if x != nil {
 		return x.StackTraceSelector
+	}
+	return nil
+}
+
+func (x *TreeQuery) GetProfileIdSelector() []string {
+	if x != nil {
+		return x.ProfileIdSelector
 	}
 	return nil
 }
@@ -1355,7 +1363,8 @@ func (x *TreeReport) GetTree() []byte {
 type PprofQuery struct {
 	state              protoimpl.MessageState  `protogen:"open.v1"`
 	MaxNodes           int64                   `protobuf:"varint,1,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
-	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,2,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"` // TODO(kolesnikovae): Go PGO options.
+	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,2,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
+	ProfileIdSelector  []string                `protobuf:"bytes,3,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"` // TODO(kolesnikovae): Go PGO options.
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1400,6 +1409,13 @@ func (x *PprofQuery) GetMaxNodes() int64 {
 func (x *PprofQuery) GetStackTraceSelector() *v11.StackTraceSelector {
 	if x != nil {
 		return x.StackTraceSelector
+	}
+	return nil
+}
+
+func (x *PprofQuery) GetProfileIdSelector() []string {
+	if x != nil {
+		return x.ProfileIdSelector
 	}
 	return nil
 }
@@ -1544,20 +1560,22 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x10TimeSeriesReport\x12/\n" +
 	"\x05query\x18\x01 \x01(\v2\x19.query.v1.TimeSeriesQueryR\x05query\x121\n" +
 	"\vtime_series\x18\x02 \x03(\v2\x10.types.v1.SeriesR\n" +
-	"timeSeries\"\xbb\x01\n" +
+	"timeSeries\"\xeb\x01\n" +
 	"\tTreeQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12#\n" +
 	"\rspan_selector\x18\x02 \x03(\tR\fspanSelector\x12S\n" +
-	"\x14stack_trace_selector\x18\x03 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01B\x17\n" +
+	"\x14stack_trace_selector\x18\x03 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
+	"\x13profile_id_selector\x18\x04 \x03(\tR\x11profileIdSelectorB\x17\n" +
 	"\x15_stack_trace_selector\"K\n" +
 	"\n" +
 	"TreeReport\x12)\n" +
 	"\x05query\x18\x01 \x01(\v2\x13.query.v1.TreeQueryR\x05query\x12\x12\n" +
-	"\x04tree\x18\x02 \x01(\fR\x04tree\"\x97\x01\n" +
+	"\x04tree\x18\x02 \x01(\fR\x04tree\"\xc7\x01\n" +
 	"\n" +
 	"PprofQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12S\n" +
-	"\x14stack_trace_selector\x18\x02 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01B\x17\n" +
+	"\x14stack_trace_selector\x18\x02 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
+	"\x13profile_id_selector\x18\x03 \x03(\tR\x11profileIdSelectorB\x17\n" +
 	"\x15_stack_trace_selector\"O\n" +
 	"\vPprofReport\x12*\n" +
 	"\x05query\x18\x01 \x01(\v2\x14.query.v1.PprofQueryR\x05query\x12\x14\n" +

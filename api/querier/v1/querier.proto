@@ -199,6 +199,8 @@ message SelectMergeProfileRequest {
   optional int64 max_nodes = 5;
   // Select stack traces that match the provided selector.
   optional types.v1.StackTraceSelector stack_trace_selector = 6;
+  // List of Profile UUIDs to query
+  repeated string profile_id_selector = 7 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e6679-7425-40de-944b-e07fc1f90ae7']"}];
 }
 
 message SelectSeriesRequest {

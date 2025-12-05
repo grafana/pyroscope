@@ -31,7 +31,16 @@ func init() {
 }
 
 func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
-	entries, err := profileEntryIterator(q)
+	var profileOpts []profileIteratorOption
+	if len(query.Pprof.ProfileIdSelector) > 0 {
+		opt, err := withProfileIDSelector(query.Pprof.ProfileIdSelector...)
+		if err != nil {
+			return nil, err
+		}
+		profileOpts = append(profileOpts, opt)
+	}
+
+	entries, err := profileEntryIterator(q, profileOpts...)
 	if err != nil {
 		return nil, err
 	}

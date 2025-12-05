@@ -1733,7 +1733,13 @@
           "format": "int64"
         },
         "stackTraceSelector": {
-          "$ref": "#/definitions/v1StackTraceSelector",
+          "$ref": "#/definitions/v1StackTraceSelector"
+        },
+        "profileIdSelector": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
           "description": "TODO(kolesnikovae): Go PGO options."
         }
       }
@@ -2518,6 +2524,12 @@
         },
         "stackTraceSelector": {
           "$ref": "#/definitions/v1StackTraceSelector"
+        },
+        "profileIdSelector": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
