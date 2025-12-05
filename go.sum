@@ -1,7 +1,7 @@
 buf.build/gen/go/parca-dev/parca/grpc/go v1.5.1-20250212095114-4db6f2d46517.2 h1:AiTEEAQ8AHE5udDizcA2r3GNjxxlk4f2Buot/hA2oYM=
 buf.build/gen/go/parca-dev/parca/grpc/go v1.5.1-20250212095114-4db6f2d46517.2/go.mod h1:U8BtFPtz71GSALR7K7ALn39RnvrKsD++lJzMI5Gf4fs=
-buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.1-20250212095114-4db6f2d46517.1 h1:7/WXv636Z4ROA/IUGA7AfvARLOmvSbl4lB3SJeDLXBs=
-buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.1-20250212095114-4db6f2d46517.1/go.mod h1:5UWq1Jr+B5Y1WzwpQi0zW8K63yX4BxyIAXNVjokcwcI=
+buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.6-20250212095114-4db6f2d46517.1 h1:gXHJuGlWoXUkH9O9Qxw9skNAhIDgNgJx0tYSbI8fjIo=
+buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.6-20250212095114-4db6f2d46517.1/go.mod h1:58eXMQL4tavOGzyXIveWU4f3yTFGmLIHxM9uk11DOIo=
 cel.dev/expr v0.24.0 h1:56OvJKSH3hDGL0ml5uSxZmz3/3Pq4tJ+fb1unVLAFcY=
 cel.dev/expr v0.24.0/go.mod h1:hLPLo1W4QUmuYdA72RBX06QTs6MXw941piREPl3Yfiw=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
