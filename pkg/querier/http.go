@@ -171,6 +171,12 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 			httputil.Error(w, connect.NewError(connect.CodeInternal, err))
 			return
 		}
+		// Check if profile has any data - return empty string if no data
+		if resp.Msg == nil || len(resp.Msg.Sample) == 0 {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		if err = pprofToDotProfile(w, resp.Msg, int(dotProfileMaxNodes)); err != nil {
 			httputil.Error(w, connect.NewError(connect.CodeInternal, err))
 		}
