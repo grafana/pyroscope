@@ -502,7 +502,7 @@ func (ce *canaryExporter) testLabelNames(ctx context.Context, now time.Time) err
 		model.LabelNameServiceNamePrivate,
 		model.LabelNameType,
 		model.LabelNameUnit,
-		"service.name",
+		//"service.name", // todo: return once write path is ready for utf8 labels
 		model.LabelNameServiceName,
 	}
 
