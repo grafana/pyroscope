@@ -30,7 +30,7 @@ jobs:
         run: npm install --production --prefix ./actions
 
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@eb33f84481d38701f4d2c587a4817ce332784f5f
+        uses: grafana/shared-workflows/actions/get-vault-secrets@bae259f9ed5b6fcb050e3b58adf7aee776d4edb5
         with:
           repo_secrets: |
             GITHUB_APP_ID=pyroscope-development-app:app-id
@@ -38,7 +38,7 @@ jobs:
 
       - name: Generate token
         id: app-token
-        uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         with:
           app-id: ${{ env.GITHUB_APP_ID }}
           private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}

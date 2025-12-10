@@ -42,7 +42,7 @@ jobs:
         uses: docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55 # v2
       # login to docker hub
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@eb33f84481d38701f4d2c587a4817ce332784f5f
+        uses: grafana/shared-workflows/actions/get-vault-secrets@bae259f9ed5b6fcb050e3b58adf7aee776d4edb5
         with:
           common_secrets: |
             DOCKERHUB_USERNAME=dockerhub:username
