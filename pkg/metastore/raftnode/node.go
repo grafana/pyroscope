@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -23,6 +24,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
+
+	promsink "github.com/armon/go-metrics/prometheus"
+	compatmetrics "github.com/hashicorp/go-metrics/compat"
 
 	"github.com/grafana/pyroscope/pkg/metastore/fsm"
 	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
@@ -125,6 +129,33 @@ type Node struct {
 	raftNodeClient raftnodepb.RaftNodeServiceClient
 }
 
+var initGoMetricsOnce sync.Once
+
+// initHashiCorpMetrics wires HashiCorp go-metrics global sink to Prometheus so
+// that Raft's internal metrics (including saturation) are exposed.
+func initHashiCorpMetrics(reg prometheus.Registerer) error {
+	// Prefer binding the sink to the provided registry (if non-nil)
+	var (
+		ps  *promsink.PrometheusSink
+		err error
+	)
+	if reg != nil {
+		ps, err = promsink.NewPrometheusSinkFrom(promsink.PrometheusOpts{Registerer: reg})
+		if err != nil {
+			return err
+		}
+	} else {
+		ps, err = promsink.NewPrometheusSink()
+		if err != nil {
+			return err
+		}
+	}
+	cfg := compatmetrics.DefaultConfig("")
+	cfg.EnableHostname = false
+	_, err = compatmetrics.NewGlobal(cfg, ps)
+	return err
+}
+
 func NewNode(
 	logger log.Logger,
 	config Config,
@@ -142,6 +173,14 @@ func NewNode(
 		contextRegistry: contextRegistry,
 		raftNodeClient:  raftNodeClient,
 	}
+
+	// Initialize go-metrics -> Prometheus bridge once per process so that
+	// HashiCorp Raft saturation gauges are exported.
+	initGoMetricsOnce.Do(func() {
+		if e := initHashiCorpMetrics(n.reg); e != nil {
+			level.Warn(n.logger).Log("msg", "failed to init HashiCorp go-metrics Prometheus sink", "err", e)
+		}
+	})
 
 	defer func() {
 		if err != nil {
