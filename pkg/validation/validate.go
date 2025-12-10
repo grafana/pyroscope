@@ -160,6 +160,7 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 		}
 		if origName, newName, ok := SanitizeLegacyLabelName(l.Name); ok && origName != newName {
 			var err error
+			// todo update canary exporter to check for utf8 labels, at least service.name once the write path supports utf8
 			ls, idx, err = handleSanitizedLabel(ls, idx, origName, newName)
 			if err != nil {
 				return nil, err
