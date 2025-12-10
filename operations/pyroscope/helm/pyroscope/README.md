@@ -18,6 +18,7 @@
 | https://charts.min.io/ | minio(minio) | 4.1.0 |
 | https://grafana.github.io/helm-charts | alloy(alloy) | 1.4.0 |
 | https://grafana.github.io/helm-charts | agent(grafana-agent) | 0.44.2 |
+| https://simonswine.github.io/helm-charts | rustfs(rustfs) | 1.0.3-cs.3 |
 
 ## Values
 
@@ -101,6 +102,7 @@
 | pyroscope.tenantOverrides | object | `{}` | Allows to add tenant specific overrides to the default limit configuration. |
 | pyroscope.tolerations | list | `[]` |  |
 | pyroscope.topologySpreadConstraints | list | `[]` | Topology Spread Constraints |
+| rustfs | object | `{"enabled":false,"image":{"tag":"1.0.0-alpha.72"},"ingress":{"enabled":false},"replicaCount":1,"service":{"type":"ClusterIP"},"storageclass":{"dataStorageSize":"16Gi","name":""},"volumesPerReplica":1}` | ----------------------------------- NOTE: TODO  |
 | serviceMonitor.annotations | object | `{}` | ServiceMonitor annotations |
 | serviceMonitor.enabled | bool | `false` | If enabled, ServiceMonitor resources for Prometheus Operator are created |
 | serviceMonitor.interval | string | `nil` | ServiceMonitor scrape interval |
