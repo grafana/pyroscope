@@ -374,7 +374,7 @@ $(BIN)/jb: Makefile go.mod
 
 $(BIN)/helm: Makefile go.mod
 	@mkdir -p $(@D)
-	CGO_ENABLED=0 GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.14.3
+	CGO_ENABLED=0 GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.19.2
 
 $(BIN)/kubeconform: Makefile go.mod
 	@mkdir -p $(@D)
