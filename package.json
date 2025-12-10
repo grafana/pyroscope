@@ -164,6 +164,8 @@
     "prismjs": "^1.30.0",
     "micromatch": "^4.0.8",
     "@babel/helpers": "^7.26.10",
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "js-yaml": "^3.14.2",
+    "brace-expansion": "^1.1.12"
   }
 }
