@@ -148,7 +148,7 @@ Pyroscope is possible thanks to the excellent work of many people, including but
 * Vladimir Agafonkin — creator of flamebearer — fast flame graph renderer
 * Ben Frederickson — creator of py-spy — sampling profiler for Python
 * Adam Saponara — creator of phpspy — sampling profiler for PHP
-* Alexei Starovoitov, Brendan Gregg, and many others who made BPF based profiling in Linux kernel possible
+* Alexei Starovoitov, Daniel Borkmann, and many others who made BPF based profiling in Linux kernel possible
 * Jamie Wong — creator of speedscope — interactive flame graph visualizer
 
 ## Contributing
