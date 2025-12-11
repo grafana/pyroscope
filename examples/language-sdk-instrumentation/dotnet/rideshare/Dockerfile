@@ -24,6 +24,9 @@ FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:$SDK_VERSION-noble-c
 
 WORKDIR /dotnet
 
+# chiseled images don't include CA certs by default
+COPY --from=build /etc/ssl/certs /etc/ssl/certs
+
 COPY --from=sdk /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
 COPY --from=sdk /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
 COPY --from=build /dotnet/ ./
@@ -34,6 +37,9 @@ ENV CORECLR_PROFILER={BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}
 ENV CORECLR_PROFILER_PATH=/dotnet/Pyroscope.Profiler.Native.so
 ENV LD_PRELOAD=/dotnet/Pyroscope.Linux.ApiWrapper.x64.so
 ENV LD_LIBRARY_PATH=/dotnet
+
+# point OpenSSL to the CA certificates bundle
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 ENV PYROSCOPE_APPLICATION_NAME=rideshare.dotnet.app
 ENV PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
