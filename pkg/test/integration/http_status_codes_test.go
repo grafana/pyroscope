@@ -281,8 +281,289 @@ func TestStatusCodes(t *testing.T) {
 		},
 	}
 
+	renderDiffTests := EndpointTestGroup{
+		Path: "/pyroscope/render-diff",
+		Tests: map[int][]Test{
+			http.StatusOK: {
+				{
+					Name:   "valid",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "same_query_different_times",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-60m"},
+						"leftUntil":  []string{"now-30m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-30m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "same_time_range",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-15m"},
+						"leftUntil":  []string{"now"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+			},
+			http.StatusBadRequest: {
+				{
+					Name:   "missing_left_query",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "missing_right_query",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":  []string{"now-30m"},
+						"leftUntil": []string{"now-15m"},
+						"rightFrom": []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "missing_left_from",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "missing_left_until",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "missing_right_from",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "missing_right_until",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+					},
+				},
+				{
+					Name:   "invalid_left_query_syntax",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{"bad_query"},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "invalid_right_query_syntax",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{"bad_query"},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "left_query_without_profile_type",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{`{service_name="test"}`},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "right_query_without_profile_type",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{`{service_name="test"}`},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "invalid_left_profile_type_format",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{`invalid_format{service_name="test"}`},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "invalid_right_profile_type_format",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{`invalid_format{service_name="test"}`},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "profile_types_mismatch",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery("memory:alloc_objects:count:space:bytes", "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "empty_left_query",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{""},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "empty_right_query",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{""},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "left_from_zero",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"0"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "left_until_zero",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"0"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "right_from_zero",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"0"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "right_until_zero",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"0"},
+					},
+				},
+				{
+					Name:   "all_zero_time_ranges",
+					Method: http.MethodGet,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"0"},
+						"leftUntil":  []string{"0"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"0"},
+						"rightUntil": []string{"0"},
+					},
+				},
+			},
+		},
+	}
+
 	allTests := []EndpointTestGroup{
 		renderTests,
+		renderDiffTests,
 	}
 
 	EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
