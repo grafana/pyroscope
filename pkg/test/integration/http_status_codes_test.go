@@ -2,11 +2,13 @@ package integration
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -17,6 +19,14 @@ type Request struct {
 
 func TestStatusCodes(t *testing.T) {
 	const profileTypeProcessCPU = "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+
+	toJSON := func(obj any) string {
+		bytes, err := json.Marshal(obj)
+		if err != nil {
+			panic(fmt.Sprintf("failed to marshal to json: %v", err))
+		}
+		return string(bytes)
+	}
 
 	type Test struct {
 		Name   string
@@ -278,6 +288,44 @@ func TestStatusCodes(t *testing.T) {
 					},
 				},
 			},
+			http.StatusMethodNotAllowed: {
+				{
+					Name:   "post_method_not_allowed",
+					Method: http.MethodPost,
+					Params: url.Values{
+						"query": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"from":  []string{"now-15m"},
+						"until": []string{"now"},
+					},
+				},
+				{
+					Name:   "put_method_not_allowed",
+					Method: http.MethodPut,
+					Params: url.Values{
+						"query": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"from":  []string{"now-15m"},
+						"until": []string{"now"},
+					},
+				},
+				{
+					Name:   "delete_method_not_allowed",
+					Method: http.MethodDelete,
+					Params: url.Values{
+						"query": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"from":  []string{"now-15m"},
+						"until": []string{"now"},
+					},
+				},
+				{
+					Name:   "patch_method_not_allowed",
+					Method: http.MethodPatch,
+					Params: url.Values{
+						"query": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"from":  []string{"now-15m"},
+						"until": []string{"now"},
+					},
+				},
+			},
 		},
 	}
 
@@ -338,10 +386,10 @@ func TestStatusCodes(t *testing.T) {
 					Name:   "missing_right_query",
 					Method: http.MethodGet,
 					Params: url.Values{
-						"leftQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
-						"leftFrom":  []string{"now-30m"},
-						"leftUntil": []string{"now-15m"},
-						"rightFrom": []string{"now-15m"},
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightFrom":  []string{"now-15m"},
 						"rightUntil": []string{"now"},
 					},
 				},
@@ -558,12 +606,251 @@ func TestStatusCodes(t *testing.T) {
 					},
 				},
 			},
+			http.StatusMethodNotAllowed: {
+				{
+					Name:   "post_method_not_allowed",
+					Method: http.MethodPost,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "put_method_not_allowed",
+					Method: http.MethodPut,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "delete_method_not_allowed",
+					Method: http.MethodDelete,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+				{
+					Name:   "patch_method_not_allowed",
+					Method: http.MethodPatch,
+					Params: url.Values{
+						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"leftFrom":   []string{"now-30m"},
+						"leftUntil":  []string{"now-15m"},
+						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
+						"rightFrom":  []string{"now-15m"},
+						"rightUntil": []string{"now"},
+					},
+				},
+			},
+		},
+	}
+
+	profileTypesTests := EndpointTestGroup{
+		Path: "/querier.v1.QuerierService/ProfileTypes",
+		Tests: map[int][]Test{
+			http.StatusOK: {
+				{
+					Name:   "valid",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "no_time_range",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{}),
+				},
+				{
+					Name:   "zero_time_range",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": 0,
+						"end":   0,
+					}),
+				},
+				{
+					Name:   "valid_long_range",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-24 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "valid_short_range",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-5 * time.Minute).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					// TODO(bryan) this should be fixed
+					Name:   "negative_start",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": -1,
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					// TODO(bryan) this should be fixed
+					Name:   "negative_end",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": -2,
+						"end":   -1,
+					}),
+				},
+			},
+			http.StatusBadRequest: {
+				{
+					Name:   "invalid_json",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: `{"invalid json"`,
+				},
+				{
+					Name:   "empty_body",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: "",
+				},
+				{
+					Name:   "start_after_end",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().UnixMilli(),
+						"end":   time.Now().Add(-1 * time.Hour).UnixMilli(),
+					}),
+				},
+				{
+					Name:   "start_string_instead_of_number",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: `{"start": "now-1h", "end": 0}`,
+				},
+				{
+					Name:   "end_string_instead_of_number",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: `{"start": 0, "end": "now"}`,
+				},
+			},
+			http.StatusMethodNotAllowed: {
+				{
+					Name:   "get_method_not_allowed",
+					Method: http.MethodGet,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Params: url.Values{
+						"start": []string{fmt.Sprintf("%d", time.Now().Add(-1*time.Hour).UnixMilli())},
+						"end":   []string{fmt.Sprintf("%d", time.Now().UnixMilli())},
+					},
+				},
+				{
+					Name:   "put_method_not_allowed",
+					Method: http.MethodPut,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "delete_method_not_allowed",
+					Method: http.MethodDelete,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "patch_method_not_allowed",
+					Method: http.MethodPatch,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+			},
+			http.StatusUnsupportedMediaType: {
+				{
+					Name:   "invalid_content_type",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"text/plain"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+			},
 		},
 	}
 
 	allTests := []EndpointTestGroup{
 		renderTests,
 		renderDiffTests,
+		profileTypesTests,
 	}
 
 	EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
