@@ -16,11 +16,15 @@ sed -i 's/go version go[0-9\.]\+/go version go'$1'/g' .goreleaser.yaml
 # update .pyroscope.yaml
 sed -i 's/ref: go[0-9\.]\+/ref: go'$1'/g' .pyroscope.yaml
 
+# update update-examples image
+sed -i 's/GO_VERSION=[0-9\.]\+/GO_VERSION='$1'/g' .pyroscope.yaml tools/update_examples.Dockerfile
+
 # update all dockerfile versions, skips the elf tests from ebpf
 DOCKER_FILES=$(git ls-files '**/Dockerfile*' | grep -v ebpf/symtab/elf/testdata/Dockerfile)
 sed -i 's/golang:[0-9\.]\+/golang:'$1'/g' $DOCKER_FILES
 git add -u $DOCKER_FILES
 
 # add changes
-git add -u .github/workflows .goreleaser.yaml
+git add -u .github/workflows .goreleaser.yaml .pyroscope.yaml tools/update_examples.Dockerfile
+
 git commit -m "Update golang version to $1"
