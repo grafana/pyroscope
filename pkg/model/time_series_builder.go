@@ -82,6 +82,15 @@ func (s *TimeSeriesBuilder) BuildWithExemplars() []*typesv1.Series {
 	return series
 }
 
+// ExemplarCount returns the number of raw exemplars added (before deduplication).
+func (s *TimeSeriesBuilder) ExemplarCount() int {
+	total := 0
+	for _, builder := range s.exemplarBuilders {
+		total += builder.Count()
+	}
+	return total
+}
+
 // attachExemplars attaches exemplars from ExemplarBuilders to the corresponding points.
 func (s *TimeSeriesBuilder) attachExemplars(series []*typesv1.Series) {
 	// Create a map from seriesKey to series for fast lookup

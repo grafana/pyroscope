@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/runutil"
+	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -37,6 +38,10 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 	if err != nil {
 		return nil, err
 	}
+
+	span := opentracing.SpanFromContext(q.ctx)
+	span.SetTag("exemplars.enabled", includeExemplars)
+	span.SetTag("exemplars.type", query.TimeSeries.ExemplarType.String())
 
 	opts := []profileIteratorOption{
 		withFetchPartition(false), // Partition data not needed, as we don't access stacktraces at all
@@ -111,6 +116,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 	var timeSeries []*typesv1.Series
 	if includeExemplars {
 		timeSeries = builder.BuildWithExemplars()
+		span.SetTag("exemplars.raw_count", builder.ExemplarCount())
 	} else {
 		timeSeries = builder.Build()
 	}
