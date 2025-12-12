@@ -73,6 +73,7 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 			Tree: &queryv1.TreeQuery{
 				MaxNodes:           maxNodes,
 				StackTraceSelector: c.Msg.StackTraceSelector,
+				ProfileIdSelector:  c.Msg.ProfileIdSelector,
 			},
 		}},
 	})
