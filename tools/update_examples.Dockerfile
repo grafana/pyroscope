@@ -28,7 +28,7 @@ COPY --from=node /opt /opt
 
 ENV PATH=$PATH:/usr/local/bin
 
-ARG RUBY_VERSION=3.2.2
+ARG RUBY_VERSION=3.3.9
 RUN curl -sSL https://get.rvm.io | bash
 RUN /bin/bash -l -c "rvm install ruby-${RUBY_VERSION} && rvm --default use ruby-${RUBY_VERSION}"
 
