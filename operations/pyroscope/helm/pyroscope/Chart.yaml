@@ -21,6 +21,11 @@ dependencies:
     version: 4.1.0
     repository: https://charts.min.io/
     condition: minio.enabled
+  - name: rustfs
+    alias: rustfs
+    version: 1.0.3-cs.3
+    repository: https://simonswine.github.io/helm-charts
+    condition: rustfs.enabled
 sources:
   - https://github.com/grafana/pyroscope
   - https://github.com/grafana/pyroscope/tree/main/operations/pyroscope/helm/pyroscope

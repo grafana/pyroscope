@@ -194,6 +194,16 @@ pyroscope:
         secret_access_key: {{ .Values.minio.rootPassword | quote }}
         insecure: true
     {{- end }}
+    {{- if .Values.rustfs.enabled }}
+    storage:
+      backend: s3
+      s3:
+        endpoint: "{{ include "pyroscope.fullname" . }}-rustfs-svc:9000"
+        bucket_name: pyroscope-data
+        access_key_id: {{ .Values.rustfs.secret.rustfs.access_key | quote }}
+        secret_access_key: {{ .Values.rustfs.secret.rustfs.secret_key | quote }}
+        insecure: true
+    {{- end }}
 
   # -- Allows to add tenant specific overrides to the default limit configuration.
   tenantOverrides:
@@ -561,3 +571,24 @@ serviceMonitor:
   scheme: http
   # -- ServiceMonitor will use these tlsConfig settings to make the health check requests
   tlsConfig: null
+
+
+# -------------------------------------
+# Configuration for `rustfs` child chart
+# -------------------------------------
+# NOTE: TODO 
+rustfs:
+  image:
+    tag: 1.0.0-alpha.72
+  enabled: false
+  ingress:
+    enabled: false
+  replicaCount: 1
+  volumesPerReplica: 1
+  service:
+    type: ClusterIP
+  storageclass:
+    name: ""
+    dataStorageSize: 16Gi
+
+

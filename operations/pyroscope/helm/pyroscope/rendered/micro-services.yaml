@@ -204,12 +204,18 @@ metadata:
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
 ---
-# Source: pyroscope/charts/minio/templates/serviceaccount.yaml
+# Source: pyroscope/charts/rustfs/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: "minio-sa"
-  namespace: "default"
+  name: pyroscope-dev-rustfs
+  labels:
+    helm.sh/chart: rustfs-1.0.3-cs.3
+    app.kubernetes.io/name: rustfs
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.0.0-alpha.73"
+    app.kubernetes.io/managed-by: Helm
+automountServiceAccountToken: true
 ---
 # Source: pyroscope/templates/serviceaccount.yaml
 apiVersion: v1
@@ -224,339 +230,29 @@ metadata:
     app.kubernetes.io/version: "1.16.0"
     app.kubernetes.io/managed-by: Helm
 ---
-# Source: pyroscope/charts/minio/templates/secrets.yaml
+# Source: pyroscope/charts/rustfs/templates/secret.yaml
 apiVersion: v1
 kind: Secret
 metadata:
-  name: pyroscope-dev-minio
-  namespace: "default"
-  labels:
-    app: minio
-    chart: minio-4.1.0
-    release: pyroscope-dev
-    heritage: Helm
+  name: pyroscope-dev-rustfs-secret
 type: Opaque
 data:
-  rootUser: "Z3JhZmFuYS1weXJvc2NvcGU="
-  rootPassword: "c3VwZXJzZWNyZXQ="
+  RUSTFS_ACCESS_KEY: "cnVzdGZzYWRtaW4="
+  RUSTFS_SECRET_KEY: "cnVzdGZzYWRtaW4="
 ---
-# Source: pyroscope/charts/minio/templates/configmap.yaml
+# Source: pyroscope/charts/rustfs/templates/configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pyroscope-dev-minio
-  namespace: "default"
-  labels:
-    app: minio
-    chart: minio-4.1.0
-    release: pyroscope-dev
-    heritage: Helm
+  name: pyroscope-dev-rustfs-config
 data:
-  initialize: |-
-    #!/bin/sh
-    set -e ; # Have script exit in the event of a failed command.
-    MC_CONFIG_DIR="/etc/minio/mc/"
-    MC="/usr/bin/mc --insecure --config-dir ${MC_CONFIG_DIR}"
-    
-    # connectToMinio
-    # Use a check-sleep-check loop to wait for MinIO service to be available
-    connectToMinio() {
-      SCHEME=$1
-      ATTEMPTS=0 ; LIMIT=29 ; # Allow 30 attempts
-      set -e ; # fail if we can't read the keys.
-      ACCESS=$(cat /config/rootUser) ; SECRET=$(cat /config/rootPassword) ;
-      set +e ; # The connections to minio are allowed to fail.
-      echo "Connecting to MinIO server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT" ;
-      MC_COMMAND="${MC} alias set myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET" ;
-      $MC_COMMAND ;
-      STATUS=$? ;
-      until [ $STATUS = 0 ]
-      do
-        ATTEMPTS=`expr $ATTEMPTS + 1` ;
-        echo \"Failed attempts: $ATTEMPTS\" ;
-        if [ $ATTEMPTS -gt $LIMIT ]; then
-          exit 1 ;
-        fi ;
-        sleep 2 ; # 1 second intervals between attempts
-        $MC_COMMAND ;
-        STATUS=$? ;
-      done ;
-      set -e ; # reset `e` as active
-      return 0
-    }
-    
-    # checkBucketExists ($bucket)
-    # Check if the bucket exists, by using the exit code of `mc ls`
-    checkBucketExists() {
-      BUCKET=$1
-      CMD=$(${MC} ls myminio/$BUCKET > /dev/null 2>&1)
-      return $?
-    }
-    
-    # createBucket ($bucket, $policy, $purge)
-    # Ensure bucket exists, purging if asked to
-    createBucket() {
-      BUCKET=$1
-      POLICY=$2
-      PURGE=$3
-      VERSIONING=$4
-      OBJECTLOCKING=$5
-    
-      # Purge the bucket, if set & exists
-      # Since PURGE is user input, check explicitly for `true`
-      if [ $PURGE = true ]; then
-        if checkBucketExists $BUCKET ; then
-          echo "Purging bucket '$BUCKET'."
-          set +e ; # don't exit if this fails
-          ${MC} rm -r --force myminio/$BUCKET
-          set -e ; # reset `e` as active
-        else
-          echo "Bucket '$BUCKET' does not exist, skipping purge."
-        fi
-      fi
-    
-    # Create the bucket if it does not exist and set objectlocking if enabled (NOTE: versioning will be not changed if OBJECTLOCKING is set because it enables versioning to the Buckets created)
-    if ! checkBucketExists $BUCKET ; then
-        if [ ! -z $OBJECTLOCKING ] ; then
-          if [ $OBJECTLOCKING = true ] ; then
-              echo "Creating bucket with OBJECTLOCKING '$BUCKET'"
-              ${MC} mb --with-lock myminio/$BUCKET
-          elif [ $OBJECTLOCKING = false ] ; then
-                echo "Creating bucket '$BUCKET'"
-                ${MC} mb myminio/$BUCKET
-          fi
-      elif [ -z $OBJECTLOCKING ] ; then
-            echo "Creating bucket '$BUCKET'"
-            ${MC} mb myminio/$BUCKET
-      else
-        echo "Bucket '$BUCKET' already exists."  
-      fi
-      fi
-    
-    
-      # set versioning for bucket if objectlocking is disabled or not set
-      if [ -z $OBJECTLOCKING ] ; then
-      if [ ! -z $VERSIONING ] ; then
-        if [ $VERSIONING = true ] ; then
-            echo "Enabling versioning for '$BUCKET'"
-            ${MC} version enable myminio/$BUCKET
-        elif [ $VERSIONING = false ] ; then
-            echo "Suspending versioning for '$BUCKET'"
-            ${MC} version suspend myminio/$BUCKET
-        fi
-        fi
-      else
-          echo "Bucket '$BUCKET' versioning unchanged."
-      fi
-    
-    
-      # At this point, the bucket should exist, skip checking for existence
-      # Set policy on the bucket
-      echo "Setting policy of bucket '$BUCKET' to '$POLICY'."
-      ${MC} policy set $POLICY myminio/$BUCKET
-    }
-    
-    # Try connecting to MinIO instance
-    scheme=http
-    connectToMinio $scheme
-    
-    
-    
-    # Create the buckets
-    createBucket grafana-pyroscope-data none false  
-  add-user: |-
-    #!/bin/sh
-    set -e ; # Have script exit in the event of a failed command.
-    MC_CONFIG_DIR="/etc/minio/mc/"
-    MC="/usr/bin/mc --insecure --config-dir ${MC_CONFIG_DIR}"
-    
-    # AccessKey and secretkey credentials file are added to prevent shell execution errors caused by special characters.
-    # Special characters for example : ',",<,>,{,}
-    MINIO_ACCESSKEY_SECRETKEY_TMP="/tmp/accessKey_and_secretKey_tmp"
-    
-    # connectToMinio
-    # Use a check-sleep-check loop to wait for MinIO service to be available
-    connectToMinio() {
-      SCHEME=$1
-      ATTEMPTS=0 ; LIMIT=29 ; # Allow 30 attempts
-      set -e ; # fail if we can't read the keys.
-      ACCESS=$(cat /config/rootUser) ; SECRET=$(cat /config/rootPassword) ;
-      set +e ; # The connections to minio are allowed to fail.
-      echo "Connecting to MinIO server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT" ;
-      MC_COMMAND="${MC} alias set myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET" ;
-      $MC_COMMAND ;
-      STATUS=$? ;
-      until [ $STATUS = 0 ]
-      do
-        ATTEMPTS=`expr $ATTEMPTS + 1` ;
-        echo \"Failed attempts: $ATTEMPTS\" ;
-        if [ $ATTEMPTS -gt $LIMIT ]; then
-          exit 1 ;
-        fi ;
-        sleep 2 ; # 1 second intervals between attempts
-        $MC_COMMAND ;
-        STATUS=$? ;
-      done ;
-      set -e ; # reset `e` as active
-      return 0
-    }
-    
-    # checkUserExists ()
-    # Check if the user exists, by using the exit code of `mc admin user info`
-    checkUserExists() {
-      CMD=$(${MC} admin user info myminio $(head -1 $MINIO_ACCESSKEY_SECRETKEY_TMP) > /dev/null 2>&1)
-      return $?
-    }
-    
-    # createUser ($policy)
-    createUser() {
-      POLICY=$1
-      #check accessKey_and_secretKey_tmp file
-      if [[ ! -f $MINIO_ACCESSKEY_SECRETKEY_TMP ]];then
-        echo "credentials file does not exist"
-        return 1
-      fi
-      if [[ $(cat $MINIO_ACCESSKEY_SECRETKEY_TMP|wc -l) -ne 2 ]];then
-        echo "credentials file is invalid"
-        rm -f $MINIO_ACCESSKEY_SECRETKEY_TMP
-        return 1
-      fi
-      USER=$(head -1 $MINIO_ACCESSKEY_SECRETKEY_TMP)
-      # Create the user if it does not exist
-      if ! checkUserExists ; then
-        echo "Creating user '$USER'"
-        cat $MINIO_ACCESSKEY_SECRETKEY_TMP | ${MC} admin user add myminio
-      else
-        echo "User '$USER' already exists."
-      fi
-      #clean up credentials files.
-      rm -f $MINIO_ACCESSKEY_SECRETKEY_TMP
-    
-      # set policy for user
-      if [ ! -z $POLICY -a $POLICY != " " ] ; then
-          echo "Adding policy '$POLICY' for '$USER'"
-          ${MC} admin policy set myminio $POLICY user=$USER
-      else
-          echo "User '$USER' has no policy attached."
-      fi
-    }
-    
-    # Try connecting to MinIO instance
-    scheme=http
-    connectToMinio $scheme
-    
-    
-    
-    # Create the users
-    echo console > $MINIO_ACCESSKEY_SECRETKEY_TMP
-    echo console123 >> $MINIO_ACCESSKEY_SECRETKEY_TMP
-    createUser consoleAdmin
-    
-  add-policy: |-
-    #!/bin/sh
-    set -e ; # Have script exit in the event of a failed command.
-    MC_CONFIG_DIR="/etc/minio/mc/"
-    MC="/usr/bin/mc --insecure --config-dir ${MC_CONFIG_DIR}"
-    
-    # connectToMinio
-    # Use a check-sleep-check loop to wait for MinIO service to be available
-    connectToMinio() {
-      SCHEME=$1
-      ATTEMPTS=0 ; LIMIT=29 ; # Allow 30 attempts
-      set -e ; # fail if we can't read the keys.
-      ACCESS=$(cat /config/rootUser) ; SECRET=$(cat /config/rootPassword) ;
-      set +e ; # The connections to minio are allowed to fail.
-      echo "Connecting to MinIO server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT" ;
-      MC_COMMAND="${MC} alias set myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET" ;
-      $MC_COMMAND ;
-      STATUS=$? ;
-      until [ $STATUS = 0 ]
-      do
-        ATTEMPTS=`expr $ATTEMPTS + 1` ;
-        echo \"Failed attempts: $ATTEMPTS\" ;
-        if [ $ATTEMPTS -gt $LIMIT ]; then
-          exit 1 ;
-        fi ;
-        sleep 2 ; # 1 second intervals between attempts
-        $MC_COMMAND ;
-        STATUS=$? ;
-      done ;
-      set -e ; # reset `e` as active
-      return 0
-    }
-    
-    # checkPolicyExists ($policy)
-    # Check if the policy exists, by using the exit code of `mc admin policy info`
-    checkPolicyExists() {
-      POLICY=$1
-      CMD=$(${MC} admin policy info myminio $POLICY > /dev/null 2>&1)
-      return $?
-    }
-    
-    # createPolicy($name, $filename)
-    createPolicy () {
-      NAME=$1
-      FILENAME=$2
-    
-      # Create the name if it does not exist
-      echo "Checking policy: $NAME (in /config/$FILENAME.json)"
-      if ! checkPolicyExists $NAME ; then
-        echo "Creating policy '$NAME'"
-      else
-        echo "Policy '$NAME' already exists."
-      fi
-      ${MC} admin policy add myminio $NAME /config/$FILENAME.json
-    
-    }
-    
-    # Try connecting to MinIO instance
-    scheme=http
-    connectToMinio $scheme
-    
-    
-  custom-command: |-
-    #!/bin/sh
-    set -e ; # Have script exit in the event of a failed command.
-    MC_CONFIG_DIR="/etc/minio/mc/"
-    MC="/usr/bin/mc --insecure --config-dir ${MC_CONFIG_DIR}"
-    
-    # connectToMinio
-    # Use a check-sleep-check loop to wait for MinIO service to be available
-    connectToMinio() {
-      SCHEME=$1
-      ATTEMPTS=0 ; LIMIT=29 ; # Allow 30 attempts
-      set -e ; # fail if we can't read the keys.
-      ACCESS=$(cat /config/rootUser) ; SECRET=$(cat /config/rootPassword) ;
-      set +e ; # The connections to minio are allowed to fail.
-      echo "Connecting to MinIO server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT" ;
-      MC_COMMAND="${MC} alias set myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET" ;
-      $MC_COMMAND ;
-      STATUS=$? ;
-      until [ $STATUS = 0 ]
-      do
-        ATTEMPTS=`expr $ATTEMPTS + 1` ;
-        echo \"Failed attempts: $ATTEMPTS\" ;
-        if [ $ATTEMPTS -gt $LIMIT ]; then
-          exit 1 ;
-        fi ;
-        sleep 2 ; # 1 second intervals between attempts
-        $MC_COMMAND ;
-        STATUS=$? ;
-      done ;
-      set -e ; # reset `e` as active
-      return 0
-    }
-    
-    # runCommand ($@)
-    # Run custom mc command
-    runCommand() {
-      ${MC} "$@"
-      return $?
-    }
-    
-    # Try connecting to MinIO instance
-    scheme=http
-    connectToMinio $scheme
+  RUSTFS_ADDRESS: "0.0.0.0:9000"
+  RUSTFS_CONSOLE_ADDRESS: "0.0.0.0:9001"
+  RUSTFS_OBS_LOG_DIRECTORY: "/logs"
+  RUSTFS_CONSOLE_ENABLE: "true"
+  RUSTFS_OBS_LOGGER_LEVEL: "debug"
+  RUSTFS_VOLUMES: "/data"
+  RUSTFS_OBS_ENVIRONMENT: "develop"
 ---
 # Source: pyroscope/templates/configmap-alloy.yaml
 apiVersion: v1
@@ -1450,11 +1146,11 @@ data:
     storage:
       backend: s3
       s3:
-        access_key_id: grafana-pyroscope
-        bucket_name: grafana-pyroscope-data
-        endpoint: pyroscope-dev-minio:9000
+        access_key_id: rustfsadmin
+        bucket_name: pyroscope-data
+        endpoint: pyroscope-dev-rustfs-svc:9000
         insecure: true
-        secret_access_key: supersecret
+        secret_access_key: rustfsadmin
 ---
 # Source: pyroscope/charts/alloy/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1642,73 +1338,66 @@ spec:
       targetPort: 12345
       protocol: "TCP"
 ---
-# Source: pyroscope/charts/minio/templates/console-service.yaml
+# Source: pyroscope/charts/rustfs/templates/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: pyroscope-dev-minio-console
-  namespace: "default"
+  name: pyroscope-dev-rustfs-headless
   labels:
-    app: minio
-    chart: minio-4.1.0
-    release: pyroscope-dev
-    heritage: Helm
+    helm.sh/chart: rustfs-1.0.3-cs.3
+    app.kubernetes.io/name: rustfs
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.0.0-alpha.73"
+    app.kubernetes.io/managed-by: Helm
 spec:
-  type: ClusterIP
-  ports:
-    - name: http
-      port: 9001
-      protocol: TCP
-      targetPort: 9001
-  selector:
-    app: minio
-    release: pyroscope-dev
----
-# Source: pyroscope/charts/minio/templates/service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: pyroscope-dev-minio
-  namespace: "default"
-  labels:
-    app: minio
-    chart: minio-4.1.0
-    release: pyroscope-dev
-    heritage: Helm
-    monitoring: "true"
-spec:
-  type: ClusterIP
-  ports:
-    - name: http
-      port: 9000
-      protocol: TCP
-      targetPort: 9000
-  selector:
-    app: minio
-    release: pyroscope-dev
----
-# Source: pyroscope/charts/minio/templates/statefulset.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: pyroscope-dev-minio-svc
-  namespace: "default"
-  labels:
-    app: minio
-    chart: minio-4.1.0
-    release: "pyroscope-dev"
-    heritage: "Helm"
-spec:
-  publishNotReadyAddresses: true
   clusterIP: None
+  publishNotReadyAddresses: true
   ports:
-    - name: http
-      port: 9000
-      protocol: TCP
+    - port: 9000
       targetPort: 9000
+      protocol: TCP
+      name: endpoint
+    - port: 9001
+      targetPort: 9001
+      protocol: TCP
+      name: console
   selector:
-    app: minio
-    release: pyroscope-dev
+    app: rustfs
+---
+# Source: pyroscope/charts/rustfs/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-rustfs-svc
+  annotations:
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.httponly: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.name: rustfs
+    traefik.ingress.kubernetes.io/service.sticky.cookie.samesite: none
+    traefik.ingress.kubernetes.io/service.sticky.cookie.secure: "true"
+  labels:
+    helm.sh/chart: rustfs-1.0.3-cs.3
+    app.kubernetes.io/name: rustfs
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.0.0-alpha.73"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+      name: endpoint
+    - port: 9001
+      targetPort: 9001
+      protocol: TCP
+      name: console
+  selector:
+    app: rustfs
 ---
 # Source: pyroscope/templates/memberlist-service.yaml
 apiVersion: v1
@@ -2219,7 +1908,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
+        checksum/config: ecdd5a2dadf3b7de5ba6c07167261250ccc720ad80fb1228b282052dbc262521
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -2321,7 +2010,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
+        checksum/config: ecdd5a2dadf3b7de5ba6c07167261250ccc720ad80fb1228b282052dbc262521
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -2423,7 +2112,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
+        checksum/config: ecdd5a2dadf3b7de5ba6c07167261250ccc720ad80fb1228b282052dbc262521
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -2526,7 +2215,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
+        checksum/config: ecdd5a2dadf3b7de5ba6c07167261250ccc720ad80fb1228b282052dbc262521
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -2628,7 +2317,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
+        checksum/config: ecdd5a2dadf3b7de5ba6c07167261250ccc720ad80fb1228b282052dbc262521
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -2730,7 +2419,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
+        checksum/config: ecdd5a2dadf3b7de5ba6c07167261250ccc720ad80fb1228b282052dbc262521
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -2899,98 +2588,122 @@ spec:
           configMap:
             name: alloy-config-pyroscope
 ---
-# Source: pyroscope/charts/minio/templates/statefulset.yaml
+# Source: pyroscope/charts/rustfs/templates/statefulset.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: pyroscope-dev-minio
-  namespace: "default"
-  labels:
-    app: minio
-    chart: minio-4.1.0
-    release: pyroscope-dev
-    heritage: Helm
+  name: pyroscope-dev-rustfs
 spec:
-  updateStrategy:
-    type: RollingUpdate
-  podManagementPolicy: "Parallel"
-  serviceName: pyroscope-dev-minio-svc
+  serviceName: pyroscope-dev-rustfs-headless
   replicas: 1
+  podManagementPolicy: Parallel
   selector:
     matchLabels:
-      app: minio
-      release: pyroscope-dev
+      app: rustfs
   template:
     metadata:
-      name: pyroscope-dev-minio
       labels:
-        app: minio
-        release: pyroscope-dev
-      annotations:
-        checksum/secrets: 1327df257dd66b53a08dc3d9f2584d6c07cd43932cd3c3f68a7ffc636c5a0d92
-        checksum/config: 68ad5341411f10a6da13194dfbe5544a594ccedef5dfb12d34529d2be6d0f67f
+        app: rustfs
     spec:
       securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-        fsGroupChangePolicy: OnRootMismatch
-
-      serviceAccountName: minio-sa
-      containers:
-        - name: minio
-          image: quay.io/minio/minio:RELEASE.2022-10-24T18-35-07Z
+            fsGroup: 10001
+            runAsGroup: 10001
+            runAsUser: 10001
+      initContainers:
+        - name: init-step
+          image: busybox
           imagePullPolicy: IfNotPresent
-
-          command: [ "/bin/sh",
-            "-ce",
-            "/usr/bin/docker-entrypoint.sh minio server  http://pyroscope-dev-minio-{0...0}.pyroscope-dev-minio-svc.default.svc.cluster.local/export-{0...1} -S /etc/minio/certs/ --address :9000 --console-address :9001" ]
-          volumeMounts:
-            - name: export-0
-              mountPath: /export-0
-            - name: export-1
-              mountPath: /export-1            
-          ports:
-            - name: http
-              containerPort: 9000
-            - name: http-console
-              containerPort: 9001
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
           env:
-            - name: MINIO_ROOT_USER
-              valueFrom:
-                secretKeyRef:
-                  name: pyroscope-dev-minio
-                  key: rootUser
-            - name: MINIO_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: pyroscope-dev-minio
-                  key: rootPassword
-            - name: MINIO_PROMETHEUS_AUTH_TYPE
-              value: "public"
+            - name: REPLICA_COUNT
+              value: "1"
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /data
+              chown -R 10001:10001 /data
+              chown -R 10001:10001 /logs
+          volumeMounts:
+            - name: logs
+              mountPath: /logs
+            - name: data
+              mountPath: /data
+      containers:
+        - name: rustfs
+          image: "rustfs/rustfs:1.0.0-alpha.72"
+          command: ["/usr/bin/rustfs"]
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          ports:
+            - containerPort: 9000
+              name: endpoint
+            - containerPort: 9001
+              name: console
+          envFrom:
+            - configMapRef:
+                name: pyroscope-dev-rustfs-config
+            - secretRef:
+                name: pyroscope-dev-rustfs-secret
           resources:
             requests:
+              memory: 128Mi
               cpu: 100m
-              memory: 128Mi      
+            limits:
+              memory: 512Mi
+              cpu: 200m
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /logs
+            - name: data
+              mountPath: /data
       volumes:
-        - name: minio-user
-          secret:
-            secretName: pyroscope-dev-minio        
+        - name: tmp
+          emptyDir: {}
   volumeClaimTemplates:
     - metadata:
-        name: export-0
+        name: logs
       spec:
-        accessModes: [ "ReadWriteOnce" ]
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: 
         resources:
           requests:
-            storage: 5Gi
+            storage: 256Mi
     - metadata:
-        name: export-1
+        name: data
       spec:
-        accessModes: [ "ReadWriteOnce" ]
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: 
         resources:
           requests:
-            storage: 5Gi
+            storage: 16Gi
 ---
 # Source: pyroscope/templates/deployments-statefulsets.yaml
 apiVersion: apps/v1
@@ -3017,7 +2730,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
+        checksum/config: ecdd5a2dadf3b7de5ba6c07167261250ccc720ad80fb1228b282052dbc262521
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -3126,7 +2839,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
+        checksum/config: ecdd5a2dadf3b7de5ba6c07167261250ccc720ad80fb1228b282052dbc262521
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -3231,7 +2944,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8d152f552fc4171b4e2e67701f1ac4bab160a4820e7cb28c88eb28459f064878
+        checksum/config: ecdd5a2dadf3b7de5ba6c07167261250ccc720ad80fb1228b282052dbc262521
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v1.16.0"
         profiles.grafana.com/cpu.port_name: http2
@@ -3312,100 +3025,61 @@ spec:
         - name: data
           emptyDir: {}
 ---
-# Source: pyroscope/charts/minio/templates/post-install-create-bucket-job.yaml
+# Source: pyroscope/templates/rustfs-create-bucket-job.yaml
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: pyroscope-dev-minio-make-bucket-job
-  namespace: "default"
+  name: pyroscope-dev-rustfs-create-bucket
+  namespace: default
   labels:
-    app: minio-make-bucket-job
-    chart: minio-4.1.0
-    release: pyroscope-dev
-    heritage: Helm
-  annotations:
-    "helm.sh/hook": post-install,post-upgrade
-    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+    helm.sh/chart: pyroscope-1.16.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
 spec:
   template:
-    metadata:
-      labels:
-        app: minio-job
-        release: pyroscope-dev
     spec:
-      restartPolicy: OnFailure      
-      volumes:
-        - name: minio-configuration
-          projected:
-            sources:
-            - configMap:
-                name: pyroscope-dev-minio
-            - secret:
-                name: pyroscope-dev-minio
-
-      serviceAccountName: minio-sa
       containers:
-      - name: minio-mc
-        image: "quay.io/minio/mc:RELEASE.2022-10-20T23-26-33Z"
-        imagePullPolicy: IfNotPresent
-        command: ["/bin/sh", "/config/initialize"]
+      - name: mb
+        image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+          mc alias set s3 ${S3_ENDPOINT} ${S3_ACCESS_KEY} ${S3_SECRET_KEY}
+          mc mb s3/${BUCKET_NAME} --ignore-existing
+          echo "Bucket ${BUCKET_NAME} is ready"
         env:
-          - name: MINIO_ENDPOINT
-            value: pyroscope-dev-minio
-          - name: MINIO_PORT
-            value: "9000"
-        volumeMounts:
-          - name: minio-configuration
-            mountPath: /config
-        resources:
-          requests:
-            memory: 128Mi
+        - name: S3_ENDPOINT
+          value: "http://pyroscope-dev-rustfs-svc:9000"
+        - name: S3_ACCESS_KEY
+          value: "rustfsadmin"
+        - name: S3_SECRET_KEY
+          value: "rustfsadmin"
+        - name: BUCKET_NAME
+          value: "pyroscope-data"
+      restartPolicy: Never
+  backoffLimit: 32
 ---
-# Source: pyroscope/charts/minio/templates/post-install-create-user-job.yaml
-apiVersion: batch/v1
-kind: Job
+# Source: pyroscope/charts/rustfs/templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
 metadata:
-  name: pyroscope-dev-minio-make-user-job
-  namespace: "default"
+  name: "pyroscope-dev-rustfs-test-connection"
   labels:
-    app: minio-make-user-job
-    chart: minio-4.1.0
-    release: pyroscope-dev
-    heritage: Helm
+    helm.sh/chart: rustfs-1.0.3-cs.3
+    app.kubernetes.io/name: rustfs
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.0.0-alpha.73"
+    app.kubernetes.io/managed-by: Helm
   annotations:
-    "helm.sh/hook": post-install,post-upgrade
-    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+    "helm.sh/hook": test
 spec:
-  template:
-    metadata:
-      labels:
-        app: minio-job
-        release: pyroscope-dev
-    spec:
-      restartPolicy: OnFailure      
-      volumes:
-        - name: minio-configuration
-          projected:
-            sources:
-            - configMap:
-                name: pyroscope-dev-minio
-            - secret:
-                name: pyroscope-dev-minio
-
-      serviceAccountName: minio-sa
-      containers:
-      - name: minio-mc
-        image: "quay.io/minio/mc:RELEASE.2022-10-20T23-26-33Z"
-        imagePullPolicy: IfNotPresent
-        command: ["/bin/sh", "/config/add-user"]
-        env:
-          - name: MINIO_ENDPOINT
-            value: pyroscope-dev-minio
-          - name: MINIO_PORT
-            value: "9000"
-        volumeMounts:
-          - name: minio-configuration
-            mountPath: /config
-        resources:
-          requests:
-            memory: 128Mi
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['pyroscope-dev-rustfs:']
+  restartPolicy: Never

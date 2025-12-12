@@ -374,7 +374,7 @@
     "affinity": {},
     "cluster_domain": ".cluster.local.",
     "components": {},
-    "config": "{{- if .Values.minio.enabled }}\nstorage:\n  backend: s3\n  s3:\n    endpoint: \"{{ include \"pyroscope.fullname\" . }}-minio:9000\"\n    bucket_name: {{(index .Values.minio.buckets 0).name | quote }}\n    access_key_id: {{ .Values.minio.rootUser | quote }}\n    secret_access_key: {{ .Values.minio.rootPassword | quote }}\n    insecure: true\n{{- end }}\n",
+    "config": "{{- if .Values.minio.enabled }}\nstorage:\n  backend: s3\n  s3:\n    endpoint: \"{{ include \"pyroscope.fullname\" . }}-minio:9000\"\n    bucket_name: {{(index .Values.minio.buckets 0).name | quote }}\n    access_key_id: {{ .Values.minio.rootUser | quote }}\n    secret_access_key: {{ .Values.minio.rootPassword | quote }}\n    insecure: true\n{{- end }}\n{{- if .Values.rustfs.enabled }}\nstorage:\n  backend: s3\n  s3:\n    endpoint: \"{{ include \"pyroscope.fullname\" . }}-rustfs-svc:9000\"\n    bucket_name: pyroscope-data\n    access_key_id: {{ .Values.rustfs.secret.rustfs.access_key | quote }}\n    secret_access_key: {{ .Values.rustfs.secret.rustfs.secret_key | quote }}\n    insecure: true\n{{- end }}\n",
     "disableSelfProfile": true,
     "dnsPolicy": "ClusterFirst",
     "extraArgs": {
@@ -459,6 +459,24 @@
     "tenantOverrides": {},
     "tolerations": [],
     "topologySpreadConstraints": []
+  },
+  "rustfs": {
+    "enabled": false,
+    "image": {
+      "tag": "1.0.0-alpha.72"
+    },
+    "ingress": {
+      "enabled": false
+    },
+    "replicaCount": 1,
+    "service": {
+      "type": "ClusterIP"
+    },
+    "storageclass": {
+      "dataStorageSize": "16Gi",
+      "name": ""
+    },
+    "volumesPerReplica": 1
   },
   "serviceMonitor": {
     "annotations": {},

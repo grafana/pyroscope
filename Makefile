@@ -46,7 +46,7 @@ GO_MOD_PATHS := api/ lidia/ examples/language-sdk-instrumentation/golang-push/ri
 HELM_ARGS =
 
 HELM_FLAGS_V1 :=
-HELM_FLAGS_V1_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true
+HELM_FLAGS_V1_MICROSERVICES := --set architecture.microservices.enabled=true --set rustfs.enabled=true
 HELM_FLAGS_V2 := --set architecture.storage.v1=false --set architecture.storage.v2=true
 HELM_FLAGS_V2_MICROSERVICES := $(HELM_FLAGS_V1_MICROSERVICES) $(HELM_FLAGS_V2)
 
@@ -423,6 +423,7 @@ goreleaser/lint: $(BIN)/goreleaser
 helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm repo add --force-update minio https://charts.min.io/
 	$(BIN)/helm repo add --force-update grafana https://grafana.github.io/helm-charts
+	$(BIN)/helm repo add --force-update simonswine https://simonswine.github.io/helm-charts
 	$(BIN)/helm dependency update ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency update ./operations/monitoring/helm/pyroscope-monitoring/

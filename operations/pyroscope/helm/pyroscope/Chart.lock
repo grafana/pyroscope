@@ -8,5 +8,8 @@ dependencies:
 - name: minio
   repository: https://charts.min.io/
   version: 4.1.0
-digest: sha256:9a0fe91cf1cae1afbefb7108377c6126e66ae38788330645e9d8334a2cd4e0a2
-generated: "2025-10-29T12:09:10.350715062Z"
+- name: rustfs
+  repository: https://simonswine.github.io/helm-charts
+  version: 1.0.3-cs.3
+digest: sha256:1a9255391588c67b68d0511d05ed8b3797a43ac28408ff348f42ce18bae677e3
+generated: "2025-12-10T15:57:43.865354Z"
