@@ -10,7 +10,7 @@ RUN apt-get update && apt-get -y install wget git build-essential libssl-dev lib
     gawk autoconf automake bison libffi-dev libgdbm-dev libsqlite3-dev libtool pkg-config sqlite3 libncurses5-dev \
     libreadline-dev gnupg
 
-ARG GO_VERSION=1.22.10
+ARG GO_VERSION=1.24.11
 RUN wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
 ENV PATH=$PATH:/usr/local/go/bin
