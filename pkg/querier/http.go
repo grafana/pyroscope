@@ -281,6 +281,13 @@ func parseSelectProfilesRequest(fieldNames renderRequestFieldNames, req *http.Re
 
 	v := req.URL.Query()
 
+	if !v.Has(fieldNames.from) {
+		return nil, nil, fmt.Errorf("%q is required", fieldNames.from)
+	}
+	if !v.Has(fieldNames.until) {
+		return nil, nil, fmt.Errorf("%q is required", fieldNames.until)
+	}
+
 	// parse time using pyroscope's attime parser
 	start := model.TimeFromUnixNano(attime.Parse(v.Get(fieldNames.from)).UnixNano())
 	end := model.TimeFromUnixNano(attime.Parse(v.Get(fieldNames.until)).UnixNano())
