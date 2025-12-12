@@ -453,7 +453,10 @@ func TestSymbolizerMetrics(t *testing.T) {
 					logger:  log.NewNopLogger(),
 					metrics: newMetrics(nil),
 				}
-				lidiaData, err := preProcessor.processELFData(elfData)
+				lidiaData, errMetric, err := ProcessELFData(elfData)
+				if err != nil {
+					preProcessor.metrics.debugSymbolResolutionErrors.WithLabelValues(errMetric).Inc()
+				}
 				require.NoError(t, err)
 				require.NotEmpty(t, lidiaData)
 

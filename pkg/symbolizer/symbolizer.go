@@ -12,15 +12,22 @@ import (
 	"path/filepath"
 	"time"
 
+	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
+
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/parca/debuginfo"
 )
+
+const BucketPrefix = "symbolizer"
+const BucketPrefixParcaDebugInfo = "parca-debug-info"
 
 type DebuginfodClient interface {
 	FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error)
@@ -46,28 +53,34 @@ func (cfg *Config) Validate() error {
 type Symbolizer struct {
 	logger  log.Logger
 	client  DebuginfodClient
+	parca   *debuginfo.Fetcher
 	bucket  objstore.Bucket
 	metrics *metrics
 	cfg     Config
 }
 
-func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*Symbolizer, error) {
+func New(logger log.Logger, cfg Config, reg prometheus.Registerer, lidiaBucket, parcaBucket objstore.Bucket) (*Symbolizer, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
+	m := newMetrics(reg)
 
-	metrics := newMetrics(reg)
-
-	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics)
+	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, m)
 	if err != nil {
 		return nil, err
 	}
 
+	parcaFetcher := debuginfo.NewFetcher(
+		debuginfo.NewParallelDebuginfodClients(nil),
+		parcaBucket,
+	)
+
 	return &Symbolizer{
 		logger:  logger,
 		client:  client,
-		bucket:  bucket,
-		metrics: metrics,
+		parca:   parcaFetcher,
+		bucket:  lidiaBucket,
+		metrics: m,
 		cfg:     cfg,
 	}, nil
 }
@@ -394,7 +407,7 @@ func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
 			loc.lines = s.createFallbackSymbol(req.binaryName, loc)
 			continue
 		}
-
+		//todo demangle symbols
 		loc.lines = frames
 	}
 }
@@ -449,7 +462,7 @@ func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID stri
 
 // fetchLidiaFromDebuginfod fetches debug info from debuginfod and converts to Lidia format
 func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID string) ([]byte, error) {
-	debugReader, err := s.fetchFromDebuginfod(ctx, buildID)
+	debugReader, err := s.fetch(ctx, buildID)
 	if err != nil {
 		var bnfErr buildIDNotFoundError
 		if errors.As(err, &bnfErr) {
@@ -464,12 +477,29 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 		return nil, fmt.Errorf("read debuginfod data: %w", err)
 	}
 
-	lidiaData, err := s.processELFData(elfData)
+	lidiaData, errMetric, err := ProcessELFData(elfData)
 	if err != nil {
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues(errMetric).Inc()
 		return nil, err
 	}
 
 	return lidiaData, nil
+}
+
+func (s *Symbolizer) fetch(ctx context.Context, buildID string) (io.ReadCloser, error) {
+	if s.parca != nil {
+		if r, err := s.fetchFromParca(ctx, buildID); err == nil {
+			return r, nil
+		}
+	}
+	return s.fetchFromDebuginfod(ctx, buildID)
+}
+
+func (s *Symbolizer) fetchFromParca(ctx context.Context, buildID string) (io.ReadCloser, error) {
+	return s.parca.FetchDebuginfo(ctx, &debuginfopb.Debuginfo{
+		Source:  debuginfopb.Debuginfo_SOURCE_UPLOAD,
+		BuildId: buildID,
+	})
 }
 
 func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (io.ReadCloser, error) {
@@ -488,19 +518,17 @@ func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (i
 	return debugReader, nil
 }
 
-func (s *Symbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
+func ProcessELFData(data []byte) (lidiaData []byte, errMetric string, err error) {
 	decompressedData, err := detectCompression(data)
 	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("compression_error").Inc()
-		return nil, fmt.Errorf("detect compression: %w", err)
+		return nil, "compression", fmt.Errorf("detect compression: %w", err)
 	}
 
 	reader := bytes.NewReader(decompressedData)
 
 	elfFile, err := elf.NewFile(reader)
 	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("elf_parsing_error").Inc()
-		return nil, fmt.Errorf("parse ELF file: %w", err)
+		return nil, "elf_parsing", fmt.Errorf("parse ELF file: %w", err)
 	}
 	defer elfFile.Close()
 
@@ -509,10 +537,10 @@ func (s *Symbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
 
 	err = lidia.CreateLidiaFromELF(elfFile, memBuffer, lidia.WithCRC(), lidia.WithFiles(), lidia.WithLines())
 	if err != nil {
-		return nil, fmt.Errorf("create lidia file: %w", err)
+		return nil, "lidia_conversion", fmt.Errorf("create lidia file: %w", err)
 	}
 
-	return memBuffer.Bytes(), nil
+	return memBuffer.Bytes(), "", nil
 }
 
 func (s *Symbolizer) createFallbackSymbol(binaryName string, loc *location) []lidia.SourceInfoFrame {
