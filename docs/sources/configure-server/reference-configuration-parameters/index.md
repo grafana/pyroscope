@@ -2293,6 +2293,10 @@ distributor_usage_groups:
 # CLI flag: -querier.query-analysis-series-enabled
 [query_analysis_series_enabled: <boolean> | default = false]
 
+# The minimum step duration for range queries.
+# CLI flag: -querier.min-step-duration
+[min_step_duration: <duration> | default = 15s]
+
 # Maximum number of flame graph nodes by default. 0 to disable.
 # CLI flag: -querier.max-flamegraph-nodes-default
 [max_flamegraph_nodes_default: <int> | default = 8192]
