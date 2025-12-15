@@ -129,6 +129,52 @@ func TestCreateReadLookup(t *testing.T) {
 	}
 }
 
+func TestDynSym(t *testing.T) {
+	tmpDir := t.TempDir()
+	lidiaPath := filepath.Join(tmpDir, "test.lidia")
+
+	err := lidia.CreateLidia("./testdata/libfib.so", lidiaPath,
+		lidia.WithCRC(), lidia.WithFiles(), lidia.WithLines())
+	require.NoError(t, err)
+
+	bs, err := os.ReadFile(lidiaPath)
+	require.NoError(t, err)
+
+	var reader lidia.ReaderAtCloser = &bufferCloser{bs, 0}
+	table, err := lidia.OpenReader(reader, lidia.WithCRC())
+	require.NoError(t, err)
+	defer table.Close()
+
+	testCases := []struct {
+		name           string
+		addr           uint64
+		expectFunction string
+		expectFound    bool
+	}{
+		{
+			name:           "fib",
+			addr:           0x330,
+			expectFunction: "fib",
+			expectFound:    true,
+		},
+	}
+
+	var results []lidia.SourceInfoFrame
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			results, err := table.Lookup(results, tc.addr)
+			require.NoError(t, err)
+			if tc.expectFound {
+				require.NotEmpty(t, results, "Expected to find a function at this address")
+				require.Equal(t, tc.expectFunction, results[0].FunctionName)
+			} else {
+				require.Empty(t, results, "Expected no function at this address")
+			}
+		})
+	}
+}
+
 // bufferCloser implements the lidia.ReaderAtCloser interface for testing
 type bufferCloser struct {
 	bs  []byte

@@ -161,13 +161,21 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 	for _, o := range opts {
 		o(&rc.opt)
 	}
-
-	symbols, err := elfFile.Symbols()
-	if err != nil {
-		return fmt.Errorf("failed to read symbols from ELF file: %w", err)
+	var (
+		symErr, dynSymErr, err error
+	)
+	symbols, symErr := elfFile.Symbols()
+	if symErr != nil {
+		symbols, dynSymErr = elfFile.DynamicSymbols()
+		if dynSymErr != nil {
+			return fmt.Errorf("failed to read symbols from ELF file: %w, %w", symErr, dynSymErr)
+		}
 	}
 
 	for _, symbol := range symbols {
+		if elf.ST_TYPE(symbol.Info) != elf.STT_FUNC || symbol.Name == "" {
+			continue
+		}
 		rc.VisitRange(&Range{
 			VA:        symbol.Value,
 			Length:    uint32(symbol.Size),
