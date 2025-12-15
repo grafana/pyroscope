@@ -1,3 +1,5 @@
+buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.6-20250212095114-4db6f2d46517.1 h1:gXHJuGlWoXUkH9O9Qxw9skNAhIDgNgJx0tYSbI8fjIo=
+buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.6-20250212095114-4db6f2d46517.1/go.mod h1:58eXMQL4tavOGzyXIveWU4f3yTFGmLIHxM9uk11DOIo=
 cloud.google.com/go/accessapproval v1.8.6 h1:UkmDPCKvj24bkGVrvgJPcgSDkmIPw/bAmOiDb9avOiE=
 cloud.google.com/go/accessapproval v1.8.6/go.mod h1:FfmTs7Emex5UvfnnpMkhuNkRCP85URnBFt5ClLxhZaQ=
 cloud.google.com/go/accesscontextmanager v1.9.6 h1:2LnncRqfYB8NEdh9+FeYxAt9POTW/0zVboktnRlO11w=
