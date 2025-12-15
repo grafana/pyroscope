@@ -162,7 +162,7 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 		o(&rc.opt)
 	}
 	var (
-		symErr, dynSymErr, err error
+		symErr, dynSymErr error
 	)
 	symbols, symErr := elfFile.Symbols()
 	if symErr != nil {
@@ -190,7 +190,7 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 
 	rb.sort()
 
-	err = rc.write(output)
+	err := rc.write(output)
 	if err != nil {
 		return fmt.Errorf("failed to write lidia file: %w", err)
 	}

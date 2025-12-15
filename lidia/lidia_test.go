@@ -101,14 +101,14 @@ func TestCreateReadLookup(t *testing.T) {
 		},
 		{
 			name:           "Known function address",
-			addr:           0x581ddc0,
-			expectFunction: "github.com/prometheus/client_golang/prometheus..typeAssert.0",
+			addr:           0x3c85d0,
+			expectFunction: "github.com/prometheus/client_model/go.init",
 			expectFound:    true,
 		},
 		{
 			name:           "Known function address",
-			addr:           0x581df40,
-			expectFunction: "github.com/uber/jaeger-client-go/config..typeAssert.0",
+			addr:           0x3c8b70,
+			expectFunction: "github.com/prometheus/client_model/go.MetricType.Enum",
 			expectFound:    true,
 		},
 	}
