@@ -37,44 +37,7 @@ Where:
 - **m** (tenant shard limit) is configured explicitly
 - **n** (dataset shard limit) is selected dynamically based on observed ingestion rate
 
-```mermaid
-block-beta
-    columns 15
-
-    shards["ring"]:2
-    space
-    shard_0["0"]
-    shard_1["1"]
-    shard_2["2"]
-    shard_3["3"]
-    shard_4["4"]
-    shard_5["5"]
-    shard_6["6"]
-    shard_7["7"]
-    shard_8["8"]
-    shard_9["9"]
-    shard_10["10"]
-    shard_11["11"]
-
-    tenant["tenant"]:2
-    space:4
-    ts_3["3"]
-    ts_4["4"]
-    ts_5["5"]
-    ts_6["6"]
-    ts_7["7"]
-    ts_8["8"]
-    ts_9["9"]
-    space:2
-
-    dataset["dataset"]:2
-    space:5
-    ds_4["4"]
-    ds_5["5"]
-    ds_6["6"]
-    ds_7["7"]
-    space:4
-```
+![Diagram showing shard placement with ring shards 0-11, tenant shard range at offset 3 with size 8, and dataset shard range as a subset starting at offset 1 with 4 shards.](shard-placement.svg)
 
 In this example:
 - The tenant's shard range starts at offset 3 with size 8
@@ -104,30 +67,7 @@ To prevent hot spots where many datasets end up on the same node, shards are map
 - Is updated when nodes are added or removed
 - Preserves existing mappings as much as possible
 
-```mermaid
-graph LR
-    Distributor==>SegmentWriter
-    PlacementAgent-.-PlacementRules
-    SegmentWriter-->|metadata|PlacementManager
-    SegmentWriter==>|data|Segments
-    PlacementManager-.->PlacementRules
-
-    subgraph Distributor["distributor"]
-        PlacementAgent
-    end
-
-    subgraph Metastore["metastore"]
-        PlacementManager
-    end
-
-    subgraph ObjectStore["object store"]
-        PlacementRules(placement rules)
-        Segments(segments)
-    end
-
-    subgraph SegmentWriter["segment-writer"]
-    end
-```
+![Diagram showing placement flow between distributor, segment-writer, metastore, and object storage with placement rules and segments.](placement-flow.svg)
 
 ## Adaptive load balancing
 
