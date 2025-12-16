@@ -57,9 +57,9 @@ The compaction service runs within the metastore and is responsible for:
 
 The compaction service relies on Raft to guarantee consistency:
 
-1. **Plan preparation**: The leader prepares job state changes (read-only)
-2. **Plan proposal**: Changes are committed to the Raft log
-3. **State update**: All replicas apply the changes atomically
+1. **Plan preparation**: The leader prepares job state changes (read-only).
+1. **Plan proposal**: Changes are committed to the Raft log.
+1. **State update**: All replicas apply the changes atomically.
 
 This ensures all replicas maintain consistent views of compaction state.
 
@@ -84,10 +84,10 @@ Profiling data from each service is stored as a separate dataset within a block.
 
 The scheduler uses a **Small Job First** strategy:
 
-1. Lower-level blocks are prioritized (smaller, affect read amplification more)
-2. Within a level, unassigned jobs are processed first
-3. Jobs with fewer failures are prioritized
-4. Jobs with earlier lease expiration are considered first
+1. Lower-level blocks are prioritized (smaller, affect read amplification more).
+1. Within a level, unassigned jobs are processed first.
+1. Jobs with fewer failures are prioritized.
+1. Jobs with earlier lease expiration are considered first.
 
 ### Adaptive capacity
 
@@ -110,10 +110,10 @@ Jobs are assigned using a lease-based model:
 
 When a worker fails:
 
-1. The job lease expires
-2. The metastore detects the expired lease
-3. The job is reassigned to another worker
-4. Source blocks remain until compaction succeeds
+1. The job lease expires.
+1. The metastore detects the expired lease.
+1. The job is reassigned to another worker.
+1. Source blocks remain until compaction succeeds.
 
 Jobs that repeatedly fail are deprioritized to prevent blocking the queue.
 
@@ -145,9 +145,9 @@ stateDiagram-v2
 
 After successful compaction:
 
-1. **Tombstone creation**: Source blocks are marked for deletion
-2. **Delay period**: Blocks are retained to allow in-flight queries to complete
-3. **Hard deletion**: After the delay, source blocks are removed from storage
+1. **Tombstone creation**: Source blocks are marked for deletion.
+1. **Delay period**: Blocks are retained to allow in-flight queries to complete.
+1. **Hard deletion**: After the delay, source blocks are removed from storage.
 
 This two-phase deletion prevents query failures during compaction.
 

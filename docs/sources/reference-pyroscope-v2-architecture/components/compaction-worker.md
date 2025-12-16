@@ -25,11 +25,11 @@ The ingestion pipeline creates many small segments—potentially millions of obj
 
 ## How it works
 
-1. **Job polling**: Workers poll the [metastore](../metastore/) for available compaction jobs
-2. **Segment download**: Workers download source segments from object storage
-3. **Merge operation**: Matching datasets from different segments are merged
-4. **Block upload**: The compacted block is uploaded to object storage
-5. **Status report**: Workers report job completion to the metastore
+1. **Job polling**: Workers poll the [metastore](../metastore/) for available compaction jobs.
+1. **Segment download**: Workers download source segments from object storage.
+1. **Merge operation**: Matching datasets from different segments are merged.
+1. **Block upload**: The compacted block is uploaded to object storage.
+1. **Status report**: Workers report job completion to the metastore.
 
 ## Compaction speed
 
@@ -65,10 +65,10 @@ The output block contains non-overlapping, independent datasets optimized for ef
 
 Compaction workers are completely stateless:
 
-- No persistent local storage required
-- Can scale horizontally by adding more instances
-- Instances can be added or removed at any time
-- Default concurrency is based on available CPU cores
+- Require no persistent local storage
+- Scale horizontally by adding more instances
+- Allow instances to be added or removed at any time
+- Use default concurrency based on available CPU cores
 
 ## Fault tolerance
 
@@ -80,4 +80,4 @@ If a compaction worker fails:
 
 Jobs that repeatedly fail are deprioritized to prevent blocking the compaction queue.
 
-For detailed information about the compaction process, see [Compaction](../../compaction/).
+For detailed information about the compaction process, refer to [Compaction](../../compaction/).

@@ -16,11 +16,11 @@ The query-backend is a stateless component that executes queries with high paral
 
 ## How it works
 
-1. **Plan reception**: The query-backend receives an execution plan from the query-frontend
-2. **Block reading**: Required blocks are read from object storage
-3. **Parallel processing**: Query execution is parallelized across multiple blocks
-4. **Result aggregation**: Results from sub-queries are combined
-5. **Response**: The final result is returned to the query-frontend
+1. **Plan reception**: The query-backend receives an execution plan from the query-frontend.
+1. **Block reading**: Required blocks are read from object storage.
+1. **Parallel processing**: Query execution is parallelized across multiple blocks.
+1. **Result aggregation**: Results from sub-queries are combined.
+1. **Response**: The final result is returned to the query-frontend.
 
 ## Graph-based query execution
 
@@ -60,19 +60,19 @@ The query-backend supports various query operations:
 
 The query-backend is completely stateless:
 
-- No persistent storage required
-- No caching layer needed (reads directly from object storage)
-- Can scale horizontally to hundreds of instances
-- Instances can be added or removed without coordination
+- Requires no persistent storage
+- Needs no caching layer (reads directly from object storage)
+- Scales horizontally to hundreds of instances
+- Allows instances to be added or removed without coordination
 
 ## Scalability
 
 The query-backend enables horizontal scaling of the read path:
 
-- Add more instances to handle heavier query workloads
-- Scale independently of the write path
-- No shared state between instances
-- Well-suited for auto-scaling based on query load
+- Handles heavier query workloads by adding more instances
+- Scales independently of the write path
+- Shares no state between instances
+- Supports auto-scaling based on query load
 
 ## Performance characteristics
 
@@ -83,4 +83,4 @@ The query-backend enables horizontal scaling of the read path:
 
 ## Future: serverless execution
 
-In future versions, we plan to add a serverless query-backend option, making querying even more cost-effective by only paying for actual query execution time.
+Future versions will include a serverless query-backend option, making querying even more cost-effective by only paying for actual query execution time.

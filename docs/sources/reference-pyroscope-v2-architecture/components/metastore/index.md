@@ -55,20 +55,20 @@ The metadata index stores information about data objects (blocks and segments) i
 
 The index is partitioned by time, with each partition covering a 6-hour window. Within each partition, data is organized by tenant and shard.
 
-For detailed information about the metadata index structure, see [Metadata index](../../metadata-index/).
+For detailed information about the metadata index structure, refer to [Metadata index](../../metadata-index/).
 
 ## Compaction coordination
 
 The metastore coordinates the compaction process by:
 
-1. **Job planning**: Creating compaction jobs when enough segments are available
-2. **Job scheduling**: Assigning jobs to available compaction-workers
-3. **Job tracking**: Monitoring job progress and handling failures
-4. **Index updates**: Updating the metadata index when compaction completes
+1. **Job planning**: Creates compaction jobs when enough segments are available.
+1. **Job scheduling**: Assigns jobs to available compaction-workers.
+1. **Job tracking**: Monitors job progress and handles failures.
+1. **Index updates**: Updates the metadata index when compaction completes.
 
 The compaction service uses a lease-based ownership model with fencing tokens to prevent conflicts when workers fail or become unresponsive.
 
-For detailed information about the compaction process, see [Compaction](../../compaction/).
+For detailed information about the compaction process, refer to [Compaction](../../compaction/).
 
 ## Query support
 
