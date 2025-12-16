@@ -82,7 +82,3 @@ Pyroscope requires any of the following object stores for block files:
 - [Microsoft Azure Storage](https://azure.microsoft.com/en-us/services/storage/)
 - [OpenStack Swift](https://wiki.openstack.org/wiki/Swift)
 - Local Filesystem (single node only)
-
-## Future directions
-
-Future development includes exploring a serverless query backend to make querying even more cost-effective. The roadmap also includes transitioning the control plane to a serverless model, making Pyroscope fully stateless and diskless.

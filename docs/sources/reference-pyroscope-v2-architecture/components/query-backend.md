@@ -80,7 +80,3 @@ The query-backend enables horizontal scaling of the read path:
 - **Streaming execution**: Results streamed as they're computed
 - **Memory efficient**: Graph-based execution minimizes memory requirements
 - **Network optimized**: Results combined close to the data source
-
-## Future: serverless execution
-
-Future versions will include a serverless query-backend option, making querying even more cost-effective by only paying for actual query execution time.
