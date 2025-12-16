@@ -1,8 +1,7 @@
 module github.com/grafana/pyroscope/api
 
-go 1.24.6
+go 1.25.5
 
-toolchain go1.24.9
 
 require (
 	connectrpc.com/connect v1.19.1
