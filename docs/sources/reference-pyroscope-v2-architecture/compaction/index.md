@@ -104,7 +104,7 @@ Jobs that repeatedly fail are deprioritized to prevent blocking the queue.
 
 ## Job status lifecycle
 
-![State diagram showing job status lifecycle from Unassigned to InProgress, then to Success or LeaseExpired, with possible transitions to Excluded for faulty jobs or back to InProgress for reassignment.](job-status-lifecycle.svg)
+{{< figure max-width="70%" src="./job-status-lifecycle.svg" alt="State diagram showing job status lifecycle from Unassigned to InProgress, then to Success or LeaseExpired, with possible transitions to Excluded for faulty jobs or back to InProgress for reassignment." >}}
 
 ## Performance characteristics
 
