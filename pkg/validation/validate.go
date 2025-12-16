@@ -126,23 +126,24 @@ type LabelValidationLimits interface {
 }
 
 // ValidateLabels validates the labels of a profile.
-func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1.LabelPair, logger log.Logger) error {
+// Returns the potentially modified labels slice (e.g., after sanitization) and any validation error.
+func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1.LabelPair, logger log.Logger) ([]*typesv1.LabelPair, error) {
 	if len(ls) == 0 {
-		return NewErrorf(MissingLabels, MissingLabelsErrorMsg)
+		return nil, NewErrorf(MissingLabels, MissingLabelsErrorMsg)
 	}
 	sort.Sort(phlaremodel.Labels(ls))
 	numLabelNames := len(ls)
 	maxLabels := limits.MaxLabelNamesPerSeries(tenantID)
 	if numLabelNames > maxLabels {
-		return NewErrorf(MaxLabelNamesPerSeries, MaxLabelNamesPerSeriesErrorMsg, phlaremodel.LabelPairsString(ls), numLabelNames, maxLabels)
+		return nil, NewErrorf(MaxLabelNamesPerSeries, MaxLabelNamesPerSeriesErrorMsg, phlaremodel.LabelPairsString(ls), numLabelNames, maxLabels)
 	}
 	metricNameValue := phlaremodel.Labels(ls).Get(model.MetricNameLabel)
 	if !model.UTF8Validation.IsValidMetricName(metricNameValue) {
-		return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid metric name")
+		return nil, NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid metric name")
 	}
 	serviceNameValue := phlaremodel.Labels(ls).Get(phlaremodel.LabelNameServiceName)
 	if !isValidServiceName(serviceNameValue) {
-		return NewErrorf(MissingLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "service name is not provided")
+		return nil, NewErrorf(MissingLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "service name is not provided")
 	}
 
 	var (
@@ -152,16 +153,17 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 	for idx < len(ls) {
 		l := ls[idx]
 		if len(l.Name) > limits.MaxLabelNameLength(tenantID) {
-			return NewErrorf(LabelNameTooLong, LabelNameTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
+			return nil, NewErrorf(LabelNameTooLong, LabelNameTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
 		}
 		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
-			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
+			return nil, NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
 		if origName, newName, ok := SanitizeLegacyLabelName(l.Name); ok && origName != newName {
 			var err error
+			// todo update canary exporter to check for utf8 labels, at least service.name once the write path supports utf8
 			ls, idx, err = handleSanitizedLabel(ls, idx, origName, newName)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			level.Debug(logger).Log(
 				"msg", "label name sanitized",
@@ -175,19 +177,19 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 			}
 			continue
 		} else if !ok {
-			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+origName+"'")
+			return nil, NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+origName+"'")
 		}
 		if !model.LabelValue(l.Value).IsValid() {
-			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label value '"+l.Value+"'")
+			return nil, NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label value '"+l.Value+"'")
 		}
 		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
-			return NewErrorf(DuplicateLabelNames, DuplicateLabelNamesErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
+			return nil, NewErrorf(DuplicateLabelNames, DuplicateLabelNamesErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
 		}
 		lastLabelName = l.Name
 		idx += 1
 	}
 
-	return nil
+	return ls, nil
 }
 
 // handleSanitizedLabel handles the case where a label name is sanitized. It ensures that the label name is unique and fails if the value is distinct.

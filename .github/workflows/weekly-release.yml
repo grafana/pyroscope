@@ -33,7 +33,7 @@ jobs:
           git tag "$WEEKLY_IMAGE_TAG"
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
         with:
-          go-version: "1.24.10"
+          go-version: "1.24.11"
           cache: false
       # setup docker buildx
       - name: Set up QEMU
@@ -42,7 +42,7 @@ jobs:
         uses: docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55 # v2
       # login to docker hub
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@eb33f84481d38701f4d2c587a4817ce332784f5f
+        uses: grafana/shared-workflows/actions/get-vault-secrets@bae259f9ed5b6fcb050e3b58adf7aee776d4edb5
         with:
           common_secrets: |
             DOCKERHUB_USERNAME=dockerhub:username

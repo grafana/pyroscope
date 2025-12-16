@@ -1,6 +1,6 @@
 ARG SDK_VERSION=8.0
 # The build images takes an SDK image of the buildplatform, so the platform the build is running on.
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:$SDK_VERSION AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:$SDK_VERSION-bookworm-slim AS build
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -20,7 +20,7 @@ RUN dotnet publish -o . --framework net$SDK_VERSION --runtime linux-x64 --no-sel
 FROM --platform=linux/amd64 pyroscope/pyroscope-dotnet:0.13.0-glibc AS sdk
 
 # Runtime only image of the targetplatfrom, so the platform the image will be running on.
-FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:$SDK_VERSION
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:$SDK_VERSION-noble-chiseled-extra
 
 WORKDIR /dotnet
 
@@ -44,6 +44,7 @@ ENV PYROSCOPE_PROFILING_CONTENTION_ENABLED=true
 ENV PYROSCOPE_PROFILING_EXCEPTION_ENABLED=true
 ENV PYROSCOPE_PROFILING_HEAP_ENABLED=true
 ENV RIDESHARE_LISTEN_PORT=5000
+ENV ASPNETCORE_URLS=http://*:5000
 
 
-CMD sh -c "ASPNETCORE_URLS=http://*:${RIDESHARE_LISTEN_PORT} exec dotnet /dotnet/example.dll"
+CMD ["/dotnet/example.dll"]

@@ -27,7 +27,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24.10
+          go-version: 1.24.11
       - name: Format
         run: make fmt check/unstaged-changes
   check-generated:
@@ -40,7 +40,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24.10
+          go-version: 1.24.11
       - name: Check generated files
         run: make generate check/unstaged-changes
   test:
@@ -63,7 +63,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24.10
+          go-version: 1.24.11
       - name: Go Mod
         run: make check/go/mod
       - name: Test
@@ -78,7 +78,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24.10
+          go-version: 1.24.11
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -109,7 +109,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24.10
+          go-version: 1.24.11
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
@@ -139,10 +139,10 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: 1.24.10
+          go-version: 1.24.11
       # login to docker hub
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@eb33f84481d38701f4d2c587a4817ce332784f5f
+        uses: grafana/shared-workflows/actions/get-vault-secrets@bae259f9ed5b6fcb050e3b58adf7aee776d4edb5
         with:
           common_secrets: |
             DOCKERHUB_USERNAME=dockerhub:username
@@ -174,7 +174,7 @@ jobs:
     steps:
     - id: "submit-argowfs-deployment"
       name: "Submit Argo Workflows deployment"
-      uses: grafana/shared-workflows/actions/trigger-argo-workflow@eb33f84481d38701f4d2c587a4817ce332784f5f
+      uses: grafana/shared-workflows/actions/trigger-argo-workflow@bae259f9ed5b6fcb050e3b58adf7aee776d4edb5
       with:
         namespace: "phlare-cd"
         workflow_template: "deploy-pyroscope-dev"

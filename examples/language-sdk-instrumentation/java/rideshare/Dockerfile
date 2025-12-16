@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM sapmachine:17-jdk-headless AS builder
+FROM --platform=$BUILDPLATFORM sapmachine:21-jdk-headless AS builder
 
 WORKDIR /opt/app
 
@@ -17,7 +17,7 @@ COPY src src
 RUN ./gradlew assemble --no-daemon
 
 
-FROM sapmachine:17-jdk-headless
+FROM sapmachine:21-jdk-headless
 
 RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates
 

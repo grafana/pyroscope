@@ -374,7 +374,7 @@ $(BIN)/jb: Makefile go.mod
 
 $(BIN)/helm: Makefile go.mod
 	@mkdir -p $(@D)
-	CGO_ENABLED=0 GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.14.3
+	CGO_ENABLED=0 GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.19.2
 
 $(BIN)/kubeconform: Makefile go.mod
 	@mkdir -p $(@D)
@@ -425,6 +425,8 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm repo add --force-update grafana https://grafana.github.io/helm-charts
 	$(BIN)/helm dependency update ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
+	$(BIN)/helm dependency update ./operations/monitoring/helm/pyroscope-monitoring/
+	$(BIN)/helm dependency build ./operations/monitoring/helm/pyroscope-monitoring/
 	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
 	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V1) \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \
