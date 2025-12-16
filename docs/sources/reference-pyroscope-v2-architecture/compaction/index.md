@@ -27,22 +27,7 @@ The ingestion pipeline creates many small segments—potentially millions of obj
 
 Compaction in Pyroscope v2 is coordinated by the [metastore](../components/metastore/) and executed by [compaction-workers](../components/compaction-worker/).
 
-```mermaid
-sequenceDiagram
-    participant W as Compaction Worker
-    participant M as Metastore
-    participant S as Object Storage
-
-    loop Continuous
-        W->>M: Poll for jobs
-        M->>W: Assign job with source blocks
-        W->>S: Download source segments
-        W->>W: Merge segments into block
-        W->>S: Upload compacted block
-        W->>M: Report completion
-        M->>M: Update metadata index
-    end
-```
+![Sequence diagram showing the compaction workflow between compaction worker, metastore, and object storage with continuous polling, job assignment, segment download, merge, upload, and completion reporting.](compaction-sequence.svg)
 
 ## Compaction service
 
@@ -119,20 +104,7 @@ Jobs that repeatedly fail are deprioritized to prevent blocking the queue.
 
 ## Job status lifecycle
 
-```mermaid
-stateDiagram-v2
-    [*] --> Unassigned : Create Job
-    Unassigned --> InProgress : Assign Job
-    InProgress --> Success : Job Completed
-    InProgress --> LeaseExpired: Job Lease Expires
-    LeaseExpired: Abandoned Job
-
-    LeaseExpired --> Excluded: Failure Threshold Exceeded
-    Excluded: Faulty Job
-
-    Success --> [*] : Remove Job from Schedule
-    LeaseExpired --> InProgress : Reassign Job
-```
+![State diagram showing job status lifecycle from Unassigned to InProgress, then to Success or LeaseExpired, with possible transitions to Excluded for faulty jobs or back to InProgress for reassignment.](job-status-lifecycle.svg)
 
 ## Performance characteristics
 

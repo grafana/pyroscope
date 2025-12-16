@@ -1,0 +1,12 @@
+stateDiagram-v2
+    [*] --> Unassigned : Create Job
+    Unassigned --> InProgress : Assign Job
+    InProgress --> Success : Job Completed
+    InProgress --> LeaseExpired: Job Lease Expires
+    LeaseExpired: Abandoned Job
+
+    LeaseExpired --> Excluded: Failure Threshold Exceeded
+    Excluded: Faulty Job
+
+    Success --> [*] : Remove Job from Schedule
+    LeaseExpired --> InProgress : Reassign Job

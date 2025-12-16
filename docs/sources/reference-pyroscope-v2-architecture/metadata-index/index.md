@@ -75,21 +75,7 @@ Within each shard:
 
 Index writes are performed by [segment-writers](../components/segment-writer/) when new segments are created:
 
-```mermaid
-sequenceDiagram
-    participant SW as segment-writer
-    participant M as Metastore
-    participant R as Raft
-    participant I as Index
-
-    SW->>M: AddBlock(metadata)
-    M->>R: Propose ADD_BLOCK
-    R->>R: Commit to log
-    R->>I: Insert block
-    I-->>R: Success
-    R-->>M: Committed
-    M-->>SW: Success
-```
+![Sequence diagram showing the index write flow from segment-writer to metastore to Raft to index, with AddBlock proposal, commit to log, block insertion, and success responses.](index-write-sequence.svg)
 
 ### Tombstone protection
 
@@ -157,23 +143,7 @@ The cleaner runs on the Raft leader and:
 1. Creates tombstones for affected blocks.
 1. Tombstones are processed during compaction.
 
-```mermaid
-sequenceDiagram
-    participant C as Cleaner
-    participant M as Metastore
-    participant R as Raft
-    participant I as Index
-
-    C->>M: TruncateIndex(policy)
-    M->>I: List partitions
-    I-->>M: Partition list
-    M->>M: Apply retention policy
-    M->>R: Propose TRUNCATE_INDEX
-    R->>I: Delete partitions
-    R->>I: Add tombstones
-    R-->>M: Committed
-    M-->>C: Success
-```
+![Sequence diagram showing the cleanup process flow from cleaner to metastore to Raft to index, with partition listing, retention policy application, partition deletion, tombstone addition, and commit.](cleanup-sequence.svg)
 
 ## Performance
 
