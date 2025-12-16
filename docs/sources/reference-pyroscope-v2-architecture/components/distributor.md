@@ -25,13 +25,13 @@ Unlike v1 where profiles are routed to ingesters based on hash ring token distri
 
 The distributor uses a three-step process to determine where to place a profile:
 
-1. **Tenant shards**: Find suitable locations from the total shards using the `tenant_id`
-2. **Dataset shards**: Narrow down to locations suitable for the `service_name` label
-3. **Final placement**: Select the exact shard using consistent hashing or adaptive load balancing
+1. **Tenant shards**: Find suitable locations from the total shards using the `tenant_id`.
+1. **Dataset shards**: Narrow down to locations suitable for the `service_name` label.
+1. **Final placement**: Select the exact shard using consistent hashing or adaptive load balancing.
 
 This algorithm balances data locality with even distribution across the cluster. Distributors are aware of availability zones and route profiles to segment-writers in the same zone to avoid cross-AZ traffic penalties.
 
-For detailed information about the distribution algorithm, see [Data distribution](../../data-distribution/).
+For detailed information about the distribution algorithm, refer to [Data distribution](../../data-distribution/).
 
 ## Validation
 
@@ -45,7 +45,7 @@ If a request contains invalid data, the distributor returns a 400 HTTP status co
 
 ## Load balancing
 
-We recommend randomly load balancing write requests across distributor instances. If you're running Pyroscope in a Kubernetes cluster, you can define a Kubernetes [Service](https://kubernetes.io/docs/concepts/services-networking/service/) as ingress for the distributors.
+Randomly load balance write requests across distributor instances. If you're running Pyroscope in a Kubernetes cluster, you can define a Kubernetes [Service](https://kubernetes.io/docs/concepts/services-networking/service/) as ingress for the distributors.
 
 The distributor discovers segment-writers through memberlist-based ring discovery, which maintains the list of available segment-writer instances.
 
@@ -53,7 +53,7 @@ The distributor discovers segment-writers through memberlist-based ring discover
 
 The distributor is completely stateless and disk-less:
 
-- No local storage requirements
-- Can scale horizontally by adding more instances
-- Instances can be added or removed without data migration
-- Suitable for deployment in ephemeral containers
+- Requires no local storage
+- Scales horizontally by adding more instances
+- Allows instances to be added or removed without data migration
+- Supports deployment in ephemeral containers

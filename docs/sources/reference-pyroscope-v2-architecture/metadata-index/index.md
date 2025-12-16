@@ -102,10 +102,10 @@ Before adding a block, the index checks for tombstones to prevent re-adding bloc
 
 Queries use the linearizable read pattern to ensure consistency:
 
-1. **Read index request**: Query asks for the current commit index
-2. **Leader check**: Verifies the current leader
-3. **Wait for commit**: Waits until the commit index is applied locally
-4. **Read state**: Reads from the local state machine
+1. **Read index request**: Query asks for the current commit index.
+1. **Leader check**: Verifies the current leader.
+1. **Wait for commit**: Waits until the commit index is applied locally.
+1. **Read state**: Reads from the local state machine.
 
 This allows both leader and follower replicas to serve queries while ensuring they see the latest committed state.
 
@@ -134,9 +134,9 @@ Query:
 
 When blocks are compacted:
 
-1. Source block entries are replaced with compacted block entry
-2. Tombstones are created for source blocks
-3. Tombstones trigger eventual deletion of source objects
+1. Source block entries are replaced with compacted block entry.
+1. Tombstones are created for source blocks.
+1. Tombstones trigger eventual deletion of source objects.
 
 ### Time-based retention
 
@@ -151,11 +151,11 @@ Retention policies are tenant-specific and configurable per tenant.
 
 The cleaner runs on the Raft leader and:
 
-1. Lists partitions and applies retention policy
-2. Identifies partitions to delete
-3. Proposes deletion to Raft
-4. Creates tombstones for affected blocks
-5. Tombstones are processed during compaction
+1. Lists partitions and applies retention policy.
+1. Identifies partitions to delete.
+1. Proposes deletion to Raft.
+1. Creates tombstones for affected blocks.
+1. Tombstones are processed during compaction.
 
 ```mermaid
 sequenceDiagram

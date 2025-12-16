@@ -18,10 +18,10 @@ Pyroscope v2 is currently under active testing. Some features may not yet be ful
 
 Pyroscope v2 is a complete architectural redesign focused on improving scalability, performance, and cost-efficiency. The architecture is built around the following goals:
 
-- High write throughput
-- Cost-effective storage
-- Scalable query performance
-- Low operational overhead
+- Delivers high write throughput
+- Provides cost-effective storage
+- Enables scalable query performance
+- Reduces operational overhead
 
 ## Key design changes
 
@@ -83,7 +83,7 @@ graph TD
 
 ## Pyroscope v2 components
 
-Most components in v2 are stateless and do not require any data persisted between process restarts. The metastore is the only stateful component, using Raft consensus for replication. For details about each component, see its page in [Components](../components/).
+Most components in v2 are stateless and don't require any data persisted between process restarts. The metastore is the only stateful component, using Raft consensus for replication. For details about each component, refer to [Components](../components/).
 
 ### The write path
 
@@ -113,9 +113,9 @@ The number of objects created in storage can reach millions per hour. This can s
 
 To ensure high query performance, data objects are compacted in the background. The [compaction-worker](../components/compaction-worker/) service is responsible for merging small segments into larger blocks, which are then written back to object storage. Compaction workers compact data as soon as possible after it's written to object storage, with median time to the first compaction not exceeding 15 seconds.
 
-Compaction workers are coordinated by the metastore service, which maintains the metadata index and schedules compaction jobs. Compaction workers are stateless and do not require any local storage.
+Compaction workers are coordinated by the metastore service, which maintains the metadata index and schedules compaction jobs. Compaction workers are stateless and don't require any local storage.
 
-For more details, see [Compaction](../compaction/).
+For more details, refer to [Compaction](../compaction/).
 
 ## Object storage
 
@@ -131,4 +131,4 @@ Pyroscope requires any of the following object stores for block files:
 
 ## Future directions
 
-Looking ahead, we're exploring a serverless query backend to make querying even more cost-effective. We also plan to transition the control plane to a serverless model, making Pyroscope fully stateless and diskless.
+Future development includes exploring a serverless query backend to make querying even more cost-effective. The roadmap also includes transitioning the control plane to a serverless model, making Pyroscope fully stateless and diskless.

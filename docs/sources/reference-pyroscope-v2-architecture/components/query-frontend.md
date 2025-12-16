@@ -25,11 +25,11 @@ The query-frontend is responsible for:
 
 ## Query flow
 
-1. **Query received**: A query arrives at the query-frontend
-2. **Metadata query**: The frontend queries the metastore to locate relevant blocks
-3. **Plan creation**: A query execution plan is created based on block locations
-4. **Backend invocation**: The plan is sent to query-backend instances for execution
-5. **Result return**: Results are collected and returned to the client
+1. **Query received**: A query arrives at the query-frontend.
+1. **Metadata query**: The frontend queries the metastore to locate relevant blocks.
+1. **Plan creation**: A query execution plan is created based on block locations.
+1. **Backend invocation**: The plan is sent to query-backend instances for execution.
+1. **Result return**: Results are collected and returned to the client.
 
 ## Block discovery
 
@@ -54,17 +54,17 @@ The query-frontend supports various query types:
 
 The query-frontend is completely stateless:
 
-- No persistent storage required
-- Can scale horizontally to hundreds of instances
-- Instances can be added or removed without coordination
-- Well-suited for auto-scaling based on query load
+- Requires no persistent storage
+- Scales horizontally to hundreds of instances
+- Allows instances to be added or removed without coordination
+- Supports auto-scaling based on query load
 
 ## Scalability
 
 The query-frontend can scale independently of the write path:
 
 - Heavy query workloads don't impact ingestion performance
-- Add more instances to handle increased query volume
+- Handles increased query volume by adding more instances
 - Works with any number of query-backend instances
 
 ## Load balancing

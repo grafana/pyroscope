@@ -28,9 +28,9 @@ The distribution algorithm is designed to achieve:
 
 The choice of placement for a profile involves a three-step process:
 
-1. **Tenant shards**: Find *m* suitable locations from the total *N* shards using the `tenant_id`
-2. **Dataset shards**: Find *n* suitable locations from *m* options using the `service_name` label
-3. **Final placement**: Select the exact shard *s* from *n* options
+1. **Tenant shards**: Find *m* suitable locations from the total *N* shards using the `tenant_id`.
+1. **Dataset shards**: Find *n* suitable locations from *m* options using the `service_name` label.
+1. **Final placement**: Select the exact shard *s* from *n* options.
 
 Where:
 - **N** is the total number of shards in the deployment
@@ -153,9 +153,9 @@ Placement rules are stored in object storage and fetched by distributors. Since 
 
 If a segment-writer fails:
 
-1. The distributor selects the next suitable segment-writer from available options
-2. The shard identifier is specified explicitly in the request
-3. Data locality is maintained even during transient failures
+1. The distributor selects the next suitable segment-writer from available options.
+1. The shard identifier is specified explicitly in the request.
+1. Data locality is maintained even during transient failures.
 
 Two requests with the same distribution key may occasionally end up in different shards, but this is expected to be rare.
 

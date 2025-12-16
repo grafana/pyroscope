@@ -16,10 +16,10 @@ The segment-writer is a stateless component that accumulates incoming profiles i
 
 ## How it works
 
-1. **Profile accumulation**: The segment-writer receives profiles from [distributors](../distributor/) and accumulates them in memory
-2. **Segment creation**: Profiles are batched into small blocks called segments
-3. **Object storage write**: Segments are written directly to object storage
-4. **Metadata update**: The segment-writer updates the [metastore](../metastore/) with metadata about newly created segments
+1. **Profile accumulation**: The segment-writer receives profiles from [distributors](../distributor/) and accumulates them in memory.
+1. **Segment creation**: Profiles are batched into small blocks called segments.
+1. **Object storage write**: Segments are written directly to object storage.
+1. **Metadata update**: The segment-writer updates the [metastore](../metastore/) with metadata about newly created segments.
 
 ## Key features
 
@@ -44,26 +44,26 @@ Profiles are accumulated in an in-memory database before being flushed to object
 
 Profiles from the same application (identified by the `service_name` label) are co-located in the same segments. This co-location is maintained by the distributor's routing algorithm and is crucial for:
 
-- Query performance
-- Compaction efficiency
-- Storage optimization
+- Improves query performance
+- Increases compaction efficiency
+- Optimizes storage usage
 
 ## Stateless design
 
 Unlike the v1 ingester which required local disk storage, the segment-writer is completely stateless:
 
-- No persistent local storage required
-- All data is written directly to object storage
-- Can scale horizontally by adding more instances
-- Instances can be added or removed without data migration
-- Recovery after failure is immediate (no WAL replay needed)
+- Requires no persistent local storage
+- Writes all data directly to object storage
+- Scales horizontally by adding more instances
+- Allows instances to be added or removed without data migration
+- Recovers immediately after failure (no WAL replay needed)
 
 ## Segment lifecycle
 
-1. **Creation**: Profiles are accumulated in memory
-2. **Flush**: When conditions are met (time or size thresholds), a segment is written to object storage
-3. **Registration**: Segment metadata is registered in the metastore
-4. **Compaction**: Small segments are later merged into larger blocks by [compaction-workers](../compaction-worker/)
+1. **Creation**: Profiles are accumulated in memory.
+1. **Flush**: When conditions are met (time or size thresholds), a segment is written to object storage.
+1. **Registration**: Segment metadata is registered in the metastore.
+1. **Compaction**: Small segments are later merged into larger blocks by [compaction-workers](../compaction-worker/).
 
 ## Configuration
 

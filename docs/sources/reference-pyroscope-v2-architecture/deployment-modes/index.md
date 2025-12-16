@@ -58,15 +58,15 @@ For evaluation, development, or small-scale deployments, Pyroscope v2 can run as
 
 ## Kubernetes deployment
 
-For Kubernetes deployments, we recommend using the Helm chart with the values file located in the `tools/dev/v2` directory.
+For Kubernetes deployments, use the Helm chart with the values file located in the `tools/dev/v2` directory.
 
 ### Getting started
 
+Clone the repository and deploy using Helm with v2 configuration:
+
 ```bash
-# Clone the repository
 git clone https://github.com/grafana/pyroscope.git
 
-# Deploy using Helm with v2 configuration
 helm install pyroscope ./pyroscope \
   -f tools/dev/v2/values.yaml
 ```
