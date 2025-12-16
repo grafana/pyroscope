@@ -12,8 +12,8 @@ keywords:
 
 # About the Pyroscope v2 architecture
 
-{{< admonition type="warning" >}}
-Pyroscope v2 is currently under active testing. Some features may not yet be fully implemented or stable.
+{{< admonition type="note" >}}
+Pyroscope v2 architecture is production-ready and powers Grafana Cloud Profiles exclusively. However, until it's released by default Pyroscope v2.0, there are no API stability guarantees.
 {{< /admonition >}}
 
 Pyroscope v2 is a complete architectural redesign focused on improving scalability, performance, and cost-efficiency. The architecture is built around the following goals:
