@@ -82,10 +82,11 @@ func TestValidateExemplarType(t *testing.T) {
 }
 
 type benchmarkFixture struct {
-	ctx    context.Context
-	reader *BlockReader
-	plan   *queryv1.QueryPlan
-	tenant []string
+	ctx       context.Context
+	reader    *BlockReader
+	plan      *queryv1.QueryPlan
+	tenant    []string
+	startTime time.Time
 }
 
 // setupBenchmarkFixture creates a benchmark fixture with real block data.
@@ -133,11 +134,21 @@ func setupBenchmarkFixture(b *testing.B) *benchmarkFixture {
 		}
 	}
 
+	// Extract start time from blocks
+	var minTime int64 = -1
+	for _, block := range blocks {
+		if minTime == -1 || block.MinTime < minTime {
+			minTime = block.MinTime
+		}
+	}
+	startTime := time.UnixMilli(minTime)
+
 	return &benchmarkFixture{
-		ctx:    context.Background(),
-		reader: reader,
-		plan:   plan,
-		tenant: tenant,
+		ctx:       context.Background(),
+		reader:    reader,
+		plan:      plan,
+		tenant:    tenant,
+		startTime: startTime,
 	}
 }
 
@@ -158,10 +169,23 @@ func sanitizeMetadata(meta []*metastorev1.BlockMeta) {
 // runTimeSeriesQuery executes a timeseries query with the given parameters.
 func (f *benchmarkFixture) runTimeSeriesQuery(b *testing.B, req *queryv1.InvokeRequest) {
 	b.Helper()
-	_, err := f.reader.Invoke(f.ctx, req)
+	resp, err := f.reader.Invoke(f.ctx, req)
 	if err != nil {
 		b.Fatalf("query failed: %v", err)
 	}
+	for _, r := range resp.Reports {
+		if r.ReportType != queryv1.ReportType_REPORT_TIME_SERIES {
+			continue
+		}
+		for _, s := range r.TimeSeries.TimeSeries {
+			for _, p := range s.Points {
+				if p.Value > 0 {
+					return
+				}
+			}
+		}
+	}
+	panic("no data found")
 }
 
 // makeTimeSeriesRequest creates a timeseries query request with the given parameters.
@@ -196,9 +220,6 @@ func (f *benchmarkFixture) makeTimeSeriesRequest(
 func BenchmarkTimeSeriesQuery(b *testing.B) {
 	fixture := setupBenchmarkFixture(b)
 
-	now := time.Now()
-	oneHourAgo := now.Add(-1 * time.Hour)
-
 	benchmarks := []struct {
 		name         string
 		exemplarType typesv1.ExemplarType
@@ -210,7 +231,7 @@ func BenchmarkTimeSeriesQuery(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			req := fixture.makeTimeSeriesRequest(
-				oneHourAgo, now,
+				fixture.startTime, fixture.startTime.Add(time.Hour),
 				"{}",
 				[]string{"service_name"},
 				bm.exemplarType,
@@ -234,7 +255,6 @@ func BenchmarkTimeSeriesQuery(b *testing.B) {
 // Expected results: Overhead ratio should remain constant across time ranges.
 func BenchmarkTimeSeriesQuery_TimeRange(b *testing.B) {
 	fixture := setupBenchmarkFixture(b)
-	now := time.Now()
 
 	timeRanges := []struct {
 		name     string
@@ -259,7 +279,7 @@ func BenchmarkTimeSeriesQuery_TimeRange(b *testing.B) {
 			for _, et := range exemplarTypes {
 				b.Run(et.name, func(b *testing.B) {
 					req := fixture.makeTimeSeriesRequest(
-						now.Add(-tr.duration), now,
+						fixture.startTime, fixture.startTime.Add(tr.duration),
 						"{}",
 						[]string{"service_name"},
 						et.typ,
