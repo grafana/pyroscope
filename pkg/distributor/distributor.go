@@ -433,7 +433,11 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		finalLog.addFields("service_name", serviceName)
 	}
 	sort.Sort(phlaremodel.Labels(req.Labels))
-	d.captureProfile(context.TODO(), tenantID, serviceName, req.RawProfile, now)
+	captureCtx := context.Background()
+	if sp := opentracing.SpanFromContext(ctx); sp != nil {
+		captureCtx = opentracing.ContextWithSpan(captureCtx, sp)
+	}
+	d.captureProfile(captureCtx, tenantID, serviceName, req.RawProfile, now)
 
 	if req.ID != "" {
 		finalLog.addFields("profile_id", req.ID)
