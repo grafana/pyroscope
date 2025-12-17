@@ -88,11 +88,12 @@ func VisitSampleSeries(
 	for _, idx := range groupsKept.order {
 		for _, group := range groupsKept.m[idx] {
 			if len(group.sampleGroup.Samples) > 0 {
-				validatedLabels, err := visitor.ValidateLabels(group.labels)
+				var err error
+				group.labels, err = visitor.ValidateLabels(group.labels)
 				if err != nil {
 					return err
 				}
-				visitor.VisitSampleSeries(validatedLabels, group.sampleGroup.Samples)
+				visitor.VisitSampleSeries(group.labels, group.sampleGroup.Samples)
 			}
 		}
 	}
