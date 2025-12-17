@@ -1,9 +1,12 @@
 package querybackend
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/grafana/dskit/runutil"
+	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/block"
@@ -29,7 +32,22 @@ func init() {
 }
 
 func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
-	entries, err := profileEntryIterator(q)
+	span := opentracing.SpanFromContext(q.ctx)
+
+	var profileOpts []profileIteratorOption
+	if len(query.Tree.ProfileIdSelector) > 0 {
+		opt, err := withProfileIDSelector(query.Tree.ProfileIdSelector...)
+		if err != nil {
+			return nil, err
+		}
+		profileOpts = append(profileOpts, opt)
+		span.SetTag("profile_id_selector.count", len(query.Tree.ProfileIdSelector))
+		if len(query.Tree.ProfileIdSelector) <= maxProfileIDsToLog {
+			span.LogFields(otlog.String("profile_ids", strings.Join(query.Tree.ProfileIdSelector, ",")))
+		}
+	}
+
+	entries, err := profileEntryIterator(q, profileOpts...)
 	if err != nil {
 		return nil, err
 	}

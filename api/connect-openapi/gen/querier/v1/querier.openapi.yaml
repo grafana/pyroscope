@@ -1209,6 +1209,16 @@ components:
           description: Select stack traces that match the provided selector.
           nullable: true
           $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        profileIdSelector:
+          type: array
+          examples:
+            - - 7c9e6679-7425-40de-944b-e07fc1f90ae7
+          items:
+            type: string
+            examples:
+              - - 7c9e6679-7425-40de-944b-e07fc1f90ae7
+          title: profile_id_selector
+          description: List of Profile UUIDs to query
       title: SelectMergeProfileRequest
       additionalProperties: false
     querier.v1.SelectMergeSpanProfileRequest:

@@ -20,4 +20,4 @@ DEPENDENCIES
   pyroscope (= 0.6.7)
 
 BUNDLED WITH
-   2.4.10
+   2.5.22

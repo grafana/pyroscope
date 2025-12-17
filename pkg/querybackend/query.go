@@ -22,6 +22,11 @@ import (
 //  thus we have handlers. Instead, in order to enable pipelining and
 //  reduce the boilerplate, we should define query execution plans.
 
+const (
+	// maxProfileIDsToLog is the maximum number of profile IDs to log in trace spans.
+	maxProfileIDsToLog = 10
+)
+
 var (
 	handlerMutex  = new(sync.RWMutex)
 	queryHandlers = map[queryv1.QueryType]queryHandler{}

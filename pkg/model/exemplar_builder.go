@@ -52,6 +52,11 @@ func (eb *ExemplarBuilder) Add(fp model.Fingerprint, labels Labels, ts int64, pr
 	})
 }
 
+// Count returns the number of raw exemplars added.
+func (eb *ExemplarBuilder) Count() int {
+	return len(eb.exemplars)
+}
+
 // Build returns the final exemplars, sorted and deduplicated.
 // Exemplars with the same (profileID, timestamp) are merged by intersecting their labels.
 func (eb *ExemplarBuilder) Build() []*typesv1.Exemplar {

@@ -668,9 +668,8 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		req.Msg.MaxNodes = &mn
 	}
 
-	// TODO: remove when profile_id_selector is implemented
 	if len(req.Msg.ProfileIdSelector) > 0 {
-		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("profile_id_selector is not yet implemented"))
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("profile_id_selector is only supported with the v2 query backend"))
 	}
 
 	t, err := q.selectTree(ctx, req.Msg)
