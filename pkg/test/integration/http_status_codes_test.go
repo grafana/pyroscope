@@ -7,9 +7,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,11 +31,12 @@ func TestStatusCodes(t *testing.T) {
 	}
 
 	type Test struct {
-		Name   string
-		Method string
-		Params url.Values
-		Header http.Header
-		Body   string
+		Name             string
+		Method           string
+		Params           url.Values
+		Header           http.Header
+		Body             string
+		WantV1StatusCode int // For test cases which expect a different v1 status code
 	}
 
 	type EndpointTestGroup struct {
@@ -847,14 +850,1763 @@ func TestStatusCodes(t *testing.T) {
 		},
 	}
 
+	labelValuesTests := EndpointTestGroup{
+		Path: "/querier.v1.QuerierService/LabelValues",
+		Tests: map[int][]Test{
+			http.StatusOK: {
+				{
+					Name:   "valid",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"name":  "service_name",
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "valid_with_matchers",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"name":     "service_name",
+						"matchers": []string{`{namespace="default"}`},
+						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":      time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "valid_with_multiple_matchers",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"name":     "service_name",
+						"matchers": []string{`{namespace="default"}`, `{region="us-west"}`},
+						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":      time.Now().UnixMilli(),
+					}),
+				},
+			},
+			http.StatusBadRequest: {
+				{
+					Name:   "invalid_no_time_range",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"name": "service_name",
+					}),
+					// V1 allows no time ranges
+					WantV1StatusCode: http.StatusOK,
+				},
+				{
+					Name:   "invalid_matchers_syntax",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"name":     "service_name",
+						"matchers": []string{"!bad_syntax!"},
+						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":      time.Now().UnixMilli(),
+					}),
+					WantV1StatusCode: http.StatusOK,
+				},
+				{
+					Name:   "invalid_json",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: `{"invalid json"`,
+				},
+				{
+					Name:   "empty_body",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: "",
+				},
+				{
+					Name:   "start_after_end",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"name":  "service_name",
+						"start": time.Now().UnixMilli(),
+						"end":   time.Now().Add(-1 * time.Hour).UnixMilli(),
+					}),
+				},
+				{
+					Name:   "empty_name",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"name":  "",
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "missing_name",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+			},
+			http.StatusMethodNotAllowed: {
+				{
+					Name:   "get_method_not_allowed",
+					Method: http.MethodGet,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+				},
+				{
+					Name:   "put_method_not_allowed",
+					Method: http.MethodPut,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"name":  "service_name",
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "delete_method_not_allowed",
+					Method: http.MethodDelete,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"name":  "service_name",
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "patch_method_not_allowed",
+					Method: http.MethodPatch,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"name":  "service_name",
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+			},
+			http.StatusUnsupportedMediaType: {
+				{
+					Name:   "invalid_content_type",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"text/plain"},
+					},
+					Body: toJSON(map[string]any{
+						"name":  "service_name",
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+			},
+		},
+	}
+
+	labelNamesTests := EndpointTestGroup{
+		Path: "/querier.v1.QuerierService/LabelNames",
+		Tests: map[int][]Test{
+			http.StatusOK: {
+				{
+					Name:   "valid",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "valid_with_matchers",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"matchers": []string{`{namespace="default"}`},
+						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":      time.Now().UnixMilli(),
+					}),
+				},
+			},
+			http.StatusBadRequest: {
+				{
+					Name:   "valid_no_time_range",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{}),
+					// V1 allows no time ranges
+					WantV1StatusCode: http.StatusOK,
+				},
+				{
+					Name:   "invalid_json",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: `{"invalid json"`,
+				},
+				{
+					Name:   "empty_body",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: "",
+				},
+				{
+					Name:   "start_after_end",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().UnixMilli(),
+						"end":   time.Now().Add(-1 * time.Hour).UnixMilli(),
+					}),
+				},
+				{
+					Name:   "invalid_matchers_syntax",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"matchers": []string{"!bad_syntax!"},
+						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":      time.Now().UnixMilli(),
+					}),
+					WantV1StatusCode: http.StatusOK,
+				},
+			},
+			http.StatusMethodNotAllowed: {
+				{
+					Name:   "get_method_not_allowed",
+					Method: http.MethodGet,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+				},
+				{
+					Name:   "put_method_not_allowed",
+					Method: http.MethodPut,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "delete_method_not_allowed",
+					Method: http.MethodDelete,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "patch_method_not_allowed",
+					Method: http.MethodPatch,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+			},
+			http.StatusUnsupportedMediaType: {
+				{
+					Name:   "invalid_content_type",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"text/plain"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+			},
+		},
+	}
+
+	seriesTests := EndpointTestGroup{
+		Path: "/querier.v1.QuerierService/Series",
+		Tests: map[int][]Test{
+			http.StatusOK: {
+				{
+					Name:   "valid",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"matchers": []string{`{service_name="test"}`},
+						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":      time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "valid_with_label_names",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"matchers":   []string{`{service_name="test"}`},
+						"labelNames": []string{"service_name", "namespace"},
+						"start":      time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":        time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "valid_no_matchers",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":   time.Now().UnixMilli(),
+					}),
+				},
+			},
+			http.StatusBadRequest: {
+				{
+					Name:   "invalid_json",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: `{"invalid json"`,
+				},
+				{
+					Name:   "empty_body",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: "",
+				},
+				{
+					Name:   "start_after_end",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"matchers": []string{`{service_name="test"}`},
+						"start":    time.Now().UnixMilli(),
+						"end":      time.Now().Add(-1 * time.Hour).UnixMilli(),
+					}),
+				},
+				{
+					Name:   "invalid_no_time_range",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"matchers": []string{`{service_name="test"}`},
+					}),
+					// V1 allows no time ranges
+					WantV1StatusCode: http.StatusOK,
+				},
+				{
+					Name:   "invalid_matchers_syntax",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"matchers": []string{"!bad_syntax!"},
+						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":      time.Now().UnixMilli(),
+					}),
+					WantV1StatusCode: http.StatusOK,
+				},
+			},
+			http.StatusMethodNotAllowed: {
+				{
+					Name:   "get_method_not_allowed",
+					Method: http.MethodGet,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+				},
+				{
+					Name:   "put_method_not_allowed",
+					Method: http.MethodPut,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"matchers": []string{`{service_name="test"}`},
+						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":      time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "delete_method_not_allowed",
+					Method: http.MethodDelete,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"matchers": []string{`{service_name="test"}`},
+						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":      time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "patch_method_not_allowed",
+					Method: http.MethodPatch,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"matchers": []string{`{service_name="test"}`},
+						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":      time.Now().UnixMilli(),
+					}),
+				},
+			},
+			http.StatusUnsupportedMediaType: {
+				{
+					Name:   "invalid_content_type",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"text/plain"},
+					},
+					Body: toJSON(map[string]any{
+						"matchers": []string{`{service_name="test"}`},
+						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":      time.Now().UnixMilli(),
+					}),
+				},
+			},
+		},
+	}
+
+	selectMergeStacktracesTests := EndpointTestGroup{
+		Path: "/querier.v1.QuerierService/SelectMergeStacktraces",
+		Tests: map[int][]Test{
+			http.StatusOK: {
+				{
+					Name:   "valid",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "valid_with_max_nodes",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"maxNodes":      1024,
+					}),
+				},
+				{
+					Name:   "valid_with_format_tree",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"format":        2,
+					}),
+				},
+				{
+					Name:   "valid_with_label_selector",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": `{service_name="test"}`,
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+			},
+			http.StatusBadRequest: {
+				{
+					Name:   "missing_profile_type_id",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "empty_profile_type_id",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": "",
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "invalid_profile_type_format",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": "invalid_format",
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "missing_label_selector",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "invalid_label_selector",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "!bad_syntax!",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "invalid_json",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: `{"invalid json"`,
+				},
+				{
+					Name:   "empty_body",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: "",
+				},
+				{
+					Name:   "start_after_end",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().UnixMilli(),
+						"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+					}),
+				},
+				{
+					Name:   "invalid_no_time_range",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+					}),
+				},
+			},
+			http.StatusMethodNotAllowed: {
+				{
+					Name:   "get_method_not_allowed",
+					Method: http.MethodGet,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+				},
+				{
+					Name:   "put_method_not_allowed",
+					Method: http.MethodPut,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "delete_method_not_allowed",
+					Method: http.MethodDelete,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "patch_method_not_allowed",
+					Method: http.MethodPatch,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+			},
+			http.StatusUnsupportedMediaType: {
+				{
+					Name:   "invalid_content_type",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"text/plain"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+			},
+		},
+	}
+
+	selectMergeProfileTests := EndpointTestGroup{
+		Path: "/querier.v1.QuerierService/SelectMergeProfile",
+		Tests: map[int][]Test{
+			http.StatusOK: {
+				{
+					Name:   "valid",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "valid_with_max_nodes",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"maxNodes":      1024,
+					}),
+				},
+				{
+					Name:   "valid_with_label_selector",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": `{service_name="test"}`,
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+			},
+			http.StatusBadRequest: {
+				{
+					Name:   "missing_profile_type_id",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "empty_profile_type_id",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": "",
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "invalid_profile_type_format",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": "invalid_format",
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "missing_label_selector",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "invalid_label_selector",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "!bad_syntax!",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "invalid_json",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: `{"invalid json"`,
+				},
+				{
+					Name:   "empty_body",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: "",
+				},
+				{
+					Name:   "start_after_end",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().UnixMilli(),
+						"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+					}),
+				},
+				{
+					Name:   "valid_no_time_range",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+					}),
+				},
+			},
+			http.StatusMethodNotAllowed: {
+				{
+					Name:   "get_method_not_allowed",
+					Method: http.MethodGet,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+				},
+				{
+					Name:   "put_method_not_allowed",
+					Method: http.MethodPut,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "delete_method_not_allowed",
+					Method: http.MethodDelete,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+				{
+					Name:   "patch_method_not_allowed",
+					Method: http.MethodPatch,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+			},
+			http.StatusUnsupportedMediaType: {
+				{
+					Name:   "invalid_content_type",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"text/plain"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+				},
+			},
+		},
+	}
+
+	selectSeriesTests := EndpointTestGroup{
+		Path: "/querier.v1.QuerierService/SelectSeries",
+		Tests: map[int][]Test{
+			http.StatusOK: {
+				{
+					Name:   "valid",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"step":          15.0,
+					}),
+				},
+				{
+					Name:   "valid_with_group_by",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"step":          15.0,
+						"groupBy":       []string{"service_name"},
+					}),
+				},
+				{
+					Name:   "valid_with_limit",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"step":          15.0,
+						"limit":         10,
+					}),
+				},
+			},
+			http.StatusBadRequest: {
+				{
+					Name:   "missing_profile_type_id",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"step":          15.0,
+					}),
+				},
+				{
+					Name:   "empty_profile_type_id",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": "",
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"step":          15.0,
+					}),
+				},
+				{
+					Name:   "invalid_profile_type_format",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": "invalid_format",
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"step":          15.0,
+					}),
+				},
+				{
+					Name:   "missing_label_selector",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"step":          15.0,
+					}),
+				},
+				{
+					Name:   "invalid_label_selector",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "!bad_syntax!",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"step":          15.0,
+					}),
+				},
+				{
+					Name:   "invalid_no_step",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+					}),
+					WantV1StatusCode: http.StatusBadRequest,
+				},
+				{
+					Name:   "invalid_json",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: `{"invalid json"`,
+				},
+				{
+					Name:   "empty_body",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: "",
+				},
+				{
+					Name:   "start_after_end",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().UnixMilli(),
+						"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"step":          15.0,
+					}),
+				},
+				{
+					Name:   "invalid_no_time_range",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"step":          15.0,
+					}),
+				},
+			},
+			http.StatusMethodNotAllowed: {
+				{
+					Name:   "get_method_not_allowed",
+					Method: http.MethodGet,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+				},
+				{
+					Name:   "put_method_not_allowed",
+					Method: http.MethodPut,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"step":          15.0,
+					}),
+				},
+				{
+					Name:   "delete_method_not_allowed",
+					Method: http.MethodDelete,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"step":          15.0,
+					}),
+				},
+				{
+					Name:   "patch_method_not_allowed",
+					Method: http.MethodPatch,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"step":          15.0,
+					}),
+				},
+			},
+			http.StatusUnsupportedMediaType: {
+				{
+					Name:   "invalid_content_type",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"text/plain"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"step":          15.0,
+					}),
+				},
+			},
+		},
+	}
+
+	diffTests := EndpointTestGroup{
+		Path: "/querier.v1.QuerierService/Diff",
+		Tests: map[int][]Test{
+			http.StatusOK: {
+				{
+					Name:   "valid",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						},
+						"right": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+				{
+					Name:   "valid_with_max_nodes",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"maxNodes":      1024,
+						},
+						"right": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+							"maxNodes":      512,
+						},
+					}),
+				},
+				{
+					Name:   "valid_same_time_range",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+						"right": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+			},
+			http.StatusBadRequest: {
+				{
+					Name:   "missing_left",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"right": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+				{
+					Name:   "missing_right",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						},
+					}),
+				},
+				{
+					Name:   "left_missing_profile_type_id",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						},
+						"right": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+				{
+					Name:   "right_missing_profile_type_id",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						},
+						"right": map[string]any{
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+				{
+					Name:   "left_invalid_profile_type",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": "invalid_format",
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						},
+						"right": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+				{
+					Name:   "right_invalid_profile_type",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						},
+						"right": map[string]any{
+							"profileTypeID": "invalid_format",
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+				{
+					Name:   "left_missing_label_selector",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						},
+						"right": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+				{
+					Name:   "right_missing_label_selector",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						},
+						"right": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+				{
+					Name:   "invalid_json",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: `{"invalid json"`,
+				},
+				{
+					Name:   "empty_body",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: "",
+				},
+			},
+			http.StatusMethodNotAllowed: {
+				{
+					Name:   "get_method_not_allowed",
+					Method: http.MethodGet,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+				},
+				{
+					Name:   "put_method_not_allowed",
+					Method: http.MethodPut,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						},
+						"right": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+				{
+					Name:   "delete_method_not_allowed",
+					Method: http.MethodDelete,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						},
+						"right": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+				{
+					Name:   "patch_method_not_allowed",
+					Method: http.MethodPatch,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						},
+						"right": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+			},
+			http.StatusUnsupportedMediaType: {
+				{
+					Name:   "invalid_content_type",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"text/plain"},
+					},
+					Body: toJSON(map[string]any{
+						"left": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-2 * time.Hour).UnixMilli(),
+							"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						},
+						"right": map[string]any{
+							"profileTypeID": profileTypeProcessCPU,
+							"labelSelector": "{}",
+							"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+							"end":           time.Now().UnixMilli(),
+						},
+					}),
+				},
+			},
+		},
+	}
+
+	selectMergeSpanProfileTests := EndpointTestGroup{
+		Path: "/querier.v1.QuerierService/SelectMergeSpanProfile",
+		Tests: map[int][]Test{
+			http.StatusOK: {
+				{
+					Name:   "valid",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"spanSelector":  []string{"span1", "span2"},
+					}),
+				},
+				{
+					Name:   "valid_with_max_nodes",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"spanSelector":  []string{"span1"},
+						"maxNodes":      1024,
+					}),
+				},
+				{
+					Name:   "valid_with_format_tree",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"spanSelector":  []string{"span1"},
+						"format":        2,
+					}),
+				},
+			},
+			http.StatusBadRequest: {
+				{
+					Name:   "missing_profile_type_id",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"spanSelector":  []string{"span1"},
+					}),
+				},
+				{
+					Name:   "empty_profile_type_id",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": "",
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"spanSelector":  []string{"span1"},
+					}),
+				},
+				{
+					Name:   "invalid_profile_type_format",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": "invalid_format",
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"spanSelector":  []string{"span1"},
+					}),
+				},
+				{
+					Name:   "missing_label_selector",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"spanSelector":  []string{"span1"},
+					}),
+				},
+				{
+					Name:   "invalid_label_selector",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "!bad_syntax!",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"spanSelector":  []string{"span1"},
+					}),
+				},
+				{
+					Name:   "invalid_json",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: `{"invalid json"`,
+				},
+				{
+					Name:   "empty_body",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: "",
+				},
+				{
+					Name:   "start_after_end",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().UnixMilli(),
+						"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"spanSelector":  []string{"span1"},
+					}),
+				},
+				{
+					Name:   "invalid_no_time_range",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"spanSelector":  []string{"span1"},
+					}),
+				},
+			},
+			http.StatusMethodNotAllowed: {
+				{
+					Name:   "get_method_not_allowed",
+					Method: http.MethodGet,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+				},
+				{
+					Name:   "put_method_not_allowed",
+					Method: http.MethodPut,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"spanSelector":  []string{"span1"},
+					}),
+				},
+				{
+					Name:   "delete_method_not_allowed",
+					Method: http.MethodDelete,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"spanSelector":  []string{"span1"},
+					}),
+				},
+				{
+					Name:   "patch_method_not_allowed",
+					Method: http.MethodPatch,
+					Header: http.Header{
+						"Content-Type": []string{"application/json"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"spanSelector":  []string{"span1"},
+					}),
+				},
+			},
+			http.StatusUnsupportedMediaType: {
+				{
+					Name:   "invalid_content_type",
+					Method: http.MethodPost,
+					Header: http.Header{
+						"Content-Type": []string{"text/plain"},
+					},
+					Body: toJSON(map[string]any{
+						"profileTypeID": profileTypeProcessCPU,
+						"labelSelector": "{}",
+						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
+						"end":           time.Now().UnixMilli(),
+						"spanSelector":  []string{"span1"},
+					}),
+				},
+			},
+		},
+	}
+
 	allTests := []EndpointTestGroup{
 		renderTests,
 		renderDiffTests,
 		profileTypesTests,
+		labelValuesTests,
+		labelNamesTests,
+		seriesTests,
+		selectMergeStacktracesTests,
+		selectMergeProfileTests,
+		selectSeriesTests,
+		selectMergeSpanProfileTests,
+		diffTests,
 	}
 
 	EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
 		client := http.DefaultClient
+		isV1Test := strings.HasSuffix(t.Name(), "v1")
 
 		for _, endpoint := range allTests {
 			for wantCode, tests := range endpoint.Tests {
@@ -885,7 +2637,21 @@ func TestStatusCodes(t *testing.T) {
 
 						res, err := client.Do(req)
 						require.NoError(t, err)
-						require.Equal(t, wantCode, res.StatusCode)
+
+						wantCode := wantCode
+						if tt.WantV1StatusCode != 0 && isV1Test {
+							wantCode = tt.WantV1StatusCode
+						}
+
+						if !assert.Equal(t, wantCode, res.StatusCode) {
+							bytes, err := io.ReadAll(res.Body)
+							res.Body.Close()
+							if err != nil {
+								t.Log("failed to read response body:", err)
+							} else {
+								t.Log("response body:", string(bytes))
+							}
+						}
 					})
 				}
 			}
