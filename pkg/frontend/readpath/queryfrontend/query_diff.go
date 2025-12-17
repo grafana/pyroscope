@@ -63,7 +63,7 @@ func (q *QueryFrontend) Diff(
 		return rightErr
 	})
 	if err = g.Wait(); err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	diff, err := phlaremodel.NewFlamegraphDiffFromBytes(left, right, maxNodes)
