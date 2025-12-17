@@ -433,7 +433,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		finalLog.addFields("service_name", serviceName)
 	}
 	sort.Sort(phlaremodel.Labels(req.Labels))
-	d.captureProfile(ctx, tenantID, serviceName, req.RawProfile, now)
+	d.captureProfile(context.TODO(), tenantID, serviceName, req.RawProfile, now)
 
 	if req.ID != "" {
 		finalLog.addFields("profile_id", req.ID)
