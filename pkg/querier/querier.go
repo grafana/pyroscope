@@ -215,6 +215,10 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 		otlog.Int64("end", req.Msg.End),
 	)
 
+	if req.Msg.Name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+
 	if q.storeGatewayQuerier == nil || !hasTimeRange {
 		responses, err := q.labelValuesFromIngesters(ctx, req.Msg)
 		if err != nil {
