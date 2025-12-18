@@ -7,17 +7,19 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/grafana/dskit/flagext"
 )
 
 // Config encapsulates the necessary config values to instantiate an cos client.
 type Config struct {
-	Bucket    string     `yaml:"bucket"`
-	Region    string     `yaml:"region"`
-	AppID     string     `yaml:"app_id"`
-	Endpoint  string     `yaml:"endpoint"`
-	SecretKey string     `yaml:"secret_key"`
-	SecretID  string     `yaml:"secret_id"`
-	HTTP      HTTPConfig `yaml:"http"`
+	Bucket    string         `yaml:"bucket"`
+	Region    string         `yaml:"region"`
+	AppID     string         `yaml:"app_id"`
+	Endpoint  string         `yaml:"endpoint"`
+	SecretKey flagext.Secret `yaml:"secret_key"`
+	SecretID  string         `yaml:"secret_id"`
+	HTTP      HTTPConfig     `yaml:"http"`
 }
 
 // Validate validates cos client config and returns error on failure
@@ -27,13 +29,13 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("cos config: failed to parse endpoint: %w", err)
 		}
 
-		if empty(c.SecretKey) || empty(c.SecretID) {
+		if empty(c.SecretKey.String()) || empty(c.SecretID) {
 			return errors.New("secret id and secret key cannot be empty")
 		}
 		return nil
 	}
 
-	if empty(c.Bucket) || empty(c.AppID) || empty(c.Region) || empty(c.SecretID) || empty(c.SecretKey) {
+	if empty(c.Bucket) || empty(c.AppID) || empty(c.Region) || empty(c.SecretID) || empty(c.SecretKey.String()) {
 		return errors.New("invalid cos configuration, bucket, app_id, region, secret_id and secret_key must be set")
 	}
 	return nil
@@ -55,7 +57,7 @@ func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&c.AppID, prefix+"cos.app-id", "", "COS app id")
 	f.StringVar(&c.Endpoint, prefix+"cos.endpoint", "", "COS storage endpoint")
 	f.StringVar(&c.SecretID, prefix+"cos.secret-id", "", "COS secret id")
-	f.StringVar(&c.SecretKey, prefix+"cos.secret-key", "", "COS secret key")
+	f.Var(&c.SecretKey, prefix+"cos.secret-key", "COS secret key")
 	c.HTTP.RegisterFlagsWithPrefix(prefix, f)
 }
 
