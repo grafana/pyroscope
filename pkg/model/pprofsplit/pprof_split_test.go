@@ -485,6 +485,51 @@ func Test_VisitSampleSeries(t *testing.T) {
 				},
 			},
 		},
+		{
+			description: "merging groups after label drop should preserve all samples",
+			rules: []*relabel.Config{
+				{
+					Action: relabel.LabelDrop,
+					Regex:  relabel.MustNewRegexp("^drop_me$"),
+				},
+			},
+			labels: []*typesv1.LabelPair{},
+			profile: &profilev1.Profile{
+				StringTable: []string{"", "do_not_drop_me", "drop_me", "a"},
+				Sample: []*profilev1.Sample{
+					// Group 1: no labels
+					{LocationId: []uint64{1}, Value: []int64{100}, Label: []*profilev1.Label{}},
+					{LocationId: []uint64{2}, Value: []int64{101}, Label: []*profilev1.Label{}},
+					// Group 2: do_not_drop_me=a (should stay intact)
+					{LocationId: []uint64{3}, Value: []int64{200}, Label: []*profilev1.Label{{Key: 1, Str: 3}}},
+					{LocationId: []uint64{4}, Value: []int64{201}, Label: []*profilev1.Label{{Key: 1, Str: 3}}},
+					// Group 3: drop_me=a (should be merged with the first group)
+					{LocationId: []uint64{5}, Value: []int64{300}, Label: []*profilev1.Label{{Key: 2, Str: 3}}},
+					{LocationId: []uint64{6}, Value: []int64{301}, Label: []*profilev1.Label{{Key: 2, Str: 3}}},
+				},
+			},
+			// After merging, expect 2 groups containing all 6 samples
+			expected: []sampleSeries{
+				{
+					labels: []*typesv1.LabelPair{},
+					samples: []*profilev1.Sample{
+						{LocationId: []uint64{1}, Value: []int64{100}, Label: []*profilev1.Label{}},
+						{LocationId: []uint64{2}, Value: []int64{101}, Label: []*profilev1.Label{}},
+						{LocationId: []uint64{5}, Value: []int64{300}, Label: []*profilev1.Label{}},
+						{LocationId: []uint64{6}, Value: []int64{301}, Label: []*profilev1.Label{}},
+					},
+				},
+				{
+					labels: []*typesv1.LabelPair{
+						{Name: "do_not_drop_me", Value: "a"},
+					},
+					samples: []*profilev1.Sample{
+						{LocationId: []uint64{3}, Value: []int64{200}, Label: []*profilev1.Label{}},
+						{LocationId: []uint64{4}, Value: []int64{201}, Label: []*profilev1.Label{}},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

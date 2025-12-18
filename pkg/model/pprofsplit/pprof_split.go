@@ -153,8 +153,7 @@ type lazyGroup struct {
 func (g *lazyGroup) addSampleGroup(stringTable []string, sg pprof.SampleGroup) {
 	if len(g.sampleGroup.Samples) == 0 {
 		g.sampleGroup.Labels = sg.Labels
-		// defensive copy, we don't want to modify the original slice
-		g.sampleGroup.Samples = append([]*profilev1.Sample(nil), sg.Samples...)
+		g.sampleGroup.Samples = append(g.sampleGroup.Samples, sg.Samples...)
 		return
 	}
 
