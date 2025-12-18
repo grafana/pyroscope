@@ -152,7 +152,8 @@ type lazyGroup struct {
 
 func (g *lazyGroup) addSampleGroup(stringTable []string, sg pprof.SampleGroup) {
 	if len(g.sampleGroup.Samples) == 0 {
-		g.sampleGroup = sg
+		g.sampleGroup.Labels = sg.Labels
+		g.sampleGroup.Samples = append(g.sampleGroup.Samples, sg.Samples...)
 		return
 	}
 
@@ -207,8 +208,12 @@ func (g *groupsWithFingerprints) add(stringTable []string, lbls phlaremodel.Labe
 
 	// add the labels to the list
 	g.m[fp] = append(g.m[fp], &lazyGroup{
-		sampleGroup: group,
-		labels:      lbls,
+		sampleGroup: pprof.SampleGroup{
+			Labels: group.Labels,
+			// defensive copy, we don't want to modify the original slice
+			Samples: append([]*profilev1.Sample(nil), group.Samples...),
+		},
+		labels: lbls,
 	})
 }
 
