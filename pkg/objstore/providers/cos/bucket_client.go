@@ -16,7 +16,7 @@ func NewBucketClient(cfg Config, name string, logger log.Logger) (objstore.Bucke
 		Region:    cfg.Region,
 		AppId:     cfg.AppID,
 		Endpoint:  cfg.Endpoint,
-		SecretKey: cfg.SecretKey,
+		SecretKey: cfg.SecretKey.String(),
 		SecretId:  cfg.SecretID,
 		HTTPConfig: exthttp.HTTPConfig{
 			IdleConnTimeout:       model.Duration(cfg.HTTP.IdleConnTimeout),
