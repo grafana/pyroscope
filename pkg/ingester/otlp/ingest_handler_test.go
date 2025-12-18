@@ -31,6 +31,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockotlp"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func TestGetServiceNameFromAttributes(t *testing.T) {
@@ -353,7 +354,7 @@ func TestConversion(t *testing.T) {
 						}}}}},
 				Dictionary: &b.dictionary}
 			logger := test.NewTestingLogger(t)
-			h := NewOTLPIngestHandler(testConfig(), svc, logger)
+			h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 			_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
 
 			if td.expectedError == "" {
@@ -452,7 +453,7 @@ func TestSampleAttributes(t *testing.T) {
 				}}}}},
 		Dictionary: &otlpb.dictionary}
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(profiles))
@@ -618,7 +619,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		Dictionary: &otlpb.dictionary}
 
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
 	require.NoError(t, err)
 
@@ -682,6 +683,12 @@ func testConfig() server.Config {
 	return cfg
 }
 
+func defaultLimits() validation.MockLimits {
+	return validation.MockLimits{
+		IngestionBodyLimitBytesValue: 1024 * 1024 * 1024, // 1GB
+	}
+}
+
 // createValidOTLPRequest creates a minimal valid OTLP profile export request for testing
 func createValidOTLPRequest() *v1experimental2.ExportProfilesServiceRequest {
 	b := new(otlpbuilder)
@@ -728,7 +735,7 @@ func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
 	}).Return(nil, nil)
 
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 
 	jsonRequest := `{
 		"resourceProfiles": [{
@@ -770,7 +777,7 @@ func TestHTTPRequestWithGzipCompression(t *testing.T) {
 	}).Return(nil, nil)
 
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 
 	req := createValidOTLPRequest()
 	reqBytes, err := proto.Marshal(req)
@@ -805,7 +812,7 @@ func TestHTTPRequestWithGzipCompressionAndJSON(t *testing.T) {
 	}).Return(nil, nil)
 
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 
 	jsonRequest := `{
 		"resourceProfiles": [{

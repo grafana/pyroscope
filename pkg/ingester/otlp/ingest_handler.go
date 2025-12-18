@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
@@ -18,16 +19,15 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/server"
+	"github.com/grafana/dskit/tenant"
 	pprofileotlp "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
-
-	"google.golang.org/grpc/status"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/tenant"
+	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
 type ingestHandler struct {
@@ -35,6 +35,7 @@ type ingestHandler struct {
 	svc     PushService
 	log     log.Logger
 	handler http.Handler
+	limits  Limits
 }
 
 type Handler interface {
@@ -46,10 +47,15 @@ type PushService interface {
 	PushBatch(ctx context.Context, req *distirbutormodel.PushRequest) error
 }
 
-func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger) Handler {
+type Limits interface {
+	IngestionBodyLimitBytes(tenantID string) int64
+}
+
+func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, limits Limits) Handler {
 	h := &ingestHandler{
-		svc: svc,
-		log: l,
+		svc:    svc,
+		log:    l,
+		limits: limits,
 	}
 
 	grpcServer := newGrpcServer(cfg)
@@ -107,9 +113,19 @@ func (h *ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request) {
+	tenantID, err := tenant.TenantID(r.Context())
+	if err != nil {
+		httputil.ErrorWithStatus(w, err, http.StatusUnauthorized)
+		return
+	}
+
 	defer r.Body.Close()
 
-	var body []byte
+	var (
+		errMsgBodyRead = "failed to read request body"
+		reader         = r.Body
+	)
+
 	if strings.EqualFold(r.Header.Get("Content-Encoding"), "gzip") {
 		gzipReader, gzipErr := gzip.NewReader(r.Body)
 		if gzipErr != nil {
@@ -118,22 +134,18 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 		defer gzipReader.Close()
+		errMsgBodyRead = "failed to read gzip-compressed request body"
 
-		var readErr error
-		body, readErr = io.ReadAll(gzipReader)
-		if readErr != nil {
-			level.Error(h.log).Log("msg", "failed to read gzip-compressed request body", "err", readErr)
-			http.Error(w, "Failed to read request body", http.StatusBadRequest)
-			return
-		}
-	} else {
-		var readErr error
-		body, readErr = io.ReadAll(r.Body)
-		if readErr != nil {
-			level.Error(h.log).Log("msg", "failed to read request body", "err", readErr)
-			http.Error(w, "Failed to read request body", http.StatusBadRequest)
-			return
-		}
+		// Limit after decompression size
+		reader = io.NopCloser(io.LimitReader(gzipReader, h.limits.IngestionBodyLimitBytes(tenantID)))
+	}
+
+	// TODO: Verify body limit for uncompressed requests
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		level.Error(h.log).Log("msg", errMsgBodyRead, "err", err)
+		http.Error(w, errMsgBodyRead, http.StatusBadRequest)
+		return
 	}
 
 	req := &pprofileotlp.ExportProfilesServiceRequest{}
@@ -192,7 +204,7 @@ func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfi
 }
 
 func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
-	_, err := tenant.ExtractTenantIDFromContext(ctx)
+	_, err := tenant.TenantID(ctx)
 	if err != nil {
 		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.Unauthenticated, "failed to extract tenant ID from context: %s", err.Error())
 	}

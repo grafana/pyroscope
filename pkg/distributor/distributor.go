@@ -240,6 +240,15 @@ func (d *Distributor) stopping(_ error) error {
 }
 
 func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	maxProfileSizeBytes := int64(d.limits.MaxProfileSizeBytes(tenantID))
+	maxRequestSizeBytes := 16 * maxProfileSizeBytes // TODO: Should be an override or be aligned with BodySize
+	requestSizeUsed := 0
+
 	req := &distributormodel.PushRequest{
 		Series:         make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
 		RawProfileType: distributormodel.RawProfileTypePPROF,
@@ -247,10 +256,15 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	allErrors := multierror.New()
 	for _, grpcSeries := range grpcReq.Msg.Series {
 		for _, grpcSample := range grpcSeries.Samples {
-			profile, err := pprof.RawFromBytes(grpcSample.RawProfile)
+			profile, err := pprof.RawFromBytesWithLimit(grpcSample.RawProfile, maxProfileSizeBytes)
 			if err != nil {
 				allErrors.Add(err)
 				continue
+			}
+			requestSizeUsed += profile.SizeVT() // TODO: use existing value from Profile
+			if requestSizeUsed > int(maxRequestSizeBytes) {
+				// Should it instead use the profiles that made it?
+				return nil, fmt.Errorf("profile payload sizes %d of the whole request exceeded limit %d", maxRequestSizeBytes, requestSizeUsed)
 			}
 			series := &distributormodel.ProfileSeries{
 				Labels:     grpcSeries.Labels,
@@ -264,7 +278,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	if err := d.PushBatch(ctx, req); err != nil {
 		allErrors.Add(err)
 	}
-	err := allErrors.Err()
+	err = allErrors.Err()
 	if err != nil && validation.ReasonOf(err) != validation.Unknown {
 		if sp := opentracing.SpanFromContext(ctx); sp != nil {
 			ext.LogError(sp, err)

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-
+	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/prometheus/model/labels"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -47,7 +47,7 @@ const (
 )
 
 // ParseToPprof is not doing much now. It parses the profile with no processing/splitting, adds labels.
-func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata, limits ingestion.Limits) (res *distributormodel.PushRequest, err error) {
+func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata, limits ingestion.Limits) (res *distributormodel.PushRequest, err error) {
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -67,7 +67,13 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata, limi
 		return res, nil
 	}
 
-	profile, err := pprof.RawFromBytes(p.Profile)
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	maxBytes := int64(limits.MaxProfileSizeBytes(tenantID))
+
+	profile, err := pprof.RawFromBytesWithLimit(p.Profile, maxBytes)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
