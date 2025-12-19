@@ -88,11 +88,7 @@ func (ff FileFinder) findFallback(ctx context.Context) (*vcsv1.GetFileResponse, 
 	// todo: add more languages support
 	default:
 		// by default we return the file content at the given path without any processing.
-		content, err := ff.fetchRepoFile(ctx, ff.file.Path, ff.ref)
-		if err != nil {
-			return nil, err
-		}
-		return newFileResponse(content.Content, content.URL)
+		return ff.fetchRepoFile(ctx, ff.file.Path, ff.ref)
 	}
 }
 

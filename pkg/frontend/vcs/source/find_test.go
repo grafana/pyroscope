@@ -404,6 +404,28 @@ require (
 			expectedURL:     "https://github.com/stretchr/testify/blob/v1.10.0/require/require.go",
 			expectedError:   false,
 		},
+		{
+			name: "fallback/unknown-file-extension",
+			fileSpec: config.FileSpec{
+				FunctionName: "some.function",
+				Path:         "scripts/example.unknown_extension",
+			},
+			ref: "main",
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Owner: "grafana",
+						Repo:  "pyroscope",
+						Ref:   "main",
+						Path:  "scripts/example.unknown_extension",
+					},
+					content: "# Python script content\nprint('hello')",
+				},
+			},
+			expectedContent: "# Python script content\nprint('hello')",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/scripts/example.unknown_extension",
+			expectedError:   false,
+		},
 	}
 
 	for _, tt := range tests {
