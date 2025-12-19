@@ -26,7 +26,7 @@ func TestEmptyPPROF(t *testing.T) {
 			"\r\n" +
 			"--ae798a53dec9077a712cf18e2ebf54842f5c792cfed6a31b6f469cfd2684--\r\n"),
 	}
-	profile, err := p.ParseToPprof(nil, ingestion.Metadata{})
+	profile, err := p.ParseToPprof(nil, ingestion.Metadata{}, nil)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(profile.Series))
 }

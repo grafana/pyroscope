@@ -47,7 +47,7 @@ const (
 )
 
 // ParseToPprof is not doing much now. It parses the profile with no processing/splitting, adds labels.
-func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res *distributormodel.PushRequest, err error) {
+func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata, limits ingestion.Limits) (res *distributormodel.PushRequest, err error) {
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -106,7 +106,7 @@ func fixTime(profile *pprof.Profile, md ingestion.Metadata) {
 }
 
 func (p *RawProfile) Parse(_ context.Context, _ storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
-	return fmt.Errorf("parsing pprof to tree/storage.Putter is nolonger ")
+	return fmt.Errorf("parsing pprof to tree/storage.Putter is no longer supported")
 }
 
 func (p *RawProfile) handleRawData() (err error) {

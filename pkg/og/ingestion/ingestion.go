@@ -38,8 +38,12 @@ type RawProfile interface {
 	Parse(context.Context, storage.Putter, storage.MetricsExporter, Metadata) error
 }
 
+type Limits interface {
+	MaxProfileSizeBytes(tenantID string) int
+}
+
 type ParseableToPprof interface {
-	ParseToPprof(context.Context, Metadata) (*distributormodel.PushRequest, error)
+	ParseToPprof(context.Context, Metadata, Limits) (*distributormodel.PushRequest, error)
 }
 
 type Metadata struct {

@@ -193,7 +193,7 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 // RegisterDistributor registers the endpoints associated with the distributor.
 func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, cfg server.Config) {
 	writePathOpts := a.registerOptionsWritePath(limits)
-	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, a.logger)
+	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, limits, a.logger)
 	otlpHandler := otlp.NewOTLPIngestHandler(cfg, d, a.logger)
 
 	a.RegisterRoute("/ingest", pyroscopeHandler, writePathOpts...)
