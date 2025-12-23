@@ -326,7 +326,7 @@ func (s *templateSpecs) writeExamples(sb io.Writer, path string, op *openapi3.Op
 		url: "http://localhost:4040" + path,
 	}
 
-	fmt.Fprintln(sb, "{{% code %}}")
+	fmt.Fprintln(sb, "{{< code >}}")
 
 	for _, ex := range []exampler{
 		newExampleCurl(requestBodySchemaFrom(op)),
@@ -338,7 +338,7 @@ func (s *templateSpecs) writeExamples(sb io.Writer, path string, op *openapi3.Op
 		fmt.Fprintln(sb, "")
 	}
 
-	fmt.Fprintln(sb, "{{% /code %}}")
+	fmt.Fprintln(sb, "{{< /code >}}")
 }
 
 func setBody(body map[string]any, prefix string, name string, value any) {
