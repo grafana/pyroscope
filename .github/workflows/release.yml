@@ -5,8 +5,6 @@ on:
     # run only against tags
     tags:
       - "v*"
-      # do not run for weekly release tags
-      - "!weekly-f*"
 
 permissions:
   contents: write
