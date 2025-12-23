@@ -75,7 +75,6 @@ dockers:
       - cmd/pyroscope/pyroscope.yaml
     image_templates:
       - "grafana/{{ .ProjectName }}:{{ .Version }}-amd64"
-      - "grafana/{{ .ProjectName }}:latest-amd64"
     build_flag_templates:
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.created={{.Date}}"
@@ -93,7 +92,6 @@ dockers:
       - cmd/pyroscope/pyroscope.yaml
     image_templates:
       - "grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8"
-      - "grafana/{{ .ProjectName }}:latest-arm64v8"
     build_flag_templates:
       - "--platform=linux/arm64/v8"
       - "--label=org.opencontainers.image.created={{.Date}}"
@@ -106,10 +104,6 @@ docker_manifests:
     image_templates:
       - grafana/{{ .ProjectName }}:{{ .Version }}-amd64
       - grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8
-  - name_template: grafana/{{ .ProjectName }}:latest
-    image_templates:
-      - grafana/{{ .ProjectName }}:latest-amd64
-      - grafana/{{ .ProjectName }}:latest-arm64v8
 nfpms:
   - id: pyroscope
     formats:
