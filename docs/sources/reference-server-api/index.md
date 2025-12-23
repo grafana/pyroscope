@@ -48,7 +48,7 @@ A request body with the following fields is required:
 |`series[].samples[].ID` | UUID of the profile | `734FD599-6865-419E-9475-932762D8F469` |
 |`series[].samples[].rawProfile` | raw_profile is the set of bytes of the pprof profile | `PROFILE_BASE64` |
 
-{{% code %}}
+{{< code >}}
 ```curl
 curl \
   -H "Content-Type: application/json" \
@@ -108,7 +108,7 @@ print(resp)
 print(resp.content)
 ```
 
-{{% /code %}}
+{{< /code >}}
 
 
 ### Querying profiling data
@@ -140,7 +140,7 @@ A request body with the following fields is required:
 |`right.stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
 |`right.stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
 
-{{% code %}}
+{{< code >}}
 ```curl
 curl \
   -H "Content-Type: application/json" \
@@ -184,7 +184,7 @@ print(resp)
 print(resp.content)
 ```
 
-{{% /code %}}
+{{< /code >}}
 #### `/querier.v1.QuerierService/LabelNames`
 
 LabelNames returns a list of the existing label names.
@@ -197,7 +197,7 @@ A request body with the following fields is required:
 |`end` | Query to this point in time, given in Milliseconds since epoch. | `1676289600000` |
 |`matchers` | List of Label selectors |  |
 
-{{% code %}}
+{{< code >}}
 ```curl
 curl \
   -H "Content-Type: application/json" \
@@ -221,7 +221,7 @@ print(resp)
 print(resp.content)
 ```
 
-{{% /code %}}
+{{< /code >}}
 #### `/querier.v1.QuerierService/LabelValues`
 
 LabelValues returns the existing label values for the provided label names.
@@ -235,7 +235,7 @@ A request body with the following fields is required:
 |`matchers` | List of Label selectors |  |
 |`name` | Name of the label | `service_name` |
 
-{{% code %}}
+{{< code >}}
 ```curl
 curl \
   -H "Content-Type: application/json" \
@@ -261,7 +261,7 @@ print(resp)
 print(resp.content)
 ```
 
-{{% /code %}}
+{{< /code >}}
 #### `/querier.v1.QuerierService/ProfileTypes`
 
 ProfileType returns a list of the existing profile types.
@@ -273,7 +273,7 @@ A request body with the following fields is required:
 |`start` | Milliseconds since epoch. If missing or zero, only the ingesters will be  queried. | `1676282400000` |
 |`end` | Milliseconds since epoch. If missing or zero, only the ingesters will be  queried. | `1676289600000` |
 
-{{% code %}}
+{{< code >}}
 ```curl
 curl \
   -H "Content-Type: application/json" \
@@ -297,7 +297,7 @@ print(resp)
 print(resp.content)
 ```
 
-{{% /code %}}
+{{< /code >}}
 #### `/querier.v1.QuerierService/SelectMergeProfile`
 
 SelectMergeProfile returns matching profiles aggregated in pprof format. It
@@ -317,7 +317,7 @@ A request body with the following fields is required:
 |`stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
 |`stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
 
-{{% code %}}
+{{< code >}}
 ```curl
 curl \
   -H "Content-Type: application/json" \
@@ -345,7 +345,7 @@ print(resp)
 print(resp.content)
 ```
 
-{{% /code %}}
+{{< /code >}}
 #### `/querier.v1.QuerierService/SelectMergeSpanProfile`
 
 SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
@@ -364,7 +364,7 @@ A request body with the following fields is required:
 |`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
 |`spanSelector` | List of Span IDs to query | `["9a517183f26a089d","5a4fe264a9c987fe"]` |
 
-{{% code %}}
+{{< code >}}
 ```curl
 curl \
   -H "Content-Type: application/json" \
@@ -400,7 +400,7 @@ print(resp)
 print(resp.content)
 ```
 
-{{% /code %}}
+{{< /code >}}
 #### `/querier.v1.QuerierService/SelectMergeStacktraces`
 
 SelectMergeStacktraces returns matching profiles aggregated in a flamegraph
@@ -421,7 +421,7 @@ A request body with the following fields is required:
 |`stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
 |`stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
 
-{{% code %}}
+{{< code >}}
 ```curl
 curl \
   -H "Content-Type: application/json" \
@@ -449,7 +449,7 @@ print(resp)
 print(resp.content)
 ```
 
-{{% /code %}}
+{{< /code >}}
 #### `/querier.v1.QuerierService/SelectSeries`
 
 SelectSeries returns a time series for the total sum of the requested
@@ -471,7 +471,7 @@ A request body with the following fields is required:
 |`stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
 |`step` |  |  |
 
-{{% code %}}
+{{< code >}}
 ```curl
 curl \
   -H "Content-Type: application/json" \
@@ -505,7 +505,7 @@ print(resp)
 print(resp.content)
 ```
 
-{{% /code %}}
+{{< /code >}}
 #### `/querier.v1.QuerierService/Series`
 
 Series returns profiles series matching the request. A series is a unique
@@ -520,7 +520,7 @@ A request body with the following fields is required:
 |`labelNames` | List of label_names to request. If empty will return all label names in the  result. |  |
 |`matchers` | List of label selector to apply to the result. | `["{namespace=\"my-namespace\"}"]` |
 
-{{% code %}}
+{{< code >}}
 ```curl
 curl \
   -H "Content-Type: application/json" \
@@ -550,7 +550,7 @@ print(resp)
 print(resp.content)
 ```
 
-{{% /code %}}
+{{< /code >}}
 
 
 
