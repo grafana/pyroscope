@@ -129,6 +129,7 @@ type Limits interface {
 	IngestionRateBytes(tenantID string) float64
 	IngestionBurstSizeBytes(tenantID string) int
 	IngestionLimit(tenantID string) *ingestlimits.Config
+	IngestionBodyLimitBytes(tenantID string) int64
 	DistributorSampling(tenantID string) *sampling.Config
 	IngestionTenantShardSize(tenantID string) int
 	MaxLabelNameLength(tenantID string) int
@@ -239,14 +240,43 @@ func (d *Distributor) stopping(_ error) error {
 	return services.StopManagerAndAwaitStopped(context.Background(), d.subservices)
 }
 
-func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+func isKnownConnectError(err error) bool {
+	ce := new(connect.Error)
+	if !errors.As(err, &ce) {
+		return false
+	}
+	return ce.Code() != connect.CodeUnknown
+}
+
+func isKnownValidationError(err error) bool {
+	return validation.ReasonOf(err) != validation.Unknown
+}
+
+func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (_ *connect.Response[pushv1.PushResponse], err error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Distributor.Push")
+
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
+	defer func() {
+		if err == nil {
+			return
+		}
+
+		// log error
+		ext.LogError(sp, err)
+		level.Debug(util.LoggerWithContext(ctx, d.logger)).Log("msg", "failed to validate profile", "err", err)
+
+		// wrap the errors with InvalidArgument code for profile validation errors, so they return 400
+		if !isKnownConnectError(err) && isKnownValidationError(err) {
+			err = connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}()
+
 	maxProfileSizeBytes := int64(d.limits.MaxProfileSizeBytes(tenantID))
-	maxRequestSizeBytes := 16 * maxProfileSizeBytes // TODO: Should be an override or be aligned with BodySize
+	maxRequestSizeBytes := d.limits.IngestionBodyLimitBytes(tenantID)
 	requestSizeUsed := 0
 
 	req := &distributormodel.PushRequest{
@@ -258,13 +288,17 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 		for _, grpcSample := range grpcSeries.Samples {
 			profile, err := pprof.RawFromBytesWithLimit(grpcSample.RawProfile, maxProfileSizeBytes)
 			if err != nil {
+				// check if decompression size has been exceeded
+				dsErr := new(pprof.ErrDecompressedSizeExceedsLimit)
+				if errors.As(err, &dsErr) {
+					err = validation.NewErrorf(validation.ProfileSizeLimit, "uncompressed profile payload size exceeds limit of %s", humanize.Bytes(uint64(maxProfileSizeBytes)))
+				}
 				allErrors.Add(err)
 				continue
 			}
-			requestSizeUsed += profile.SizeVT() // TODO: use existing value from Profile
-			if requestSizeUsed > int(maxRequestSizeBytes) {
-				// Should it instead use the profiles that made it?
-				return nil, fmt.Errorf("profile payload sizes %d of the whole request exceeded limit %d", maxRequestSizeBytes, requestSizeUsed)
+			requestSizeUsed += profile.RawSize()
+			if int(maxRequestSizeBytes) > 0 && requestSizeUsed > int(maxRequestSizeBytes) {
+				return nil, validation.NewErrorf(validation.BodySizeLimit, "uncompressed batched profile payload size exceeds limit of %s", humanize.Bytes(uint64(maxRequestSizeBytes)))
 			}
 			series := &distributormodel.ProfileSeries{
 				Labels:     grpcSeries.Labels,
@@ -275,17 +309,15 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 			req.Series = append(req.Series, series)
 		}
 	}
+	// If we have validation errors and no valid profiles, return the validation errors
+	// instead of calling PushBatch which would return "no profiles received"
+	if len(req.Series) == 0 && allErrors.Err() != nil {
+		return nil, allErrors.Err()
+	}
 	if err := d.PushBatch(ctx, req); err != nil {
 		allErrors.Add(err)
 	}
 	err = allErrors.Err()
-	if err != nil && validation.ReasonOf(err) != validation.Unknown {
-		if sp := opentracing.SpanFromContext(ctx); sp != nil {
-			ext.LogError(sp, err)
-		}
-		level.Debug(util.LoggerWithContext(ctx, d.logger)).Log("msg", "failed to validate profile", "err", err)
-		return nil, err
-	}
 	if err != nil {
 		return nil, err
 	}

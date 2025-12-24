@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"sort"
@@ -88,6 +89,14 @@ func RawFromBytes(input []byte) (_ *Profile, err error) {
 	return RawFromBytesWithLimit(input, -1)
 }
 
+type ErrDecompressedSizeExceedsLimit struct {
+	Limit int64
+}
+
+func (e *ErrDecompressedSizeExceedsLimit) Error() string {
+	return fmt.Sprintf("decompressed size exceeds maximum allowed size of %d bytes", e.Limit)
+}
+
 // RawFromBytesWithLimit reads a profile from bytes with an optional size limit.
 // maxSize limits the decompressed size in bytes. Use -1 for no limit.
 // This prevents zip bomb attacks where small compressed data expands to huge sizes.
@@ -117,7 +126,7 @@ func RawFromBytesWithLimit(input []byte, maxSize int64) (_ *Profile, err error) 
 
 	// Check if we hit the size limit
 	if maxSize >= 0 && int64(buf.Len()) > maxSize {
-		return nil, errors.Errorf("decompressed size exceeds maximum allowed size of %d bytes", maxSize)
+		return nil, &ErrDecompressedSizeExceedsLimit{Limit: maxSize}
 	}
 
 	rawSize := buf.Len()
@@ -312,6 +321,11 @@ type Profile struct {
 	hasher  SampleHasher
 	stats   sanitizeStats
 	rawSize int
+}
+
+// RawSize of the profile
+func (p *Profile) RawSize() int {
+	return p.rawSize
 }
 
 // WriteTo writes the profile to the given writer.
@@ -1237,7 +1251,7 @@ func UnmarshalWithLimit(data []byte, p *profilev1.Profile, maxSize int64) error 
 
 	// Check if we hit the size limit
 	if maxSize >= 0 && int64(buf.Len()) > maxSize {
-		return errors.Errorf("decompressed size exceeds maximum allowed size of %d bytes", maxSize)
+		return &ErrDecompressedSizeExceedsLimit{Limit: maxSize}
 	}
 
 	return p.UnmarshalVT(buf.Bytes())

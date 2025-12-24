@@ -3,6 +3,7 @@ package distributor_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,8 +16,11 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/api"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -153,6 +157,43 @@ func ingestPprof(data []byte) func(context.Context) *http.Request {
 	}
 }
 
+func pushPprofJson(profiles ...[][]byte) func(context.Context) *http.Request {
+	req := &pushv1.PushRequest{}
+
+	for pIdx, p := range profiles {
+		s := &pushv1.RawProfileSeries{
+			Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "fake_cpu"},
+				{Name: "service_name", Value: "killer"},
+			},
+		}
+		for sIdx, sample := range p {
+			s.Samples = append(s.Samples, &pushv1.RawSample{
+				ID:         fmt.Sprintf("%d-%d", pIdx, sIdx),
+				RawProfile: sample,
+			})
+		}
+		req.Series = append(req.Series, s)
+	}
+
+	jsonData, err := protojson.Marshal(req)
+	if err != nil {
+		panic(err)
+	}
+
+	return func(ctx context.Context) *http.Request {
+		req, err := http.NewRequestWithContext(
+			ctx, "POST", "/push.v1.PusherService/Push",
+			bytes.NewReader(jsonData),
+		)
+		if err != nil {
+			panic(err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		return req
+	}
+}
+
 func TestDistributorAPIBodySizeLimit(t *testing.T) {
 	logger := log.NewNopLogger()
 
@@ -230,7 +271,59 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 			expectedErrorMsg: "request body too large",
 			skipMsg:          "TODO: Is it expected that this is not enforced?",
 		},
-		// TODO: Add otel and pushv1 requests here
+		{
+			name:           "push-json/uncompressed/within-limit",
+			request:        pushPprofJson([][]byte{pprofUnderOneMb}),
+			tenantID:       "1mb-body-limit",
+			expectedStatus: 200,
+		},
+		{
+			name:           "push-json/uncompressed/exact-limit",
+			request:        pushPprofJson([][]byte{pprofOneMb}),
+			tenantID:       "1mb-body-limit",
+			expectedStatus: 200,
+		},
+		{
+			name:             "push-json/uncompressed/exceeds-limit",
+			request:          pushPprofJson([][]byte{pprofOverOneMb}),
+			tenantID:         "1mb-body-limit",
+			expectedStatus:   400, // grpc status codes used by connect have no mapping to 413
+			expectedErrorMsg: "uncompressed batched profile payload size exceeds limit of 1.0 MB",
+		},
+		{
+			name:             "push-json/uncompressed/exceeds-limit-with-two-profiles",
+			request:          pushPprofJson([][]byte{pprofUnderOneMb}, [][]byte{pprofUnderOneMb}),
+			tenantID:         "1mb-body-limit",
+			expectedStatus:   400, // grpc status codes used by connect have no mapping to 413
+			expectedErrorMsg: "uncompressed batched profile payload size exceeds limit of 1.0 MB",
+		},
+		{
+			name:           "push-json/gzip/within-limit",
+			request:        pushPprofJson([][]byte{gzPprofUnderOneMb}),
+			tenantID:       "1mb-body-limit",
+			expectedStatus: 200,
+		},
+		{
+			name:           "push-json/gzip/exact-limit",
+			request:        pushPprofJson([][]byte{gzPprofOneMb}),
+			tenantID:       "1mb-body-limit",
+			expectedStatus: 200,
+		},
+		{
+			name:             "push-json/gzip/exceeds-limit",
+			request:          pushPprofJson([][]byte{gzPprofOverOneMb}),
+			tenantID:         "1mb-body-limit",
+			expectedStatus:   400, // grpc status codes used by connect have no mapping to 413
+			expectedErrorMsg: "uncompressed batched profile payload size exceeds limit of 1.0 MB",
+		},
+		{
+			name:             "push-json/gzip/exceeds-limit-with-two-profiles",
+			request:          pushPprofJson([][]byte{gzPprofUnderOneMb}, [][]byte{gzPprofUnderOneMb}),
+			tenantID:         "1mb-body-limit",
+			expectedStatus:   400, // grpc status codes used by connect have no mapping to 413
+			expectedErrorMsg: "uncompressed batched profile payload size exceeds limit of 1.0 MB",
+		},
+		// TODO: Add otel requests here
 	}
 
 	for _, tc := range testCases {
@@ -335,7 +428,33 @@ func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
 			expectedStatus:   422,
 			expectedErrorMsg: "exceeds maximum allowed size",
 		},
-		// TODO: Add otel and pushv1 requests here
+		{
+			name:           "push-json/uncompressed/within-limit",
+			request:        pushPprofJson([][]byte{pprofUnderOneMb}),
+			tenantID:       "1mb-profile-limit",
+			expectedStatus: 200,
+		},
+		{
+			name:             "push-json/uncompressed/exceeds-limit",
+			request:          pushPprofJson([][]byte{pprofOverOneMb}),
+			tenantID:         "1mb-profile-limit",
+			expectedStatus:   400,
+			expectedErrorMsg: "uncompressed profile payload size exceeds limit of 1.0 MB",
+		},
+		{
+			name:           "push-json/gzip/within-limit",
+			request:        pushPprofJson([][]byte{gzPprofUnderOneMb}),
+			tenantID:       "1mb-profile-limit",
+			expectedStatus: 200,
+		},
+		{
+			name:             "push-json/gzip/exceeds-limit",
+			request:          pushPprofJson([][]byte{gzPprofOverOneMb}),
+			tenantID:         "1mb-profile-limit",
+			expectedStatus:   400,
+			expectedErrorMsg: "uncompressed profile payload size exceeds limit of 1.0 MB",
+		},
+		// TODO: Add otel requests here
 	}
 
 	for _, tc := range testCases {
