@@ -73,21 +73,26 @@ func (pf *poolFactory) FromInstance(inst ring.InstanceDesc) (client.PoolClient, 
 	return pf.f(inst.Addr)
 }
 
-func NewTestDistributor(t testing.TB, logger log.Logger, overrides *validation.Overrides) (*Distributor, error) {
+func newTestDistributor(t testing.TB, logger log.Logger, overrides *validation.Overrides) (*Distributor, *fakeIngester, error) {
 	ing := newFakeIngester(t, false)
-	return New(Config{
+	d, err := New(Config{
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
 	}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 		return ing, nil
 	}}, overrides, nil, logger, nil)
+	return d, ing, err
+}
+
+func NewTestDistributor(t testing.TB, logger log.Logger, overrides *validation.Overrides) (*Distributor, error) {
+	d, _, err := newTestDistributor(t, logger, overrides)
+	return d, err
 }
 
 func Test_ConnectPush(t *testing.T) {
 	mux := http.NewServeMux()
-	ing := newFakeIngester(t, false)
-	d, err := NewTestDistributor(t,
+	d, ing, err := newTestDistributor(t,
 		log.NewLogfmtLogger(os.Stdout),
 		newOverrides(t),
 	)
