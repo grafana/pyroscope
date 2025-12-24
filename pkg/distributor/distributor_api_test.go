@@ -2,20 +2,23 @@ package distributor_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
-
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/require"
+	otlpcolv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
+	otlpv1 "go.opentelemetry.io/proto/otlp/profiles/v1development"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -119,14 +122,7 @@ func generateProfileOfSize(targetSize int, compress bool) ([]byte, error) {
 	return pprof.Marshal(p, compress)
 }
 
-func gzPprof(t testing.TB, target int) []byte {
-	t.Helper()
-	compressed, err := generateProfileOfSize(target, true)
-	require.NoError(t, err)
-	return compressed
-}
-
-func uncompressedPprof(t testing.TB, target int) []byte {
+func pprofWithSize(t testing.TB, target int) []byte {
 	t.Helper()
 	uncompressed, err := generateProfileOfSize(target, false)
 	require.NoError(t, err)
@@ -134,8 +130,8 @@ func uncompressedPprof(t testing.TB, target int) []byte {
 	return uncompressed
 }
 
-func ingestGzPprof(data []byte) func(context.Context) *http.Request {
-	requestF := ingestPprof(data)
+func reqIngestGzPprof(data []byte) func(context.Context) *http.Request {
+	requestF := reqIngestPprof(data)
 	return func(ctx context.Context) *http.Request {
 		req := requestF(ctx)
 		req.Header.Set("Content-Encoding", "gzip")
@@ -143,7 +139,7 @@ func ingestGzPprof(data []byte) func(context.Context) *http.Request {
 	}
 }
 
-func ingestPprof(data []byte) func(context.Context) *http.Request {
+func reqIngestPprof(data []byte) func(context.Context) *http.Request {
 	return func(ctx context.Context) *http.Request {
 		req, err := http.NewRequestWithContext(
 			ctx, "POST", "/ingest?name=testapp&format=pprof",
@@ -157,7 +153,7 @@ func ingestPprof(data []byte) func(context.Context) *http.Request {
 	}
 }
 
-func pushPprofJson(profiles ...[][]byte) func(context.Context) *http.Request {
+func reqPushPprofJson(profiles ...[][]byte) func(context.Context) *http.Request {
 	req := &pushv1.PushRequest{}
 
 	for pIdx, p := range profiles {
@@ -194,6 +190,132 @@ func pushPprofJson(profiles ...[][]byte) func(context.Context) *http.Request {
 	}
 }
 
+func gzipper(t testing.TB, fn func(testing.TB, int) []byte, targetSize int) []byte {
+	t.Helper()
+	data := fn(t, targetSize)
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	_, err := io.Copy(zw, bytes.NewReader(data))
+	require.NoError(t, err)
+	require.NoError(t, zw.Close()) // Must close to flush and write gzip trailer
+	return buf.Bytes()
+}
+
+// otlpbuilder helps build OTLP profiles with controlled sizes
+type otlpbuilder struct {
+	profile    otlpv1.Profile
+	dictionary otlpv1.ProfilesDictionary
+	stringmap  map[string]int32
+}
+
+func (o *otlpbuilder) addstr(s string) int32 {
+	if o.stringmap == nil {
+		o.stringmap = make(map[string]int32)
+	}
+	if idx, ok := o.stringmap[s]; ok {
+		return idx
+	}
+	idx := int32(len(o.stringmap))
+	o.stringmap[s] = idx
+	o.dictionary.StringTable = append(o.dictionary.StringTable, s)
+	return idx
+}
+
+func otlpJSONWithSize(t testing.TB, targetSize int) []byte {
+	t.Helper()
+
+	b := new(otlpbuilder)
+
+	fileNameIdx := b.addstr("foo")
+
+	// Create minimal valid OTLP profile structure with cpu:nanoseconds type (maps to process_cpu)
+	b.dictionary.MappingTable = []*otlpv1.Mapping{{
+		MemoryStart:      0x1000,
+		MemoryLimit:      0x2000,
+		FilenameStrindex: fileNameIdx,
+	}}
+	b.dictionary.LocationTable = []*otlpv1.Location{{
+		MappingIndex: 0,
+		Address:      0x1100,
+	}}
+	b.dictionary.StackTable = []*otlpv1.Stack{{
+		LocationIndices: []int32{0},
+	}}
+	// Use cpu:nanoseconds which will be recognized as a valid profile type
+	cpuIdx := b.addstr("cpu")
+	nanosIdx := b.addstr("nanoseconds")
+	b.profile.SampleType = &otlpv1.ValueType{
+		TypeStrindex: cpuIdx,
+		UnitStrindex: nanosIdx,
+	}
+	b.profile.PeriodType = &otlpv1.ValueType{
+		TypeStrindex: cpuIdx,
+		UnitStrindex: nanosIdx,
+	}
+	b.profile.Period = 10000000
+	b.profile.Sample = []*otlpv1.Sample{{
+		StackIndex: 0,
+		Values:     []int64{100},
+	}}
+	b.profile.TimeUnixNano = 1234567890
+
+	// Calculate current size
+	req := &otlpcolv1.ExportProfilesServiceRequest{
+		ResourceProfiles: []*otlpv1.ResourceProfiles{{
+			ScopeProfiles: []*otlpv1.ScopeProfiles{{
+				Profiles: []*otlpv1.Profile{&b.profile},
+			}},
+		}},
+		Dictionary: &b.dictionary,
+	}
+	jsonData, err := protojson.Marshal(req)
+	require.NoError(t, err)
+	baseSize := len(jsonData)
+
+	// Pad string table to reach target size
+	if baseSize < targetSize {
+		paddingSize := targetSize - baseSize - 1
+		b.dictionary.StringTable[fileNameIdx] += "f" + strings.Repeat("o", paddingSize)
+	}
+
+	jsonData, err = protojson.Marshal(req)
+	require.NoError(t, err)
+	if len(jsonData) != targetSize {
+		panic(fmt.Sprintf("json size=%d is not matching targetSize=%d", len(jsonData), targetSize))
+	}
+
+	return jsonData
+}
+
+func reqOTLPJson(data []byte) func(context.Context) *http.Request {
+	return func(ctx context.Context) *http.Request {
+		httpReq, err := http.NewRequestWithContext(
+			ctx, "POST", "/v1development/profiles",
+			bytes.NewReader(data),
+		)
+		if err != nil {
+			panic(err)
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+		return httpReq
+	}
+}
+
+func reqOTLPJsonGzip(data []byte) func(context.Context) *http.Request {
+	fn := reqOTLPJson(data)
+	return func(ctx context.Context) *http.Request {
+		req := fn(ctx)
+		req.Header.Set("Content-Encoding", "gzip")
+		return req
+	}
+}
+
+const (
+	underOneMb = (1024 - 10) * 1024
+	oneMb      = 1024 * 1024
+	overOneMb  = (1024 + 10) * 1024
+)
+
 func TestDistributorAPIBodySizeLimit(t *testing.T) {
 	logger := log.NewNopLogger()
 
@@ -216,12 +338,18 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 
 	// generate sample payloads
 	var (
-		pprofUnderOneMb   = uncompressedPprof(t, (1024-10)*1024)
-		pprofOneMb        = uncompressedPprof(t, 1024*1024)
-		pprofOverOneMb    = uncompressedPprof(t, (1024+10)*1024)
-		gzPprofUnderOneMb = gzPprof(t, (1024-10)*1024)
-		gzPprofOneMb      = gzPprof(t, 1024*1024)
-		gzPprofOverOneMb  = gzPprof(t, (1024+10)*1024)
+		pprofUnderOneMb        = pprofWithSize(t, underOneMb)
+		pprofOneMb             = pprofWithSize(t, oneMb)
+		pprofOverOneMb         = pprofWithSize(t, overOneMb)
+		pprofGzipUnderOneMb    = gzipper(t, pprofWithSize, underOneMb)
+		pprofGzipOneMb         = gzipper(t, pprofWithSize, oneMb)
+		pprofGzipOverOneMb     = gzipper(t, pprofWithSize, overOneMb)
+		otlpJSONUnderOneMb     = otlpJSONWithSize(t, underOneMb)
+		otlpJSONnOneMb         = otlpJSONWithSize(t, oneMb)
+		otlpJSONOverOneMb      = otlpJSONWithSize(t, overOneMb)
+		otlpJSONGzipUnderOneMb = gzipper(t, otlpJSONWithSize, underOneMb)
+		otlpJSONGzipOneMb      = gzipper(t, otlpJSONWithSize, oneMb)
+		otlpJSONGzipOverOneMb  = gzipper(t, otlpJSONWithSize, overOneMb)
 	)
 
 	testCases := []struct {
@@ -234,38 +362,38 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 	}{
 		{
 			name:           "ingest/uncompressed/within-limit",
-			request:        ingestPprof(pprofUnderOneMb),
+			request:        reqIngestPprof(pprofUnderOneMb),
 			tenantID:       "1mb-body-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:           "ingest/uncompressed/exact-limit",
-			request:        ingestPprof(pprofOneMb),
+			request:        reqIngestPprof(pprofOneMb),
 			tenantID:       "1mb-body-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:             "ingest/uncompressed/exceeds-limit",
-			request:          ingestPprof(pprofOverOneMb),
+			request:          reqIngestPprof(pprofOverOneMb),
 			tenantID:         "1mb-body-limit",
 			expectedStatus:   413,
 			expectedErrorMsg: "request body too large",
 		},
 		{
 			name:           "ingest/gzip/within-limit",
-			request:        ingestGzPprof(gzPprofUnderOneMb),
+			request:        reqIngestGzPprof(pprofGzipUnderOneMb),
 			tenantID:       "1mb-body-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:           "ingest/gzip/exact-limit",
-			request:        ingestGzPprof(gzPprofOneMb),
+			request:        reqIngestGzPprof(pprofGzipOneMb),
 			tenantID:       "1mb-body-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:             "ingest/gzip/exceeds-limit",
-			request:          ingestGzPprof(gzPprofOverOneMb),
+			request:          reqIngestGzPprof(pprofGzipOverOneMb),
 			tenantID:         "1mb-body-limit",
 			expectedStatus:   413,
 			expectedErrorMsg: "request body too large",
@@ -273,57 +401,94 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 		},
 		{
 			name:           "push-json/uncompressed/within-limit",
-			request:        pushPprofJson([][]byte{pprofUnderOneMb}),
+			request:        reqPushPprofJson([][]byte{pprofUnderOneMb}),
 			tenantID:       "1mb-body-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:           "push-json/uncompressed/exact-limit",
-			request:        pushPprofJson([][]byte{pprofOneMb}),
+			request:        reqPushPprofJson([][]byte{pprofOneMb}),
 			tenantID:       "1mb-body-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:             "push-json/uncompressed/exceeds-limit",
-			request:          pushPprofJson([][]byte{pprofOverOneMb}),
+			request:          reqPushPprofJson([][]byte{pprofOverOneMb}),
 			tenantID:         "1mb-body-limit",
 			expectedStatus:   400, // grpc status codes used by connect have no mapping to 413
 			expectedErrorMsg: "uncompressed batched profile payload size exceeds limit of 1.0 MB",
 		},
 		{
 			name:             "push-json/uncompressed/exceeds-limit-with-two-profiles",
-			request:          pushPprofJson([][]byte{pprofUnderOneMb}, [][]byte{pprofUnderOneMb}),
+			request:          reqPushPprofJson([][]byte{pprofUnderOneMb}, [][]byte{pprofUnderOneMb}),
 			tenantID:         "1mb-body-limit",
 			expectedStatus:   400, // grpc status codes used by connect have no mapping to 413
 			expectedErrorMsg: "uncompressed batched profile payload size exceeds limit of 1.0 MB",
 		},
 		{
 			name:           "push-json/gzip/within-limit",
-			request:        pushPprofJson([][]byte{gzPprofUnderOneMb}),
+			request:        reqPushPprofJson([][]byte{pprofGzipUnderOneMb}),
 			tenantID:       "1mb-body-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:           "push-json/gzip/exact-limit",
-			request:        pushPprofJson([][]byte{gzPprofOneMb}),
+			request:        reqPushPprofJson([][]byte{pprofGzipOneMb}),
 			tenantID:       "1mb-body-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:             "push-json/gzip/exceeds-limit",
-			request:          pushPprofJson([][]byte{gzPprofOverOneMb}),
+			request:          reqPushPprofJson([][]byte{pprofGzipOverOneMb}),
 			tenantID:         "1mb-body-limit",
 			expectedStatus:   400, // grpc status codes used by connect have no mapping to 413
 			expectedErrorMsg: "uncompressed batched profile payload size exceeds limit of 1.0 MB",
 		},
 		{
 			name:             "push-json/gzip/exceeds-limit-with-two-profiles",
-			request:          pushPprofJson([][]byte{gzPprofUnderOneMb}, [][]byte{gzPprofUnderOneMb}),
+			request:          reqPushPprofJson([][]byte{pprofGzipUnderOneMb}, [][]byte{pprofGzipUnderOneMb}),
 			tenantID:         "1mb-body-limit",
 			expectedStatus:   400, // grpc status codes used by connect have no mapping to 413
 			expectedErrorMsg: "uncompressed batched profile payload size exceeds limit of 1.0 MB",
 		},
-		// TODO: Add otel requests here
+		{
+			name:           "otlp-json/uncompressed/within-limit",
+			request:        reqOTLPJson(otlpJSONUnderOneMb),
+			tenantID:       "1mb-body-limit",
+			expectedStatus: 200,
+		},
+		{
+			name:           "otlp-json/uncompressed/exact-limit",
+			request:        reqOTLPJson(otlpJSONnOneMb),
+			tenantID:       "1mb-body-limit",
+			expectedStatus: 200,
+		},
+		{
+			name:             "otlp-json/uncompressed/exceeds-limit",
+			request:          reqOTLPJson(otlpJSONOverOneMb),
+			tenantID:         "1mb-body-limit",
+			expectedStatus:   413,
+			expectedErrorMsg: "profile payload size exceeds limit of 1.0 MB",
+		},
+		{
+			name:           "otlp-json/gzip/within-limit",
+			request:        reqOTLPJsonGzip(otlpJSONGzipUnderOneMb),
+			tenantID:       "1mb-body-limit",
+			expectedStatus: 200,
+		},
+		{
+			name:           "otlp-json/gzip/exact-limit",
+			request:        reqOTLPJsonGzip(otlpJSONGzipOneMb),
+			tenantID:       "1mb-body-limit",
+			expectedStatus: 200,
+		},
+		{
+			name:             "otlp-json/gzip/exceeds-limit",
+			request:          reqOTLPJsonGzip(otlpJSONGzipOverOneMb),
+			tenantID:         "1mb-body-limit",
+			expectedStatus:   413,
+			expectedErrorMsg: "uncompressed profile payload size exceeds limit of 1.0 MB",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -349,7 +514,7 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 				require.Contains(t, res.Body.String(), tc.expectedErrorMsg)
 			}
 
-			// TODO: Check if metrics are collecting information about there discards
+			// TODO: Check if there are metrics are collecting information about those discarded metrics
 		})
 	}
 
@@ -376,10 +541,14 @@ func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
 
 	// generate sample payloads
 	var (
-		pprofUnderOneMb   = uncompressedPprof(t, (1024-10)*1024)
-		pprofOverOneMb    = uncompressedPprof(t, (1024+10)*1024)
-		gzPprofUnderOneMb = gzPprof(t, (1024-10)*1024)
-		gzPprofOverOneMb  = gzPprof(t, (1024+10)*1024)
+		pprofUnderOneMb        = pprofWithSize(t, underOneMb)
+		pprofOverOneMb         = pprofWithSize(t, overOneMb)
+		pprofGzipUnderOneMb    = gzipper(t, pprofWithSize, underOneMb)
+		pprofGzipOverOneMb     = gzipper(t, pprofWithSize, overOneMb)
+		otlpJSONUnderOneMb     = otlpJSONWithSize(t, underOneMb)
+		otlpJSONOverOneMb      = otlpJSONWithSize(t, overOneMb)
+		otlpJSONGzipUnderOneMb = gzipper(t, otlpJSONWithSize, underOneMb)
+		otlpJSONGzipOverOneMb  = gzipper(t, otlpJSONWithSize, overOneMb)
 	)
 
 	testCases := []struct {
@@ -392,69 +561,94 @@ func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
 	}{
 		{
 			name:           "ingest/uncompressed/within-limit",
-			request:        ingestPprof(pprofUnderOneMb),
+			request:        reqIngestPprof(pprofUnderOneMb),
 			tenantID:       "1mb-profile-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:           "ingest/uncompressed/exact-limit",
-			request:        ingestPprof(uncompressedPprof(t, 1024*1024-8)), // Note the extra 8 byte are used up by added metadata
+			request:        reqIngestPprof(pprofWithSize(t, 1024*1024-8)), // Note the extra 8 byte are used up by added metadata
 			tenantID:       "1mb-profile-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:             "ingest/uncompressed/exceeds-limit",
-			request:          ingestPprof(pprofOverOneMb),
+			request:          reqIngestPprof(pprofOverOneMb),
 			tenantID:         "1mb-profile-limit",
 			expectedStatus:   422,
 			expectedErrorMsg: "exceeds maximum allowed size",
 		},
 		{
 			name:           "ingest/gzip/within-limit",
-			request:        ingestGzPprof(gzPprofUnderOneMb),
+			request:        reqIngestGzPprof(pprofGzipUnderOneMb),
 			tenantID:       "1mb-profile-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:           "ingest/gzip/exact-limit",
-			request:        ingestPprof(gzPprof(t, 1024*1024-8)), // Note the extra 8 byte are used up by added metadata
+			request:        reqIngestPprof(gzipper(t, pprofWithSize, 1024*1024-8)), // Note the extra 8 byte are used up by added metadata
 			tenantID:       "1mb-profile-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:             "ingest/gzip/exceeds-limit",
-			request:          ingestGzPprof(gzPprofOverOneMb),
+			request:          reqIngestGzPprof(pprofGzipOverOneMb),
 			tenantID:         "1mb-profile-limit",
 			expectedStatus:   422,
 			expectedErrorMsg: "exceeds maximum allowed size",
 		},
 		{
 			name:           "push-json/uncompressed/within-limit",
-			request:        pushPprofJson([][]byte{pprofUnderOneMb}),
+			request:        reqPushPprofJson([][]byte{pprofUnderOneMb}),
 			tenantID:       "1mb-profile-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:             "push-json/uncompressed/exceeds-limit",
-			request:          pushPprofJson([][]byte{pprofOverOneMb}),
+			request:          reqPushPprofJson([][]byte{pprofOverOneMb}),
 			tenantID:         "1mb-profile-limit",
 			expectedStatus:   400,
 			expectedErrorMsg: "uncompressed profile payload size exceeds limit of 1.0 MB",
 		},
 		{
 			name:           "push-json/gzip/within-limit",
-			request:        pushPprofJson([][]byte{gzPprofUnderOneMb}),
+			request:        reqPushPprofJson([][]byte{pprofGzipUnderOneMb}),
 			tenantID:       "1mb-profile-limit",
 			expectedStatus: 200,
 		},
 		{
 			name:             "push-json/gzip/exceeds-limit",
-			request:          pushPprofJson([][]byte{gzPprofOverOneMb}),
+			request:          reqPushPprofJson([][]byte{pprofGzipOverOneMb}),
 			tenantID:         "1mb-profile-limit",
 			expectedStatus:   400,
 			expectedErrorMsg: "uncompressed profile payload size exceeds limit of 1.0 MB",
 		},
-		// TODO: Add otel requests here
+		{
+			name:           "otlp-json/uncompressed/within-limit",
+			request:        reqOTLPJson(otlpJSONUnderOneMb),
+			tenantID:       "1mb-profile-limit",
+			expectedStatus: 200,
+		},
+		{
+			name:             "otlp-json/uncompressed/exceeds-limit",
+			request:          reqOTLPJson(otlpJSONOverOneMb),
+			tenantID:         "1mb-profile-limit",
+			expectedStatus:   400,
+			expectedErrorMsg: "exceeds the size limit",
+		},
+		{
+			name:           "otlp-json/gzip/within-limit",
+			request:        reqOTLPJsonGzip(otlpJSONGzipUnderOneMb),
+			tenantID:       "1mb-profile-limit",
+			expectedStatus: 200,
+		},
+		{
+			name:             "otlp-json/gzip/exceeds-limit",
+			request:          reqOTLPJsonGzip(otlpJSONGzipOverOneMb),
+			tenantID:         "1mb-profile-limit",
+			expectedStatus:   400,
+			expectedErrorMsg: "exceeds the size limit",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -480,7 +674,7 @@ func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
 				require.Contains(t, res.Body.String(), tc.expectedErrorMsg)
 			}
 
-			// TODO: Check if metrics are collecting information about these discards
+			// TODO: Check if there are metrics are collecting information about those discarded metrics
 		})
 	}
 

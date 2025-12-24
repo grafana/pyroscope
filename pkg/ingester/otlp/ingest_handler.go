@@ -3,6 +3,7 @@ package otlp
 import (
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
@@ -24,10 +26,11 @@ import (
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	distirbutormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type ingestHandler struct {
@@ -44,7 +47,7 @@ type Handler interface {
 }
 
 type PushService interface {
-	PushBatch(ctx context.Context, req *distirbutormodel.PushRequest) error
+	PushBatch(ctx context.Context, req *distributormodel.PushRequest) error
 }
 
 type Limits interface {
@@ -112,12 +115,25 @@ func (h *ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
 }
 
+func isHTTPRequestBodyTooLarge(err error) error {
+	herr := new(http.MaxBytesError)
+	if errors.As(err, &herr) {
+		return validation.NewErrorf(validation.BodySizeLimit, "profile payload size exceeds limit of %s", humanize.Bytes(uint64(herr.Limit)))
+	}
+	return nil
+}
+
+func isKnownValidationError(err error) bool {
+	return validation.ReasonOf(err) != validation.Unknown
+}
+
 func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := tenant.TenantID(r.Context())
 	if err != nil {
 		httputil.ErrorWithStatus(w, err, http.StatusUnauthorized)
 		return
 	}
+	maxBodyBytes := h.limits.IngestionBodyLimitBytes(tenantID)
 
 	defer r.Body.Close()
 
@@ -136,21 +152,34 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 		defer gzipReader.Close()
 		errMsgBodyRead = "failed to read gzip-compressed request body"
 
+		reader = gzipReader
 		// Limit after decompression size
-		reader = io.NopCloser(io.LimitReader(gzipReader, h.limits.IngestionBodyLimitBytes(tenantID)))
+		if maxBodyBytes > 0 {
+			reader = io.NopCloser(io.LimitReader(reader, maxBodyBytes+1))
+		}
 	}
 
-	// TODO: Verify body limit for uncompressed requests
 	body, err := io.ReadAll(reader)
+	if maxBodyBytes > 0 && len(body) == int(maxBodyBytes)+1 {
+		err := validation.NewErrorf(validation.BodySizeLimit, "uncompressed profile payload size exceeds limit of %s", humanize.Bytes(uint64(maxBodyBytes)))
+		http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
+		return
+	}
 	if err != nil {
 		level.Error(h.log).Log("msg", errMsgBodyRead, "err", err)
+		// handle if body size limit is hit with correct status code
+		if herr := isHTTPRequestBodyTooLarge(err); herr != nil {
+			http.Error(w, herr.Error(), http.StatusRequestEntityTooLarge)
+			return
+		}
 		http.Error(w, errMsgBodyRead, http.StatusBadRequest)
 		return
 	}
 
 	req := &pprofileotlp.ExportProfilesServiceRequest{}
 
-	if r.Header.Get("Content-Type") == "application/json" {
+	isJSONRequest := r.Header.Get("Content-Type") == "application/json"
+	if isJSONRequest {
 		if err := protojson.Unmarshal(body, req); err != nil {
 			level.Error(h.log).Log("msg", "failed to unmarshal JSON request", "err", err)
 			http.Error(w, "Failed to parse JSON request", http.StatusBadRequest)
@@ -167,18 +196,8 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 	resp, err := h.export(r.Context(), req)
 	if err != nil {
 		level.Error(h.log).Log("msg", "failed to process profiles", "err", err)
-		st, ok := status.FromError(err)
-		if ok {
-			switch st.Code() {
-			case codes.InvalidArgument:
-				http.Error(w, st.Message(), http.StatusBadRequest)
-			case codes.Unauthenticated:
-				http.Error(w, st.Message(), http.StatusUnauthorized)
-			case codes.PermissionDenied:
-				http.Error(w, st.Message(), http.StatusForbidden)
-			default:
-				http.Error(w, st.Message(), http.StatusInternalServerError)
-			}
+		if isKnownValidationError(err) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -219,27 +238,19 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.InvalidArgument, "missing resource profiles")
 	}
 
-	for i := 0; i < len(rps); i++ {
-		rp := rps[i]
-
+	for _, rp := range rps {
 		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes())
-
-		sps := rp.ScopeProfiles
-		for j := 0; j < len(sps); j++ {
-			sp := sps[j]
-
-			for k := 0; k < len(sp.Profiles); k++ {
-				p := sp.Profiles[k]
-
+		for _, sp := range rp.ScopeProfiles {
+			for _, p := range sp.Profiles {
 				pprofProfiles, err := ConvertOtelToGoogle(p, dc)
 				if err != nil {
 					grpcError := status.Errorf(codes.InvalidArgument, "failed to convert otel profile: %s", err.Error())
 					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
 				}
 
-				req := &distirbutormodel.PushRequest{
+				req := &distributormodel.PushRequest{
 					ReceivedCompressedProfileSize: proto.Size(p),
-					RawProfileType:                distirbutormodel.RawProfileTypeOTEL,
+					RawProfileType:                distributormodel.RawProfileTypeOTEL,
 				}
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {
@@ -257,7 +268,7 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 						Value: svc,
 					})
 
-					s := &distirbutormodel.ProfileSeries{
+					s := &distributormodel.ProfileSeries{
 						Labels:     labels,
 						RawProfile: nil,
 						Profile:    pprof.RawFromProto(pprofProfile.profile),
