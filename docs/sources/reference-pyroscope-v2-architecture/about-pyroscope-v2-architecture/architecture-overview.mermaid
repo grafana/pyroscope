@@ -1,0 +1,45 @@
+graph TD
+
+%% Entry Points %%
+    subgraph entry_points[" "]
+        ingest_entry["Ingest Path"]:::entry_ingest --> distributor
+        query_entry["Query Path"]:::entry_query --> query_frontend
+    end
+
+%% Components %%
+
+    distributor -->|writes to| segment_writer
+    segment_writer -->|updates| metastore
+    segment_writer -->|creates segments| object_storage
+
+    metastore -->|coordinates| compaction_worker
+    compaction_worker -->|compacts| object_storage
+
+    query_frontend -->|invokes| query_backend
+    query_backend -->|reads from| object_storage
+    query_frontend -->|queries| metastore
+
+    distributor["distributor"]
+    segment_writer["segment-writer"]
+    metastore["metastore"]
+    compaction_worker["compaction-worker"]
+    query_backend["query-backend"]
+    query_frontend["query-frontend"]
+
+%% Object Storage %%
+    subgraph object_storage["object storage"]
+        segments
+        blocks
+    end
+
+%% Data Flow Colors %%
+    linkStyle 0 stroke:#a855f7,stroke-width:2px %% Dashed entry for ingest
+    linkStyle 1 stroke:#3b82f6,stroke-width:2px %% Dashed entry for query
+
+     linkStyle 2,3,4 stroke:#a855f7,stroke-width:2px  %% Purple: ingestion path
+     linkStyle 6 stroke:#a855f7,stroke-width:2px  %% Purple: compaction process
+     linkStyle 7,8,9 stroke:#3b82f6,stroke-width:2px  %% Blue: query path
+
+%% Styling %%
+     classDef entry_ingest stroke:#a855f7,stroke-width:2px,font-weight:bold
+     classDef entry_query stroke:#3b82f6,stroke-width:2px,font-weight:bold
