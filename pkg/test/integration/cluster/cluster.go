@@ -88,19 +88,20 @@ func (t *testTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func (t *testTransport) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	var err error
-	switch addr {
-	case "push:80":
-		addr, err = t.c.pickHealthyComponent("distributor")
-		if err != nil {
-			return nil, err
+	if t.c.microservices {
+		switch addr {
+		case "push:80":
+			addr, err = t.c.pickHealthyComponent("distributor")
+		case "querier:80":
+			addr, err = t.c.pickHealthyComponent("query-frontend", "querier")
+		default:
+			return nil, fmt.Errorf("unknown addr %s", addr)
 		}
-	case "querier:80":
-		addr, err = t.c.pickHealthyComponent("query-frontend", "querier")
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("unknown addr %s", addr)
+	} else {
+		addr, err = t.c.pickHealthyComponent("all")
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	return t.defaultDialContext(ctx, network, addr)
@@ -135,6 +136,7 @@ type Cluster struct {
 	v2                 bool     // is this a v2 cluster
 	debuginfodURL      string   // debuginfod URL for symbolization
 	expectedComponents []string // number of expected components
+	microservices      bool
 
 	tmpDir     string
 	httpClient *http.Client
