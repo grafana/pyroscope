@@ -55,6 +55,18 @@ the version number. The changes should be on the appropriate release branch.
 
 Once merged, a `vX.Y.Z` patch release tag must be created and pushed to remote to create a new release.
 
+> [!WARNING]
+> If you are releasing a patch version, for an older major/minor version (example:
+> you are releasing `v1.15.2`, but the current latest release is `v1.16.0`),
+> you need to make sure the release's actions to publish a `:latest` docker
+> image tag and a `home-brew` formula are removed:
+>
+> This can be done by updating the workflow in the previous release branches using those cherry-picks:
+> ```
+> git cherry-pick 73a4367a5a4cc0546f499403431e14a0b353cf2f  # Do not publish home-brew updates
+> git cherry-pick 3f3d87b4629bccbd0b8a9fffa43a3aa03e4c20bf  # Do not publish docker image tag :latest
+> ```
+
 ## Manual Release Process
 
 The release process uses [goreleaser](https://goreleaser.com/scm/github/?h=github#github) and can be configured
