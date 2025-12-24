@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/pprof/profile"
@@ -29,12 +30,16 @@ import (
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
-func NewHTTPHandlers(client querierv1connect.QuerierServiceClient) *QueryHandlers {
-	return &QueryHandlers{client}
+func NewHTTPHandlers(client querierv1connect.QuerierServiceClient, minStepDuration time.Duration) *QueryHandlers {
+	return &QueryHandlers{
+		client:          client,
+		minStepDuration: minStepDuration,
+	}
 }
 
 type QueryHandlers struct {
-	client querierv1connect.QuerierServiceClient
+	client          querierv1connect.QuerierServiceClient
+	minStepDuration time.Duration
 }
 
 // LabelValues only returns the label values for the given label name.
@@ -190,7 +195,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 		return err
 	})
 
-	timelineStep := timeline.CalcPointInterval(selectParams.Start, selectParams.End)
+	timelineStep := timeline.CalcPointIntervalWithMinInterval(selectParams.Start, selectParams.End, q.minStepDuration)
 	var resSeries *connect.Response[querierv1.SelectSeriesResponse]
 	g.Go(func() error {
 		var err error
