@@ -254,6 +254,7 @@ func isKnownValidationError(err error) bool {
 
 func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (_ *connect.Response[pushv1.PushResponse], err error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Distributor.Push")
+	defer sp.Finish()
 
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
