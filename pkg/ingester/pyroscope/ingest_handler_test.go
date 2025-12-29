@@ -346,7 +346,9 @@ func TestIngestPPROFFixtures(t *testing.T) {
 			if testdatum.spyName != "" {
 				spyName = testdatum.spyName
 			}
-			req := httptest.NewRequest("POST", "/ingest?name=pprof.test{qwe=asd}&spyName="+spyName, bytes.NewReader(bs))
+			ctx := context.Background()
+			ctx = tenant.InjectTenantID(ctx, "tenant-a")
+			req := httptest.NewRequestWithContext(ctx, "POST", "/ingest?name=pprof.test{qwe=asd}&spyName="+spyName, bytes.NewReader(bs))
 			req.Header.Set("Content-Type", ct)
 			h.ServeHTTP(res, req)
 			assert.Equal(t, testdatum.expectStatus, res.Code)

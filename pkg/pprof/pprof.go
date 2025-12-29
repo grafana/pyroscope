@@ -86,7 +86,7 @@ func RawFromProto(pbp *profilev1.Profile) *Profile {
 }
 
 func RawFromBytes(input []byte) (_ *Profile, err error) {
-	return RawFromBytesWithLimit(input, -1)
+	return RawFromBytesWithLimit(input, 0)
 }
 
 type ErrDecompressedSizeExceedsLimit struct {
@@ -98,7 +98,7 @@ func (e *ErrDecompressedSizeExceedsLimit) Error() string {
 }
 
 // RawFromBytesWithLimit reads a profile from bytes with an optional size limit.
-// maxSize limits the decompressed size in bytes. Use -1 for no limit.
+// maxSize limits the decompressed size in bytes. Use 0 for no limit.
 // This prevents zip bomb attacks where small compressed data expands to huge sizes.
 func RawFromBytesWithLimit(input []byte, maxSize int64) (_ *Profile, err error) {
 	gzipReader := gzipReaderPool.Get().(*gzipReader)
@@ -115,8 +115,8 @@ func RawFromBytesWithLimit(input []byte, maxSize int64) (_ *Profile, err error) 
 	}
 
 	// Apply size limit if specified (maxSize >= 0)
-	// maxSize == -1 means no limit (unlimited decompression)
-	if maxSize >= 0 {
+	// maxSize == 0 means no limit (unlimited decompression)
+	if maxSize > 0 {
 		r = io.LimitReader(r, maxSize+1) // +1 to detect if limit is exceeded
 	}
 
@@ -125,7 +125,7 @@ func RawFromBytesWithLimit(input []byte, maxSize int64) (_ *Profile, err error) 
 	}
 
 	// Check if we hit the size limit
-	if maxSize >= 0 && int64(buf.Len()) > maxSize {
+	if maxSize > 0 && int64(buf.Len()) > maxSize {
 		return nil, &ErrDecompressedSizeExceedsLimit{Limit: maxSize}
 	}
 
@@ -142,11 +142,11 @@ func RawFromBytesWithLimit(input []byte, maxSize int64) (_ *Profile, err error) 
 }
 
 func FromBytes(input []byte, fn func(*profilev1.Profile, int) error) error {
-	return FromBytesWithLimit(input, -1, fn)
+	return FromBytesWithLimit(input, 0, fn)
 }
 
 // FromBytesWithLimit reads a profile from bytes with an optional size limit and calls fn with the result.
-// maxSize limits the decompressed size in bytes. Use -1 for no limit.
+// maxSize limits the decompressed size in bytes. Use 0 for no limit.
 // This prevents zip bomb attacks where small compressed data expands to huge sizes.
 func FromBytesWithLimit(input []byte, maxSize int64, fn func(*profilev1.Profile, int) error) error {
 	p, err := RawFromBytesWithLimit(input, maxSize)
@@ -1223,7 +1223,7 @@ func Unmarshal(data []byte, p *profilev1.Profile) error {
 }
 
 // UnmarshalWithLimit unmarshals a profile from bytes with an optional size limit.
-// maxSize limits the decompressed size in bytes. Use -1 for no limit.
+// maxSize limits the decompressed size in bytes. Use 0 for no limit.
 // This prevents zip bomb attacks where small compressed data expands to huge sizes.
 func UnmarshalWithLimit(data []byte, p *profilev1.Profile, maxSize int64) error {
 	gr := gzipReaderPool.Get().(*gzipReader)
@@ -1240,8 +1240,8 @@ func UnmarshalWithLimit(data []byte, p *profilev1.Profile, maxSize int64) error 
 	buf.Grow(len(data) * 2)
 
 	// Apply size limit if specified (maxSize >= 0)
-	// maxSize == -1 means no limit (unlimited decompression)
-	if maxSize >= 0 {
+	// maxSize == 0 means no limit (unlimited decompression)
+	if maxSize > 0 {
 		r = io.LimitReader(r, maxSize+1) // +1 to detect if limit is exceeded
 	}
 
@@ -1250,7 +1250,7 @@ func UnmarshalWithLimit(data []byte, p *profilev1.Profile, maxSize int64) error 
 	}
 
 	// Check if we hit the size limit
-	if maxSize >= 0 && int64(buf.Len()) > maxSize {
+	if maxSize > 0 && int64(buf.Len()) > maxSize {
 		return &ErrDecompressedSizeExceedsLimit{Limit: maxSize}
 	}
 
