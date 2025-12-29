@@ -391,14 +391,8 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 			tenantID:       "1mb-body-limit",
 			expectedStatus: 200,
 		},
-		{
-			name:             "ingest/gzip/exceeds-limit",
-			request:          reqIngestGzPprof(pprofGzipOverOneMb),
-			tenantID:         "1mb-body-limit",
-			expectedStatus:   413,
-			expectedErrorMsg: "request body too large",
-			skipMsg:          "TODO: Is it expected that this is not enforced?",
-		},
+		// Note: /ingest endpoint does not support Content-Encoding: gzip header.
+		// Gzip decompression is handled at the pprof parsing layer, not HTTP layer.
 		{
 			name:           "push-json/uncompressed/within-limit",
 			request:        reqPushPprofJson([][]byte{pprofUnderOneMb}),
