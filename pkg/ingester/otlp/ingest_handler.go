@@ -161,6 +161,8 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 
 	body, err := io.ReadAll(reader)
 	if maxBodyBytes > 0 && len(body) == int(maxBodyBytes)+1 {
+		validation.DiscardedBytes.WithLabelValues(string(validation.BodySizeLimit), tenantID).Add(float64(maxBodyBytes))
+		validation.DiscardedProfiles.WithLabelValues(string(validation.BodySizeLimit), tenantID).Add(1)
 		err := validation.NewErrorf(validation.BodySizeLimit, "uncompressed profile payload size exceeds limit of %s", humanize.Bytes(uint64(maxBodyBytes)))
 		http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
 		return
@@ -169,6 +171,8 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 		level.Error(h.log).Log("msg", errMsgBodyRead, "err", err)
 		// handle if body size limit is hit with correct status code
 		if herr := isHTTPRequestBodyTooLarge(err); herr != nil {
+			validation.DiscardedBytes.WithLabelValues(string(validation.BodySizeLimit), tenantID).Add(float64(maxBodyBytes))
+			validation.DiscardedProfiles.WithLabelValues(string(validation.BodySizeLimit), tenantID).Add(1)
 			http.Error(w, herr.Error(), http.StatusRequestEntityTooLarge)
 			return
 		}
@@ -282,6 +286,8 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 				err = h.svc.PushBatch(ctx, req)
 				if err != nil {
 					h.log.Log("msg", "failed to push profile", "err", err)
+					// Note: Validation metrics are already tracked by the distributor for errors
+					// returned from PushBatch, so we don't track them here to avoid double-counting.
 					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
 				}
 			}

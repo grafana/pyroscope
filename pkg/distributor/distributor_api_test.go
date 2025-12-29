@@ -16,6 +16,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 	otlpcolv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	otlpv1 "go.opentelemetry.io/proto/otlp/profiles/v1development"
@@ -317,6 +319,8 @@ const (
 )
 
 func TestDistributorAPIBodySizeLimit(t *testing.T) {
+	const metricReason = validation.BodySizeLimit
+
 	logger := log.NewNopLogger()
 
 	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
@@ -353,12 +357,14 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 	)
 
 	testCases := []struct {
-		name             string
-		skipMsg          string
-		request          func(context.Context) *http.Request
-		tenantID         string
-		expectedStatus   int
-		expectedErrorMsg string
+		name                    string
+		skipMsg                 string
+		request                 func(context.Context) *http.Request
+		tenantID                string
+		expectedStatus          int
+		expectedErrorMsg        string
+		expectDiscardedBytes    float64
+		expectDiscardedProfiles float64
 	}{
 		{
 			name:           "ingest/uncompressed/within-limit",
@@ -373,11 +379,13 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 			expectedStatus: 200,
 		},
 		{
-			name:             "ingest/uncompressed/exceeds-limit",
-			request:          reqIngestPprof(pprofOverOneMb),
-			tenantID:         "1mb-body-limit",
-			expectedStatus:   413,
-			expectedErrorMsg: "request body too large",
+			name:                    "ingest/uncompressed/exceeds-limit",
+			request:                 reqIngestPprof(pprofOverOneMb),
+			tenantID:                "1mb-body-limit",
+			expectedStatus:          413,
+			expectedErrorMsg:        "request body too large",
+			expectDiscardedBytes:    float64(oneMb),
+			expectDiscardedProfiles: 1,
 		},
 		{
 			name:           "ingest/gzip/within-limit",
@@ -406,18 +414,22 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 			expectedStatus: 200,
 		},
 		{
-			name:             "push-json/uncompressed/exceeds-limit",
-			request:          reqPushPprofJson([][]byte{pprofOverOneMb}),
-			tenantID:         "1mb-body-limit",
-			expectedStatus:   400, // grpc status codes used by connect have no mapping to 413
-			expectedErrorMsg: "uncompressed batched profile payload size exceeds limit of 1.0 MB",
+			name:                    "push-json/uncompressed/exceeds-limit",
+			request:                 reqPushPprofJson([][]byte{pprofOverOneMb}),
+			tenantID:                "1mb-body-limit",
+			expectedStatus:          400, // grpc status codes used by connect have no mapping to 413
+			expectedErrorMsg:        "uncompressed batched profile payload size exceeds limit of 1.0 MB",
+			expectDiscardedBytes:    float64(overOneMb),
+			expectDiscardedProfiles: 1,
 		},
 		{
-			name:             "push-json/uncompressed/exceeds-limit-with-two-profiles",
-			request:          reqPushPprofJson([][]byte{pprofUnderOneMb}, [][]byte{pprofUnderOneMb}),
-			tenantID:         "1mb-body-limit",
-			expectedStatus:   400, // grpc status codes used by connect have no mapping to 413
-			expectedErrorMsg: "uncompressed batched profile payload size exceeds limit of 1.0 MB",
+			name:                    "push-json/uncompressed/exceeds-limit-with-two-profiles",
+			request:                 reqPushPprofJson([][]byte{pprofUnderOneMb}, [][]byte{pprofUnderOneMb}),
+			tenantID:                "1mb-body-limit",
+			expectedStatus:          400, // grpc status codes used by connect have no mapping to 413
+			expectedErrorMsg:        "uncompressed batched profile payload size exceeds limit of 1.0 MB",
+			expectDiscardedBytes:    float64(underOneMb * 2),
+			expectDiscardedProfiles: 2,
 		},
 		{
 			name:           "push-json/gzip/within-limit",
@@ -432,18 +444,22 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 			expectedStatus: 200,
 		},
 		{
-			name:             "push-json/gzip/exceeds-limit",
-			request:          reqPushPprofJson([][]byte{pprofGzipOverOneMb}),
-			tenantID:         "1mb-body-limit",
-			expectedStatus:   400, // grpc status codes used by connect have no mapping to 413
-			expectedErrorMsg: "uncompressed batched profile payload size exceeds limit of 1.0 MB",
+			name:                    "push-json/gzip/exceeds-limit",
+			request:                 reqPushPprofJson([][]byte{pprofGzipOverOneMb}),
+			tenantID:                "1mb-body-limit",
+			expectedStatus:          400, // grpc status codes used by connect have no mapping to 413
+			expectedErrorMsg:        "uncompressed batched profile payload size exceeds limit of 1.0 MB",
+			expectDiscardedBytes:    float64(overOneMb),
+			expectDiscardedProfiles: 1,
 		},
 		{
-			name:             "push-json/gzip/exceeds-limit-with-two-profiles",
-			request:          reqPushPprofJson([][]byte{pprofGzipUnderOneMb}, [][]byte{pprofGzipUnderOneMb}),
-			tenantID:         "1mb-body-limit",
-			expectedStatus:   400, // grpc status codes used by connect have no mapping to 413
-			expectedErrorMsg: "uncompressed batched profile payload size exceeds limit of 1.0 MB",
+			name:                    "push-json/gzip/exceeds-limit-with-two-profiles",
+			request:                 reqPushPprofJson([][]byte{pprofGzipUnderOneMb}, [][]byte{pprofGzipUnderOneMb}),
+			tenantID:                "1mb-body-limit",
+			expectedStatus:          400, // grpc status codes used by connect have no mapping to 413
+			expectedErrorMsg:        "uncompressed batched profile payload size exceeds limit of 1.0 MB",
+			expectDiscardedBytes:    float64(underOneMb * 2),
+			expectDiscardedProfiles: 2,
 		},
 		{
 			name:           "otlp-json/uncompressed/within-limit",
@@ -458,11 +474,13 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 			expectedStatus: 200,
 		},
 		{
-			name:             "otlp-json/uncompressed/exceeds-limit",
-			request:          reqOTLPJson(otlpJSONOverOneMb),
-			tenantID:         "1mb-body-limit",
-			expectedStatus:   413,
-			expectedErrorMsg: "profile payload size exceeds limit of 1.0 MB",
+			name:                    "otlp-json/uncompressed/exceeds-limit",
+			request:                 reqOTLPJson(otlpJSONOverOneMb),
+			tenantID:                "1mb-body-limit",
+			expectedStatus:          413,
+			expectedErrorMsg:        "profile payload size exceeds limit of 1.0 MB",
+			expectDiscardedBytes:    float64(oneMb),
+			expectDiscardedProfiles: 1,
 		},
 		{
 			name:           "otlp-json/gzip/within-limit",
@@ -477,11 +495,13 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 			expectedStatus: 200,
 		},
 		{
-			name:             "otlp-json/gzip/exceeds-limit",
-			request:          reqOTLPJsonGzip(otlpJSONGzipOverOneMb),
-			tenantID:         "1mb-body-limit",
-			expectedStatus:   413,
-			expectedErrorMsg: "uncompressed profile payload size exceeds limit of 1.0 MB",
+			name:                    "otlp-json/gzip/exceeds-limit",
+			request:                 reqOTLPJsonGzip(otlpJSONGzipOverOneMb),
+			tenantID:                "1mb-body-limit",
+			expectedStatus:          413,
+			expectedErrorMsg:        "uncompressed profile payload size exceeds limit of 1.0 MB",
+			expectDiscardedBytes:    float64(oneMb),
+			expectDiscardedProfiles: 1,
 		},
 	}
 
@@ -494,6 +514,15 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 			defer cancel()
 			req := tc.request(ctx)
 			req.Header.Set("X-Scope-OrgID", tc.tenantID)
+
+			// Capture metrics before request if we expect them to change
+			var metricsBefore map[prometheus.Collector]float64
+			if tc.expectDiscardedBytes > 0 || tc.expectDiscardedProfiles > 0 {
+				metricsBefore = map[prometheus.Collector]float64{
+					validation.DiscardedBytes.WithLabelValues(string(metricReason), tc.tenantID):    testutil.ToFloat64(validation.DiscardedBytes.WithLabelValues(string(metricReason), tc.tenantID)),
+					validation.DiscardedProfiles.WithLabelValues(string(metricReason), tc.tenantID): testutil.ToFloat64(validation.DiscardedProfiles.WithLabelValues(string(metricReason), tc.tenantID)),
+				}
+			}
 
 			// Execute request through the mux
 			res := httptest.NewRecorder()
@@ -508,13 +537,29 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 				require.Contains(t, res.Body.String(), tc.expectedErrorMsg)
 			}
 
-			// TODO: Check if there are metrics are collecting information about those discarded metrics
+			// Check metrics if expected
+			if tc.expectDiscardedBytes > 0 || tc.expectDiscardedProfiles > 0 {
+				bytesMetric := validation.DiscardedBytes.WithLabelValues(string(metricReason), tc.tenantID)
+				profilesMetric := validation.DiscardedProfiles.WithLabelValues(string(metricReason), tc.tenantID)
+
+				bytesDelta := testutil.ToFloat64(bytesMetric) - metricsBefore[bytesMetric]
+				profilesDelta := testutil.ToFloat64(profilesMetric) - metricsBefore[profilesMetric]
+
+				if tc.expectDiscardedBytes > 0 {
+					require.Equal(t, tc.expectDiscardedBytes, bytesDelta, "expected %f discarded bytes, got %f", tc.expectDiscardedBytes, bytesDelta)
+				}
+				if tc.expectDiscardedProfiles > 0 {
+					require.Equal(t, tc.expectDiscardedProfiles, profilesDelta, "expected %f discarded profiles, got %f", tc.expectDiscardedProfiles, profilesDelta)
+				}
+			}
 		})
 	}
 
 }
 
 func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
+	const metricReason = validation.ProfileSizeLimit
+
 	logger := log.NewNopLogger()
 
 	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
@@ -546,12 +591,14 @@ func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
 	)
 
 	testCases := []struct {
-		name             string
-		skipMsg          string
-		request          func(context.Context) *http.Request
-		tenantID         string
-		expectedStatus   int
-		expectedErrorMsg string
+		name                    string
+		skipMsg                 string
+		request                 func(context.Context) *http.Request
+		tenantID                string
+		expectedStatus          int
+		expectedErrorMsg        string
+		expectDiscardedBytes    float64
+		expectDiscardedProfiles float64
 	}{
 		{
 			name:           "ingest/uncompressed/within-limit",
@@ -598,11 +645,13 @@ func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
 			expectedStatus: 200,
 		},
 		{
-			name:             "push-json/uncompressed/exceeds-limit",
-			request:          reqPushPprofJson([][]byte{pprofOverOneMb}),
-			tenantID:         "1mb-profile-limit",
-			expectedStatus:   400,
-			expectedErrorMsg: "uncompressed profile payload size exceeds limit of 1.0 MB",
+			name:                    "push-json/uncompressed/exceeds-limit",
+			request:                 reqPushPprofJson([][]byte{pprofOverOneMb}),
+			tenantID:                "1mb-profile-limit",
+			expectedStatus:          400,
+			expectedErrorMsg:        "uncompressed profile payload size exceeds limit of 1.0 MB",
+			expectDiscardedBytes:    float64(oneMb),
+			expectDiscardedProfiles: 1,
 		},
 		{
 			name:           "push-json/gzip/within-limit",
@@ -611,11 +660,13 @@ func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
 			expectedStatus: 200,
 		},
 		{
-			name:             "push-json/gzip/exceeds-limit",
-			request:          reqPushPprofJson([][]byte{pprofGzipOverOneMb}),
-			tenantID:         "1mb-profile-limit",
-			expectedStatus:   400,
-			expectedErrorMsg: "uncompressed profile payload size exceeds limit of 1.0 MB",
+			name:                    "push-json/gzip/exceeds-limit",
+			request:                 reqPushPprofJson([][]byte{pprofGzipOverOneMb}),
+			tenantID:                "1mb-profile-limit",
+			expectedStatus:          400,
+			expectedErrorMsg:        "uncompressed profile payload size exceeds limit of 1.0 MB",
+			expectDiscardedBytes:    float64(oneMb),
+			expectDiscardedProfiles: 1,
 		},
 		{
 			name:           "otlp-json/uncompressed/within-limit",
@@ -624,11 +675,13 @@ func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
 			expectedStatus: 200,
 		},
 		{
-			name:             "otlp-json/uncompressed/exceeds-limit",
-			request:          reqOTLPJson(otlpJSONOverOneMb),
-			tenantID:         "1mb-profile-limit",
-			expectedStatus:   400,
-			expectedErrorMsg: "exceeds the size limit",
+			name:                    "otlp-json/uncompressed/exceeds-limit",
+			request:                 reqOTLPJson(otlpJSONOverOneMb),
+			tenantID:                "1mb-profile-limit",
+			expectedStatus:          400,
+			expectedErrorMsg:        "exceeds the size limit",
+			expectDiscardedProfiles: 1,
+			// Note: Bytes not checked for OTLP as they're based on converted pprof size
 		},
 		{
 			name:           "otlp-json/gzip/within-limit",
@@ -637,11 +690,13 @@ func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
 			expectedStatus: 200,
 		},
 		{
-			name:             "otlp-json/gzip/exceeds-limit",
-			request:          reqOTLPJsonGzip(otlpJSONGzipOverOneMb),
-			tenantID:         "1mb-profile-limit",
-			expectedStatus:   400,
-			expectedErrorMsg: "exceeds the size limit",
+			name:                    "otlp-json/gzip/exceeds-limit",
+			request:                 reqOTLPJsonGzip(otlpJSONGzipOverOneMb),
+			tenantID:                "1mb-profile-limit",
+			expectedStatus:          400,
+			expectedErrorMsg:        "exceeds the size limit",
+			expectDiscardedProfiles: 1,
+			// Note: Bytes not checked for OTLP as they're based on converted pprof size
 		},
 	}
 
@@ -654,6 +709,15 @@ func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
 			defer cancel()
 			req := tc.request(ctx)
 			req.Header.Set("X-Scope-OrgID", tc.tenantID)
+
+			// Capture metrics before request if we expect them to change
+			var metricsBefore map[prometheus.Collector]float64
+			if tc.expectDiscardedBytes > 0 || tc.expectDiscardedProfiles > 0 {
+				metricsBefore = map[prometheus.Collector]float64{
+					validation.DiscardedBytes.WithLabelValues(string(metricReason), tc.tenantID):    testutil.ToFloat64(validation.DiscardedBytes.WithLabelValues(string(metricReason), tc.tenantID)),
+					validation.DiscardedProfiles.WithLabelValues(string(metricReason), tc.tenantID): testutil.ToFloat64(validation.DiscardedProfiles.WithLabelValues(string(metricReason), tc.tenantID)),
+				}
+			}
 
 			// Execute request through the mux
 			res := httptest.NewRecorder()
@@ -668,7 +732,21 @@ func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
 				require.Contains(t, res.Body.String(), tc.expectedErrorMsg)
 			}
 
-			// TODO: Check if there are metrics are collecting information about those discarded metrics
+			// Check metrics if expected
+			if tc.expectDiscardedBytes > 0 || tc.expectDiscardedProfiles > 0 {
+				bytesMetric := validation.DiscardedBytes.WithLabelValues(string(metricReason), tc.tenantID)
+				profilesMetric := validation.DiscardedProfiles.WithLabelValues(string(metricReason), tc.tenantID)
+
+				bytesDelta := testutil.ToFloat64(bytesMetric) - metricsBefore[bytesMetric]
+				profilesDelta := testutil.ToFloat64(profilesMetric) - metricsBefore[profilesMetric]
+
+				if tc.expectDiscardedBytes > 0 {
+					require.Equal(t, tc.expectDiscardedBytes, bytesDelta, "expected %f discarded bytes, got %f", tc.expectDiscardedBytes, bytesDelta)
+				}
+				if tc.expectDiscardedProfiles > 0 {
+					require.Equal(t, tc.expectDiscardedProfiles, profilesDelta, "expected %f discarded profiles, got %f", tc.expectDiscardedProfiles, profilesDelta)
+				}
+			}
 		})
 	}
 
