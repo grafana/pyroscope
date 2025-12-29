@@ -160,7 +160,7 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 	}
 
 	body, err := io.ReadAll(reader)
-	if maxBodyBytes > 0 && len(body) == int(maxBodyBytes)+1 {
+	if maxBodyBytes > 0 && int64(len(body)) > maxBodyBytes {
 		validation.DiscardedBytes.WithLabelValues(string(validation.BodySizeLimit), tenantID).Add(float64(maxBodyBytes))
 		validation.DiscardedProfiles.WithLabelValues(string(validation.BodySizeLimit), tenantID).Add(1)
 		err := validation.NewErrorf(validation.BodySizeLimit, "uncompressed profile payload size exceeds limit of %s", humanize.Bytes(uint64(maxBodyBytes)))

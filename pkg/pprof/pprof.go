@@ -1219,7 +1219,7 @@ func MustMarshal(p *profilev1.Profile, compress bool) []byte {
 }
 
 func Unmarshal(data []byte, p *profilev1.Profile) error {
-	return UnmarshalWithLimit(data, p, -1)
+	return UnmarshalWithLimit(data, p, 0)
 }
 
 // UnmarshalWithLimit unmarshals a profile from bytes with an optional size limit.
