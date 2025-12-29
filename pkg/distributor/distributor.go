@@ -278,7 +278,8 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 
 	maxProfileSizeBytes := int64(d.limits.MaxProfileSizeBytes(tenantID))
 	maxRequestSizeBytes := d.limits.IngestionBodyLimitBytes(tenantID)
-	requestSizeUsed := 0
+	requestSizeUsed := int64(0)
+	requestProfileCount := 0
 
 	req := &distributormodel.PushRequest{
 		Series:         make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
@@ -292,13 +293,18 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 				// check if decompression size has been exceeded
 				dsErr := new(pprof.ErrDecompressedSizeExceedsLimit)
 				if errors.As(err, &dsErr) {
+					validation.DiscardedBytes.WithLabelValues(string(validation.ProfileSizeLimit), tenantID).Add(float64(maxProfileSizeBytes))
+					validation.DiscardedProfiles.WithLabelValues(string(validation.ProfileSizeLimit), tenantID).Add(float64(1))
 					err = validation.NewErrorf(validation.ProfileSizeLimit, "uncompressed profile payload size exceeds limit of %s", humanize.Bytes(uint64(maxProfileSizeBytes)))
 				}
 				allErrors.Add(err)
 				continue
 			}
-			requestSizeUsed += profile.RawSize()
-			if int(maxRequestSizeBytes) > 0 && requestSizeUsed > int(maxRequestSizeBytes) {
+			requestSizeUsed += int64(profile.RawSize())
+			requestProfileCount += 1
+			if maxRequestSizeBytes > 0 && requestSizeUsed > maxRequestSizeBytes {
+				validation.DiscardedBytes.WithLabelValues(string(validation.BodySizeLimit), tenantID).Add(float64(requestSizeUsed))
+				validation.DiscardedProfiles.WithLabelValues(string(validation.BodySizeLimit), tenantID).Add(float64(requestProfileCount))
 				return nil, validation.NewErrorf(validation.BodySizeLimit, "uncompressed batched profile payload size exceeds limit of %s", humanize.Bytes(uint64(maxRequestSizeBytes)))
 			}
 			series := &distributormodel.ProfileSeries{
