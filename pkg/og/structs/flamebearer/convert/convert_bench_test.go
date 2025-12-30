@@ -17,7 +17,7 @@ func BenchmarkPprofToProfile(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		PprofToProfile(data, "test", 16384)
+		PprofToProfile(data, "test", Limits{MaxNodes: 16384})
 	}
 	b.StopTimer()
 }
