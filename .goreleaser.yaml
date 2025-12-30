@@ -200,12 +200,12 @@ nfpms:
 archives:
   - id: pyroscope
     name_template: '{{.ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v2") }}{{ .Amd64 }}{{ end }}'
-    builds:
+    ids:
       - pyroscope
       - pyroscope_non_linux
   - id: profilecli
     name_template: 'profilecli_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v2") }}{{ .Amd64 }}{{ end }}'
-    builds:
+    ids:
       - profilecli
       - profilecli_non_linux
     format_overrides:
