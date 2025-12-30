@@ -17,12 +17,13 @@ env:
   - IMAGE_PUBLISH_LATEST={{ or (index .Env "IMAGE_PUBLISH_LATEST") "false" }}
   # Skip GitHub release upload
   - GITHUB_RELEASE_DISABLE={{ or (index .Env "GITHUB_RELEASE_DISABLE") "false" }}
+  # Skip builds of non linux oses
+  - GORELEASER_LINUX_ONLY={{ or (index .Env "GORELEASER_LINUX_ONLY") "false" }}
 builds:
   - env:
       - CGO_ENABLED=0
     goos:
       - linux
-      - darwin
     goarch:
       - amd64
       - arm64
@@ -45,6 +46,31 @@ builds:
     id: pyroscope
   - env:
       - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    goamd64:
+      - v2
+    main: ./cmd/pyroscope
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    tags:
+      - netgo
+      - embedassets
+    ldflags:
+      - >
+        -extldflags "-static" {{ .Env.GORELEASER_DEBUG_INFO_FLAGS }}
+        -X "github.com/grafana/pyroscope/pkg/util/build.Branch={{ .Branch }}"
+        -X "github.com/grafana/pyroscope/pkg/util/build.Version={{ .Version }}"
+        -X "github.com/grafana/pyroscope/pkg/util/build.Revision={{ .ShortCommit }}"
+        -X "github.com/grafana/pyroscope/pkg/util/build.BuildDate={{ .CommitDate }}"
+    id: pyroscope_non_linux
+    skip: '{{ if eq .Env.GORELEASER_LINUX_ONLY "true" }}true{{ else }}else{{ end }}'
+  - env:
+      - CGO_ENABLED=0
     tags:
       - netgo
     ldflags:
@@ -56,6 +82,32 @@ builds:
         -X "github.com/grafana/pyroscope/pkg/util/build.BuildDate={{ .CommitDate }}"
     goos:
       - linux
+    goarch:
+      - amd64
+      - arm64
+    goamd64:
+      - v2
+    ignore:
+      - goos: windows
+        goarch: arm
+    main: ./cmd/profilecli
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    binary: profilecli
+    id: profilecli
+  - env:
+      - CGO_ENABLED=0
+    tags:
+      - netgo
+    ldflags:
+      - >
+        -extldflags "-static" {{ .Env.GORELEASER_DEBUG_INFO_FLAGS }}
+        -X "github.com/grafana/pyroscope/pkg/util/build.Branch={{ .Branch }}"
+        -X "github.com/grafana/pyroscope/pkg/util/build.Version={{ .Version }}"
+        -X "github.com/grafana/pyroscope/pkg/util/build.Revision={{ .ShortCommit }}"
+        -X "github.com/grafana/pyroscope/pkg/util/build.BuildDate={{ .CommitDate }}"
+    goos:
       - windows
       - darwin
     goarch:
@@ -71,7 +123,8 @@ builds:
     flags:
       - -trimpath
     binary: profilecli
-    id: profilecli
+    id: profilecli_non_linux
+    skip: '{{ if eq .Env.GORELEASER_LINUX_ONLY "true" }}true{{ else }}else{{ end }}'
 dockers:
   - use: buildx
     goos: linux
@@ -149,10 +202,12 @@ archives:
     name_template: '{{.ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v2") }}{{ .Amd64 }}{{ end }}'
     builds:
       - pyroscope
+      - pyroscope_non_linux
   - id: profilecli
     name_template: 'profilecli_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v2") }}{{ .Amd64 }}{{ end }}'
     builds:
       - profilecli
+      - profilecli_non_linux
     format_overrides:
       - goos: windows
         formats: [zip]
