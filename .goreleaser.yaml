@@ -118,12 +118,12 @@ docker_manifests:
     image_templates:
       - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
       - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm64v8"
-    skip_push: {{ .Env.IMAGE_PUBLISH_LATEST }}
+    skip_push: '{{ if eq .Env.IMAGE_PUBLISH_LATEST "true" }}false{{ else }}true{{ end }}'
   - name_template: "{{ .Env.IMAGE_PREFIX_MIRROR }}{{ .ProjectName }}:latest"
     image_templates:
       - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
       - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm64v8"
-    skip_push: {{ if eq .Env.IMAGE_PREFIX_MIRROR "" }}true{{ else }}false{{ end }}
+    skip_push: '{{ if eq .Env.IMAGE_PREFIX_MIRROR "" }}true{{ else }}false{{ end }}'
 nfpms:
   - id: pyroscope
     formats:
@@ -187,7 +187,7 @@ release:
   ids:
     - pyroscope
     - profilecli
-  disable: {{ .Env.GITHUB_RELEASE_DISABLE }}
+  disable: '{{ .Env.GITHUB_RELEASE_DISABLE }}'
 # milestones:
 #   - close: true
 
