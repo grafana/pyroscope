@@ -432,7 +432,6 @@ func TestLoader_ShouldCacheIndexNotFoundOnBackgroundUpdates(t *testing.T) {
 	// Delete the bucket index.
 	require.NoError(t, DeleteIndex(ctx, bkt, "user-1", nil))
 
-	// Wait until the next index load attempt occurs.
 	// We expect the bucket index is not considered loaded because of the error.
 	test.Poll(t, 3*time.Second, nil, func() any {
 		return testutil.GatherAndCompare(reg, bytes.NewBufferString(`
