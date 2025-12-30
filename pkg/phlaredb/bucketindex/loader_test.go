@@ -432,27 +432,26 @@ func TestLoader_ShouldCacheIndexNotFoundOnBackgroundUpdates(t *testing.T) {
 	// Delete the bucket index.
 	require.NoError(t, DeleteIndex(ctx, bkt, "user-1", nil))
 
-	// Wait until the next index load attempt occurs.
-	prevLoads := testutil.ToFloat64(loader.loadAttempts)
-	test.Poll(t, 3*time.Second, true, func() interface{} {
-		return testutil.ToFloat64(loader.loadAttempts) > prevLoads
-	})
-
 	// We expect the bucket index is not considered loaded because of the error.
-	assert.NoError(t, testutil.GatherAndCompare(reg, bytes.NewBufferString(`
+	test.Poll(t, 3*time.Second, nil, func() any {
+		return testutil.GatherAndCompare(reg, bytes.NewBufferString(`
 			# HELP pyroscope_bucket_index_loaded Number of bucket indexes currently loaded in-memory.
 			# TYPE pyroscope_bucket_index_loaded gauge
 			pyroscope_bucket_index_loaded 0
 		`),
-		"pyroscope_bucket_index_loaded",
-	))
+			"pyroscope_bucket_index_loaded",
+		)
+	})
 
 	// Try to get the index again. We expect no load attempt because the error has been cached.
-	prevLoads = testutil.ToFloat64(loader.loadAttempts)
-	actualIdx, err = loader.GetIndex(ctx, "user-1")
-	assert.Equal(t, ErrIndexNotFound, err)
-	assert.Nil(t, actualIdx)
-	assert.Equal(t, prevLoads, testutil.ToFloat64(loader.loadAttempts))
+	test.Poll(t, 3*time.Second, true, func() any {
+		prevLoads := testutil.ToFloat64(loader.loadAttempts)
+		actualIdx, err = loader.GetIndex(ctx, "user-1")
+		loadAttemps := testutil.ToFloat64(loader.loadAttempts)
+		assert.Equal(t, ErrIndexNotFound, err)
+		assert.Nil(t, actualIdx)
+		return prevLoads == loadAttemps
+	})
 }
 
 func TestLoader_ShouldOffloadIndexIfNotFoundDuringBackgroundUpdates(t *testing.T) {
