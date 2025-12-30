@@ -22,6 +22,8 @@ jobs:
           persist-credentials: 'false'
       - name: Set GIT_LAST_COMMIT_DATE
         run: echo "GIT_LAST_COMMIT_DATE=$(git log -1 --date=iso-strict --format=%cd)" >> $GITHUB_ENV
+      - name: Set IMAGE_PUBLISH_LATEST=true, so we overwrite the latest docker image tag
+        run: echo "IMAGE_PUBLISH_LATEST=true" >> $GITHUB_ENV
       # Forces goreleaser to use the correct previous tag for the changelog
       - name: Set GORELEASER_PREVIOUS_TAG
         run: echo "GORELEASER_PREVIOUS_TAG=$(git tag -l --sort=-version:refname | grep -E '^v.*' | head -n 2 | tail -1)" >> $GITHUB_ENV
