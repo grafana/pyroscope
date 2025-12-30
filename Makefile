@@ -391,7 +391,7 @@ $(BIN)/mockery: Makefile go.mod
 # Note: When updating the goreleaser version also update .github/workflow/release.yml and .git/workflow/weekly-release.yaml
 $(BIN)/goreleaser: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.7.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.13.2
 
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)

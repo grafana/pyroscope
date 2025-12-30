@@ -7,6 +7,16 @@ before:
 env:
   # Strip debug information from the binary by default, weekly builds will have debug information
   - GORELEASER_DEBUG_INFO_FLAGS={{ if and (index .Env "GORELEASER_STRIP_DEBUG_INFO") (eq .Env.GORELEASER_STRIP_DEBUG_INFO "false")  }}{{ else }}-s -w{{ end }}
+  # Use a custom image prefix (registry) or fallback to grafana/
+  - IMAGE_PREFIX={{ or (index .Env "IMAGE_PREFIX") "grafana/" }}
+  # Allow a custom image tag to be used
+  - IMAGE_TAG={{ or (index .Env "IMAGE_TAG") .Version }}
+  # Publish to two places
+  - IMAGE_PREFIX_MIRROR={{ or (index .Env "IMAGE_PREFIX_MIRROR") "" }}
+  # Publish latest image tag
+  - IMAGE_PUBLISH_LATEST={{ or (index .Env "IMAGE_PUBLISH_LATEST") "false" }}
+  # Skip GitHub release upload
+  - GITHUB_RELEASE_DISABLE={{ or (index .Env "GITHUB_RELEASE_DISABLE") "false" }}
 builds:
   - env:
       - CGO_ENABLED=0
@@ -74,8 +84,7 @@ dockers:
     extra_files:
       - cmd/pyroscope/pyroscope.yaml
     image_templates:
-      - "grafana/{{ .ProjectName }}:{{ .Version }}-amd64"
-      - "grafana/{{ .ProjectName }}:latest-amd64"
+      - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
     build_flag_templates:
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.created={{.Date}}"
@@ -92,8 +101,7 @@ dockers:
     extra_files:
       - cmd/pyroscope/pyroscope.yaml
     image_templates:
-      - "grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8"
-      - "grafana/{{ .ProjectName }}:latest-arm64v8"
+      - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm64v8"
     build_flag_templates:
       - "--platform=linux/arm64/v8"
       - "--label=org.opencontainers.image.created={{.Date}}"
@@ -102,14 +110,20 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
 docker_manifests:
   # https://goreleaser.com/customization/docker_manifest/
-  - name_template: grafana/{{ .ProjectName }}:{{ .Version }}
+  - name_template: "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}"
     image_templates:
-      - grafana/{{ .ProjectName }}:{{ .Version }}-amd64
-      - grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8
-  - name_template: grafana/{{ .ProjectName }}:latest
+      - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
+      - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm64v8"
+  - name_template: "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:latest"
     image_templates:
-      - grafana/{{ .ProjectName }}:latest-amd64
-      - grafana/{{ .ProjectName }}:latest-arm64v8
+      - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
+      - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm64v8"
+    skip_push: {{ .Env.IMAGE_PUBLISH_LATEST }}
+  - name_template: "{{ .Env.IMAGE_PREFIX_MIRROR }}{{ .ProjectName }}:latest"
+    image_templates:
+      - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
+      - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm64v8"
+    skip_push: {{ if eq .Env.IMAGE_PREFIX_MIRROR "" }}true{{ else }}false{{ end }}
 nfpms:
   - id: pyroscope
     formats:
@@ -167,12 +181,13 @@ release:
     - [grafana/pyroscope](https://hub.docker.com/r/grafana/pyroscope/tags)
 
     ```bash
-      docker pull docker.io/grafana/pyroscope:{{ trimprefix .Tag "v" }}
+      docker pull {{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}
     ```
 
   ids:
     - pyroscope
     - profilecli
+  disable: {{ .Env.GITHUB_RELEASE_DISABLE }}
 # milestones:
 #   - close: true
 

@@ -19,8 +19,10 @@ jobs:
           persist-credentials: false
       - name: Set GORELEASER_CURRENT_TAG
         run: echo "GORELEASER_CURRENT_TAG=v0.0.0-$(./tools/image-tag)" >> $GITHUB_ENV
-      - name: Set WEEKLY_IMAGE_TAG
-        run: echo "WEEKLY_IMAGE_TAG=$(./tools/image-tag)" >> $GITHUB_ENV
+      - name: Set IMAGE_TAG
+        run: echo "IMAGE_TAG=$(./tools/image-tag)" >> $GITHUB_ENV
+      - name: Skip github releases
+        run: echo "GITHUB_RELEASE_DISABLE=true" >> $GITHUB_ENV
       - name: Set GORELEASER_STRIP_DEBUG_INFO=false, so binaries are not stripped of debug info
         run: echo "GORELEASER_STRIP_DEBUG_INFO=false" >> $GITHUB_ENV
       # Forces goreleaser to use the correct previous tag for the changelog
@@ -30,7 +32,7 @@ jobs:
       - name: Create tags for this weekly release
         run: |
           git tag "$GORELEASER_CURRENT_TAG"
-          git tag "$WEEKLY_IMAGE_TAG"
+          git tag "$IMAGE_TAG"
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
         with:
           go-version: "1.24.11"
@@ -60,34 +62,9 @@ jobs:
       - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
         with:
           # ensure this aligns with the version specified in the /Makefile
-          version: v2.7.0
-          args: release --clean --skip=publish --timeout 60m
+          version: v2.13.2
+          args: release --clean --skip=nfpm --timeout 60m
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Push per architecture images and create multi-arch manifest
-        run: |
-          set -eu -o pipefail
-          set +x
-          IMAGE_AMMENDS=()
-
-          # the grep needs to remove an extra v, which is in the git tag, but not in the image tag
-          for image in $(docker images --format '{{.Repository}}:{{.Tag}}' | grep "grafana/pyroscope:${GORELEASER_CURRENT_TAG:1}-"); do
-            new_image="${image/0.0.0-/}"
-            docker tag "${image}" "${new_image}"
-            docker push "${new_image}"
-            IMAGE_AMMENDS+=( "--amend" "${new_image}" )
-          done
-
-          if [[ ! " ${IMAGE_AMMENDS[*]} " =~ -amd64 ]]; then
-            echo "expected to contain an amd64 image"
-            exit 1
-          fi
-          if [[ ! " ${IMAGE_AMMENDS[*]} " =~ -arm64 ]]; then
-            echo "expected to contain an arm64 image"
-            exit 1
-          fi
-
-          docker manifest create "grafana/pyroscope:${WEEKLY_IMAGE_TAG}" "${IMAGE_AMMENDS[@]}"
-          docker manifest push "grafana/pyroscope:${WEEKLY_IMAGE_TAG}"
       - name: Push git tag for weekly release
-        run: git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/grafana/pyroscope.git" "${WEEKLY_IMAGE_TAG}" 2> /dev/null
+        run: git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/grafana/pyroscope.git" "${IMAGE_TAG}" 2> /dev/null
