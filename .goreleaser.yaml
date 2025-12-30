@@ -11,8 +11,6 @@ env:
   - IMAGE_PREFIX={{ or (index .Env "IMAGE_PREFIX") "grafana/" }}
   # Allow a custom image tag to be used
   - IMAGE_TAG={{ or (index .Env "IMAGE_TAG") .Version }}
-  # Publish to two places
-  - IMAGE_PREFIX_MIRROR={{ or (index .Env "IMAGE_PREFIX_MIRROR") "" }}
   # Publish latest image tag
   - IMAGE_PUBLISH_LATEST={{ or (index .Env "IMAGE_PUBLISH_LATEST") "false" }}
   # Skip GitHub release upload
@@ -172,11 +170,6 @@ docker_manifests:
       - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
       - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm64v8"
     skip_push: '{{ if eq .Env.IMAGE_PUBLISH_LATEST "true" }}false{{ else }}true{{ end }}'
-  - name_template: "{{ .Env.IMAGE_PREFIX_MIRROR }}{{ .ProjectName }}:latest"
-    image_templates:
-      - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
-      - "{{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm64v8"
-    skip_push: '{{ if eq .Env.IMAGE_PREFIX_MIRROR "" }}true{{ else }}false{{ end }}'
 nfpms:
   - id: pyroscope
     formats:
