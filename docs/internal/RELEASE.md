@@ -61,11 +61,7 @@ Once merged, a `vX.Y.Z` patch release tag must be created and pushed to remote t
 > you need to make sure the release's actions to publish a `:latest` docker
 > image tag and a `home-brew` formula are removed:
 >
-> This can be done by updating the workflow in the previous release branches using those cherry-picks:
-> ```
-> git cherry-pick 73a4367a5a4cc0546f499403431e14a0b353cf2f  # Do not publish home-brew updates
-> git cherry-pick 3f3d87b4629bccbd0b8a9fffa43a3aa03e4c20bf  # Do not publish docker image tag :latest
-> ```
+> This can be done by updating `release.yml` in the previous release branches to set `$IMAGE_PUBLISH_LATEST=false`.
 
 ## Manual Release Process
 
