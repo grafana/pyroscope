@@ -22,7 +22,7 @@ jobs:
           persist-credentials: 'false'
       - name: Set GIT_LAST_COMMIT_DATE
         run: echo "GIT_LAST_COMMIT_DATE=$(git log -1 --date=iso-strict --format=%cd)" >> $GITHUB_ENV
-      - name: Set IMAGE_PUBLISH_LATEST=true, so we overwrite the latest docker image tag
+      - name: Set IMAGE_PUBLISH_LATEST=true, so we overwrite the latest docker image tag and update Homebrew
         run: echo "IMAGE_PUBLISH_LATEST=true" >> $GITHUB_ENV
       # Forces goreleaser to use the correct previous tag for the changelog
       - name: Set GORELEASER_PREVIOUS_TAG
@@ -76,7 +76,9 @@ jobs:
       # make generate-formulas expects PYROSCOPE_TAG to be set
       - name: Set PYROSCOPE_TAG
         run: echo "PYROSCOPE_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-      - name: Update homebrew formulas
+      # Our Homebrew publishing currently assumes latest releases only
+      - if: env.IMAGE_PUBLISH_LATEST == 'true'
+        name: Update homebrew formulas
         run: |
           git config --global url."https://x-access-token:$(echo "${HOMEBREW_GITHUB_TOKEN}" | xargs)@github.com/pyroscope-io/homebrew-brew".insteadOf "https://github.com/pyroscope-io/homebrew-brew" 2> /dev/null
           git config --global user.email "dmitry+bot@pyroscope.io"

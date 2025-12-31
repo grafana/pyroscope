@@ -66,7 +66,7 @@ builds:
         -X "github.com/grafana/pyroscope/pkg/util/build.Revision={{ .ShortCommit }}"
         -X "github.com/grafana/pyroscope/pkg/util/build.BuildDate={{ .CommitDate }}"
     id: pyroscope_non_linux
-    skip: '{{ if eq .Env.GORELEASER_LINUX_ONLY "true" }}true{{ else }}else{{ end }}'
+    skip: '{{ if eq .Env.GORELEASER_LINUX_ONLY "true" }}true{{ else }}false{{ end }}'
   - env:
       - CGO_ENABLED=0
     tags:
@@ -122,7 +122,7 @@ builds:
       - -trimpath
     binary: profilecli
     id: profilecli_non_linux
-    skip: '{{ if eq .Env.GORELEASER_LINUX_ONLY "true" }}true{{ else }}else{{ end }}'
+    skip: '{{ if eq .Env.GORELEASER_LINUX_ONLY "true" }}true{{ else }}false{{ end }}'
 dockers:
   - use: buildx
     goos: linux
@@ -214,7 +214,10 @@ changelog:
     exclude:
       - "^test:"
 release:
-  draft: true
+  # Draft releases break our Homebrew release which
+  # depends on asset urls created on release "publish"
+  draft: false
+  make_latest: '{{ .Env.IMAGE_PUBLISH_LATEST }}'
   footer: |
     As always, feedback is more than welcome, feel free to open issues/discussions.
     You can reach out to the team using:
