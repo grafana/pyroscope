@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
@@ -49,16 +50,29 @@ type Symbolizer struct {
 	bucket  objstore.Bucket
 	metrics *metrics
 	cfg     Config
+	limits  Limits
 }
 
-func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket) (*Symbolizer, error) {
+type ErrSymbolSizeBytesExceedsLimit struct {
+	Limit int64
+}
+
+func (e *ErrSymbolSizeBytesExceedsLimit) Error() string {
+	return fmt.Sprintf("symbol size exceeds maximum allowed size of %d bytes", e.Limit)
+}
+
+type Limits interface {
+	SymbolizerMaxSymbolSizeBytes(tenantID string) int
+}
+
+func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket, limits Limits) (*Symbolizer, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 
 	metrics := newMetrics(reg)
 
-	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics)
+	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics, limits)
 	if err != nil {
 		return nil, err
 	}
@@ -69,6 +83,7 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objsto
 		bucket:  bucket,
 		metrics: metrics,
 		cfg:     cfg,
+		limits:  limits,
 	}, nil
 }
 
@@ -464,7 +479,12 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 		return nil, fmt.Errorf("read debuginfod data: %w", err)
 	}
 
-	lidiaData, err := s.processELFData(elfData)
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	lidiaData, err := s.processELFData(elfData, int64(s.limits.SymbolizerMaxSymbolSizeBytes(tenantID)))
 	if err != nil {
 		return nil, err
 	}
@@ -488,8 +508,8 @@ func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (i
 	return debugReader, nil
 }
 
-func (s *Symbolizer) processELFData(data []byte) (lidiaData []byte, err error) {
-	decompressedData, err := detectCompression(data)
+func (s *Symbolizer) processELFData(data []byte, maxSize int64) (lidiaData []byte, err error) {
+	decompressedData, err := detectCompression(data, maxSize)
 	if err != nil {
 		s.metrics.debugSymbolResolutionErrors.WithLabelValues("compression_error").Inc()
 		return nil, fmt.Errorf("detect compression: %w", err)

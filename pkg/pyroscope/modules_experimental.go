@@ -402,6 +402,7 @@ func (f *Pyroscope) initSymbolizer() (services.Service, error) {
 		f.Cfg.Symbolizer,
 		f.reg,
 		prefixedBucket,
+		f.Overrides,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create symbolizer: %w", err)

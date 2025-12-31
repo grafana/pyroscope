@@ -10,18 +10,55 @@ import (
 	"strings"
 	"testing"
 
-	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/lidia"
-	"github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
-
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/lidia"
+	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
+
+type symbolizerInputs struct {
+	Registry *prometheus.Registry
+	Limits   Limits
+}
+
+func newSymbolizerTest(t *testing.T, inp *symbolizerInputs) (*Symbolizer, *mocksymbolizer.MockDebuginfodClient, *mockobjstore.MockBucket) {
+	t.Helper()
+	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
+	mockBucket := mockobjstore.NewMockBucket(t)
+
+	if inp == nil {
+		inp = &symbolizerInputs{}
+	}
+
+	if inp.Limits == nil {
+		inp.Limits = validation.MockDefaultOverrides()
+	}
+
+	if inp.Registry == nil {
+		inp.Registry = prometheus.NewRegistry()
+	}
+
+	s, err := New(
+		log.NewNopLogger(),
+		Config{MaxDebuginfodConcurrency: 1},
+		inp.Registry,
+		mockBucket,
+		inp.Limits,
+	)
+	require.NoError(t, err)
+	s.client = mockClient
+
+	return s, mockClient, mockBucket
+}
 
 // TestSymbolizePprof tests symbolization using testdata/symbols.debug which contains:
 //
@@ -237,19 +274,11 @@ func TestSymbolizePprof(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
-			mockBucket := mockobjstore.NewMockBucket(t)
+			s, mockClient, mockBucket := newSymbolizerTest(t, nil)
 			tt.setupMock(mockClient, mockBucket)
 
-			s := &Symbolizer{
-				logger:  log.NewNopLogger(),
-				client:  mockClient,
-				bucket:  mockBucket,
-				metrics: newMetrics(nil),
-				cfg:     Config{MaxDebuginfodConcurrency: 1},
-			}
-
-			err := s.SymbolizePprof(context.Background(), tt.profile)
+			ctx := tenant.InjectTenantID(context.Background(), "tenant")
+			err := s.SymbolizePprof(ctx, tt.profile)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -263,8 +292,7 @@ func TestSymbolizePprof(t *testing.T) {
 }
 
 func TestSymbolizationKeepsSequentialFunctionIDs(t *testing.T) {
-	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
-	mockBucket := mockobjstore.NewMockBucket(t)
+	s, mockClient, mockBucket := newSymbolizerTest(t, nil)
 
 	profile := &googlev1.Profile{
 		Mapping:     []*googlev1.Mapping{{BuildId: 1}},
@@ -281,15 +309,8 @@ func TestSymbolizationKeepsSequentialFunctionIDs(t *testing.T) {
 	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil)
 	mockBucket.On("Upload", mock.Anything, "build-id", mock.Anything).Return(nil)
 
-	s := &Symbolizer{
-		logger:  log.NewNopLogger(),
-		client:  mockClient,
-		bucket:  mockBucket,
-		metrics: newMetrics(nil),
-		cfg:     Config{MaxDebuginfodConcurrency: 1},
-	}
-
-	err := s.SymbolizePprof(context.Background(), profile)
+	ctx := tenant.InjectTenantID(context.Background(), "tenant")
+	err := s.SymbolizePprof(ctx, profile)
 	require.NoError(t, err)
 
 	// Verify sequential function IDs
@@ -302,6 +323,7 @@ func TestSymbolizationKeepsSequentialFunctionIDs(t *testing.T) {
 }
 
 func TestSymbolizationWithLidiaData(t *testing.T) {
+
 	const testLidiaZip = "testdata/test_lidia_file.gz"
 	const buildID = "ffcf60c240417166980a43fbbfde486e0b3718e5"
 
@@ -314,17 +336,10 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 		return io.NopCloser(bytes.NewReader(lidiaData))
 	}
 
-	mockBucket := mockobjstore.NewMockBucket(t)
-	mockBucket.On("Get", mock.Anything, buildID).Return(getLidiaData(), nil).Once()
-	mockBucket.On("Get", mock.Anything, buildID).Return(getLidiaData(), nil).Once()
+	sym, _, mockBucket := newSymbolizerTest(t, nil)
 
-	sym := &Symbolizer{
-		logger:  log.NewNopLogger(),
-		client:  nil,
-		bucket:  mockBucket,
-		metrics: newMetrics(prometheus.NewRegistry()),
-		cfg:     Config{MaxDebuginfodConcurrency: 1},
-	}
+	mockBucket.On("Get", mock.Anything, buildID).Return(getLidiaData(), nil).Once()
+	mockBucket.On("Get", mock.Anything, buildID).Return(getLidiaData(), nil).Once()
 
 	req := &request{
 		buildID:    buildID,
@@ -336,7 +351,8 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 		},
 	}
 
-	sym.symbolize(context.Background(), req)
+	ctx := tenant.InjectTenantID(context.Background(), "tenant")
+	sym.symbolize(ctx, req)
 	require.NotEmpty(t, req.locations[0].lines)
 
 	// Second request should also fetch from store
@@ -350,88 +366,103 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 		},
 	}
 
-	sym.symbolize(context.Background(), req2)
+	sym.symbolize(ctx, req2)
 	require.NotEmpty(t, req2.locations[0].lines)
 }
 
-// TestSymbolizeWithObjectStore validates the symbolizer's behavior with the object store:
-// 1. First request: Object store miss → fetch from debuginfod → store Lidia data in object store
-// 2. Second request (same build-id, same address): Object store hit → use cached Lidia data
-// 3. Third request (same build-id, different address): Object store hit → use cached Lidia data
-// 4. Fourth request (different build-id): Object store miss → fetch from debuginfod → store Lidia data
+// TestSymbolizeWithObjectStore validates the symbolizer's behavior with the object store
 func TestSymbolizeWithObjectStore(t *testing.T) {
-	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
-	mockBucket := mockobjstore.NewMockBucket(t)
-
-	s := &Symbolizer{
-		logger:  log.NewNopLogger(),
-		client:  mockClient,
-		bucket:  mockBucket,
-		metrics: newMetrics(prometheus.NewRegistry()),
-		cfg:     Config{MaxDebuginfodConcurrency: 1},
-	}
 
 	elfTestFile := openTestFile(t)
 	elfData, err := io.ReadAll(elfTestFile)
 	elfTestFile.Close()
 	require.NoError(t, err)
 
-	// request 1
 	var capturedLidiaData []byte
-	mockBucket.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
-	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(io.NopCloser(bytes.NewReader(elfData)), nil).Once()
-	mockBucket.On("Upload", mock.Anything, "build-id", mock.Anything).Run(func(args mock.Arguments) {
-		reader := args.Get(2).(io.Reader)
-		var buf bytes.Buffer
-		teeReader := io.TeeReader(reader, &buf)
-		var err error
-		capturedLidiaData, err = io.ReadAll(teeReader)
-		require.NoError(t, err)
-	}).Return(nil).Once()
 
-	req1 := createRequest(t, "build-id", 0x1500)
-	s.symbolize(context.Background(), req1)
-	require.NotEmpty(t, req1.locations[0].lines)
-	require.NotEmpty(t, capturedLidiaData)
+	ctx := tenant.InjectTenantID(context.Background(), "tenant")
 
-	// request 2
-	mockBucket.On("Get", mock.Anything, "build-id").Return(
-		io.NopCloser(bytes.NewReader(capturedLidiaData)), nil,
-	).Once()
+	// 1. First request: Object store miss → fetch from debuginfod → store Lidia data in object store
+	t.Run("store-miss", func(t *testing.T) {
+		s, mockClient, mockBucket := newSymbolizerTest(t, nil)
 
-	req2 := createRequest(t, "build-id", 0x1500)
-	s.symbolize(context.Background(), req2)
-	require.NotEmpty(t, req2.locations[0].lines)
+		mockBucket.On("Get", mock.Anything, "build-id").Return(nil, fmt.Errorf("not found")).Once()
+		mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(io.NopCloser(bytes.NewReader(elfData)), nil).Once()
+		mockBucket.On("Upload", mock.Anything, "build-id", mock.Anything).Run(func(args mock.Arguments) {
+			reader := args.Get(2).(io.Reader)
+			var buf bytes.Buffer
+			teeReader := io.TeeReader(reader, &buf)
+			var err error
+			capturedLidiaData, err = io.ReadAll(teeReader)
+			require.NoError(t, err)
+		}).Return(nil).Once()
 
-	// request 3
-	mockBucket.On("Get", mock.Anything, "build-id").Return(
-		io.NopCloser(bytes.NewReader(capturedLidiaData)), nil,
-	).Once()
+		req1 := createRequest(t, "build-id", 0x1500)
+		s.symbolize(ctx, req1)
+		require.NotEmpty(t, req1.locations[0].lines)
+		require.NotEmpty(t, capturedLidiaData)
 
-	req3 := createRequest(t, "build-id", 0x3c5a)
-	s.symbolize(context.Background(), req3)
-	require.NotEmpty(t, req3.locations[0].lines)
+		mockClient.AssertExpectations(t)
+		mockBucket.AssertExpectations(t)
 
-	// request 4
-	var capturedLidiaData2 []byte
-	mockBucket.On("Get", mock.Anything, "different-build-id").Return(nil, fmt.Errorf("not found")).Once()
-	mockClient.On("FetchDebuginfo", mock.Anything, "different-build-id").Return(io.NopCloser(bytes.NewReader(elfData)), nil).Once()
-	mockBucket.On("Upload", mock.Anything, "different-build-id", mock.Anything).Run(func(args mock.Arguments) {
-		reader := args.Get(2).(io.Reader)
-		var buf bytes.Buffer
-		teeReader := io.TeeReader(reader, &buf)
-		var err error
-		capturedLidiaData2, err = io.ReadAll(teeReader)
-		require.NoError(t, err)
-	}).Return(nil).Once()
+	})
 
-	req4 := createRequest(t, "different-build-id", 0x1500)
-	s.symbolize(context.Background(), req4)
-	require.NotEmpty(t, req4.locations[0].lines)
-	require.NotEmpty(t, capturedLidiaData2)
+	// 2. Second request (same build-id, same address): Object store hit → use cached Lidia data
+	t.Run("store hit, same address", func(t *testing.T) {
+		s, mockClient, mockBucket := newSymbolizerTest(t, nil)
 
-	mockClient.AssertExpectations(t)
-	mockBucket.AssertExpectations(t)
+		mockBucket.On("Get", mock.Anything, "build-id").Return(
+			io.NopCloser(bytes.NewReader(capturedLidiaData)), nil,
+		).Once()
+
+		req2 := createRequest(t, "build-id", 0x1500)
+		s.symbolize(ctx, req2)
+		require.NotEmpty(t, req2.locations[0].lines)
+
+		mockClient.AssertExpectations(t)
+		mockBucket.AssertExpectations(t)
+	})
+
+	// 3. Third request (same build-id, different address): Object store hit → use cached Lidia data
+	t.Run("store hit, different address", func(t *testing.T) {
+		s, mockClient, mockBucket := newSymbolizerTest(t, nil)
+		mockBucket.On("Get", mock.Anything, "build-id").Return(
+			io.NopCloser(bytes.NewReader(capturedLidiaData)), nil,
+		).Once()
+
+		req3 := createRequest(t, "build-id", 0x3c5a)
+		s.symbolize(ctx, req3)
+		require.NotEmpty(t, req3.locations[0].lines)
+
+		mockClient.AssertExpectations(t)
+		mockBucket.AssertExpectations(t)
+	})
+
+	// 4. Fourth request (different build-id): Object store miss → fetch from debuginfod → store Lidia data
+	t.Run("store miss, different build-id", func(t *testing.T) {
+		s, mockClient, mockBucket := newSymbolizerTest(t, nil)
+
+		var capturedLidiaData2 []byte
+		mockBucket.On("Get", mock.Anything, "different-build-id").Return(nil, fmt.Errorf("not found")).Once()
+		mockClient.On("FetchDebuginfo", mock.Anything, "different-build-id").Return(io.NopCloser(bytes.NewReader(elfData)), nil).Once()
+		mockBucket.On("Upload", mock.Anything, "different-build-id", mock.Anything).Run(func(args mock.Arguments) {
+			reader := args.Get(2).(io.Reader)
+			var buf bytes.Buffer
+			teeReader := io.TeeReader(reader, &buf)
+			var err error
+			capturedLidiaData2, err = io.ReadAll(teeReader)
+			require.NoError(t, err)
+		}).Return(nil).Once()
+
+		req4 := createRequest(t, "different-build-id", 0x1500)
+		s.symbolize(ctx, req4)
+		require.NotEmpty(t, req4.locations[0].lines)
+		require.NotEmpty(t, capturedLidiaData2)
+
+		mockClient.AssertExpectations(t)
+		mockBucket.AssertExpectations(t)
+	})
+
 }
 
 func TestSymbolizerMetrics(t *testing.T) {
@@ -453,7 +484,7 @@ func TestSymbolizerMetrics(t *testing.T) {
 					logger:  log.NewNopLogger(),
 					metrics: newMetrics(nil),
 				}
-				lidiaData, err := preProcessor.processELFData(elfData)
+				lidiaData, err := preProcessor.processELFData(elfData, 0) // 0 means unlimited
 				require.NoError(t, err)
 				require.NotEmpty(t, lidiaData)
 
@@ -525,19 +556,11 @@ func TestSymbolizerMetrics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reg := prometheus.NewRegistry()
-
-			mockBucket := mockobjstore.NewMockBucket(t)
-			mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
+			s, mockClient, mockBucket := newSymbolizerTest(t, &symbolizerInputs{Registry: reg})
 			tt.setupMock(mockClient, mockBucket)
 
-			s := &Symbolizer{
-				logger:  log.NewNopLogger(),
-				client:  mockClient,
-				bucket:  mockBucket,
-				metrics: newMetrics(reg),
-			}
-
-			tt.setupTest(s, context.Background())
+			ctx := tenant.InjectTenantID(context.Background(), "tenant")
+			tt.setupTest(s, ctx)
 
 			for metricName, expectedCount := range tt.expected {
 				count, err := testutil.GatherAndCount(reg, metricName)
