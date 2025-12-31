@@ -7,8 +7,8 @@ before:
 env:
   # Strip debug information from the binary by default, weekly builds will have debug information
   - GORELEASER_DEBUG_INFO_FLAGS={{ if and (index .Env "GORELEASER_STRIP_DEBUG_INFO") (eq .Env.GORELEASER_STRIP_DEBUG_INFO "false")  }}{{ else }}-s -w{{ end }}
-  # Use a custom image prefix (registry) or fallback to grafana/
-  - IMAGE_PREFIX={{ or (index .Env "IMAGE_PREFIX") "grafana/" }}
+  # Use a custom image prefix (registry) or fallback to docker.io/grafana/
+  - IMAGE_PREFIX={{ or (index .Env "IMAGE_PREFIX") "docker.io/grafana/" }}
   # Allow a custom image tag to be used
   - IMAGE_TAG={{ or (index .Env "IMAGE_TAG") .Version }}
   # Publish latest image tag
