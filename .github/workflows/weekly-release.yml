@@ -21,6 +21,8 @@ jobs:
         run: echo "GORELEASER_CURRENT_TAG=v0.0.0-$(./tools/image-tag)" >> $GITHUB_ENV
       - name: Set IMAGE_TAG
         run: echo "IMAGE_TAG=$(./tools/image-tag)" >> $GITHUB_ENV
+      - name: Set IMAGE_PUBLISH_LATEST=false, so we don't overwrite the latest docker image tag and Homebrew version
+        run: echo "IMAGE_PUBLISH_LATEST=false" >> $GITHUB_ENV
       - name: Set GITHUB_RELEASE_DISABLE=true, so github releases are skipped
         run: echo "GITHUB_RELEASE_DISABLE=true" >> $GITHUB_ENV
       - name: Set GORELEASER_STRIP_DEBUG_INFO=false, so binaries are not stripped of debug info
