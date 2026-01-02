@@ -17,7 +17,7 @@ const (
 	LanguageUnknown = Language("")
 	LanguageGo      = Language("go")
 	LanguageJava    = Language("java")
-	LanguagePython    = Language("python")
+	LanguagePython  = Language("python")
 )
 
 type Version string
