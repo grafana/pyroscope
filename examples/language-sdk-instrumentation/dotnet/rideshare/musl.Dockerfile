@@ -8,7 +8,12 @@ ARG SDK_VERSION
 
 WORKDIR /dotnet
 
-ADD example .
+ADD example/BikeService.cs \
+    example/CarService.cs \
+    example/Example.csproj \
+    example/OrderService.cs \
+    example/Program.cs \
+    example/ScooterService.cs ./
 
 # Set the target framework to SDK_VERSION
 RUN sed -i -E 's|<TargetFramework>.*</TargetFramework>|<TargetFramework>net'$SDK_VERSION'</TargetFramework>|' Example.csproj
@@ -17,7 +22,7 @@ RUN sed -i -E 's|<TargetFramework>.*</TargetFramework>|<TargetFramework>net'$SDK
 RUN dotnet publish -o . --framework net$SDK_VERSION --runtime linux-musl-x64 --no-self-contained
 
 # This fetches the SDK
-FROM --platform=linux/amd64 pyroscope/pyroscope-dotnet:0.10.0-musl AS sdk
+FROM --platform=linux/amd64 pyroscope/pyroscope-dotnet:0.13.0-musl AS sdk
 
 # Runtime only image of the targetplatfrom, so the platform the image will be running on.
 FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:$SDK_VERSION-alpine
