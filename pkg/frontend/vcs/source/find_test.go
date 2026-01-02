@@ -166,6 +166,17 @@ source_code:
           ref: v1.10.0
 `
 
+const pythonPyroscopeYAML = `---
+source_code:
+  mappings:
+    - path:
+        - prefix: /app/myproject
+      language: python
+      source:
+        local:
+          path: src
+`
+
 // TestFileFinder_Find tests the complete happy path integration for find.go using table-driven tests
 func TestFileFinder_Find(t *testing.T) {
 	tests := []struct {
@@ -402,6 +413,52 @@ require (
 			},
 			expectedContent: "# CONTENT require.go",
 			expectedURL:     "https://github.com/stretchr/testify/blob/v1.10.0/require/require.go",
+			expectedError:   false,
+		},
+		{
+			name: "python/stdlib",
+			fileSpec: config.FileSpec{
+				FunctionName: "difflib.SequenceMatcher.find_longest_match",
+				Path:         "/usr/lib/python3.12/difflib.py",
+			},
+			ref: "main",
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Owner: "python",
+						Repo:  "cpython",
+						Ref:   "3.12",
+						Path:  "Lib/difflib.py",
+					},
+					content: "# CONTENT difflib.py",
+				},
+			},
+			expectedContent: "# CONTENT difflib.py",
+			expectedURL:     "https://github.com/python/cpython/blob/3.12/Lib/difflib.py",
+			expectedError:   false,
+		},
+		{
+			name: "python/mapped-local-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "myproject.main.run",
+				Path:         "/app/myproject/main.py",
+			},
+			rootPath:      "examples/python-app",
+			ref:           "main",
+			pyroscopeYAML: pythonPyroscopeYAML,
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Owner: "grafana",
+						Repo:  "pyroscope",
+						Ref:   "main",
+						Path:  "examples/python-app/src/app/myproject/main.py",
+					},
+					content: "# CONTENT main.py",
+				},
+			},
+			expectedContent: "# CONTENT main.py",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/python-app/src/app/myproject/main.py",
 			expectedError:   false,
 		},
 		{
