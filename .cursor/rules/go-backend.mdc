@@ -1,0 +1,154 @@
+---
+description: Go backend coding standards and patterns for Pyroscope
+globs:
+  - "**/*.go"
+  - "!**/*_test.go"
+---
+
+# Go Backend Development
+
+## Import Organization
+
+Always organize imports into three groups separated by blank lines:
+
+```go
+import (
+    // Standard library
+    "context"
+    "fmt"
+
+    // Third-party packages
+    "github.com/prometheus/client_golang/prometheus"
+    "go.uber.org/atomic"
+
+    // Internal packages
+    "github.com/grafana/pyroscope/pkg/model"
+    "github.com/grafana/pyroscope/pkg/objstore"
+)
+```
+
+**Don't** add imports within the three import groups (keep them separate).
+
+## Formatting & Linting
+
+- Use `golangci-lint` (run via `make lint`)
+- gofmt for formatting
+- goimports with `-local github.com/grafana/pyroscope`
+- Enabled linters: depguard, goconst, misspell, revive, unconvert, unparam
+
+## Logging
+
+- **Use**: `github.com/go-kit/log`
+- **Don't**: `github.com/go-kit/kit/log` (deprecated import path)
+- **Don't**: `fmt.Println` for logging
+
+Use structured logging:
+
+```go
+import "github.com/go-kit/log/level"
+
+level.Error(logger).Log("msg", "failed to process", "err", err)
+level.Info(logger).Log("msg", "processing complete", "count", count)
+```
+
+## Error Handling
+
+- Always check errors explicitly
+- Wrap errors with context:
+
+```go
+if err != nil {
+    return fmt.Errorf("failed to query: %w", err)
+}
+```
+
+## Context Usage
+
+- Always pass `context.Context` as the first parameter
+- Respect context cancellation in loops and long operations:
+
+```go
+func process(ctx context.Context, items []Item) error {
+    for _, item := range items {
+        select {
+        case <-ctx.Done():
+            return ctx.Err()
+        default:
+        }
+        // process item
+    }
+    return nil
+}
+```
+
+## Multi-tenancy Pattern
+
+All requests must include a tenant ID. Extract from context:
+
+```go
+import "github.com/grafana/pyroscope/pkg/tenant"
+
+tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+if err != nil {
+    return err
+}
+```
+
+**Never** hardcode tenant IDs.
+
+## Object Storage Pattern
+
+Use the abstract Bucket interface:
+
+```go
+import "github.com/grafana/pyroscope/pkg/objstore"
+
+bucket := objstore.NewBucket(cfg)
+reader, err := bucket.Get(ctx, "path/to/object")
+```
+
+## Configuration Pattern
+
+Use `github.com/grafana/dskit` for configuration:
+
+```go
+type Config struct {
+    ListenPort int `yaml:"listen_port"`
+}
+
+func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
+    f.IntVar(&cfg.ListenPort, "server.http-listen-port", 4040, "HTTP listen port")
+}
+```
+
+## Performance Considerations
+
+1. **Minimize Allocations in Hot Paths**:
+   - Reuse buffers with `sync.Pool`
+   - Avoid string concatenation in loops
+   - Use `strings.Builder` for string building
+
+2. **Concurrency**:
+   - Use worker pools for bounded concurrency
+   - Prefer channels for coordination over mutexes when possible
+   - Don't create unbounded goroutines - use worker pools or semaphores
+
+3. **Profile Your Changes**:
+   ```bash
+   go test -cpuprofile=cpu.prof -memprofile=mem.prof -bench=.
+   go tool pprof cpu.prof
+   ```
+
+## Code Generation
+
+**IMPORTANT**: After changing protobuf, configs, or flags:
+```bash
+make generate
+```
+Commit the generated files with your changes.
+
+## Security
+
+1. **Input Validation**: Always validate and sanitize user input
+2. **Path Traversal**: Validate object keys before storage operations
+3. **Rate Limiting**: Distributor implements per-tenant rate limiting

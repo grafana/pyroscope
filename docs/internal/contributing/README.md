@@ -19,7 +19,7 @@ a piece of work is finished it should:
 
 To be able to run make targets you'll need to install:
 
-- [Go](https://go.dev/doc/install) (>= 1.22)
+- [Go](https://go.dev/doc/install) (>= 1.24)
 - [Docker](https://docs.docker.com/engine/install/)
 
 All other required tools will be automatically downloaded `$(pwd)/.tmp/bin`.
@@ -66,16 +66,6 @@ make GOOS=linux GOARCH=amd64 docker-image/pyroscope/build
 make IMAGE_PLATFORM=linux/arm64 GOOS=linux GOARCH=arm64 docker-image/pyroscope/build
 ```
 
-#### Apple arm64 builds (M1/M2 chips)
-
-If you encounter errors during the installation of the node packages due to missing arm64 build of `canvas`:
-
-```
-brew install pkg-config cairo pango libpng jpeg giflib librsvg
-```
-
-See https://github.com/Automattic/node-canvas/issues/1662
-
 #### Running examples locally
 replace `image: grafana/pyroscope` with the local tag name you got from docker-image/pyroscope/build (i.e):
 
@@ -86,36 +76,44 @@ replace `image: grafana/pyroscope` with the local tag name you got from docker-i
       - '4040:4040'
 ```
 
-#### Run with Pyroscope with embedded Grafana + Explore Profiles
+#### Run with Pyroscope with embedded Grafana + Profiles Drilldown
 
-In order to quickly test the whole stack it is possible to run an embedded Grafana by using target parameter:
+To quickly test the whole stack it is possible to run an embedded Grafana by using the target parameter:
 
 ```
 go run ./cmd/pyroscope --target all,embedded-grafana
 ```
 
-This will start additional to Pyroscope on `:4040`, the embedded Grafana on port `:4041`.
+This will Pyroscope on `:4040` and the embedded Grafana on port `:4041`.
 
-#### Front end development
+#### Frontend development
+
+The frontend application is not in active development. While the UI it provides is usable and stable,
+the recommended way to view and analyze profiling data is to use the 
+[Profiles Drilldown](https://grafana.com/docs/grafana/latest/visualizations/simplified-exploration/profiles/) Grafana app (pre-installed in recent Grafana versions).
+
+If you do need to make changes to the frontend code, the following instructions should get you started.
 
 **Versions for development tools**:
 - Node v18
 - Yarn v1.22
 
-The front end code is all located in the `public/app` directory, although its `plugin.json`
-file exists at the repository root.
+The frontend code is located in the `public/app` directory, although its `package.json` file is at the repository root.
 
-To run the local front end source code:
+To run the local frontend application in development mode:
+
 ```sh
-yarn 
+yarn install
 yarn dev
 ```
 
-This will install / update front end dependencies and launch a process that will build
-the front end code, launch a pyroscope web app service at `http://localhost:4041`,
-and keep that web app updated any time you save the front end source code.
-The resulting web app will not initially be connected to a pyroscope server,
-so all attempts to fetch data will fail.
+This will:
+- install and update frontend dependencies
+- launch a process that will build the frontend code
+- serve the built app at `http://localhost:4041`
+- keep the web app updated any time you update the frontend source code
+
+The web app will not initially be connected to a Pyroscope server, so all attempts to fetch data will fail.
 
 To launch a pyroscope server for development purposes:
 ```sh
@@ -127,7 +125,7 @@ This yarn script actually runs the following:
 make build run 'PARAMS=--config.file ./cmd/pyroscope/pyroscope.yaml'
 ```
 
-It will take a while for this process to build and start serving pyroscope data, but
+It can take a while for this process to build and start serving pyroscope data, but
 once it is fully active, the pyroscope web app service at `http://localhost:4041`
 will be able to interact with it.
 
@@ -158,6 +156,6 @@ Commit the changes to `go.mod` and `go.sum` before submitting your pull request.
 
 The Grafana Pyroscope documentation is compiled into a website published at [grafana.com](https://grafana.com/).
 
-To start the website locally you can use `make docs/docs` and follow console instructions to access the website.
+To start the website locally you can use `make docs/docs`. The command will print instructions on how to access the website.
 
 Note: if you attempt to view pages on GitHub, it's likely that you might find broken links or pages. That is expected and should not be addressed unless it is causing issues with the site that occur as part of the build.
