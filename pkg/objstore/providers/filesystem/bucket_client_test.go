@@ -39,12 +39,6 @@ func TestIter(t *testing.T) {
 	require.NoError(t, bkt.Upload(context.Background(), "foo/buzz5", buff))
 	require.NoError(t, bkt.Upload(context.Background(), "foo6", buff))
 
-	type testIterCase struct {
-		prefix   string
-		expected []string
-		options  []objstore.IterOption
-	}
-
 	for _, tc := range []testIterCase{
 		{
 			prefix:   "foo/",
