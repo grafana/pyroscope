@@ -351,7 +351,7 @@ func TestValidateProfile(t *testing.T) {
 			nil,
 		},
 		{
-			"nil profile",
+			"empty profile",
 			&googlev1.Profile{},
 			0,
 			MockLimits{},

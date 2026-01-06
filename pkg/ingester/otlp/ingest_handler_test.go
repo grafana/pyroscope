@@ -45,7 +45,7 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 			expected: phlaremodel.AttrServiceNameFallback,
 		},
 		{
-			name: "empty attributes",
+			name: "use executable name",
 			attrs: []*v1.KeyValue{
 				{
 					Key: "process.executable.name",

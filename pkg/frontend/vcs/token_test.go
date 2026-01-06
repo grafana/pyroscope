@@ -246,7 +246,7 @@ func Test_decodeToken(t *testing.T) {
 	derivedKey, err := deriveEncryptionKeyForContext(ctx)
 	require.NoError(t, err)
 
-	t.Run("valid legacy token", func(t *testing.T) {
+	t.Run("valid token", func(t *testing.T) {
 		want := &oauth2.Token{
 			AccessToken:  "my_access_token",
 			TokenType:    "my_token_type",

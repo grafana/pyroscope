@@ -9,6 +9,23 @@ import (
 	"github.com/thanos-io/objstore"
 )
 
+type testIterCase struct {
+	prefix   string
+	expected []string
+	options  []objstore.IterOption
+}
+
+func (t testIterCase) name() string {
+	p := new(objstore.IterParams)
+	for _, opt := range t.options {
+		opt.Apply(p)
+	}
+	if p.Recursive {
+		return t.prefix + "#recursive"
+	}
+	return t.prefix
+}
+
 func TestIter(t *testing.T) {
 	bkt, err := NewBucket(t.TempDir())
 	require.NoError(t, err)
@@ -22,11 +39,7 @@ func TestIter(t *testing.T) {
 	require.NoError(t, bkt.Upload(context.Background(), "foo/buzz5", buff))
 	require.NoError(t, bkt.Upload(context.Background(), "foo6", buff))
 
-	for _, tc := range []struct {
-		prefix   string
-		expected []string
-		options  []objstore.IterOption
-	}{
+	for _, tc := range []testIterCase{
 		{
 			prefix:   "foo/",
 			expected: []string{"foo/ba/", "foo/bar/", "foo/buzz4", "foo/buzz5"},
@@ -80,8 +93,7 @@ func TestIter(t *testing.T) {
 			options:  []objstore.IterOption{objstore.WithRecursiveIter()},
 		},
 	} {
-		tc := tc
-		t.Run(tc.prefix, func(t *testing.T) {
+		t.Run(tc.name(), func(t *testing.T) {
 			var keys []string
 			err = bkt.Iter(context.Background(), tc.prefix, func(key string) error {
 				keys = append(keys, key)
