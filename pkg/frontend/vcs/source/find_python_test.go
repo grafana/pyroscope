@@ -99,9 +99,9 @@ func Test_isPythonStdlibPath(t *testing.T) {
 			expectedOk:      true,
 		},
 		{
-			name:            "Multiple versions in path",
-			path:            "/opt/python3.8/lib/python3.9/email/mime/text.py",
-			expectedPath:    "email/mime/text.py",
+			name:         "Multiple versions in path",
+			path:         "/opt/python3.8/lib/python3.9/email/mime/text.py",
+			expectedPath: "email/mime/text.py",
 			// Should take last match
 			expectedVersion: "3.9",
 			expectedOk:      true,
