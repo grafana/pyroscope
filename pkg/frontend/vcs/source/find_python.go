@@ -20,11 +20,9 @@ const (
 )
 
 var (
-	// stdLibRegex matches Python stdlib paths and captures:
-	//   [1] version - e.g., "3.12"
-	//   [2] path    - the remaining file path after the version directory
-	// Example: "/lib/python3.12/difflib.py" → version="3.12", path="difflib.py"
-	stdLibRegex = regexp.MustCompile(`python(\d+\.\d{1,2})/(.+)`)
+	// stdLibRegex matches Python version directories and captures the version.
+	// Example: "python3.12/" → version="3.12"
+	stdLibRegex = regexp.MustCompile(`python(\d+\.\d{1,2})/`)
 )
 
 func (ff FileFinder) fetchPythonStdlib(ctx context.Context, path string, version string) (*vcsv1.GetFileResponse, error) {
@@ -55,12 +53,19 @@ func (ff FileFinder) fetchPythonStdlib(ctx context.Context, path string, version
 // Note that minor versions are not captured in this path, so there are
 // future improvements that can be made to this logic.
 func isPythonStdlibPath(path string) (string, string, bool) {
-	matches := stdLibRegex.FindStringSubmatch(path)
-	if matches == nil {
+	matches := stdLibRegex.FindAllStringSubmatchIndex(path, -1)
+	if len(matches) == 0 {
 		return "", "", false
 	}
-	// matches[0] = full match, matches[1] = version, matches[2] = remaining path
-	return matches[2], matches[1], true
+
+	// Take the last match to handle paths with multiple python version directories
+	m := matches[len(matches)-1]
+	version := path[m[2]:m[3]]
+	remaining := path[m[1]:]
+	if remaining == "" {
+		return "", "", false
+	}
+	return remaining, version, true
 }
 
 // findPythonFile finds a python file in a vcs repository.
