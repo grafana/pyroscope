@@ -142,14 +142,14 @@ func TestParsePyroscopeConfig(t *testing.T) {
 	t.Run("invalid - unsupported language", func(t *testing.T) {
 		yaml := `source_code:
   mappings:
-    - language: python
+    - language: rust
       path:
-        - prefix: GOROOT
+        - prefix: src
       source:
         github:
-          owner: golang
-          repo: go
-          ref: go1.24.8
+          owner: rust-lang
+          repo: rust
+          ref: 1.75.0
           path: src
 `
 		_, err := ParsePyroscopeConfig([]byte(yaml))

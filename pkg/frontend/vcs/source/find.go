@@ -73,6 +73,8 @@ func (ff *FileFinder) Find(ctx context.Context) (*vcsv1.GetFileResponse, error) 
 		return ff.findGoFile(ctx, mapping)
 	case config.LanguageJava:
 		return ff.findJavaFile(ctx, mapping)
+	case config.LanguagePython:
+		return ff.findPythonFile(ctx, mapping)
 	// todo: add more languages support
 	default:
 		return ff.findFallback(ctx)
@@ -83,6 +85,8 @@ func (ff FileFinder) findFallback(ctx context.Context) (*vcsv1.GetFileResponse, 
 	switch filepath.Ext(ff.file.Path) {
 	case ExtGo:
 		return ff.findGoFile(ctx)
+	case ExtPython:
+		return ff.findPythonFile(ctx)
 	case ExtAsm: // Note: When adding wider language support this needs to be revisited
 		return ff.findGoFile(ctx)
 	// todo: add more languages support
