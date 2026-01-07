@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/go-kit/log/level"
 	"github.com/opentracing/opentracing-go"
@@ -81,8 +82,17 @@ func (ff FileFinder) findPythonFile(ctx context.Context, mappings ...*config.Map
 	}
 
 	for _, m := range mappings {
-		// Note that this path is an absolute path that is very runtime-by-runtime dependent
-		resp, err := ff.fetchMappingFile(ctx, m, ff.file.Path)
+		// Strip the matched prefix from the runtime path to get the relative
+		// path within the mapped source (e.g., "/app/myproject/main.py" with
+		// prefix "/app/myproject" yields "main.py").
+		pos := m.Match(ff.file)
+		if pos < 0 || pos > len(ff.file.Path) {
+			level.Warn(ff.logger).Log("msg", "mapping match out of bounds", "pos", pos, "file_path", ff.file.Path)
+			continue
+		}
+		path := strings.TrimLeft(ff.file.Path[pos:], "/")
+
+		resp, err := ff.fetchMappingFile(ctx, m, path)
 		if err != nil {
 			if errors.Is(err, client.ErrNotFound) {
 				continue
