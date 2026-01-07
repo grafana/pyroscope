@@ -63,7 +63,7 @@ func TestFixFunctionNamesForScriptingLanguages(t *testing.T) {
 	}
 
 	md := ingestion.Metadata{
-		SpyName: "pyspy",
+		SpyName: "scripting",
 	}
 
 	FixFunctionNamesForScriptingLanguages(profile, md)
