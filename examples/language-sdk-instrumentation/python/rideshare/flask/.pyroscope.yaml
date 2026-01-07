@@ -1,0 +1,9 @@
+version: v1
+source_code:
+  mappings:
+    - path:
+        - prefix: /usr/lib
+      language: python
+      source:
+        local:
+          path: lib
