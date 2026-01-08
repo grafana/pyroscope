@@ -312,8 +312,8 @@ func TestIngestPPROFFixPythonLinenumbers(t *testing.T) {
 		renderedProfile := rb.SelectMergeProfile("process_cpu:cpu:nanoseconds:cpu:nanoseconds", nil)
 		actual := bench.StackCollapseProto(renderedProfile.Msg, 0, 1)
 		expected := []string{
-			"qwe.py main;qwe.py func1 10",
-			"qwe.py main;qwe.py func2 13",
+			"main;func1 10",
+			"main;func2 13",
 		}
 		assert.Equal(t, expected, actual)
 	})

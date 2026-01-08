@@ -255,7 +255,7 @@ func SpyNameForFunctionNameRewrite() string {
 }
 
 func isScriptingSpy(md ingestion.Metadata) bool {
-	return md.SpyName == "pyspy" || md.SpyName == "rbspy" || md.SpyName == "scripting"
+	return md.SpyName == "rbspy" || md.SpyName == "scripting"
 }
 
 // FixFunctionNamesForScriptingLanguages modifies the function names in the provided profile
