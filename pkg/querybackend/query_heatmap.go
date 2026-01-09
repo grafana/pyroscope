@@ -7,9 +7,11 @@ import (
 	"unique"
 
 	"github.com/grafana/dskit/runutil"
+	"github.com/opentracing/opentracing-go"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/block"
 	"github.com/grafana/pyroscope/pkg/model/heatmap"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
@@ -121,6 +123,30 @@ func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
 }
 
 func queryHeatmap(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
+	// Determine if exemplars should be included based on type
+	var includeExemplars bool
+	switch query.Heatmap.ExemplarType {
+	case typesv1.ExemplarType_EXEMPLAR_TYPE_UNSPECIFIED,
+		typesv1.ExemplarType_EXEMPLAR_TYPE_NONE:
+		includeExemplars = false
+	case typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL:
+		if query.Heatmap.QueryType != querierv1.HeatmapQueryType_HEATMAP_QUERY_TYPE_INDIVIDUAL {
+			return nil, fmt.Errorf("individual exemplars only available for individual query type")
+		}
+		includeExemplars = true
+	case typesv1.ExemplarType_EXEMPLAR_TYPE_SPAN:
+		if query.Heatmap.QueryType != querierv1.HeatmapQueryType_HEATMAP_QUERY_TYPE_SPAN {
+			return nil, fmt.Errorf("span exemplars only available for span query type")
+		}
+		includeExemplars = true
+	default:
+		return nil, fmt.Errorf("unknown exemplar type: %v", query.Heatmap.ExemplarType)
+	}
+
+	span := opentracing.SpanFromContext(q.ctx)
+	span.SetTag("exemplars.enabled", includeExemplars)
+	span.SetTag("exemplars.type", query.Heatmap.ExemplarType.String())
+
 	b := heatmap.NewBuilder(query.Heatmap.GroupBy)
 
 	// Select the appropriate row iterator based on query type

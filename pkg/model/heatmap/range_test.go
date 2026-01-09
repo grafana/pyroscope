@@ -4,18 +4,19 @@ import (
 	"testing"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRangeHeatmap_EmptyInput(t *testing.T) {
-	series := RangeHeatmap(nil, 0, 1000, 100, nil)
+	series := RangeHeatmap(nil, 0, 1000, 100, nil, nil, typesv1.ExemplarType_EXEMPLAR_TYPE_NONE)
 	assert.Nil(t, series)
 }
 
 func TestRangeHeatmap_EmptyReport(t *testing.T) {
 	reports := []*queryv1.HeatmapReport{{}}
-	series := RangeHeatmap(reports, 0, 1000, 100, nil)
+	series := RangeHeatmap(reports, 0, 1000, 100, nil, nil, typesv1.ExemplarType_EXEMPLAR_TYPE_NONE)
 	assert.Nil(t, series)
 }
 
@@ -35,7 +36,7 @@ func TestRangeHeatmap_SinglePoint(t *testing.T) {
 		},
 	}
 
-	series := RangeHeatmap(reports, 0, 1000, 100, nil)
+	series := RangeHeatmap(reports, 0, 1000, 100, nil, nil, typesv1.ExemplarType_EXEMPLAR_TYPE_NONE)
 	require.NotNil(t, series)
 	require.Len(t, series, 1)
 
@@ -71,7 +72,7 @@ func TestRangeHeatmap_MultiplePoints_SameTimeBucket(t *testing.T) {
 		},
 	}
 
-	series := RangeHeatmap(reports, 0, 1000, 200, nil)
+	series := RangeHeatmap(reports, 0, 1000, 200, nil, nil, typesv1.ExemplarType_EXEMPLAR_TYPE_NONE)
 	require.NotNil(t, series)
 	require.Len(t, series, 1)
 
@@ -108,7 +109,7 @@ func TestRangeHeatmap_MultiplePoints_DifferentTimeBuckets(t *testing.T) {
 		},
 	}
 
-	series := RangeHeatmap(reports, 0, 1000, 200, nil)
+	series := RangeHeatmap(reports, 0, 1000, 200, nil, nil, typesv1.ExemplarType_EXEMPLAR_TYPE_NONE)
 	require.NotNil(t, series)
 	require.Len(t, series, 1)
 
@@ -144,7 +145,7 @@ func TestRangeHeatmap_AllSameValue(t *testing.T) {
 		},
 	}
 
-	series := RangeHeatmap(reports, 0, 1000, 200, nil)
+	series := RangeHeatmap(reports, 0, 1000, 200, nil, nil, typesv1.ExemplarType_EXEMPLAR_TYPE_NONE)
 	require.NotNil(t, series)
 	require.Len(t, series, 1)
 
@@ -179,7 +180,7 @@ func TestRangeHeatmap_YBucketBoundaries(t *testing.T) {
 		},
 	}
 
-	series := RangeHeatmap(reports, 0, 1000, 100, nil)
+	series := RangeHeatmap(reports, 0, 1000, 100, nil, nil, typesv1.ExemplarType_EXEMPLAR_TYPE_NONE)
 	require.NotNil(t, series)
 	require.Len(t, series, 1)
 	require.NotEmpty(t, series[0].Slots)
@@ -222,7 +223,7 @@ func TestRangeHeatmap_MultipleReports(t *testing.T) {
 		},
 	}
 
-	series := RangeHeatmap(reports, 0, 1000, 100, nil)
+	series := RangeHeatmap(reports, 0, 1000, 100, nil, nil, typesv1.ExemplarType_EXEMPLAR_TYPE_NONE)
 	require.NotNil(t, series)
 	// Each input series should produce a separate output series
 	require.Len(t, series, 2)
@@ -276,7 +277,7 @@ func TestRangeHeatmap_LabelsPreserved(t *testing.T) {
 		},
 	}
 
-	series := RangeHeatmap(reports, 0, 1000, 100, nil)
+	series := RangeHeatmap(reports, 0, 1000, 100, nil, nil, typesv1.ExemplarType_EXEMPLAR_TYPE_NONE)
 	require.NotNil(t, series)
 	require.Len(t, series, 2, "Expected one series per input series")
 
@@ -309,7 +310,7 @@ func TestRangeHeatmap_NoLabels(t *testing.T) {
 		},
 	}
 
-	series := RangeHeatmap(reports, 0, 1000, 100, nil)
+	series := RangeHeatmap(reports, 0, 1000, 100, nil, nil, typesv1.ExemplarType_EXEMPLAR_TYPE_NONE)
 	require.NotNil(t, series)
 	require.Len(t, series, 1)
 
@@ -333,7 +334,7 @@ func TestRangeHeatmap_TimeBucketAlignment(t *testing.T) {
 	}
 
 	step := int64(200)
-	series := RangeHeatmap(reports, 0, 600, step, nil)
+	series := RangeHeatmap(reports, 0, 600, step, nil, nil, typesv1.ExemplarType_EXEMPLAR_TYPE_NONE)
 	require.NotNil(t, series)
 	require.Len(t, series, 1)
 

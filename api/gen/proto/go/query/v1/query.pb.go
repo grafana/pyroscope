@@ -1500,6 +1500,8 @@ type HeatmapQuery struct {
 	Step          float64                `protobuf:"fixed64,1,opt,name=step,proto3" json:"step,omitempty"`
 	GroupBy       []string               `protobuf:"bytes,2,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
 	QueryType     v12.HeatmapQueryType   `protobuf:"varint,3,opt,name=query_type,json=queryType,proto3,enum=querier.v1.HeatmapQueryType" json:"query_type,omitempty"`
+	Limit         int64                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	ExemplarType  v11.ExemplarType       `protobuf:"varint,5,opt,name=exemplar_type,json=exemplarType,proto3,enum=types.v1.ExemplarType" json:"exemplar_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1553,6 +1555,20 @@ func (x *HeatmapQuery) GetQueryType() v12.HeatmapQueryType {
 		return x.QueryType
 	}
 	return v12.HeatmapQueryType(0)
+}
+
+func (x *HeatmapQuery) GetLimit() int64 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *HeatmapQuery) GetExemplarType() v11.ExemplarType {
+	if x != nil {
+		return x.ExemplarType
+	}
+	return v11.ExemplarType(0)
 }
 
 type AttributeTable struct {
@@ -1980,12 +1996,14 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x15_stack_trace_selector\"O\n" +
 	"\vPprofReport\x12*\n" +
 	"\x05query\x18\x01 \x01(\v2\x14.query.v1.PprofQueryR\x05query\x12\x14\n" +
-	"\x05pprof\x18\x02 \x01(\fR\x05pprof\"z\n" +
+	"\x05pprof\x18\x02 \x01(\fR\x05pprof\"\xcd\x01\n" +
 	"\fHeatmapQuery\x12\x12\n" +
 	"\x04step\x18\x01 \x01(\x01R\x04step\x12\x19\n" +
 	"\bgroup_by\x18\x02 \x03(\tR\agroupBy\x12;\n" +
 	"\n" +
-	"query_type\x18\x03 \x01(\x0e2\x1c.querier.v1.HeatmapQueryTypeR\tqueryType\"<\n" +
+	"query_type\x18\x03 \x01(\x0e2\x1c.querier.v1.HeatmapQueryTypeR\tqueryType\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x03R\x05limit\x12;\n" +
+	"\rexemplar_type\x18\x05 \x01(\x0e2\x16.types.v1.ExemplarTypeR\fexemplarType\"<\n" +
 	"\x0eAttributeTable\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\x12\x16\n" +
 	"\x06values\x18\x02 \x03(\tR\x06values\"\xa1\x01\n" +
@@ -2132,20 +2150,21 @@ var file_query_v1_query_proto_depIdxs = []int32{
 	35, // 37: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
 	23, // 38: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
 	36, // 39: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
-	27, // 40: query.v1.HeatmapCell.points:type_name -> query.v1.HeatmapPoint
-	27, // 41: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
-	25, // 42: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
-	29, // 43: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
-	26, // 44: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
-	3,  // 45: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
-	6,  // 46: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
-	4,  // 47: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
-	10, // 48: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
-	47, // [47:49] is the sub-list for method output_type
-	45, // [45:47] is the sub-list for method input_type
-	45, // [45:45] is the sub-list for extension type_name
-	45, // [45:45] is the sub-list for extension extendee
-	0,  // [0:45] is the sub-list for field type_name
+	33, // 40: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	27, // 41: query.v1.HeatmapCell.points:type_name -> query.v1.HeatmapPoint
+	27, // 42: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
+	25, // 43: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
+	29, // 44: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
+	26, // 45: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
+	3,  // 46: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
+	6,  // 47: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
+	4,  // 48: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
+	10, // 49: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
+	48, // [48:50] is the sub-list for method output_type
+	46, // [46:48] is the sub-list for method input_type
+	46, // [46:46] is the sub-list for extension type_name
+	46, // [46:46] is the sub-list for extension extendee
+	0,  // [0:46] is the sub-list for field type_name
 }
 
 func init() { file_query_v1_query_proto_init() }

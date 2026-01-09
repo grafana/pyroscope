@@ -202,6 +202,8 @@ message HeatmapQuery {
   double step = 1;
   repeated string group_by = 2;
   querier.v1.HeatmapQueryType query_type = 3;
+  int64 limit = 4;
+  types.v1.ExemplarType exemplar_type = 5;
 }
 
 message AttributeTable {
