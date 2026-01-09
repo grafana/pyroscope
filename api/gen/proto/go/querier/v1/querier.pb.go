@@ -1240,7 +1240,11 @@ type SelectHeatmapRequest struct {
 	// Group by labels
 	GroupBy []string `protobuf:"bytes,6,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
 	// Query type: individual profiles or span profiles
-	QueryType     HeatmapQueryType `protobuf:"varint,7,opt,name=query_type,json=queryType,proto3,enum=querier.v1.HeatmapQueryType" json:"query_type,omitempty"`
+	QueryType HeatmapQueryType `protobuf:"varint,7,opt,name=query_type,json=queryType,proto3,enum=querier.v1.HeatmapQueryType" json:"query_type,omitempty"`
+	// Type of exemplars to include in the response.
+	ExemplarType v1.ExemplarType `protobuf:"varint,8,opt,name=exemplar_type,json=exemplarType,proto3,enum=types.v1.ExemplarType" json:"exemplar_type,omitempty"`
+	// Select the top N series by total value.
+	Limit         *int64 `protobuf:"varint,9,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1322,6 +1326,20 @@ func (x *SelectHeatmapRequest) GetQueryType() HeatmapQueryType {
 		return x.QueryType
 	}
 	return HeatmapQueryType_HEATMAP_QUERY_TYPE_UNSPECIFIED
+}
+
+func (x *SelectHeatmapRequest) GetExemplarType() v1.ExemplarType {
+	if x != nil {
+		return x.ExemplarType
+	}
+	return v1.ExemplarType(0)
+}
+
+func (x *SelectHeatmapRequest) GetLimit() int64 {
+	if x != nil && x.Limit != nil {
+		return *x.Limit
+	}
+	return 0
 }
 
 type SelectHeatmapResponse struct {
@@ -1752,7 +1770,7 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x15_stack_trace_selectorB\b\n" +
 	"\x06_limit\"@\n" +
 	"\x14SelectSeriesResponse\x12(\n" +
-	"\x06series\x18\x01 \x03(\v2\x10.types.v1.SeriesR\x06series\"\x8d\x03\n" +
+	"\x06series\x18\x01 \x03(\v2\x10.types.v1.SeriesR\x06series\"\xef\x03\n" +
 	"\x14SelectHeatmapRequest\x12Y\n" +
 	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
 	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12*\n" +
@@ -1761,7 +1779,10 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x04step\x18\x05 \x01(\x01R\x04step\x12)\n" +
 	"\bgroup_by\x18\x06 \x03(\tB\x0e\xbaG\v:\t\x12\a['pod']R\agroupBy\x12;\n" +
 	"\n" +
-	"query_type\x18\a \x01(\x0e2\x1c.querier.v1.HeatmapQueryTypeR\tqueryType\"H\n" +
+	"query_type\x18\a \x01(\x0e2\x1c.querier.v1.HeatmapQueryTypeR\tqueryType\x12;\n" +
+	"\rexemplar_type\x18\b \x01(\x0e2\x16.types.v1.ExemplarTypeR\fexemplarType\x12\x19\n" +
+	"\x05limit\x18\t \x01(\x03H\x00R\x05limit\x88\x01\x01B\b\n" +
+	"\x06_limit\"H\n" +
 	"\x15SelectHeatmapResponse\x12/\n" +
 	"\x06series\x18\x01 \x03(\v2\x17.types.v1.HeatmapSeriesR\x06series\"S\n" +
 	"\x13AnalyzeQueryRequest\x12\x14\n" +
@@ -1899,38 +1920,39 @@ var file_querier_v1_querier_proto_depIdxs = []int32{
 	28, // 15: querier.v1.SelectSeriesRequest.exemplar_type:type_name -> types.v1.ExemplarType
 	29, // 16: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
 	1,  // 17: querier.v1.SelectHeatmapRequest.query_type:type_name -> querier.v1.HeatmapQueryType
-	30, // 18: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
-	22, // 19: querier.v1.AnalyzeQueryResponse.query_scopes:type_name -> querier.v1.QueryScope
-	23, // 20: querier.v1.AnalyzeQueryResponse.query_impact:type_name -> querier.v1.QueryImpact
-	2,  // 21: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
-	31, // 22: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
-	32, // 23: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
-	4,  // 24: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
-	6,  // 25: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
-	8,  // 26: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
-	15, // 27: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
-	16, // 28: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
-	18, // 29: querier.v1.QuerierService.SelectHeatmap:input_type -> querier.v1.SelectHeatmapRequest
-	10, // 30: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
-	33, // 31: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
-	20, // 32: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
-	3,  // 33: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
-	34, // 34: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
-	35, // 35: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
-	5,  // 36: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
-	7,  // 37: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
-	9,  // 38: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
-	36, // 39: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
-	17, // 40: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
-	19, // 41: querier.v1.QuerierService.SelectHeatmap:output_type -> querier.v1.SelectHeatmapResponse
-	11, // 42: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
-	37, // 43: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
-	21, // 44: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
-	33, // [33:45] is the sub-list for method output_type
-	21, // [21:33] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	28, // 18: querier.v1.SelectHeatmapRequest.exemplar_type:type_name -> types.v1.ExemplarType
+	30, // 19: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
+	22, // 20: querier.v1.AnalyzeQueryResponse.query_scopes:type_name -> querier.v1.QueryScope
+	23, // 21: querier.v1.AnalyzeQueryResponse.query_impact:type_name -> querier.v1.QueryImpact
+	2,  // 22: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
+	31, // 23: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
+	32, // 24: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
+	4,  // 25: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
+	6,  // 26: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
+	8,  // 27: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
+	15, // 28: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
+	16, // 29: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
+	18, // 30: querier.v1.QuerierService.SelectHeatmap:input_type -> querier.v1.SelectHeatmapRequest
+	10, // 31: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
+	33, // 32: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
+	20, // 33: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
+	3,  // 34: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
+	34, // 35: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
+	35, // 36: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
+	5,  // 37: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
+	7,  // 38: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
+	9,  // 39: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
+	36, // 40: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
+	17, // 41: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
+	19, // 42: querier.v1.QuerierService.SelectHeatmap:output_type -> querier.v1.SelectHeatmapResponse
+	11, // 43: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
+	37, // 44: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
+	21, // 45: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
+	34, // [34:46] is the sub-list for method output_type
+	22, // [22:34] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_querier_v1_querier_proto_init() }
@@ -1942,6 +1964,7 @@ func file_querier_v1_querier_proto_init() {
 	file_querier_v1_querier_proto_msgTypes[6].OneofWrappers = []any{}
 	file_querier_v1_querier_proto_msgTypes[13].OneofWrappers = []any{}
 	file_querier_v1_querier_proto_msgTypes[14].OneofWrappers = []any{}
+	file_querier_v1_querier_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

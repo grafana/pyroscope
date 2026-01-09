@@ -179,4 +179,6 @@ message HeatmapSlot {
   repeated double y_min = 2;
   // How many matches
   repeated int32 counts = 3;
+  // Provide exemplars
+  repeated Exemplar exemplars = 4;
 }

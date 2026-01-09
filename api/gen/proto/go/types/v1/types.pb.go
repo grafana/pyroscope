@@ -1249,7 +1249,9 @@ type HeatmapSlot struct {
 	// Minimum y value
 	YMin []float64 `protobuf:"fixed64,2,rep,packed,name=y_min,json=yMin,proto3" json:"y_min,omitempty"`
 	// How many matches
-	Counts        []int32 `protobuf:"varint,3,rep,packed,name=counts,proto3" json:"counts,omitempty"`
+	Counts []int32 `protobuf:"varint,3,rep,packed,name=counts,proto3" json:"counts,omitempty"`
+	// Provide exemplars
+	Exemplars     []*Exemplar `protobuf:"bytes,4,rep,name=exemplars,proto3" json:"exemplars,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1301,6 +1303,13 @@ func (x *HeatmapSlot) GetYMin() []float64 {
 func (x *HeatmapSlot) GetCounts() []int32 {
 	if x != nil {
 		return x.Counts
+	}
+	return nil
+}
+
+func (x *HeatmapSlot) GetExemplars() []*Exemplar {
+	if x != nil {
+		return x.Exemplars
 	}
 	return nil
 }
@@ -1386,11 +1395,12 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\x06labels\x18\x05 \x03(\v2\x13.types.v1.LabelPairR\x06labels\"i\n" +
 	"\rHeatmapSeries\x12+\n" +
 	"\x06labels\x18\x01 \x03(\v2\x13.types.v1.LabelPairR\x06labels\x12+\n" +
-	"\x05slots\x18\x02 \x03(\v2\x15.types.v1.HeatmapSlotR\x05slots\"X\n" +
+	"\x05slots\x18\x02 \x03(\v2\x15.types.v1.HeatmapSlotR\x05slots\"\x8a\x01\n" +
 	"\vHeatmapSlot\x12\x1c\n" +
 	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12\x13\n" +
 	"\x05y_min\x18\x02 \x03(\x01R\x04yMin\x12\x16\n" +
-	"\x06counts\x18\x03 \x03(\x05R\x06counts*k\n" +
+	"\x06counts\x18\x03 \x03(\x05R\x06counts\x120\n" +
+	"\texemplars\x18\x04 \x03(\v2\x12.types.v1.ExemplarR\texemplars*k\n" +
 	"\x19TimeSeriesAggregationType\x12$\n" +
 	" TIME_SERIES_AGGREGATION_TYPE_SUM\x10\x00\x12(\n" +
 	"$TIME_SERIES_AGGREGATION_TYPE_AVERAGE\x10\x01*{\n" +
@@ -1453,11 +1463,12 @@ var file_types_v1_types_proto_depIdxs = []int32{
 	2,  // 9: types.v1.Exemplar.labels:type_name -> types.v1.LabelPair
 	2,  // 10: types.v1.HeatmapSeries.labels:type_name -> types.v1.LabelPair
 	21, // 11: types.v1.HeatmapSeries.slots:type_name -> types.v1.HeatmapSlot
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	19, // 12: types.v1.HeatmapSlot.exemplars:type_name -> types.v1.Exemplar
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_types_v1_types_proto_init() }

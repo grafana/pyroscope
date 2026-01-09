@@ -255,6 +255,10 @@ message SelectHeatmapRequest {
   repeated string group_by = 6 [(gnostic.openapi.v3.property).example = {yaml: "['pod']"}];
   // Query type: individual profiles or span profiles
   HeatmapQueryType query_type = 7;
+  // Type of exemplars to include in the response.
+  types.v1.ExemplarType exemplar_type = 8;
+  // Select the top N series by total value.
+  optional int64 limit = 9;
 }
 
 message SelectHeatmapResponse {

@@ -1257,6 +1257,18 @@ components:
           title: query_type
           description: 'Query type: individual profiles or span profiles'
           $ref: '#/components/schemas/querier.v1.HeatmapQueryType'
+        exemplarType:
+          title: exemplar_type
+          description: Type of exemplars to include in the response.
+          $ref: '#/components/schemas/types.v1.ExemplarType'
+        limit:
+          type:
+            - integer
+            - string
+          title: limit
+          format: int64
+          description: Select the top N series by total value.
+          nullable: true
       title: SelectHeatmapRequest
       additionalProperties: false
     querier.v1.SelectHeatmapResponse:
@@ -1764,6 +1776,12 @@ components:
             format: int32
           title: counts
           description: How many matches
+        exemplars:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Exemplar'
+          title: exemplars
+          description: Provide exemplars
       title: HeatmapSlot
       additionalProperties: false
     types.v1.LabelNamesRequest:
