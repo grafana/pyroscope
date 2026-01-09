@@ -14,6 +14,8 @@ const (
 )
 
 // RangeHeatmap buckets heatmap points into time/value buckets for visualization
+// Each input series produces a separate output series with labels preserved
+// Y-axis buckets are calculated based on global min/max across all series
 func RangeHeatmap(
 	reports []*queryv1.HeatmapReport,
 	start, end, step int64,
@@ -23,120 +25,155 @@ func RangeHeatmap(
 		return nil
 	}
 
-	// Collect all points and find min/max values
-	type pointWithLabels struct {
-		timestamp int64
-		value     uint64
-		labels    []*typesv1.LabelPair
+	// First pass: collect all series with their labels and find global min/max
+	type seriesData struct {
+		series *queryv1.HeatmapSeries
+		labels []*typesv1.LabelPair
 	}
-	var allPoints []pointWithLabels
-	var minValue, maxValue uint64 = math.MaxUint64, 0
+	var allSeries []seriesData
+	var globalMinValue, globalMaxValue uint64 = math.MaxUint64, 0
 
 	for _, report := range reports {
 		if report == nil {
 			continue
 		}
+
 		for _, series := range report.HeatmapSeries {
-			if series == nil {
+			if series == nil || len(series.Points) == 0 {
 				continue
 			}
+
+			// Resolve labels from attribute refs
+			labels := resolveAttributeRefs(series.AttributeRefs, report.AttributeTable)
+
+			// Track this series
+			allSeries = append(allSeries, seriesData{
+				series: series,
+				labels: labels,
+			})
+
+			// Update global min/max
 			for _, point := range series.Points {
 				if point == nil {
 					continue
 				}
-				allPoints = append(allPoints, pointWithLabels{
-					timestamp: point.Timestamp,
-					value:     point.Value,
-					// TODO: Resolve attribute refs to actual labels
-					labels: nil,
-				})
-
-				if point.Value < minValue {
-					minValue = point.Value
+				if point.Value < globalMinValue {
+					globalMinValue = point.Value
 				}
-				if point.Value > maxValue {
-					maxValue = point.Value
+				if point.Value > globalMaxValue {
+					globalMaxValue = point.Value
 				}
 			}
 		}
 	}
 
-	if len(allPoints) == 0 {
+	if len(allSeries) == 0 || globalMinValue == math.MaxUint64 {
 		return nil
 	}
 
 	// Handle edge case where all values are the same
-	if minValue == maxValue {
-		maxValue = minValue + 1
+	if globalMinValue == globalMaxValue {
+		globalMaxValue = globalMinValue + 1
 	}
 
-	// Create Y-axis bucket boundaries
-	yBuckets := createYAxisBuckets(minValue, maxValue, DefaultYAxisBuckets)
+	// Create Y-axis bucket boundaries based on global min/max
+	yBuckets := createYAxisBuckets(globalMinValue, globalMaxValue, DefaultYAxisBuckets)
 
 	// Create time buckets
 	timeBuckets := createTimeBuckets(start, end, step)
 
-	// Create a map to track counts per (time, y-bucket)
-	type cellKey struct {
-		timeIdx int
-		yIdx    int
-	}
-	cellCounts := make(map[cellKey]int32)
+	// Second pass: process each series with the shared Y-axis buckets
+	var result []*typesv1.HeatmapSeries
 
-	// Bucket each point
-	for _, point := range allPoints {
-		// Find time bucket
-		timeIdx := findTimeBucket(point.timestamp, timeBuckets)
-		if timeIdx < 0 {
-			continue
+	for _, sd := range allSeries {
+		// Create a map to track counts per (time, y-bucket)
+		type cellKey struct {
+			timeIdx int
+			yIdx    int
 		}
+		cellCounts := make(map[cellKey]int32)
 
-		// Find value bucket
-		yIdx := findValueBucket(point.value, yBuckets)
-		if yIdx < 0 {
-			continue
-		}
-
-		cellCounts[cellKey{timeIdx, yIdx}]++
-	}
-
-	// Build slots grouped by timestamp
-	slotsMap := make(map[int64]*typesv1.HeatmapSlot)
-	for cell, count := range cellCounts {
-		timestamp := timeBuckets[cell.timeIdx]
-		slot, ok := slotsMap[timestamp]
-		if !ok {
-			slot = &typesv1.HeatmapSlot{
-				Timestamp: timestamp,
-				YMin:      make([]float64, len(yBuckets)),
-				Counts:    make([]int32, len(yBuckets)),
+		// Bucket each point
+		for _, point := range sd.series.Points {
+			if point == nil {
+				continue
 			}
-			// Initialize Y bucket minimums
-			for i, bucket := range yBuckets {
-				slot.YMin[i] = float64(bucket.min)
+
+			// Find time bucket
+			timeIdx := findTimeBucket(point.Timestamp, timeBuckets)
+			if timeIdx < 0 {
+				continue
 			}
-			slotsMap[timestamp] = slot
+
+			// Find value bucket
+			yIdx := findValueBucket(point.Value, yBuckets)
+			if yIdx < 0 {
+				continue
+			}
+
+			cellCounts[cellKey{timeIdx, yIdx}]++
 		}
-		slot.Counts[cell.yIdx] = count
-	}
 
-	// Convert map to sorted slice
-	var slots []*typesv1.HeatmapSlot
-	for _, slot := range slotsMap {
-		slots = append(slots, slot)
-	}
-	sort.Slice(slots, func(i, j int) bool {
-		return slots[i].Timestamp < slots[j].Timestamp
-	})
+		// Build slots grouped by timestamp
+		slotsMap := make(map[int64]*typesv1.HeatmapSlot)
+		for cell, count := range cellCounts {
+			timestamp := timeBuckets[cell.timeIdx]
+			slot, ok := slotsMap[timestamp]
+			if !ok {
+				slot = &typesv1.HeatmapSlot{
+					Timestamp: timestamp,
+					YMin:      make([]float64, len(yBuckets)),
+					Counts:    make([]int32, len(yBuckets)),
+				}
+				// Initialize Y bucket minimums
+				for i, bucket := range yBuckets {
+					slot.YMin[i] = float64(bucket.min)
+				}
+				slotsMap[timestamp] = slot
+			}
+			slot.Counts[cell.yIdx] = count
+		}
 
-	// For now, return a single series with no labels
-	// TODO: Group by series labels if needed
-	return []*typesv1.HeatmapSeries{
-		{
-			Labels: nil,
+		// Convert map to sorted slice
+		var slots []*typesv1.HeatmapSlot
+		for _, slot := range slotsMap {
+			slots = append(slots, slot)
+		}
+		sort.Slice(slots, func(i, j int) bool {
+			return slots[i].Timestamp < slots[j].Timestamp
+		})
+
+		// Add this series to the result with its labels preserved
+		result = append(result, &typesv1.HeatmapSeries{
+			Labels: sd.labels,
 			Slots:  slots,
-		},
+		})
 	}
+
+	return result
+}
+
+// resolveAttributeRefs converts attribute references to actual label pairs
+// AttributeTable has parallel arrays: Keys[i] and Values[i] form a label pair
+func resolveAttributeRefs(refs []int64, table *queryv1.AttributeTable) []*typesv1.LabelPair {
+	if table == nil || len(refs) == 0 {
+		return nil
+	}
+
+	labels := make([]*typesv1.LabelPair, 0, len(refs))
+	for _, ref := range refs {
+		// Validate index
+		if ref < 0 || ref >= int64(len(table.Keys)) || ref >= int64(len(table.Values)) {
+			continue
+		}
+
+		labels = append(labels, &typesv1.LabelPair{
+			Name:  table.Keys[ref],
+			Value: table.Values[ref],
+		})
+	}
+
+	return labels
 }
 
 // yBucket represents a Y-axis bucket

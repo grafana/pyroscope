@@ -198,7 +198,7 @@ func TestRangeHeatmap_YBucketBoundaries(t *testing.T) {
 }
 
 func TestRangeHeatmap_MultipleReports(t *testing.T) {
-	// Test merging data from multiple reports
+	// Test that data from multiple reports produces separate series (not merged)
 	reports := []*queryv1.HeatmapReport{
 		{
 			HeatmapSeries: []*queryv1.HeatmapSeries{
@@ -214,8 +214,95 @@ func TestRangeHeatmap_MultipleReports(t *testing.T) {
 			HeatmapSeries: []*queryv1.HeatmapSeries{
 				{
 					Points: []*queryv1.HeatmapPoint{
-						{Timestamp: 150, Value: 1500},
-						{Timestamp: 250, Value: 2500},
+						{Timestamp: 200, Value: 1500},
+						{Timestamp: 300, Value: 2500},
+					},
+				},
+			},
+		},
+	}
+
+	series := RangeHeatmap(reports, 0, 1000, 100, nil)
+	require.NotNil(t, series)
+	// Each input series should produce a separate output series
+	require.Len(t, series, 2)
+
+	// Verify first series has 2 points
+	totalCount1 := int32(0)
+	for _, slot := range series[0].Slots {
+		for _, count := range slot.Counts {
+			totalCount1 += count
+		}
+	}
+	assert.Equal(t, int32(2), totalCount1, "Expected first series to have 2 points")
+
+	// Verify second series has 2 points
+	totalCount2 := int32(0)
+	for _, slot := range series[1].Slots {
+		for _, count := range slot.Counts {
+			totalCount2 += count
+		}
+	}
+	assert.Equal(t, int32(2), totalCount2, "Expected second series to have 2 points")
+}
+
+func TestRangeHeatmap_LabelsPreserved(t *testing.T) {
+	// Test that labels are correctly resolved and preserved per series
+	// AttributeTable has parallel arrays: Keys[i] and Values[i] form a label pair
+	reports := []*queryv1.HeatmapReport{
+		{
+			AttributeTable: &queryv1.AttributeTable{
+				// Index 0: service=api
+				// Index 1: environment=production
+				// Index 2: service=web
+				// Index 3: environment=staging
+				Keys:   []string{"service", "environment", "service", "environment"},
+				Values: []string{"api", "production", "web", "staging"},
+			},
+			HeatmapSeries: []*queryv1.HeatmapSeries{
+				{
+					AttributeRefs: []int64{0, 1}, // refs to: service=api, environment=production
+					Points: []*queryv1.HeatmapPoint{
+						{Timestamp: 100, Value: 1000},
+					},
+				},
+				{
+					AttributeRefs: []int64{2, 3}, // refs to: service=web, environment=staging
+					Points: []*queryv1.HeatmapPoint{
+						{Timestamp: 100, Value: 2000},
+					},
+				},
+			},
+		},
+	}
+
+	series := RangeHeatmap(reports, 0, 1000, 100, nil)
+	require.NotNil(t, series)
+	require.Len(t, series, 2, "Expected one series per input series")
+
+	// Verify first series labels
+	require.Len(t, series[0].Labels, 2)
+	assert.Equal(t, "service", series[0].Labels[0].Name)
+	assert.Equal(t, "api", series[0].Labels[0].Value)
+	assert.Equal(t, "environment", series[0].Labels[1].Name)
+	assert.Equal(t, "production", series[0].Labels[1].Value)
+
+	// Verify second series labels
+	require.Len(t, series[1].Labels, 2)
+	assert.Equal(t, "service", series[1].Labels[0].Name)
+	assert.Equal(t, "web", series[1].Labels[0].Value)
+	assert.Equal(t, "environment", series[1].Labels[1].Name)
+	assert.Equal(t, "staging", series[1].Labels[1].Value)
+}
+
+func TestRangeHeatmap_NoLabels(t *testing.T) {
+	// Test that series without attribute refs work correctly
+	reports := []*queryv1.HeatmapReport{
+		{
+			HeatmapSeries: []*queryv1.HeatmapSeries{
+				{
+					Points: []*queryv1.HeatmapPoint{
+						{Timestamp: 100, Value: 1000},
 					},
 				},
 			},
@@ -226,14 +313,8 @@ func TestRangeHeatmap_MultipleReports(t *testing.T) {
 	require.NotNil(t, series)
 	require.Len(t, series, 1)
 
-	// Should have combined data from both reports
-	totalCount := int32(0)
-	for _, slot := range series[0].Slots {
-		for _, count := range slot.Counts {
-			totalCount += count
-		}
-	}
-	assert.Equal(t, int32(4), totalCount, "Expected all 4 points to be counted")
+	// Series should have no labels
+	assert.Nil(t, series[0].Labels)
 }
 
 func TestRangeHeatmap_TimeBucketAlignment(t *testing.T) {
