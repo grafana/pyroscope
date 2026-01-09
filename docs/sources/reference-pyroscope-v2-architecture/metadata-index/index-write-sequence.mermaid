@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant SW as segment-writer
+    participant M as Metastore
+    participant R as Raft
+    participant I as Index
+
+    SW->>M: AddBlock(metadata)
+    M->>R: Propose ADD_BLOCK
+    R->>R: Commit to log
+    R->>I: Insert block
+    I-->>R: Success
+    R-->>M: Committed
+    M-->>SW: Success
