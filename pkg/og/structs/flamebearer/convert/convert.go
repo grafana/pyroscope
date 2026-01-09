@@ -15,10 +15,10 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/perf"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 // ProfileFile represents content to be converted to flamebearer.
@@ -47,7 +47,7 @@ const (
 	ProfileFileTypePerfScript ProfileFileType = "perf_script"
 )
 
-type ConverterFn func(b []byte, name string, maxNodes int) ([]*flamebearer.FlamebearerProfile, error)
+type ConverterFn func(b []byte, name string, limits Limits) ([]*flamebearer.FlamebearerProfile, error)
 
 var formatConverters = map[ProfileFileType]ConverterFn{
 	ProfileFileTypeJSON:       JSONToProfile,
@@ -56,12 +56,17 @@ var formatConverters = map[ProfileFileType]ConverterFn{
 	ProfileFileTypePerfScript: PerfScriptToProfile,
 }
 
-func FlamebearerFromFile(f ProfileFile, maxNodes int) ([]*flamebearer.FlamebearerProfile, error) {
+type Limits struct {
+	MaxNodes            int
+	MaxProfileSizeBytes int
+}
+
+func FlamebearerFromFile(f ProfileFile, limits Limits) ([]*flamebearer.FlamebearerProfile, error) {
 	convertFn, _, err := Converter(f)
 	if err != nil {
 		return nil, err
 	}
-	return convertFn(f.Data, f.Name, maxNodes)
+	return convertFn(f.Data, f.Name, limits)
 }
 
 // Converter returns a ConverterFn that converts to
@@ -71,8 +76,8 @@ func Converter(p ProfileFile) (ConverterFn, ProfileFileType, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	return func(b []byte, name string, maxNodes int) ([]*flamebearer.FlamebearerProfile, error) {
-		fbs, err := convertFn(b, name, maxNodes)
+	return func(b []byte, name string, limits Limits) ([]*flamebearer.FlamebearerProfile, error) {
+		fbs, err := convertFn(b, name, limits)
 		if err != nil {
 			return nil, fmt.Errorf("unable to process the profile. The profile was detected as %q: %w",
 				converterToFormat(convertFn), err)
@@ -158,7 +163,7 @@ func converter(p ProfileFile) (ConverterFn, error) {
 	return CollapsedToProfile, nil
 }
 
-func JSONToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.FlamebearerProfile, error) {
+func JSONToProfile(b []byte, name string, limits Limits) ([]*flamebearer.FlamebearerProfile, error) {
 	var profile flamebearer.FlamebearerProfile
 	if err := json.Unmarshal(b, &profile); err != nil {
 		return nil, fmt.Errorf("unable to unmarshall JSON: %w", err)
@@ -175,7 +180,7 @@ func JSONToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.Flamebea
 	pc := flamebearer.ProfileConfig{
 		Tree:     t,
 		Name:     profile.Metadata.Name,
-		MaxNodes: maxNodes,
+		MaxNodes: limits.MaxNodes,
 		Metadata: metadata.Metadata{
 			SpyName:    profile.Metadata.SpyName,
 			SampleRate: profile.Metadata.SampleRate,
@@ -229,13 +234,14 @@ func getProfileType(name string, sampleType int, p *profilev1.Profile) (*typesv1
 	return tp, nil
 }
 
-func PprofToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.FlamebearerProfile, error) {
-	p := new(profilev1.Profile)
-	if err := pprof.Decode(bytes.NewReader(b), p); err != nil {
+func PprofToProfile(b []byte, name string, limits Limits) ([]*flamebearer.FlamebearerProfile, error) {
+	prof, err := pprof.RawFromBytesWithLimit(b, int64(limits.MaxProfileSizeBytes))
+	if err != nil {
 		return nil, fmt.Errorf("parsing pprof: %w", err)
 	}
+	p := prof.Profile
 
-	t := model.NewStacktraceTree(int(maxNodes * 2))
+	t := model.NewStacktraceTree(int(limits.MaxNodes * 2))
 	stack := make([]int32, 0, 64)
 	m := make(map[uint64]int32)
 
@@ -279,7 +285,7 @@ func PprofToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.Flamebe
 			return nil, err
 		}
 
-		fg := model.NewFlameGraph(t.Tree(int64(maxNodes), p.StringTable), int64(maxNodes))
+		fg := model.NewFlameGraph(t.Tree(int64(limits.MaxNodes), p.StringTable), int64(limits.MaxNodes))
 		fbs = append(fbs, model.ExportToFlamebearer(fg, tp))
 	}
 	if len(fbs) == 0 {
@@ -288,7 +294,7 @@ func PprofToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.Flamebe
 	return fbs, nil
 }
 
-func CollapsedToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.FlamebearerProfile, error) {
+func CollapsedToProfile(b []byte, name string, limits Limits) ([]*flamebearer.FlamebearerProfile, error) {
 	t := tree.New()
 	for _, line := range bytes.Split(b, []byte("\n")) {
 		if len(line) == 0 {
@@ -307,7 +313,7 @@ func CollapsedToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.Fla
 	fb := flamebearer.NewProfile(flamebearer.ProfileConfig{
 		Name:     name,
 		Tree:     t,
-		MaxNodes: maxNodes,
+		MaxNodes: limits.MaxNodes,
 		Metadata: metadata.Metadata{
 			SpyName:    "unknown",
 			SampleRate: 100, // We don't have this information, use the default
@@ -316,7 +322,7 @@ func CollapsedToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.Fla
 	return []*flamebearer.FlamebearerProfile{&fb}, nil
 }
 
-func PerfScriptToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.FlamebearerProfile, error) {
+func PerfScriptToProfile(b []byte, name string, limits Limits) ([]*flamebearer.FlamebearerProfile, error) {
 	t := tree.New()
 	p := perf.NewScriptParser(b)
 	events, err := p.ParseEvents()
@@ -329,7 +335,7 @@ func PerfScriptToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.Fl
 	fb := flamebearer.NewProfile(flamebearer.ProfileConfig{
 		Name:     name,
 		Tree:     t,
-		MaxNodes: maxNodes,
+		MaxNodes: limits.MaxNodes,
 		Metadata: metadata.Metadata{
 			SpyName:    "unknown",
 			SampleRate: 100, // We don't have this information, use the default

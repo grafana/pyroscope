@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/dskit/tenant"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/dgraph-io/ristretto/v2"
@@ -35,6 +36,7 @@ type DebuginfodHTTPClient struct {
 	cfg     DebuginfodClientConfig
 	metrics *metrics
 	logger  log.Logger
+	limits  Limits
 
 	// Used to deduplicate concurrent requests for the same build ID
 	group singleflight.Group
@@ -43,7 +45,7 @@ type DebuginfodHTTPClient struct {
 }
 
 // NewDebuginfodClient creates a new client for fetching debug information from a debuginfod server.
-func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *metrics) (*DebuginfodHTTPClient, error) {
+func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *metrics, limits Limits) (*DebuginfodHTTPClient, error) {
 	return NewDebuginfodClientWithConfig(logger, DebuginfodClientConfig{
 		BaseURL: baseURL,
 		//UserAgent:  "Pyroscope-Symbolizer/1.0",
@@ -54,11 +56,11 @@ func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *metrics) (*
 		},
 		NotFoundCacheMaxItems: 100000,
 		NotFoundCacheTTL:      7 * 24 * time.Hour,
-	}, metrics)
+	}, metrics, limits)
 }
 
 // NewDebuginfodClientWithConfig creates a new client with the specified configuration.
-func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig, metrics *metrics) (*DebuginfodHTTPClient, error) {
+func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig, metrics *metrics, limits Limits) (*DebuginfodHTTPClient, error) {
 	httpClient := cfg.HTTPClient
 	if httpClient == nil {
 		transport := &http.Transport{
@@ -98,6 +100,7 @@ func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig
 		metrics:       metrics,
 		logger:        logger,
 		notFoundCache: cache,
+		limits:        limits,
 	}
 
 	return client, nil
@@ -155,6 +158,13 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 
 // doRequest performs an HTTP request to the specified URL and returns the response body.
 func (c *DebuginfodHTTPClient) doRequest(ctx context.Context, url string) ([]byte, error) {
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	maxBytes := int64(c.limits.SymbolizerMaxSymbolSizeBytes(tenantID))
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -171,9 +181,20 @@ func (c *DebuginfodHTTPClient) doRequest(ctx context.Context, url string) ([]byt
 	}
 	defer resp.Body.Close()
 
-	data, err := io.ReadAll(resp.Body)
+	var r io.Reader = resp.Body
+	// maxBytes == 0 means unlimited body size
+	if maxBytes > 0 {
+		r = io.LimitReader(r, maxBytes+1) // +1 to detect if limit is exceeded
+	}
+
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Check if we hit the size limit
+	if maxBytes > 0 && int64(len(data)) > maxBytes {
+		return nil, &ErrSymbolSizeBytesExceedsLimit{Limit: maxBytes}
 	}
 
 	if resp.StatusCode != http.StatusOK {

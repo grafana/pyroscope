@@ -117,6 +117,18 @@ func TestAdHocProfiles_List(t *testing.T) {
 }
 
 func TestAdHocProfiles_Upload(t *testing.T) {
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		defaults.MaxFlameGraphNodesDefault = 8192
+
+		l := validation.MockDefaultLimits()
+		l.MaxProfileSizeBytes = 16
+		tenantLimits["tenant-16-bytes-limit"] = l
+
+		l = validation.MockDefaultLimits()
+		l.MaxProfileSizeBytes = 1600
+		tenantLimits["tenant-1600-bytes-limit"] = l
+	})
+
 	bucket := phlareobjstore.NewBucket(thanosobjstore.NewInMemBucket())
 	rawProfile, err := os.ReadFile("testdata/cpu.pprof")
 	require.NoError(t, err)
@@ -128,7 +140,7 @@ func TestAdHocProfiles_Upload(t *testing.T) {
 	tests := []struct {
 		name           string
 		args           args
-		wantErr        bool
+		wantErr        string
 		expectedSuffix string
 	}{
 		{
@@ -137,7 +149,7 @@ func TestAdHocProfiles_Upload(t *testing.T) {
 				ctx: context.Background(),
 				c:   nil,
 			},
-			wantErr: true,
+			wantErr: "no org id",
 		},
 		{
 			name: "should reject an invalid profile",
@@ -148,7 +160,7 @@ func TestAdHocProfiles_Upload(t *testing.T) {
 					Profile: "123",
 				}),
 			},
-			wantErr: true,
+			wantErr: "failed to parse profile",
 		},
 		{
 			name: "should store a valid profile",
@@ -159,7 +171,6 @@ func TestAdHocProfiles_Upload(t *testing.T) {
 					Profile: encodedProfile,
 				}),
 			},
-			wantErr:        false,
 			expectedSuffix: "-test.cpu.pb.gz",
 		},
 		{
@@ -171,21 +182,44 @@ func TestAdHocProfiles_Upload(t *testing.T) {
 					Profile: encodedProfile,
 				}),
 			},
-			wantErr:        false,
 			expectedSuffix: "-test_.._.._.._etc_passwd",
+		},
+		{
+			name: "should enforce profile size",
+			args: args{
+				ctx: tenant.InjectTenantID(context.Background(), "tenant-16-bytes-limit"),
+				c: connect.NewRequest(&v1.AdHocProfilesUploadRequest{
+					Name:    "compressed-too-big",
+					Profile: encodedProfile,
+				}),
+			},
+			wantErr: "invalid_argument: profile payload size exceeds limit of 16 B",
+		},
+		{
+			name: "should enforce profile size limit after decompression",
+			args: args{
+				// 1580 is the profile size compressed
+				ctx: tenant.InjectTenantID(context.Background(), "tenant-1600-bytes-limit"),
+				c: connect.NewRequest(&v1.AdHocProfilesUploadRequest{
+					Name:    "decompressed-too-big",
+					Profile: encodedProfile,
+				}),
+			},
+			wantErr: "invalid_argument: uncompressed profile payload size exceeds limit of 1.6 kB",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AdHocProfiles{
 				logger: util.Logger,
-				limits: validation.MockLimits{MaxFlameGraphNodesDefaultValue: 8192},
+				limits: overrides,
 				bucket: bucket,
 			}
 			_, err := a.Upload(tt.args.ctx, tt.args.c)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Upload() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.wantErr)
 			}
 
 			if tt.expectedSuffix != "" {
