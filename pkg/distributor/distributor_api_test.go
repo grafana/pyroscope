@@ -255,7 +255,7 @@ func otlpJSONWithSize(t testing.TB, targetSize int) []byte {
 		UnitStrindex: nanosIdx,
 	}
 	b.profile.Period = 10000000
-	b.profile.Sample = []*otlpv1.Sample{{
+	b.profile.Samples = []*otlpv1.Sample{{
 		StackIndex: 0,
 		Values:     []int64{100},
 	}}
