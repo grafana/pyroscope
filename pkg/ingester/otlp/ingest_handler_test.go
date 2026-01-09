@@ -227,11 +227,11 @@ func TestConversion(t *testing.T) {
 				b.dictionary.LocationTable = []*v1experimental.Location{{
 					MappingIndex: 0,
 					Address:      0x1e0,
-					Line:         nil,
+					Lines:        nil,
 				}, {
 					MappingIndex: 0,
 					Address:      0x2f0,
-					Line:         nil,
+					Lines:        nil,
 				}}
 				b.dictionary.StackTable = []*v1experimental.Stack{{
 					LocationIndices: []int32{0, 1},
@@ -240,7 +240,7 @@ func TestConversion(t *testing.T) {
 					TypeStrindex: b.addstr("samples"),
 					UnitStrindex: b.addstr("ms"),
 				}
-				b.profile.Sample = []*v1experimental.Sample{{
+				b.profile.Samples = []*v1experimental.Sample{{
 					StackIndex: 0,
 					Values:     []int64{0xef},
 				}}
@@ -276,7 +276,7 @@ func TestConversion(t *testing.T) {
 				}, {
 					LocationIndices: []int32{2},
 				}}
-				b.profile.Sample = []*v1experimental.Sample{{
+				b.profile.Samples = []*v1experimental.Sample{{
 					StackIndex: 0,
 					Values:     []int64{0xef},
 				}, {
@@ -316,12 +316,11 @@ func TestConversion(t *testing.T) {
 					LocationIndices: []int32{2},
 				}}
 				b.profile.PeriodType = &v1experimental.ValueType{
-					TypeStrindex:           b.addstr("period_type"),
-					UnitStrindex:           b.addstr("period_unit"),
-					AggregationTemporality: 0,
+					TypeStrindex: b.addstr("period_type"),
+					UnitStrindex: b.addstr("period_unit"),
 				}
 				b.profile.Period = 100
-				b.profile.Sample = []*v1experimental.Sample{{
+				b.profile.Samples = []*v1experimental.Sample{{
 					StackIndex: 0,
 					Values:     []int64{0xef},
 				}, {
@@ -415,7 +414,7 @@ func TestSampleAttributes(t *testing.T) {
 	}, {
 		LocationIndices: []int32{2, 3},
 	}}
-	otlpb.profile.Sample = []*v1experimental.Sample{{
+	otlpb.profile.Samples = []*v1experimental.Sample{{
 		StackIndex:       0,
 		Values:           []int64{0xef},
 		AttributeIndices: []int32{0},
@@ -505,35 +504,35 @@ func TestDifferentServiceNames(t *testing.T) {
 	otlpb.dictionary.LocationTable = []*v1experimental.Location{{
 		MappingIndex: 0, // service-a.so
 		Address:      0x1100,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 0,
 			Line:          10,
 		}},
 	}, {
 		MappingIndex: 0, // service-a.so
 		Address:      0x1200,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 1,
 			Line:          20,
 		}},
 	}, {
 		MappingIndex: 1, // service-b.so
 		Address:      0x2100,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 2,
 			Line:          30,
 		}},
 	}, {
 		MappingIndex: 1, // service-b.so
 		Address:      0x2200,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 3,
 			Line:          40,
 		}},
 	}, {
 		MappingIndex: 2, // service-c.so
 		Address:      0xef0,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 4,
 			Line:          50,
 		}},
@@ -569,7 +568,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		LocationIndices: []int32{4, 4},
 	}}
 
-	otlpb.profile.Sample = []*v1experimental.Sample{{
+	otlpb.profile.Samples = []*v1experimental.Sample{{
 		StackIndex:       0,
 		Values:           []int64{100},
 		AttributeIndices: []int32{0},
@@ -701,7 +700,7 @@ func createValidOTLPRequest() *v1experimental2.ExportProfilesServiceRequest {
 		TypeStrindex: b.addstr("samples"),
 		UnitStrindex: b.addstr("count"),
 	}
-	b.profile.Sample = []*v1experimental.Sample{{
+	b.profile.Samples = []*v1experimental.Sample{{
 		StackIndex: 0,
 		Values:     []int64{100},
 	}}
@@ -735,7 +734,7 @@ func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
 			"scopeProfiles": [{
 				"profiles": [{
 					"sampleType": {"typeStrindex": 0, "unitStrindex": 1},
-					"sample": [{"stackIndex": 0, "values": [100]}],
+					"samples": [{"stackIndex": 0, "values": [100]}],
 					"timeUnixNano": "1234567890"
 				}]
 			}]
@@ -812,7 +811,7 @@ func TestHTTPRequestWithGzipCompressionAndJSON(t *testing.T) {
 			"scopeProfiles": [{
 				"profiles": [{
 					"sampleType": {"typeStrindex": 0, "unitStrindex": 1},
-					"sample": [{"stackIndex": 0, "values": [100]}],
+					"samples": [{"stackIndex": 0, "values": [100]}],
 					"timeUnixNano": "1234567890"
 				}]
 			}]

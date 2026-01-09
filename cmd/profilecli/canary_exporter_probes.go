@@ -108,8 +108,8 @@ func (ce *canaryExporter) generateOTLPProfile(now time.Time, ingestionMethod str
 			{NameStrindex: 5}, // 2: func2
 		},
 		LocationTable: []*otlpprofiles.Location{
-			{Line: []*otlpprofiles.Line{{FunctionIndex: 1}}}, // 0: func1
-			{Line: []*otlpprofiles.Line{{FunctionIndex: 2}}}, // 1: func2
+			{Lines: []*otlpprofiles.Line{{FunctionIndex: 1}}}, // 0: func1
+			{Lines: []*otlpprofiles.Line{{FunctionIndex: 2}}}, // 1: func2
 		},
 		StackTable: []*otlpprofiles.Stack{
 			{LocationIndices: []int32{}},     // 0: empty (required null entry)
@@ -131,7 +131,7 @@ func (ce *canaryExporter) generateOTLPProfile(now time.Time, ingestionMethod str
 			TypeStrindex: 1, // "otlp_test"
 			UnitStrindex: 2, // "samples"
 		},
-		Sample: []*otlpprofiles.Sample{
+		Samples: []*otlpprofiles.Sample{
 			{
 				// func1>func2 with value 10
 				StackIndex: 1, // stack_table[1]

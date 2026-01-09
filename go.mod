@@ -79,10 +79,10 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/xlab/treeprint v1.2.0
 	go.etcd.io/bbolt v1.4.3
-	go.opentelemetry.io/otel v1.38.0
-	go.opentelemetry.io/proto/otlp v1.8.0
-	go.opentelemetry.io/proto/otlp/collector/profiles/v1development v0.1.0
-	go.opentelemetry.io/proto/otlp/profiles/v1development v0.1.0
+	go.opentelemetry.io/otel v1.39.0
+	go.opentelemetry.io/proto/otlp v1.9.0
+	go.opentelemetry.io/proto/otlp/collector/profiles/v1development v0.2.0
+	go.opentelemetry.io/proto/otlp/profiles/v1development v0.2.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/goleak v1.3.0
@@ -282,7 +282,7 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.7 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.7 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
-	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
+	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/collector/component v1.35.0 // indirect
 	go.opentelemetry.io/collector/confmap v1.35.0 // indirect
 	go.opentelemetry.io/collector/confmap/xconfmap v0.129.0 // indirect
@@ -315,11 +315,11 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.36.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.36.0 // indirect
 	go.opentelemetry.io/otel/log v0.12.2 // indirect
-	go.opentelemetry.io/otel/metric v1.38.0 // indirect
+	go.opentelemetry.io/otel/metric v1.39.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.37.0 // indirect
 	go.opentelemetry.io/otel/sdk/log v0.12.2 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.37.0 // indirect
-	go.opentelemetry.io/otel/trace v1.38.0 // indirect
+	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
