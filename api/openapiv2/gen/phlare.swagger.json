@@ -1477,6 +1477,13 @@
         },
         "queryType": {
           "$ref": "#/definitions/v1HeatmapQueryType"
+        },
+        "limit": {
+          "type": "string",
+          "format": "int64"
+        },
+        "exemplarType": {
+          "$ref": "#/definitions/v1ExemplarType"
         }
       }
     },

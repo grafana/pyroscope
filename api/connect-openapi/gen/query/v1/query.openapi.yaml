@@ -430,6 +430,15 @@ components:
         queryType:
           title: query_type
           $ref: '#/components/schemas/querier.v1.HeatmapQueryType'
+        limit:
+          type:
+            - integer
+            - string
+          title: limit
+          format: int64
+        exemplarType:
+          title: exemplar_type
+          $ref: '#/components/schemas/types.v1.ExemplarType'
       title: HeatmapQuery
       additionalProperties: false
     query.v1.HeatmapReport:

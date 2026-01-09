@@ -1,6 +1,7 @@
 package heatmap
 
 import (
+	"fmt"
 	"math"
 	"sort"
 
@@ -20,6 +21,8 @@ func RangeHeatmap(
 	reports []*queryv1.HeatmapReport,
 	start, end, step int64,
 	aggregation *typesv1.TimeSeriesAggregationType,
+	groupBy []string,
+	exemplarType typesv1.ExemplarType,
 ) []*typesv1.HeatmapSeries {
 	if len(reports) == 0 {
 		return nil
@@ -82,6 +85,21 @@ func RangeHeatmap(
 	// Create time buckets
 	timeBuckets := createTimeBuckets(start, end, step)
 
+	// Check if exemplars should be included
+	includeExemplars := exemplarType != typesv1.ExemplarType_EXEMPLAR_TYPE_NONE &&
+		exemplarType != typesv1.ExemplarType_EXEMPLAR_TYPE_UNSPECIFIED
+
+	// Get attribute table from first report for exemplar conversion
+	var attributeTable *queryv1.AttributeTable
+	if includeExemplars {
+		for _, report := range reports {
+			if report != nil && report.AttributeTable != nil {
+				attributeTable = report.AttributeTable
+				break
+			}
+		}
+	}
+
 	// Second pass: process each series with the shared Y-axis buckets
 	var result []*typesv1.HeatmapSeries
 
@@ -92,8 +110,9 @@ func RangeHeatmap(
 			yIdx    int
 		}
 		cellCounts := make(map[cellKey]int32)
+		cellBestPoint := make(map[cellKey]*queryv1.HeatmapPoint) // Track best exemplar per cell
 
-		// Bucket each point
+		// First pass: count and track best exemplar per cell
 		for _, point := range sd.series.Points {
 			if point == nil {
 				continue
@@ -111,10 +130,18 @@ func RangeHeatmap(
 				continue
 			}
 
-			cellCounts[cellKey{timeIdx, yIdx}]++
+			cell := cellKey{timeIdx, yIdx}
+			cellCounts[cell]++
+
+			// Track highest-value point for this cell (for exemplar)
+			if includeExemplars {
+				if existing := cellBestPoint[cell]; existing == nil || point.Value > existing.Value {
+					cellBestPoint[cell] = point
+				}
+			}
 		}
 
-		// Build slots grouped by timestamp
+		// Second pass: build slots with counts and exemplars
 		slotsMap := make(map[int64]*typesv1.HeatmapSlot)
 		for cell, count := range cellCounts {
 			timestamp := timeBuckets[cell.timeIdx]
@@ -125,6 +152,9 @@ func RangeHeatmap(
 					YMin:      make([]float64, len(yBuckets)),
 					Counts:    make([]int32, len(yBuckets)),
 				}
+				if includeExemplars {
+					slot.Exemplars = make([]*typesv1.Exemplar, len(yBuckets))
+				}
 				// Initialize Y bucket minimums
 				for i, bucket := range yBuckets {
 					slot.YMin[i] = float64(bucket.min)
@@ -132,6 +162,13 @@ func RangeHeatmap(
 				slotsMap[timestamp] = slot
 			}
 			slot.Counts[cell.yIdx] = count
+
+			// Attach exemplar for this Y-bucket
+			if includeExemplars {
+				if bestPoint := cellBestPoint[cell]; bestPoint != nil {
+					slot.Exemplars[cell.yIdx] = pointToExemplar(bestPoint, attributeTable, groupBy)
+				}
+			}
 		}
 
 		// Convert map to sorted slice
@@ -236,4 +273,61 @@ func findValueBucket(value uint64, buckets []yBucket) int {
 		return len(buckets) - 1
 	}
 	return -1
+}
+
+// filterExemplarLabels removes group_by labels from exemplar labels.
+func filterExemplarLabels(labels []*typesv1.LabelPair, groupBy []string) []*typesv1.LabelPair {
+	if len(groupBy) == 0 {
+		return labels
+	}
+
+	groupBySet := make(map[string]struct{}, len(groupBy))
+	for _, name := range groupBy {
+		groupBySet[name] = struct{}{}
+	}
+
+	filtered := make([]*typesv1.LabelPair, 0, len(labels))
+	for _, label := range labels {
+		if _, isGroupBy := groupBySet[label.Name]; !isGroupBy {
+			filtered = append(filtered, label)
+		}
+	}
+	return filtered
+}
+
+// pointToExemplar converts a single HeatmapPoint to an Exemplar.
+func pointToExemplar(
+	point *queryv1.HeatmapPoint,
+	table *queryv1.AttributeTable,
+	groupBy []string,
+) *typesv1.Exemplar {
+	if point == nil || table == nil {
+		return nil
+	}
+
+	// Resolve labels from attribute refs
+	pointLabels := resolveAttributeRefs(point.AttributeRefs, table)
+
+	// Filter out group_by labels
+	filteredLabels := filterExemplarLabels(pointLabels, groupBy)
+
+	// Resolve profile ID from attribute table
+	profileID := ""
+	if point.ProfileId >= 0 && point.ProfileId < int64(len(table.Values)) {
+		profileID = table.Values[point.ProfileId]
+	}
+
+	// Convert span ID to hex string
+	spanIDStr := ""
+	if point.SpanId != 0 {
+		spanIDStr = fmt.Sprintf("%016x", point.SpanId)
+	}
+
+	return &typesv1.Exemplar{
+		Timestamp: point.Timestamp,
+		ProfileId: profileID,
+		SpanId:    spanIDStr,
+		Value:     point.Value,
+		Labels:    filteredLabels,
+	}
 }

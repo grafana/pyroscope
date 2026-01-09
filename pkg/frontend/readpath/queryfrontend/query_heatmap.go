@@ -49,9 +49,11 @@ func (q *QueryFrontend) SelectHeatmap(
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_HEATMAP,
 			Heatmap: &queryv1.HeatmapQuery{
-				Step:      c.Msg.GetStep(),
-				GroupBy:   c.Msg.GetGroupBy(),
-				QueryType: c.Msg.QueryType,
+				Step:         c.Msg.GetStep(),
+				GroupBy:      c.Msg.GetGroupBy(),
+				QueryType:    c.Msg.QueryType,
+				ExemplarType: c.Msg.GetExemplarType(),
+				Limit:        c.Msg.GetLimit(),
 			},
 		}},
 	})
@@ -68,7 +70,15 @@ func (q *QueryFrontend) SelectHeatmap(
 		c.Msg.End,
 		stepMs,
 		nil,
+		c.Msg.GetGroupBy(),
+		c.Msg.GetExemplarType(),
 	)
+
+	// Apply limit if specified
+	if c.Msg.GetLimit() > 0 {
+		series = heatmap.TopSeries(series, int(c.Msg.GetLimit()))
+	}
+
 	return connect.NewResponse(&querierv1.SelectHeatmapResponse{
 		Series: series,
 	}), nil
