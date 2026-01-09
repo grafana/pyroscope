@@ -1530,6 +1530,14 @@
             "format": "int32"
           },
           "title": "How many matches"
+        },
+        "exemplars": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Exemplar"
+          },
+          "title": "Provide exemplars"
         }
       }
     },

@@ -472,10 +472,15 @@ func (m *SelectHeatmapRequest) CloneVT() *SelectHeatmapRequest {
 	r.End = m.End
 	r.Step = m.Step
 	r.QueryType = m.QueryType
+	r.ExemplarType = m.ExemplarType
 	if rhs := m.GroupBy; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
 		r.GroupBy = tmpContainer
+	}
+	if rhs := m.Limit; rhs != nil {
+		tmpVal := *rhs
+		r.Limit = &tmpVal
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -1220,6 +1225,12 @@ func (this *SelectHeatmapRequest) EqualVT(that *SelectHeatmapRequest) bool {
 		}
 	}
 	if this.QueryType != that.QueryType {
+		return false
+	}
+	if this.ExemplarType != that.ExemplarType {
+		return false
+	}
+	if p, q := this.Limit, that.Limit; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2993,6 +3004,16 @@ func (m *SelectHeatmapRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Limit != nil {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.Limit))
+		i--
+		dAtA[i] = 0x48
+	}
+	if m.ExemplarType != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.ExemplarType))
+		i--
+		dAtA[i] = 0x40
+	}
 	if m.QueryType != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.QueryType))
 		i--
@@ -3800,6 +3821,12 @@ func (m *SelectHeatmapRequest) SizeVT() (n int) {
 	}
 	if m.QueryType != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.QueryType))
+	}
+	if m.ExemplarType != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.ExemplarType))
+	}
+	if m.Limit != nil {
+		n += 1 + protohelpers.SizeOfVarint(uint64(*m.Limit))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -6605,6 +6632,45 @@ func (m *SelectHeatmapRequest) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExemplarType", wireType)
+			}
+			m.ExemplarType = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ExemplarType |= v1.ExemplarType(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Limit", wireType)
+			}
+			var v int64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Limit = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
