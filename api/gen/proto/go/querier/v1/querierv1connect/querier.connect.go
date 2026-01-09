@@ -60,6 +60,9 @@ const (
 	// QuerierServiceSelectSeriesProcedure is the fully-qualified name of the QuerierService's
 	// SelectSeries RPC.
 	QuerierServiceSelectSeriesProcedure = "/querier.v1.QuerierService/SelectSeries"
+	// QuerierServiceSelectHeatmapProcedure is the fully-qualified name of the QuerierService's
+	// SelectHeatmap RPC.
+	QuerierServiceSelectHeatmapProcedure = "/querier.v1.QuerierService/SelectHeatmap"
 	// QuerierServiceDiffProcedure is the fully-qualified name of the QuerierService's Diff RPC.
 	QuerierServiceDiffProcedure = "/querier.v1.QuerierService/Diff"
 	// QuerierServiceGetProfileStatsProcedure is the fully-qualified name of the QuerierService's
@@ -96,6 +99,8 @@ type QuerierServiceClient interface {
 	// SelectSeries returns a time series for the total sum of the requested
 	// profiles.
 	SelectSeries(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error)
+	// SelectHeatmap returns a heatmap visualization for the requested profiles.
+	SelectHeatmap(context.Context, *connect.Request[v1.SelectHeatmapRequest]) (*connect.Response[v1.SelectHeatmapResponse], error)
 	// Diff returns a diff of two profiles
 	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)
 	// GetProfileStats returns profile stats for the current tenant.
@@ -162,6 +167,12 @@ func NewQuerierServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(querierServiceMethods.ByName("SelectSeries")),
 			connect.WithClientOptions(opts...),
 		),
+		selectHeatmap: connect.NewClient[v1.SelectHeatmapRequest, v1.SelectHeatmapResponse](
+			httpClient,
+			baseURL+QuerierServiceSelectHeatmapProcedure,
+			connect.WithSchema(querierServiceMethods.ByName("SelectHeatmap")),
+			connect.WithClientOptions(opts...),
+		),
 		diff: connect.NewClient[v1.DiffRequest, v1.DiffResponse](
 			httpClient,
 			baseURL+QuerierServiceDiffProcedure,
@@ -193,6 +204,7 @@ type querierServiceClient struct {
 	selectMergeSpanProfile *connect.Client[v1.SelectMergeSpanProfileRequest, v1.SelectMergeSpanProfileResponse]
 	selectMergeProfile     *connect.Client[v1.SelectMergeProfileRequest, v12.Profile]
 	selectSeries           *connect.Client[v1.SelectSeriesRequest, v1.SelectSeriesResponse]
+	selectHeatmap          *connect.Client[v1.SelectHeatmapRequest, v1.SelectHeatmapResponse]
 	diff                   *connect.Client[v1.DiffRequest, v1.DiffResponse]
 	getProfileStats        *connect.Client[v11.GetProfileStatsRequest, v11.GetProfileStatsResponse]
 	analyzeQuery           *connect.Client[v1.AnalyzeQueryRequest, v1.AnalyzeQueryResponse]
@@ -238,6 +250,11 @@ func (c *querierServiceClient) SelectSeries(ctx context.Context, req *connect.Re
 	return c.selectSeries.CallUnary(ctx, req)
 }
 
+// SelectHeatmap calls querier.v1.QuerierService.SelectHeatmap.
+func (c *querierServiceClient) SelectHeatmap(ctx context.Context, req *connect.Request[v1.SelectHeatmapRequest]) (*connect.Response[v1.SelectHeatmapResponse], error) {
+	return c.selectHeatmap.CallUnary(ctx, req)
+}
+
 // Diff calls querier.v1.QuerierService.Diff.
 func (c *querierServiceClient) Diff(ctx context.Context, req *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error) {
 	return c.diff.CallUnary(ctx, req)
@@ -279,6 +296,8 @@ type QuerierServiceHandler interface {
 	// SelectSeries returns a time series for the total sum of the requested
 	// profiles.
 	SelectSeries(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error)
+	// SelectHeatmap returns a heatmap visualization for the requested profiles.
+	SelectHeatmap(context.Context, *connect.Request[v1.SelectHeatmapRequest]) (*connect.Response[v1.SelectHeatmapResponse], error)
 	// Diff returns a diff of two profiles
 	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)
 	// GetProfileStats returns profile stats for the current tenant.
@@ -341,6 +360,12 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 		connect.WithSchema(querierServiceMethods.ByName("SelectSeries")),
 		connect.WithHandlerOptions(opts...),
 	)
+	querierServiceSelectHeatmapHandler := connect.NewUnaryHandler(
+		QuerierServiceSelectHeatmapProcedure,
+		svc.SelectHeatmap,
+		connect.WithSchema(querierServiceMethods.ByName("SelectHeatmap")),
+		connect.WithHandlerOptions(opts...),
+	)
 	querierServiceDiffHandler := connect.NewUnaryHandler(
 		QuerierServiceDiffProcedure,
 		svc.Diff,
@@ -377,6 +402,8 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 			querierServiceSelectMergeProfileHandler.ServeHTTP(w, r)
 		case QuerierServiceSelectSeriesProcedure:
 			querierServiceSelectSeriesHandler.ServeHTTP(w, r)
+		case QuerierServiceSelectHeatmapProcedure:
+			querierServiceSelectHeatmapHandler.ServeHTTP(w, r)
 		case QuerierServiceDiffProcedure:
 			querierServiceDiffHandler.ServeHTTP(w, r)
 		case QuerierServiceGetProfileStatsProcedure:
@@ -422,6 +449,10 @@ func (UnimplementedQuerierServiceHandler) SelectMergeProfile(context.Context, *c
 
 func (UnimplementedQuerierServiceHandler) SelectSeries(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectSeries is not implemented"))
+}
+
+func (UnimplementedQuerierServiceHandler) SelectHeatmap(context.Context, *connect.Request[v1.SelectHeatmapRequest]) (*connect.Response[v1.SelectHeatmapResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectHeatmap is not implemented"))
 }
 
 func (UnimplementedQuerierServiceHandler) Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error) {
