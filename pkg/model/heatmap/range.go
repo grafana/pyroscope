@@ -21,7 +21,6 @@ const (
 func RangeHeatmap(
 	reports []*queryv1.HeatmapReport,
 	start, end, step int64,
-	aggregation *typesv1.TimeSeriesAggregationType,
 	groupBy []string,
 	exemplarType typesv1.ExemplarType,
 ) []*typesv1.HeatmapSeries {

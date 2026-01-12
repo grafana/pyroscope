@@ -98,6 +98,10 @@ func (m *mockQuerierClient) AnalyzeQuery(context.Context, *connect.Request[queri
 	return nil, nil
 }
 
+func (m *mockQuerierClient) SelectHeatmap(context.Context, *connect.Request[querierv1.SelectHeatmapRequest]) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
+	return nil, nil
+}
+
 func Test_RenderDotFormatEmptyProfile(t *testing.T) {
 	// Create a mock client that returns an empty profile
 	mockClient := &mockQuerierClient{

@@ -2,6 +2,7 @@ package queryfrontend
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"connectrpc.com/connect"
@@ -14,10 +15,31 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
+const (
+	// stepAdjustment is subtracted from the start time to ensure we capture
+	// data points that fall before the first time bucket boundary
+	stepAdjustment = 1
+)
+
 func (q *QueryFrontend) SelectHeatmap(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectHeatmapRequest],
 ) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
+	// Validate step
+	if c.Msg.Step <= 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("step must be greater than 0, got %f", c.Msg.Step))
+	}
+
+	// Validate limit if provided
+	if c.Msg.Limit != nil && *c.Msg.Limit < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("limit must be non-negative, got %d", *c.Msg.Limit))
+	}
+
+	// Validate time range
+	if c.Msg.Start >= c.Msg.End {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("start time must be before end time, got start=%d end=%d", c.Msg.Start, c.Msg.End))
+	}
+
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -36,7 +58,7 @@ func (q *QueryFrontend) SelectHeatmap(
 	}
 
 	stepMs := time.Duration(c.Msg.Step * float64(time.Second)).Milliseconds()
-	start := c.Msg.Start - stepMs
+	start := c.Msg.Start - (stepMs * stepAdjustment)
 
 	labelSelector, err := buildLabelSelectorWithProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
@@ -69,7 +91,6 @@ func (q *QueryFrontend) SelectHeatmap(
 		start,
 		c.Msg.End,
 		stepMs,
-		nil,
 		c.Msg.GetGroupBy(),
 		c.Msg.GetExemplarType(),
 	)
