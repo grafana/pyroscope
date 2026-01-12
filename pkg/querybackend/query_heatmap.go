@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"unique"
 
 	"github.com/grafana/dskit/runutil"
 	"github.com/opentracing/opentracing-go"
@@ -31,8 +30,6 @@ func init() {
 		}...,
 	)
 }
-
-var emptyString = unique.Make("")
 
 func rowsIndividual(q *queryContext, b *heatmap.Builder) error {
 	entries, err := profileEntryIterator(q, withAllLabels(), withFetchPartition(false), withFetchProfileIDs(true))

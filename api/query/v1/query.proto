@@ -209,20 +209,20 @@ message HeatmapQuery {
 message AttributeTable {
   repeated string keys = 1;
   repeated string values = 2;
-};
+}
 
 message HeatmapPoint {
   int64 timestamp = 1; // Milliseconds since epoch when the profile was captured.
   int64 profile_id = 2; // Unique identifier for the profile (UUID), reference into AttributeTable with only value set
   uint64 span_id = 3; // Span ID if this profile was split by span during ingestion
-  uint64 value = 4;  // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
+  uint64 value = 4; // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
   repeated int64 attribute_refs = 5; // labels as references into AttributeTable
 }
 
 message HeatmapSeries {
   repeated int64 attribute_refs = 1;
   repeated HeatmapPoint points = 2; // Points are timestamp, then span_id, then porfile_id ordered
-};
+}
 
 message HeatmapReport {
   HeatmapQuery query = 1;

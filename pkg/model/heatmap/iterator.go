@@ -83,21 +83,11 @@ func NewHeatmapReportIterator(reports []*queryv1.HeatmapReport) iter.Iterator[He
 		return iters[0]
 	}
 
-	// Use max value for merge iterator sentinel
-	maxValue := HeatmapValue{
-		Timestamp: 1<<63 - 1, // Max int64
-	}
-
 	// Create a merge iterator that sorts by timestamp, then spanID, then profileID
-	return newHeatmapMergeIterator(maxValue, iters...)
+	return newHeatmapMergeIterator(iters...)
 }
 
-// heatmapMergeIterator is a wrapper around model.MergeIterator for HeatmapValue
-type heatmapMergeIterator struct {
-	iter.Iterator[HeatmapValue]
-}
-
-func newHeatmapMergeIterator(max HeatmapValue, iters ...iter.Iterator[HeatmapValue]) iter.Iterator[HeatmapValue] {
+func newHeatmapMergeIterator(iters ...iter.Iterator[HeatmapValue]) iter.Iterator[HeatmapValue] {
 	// For now, return a simple iterator if we only have one
 	// A full merge iterator implementation would be more complex
 	if len(iters) == 1 {

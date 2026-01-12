@@ -3,10 +3,11 @@ package heatmap
 import (
 	"testing"
 
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 func TestRangeHeatmap_EmptyInput(t *testing.T) {
