@@ -176,6 +176,9 @@ func (l LogSpanParametersWrapper) SelectHeatmap(ctx context.Context, c *connect.
 		"profile_type", c.Msg.ProfileTypeID,
 		"step", c.Msg.Step,
 		"by", lazyJoin(c.Msg.GroupBy),
+		"query_type", c.Msg.QueryType,
+		"exemplar_type", c.Msg.ExemplarType,
+		"limit", c.Msg.Limit,
 	)
 	defer sp.Finish()
 
