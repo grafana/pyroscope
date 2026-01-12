@@ -72,6 +72,11 @@ func (eb *pointsBuilder) add(fp prommodel.Fingerprint, labels model.Labels, ts i
 		e.labelSetRef = len(eb.labelSets)
 		eb.labelSets = append(eb.labelSets, labels.Clone())
 		eb.labelSetIndex[uint64(fp)] = e.labelSetRef
+	} else {
+		// Use the existing label set for this fingerprint, but intersect with new labels
+		// This ensures only common labels across all exemplars with this fingerprint are kept
+		e.labelSetRef = labelSetIdx
+		eb.labelSets[e.labelSetRef] = eb.labelSets[e.labelSetRef].Intersect(labels)
 	}
 
 	eb.exemplars = slices.Insert(eb.exemplars, pos, e)
