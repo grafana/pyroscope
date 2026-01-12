@@ -65,7 +65,7 @@ func (t *attributeTable) build(res *queryv1.AttributeTable) *queryv1.AttributeTa
 	if cap(res.Values) < len(t.entries) {
 		res.Values = make([]string, len(t.entries))
 	} else {
-		res.Keys = res.Keys[:len(t.entries)]
+		res.Values = res.Values[:len(t.entries)]
 	}
 
 	for idx, e := range t.entries {
