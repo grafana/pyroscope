@@ -80,6 +80,11 @@ func (m *Merger) remapAttributeTable(table *queryv1.AttributeTable) map[int64]in
 		return nil
 	}
 
+	// Keys and Values must have the same length - this is a data corruption bug
+	if len(table.Keys) != len(table.Values) {
+		panic(fmt.Sprintf("attribute table corruption: Keys length (%d) != Values length (%d)", len(table.Keys), len(table.Values)))
+	}
+
 	refMap := make(map[int64]int64, len(table.Keys))
 	for i := range table.Keys {
 		oldRef := int64(i)
