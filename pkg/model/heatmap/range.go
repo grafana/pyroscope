@@ -1,7 +1,8 @@
 package heatmap
 
 import (
-	"fmt"
+	"encoding/binary"
+	"encoding/hex"
 	"math"
 	"sort"
 
@@ -317,10 +318,12 @@ func pointToExemplar(
 		profileID = table.Values[point.ProfileId]
 	}
 
-	// Convert span ID to hex string
+	// Convert span ID to hex string (little-endian, to match NewSpanSelector)
 	spanIDStr := ""
 	if point.SpanId != 0 {
-		spanIDStr = fmt.Sprintf("%016x", point.SpanId)
+		b := make([]byte, 8)
+		binary.LittleEndian.PutUint64(b, point.SpanId)
+		spanIDStr = hex.EncodeToString(b)
 	}
 
 	return &typesv1.Exemplar{
