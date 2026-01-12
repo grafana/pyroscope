@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/pprof/profile"
@@ -281,16 +282,17 @@ func parseSelectProfilesRequest(fieldNames renderRequestFieldNames, req *http.Re
 
 	v := req.URL.Query()
 
-	if !v.Has(fieldNames.from) {
-		return nil, nil, fmt.Errorf("%q is required", fieldNames.from)
+	from := time.Now()
+	if f := v.Get(fieldNames.from); f != "" {
+		from = attime.Parse(f)
 	}
-	if !v.Has(fieldNames.until) {
-		return nil, nil, fmt.Errorf("%q is required", fieldNames.until)
+	until := time.Now()
+	if u := v.Get(fieldNames.until); u != "" {
+		until = attime.Parse(u)
 	}
 
-	// parse time using pyroscope's attime parser
-	start := model.TimeFromUnixNano(attime.Parse(v.Get(fieldNames.from)).UnixNano())
-	end := model.TimeFromUnixNano(attime.Parse(v.Get(fieldNames.until)).UnixNano())
+	start := model.TimeFromUnixNano(from.UnixNano())
+	end := model.TimeFromUnixNano(until.UnixNano())
 
 	p := &querierv1.SelectMergeStacktracesRequest{
 		Start:         int64(start),
