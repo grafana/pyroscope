@@ -1699,82 +1699,6 @@ func (x *HeatmapPoint) GetAttributeRefs() []int64 {
 	return nil
 }
 
-type HeatmapCell struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TimeStart     int64                  `protobuf:"varint,1,opt,name=time_start,json=timeStart,proto3" json:"time_start,omitempty"`
-	ValueStart    uint64                 `protobuf:"varint,2,opt,name=value_start,json=valueStart,proto3" json:"value_start,omitempty"`
-	ValueEnd      uint64                 `protobuf:"varint,3,opt,name=value_end,json=valueEnd,proto3" json:"value_end,omitempty"`
-	Count         uint64                 `protobuf:"varint,4,opt,name=count,proto3" json:"count,omitempty"`
-	Points        []*HeatmapPoint        `protobuf:"bytes,5,rep,name=points,proto3" json:"points,omitempty"` // Points are timestamp ordered
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *HeatmapCell) Reset() {
-	*x = HeatmapCell{}
-	mi := &file_query_v1_query_proto_msgTypes[25]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *HeatmapCell) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*HeatmapCell) ProtoMessage() {}
-
-func (x *HeatmapCell) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[25]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use HeatmapCell.ProtoReflect.Descriptor instead.
-func (*HeatmapCell) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{25}
-}
-
-func (x *HeatmapCell) GetTimeStart() int64 {
-	if x != nil {
-		return x.TimeStart
-	}
-	return 0
-}
-
-func (x *HeatmapCell) GetValueStart() uint64 {
-	if x != nil {
-		return x.ValueStart
-	}
-	return 0
-}
-
-func (x *HeatmapCell) GetValueEnd() uint64 {
-	if x != nil {
-		return x.ValueEnd
-	}
-	return 0
-}
-
-func (x *HeatmapCell) GetCount() uint64 {
-	if x != nil {
-		return x.Count
-	}
-	return 0
-}
-
-func (x *HeatmapCell) GetPoints() []*HeatmapPoint {
-	if x != nil {
-		return x.Points
-	}
-	return nil
-}
-
 type HeatmapSeries struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AttributeRefs []int64                `protobuf:"varint,1,rep,packed,name=attribute_refs,json=attributeRefs,proto3" json:"attribute_refs,omitempty"`
@@ -1785,7 +1709,7 @@ type HeatmapSeries struct {
 
 func (x *HeatmapSeries) Reset() {
 	*x = HeatmapSeries{}
-	mi := &file_query_v1_query_proto_msgTypes[26]
+	mi := &file_query_v1_query_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1797,7 +1721,7 @@ func (x *HeatmapSeries) String() string {
 func (*HeatmapSeries) ProtoMessage() {}
 
 func (x *HeatmapSeries) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[26]
+	mi := &file_query_v1_query_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1810,7 +1734,7 @@ func (x *HeatmapSeries) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeatmapSeries.ProtoReflect.Descriptor instead.
 func (*HeatmapSeries) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{26}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *HeatmapSeries) GetAttributeRefs() []int64 {
@@ -1838,7 +1762,7 @@ type HeatmapReport struct {
 
 func (x *HeatmapReport) Reset() {
 	*x = HeatmapReport{}
-	mi := &file_query_v1_query_proto_msgTypes[27]
+	mi := &file_query_v1_query_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1850,7 +1774,7 @@ func (x *HeatmapReport) String() string {
 func (*HeatmapReport) ProtoMessage() {}
 
 func (x *HeatmapReport) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[27]
+	mi := &file_query_v1_query_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1863,7 +1787,7 @@ func (x *HeatmapReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeatmapReport.ProtoReflect.Descriptor instead.
 func (*HeatmapReport) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{27}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *HeatmapReport) GetQuery() *HeatmapQuery {
@@ -2013,15 +1937,7 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"profile_id\x18\x02 \x01(\x03R\tprofileId\x12\x17\n" +
 	"\aspan_id\x18\x03 \x01(\x04R\x06spanId\x12\x14\n" +
 	"\x05value\x18\x04 \x01(\x04R\x05value\x12%\n" +
-	"\x0eattribute_refs\x18\x05 \x03(\x03R\rattributeRefs\"\xb0\x01\n" +
-	"\vHeatmapCell\x12\x1d\n" +
-	"\n" +
-	"time_start\x18\x01 \x01(\x03R\ttimeStart\x12\x1f\n" +
-	"\vvalue_start\x18\x02 \x01(\x04R\n" +
-	"valueStart\x12\x1b\n" +
-	"\tvalue_end\x18\x03 \x01(\x04R\bvalueEnd\x12\x14\n" +
-	"\x05count\x18\x04 \x01(\x04R\x05count\x12.\n" +
-	"\x06points\x18\x05 \x03(\v2\x16.query.v1.HeatmapPointR\x06points\"f\n" +
+	"\x0eattribute_refs\x18\x05 \x03(\x03R\rattributeRefs\"f\n" +
 	"\rHeatmapSeries\x12%\n" +
 	"\x0eattribute_refs\x18\x01 \x03(\x03R\rattributeRefs\x12.\n" +
 	"\x06points\x18\x02 \x03(\v2\x16.query.v1.HeatmapPointR\x06points\"\xc0\x01\n" +
@@ -2069,7 +1985,7 @@ func file_query_v1_query_proto_rawDescGZIP() []byte {
 }
 
 var file_query_v1_query_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_query_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_query_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_query_v1_query_proto_goTypes = []any{
 	(QueryType)(0),                 // 0: query.v1.QueryType
 	(ReportType)(0),                // 1: query.v1.ReportType
@@ -2099,15 +2015,14 @@ var file_query_v1_query_proto_goTypes = []any{
 	(*HeatmapQuery)(nil),           // 25: query.v1.HeatmapQuery
 	(*AttributeTable)(nil),         // 26: query.v1.AttributeTable
 	(*HeatmapPoint)(nil),           // 27: query.v1.HeatmapPoint
-	(*HeatmapCell)(nil),            // 28: query.v1.HeatmapCell
-	(*HeatmapSeries)(nil),          // 29: query.v1.HeatmapSeries
-	(*HeatmapReport)(nil),          // 30: query.v1.HeatmapReport
-	(*v1.BlockMeta)(nil),           // 31: metastore.v1.BlockMeta
-	(*v11.Labels)(nil),             // 32: types.v1.Labels
-	(v11.ExemplarType)(0),          // 33: types.v1.ExemplarType
-	(*v11.Series)(nil),             // 34: types.v1.Series
-	(*v11.StackTraceSelector)(nil), // 35: types.v1.StackTraceSelector
-	(v12.HeatmapQueryType)(0),      // 36: querier.v1.HeatmapQueryType
+	(*HeatmapSeries)(nil),          // 28: query.v1.HeatmapSeries
+	(*HeatmapReport)(nil),          // 29: query.v1.HeatmapReport
+	(*v1.BlockMeta)(nil),           // 30: metastore.v1.BlockMeta
+	(*v11.Labels)(nil),             // 31: types.v1.Labels
+	(v11.ExemplarType)(0),          // 32: types.v1.ExemplarType
+	(*v11.Series)(nil),             // 33: types.v1.Series
+	(*v11.StackTraceSelector)(nil), // 34: types.v1.StackTraceSelector
+	(v12.HeatmapQueryType)(0),      // 35: querier.v1.HeatmapQueryType
 }
 var file_query_v1_query_proto_depIdxs = []int32{
 	9,  // 0: query.v1.QueryRequest.query:type_name -> query.v1.Query
@@ -2118,7 +2033,7 @@ var file_query_v1_query_proto_depIdxs = []int32{
 	8,  // 5: query.v1.QueryPlan.root:type_name -> query.v1.QueryNode
 	2,  // 6: query.v1.QueryNode.type:type_name -> query.v1.QueryNode.Type
 	8,  // 7: query.v1.QueryNode.children:type_name -> query.v1.QueryNode
-	31, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
+	30, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
 	0,  // 9: query.v1.Query.query_type:type_name -> query.v1.QueryType
 	13, // 10: query.v1.Query.label_names:type_name -> query.v1.LabelNamesQuery
 	15, // 11: query.v1.Query.label_values:type_name -> query.v1.LabelValuesQuery
@@ -2137,34 +2052,33 @@ var file_query_v1_query_proto_depIdxs = []int32{
 	20, // 24: query.v1.Report.time_series:type_name -> query.v1.TimeSeriesReport
 	22, // 25: query.v1.Report.tree:type_name -> query.v1.TreeReport
 	24, // 26: query.v1.Report.pprof:type_name -> query.v1.PprofReport
-	30, // 27: query.v1.Report.heatmap:type_name -> query.v1.HeatmapReport
+	29, // 27: query.v1.Report.heatmap:type_name -> query.v1.HeatmapReport
 	13, // 28: query.v1.LabelNamesReport.query:type_name -> query.v1.LabelNamesQuery
 	15, // 29: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
 	17, // 30: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
-	32, // 31: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
-	33, // 32: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	31, // 31: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
+	32, // 32: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
 	19, // 33: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
-	34, // 34: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
-	35, // 35: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	33, // 34: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
+	34, // 35: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
 	21, // 36: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
-	35, // 37: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	34, // 37: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
 	23, // 38: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
-	36, // 39: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
-	33, // 40: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
-	27, // 41: query.v1.HeatmapCell.points:type_name -> query.v1.HeatmapPoint
-	27, // 42: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
-	25, // 43: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
-	29, // 44: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
-	26, // 45: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
-	3,  // 46: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
-	6,  // 47: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
-	4,  // 48: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
-	10, // 49: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
-	48, // [48:50] is the sub-list for method output_type
-	46, // [46:48] is the sub-list for method input_type
-	46, // [46:46] is the sub-list for extension type_name
-	46, // [46:46] is the sub-list for extension extendee
-	0,  // [0:46] is the sub-list for field type_name
+	35, // 39: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
+	32, // 40: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	27, // 41: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
+	25, // 42: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
+	28, // 43: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
+	26, // 44: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
+	3,  // 45: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
+	6,  // 46: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
+	4,  // 47: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
+	10, // 48: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
+	47, // [47:49] is the sub-list for method output_type
+	45, // [45:47] is the sub-list for method input_type
+	45, // [45:45] is the sub-list for extension type_name
+	45, // [45:45] is the sub-list for extension extendee
+	0,  // [0:45] is the sub-list for field type_name
 }
 
 func init() { file_query_v1_query_proto_init() }
@@ -2180,7 +2094,7 @@ func file_query_v1_query_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_query_v1_query_proto_rawDesc), len(file_query_v1_query_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   28,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

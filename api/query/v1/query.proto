@@ -219,14 +219,6 @@ message HeatmapPoint {
   repeated int64 attribute_refs = 5; // labels as references into AttributeTable
 }
 
-message HeatmapCell {
-  int64 time_start = 1;
-  uint64 value_start = 2;
-  uint64 value_end = 3;
-  uint64 count = 4;
-  repeated HeatmapPoint points = 5; // Points are timestamp ordered
-}
-
 message HeatmapSeries {
   repeated int64 attribute_refs = 1;
   repeated HeatmapPoint points = 2; // Points are timestamp, then span_id, then porfile_id ordered
