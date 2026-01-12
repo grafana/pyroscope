@@ -1,6 +1,7 @@
 package heatmap
 
 import (
+	"fmt"
 	"slices"
 	"sort"
 	"strconv"
