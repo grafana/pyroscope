@@ -9,8 +9,8 @@ env:
   - GORELEASER_DEBUG_INFO_FLAGS={{ if and (index .Env "GORELEASER_STRIP_DEBUG_INFO") (eq .Env.GORELEASER_STRIP_DEBUG_INFO "false")  }}{{ else }}-s -w{{ end }}
   # Use a custom image prefix (registry) or fallback to docker.io/grafana/
   - IMAGE_PREFIX={{ or (index .Env "IMAGE_PREFIX") "docker.io/grafana/" }}
-  # Allow a custom image tag to be used
-  - IMAGE_TAG={{ or (index .Env "IMAGE_TAG") .Version }}
+  # Allow a custom image tag to be used (must be set by workflow)
+  - IMAGE_TAG={{ .Env.IMAGE_TAG }}
   # Publish latest image tag
   - IMAGE_PUBLISH_LATEST={{ or (index .Env "IMAGE_PUBLISH_LATEST") "false" }}
   # Skip GitHub release upload
