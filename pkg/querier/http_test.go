@@ -46,6 +46,66 @@ func Test_ParseQuery(t *testing.T) {
 	require.Equal(t, `{foo="bar",bar=~"buzz"}`, queryRequest.LabelSelector)
 }
 
+func Test_ParseSelectProfilesRequest_DefaultFromUntil(t *testing.T) {
+	tests := []struct {
+		name          string
+		queryParams   url.Values
+		expectedStart time.Time
+		expectedEnd   time.Time
+	}{
+		{
+			name: "both from and until missing defaults to now",
+			queryParams: url.Values{
+				"query": []string{`memory:alloc_space:bytes:space:bytes{}`},
+			},
+			expectedStart: time.Now(),
+			expectedEnd:   time.Now(),
+		},
+		{
+			name: "from missing defaults to now",
+			queryParams: url.Values{
+				"query": []string{`memory:alloc_space:bytes:space:bytes{}`},
+				"until": []string{"now-1h"},
+			},
+			expectedStart: time.Now(),
+			expectedEnd:   time.Now().Add(-1 * time.Hour),
+		},
+		{
+			name: "until missing defaults to now",
+			queryParams: url.Values{
+				"query": []string{`memory:alloc_space:bytes:space:bytes{}`},
+				"from":  []string{"now-6h"},
+			},
+			expectedStart: time.Now().Add(-6 * time.Hour),
+			expectedEnd:   time.Now(),
+		},
+		{
+			name: "both provided uses provided values",
+			queryParams: url.Values{
+				"query": []string{`memory:alloc_space:bytes:space:bytes{}`},
+				"from":  []string{"now-6h"},
+				"until": []string{"now-1h"},
+			},
+			expectedStart: time.Now().Add(-6 * time.Hour),
+			expectedEnd:   time.Now().Add(-1 * time.Hour),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest("GET", fmt.Sprintf("http://localhost/render/render?%s", tt.queryParams.Encode()), nil)
+			require.NoError(t, err)
+			require.NoError(t, req.ParseForm())
+
+			queryRequest, _, err := parseSelectProfilesRequest(renderRequestFieldNames{}, req)
+			require.NoError(t, err)
+
+			require.WithinDuration(t, tt.expectedStart, model.Time(queryRequest.Start).Time(), 1*time.Minute)
+			require.WithinDuration(t, tt.expectedEnd, model.Time(queryRequest.End).Time(), 1*time.Minute)
+		})
+	}
+}
+
 // mockQuerierClient is a mock implementation of QuerierServiceClient
 type mockQuerierClient struct {
 	selectMergeProfileFunc func(context.Context, *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[profilev1.Profile], error)
