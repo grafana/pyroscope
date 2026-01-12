@@ -153,7 +153,7 @@ func RangeHeatmap(
 					Counts:    make([]int32, len(yBuckets)),
 				}
 				if includeExemplars {
-					slot.Exemplars = make([]*typesv1.Exemplar, len(yBuckets))
+					slot.Exemplars = make([]*typesv1.Exemplar, 0, len(yBuckets))
 				}
 				// Initialize Y bucket minimums
 				for i, bucket := range yBuckets {
@@ -166,7 +166,10 @@ func RangeHeatmap(
 			// Attach exemplar for this Y-bucket
 			if includeExemplars {
 				if bestPoint := cellBestPoint[cell]; bestPoint != nil {
-					slot.Exemplars[cell.yIdx] = pointToExemplar(bestPoint, attributeTable, groupBy)
+					e := pointToExemplar(bestPoint, attributeTable, groupBy)
+					if e != nil {
+						slot.Exemplars = append(slot.Exemplars, e)
+					}
 				}
 			}
 		}
@@ -323,6 +326,12 @@ func pointToExemplar(
 		b := make([]byte, 8)
 		binary.LittleEndian.PutUint64(b, point.SpanId)
 		spanIDStr = hex.EncodeToString(b)
+	}
+
+	// Don't create an exemplar if it has no identifying information
+	// An exemplar needs at least one of: profile ID, span ID, or labels
+	if profileID == "" && spanIDStr == "" && len(filteredLabels) == 0 {
+		return nil
 	}
 
 	return &typesv1.Exemplar{
