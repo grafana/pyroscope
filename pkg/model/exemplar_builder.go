@@ -75,6 +75,7 @@ func (eb *ExemplarBuilder) Build() []*typesv1.Exemplar {
 }
 
 // deduplicateAndIntersect merges exemplars with the same profileID, timestamp by intersecting their label sets.
+// When multiple exemplars exist for the same (profileID, timestamp), we sum their values.
 func (eb *ExemplarBuilder) deduplicateAndIntersect() []*typesv1.Exemplar {
 	result := make([]*typesv1.Exemplar, 0, len(eb.exemplars))
 
@@ -83,11 +84,13 @@ func (eb *ExemplarBuilder) deduplicateAndIntersect() []*typesv1.Exemplar {
 		curr := eb.exemplars[i]
 
 		labelSetsToIntersect := []Labels{eb.labelSets[curr.labelSetRef]}
+		sumValue := curr.value
 		j := i + 1
 		for j < len(eb.exemplars) &&
 			eb.exemplars[j].profileID == curr.profileID &&
 			eb.exemplars[j].timestamp == curr.timestamp {
 			labelSetsToIntersect = append(labelSetsToIntersect, eb.labelSets[eb.exemplars[j].labelSetRef])
+			sumValue += eb.exemplars[j].value
 			j++
 		}
 
@@ -96,7 +99,7 @@ func (eb *ExemplarBuilder) deduplicateAndIntersect() []*typesv1.Exemplar {
 		result = append(result, &typesv1.Exemplar{
 			Timestamp: curr.timestamp,
 			ProfileId: curr.profileID,
-			Value:     curr.value,
+			Value:     sumValue,
 			Labels:    finalLabels,
 		})
 
