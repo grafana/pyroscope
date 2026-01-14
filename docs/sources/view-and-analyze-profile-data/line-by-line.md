@@ -15,16 +15,16 @@ The Grafana Pyroscope GitHub integration offers seamless integration between you
 Using this app, you can map your code directly within Grafana and visualize resource performance line by line.
 With these powerful capabilities, you can gain deep insights into your code's execution and identify performance bottlenecks.
 
-Every profile type works with the integration for code written in Go and Java.
+Every profile type works with the integration for code written in Go, Java, and Python.
 
-For information on profile types and the profiles available with Go and Java, refer to [Profiling types and their uses](../../introduction/profiling-types/).
+For information on profile types and the profiles available with Go, Java, and Python, refer to [Profiling types and their uses](../../introduction/profiling-types/).
 
 ![Example of a flame graph with the function details populated](/media/docs/grafana-cloud/profiles/screenshot-profiles-github-integration.png)
 
 ## How it works
 
 The Pyroscope GitHub integration uses labels configured in the application being profiled to associate profiles with source code.
-The integration is available for Java and Go applications.
+The integration is available for Go, Java, and Python applications.
 
 The Pyroscope GitHub integration uses three labels, `service_repository`, `service_git_ref`, and `service_root_path`, to add commit information, repository link, and an enhanced source code preview to the **Function Details** screen.
 
@@ -40,11 +40,11 @@ To use the Pyroscope integration for GitHub, you need an application that emits 
 
 {{< admonition type="warning" >}}
   - Applications in other languages aren't supported
-  - eBPF profiled Go and Java workloads aren't supported
 {{< /admonition >}}
 
-- A Go application which is profiled by Grafana Alloy's `pyroscope.scrape` or using the [Go Push SDK](../../configure-client/language-sdks/go_push/).
-- A Java application which is profiled by Grafana Alloy's `pyroscope.java` or using the [Java SDK](../../configure-client/language-sdks/java). For Java applications, a committed `.pyroscope.yaml` file is required to map package names to source code locations (see [Advanced source code mapping with `.pyroscope.yaml`](#advanced-source-code-mapping-with-pyroscopeyaml)).
+- A Go application which is profiled by Grafana Alloy's `pyroscope.scrape`, `pyroscope.ebpf` (Alloy v1.11.0+), or using the [Go Push SDK](../../configure-client/language-sdks/go_push/).
+- A Java application which is profiled by Grafana Alloy's `pyroscope.java`, `pyroscope.ebpf` (Alloy v1.11.0+), or using the [Java SDK](../../configure-client/language-sdks/java). For Java applications, a committed `.pyroscope.yaml` file is required to map package names to source code locations (see [Advanced source code mapping with `.pyroscope.yaml`](#advanced-source-code-mapping-with-pyroscopeyaml)).
+- A Python application which is profiled by Grafana Alloy's `pyroscope.ebpf` (Alloy v1.11.0+) or using the [Python SDK](../../configure-client/language-sdks/python).
 
 Your application provides the following labels (tags):
 
@@ -198,9 +198,10 @@ The `.pyroscope.yaml` configuration currently supports:
 
 - **Go**: Full support including standard library, Go modules, and vendor directories
 - **Java**: Requires explicit mappings for application code and dependencies
+- **Python**: Full support including standard library and installed packages
 
 {{< admonition type="note" >}}
-For Go applications without a `.pyroscope.yaml` file, Pyroscope can automatically resolve standard library code and Go module dependencies. Java applications require explicit configuration.
+For Go and Python applications without a `.pyroscope.yaml` file, Pyroscope can automatically resolve standard library code and dependencies. Java applications require explicit configuration.
 {{< /admonition >}}
 
 ### Configuration file format
@@ -216,7 +217,7 @@ source_code:
         - prefix: another/path
       function_name:           # Match by function name prefix (optional if path is specified)
         - prefix: function/prefix
-      language: go             # Required: "go" or "java"
+      language: go             # Required: "go", "java", or "python"
       source:                  # Define where to fetch the source code
         local:
           path: src/main/java  # Path relative to the location of the .pyroscope.yaml file
@@ -341,6 +342,52 @@ source_code:
           path: ""
 ```
 
+### Example: Python application with dependencies
+
+Map Python application code and external dependencies:
+
+```yaml
+version: v1
+source_code:
+  mappings:
+    # Local application code
+    - path:
+        - prefix: /app/src
+      language: python
+      source:
+        local:
+          path: src
+
+    # Python standard library
+    - path:
+        - prefix: /usr/lib/python3.12
+        - prefix: /usr/local/lib/python3.12
+      language: python
+      source:
+        github:
+          owner: python
+          repo: cpython
+          ref: v3.12.0
+          path: Lib
+
+    # External package (requests)
+    - path:
+        - prefix: /usr/local/lib/python3.12/site-packages/requests
+      language: python
+      source:
+        github:
+          owner: psf
+          repo: requests
+          ref: v2.31.0
+          path: src/requests
+```
+
+This configuration demonstrates:
+
+- **Local application code**: Maps your application's source directory
+- **Standard library**: Maps Python standard library paths to the CPython repository
+- **External packages**: Maps third-party packages to their GitHub repositories
+
 ### Language-specific behavior
 
 #### Go
@@ -359,8 +406,18 @@ The system extracts Go version information from paths like `/usr/local/go/go1.24
 Java applications **require** explicit mappings in `.pyroscope.yaml`:
 
 - **Function name conversion**: Java function names like `org/example/App$Inner.method` are automatically converted to `org/example/App.java`
-- **No fallback**: Unlike Go, Java files cannot be resolved without configuration
+- **No fallback**: Unlike Go and Python, Java files cannot be resolved without configuration
 - **Inner classes**: Automatically handled (inner class markers are stripped)
+
+#### Python
+
+For Python applications, Pyroscope provides intelligent fallback behavior similar to Go:
+
+- **Standard library**: Automatically detected and mapped to the appropriate `python/cpython` repository version
+- **Installed packages**: Resolved from virtual environments or system packages
+- **File paths**: Direct file paths are used when available from profiling data
+
+The system extracts Python version information from paths to map to the correct CPython repository version.
 
 ### Troubleshooting
 
