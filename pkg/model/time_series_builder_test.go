@@ -1,9 +1,9 @@
 package model
 
 import (
+	"sort"
 	"testing"
 
-	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -152,44 +152,64 @@ func TestTimeSeriesBuilder_ExemplarDeduplication(t *testing.T) {
 	}
 }
 
-func TestTimeSeriesBuilder_ExemplarLabelIntersection(t *testing.T) {
-	builder := NewTimeSeriesBuilder()
+func TestExemplarBuilder_SameProfileIDDifferentValues(t *testing.T) {
+	builder := NewExemplarBuilder()
+
 	labels1 := Labels{
-		{Name: "service_name", Value: "api"},
 		{Name: "pod", Value: "pod-1"},
-		{Name: "region", Value: "us-east"},
 	}
 	labels2 := Labels{
-		{Name: "service_name", Value: "api"},
-		{Name: "pod", Value: "pod-2"}, // Different pod
-		{Name: "region", Value: "us-east"},
+		{Name: "pod", Value: "pod-1"},
+		{Name: "span_name", Value: "POST"},
 	}
 
-	fp1 := model.Fingerprint(labels1.Hash())
-	fp2 := model.Fingerprint(labels2.Hash())
+	builder.Add(1, labels1, 1000, "profile-123", 12830000000)
+	builder.Add(2, labels2, 1000, "profile-123", 110000000)
 
-	builder.Add(fp1, labels1, 1000, 100.0, schemav1.Annotations{}, "profile-dup")
-	builder.Add(fp2, labels2, 1000, 200.0, schemav1.Annotations{}, "profile-dup")
+	exemplars := builder.Build()
+	require.Len(t, exemplars, 1)
 
-	series := builder.BuildWithExemplars()
-	require.Len(t, series, 1)
-	require.Len(t, series[0].Points, 2)
+	exemplar := exemplars[0]
+	assert.Equal(t, "profile-123", exemplar.ProfileId)
+	assert.Equal(t, int64(1000), exemplar.Timestamp)
+	assert.Equal(t, uint64(12940000000), exemplar.Value)
 
-	// Find the exemplar (should be on one of the points)
-	var exemplar *typesv1.Exemplar
-	for _, point := range series[0].Points {
-		if len(point.Exemplars) > 0 {
-			exemplar = point.Exemplars[0]
-			break
-		}
+	// Labels should be intersected
+	assert.Len(t, exemplar.Labels, 1)
+	assert.Equal(t, "pod", exemplar.Labels[0].Name)
+	assert.Equal(t, "pod-1", exemplar.Labels[0].Value)
+}
+
+func TestExemplarBuilder_DifferentProfileIDsNotSummed(t *testing.T) {
+	builder := NewExemplarBuilder()
+
+	labels1 := Labels{
+		{Name: "pod", Value: "pod-1"},
+		{Name: "span_name", Value: "POST"},
 	}
-	require.NotNil(t, exemplar, "Should have at least one exemplar")
+	labels2 := Labels{
+		{Name: "pod", Value: "pod-2"},
+		{Name: "span_name", Value: "POST"},
+	}
 
-	// Should only have labels that match (service_name and region, not pod)
-	assert.Equal(t, "profile-dup", exemplar.ProfileId)
-	assert.Equal(t, "api", findLabelValue(exemplar.Labels, "service_name"))
-	assert.Equal(t, "us-east", findLabelValue(exemplar.Labels, "region"))
-	assert.Empty(t, findLabelValue(exemplar.Labels, "pod"), "Dynamic label should be removed")
+	builder.Add(1, labels1, 1000, "profile-abc", 110000000)
+	builder.Add(2, labels2, 1000, "profile-def", 150000000)
+
+	exemplars := builder.Build()
+	require.Len(t, exemplars, 2)
+
+	// Sort by profile ID to ensure consistent ordering
+	sort.Slice(exemplars, func(i, j int) bool {
+		return exemplars[i].ProfileId < exemplars[j].ProfileId
+	})
+
+	// First exemplar
+	assert.Equal(t, "profile-abc", exemplars[0].ProfileId)
+	assert.Equal(t, uint64(110000000), exemplars[0].Value)
+
+	// Second exemplar
+	assert.Equal(t, "profile-def", exemplars[1].ProfileId)
+	assert.Equal(t, uint64(150000000), exemplars[1].Value)
 }
 
 func TestTimeSeriesBuilder_MultipleSeries(t *testing.T) {
