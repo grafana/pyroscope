@@ -17,6 +17,7 @@ type TimeSeriesBuilder struct {
 	series seriesByLabels
 
 	exemplarBuilders map[string]*ExemplarBuilder
+	attributeTable   *AttributeTable
 }
 
 func NewTimeSeriesBuilder(by ...string) *TimeSeriesBuilder {
@@ -30,6 +31,7 @@ func (s *TimeSeriesBuilder) Init(by ...string) {
 	s.labelBuf = make([]byte, 0, 1024)
 	s.by = by
 	s.exemplarBuilders = make(map[string]*ExemplarBuilder)
+	s.attributeTable = NewAttributeTable()
 }
 
 // Add adds a data point with full labels.
@@ -91,6 +93,11 @@ func (s *TimeSeriesBuilder) ExemplarCount() int {
 	return total
 }
 
+// AttributeTable returns the attribute table built during BuildWithExemplars().
+func (s *TimeSeriesBuilder) AttributeTable() *AttributeTable {
+	return s.attributeTable
+}
+
 // attachExemplars attaches exemplars from ExemplarBuilders to the corresponding points.
 func (s *TimeSeriesBuilder) attachExemplars(series []*typesv1.Series) {
 	// Create a map from seriesKey to series for fast lookup
@@ -106,7 +113,20 @@ func (s *TimeSeriesBuilder) attachExemplars(series []*typesv1.Series) {
 			continue
 		}
 
-		exemplars := exemplarBuilder.Build()
+		exemplarBuilder.Build()
+
+		var exemplars []*typesv1.Exemplar
+		exemplarBuilder.ForEach(func(labels Labels, ts int64, profileID string, value uint64) {
+			ex := &typesv1.Exemplar{
+				Timestamp:     ts,
+				ProfileId:     profileID,
+				Value:         value,
+				AttributeRefs: nil,
+			}
+			ex.AttributeRefs = s.attributeTable.Refs(labels, ex.AttributeRefs)
+			exemplars = append(exemplars, ex)
+		})
+
 		if len(exemplars) == 0 {
 			continue
 		}
