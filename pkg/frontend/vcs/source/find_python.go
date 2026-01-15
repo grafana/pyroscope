@@ -103,5 +103,13 @@ func (ff FileFinder) findPythonFile(ctx context.Context, mappings ...*config.Map
 		return resp, nil
 	}
 
+	// Fallback to relative file path matching
+	f, err := ff.fetchRepoFile(ctx, ff.file.Path, ff.ref)
+	if err != nil {
+		level.Warn(ff.logger).Log("msg", "failed to fetch relative file", "err", err)
+	} else {
+		return f, nil
+	}
+
 	return nil, fmt.Errorf("stdlib not detected and no mappings provided, file not resolvable")
 }
