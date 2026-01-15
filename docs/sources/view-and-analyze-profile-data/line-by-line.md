@@ -183,25 +183,26 @@ For more complex applications with multiple dependencies and external libraries,
 
 When you click on a function in the flame graph, Pyroscope performs the following steps to retrieve the source code:
 
-1. **Load configuration**: Pyroscope checks for a `.pyroscope.yaml` file in your repository root
-2. **Match file location**: The system matches the file path or function name from the profiling data against the configured mappings using a longest-prefix-match algorithm
-3. **Resolve source location**: Based on the matched mapping, Pyroscope determines whether to fetch code from:
+1. **Load configuration**: Pyroscope checks for a `.pyroscope.yaml` file in your service's root path. This is determined by labels on the profiling data as mentioned in [How this works](#how-this-works).
+2. **Match file location**: If a configuration file exists, the system matches the file path or function name from the profiling data against the configured mappings using a longest-prefix-match algorithm.
+3. **Resolve matched source location**: If a mapping matches, Pyroscope determines whether to fetch code from:
    - A local path within your repository
    - An external GitHub repository at a specific version
-   - The Go standard library
-   - Go module dependencies
-4. **Fetch and display**: The source code is retrieved and displayed in the Function Details panel with line-by-line profiling data
+4. **Automatic mapping**: If no configuration file exists or no mappings matched, the system tries to find the related source code using heuristics:
+   - Go: Detect standard library functions and `go.mod` dependencies
+   - All languages: Resolve using the file path relative to the service root
+5. **Fetch and display**: The source code is retrieved and displayed in the Function Details panel with line-by-line profiling data
 
 ### Supported languages
 
-The `.pyroscope.yaml` configuration currently supports:
+Pyroscope's source code integration supports the following languages:
 
-- **Go**: Full support including standard library, Go modules, and vendor directories
-- **Java**: Requires explicit mappings for application code and dependencies
-- **Python**: Full support including standard library and installed packages
+- **Go**: Full support including standard library, Go modules, and vendor directories. Works automatically without configuration, but can be customized with `.pyroscope.yaml`.
+- **Python**: Full support including standard library and installed packages. Works automatically without configuration, but can be customized with `.pyroscope.yaml`.
+- **Java**: Requires a `.pyroscope.yaml` file with explicit mappings for application code and dependencies.
 
 {{< admonition type="note" >}}
-For Go and Python applications without a `.pyroscope.yaml` file, Pyroscope can automatically resolve standard library code and dependencies. Java applications require explicit configuration.
+While Go and Python work automatically, you can use a `.pyroscope.yaml` file to customize source mappings for any language.
 {{< /admonition >}}
 
 ### Configuration file format
@@ -423,7 +424,7 @@ The system extracts Python version information from paths to map to the correct 
 
 **No source code displayed**
 
-- Verify the `.pyroscope.yaml` file is in your repository root
+- Verify the `.pyroscope.yaml` file is in your service's configured root path and that the root path is configured as expected
 - Check that the `path` or `function_name` prefixes match your profiling data
 - For Java applications, ensure all dependencies have mappings configured
 - Confirm GitHub OAuth authorization is active and hasn't expired
