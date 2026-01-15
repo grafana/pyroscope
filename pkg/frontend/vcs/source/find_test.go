@@ -462,6 +462,29 @@ require (
 			expectedError:   false,
 		},
 		{
+			name: "python/relative-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "ListRecommendations",
+				Path:         "recommendation_server.py",
+			},
+			rootPath: "examples/python-app",
+			ref:      "main",
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Owner: "grafana",
+						Repo:  "pyroscope",
+						Ref:   "main",
+						Path:  "examples/python-app/recommendation_server.py",
+					},
+					content: "# CONTENT recommendation_server.py",
+				},
+			},
+			expectedContent: "# CONTENT recommendation_server.py",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/python-app/recommendation_server.py",
+			expectedError:   false,
+		},
+		{
 			name: "fallback/unknown-file-extension",
 			fileSpec: config.FileSpec{
 				FunctionName: "some.function",
