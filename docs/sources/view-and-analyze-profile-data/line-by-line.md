@@ -52,10 +52,13 @@ Your application provides the following labels (tags):
 - `service_repository` is the GitHub repository that hosts the source code
 - `service_root_path` (Optional) is the path where the code lives inside the repository
 
-To activate this integration, you need to add at least the two mandatory labels when sending profiles:
-`service_repository` and `service_git_ref`.
-They should respectively be set to the full repository GitHub URL and the current
-[`git ref`](https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#about-git-references).
+To activate this integration, add at least the two mandatory labels when
+sending profiles: `service_repository` and `service_git_ref`. Set them to the
+full repository GitHub URL and the current [`git
+ref`](https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#about-git-references)
+respectively.
+
+For example, using the Go SDK you can set these labels as tags in the configuration:
 
 ```go
 pyroscope.Start(pyroscope.Config{
@@ -67,6 +70,13 @@ pyroscope.Start(pyroscope.Config{
     // Other configuration
   })
 ```
+
+You can also override these values directly in the UI by clicking the edit
+button next to the repository information in the Function Details panel. This
+is useful for testing new configurations before deploying label changes, or for
+quickly setting up source code viewing during an incident.
+
+![Edit service repository settings](/media/docs/pyroscope/pyroscope-edit-service-repository.png)
 
 ### GitHub requirements
 
