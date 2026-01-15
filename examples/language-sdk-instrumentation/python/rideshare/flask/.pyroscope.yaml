@@ -1,6 +1,7 @@
 source_code:
   mappings:
     - path:
+        - prefix: //lib
         - prefix: /usr/lib
       language: python
       source:
