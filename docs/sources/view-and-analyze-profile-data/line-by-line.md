@@ -11,7 +11,7 @@ weight: 550
 
 # Integrate your source code on GitHub with Pyroscope profiling data.
 
-The Grafana Pyroscope GitHub integration offers seamless integration between your code repositories and Grafana.
+The Grafana Pyroscope source code integration offers seamless integration between your GitHub code repositories and Grafana.
 Using this app, you can map your code directly within Grafana and visualize resource performance line by line.
 With these powerful capabilities, you can gain deep insights into your code's execution and identify performance bottlenecks.
 
@@ -23,10 +23,10 @@ For information on profile types and the profiles available with Go, Java, and P
 
 ## How it works
 
-The Pyroscope GitHub integration uses labels configured in the application being profiled to associate profiles with source code.
+The Pyroscope source code integration uses labels configured in the application being profiled to associate profiles with source code.
 The integration is available for Go, Java, and Python applications.
 
-The Pyroscope GitHub integration uses three labels, `service_repository`, `service_git_ref`, and `service_root_path`, to add commit information, repository link, and an enhanced source code preview to the **Function Details** screen.
+The Pyroscope source code integration uses three labels, `service_repository`, `service_git_ref`, and `service_root_path`, to add commit information, repository link, and an enhanced source code preview to the **Function Details** screen.
 
 {{< admonition type="note" >}}
 The source code mapping is only available to people who have access to the source code in GitHub.
@@ -34,7 +34,7 @@ The source code mapping is only available to people who have access to the sourc
 
 ## Before you begin
 
-To use the Pyroscope integration for GitHub, you need an application that emits profiling data, a GitHub account, and a Grafana instance with a Grafana Pyroscope backend.
+To use the Pyroscope source code integration with GitHub, you need an application that emits profiling data, a GitHub account, and a Grafana instance with a Grafana Pyroscope backend.
 
 ### Application with profiling data requirements
 
@@ -90,9 +90,9 @@ Contact your organization administrator for assistance.
 Refer to [Requesting a GitHub App from your organization owner](https://docs.github.com/en/apps/using-github-apps/requesting-a-github-app-from-your-organization-owner).
 {{< /admonition >}}
 
-### Ensure the GitHub integration is configured in Grafana Pyroscope
+### Ensure the source code integration is configured in Grafana Pyroscope
 
-Refer to [Configure GitHub integration](../../configure-server/configuring-github-integration/) on the steps required.
+Refer to [Configure Pyroscope source code integration](../../configure-server/configuring-github-integration/) on the steps required.
 
 ### Ensure the Grafana Pyroscope data source is configured correctly
 
@@ -107,10 +107,10 @@ To configure cookie passthrough in Grafana:
 1. Click **Save & test** to apply the changes.
 
 
-![Additional data source settings for Pyroscope GitHub integration](/media/docs/pyroscope/pyroscope-data-source-additional-settings.png)
+![Additional data source settings for Pyroscope source code integration](/media/docs/pyroscope/pyroscope-data-source-additional-settings.png)
 
 {{< admonition type="note" >}}
-Cookie forwarding must be enabled for the GitHub integration to work properly. Without it, you won't be able to connect to GitHub repositories from within Grafana Profiles Drilldown.
+Cookie forwarding must be enabled for the source code integration to work properly. Without it, you won't be able to connect to GitHub repositories from within Grafana Profiles Drilldown.
 {{< /admonition >}}
 
 
@@ -130,14 +130,14 @@ Organization owners may disallow third-party apps for the entire organization or
 If this is the case, you won't be able authorize the Grafana Pyroscope GitHub integration to view source code or commit information for the protected resources.
 {{< /admonition >}}
 
-### Modify or remove the Pyroscope GitHub integration from your GitHub account
+### Modify or remove the Pyroscope source code integration from your GitHub account
 
-The Pyroscope GitHub integration uses a GitHub app called "Grafana Pyroscope" to connect to GitHub.
+The Pyroscope source code integration for GitHub uses a GitHub app called "Grafana Pyroscope" to connect to GitHub.
 This application authorizes Grafana Cloud to access source code and commit information.
 
 After authorizing the app, your GitHub account, **GitHub** > **Settings** > **Applications** lists the Grafana Pyroscope app.
 
-You can change the repositories the Pyroscope GitHub integration can access on the **Applications** page.
+You can change the repositories the Pyroscope source code integration can access on the **Applications** page.
 
 You can use also remove the app's permissions by selecting **Revoke**.
 Revoking the permissions disables the integration in your Grafana Cloud account.
@@ -150,7 +150,7 @@ For more information about GitHub applications:
 
 ## How your GitHub code shows up in profile data queries
 
-After authorizing the Pyroscope Grafana integration, you see more details in the **Function Details** from flame graphs in Profiles Drilldown.
+After authorizing the Pyroscope Grafana source code integration, you see more details in the **Function Details** from flame graphs in Profiles Drilldown.
 
 1. Open a browser to your Pyroscope instance.
 1. Sign in to your account, if prompted.
@@ -163,7 +163,7 @@ After authorizing the Pyroscope Grafana integration, you see more details in the
 
 The Function Details section provides information about the function you selected from the flame graph.
 
-{{< figure max-width="80%" class="center" caption-align="center" src="/media/docs/grafana-cloud/profiles/screenshot-profiles-github-funct-details-v3.png" caption="Function Details panel from a connected Pyroscope GitHub integration." >}}
+{{< figure max-width="80%" class="center" caption-align="center" src="/media/docs/grafana-cloud/profiles/screenshot-profiles-github-funct-details-v3.png" caption="Function Details panel from a connected Pyroscope source code integration." >}}
 
 The table explains the main fields in the table.
 The values for some of the fields, such as Self and Total, change depending whether a profile uses time or memory amount.
