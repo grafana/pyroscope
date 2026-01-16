@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/user"
 	"github.com/klauspost/compress/gzip"
@@ -914,6 +915,80 @@ func TestDifferentServiceNames(t *testing.T) {
 		assert.NotContains(t, jsonStr, "service.name")
 
 	}
+}
+
+func TestExport_PreservesOriginalTimestamp(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, test.NewTestingLogger(t), defaultLimits())
+
+	req := createValidOTLPRequest()
+	profile := req.ResourceProfiles[0].ScopeProfiles[0].Profiles[0]
+	profile.TimeUnixNano = 1234
+
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+	require.Len(t, *profiles, 1)
+	require.Len(t, (*profiles)[0].Series, 1)
+	assert.Zero(t, (*profiles)[0].Series[0].ID)
+	assert.Equal(t, int64(1234), (*profiles)[0].Series[0].OriginalTimeNanos)
+}
+
+func TestExport_PreservesProfileID(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, test.NewTestingLogger(t), defaultLimits())
+
+	req := createValidOTLPRequest()
+	profileID := uuid.New()
+	req.ResourceProfiles[0].ScopeProfiles[0].Profiles[0].ProfileId = profileID[:]
+
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+	require.Len(t, *profiles, 1)
+	require.Len(t, (*profiles)[0].Series, 1)
+	assert.Equal(t, profileID.String(), (*profiles)[0].Series[0].ID)
+}
+
+func TestExport_IgnoresInvalidProfileID(t *testing.T) {
+	tests := []struct {
+		name      string
+		profileID []byte
+	}{
+		{name: "empty"},
+		{name: "invalid length", profileID: []byte{1}},
+		{name: "all zeroes", profileID: make([]byte, 16)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, profiles := recordPushBatch(t)
+			h := NewOTLPIngestHandler(testConfig(), svc, test.NewTestingLogger(t), defaultLimits())
+
+			req := createValidOTLPRequest()
+			req.ResourceProfiles[0].ScopeProfiles[0].Profiles[0].ProfileId = tt.profileID
+
+			_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+			require.NoError(t, err)
+			require.Len(t, *profiles, 1)
+			require.Len(t, (*profiles)[0].Series, 1)
+			assert.Empty(t, (*profiles)[0].Series[0].ID)
+		})
+	}
+}
+
+func TestExport_PreservesMissingTimestamp(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, test.NewTestingLogger(t), defaultLimits())
+
+	req := createValidOTLPRequest()
+	req.ResourceProfiles[0].ScopeProfiles[0].Profiles[0].TimeUnixNano = 0
+
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+	require.Len(t, *profiles, 1)
+
+	series := (*profiles)[0].Series[0]
+	assert.NotZero(t, series.Profile.TimeNanos)
+	assert.Zero(t, series.OriginalTimeNanos)
 }
 
 type otlpbuilder struct {
