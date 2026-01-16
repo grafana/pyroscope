@@ -3,9 +3,9 @@ package source
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/opentracing/opentracing-go"
 
@@ -67,5 +67,5 @@ func (ff FileFinder) findJavaFile(ctx context.Context, mappings ...*config.Mappi
 		return resp, nil
 	}
 
-	return nil, fmt.Errorf("no mappings provided, file not resolvable")
+	return nil, connect.NewError(connect.CodeNotFound, errors.New("no mappings provided, file not resolvable"))
 }

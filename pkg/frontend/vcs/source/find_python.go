@@ -3,11 +3,11 @@ package source
 import (
 	"context"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/opentracing/opentracing-go"
 
@@ -111,5 +111,5 @@ func (ff FileFinder) findPythonFile(ctx context.Context, mappings ...*config.Map
 		return f, nil
 	}
 
-	return nil, fmt.Errorf("stdlib not detected and no mappings provided, file not resolvable")
+	return nil, connect.NewError(connect.CodeNotFound, errors.New("stdlib not detected and no mappings provided, file not resolvable"))
 }
