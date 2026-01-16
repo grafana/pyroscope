@@ -89,9 +89,9 @@
     "@fortawesome/free-regular-svg-icons": "~5.15.2",
     "@fortawesome/free-solid-svg-icons": "~5.14.0",
     "@fortawesome/react-fontawesome": "~0.1.11",
-    "@grafana/data": "11.4.0",
-    "@grafana/flamegraph": "11.4.0",
-    "@grafana/ui": "11.4.0",
+    "@grafana/data": "11.6.9",
+    "@grafana/flamegraph": "11.6.9",
+    "@grafana/ui": "11.6.9",
     "@hookform/resolvers": "^2.9.8",
     "@mui/base": "5.0.0-alpha.98",
     "@mui/material": "5.10.11",
@@ -145,6 +145,8 @@
     "@pyroscope/nodejs": "0.4.5"
   },
   "resolutions": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "jquery": "^3.6.4",
     "braces": ">2.3.1",
     "glob-parent": ">5.1.2",
