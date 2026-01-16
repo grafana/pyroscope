@@ -3,12 +3,14 @@ package source
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
 	"sync"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	giturl "github.com/kubescape/go-git-url"
 	"github.com/stretchr/testify/assert"
@@ -566,6 +568,145 @@ require (
 				// Verify URL
 				assert.Equal(t, tt.expectedURL, response.URL, "URL should point to correct location")
 			}
+		})
+	}
+}
+
+// TestFileFinder_Find_FileNotFound tests that Find returns client.ErrNotFound when files are not found
+func TestFileFinder_Find_FileNotFound(t *testing.T) {
+	tests := []struct {
+		name          string
+		fileSpec      config.FileSpec
+		rootPath      string
+		ref           string
+		pyroscopeYAML string
+	}{
+		{
+			name: "fallback/file-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "some.function",
+				Path:         "nonexistent/file.txt",
+			},
+			ref: "main",
+		},
+		{
+			name: "go/local-file-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "github.com/grafana/pyroscope/pkg/foo.Bar",
+				Path:         "/Users/christian/git/github.com/grafana/pyroscope/pkg/foo/bar.go",
+			},
+			ref: "main",
+		},
+		{
+			name: "go/stdlib-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "bufio.(*Reader).ReadSlice",
+				Path:         "/usr/local/go/src/bufio/bufio.go",
+			},
+			ref: "main",
+		},
+		{
+			name: "python/stdlib-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "difflib.SequenceMatcher.find_longest_match",
+				Path:         "/usr/lib/python3.12/difflib.py",
+			},
+			ref: "main",
+		},
+		{
+			name: "python/no-stdlib-no-mappings",
+			fileSpec: config.FileSpec{
+				FunctionName: "myapp.module.function",
+				Path:         "/app/myapp/module.py",
+			},
+			ref: "main",
+		},
+		{
+			name: "python/mappings-file-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "myproject.main.run",
+				Path:         "/app/myproject/module/main.py",
+			},
+			rootPath:      "examples/python-app",
+			ref:           "main",
+			pyroscopeYAML: pythonPyroscopeYAML,
+		},
+		{
+			name: "java/no-mappings",
+			fileSpec: config.FileSpec{
+				FunctionName: "org/example/MyClass.myMethod",
+				Path:         "",
+			},
+			ref: "main",
+			pyroscopeYAML: `---
+source_code:
+  mappings:
+    - function_name:
+        - prefix: org/example
+      language: java
+      source:
+        local:
+          path: src/main/java
+`,
+		},
+		{
+			name: "go/dependency-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "github.com/parquet-go/parquet-go.(*bufferPool).newBuffer",
+				Path:         "/Users/christian/.golang/packages/pkg/mod/github.com/parquet-go/parquet-go@v0.23.0/buffer.go",
+			},
+			ref: "main",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			// Setup mock VCS client with no files (everything returns ErrNotFound)
+			mockClient := newMockVCSClient()
+
+			// Add pyroscope.yaml if provided (but no actual source files)
+			if tt.pyroscopeYAML != "" {
+				mockClient.addFiles(mockFileResponse{
+					request: client.FileRequest{
+						Ref:  tt.ref,
+						Path: filepath.Join(tt.rootPath, ".pyroscope.yaml"),
+					},
+					content: tt.pyroscopeYAML,
+				})
+			}
+
+			// Setup repository URL
+			repoURL, err := giturl.NewGitURL("https://github.com/grafana/pyroscope")
+			require.NoError(t, err)
+
+			// Create FileFinder
+			finder := NewFileFinder(
+				mockClient,
+				repoURL,
+				tt.fileSpec,
+				tt.rootPath,
+				defaultRef(tt.ref),
+				&http.Client{},
+				log.NewNopLogger(),
+			)
+
+			// Execute the Find method
+			response, err := finder.Find(ctx)
+
+			// Assertions
+			require.Error(t, err, "Find should return an error when file is not found")
+
+			// Check if error is a connect error with CodeNotFound
+			var connectErr *connect.Error
+			if errors.As(err, &connectErr) {
+				require.Equal(t, connect.CodeNotFound, connectErr.Code(), "Connect error should have CodeNotFound")
+			} else {
+				// Fallback check for client.ErrNotFound
+				require.ErrorIs(t, err, client.ErrNotFound, "Error should be client.ErrNotFound")
+			}
+			require.Nil(t, response, "Response should be nil when file is not found")
 		})
 	}
 }
