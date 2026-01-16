@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -261,7 +262,7 @@ func SpyNameForFunctionNameRewrite() string {
 }
 
 func isScriptingSpy(md ingestion.Metadata) bool {
-	return md.SpyName == "rbspy" || md.SpyName == "scripting"
+	return md.SpyName == "pyspy" || md.SpyName == "rbspy" || md.SpyName == "scripting"
 }
 
 // FixFunctionNamesForScriptingLanguages modifies the function names in the provided profile
@@ -294,9 +295,12 @@ func FixFunctionNamesForScriptingLanguages(p *pprof.Profile, md ingestion.Metada
 	for _, location := range p.Location {
 		for _, line := range location.Line {
 			fn := p.Function[funcId2Index[line.FunctionId]]
-			name := fmt.Sprintf("%s %s",
-				p.StringTable[fn.Filename],
-				p.StringTable[fn.Name])
+			filename := p.StringTable[fn.Filename]
+			// Skip rewriting for pyspy if the filename is an absolute path
+			if md.SpyName == "pyspy" && filepath.IsAbs(filename) {
+				continue
+			}
+			name := fmt.Sprintf("%s %s", filename, p.StringTable[fn.Name])
 			newFunc, ok := newFunctions[name]
 			if !ok {
 				maxId++
