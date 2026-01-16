@@ -35,7 +35,10 @@ module.exports = {
       'react-use/lib/useMeasure': 'react-use/esm/useMeasure',
       'react-use/lib/usePrevious': 'react-use/esm/usePrevious',
       // Fix CommonJS/ESM interop for react-custom-scrollbars-2 ($ = exact match only)
-      'react-custom-scrollbars-2$': path.resolve(__dirname, './stubs/react-custom-scrollbars-2.js'),
+      'react-custom-scrollbars-2$': path.resolve(
+        __dirname,
+        './stubs/react-custom-scrollbars-2.js'
+      ),
       // Dependencies
       //...deps,
     },
