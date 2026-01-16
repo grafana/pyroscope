@@ -281,6 +281,33 @@ func TestSymbolizePprof(t *testing.T) {
 				require.False(t, placeholderFound)
 			},
 		},
+		{
+			name: "parca bucket provides debuginfo when debuginfod has no data",
+			profile: &googlev1.Profile{
+				Mapping: []*googlev1.Mapping{{
+					BuildId:     1,
+					MemoryStart: 0x0,
+					MemoryLimit: 0x1000000,
+					FileOffset:  0x0,
+				}},
+				Location: []*googlev1.Location{{
+					Id:        1,
+					MappingId: 1,
+					Address:   0x1500,
+				}},
+				StringTable: []string{"", "parca-build-id"},
+			},
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket, parcaBucket *mockobjstore.MockBucket) {
+				mockBucket.On("Get", mock.Anything, "parca-build-id").Return(nil, fmt.Errorf("not found")).Once()
+				parcaBucket.On("Get", mock.Anything, "parca-build-id/debuginfo").Return(openTestFile(t), nil).Once()
+				mockBucket.On("Upload", mock.Anything, "parca-build-id", mock.Anything).Return(nil).Once()
+			},
+			validate: func(t *testing.T, p *googlev1.Profile) {
+				require.True(t, p.Mapping[0].HasFunctions)
+				require.Len(t, p.Location[0].Line, 1)
+				assertLocationHasFunction(t, p, p.Location[0], "main", "main")
+			},
+		},
 	}
 
 	for _, tt := range tests {
