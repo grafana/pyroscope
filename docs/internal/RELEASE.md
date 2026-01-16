@@ -41,7 +41,7 @@ Release notes are added to the [public Pyroscope documentation](https://grafana.
 
 The website release notes need to be added to both the `release/vX.Y` branch and the main branch. The recommended workflow is to:
 1. Add the changes with a PR against the main branch
-2. Add a [backport](#backport) label
+2. Add a [backport](#backport) label and a `type/docs` label to the PR
 3. Address feedback from reviewers and merge the PR
 
 #### Writing Website Release Notes
