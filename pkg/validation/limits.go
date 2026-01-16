@@ -142,6 +142,12 @@ type Limits struct {
 
 	// Symbolizer.
 	Symbolizer Symbolizer `yaml:"symbolizer" json:"symbolizer" category:"experimental" doc:"hidden"`
+
+	// ProfileIDDeterministic enables deterministic profile ID generation based on profile content hash.
+	// When enabled, profile IDs are generated from a hash of tenant ID, labels, raw profile bytes,
+	// and original TimeNanos (if present) or trace ID (if TimeNanos is 0). This ensures that retries
+	// of the same profile produce the same ID. If the client provides a profile ID, it will be used instead.
+	ProfileIDDeterministic bool `yaml:"profile_id_deterministic" json:"profile_id_deterministic" category:"experimental"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -229,6 +235,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 
 	f.IntVar(&l.MaxRecordingRules, "recording-rules.max-rules-per-tenant", 25, "Maximum number of recording rules a tenant can create. 0 to disable.")
 
+	f.BoolVar(&l.ProfileIDDeterministic, "validation.profile-id-deterministic", false, "Generate deterministic profile IDs based on profile content hash instead of random UUIDs. If a client provides an ID, it will be used instead. When enabled, IDs are generated from tenant ID, labels, raw profile bytes, and original TimeNanos (if present) or trace ID (if TimeNanos is 0). Experimental.")
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -464,6 +471,11 @@ func (o *Overrides) MaxFlameGraphNodesMax(tenantID string) int {
 // MaxFlameGraphNodesOnSelectMergeProfiles returns if the max flame graph nodes should be enforced for the SelectMergeProfile API.
 func (o *Overrides) MaxFlameGraphNodesOnSelectMergeProfile(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).MaxFlameGraphNodesOnSelectMergeProfile
+}
+
+// ProfileIDDeterministic returns whether deterministic profile ID generation is enabled for a tenant.
+func (o *Overrides) ProfileIDDeterministic(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).ProfileIDDeterministic
 }
 
 // StoreGatewayTenantShardSize returns the store-gateway shard size for a given user.

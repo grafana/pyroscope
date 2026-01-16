@@ -24,12 +24,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/tenant"
+	"github.com/grafana/dskit/tracing"
 	pprofileotlp "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/profileid"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
@@ -54,6 +56,7 @@ type PushService interface {
 
 type Limits interface {
 	IngestionBodyLimitBytes(tenantID string) int64
+	ProfileIDDeterministic(tenantID string) bool
 }
 
 func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, limits Limits) Handler {
@@ -248,7 +251,7 @@ func toGRPCStatus(err error) error {
 }
 
 func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
-	_, err := tenant.TenantID(ctx)
+	tenantID, err := tenant.TenantID(ctx)
 	if err != nil {
 		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.Unauthenticated, "failed to extract tenant ID from context: %s", err.Error())
 	}
@@ -300,7 +303,7 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 						Labels:     labels,
 						RawProfile: nil,
 						Profile:    pprof.RawFromProto(pprofProfile.profile),
-						ID:         uuid.New().String(),
+						ID:         "", // Will be set below
 					}
 					req.Series = append(req.Series, s)
 				}
@@ -310,6 +313,33 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 
 	if len(req.Series) == 0 {
 		return &pprofileotlp.ExportProfilesServiceResponse{}, nil
+	}
+
+	if h.limits.ProfileIDDeterministic(tenantID) {
+		traceID, _ := tracing.ExtractTraceID(ctx)
+		for _, series := range req.Series {
+			if series.ID != "" {
+				continue
+			}
+			rawProfile, err := series.Profile.MarshalVT()
+			if err != nil {
+				level.Warn(h.log).Log("msg", "failed to marshal profile for ID generation", "err", err)
+				continue
+			}
+			series.ID = profileid.GenerateFromRequest(
+				tenantID,
+				series.Labels,
+				rawProfile,
+				series.Profile.TimeNanos,
+				traceID,
+			).String()
+		}
+	}
+
+	for _, series := range req.Series {
+		if series.ID == "" {
+			series.ID = uuid.NewString()
+		}
 	}
 
 	if err := h.svc.PushBatch(ctx, req); err != nil {
