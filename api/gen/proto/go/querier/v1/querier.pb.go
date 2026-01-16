@@ -1241,7 +1241,7 @@ type SelectHeatmapRequest struct {
 	GroupBy []string `protobuf:"bytes,6,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
 	// Query type: individual profiles or span profiles
 	QueryType HeatmapQueryType `protobuf:"varint,7,opt,name=query_type,json=queryType,proto3,enum=querier.v1.HeatmapQueryType" json:"query_type,omitempty"`
-	// Type of exemplars to include in the response.
+	// Type of exemplars to include in the response. Needs to matching query_type or be NONE
 	ExemplarType v1.ExemplarType `protobuf:"varint,8,opt,name=exemplar_type,json=exemplarType,proto3,enum=types.v1.ExemplarType" json:"exemplar_type,omitempty"`
 	// Select the top N series by total value.
 	Limit         *int64 `protobuf:"varint,9,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
@@ -1770,17 +1770,17 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x15_stack_trace_selectorB\b\n" +
 	"\x06_limit\"@\n" +
 	"\x14SelectSeriesResponse\x12(\n" +
-	"\x06series\x18\x01 \x03(\v2\x10.types.v1.SeriesR\x06series\"\xef\x03\n" +
+	"\x06series\x18\x01 \x03(\v2\x10.types.v1.SeriesR\x06series\"\xae\x04\n" +
 	"\x14SelectHeatmapRequest\x12Y\n" +
 	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
 	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12*\n" +
 	"\x05start\x18\x03 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
 	"\x03end\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\x12\x12\n" +
 	"\x04step\x18\x05 \x01(\x01R\x04step\x12)\n" +
-	"\bgroup_by\x18\x06 \x03(\tB\x0e\xbaG\v:\t\x12\a['pod']R\agroupBy\x12;\n" +
+	"\bgroup_by\x18\x06 \x03(\tB\x0e\xbaG\v:\t\x12\a['pod']R\agroupBy\x12]\n" +
 	"\n" +
-	"query_type\x18\a \x01(\x0e2\x1c.querier.v1.HeatmapQueryTypeR\tqueryType\x12;\n" +
-	"\rexemplar_type\x18\b \x01(\x0e2\x16.types.v1.ExemplarTypeR\fexemplarType\x12\x19\n" +
+	"query_type\x18\a \x01(\x0e2\x1c.querier.v1.HeatmapQueryTypeB \xbaG\x1d:\x1b\x12\x19'HEATMAP_QUERY_TYPE_SPAN'R\tqueryType\x12X\n" +
+	"\rexemplar_type\x18\b \x01(\x0e2\x16.types.v1.ExemplarTypeB\x1b\xbaG\x18:\x16\x12\x14'EXEMPLAR_TYPE_SPAN'R\fexemplarType\x12\x19\n" +
 	"\x05limit\x18\t \x01(\x03H\x00R\x05limit\x88\x01\x01B\b\n" +
 	"\x06_limit\"H\n" +
 	"\x15SelectHeatmapResponse\x12/\n" +
