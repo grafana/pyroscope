@@ -63,9 +63,10 @@ func TestTimeSeriesBuilder_BuildWithExemplars_AttachesExemplars(t *testing.T) {
 	assert.Equal(t, uint64(100), exemplar.Value)
 	assert.Equal(t, int64(1000), exemplar.Timestamp)
 
-	assert.Len(t, exemplar.Labels, 2)
-	assert.Equal(t, "api", findLabelValue(exemplar.Labels, "service_name"))
-	assert.Equal(t, "pod-123", findLabelValue(exemplar.Labels, "pod"))
+	exemplarLabels := getExemplarLabels(exemplar, builder.AttributeTable())
+	assert.Len(t, exemplarLabels, 2)
+	assert.Equal(t, "api", findLabelValue(exemplarLabels, "service_name"))
+	assert.Equal(t, "pod-123", findLabelValue(exemplarLabels, "pod"))
 }
 
 func TestTimeSeriesBuilder_MultipleExemplarsAtSameTimestamp(t *testing.T) {
@@ -124,10 +125,12 @@ func TestTimeSeriesBuilder_GroupBy(t *testing.T) {
 	require.Len(t, point.Exemplars, 2)
 
 	// Exemplars should have only non-grouped labels (pod), not service_name
+	attrTable := builder.AttributeTable()
 	for _, ex := range point.Exemplars {
-		assert.Len(t, ex.Labels, 1)
-		assert.NotEmpty(t, findLabelValue(ex.Labels, "pod"))
-		assert.Empty(t, findLabelValue(ex.Labels, "service_name"))
+		exemplarLabels := getExemplarLabels(ex, attrTable)
+		assert.Len(t, exemplarLabels, 1)
+		assert.NotEmpty(t, findLabelValue(exemplarLabels, "pod"))
+		assert.Empty(t, findLabelValue(exemplarLabels, "service_name"))
 	}
 }
 
@@ -166,7 +169,20 @@ func TestExemplarBuilder_SameProfileIDDifferentValues(t *testing.T) {
 	builder.Add(1, labels1, 1000, "profile-123", 12830000000)
 	builder.Add(2, labels2, 1000, "profile-123", 110000000)
 
-	exemplars := builder.Build()
+	builder.Build()
+
+	var exemplars []*typesv1.Exemplar
+	attrTable := NewAttributeTable()
+	builder.ForEach(func(labels Labels, ts int64, profileID string, value uint64) {
+		ex := &typesv1.Exemplar{
+			Timestamp:     ts,
+			ProfileId:     profileID,
+			Value:         value,
+			AttributeRefs: attrTable.Refs(labels, nil),
+		}
+		exemplars = append(exemplars, ex)
+	})
+
 	require.Len(t, exemplars, 1)
 
 	exemplar := exemplars[0]
@@ -175,9 +191,10 @@ func TestExemplarBuilder_SameProfileIDDifferentValues(t *testing.T) {
 	assert.Equal(t, uint64(12940000000), exemplar.Value)
 
 	// Labels should be intersected
-	assert.Len(t, exemplar.Labels, 1)
-	assert.Equal(t, "pod", exemplar.Labels[0].Name)
-	assert.Equal(t, "pod-1", exemplar.Labels[0].Value)
+	exemplarLabels := getExemplarLabels(exemplar, attrTable)
+	assert.Len(t, exemplarLabels, 1)
+	assert.Equal(t, "pod", exemplarLabels[0].Name)
+	assert.Equal(t, "pod-1", exemplarLabels[0].Value)
 }
 
 func TestExemplarBuilder_DifferentProfileIDsNotSummed(t *testing.T) {
@@ -195,7 +212,20 @@ func TestExemplarBuilder_DifferentProfileIDsNotSummed(t *testing.T) {
 	builder.Add(1, labels1, 1000, "profile-abc", 110000000)
 	builder.Add(2, labels2, 1000, "profile-def", 150000000)
 
-	exemplars := builder.Build()
+	builder.Build()
+
+	var exemplars []*typesv1.Exemplar
+	attrTable := NewAttributeTable()
+	builder.ForEach(func(labels Labels, ts int64, profileID string, value uint64) {
+		ex := &typesv1.Exemplar{
+			Timestamp:     ts,
+			ProfileId:     profileID,
+			Value:         value,
+			AttributeRefs: attrTable.Refs(labels, nil),
+		}
+		exemplars = append(exemplars, ex)
+	})
+
 	require.Len(t, exemplars, 2)
 
 	// Sort by profile ID to ensure consistent ordering
@@ -250,6 +280,17 @@ func TestTimeSeriesBuilder_MultipleSeries(t *testing.T) {
 	require.Len(t, stagingSeries.Points, 1)
 	require.Len(t, stagingSeries.Points[0].Exemplars, 1)
 	assert.Equal(t, "staging-profile", stagingSeries.Points[0].Exemplars[0].ProfileId)
+}
+
+func getExemplarLabels(exemplar *typesv1.Exemplar, attrTable *AttributeTable) []*typesv1.LabelPair {
+	labels := make([]*typesv1.LabelPair, len(exemplar.AttributeRefs))
+	for i, ref := range exemplar.AttributeRefs {
+		labels[i] = &typesv1.LabelPair{
+			Name:  attrTable.entries[ref].key.Value(),
+			Value: attrTable.entries[ref].value.Value(),
+		}
+	}
+	return labels
 }
 
 func findLabelValue(labels []*typesv1.LabelPair, name string) string {

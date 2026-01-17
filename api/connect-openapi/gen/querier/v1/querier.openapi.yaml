@@ -1548,17 +1548,15 @@ components:
           title: value
           format: int64
           description: Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
-        labels:
+        attributeRefs:
           type: array
           items:
-            $ref: '#/components/schemas/types.v1.LabelPair'
-          title: labels
-          description: |-
-            Series labels that are NOT included in the group_by query parameter.
-             These labels complete the full series identity of this exemplar's profile.
-             For example, if group_by=["service"], this would contain labels like "pod",
-             "namespace", "region" that were omitted from grouping. This allows identifying
-             which specific series instance this profile sample came from.
+            type:
+              - integer
+              - string
+            format: int64
+          title: attribute_refs
+          description: Labels as references into AttributeTable
       title: Exemplar
       additionalProperties: false
       description: |-

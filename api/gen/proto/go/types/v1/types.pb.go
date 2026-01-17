@@ -1115,12 +1115,8 @@ type Exemplar struct {
 	SpanId string `protobuf:"bytes,3,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
 	// Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
 	Value uint64 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
-	// Series labels that are NOT included in the group_by query parameter.
-	// These labels complete the full series identity of this exemplar's profile.
-	// For example, if group_by=["service"], this would contain labels like "pod",
-	// "namespace", "region" that were omitted from grouping. This allows identifying
-	// which specific series instance this profile sample came from.
-	Labels        []*LabelPair `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty"`
+	// Labels as references into AttributeTable
+	AttributeRefs []int64 `protobuf:"varint,5,rep,packed,name=attribute_refs,json=attributeRefs,proto3" json:"attribute_refs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1183,9 +1179,9 @@ func (x *Exemplar) GetValue() uint64 {
 	return 0
 }
 
-func (x *Exemplar) GetLabels() []*LabelPair {
+func (x *Exemplar) GetAttributeRefs() []int64 {
 	if x != nil {
-		return x.Labels
+		return x.AttributeRefs
 	}
 	return nil
 }
@@ -1260,15 +1256,15 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\x17GetProfileStatsResponse\x12#\n" +
 	"\rdata_ingested\x18\x01 \x01(\bR\fdataIngested\x12.\n" +
 	"\x13oldest_profile_time\x18\x02 \x01(\x03R\x11oldestProfileTime\x12.\n" +
-	"\x13newest_profile_time\x18\x03 \x01(\x03R\x11newestProfileTime\"\x92\x02\n" +
+	"\x13newest_profile_time\x18\x03 \x01(\x03R\x11newestProfileTime\"\x8c\x02\n" +
 	"\bExemplar\x122\n" +
 	"\ttimestamp\x18\x01 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1730000023000R\ttimestamp\x12J\n" +
 	"\n" +
 	"profile_id\x18\x02 \x01(\tB+\xbaG(:&\x12$7c9e6679-7425-40de-944b-e07fc1f90ae7R\tprofileId\x120\n" +
 	"\aspan_id\x18\x03 \x01(\tB\x17\xbaG\x14:\x12\x12\x1000f067aa0ba902b7R\x06spanId\x12'\n" +
 	"\x05value\x18\x04 \x01(\x04B\x11\xbaG\x0e:\f\x12\n" +
-	"2450000000R\x05value\x12+\n" +
-	"\x06labels\x18\x05 \x03(\v2\x13.types.v1.LabelPairR\x06labels*k\n" +
+	"2450000000R\x05value\x12%\n" +
+	"\x0eattribute_refs\x18\x05 \x03(\x03R\rattributeRefs*k\n" +
 	"\x19TimeSeriesAggregationType\x12$\n" +
 	" TIME_SERIES_AGGREGATION_TYPE_SUM\x10\x00\x12(\n" +
 	"$TIME_SERIES_AGGREGATION_TYPE_AVERAGE\x10\x01*{\n" +
@@ -1326,12 +1322,11 @@ var file_types_v1_types_proto_depIdxs = []int32{
 	2,  // 6: types.v1.BlockInfo.labels:type_name -> types.v1.LabelPair
 	15, // 7: types.v1.StackTraceSelector.call_site:type_name -> types.v1.Location
 	16, // 8: types.v1.StackTraceSelector.go_pgo:type_name -> types.v1.GoPGO
-	2,  // 9: types.v1.Exemplar.labels:type_name -> types.v1.LabelPair
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	9,  // [9:9] is the sub-list for method output_type
+	9,  // [9:9] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_types_v1_types_proto_init() }

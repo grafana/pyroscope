@@ -3,6 +3,7 @@ package model
 import (
 	"testing"
 
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
@@ -518,10 +519,10 @@ func Test_SeriesMerger_WithExemplars(t *testing.T) {
 								Value:     100,
 								Exemplars: []*typesv1.Exemplar{
 									{
-										ProfileId: "prof-1",
-										Value:     100,
-										Timestamp: 1000,
-										Labels:    []*typesv1.LabelPair{{Name: "pod", Value: "pod-123"}},
+										ProfileId:     "prof-1",
+										Value:         100,
+										Timestamp:     1000,
+										AttributeRefs: []int64{}, // Simplified for test - merger tests don't need actual labels
 									},
 								},
 							},
@@ -538,10 +539,10 @@ func Test_SeriesMerger_WithExemplars(t *testing.T) {
 							Value:     100,
 							Exemplars: []*typesv1.Exemplar{
 								{
-									ProfileId: "prof-1",
-									Value:     100,
-									Timestamp: 1000,
-									Labels:    []*typesv1.LabelPair{{Name: "pod", Value: "pod-123"}},
+									ProfileId:     "prof-1",
+									Value:         100,
+									Timestamp:     1000,
+									AttributeRefs: []int64{},
 								},
 							},
 						},
@@ -554,4 +555,58 @@ func Test_SeriesMerger_WithExemplars(t *testing.T) {
 			testhelper.EqualProto(t, tc.out, MergeSeries(nil, tc.in...))
 		})
 	}
+}
+
+func Test_SeriesMerger_AttributeTableRemapping(t *testing.T) {
+	merger := NewTimeSeriesMerger(true)
+
+	// Querier A: index 0="pod"/"a", index 1="version"/"1.0"
+	table1 := &queryv1.AttributeTable{
+		Keys:   []string{"pod", "version"},
+		Values: []string{"a", "1.0"},
+	}
+	series1 := []*typesv1.Series{{
+		Labels: LabelsFromStrings("service_name", "api"),
+		Points: []*typesv1.Point{{
+			Timestamp: 1000,
+			Value:     100,
+			Exemplars: []*typesv1.Exemplar{
+				{ProfileId: "prof-1", Value: 100, Timestamp: 1000, AttributeRefs: []int64{0, 1}},
+			},
+		}},
+	}}
+
+	// Querier B: index 0="pod"/"b", index 1="version"/"1.0" (same indices, different pod value!)
+	table2 := &queryv1.AttributeTable{
+		Keys:   []string{"pod", "version"},
+		Values: []string{"b", "1.0"},
+	}
+	series2 := []*typesv1.Series{{
+		Labels: LabelsFromStrings("service_name", "api"),
+		Points: []*typesv1.Point{{
+			Timestamp: 1000,
+			Value:     200,
+			Exemplars: []*typesv1.Exemplar{
+				{ProfileId: "prof-2", Value: 200, Timestamp: 1000, AttributeRefs: []int64{0, 1}},
+			},
+		}},
+	}}
+
+	merger.MergeWithAttributeTable(series1, table1)
+	merger.MergeWithAttributeTable(series2, table2)
+	result := merger.TimeSeries()
+
+	expected := []*typesv1.Series{{
+		Labels: LabelsFromStrings("service_name", "api"),
+		Points: []*typesv1.Point{{
+			Timestamp: 1000,
+			Value:     300,
+			Exemplars: []*typesv1.Exemplar{
+				{ProfileId: "prof-1", Value: 100, Timestamp: 1000, AttributeRefs: []int64{0, 1}},
+				{ProfileId: "prof-2", Value: 200, Timestamp: 1000, AttributeRefs: []int64{2, 1}},
+			},
+		}},
+	}}
+
+	testhelper.EqualProto(t, expected, result)
 }

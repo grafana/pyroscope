@@ -157,6 +157,12 @@ message SeriesLabelsReport {
   repeated types.v1.Labels series_labels = 2;
 }
 
+// AttributeTable stores unique label keys and values
+message AttributeTable {
+  repeated string keys = 1;
+  repeated string values = 2;
+}
+
 message TimeSeriesQuery {
   double step = 1;
   repeated string group_by = 2;
@@ -167,6 +173,7 @@ message TimeSeriesQuery {
 message TimeSeriesReport {
   TimeSeriesQuery query = 1;
   repeated types.v1.Series time_series = 2;
+  AttributeTable attribute_table = 3;
 }
 
 message TreeQuery {

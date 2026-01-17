@@ -342,6 +342,22 @@ components:
              denormalized relationships is not a concern.
       title: Dataset
       additionalProperties: false
+    query.v1.AttributeTable:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: string
+          title: keys
+        values:
+          type: array
+          items:
+            type: string
+          title: values
+      title: AttributeTable
+      additionalProperties: false
+      description: AttributeTable stores unique label keys and values
     query.v1.Diagnostics:
       type: object
       properties:
@@ -699,6 +715,9 @@ components:
           items:
             $ref: '#/components/schemas/types.v1.Series'
           title: time_series
+        attributeTable:
+          title: attribute_table
+          $ref: '#/components/schemas/query.v1.AttributeTable'
       title: TimeSeriesReport
       additionalProperties: false
     query.v1.TreeQuery:
@@ -771,17 +790,15 @@ components:
           title: value
           format: int64
           description: Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
-        labels:
+        attributeRefs:
           type: array
           items:
-            $ref: '#/components/schemas/types.v1.LabelPair'
-          title: labels
-          description: |-
-            Series labels that are NOT included in the group_by query parameter.
-             These labels complete the full series identity of this exemplar's profile.
-             For example, if group_by=["service"], this would contain labels like "pod",
-             "namespace", "region" that were omitted from grouping. This allows identifying
-             which specific series instance this profile sample came from.
+            type:
+              - integer
+              - string
+            format: int64
+          title: attribute_refs
+          description: Labels as references into AttributeTable
       title: Exemplar
       additionalProperties: false
       description: |-

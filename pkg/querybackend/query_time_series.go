@@ -114,17 +114,20 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 	}
 
 	var timeSeries []*typesv1.Series
+	var attributeTable *queryv1.AttributeTable
 	if includeExemplars {
 		timeSeries = builder.BuildWithExemplars()
 		span.SetTag("exemplars.raw_count", builder.ExemplarCount())
+		attributeTable = builder.AttributeTable().Build(nil)
 	} else {
 		timeSeries = builder.Build()
 	}
 
 	resp := &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
-			Query:      query.TimeSeries.CloneVT(),
-			TimeSeries: timeSeries,
+			Query:          query.TimeSeries.CloneVT(),
+			TimeSeries:     timeSeries,
+			AttributeTable: attributeTable,
 		},
 	}
 
@@ -152,7 +155,13 @@ func (a *timeSeriesAggregator) aggregate(report *queryv1.Report) error {
 		a.series = phlaremodel.NewTimeSeriesMerger(true)
 		a.query = r.Query.CloneVT()
 	})
-	a.series.MergeTimeSeries(r.TimeSeries)
+
+	if a.query.ExemplarType == typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL {
+		// Use combined method to lock only once (more efficient)
+		a.series.MergeWithAttributeTable(r.TimeSeries, r.AttributeTable)
+	} else {
+		a.series.MergeTimeSeries(r.TimeSeries)
+	}
 	return nil
 }
 
@@ -171,10 +180,16 @@ func (a *timeSeriesAggregator) build() *queryv1.Report {
 		&sum,
 	)
 
+	var attributeTable *queryv1.AttributeTable
+	if a.query.ExemplarType == typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL {
+		attributeTable = a.series.AttributeTable().Build(nil)
+	}
+
 	return &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
-			Query:      a.query,
-			TimeSeries: series,
+			Query:          a.query,
+			TimeSeries:     series,
+			AttributeTable: attributeTable,
 		},
 	}
 }
