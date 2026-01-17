@@ -64,7 +64,7 @@ module.exports = {
       patterns: [
         {
           from: 'node_modules/@grafana/ui/dist/public/img/icons',
-          to: 'grafana/img/icons/',
+          to: 'grafana/build/img/icons/',
         },
       ],
     }),
