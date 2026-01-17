@@ -16,11 +16,11 @@ func (e pythonExpr) MarshalJSON() ([]byte, error) { //nolint:unparam
 }
 
 type examplePython struct {
-	sc *openapi3.Schema
+	ctx *schemaContext
 }
 
-func newExamplePython(sc *openapi3.Schema) *examplePython {
-	return &examplePython{sc: sc}
+func newExamplePython(ctx *schemaContext) *examplePython {
+	return &examplePython{ctx: ctx}
 }
 
 func (e *examplePython) name() string {
@@ -29,8 +29,10 @@ func (e *examplePython) name() string {
 
 func (e *examplePython) render(sb io.Writer, params *exampleParams) {
 	body := map[string]any{}
-	collectParameters(e.sc, "", func(prefix string, name string, schema *openapi3.Schema) {
-		exStr, exValue := getExample(schema)
+	collectParameters(e.ctx.Schema, "", func(prefix string, name string, schemaRef *openapi3.SchemaRef) {
+		schema := schemaRef.Value
+		exStr, exValue := e.ctx.getExample(name, schema)
+
 		if exStr == "" {
 			return
 		}
