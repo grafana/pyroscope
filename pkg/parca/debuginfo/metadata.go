@@ -62,15 +62,6 @@ func (m *ObjectStoreMetadata) SetQuality(ctx context.Context, buildID string, ty
 	return nil
 }
 
-func (m *ObjectStoreMetadata) MarkAsDebuginfodSource(ctx context.Context, servers []string, buildID string, typ debuginfopb.DebuginfoType) error {
-	return m.write(ctx, &debuginfopb.Debuginfo{
-		BuildId:           buildID,
-		DebuginfodServers: servers,
-		Source:            debuginfopb.Debuginfo_SOURCE_DEBUGINFOD,
-		Type:              typ,
-	})
-}
-
 func (m *ObjectStoreMetadata) MarkAsUploading(ctx context.Context, buildID, uploadID, hash string, typ debuginfopb.DebuginfoType, startedAt *timestamppb.Timestamp) error {
 	return m.write(ctx, &debuginfopb.Debuginfo{
 		BuildId: buildID,

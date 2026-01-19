@@ -59,7 +59,6 @@ type CacheConfig struct {
 }
 
 type MetadataManager interface {
-	MarkAsDebuginfodSource(ctx context.Context, servers []string, buildID string, typ debuginfopb.DebuginfoType) error
 	MarkAsUploading(ctx context.Context, buildID, uploadID, hash string, typ debuginfopb.DebuginfoType, startedAt *timestamppb.Timestamp) error
 	MarkAsUploaded(ctx context.Context, buildID, uploadID string, typ debuginfopb.DebuginfoType, finishedAt *timestamppb.Timestamp) error
 	Fetch(ctx context.Context, buildID string, typ debuginfopb.DebuginfoType) (*debuginfopb.Debuginfo, error)
@@ -73,8 +72,7 @@ type Store struct {
 
 	bucket objstore.Bucket
 
-	metadata          MetadataManager
-	debuginfodClients DebuginfodClients
+	metadata MetadataManager
 
 	signedUpload SignedUpload
 
@@ -99,7 +97,6 @@ func NewStore(
 	logger log.Logger,
 	metadata MetadataManager,
 	bucket objstore.Bucket,
-	debuginfodClients DebuginfodClients,
 	signedUpload SignedUpload,
 	maxUploadDuration time.Duration,
 	maxUploadSize int64,
@@ -109,7 +106,6 @@ func NewStore(
 		logger:            log.With(logger, "component", "debuginfo"),
 		bucket:            bucket,
 		metadata:          metadata,
-		debuginfodClients: debuginfodClients,
 		signedUpload:      signedUpload,
 		maxUploadDuration: maxUploadDuration,
 		maxUploadSize:     maxUploadSize,
@@ -118,8 +114,7 @@ func NewStore(
 }
 
 const (
-	ReasonDebuginfoInDebuginfod           = "Debuginfo exists in debuginfod, therefore no upload is necessary."
-	ReasonFirstTimeSeen                   = "First time we see this Build ID, and it does not exist in debuginfod, therefore please upload!"
+	ReasonFirstTimeSeen                   = "First time we see this Build ID, therefore please upload!"
 	ReasonUploadStale                     = "A previous upload was started but not finished and is now stale, so it can be retried."
 	ReasonUploadInProgress                = "A previous upload is still in-progress and not stale yet (only stale uploads can be retried)."
 	ReasonUploadInProgressButForced       = "A previous upload is in-progress, but accepting restart because it's requested to be forced."
@@ -128,9 +123,6 @@ const (
 	ReasonDebuginfoInvalid                = "Debuginfo already exists but is marked as invalid, therefore a new upload is needed. Hash the debuginfo and initiate the upload."
 	ReasonDebuginfoEqual                  = "Debuginfo already exists and is marked as invalid, but the proposed hash is the same as the one already available, therefore the upload is not accepted as it would result in the same invalid debuginfos."
 	ReasonDebuginfoNotEqual               = "Debuginfo already exists but is marked as invalid, therefore a new upload will be accepted."
-	ReasonDebuginfoPurged                 = "Debuginfo was previously uploaded but has been purged/cleaned up, therefore a new upload is needed."
-	ReasonDebuginfodSource                = "Debuginfo is available from debuginfod already and not marked as invalid, therefore no new upload is needed."
-	ReasonDebuginfodInvalid               = "Debuginfo is available from debuginfod already but is marked as invalid, therefore a new upload is needed."
 )
 
 // ShouldInitiateUpload returns whether an upload should be initiated for the
@@ -161,30 +153,7 @@ func (s *Store) ShouldInitiateUpload(ctx context.Context, req *debuginfopb.Shoul
 		return nil, status.Error(codes.Internal, err.Error())
 	} else if errors.Is(err, ErrMetadataNotFound) {
 		// First time we see this Build ID.
-
-		if req.BuildIdType == debuginfopb.BuildIDType_BUILD_ID_TYPE_GNU ||
-			req.BuildIdType == debuginfopb.BuildIDType_BUILD_ID_TYPE_UNKNOWN_UNSPECIFIED {
-			// Only check debuginfod if the build ID type is GNU or unknown
-			// (and unknown is really just for backward compatibility, it
-			// should be removed from this if statement in a couple of
-			// versions.).
-			existsInDebuginfods, err := s.debuginfodClients.Exists(ctx, buildID)
-			if err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
-			}
-
-			if len(existsInDebuginfods) > 0 {
-				if err := s.metadata.MarkAsDebuginfodSource(ctx, existsInDebuginfods, buildID, req.Type); err != nil {
-					return nil, status.Error(codes.Internal, fmt.Errorf("mark Build ID to be available from debuginfod: %w", err).Error())
-				}
-
-				return &debuginfopb.ShouldInitiateUploadResponse{
-					ShouldInitiateUpload: false,
-					Reason:               ReasonDebuginfoInDebuginfod,
-				}, nil
-			}
-		}
-
+		// parca used to check debugninfod here, but we remove this logic cause we hit debuginfod in symbolizer
 		return &debuginfopb.ShouldInitiateUploadResponse{
 			ShouldInitiateUpload: true,
 			Reason:               ReasonFirstTimeSeen,
@@ -260,20 +229,6 @@ func (s *Store) ShouldInitiateUpload(ctx context.Context, req *debuginfopb.Shoul
 			default:
 				return nil, status.Error(codes.Internal, "metadata inconsistency: unknown upload state")
 			}
-		case debuginfopb.Debuginfo_SOURCE_DEBUGINFOD:
-			if dbginfo.Quality == nil || !dbginfo.Quality.NotValidElf {
-				// We already have debuginfo that's also not marked to be
-				// invalid, so we don't need to upload it again.
-				return &debuginfopb.ShouldInitiateUploadResponse{
-					ShouldInitiateUpload: false,
-					Reason:               ReasonDebuginfodSource,
-				}, nil
-			}
-
-			return &debuginfopb.ShouldInitiateUploadResponse{
-				ShouldInitiateUpload: true,
-				Reason:               ReasonDebuginfodInvalid,
-			}, nil
 		default:
 			return nil, status.Errorf(codes.Internal, "unknown debuginfo source %q", dbginfo.Source)
 		}
@@ -476,10 +431,4 @@ func objectPath(buildID string, typ debuginfopb.DebuginfoType) string {
 	default:
 		return path.Join(buildID, "debuginfo")
 	}
-}
-
-// in a debuginfod server the source path is directly in the URL in the form of
-// debuginfod.example.com/buildid/<build-id>/source/<file>.
-func debuginfodSourcePath(buildID, file string) string {
-	return path.Join(buildID, "source", file)
 }

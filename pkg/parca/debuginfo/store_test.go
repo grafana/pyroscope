@@ -33,45 +33,6 @@ import (
 	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
 )
 
-type fakeDebuginfodClients struct {
-	get       func(ctx context.Context, server, buildID string) (io.ReadCloser, error)
-	getSource func(ctx context.Context, server, buildID, file string) (io.ReadCloser, error)
-	exists    func(ctx context.Context, buildID string) ([]string, error)
-}
-
-func (f *fakeDebuginfodClients) Get(ctx context.Context, server, buildID string) (io.ReadCloser, error) {
-	return f.get(ctx, server, buildID)
-}
-
-func (f *fakeDebuginfodClients) GetSource(ctx context.Context, server, buildID, file string) (io.ReadCloser, error) {
-	return f.getSource(ctx, server, buildID, file)
-}
-
-func (f *fakeDebuginfodClients) Exists(ctx context.Context, buildID string) ([]string, error) {
-	return f.exists(ctx, buildID)
-}
-
-func newFakeDebuginfodClientsWithItems(items map[string]io.ReadCloser) *fakeDebuginfodClients {
-	return &fakeDebuginfodClients{
-		get: func(ctx context.Context, server, buildid string) (io.ReadCloser, error) {
-			item, ok := items[buildid]
-			if !ok || server != "fake" {
-				return nil, ErrDebuginfoNotFound
-			}
-
-			return item, nil
-		},
-		exists: func(ctx context.Context, buildid string) ([]string, error) {
-			_, ok := items[buildid]
-			if ok {
-				return []string{"fake"}, nil
-			}
-
-			return nil, nil
-		},
-	}
-}
-
 func TestStore(t *testing.T) {
 	ctx := context.Background()
 	tracer := noop.NewTracerProvider().Tracer("")
@@ -85,9 +46,6 @@ func TestStore(t *testing.T) {
 		logger,
 		metadata,
 		bucket,
-		newFakeDebuginfodClientsWithItems(map[string]io.ReadCloser{
-			"deadbeef": io.NopCloser(bytes.NewBufferString("debuginfo1")),
-		}),
 		SignedUpload{
 			Enabled: false,
 		},
@@ -237,25 +195,5 @@ func TestStore(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, ReasonDebuginfoNotEqual, shouldInitiateResp.Reason)
-	require.True(t, shouldInitiateResp.ShouldInitiateUpload)
-
-	// The debuginfod client should be able to fetch the debuginfo, therefore don't allow uploading.
-	shouldInitiateResp, err = debuginfoClient.ShouldInitiateUpload(ctx, &debuginfopb.ShouldInitiateUploadRequest{BuildId: "deadbeef"})
-	require.NoError(t, err)
-	require.Equal(t, ReasonDebuginfoInDebuginfod, shouldInitiateResp.Reason)
-	require.False(t, shouldInitiateResp.ShouldInitiateUpload)
-
-	// This stays the same, but the debuginfod client should be able to fetch the debuginfo.
-	shouldInitiateResp, err = debuginfoClient.ShouldInitiateUpload(ctx, &debuginfopb.ShouldInitiateUploadRequest{BuildId: "deadbeef"})
-	require.NoError(t, err)
-	require.Equal(t, ReasonDebuginfodSource, shouldInitiateResp.Reason)
-	require.False(t, shouldInitiateResp.ShouldInitiateUpload)
-
-	// If we mark the debuginfo as invalid, we should allow uploading.
-	require.NoError(t, metadata.SetQuality(ctx, "deadbeef", debuginfopb.DebuginfoType_DEBUGINFO_TYPE_DEBUGINFO_UNSPECIFIED, &debuginfopb.DebuginfoQuality{NotValidElf: true}))
-
-	shouldInitiateResp, err = debuginfoClient.ShouldInitiateUpload(ctx, &debuginfopb.ShouldInitiateUploadRequest{BuildId: "deadbeef"})
-	require.NoError(t, err)
-	require.Equal(t, ReasonDebuginfodInvalid, shouldInitiateResp.Reason)
 	require.True(t, shouldInitiateResp.ShouldInitiateUpload)
 }

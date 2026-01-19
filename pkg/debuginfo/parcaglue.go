@@ -43,8 +43,7 @@ func NewParcaDebugInfo(l log.Logger, bucket objstore.Bucket, cfg Config, server 
 	l = log.With(l, "component", "debug-info")
 	bucket = objstore.NewPrefixedBucket(bucket, symbolizer.BucketPrefixParcaDebugInfo)
 	md := debuginfo.NewObjectStoreMetadata(l, bucket)
-	debuginfod := debuginfo.NewParallelDebuginfodClients(nil)
-	store, _ := debuginfo.NewStore(t, l, md, bucket, debuginfod,
+	store, _ := debuginfo.NewStore(t, l, md, bucket,
 		debuginfo.SignedUpload{Enabled: false},
 		cfg.MaxUploadDuration, cfg.MaxUploadSize)
 

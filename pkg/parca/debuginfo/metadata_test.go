@@ -60,7 +60,6 @@ func TestMetadata(t *testing.T) {
 		logger,
 		NewObjectStoreMetadata(logger, bucket),
 		bucket,
-		NopDebuginfodClients{},
 		SignedUpload{
 			Enabled: false,
 		},

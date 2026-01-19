@@ -30,17 +30,12 @@ var (
 )
 
 type Fetcher struct {
-	debuginfodClients DebuginfodClients
-	bucket            objstore.Bucket
+	bucket objstore.Bucket
 }
 
-func NewFetcher(
-	debuginfodClients DebuginfodClients,
-	bucket objstore.Bucket,
-) *Fetcher {
+func NewFetcher(bucket objstore.Bucket) *Fetcher {
 	return &Fetcher{
-		debuginfodClients: debuginfodClients,
-		bucket:            bucket,
+		bucket: bucket,
 	}
 }
 
@@ -48,8 +43,6 @@ func (f *Fetcher) FetchDebuginfo(ctx context.Context, dbginfo *debuginfopb.Debug
 	switch dbginfo.Source {
 	case debuginfopb.Debuginfo_SOURCE_UPLOAD:
 		return f.fetchFromBucket(ctx, dbginfo)
-	case debuginfopb.Debuginfo_SOURCE_DEBUGINFOD:
-		return f.fetchFromDebuginfod(ctx, dbginfo)
 	default:
 		return nil, ErrUnknownDebuginfoSource
 	}
@@ -57,15 +50,4 @@ func (f *Fetcher) FetchDebuginfo(ctx context.Context, dbginfo *debuginfopb.Debug
 
 func (f *Fetcher) fetchFromBucket(ctx context.Context, dbginfo *debuginfopb.Debuginfo) (io.ReadCloser, error) {
 	return f.bucket.Get(ctx, objectPath(dbginfo.BuildId, dbginfo.Type))
-}
-
-func (f *Fetcher) fetchFromDebuginfod(ctx context.Context, dbginfo *debuginfopb.Debuginfo) (io.ReadCloser, error) {
-	if len(dbginfo.DebuginfodServers) == 0 {
-		return nil, errors.New("no debuginfod servers")
-	}
-
-	// Servers are stored in order of preference.
-	debuginfodServer := dbginfo.DebuginfodServers[0]
-
-	return f.debuginfodClients.Get(ctx, debuginfodServer, dbginfo.BuildId)
 }

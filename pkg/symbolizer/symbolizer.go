@@ -84,10 +84,7 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, lidiaBucket, 
 		return nil, err
 	}
 
-	parcaFetcher := debuginfo.NewFetcher(
-		debuginfo.NewParallelDebuginfodClients(nil),
-		parcaBucket,
-	)
+	parcaFetcher := debuginfo.NewFetcher(parcaBucket)
 
 	return &Symbolizer{
 		logger:  logger,
