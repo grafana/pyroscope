@@ -23,6 +23,7 @@ import (
 
 	"buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/client"
@@ -135,9 +136,20 @@ const (
 // ShouldInitiateUpload returns whether an upload should be initiated for the
 // given build ID. Checking if an upload should even be initiated allows the
 // parca-agent to avoid extracting debuginfos unnecessarily from a binary.
-func (s *Store) ShouldInitiateUpload(ctx context.Context, req *debuginfopb.ShouldInitiateUploadRequest) (*debuginfopb.ShouldInitiateUploadResponse, error) {
+func (s *Store) ShouldInitiateUpload(ctx context.Context, req *debuginfopb.ShouldInitiateUploadRequest) (resp *debuginfopb.ShouldInitiateUploadResponse, err error) {
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String("build_id", req.BuildId))
+
+	defer func() {
+		if resp != nil {
+			level.Debug(s.logger).Log(
+				"msg", "ShouldInitiateUpload result",
+				"build_id", req.BuildId,
+				"should_initiate", resp.ShouldInitiateUpload,
+				"reason", resp.Reason,
+			)
+		}
+	}()
 
 	buildID := req.BuildId
 	if err := validateInput(buildID); err != nil {
@@ -391,8 +403,23 @@ func (s *Store) Upload(stream debuginfov1alpha1grpc.DebuginfoService_UploadServe
 	span.SetAttributes(attribute.String("upload_id", uploadID))
 
 	if err := s.upload(ctx, buildID, uploadID, typ, r); err != nil {
+		level.Debug(s.logger).Log(
+			"msg", "debuginfo upload failed",
+			"build_id", buildID,
+			"upload_id", uploadID,
+			"type", typ.String(),
+			"err", err,
+		)
 		return err
 	}
+
+	level.Debug(s.logger).Log(
+		"msg", "debuginfo upload completed",
+		"build_id", buildID,
+		"upload_id", uploadID,
+		"type", typ.String(),
+		"size", r.size,
+	)
 
 	return stream.SendAndClose(&debuginfopb.UploadResponse{
 		BuildId: buildID,
