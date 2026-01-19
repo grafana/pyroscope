@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/client"
@@ -27,6 +26,8 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
+
+	"github.com/grafana/pyroscope/pkg/tenant"
 
 	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
 )
