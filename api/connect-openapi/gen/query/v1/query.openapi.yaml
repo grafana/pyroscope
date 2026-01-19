@@ -357,7 +357,6 @@ components:
           title: values
       title: AttributeTable
       additionalProperties: false
-      description: AttributeTable stores unique label keys and values
     query.v1.Diagnostics:
       type: object
       properties:
@@ -367,6 +366,37 @@ components:
       title: Diagnostics
       additionalProperties: false
       description: Diagnostic messages, events, statistics, analytics, etc.
+    query.v1.Exemplar:
+      type: object
+      properties:
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+        profileId:
+          type: string
+          title: profile_id
+        spanId:
+          type: string
+          title: span_id
+        value:
+          type:
+            - integer
+            - string
+          title: value
+          format: int64
+        attributeRefs:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: attribute_refs
+      title: Exemplar
+      additionalProperties: false
     query.v1.InvokeOptions:
       type: object
       properties:
@@ -466,6 +496,31 @@ components:
           title: label_values
       title: LabelValuesReport
       additionalProperties: false
+    query.v1.Point:
+      type: object
+      properties:
+        value:
+          type: number
+          title: value
+          format: double
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+        annotations:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.ProfileAnnotation'
+          title: annotations
+        exemplars:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Exemplar'
+          title: exemplars
+      title: Point
+      additionalProperties: false
     query.v1.PprofQuery:
       type: object
       properties:
@@ -525,12 +580,15 @@ components:
           $ref: '#/components/schemas/query.v1.TreeQuery'
         pprof:
           title: pprof
+          $ref: '#/components/schemas/query.v1.PprofQuery'
+        timeSeriesWithAttributeTable:
+          title: time_series_with_attribute_table
           description: |-
             function_details
              call_graph
              top_table
              ...
-          $ref: '#/components/schemas/query.v1.PprofQuery'
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -618,6 +676,7 @@ components:
         - QUERY_TIME_SERIES
         - QUERY_TREE
         - QUERY_PPROF
+        - QUERY_TIME_SERIES_WITH_ATTRIBUTE_TABLE
     query.v1.Report:
       type: object
       properties:
@@ -645,6 +704,9 @@ components:
         pprof:
           title: pprof
           $ref: '#/components/schemas/query.v1.PprofReport'
+        timeSeriesWithAttributeTable:
+          title: time_series_with_attribute_table
+          $ref: '#/components/schemas/query.v1.TimeSeriesWithAttributeTableReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -658,6 +720,22 @@ components:
         - REPORT_TIME_SERIES
         - REPORT_TREE
         - REPORT_PPROF
+        - REPORT_TIME_SERIES_WITH_ATTRIBUTE_TABLE
+    query.v1.Series:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Point'
+          title: points
+      title: Series
+      additionalProperties: false
     query.v1.SeriesLabelsQuery:
       type: object
       properties:
@@ -715,10 +793,23 @@ components:
           items:
             $ref: '#/components/schemas/types.v1.Series'
           title: time_series
+      title: TimeSeriesReport
+      additionalProperties: false
+    query.v1.TimeSeriesWithAttributeTableReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+        timeSeries:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Series'
+          title: time_series
         attributeTable:
           title: attribute_table
           $ref: '#/components/schemas/query.v1.AttributeTable'
-      title: TimeSeriesReport
+      title: TimeSeriesWithAttributeTableReport
       additionalProperties: false
     query.v1.TreeQuery:
       type: object
@@ -790,15 +881,14 @@ components:
           title: value
           format: int64
           description: Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
-        attributeRefs:
+        labels:
           type: array
           items:
-            type:
-              - integer
-              - string
-            format: int64
-          title: attribute_refs
-          description: Labels as references into AttributeTable
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+          description: |-
+            Additional labels specific to this exemplar (e.g., pod name, node name).
+             These labels are not included in the series group_by labels.
       title: Exemplar
       additionalProperties: false
       description: |-

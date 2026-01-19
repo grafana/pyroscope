@@ -416,6 +416,59 @@
         }
       }
     },
+    "queryv1Exemplar": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "profileId": {
+          "type": "string"
+        },
+        "spanId": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "attributeRefs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          }
+        }
+      }
+    },
+    "queryv1Point": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "format": "double"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ProfileAnnotation"
+          }
+        },
+        "exemplars": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/queryv1Exemplar"
+          }
+        }
+      }
+    },
     "queryv1Query": {
       "type": "object",
       "properties": {
@@ -439,8 +492,30 @@
           "$ref": "#/definitions/v1TreeQuery"
         },
         "pprof": {
-          "$ref": "#/definitions/v1PprofQuery",
+          "$ref": "#/definitions/v1PprofQuery"
+        },
+        "timeSeriesWithAttributeTable": {
+          "$ref": "#/definitions/v1TimeSeriesQuery",
           "description": "function_details\n call_graph\n top_table\n ..."
+        }
+      }
+    },
+    "queryv1Series": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          }
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/queryv1Point"
+          }
         }
       }
     },
@@ -466,11 +541,72 @@
     "segmentwriterv1PushResponse": {
       "type": "object"
     },
+    "typesv1Exemplar": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Milliseconds since epoch when the profile was captured."
+        },
+        "profileId": {
+          "type": "string",
+          "description": "Unique identifier for the profile (UUID)."
+        },
+        "spanId": {
+          "type": "string",
+          "description": "Span ID if this profile was split by span during ingestion."
+        },
+        "value": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated)."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          },
+          "description": "Additional labels specific to this exemplar (e.g., pod name, node name).\nThese labels are not included in the series group_by labels."
+        }
+      },
+      "description": "Exemplar represents metadata for an individual profile sample.\nExemplars allow users to drill down from aggregated timeline views\nto specific profile instances."
+    },
     "typesv1Location": {
       "type": "object",
       "properties": {
         "name": {
           "type": "string"
+        }
+      }
+    },
+    "typesv1Point": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "format": "double"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "Milliseconds unix timestamp"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ProfileAnnotation"
+          }
+        },
+        "exemplars": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/typesv1Exemplar"
+          },
+          "title": "Exemplars are samples of individual profiles that contributed to this aggregated point"
         }
       }
     },
@@ -488,7 +624,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Point"
+            "$ref": "#/definitions/typesv1Point"
           }
         }
       }
@@ -585,8 +721,7 @@
             "type": "string"
           }
         }
-      },
-      "title": "AttributeTable stores unique label keys and values"
+      }
     },
     "v1BlockCompaction": {
       "type": "object",
@@ -978,38 +1113,6 @@
           "$ref": "#/definitions/v1FlameGraphDiff"
         }
       }
-    },
-    "v1Exemplar": {
-      "type": "object",
-      "properties": {
-        "timestamp": {
-          "type": "string",
-          "format": "int64",
-          "description": "Milliseconds since epoch when the profile was captured."
-        },
-        "profileId": {
-          "type": "string",
-          "description": "Unique identifier for the profile (UUID)."
-        },
-        "spanId": {
-          "type": "string",
-          "description": "Span ID if this profile was split by span during ingestion."
-        },
-        "value": {
-          "type": "string",
-          "format": "uint64",
-          "description": "Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated)."
-        },
-        "attributeRefs": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "int64"
-          },
-          "title": "Labels as references into AttributeTable"
-        }
-      },
-      "description": "Exemplar represents metadata for an individual profile sample.\nExemplars allow users to drill down from aggregated timeline views\nto specific profile instances."
     },
     "v1ExemplarType": {
       "type": "string",
@@ -1695,35 +1798,6 @@
       ],
       "default": "TOTAL"
     },
-    "v1Point": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "number",
-          "format": "double"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "int64",
-          "title": "Milliseconds unix timestamp"
-        },
-        "annotations": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1ProfileAnnotation"
-          }
-        },
-        "exemplars": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1Exemplar"
-          },
-          "title": "Exemplars are samples of individual profiles that contributed to this aggregated point"
-        }
-      }
-    },
     "v1PollCompactionJobsResponse": {
       "type": "object",
       "properties": {
@@ -1991,7 +2065,8 @@
         "QUERY_SERIES_LABELS",
         "QUERY_TIME_SERIES",
         "QUERY_TREE",
-        "QUERY_PPROF"
+        "QUERY_PPROF",
+        "QUERY_TIME_SERIES_WITH_ATTRIBUTE_TABLE"
       ],
       "default": "QUERY_UNSPECIFIED"
     },
@@ -2113,6 +2188,9 @@
         },
         "pprof": {
           "$ref": "#/definitions/v1PprofReport"
+        },
+        "timeSeriesWithAttributeTable": {
+          "$ref": "#/definitions/v1TimeSeriesWithAttributeTableReport"
         }
       }
     },
@@ -2125,7 +2203,8 @@
         "REPORT_SERIES_LABELS",
         "REPORT_TIME_SERIES",
         "REPORT_TREE",
-        "REPORT_PPROF"
+        "REPORT_PPROF",
+        "REPORT_TIME_SERIES_WITH_ATTRIBUTE_TABLE"
       ],
       "default": "REPORT_UNSPECIFIED"
     },
@@ -2511,6 +2590,21 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/typesv1Series"
+          }
+        }
+      }
+    },
+    "v1TimeSeriesWithAttributeTableReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1TimeSeriesQuery"
+        },
+        "timeSeries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/queryv1Series"
           }
         },
         "attributeTable": {

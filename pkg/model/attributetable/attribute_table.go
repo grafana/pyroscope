@@ -1,33 +1,33 @@
-package model
+package attributetable
 
 import (
 	"unique"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
-// attributeKey is a single key-value pair with interned strings.
 type attributeKey struct {
 	key   unique.Handle[string]
 	value unique.Handle[string]
 }
 
-// AttributeTable stores unique label keys and values for efficient serialization.
-type AttributeTable struct {
+// Table stores unique label keys and values for efficient serialization.
+type Table struct {
 	table   map[attributeKey]int64
 	entries []attributeKey
 }
 
-func NewAttributeTable() *AttributeTable {
-	return &AttributeTable{
+// NewTable creates a new AttributeTable for string interning.
+func NewTable() *Table {
+	return &Table{
 		table:   make(map[attributeKey]int64),
 		entries: make([]attributeKey, 0),
 	}
 }
 
 // LookupOrAdd returns the index for the given key-value pair.
-// If the pair doesn't exist, it's added to the table.
-func (t *AttributeTable) LookupOrAdd(k attributeKey) int64 {
+func (t *Table) LookupOrAdd(k attributeKey) int64 {
 	ref, exists := t.table[k]
 	if !exists {
 		ref = int64(len(t.entries))
@@ -37,8 +37,16 @@ func (t *AttributeTable) LookupOrAdd(k attributeKey) int64 {
 	return ref
 }
 
+// AddKeyValue interns a key-value string pair and returns its ref.
+func (t *Table) AddKeyValue(key, value string) int64 {
+	return t.LookupOrAdd(attributeKey{
+		key:   unique.Make(key),
+		value: unique.Make(value),
+	})
+}
+
 // Refs converts a set of labels to their attribute_refs indices.
-func (t *AttributeTable) Refs(lbls Labels, refs []int64) []int64 {
+func (t *Table) Refs(lbls []*typesv1.LabelPair, refs []int64) []int64 {
 	if cap(refs) < len(lbls) {
 		refs = make([]int64, len(lbls))
 	} else {
@@ -55,8 +63,8 @@ func (t *AttributeTable) Refs(lbls Labels, refs []int64) []int64 {
 	return refs
 }
 
-// Build converts the AttributeTable to its protobuf representation.
-func (t *AttributeTable) Build(res *queryv1.AttributeTable) *queryv1.AttributeTable {
+// Build converts the Table to its protobuf representation.
+func (t *Table) Build(res *queryv1.AttributeTable) *queryv1.AttributeTable {
 	if res == nil {
 		res = &queryv1.AttributeTable{}
 	}
@@ -78,4 +86,18 @@ func (t *AttributeTable) Build(res *queryv1.AttributeTable) *queryv1.AttributeTa
 	}
 
 	return res
+}
+
+// Entries returns the internal entries for accessing stored key-value pairs.
+func (t *Table) Entries() []attributeKey {
+	return t.entries
+}
+
+// GetKeyValue returns the key and value strings for a given attribute ref.
+func (t *Table) GetKeyValue(ref int64) (key, value string, ok bool) {
+	if ref < 0 || ref >= int64(len(t.entries)) {
+		return "", "", false
+	}
+	entry := t.entries[ref]
+	return entry.key.Value(), entry.value.Value(), true
 }

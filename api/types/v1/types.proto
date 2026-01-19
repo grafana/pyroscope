@@ -159,6 +159,7 @@ message Exemplar {
   // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
   uint64 value = 4 [(gnostic.openapi.v3.property).example = {yaml: "2450000000"}];
 
-  // Labels as references into AttributeTable
-  repeated int64 attribute_refs = 5;
+  // Additional labels specific to this exemplar (e.g., pod name, node name).
+  // These labels are not included in the series group_by labels.
+  repeated LabelPair labels = 5;
 }

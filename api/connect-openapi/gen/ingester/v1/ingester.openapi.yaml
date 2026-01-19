@@ -1081,15 +1081,14 @@ components:
           title: value
           format: int64
           description: Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
-        attributeRefs:
+        labels:
           type: array
           items:
-            type:
-              - integer
-              - string
-            format: int64
-          title: attribute_refs
-          description: Labels as references into AttributeTable
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+          description: |-
+            Additional labels specific to this exemplar (e.g., pod name, node name).
+             These labels are not included in the series group_by labels.
       title: Exemplar
       additionalProperties: false
       description: |-

@@ -2,14 +2,11 @@ package model
 
 import (
 	"cmp"
-	"fmt"
 	"slices"
 	"sort"
 	"strings"
 	"sync"
-	"unique"
 
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
@@ -61,19 +58,17 @@ func TopSeries(s []*typesv1.Series, k int) []*typesv1.Series {
 }
 
 type TimeSeriesMerger struct {
-	mu             sync.Mutex
-	series         map[uint64]*typesv1.Series
-	sum            bool
-	attributeTable *AttributeTable
+	mu     sync.Mutex
+	series map[uint64]*typesv1.Series
+	sum    bool
 }
 
 // NewTimeSeriesMerger creates a new series merger. If sum is set, samples
 // with matching timestamps are summed, otherwise duplicates are retained.
 func NewTimeSeriesMerger(sum bool) *TimeSeriesMerger {
 	return &TimeSeriesMerger{
-		series:         make(map[uint64]*typesv1.Series),
-		sum:            sum,
-		attributeTable: NewAttributeTable(),
+		series: make(map[uint64]*typesv1.Series),
+		sum:    sum,
 	}
 }
 
@@ -143,67 +138,6 @@ func (m *TimeSeriesMerger) mergePoints(points []*typesv1.Point) int {
 		}
 	}
 	return j + 1
-}
-
-// MergeWithAttributeTable merges time series and their attribute table in a single atomic operation.
-// This method locks once and performs both attribute remapping and series merging.
-func (m *TimeSeriesMerger) MergeWithAttributeTable(s []*typesv1.Series, table *queryv1.AttributeTable) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	var refMap map[int64]int64
-	if table != nil && len(table.Keys) > 0 {
-		if len(table.Keys) != len(table.Values) {
-			panic(fmt.Sprintf("attribute table corruption: Keys length (%d) != Values length (%d)", len(table.Keys), len(table.Values)))
-		}
-
-		refMap = make(map[int64]int64, len(table.Keys))
-		for i := range table.Keys {
-			oldRef := int64(i)
-			key := unique.Make(table.Keys[i])
-			value := unique.Make(table.Values[i])
-			newRef := m.attributeTable.LookupOrAdd(attributeKey{key: key, value: value})
-			refMap[oldRef] = newRef
-		}
-	}
-
-	for _, x := range s {
-		if refMap != nil {
-			for _, point := range x.Points {
-				m.remapExemplarRefsUnsafe(point.Exemplars, refMap)
-			}
-		}
-
-		h := Labels(x.Labels).Hash()
-		d, ok := m.series[h]
-		if !ok {
-			m.series[h] = x
-			continue
-		}
-		d.Points = append(d.Points, x.Points...)
-	}
-}
-
-// remapExemplarRefsUnsafe is the internal version without mutex (caller must hold lock)
-func (m *TimeSeriesMerger) remapExemplarRefsUnsafe(exemplars []*typesv1.Exemplar, refMap map[int64]int64) {
-	if len(exemplars) == 0 {
-		return
-	}
-
-	for _, ex := range exemplars {
-		if len(ex.AttributeRefs) == 0 {
-			continue
-		}
-		for i, ref := range ex.AttributeRefs {
-			if newRef, ok := refMap[ref]; ok {
-				ex.AttributeRefs[i] = newRef
-			}
-		}
-	}
-}
-
-func (m *TimeSeriesMerger) AttributeTable() *AttributeTable {
-	return m.attributeTable
 }
 
 func compareAnnotations(a, b *typesv1.ProfileAnnotation) int {
