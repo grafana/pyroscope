@@ -152,7 +152,7 @@ func TestClient_ConfigValidation(t *testing.T) {
 			expectedError: ErrStoragePrefixInvalidCharacters,
 		},
 		{
-			name:          "prefix/invalid-emoji",
+			name:          "prefix/invalid-exclamation-mark",
 			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello!world"},
 			expectedError: ErrStoragePrefixInvalidCharacters,
 		},
@@ -167,7 +167,7 @@ func TestClient_ConfigValidation(t *testing.T) {
 			expectedLog: "config has a deprecated storage.storage-prefix flag set",
 		},
 		{
-			name:          "prefix/invalid-emoji",
+			name:          "prefix/deprecated-invalid-exclamation-mark",
 			cfg:           Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, DeprecatedStoragePrefix: "hello!world"},
 			expectedError: ErrStoragePrefixInvalidCharacters,
 			expectedLog:   "config has a deprecated storage.storage-prefix flag set",

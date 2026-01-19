@@ -1,0 +1,95 @@
+---
+description: Development workflow, commands, and commit guidelines for Pyroscope
+globs:
+alwaysApply: false
+---
+
+# Development Workflow
+
+## Prerequisites
+
+- Go 1.24+
+- Docker
+- Node v18
+- Yarn v1.22
+- All other tools auto-download to `.tmp/bin/`
+
+## Build Commands
+
+```bash
+# Build backend
+make go/bin
+
+# Run Go tests
+make go/test
+
+# Build frontend
+yarn install
+yarn dev          # Dev server on :4041
+
+# Run backend for frontend development
+yarn backend:dev  # Runs Pyroscope server
+
+# Docker image
+make GOOS=linux GOARCH=amd64 docker-image/pyroscope/build
+```
+
+## Running Locally
+
+```bash
+# Run all components in monolithic mode with embedded Grafana
+go run ./cmd/pyroscope --target all,embedded-grafana
+# Pyroscope: http://localhost:4040
+# Grafana: http://localhost:4041
+```
+
+## Code Generation
+
+**CRITICAL**: After changing protobuf, configs, or flags:
+
+```bash
+make generate
+```
+
+Commit the generated files with your changes.
+
+## Useful Make Targets
+
+```bash
+make help              # Show all available targets
+make lint              # Run linters
+make go/test           # Run Go unit tests
+make go/bin            # Build binaries
+make go/mod            # Tidy go modules
+make generate          # Generate code (protobuf, mocks, etc.)
+make docker-image/pyroscope/build  # Build Docker image
+```
+
+## Commit Guidelines
+
+1. **Atomic Commits**: Each commit should be a logical unit
+2. **Commit Messages**: Focus on "why" not just "what"
+3. **Generated Code**: Include generated files in the same commit as source changes
+4. **Format**: Follow existing commit message style (see `git log --oneline -20`)
+
+## When Working on Features
+
+1. **Read Component Docs**: Check `docs/sources/reference-pyroscope-architecture/components/` for the component you're modifying
+2. **Understand the Ring**: If working on write/read path, understand consistent hashing
+3. **Multi-tenancy First**: Always consider multi-tenant implications
+4. **Check for Similar Code**: Pyroscope is inspired by Cortex/Mimir - similar patterns apply
+5. **Test Multi-tenancy**: Test with multiple tenants to catch isolation issues
+6. **Profile Your Changes**: Use `go test -bench` and verify performance impact
+7. **Update Documentation**: If changing user-facing behavior, update docs
+
+## Documentation Locations
+
+- **User Docs**: `docs/sources/` - Published to grafana.com
+- **Contributing**: `docs/internal/contributing/README.md`
+- **Component Docs**: `docs/sources/reference-pyroscope-architecture/components/`
+
+## Getting Help
+
+- **Contributing Guide**: `docs/internal/contributing/README.md`
+- **Code Comments**: The codebase has extensive comments - read them
+- **Git History**: Use `git blame` and `git log` to understand design decisions

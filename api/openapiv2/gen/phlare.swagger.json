@@ -961,6 +961,48 @@
         }
       }
     },
+    "v1Exemplar": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Milliseconds since epoch when the profile was captured."
+        },
+        "profileId": {
+          "type": "string",
+          "description": "Unique identifier for the profile (UUID)."
+        },
+        "spanId": {
+          "type": "string",
+          "description": "Span ID if this profile was split by span during ingestion."
+        },
+        "value": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated)."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          },
+          "description": "Series labels that are NOT included in the group_by query parameter.\nThese labels complete the full series identity of this exemplar's profile.\nFor example, if group_by=[\"service\"], this would contain labels like \"pod\",\n\"namespace\", \"region\" that were omitted from grouping. This allows identifying\nwhich specific series instance this profile sample came from."
+        }
+      },
+      "description": "Exemplar represents metadata for an individual profile sample.\nExemplars allow users to drill down from aggregated timeline views\nto specific profile instances."
+    },
+    "v1ExemplarType": {
+      "type": "string",
+      "enum": [
+        "EXEMPLAR_TYPE_UNSPECIFIED",
+        "EXEMPLAR_TYPE_NONE",
+        "EXEMPLAR_TYPE_INDIVIDUAL",
+        "EXEMPLAR_TYPE_SPAN"
+      ],
+      "default": "EXEMPLAR_TYPE_UNSPECIFIED"
+    },
     "v1FeatureFlag": {
       "type": "object",
       "properties": {
@@ -1260,7 +1302,7 @@
       "properties": {
         "clientID": {
           "type": "string",
-          "description": "clientID must be propagated when calling https://github.com/login/oauth/authorize\nin the client_id query parameter."
+          "description": "clientID must be propagated when calling\nhttps://github.com/login/oauth/authorize in the client_id query parameter."
         },
         "callbackURL": {
           "type": "string",
@@ -1273,7 +1315,7 @@
       "properties": {
         "cookie": {
           "type": "string",
-          "title": "Deprecated\nIn future version, this cookie won't be sent. Now, old cookie is sent alongside the new expected\ndata (token, token_expires_at and refresh_token_expires_at). Frontend will be responsible of computing\nits own cookie from the new data.\nRemove after completing https://github.com/grafana/explore-profiles/issues/187"
+          "title": "Deprecated\nIn future version, this cookie won't be sent. Now, old cookie is sent\nalongside the new expected data (token, token_expires_at and\nrefresh_token_expires_at). Frontend will be responsible of computing its\nown cookie from the new data. Remove after completing\nhttps://github.com/grafana/explore-profiles/issues/187"
         },
         "token": {
           "type": "string",
@@ -1296,7 +1338,7 @@
       "properties": {
         "cookie": {
           "type": "string",
-          "title": "Deprecated\nIn future version, this cookie won't be sent. Now, old cookie is sent alongside the new expected\ndata (token, token_expires_at and refresh_token_expires_at). Frontend will be responsible of computing\nits own cookie from the new data.\nRemove after completing https://github.com/grafana/explore-profiles/issues/187"
+          "title": "Deprecated\nIn future version, this cookie won't be sent. Now, old cookie is sent\nalongside the new expected data (token, token_expires_at and\nrefresh_token_expires_at). Frontend will be responsible of computing its\nown cookie from the new data. Remove after completing\nhttps://github.com/grafana/explore-profiles/issues/187"
         },
         "token": {
           "type": "string",
@@ -1653,6 +1695,14 @@
             "type": "object",
             "$ref": "#/definitions/v1ProfileAnnotation"
           }
+        },
+        "exemplars": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Exemplar"
+          },
+          "title": "Exemplars are samples of individual profiles that contributed to this aggregated point"
         }
       }
     },
@@ -1683,7 +1733,13 @@
           "format": "int64"
         },
         "stackTraceSelector": {
-          "$ref": "#/definitions/v1StackTraceSelector",
+          "$ref": "#/definitions/v1StackTraceSelector"
+        },
+        "profileIdSelector": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
           "description": "TODO(kolesnikovae): Go PGO options."
         }
       }
@@ -2131,6 +2187,13 @@
         "stackTraceSelector": {
           "$ref": "#/definitions/v1StackTraceSelector",
           "description": "Select stack traces that match the provided selector."
+        },
+        "profileIdSelector": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "List of Profile UUIDs to query"
         }
       }
     },
@@ -2413,6 +2476,9 @@
         "limit": {
           "type": "string",
           "format": "int64"
+        },
+        "exemplarType": {
+          "$ref": "#/definitions/v1ExemplarType"
         }
       }
     },
@@ -2458,6 +2524,12 @@
         },
         "stackTraceSelector": {
           "$ref": "#/definitions/v1StackTraceSelector"
+        },
+        "profileIdSelector": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

@@ -18,6 +18,7 @@ import (
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/source"
 )
 
@@ -152,6 +153,7 @@ func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 	defer sp.Finish()
 	sp.SetTag("repository_url", req.Msg.RepositoryURL)
 	sp.SetTag("local_path", req.Msg.LocalPath)
+	sp.SetTag("function_name", req.Msg.FunctionName)
 	sp.SetTag("root_path", req.Msg.RootPath)
 	sp.SetTag("ref", req.Msg.Ref)
 
@@ -185,7 +187,10 @@ func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 	file, err := source.NewFileFinder(
 		ghClient,
 		gitURL,
-		req.Msg.LocalPath,
+		config.FileSpec{
+			Path:         req.Msg.LocalPath,
+			FunctionName: req.Msg.FunctionName,
+		},
 		req.Msg.RootPath,
 		req.Msg.Ref,
 		http.DefaultClient,

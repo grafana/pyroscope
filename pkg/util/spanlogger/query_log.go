@@ -167,22 +167,33 @@ func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.R
 func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
 	spanName := "Diff"
 	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
+
+	left := &querierv1.SelectMergeStacktracesRequest{}
+	if c.Msg.Left != nil {
+		left = c.Msg.Left
+	}
+
+	right := &querierv1.SelectMergeStacktracesRequest{}
+	if c.Msg.Right != nil {
+		right = c.Msg.Right
+	}
+
 	level.Info(FromContext(ctx, l.logger)).Log(
 		"method", spanName,
-		"left_start", model.Time(c.Msg.Left.Start).Time().String(),
-		"left_end", model.Time(c.Msg.Left.End).Time().String(),
-		"left_query_window", model.Time(c.Msg.Left.End).Sub(model.Time(c.Msg.Left.Start)).String(),
-		"left_selector", c.Msg.Left.LabelSelector,
-		"left_profile_type", c.Msg.Left.ProfileTypeID,
-		"left_format", c.Msg.Left.Format,
-		"left_max_nodes", c.Msg.Left.GetMaxNodes(),
-		"right_start", model.Time(c.Msg.Right.Start).Time().String(),
-		"right_end", model.Time(c.Msg.Right.End).Time().String(),
-		"right_query_window", model.Time(c.Msg.Right.End).Sub(model.Time(c.Msg.Right.Start)).String(),
-		"right_selector", c.Msg.Right.LabelSelector,
-		"right_profile_type", c.Msg.Right.ProfileTypeID,
-		"right_format", c.Msg.Right.Format,
-		"right_max_nodes", c.Msg.Right.GetMaxNodes(),
+		"left_start", model.Time(left.Start).Time().String(),
+		"left_end", model.Time(left.End).Time().String(),
+		"left_query_window", model.Time(left.End).Sub(model.Time(left.Start)).String(),
+		"left_selector", left.LabelSelector,
+		"left_profile_type", left.ProfileTypeID,
+		"left_format", left.Format,
+		"left_max_nodes", left.GetMaxNodes(),
+		"right_start", model.Time(right.Start).Time().String(),
+		"right_end", model.Time(right.End).Time().String(),
+		"right_query_window", model.Time(right.End).Sub(model.Time(right.Start)).String(),
+		"right_selector", right.LabelSelector,
+		"right_profile_type", right.ProfileTypeID,
+		"right_format", right.Format,
+		"right_max_nodes", right.GetMaxNodes(),
 	)
 	defer sp.Finish()
 

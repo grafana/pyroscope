@@ -8,16 +8,15 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
-	"github.com/gogo/status"
 	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc/codes"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -173,11 +172,17 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 			MaxNodes:      &sourceProfileMaxNodes,
 		}))
 		if err != nil {
-			httputil.Error(w, connect.NewError(connect.CodeInternal, err))
+			httputil.Error(w, err)
+			return
+		}
+		// Check if profile has any data - return empty string if no data
+		if resp.Msg == nil || len(resp.Msg.Sample) == 0 {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
 			return
 		}
 		if err = pprofToDotProfile(w, resp.Msg, int(dotProfileMaxNodes)); err != nil {
-			httputil.Error(w, connect.NewError(connect.CodeInternal, err))
+			httputil.Error(w, err)
 		}
 		return
 	}
@@ -288,9 +293,17 @@ func parseSelectProfilesRequest(fieldNames renderRequestFieldNames, req *http.Re
 
 	v := req.URL.Query()
 
-	// parse time using pyroscope's attime parser
-	start := model.TimeFromUnixNano(attime.Parse(v.Get(fieldNames.from)).UnixNano())
-	end := model.TimeFromUnixNano(attime.Parse(v.Get(fieldNames.until)).UnixNano())
+	from := time.Now()
+	if f := v.Get(fieldNames.from); f != "" {
+		from = attime.Parse(f)
+	}
+	until := time.Now()
+	if u := v.Get(fieldNames.until); u != "" {
+		until = attime.Parse(u)
+	}
+
+	start := model.TimeFromUnixNano(from.UnixNano())
+	end := model.TimeFromUnixNano(until.UnixNano())
 
 	p := &querierv1.SelectMergeStacktracesRequest{
 		Start:         int64(start),
@@ -314,12 +327,12 @@ func parseSelectProfilesRequest(fieldNames renderRequestFieldNames, req *http.Re
 func parseQuery(fieldName string, req *http.Request) (string, *typesv1.ProfileType, error) {
 	q := req.Form.Get(fieldName)
 	if q == "" {
-		return "", nil, fmt.Errorf("'%s' is required", fieldName)
+		return "", nil, fmt.Errorf("%q is required", fieldName)
 	}
 
 	parsedSelector, err := parser.ParseMetricSelector(q)
 	if err != nil {
-		return "", nil, status.Error(codes.InvalidArgument, fmt.Sprintf("failed to parse '%s'", fieldName))
+		return "", nil, fmt.Errorf("failed to parse %q: %w", fieldName, err)
 	}
 
 	sel := make([]*labels.Matcher, 0, len(parsedSelector))
@@ -332,12 +345,12 @@ func parseQuery(fieldName string, req *http.Request) (string, *typesv1.ProfileTy
 		}
 	}
 	if nameLabel == nil {
-		return "", nil, status.Error(codes.InvalidArgument, fmt.Sprintf("'%s' must contain a profile-type selection", fieldName))
+		return "", nil, fmt.Errorf("%q must contain a profile-type selection", fieldName)
 	}
 
 	profileSelector, err := phlaremodel.ParseProfileTypeSelector(nameLabel.Value)
 	if err != nil {
-		return "", nil, status.Error(codes.InvalidArgument, fmt.Sprintf("failed to parse '%s'", fieldName))
+		return "", nil, fmt.Errorf("failed to parse %q", fieldName)
 	}
 	return convertMatchersToString(sel), profileSelector, nil
 }

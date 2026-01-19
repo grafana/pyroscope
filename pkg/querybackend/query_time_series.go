@@ -6,7 +6,10 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/runutil"
+	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -22,6 +25,7 @@ func init() {
 		queryv1.ReportType_REPORT_TIME_SERIES,
 		queryTimeSeries,
 		newTimeSeriesAggregator,
+		true,
 		[]block.Section{
 			block.SectionTSDB,
 			block.SectionProfiles,
@@ -30,7 +34,31 @@ func init() {
 }
 
 func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
-	entries, err := profileEntryIterator(q, query.TimeSeries.GroupBy...)
+	includeExemplars, err := validateExemplarType(query.TimeSeries.ExemplarType)
+	if err != nil {
+		return nil, err
+	}
+
+	span := opentracing.SpanFromContext(q.ctx)
+	span.SetTag("exemplars.enabled", includeExemplars)
+	span.SetTag("exemplars.type", query.TimeSeries.ExemplarType.String())
+
+	opts := []profileIteratorOption{
+		withFetchPartition(false), // Partition data not needed, as we don't access stacktraces at all
+	}
+
+	if includeExemplars {
+		opts = append(opts,
+			withAllLabels(),
+			withFetchProfileIDs(true),
+		)
+	} else {
+		opts = append(opts,
+			withGroupByLabels(query.TimeSeries.GroupBy...),
+		)
+	}
+
+	entries, err := profileEntryIterator(q, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,22 +99,32 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 				annotations.Values = append(annotations.Values, e[0].String())
 			}
 		}
+
 		builder.Add(
 			row.Row.Fingerprint,
 			row.Row.Labels,
 			int64(row.Row.Timestamp),
 			float64(row.Values[0][0].Int64()),
 			annotations,
+			row.Row.ID, // Profile ID comes from ProfileEntry now
 		)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
+	var timeSeries []*typesv1.Series
+	if includeExemplars {
+		timeSeries = builder.BuildWithExemplars()
+		span.SetTag("exemplars.raw_count", builder.ExemplarCount())
+	} else {
+		timeSeries = builder.Build()
+	}
+
 	resp := &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
 			Query:      query.TimeSeries.CloneVT(),
-			TimeSeries: builder.Build(),
+			TimeSeries: timeSeries,
 		},
 	}
 
@@ -125,16 +163,33 @@ func (a *timeSeriesAggregator) build() *queryv1.Report {
 	sum := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
 	stepMilli := time.Duration(a.query.GetStep() * float64(time.Second)).Milliseconds()
 	seriesIterator := phlaremodel.NewTimeSeriesMergeIterator(a.series.TimeSeries())
+	series := phlaremodel.RangeSeries(
+		seriesIterator,
+		a.startTime,
+		a.endTime,
+		stepMilli,
+		&sum,
+	)
+
 	return &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
-			Query: a.query,
-			TimeSeries: phlaremodel.RangeSeries(
-				seriesIterator,
-				a.startTime,
-				a.endTime,
-				stepMilli,
-				&sum,
-			),
+			Query:      a.query,
+			TimeSeries: series,
 		},
+	}
+}
+
+// validateExemplarType validates the exemplar type and returns whether to include exemplars.
+func validateExemplarType(exemplarType typesv1.ExemplarType) (bool, error) {
+	switch exemplarType {
+	case typesv1.ExemplarType_EXEMPLAR_TYPE_UNSPECIFIED,
+		typesv1.ExemplarType_EXEMPLAR_TYPE_NONE:
+		return false, nil
+	case typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL:
+		return true, nil
+	case typesv1.ExemplarType_EXEMPLAR_TYPE_SPAN:
+		return false, status.Error(codes.Unimplemented, "exemplar type span is not implemented")
+	default:
+		return false, status.Errorf(codes.InvalidArgument, "unknown exemplar type: %v", exemplarType)
 	}
 }

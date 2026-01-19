@@ -1,0 +1,37 @@
+version: v1
+source_code:
+  mappings:
+    - function_name:
+        - prefix: org/example/rideshare
+      language: java
+      source:
+        local:
+          path: src/main/java
+    - function_name:
+        - prefix: java
+      language: java
+      source:
+        github:
+          owner: openjdk
+          repo: jdk
+          ref: jdk-17+0
+          path: src/java.base/share/classes
+    - function_name:
+        - prefix: org/springframework/http
+        - prefix: org/springframework/web
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-framework
+          ref: v5.3.20
+          path: spring-web/src/main/java
+    - function_name:
+        - prefix: org/springframework/web/servlet
+      language: java
+      source:
+        github:
+          owner: spring-projects
+          repo: spring-framework
+          ref: v5.3.20
+          path: spring-webmvc/src/main/java

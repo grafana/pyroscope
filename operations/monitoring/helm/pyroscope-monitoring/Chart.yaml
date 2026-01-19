@@ -9,6 +9,6 @@ appVersion: "0.0.0"
 dependencies:
   - name: k8s-monitoring
     alias: monitoring
-    version: 3.5.3
+    version: 3.7.1
     repository: https://grafana.github.io/helm-charts
     condition: monitoring.enabled

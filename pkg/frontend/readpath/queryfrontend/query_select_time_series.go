@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
+	"github.com/pkg/errors"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -34,12 +35,16 @@ func (q *QueryFrontend) SelectSeries(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	if c.Msg.Step == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be non-zero"))
+	}
+
 	stepMs := time.Duration(c.Msg.Step * float64(time.Second)).Milliseconds()
 	start := c.Msg.Start - stepMs
 
 	labelSelector, err := buildLabelSelectorWithProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     start,
@@ -48,9 +53,10 @@ func (q *QueryFrontend) SelectSeries(
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
 			TimeSeries: &queryv1.TimeSeriesQuery{
-				Step:    c.Msg.GetStep(),
-				GroupBy: c.Msg.GetGroupBy(),
-				Limit:   c.Msg.GetLimit(),
+				Step:         c.Msg.GetStep(),
+				GroupBy:      c.Msg.GetGroupBy(),
+				Limit:        c.Msg.GetLimit(),
+				ExemplarType: c.Msg.GetExemplarType(),
 			},
 		}},
 	})

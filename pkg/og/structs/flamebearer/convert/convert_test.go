@@ -603,7 +603,7 @@ var _ = Describe("Convert", func() {
 		Expect(err).To(BeNil())
 		Expect(f).ToNot(BeNil())
 
-		b, err := f(m.Data, "appname", 1024)
+		b, err := f(m.Data, "appname", Limits{MaxNodes: 1024})
 		Expect(err).To(BeNil())
 		Expect(b).ToNot(BeNil())
 	})
@@ -638,7 +638,7 @@ var _ = Describe("Convert", func() {
 		Expect(err).To(BeNil())
 		Expect(f).ToNot(BeNil())
 
-		b, err := f(m.Data, "test-profile", 1024)
+		b, err := f(m.Data, "test-profile", Limits{MaxNodes: 1024})
 		Expect(err).ToNot(BeNil())
 		Expect(err.Error()).To(ContainSubstring("PeriodType is nil"))
 		Expect(b).To(BeNil())
@@ -655,7 +655,7 @@ var _ = Describe("Convert", func() {
 			Expect(err).To(BeNil())
 			Expect(f).ToNot(BeNil())
 
-			b, err := f(m.Data, "appname", 1)
+			b, err := f(m.Data, "appname", Limits{MaxNodes: 1})
 			Expect(err).To(BeNil())
 			Expect(b).ToNot(BeNil())
 

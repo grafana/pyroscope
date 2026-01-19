@@ -10,6 +10,9 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/tenant"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
@@ -73,6 +76,12 @@ func (q *QueryFrontend) Query(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (*queryv1.QueryResponse, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.Query")
+	defer span.Finish()
+	span.SetTag("start_time", req.StartTime)
+	span.SetTag("end_time", req.EndTime)
+	span.SetTag("label_selector", req.LabelSelector)
+
 	// This method is supposed to be the entry point of the read path
 	// in the future versions. Therefore, validation, overrides, and
 	// rest of the request handling should be moved here.
@@ -80,11 +89,13 @@ func (q *QueryFrontend) Query(
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	span.SetTag("tenant_ids", tenants)
 
 	blocks, err := q.QueryMetadata(ctx, req)
 	if err != nil {
 		return nil, err
 	}
+	span.SetTag("block_count", len(blocks))
 	if len(blocks) == 0 {
 		return new(queryv1.QueryResponse), nil
 	}
@@ -98,7 +109,8 @@ func (q *QueryFrontend) Query(
 	p := queryplan.Build(blocks, 4, 20)
 
 	// Only check for symbolization if all tenants have it enabled
-	shouldSymbolize := q.shouldSymbolize(tenants, blocks)
+	shouldSymbolize := q.shouldSymbolize(ctx, tenants, blocks)
+	span.SetTag("should_symbolize", shouldSymbolize)
 
 	modifiedQueries := make([]*queryv1.Query, len(req.Query))
 	for i, originalQuery := range req.Query {
@@ -108,7 +120,7 @@ func (q *QueryFrontend) Query(
 		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
-				MaxNodes: 0,
+				MaxNodes: originalQuery.Tree.GetMaxNodes(),
 			}
 			modifiedQueries[i].Tree = nil
 		}
@@ -148,15 +160,29 @@ func (q *QueryFrontend) Query(
 func (q *QueryFrontend) QueryMetadata(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
-) ([]*metastorev1.BlockMeta, error) {
+) (blocks []*metastorev1.BlockMeta, err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.QueryMetadata")
+	defer func() {
+		if err != nil {
+			ext.LogError(span, err)
+		}
+		span.Finish()
+	}()
+	span.SetTag("start_time", req.StartTime)
+	span.SetTag("end_time", req.EndTime)
+	span.SetTag("label_selector", req.LabelSelector)
+
 	tenants, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	span.SetTag("tenant_ids", tenants)
+
 	matchers, err := parser.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+
 	query := &metastorev1.QueryMetadataRequest{
 		TenantId:  tenants,
 		StartTime: req.StartTime,
@@ -187,6 +213,7 @@ func (q *QueryFrontend) QueryMetadata(
 	if err != nil {
 		return nil, err
 	}
+	span.SetTag("blocks_count", len(md.Blocks))
 
 	return md.Blocks, nil
 }
@@ -202,7 +229,12 @@ func (q *QueryFrontend) hasUnsymbolizedProfiles(block *metastorev1.BlockMeta) bo
 }
 
 // shouldSymbolize determines if we should symbolize profiles based on tenant settings
-func (q *QueryFrontend) shouldSymbolize(tenants []string, blocks []*metastorev1.BlockMeta) bool {
+func (q *QueryFrontend) shouldSymbolize(ctx context.Context, tenants []string, blocks []*metastorev1.BlockMeta) bool {
+	span := opentracing.SpanFromContext(ctx)
+	if span != nil {
+		span.LogFields(otlog.String("event", "shouldSymbolize"))
+	}
+
 	if q.symbolizer == nil {
 		return false
 	}
@@ -213,13 +245,21 @@ func (q *QueryFrontend) shouldSymbolize(tenants []string, blocks []*metastorev1.
 		}
 	}
 
+	blocksWithUnsymbolized := 0
 	for _, block := range blocks {
 		if q.hasUnsymbolizedProfiles(block) {
-			return true
+			blocksWithUnsymbolized++
 		}
 	}
 
-	return false
+	if span != nil {
+		span.LogFields(
+			otlog.Int("blocks_with_unsymbolized", blocksWithUnsymbolized),
+			otlog.Int("total_blocks", len(blocks)),
+		)
+	}
+
+	return blocksWithUnsymbolized > 0
 }
 
 // processAndSymbolizeProfiles handles the symbolization of profiles from the response
@@ -227,7 +267,17 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 	ctx context.Context,
 	resp *queryv1.InvokeResponse,
 	originalQueries []*queryv1.Query,
-) error {
+) (err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.processAndSymbolizeProfiles")
+	defer func() {
+		if err != nil {
+			ext.LogError(span, err)
+		}
+		span.Finish()
+	}()
+	span.SetTag("query_count", len(originalQueries))
+	span.SetTag("report_count", len(resp.Reports))
+
 	if len(originalQueries) != len(resp.Reports) {
 		return fmt.Errorf("query/report count mismatch: %d queries but %d reports",
 			len(originalQueries), len(resp.Reports))
@@ -249,7 +299,7 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 
 		// Convert back to tree if originally a tree
 		if i < len(originalQueries) && originalQueries[i].QueryType == queryv1.QueryType_QUERY_TREE {
-			treeBytes, err := model.TreeFromBackendProfile(&prof, originalQueries[i].Tree.MaxNodes)
+			treeBytes, err := model.TreeFromBackendProfile(&prof, originalQueries[i].Tree.GetMaxNodes())
 			if err != nil {
 				return fmt.Errorf("failed to build tree: %w", err)
 			}

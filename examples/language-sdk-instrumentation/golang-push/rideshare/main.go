@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -89,11 +88,6 @@ func main() {
 
 	// Register Prometheus metrics handler
 	http.Handle("/metrics", promhttp.Handler())
-	go func() {
-		if err := http.ListenAndServe(":5001", nil); err != nil {
-			slog.Error("metrics server error", "error", err)
-		}
-	}()
 
 	http.Handle("/", otelhttp.NewHandler(http.HandlerFunc(index), "IndexHandler"))
 

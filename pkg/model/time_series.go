@@ -11,12 +11,17 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 )
 
+// DefaultMaxExemplarsPerPoint is the default maximum number of exemplars tracked per point.
+// TODO: make it configurable via tenant limits.
+const DefaultMaxExemplarsPerPoint = 1
+
 type TimeSeriesValue struct {
 	Ts          int64
 	Lbs         []*typesv1.LabelPair
 	LabelsHash  uint64
 	Value       float64
 	Annotations []*typesv1.ProfileAnnotation
+	Exemplars   []*typesv1.Exemplar
 }
 
 func (p TimeSeriesValue) Labels() Labels        { return p.Lbs }
@@ -47,6 +52,8 @@ func (s *TimeSeriesIterator) Next() bool {
 	s.curr.Ts = p.Timestamp
 	s.curr.Value = p.Value
 	s.curr.Annotations = p.Annotations
+
+	s.curr.Exemplars = p.Exemplars
 	return true
 }
 
@@ -70,25 +77,35 @@ type TimeSeriesAggregator interface {
 }
 
 func NewTimeSeriesAggregator(aggregation *typesv1.TimeSeriesAggregationType) TimeSeriesAggregator {
+	return NewTimeSeriesAggregatorWithLimit(aggregation, DefaultMaxExemplarsPerPoint)
+}
+
+func NewTimeSeriesAggregatorWithLimit(aggregation *typesv1.TimeSeriesAggregationType, maxExemplarsPerPoint int) TimeSeriesAggregator {
 	if aggregation == nil {
-		return &sumTimeSeriesAggregator{ts: -1}
+		return &sumTimeSeriesAggregator{ts: -1, maxExemplarsPerPoint: maxExemplarsPerPoint}
 	}
 	if *aggregation == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE {
-		return &avgTimeSeriesAggregator{ts: -1}
+		return &avgTimeSeriesAggregator{ts: -1, maxExemplarsPerPoint: maxExemplarsPerPoint}
 	}
-	return &sumTimeSeriesAggregator{ts: -1}
+	return &sumTimeSeriesAggregator{ts: -1, maxExemplarsPerPoint: maxExemplarsPerPoint}
 }
 
 type sumTimeSeriesAggregator struct {
-	ts          int64
-	sum         float64
-	annotations []*typesv1.ProfileAnnotation
+	ts                   int64
+	sum                  float64
+	annotations          []*typesv1.ProfileAnnotation
+	exemplars            []*typesv1.Exemplar
+	maxExemplarsPerPoint int
 }
 
 func (a *sumTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
 	a.ts = ts
 	a.sum += point.Value
 	a.annotations = append(a.annotations, point.Annotations...)
+
+	if len(point.Exemplars) > 0 {
+		a.exemplars = mergeExemplars(a.exemplars, point.Exemplars)
+	}
 }
 
 func (a *sumTimeSeriesAggregator) GetAndReset() *typesv1.Point {
@@ -96,13 +113,22 @@ func (a *sumTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 	sumCopy := a.sum
 	annotationsCopy := make([]*typesv1.ProfileAnnotation, len(a.annotations))
 	copy(annotationsCopy, a.annotations)
+
+	var exemplars []*typesv1.Exemplar
+	if len(a.exemplars) > 0 {
+		exemplars = selectTopNExemplarsProto(a.exemplars, a.maxExemplarsPerPoint)
+	}
+
 	a.ts = -1
 	a.sum = 0
 	a.annotations = a.annotations[:0]
+	a.exemplars = nil
+
 	return &typesv1.Point{
 		Timestamp:   tsCopy,
 		Value:       sumCopy,
 		Annotations: annotationsCopy,
+		Exemplars:   exemplars,
 	}
 }
 
@@ -110,10 +136,12 @@ func (a *sumTimeSeriesAggregator) IsEmpty() bool       { return a.ts == -1 }
 func (a *sumTimeSeriesAggregator) GetTimestamp() int64 { return a.ts }
 
 type avgTimeSeriesAggregator struct {
-	ts          int64
-	sum         float64
-	count       int64
-	annotations []*typesv1.ProfileAnnotation
+	ts                   int64
+	sum                  float64
+	count                int64
+	annotations          []*typesv1.ProfileAnnotation
+	exemplars            []*typesv1.Exemplar
+	maxExemplarsPerPoint int
 }
 
 func (a *avgTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
@@ -121,6 +149,10 @@ func (a *avgTimeSeriesAggregator) Add(ts int64, point *TimeSeriesValue) {
 	a.sum += point.Value
 	a.count++
 	a.annotations = append(a.annotations, point.Annotations...)
+
+	if len(point.Exemplars) > 0 {
+		a.exemplars = mergeExemplars(a.exemplars, point.Exemplars)
+	}
 }
 
 func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
@@ -128,14 +160,23 @@ func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
 	tsCopy := a.ts
 	annotationsCopy := make([]*typesv1.ProfileAnnotation, len(a.annotations))
 	copy(annotationsCopy, a.annotations)
+
+	var exemplars []*typesv1.Exemplar
+	if len(a.exemplars) > 0 {
+		exemplars = selectTopNExemplarsProto(a.exemplars, a.maxExemplarsPerPoint)
+	}
+
 	a.ts = -1
 	a.sum = 0
 	a.count = 0
 	a.annotations = a.annotations[:0]
+	a.exemplars = nil
+
 	return &typesv1.Point{
 		Timestamp:   tsCopy,
 		Value:       avg,
 		Annotations: annotationsCopy,
+		Exemplars:   exemplars,
 	}
 }
 
@@ -146,6 +187,11 @@ func (a *avgTimeSeriesAggregator) GetTimestamp() int64 { return a.ts }
 // Series contains points spaced by step from start to end.
 // Profiles from the same step are aggregated into one point.
 func RangeSeries(it iter.Iterator[TimeSeriesValue], start, end, step int64, aggregation *typesv1.TimeSeriesAggregationType) []*typesv1.Series {
+	return rangeSeriesWithLimit(it, start, end, step, aggregation, DefaultMaxExemplarsPerPoint)
+}
+
+// rangeSeriesWithLimit is an internal function that allows specifying maxExemplarsPerPoint.
+func rangeSeriesWithLimit(it iter.Iterator[TimeSeriesValue], start, end, step int64, aggregation *typesv1.TimeSeriesAggregationType, maxExemplarsPerPoint int) []*typesv1.Series {
 	defer it.Close()
 	seriesMap := make(map[uint64]*typesv1.Series)
 	aggregators := make(map[uint64]TimeSeriesAggregator)
@@ -161,7 +207,7 @@ Outer:
 			point := it.At()
 			aggregator, ok := aggregators[point.LabelsHash]
 			if !ok {
-				aggregator = NewTimeSeriesAggregator(aggregation)
+				aggregator = NewTimeSeriesAggregatorWithLimit(aggregation, maxExemplarsPerPoint)
 				aggregators[point.LabelsHash] = aggregator
 			}
 			if point.Ts > currentStep {
@@ -212,4 +258,16 @@ Outer:
 		return CompareLabelPairs(series[i].Labels, series[j].Labels) < 0
 	})
 	return series
+}
+
+// selectTopNExemplarsProto selects the top-N exemplars by value.
+func selectTopNExemplarsProto(exemplars []*typesv1.Exemplar, maxExemplars int) []*typesv1.Exemplar {
+	if len(exemplars) <= maxExemplars {
+		return exemplars
+	}
+
+	sort.Slice(exemplars, func(i, j int) bool {
+		return exemplars[i].Value > exemplars[j].Value
+	})
+	return exemplars[:maxExemplars]
 }

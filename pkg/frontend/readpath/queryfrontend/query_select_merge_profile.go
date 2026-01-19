@@ -35,13 +35,27 @@ func (q *QueryFrontend) SelectMergeProfile(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	// NOTE: Max nodes limit is not set by default:
-	//   the method is used for pprof export and
-	//   truncation might not be desirable.
+	// NOTE: Max nodes limit is off by default. SelectMergeProfile is primarily
+	// used for pprof export where truncation would result in incomplete profiles.
+	// This can be overridden per-tenant to enable enforcement if needed.
+	maxNodesEnabled := false
+	for _, tenantID := range tenantIDs {
+		if q.limits.MaxFlameGraphNodesOnSelectMergeProfile(tenantID) {
+			maxNodesEnabled = true
+		}
+	}
+
+	maxNodes := c.Msg.GetMaxNodes()
+	if maxNodesEnabled {
+		maxNodes, err = validation.ValidateMaxNodes(q.limits, tenantIDs, c.Msg.GetMaxNodes())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
 
 	labelSelector, err := buildLabelSelectorWithProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
@@ -50,8 +64,9 @@ func (q *QueryFrontend) SelectMergeProfile(
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_PPROF,
 			Pprof: &queryv1.PprofQuery{
-				MaxNodes:           c.Msg.GetMaxNodes(),
+				MaxNodes:           maxNodes,
 				StackTraceSelector: c.Msg.StackTraceSelector,
+				ProfileIdSelector:  c.Msg.ProfileIdSelector,
 			},
 		}},
 	})

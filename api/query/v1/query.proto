@@ -161,6 +161,7 @@ message TimeSeriesQuery {
   double step = 1;
   repeated string group_by = 2;
   int64 limit = 3;
+  types.v1.ExemplarType exemplar_type = 4;
 }
 
 message TimeSeriesReport {
@@ -172,6 +173,7 @@ message TreeQuery {
   int64 max_nodes = 1;
   repeated string span_selector = 2;
   optional types.v1.StackTraceSelector stack_trace_selector = 3;
+  repeated string profile_id_selector = 4;
 }
 
 message TreeReport {
@@ -182,6 +184,7 @@ message TreeReport {
 message PprofQuery {
   int64 max_nodes = 1;
   optional types.v1.StackTraceSelector stack_trace_selector = 2;
+  repeated string profile_id_selector = 3;
   // TODO(kolesnikovae): Go PGO options.
 }
 

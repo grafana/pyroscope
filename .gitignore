@@ -21,10 +21,12 @@ data-metastore/
 **/dist
 
 # IDE
-.cursor
 .idea
 .vscode
 .zed
+pyroscope.sln
+.cursor/*
+!.cursor/rules/
 
 # Frontend
 public/build

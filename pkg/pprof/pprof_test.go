@@ -1632,3 +1632,142 @@ func Test_pprof_zero_addr_no_line_locations(t *testing.T) {
 	expected := "samples_total=2 location_empty=1 sample_location_invalid=1"
 	assert.Equal(t, expected, b.stats.pretty())
 }
+
+func TestRawFromBytesWithLimit(t *testing.T) {
+	// Create a simple profile
+	p := &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{Type: 1, Unit: 2},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{1}, Value: []int64{100}},
+			{LocationId: []uint64{2}, Value: []int64{200}},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
+			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}}},
+		},
+		Mapping: []*profilev1.Mapping{
+			{Id: 1, Filename: 3},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 4, SystemName: 4, Filename: 3},
+			{Id: 2, Name: 5, SystemName: 5, Filename: 3},
+		},
+		StringTable: []string{
+			"",
+			"cpu", "nanoseconds",
+			"main.go",
+			"foo", "bar",
+		},
+		PeriodType: &profilev1.ValueType{Type: 1, Unit: 2},
+		TimeNanos:  1,
+		Period:     1,
+	}
+
+	// Marshal the profile to bytes (compressed)
+	data, err := Marshal(p, true)
+	require.NoError(t, err)
+	require.NotEmpty(t, data)
+
+	// Get the actual decompressed size
+	normalProfile, err := RawFromBytesWithLimit(data, -1)
+	require.NoError(t, err)
+	require.NotNil(t, normalProfile)
+	decompressedSize := normalProfile.rawSize
+
+	t.Logf("Compressed size: %d bytes, Decompressed size: %d bytes", len(data), decompressedSize)
+
+	t.Run("unlimited", func(t *testing.T) {
+		// Test with -1 (no limit) - should succeed
+		profile, err := RawFromBytesWithLimit(data, -1)
+		require.NoError(t, err)
+		require.NotNil(t, profile)
+		require.Equal(t, 2, len(profile.Sample))
+	})
+
+	t.Run("limit_exceeded", func(t *testing.T) {
+		// Test with a limit smaller than decompressed size - should fail
+		_, err := RawFromBytesWithLimit(data, int64(decompressedSize/2))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "decompressed size exceeds maximum allowed size")
+	})
+
+	t.Run("limit_sufficient", func(t *testing.T) {
+		// Test with a limit larger than decompressed size - should succeed
+		profile, err := RawFromBytesWithLimit(data, int64(decompressedSize*2))
+		require.NoError(t, err)
+		require.NotNil(t, profile)
+		require.Equal(t, 2, len(profile.Sample))
+	})
+
+	t.Run("limit_exact", func(t *testing.T) {
+		// Test with limit exactly equal to decompressed size - should succeed
+		profile, err := RawFromBytesWithLimit(data, int64(decompressedSize))
+		require.NoError(t, err)
+		require.NotNil(t, profile)
+		require.Equal(t, 2, len(profile.Sample))
+	})
+}
+
+func TestUnmarshalWithLimit(t *testing.T) {
+	// Create a simple profile
+	p := &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{Type: 1, Unit: 2},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{1}, Value: []int64{100}},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
+		},
+		Mapping: []*profilev1.Mapping{
+			{Id: 1, Filename: 3},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 4, SystemName: 4, Filename: 3},
+		},
+		StringTable: []string{
+			"",
+			"cpu", "nanoseconds",
+			"main.go",
+			"foo",
+		},
+		PeriodType: &profilev1.ValueType{Type: 1, Unit: 2},
+		TimeNanos:  1,
+		Period:     1,
+	}
+
+	// Marshal the profile to bytes (compressed)
+	data, err := Marshal(p, true)
+	require.NoError(t, err)
+
+	// Get the actual decompressed size
+	testProfile := &profilev1.Profile{}
+	err = UnmarshalWithLimit(data, testProfile, -1)
+	require.NoError(t, err)
+	decompressedSize, err := testProfile.MarshalVT()
+	require.NoError(t, err)
+
+	t.Run("unlimited", func(t *testing.T) {
+		result := &profilev1.Profile{}
+		err := UnmarshalWithLimit(data, result, -1)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(result.Sample))
+	})
+
+	t.Run("limit_exceeded", func(t *testing.T) {
+		result := &profilev1.Profile{}
+		err := UnmarshalWithLimit(data, result, int64(len(decompressedSize)/2))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "decompressed size exceeds maximum allowed size")
+	})
+
+	t.Run("limit_sufficient", func(t *testing.T) {
+		result := &profilev1.Profile{}
+		err := UnmarshalWithLimit(data, result, int64(len(decompressedSize)*2))
+		require.NoError(t, err)
+		require.Equal(t, 1, len(result.Sample))
+	})
+}

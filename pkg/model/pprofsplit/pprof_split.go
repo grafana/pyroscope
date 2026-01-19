@@ -17,8 +17,9 @@ type SampleSeriesVisitor interface {
 	VisitProfile(phlaremodel.Labels)
 	VisitSampleSeries(phlaremodel.Labels, []*profilev1.Sample)
 	// ValidateLabels is called to validate the labels before
-	// they are passed to the visitor.
-	ValidateLabels(phlaremodel.Labels) error
+	// they are passed to the visitor. Returns the potentially modified
+	// labels slice (e.g., after sanitization) and any validation error.
+	ValidateLabels(phlaremodel.Labels) (phlaremodel.Labels, error)
 	Discarded(profiles, bytes int)
 }
 
@@ -52,7 +53,9 @@ func VisitSampleSeries(
 		}
 		if len(profile.Sample) > 0 {
 			labels = builder.Labels()
-			if err := visitor.ValidateLabels(labels); err != nil {
+			var err error
+			labels, err = visitor.ValidateLabels(labels)
+			if err != nil {
 				return err
 			}
 			visitor.VisitProfile(labels)
@@ -85,7 +88,9 @@ func VisitSampleSeries(
 	for _, idx := range groupsKept.order {
 		for _, group := range groupsKept.m[idx] {
 			if len(group.sampleGroup.Samples) > 0 {
-				if err := visitor.ValidateLabels(group.labels); err != nil {
+				var err error
+				group.labels, err = visitor.ValidateLabels(group.labels)
+				if err != nil {
 					return err
 				}
 				visitor.VisitSampleSeries(group.labels, group.sampleGroup.Samples)
@@ -147,7 +152,8 @@ type lazyGroup struct {
 
 func (g *lazyGroup) addSampleGroup(stringTable []string, sg pprof.SampleGroup) {
 	if len(g.sampleGroup.Samples) == 0 {
-		g.sampleGroup = sg
+		g.sampleGroup.Labels = sg.Labels
+		g.sampleGroup.Samples = append(g.sampleGroup.Samples, sg.Samples...)
 		return
 	}
 
@@ -202,8 +208,12 @@ func (g *groupsWithFingerprints) add(stringTable []string, lbls phlaremodel.Labe
 
 	// add the labels to the list
 	g.m[fp] = append(g.m[fp], &lazyGroup{
-		sampleGroup: group,
-		labels:      lbls,
+		sampleGroup: pprof.SampleGroup{
+			Labels: group.Labels,
+			// defensive copy, we don't want to modify the original slice
+			Samples: append([]*profilev1.Sample(nil), group.Samples...),
+		},
+		labels: lbls,
 	})
 }
 

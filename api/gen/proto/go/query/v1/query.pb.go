@@ -1125,6 +1125,7 @@ type TimeSeriesQuery struct {
 	Step          float64                `protobuf:"fixed64,1,opt,name=step,proto3" json:"step,omitempty"`
 	GroupBy       []string               `protobuf:"bytes,2,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
 	Limit         int64                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	ExemplarType  v11.ExemplarType       `protobuf:"varint,4,opt,name=exemplar_type,json=exemplarType,proto3,enum=types.v1.ExemplarType" json:"exemplar_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1178,6 +1179,13 @@ func (x *TimeSeriesQuery) GetLimit() int64 {
 		return x.Limit
 	}
 	return 0
+}
+
+func (x *TimeSeriesQuery) GetExemplarType() v11.ExemplarType {
+	if x != nil {
+		return x.ExemplarType
+	}
+	return v11.ExemplarType(0)
 }
 
 type TimeSeriesReport struct {
@@ -1237,6 +1245,7 @@ type TreeQuery struct {
 	MaxNodes           int64                   `protobuf:"varint,1,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
 	SpanSelector       []string                `protobuf:"bytes,2,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"`
 	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,3,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
+	ProfileIdSelector  []string                `protobuf:"bytes,4,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1288,6 +1297,13 @@ func (x *TreeQuery) GetSpanSelector() []string {
 func (x *TreeQuery) GetStackTraceSelector() *v11.StackTraceSelector {
 	if x != nil {
 		return x.StackTraceSelector
+	}
+	return nil
+}
+
+func (x *TreeQuery) GetProfileIdSelector() []string {
+	if x != nil {
+		return x.ProfileIdSelector
 	}
 	return nil
 }
@@ -1347,7 +1363,8 @@ func (x *TreeReport) GetTree() []byte {
 type PprofQuery struct {
 	state              protoimpl.MessageState  `protogen:"open.v1"`
 	MaxNodes           int64                   `protobuf:"varint,1,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
-	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,2,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"` // TODO(kolesnikovae): Go PGO options.
+	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,2,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
+	ProfileIdSelector  []string                `protobuf:"bytes,3,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"` // TODO(kolesnikovae): Go PGO options.
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1392,6 +1409,13 @@ func (x *PprofQuery) GetMaxNodes() int64 {
 func (x *PprofQuery) GetStackTraceSelector() *v11.StackTraceSelector {
 	if x != nil {
 		return x.StackTraceSelector
+	}
+	return nil
+}
+
+func (x *PprofQuery) GetProfileIdSelector() []string {
+	if x != nil {
+		return x.ProfileIdSelector
 	}
 	return nil
 }
@@ -1527,28 +1551,31 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"labelNames\"~\n" +
 	"\x12SeriesLabelsReport\x121\n" +
 	"\x05query\x18\x01 \x01(\v2\x1b.query.v1.SeriesLabelsQueryR\x05query\x125\n" +
-	"\rseries_labels\x18\x02 \x03(\v2\x10.types.v1.LabelsR\fseriesLabels\"V\n" +
+	"\rseries_labels\x18\x02 \x03(\v2\x10.types.v1.LabelsR\fseriesLabels\"\x93\x01\n" +
 	"\x0fTimeSeriesQuery\x12\x12\n" +
 	"\x04step\x18\x01 \x01(\x01R\x04step\x12\x19\n" +
 	"\bgroup_by\x18\x02 \x03(\tR\agroupBy\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x03R\x05limit\"v\n" +
+	"\x05limit\x18\x03 \x01(\x03R\x05limit\x12;\n" +
+	"\rexemplar_type\x18\x04 \x01(\x0e2\x16.types.v1.ExemplarTypeR\fexemplarType\"v\n" +
 	"\x10TimeSeriesReport\x12/\n" +
 	"\x05query\x18\x01 \x01(\v2\x19.query.v1.TimeSeriesQueryR\x05query\x121\n" +
 	"\vtime_series\x18\x02 \x03(\v2\x10.types.v1.SeriesR\n" +
-	"timeSeries\"\xbb\x01\n" +
+	"timeSeries\"\xeb\x01\n" +
 	"\tTreeQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12#\n" +
 	"\rspan_selector\x18\x02 \x03(\tR\fspanSelector\x12S\n" +
-	"\x14stack_trace_selector\x18\x03 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01B\x17\n" +
+	"\x14stack_trace_selector\x18\x03 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
+	"\x13profile_id_selector\x18\x04 \x03(\tR\x11profileIdSelectorB\x17\n" +
 	"\x15_stack_trace_selector\"K\n" +
 	"\n" +
 	"TreeReport\x12)\n" +
 	"\x05query\x18\x01 \x01(\v2\x13.query.v1.TreeQueryR\x05query\x12\x12\n" +
-	"\x04tree\x18\x02 \x01(\fR\x04tree\"\x97\x01\n" +
+	"\x04tree\x18\x02 \x01(\fR\x04tree\"\xc7\x01\n" +
 	"\n" +
 	"PprofQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12S\n" +
-	"\x14stack_trace_selector\x18\x02 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01B\x17\n" +
+	"\x14stack_trace_selector\x18\x02 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
+	"\x13profile_id_selector\x18\x03 \x03(\tR\x11profileIdSelectorB\x17\n" +
 	"\x15_stack_trace_selector\"O\n" +
 	"\vPprofReport\x12*\n" +
 	"\x05query\x18\x01 \x01(\v2\x14.query.v1.PprofQueryR\x05query\x12\x14\n" +
@@ -1620,8 +1647,9 @@ var file_query_v1_query_proto_goTypes = []any{
 	(*PprofReport)(nil),            // 24: query.v1.PprofReport
 	(*v1.BlockMeta)(nil),           // 25: metastore.v1.BlockMeta
 	(*v11.Labels)(nil),             // 26: types.v1.Labels
-	(*v11.Series)(nil),             // 27: types.v1.Series
-	(*v11.StackTraceSelector)(nil), // 28: types.v1.StackTraceSelector
+	(v11.ExemplarType)(0),          // 27: types.v1.ExemplarType
+	(*v11.Series)(nil),             // 28: types.v1.Series
+	(*v11.StackTraceSelector)(nil), // 29: types.v1.StackTraceSelector
 }
 var file_query_v1_query_proto_depIdxs = []int32{
 	9,  // 0: query.v1.QueryRequest.query:type_name -> query.v1.Query
@@ -1654,21 +1682,22 @@ var file_query_v1_query_proto_depIdxs = []int32{
 	15, // 27: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
 	17, // 28: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
 	26, // 29: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
-	19, // 30: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
-	27, // 31: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
-	28, // 32: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	21, // 33: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
-	28, // 34: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	23, // 35: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
-	3,  // 36: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
-	6,  // 37: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
-	4,  // 38: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
-	10, // 39: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
-	38, // [38:40] is the sub-list for method output_type
-	36, // [36:38] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	27, // 30: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	19, // 31: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
+	28, // 32: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
+	29, // 33: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	21, // 34: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
+	29, // 35: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	23, // 36: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
+	3,  // 37: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
+	6,  // 38: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
+	4,  // 39: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
+	10, // 40: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
+	39, // [39:41] is the sub-list for method output_type
+	37, // [37:39] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_query_v1_query_proto_init() }

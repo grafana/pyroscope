@@ -1,0 +1,103 @@
+---
+description: General Pyroscope project context and architecture overview
+globs:
+alwaysApply: true
+---
+
+# Pyroscope - Project Overview
+
+Pyroscope is a horizontally scalable, highly available, multi-tenant continuous profiling aggregation system.
+It stores and queries profiling data at scale, similar to how Prometheus works for metrics and Loki for logs.
+
+## Key Characteristics
+- Written in **Go**
+- Microservices-based architecture inspired by Cortex/Mimir/Loki
+- Stores profiling data in object storage (S3, GCS, Azure, etc.)
+- Multi-tenant by design
+
+## Architecture
+
+Pyroscope uses a **microservices architecture** where a single binary can run different components based on the `-target` parameter.
+
+### V1 Components
+
+**Write Path:**
+- **Distributor**: Receives profile ingestion requests, validates, and forwards to ingesters
+- **Ingester**: Stores profiles in memory, periodically flushes to disk as blocks, periodically uploads blocks to long-term object storage
+- **Compactor**: Merges blocks and removes duplicates
+
+**Read Path:**
+- **Query Frontend**: Entry point for queries, handles query splitting and caching
+- **Query Scheduler**: Manages query queue and ensures fair execution across tenants
+- **Querier**: Executes queries by fetching data from ingesters and store-gateways
+- **Store Gateway**: Indexes and serves blocks from long-term object storage
+
+### V2 Components
+
+**Write Path:**
+- **Distributor**: Receives profile ingestion requests, validates, and forwards to segment writers
+- **Segment Writer**: Writes block segments to long-term object storage and their metadata to metastore
+- **Metastore**: Maintains the block metadata index and coordinates the block compaction process
+- **Compaction Worker**: Merges small segments into larger blocks
+
+**Read Path:**
+- **Query Frontend**: Entry point for queries, creates the query plan and executes it against query backends
+- **Query Backend**: Executes queries and merges query responses
+
+### Storage
+- **Block Format**: Profiles stored in Parquet tables, series data in a TSDB index, symbols in a custom format
+- **Multi-tenant**: Each tenant has isolated storage
+- **Object Storage**: Primary storage backend (S3, GCS, Azure, local filesystem)
+
+## Repository Structure
+
+```
+.
+├── cmd/
+│   ├── pyroscope/           # Main server binary
+│   └── profilecli/          # CLI tool for profile operations
+├── pkg/                     # Core Go packages
+│   ├── distributor/         # Distributor component
+│   ├── ingester/            # Ingester component
+│   ├── querier/             # Querier component
+│   ├── frontend/            # Query frontend component
+│   ├── compactor/           # Compactor component
+│   ├── metastore/           # Metadata component
+│   ├── phlaredb/            # V1 database storage engine
+│   ├── model/               # Data models and types
+│   ├── objstore/            # Object storage abstraction
+│   ├── api/                 # API definitions and handlers
+│   └── og/                  # Legacy code (original Pyroscope) - DO NOT USE
+├── public/app/              # React/TypeScript frontend
+├── api/                     # API definitions (protobuf, OpenAPI)
+├── docs/                    # Documentation
+├── operations/              # Deployment configs (jsonnet, helm)
+├── examples/                # Example applications and SDKs
+└── tools/                   # Development and build tools
+```
+
+## Key Dependencies
+
+- **dskit**: Grafana's distributed systems toolkit (ring, services, middleware)
+- **connect**: RPC framework (gRPC-compatible)
+- **parquet-go**: Parquet file format implementation
+- **go-kit/log**: Structured logging
+- **prometheus/client_golang**: Metrics instrumentation
+- **opentracing-go**: Distributed tracing
+
+## Critical Rules
+
+1. **Multi-tenancy is Critical**: Tenant isolation bugs are severe - test thoroughly
+2. **Performance Matters**: This system handles high-throughput profiling data
+3. **Favor Simplicity**: Pyroscope values simple, maintainable code over clever abstractions
+4. **Consistency with Grafana Labs Style**: Follow patterns from dskit, Mimir, Loki
+5. **Ask Before Large Refactors**: Propose significant architectural changes before implementing
+
+## Things to Avoid
+
+1. **Don't** introduce dependencies on `pkg/og/` - this is legacy code being phased out
+2. **Don't** hardcode tenant IDs - always extract from context
+3. **Don't** create unbounded goroutines - use worker pools or semaphores
+4. **Don't** log PII or sensitive data
+5. **Don't** commit changes to `node_modules/` or generated code without source changes
+6. **Don't** modify frontend code (`public/app/`) - the frontend is not actively developed and changes are discouraged

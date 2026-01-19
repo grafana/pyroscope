@@ -1,9 +1,12 @@
 package querybackend
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/grafana/dskit/runutil"
+	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/prometheus/model/labels"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -21,6 +24,7 @@ func init() {
 		queryv1.ReportType_REPORT_PPROF,
 		queryPprof,
 		newPprofAggregator,
+		false,
 		[]block.Section{
 			block.SectionTSDB,
 			block.SectionProfiles,
@@ -30,7 +34,22 @@ func init() {
 }
 
 func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
-	entries, err := profileEntryIterator(q)
+	span := opentracing.SpanFromContext(q.ctx)
+
+	var profileOpts []profileIteratorOption
+	if len(query.Pprof.ProfileIdSelector) > 0 {
+		opt, err := withProfileIDSelector(query.Pprof.ProfileIdSelector...)
+		if err != nil {
+			return nil, err
+		}
+		profileOpts = append(profileOpts, opt)
+		span.SetTag("profile_id_selector.count", len(query.Pprof.ProfileIdSelector))
+		if len(query.Pprof.ProfileIdSelector) <= maxProfileIDsToLog {
+			span.LogFields(otlog.String("profile_ids", strings.Join(query.Pprof.ProfileIdSelector, ",")))
+		}
+	}
+
+	entries, err := profileEntryIterator(q, profileOpts...)
 	if err != nil {
 		return nil, err
 	}

@@ -22,6 +22,11 @@ import (
 //  thus we have handlers. Instead, in order to enable pipelining and
 //  reduce the boilerplate, we should define query execution plans.
 
+const (
+	// maxProfileIDsToLog is the maximum number of profile IDs to log in trace spans.
+	maxProfileIDsToLog = 10
+)
+
 var (
 	handlerMutex  = new(sync.RWMutex)
 	queryHandlers = map[queryv1.QueryType]queryHandler{}
@@ -67,12 +72,13 @@ func registerQueryType(
 	rt queryv1.ReportType,
 	q queryHandler,
 	a aggregatorProvider,
+	alwaysAggregate bool, // this option will always call the aggregate method for this report type, so it will also run when there is only one report
 	deps ...block.Section,
 ) {
 	registerQueryReportType(qt, rt)
 	registerQueryHandler(qt, q)
 	registerQueryDependencies(qt, deps...)
-	registerAggregator(rt, a)
+	registerAggregator(rt, a, alwaysAggregate)
 }
 
 type blockContext struct {

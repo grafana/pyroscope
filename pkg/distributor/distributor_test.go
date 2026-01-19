@@ -73,8 +73,7 @@ func (pf *poolFactory) FromInstance(inst ring.InstanceDesc) (client.PoolClient, 
 	return pf.f(inst.Addr)
 }
 
-func Test_ConnectPush(t *testing.T) {
-	mux := http.NewServeMux()
+func newTestDistributor(t testing.TB, logger log.Logger, overrides *validation.Overrides) (*Distributor, *fakeIngester, error) {
 	ing := newFakeIngester(t, false)
 	d, err := New(Config{
 		DistributorRing: ringConfig,
@@ -82,7 +81,21 @@ func Test_ConnectPush(t *testing.T) {
 		{Addr: "foo"},
 	}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, overrides, nil, logger, nil)
+	return d, ing, err
+}
+
+func NewTestDistributor(t testing.TB, logger log.Logger, overrides *validation.Overrides) (*Distributor, error) {
+	d, _, err := newTestDistributor(t, logger, overrides)
+	return d, err
+}
+
+func Test_ConnectPush(t *testing.T) {
+	mux := http.NewServeMux()
+	d, ing, err := newTestDistributor(t,
+		log.NewLogfmtLogger(os.Stdout),
+		newOverrides(t),
+	)
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d, handlerOptions...))

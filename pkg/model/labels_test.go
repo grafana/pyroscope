@@ -666,3 +666,168 @@ func TestLabels_Intersect(t *testing.T) {
 		})
 	}
 }
+
+func TestLabels_IntersectAll(t *testing.T) {
+	tests := []struct {
+		name      string
+		labelSets []Labels
+		expected  Labels
+	}{
+		{
+			name:      "Empty input",
+			labelSets: []Labels{},
+			expected:  nil,
+		},
+		{
+			name: "Single label set",
+			labelSets: []Labels{
+				{
+					{Name: "env", Value: "prod"},
+					{Name: "service", Value: "api"},
+				},
+			},
+			expected: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+		},
+		{
+			name: "Two sets with full overlap",
+			labelSets: []Labels{
+				{
+					{Name: "env", Value: "prod"},
+					{Name: "service", Value: "api"},
+				},
+				{
+					{Name: "env", Value: "prod"},
+					{Name: "service", Value: "api"},
+				},
+			},
+			expected: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+		},
+		{
+			name: "Two sets with partial overlap",
+			labelSets: []Labels{
+				{
+					{Name: "env", Value: "prod"},
+					{Name: "pod", Value: "pod-1"},
+					{Name: "region", Value: "us-east"},
+				},
+				{
+					{Name: "env", Value: "prod"},
+					{Name: "pod", Value: "pod-2"},
+					{Name: "region", Value: "us-east"},
+				},
+			},
+			expected: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "region", Value: "us-east"},
+			},
+		},
+		{
+			name: "No common labels",
+			labelSets: []Labels{
+				{
+					{Name: "env", Value: "prod"},
+				},
+				{
+					{Name: "region", Value: "us-east"},
+				},
+			},
+			expected: nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := IntersectAll(test.labelSets)
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}
+
+func TestLabels_WithoutLabels(t *testing.T) {
+	tests := []struct {
+		name     string
+		labels   Labels
+		remove   []string
+		expected Labels
+	}{
+		{
+			name: "Remove nothing",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+			remove: []string{},
+			expected: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+		},
+		{
+			name: "Remove single label",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "pod", Value: "pod-1"},
+				{Name: "service", Value: "api"},
+			},
+			remove: []string{"pod"},
+			expected: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+		},
+		{
+			name: "Remove multiple labels",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "pod", Value: "pod-1"},
+				{Name: "region", Value: "us-east"},
+				{Name: "service", Value: "api"},
+			},
+			remove: []string{"pod", "region"},
+			expected: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+		},
+		{
+			name: "Remove non-existent label",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+			remove: []string{"nonexistent"},
+			expected: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+		},
+		{
+			name: "Remove all labels",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+			remove:   []string{"env", "service"},
+			expected: Labels{},
+		},
+		{
+			name:     "Empty labels",
+			labels:   Labels{},
+			remove:   []string{"env"},
+			expected: Labels{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.labels.WithoutLabels(test.remove...)
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}

@@ -398,6 +398,7 @@ func (m *TimeSeriesQuery) CloneVT() *TimeSeriesQuery {
 	r := new(TimeSeriesQuery)
 	r.Step = m.Step
 	r.Limit = m.Limit
+	r.ExemplarType = m.ExemplarType
 	if rhs := m.GroupBy; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -462,6 +463,11 @@ func (m *TreeQuery) CloneVT() *TreeQuery {
 			r.StackTraceSelector = proto.Clone(rhs).(*v11.StackTraceSelector)
 		}
 	}
+	if rhs := m.ProfileIdSelector; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.ProfileIdSelector = tmpContainer
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -509,6 +515,11 @@ func (m *PprofQuery) CloneVT() *PprofQuery {
 		} else {
 			r.StackTraceSelector = proto.Clone(rhs).(*v11.StackTraceSelector)
 		}
+	}
+	if rhs := m.ProfileIdSelector; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.ProfileIdSelector = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -1076,6 +1087,9 @@ func (this *TimeSeriesQuery) EqualVT(that *TimeSeriesQuery) bool {
 	if this.Limit != that.Limit {
 		return false
 	}
+	if this.ExemplarType != that.ExemplarType {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1153,6 +1167,15 @@ func (this *TreeQuery) EqualVT(that *TreeQuery) bool {
 	} else if !proto.Equal(this.StackTraceSelector, that.StackTraceSelector) {
 		return false
 	}
+	if len(this.ProfileIdSelector) != len(that.ProfileIdSelector) {
+		return false
+	}
+	for i, vx := range this.ProfileIdSelector {
+		vy := that.ProfileIdSelector[i]
+		if vx != vy {
+			return false
+		}
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1202,6 +1225,15 @@ func (this *PprofQuery) EqualVT(that *PprofQuery) bool {
 		}
 	} else if !proto.Equal(this.StackTraceSelector, that.StackTraceSelector) {
 		return false
+	}
+	if len(this.ProfileIdSelector) != len(that.ProfileIdSelector) {
+		return false
+	}
+	for i, vx := range this.ProfileIdSelector {
+		vy := that.ProfileIdSelector[i]
+		if vx != vy {
+			return false
+		}
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -2381,6 +2413,11 @@ func (m *TimeSeriesQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.ExemplarType != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.ExemplarType))
+		i--
+		dAtA[i] = 0x20
+	}
 	if m.Limit != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Limit))
 		i--
@@ -2501,6 +2538,15 @@ func (m *TreeQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.ProfileIdSelector) > 0 {
+		for iNdEx := len(m.ProfileIdSelector) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ProfileIdSelector[iNdEx])
+			copy(dAtA[i:], m.ProfileIdSelector[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileIdSelector[iNdEx])))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
 	if m.StackTraceSelector != nil {
 		if vtmsg, ok := interface{}(m.StackTraceSelector).(interface {
 			MarshalToSizedBufferVT([]byte) (int, error)
@@ -2619,6 +2665,15 @@ func (m *PprofQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.ProfileIdSelector) > 0 {
+		for iNdEx := len(m.ProfileIdSelector) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ProfileIdSelector[iNdEx])
+			copy(dAtA[i:], m.ProfileIdSelector[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileIdSelector[iNdEx])))
+			i--
+			dAtA[i] = 0x1a
+		}
 	}
 	if m.StackTraceSelector != nil {
 		if vtmsg, ok := interface{}(m.StackTraceSelector).(interface {
@@ -3072,6 +3127,9 @@ func (m *TimeSeriesQuery) SizeVT() (n int) {
 	if m.Limit != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Limit))
 	}
+	if m.ExemplarType != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.ExemplarType))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -3127,6 +3185,12 @@ func (m *TreeQuery) SizeVT() (n int) {
 		}
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
+	if len(m.ProfileIdSelector) > 0 {
+		for _, s := range m.ProfileIdSelector {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -3167,6 +3231,12 @@ func (m *PprofQuery) SizeVT() (n int) {
 			l = proto.Size(m.StackTraceSelector)
 		}
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if len(m.ProfileIdSelector) > 0 {
+		for _, s := range m.ProfileIdSelector {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
 	}
 	n += len(m.unknownFields)
 	return n
@@ -5448,6 +5518,25 @@ func (m *TimeSeriesQuery) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExemplarType", wireType)
+			}
+			m.ExemplarType = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ExemplarType |= v11.ExemplarType(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -5723,6 +5812,38 @@ func (m *TreeQuery) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileIdSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileIdSelector = append(m.ProfileIdSelector, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -5957,6 +6078,38 @@ func (m *PprofQuery) UnmarshalVT(dAtA []byte) error {
 					return err
 				}
 			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileIdSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileIdSelector = append(m.ProfileIdSelector, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 1.16.0](https://img.shields.io/badge/Version-1.16.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.16.0](https://img.shields.io/badge/AppVersion-1.16.0-informational?style=flat-square)
+![Version: 1.18.0](https://img.shields.io/badge/Version-1.18.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.18.0](https://img.shields.io/badge/AppVersion-1.18.0-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -16,7 +16,7 @@
 | Repository | Name | Version |
 |------------|------|---------|
 | https://charts.min.io/ | minio(minio) | 4.1.0 |
-| https://grafana.github.io/helm-charts | alloy(alloy) | 1.4.0 |
+| https://grafana.github.io/helm-charts | alloy(alloy) | 1.5.1 |
 | https://grafana.github.io/helm-charts | agent(grafana-agent) | 0.44.2 |
 
 ## Values

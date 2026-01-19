@@ -287,7 +287,7 @@ func TestTimeBasedRetentionPolicy(t *testing.T) {
 			expectedTombstones: 1,
 		},
 		{
-			name: "zero retention period means infinite retention",
+			name: "zero retention period as override means infinite retention",
 			overrides: map[string]Config{
 				"tenant-1": {RetentionPeriod: model.Duration(0)},
 			},
@@ -305,7 +305,7 @@ func TestTimeBasedRetentionPolicy(t *testing.T) {
 			},
 		},
 		{
-			name:          "zero retention period means infinite retention",
+			name:          "zero retention period as default means infinite retention",
 			defaultConfig: Config{RetentionPeriod: model.Duration(0)},
 			gracePeriod:   time.Hour,
 			maxTombstones: 10,

@@ -369,6 +369,7 @@ func (f *Pyroscope) initQueryBackendClient() (services.Service, error) {
 	c, err := querybackendclient.New(
 		f.Cfg.QueryBackend.Address,
 		f.Cfg.QueryBackend.GRPCClientConfig,
+		f.Cfg.QueryBackend.ClientTimeout,
 	)
 	if err != nil {
 		return nil, err
@@ -401,6 +402,7 @@ func (f *Pyroscope) initSymbolizer() (services.Service, error) {
 		f.Cfg.Symbolizer,
 		f.reg,
 		prefixedBucket,
+		f.Overrides,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create symbolizer: %w", err)

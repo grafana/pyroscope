@@ -8,7 +8,12 @@ ARG SDK_VERSION
 
 WORKDIR /dotnet
 
-ADD example .
+ADD example/BikeService.cs \
+    example/CarService.cs \
+    example/Example.csproj \
+    example/OrderService.cs \
+    example/Program.cs \
+    example/ScooterService.cs ./
 
 # Set the target framework to SDK_VERSION
 RUN sed -i -E 's|<TargetFramework>.*</TargetFramework>|<TargetFramework>net'$SDK_VERSION'</TargetFramework>|' Example.csproj

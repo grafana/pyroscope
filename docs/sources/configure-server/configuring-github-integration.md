@@ -1,13 +1,14 @@
 ---
-description: Learn how to configure the GitHub integration for Grafana Pyroscope.
-menuTitle: Configure GitHub integration
-title: Configure GitHub integration for Grafana Pyroscope
+description: Learn how to configure the source code integration for Grafana Pyroscope.
+menuTitle: Configure source code integration
+title: Configure Pyroscope source code integration
 weight: 550
 ---
 
-# Configuring GitHub Integration
+# Configuring source code integration
+Currently, the Pyroscope source code integration only supports GitHub.
 
-This guide walks you through setting up the GitHub integration with minimal permissions for Grafana Pyroscope.
+This guide walks you through setting up the Pyroscope source code integration with GitHub with minimal permissions for Grafana Pyroscope.
 
 ## Creating a GitHub App
 
@@ -41,7 +42,7 @@ For anything not covered in this guide, you can refer to the GitHub docs: [Regis
 
 ## Configuring Pyroscope
 
-This section explains how to configure the GitHub integration in Grafana Pyroscope. The integration requires three environment variables to be set:
+This section explains how to configure the Pyroscope source code integration in Grafana Pyroscope. The integration requires three environment variables to be set:
 
 | Variable | Description | Required |
 |----------|-------------|----------|
@@ -51,7 +52,7 @@ This section explains how to configure the GitHub integration in Grafana Pyrosco
 
 ### Using the Helm Chart
 
-If you're using the official Helm chart, follow these steps to configure the GitHub integration:
+If you're using the official Helm chart, follow these steps to configure the Pyroscope source code integration:
 
 1. Create a Kubernetes secret containing the required values, this will also generate a new random session secret:
 
@@ -70,17 +71,17 @@ If you're using the official Helm chart, follow these steps to configure the Git
         GITHUB_CLIENT_ID:
           valueFrom:
             secretKeyRef:
-              secret: pyroscope-github
+              name: pyroscope-github
               key: client_id
         GITHUB_CLIENT_SECRET:
           valueFrom:
             secretKeyRef:
-              secret: pyroscope-github
+              name: pyroscope-github
               key: client_secret
         GITHUB_SESSION_SECRET:
           valueFrom:
             secretKeyRef:
-              secret: pyroscope-github
+              name: pyroscope-github
               key: session_secret
     ```
 
@@ -91,6 +92,6 @@ If you're using the official Helm chart, follow these steps to configure the Git
 
 For other deployment methods, ensure the same environment variables are set in your deployment configuration.
 
-## Verifying the Integration
+## Verifying the integration is correctly configured
 
-The configuration of the GitHub integration is now completed. In order to verify everything works as expected follow the user guide: [Integrate your source code on GitHub with Pyroscope profiling data](../../view-and-analyze-profile-data/line-by-line/).
+The configuration of the Pyroscope source code integration is now completed. In order to verify everything works as expected follow the user guide: [Integrate your source code on GitHub with Pyroscope profiling data](../../view-and-analyze-profile-data/line-by-line/).
