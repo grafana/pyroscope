@@ -34,6 +34,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
+
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 var ErrDebuginfoNotFound = errors.New("debuginfo not found")
@@ -273,6 +275,11 @@ func (s *Store) InitiateUpload(ctx context.Context, req *debuginfopb.InitiateUpl
 	uploadStarted := s.timeNow()
 	uploadExpiry := uploadStarted.Add(s.maxUploadDuration)
 
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
 	if !s.signedUpload.Enabled {
 		if err := s.metadata.MarkAsUploading(ctx, req.BuildId, uploadID, req.Hash, req.Type, timestamppb.New(uploadStarted)); err != nil {
 			return nil, fmt.Errorf("mark debuginfo upload as uploading via gRPC: %w", err)
@@ -288,7 +295,7 @@ func (s *Store) InitiateUpload(ctx context.Context, req *debuginfopb.InitiateUpl
 		}, nil
 	}
 
-	signedURL, err := s.signedUpload.Client.SignedPUT(ctx, objectPath(req.BuildId, req.Type), req.Size, uploadExpiry)
+	signedURL, err := s.signedUpload.Client.SignedPUT(ctx, objectPath(tenantID, req.BuildId, req.Type), req.Size, uploadExpiry)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -387,6 +394,11 @@ func (s *Store) upload(ctx context.Context, buildID, uploadID string, typ debugi
 		return status.Errorf(codes.InvalidArgument, "invalid build ID: %q", err)
 	}
 
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return status.Error(codes.Unauthenticated, err.Error())
+	}
+
 	dbginfo, err := s.metadata.Fetch(ctx, buildID, typ)
 	if err != nil {
 		if errors.Is(err, ErrMetadataNotFound) {
@@ -403,7 +415,7 @@ func (s *Store) upload(ctx context.Context, buildID, uploadID string, typ debugi
 		return status.Error(codes.InvalidArgument, "the upload ID does not match the one returned by the InitiateUpload call")
 	}
 
-	if err := s.bucket.Upload(ctx, objectPath(buildID, typ), r); err != nil {
+	if err := s.bucket.Upload(ctx, objectPath(tenantID, buildID, typ), r); err != nil {
 		return status.Error(codes.Internal, fmt.Errorf("upload debuginfo: %w", err).Error())
 	}
 
@@ -422,13 +434,13 @@ func validateInput(id string) error {
 	return nil
 }
 
-func objectPath(buildID string, typ debuginfopb.DebuginfoType) string {
+func objectPath(tenantID, buildID string, typ debuginfopb.DebuginfoType) string {
 	switch typ {
 	case debuginfopb.DebuginfoType_DEBUGINFO_TYPE_EXECUTABLE:
-		return path.Join(buildID, "executable")
+		return path.Join(tenantID, buildID, "executable")
 	case debuginfopb.DebuginfoType_DEBUGINFO_TYPE_SOURCES:
-		return path.Join(buildID, "sources")
+		return path.Join(tenantID, buildID, "sources")
 	default:
-		return path.Join(buildID, "debuginfo")
+		return path.Join(tenantID, buildID, "debuginfo")
 	}
 }

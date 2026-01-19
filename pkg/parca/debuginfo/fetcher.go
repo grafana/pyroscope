@@ -16,11 +16,14 @@ package debuginfo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 
 	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
 
 	"github.com/thanos-io/objstore"
+
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 var (
@@ -49,5 +52,9 @@ func (f *Fetcher) FetchDebuginfo(ctx context.Context, dbginfo *debuginfopb.Debug
 }
 
 func (f *Fetcher) fetchFromBucket(ctx context.Context, dbginfo *debuginfopb.Debuginfo) (io.ReadCloser, error) {
-	return f.bucket.Get(ctx, objectPath(dbginfo.BuildId, dbginfo.Type))
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("extract tenant ID: %w", err)
+	}
+	return f.bucket.Get(ctx, objectPath(tenantID, dbginfo.BuildId, dbginfo.Type))
 }

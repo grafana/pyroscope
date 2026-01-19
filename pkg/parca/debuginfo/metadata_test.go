@@ -14,12 +14,12 @@
 package debuginfo
 
 import (
-	"context"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/client"
@@ -32,7 +32,7 @@ import (
 )
 
 func TestMetadata(t *testing.T) {
-	ctx := context.Background()
+	ctx := tenant.InjectTenantID(t.Context(), "test-org-id")
 	tracer := noop.NewTracerProvider().Tracer("")
 
 	dir, err := os.MkdirTemp("", "parca-test")

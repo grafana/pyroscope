@@ -27,6 +27,8 @@ import (
 	"github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 var (
@@ -112,7 +114,12 @@ func (m *ObjectStoreMetadata) MarkAsUploaded(ctx context.Context, buildID, uploa
 //}
 
 func (m *ObjectStoreMetadata) Fetch(ctx context.Context, buildID string, typ debuginfopb.DebuginfoType) (*debuginfopb.Debuginfo, error) {
-	path := metadataObjectPath(buildID, typ)
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("extract tenant ID: %w", err)
+	}
+
+	path := metadataObjectPath(tenantID, buildID, typ)
 	r, err := m.bucket.Get(ctx, path)
 	if err != nil {
 		if m.bucket.IsObjNotFoundErr(err) {
@@ -139,6 +146,11 @@ func (m *ObjectStoreMetadata) write(ctx context.Context, dbginfo *debuginfopb.De
 		return errors.New("build id is required to wirte debuginfo metadata")
 	}
 
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("extract tenant ID: %w", err)
+	}
+
 	// Writing in multiline mode to make it easier to read for humans.
 	debuginfoJSON, err := (protojson.MarshalOptions{Multiline: true}).Marshal(dbginfo)
 	if err != nil {
@@ -146,19 +158,19 @@ func (m *ObjectStoreMetadata) write(ctx context.Context, dbginfo *debuginfopb.De
 	}
 
 	r := bytes.NewReader(debuginfoJSON)
-	if err := m.bucket.Upload(ctx, metadataObjectPath(dbginfo.BuildId, dbginfo.Type), r); err != nil {
+	if err := m.bucket.Upload(ctx, metadataObjectPath(tenantID, dbginfo.BuildId, dbginfo.Type), r); err != nil {
 		return fmt.Errorf("write debuginfo metadata to object storage: %w", err)
 	}
 	return nil
 }
 
-func metadataObjectPath(buildID string, typ debuginfopb.DebuginfoType) string {
+func metadataObjectPath(tenantID, buildID string, typ debuginfopb.DebuginfoType) string {
 	switch typ {
 	case debuginfopb.DebuginfoType_DEBUGINFO_TYPE_EXECUTABLE:
-		return path.Join(buildID, "executable.metadata")
+		return path.Join(tenantID, buildID, "executable.metadata")
 	case debuginfopb.DebuginfoType_DEBUGINFO_TYPE_SOURCES:
-		return path.Join(buildID, "sources.metadata")
+		return path.Join(tenantID, buildID, "sources.metadata")
 	default:
-		return path.Join(buildID, "metadata")
+		return path.Join(tenantID, buildID, "metadata")
 	}
 }

@@ -299,7 +299,7 @@ func TestSymbolizePprof(t *testing.T) {
 			},
 			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket, parcaBucket *mockobjstore.MockBucket) {
 				mockBucket.On("Get", mock.Anything, "parca-build-id").Return(nil, fmt.Errorf("not found")).Once()
-				parcaBucket.On("Get", mock.Anything, "parca-build-id/debuginfo").Return(openTestFile(t), nil).Once()
+				parcaBucket.On("Get", mock.Anything, "tenant/parca-build-id/debuginfo").Return(openTestFile(t), nil).Once()
 				mockBucket.On("Upload", mock.Anything, "parca-build-id", mock.Anything).Return(nil).Once()
 			},
 			validate: func(t *testing.T, p *googlev1.Profile) {
