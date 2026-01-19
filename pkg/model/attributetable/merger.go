@@ -227,6 +227,7 @@ func (m *SeriesMerger) ExpandToFullLabels() []*typesv1.Series {
 
 	result := make([]*typesv1.Series, 0, len(m.series))
 	for _, s := range m.series {
+		s.Points = m.mergePoints(s.Points)
 		hasExemplars := false
 		for _, p := range s.Points {
 			if len(p.Exemplars) > 0 {
