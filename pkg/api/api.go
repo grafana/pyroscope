@@ -191,18 +191,19 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 }
 
 func (a *API) RegisterDebugInfo(d *grpc.Server, limits *validation.Overrides) {
-	writePathOpts := a.registerOptionsWritePath(limits)
 	const (
 		DebuginfoService_Upload_FullMethodName               = "/parca.debuginfo.v1alpha1.DebuginfoService/Upload"
 		DebuginfoService_ShouldInitiateUpload_FullMethodName = "/parca.debuginfo.v1alpha1.DebuginfoService/ShouldInitiateUpload"
 		DebuginfoService_InitiateUpload_FullMethodName       = "/parca.debuginfo.v1alpha1.DebuginfoService/InitiateUpload"
 		DebuginfoService_MarkUploadFinished_FullMethodName   = "/parca.debuginfo.v1alpha1.DebuginfoService/MarkUploadFinished"
 	)
-
-	a.RegisterRoute(DebuginfoService_Upload_FullMethodName, d, writePathOpts...)
-	a.RegisterRoute(DebuginfoService_ShouldInitiateUpload_FullMethodName, d, writePathOpts...)
-	a.RegisterRoute(DebuginfoService_InitiateUpload_FullMethodName, d, writePathOpts...)
-	a.RegisterRoute(DebuginfoService_MarkUploadFinished_FullMethodName, d, writePathOpts...)
+	debugInfoGRPCOptions := []RegisterOption{
+		a.WithAuthMiddleware(),
+	}
+	a.RegisterRoute(DebuginfoService_Upload_FullMethodName, d, debugInfoGRPCOptions...)
+	a.RegisterRoute(DebuginfoService_ShouldInitiateUpload_FullMethodName, d, debugInfoGRPCOptions...)
+	a.RegisterRoute(DebuginfoService_InitiateUpload_FullMethodName, d, debugInfoGRPCOptions...)
+	a.RegisterRoute(DebuginfoService_MarkUploadFinished_FullMethodName, d, debugInfoGRPCOptions...)
 }
 
 // RegisterDistributor registers the endpoints associated with the distributor.
