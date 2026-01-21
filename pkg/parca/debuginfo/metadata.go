@@ -143,7 +143,7 @@ func (m *ObjectStoreMetadata) Fetch(ctx context.Context, buildID string, typ deb
 
 func (m *ObjectStoreMetadata) write(ctx context.Context, dbginfo *debuginfopb.Debuginfo) error {
 	if dbginfo.BuildId == "" {
-		return errors.New("build id is required to wirte debuginfo metadata")
+		return errors.New("build id is required to write debuginfo metadata")
 	}
 
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
