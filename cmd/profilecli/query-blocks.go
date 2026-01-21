@@ -30,6 +30,7 @@ type blocksQueryParams struct {
 type blocksQueryProfileParams struct {
 	*blocksQueryParams
 	Output             string
+	Force              bool
 	ProfileType        string
 	StacktraceSelector []string
 }
@@ -53,6 +54,7 @@ func addBlocksQueryProfileParams(queryCmd commander) *blocksQueryProfileParams {
 	params := new(blocksQueryProfileParams)
 	params.blocksQueryParams = addBlocksQueryParams(queryCmd)
 	queryCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").StringVar(&params.Output)
+	queryCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").BoolVar(&params.Force)
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
 	queryCmd.Flag("stacktrace-selector", "Only query locations with those symbols. Provide multiple times starting with the root").StringsVar(&params.StacktraceSelector)
 	return params
@@ -117,7 +119,7 @@ func blocksQueryProfile(ctx context.Context, params *blocksQueryProfileParams) e
 		return errors.Wrap(err, "failed to query")
 	}
 
-	return outputMergeProfile(ctx, params.Output, resp)
+	return outputMergeProfile(ctx, params.Output, params.Force, resp)
 }
 
 func blocksQuerySeries(ctx context.Context, params *blocksQuerySeriesParams) error {
