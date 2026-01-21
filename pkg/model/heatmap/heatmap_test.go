@@ -695,7 +695,7 @@ type testPoint struct {
 	timestamp int64
 	profileID string
 	spanID    uint64
-	value     uint64
+	value     int64
 }
 
 // testSeries represents a series with its points for testing

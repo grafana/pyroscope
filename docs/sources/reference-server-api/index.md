@@ -315,6 +315,7 @@ print(resp.content)
 #### `/querier.v1.QuerierService/SelectHeatmap`
 
 SelectHeatmap returns a heatmap visualization for the requested profiles.
+ Note: This endpoint is only available in the v2 storage layer
 
 A request body with the following fields is required:
 

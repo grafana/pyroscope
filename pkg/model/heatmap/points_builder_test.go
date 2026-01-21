@@ -39,7 +39,7 @@ func TestPointsBuilder_SameFingerprintDifferentExemplars(t *testing.T) {
 
 	// Verify they all share the same labelSet (only common labels)
 	var collectedLabels []pkgmodel.Labels
-	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, value uint64) {
+	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, value int64) {
 		collectedLabels = append(collectedLabels, labels)
 	})
 
@@ -71,12 +71,12 @@ func TestPointsBuilder_DuplicateExemplarsSum(t *testing.T) {
 	// Should only have 1 exemplar with summed value
 	assert.Equal(t, 1, pb.count())
 
-	var totalValue uint64
-	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, value uint64) {
+	var totalValue int64
+	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, value int64) {
 		totalValue = value
 	})
 
-	assert.Equal(t, uint64(6000), totalValue, "Values should be summed")
+	assert.Equal(t, int64(6000), totalValue, "Values should be summed")
 }
 
 func TestPointsBuilder_LabelIntersection(t *testing.T) {
@@ -121,7 +121,7 @@ func TestPointsBuilder_LabelIntersection(t *testing.T) {
 		&typesv1.LabelPair{Name: "cluster", Value: "prod"},
 	}
 
-	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, value uint64) {
+	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, value int64) {
 		assert.Equal(t, expectedCommonLabels, labels,
 			"Should only contain labels common to all exemplars")
 	})
@@ -189,7 +189,7 @@ func TestPointsBuilder_Sorting(t *testing.T) {
 
 	// Verify they come out sorted
 	var timestamps []int64
-	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, value uint64) {
+	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, value int64) {
 		timestamps = append(timestamps, ts)
 	})
 

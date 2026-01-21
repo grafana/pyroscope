@@ -100,6 +100,7 @@ type QuerierServiceClient interface {
 	// profiles.
 	SelectSeries(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error)
 	// SelectHeatmap returns a heatmap visualization for the requested profiles.
+	// Note: This endpoint is only available in the v2 storage layer
 	SelectHeatmap(context.Context, *connect.Request[v1.SelectHeatmapRequest]) (*connect.Response[v1.SelectHeatmapResponse], error)
 	// Diff returns a diff of two profiles
 	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)
@@ -297,6 +298,7 @@ type QuerierServiceHandler interface {
 	// profiles.
 	SelectSeries(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error)
 	// SelectHeatmap returns a heatmap visualization for the requested profiles.
+	// Note: This endpoint is only available in the v2 storage layer
 	SelectHeatmap(context.Context, *connect.Request[v1.SelectHeatmapRequest]) (*connect.Response[v1.SelectHeatmapResponse], error)
 	// Diff returns a diff of two profiles
 	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)

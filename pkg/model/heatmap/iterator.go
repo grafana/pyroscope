@@ -8,7 +8,7 @@ import (
 // HeatmapValue represents a single heatmap point value
 type HeatmapValue struct {
 	Timestamp     int64
-	Value         uint64
+	Value         int64
 	ProfileId     int64
 	SpanId        uint64
 	AttributeRefs []int64

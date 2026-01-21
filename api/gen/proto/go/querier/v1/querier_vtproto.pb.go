@@ -1444,6 +1444,7 @@ type QuerierServiceClient interface {
 	// profiles.
 	SelectSeries(ctx context.Context, in *SelectSeriesRequest, opts ...grpc.CallOption) (*SelectSeriesResponse, error)
 	// SelectHeatmap returns a heatmap visualization for the requested profiles.
+	// Note: This endpoint is only available in the v2 storage layer
 	SelectHeatmap(ctx context.Context, in *SelectHeatmapRequest, opts ...grpc.CallOption) (*SelectHeatmapResponse, error)
 	// Diff returns a diff of two profiles
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
@@ -1597,6 +1598,7 @@ type QuerierServiceServer interface {
 	// profiles.
 	SelectSeries(context.Context, *SelectSeriesRequest) (*SelectSeriesResponse, error)
 	// SelectHeatmap returns a heatmap visualization for the requested profiles.
+	// Note: This endpoint is only available in the v2 storage layer
 	SelectHeatmap(context.Context, *SelectHeatmapRequest) (*SelectHeatmapResponse, error)
 	// Diff returns a diff of two profiles
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)

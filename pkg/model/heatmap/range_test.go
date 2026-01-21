@@ -91,7 +91,7 @@ func TestRangeHeatmap_MultiplePoints_SameTimeBucket(t *testing.T) {
 			totalCount += count
 		}
 	}
-	assert.Greater(t, nonZeroBuckets, 0, "Expected at least one bucket with counts")
+	assert.Equal(t, nonZeroBuckets, 3, "Expected three bucket with counts")
 	assert.Equal(t, int32(3), totalCount, "Expected total count to match number of points")
 }
 
@@ -343,5 +343,89 @@ func TestRangeHeatmap_TimeBucketAlignment(t *testing.T) {
 	for _, slot := range series[0].Slots {
 		assert.True(t, slot.Timestamp >= 0 && slot.Timestamp <= 600,
 			"Slot timestamp should be within range")
+	}
+}
+
+func TestNormalizeTimestamp(t *testing.T) {
+	tests := []struct {
+		name      string
+		timestamp int64
+		start     int64
+		end       int64
+		step      int64
+		want      int64
+	}{
+		{
+			name:      "timestamp before start - clamped to start",
+			timestamp: 50,
+			start:     200,
+			end:       1000,
+			step:      100,
+			want:      200, // clamped to start
+		},
+		{
+			name:      "timestamp at start",
+			timestamp: 100,
+			start:     100,
+			end:       1000,
+			step:      100,
+			want:      100, // (100-100) + ((100-100)%100) + 100 = 0 + 0 + 100 = 100
+		},
+		{
+			name:      "timestamp in first bucket",
+			timestamp: 150,
+			start:     100,
+			end:       1000,
+			step:      100,
+			want:      200,
+		},
+		{
+			name:      "timestamp at second bucket boundary",
+			timestamp: 200,
+			start:     100,
+			end:       1000,
+			step:      100,
+			want:      200,
+		},
+		{
+			name:      "timestamp in middle bucket",
+			timestamp: 550,
+			start:     100,
+			end:       1000,
+			step:      100,
+			want:      600,
+		},
+		{
+			name:      "timestamp at end",
+			timestamp: 1000,
+			start:     100,
+			end:       1000,
+			step:      100,
+			want:      1000,
+		},
+		{
+			name:      "timestamp after end - clamped to end",
+			timestamp: 1001,
+			start:     100,
+			end:       1000,
+			step:      100,
+			want:      1000, // clamped to end
+		},
+		{
+			name:      "timestamp with odd start",
+			timestamp: 180,
+			start:     12,
+			end:       1000,
+			step:      200,
+			want:      212,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeTimestamp(tt.timestamp, tt.start, tt.end, tt.step)
+			assert.Equal(t, tt.want, got, "normalizeTimestamp(ts=%d, start=%d, end=%d, step=%d) = %d, want %d",
+				tt.timestamp, tt.start, tt.end, tt.step, got, tt.want)
+		})
 	}
 }

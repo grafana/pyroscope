@@ -1449,7 +1449,7 @@
         },
         "value": {
           "type": "string",
-          "format": "uint64",
+          "format": "int64",
           "description": "Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated)."
         },
         "attributeRefs": {

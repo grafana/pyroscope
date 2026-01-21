@@ -1628,7 +1628,7 @@ type HeatmapPoint struct {
 	Timestamp     int64                  `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                                     // Milliseconds since epoch when the profile was captured.
 	ProfileId     int64                  `protobuf:"varint,2,opt,name=profile_id,json=profileId,proto3" json:"profile_id,omitempty"`                    // Unique identifier for the profile (UUID), reference into AttributeTable with only value set
 	SpanId        uint64                 `protobuf:"varint,3,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`                             // Span ID if this profile was split by span during ingestion
-	Value         uint64                 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`                                             // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
+	Value         int64                  `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`                                             // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
 	AttributeRefs []int64                `protobuf:"varint,5,rep,packed,name=attribute_refs,json=attributeRefs,proto3" json:"attribute_refs,omitempty"` // labels as references into AttributeTable
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1685,7 +1685,7 @@ func (x *HeatmapPoint) GetSpanId() uint64 {
 	return 0
 }
 
-func (x *HeatmapPoint) GetValue() uint64 {
+func (x *HeatmapPoint) GetValue() int64 {
 	if x != nil {
 		return x.Value
 	}
@@ -1936,7 +1936,7 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\n" +
 	"profile_id\x18\x02 \x01(\x03R\tprofileId\x12\x17\n" +
 	"\aspan_id\x18\x03 \x01(\x04R\x06spanId\x12\x14\n" +
-	"\x05value\x18\x04 \x01(\x04R\x05value\x12%\n" +
+	"\x05value\x18\x04 \x01(\x03R\x05value\x12%\n" +
 	"\x0eattribute_refs\x18\x05 \x03(\x03R\rattributeRefs\"f\n" +
 	"\rHeatmapSeries\x12%\n" +
 	"\x0eattribute_refs\x18\x01 \x03(\x03R\rattributeRefs\x12.\n" +

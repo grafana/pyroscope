@@ -34,7 +34,7 @@ func RangeHeatmap(
 		labels []*typesv1.LabelPair
 	}
 	var allSeries []seriesData
-	var globalMinValue, globalMaxValue uint64 = math.MaxUint64, 0
+	var globalMinValue, globalMaxValue int64 = math.MaxInt64, 0
 
 	for _, report := range reports {
 		if report == nil {
@@ -70,7 +70,7 @@ func RangeHeatmap(
 		}
 	}
 
-	if len(allSeries) == 0 || globalMinValue == math.MaxUint64 {
+	if len(allSeries) == 0 || globalMinValue == math.MaxInt64 {
 		return nil
 	}
 
@@ -81,9 +81,6 @@ func RangeHeatmap(
 
 	// Create Y-axis bucket boundaries based on global min/max
 	yBuckets := createYAxisBuckets(globalMinValue, globalMaxValue, DefaultYAxisBuckets)
-
-	// Create time buckets
-	timeBuckets := createTimeBuckets(start, end, step)
 
 	// Check if exemplars should be included
 	includeExemplars := exemplarType != typesv1.ExemplarType_EXEMPLAR_TYPE_NONE &&
@@ -106,8 +103,8 @@ func RangeHeatmap(
 	for _, sd := range allSeries {
 		// Create a map to track counts per (time, y-bucket)
 		type cellKey struct {
-			timeIdx int
-			yIdx    int
+			ts   int64
+			yIdx int
 		}
 		cellCounts := make(map[cellKey]int32)
 		cellBestPoint := make(map[cellKey]*queryv1.HeatmapPoint) // Track best exemplar per cell
@@ -118,11 +115,8 @@ func RangeHeatmap(
 				continue
 			}
 
-			// Find time bucket
-			timeIdx := findTimeBucket(point.Timestamp, timeBuckets)
-			if timeIdx < 0 {
-				continue
-			}
+			// normalize timestamp
+			ts := normalizeTimestamp(point.Timestamp, start, end, step)
 
 			// Find value bucket
 			yIdx := findValueBucket(point.Value, yBuckets)
@@ -130,7 +124,7 @@ func RangeHeatmap(
 				continue
 			}
 
-			cell := cellKey{timeIdx, yIdx}
+			cell := cellKey{ts, yIdx}
 			cellCounts[cell]++
 
 			// Track highest-value point for this cell (for exemplar)
@@ -144,7 +138,7 @@ func RangeHeatmap(
 		// Second pass: build slots with counts and exemplars
 		slotsMap := make(map[int64]*typesv1.HeatmapSlot)
 		for cell, count := range cellCounts {
-			timestamp := timeBuckets[cell.timeIdx]
+			timestamp := cell.ts
 			slot, ok := slotsMap[timestamp]
 			if !ok {
 				slot = &typesv1.HeatmapSlot{
@@ -218,20 +212,20 @@ func resolveAttributeRefs(refs []int64, table *queryv1.AttributeTable) []*typesv
 
 // yBucket represents a Y-axis bucket
 type yBucket struct {
-	min uint64
-	max uint64
+	min int64
+	max int64
 }
 
 // createYAxisBuckets creates evenly spaced Y-axis buckets
-func createYAxisBuckets(minValue, maxValue uint64, numBuckets int) []yBucket {
+func createYAxisBuckets(minValue, maxValue int64, numBuckets int) []yBucket {
 	buckets := make([]yBucket, numBuckets)
 	valueRange := float64(maxValue - minValue)
 	bucketSize := valueRange / float64(numBuckets)
 
 	for i := 0; i < numBuckets; i++ {
 		buckets[i] = yBucket{
-			min: minValue + uint64(float64(i)*bucketSize),
-			max: minValue + uint64(float64(i+1)*bucketSize),
+			min: minValue + int64(float64(i)*bucketSize),
+			max: minValue + int64(float64(i+1)*bucketSize),
 		}
 	}
 
@@ -241,31 +235,35 @@ func createYAxisBuckets(minValue, maxValue uint64, numBuckets int) []yBucket {
 	return buckets
 }
 
-// createTimeBuckets creates time bucket boundaries
-func createTimeBuckets(start, end, step int64) []int64 {
-	var buckets []int64
-	for t := start; t <= end; t += step {
-		buckets = append(buckets, t)
+func roundUpTimestamp(timestamp, start, step int64) int64 {
+	startMod := start % step
+	timestamp -= startMod
+	if timestamp%step != 0 {
+		timestamp = ((timestamp / step) + 1) * step
 	}
-	return buckets
+	return timestamp + startMod
 }
 
-// findTimeBucket finds the index of the time bucket for a given timestamp
-func findTimeBucket(timestamp int64, buckets []int64) int {
-	for i, bucket := range buckets {
-		if timestamp <= bucket {
-			return i
-		}
+// normalizeTimestamp calculates the timestamp (xMax) of the bucket the timestamp falls into.
+// The buckets range from:
+// (start-step, start], (start, start+step], (start+step, start+2*step], ...
+func normalizeTimestamp(timestamp, start, end, step int64) int64 {
+	timestamp = roundUpTimestamp(timestamp, start, step)
+	end = roundUpTimestamp(end, start, step)
+
+	if timestamp < start {
+		return start
 	}
-	// If timestamp is beyond all buckets, put it in the last bucket
-	if len(buckets) > 0 {
-		return len(buckets) - 1
+
+	if timestamp > end {
+		return end
 	}
-	return -1
+
+	return timestamp
 }
 
 // findValueBucket finds the index of the Y-axis bucket for a given value
-func findValueBucket(value uint64, buckets []yBucket) int {
+func findValueBucket(value int64, buckets []yBucket) int {
 	for i, bucket := range buckets {
 		if value >= bucket.min && value < bucket.max {
 			return i
@@ -338,7 +336,7 @@ func pointToExemplar(
 		Timestamp: point.Timestamp,
 		ProfileId: profileID,
 		SpanId:    spanIDStr,
-		Value:     point.Value,
+		Value:     uint64(point.Value),
 		Labels:    filteredLabels,
 	}
 }

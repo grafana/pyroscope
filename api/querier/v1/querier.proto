@@ -50,6 +50,7 @@ service QuerierService {
     option (gnostic.openapi.v3.operation).tags = "scope/public";
   }
   // SelectHeatmap returns a heatmap visualization for the requested profiles.
+  // Note: This endpoint is only available in the v2 storage layer
   rpc SelectHeatmap(SelectHeatmapRequest) returns (SelectHeatmapResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/public";
   }

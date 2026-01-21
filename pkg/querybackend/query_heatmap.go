@@ -60,7 +60,7 @@ func rowsIndividual(q *queryContext, b *heatmap.Builder) error {
 			int64(row.Row.Timestamp),
 			row.Row.ID,
 			0,
-			row.Values[0][0].Uint64(),
+			row.Values[0][0].Int64(),
 		)
 	}
 	if err = rows.Err(); err != nil {
@@ -107,7 +107,7 @@ func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
 				int64(row.Row.Timestamp),
 				"",
 				row.Values[0][idx].Uint64(),
-				row.Values[1][idx].Uint64(),
+				row.Values[1][idx].Int64(),
 			)
 		}
 

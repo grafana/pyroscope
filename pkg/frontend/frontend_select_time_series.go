@@ -78,10 +78,3 @@ func (f *Frontend) SelectSeries(
 	series := m.Top(int(c.Msg.GetLimit()))
 	return connect.NewResponse(&querierv1.SelectSeriesResponse{Series: series}), nil
 }
-
-func (f *Frontend) SelectHeatmap(
-	ctx context.Context,
-	c *connect.Request[querierv1.SelectHeatmapRequest],
-) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, nil)
-}

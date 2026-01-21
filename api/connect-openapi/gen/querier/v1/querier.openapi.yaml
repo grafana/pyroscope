@@ -235,8 +235,10 @@ paths:
       tags:
         - scope/public
         - querier.v1.QuerierService
-      summary: SelectHeatmap returns a heatmap visualization for the requested profiles.
-      description: SelectHeatmap returns a heatmap visualization for the requested profiles.
+      summary: 'SelectHeatmap returns a heatmap visualization for the requested profiles.  Note: This endpoint is only available in the v2 storage layer'
+      description: |-
+        SelectHeatmap returns a heatmap visualization for the requested profiles.
+         Note: This endpoint is only available in the v2 storage layer
       operationId: querier.v1.QuerierService.SelectHeatmap
       parameters:
         - name: Connect-Protocol-Version

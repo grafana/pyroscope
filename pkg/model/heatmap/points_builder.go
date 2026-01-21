@@ -21,10 +21,10 @@ type exemplar struct {
 	profileID   string
 	spanID      uint64
 	labelSetRef int
-	value       uint64
+	value       int64
 }
 
-// newPointsBuilder creates a new ExemplarBuilder.
+// newPointsBuilder creates a new pointsBuilder.
 func newPointsBuilder() *pointsBuilder {
 	return &pointsBuilder{
 		labelSetIndex: make(map[uint64]int),
@@ -34,7 +34,7 @@ func newPointsBuilder() *pointsBuilder {
 }
 
 // Add adds an exemplar with its full labels.
-func (eb *pointsBuilder) add(fp prommodel.Fingerprint, labels model.Labels, ts int64, profileID string, spanID uint64, value uint64) {
+func (pb *pointsBuilder) add(fp prommodel.Fingerprint, labels model.Labels, ts int64, profileID string, spanID uint64, value int64) {
 	if profileID == "" && spanID == 0 {
 		return
 	}
@@ -46,11 +46,11 @@ func (eb *pointsBuilder) add(fp prommodel.Fingerprint, labels model.Labels, ts i
 		value:     value,
 	}
 
-	labelSetIdx, labelSetExists := eb.labelSetIndex[uint64(fp)]
+	labelSetIdx, labelSetExists := pb.labelSetIndex[uint64(fp)]
 
-	pos, exemplarExists := slices.BinarySearchFunc(eb.exemplars, e, cmpExemplar)
+	pos, exemplarExists := slices.BinarySearchFunc(pb.exemplars, e, cmpExemplar)
 	if exemplarExists {
-		matched := &eb.exemplars[pos]
+		matched := &pb.exemplars[pos]
 		// add my value
 		matched.value += e.value
 
@@ -60,46 +60,51 @@ func (eb *pointsBuilder) add(fp prommodel.Fingerprint, labels model.Labels, ts i
 		}
 
 		// build intersected label set, they are cloned so this is possible to do
-		eb.labelSets[matched.labelSetRef] = eb.labelSets[matched.labelSetRef].Intersect(labels)
+		pb.labelSets[matched.labelSetRef] = pb.labelSets[matched.labelSetRef].Intersect(labels)
 
 		// point to new label set
-		eb.labelSetIndex[uint64(fp)] = matched.labelSetRef
+		pb.labelSetIndex[uint64(fp)] = matched.labelSetRef
 
 		return
 	}
 
 	if !labelSetExists {
-		e.labelSetRef = len(eb.labelSets)
-		eb.labelSets = append(eb.labelSets, labels.Clone())
-		eb.labelSetIndex[uint64(fp)] = e.labelSetRef
+		e.labelSetRef = len(pb.labelSets)
+		pb.labelSets = append(pb.labelSets, labels.Clone())
+		pb.labelSetIndex[uint64(fp)] = e.labelSetRef
 	} else {
 		// Use the existing label set for this fingerprint, but intersect with new labels
 		// This ensures only common labels across all exemplars with this fingerprint are kept
 		e.labelSetRef = labelSetIdx
-		eb.labelSets[e.labelSetRef] = eb.labelSets[e.labelSetRef].Intersect(labels)
+		pb.labelSets[e.labelSetRef] = pb.labelSets[e.labelSetRef].Intersect(labels)
 	}
 
-	eb.exemplars = slices.Insert(eb.exemplars, pos, e)
+	pb.exemplars = slices.Insert(pb.exemplars, pos, e)
 }
 
 func cmpExemplar(a, b exemplar) int {
-	if r := a.timestamp - b.timestamp; r != 0 {
-		return int(r)
+	if a.timestamp < b.timestamp {
+		return -1
 	}
-	if r := a.spanID - b.spanID; r != 0 {
-		return int(r)
+	if a.timestamp > b.timestamp {
+		return 1
 	}
-
+	if a.spanID < b.spanID {
+		return -1
+	}
+	if a.spanID > b.spanID {
+		return 1
+	}
 	return strings.Compare(a.profileID, b.profileID)
 }
 
-func (eb *pointsBuilder) forEach(f func(labels model.Labels, ts int64, profileID string, spanID uint64, value uint64)) {
-	for _, exemplar := range eb.exemplars {
-		f(eb.labelSets[exemplar.labelSetRef], exemplar.timestamp, exemplar.profileID, exemplar.spanID, exemplar.value)
+func (pb *pointsBuilder) forEach(f func(labels model.Labels, ts int64, profileID string, spanID uint64, value int64)) {
+	for _, exemplar := range pb.exemplars {
+		f(pb.labelSets[exemplar.labelSetRef], exemplar.timestamp, exemplar.profileID, exemplar.spanID, exemplar.value)
 	}
 }
 
 // Count returns the number of raw exemplars added.
-func (eb *pointsBuilder) count() int {
-	return len(eb.exemplars)
+func (pb *pointsBuilder) count() int {
+	return len(pb.exemplars)
 }

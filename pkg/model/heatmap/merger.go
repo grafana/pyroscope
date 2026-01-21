@@ -58,13 +58,16 @@ func (m *Merger) MergeHeatmap(report *queryv1.HeatmapReport) {
 				points:        make([]*queryv1.HeatmapPoint, 0, len(s.Points)),
 			}
 			existing = m.series[key]
+		} else {
+			// Ensure slice is big enough to hold all the points
+			existing.points = slices.Grow(existing.points, len(s.Points))
 		}
 
 		// Remap and add points
 		for _, p := range s.Points {
 			remappedPoint := &queryv1.HeatmapPoint{
 				Timestamp:     p.Timestamp,
-				ProfileId:     m.remapProfileId(p.ProfileId, report.AttributeTable, refMap),
+				ProfileId:     m.remapProfileId(p.ProfileId, refMap),
 				SpanId:        p.SpanId,
 				Value:         p.Value,
 				AttributeRefs: m.remapRefs(p.AttributeRefs, refMap),
@@ -77,52 +80,55 @@ func (m *Merger) MergeHeatmap(report *queryv1.HeatmapReport) {
 // remapAttributeTable adds entries from the input attribute table to the merger's
 // attribute table and returns a mapping from old refs to new refs
 func (m *Merger) remapAttributeTable(table *queryv1.AttributeTable) map[int64]int64 {
-	if table == nil || len(table.Keys) == 0 {
-		return nil
-	}
-
 	// Keys and Values must have the same length - this is a data corruption bug
 	if len(table.Keys) != len(table.Values) {
 		panic(fmt.Sprintf("attribute table corruption: Keys length (%d) != Values length (%d)", len(table.Keys), len(table.Values)))
 	}
 
-	refMap := make(map[int64]int64, len(table.Keys))
+	// only build the refMap if there we are not the first report
+	var refMap map[int64]int64
+	if len(table.Keys) > 0 {
+		refMap = make(map[int64]int64, len(table.Keys))
+	}
 	for i := range table.Keys {
 		oldRef := int64(i)
 		key := unique.Make(table.Keys[i])
 		value := unique.Make(table.Values[i])
 		newRef := m.attributeTable.lookupOrAdd(attributeKey{key: key, value: value})
-		refMap[oldRef] = newRef
+		if refMap != nil {
+			refMap[oldRef] = newRef
+		}
 	}
 	return refMap
 }
 
 // remapRefs remaps a slice of attribute refs using the provided mapping
 func (m *Merger) remapRefs(refs []int64, refMap map[int64]int64) []int64 {
-	if len(refs) == 0 || refMap == nil {
+	// if we are the first report, we don't have a refMap yet
+	if refMap == nil {
 		return refs
 	}
 
-	remapped := make([]int64, len(refs))
 	for i, ref := range refs {
 		if newRef, ok := refMap[ref]; ok {
-			remapped[i] = newRef
+			refs[i] = newRef
 		} else {
-			remapped[i] = ref
+			panic(fmt.Sprintf("attribute ref %d not found in attribute table", ref))
 		}
 	}
-	return remapped
+	return refs
 }
 
 // remapProfileId remaps a profile ID (which is a reference into the attribute table)
-func (m *Merger) remapProfileId(profileId int64, table *queryv1.AttributeTable, refMap map[int64]int64) int64 {
-	if table == nil || refMap == nil {
+func (m *Merger) remapProfileId(profileId int64, refMap map[int64]int64) int64 {
+	// if we are the first report, we don't have a refMap yet
+	if refMap == nil {
 		return profileId
 	}
 	if newRef, ok := refMap[profileId]; ok {
 		return newRef
 	}
-	return profileId
+	panic(fmt.Sprintf("profile ID ref %d not found in attribute table", profileId))
 }
 
 // IsEmpty returns true if no series have been merged

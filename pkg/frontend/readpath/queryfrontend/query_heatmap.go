@@ -88,7 +88,7 @@ func (q *QueryFrontend) SelectHeatmap(
 	// Convert HeatmapReport to HeatmapSeries using RangeHeatmap
 	series := heatmap.RangeHeatmap(
 		[]*queryv1.HeatmapReport{report.Heatmap},
-		start,
+		c.Msg.Start, // This uses the query parameter instead of the shifted "start". So the first time slot of the heatmap ends at start
 		c.Msg.End,
 		stepMs,
 		c.Msg.GetGroupBy(),
