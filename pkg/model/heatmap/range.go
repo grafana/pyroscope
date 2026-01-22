@@ -336,7 +336,7 @@ func pointToExemplar(
 		Timestamp: point.Timestamp,
 		ProfileId: profileID,
 		SpanId:    spanIDStr,
-		Value:     uint64(point.Value),
+		Value:     point.Value,
 		Labels:    filteredLabels,
 	}
 }

@@ -60,7 +60,7 @@ func TestTimeSeriesBuilder_BuildWithExemplars_AttachesExemplars(t *testing.T) {
 
 	exemplar := series[0].Points[0].Exemplars[0]
 	assert.Equal(t, "profile-1", exemplar.ProfileId)
-	assert.Equal(t, uint64(100), exemplar.Value)
+	assert.Equal(t, int64(100), exemplar.Value)
 	assert.Equal(t, int64(1000), exemplar.Timestamp)
 
 	assert.Len(t, exemplar.Labels, 2)
@@ -172,7 +172,7 @@ func TestExemplarBuilder_SameProfileIDDifferentValues(t *testing.T) {
 	exemplar := exemplars[0]
 	assert.Equal(t, "profile-123", exemplar.ProfileId)
 	assert.Equal(t, int64(1000), exemplar.Timestamp)
-	assert.Equal(t, uint64(12940000000), exemplar.Value)
+	assert.Equal(t, int64(12940000000), exemplar.Value)
 
 	// Labels should be intersected
 	assert.Len(t, exemplar.Labels, 1)
@@ -205,11 +205,11 @@ func TestExemplarBuilder_DifferentProfileIDsNotSummed(t *testing.T) {
 
 	// First exemplar
 	assert.Equal(t, "profile-abc", exemplars[0].ProfileId)
-	assert.Equal(t, uint64(110000000), exemplars[0].Value)
+	assert.Equal(t, int64(110000000), exemplars[0].Value)
 
 	// Second exemplar
 	assert.Equal(t, "profile-def", exemplars[1].ProfileId)
-	assert.Equal(t, uint64(150000000), exemplars[1].Value)
+	assert.Equal(t, int64(150000000), exemplars[1].Value)
 }
 
 func TestTimeSeriesBuilder_MultipleSeries(t *testing.T) {
