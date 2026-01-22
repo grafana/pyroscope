@@ -222,12 +222,6 @@ func (s *Store) ShouldInitiateUpload(ctx context.Context, req *debuginfopb.Shoul
 					ShouldInitiateUpload: true,
 					Reason:               ReasonDebuginfoNotEqual,
 				}, nil
-			//case debuginfopb.DebuginfoUpload_STATE_PURGED:
-			//	// Debuginfo was purged, allow re-uploading
-			//	return &debuginfopb.ShouldInitiateUploadResponse{
-			//		ShouldInitiateUpload: true,
-			//		Reason:               ReasonDebuginfoPurged,
-			//	}, nil
 			default:
 				return nil, status.Error(codes.Internal, "metadata inconsistency: unknown upload state")
 			}
