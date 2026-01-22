@@ -60,7 +60,7 @@ func TestTimeSeriesBuilder_BuildWithExemplars_AttachesExemplars(t *testing.T) {
 
 	exemplar := series[0].Points[0].Exemplars[0]
 	assert.Equal(t, "profile-1", exemplar.ProfileId)
-	assert.Equal(t, uint64(100), exemplar.Value)
+	assert.Equal(t, int64(100), exemplar.Value)
 	assert.Equal(t, int64(1000), exemplar.Timestamp)
 
 	assert.Len(t, exemplar.Labels, 2)
@@ -172,7 +172,7 @@ func TestExemplarBuilder_SameProfileIDDifferentValues(t *testing.T) {
 	exemplar := exemplars[0]
 	assert.Equal(t, "profile-123", exemplar.ProfileId)
 	assert.Equal(t, int64(1000), exemplar.Timestamp)
-	assert.Equal(t, uint64(12940000000), exemplar.Value)
+	assert.Equal(t, int64(12940000000), exemplar.Value)
 
 	// Labels should be intersected
 	assert.Len(t, exemplar.Labels, 1)

@@ -1114,7 +1114,7 @@ type Exemplar struct {
 	// Span ID if this profile was split by span during ingestion.
 	SpanId string `protobuf:"bytes,3,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
 	// Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
-	Value uint64 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
+	Value int64 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
 	// Series labels that are NOT included in the group_by query parameter.
 	// These labels complete the full series identity of this exemplar's profile.
 	// For example, if group_by=["service"], this would contain labels like "pod",
@@ -1176,7 +1176,7 @@ func (x *Exemplar) GetSpanId() string {
 	return ""
 }
 
-func (x *Exemplar) GetValue() uint64 {
+func (x *Exemplar) GetValue() int64 {
 	if x != nil {
 		return x.Value
 	}
@@ -1390,7 +1390,7 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"profile_id\x18\x02 \x01(\tB+\xbaG(:&\x12$7c9e6679-7425-40de-944b-e07fc1f90ae7R\tprofileId\x120\n" +
 	"\aspan_id\x18\x03 \x01(\tB\x17\xbaG\x14:\x12\x12\x1000f067aa0ba902b7R\x06spanId\x12'\n" +
-	"\x05value\x18\x04 \x01(\x04B\x11\xbaG\x0e:\f\x12\n" +
+	"\x05value\x18\x04 \x01(\x03B\x11\xbaG\x0e:\f\x12\n" +
 	"2450000000R\x05value\x12+\n" +
 	"\x06labels\x18\x05 \x03(\v2\x13.types.v1.LabelPairR\x06labels\"i\n" +
 	"\rHeatmapSeries\x12+\n" +

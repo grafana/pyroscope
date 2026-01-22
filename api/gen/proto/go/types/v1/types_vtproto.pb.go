@@ -4873,7 +4873,7 @@ func (m *Exemplar) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Value |= uint64(b&0x7F) << shift
+				m.Value |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

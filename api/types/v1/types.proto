@@ -157,7 +157,7 @@ message Exemplar {
   string span_id = 3 [(gnostic.openapi.v3.property).example = {yaml: "00f067aa0ba902b7"}];
 
   // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
-  uint64 value = 4 [(gnostic.openapi.v3.property).example = {yaml: "2450000000"}];
+  int64 value = 4 [(gnostic.openapi.v3.property).example = {yaml: "2450000000"}];
 
   // Series labels that are NOT included in the group_by query parameter.
   // These labels complete the full series identity of this exemplar's profile.
