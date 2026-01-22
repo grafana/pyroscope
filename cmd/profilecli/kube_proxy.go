@@ -55,7 +55,7 @@ func addKubeProxyParams(cmd commander) *kubeProxyParams {
 	cmd.Flag("context", "Kubernetes context to use").Short('c').Default("").StringVar(&params.Context)
 	cmd.Flag("namespace", "Kubernetes namespace").Short('n').Default("default").StringVar(&params.Namespace)
 	cmd.Flag("label-selector", "Label selector for Pyroscope services").Short('l').
-		Default("app.kubernetes.io/name=pyroscope").StringVar(&params.LabelSelector)
+		Default("").StringVar(&params.LabelSelector)
 	cmd.Flag("listen-addr", "Address to listen on (host:port)").
 		Default("127.0.0.1:4242").StringVar(&params.ListenAddr)
 
