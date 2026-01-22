@@ -1536,14 +1536,14 @@ func Test_Tree_Pprof_conversion(t *testing.T) {
 	// getting tree from pprof - losing data (mappings, lines, inline functions, etc)
 	bytes, err := model.TreeFromBackendProfile(p.Profile, maxNodes)
 	require.NoError(t, err)
-	treeFromPprof, err := model.UnmarshalTree(bytes)
+	treeFromPprof, err := model.UnmarshalTree[model.FuntionName, model.FuntionNameI](bytes)
 	require.NoError(t, err)
 	pprofFromTree := FromTree(treeFromPprof, &profileType, timeNanos)
 
 	// repeat the process
 	bytes, err = model.TreeFromBackendProfile(pprofFromTree, maxNodes)
 	require.NoError(t, err)
-	treeFromPprofFromTree, err := model.UnmarshalTree(bytes)
+	treeFromPprofFromTree, err := model.UnmarshalTree[model.FuntionName, model.FuntionNameI](bytes)
 	require.NoError(t, err)
 	pprofFromTreeFromTree := FromTree(treeFromPprofFromTree, &profileType, timeNanos)
 

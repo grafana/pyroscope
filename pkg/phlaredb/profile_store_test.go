@@ -521,10 +521,10 @@ func TestProfileStore_Querying(t *testing.T) {
 		result, err := bidi.Receive()
 		require.NoError(t, err)
 
-		at, err := phlaremodel.UnmarshalTree(result.Result.TreeBytes)
+		at, err := phlaremodel.UnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](result.Result.TreeBytes)
 		require.NoError(t, err)
 
-		et := new(phlaremodel.Tree)
+		et := new(phlaremodel.FunctionNameTree)
 		et.InsertStack(90, "func2", "func1")
 		et.InsertStack(180, "func1")
 

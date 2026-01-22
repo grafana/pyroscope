@@ -13,7 +13,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
-func NewFlameGraph(t *Tree, maxNodes int64) *querierv1.FlameGraph {
+func NewFlameGraph(t *FunctionNameTree, maxNodes int64) *querierv1.FlameGraph {
 	var total, max int64
 	for _, node := range t.root {
 		total += node.total
@@ -32,7 +32,7 @@ func NewFlameGraph(t *Tree, maxNodes int64) *querierv1.FlameGraph {
 	stack := stackNodePool.Get().(*Stack[stackNode])
 	defer stackNodePool.Put(stack)
 	stack.Reset()
-	stack.Push(stackNode{xOffset: 0, level: 0, node: &node{children: t.root, total: total}})
+	stack.Push(stackNode{xOffset: 0, level: 0, node: &node[FuntionName]{children: t.root, total: total}})
 
 	for {
 		current, hasMoreNodes := stack.Pop()
@@ -45,13 +45,14 @@ func NewFlameGraph(t *Tree, maxNodes int64) *querierv1.FlameGraph {
 		var i int
 		var ok bool
 		name := current.node.name
-		if i, ok = nameLocationCache[name]; !ok {
+		nameStr := string(name)
+		if i, ok = nameLocationCache[nameStr]; !ok {
 			i = len(names)
 			if i == 0 {
-				name = "total"
+				nameStr = "total"
 			}
-			nameLocationCache[name] = i
-			names = append(names, name)
+			nameLocationCache[nameStr] = i
+			names = append(names, nameStr)
 		}
 
 		if current.level == len(res) {
@@ -81,7 +82,7 @@ func NewFlameGraph(t *Tree, maxNodes int64) *querierv1.FlameGraph {
 			}
 		}
 		if otherTotal != 0 {
-			child := &node{
+			child := &node[FuntionName]{
 				name:   "other",
 				parent: current.node,
 				self:   otherTotal,
@@ -177,11 +178,11 @@ func ExportDiffToFlamebearer(fg *querierv1.FlameGraphDiff, profileType *typesv1.
 
 type FlameGraphMerger struct {
 	mu sync.Mutex
-	t  *Tree
+	t  *FunctionNameTree
 }
 
 func NewFlameGraphMerger() *FlameGraphMerger {
-	return &FlameGraphMerger{t: new(Tree)}
+	return &FlameGraphMerger{t: new(FunctionNameTree)}
 }
 
 // MergeFlameGraph adds the flame graph stack traces to the resulting
@@ -192,6 +193,7 @@ func (m *FlameGraphMerger) MergeFlameGraph(src *querierv1.FlameGraph) {
 	defer m.mu.Unlock()
 	deltaDecoding(src.Levels, 0, 4)
 	dst := make([]string, 0, len(src.Levels))
+	stack := make([]FuntionName, 0, len(src.Levels))
 	for i, l := range src.Levels {
 		if i == 0 {
 			// Skip the root node ("total").
@@ -201,14 +203,19 @@ func (m *FlameGraphMerger) MergeFlameGraph(src *querierv1.FlameGraph) {
 			self := l.Values[j+2]
 			if self > 0 {
 				dst = buildStack(dst, src, i, j)
-				m.t.InsertStack(self, dst...)
+				// Convert []string to []FuntionName
+				stack = stack[:0]
+				for _, s := range dst {
+					stack = append(stack, FuntionName(s))
+				}
+				m.t.InsertStack(self, stack...)
 			}
 		}
 	}
 }
 
 func (m *FlameGraphMerger) MergeTreeBytes(src []byte) error {
-	t, err := UnmarshalTree(src)
+	t, err := UnmarshalTree[FuntionName, FuntionNameI](src)
 	if err != nil {
 		return err
 	}
@@ -218,12 +225,12 @@ func (m *FlameGraphMerger) MergeTreeBytes(src []byte) error {
 	return nil
 }
 
-func (m *FlameGraphMerger) Tree() *Tree { return m.t }
+func (m *FlameGraphMerger) Tree() *FunctionNameTree { return m.t }
 
 func (m *FlameGraphMerger) FlameGraph(maxNodes int64) *querierv1.FlameGraph {
 	t := m.t
 	if t == nil {
-		t = new(Tree)
+		t = new(FunctionNameTree)
 	}
 	return NewFlameGraph(t, maxNodes)
 }

@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
@@ -236,13 +237,57 @@ func (r *Resolver) partition(partition uint64) *lazyPartition {
 	return p
 }
 
-func (r *Resolver) Tree() (*model.Tree, error) {
+type ResultBuilder interface {
+	KeepSymbol(model.LocationRefName) model.LocationRefName
+	Build(*queryv1.TreeSymbols)
+}
+
+func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuilder, error) {
+	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.LocationRefNameTree")
+	defer span.Finish()
+	sym := NewSymbolMerger()
+	var lock sync.Mutex
+	tree := new(model.LocationRefNameTree)
+	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+		locMap := make(map[uint32]struct{})
+		lookup := func(locID int32) model.LocationRefName {
+			locMap[uint32(locID)] = struct{}{}
+			return model.LocationRefName(locID)
+		}
+		resolved, err := symbols.LocationRefNameTree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts), lookup)
+		if err != nil {
+			return err
+		}
+
+		locIDs := sortedList(locMap, nil)
+
+		// merge symbols
+		cb, err := sym.addSymbols(symbols, locIDs)
+		if err != nil {
+			return err
+		}
+		resolved.FormatNodeNames(cb)
+
+		lock.Lock()
+		tree.Merge(resolved)
+		lock.Unlock()
+		return nil
+	})
+	tree.Total()
+	return tree, sym.ResultBuilder(), err
+}
+
+func (r *Resolver) Tree() (*model.FunctionNameTree, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Tree")
 	defer span.Finish()
 	var lock sync.Mutex
-	tree := new(model.Tree)
+
+	tree := new(model.FunctionNameTree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
-		resolved, err := symbols.Tree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
+		lookup := func(i int32) model.FuntionName {
+			return model.FuntionName(symbols.Strings[i])
+		}
+		resolved, err := symbols.Tree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts), lookup)
 		if err != nil {
 			return err
 		}
@@ -337,6 +382,17 @@ func (r *Symbols) Tree(
 	appender *SampleAppender,
 	maxNodes int64,
 	selection *SelectedStackTraces,
-) (*model.Tree, error) {
-	return buildTree(ctx, r, appender, maxNodes, selection)
+	lookup func(int32) model.FuntionName,
+) (*model.FunctionNameTree, error) {
+	return buildTree[model.FuntionName, model.FuntionNameI](ctx, r, appender, maxNodes, selection, lookup)
+}
+
+func (r *Symbols) LocationRefNameTree(
+	ctx context.Context,
+	appender *SampleAppender,
+	maxNodes int64,
+	selection *SelectedStackTraces,
+	lookup func(int32) model.LocationRefName,
+) (*model.LocationRefNameTree, error) {
+	return buildTree[model.LocationRefName, model.LocationRefNameI](ctx, r, appender, maxNodes, selection, lookup)
 }
