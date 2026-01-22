@@ -52,8 +52,8 @@ func addKubeProxyParams(cmd commander) *kubeProxyParams {
 	params := &kubeProxyParams{}
 	params.phlareClient = addPhlareClient(cmd)
 
-	cmd.Flag("context", "Kubernetes context to use").Short('c').Default("").StringVar(&params.Context)
-	cmd.Flag("namespace", "Kubernetes namespace").Short('n').Default("default").StringVar(&params.Namespace)
+	cmd.Flag("context", "Kubernetes context to use").Short('c').Default("").Envar("KUBERNETES_CONTEXT").StringVar(&params.Context)
+	cmd.Flag("namespace", "Kubernetes namespace").Short('n').Default("default").Envar("KUBERNETES_NAMESPACE").StringVar(&params.Namespace)
 	cmd.Flag("label-selector", "Label selector for Pyroscope services").Short('l').
 		Default("").StringVar(&params.LabelSelector)
 	cmd.Flag("listen-addr", "Address to listen on (host:port)").
