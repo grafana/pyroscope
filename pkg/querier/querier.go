@@ -558,7 +558,7 @@ func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffR
 		sp.Finish()
 	}()
 
-	var leftTree, rightTree *phlaremodel.Tree
+	var leftTree, rightTree *phlaremodel.FunctionNameTree
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -732,7 +732,7 @@ func isEndpointNotExistingErr(err error) bool {
 	return err.Error() == "405 Method Not Allowed"
 }
 
-func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.Tree, error) {
+func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.FunctionNameTree, error) {
 	// determine the block hints
 	plan, err := q.blockSelect(ctx, model.Time(req.Start), model.Time(req.End))
 	if isEndpointNotExistingErr(err) {
@@ -765,7 +765,7 @@ func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStac
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
-	var ingesterTree, storegatewayTree *phlaremodel.Tree
+	var ingesterTree, storegatewayTree *phlaremodel.FunctionNameTree
 	g.Go(func() error {
 		var err error
 		ingesterTree, err = q.selectTreeFromIngesters(gCtx, storeQueries.ingester.MergeStacktracesRequest(req), plan)
@@ -1133,7 +1133,7 @@ func uniqueSortedStrings(responses []ResponseFromReplica[[]string]) []string {
 	return result
 }
 
-func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {
+func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.FunctionNameTree, error) {
 	// determine the block hints
 	plan, err := q.blockSelect(ctx, model.Time(req.Start), model.Time(req.End))
 	if isEndpointNotExistingErr(err) {
@@ -1166,7 +1166,7 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
-	var ingesterTree, storegatewayTree *phlaremodel.Tree
+	var ingesterTree, storegatewayTree *phlaremodel.FunctionNameTree
 	g.Go(func() error {
 		var err error
 		ingesterTree, err = q.selectSpanProfileFromIngesters(gCtx, storeQueries.ingester.MergeSpanProfileRequest(req), plan)

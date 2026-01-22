@@ -236,11 +236,11 @@ func (r *Resolver) partition(partition uint64) *lazyPartition {
 	return p
 }
 
-func (r *Resolver) Tree() (*model.Tree, error) {
+func (r *Resolver) Tree() (*model.FunctionNameTree, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Tree")
 	defer span.Finish()
 	var lock sync.Mutex
-	tree := new(model.Tree)
+	tree := new(model.FunctionNameTree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
 		resolved, err := symbols.Tree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
 		if err != nil {
@@ -337,6 +337,6 @@ func (r *Symbols) Tree(
 	appender *SampleAppender,
 	maxNodes int64,
 	selection *SelectedStackTraces,
-) (*model.Tree, error) {
+) (*model.FunctionNameTree, error) {
 	return buildTree(ctx, r, appender, maxNodes, selection)
 }
