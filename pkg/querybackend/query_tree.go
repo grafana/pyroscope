@@ -106,6 +106,23 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		return nil, err
 	}
 
+	// output full pprof tree if that's requested
+	if query.Tree.FullSymbols {
+		tree, symbolBuilder, err := resolver.LocationRefNameTree()
+		if err != nil {
+			return nil, err
+		}
+		resp := &queryv1.Report{
+			Tree: &queryv1.TreeReport{
+				Query:   query.Tree.CloneVT(),
+				Tree:    tree.Bytes(query.Tree.GetMaxNodes(), symbolBuilder.KeepSymbol),
+				Symbols: new(queryv1.TreeSymbols),
+			},
+		}
+		symbolBuilder.Build(resp.Tree.Symbols)
+		return resp, nil
+	}
+
 	tree, err := resolver.Tree()
 	if err != nil {
 		return nil, err
@@ -114,7 +131,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	resp := &queryv1.Report{
 		Tree: &queryv1.TreeReport{
 			Query: query.Tree.CloneVT(),
-			Tree:  tree.Bytes(query.Tree.GetMaxNodes()),
+			Tree:  tree.Bytes(query.Tree.GetMaxNodes(), nil),
 		},
 	}
 	return resp, nil
@@ -123,25 +140,54 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 type treeAggregator struct {
 	init  sync.Once
 	query *queryv1.TreeQuery
-	tree  *model.TreeMerger
+	tree  *model.TreeMerger[model.FuntionName, model.FuntionNameI]
+
+	lrTree       *model.TreeMerger[model.LocationRefName, model.LocationRefNameI]
+	symbolLock   sync.Mutex
+	symbolMerger *symdb.SymbolMerger
 }
 
 func newTreeAggregator(*queryv1.InvokeRequest) aggregator { return new(treeAggregator) }
 
 func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 	r := report.Tree
+	if r.Query.FullSymbols {
+		a.init.Do(func() {
+			a.lrTree = model.NewTreeMerger[model.LocationRefName, model.LocationRefNameI]()
+			a.query = r.Query.CloneVT()
+			a.symbolMerger = symdb.NewSymbolMerger()
+		})
+		a.symbolLock.Lock()
+		defer a.symbolLock.Unlock()
+		adder, err := a.symbolMerger.Add(r.Symbols)
+		if err != nil {
+			return err
+		}
+		return a.lrTree.MergeTreeBytes(r.Tree, model.WithTreeMergeFormatNodeNames(adder))
+	}
+
 	a.init.Do(func() {
-		a.tree = model.NewTreeMerger()
+		a.tree = model.NewTreeMerger[model.FuntionName, model.FuntionNameI]()
 		a.query = r.Query.CloneVT()
 	})
 	return a.tree.MergeTreeBytes(r.Tree)
 }
 
 func (a *treeAggregator) build() *queryv1.Report {
-	return &queryv1.Report{
+	result := &queryv1.Report{
 		Tree: &queryv1.TreeReport{
 			Query: a.query,
-			Tree:  a.tree.Tree().Bytes(a.query.GetMaxNodes()),
 		},
 	}
+
+	if a.query.FullSymbols {
+		builder := a.symbolMerger.ResultBuilder()
+		result.Tree.Tree = a.lrTree.Tree().Bytes(a.query.GetMaxNodes(), builder.KeepSymbol)
+		result.Tree.Symbols = new(queryv1.TreeSymbols)
+		builder.Build(result.Tree.Symbols)
+		return result
+	}
+
+	result.Tree.Tree = a.tree.Tree().Bytes(a.query.GetMaxNodes(), nil)
+	return result
 }

@@ -313,36 +313,46 @@ func unsafeStringBytes(s string) []byte {
 	return unsafe.Slice(unsafe.StringData(s), len(s))
 }
 
-func (t *StacktraceTree) Tree(maxNodes int64, names []string) *Tree {
-	if len(t.Nodes) < 2 || len(names) == 0 {
+func (t *StacktraceTree) Tree(maxNodes int64, names []FuntionName) *FunctionNameTree {
+	lookup := func(i int32) FuntionName {
+		return names[i]
+	}
+	return TreeFromStacktraceTree[FuntionName, FuntionNameI](t, maxNodes, lookup)
+}
+
+func TreeFromStacktraceTree[N NodeName, I NodeNameI[N]](t *StacktraceTree, maxNodes int64, lookup func(int32) N) *Tree[N, I] {
+	var initializer I
+	if len(t.Nodes) < 2 {
 		// stack trace tree has root at 0: trees with less
 		// than 2 nodes are considered empty.
-		return new(Tree)
+		return new(Tree[N, I])
 	}
 
 	nodesSize := maxNodes
 	if nodesSize < 1 || nodesSize > 10<<10 {
 		nodesSize = 1 << 10 // Sane default.
 	}
-	root := new(node) // Virtual root node.
-	nodes := make([]*node, 1, nodesSize)
+	root := new(node[N]) // Virtual root node.
+	nodes := make([]*node[N], 1, nodesSize)
 	nodes[0] = root
-	var current *node
+	var current *node[N]
+
+	nodeBuf := newNodeBuffer[N](int(nodesSize))
 
 	_ = t.Traverse(maxNodes, func(index int32, children []int32) error {
 		current, nodes = nodes[len(nodes)-1], nodes[:len(nodes)-1]
 		sn := &t.Nodes[index]
-		var name string
+		var name N
 		if sn.Location < 0 {
-			name = truncatedNodeName
+			name = initializer.newOther()
 			sn.Total = sn.Value
 		} else {
-			name = names[sn.Location]
+			name = lookup(sn.Location)
 		}
-		n := current.insert(name)
+		n := current.insert(name, nodeBuf.newNode)
 		n.self = sn.Value
 		n.total = sn.Total
-		n.children = make([]*node, 0, len(children))
+		n.children = make([]*node[N], 0, len(children))
 		for i := 0; i < len(children); i++ {
 			nodes = append(nodes, n)
 		}
@@ -355,5 +365,5 @@ func (t *StacktraceTree) Tree(maxNodes int64, names []string) *Tree {
 		n.parent.parent = nil
 	}
 
-	return &Tree{root: s}
+	return &Tree[N, I]{root: s}
 }

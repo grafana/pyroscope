@@ -137,13 +137,13 @@ func pprofFingerprint(p *googlev1.Profile, typ int) [][2]uint64 {
 	return s
 }
 
-func treeFingerprint(t *phlaremodel.Tree) [][2]uint64 {
+func treeFingerprint(t *phlaremodel.FunctionNameTree) [][2]uint64 {
 	m := make([][2]uint64, 0, 1<<10)
 	h := xxhash.New()
-	t.IterateStacks(func(_ string, self int64, stack []string) {
+	t.IterateStacks(func(_ phlaremodel.FuntionName, self int64, stack []phlaremodel.FuntionName) {
 		h.Reset()
 		for _, loc := range stack {
-			_, _ = h.WriteString(loc)
+			_, _ = h.WriteString(string(loc))
 		}
 		m = append(m, [2]uint64{h.Sum64(), uint64(self)})
 	})
