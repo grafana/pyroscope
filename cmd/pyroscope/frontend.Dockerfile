@@ -1,4 +1,4 @@
-FROM node:24@sha256:aa648b387728c25f81ff811799bbf8de39df66d7e2d9b3ab55cc6300cb9175d9 AS builder
+FROM node:22@sha256:cd7bcd2e7a1e6f72052feb023c7f6b722205d3fcab7bbcbd2d1bfdab10b1e935 AS builder
 
 WORKDIR /pyroscope
 COPY yarn.lock package.json tsconfig.json ./

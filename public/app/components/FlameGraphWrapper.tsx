@@ -60,6 +60,7 @@ export function FlameGraphWrapper(props: Props) {
                 variant={'secondary'}
                 fill={'outline'}
                 onClick={onClick}
+                aria-label="Export Data"
               />
             </Tooltip>
           );
