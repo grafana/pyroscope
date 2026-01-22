@@ -53,6 +53,7 @@ func addClientCapabilitiesHeader(r *http.Request, mime string, clientCapabilitie
 }
 
 type phlareClient struct {
+	FeatureFlags       []string
 	TenantID           string
 	URL                string
 	BearerToken        string
@@ -88,7 +89,9 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 
 	addClientCapabilitiesHeader(req, acceptHeaderMimeType, acceptHeaderClientCapabilities)
 	req.Header.Set("User-Agent", userAgentHeader)
-
+	for _, v := range a.client.FeatureFlags {
+		req.Header.Add("X-Pyroscope-Feature-Flag", v)
+	}
 	return a.next.RoundTrip(req)
 }
 
@@ -133,5 +136,7 @@ func addPhlareClient(cmd commander) *phlareClient {
 	cmd.Flag("password", "The password to be used for basic auth.").Default("").Envar(envPrefix + "PASSWORD").StringVar(&client.BasicAuth.Password)
 	cmd.Flag("protocol", "The protocol to be used for communicating with the server.").Default(protocolTypeConnect).EnumVar(&client.protocol,
 		protocolTypeConnect, protocolTypeGRPC, protocolTypeGRPCWeb)
+	cmd.Flag("collect-diagnostics", "Request query diagnostics collection. The server will return a diagnostics ID in a response header.").Default("false").Envar(envPrefix + "COLLECT_DIAGNOSTICS").BoolVar(&client.CollectDiagnostics)
+	cmd.Flag("feature-flags", "Add header with feature flags.").Default("").Envar(envPrefix + "FEATURE_FLAGS").StringsVar(&client.FeatureFlags)
 	return client
 }

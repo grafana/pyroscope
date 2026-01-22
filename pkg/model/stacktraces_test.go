@@ -13,7 +13,7 @@ func TestStackTraceMerger(t *testing.T) {
 		name     string
 		in       []*ingestv1.MergeProfilesStacktracesResult
 		maxNodes int64
-		expected *Tree
+		expected *FunctionNameTree
 	}{
 		{
 			name:     "empty",
@@ -140,7 +140,7 @@ func TestStackTraceMerger(t *testing.T) {
 				m.MergeStackTraces(x.Stacktraces, x.FunctionNames)
 			}
 			yn := m.TreeBytes(tc.maxNodes)
-			actual, err := UnmarshalTree(yn)
+			actual, err := UnmarshalTree[FuntionName, FuntionNameI](yn)
 			require.NoError(t, err)
 			require.Equal(t, tc.expected.String(), actual.String())
 		})

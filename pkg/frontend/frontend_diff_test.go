@@ -138,7 +138,7 @@ func Test_Frontend_Diff(t *testing.T) {
 		frontend.GRPCRoundTripper = &mockRoundTripper{callback: func(ctx context.Context, req *httpgrpc.HTTPRequest) (*httpgrpc.HTTPResponse, error) {
 			return connectgrpc.HandleUnary[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, req, func(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 
-				s := new(model.Tree)
+				s := new(model.FunctionNameTree)
 				s.InsertStack(1, "foo", "bar")
 
 				if req.Msg.Start == now {
