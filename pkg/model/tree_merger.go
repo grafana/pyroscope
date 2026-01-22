@@ -6,14 +6,14 @@ import (
 
 type TreeMerger struct {
 	mu sync.Mutex
-	t  *Tree
+	t  *FunctionNameTree
 }
 
 func NewTreeMerger() *TreeMerger {
 	return new(TreeMerger)
 }
 
-func (m *TreeMerger) MergeTree(t *Tree) {
+func (m *TreeMerger) MergeTree(t *FunctionNameTree) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.t != nil {
@@ -27,7 +27,7 @@ func (m *TreeMerger) MergeTreeBytes(b []byte) error {
 	// TODO(kolesnikovae): Ideally, we should not have
 	// the intermediate tree t but update m.t reading
 	// raw bytes b directly.
-	t, err := UnmarshalTree(b)
+	t, err := UnmarshalTree[FuntionName, FuntionNameI](b)
 	if err != nil {
 		return err
 	}
@@ -35,9 +35,9 @@ func (m *TreeMerger) MergeTreeBytes(b []byte) error {
 	return nil
 }
 
-func (m *TreeMerger) Tree() *Tree {
+func (m *TreeMerger) Tree() *FunctionNameTree {
 	if m.t == nil {
-		return new(Tree)
+		return new(FunctionNameTree)
 	}
 	return m.t
 }

@@ -9,7 +9,7 @@ import (
 	binary "encoding/binary"
 	fmt "fmt"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	v12 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	v13 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	v11 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	protohelpers "github.com/planetscale/vtprotobuf/protohelpers"
 	grpc "google.golang.org/grpc"
@@ -7212,7 +7212,7 @@ func (m *HeatmapQuery) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.QueryType |= v12.HeatmapQueryType(b&0x7F) << shift
+				m.QueryType |= v13.HeatmapQueryType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

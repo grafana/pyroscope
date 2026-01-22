@@ -20,11 +20,11 @@ func buildTree(
 	appender *SampleAppender,
 	maxNodes int64,
 	selection *SelectedStackTraces,
-) (*model.Tree, error) {
+) (*model.FunctionNameTree, error) {
 	if !selection.HasValidCallSite() {
 		// TODO(bryan) Maybe return an error here? buildPprof returns a blank
 		// profile. So mimicking that behavior for now.
-		return &model.Tree{}, nil
+		return &model.FunctionNameTree{}, nil
 	}
 
 	// If the number of samples is large (> 128K) and the StacktraceResolver
@@ -134,7 +134,7 @@ func buildTreeFromParentPointerTrees(
 	symbols *Symbols,
 	maxNodes int64,
 	selection *SelectedStackTraces,
-) (*model.Tree, error) {
+) (*model.FunctionNameTree, error) {
 	m := model.NewTreeMerger()
 	g, _ := errgroup.WithContext(ctx)
 	for ranges.Next() {
@@ -312,7 +312,7 @@ func buildTreeForStacktraceIDRange(
 	symbols *Symbols,
 	maxNodes int64,
 	selection *SelectedStackTraces,
-) *model.Tree {
+) *model.FunctionNameTree {
 	// Get the parent pointer tree for the range. The tree is
 	// not specific to the samples we've collected and includes
 	// all the stack traces.

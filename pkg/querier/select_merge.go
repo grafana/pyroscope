@@ -336,7 +336,7 @@ func (p *timestampedFingerprints) fingerprintSeen(fingerprint uint64) (seen bool
 
 // selectMergeTree selects the  profile from each ingester by deduping them and
 // returns merge of stacktrace samples represented as a tree.
-func selectMergeTree(ctx context.Context, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesStacktraces]) (*phlaremodel.Tree, error) {
+func selectMergeTree(ctx context.Context, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesStacktraces]) (*phlaremodel.FunctionNameTree, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "selectMergeTree")
 	defer span.Finish()
 
@@ -515,7 +515,7 @@ func selectMergeSeries(ctx context.Context, aggregation *typesv1.TimeSeriesAggre
 
 // selectMergeSpanProfile selects the  profile from each ingester by deduping them and
 // returns merge of stacktrace samples represented as a tree.
-func selectMergeSpanProfile(ctx context.Context, responses []ResponseFromReplica[clientpool.BidiClientMergeSpanProfile]) (*phlaremodel.Tree, error) {
+func selectMergeSpanProfile(ctx context.Context, responses []ResponseFromReplica[clientpool.BidiClientMergeSpanProfile]) (*phlaremodel.FunctionNameTree, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "selectMergeSpanProfile")
 	defer span.Finish()
 

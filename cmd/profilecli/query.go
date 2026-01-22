@@ -193,7 +193,7 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 		return nil, errors.Wrap(err, "failed to query")
 	}
 
-	tree, err := model.UnmarshalTree(resp.Msg.Tree)
+	tree, err := model.UnmarshalTree[model.FuntionName, model.FuntionNameI](resp.Msg.Tree)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal tree")
 	}
