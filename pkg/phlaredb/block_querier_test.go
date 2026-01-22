@@ -1166,7 +1166,7 @@ func TestSelectMergeStacktraces(t *testing.T) {
 		End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
 	}, 16<<10)
 	require.NoError(t, err)
-	expected := phlaremodel.Tree{}
+	expected := phlaremodel.FunctionNameTree{}
 	expected.InsertStack(1000, "baz", "bar", "foo")
 	expected.InsertStack(1000, "buzz", "bar", "foo")
 	expected.InsertStack(1000, "bar", "foo")
@@ -1330,7 +1330,7 @@ func testSelectMergeByStacktracesRace(t testing.TB, times int) {
 	err := querier.Open(ctx)
 	require.NoError(t, err)
 	g, ctx := errgroup.WithContext(ctx)
-	tree := new(phlaremodel.Tree)
+	tree := new(phlaremodel.FunctionNameTree)
 	var m sync.Mutex
 
 	if b, ok := t.(*testing.B); ok {

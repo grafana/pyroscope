@@ -213,7 +213,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp.Result)
 
-		at, err := phlaremodel.UnmarshalTree(resp.Result.TreeBytes)
+		at, err := phlaremodel.UnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](resp.Result.TreeBytes)
 		require.NoError(t, err)
 		require.Equal(t, int64(500000000), at.Total())
 	})

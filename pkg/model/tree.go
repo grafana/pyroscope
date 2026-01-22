@@ -18,34 +18,131 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/minheap"
 )
 
-type Tree struct {
-	root []*node
+const OtherFunctionName = FuntionName(truncatedNodeName)
+
+type FuntionName string
+
+type FuntionNameI struct {
 }
 
-type node struct {
-	parent      *node
-	children    []*node
+func (FuntionNameI) IsLocationTree() bool {
+	return false
+}
+
+func (FuntionNameI) newOther() FuntionName { //nolint:unused
+	return OtherFunctionName
+}
+
+func (FuntionNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[FuntionName], _ func(FuntionName) FuntionName) error { //nolint:unused
+	if _, err := vw.Write(w, uint64(len(n.name))); err != nil {
+		return err
+	}
+	if _, err := w.Write(unsafeStringBytes(string(n.name))); err != nil {
+		return err
+	}
+	_, err := vw.Write(w, uint64(n.self))
+	return err
+}
+
+func (FuntionNameI) unmarshalNode(b []byte, offset int) (FuntionName, int64, int, error) { //nolint:unused
+	nameLen, o := dvarint.Uvarint(b[offset:])
+	if o < 0 {
+		return "", 0, 0, errMalformedTreeBytes
+	}
+	offset += o
+	// Note that we allocate a string, instead of referencing b's capacity.
+	name := FuntionName(b[offset : offset+int(nameLen)])
+	offset += int(nameLen)
+	value, o := dvarint.Uvarint(b[offset:])
+	if o < 0 {
+		return "", 0, 0, errMalformedTreeBytes
+	}
+	offset += o
+	return name, int64(value), offset, nil
+}
+
+const OtherLocationRef = LocationRefName(0)
+
+type LocationRefName int
+
+type LocationRefNameI struct {
+}
+
+func (LocationRefNameI) IsLocationTree() bool {
+	return true
+}
+
+func (LocationRefNameI) newOther() LocationRefName { //nolint:unused
+	return OtherLocationRef
+}
+
+func (LocationRefNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[LocationRefName], keepName func(LocationRefName) LocationRefName) error { //nolint:unused
+	if _, err := vw.Write(w, uint64(keepName(n.name))); err != nil {
+		return err
+	}
+	_, err := vw.Write(w, uint64(n.self))
+	return err
+}
+
+func (LocationRefNameI) unmarshalNode(b []byte, offset int) (LocationRefName, int64, int, error) { //nolint:unused
+	name, o := dvarint.Uvarint(b[offset:])
+	if o < 0 {
+		return 0, 0, 0, errMalformedTreeBytes
+	}
+	offset += o
+
+	value, o := dvarint.Uvarint(b[offset:])
+	if o < 0 {
+		return 0, 0, 0, errMalformedTreeBytes
+	}
+	offset += o
+
+	return LocationRefName(name), int64(value), offset, nil
+}
+
+type NodeName interface {
+	~string | ~int
+}
+
+type NodeNameI[N ~string | ~int] interface {
+	IsLocationTree() bool
+	newOther() N
+	marshalNode(io.Writer, varint.Writer, *node[N], func(N) N) error
+	unmarshalNode([]byte, int) (N, int64, int, error)
+}
+
+type LocationRefNameTree = Tree[LocationRefName, LocationRefNameI]
+
+type FunctionNameTree = Tree[FuntionName, FuntionNameI]
+
+type Tree[N NodeName, I NodeNameI[N]] struct {
+	root []*node[N]
+}
+
+type node[N NodeName] struct {
+	parent      *node[N]
+	children    []*node[N]
 	self, total int64
-	name        string
+	name        N
 }
 
-func (t *Tree) String() string {
+func (t *Tree[N, I]) String() string {
 	type branch struct {
-		nodes []*node
+		nodes []*node[N]
 		treeprint.Tree
 	}
 	tree := treeprint.New()
 	for _, n := range t.root {
-		b := tree.AddBranch(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))
+		b := tree.AddBranch(fmt.Sprintf("%v: self %d total %d", n.name, n.self, n.total))
 		remaining := append([]*branch{}, &branch{nodes: n.children, Tree: b})
 		for len(remaining) > 0 {
 			current := remaining[0]
 			remaining = remaining[1:]
 			for _, n := range current.nodes {
 				if len(n.children) > 0 {
-					remaining = append(remaining, &branch{nodes: n.children, Tree: current.AddBranch(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))})
+					remaining = append(remaining, &branch{nodes: n.children, Tree: current.AddBranch(fmt.Sprintf("%v: self %d total %d", n.name, n.self, n.total))})
 				} else {
-					current.AddNode(fmt.Sprintf("%s: self %d total %d", n.name, n.self, n.total))
+					current.AddNode(fmt.Sprintf("%v: self %d total %d", n.name, n.self, n.total))
 				}
 			}
 		}
@@ -53,18 +150,18 @@ func (t *Tree) String() string {
 	return tree.String()
 }
 
-func (t *Tree) Total() (v int64) {
+func (t *Tree[N, I]) Total() (v int64) {
 	for _, n := range t.root {
 		v += n.total
 	}
 	return v
 }
 
-func (t *Tree) InsertStack(v int64, stack ...string) {
+func (t *Tree[N, I]) InsertStack(v int64, stack ...N) {
 	if v <= 0 {
 		return
 	}
-	r := &node{children: t.root}
+	r := &node[N]{children: t.root}
 	n := r
 	for s := range stack {
 		name := stack[s]
@@ -82,7 +179,7 @@ func (t *Tree) InsertStack(v int64, stack ...string) {
 		if i < len(n.children) && n.children[i].name == name {
 			n = n.children[i]
 		} else {
-			child := &node{parent: n, name: name}
+			child := &node[N]{parent: n, name: name}
 			n.children = append(n.children, child)
 			copy(n.children[i+1:], n.children[i:])
 			n.children[i] = child
@@ -95,16 +192,20 @@ func (t *Tree) InsertStack(v int64, stack ...string) {
 	t.root = r.children
 }
 
-func (t *Tree) WriteCollapsed(dst io.Writer) {
-	t.IterateStacks(func(_ string, self int64, stack []string) {
+func (t *Tree[N, I]) WriteCollapsed(dst io.Writer) {
+	t.IterateStacks(func(_ N, self int64, stack []N) {
 		slices.Reverse(stack)
-		_, _ = fmt.Fprintf(dst, "%s %d\n", strings.Join(stack, ";"), self)
+		stackStrs := make([]string, len(stack))
+		for i, v := range stack {
+			stackStrs[i] = fmt.Sprint(v)
+		}
+		_, _ = fmt.Fprintf(dst, "%s %d\n", strings.Join(stackStrs, ";"), self)
 	})
 }
 
-func (t *Tree) IterateStacks(cb func(name string, self int64, stack []string)) {
-	nodes := make([]*node, len(t.root), 1024)
-	stack := make([]string, 0, 64)
+func (t *Tree[N, I]) IterateStacks(cb func(name N, self int64, stack []N)) {
+	nodes := make([]*node[N], len(t.root), 1024)
+	stack := make([]N, 0, 64)
 	copy(nodes, t.root)
 	for len(nodes) > 0 {
 		n := nodes[0]
@@ -131,7 +232,7 @@ func (t *Tree) IterateStacks(cb func(name string, self int64, stack []string)) {
 // slice will grow to 1-4K nodes, depending on the trace branching.
 const defaultDFSSize = 128
 
-func (t *Tree) Merge(src *Tree) {
+func (t *Tree[N, I]) Merge(src *Tree[N, I]) {
 	if t.Total() == 0 && src.Total() > 0 {
 		*t = *src
 		return
@@ -140,15 +241,17 @@ func (t *Tree) Merge(src *Tree) {
 		return
 	}
 
-	srcNodes := make([]*node, 0, defaultDFSSize)
-	srcRoot := &node{children: src.root}
+	nodeBuffer := newNodeBuffer[N](defaultDFSSize)
+
+	srcNodes := make([]*node[N], 0, defaultDFSSize)
+	srcRoot := &node[N]{children: src.root}
 	srcNodes = append(srcNodes, srcRoot)
 
-	dstNodes := make([]*node, 0, defaultDFSSize)
-	dstRoot := &node{children: t.root}
+	dstNodes := make([]*node[N], 0, defaultDFSSize)
+	dstRoot := &node[N]{children: t.root}
 	dstNodes = append(dstNodes, dstRoot)
 
-	var st, dt *node
+	var st, dt *node[N]
 	for len(srcNodes) > 0 {
 		st, srcNodes = srcNodes[len(srcNodes)-1], srcNodes[:len(srcNodes)-1]
 		dt, dstNodes = dstNodes[len(dstNodes)-1], dstNodes[:len(dstNodes)-1]
@@ -158,7 +261,7 @@ func (t *Tree) Merge(src *Tree) {
 
 		for _, srcChildNode := range st.children {
 			// Note that we don't copy the name, but reference it.
-			dstChildNode := dt.insert(srcChildNode.name)
+			dstChildNode := dt.insert(srcChildNode.name, nodeBuffer.newNode)
 			srcNodes = append(srcNodes, srcChildNode)
 			dstNodes = append(dstNodes, dstChildNode)
 		}
@@ -167,10 +270,10 @@ func (t *Tree) Merge(src *Tree) {
 	t.root = dstRoot.children
 }
 
-func (t *Tree) FormatNodeNames(fn func(string) string) {
-	nodes := make([]*node, 0, defaultDFSSize)
-	nodes = append(nodes, &node{children: t.root})
-	var n *node
+func (t *Tree[N, I]) FormatNodeNames(fn func(N) N) {
+	nodes := make([]*node[N], 0, defaultDFSSize)
+	nodes = append(nodes, &node[N]{children: t.root})
+	var n *node[N]
 	var fix bool
 	for len(nodes) > 0 {
 		n, nodes = nodes[len(nodes)-1], nodes[:len(nodes)-1]
@@ -188,17 +291,17 @@ func (t *Tree) FormatNodeNames(fn func(string) string) {
 }
 
 // Fix re-establishes order of nodes and merges duplicates.
-func (t *Tree) Fix() {
+func (t *Tree[N, I]) Fix() {
 	if len(t.root) == 0 {
 		return
 	}
-	r := &node{children: t.root}
+	r := &node[N]{children: t.root}
 	for _, n := range r.children {
 		n.parent = r
 	}
-	nodes := make([][]*node, 0, defaultDFSSize)
+	nodes := make([][]*node[N], 0, defaultDFSSize)
 	nodes = append(nodes, r.children)
-	var n []*node
+	var n []*node[N]
 	for len(nodes) > 0 {
 		n, nodes = nodes[len(nodes)-1], nodes[:len(nodes)-1]
 		if len(n) == 0 {
@@ -232,11 +335,11 @@ func (t *Tree) Fix() {
 	t.root = r.children
 }
 
-func (n *node) String() string {
-	return fmt.Sprintf("{%s: self %d total %d}", n.name, n.self, n.total)
+func (n *node[N]) String() string {
+	return fmt.Sprintf("{%v: self %d total %d}", n.name, n.self, n.total)
 }
 
-func (n *node) insert(name string) *node {
+func (n *node[N]) insert(name N, newNode func() *node[N]) *node[N] {
 	i := sort.Search(len(n.children), func(i int) bool {
 		return n.children[i].name >= name
 	})
@@ -245,7 +348,14 @@ func (n *node) insert(name string) *node {
 	}
 	// We don't clone the name: it is caller responsibility
 	// to maintain the memory ownership.
-	child := &node{parent: n, name: name}
+	var child *node[N]
+	if newNode == nil {
+		child = &node[N]{}
+	} else {
+		child = newNode()
+	}
+	child.parent = n
+	child.name = name
 	n.children = append(n.children, child)
 	copy(n.children[i+1:], n.children[i:])
 	n.children[i] = child
@@ -254,11 +364,11 @@ func (n *node) insert(name string) *node {
 
 // minValue returns the minimum "total" value a node in a tree has to have to show up in
 // the resulting flamegraph
-func (t *Tree) minValue(maxNodes int64) int64 {
+func (t *Tree[N, I]) minValue(maxNodes int64) int64 {
 	if maxNodes < 1 {
 		return 0
 	}
-	nodes := make([]*node, 0, max(int64(len(t.root)), defaultDFSSize))
+	nodes := make([]*node[N], 0, max(int64(len(t.root)), defaultDFSSize))
 	treeSize := t.size(nodes)
 	if treeSize <= maxNodes {
 		return 0
@@ -267,7 +377,7 @@ func (t *Tree) minValue(maxNodes int64) int64 {
 	h := make([]int64, 0, maxNodes)
 
 	nodes = append(nodes[:0], t.root...)
-	var n *node
+	var n *node[N]
 	for len(nodes) > 0 {
 		last := len(nodes) - 1
 		n, nodes = nodes[last], nodes[:last]
@@ -291,10 +401,10 @@ func (t *Tree) minValue(maxNodes int64) int64 {
 
 // size reports number of nodes the tree consists of.
 // Provided buffer used for DFS traversal.
-func (t *Tree) size(buf []*node) int64 {
+func (t *Tree[N, I]) size(buf []*node[N]) int64 {
 	nodes := append(buf, t.root...)
 	var s int64
-	var n *node
+	var n *node[N]
 	for len(nodes) > 0 {
 		last := len(nodes) - 1
 		n, nodes = nodes[last], nodes[:last]
@@ -311,43 +421,41 @@ var truncatedNodeNameBytes = []byte(truncatedNodeName)
 // Bytes returns marshaled tree byte representation; the number of nodes
 // is limited to maxNodes. The function modifies the tree: truncated nodes
 // are removed from the tree in place.
-func (t *Tree) Bytes(maxNodes int64) []byte {
+func (t *Tree[N, I]) Bytes(maxNodes int64, keepName func(N) N) []byte {
 	var buf bytes.Buffer
-	_ = t.MarshalTruncate(&buf, maxNodes)
+	_ = t.MarshalTruncate(&buf, maxNodes, keepName)
 	return buf.Bytes()
 }
 
 // MarshalTruncate writes tree byte representation to the writer provider,
 // the number of nodes is limited to maxNodes. The function modifies
 // the tree: truncated nodes are removed from the tree.
-func (t *Tree) MarshalTruncate(w io.Writer, maxNodes int64) (err error) {
+func (t *Tree[N, I]) MarshalTruncate(w io.Writer, maxNodes int64, keepName func(N) N) (err error) {
 	if len(t.root) == 0 {
 		return nil
 	}
 
+	var initializer I
+	otherName := initializer.newOther()
+
 	vw := varint.NewWriter()
 	minVal := t.minValue(maxNodes)
-	nodes := make([]*node, 1, defaultDFSSize)
-	nodes[0] = &node{children: t.root} // Virtual root node.
-	var n *node
+	nodes := make([]*node[N], 1, defaultDFSSize)
+	nodes[0] = &node[N]{children: t.root} // Virtual root node.
+	var n *node[N]
 
 	for len(nodes) > 0 {
 		last := len(nodes) - 1
 		n, nodes = nodes[last], nodes[:last]
-		if _, err = vw.Write(w, uint64(len(n.name))); err != nil {
-			return err
-		}
-		if _, err = w.Write(unsafeStringBytes(n.name)); err != nil {
-			return err
-		}
-		if _, err = vw.Write(w, uint64(n.self)); err != nil {
+
+		if err := initializer.marshalNode(w, vw, n, keepName); err != nil {
 			return err
 		}
 
 		var other int64
 		var j int
 		for _, cn := range n.children {
-			if cn.total >= minVal || cn.name == truncatedNodeName {
+			if cn.total >= minVal || cn.name == otherName {
 				n.children[j] = cn
 				j++
 			} else {
@@ -357,7 +465,7 @@ func (t *Tree) MarshalTruncate(w io.Writer, maxNodes int64) (err error) {
 
 		n.children = n.children[:j]
 		if other > 0 {
-			o := n.insert(truncatedNodeName)
+			o := n.insert(otherName, nil)
 			o.total += other
 			o.self += other
 		}
@@ -377,19 +485,41 @@ var errMalformedTreeBytes = fmt.Errorf("malformed tree bytes")
 
 const estimateBytesPerNode = 16 // Chosen empirically.
 
-func MustUnmarshalTree(b []byte) *Tree {
+func MustUnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) *Tree[N, I] {
 	if len(b) == 0 {
-		return new(Tree)
+		return new(Tree[N, I])
 	}
-	t, err := UnmarshalTree(b)
+	t, err := UnmarshalTree[N, I](b)
 	if err != nil {
 		panic(err)
 	}
 	return t
 }
 
-func UnmarshalTree(b []byte) (*Tree, error) {
-	t := new(Tree)
+type nodeBuffer[N NodeName] struct {
+	size  int
+	nodes []node[N]
+}
+
+func newNodeBuffer[N NodeName](size int) *nodeBuffer[N] {
+	return &nodeBuffer[N]{
+		size: size,
+	}
+}
+
+func (nb *nodeBuffer[N]) newNode() *node[N] {
+	if len(nb.nodes) == 0 {
+		nb.nodes = make([]node[N], nb.size)
+	}
+	n := &nb.nodes[0]
+	nb.nodes = nb.nodes[1:]
+	return n
+
+}
+
+func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
+	var initializer I
+	t := new(Tree[N, I])
 	if len(b) < 2 {
 		return t, nil
 	}
@@ -397,37 +527,35 @@ func UnmarshalTree(b []byte) (*Tree, error) {
 	if e := len(b) / estimateBytesPerNode; e > estimateBytesPerNode {
 		size = e
 	}
-	parents := make([]*node, 1, size)
+	parents := make([]*node[N], 1, size)
 	// Virtual root node.
-	root := new(node)
+	root := new(node[N])
 	parents[0] = root
-	var parent *node
+	var parent *node[N]
 	var offset int
+
+	nodeBuffer := newNodeBuffer[N](size)
 
 	for len(parents) > 0 {
 		parent, parents = parents[len(parents)-1], parents[:len(parents)-1]
-		nameLen, o := dvarint.Uvarint(b[offset:])
-		if o < 0 {
-			return nil, errMalformedTreeBytes
+		// specific start
+
+		name, value, o, err := initializer.unmarshalNode(b, offset)
+		if err != nil {
+			return nil, err
 		}
-		offset += o
-		// Note that we allocate a string, instead of referencing b's capacity.
-		name := string(b[offset : offset+int(nameLen)])
-		offset += int(nameLen)
-		value, o := dvarint.Uvarint(b[offset:])
-		if o < 0 {
-			return nil, errMalformedTreeBytes
-		}
-		offset += o
+		offset = o
+
+		// specific end
 		childrenLen, o := dvarint.Uvarint(b[offset:])
 		if o < 0 {
 			return nil, errMalformedTreeBytes
 		}
 		offset += o
 
-		n := parent.insert(name)
-		n.children = make([]*node, 0, childrenLen)
-		n.self = int64(value)
+		n := parent.insert(name, nodeBuffer.newNode)
+		n.children = make([]*node[N], 0, childrenLen)
+		n.self = value
 
 		pn := n
 		for pn.parent != nil {

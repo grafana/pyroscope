@@ -151,6 +151,192 @@ components:
           description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
       additionalProperties: true
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+    google.v1.Function:
+      type: object
+      properties:
+        id:
+          type:
+            - integer
+            - string
+          title: id
+          format: int64
+          description: Unique nonzero id for the function.
+        name:
+          type:
+            - integer
+            - string
+          title: name
+          format: int64
+          description: Name of the function, in human-readable form if available. Index into string table
+        systemName:
+          type:
+            - integer
+            - string
+          title: system_name
+          format: int64
+          description: |-
+            Name of the function, as identified by the system.
+             For instance, it can be a C++ mangled name. Index into string table
+        filename:
+          type:
+            - integer
+            - string
+          title: filename
+          format: int64
+          description: Source file containing the function. Index into string table
+        startLine:
+          type:
+            - integer
+            - string
+          title: start_line
+          format: int64
+          description: Line number in source file.
+      title: Function
+      additionalProperties: false
+    google.v1.Line:
+      type: object
+      properties:
+        functionId:
+          type:
+            - integer
+            - string
+          title: function_id
+          format: int64
+          description: The id of the corresponding profile.Function for this line.
+        line:
+          type:
+            - integer
+            - string
+          title: line
+          format: int64
+          description: Line number in source code.
+      title: Line
+      additionalProperties: false
+    google.v1.Location:
+      type: object
+      properties:
+        id:
+          type:
+            - integer
+            - string
+          title: id
+          format: int64
+          description: |-
+            Unique nonzero id for the location.  A profile could use
+             instruction addresses or any integer sequence as ids.
+        mappingId:
+          type:
+            - integer
+            - string
+          title: mapping_id
+          format: int64
+          description: |-
+            The id of the corresponding profile.Mapping for this location.
+             It can be unset if the mapping is unknown or not applicable for
+             this profile type.
+        address:
+          type:
+            - integer
+            - string
+          title: address
+          format: int64
+          description: |-
+            The instruction address for this location, if available.  It
+             should be within [Mapping.memory_start...Mapping.memory_limit]
+             for the corresponding mapping. A non-leaf address may be in the
+             middle of a call instruction. It is up to display tools to find
+             the beginning of the instruction if necessary.
+        line:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.v1.Line'
+          title: line
+          description: |-
+            Multiple line indicates this location has inlined functions,
+             where the last entry represents the caller into which the
+             preceding entries were inlined.
+
+             E.g., if memcpy() is inlined into printf:
+                line[0].function_name == "memcpy"
+                line[1].function_name == "printf"
+        isFolded:
+          type: boolean
+          title: is_folded
+          description: |-
+            Provides an indication that multiple symbols map to this location's
+             address, for example due to identical code folding by the linker. In that
+             case the line information above represents one of the multiple
+             symbols. This field must be recomputed when the symbolization state of the
+             profile changes.
+      title: Location
+      additionalProperties: false
+      description: Describes function and line table debug information.
+    google.v1.Mapping:
+      type: object
+      properties:
+        id:
+          type:
+            - integer
+            - string
+          title: id
+          format: int64
+          description: Unique nonzero id for the mapping.
+        memoryStart:
+          type:
+            - integer
+            - string
+          title: memory_start
+          format: int64
+          description: Address at which the binary (or DLL) is loaded into memory.
+        memoryLimit:
+          type:
+            - integer
+            - string
+          title: memory_limit
+          format: int64
+          description: The limit of the address range occupied by this mapping.
+        fileOffset:
+          type:
+            - integer
+            - string
+          title: file_offset
+          format: int64
+          description: Offset in the binary that corresponds to the first mapped address.
+        filename:
+          type:
+            - integer
+            - string
+          title: filename
+          format: int64
+          description: |-
+            The object this entry is loaded from.  This can be a filename on
+             disk for the main binary and shared libraries, or virtual
+             abstractions like "[vdso]". Index into string table
+        buildId:
+          type:
+            - integer
+            - string
+          title: build_id
+          format: int64
+          description: |-
+            A string that uniquely identifies a particular program version
+             with high probability. E.g., for binaries generated by GNU tools,
+             it could be the contents of the .note.gnu.build-id field. Index into string table
+        hasFunctions:
+          type: boolean
+          title: has_functions
+          description: The following fields indicate the resolution of symbolic info.
+        hasFilenames:
+          type: boolean
+          title: has_filenames
+        hasLineNumbers:
+          type: boolean
+          title: has_line_numbers
+        hasInlineFrames:
+          type: boolean
+          title: has_inline_frames
+      title: Mapping
+      additionalProperties: false
     metastore.v1.BlockMeta:
       type: object
       properties:
@@ -960,6 +1146,9 @@ components:
           items:
             type: string
           title: profile_id_selector
+        fullSymbols:
+          type: boolean
+          title: full_symbols
       title: TreeQuery
       additionalProperties: false
     query.v1.TreeReport:
@@ -972,7 +1161,68 @@ components:
           type: string
           title: tree
           format: byte
+        symbols:
+          title: symbols
+          nullable: true
+          $ref: '#/components/schemas/query.v1.TreeSymbols'
       title: TreeReport
+      additionalProperties: false
+    query.v1.TreeSymbols:
+      type: object
+      properties:
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.v1.Mapping'
+          title: mappings
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.v1.Location'
+          title: locations
+        functions:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.v1.Function'
+          title: functions
+        strings:
+          type: array
+          items:
+            type: string
+          title: strings
+        mappingHashes:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: mapping_hashes
+        locationHashes:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: location_hashes
+        functionHashes:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: function_hashes
+        stringHashes:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: string_hashes
+      title: TreeSymbols
       additionalProperties: false
     types.v1.Exemplar:
       type: object
