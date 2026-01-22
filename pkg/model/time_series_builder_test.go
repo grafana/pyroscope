@@ -205,11 +205,11 @@ func TestExemplarBuilder_DifferentProfileIDsNotSummed(t *testing.T) {
 
 	// First exemplar
 	assert.Equal(t, "profile-abc", exemplars[0].ProfileId)
-	assert.Equal(t, uint64(110000000), exemplars[0].Value)
+	assert.Equal(t, int64(110000000), exemplars[0].Value)
 
 	// Second exemplar
 	assert.Equal(t, "profile-def", exemplars[1].ProfileId)
-	assert.Equal(t, uint64(150000000), exemplars[1].Value)
+	assert.Equal(t, int64(150000000), exemplars[1].Value)
 }
 
 func TestTimeSeriesBuilder_MultipleSeries(t *testing.T) {
