@@ -161,6 +161,27 @@ func (r *Router) SelectSeries(
 		})
 }
 
+func (r *Router) SelectHeatmap(
+	ctx context.Context,
+	c *connect.Request[querierv1.SelectHeatmapRequest],
+) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
+	return Query[querierv1.SelectHeatmapRequest, querierv1.SelectHeatmapResponse](ctx, r, c,
+		func(_, _ *querierv1.SelectHeatmapRequest) {},
+		func(a, b *querierv1.SelectHeatmapResponse) (*querierv1.SelectHeatmapResponse, error) {
+			// Merge the series from both responses
+			var allSeries []*typesv1.HeatmapSeries
+			if a != nil {
+				allSeries = append(allSeries, a.Series...)
+			}
+			if b != nil {
+				allSeries = append(allSeries, b.Series...)
+			}
+			return &querierv1.SelectHeatmapResponse{
+				Series: allSeries,
+			}, nil
+		})
+}
+
 func (r *Router) Diff(
 	ctx context.Context,
 	c *connect.Request[querierv1.DiffRequest],

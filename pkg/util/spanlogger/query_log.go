@@ -164,6 +164,27 @@ func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.R
 	return l.client.SelectSeries(ctx, c)
 }
 
+func (l LogSpanParametersWrapper) SelectHeatmap(ctx context.Context, c *connect.Request[querierv1.SelectHeatmapRequest]) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
+	spanName := "SelectHeatmap"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
+	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
+		"start", model.Time(c.Msg.Start).Time().String(),
+		"end", model.Time(c.Msg.End).Time().String(),
+		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
+		"selector", c.Msg.LabelSelector,
+		"profile_type", c.Msg.ProfileTypeID,
+		"step", c.Msg.Step,
+		"by", lazyJoin(c.Msg.GroupBy),
+		"query_type", c.Msg.QueryType,
+		"exemplar_type", c.Msg.ExemplarType,
+		"limit", c.Msg.Limit,
+	)
+	defer sp.Finish()
+
+	return l.client.SelectHeatmap(ctx, c)
+}
+
 func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
 	spanName := "Diff"
 	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
