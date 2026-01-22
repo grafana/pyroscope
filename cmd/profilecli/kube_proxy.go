@@ -381,11 +381,22 @@ func (m *reverseProxyManager) proxyToService(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Copy headers
+	// Copy headers, but skip Authorization to avoid interfering with kubectl's auth
 	for key, values := range r.Header {
+		// Skip Authorization header - kubectl proxy uses kubeconfig auth, not incoming auth
+		if key == "Authorization" {
+			level.Debug(logger).Log("msg", "skipping Authorization header from incoming request")
+			continue
+		}
 		for _, value := range values {
 			proxyReq.Header.Add(key, value)
 		}
+	}
+
+	// Inject tenant ID if configured
+	if m.params.TenantID != "" {
+		proxyReq.Header.Set("X-Scope-OrgID", m.params.TenantID)
+		level.Debug(logger).Log("msg", "injected tenant ID", "tenant_id", m.params.TenantID)
 	}
 
 	// Execute request via Unix socket
