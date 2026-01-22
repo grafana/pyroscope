@@ -365,7 +365,7 @@ func (s *Store) Upload(stream debuginfov1alpha1grpc.DebuginfoService_UploadServe
 	span.SetAttributes(attribute.String("upload_id", uploadID))
 
 	if err := s.upload(ctx, buildID, uploadID, typ, r); err != nil {
-		level.Debug(s.logger).Log(
+		level.Error(s.logger).Log(
 			"msg", "debuginfo upload failed",
 			"build_id", buildID,
 			"upload_id", uploadID,
