@@ -6,6 +6,7 @@
  * Line tables
  */
 
+//nolint:unused
 package gosym
 
 import (
