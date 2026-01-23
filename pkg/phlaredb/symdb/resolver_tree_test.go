@@ -9,6 +9,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
@@ -87,13 +88,13 @@ func Test_memory_Resolver_ResolveTree(t *testing.T) {
 			stacktraceCount := 0
 			total := 0
 
-			resolved.IterateStacks(func(name string, self int64, stack []string) {
+			resolved.IterateStacks(func(name phlaremodel.FuntionName, self int64, stack []phlaremodel.FuntionName) {
 				stacktraceCount++
 				total += int(self)
 
 				prefix := make([]string, len(tc.callsite))
 				for i := range prefix {
-					prefix[i] = stack[len(stack)-1-i]
+					prefix[i] = string(stack[len(stack)-1-i])
 				}
 				require.Equal(t, tc.callsite, prefix, "stack prefix doesn't match")
 			})
@@ -155,7 +156,7 @@ func Test_memory_Resolver_ResolveTree_copied_nodes(t *testing.T) {
 		r.AddSamples(0, samples)
 		resolved, err := r.Tree()
 		require.NoError(t, err)
-		resolved.FormatNodeNames(func(s string) string {
+		resolved.FormatNodeNames(func(s phlaremodel.FuntionName) phlaremodel.FuntionName {
 			nodes++
 			return s
 		})

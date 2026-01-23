@@ -683,7 +683,7 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	default:
 		resp.Flamegraph = phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-		resp.Tree = t.Bytes(req.Msg.GetMaxNodes())
+		resp.Tree = t.Bytes(req.Msg.GetMaxNodes(), nil)
 	}
 	return connect.NewResponse(&resp), nil
 }
@@ -715,7 +715,7 @@ func (q *Querier) SelectMergeSpanProfile(ctx context.Context, req *connect.Reque
 	default:
 		resp.Flamegraph = phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-		resp.Tree = t.Bytes(req.Msg.GetMaxNodes())
+		resp.Tree = t.Bytes(req.Msg.GetMaxNodes(), nil)
 	}
 	return connect.NewResponse(&resp), nil
 }

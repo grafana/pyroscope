@@ -25,8 +25,36 @@ type FuntionName string
 type FuntionNameI struct {
 }
 
-func (_ FuntionNameI) newOther() FuntionName {
+func (FuntionNameI) newOther() FuntionName { //nolint:unused
 	return OtherFunctionName
+}
+
+func (FuntionNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[FuntionName], _ func(FuntionName) FuntionName) error { //nolint:unused
+	if _, err := vw.Write(w, uint64(len(n.name))); err != nil {
+		return err
+	}
+	if _, err := w.Write(unsafeStringBytes(string(n.name))); err != nil {
+		return err
+	}
+	_, err := vw.Write(w, uint64(n.self))
+	return err
+}
+
+func (FuntionNameI) unmarshalNode(b []byte, offset int) (FuntionName, int64, int, error) { //nolint:unused
+	nameLen, o := dvarint.Uvarint(b[offset:])
+	if o < 0 {
+		return "", 0, 0, errMalformedTreeBytes
+	}
+	offset += o
+	// Note that we allocate a string, instead of referencing b's capacity.
+	name := FuntionName(b[offset : offset+int(nameLen)])
+	offset += int(nameLen)
+	value, o := dvarint.Uvarint(b[offset:])
+	if o < 0 {
+		return "", 0, 0, errMalformedTreeBytes
+	}
+	offset += o
+	return name, int64(value), offset, nil
 }
 
 const OtherLocationRef = LocationRefName(0)
@@ -36,8 +64,32 @@ type LocationRefName int
 type LocationRefNameI struct {
 }
 
-func (_ LocationRefNameI) newOther() LocationRefName {
+func (LocationRefNameI) newOther() LocationRefName { //nolint:unused
 	return OtherLocationRef
+}
+
+func (LocationRefNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[LocationRefName], keepName func(LocationRefName) LocationRefName) error { //nolint:unused
+	if _, err := vw.Write(w, uint64(keepName(n.name))); err != nil {
+		return err
+	}
+	_, err := vw.Write(w, uint64(n.self))
+	return err
+}
+
+func (LocationRefNameI) unmarshalNode(b []byte, offset int) (LocationRefName, int64, int, error) { //nolint:unused
+	name, o := dvarint.Uvarint(b[offset:])
+	if o < 0 {
+		return 0, 0, 0, errMalformedTreeBytes
+	}
+	offset += o
+
+	value, o := dvarint.Uvarint(b[offset:])
+	if o < 0 {
+		return 0, 0, 0, errMalformedTreeBytes
+	}
+	offset += o
+
+	return LocationRefName(name), int64(value), offset, nil
 }
 
 type NodeName interface {
@@ -48,8 +100,10 @@ type StringNodeName interface {
 	~string
 }
 
-type NodeNameI[N any] interface {
+type NodeNameI[N ~string | ~int] interface {
 	newOther() N
+	marshalNode(io.Writer, varint.Writer, *node[N], func(N) N) error
+	unmarshalNode([]byte, int) (N, int64, int, error)
 }
 
 type FunctionNameTree = Tree[FuntionName, FuntionNameI]
@@ -351,16 +405,16 @@ var truncatedNodeNameBytes = []byte(truncatedNodeName)
 // Bytes returns marshaled tree byte representation; the number of nodes
 // is limited to maxNodes. The function modifies the tree: truncated nodes
 // are removed from the tree in place.
-func (t *Tree[N, I]) Bytes(maxNodes int64) []byte {
+func (t *Tree[N, I]) Bytes(maxNodes int64, keepName func(N) N) []byte {
 	var buf bytes.Buffer
-	_ = t.MarshalTruncate(&buf, maxNodes)
+	_ = t.MarshalTruncate(&buf, maxNodes, keepName)
 	return buf.Bytes()
 }
 
 // MarshalTruncate writes tree byte representation to the writer provider,
 // the number of nodes is limited to maxNodes. The function modifies
 // the tree: truncated nodes are removed from the tree.
-func (t *Tree[N, I]) MarshalTruncate(w io.Writer, maxNodes int64) (err error) {
+func (t *Tree[N, I]) MarshalTruncate(w io.Writer, maxNodes int64, keepName func(N) N) (err error) {
 	if len(t.root) == 0 {
 		return nil
 	}
@@ -377,14 +431,8 @@ func (t *Tree[N, I]) MarshalTruncate(w io.Writer, maxNodes int64) (err error) {
 	for len(nodes) > 0 {
 		last := len(nodes) - 1
 		n, nodes = nodes[last], nodes[:last]
-		nameStr := fmt.Sprint(n.name)
-		if _, err = vw.Write(w, uint64(len(nameStr))); err != nil {
-			return err
-		}
-		if _, err = w.Write(unsafeStringBytes(nameStr)); err != nil {
-			return err
-		}
-		if _, err = vw.Write(w, uint64(n.self)); err != nil {
+
+		if err := initializer.marshalNode(w, vw, n, keepName); err != nil {
 			return err
 		}
 
@@ -433,6 +481,7 @@ func MustUnmarshalTree[N StringNodeName, I NodeNameI[N]](b []byte) *Tree[N, I] {
 }
 
 func UnmarshalTree[N StringNodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
+	var initializer I
 	t := new(Tree[N, I])
 	if len(b) < 2 {
 		return t, nil
@@ -450,20 +499,15 @@ func UnmarshalTree[N StringNodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], err
 
 	for len(parents) > 0 {
 		parent, parents = parents[len(parents)-1], parents[:len(parents)-1]
-		nameLen, o := dvarint.Uvarint(b[offset:])
-		if o < 0 {
-			return nil, errMalformedTreeBytes
+		// specific start
+
+		name, value, o, err := initializer.unmarshalNode(b, offset)
+		if err != nil {
+			return nil, err
 		}
-		offset += o
-		// Note that we allocate a string, instead of referencing b's capacity.
-		// N is constrained to StringNodeName (~string), so this conversion is safe
-		name := N(string(b[offset : offset+int(nameLen)]))
-		offset += int(nameLen)
-		value, o := dvarint.Uvarint(b[offset:])
-		if o < 0 {
-			return nil, errMalformedTreeBytes
-		}
-		offset += o
+		offset = o
+
+		// specific end
 		childrenLen, o := dvarint.Uvarint(b[offset:])
 		if o < 0 {
 			return nil, errMalformedTreeBytes
@@ -472,7 +516,7 @@ func UnmarshalTree[N StringNodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], err
 
 		n := parent.insert(name)
 		n.children = make([]*node[N], 0, childrenLen)
-		n.self = int64(value)
+		n.self = value
 
 		pn := n
 		for pn.parent != nil {
@@ -537,13 +581,4 @@ func TreeFromBackendProfileSampleType(profile *profilev1.Profile, maxNodes int64
 	b.Grow(100 << 10)
 	t.Bytes(b, maxNodes, profile.StringTable)
 	return b.Bytes(), nil
-}
-
-// toStrings converts a slice of generic string types to []string
-func toStrings[N ~string](slice []N) []string {
-	result := make([]string, len(slice))
-	for i, v := range slice {
-		result[i] = string(v)
-	}
-	return result
 }

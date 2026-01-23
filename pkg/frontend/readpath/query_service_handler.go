@@ -78,7 +78,7 @@ func (r *Router) SelectMergeStacktraces(
 			if err := m.MergeTreeBytes(b.Tree); err != nil {
 				return nil, err
 			}
-			tree := m.Tree().Bytes(c.Msg.GetMaxNodes())
+			tree := m.Tree().Bytes(c.Msg.GetMaxNodes(), nil)
 			return &querierv1.SelectMergeStacktracesResponse{Tree: tree}, nil
 		},
 	)
@@ -108,7 +108,7 @@ func (r *Router) SelectMergeSpanProfile(
 			if err := m.MergeTreeBytes(b.Tree); err != nil {
 				return nil, err
 			}
-			tree := m.Tree().Bytes(c.Msg.GetMaxNodes())
+			tree := m.Tree().Bytes(c.Msg.GetMaxNodes(), nil)
 			return &querierv1.SelectMergeSpanProfileResponse{Tree: tree}, nil
 		},
 	)

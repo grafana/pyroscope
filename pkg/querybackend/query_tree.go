@@ -114,7 +114,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	resp := &queryv1.Report{
 		Tree: &queryv1.TreeReport{
 			Query: query.Tree.CloneVT(),
-			Tree:  tree.Bytes(query.Tree.GetMaxNodes()),
+			Tree:  tree.Bytes(query.Tree.GetMaxNodes(), nil),
 		},
 	}
 	return resp, nil
@@ -141,7 +141,7 @@ func (a *treeAggregator) build() *queryv1.Report {
 	return &queryv1.Report{
 		Tree: &queryv1.TreeReport{
 			Query: a.query,
-			Tree:  a.tree.Tree().Bytes(a.query.GetMaxNodes()),
+			Tree:  a.tree.Tree().Bytes(a.query.GetMaxNodes(), nil),
 		},
 	}
 }
