@@ -8,7 +8,6 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/model/attributetable"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
@@ -19,7 +18,7 @@ type TimeSeriesBuilder struct {
 	series seriesByLabels
 
 	exemplarBuilders map[string]*ExemplarBuilder
-	attributeTable   *attributetable.Table
+	attributeTable   *Table
 }
 
 func NewTimeSeriesBuilder(by ...string) *TimeSeriesBuilder {
@@ -33,7 +32,7 @@ func (s *TimeSeriesBuilder) Init(by ...string) {
 	s.labelBuf = make([]byte, 0, 1024)
 	s.by = by
 	s.exemplarBuilders = make(map[string]*ExemplarBuilder)
-	s.attributeTable = attributetable.NewTable()
+	s.attributeTable = NewTable()
 }
 
 // Add adds a data point with full labels.
@@ -102,7 +101,7 @@ func (s *TimeSeriesBuilder) ExemplarCount() int {
 }
 
 // AttributeTable returns the attribute table built during BuildWithExemplars().
-func (s *TimeSeriesBuilder) AttributeTable() *attributetable.Table {
+func (s *TimeSeriesBuilder) AttributeTable() *Table {
 	return s.attributeTable
 }
 
@@ -124,7 +123,7 @@ func (s *TimeSeriesBuilder) attachExemplars(series []*typesv1.Series) {
 		exemplarBuilder.Build()
 
 		var exemplars []*typesv1.Exemplar
-		exemplarBuilder.ForEach(func(labels Labels, ts int64, profileID string, value uint64) {
+		exemplarBuilder.ForEach(func(labels Labels, ts int64, profileID string, value int64) {
 			ex := &typesv1.Exemplar{
 				Timestamp: ts,
 				ProfileId: profileID,
@@ -175,8 +174,8 @@ func (s *TimeSeriesBuilder) attachExemplarsWithAttributeTable(series []*typesv1.
 			}
 		}
 		querySeries := &queryv1.Series{
-			Labels: ts.Labels,
-			Points: points,
+			AttributeRefs: s.attributeTable.Refs(ts.Labels, nil),
+			Points:        points,
 		}
 		result[i] = querySeries
 
@@ -193,7 +192,7 @@ func (s *TimeSeriesBuilder) attachExemplarsWithAttributeTable(series []*typesv1.
 		exemplarBuilder.Build()
 
 		var exemplars []*queryv1.Exemplar
-		exemplarBuilder.ForEach(func(labels Labels, ts int64, profileID string, value uint64) {
+		exemplarBuilder.ForEach(func(labels Labels, ts int64, profileID string, value int64) {
 			ex := &queryv1.Exemplar{
 				Timestamp:     ts,
 				ProfileId:     profileID,

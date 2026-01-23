@@ -1,7 +1,10 @@
-package attributetable
+package model
 
 import (
+	"fmt"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"unique"
 
@@ -12,7 +15,7 @@ import (
 // SeriesMerger merges query.v1.Series with AttributeTable optimization.
 type SeriesMerger struct {
 	mu             sync.Mutex
-	series         map[uint64]*queryv1.Series
+	series         map[string]*queryv1.Series
 	attributeTable *Table
 	sum            bool
 }
@@ -20,7 +23,7 @@ type SeriesMerger struct {
 // NewSeriesMerger creates a new merger for query.v1.Series with AttributeTable.
 func NewSeriesMerger(sum bool) *SeriesMerger {
 	return &SeriesMerger{
-		series:         make(map[uint64]*queryv1.Series),
+		series:         make(map[string]*queryv1.Series),
 		attributeTable: NewTable(),
 		sum:            sum,
 	}
@@ -47,10 +50,10 @@ func (m *SeriesMerger) MergeWithAttributeTable(series []*queryv1.Series, table *
 	// Fast path: no remapping needed
 	if refMap == nil {
 		for _, s := range series {
-			h := hashLabels(s.Labels)
-			existing, ok := m.series[h]
+			key := seriesKey(s.AttributeRefs)
+			existing, ok := m.series[key]
 			if !ok {
-				m.series[h] = s
+				m.series[key] = s
 				continue
 			}
 			existing.Points = append(existing.Points, s.Points...)
@@ -59,11 +62,13 @@ func (m *SeriesMerger) MergeWithAttributeTable(series []*queryv1.Series, table *
 	}
 
 	for _, s := range series {
-		h := hashLabels(s.Labels)
-		existing, ok := m.series[h]
+		// Remap series attribute_refs first
+		remappedRefs := m.remapRefs(s.AttributeRefs, refMap)
+		key := seriesKey(remappedRefs)
+		existing, ok := m.series[key]
 		if !ok {
 			// First time seeing this series - remap refs and store
-			m.series[h] = m.remapSeriesRefs(s, refMap)
+			m.series[key] = m.remapSeriesRefs(s, refMap, remappedRefs)
 			continue
 		}
 
@@ -75,16 +80,34 @@ func (m *SeriesMerger) MergeWithAttributeTable(series []*queryv1.Series, table *
 }
 
 // remapSeriesRefs creates a copy of the series with remapped attribute_refs
-func (m *SeriesMerger) remapSeriesRefs(s *queryv1.Series, refMap map[int64]int64) *queryv1.Series {
+func (m *SeriesMerger) remapSeriesRefs(s *queryv1.Series, refMap map[int64]int64, remappedSeriesRefs []int64) *queryv1.Series {
 	points := make([]*queryv1.Point, len(s.Points))
 	for i, p := range s.Points {
 		points[i] = m.remapPointRefs(p, refMap)
 	}
 
 	return &queryv1.Series{
-		Labels: s.Labels,
-		Points: points,
+		AttributeRefs: remappedSeriesRefs,
+		Points:        points,
 	}
+}
+
+// remapRefs remaps a slice of attribute refs using the provided mapping
+func (m *SeriesMerger) remapRefs(refs []int64, refMap map[int64]int64) []int64 {
+	// if we are the first report, we don't have a refMap yet
+	if refMap == nil {
+		return refs
+	}
+
+	result := make([]int64, len(refs))
+	for i, ref := range refs {
+		if newRef, ok := refMap[ref]; ok {
+			result[i] = newRef
+		} else {
+			panic(fmt.Sprintf("attribute ref %d not found in attribute table", ref))
+		}
+	}
+	return result
 }
 
 // remapPointRefs remaps attribute_refs in a single point
@@ -139,7 +162,7 @@ func (m *SeriesMerger) TimeSeries() []*queryv1.Series {
 	}
 
 	sort.Slice(result, func(i, j int) bool {
-		return compareLabelPairs(result[i].Labels, result[j].Labels) < 0
+		return compareAttributeRefs(result[i].AttributeRefs, result[j].AttributeRefs) < 0
 	})
 
 	return result
@@ -284,8 +307,24 @@ func (m *SeriesMerger) ExpandToFullLabels() []*typesv1.Series {
 				}
 			}
 		}
+
+		// Expand series attribute_refs back to labels
+		seriesLabels := make([]*typesv1.LabelPair, len(s.AttributeRefs))
+		labelCount := 0
+		for _, ref := range s.AttributeRefs {
+			key, value, ok := m.attributeTable.GetKeyValue(ref)
+			if ok {
+				seriesLabels[labelCount] = &typesv1.LabelPair{
+					Name:  key,
+					Value: value,
+				}
+				labelCount++
+			}
+		}
+		seriesLabels = seriesLabels[:labelCount]
+
 		result = append(result, &typesv1.Series{
-			Labels: s.Labels,
+			Labels: seriesLabels,
 			Points: points,
 		})
 	}
@@ -296,4 +335,72 @@ func (m *SeriesMerger) ExpandToFullLabels() []*typesv1.Series {
 	})
 
 	return result
+}
+
+// seriesKey creates a unique string key from attribute refs (following heatmap pattern)
+func seriesKey(refs []int64) string {
+	var sb strings.Builder
+	for i, ref := range refs {
+		if i > 0 {
+			sb.WriteByte(',')
+		}
+		sb.WriteString(strconv.FormatInt(ref, 16))
+	}
+	return sb.String()
+}
+
+// compareAttributeRefs compares two slices of attribute refs lexicographically
+func compareAttributeRefs(a, b []int64) int {
+	l := len(a)
+	if len(b) < l {
+		l = len(b)
+	}
+
+	for i := 0; i < l; i++ {
+		if a[i] < b[i] {
+			return -1
+		} else if a[i] > b[i] {
+			return 1
+		}
+	}
+
+	// If all refs are equal so far, the shorter slice is "less"
+	if len(a) < len(b) {
+		return -1
+	} else if len(a) > len(b) {
+		return 1
+	}
+
+	return 0
+}
+
+// compareLabelPairs compares two slices of label pairs lexicographically.
+func compareLabelPairs(a, b []*typesv1.LabelPair) int {
+	l := len(a)
+	if len(b) < l {
+		l = len(b)
+	}
+
+	for i := 0; i < l; i++ {
+		if a[i].Name < b[i].Name {
+			return -1
+		} else if a[i].Name > b[i].Name {
+			return 1
+		}
+
+		if a[i].Value < b[i].Value {
+			return -1
+		} else if a[i].Value > b[i].Value {
+			return 1
+		}
+	}
+
+	// If all labels are equal so far, the shorter slice is "less"
+	if len(a) < len(b) {
+		return -1
+	} else if len(a) > len(b) {
+		return 1
+	}
+
+	return 0
 }

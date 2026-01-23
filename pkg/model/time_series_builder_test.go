@@ -252,7 +252,15 @@ func TestTimeSeriesBuilder_AttributeTable(t *testing.T) {
 		table := builder2.AttributeTable().Build(nil)
 
 		// Series and points should match
-		assert.Equal(t, seriesWithLabels[0].Labels, seriesWithRefs[0].Labels)
+		// Expand attribute_refs back to labels for comparison
+		expandedLabels := make([]*typesv1.LabelPair, len(seriesWithRefs[0].AttributeRefs))
+		for i, ref := range seriesWithRefs[0].AttributeRefs {
+			expandedLabels[i] = &typesv1.LabelPair{
+				Name:  table.Keys[ref],
+				Value: table.Values[ref],
+			}
+		}
+		assert.Equal(t, seriesWithLabels[0].Labels, expandedLabels)
 		assert.Equal(t, seriesWithLabels[0].Points[0].Value, seriesWithRefs[0].Points[0].Value)
 		assert.Equal(t, seriesWithLabels[0].Points[0].Timestamp, seriesWithRefs[0].Points[0].Timestamp)
 

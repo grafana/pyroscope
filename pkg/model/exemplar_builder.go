@@ -133,7 +133,7 @@ func intersectAll(labelSets []Labels) Labels {
 }
 
 // ForEach iterates over all exemplars, calling the provided function for each one.
-func (eb *ExemplarBuilder) ForEach(f func(labels Labels, ts int64, profileID string, value uint64)) {
+func (eb *ExemplarBuilder) ForEach(f func(labels Labels, ts int64, profileID string, value int64)) {
 	for _, ex := range eb.exemplars {
 		f(eb.labelSets[ex.labelSetRef], ex.timestamp, ex.profileID, ex.value)
 	}

@@ -1,4 +1,4 @@
-package attributetable
+package model
 
 import (
 	"testing"
@@ -7,19 +7,19 @@ import (
 	"github.com/stretchr/testify/require"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 func TestSeriesMerger_RemapsAttributeRefs(t *testing.T) {
 	merger := NewSeriesMerger(true)
 
-	// Source A: AttributeTable with indices 0="pod"/"a", 1="version"/"1.0"
+	// Source A: AttributeTable with series label + exemplar labels
+	// 0="service_name"/"api", 1="pod"/"a", 2="version"/"1.0"
 	table1 := &queryv1.AttributeTable{
-		Keys:   []string{"pod", "version"},
-		Values: []string{"a", "1.0"},
+		Keys:   []string{"service_name", "pod", "version"},
+		Values: []string{"api", "a", "1.0"},
 	}
 	series1 := []*queryv1.Series{{
-		Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+		AttributeRefs: []int64{0},
 		Points: []*queryv1.Point{{
 			Timestamp: 1000,
 			Value:     100,
@@ -27,18 +27,19 @@ func TestSeriesMerger_RemapsAttributeRefs(t *testing.T) {
 				ProfileId:     "prof-1",
 				Value:         100,
 				Timestamp:     1000,
-				AttributeRefs: []int64{0, 1}, // References: pod=a, version=1.0
+				AttributeRefs: []int64{1, 2},
 			}},
 		}},
 	}}
 
-	// Source B: AttributeTable with SAME indices but DIFFERENT values: 0="pod"/"b", 1="version"/"1.0"
+	// Source B: AttributeTable with SAME series labels but DIFFERENT exemplar values
+	// 0="service_name"/"api", 1="pod"/"b", 2="version"/"1.0"
 	table2 := &queryv1.AttributeTable{
-		Keys:   []string{"pod", "version"},
-		Values: []string{"b", "1.0"},
+		Keys:   []string{"service_name", "pod", "version"},
+		Values: []string{"api", "b", "1.0"},
 	}
 	series2 := []*queryv1.Series{{
-		Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+		AttributeRefs: []int64{0},
 		Points: []*queryv1.Point{{
 			Timestamp: 1000,
 			Value:     200,
@@ -46,7 +47,7 @@ func TestSeriesMerger_RemapsAttributeRefs(t *testing.T) {
 				ProfileId:     "prof-2",
 				Value:         200,
 				Timestamp:     1000,
-				AttributeRefs: []int64{0, 1}, // References: pod=b, version=1.0 (same indices, different pod!)
+				AttributeRefs: []int64{1, 2},
 			}},
 		}},
 	}}
@@ -99,10 +100,8 @@ func TestSeriesMerger_RemapsAttributeRefs(t *testing.T) {
 	assert.Equal(t, "b", labels2["pod"])
 	assert.Equal(t, "1.0", labels2["version"])
 
-	// Verify string interning: version=1.0 should be deduplicated
-	// The unified table should have 3 entries: pod=a, version=1.0, pod=b
-	assert.Len(t, unifiedTable.Keys, 3, "Should have 3 unique key-value pairs")
-	assert.Len(t, unifiedTable.Values, 3, "Should have 3 unique key-value pairs")
+	assert.Len(t, unifiedTable.Keys, 4)
+	assert.Len(t, unifiedTable.Values, 4)
 }
 
 func TestSeriesMerger_StringInterning(t *testing.T) {
@@ -111,11 +110,11 @@ func TestSeriesMerger_StringInterning(t *testing.T) {
 	// Merge 3 sources with the same labels repeated
 	for i := 0; i < 3; i++ {
 		table := &queryv1.AttributeTable{
-			Keys:   []string{"pod", "env"},
-			Values: []string{"pod-1", "prod"},
+			Keys:   []string{"service_name", "pod", "env"},
+			Values: []string{"api", "pod-1", "prod"},
 		}
 		series := []*queryv1.Series{{
-			Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+			AttributeRefs: []int64{0},
 			Points: []*queryv1.Point{{
 				Timestamp: 1000,
 				Value:     100,
@@ -123,7 +122,7 @@ func TestSeriesMerger_StringInterning(t *testing.T) {
 					ProfileId:     "prof-1",
 					Value:         100,
 					Timestamp:     1000,
-					AttributeRefs: []int64{0, 1},
+					AttributeRefs: []int64{1, 2},
 				}},
 			}},
 		}}
@@ -133,16 +132,15 @@ func TestSeriesMerger_StringInterning(t *testing.T) {
 	// Build the unified AttributeTable
 	unifiedTable := merger.AttributeTable().Build(nil)
 
-	// Despite merging 3 sources with the same labels, the unified AttributeTable
-	// should have only 2 unique entries (pod=pod-1, env=prod) thanks to string interning
-	assert.Len(t, unifiedTable.Keys, 2, "Should have only 2 unique key-value pairs after string interning")
-	assert.Len(t, unifiedTable.Values, 2, "Should have only 2 unique key-value pairs after string interning")
+	assert.Len(t, unifiedTable.Keys, 3)
+	assert.Len(t, unifiedTable.Values, 3)
 
 	// Verify the contents
 	attrMap := make(map[string]string)
 	for i := range unifiedTable.Keys {
 		attrMap[unifiedTable.Keys[i]] = unifiedTable.Values[i]
 	}
+	assert.Equal(t, "api", attrMap["service_name"])
 	assert.Equal(t, "pod-1", attrMap["pod"])
 	assert.Equal(t, "prod", attrMap["env"])
 }
@@ -151,13 +149,13 @@ func TestSeriesMerger_MergeExemplars(t *testing.T) {
 	merger := NewSeriesMerger(true)
 
 	table := &queryv1.AttributeTable{
-		Keys:   []string{"pod"},
-		Values: []string{"pod-1"},
+		Keys:   []string{"service_name", "pod"},
+		Values: []string{"api", "pod-1"},
 	}
 
 	// Add same profile ID twice with different values
 	series1 := []*queryv1.Series{{
-		Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+		AttributeRefs: []int64{0},
 		Points: []*queryv1.Point{{
 			Timestamp: 1000,
 			Value:     100,
@@ -165,13 +163,13 @@ func TestSeriesMerger_MergeExemplars(t *testing.T) {
 				ProfileId:     "prof-1",
 				Value:         100,
 				Timestamp:     1000,
-				AttributeRefs: []int64{0},
+				AttributeRefs: []int64{1},
 			}},
 		}},
 	}}
 
 	series2 := []*queryv1.Series{{
-		Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+		AttributeRefs: []int64{0},
 		Points: []*queryv1.Point{{
 			Timestamp: 1000,
 			Value:     200,
@@ -179,7 +177,7 @@ func TestSeriesMerger_MergeExemplars(t *testing.T) {
 				ProfileId:     "prof-1",
 				Value:         300, // Higher value
 				Timestamp:     1000,
-				AttributeRefs: []int64{0},
+				AttributeRefs: []int64{1},
 			}},
 		}},
 	}}
@@ -195,19 +193,19 @@ func TestSeriesMerger_MergeExemplars(t *testing.T) {
 	// Should keep the exemplar with higher value (300)
 	exemplar := result[0].Points[0].Exemplars[0]
 	assert.Equal(t, "prof-1", exemplar.ProfileId)
-	assert.Equal(t, uint64(300), exemplar.Value, "Should keep the exemplar with higher value")
+	assert.Equal(t, int64(300), exemplar.Value, "Should keep the exemplar with higher value")
 }
 
 func TestSeriesMerger_ExpandToFullLabels(t *testing.T) {
 	merger := NewSeriesMerger(false)
 
 	table := &queryv1.AttributeTable{
-		Keys:   []string{"pod", "version"},
-		Values: []string{"pod-1", "v1.0"},
+		Keys:   []string{"service_name", "pod", "version"},
+		Values: []string{"api", "pod-1", "v1.0"},
 	}
 
 	series := []*queryv1.Series{{
-		Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+		AttributeRefs: []int64{0},
 		Points: []*queryv1.Point{{
 			Timestamp: 1000,
 			Value:     100,
@@ -215,7 +213,7 @@ func TestSeriesMerger_ExpandToFullLabels(t *testing.T) {
 				ProfileId:     "prof-1",
 				Value:         100,
 				Timestamp:     1000,
-				AttributeRefs: []int64{0, 1}, // pod=pod-1, version=v1.0
+				AttributeRefs: []int64{1, 2},
 			}},
 		}},
 	}}
@@ -228,7 +226,12 @@ func TestSeriesMerger_ExpandToFullLabels(t *testing.T) {
 	require.Len(t, typesV1Series[0].Points, 1)
 	require.Len(t, typesV1Series[0].Points[0].Exemplars, 1)
 
-	// Verify labels are expanded
+	// Verify series labels are expanded
+	require.Len(t, typesV1Series[0].Labels, 1)
+	assert.Equal(t, "service_name", typesV1Series[0].Labels[0].Name)
+	assert.Equal(t, "api", typesV1Series[0].Labels[0].Value)
+
+	// Verify exemplar labels are expanded
 	exemplar := typesV1Series[0].Points[0].Exemplars[0]
 	require.Len(t, exemplar.Labels, 2)
 

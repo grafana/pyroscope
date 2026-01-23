@@ -166,31 +166,6 @@ message SeriesLabelsReport {
   repeated types.v1.Labels series_labels = 2;
 }
 
-message Exemplar {
-  int64 timestamp = 1;
-  string profile_id = 2;
-  string span_id = 3;
-  uint64 value = 4;
-  repeated int64 attribute_refs = 5;
-}
-
-message Point {
-  double value = 1;
-  int64 timestamp = 2;
-  repeated types.v1.ProfileAnnotation annotations = 3;
-  repeated Exemplar exemplars = 4;
-}
-
-message Series {
-  repeated types.v1.LabelPair labels = 1;
-  repeated Point points = 2;
-}
-
-message AttributeTable {
-  repeated string keys = 1;
-  repeated string values = 2;
-}
-
 message TimeSeriesQuery {
   double step = 1;
   repeated string group_by = 2;
@@ -201,12 +176,6 @@ message TimeSeriesQuery {
 message TimeSeriesReport {
   TimeSeriesQuery query = 1;
   repeated types.v1.Series time_series = 2;
-}
-
-message TimeSeriesWithAttributeTableReport {
-  TimeSeriesQuery query = 1;
-  repeated Series time_series = 2;
-  AttributeTable attribute_table = 3;
 }
 
 message TreeQuery {
@@ -262,5 +231,31 @@ message HeatmapSeries {
 message HeatmapReport {
   HeatmapQuery query = 1;
   repeated HeatmapSeries heatmap_series = 2;
+  AttributeTable attribute_table = 3;
+}
+
+message Exemplar {
+  int64 timestamp = 1;
+  string profile_id = 2;
+  string span_id = 3;
+  int64 value = 4;
+  repeated int64 attribute_refs = 5;
+}
+
+message Point {
+  double value = 1;
+  int64 timestamp = 2;
+  repeated types.v1.ProfileAnnotation annotations = 3;
+  repeated Exemplar exemplars = 4;
+}
+
+message Series {
+  repeated int64 attribute_refs = 1;
+  repeated Point points = 2;
+}
+
+message TimeSeriesWithAttributeTableReport {
+  TimeSeriesQuery query = 1;
+  repeated Series time_series = 2;
   AttributeTable attribute_table = 3;
 }

@@ -13,7 +13,6 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/block"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/model/attributetable"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
@@ -118,7 +117,9 @@ func queryTimeSeriesWithAttributeTable(q *queryContext, query *queryv1.Query) (r
 		attributeTable = builder.AttributeTable().Build(nil)
 		span.SetTag("exemplars.raw_count", builder.ExemplarCount())
 	} else {
+		// Even without exemplars, we need to intern series labels
 		typesV1Series := builder.Build()
+		attrTable := phlaremodel.NewTable()
 		timeSeries = make([]*queryv1.Series, len(typesV1Series))
 		for i, s := range typesV1Series {
 			points := make([]*queryv1.Point, len(s.Points))
@@ -130,10 +131,11 @@ func queryTimeSeriesWithAttributeTable(q *queryContext, query *queryv1.Query) (r
 				}
 			}
 			timeSeries[i] = &queryv1.Series{
-				Labels: s.Labels,
-				Points: points,
+				AttributeRefs: attrTable.Refs(s.Labels, nil),
+				Points:        points,
 			}
 		}
+		attributeTable = attrTable.Build(nil)
 	}
 
 	resp := &queryv1.Report{
@@ -152,7 +154,7 @@ type timeSeriesWithAttributeTableAggregator struct {
 	startTime int64
 	endTime   int64
 	query     *queryv1.TimeSeriesQuery
-	series    *attributetable.SeriesMerger
+	series    *phlaremodel.SeriesMerger
 }
 
 func newTimeSeriesWithAttributeTableAggregator(req *queryv1.InvokeRequest) aggregator {
@@ -165,7 +167,7 @@ func newTimeSeriesWithAttributeTableAggregator(req *queryv1.InvokeRequest) aggre
 func (a *timeSeriesWithAttributeTableAggregator) aggregate(report *queryv1.Report) error {
 	r := report.TimeSeriesWithAttributeTable
 	a.init.Do(func() {
-		a.series = attributetable.NewSeriesMerger(true)
+		a.series = phlaremodel.NewSeriesMerger(true)
 		a.query = r.Query.CloneVT()
 	})
 
@@ -189,7 +191,7 @@ func (a *timeSeriesWithAttributeTableAggregator) build() *queryv1.Report {
 	)
 
 	// Convert back to query.v1.Series with attribute_refs
-	attrTable := attributetable.NewTable()
+	attrTable := phlaremodel.NewTable()
 	timeSeries := make([]*queryv1.Series, len(rangedSeries))
 	for i, s := range rangedSeries {
 		points := make([]*queryv1.Point, len(s.Points))
@@ -223,8 +225,8 @@ func (a *timeSeriesWithAttributeTableAggregator) build() *queryv1.Report {
 			}
 		}
 		timeSeries[i] = &queryv1.Series{
-			Labels: s.Labels,
-			Points: points,
+			AttributeRefs: attrTable.Refs(s.Labels, nil),
+			Points:        points,
 		}
 	}
 

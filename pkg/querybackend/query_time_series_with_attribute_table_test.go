@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 func TestTimeSeriesWithAttributeTableAggregator(t *testing.T) {
@@ -28,14 +27,14 @@ func TestTimeSeriesWithAttributeTableAggregator(t *testing.T) {
 
 	// Report 1: 3 attributes (pod, version, region) at timestamp 1000
 	table1 := &queryv1.AttributeTable{
-		Keys:   []string{"pod", "version", "region"},
-		Values: []string{"a", "1.0", "us-east-1"},
+		Keys:   []string{"service_name", "pod", "version", "region"},
+		Values: []string{"api", "a", "1.0", "us-east-1"},
 	}
 	report1 := &queryv1.Report{
 		TimeSeriesWithAttributeTable: &queryv1.TimeSeriesWithAttributeTableReport{
 			Query: query.TimeSeriesWithAttributeTable,
 			TimeSeries: []*queryv1.Series{{
-				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+				AttributeRefs: []int64{0}, // First entry in table is series label
 				Points: []*queryv1.Point{{
 					Timestamp: 1000,
 					Value:     100,
@@ -43,7 +42,7 @@ func TestTimeSeriesWithAttributeTableAggregator(t *testing.T) {
 						ProfileId:     "prof-1",
 						Value:         100,
 						Timestamp:     1000,
-						AttributeRefs: []int64{0, 1, 2},
+						AttributeRefs: []int64{1, 2, 3}, // pod, version, region
 					}},
 				}},
 			}},
@@ -51,16 +50,16 @@ func TestTimeSeriesWithAttributeTableAggregator(t *testing.T) {
 		},
 	}
 
-	// Report 2: 2 attributes (pod, version) at timestamp 2000 - different structure!
+	// Report 2: series label + 2 exemplar attributes at timestamp 2000 - different structure!
 	table2 := &queryv1.AttributeTable{
-		Keys:   []string{"pod", "version"},
-		Values: []string{"b", "1.0"},
+		Keys:   []string{"service_name", "pod", "version"},
+		Values: []string{"api", "b", "1.0"},
 	}
 	report2 := &queryv1.Report{
 		TimeSeriesWithAttributeTable: &queryv1.TimeSeriesWithAttributeTableReport{
 			Query: query.TimeSeriesWithAttributeTable,
 			TimeSeries: []*queryv1.Series{{
-				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+				AttributeRefs: []int64{0}, // First entry in table is series label
 				Points: []*queryv1.Point{{
 					Timestamp: 2000,
 					Value:     200,
@@ -68,7 +67,7 @@ func TestTimeSeriesWithAttributeTableAggregator(t *testing.T) {
 						ProfileId:     "prof-2",
 						Value:         200,
 						Timestamp:     2000,
-						AttributeRefs: []int64{0, 1},
+						AttributeRefs: []int64{1, 2}, // pod, version
 					}},
 				}},
 			}},
@@ -78,14 +77,14 @@ func TestTimeSeriesWithAttributeTableAggregator(t *testing.T) {
 
 	// Report 3: Same as report1 to test string interning - duplicate labels!
 	table3 := &queryv1.AttributeTable{
-		Keys:   []string{"pod", "version", "region"},
-		Values: []string{"a", "1.0", "us-east-1"},
+		Keys:   []string{"service_name", "pod", "version", "region"},
+		Values: []string{"api", "a", "1.0", "us-east-1"},
 	}
 	report3 := &queryv1.Report{
 		TimeSeriesWithAttributeTable: &queryv1.TimeSeriesWithAttributeTableReport{
 			Query: query.TimeSeriesWithAttributeTable,
 			TimeSeries: []*queryv1.Series{{
-				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "api"}},
+				AttributeRefs: []int64{0}, // First entry in table is series label
 				Points: []*queryv1.Point{{
 					Timestamp: 1000,
 					Value:     50,
@@ -93,7 +92,7 @@ func TestTimeSeriesWithAttributeTableAggregator(t *testing.T) {
 						ProfileId:     "prof-3",
 						Value:         50,
 						Timestamp:     1000,
-						AttributeRefs: []int64{0, 1, 2},
+						AttributeRefs: []int64{1, 2, 3}, // pod, version, region
 					}},
 				}},
 			}},
@@ -136,7 +135,7 @@ func TestTimeSeriesWithAttributeTableAggregator(t *testing.T) {
 	require.Len(t, point1.Exemplars, 1, "RangeSeries limits to 1 exemplar per point")
 	ex1 := point1.Exemplars[0]
 	assert.Equal(t, "prof-1", ex1.ProfileId, "Should keep highest value exemplar at timestamp 1000")
-	assert.Equal(t, uint64(100), ex1.Value)
+	assert.Equal(t, int64(100), ex1.Value)
 	require.Len(t, ex1.AttributeRefs, 3)
 
 	// Verify prof-1 attributes: pod=a, version=1.0, region=us-east-1
@@ -155,7 +154,7 @@ func TestTimeSeriesWithAttributeTableAggregator(t *testing.T) {
 	require.Len(t, point2.Exemplars, 1)
 	ex2 := point2.Exemplars[0]
 	assert.Equal(t, "prof-2", ex2.ProfileId)
-	assert.Equal(t, uint64(200), ex2.Value)
+	assert.Equal(t, int64(200), ex2.Value)
 	require.Len(t, ex2.AttributeRefs, 2)
 
 	// Verify prof-2 attributes: pod=b, version=1.0 (no region)
@@ -169,12 +168,13 @@ func TestTimeSeriesWithAttributeTableAggregator(t *testing.T) {
 	_, hasRegion := ex2Labels["region"]
 	assert.False(t, hasRegion, "prof-2 should not have region label")
 
-	// Verify string interning: 4 unique key-value pairs total
+	// Verify string interning: 5 unique key-value pairs total
+	// - service_name: api (1 entry, shared by all series - string interning!)
 	// - pod: a, b (2 entries)
 	// - version: 1.0 (1 entry, shared by both exemplars - string interning!)
 	// - region: us-east-1 (1 entry)
-	assert.Len(t, attrTable.Keys, 4)
-	assert.Len(t, attrTable.Values, 4)
+	assert.Len(t, attrTable.Keys, 5)
+	assert.Len(t, attrTable.Values, 5)
 
 	// Verify the actual contents
 	allKeys := make(map[string][]string)

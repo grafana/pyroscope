@@ -160,8 +160,11 @@ func convertQuerySeriesToTypesSeries(querySeries []*queryv1.Series, attrTable *q
 			}
 		}
 
+		// Expand series attribute_refs back to labels
+		seriesLabels := expandAttributeRefs(qs.AttributeRefs, attrTable)
+
 		result[i] = &typesv1.Series{
-			Labels: qs.Labels,
+			Labels: seriesLabels,
 			Points: points,
 		}
 	}

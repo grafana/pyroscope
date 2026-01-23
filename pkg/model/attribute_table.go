@@ -1,4 +1,4 @@
-package attributetable
+package model
 
 import (
 	"unique"
