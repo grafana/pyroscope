@@ -11,6 +11,8 @@ import (
 	"io"
 	"os"
 	"sort"
+
+	"github.com/grafana/pyroscope/lidia/gosym"
 )
 
 type ReaderAtCloser interface {
@@ -156,36 +158,53 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 	sb := newStringBuilder()
 	rb := newRangesBuilder()
 	lb := newLineTableBuilder()
-	rc := &rangeCollector{sb: sb, rb: rb, lb: lb}
+	rc := &rangeCollector{sb: sb, rb: rb, lb: lb, opt: options{
+		symtab:         true,
+		parseGoPclntab: true,
+	}}
 
 	for _, o := range opts {
 		o(&rc.opt)
 	}
-	var (
-		symErr, dynSymErr error
-	)
-	symbols, symErr := elfFile.Symbols()
-	if symErr != nil {
-		symbols, dynSymErr = elfFile.DynamicSymbols()
-		if dynSymErr != nil {
-			return fmt.Errorf("failed to read symbols from ELF file: %w, %w", symErr, dynSymErr)
+
+	if rc.opt.symtab {
+		var (
+			symErr, dynSymErr error
+		)
+		symbols, symErr := elfFile.Symbols()
+		if symErr != nil {
+			symbols, dynSymErr = elfFile.DynamicSymbols()
+			if dynSymErr != nil {
+				return fmt.Errorf("failed to read symbols from ELF file: %w, %w", symErr, dynSymErr)
+			}
+		}
+
+		for _, symbol := range symbols {
+			if elf.ST_TYPE(symbol.Info) != elf.STT_FUNC || symbol.Name == "" {
+				continue
+			}
+			rc.VisitRange(&Range{
+				VA:        symbol.Value,
+				Length:    uint32(symbol.Size),
+				Function:  symbol.Name,
+				File:      "",
+				CallFile:  "",
+				CallLine:  0,
+				Depth:     0,
+				LineTable: nil,
+			})
 		}
 	}
-
-	for _, symbol := range symbols {
-		if elf.ST_TYPE(symbol.Info) != elf.STT_FUNC || symbol.Name == "" {
-			continue
+	if rc.opt.parseGoPclntab {
+		functions, _ := gosym.GoFunctions(elfFile)
+		for i := range functions {
+			f := &functions[i]
+			rc.VisitRange(&Range{
+				VA:       f.Entry,
+				Length:   uint32(f.End - f.Entry),
+				Function: f.Name,
+			})
 		}
-		rc.VisitRange(&Range{
-			VA:        symbol.Value,
-			Length:    uint32(symbol.Size),
-			Function:  symbol.Name,
-			File:      "",
-			CallFile:  "",
-			CallLine:  0,
-			Depth:     0,
-			LineTable: nil,
-		})
 	}
 
 	rb.sort()
