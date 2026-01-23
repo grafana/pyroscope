@@ -41,6 +41,7 @@ pyroscope:
   imagePullSecrets: []
   dnsPolicy: ClusterFirst
   initContainers: []
+  extraContainers: []
   nameOverride: ""
   fullnameOverride: ""
 

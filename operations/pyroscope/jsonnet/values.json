@@ -380,6 +380,7 @@
     "extraArgs": {
       "log.level": "debug"
     },
+    "extraContainers": [],
     "extraCustomEnvVars": {},
     "extraEnvFrom": [],
     "extraEnvVars": {},
