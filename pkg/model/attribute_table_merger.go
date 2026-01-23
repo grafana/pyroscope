@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"unique"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -40,9 +39,9 @@ func (m *SeriesMerger) MergeWithAttributeTable(series []*queryv1.Series, table *
 		refMap = make(map[int64]int64, len(table.Keys))
 		for i := range table.Keys {
 			oldRef := int64(i)
-			key := unique.Make(table.Keys[i])
-			value := unique.Make(table.Values[i])
-			newRef := m.attributeTable.LookupOrAdd(attributeKey{key: key, value: value})
+			key := table.Keys[i]
+			value := table.Values[i]
+			newRef := m.attributeTable.AddKeyValue(key, value)
 			refMap[oldRef] = newRef
 		}
 	}
