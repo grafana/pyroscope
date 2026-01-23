@@ -15,6 +15,28 @@ import (
 	"sync"
 )
 
+type Sym struct {
+	Value  uint64
+	Type   byte
+	Name   string
+	GoType uint64
+	// If this symbol is a function symbol, the corresponding Func
+	Func *Func
+
+	goVersion version
+}
+
+type Func struct {
+	Entry uint64
+	*Sym
+	End       uint64
+	Params    []*Sym // nil for Go 1.3 and later binaries
+	Locals    []*Sym // nil for Go 1.3 and later binaries
+	FrameSize int
+	LineTable *LineTable
+	//Obj       *Obj
+}
+
 // version of the pclntab
 type version int
 
@@ -169,6 +191,9 @@ func NewLineTable(data []byte, text uint64) *LineTable {
 // are expected to have that recovery logic.
 
 // isGo12 reports whether this is a Go 1.2 (or later) symbol table.
+func (t *LineTable) IsGo12() bool {
+	return t.isGo12()
+}
 func (t *LineTable) isGo12() bool {
 	t.parsePclnTab()
 	return t.version >= ver12
@@ -678,20 +703,8 @@ func (t *LineTable) initFileMap() {
 	t.fileMap = m
 }
 
-// go12MapFiles adds to m a key for every file in the Go 1.2 LineTable.
-// Every key maps to obj. That's not a very interesting map, but it provides
-// a way for callers to obtain the list of files in the program.
-func (t *LineTable) go12MapFiles(m map[string]*Obj, obj *Obj) {
-	if !disableRecover {
-		defer func() {
-			recover()
-		}()
-	}
-
-	t.initFileMap()
-	for file := range t.fileMap {
-		m[file] = obj
-	}
+func (t *LineTable) Go12Funcs() []Func {
+	return t.go12Funcs()
 }
 
 // disableRecover causes this package not to swallow panics.
