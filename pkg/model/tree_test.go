@@ -229,7 +229,7 @@ func Test_Tree_MarshalUnmarshal(t *testing.T) {
 	t.Run("empty tree", func(t *testing.T) {
 		expected := new(FunctionNameTree)
 		var buf bytes.Buffer
-		require.NoError(t, expected.MarshalTruncate(&buf, -1))
+		require.NoError(t, expected.MarshalTruncate(&buf, -1, nil))
 		actual, err := UnmarshalTree[FuntionName, FuntionNameI](buf.Bytes())
 		require.NoError(t, err)
 		require.Equal(t, expected.String(), actual.String())
@@ -249,7 +249,7 @@ func Test_Tree_MarshalUnmarshal(t *testing.T) {
 		})
 
 		var buf bytes.Buffer
-		require.NoError(t, expected.MarshalTruncate(&buf, -1))
+		require.NoError(t, expected.MarshalTruncate(&buf, -1, nil))
 		actual, err := UnmarshalTree[FuntionName, FuntionNameI](buf.Bytes())
 		require.NoError(t, err)
 		require.Equal(t, expected.String(), actual.String())
@@ -269,7 +269,7 @@ func Test_Tree_MarshalUnmarshal(t *testing.T) {
 		})
 
 		var buf bytes.Buffer
-		require.NoError(t, fullTree.MarshalTruncate(&buf, 3))
+		require.NoError(t, fullTree.MarshalTruncate(&buf, 3, nil))
 
 		actual, err := UnmarshalTree[FuntionName, FuntionNameI](buf.Bytes())
 		require.NoError(t, err)

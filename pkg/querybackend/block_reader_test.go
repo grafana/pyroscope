@@ -133,7 +133,7 @@ func (s *testSuite) Test_QueryTree_All() {
 	s.Require().NoError(err)
 	s.Require().NotNil(resp)
 	s.Require().Len(resp.Reports, 1)
-	tree, err := phlaremodel.UnmarshalTree(resp.Reports[0].Tree.Tree)
+	tree, err := phlaremodel.UnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](resp.Reports[0].Tree.Tree)
 	s.Require().NoError(err)
 
 	s.Assert().Equal(string(expected), tree.String())
@@ -157,7 +157,7 @@ func (s *testSuite) Test_QueryTree_Filter() {
 	s.Require().NoError(err)
 	s.Require().NotNil(resp)
 	s.Require().Len(resp.Reports, 1)
-	tree, err := phlaremodel.UnmarshalTree(resp.Reports[0].Tree.Tree)
+	tree, err := phlaremodel.UnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](resp.Reports[0].Tree.Tree)
 	s.Require().NoError(err)
 
 	s.Assert().Equal(string(expected), tree.String())
@@ -349,7 +349,7 @@ func (s *testSuite) Test_ProfileIDSelector() {
 		Tenant: s.tenant,
 	})
 	s.Require().NoError(err)
-	allTree, err := phlaremodel.UnmarshalTree(allTreeResp.Reports[0].Tree.Tree)
+	allTree, err := phlaremodel.UnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](allTreeResp.Reports[0].Tree.Tree)
 	s.Require().NoError(err)
 
 	// Get baseline pprof for comparison
@@ -438,7 +438,7 @@ func (s *testSuite) Test_ProfileIDSelector() {
 			s.Require().Len(resp.Reports, 1)
 
 			if tt.queryType == queryv1.QueryType_QUERY_TREE {
-				tree, err := phlaremodel.UnmarshalTree(resp.Reports[0].Tree.Tree)
+				tree, err := phlaremodel.UnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](resp.Reports[0].Tree.Tree)
 				s.Require().NoError(err)
 
 				if tt.expectBaseline {
