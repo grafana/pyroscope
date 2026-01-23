@@ -19,7 +19,7 @@ This chart provisions the following Grafana dashboards under the "Pyroscope" fol
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://grafana.github.io/helm-charts | monitoring(k8s-monitoring) | 3.7.1 |
+| https://grafana.github.io/helm-charts | monitoring(k8s-monitoring) | 3.7.2 |
 
 ## Values
 

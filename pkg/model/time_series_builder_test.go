@@ -39,7 +39,7 @@ func TestTimeSeriesBuilder_BuildMethods(t *testing.T) {
 
 		ex := series[0].Points[0].Exemplars[0]
 		assert.Equal(t, "profile-1", ex.ProfileId)
-		assert.Equal(t, uint64(100), ex.Value)
+		assert.Equal(t, int64(100), ex.Value)
 		assert.Len(t, ex.Labels, 2)
 	})
 

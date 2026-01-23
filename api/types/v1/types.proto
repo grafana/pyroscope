@@ -157,9 +157,25 @@ message Exemplar {
   string span_id = 3 [(gnostic.openapi.v3.property).example = {yaml: "00f067aa0ba902b7"}];
 
   // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
-  uint64 value = 4 [(gnostic.openapi.v3.property).example = {yaml: "2450000000"}];
+  int64 value = 4 [(gnostic.openapi.v3.property).example = {yaml: "2450000000"}];
 
   // Additional labels specific to this exemplar (e.g., pod name, node name).
   // These labels are not included in the series group_by labels.
   repeated LabelPair labels = 5;
+}
+
+message HeatmapSeries {
+  repeated LabelPair labels = 1;
+  repeated HeatmapSlot slots = 2;
+}
+
+message HeatmapSlot {
+  // Milliseconds unix timestamp
+  int64 timestamp = 1;
+  // Minimum y value
+  repeated double y_min = 2;
+  // How many matches
+  repeated int32 counts = 3;
+  // Provide exemplars
+  repeated Exemplar exemplars = 4;
 }

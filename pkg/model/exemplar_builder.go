@@ -17,7 +17,7 @@ type exemplar struct {
 	timestamp   int64
 	profileID   string
 	labelSetRef int
-	value       uint64
+	value       int64
 }
 
 // NewExemplarBuilder creates a new ExemplarBuilder.
@@ -30,7 +30,7 @@ func NewExemplarBuilder() *ExemplarBuilder {
 }
 
 // Add adds an exemplar with its full labels.
-func (eb *ExemplarBuilder) Add(fp model.Fingerprint, labels Labels, ts int64, profileID string, value uint64) {
+func (eb *ExemplarBuilder) Add(fp model.Fingerprint, labels Labels, ts int64, profileID string, value int64) {
 	if profileID == "" {
 		return
 	}

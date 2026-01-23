@@ -3,11 +3,11 @@ package source
 import (
 	"context"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/opentracing/opentracing-go"
 
@@ -103,5 +103,13 @@ func (ff FileFinder) findPythonFile(ctx context.Context, mappings ...*config.Map
 		return resp, nil
 	}
 
-	return nil, fmt.Errorf("stdlib not detected and no mappings provided, file not resolvable")
+	// Fallback to relative file path matching
+	f, err := ff.fetchRepoFile(ctx, ff.file.Path, ff.ref)
+	if err != nil {
+		level.Warn(ff.logger).Log("msg", "failed to fetch relative file", "err", err)
+	} else {
+		return f, nil
+	}
+
+	return nil, connect.NewError(connect.CodeNotFound, errors.New("stdlib not detected and no mappings provided, file not resolvable"))
 }

@@ -27,6 +27,18 @@ module.exports = {
       // some sub-dependencies use a different version of @emotion/react and generate warnings
       // in the browser about @emotion/react loaded twice. We want to only load it once
       '@emotion/react': require.resolve('@emotion/react'),
+      // Redirect react-use CJS imports to ESM build for proper module interop
+      // @grafana/ui and @grafana/flamegraph import from react-use/lib/* which causes ESM/CJS issues
+      'react-use/lib/useAsync': 'react-use/esm/useAsync',
+      'react-use/lib/useClickAway': 'react-use/esm/useClickAway',
+      'react-use/lib/useDebounce': 'react-use/esm/useDebounce',
+      'react-use/lib/useMeasure': 'react-use/esm/useMeasure',
+      'react-use/lib/usePrevious': 'react-use/esm/usePrevious',
+      // Fix CommonJS/ESM interop for react-custom-scrollbars-2 ($ = exact match only)
+      'react-custom-scrollbars-2$': path.resolve(
+        __dirname,
+        './stubs/react-custom-scrollbars-2.js'
+      ),
       // Dependencies
       //...deps,
     },
@@ -52,13 +64,21 @@ module.exports = {
       patterns: [
         {
           from: 'node_modules/@grafana/ui/dist/public/img/icons',
-          to: 'grafana/img/icons/',
+          to: 'grafana/build/img/icons/',
         },
       ],
     }),
   ],
   module: {
     rules: [
+      // Fix for ESM modules in node_modules that don't include file extensions
+      // This is required for @grafana/flamegraph and its dependencies (rc-picker, ol, etc.)
+      {
+        test: /\.m?js$/,
+        resolve: {
+          fullySpecified: false,
+        },
+      },
       // CSS
       {
         test: /\.(css|scss)$/,

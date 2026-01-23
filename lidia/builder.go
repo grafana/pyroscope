@@ -78,7 +78,7 @@ func (rb *rangesBuilder) add(va uint64, e rangeEntry) {
 }
 
 func (rb *rangesBuilder) sort() {
-	sort.Sort(&sortByVADepth{rb})
+	sort.Stable(&sortByVADepth{rb})
 }
 
 // sortByVADepth sorts the ranges by VA and then by depth.

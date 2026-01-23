@@ -342,6 +342,13 @@ components:
              denormalized relationships is not a concern.
       title: Dataset
       additionalProperties: false
+    querier.v1.HeatmapQueryType:
+      type: string
+      title: HeatmapQueryType
+      enum:
+        - HEATMAP_QUERY_TYPE_UNSPECIFIED
+        - HEATMAP_QUERY_TYPE_INDIVIDUAL
+        - HEATMAP_QUERY_TYPE_SPAN
     query.v1.AttributeTable:
       type: object
       properties:
@@ -366,7 +373,7 @@ components:
       title: Diagnostics
       additionalProperties: false
       description: Diagnostic messages, events, statistics, analytics, etc.
-    query.v1.Exemplar:
+    query.v1.HeatmapPoint:
       type: object
       properties:
         timestamp:
@@ -375,18 +382,28 @@ components:
             - string
           title: timestamp
           format: int64
+          description: Milliseconds since epoch when the profile was captured.
         profileId:
-          type: string
+          type:
+            - integer
+            - string
           title: profile_id
+          format: int64
+          description: Unique identifier for the profile (UUID), reference into AttributeTable with only value set
         spanId:
-          type: string
+          type:
+            - integer
+            - string
           title: span_id
+          format: int64
+          description: Span ID if this profile was split by span during ingestion
         value:
           type:
             - integer
             - string
           title: value
           format: int64
+          description: Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
         attributeRefs:
           type: array
           items:
@@ -395,7 +412,69 @@ components:
               - string
             format: int64
           title: attribute_refs
-      title: Exemplar
+          description: labels as references into AttributeTable
+      title: HeatmapPoint
+      additionalProperties: false
+    query.v1.HeatmapQuery:
+      type: object
+      properties:
+        step:
+          type: number
+          title: step
+          format: double
+        groupBy:
+          type: array
+          items:
+            type: string
+          title: group_by
+        queryType:
+          title: query_type
+          $ref: '#/components/schemas/querier.v1.HeatmapQueryType'
+        limit:
+          type:
+            - integer
+            - string
+          title: limit
+          format: int64
+        exemplarType:
+          title: exemplar_type
+          $ref: '#/components/schemas/types.v1.ExemplarType'
+      title: HeatmapQuery
+      additionalProperties: false
+    query.v1.HeatmapReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.HeatmapQuery'
+        heatmapSeries:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.HeatmapSeries'
+          title: heatmap_series
+        attributeTable:
+          title: attribute_table
+          $ref: '#/components/schemas/query.v1.AttributeTable'
+      title: HeatmapReport
+      additionalProperties: false
+    query.v1.HeatmapSeries:
+      type: object
+      properties:
+        attributeRefs:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: attribute_refs
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.HeatmapPoint'
+          title: points
+          description: Points are timestamp, then span_id, then porfile_id ordered
+      title: HeatmapSeries
       additionalProperties: false
     query.v1.InvokeOptions:
       type: object
@@ -496,31 +575,6 @@ components:
           title: label_values
       title: LabelValuesReport
       additionalProperties: false
-    query.v1.Point:
-      type: object
-      properties:
-        value:
-          type: number
-          title: value
-          format: double
-        timestamp:
-          type:
-            - integer
-            - string
-          title: timestamp
-          format: int64
-        annotations:
-          type: array
-          items:
-            $ref: '#/components/schemas/types.v1.ProfileAnnotation'
-          title: annotations
-        exemplars:
-          type: array
-          items:
-            $ref: '#/components/schemas/query.v1.Exemplar'
-          title: exemplars
-      title: Point
-      additionalProperties: false
     query.v1.PprofQuery:
       type: object
       properties:
@@ -581,14 +635,14 @@ components:
         pprof:
           title: pprof
           $ref: '#/components/schemas/query.v1.PprofQuery'
-        timeSeriesWithAttributeTable:
-          title: time_series_with_attribute_table
+        heatmap:
+          title: heatmap
           description: |-
             function_details
              call_graph
              top_table
              ...
-          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+          $ref: '#/components/schemas/query.v1.HeatmapQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -676,7 +730,7 @@ components:
         - QUERY_TIME_SERIES
         - QUERY_TREE
         - QUERY_PPROF
-        - QUERY_TIME_SERIES_WITH_ATTRIBUTE_TABLE
+        - QUERY_HEATMAP
     query.v1.Report:
       type: object
       properties:
@@ -704,9 +758,9 @@ components:
         pprof:
           title: pprof
           $ref: '#/components/schemas/query.v1.PprofReport'
-        timeSeriesWithAttributeTable:
-          title: time_series_with_attribute_table
-          $ref: '#/components/schemas/query.v1.TimeSeriesWithAttributeTableReport'
+        heatmap:
+          title: heatmap
+          $ref: '#/components/schemas/query.v1.HeatmapReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -720,22 +774,7 @@ components:
         - REPORT_TIME_SERIES
         - REPORT_TREE
         - REPORT_PPROF
-        - REPORT_TIME_SERIES_WITH_ATTRIBUTE_TABLE
-    query.v1.Series:
-      type: object
-      properties:
-        labels:
-          type: array
-          items:
-            $ref: '#/components/schemas/types.v1.LabelPair'
-          title: labels
-        points:
-          type: array
-          items:
-            $ref: '#/components/schemas/query.v1.Point'
-          title: points
-      title: Series
-      additionalProperties: false
+        - REPORT_HEATMAP
     query.v1.SeriesLabelsQuery:
       type: object
       properties:
@@ -794,22 +833,6 @@ components:
             $ref: '#/components/schemas/types.v1.Series'
           title: time_series
       title: TimeSeriesReport
-      additionalProperties: false
-    query.v1.TimeSeriesWithAttributeTableReport:
-      type: object
-      properties:
-        query:
-          title: query
-          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
-        timeSeries:
-          type: array
-          items:
-            $ref: '#/components/schemas/query.v1.Series'
-          title: time_series
-        attributeTable:
-          title: attribute_table
-          $ref: '#/components/schemas/query.v1.AttributeTable'
-      title: TimeSeriesWithAttributeTableReport
       additionalProperties: false
     query.v1.TreeQuery:
       type: object
@@ -887,8 +910,11 @@ components:
             $ref: '#/components/schemas/types.v1.LabelPair'
           title: labels
           description: |-
-            Additional labels specific to this exemplar (e.g., pod name, node name).
-             These labels are not included in the series group_by labels.
+            Series labels that are NOT included in the group_by query parameter.
+             These labels complete the full series identity of this exemplar's profile.
+             For example, if group_by=["service"], this would contain labels like "pod",
+             "namespace", "region" that were omitted from grouping. This allows identifying
+             which specific series instance this profile sample came from.
       title: Exemplar
       additionalProperties: false
       description: |-

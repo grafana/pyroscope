@@ -84,6 +84,57 @@ func TestFixFunctionNamesForScriptingLanguages(t *testing.T) {
 	assert.Equal(t, "qwe.py func2", functionNameFromLocation(profile.Location[2].Id))
 }
 
+func TestFixFunctionNamesForPyspyRelativePaths(t *testing.T) {
+	// pyspy with relative paths should have function names rewritten
+	profile := pprof.RawFromProto(&profilev1.Profile{
+		StringTable: []string{"", "main", "func1", "qwe.py"},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 1, Filename: 3, SystemName: 1, StartLine: 1},
+			{Id: 2, Name: 2, Filename: 3, SystemName: 2, StartLine: 10},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
+			{Id: 2, Line: []*profilev1.Line{{FunctionId: 2, Line: 10}}},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{2, 1}, Value: []int64{10, 1000}},
+		},
+	})
+
+	md := ingestion.Metadata{SpyName: "pyspy"}
+	FixFunctionNamesForScriptingLanguages(profile, md)
+
+	collapsed := bench.StackCollapseProto(profile.Profile, 0, 1)
+	expected := []string{"qwe.py main;qwe.py func1 10"}
+	assert.Equal(t, expected, collapsed)
+}
+
+func TestFixFunctionNamesForPyspyAbsolutePaths(t *testing.T) {
+	// pyspy with absolute paths should NOT have function names rewritten
+	profile := pprof.RawFromProto(&profilev1.Profile{
+		StringTable: []string{"", "main", "func1", "/home/user/project/qwe.py"},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 1, Filename: 3, SystemName: 1, StartLine: 1},
+			{Id: 2, Name: 2, Filename: 3, SystemName: 2, StartLine: 10},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
+			{Id: 2, Line: []*profilev1.Line{{FunctionId: 2, Line: 10}}},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{2, 1}, Value: []int64{10, 1000}},
+		},
+	})
+
+	md := ingestion.Metadata{SpyName: "pyspy"}
+	FixFunctionNamesForScriptingLanguages(profile, md)
+
+	collapsed := bench.StackCollapseProto(profile.Profile, 0, 1)
+	// Function names should remain unchanged (not prefixed with filename)
+	expected := []string{"main;func1 10"}
+	assert.Equal(t, expected, collapsed)
+}
+
 func TestCreateLabels(t *testing.T) {
 	testCases := []struct {
 		name                string

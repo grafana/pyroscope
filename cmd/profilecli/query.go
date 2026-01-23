@@ -106,7 +106,7 @@ func addQueryProfileParams(queryCmd commander) *queryProfileParams {
 	return params
 }
 
-func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string) (err error) {
+func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -137,17 +137,17 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 		level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
 	}
 
-	return selectMergeProfile(ctx, params.phlareClient, outputFlag, req)
+	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force, req)
 }
 
-func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag string, req *querierv1.SelectMergeProfileRequest) error {
+func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag string, force bool, req *querierv1.SelectMergeProfileRequest) error {
 	qc := client.queryClient()
 	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
 	if err != nil {
 		return errors.Wrap(err, "failed to query")
 	}
 
-	return outputMergeProfile(ctx, outputFlag, resp.Msg)
+	return outputMergeProfile(ctx, outputFlag, force, resp.Msg)
 }
 
 type queryGoPGOParams struct {
@@ -164,7 +164,7 @@ func addQueryGoPGOParams(queryCmd commander) *queryGoPGOParams {
 	return params
 }
 
-func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string) (err error) {
+func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string, force bool) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -179,7 +179,7 @@ func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string
 		"keep-locations", params.KeepLocations,
 		"aggregate-callees", params.AggregateCallees,
 	)
-	return selectMergeProfile(ctx, params.phlareClient, outputFlag,
+	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force,
 		&querierv1.SelectMergeProfileRequest{
 			ProfileTypeID: params.ProfileType,
 			Start:         from.UnixMilli(),

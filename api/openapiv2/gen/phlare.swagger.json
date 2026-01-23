@@ -416,56 +416,23 @@
         }
       }
     },
-    "queryv1Exemplar": {
+    "queryv1HeatmapSeries": {
       "type": "object",
       "properties": {
-        "timestamp": {
-          "type": "string",
-          "format": "int64"
-        },
-        "profileId": {
-          "type": "string"
-        },
-        "spanId": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string",
-          "format": "uint64"
-        },
         "attributeRefs": {
           "type": "array",
           "items": {
             "type": "string",
             "format": "int64"
           }
-        }
-      }
-    },
-    "queryv1Point": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "number",
-          "format": "double"
         },
-        "timestamp": {
-          "type": "string",
-          "format": "int64"
-        },
-        "annotations": {
+        "points": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1ProfileAnnotation"
-          }
-        },
-        "exemplars": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/queryv1Exemplar"
-          }
+            "$ref": "#/definitions/v1HeatmapPoint"
+          },
+          "title": "Points are timestamp, then span_id, then porfile_id ordered"
         }
       }
     },
@@ -494,28 +461,9 @@
         "pprof": {
           "$ref": "#/definitions/v1PprofQuery"
         },
-        "timeSeriesWithAttributeTable": {
-          "$ref": "#/definitions/v1TimeSeriesQuery",
+        "heatmap": {
+          "$ref": "#/definitions/v1HeatmapQuery",
           "description": "function_details\n call_graph\n top_table\n ..."
-        }
-      }
-    },
-    "queryv1Series": {
-      "type": "object",
-      "properties": {
-        "labels": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1LabelPair"
-          }
-        },
-        "points": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/queryv1Point"
-          }
         }
       }
     },
@@ -541,72 +489,30 @@
     "segmentwriterv1PushResponse": {
       "type": "object"
     },
-    "typesv1Exemplar": {
+    "typesv1HeatmapSeries": {
       "type": "object",
       "properties": {
-        "timestamp": {
-          "type": "string",
-          "format": "int64",
-          "description": "Milliseconds since epoch when the profile was captured."
-        },
-        "profileId": {
-          "type": "string",
-          "description": "Unique identifier for the profile (UUID)."
-        },
-        "spanId": {
-          "type": "string",
-          "description": "Span ID if this profile was split by span during ingestion."
-        },
-        "value": {
-          "type": "string",
-          "format": "uint64",
-          "description": "Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated)."
-        },
         "labels": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1LabelPair"
-          },
-          "description": "Additional labels specific to this exemplar (e.g., pod name, node name).\nThese labels are not included in the series group_by labels."
+          }
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1HeatmapSlot"
+          }
         }
-      },
-      "description": "Exemplar represents metadata for an individual profile sample.\nExemplars allow users to drill down from aggregated timeline views\nto specific profile instances."
+      }
     },
     "typesv1Location": {
       "type": "object",
       "properties": {
         "name": {
           "type": "string"
-        }
-      }
-    },
-    "typesv1Point": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "number",
-          "format": "double"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "int64",
-          "title": "Milliseconds unix timestamp"
-        },
-        "annotations": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1ProfileAnnotation"
-          }
-        },
-        "exemplars": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/typesv1Exemplar"
-          },
-          "title": "Exemplars are samples of individual profiles that contributed to this aggregated point"
         }
       }
     },
@@ -624,7 +530,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/typesv1Point"
+            "$ref": "#/definitions/v1Point"
           }
         }
       }
@@ -1114,6 +1020,38 @@
         }
       }
     },
+    "v1Exemplar": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Milliseconds since epoch when the profile was captured."
+        },
+        "profileId": {
+          "type": "string",
+          "description": "Unique identifier for the profile (UUID)."
+        },
+        "spanId": {
+          "type": "string",
+          "description": "Span ID if this profile was split by span during ingestion."
+        },
+        "value": {
+          "type": "string",
+          "format": "int64",
+          "description": "Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated)."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          },
+          "description": "Series labels that are NOT included in the group_by query parameter.\nThese labels complete the full series identity of this exemplar's profile.\nFor example, if group_by=[\"service\"], this would contain labels like \"pod\",\n\"namespace\", \"region\" that were omitted from grouping. This allows identifying\nwhich specific series instance this profile sample came from."
+        }
+      },
+      "description": "Exemplar represents metadata for an individual profile sample.\nExemplars allow users to drill down from aggregated timeline views\nto specific profile instances."
+    },
     "v1ExemplarType": {
       "type": "string",
       "enum": [
@@ -1491,6 +1429,125 @@
         }
       }
     },
+    "v1HeatmapPoint": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Milliseconds since epoch when the profile was captured."
+        },
+        "profileId": {
+          "type": "string",
+          "format": "int64",
+          "title": "Unique identifier for the profile (UUID), reference into AttributeTable with only value set"
+        },
+        "spanId": {
+          "type": "string",
+          "format": "uint64",
+          "title": "Span ID if this profile was split by span during ingestion"
+        },
+        "value": {
+          "type": "string",
+          "format": "int64",
+          "description": "Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated)."
+        },
+        "attributeRefs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          },
+          "title": "labels as references into AttributeTable"
+        }
+      }
+    },
+    "v1HeatmapQuery": {
+      "type": "object",
+      "properties": {
+        "step": {
+          "type": "number",
+          "format": "double"
+        },
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "queryType": {
+          "$ref": "#/definitions/v1HeatmapQueryType"
+        },
+        "limit": {
+          "type": "string",
+          "format": "int64"
+        },
+        "exemplarType": {
+          "$ref": "#/definitions/v1ExemplarType"
+        }
+      }
+    },
+    "v1HeatmapQueryType": {
+      "type": "string",
+      "enum": [
+        "HEATMAP_QUERY_TYPE_UNSPECIFIED",
+        "HEATMAP_QUERY_TYPE_INDIVIDUAL",
+        "HEATMAP_QUERY_TYPE_SPAN"
+      ],
+      "default": "HEATMAP_QUERY_TYPE_UNSPECIFIED"
+    },
+    "v1HeatmapReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1HeatmapQuery"
+        },
+        "heatmapSeries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/queryv1HeatmapSeries"
+          }
+        },
+        "attributeTable": {
+          "$ref": "#/definitions/v1AttributeTable"
+        }
+      }
+    },
+    "v1HeatmapSlot": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "Milliseconds unix timestamp"
+        },
+        "yMin": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "title": "Minimum y value"
+        },
+        "counts": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": "How many matches"
+        },
+        "exemplars": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Exemplar"
+          },
+          "title": "Provide exemplars"
+        }
+      }
+    },
     "v1Hints": {
       "type": "object",
       "properties": {
@@ -1798,6 +1855,35 @@
       ],
       "default": "TOTAL"
     },
+    "v1Point": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "format": "double"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "Milliseconds unix timestamp"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ProfileAnnotation"
+          }
+        },
+        "exemplars": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Exemplar"
+          },
+          "title": "Exemplars are samples of individual profiles that contributed to this aggregated point"
+        }
+      }
+    },
     "v1PollCompactionJobsResponse": {
       "type": "object",
       "properties": {
@@ -2066,7 +2152,7 @@
         "QUERY_TIME_SERIES",
         "QUERY_TREE",
         "QUERY_PPROF",
-        "QUERY_TIME_SERIES_WITH_ATTRIBUTE_TABLE"
+        "QUERY_HEATMAP"
       ],
       "default": "QUERY_UNSPECIFIED"
     },
@@ -2189,8 +2275,8 @@
         "pprof": {
           "$ref": "#/definitions/v1PprofReport"
         },
-        "timeSeriesWithAttributeTable": {
-          "$ref": "#/definitions/v1TimeSeriesWithAttributeTableReport"
+        "heatmap": {
+          "$ref": "#/definitions/v1HeatmapReport"
         }
       }
     },
@@ -2204,7 +2290,7 @@
         "REPORT_TIME_SERIES",
         "REPORT_TREE",
         "REPORT_PPROF",
-        "REPORT_TIME_SERIES_WITH_ATTRIBUTE_TABLE"
+        "REPORT_HEATMAP"
       ],
       "default": "REPORT_UNSPECIFIED"
     },
@@ -2237,6 +2323,18 @@
         }
       },
       "description": "Each Sample records values encountered in some program\ncontext. The program context is typically a stack trace, perhaps\naugmented with auxiliary information like the thread-id, some\nindicator of a higher level request being handled etc."
+    },
+    "v1SelectHeatmapResponse": {
+      "type": "object",
+      "properties": {
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/typesv1HeatmapSeries"
+          }
+        }
+      }
     },
     "v1SelectMergeSpanProfileResponse": {
       "type": "object",
@@ -2591,24 +2689,6 @@
             "type": "object",
             "$ref": "#/definitions/typesv1Series"
           }
-        }
-      }
-    },
-    "v1TimeSeriesWithAttributeTableReport": {
-      "type": "object",
-      "properties": {
-        "query": {
-          "$ref": "#/definitions/v1TimeSeriesQuery"
-        },
-        "timeSeries": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/queryv1Series"
-          }
-        },
-        "attributeTable": {
-          "$ref": "#/definitions/v1AttributeTable"
         }
       }
     },
