@@ -2530,6 +2530,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "fullSymbols": {
+          "type": "boolean"
         }
       }
     },
@@ -2542,6 +2545,41 @@
         "tree": {
           "type": "string",
           "format": "byte"
+        },
+        "symbols": {
+          "$ref": "#/definitions/v1TreeSymbols"
+        }
+      }
+    },
+    "v1TreeSymbols": {
+      "type": "object",
+      "properties": {
+        "mappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Mapping"
+          }
+        },
+        "locations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/googlev1Location"
+          }
+        },
+        "functions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Function"
+          }
+        },
+        "strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

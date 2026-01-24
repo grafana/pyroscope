@@ -106,6 +106,23 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		return nil, err
 	}
 
+	// output full pprof tree if that's requested
+	if query.Tree.FullSymbols {
+		tree, symbolBuilder, err := resolver.LocationRefNameTree()
+		if err != nil {
+			return nil, err
+		}
+		resp := &queryv1.Report{
+			Tree: &queryv1.TreeReport{
+				Query:   query.Tree.CloneVT(),
+				Tree:    tree.Bytes(query.Tree.GetMaxNodes(), symbolBuilder.KeepSymbol),
+				Symbols: new(queryv1.TreeSymbols),
+			},
+		}
+		symbolBuilder.Build(resp.Tree.Symbols)
+		return resp, nil
+	}
+
 	tree, err := resolver.Tree()
 	if err != nil {
 		return nil, err

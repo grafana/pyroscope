@@ -14,6 +14,46 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/minheap"
 )
 
+func buildLocationRefNameTree(
+	ctx context.Context,
+	symbols *Symbols,
+	appender *SampleAppender,
+	maxNodes int64,
+	selection *SelectedStackTraces,
+) (*model.LocationRefNameTree, error) {
+	if !selection.HasValidCallSite() {
+		// TODO(bryan) Maybe return an error here? buildPprof returns a blank
+		// profile. So mimicking that behavior for now.
+		return &model.LocationRefNameTree{}, nil
+	}
+
+	/*
+		// If the number of samples is large (> 128K) and the StacktraceResolver
+		// implements the range iterator, we will be building the tree based on
+		// the parent pointer tree of the partition (a copy of). The only exception
+		// is when the number of nodes is not limited, or is close to the number of
+		// nodes in the original tree: the optimization is still beneficial in terms
+		// of CPU, but is very expensive in terms of memory.
+		iterator, ok := symbols.Stacktraces.(StacktraceIDRangeIterator)
+		if ok && shouldCopyTree(appender, maxNodes) {
+			ranges := iterator.SplitStacktraceIDRanges(appender)
+			return buildTreeFromParentPointerTrees(ctx, ranges, symbols, maxNodes, selection)
+		}
+	*/
+
+	// Otherwise, use the basic approach: resolve each stack trace
+	// and insert them into the new tree one by one. The method
+	// performs best on small sample sets.
+	samples := appender.Samples()
+	t := treeSymbolsFromPool()
+	defer t.reset()
+	t.init(symbols, samples, selection)
+	if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
+		return nil, err
+	}
+	return t.tree.LocationRefNameTree(maxNodes), nil
+}
+
 func buildTree(
 	ctx context.Context,
 	symbols *Symbols,

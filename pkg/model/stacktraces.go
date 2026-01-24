@@ -313,36 +313,45 @@ func unsafeStringBytes(s string) []byte {
 	return unsafe.Slice(unsafe.StringData(s), len(s))
 }
 
-func (t *StacktraceTree) Tree(maxNodes int64, names []string) *FunctionNameTree {
+func (t *StacktraceTree) Tree(maxNodes int64, names []FuntionName) *FunctionNameTree {
+	return treeFromStacktraceTree[FuntionName, FuntionNameI](t, maxNodes, names)
+}
+
+func (t *StacktraceTree) LocationRefNameTree(maxNodes int64) *LocationRefNameTree {
+	return treeFromStacktraceTree[LocationRefName, LocationRefNameI](t, maxNodes, nil)
+}
+
+func treeFromStacktraceTree[N NodeName, I NodeNameI[N]](t *StacktraceTree, maxNodes int64, names []N) *Tree[N, I] {
+	var initializer I
 	if len(t.Nodes) < 2 || len(names) == 0 {
 		// stack trace tree has root at 0: trees with less
 		// than 2 nodes are considered empty.
-		return new(FunctionNameTree)
+		return new(Tree[N, I])
 	}
 
 	nodesSize := maxNodes
 	if nodesSize < 1 || nodesSize > 10<<10 {
 		nodesSize = 1 << 10 // Sane default.
 	}
-	root := new(node[FuntionName]) // Virtual root node.
-	nodes := make([]*node[FuntionName], 1, nodesSize)
+	root := new(node[N]) // Virtual root node.
+	nodes := make([]*node[N], 1, nodesSize)
 	nodes[0] = root
-	var current *node[FuntionName]
+	var current *node[N]
 
 	_ = t.Traverse(maxNodes, func(index int32, children []int32) error {
 		current, nodes = nodes[len(nodes)-1], nodes[:len(nodes)-1]
 		sn := &t.Nodes[index]
-		var name FuntionName
+		var name N
 		if sn.Location < 0 {
-			name = truncatedNodeName
+			name = initializer.newOther()
 			sn.Total = sn.Value
 		} else {
-			name = FuntionName(names[sn.Location])
+			name = initializer.nameFromLocationID(names, sn.Location)
 		}
 		n := current.insert(name)
 		n.self = sn.Value
 		n.total = sn.Total
-		n.children = make([]*node[FuntionName], 0, len(children))
+		n.children = make([]*node[N], 0, len(children))
 		for i := 0; i < len(children); i++ {
 			nodes = append(nodes, n)
 		}
@@ -355,5 +364,5 @@ func (t *StacktraceTree) Tree(maxNodes int64, names []string) *FunctionNameTree 
 		n.parent.parent = nil
 	}
 
-	return &FunctionNameTree{root: s}
+	return &Tree[N, I]{root: s}
 }
