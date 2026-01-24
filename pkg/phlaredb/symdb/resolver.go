@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
@@ -236,6 +237,36 @@ func (r *Resolver) partition(partition uint64) *lazyPartition {
 	return p
 }
 
+type ResultBuilder interface {
+	KeepSymbol(model.LocationRefName) model.LocationRefName
+	Build(*queryv1.TreeSymbols)
+}
+
+func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuilder, error) {
+	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.LocationRefNameTree")
+	defer span.Finish()
+	var symLock sync.Mutex
+	sym := newSymbolMerger()
+	var lock sync.Mutex
+	tree := new(model.LocationRefNameTree)
+	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+		resolved, err := symbols.LocationRefNameTree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
+		if err != nil {
+			return err
+		}
+		symLock.Lock()
+		cb := sym.add(symbols)
+		resolved.FormatNodeNames(cb)
+		symLock.Unlock()
+		lock.Lock()
+		tree.Merge(resolved)
+		lock.Unlock()
+		return nil
+	})
+	tree.Total()
+	return tree, sym.resultBuilder(), err
+}
+
 func (r *Resolver) Tree() (*model.FunctionNameTree, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Tree")
 	defer span.Finish()
@@ -339,4 +370,13 @@ func (r *Symbols) Tree(
 	selection *SelectedStackTraces,
 ) (*model.FunctionNameTree, error) {
 	return buildTree(ctx, r, appender, maxNodes, selection)
+}
+
+func (r *Symbols) LocationRefNameTree(
+	ctx context.Context,
+	appender *SampleAppender,
+	maxNodes int64,
+	selection *SelectedStackTraces,
+) (*model.LocationRefNameTree, error) {
+	return buildLocationRefNameTree(ctx, r, appender, maxNodes, selection)
 }

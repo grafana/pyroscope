@@ -57,6 +57,10 @@ func (FuntionNameI) unmarshalNode(b []byte, offset int) (FuntionName, int64, int
 	return name, int64(value), offset, nil
 }
 
+func (FuntionNameI) nameFromLocationID(names []FuntionName, loc int32) FuntionName {
+	return names[loc]
+}
+
 const OtherLocationRef = LocationRefName(0)
 
 type LocationRefName int
@@ -92,6 +96,10 @@ func (LocationRefNameI) unmarshalNode(b []byte, offset int) (LocationRefName, in
 	return LocationRefName(name), int64(value), offset, nil
 }
 
+func (LocationRefNameI) nameFromLocationID(_ []LocationRefName, loc int32) LocationRefName {
+	return LocationRefName(loc)
+}
+
 type NodeName interface {
 	~string | ~int
 }
@@ -102,9 +110,12 @@ type StringNodeName interface {
 
 type NodeNameI[N ~string | ~int] interface {
 	newOther() N
+	nameFromLocationID([]N, int32) N
 	marshalNode(io.Writer, varint.Writer, *node[N], func(N) N) error
 	unmarshalNode([]byte, int) (N, int64, int, error)
 }
+
+type LocationRefNameTree = Tree[LocationRefName, LocationRefNameI]
 
 type FunctionNameTree = Tree[FuntionName, FuntionNameI]
 
