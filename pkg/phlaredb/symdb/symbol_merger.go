@@ -1,6 +1,7 @@
 package symdb
 
 import (
+	"fmt"
 	"iter"
 	"unique"
 
@@ -55,7 +56,7 @@ type InMemoryFunction struct {
 	// Source file containing the function.
 	Filename unique.Handle[string]
 	// Line number in source file.
-	StartLine unique.Handle[string]
+	StartLine uint32
 }
 
 type InlineMapping = unique.Handle[InMemoryMapping]
@@ -77,6 +78,12 @@ func (m *SymbolMerger) addSymbols(symbols *Symbols) func(model.LocationRefName) 
 	adder := newAdder(symbols)
 
 	return func(in model.LocationRefName) model.LocationRefName {
+		if in <= 0 {
+			// TODO: Handle this better
+			fmt.Printf("adder handled loc %d\n", in)
+			return in
+		}
+
 		// Get the unique location handle for this location
 		loc := adder.getLoc(int(in))
 
@@ -100,6 +107,12 @@ func (m *SymbolMerger) Add(ts *queryv1.TreeSymbols) func(model.LocationRefName) 
 	adder := newTreeSymbolsAdder(ts)
 
 	return func(in model.LocationRefName) model.LocationRefName {
+		if in <= 0 {
+			// TODO: Handle this better
+			fmt.Printf("tree adder handled loc %d\n", in)
+			return in
+		}
+
 		// Get the unique location handle for this location
 		loc := adder.getLoc(int(in))
 
@@ -145,28 +158,10 @@ type symbolAdder struct {
 func newAdder(symbols *Symbols) *symbolAdder {
 	return &symbolAdder{
 		symbols: symbols,
-		lCache:  make([]InlineLocation, len(symbols.Locations)),
-		mCache:  make([]InlineMapping, len(symbols.Mappings)),
-		fCache:  make([]InlineFunction, len(symbols.Functions)),
-		sCache:  make([]unique.Handle[string], len(symbols.Strings)),
-	}
-}
-
-type treeSymbolsAdder struct {
-	treeSymbols *queryv1.TreeSymbols
-	lCache      []InlineLocation
-	mCache      []InlineMapping
-	fCache      []InlineFunction
-	sCache      []unique.Handle[string]
-}
-
-func newTreeSymbolsAdder(ts *queryv1.TreeSymbols) *treeSymbolsAdder {
-	return &treeSymbolsAdder{
-		treeSymbols: ts,
-		lCache:      make([]InlineLocation, len(ts.Locations)),
-		mCache:      make([]InlineMapping, len(ts.Mappings)),
-		fCache:      make([]InlineFunction, len(ts.Functions)),
-		sCache:      make([]unique.Handle[string], len(ts.Strings)),
+		lCache:  make([]InlineLocation, len(symbols.Locations)+1),
+		mCache:  make([]InlineMapping, len(symbols.Mappings)+1),
+		fCache:  make([]InlineFunction, len(symbols.Functions)+1),
+		sCache:  make([]unique.Handle[string], len(symbols.Strings)+1),
 	}
 }
 
@@ -232,7 +227,7 @@ func (a *symbolAdder) getFunc(funcID int) InlineFunction {
 		Name:       a.getString(f.Name),
 		SystemName: a.getString(f.SystemName),
 		Filename:   a.getString(f.Filename),
-		StartLine:  a.getString(f.StartLine),
+		StartLine:  f.StartLine,
 	}
 
 	h := unique.Make(nFunc)
@@ -246,7 +241,7 @@ func (a *symbolAdder) getString(strID uint32) unique.Handle[string] {
 		return unique.Make("")
 	}
 
-	if r := a.sCache[strID]; r != (unique.Handle[string]{}) {
+	if r := a.sCache[strID]; r != sZero {
 		return r
 	}
 
@@ -255,6 +250,24 @@ func (a *symbolAdder) getString(strID uint32) unique.Handle[string] {
 	a.sCache[strID] = h
 
 	return h
+}
+
+type treeSymbolsAdder struct {
+	treeSymbols *queryv1.TreeSymbols
+	lCache      []InlineLocation
+	mCache      []InlineMapping
+	fCache      []InlineFunction
+	sCache      []unique.Handle[string]
+}
+
+func newTreeSymbolsAdder(ts *queryv1.TreeSymbols) *treeSymbolsAdder {
+	return &treeSymbolsAdder{
+		treeSymbols: ts,
+		lCache:      make([]InlineLocation, len(ts.Locations)),
+		mCache:      make([]InlineMapping, len(ts.Mappings)),
+		fCache:      make([]InlineFunction, len(ts.Functions)),
+		sCache:      make([]unique.Handle[string], len(ts.Strings)),
+	}
 }
 
 func (a *treeSymbolsAdder) getLoc(locID int) InlineLocation {
@@ -320,7 +333,7 @@ func (a *treeSymbolsAdder) getFunc(funcID int) InlineFunction {
 		Name:       a.getString(int(f.Name)),
 		SystemName: a.getString(int(f.SystemName)),
 		Filename:   a.getString(int(f.Filename)),
-		StartLine:  a.getString(int(f.StartLine)),
+		StartLine:  uint32(f.StartLine),
 	}
 
 	h := unique.Make(nFunc)
@@ -464,7 +477,7 @@ func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 		fn.Name = int64(strings.get(orig.Name))
 		fn.SystemName = int64(strings.get(orig.SystemName))
 		fn.Filename = int64(strings.get(orig.Filename))
-		fn.StartLine = int64(strings.get(orig.StartLine))
+		fn.StartLine = int64(orig.StartLine)
 		r.Functions[idx] = fn
 	}
 

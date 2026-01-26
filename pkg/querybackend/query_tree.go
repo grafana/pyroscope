@@ -143,6 +143,7 @@ type treeAggregator struct {
 	tree  *model.TreeMerger[model.FuntionName, model.FuntionNameI]
 
 	lrTree       *model.TreeMerger[model.LocationRefName, model.LocationRefNameI]
+	symbolLock   sync.Mutex
 	symbolMerger *symdb.SymbolMerger
 }
 
@@ -156,7 +157,9 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 			a.query = r.Query.CloneVT()
 			a.symbolMerger = symdb.NewSymbolMerger()
 		})
+		a.symbolLock.Lock()
 		adder := a.symbolMerger.Add(r.Symbols)
+		a.symbolLock.Unlock()
 		return a.lrTree.MergeTreeBytes(r.Tree, model.WithTreeMergeFormatNodeNames(adder))
 	}
 
