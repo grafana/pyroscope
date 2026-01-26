@@ -446,7 +446,7 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		return nil, err
 	}
 
-	if err := s.bucket.Upload(ctx, buildID, bytes.NewReader(lidiaBytes)); err != nil {
+	if err := s.bucket.Upload(ctx, lidiaObjectPath(buildID), bytes.NewReader(lidiaBytes)); err != nil {
 		level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", buildID, "err", err)
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "set", "error").Inc()
 	} else {
@@ -458,7 +458,7 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 
 // fetchLidiaFromObjectStore retrieves Lidia data from the object store
 func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID string) ([]byte, error) {
-	objstoreReader, err := s.bucket.Get(ctx, buildID)
+	objstoreReader, err := s.bucket.Get(ctx, lidiaObjectPath(buildID))
 	if err != nil {
 		return nil, err
 	}
@@ -470,6 +470,12 @@ func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID stri
 	}
 
 	return data, nil
+}
+
+func lidiaObjectPath(buildID string) string {
+	// this is to forget about old lidia files without gopclntab support
+	// TODO clean the old once
+	return fmt.Sprintf("v2_%s", buildID)
 }
 
 // fetchLidiaFromDebuginfod fetches debug info from debuginfod and converts to Lidia format
