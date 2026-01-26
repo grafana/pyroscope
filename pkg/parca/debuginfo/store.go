@@ -232,6 +232,11 @@ func (s *Store) ShouldInitiateUpload(ctx context.Context, req *debuginfopb.Shoul
 }
 
 func (s *Store) InitiateUpload(ctx context.Context, req *debuginfopb.InitiateUploadRequest) (*debuginfopb.InitiateUploadResponse, error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String("build_id", req.BuildId))
 
@@ -258,25 +263,20 @@ func (s *Store) InitiateUpload(ctx context.Context, req *debuginfopb.InitiateUpl
 		if shouldInitiateResp.Reason == ReasonDebuginfoEqual {
 			return nil, status.Error(codes.AlreadyExists, ReasonDebuginfoEqual)
 		}
-		return nil, status.Errorf(codes.FailedPrecondition, "upload should not have been attempted to be initiated, a previous check should have failed with: %s", shouldInitiateResp.Reason)
+		return nil, status.Errorf(codes.FailedPrecondition, "upload should not have been attempted to be initiated, a previous check should have failed with: %s for %s", shouldInitiateResp.Reason, req.BuildId)
 	}
 
-	if req.Size > s.maxUploadSize {
-		return nil, status.Errorf(codes.InvalidArgument, "upload size %d exceeds maximum allowed size %d", req.Size, s.maxUploadSize)
+	if req.Size > s.maxUploadSize && s.maxUploadSize > 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "upload size %d exceeds maximum allowed size %d for %s", req.Size, s.maxUploadSize, req.BuildId)
 	}
 
 	uploadID := uuid.New().String()
 	uploadStarted := s.timeNow()
 	uploadExpiry := uploadStarted.Add(s.maxUploadDuration)
 
-	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
-	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
-	}
-
 	if !s.signedUpload.Enabled {
 		if err := s.metadata.MarkAsUploading(ctx, req.BuildId, uploadID, req.Hash, req.Type, timestamppb.New(uploadStarted)); err != nil {
-			return nil, fmt.Errorf("mark debuginfo upload as uploading via gRPC: %w", err)
+			return nil, fmt.Errorf("mark debuginfo upload as uploading via gRPC: %w for %s", err, req.BuildId)
 		}
 
 		return &debuginfopb.InitiateUploadResponse{
@@ -291,11 +291,11 @@ func (s *Store) InitiateUpload(ctx context.Context, req *debuginfopb.InitiateUpl
 
 	signedURL, err := s.signedUpload.Client.SignedPUT(ctx, objectPath(tenantID, req.BuildId, req.Type), req.Size, uploadExpiry)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, fmt.Sprintf("SignedPut %s for %s", err.Error(), req.BuildId))
 	}
 
 	if err := s.metadata.MarkAsUploading(ctx, req.BuildId, uploadID, req.Hash, req.Type, timestamppb.New(uploadStarted)); err != nil {
-		return nil, fmt.Errorf("mark debuginfo upload as uploading via signed URL: %w", err)
+		return nil, fmt.Errorf("mark debuginfo upload as uploading via signed URL: %w for %s", err, req.BuildId)
 	}
 
 	return &debuginfopb.InitiateUploadResponse{
