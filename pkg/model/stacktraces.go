@@ -323,7 +323,7 @@ func (t *StacktraceTree) LocationRefNameTree(maxNodes int64) *LocationRefNameTre
 
 func treeFromStacktraceTree[N NodeName, I NodeNameI[N]](t *StacktraceTree, maxNodes int64, names []N) *Tree[N, I] {
 	var initializer I
-	if len(t.Nodes) < 2 || len(names) == 0 {
+	if len(t.Nodes) < 2 {
 		// stack trace tree has root at 0: trees with less
 		// than 2 nodes are considered empty.
 		return new(Tree[N, I])

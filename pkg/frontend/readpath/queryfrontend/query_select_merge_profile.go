@@ -30,7 +30,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 		return connect.NewResponse(&profilev1.Profile{}), nil
 	}
 
-	_, err = phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
+	profileType, err := phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -103,6 +103,16 @@ func (q *QueryFrontend) SelectMergeProfile(
 			Value:      []int64{self},
 		})
 	})
+
+	sampleTypeRef := len(p.StringTable)
+	p.StringTable = append(p.StringTable, profileType.SampleType)
+	sampleUnitRef := len(p.StringTable)
+	p.StringTable = append(p.StringTable, profileType.SampleUnit)
+
+	p.SampleType = []*profilev1.ValueType{{
+		Type: int64(sampleTypeRef),
+		Unit: int64(sampleUnitRef),
+	}}
 
 	// TODO: Set more fields on profile
 
