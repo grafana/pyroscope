@@ -9,8 +9,8 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/pkg/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -62,11 +62,12 @@ func (q *QueryFrontend) SelectMergeProfile(
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,
 		Query: []*queryv1.Query{{
-			QueryType: queryv1.QueryType_QUERY_PPROF,
-			Pprof: &queryv1.PprofQuery{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree: &queryv1.TreeQuery{
 				MaxNodes:           maxNodes,
 				StackTraceSelector: c.Msg.StackTraceSelector,
 				ProfileIdSelector:  c.Msg.ProfileIdSelector,
+				FullSymbols:        true,
 			},
 		}},
 	})
@@ -76,10 +77,34 @@ func (q *QueryFrontend) SelectMergeProfile(
 	if report == nil {
 		return connect.NewResponse(&profilev1.Profile{}), nil
 	}
+
 	var p profilev1.Profile
-	if err = pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {
-		return nil, err
+
+	p.StringTable = report.Tree.Symbols.Strings
+	p.Mapping = report.Tree.Symbols.Mappings
+	p.Location = report.Tree.Symbols.Locations
+	p.Function = report.Tree.Symbols.Functions
+
+	t, err := model.UnmarshalTree[model.LocationRefName, model.LocationRefNameI](report.Tree.Tree)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+
+	// TODO: Back this up with better data
+	p.Sample = make([]*profilev1.Sample, 0, len(report.Tree.Tree)/16)
+
+	t.IterateStacks(func(_ model.LocationRefName, self int64, stack []model.LocationRefName) {
+		locationID := make([]uint64, len(stack))
+		for idx := range locationID {
+			locationID[idx] = uint64(stack[idx])
+		}
+		p.Sample = append(p.Sample, &profilev1.Sample{
+			LocationId: locationID,
+			Value:      []int64{self},
+		})
+	})
+
+	// TODO: Set more fields on profile
 
 	return connect.NewResponse(&p), nil
 }

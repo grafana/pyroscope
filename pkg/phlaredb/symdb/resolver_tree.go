@@ -88,7 +88,11 @@ func buildTree(
 	if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
 		return nil, err
 	}
-	return t.tree.Tree(maxNodes, t.symbols.Strings), nil
+	names := make([]model.FuntionName, len(t.symbols.Strings))
+	for i, s := range t.symbols.Strings {
+		names[i] = model.FuntionName(s)
+	}
+	return t.tree.Tree(maxNodes, names), nil
 }
 
 func shouldCopyTree(appender *SampleAppender, maxNodes int64) bool {
@@ -175,7 +179,7 @@ func buildTreeFromParentPointerTrees(
 	maxNodes int64,
 	selection *SelectedStackTraces,
 ) (*model.FunctionNameTree, error) {
-	m := model.NewTreeMerger()
+	m := model.NewTreeMerger[model.FuntionName, model.FuntionNameI]()
 	g, _ := errgroup.WithContext(ctx)
 	for ranges.Next() {
 		sr := ranges.At()
@@ -391,7 +395,11 @@ func buildTreeForStacktraceIDRange(
 	// Finally, we convert the stack trace tree into the function
 	// tree, dropping insignificant functions, and symbolizing the
 	// nodes (function names).
-	return t.Tree(maxNodes, symbols.Strings)
+	names := make([]model.FuntionName, len(symbols.Strings))
+	for i, s := range symbols.Strings {
+		names[i] = model.FuntionName(s)
+	}
+	return t.Tree(maxNodes, names)
 }
 
 func propagateNodeValues(nodes []Node) {

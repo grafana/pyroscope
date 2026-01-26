@@ -246,7 +246,7 @@ func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuil
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.LocationRefNameTree")
 	defer span.Finish()
 	var symLock sync.Mutex
-	sym := newSymbolMerger()
+	sym := NewSymbolMerger()
 	var lock sync.Mutex
 	tree := new(model.LocationRefNameTree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
@@ -255,7 +255,7 @@ func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuil
 			return err
 		}
 		symLock.Lock()
-		cb := sym.add(symbols)
+		cb := sym.addSymbols(symbols)
 		resolved.FormatNodeNames(cb)
 		symLock.Unlock()
 		lock.Lock()
@@ -264,7 +264,7 @@ func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuil
 		return nil
 	})
 	tree.Total()
-	return tree, sym.resultBuilder(), err
+	return tree, sym.ResultBuilder(), err
 }
 
 func (r *Resolver) Tree() (*model.FunctionNameTree, error) {

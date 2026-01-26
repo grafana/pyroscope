@@ -71,7 +71,7 @@ func (r *Router) SelectMergeStacktraces(
 	resp, err := Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
 		func(_, _ *querierv1.SelectMergeStacktracesRequest) {},
 		func(a, b *querierv1.SelectMergeStacktracesResponse) (*querierv1.SelectMergeStacktracesResponse, error) {
-			m := phlaremodel.NewTreeMerger()
+			m := phlaremodel.NewTreeMerger[phlaremodel.FuntionName, phlaremodel.FuntionNameI]()
 			if err := m.MergeTreeBytes(a.Tree); err != nil {
 				return nil, err
 			}
@@ -101,7 +101,7 @@ func (r *Router) SelectMergeSpanProfile(
 	resp, err := Query[querierv1.SelectMergeSpanProfileRequest, querierv1.SelectMergeSpanProfileResponse](ctx, r, c,
 		func(_, _ *querierv1.SelectMergeSpanProfileRequest) {},
 		func(a, b *querierv1.SelectMergeSpanProfileResponse) (*querierv1.SelectMergeSpanProfileResponse, error) {
-			m := phlaremodel.NewTreeMerger()
+			m := phlaremodel.NewTreeMerger[phlaremodel.FuntionName, phlaremodel.FuntionNameI]()
 			if err := m.MergeTreeBytes(a.Tree); err != nil {
 				return nil, err
 			}
