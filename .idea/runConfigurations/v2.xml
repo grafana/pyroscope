@@ -1,9 +1,10 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="v2" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <output_file path="intellij-pyroscope.log" is_save="true" />
     <module name="pyroscope" />
     <working_directory value="$PROJECT_DIR$" />
     <go_parameters value="-tags embedassets" />
-    <parameters value="-storage.backend=filesystem -write-path=segment-writer -enable-query-backend=true" />
+    <parameters value="-log.level=debug -storage.backend=filesystem -write-path=segment-writer -enable-query-backend=true -symbolizer.enabled=true -debug-info.max-upload-size=1000000000" />
     <envs>
       <env name="PYROSCOPE_V2" value="true" />
     </envs>

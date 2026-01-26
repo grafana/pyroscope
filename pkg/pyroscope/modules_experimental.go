@@ -395,13 +395,14 @@ func (f *Pyroscope) initRecordingRulesClient() (services.Service, error) {
 }
 
 func (f *Pyroscope) initSymbolizer() (services.Service, error) {
-	prefixedBucket := objstore.NewPrefixedBucket(f.storageBucket, "symbolizer")
+	lidiaBucket := objstore.NewPrefixedBucket(f.storageBucket, symbolizer.BucketPrefix)
+	parcaBucket := objstore.NewPrefixedBucket(f.storageBucket, symbolizer.BucketPrefixParcaDebugInfo)
 
 	sym, err := symbolizer.New(
 		f.logger,
 		f.Cfg.Symbolizer,
 		f.reg,
-		prefixedBucket,
+		lidiaBucket, parcaBucket,
 		f.Overrides,
 	)
 	if err != nil {

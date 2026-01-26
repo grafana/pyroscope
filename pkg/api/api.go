@@ -12,13 +12,13 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"google.golang.org/grpc"
 
 	"github.com/grafana/pyroscope/public"
 
@@ -190,6 +190,22 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 	})
 }
 
+func (a *API) RegisterDebugInfo(d *grpc.Server, limits *validation.Overrides) {
+	const (
+		DebuginfoService_Upload_FullMethodName               = "/parca.debuginfo.v1alpha1.DebuginfoService/Upload"
+		DebuginfoService_ShouldInitiateUpload_FullMethodName = "/parca.debuginfo.v1alpha1.DebuginfoService/ShouldInitiateUpload"
+		DebuginfoService_InitiateUpload_FullMethodName       = "/parca.debuginfo.v1alpha1.DebuginfoService/InitiateUpload"
+		DebuginfoService_MarkUploadFinished_FullMethodName   = "/parca.debuginfo.v1alpha1.DebuginfoService/MarkUploadFinished"
+	)
+	debugInfoGRPCOptions := []RegisterOption{
+		a.WithAuthMiddleware(),
+	}
+	a.RegisterRoute(DebuginfoService_Upload_FullMethodName, d, debugInfoGRPCOptions...)
+	a.RegisterRoute(DebuginfoService_ShouldInitiateUpload_FullMethodName, d, debugInfoGRPCOptions...)
+	a.RegisterRoute(DebuginfoService_InitiateUpload_FullMethodName, d, debugInfoGRPCOptions...)
+	a.RegisterRoute(DebuginfoService_MarkUploadFinished_FullMethodName, d, debugInfoGRPCOptions...)
+}
+
 // RegisterDistributor registers the endpoints associated with the distributor.
 func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, cfg server.Config) {
 	writePathOpts := a.registerOptionsWritePath(limits)
@@ -206,6 +222,7 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation
 
 	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, writePathOpts...)
 	a.RegisterRoute("/v1development/profiles", otlpHandler, writePathOpts...)
+
 }
 
 // RegisterMemberlistKV registers the endpoints associated with the memberlist KV store.

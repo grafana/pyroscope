@@ -41,6 +41,8 @@ import (
 	"github.com/samber/lo"
 	"google.golang.org/grpc/health"
 
+	"github.com/grafana/pyroscope/pkg/debuginfo"
+
 	"github.com/grafana/pyroscope/pkg/api"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/cfg"
@@ -118,6 +120,7 @@ type Config struct {
 	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"  doc:"hidden"`
 	AdaptivePlacement placement.Config        `yaml:"adaptive_placement" doc:"hidden"`
 	Symbolizer        symbolizer.Config       `yaml:"symbolizer"         doc:"hidden"`
+	DebugInfo         debuginfo.Config        `yaml:"-"`
 }
 
 func newDefaultConfig() *Config {
@@ -254,6 +257,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
 		c.LimitsConfig.Symbolizer.RegisterFlags(throwaway)
 		c.Symbolizer.RegisterFlags(throwaway)
+		c.DebugInfo.RegisterFlags(throwaway)
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {
@@ -472,7 +476,7 @@ func (f *Pyroscope) setupModuleManager() error {
 
 		Server:            {GRPCGateway},
 		API:               {Server},
-		Distributor:       {Overrides, IngesterRing, API, UsageReport},
+		Distributor:       {Overrides, IngesterRing, API, UsageReport, Storage},
 		Querier:           {Overrides, API, MemberlistKV, IngesterRing, UsageReport, Version, FeatureFlags},
 		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags},
 		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},

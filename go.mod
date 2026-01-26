@@ -5,6 +5,8 @@ go 1.24.6
 toolchain go1.24.9
 
 require (
+	buf.build/gen/go/parca-dev/parca/grpc/go v1.5.1-20250212095114-4db6f2d46517.2
+	buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.6-20250212095114-4db6f2d46517.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/grpchealth v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.3
@@ -106,6 +108,11 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
+	github.com/baidubce/bce-sdk-go v0.9.111 // indirect
+	github.com/gofrs/flock v0.8.1 // indirect
+	github.com/huaweicloud/huaweicloud-sdk-go-obs v3.25.4+incompatible // indirect
+	github.com/oracle/oci-go-sdk/v65 v65.41.1 // indirect
+	github.com/sony/gobreaker v0.5.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 )
 
@@ -319,7 +326,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.37.0 // indirect
 	go.opentelemetry.io/otel/sdk/log v0.12.2 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.37.0 // indirect
-	go.opentelemetry.io/otel/trace v1.39.0 // indirect
+	go.opentelemetry.io/otel/trace v1.39.0
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
