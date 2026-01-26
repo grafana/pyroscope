@@ -66,7 +66,7 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 			s.exemplarBuilders[seriesKey] = NewExemplarBuilder()
 		}
 		exemplarLabels := lbs.WithoutLabels(s.by...)
-		s.exemplarBuilders[seriesKey].Add(fp, exemplarLabels, ts, profileID, uint64(value))
+		s.exemplarBuilders[seriesKey].Add(fp, exemplarLabels, ts, profileID, int64(value))
 	}
 }
 

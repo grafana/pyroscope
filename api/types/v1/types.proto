@@ -157,7 +157,7 @@ message Exemplar {
   string span_id = 3 [(gnostic.openapi.v3.property).example = {yaml: "00f067aa0ba902b7"}];
 
   // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
-  uint64 value = 4 [(gnostic.openapi.v3.property).example = {yaml: "2450000000"}];
+  int64 value = 4 [(gnostic.openapi.v3.property).example = {yaml: "2450000000"}];
 
   // Series labels that are NOT included in the group_by query parameter.
   // These labels complete the full series identity of this exemplar's profile.
@@ -165,4 +165,20 @@ message Exemplar {
   // "namespace", "region" that were omitted from grouping. This allows identifying
   // which specific series instance this profile sample came from.
   repeated LabelPair labels = 5;
+}
+
+message HeatmapSeries {
+  repeated LabelPair labels = 1;
+  repeated HeatmapSlot slots = 2;
+}
+
+message HeatmapSlot {
+  // Milliseconds unix timestamp
+  int64 timestamp = 1;
+  // Minimum y value
+  repeated double y_min = 2;
+  // How many matches
+  repeated int32 counts = 3;
+  // Provide exemplars
+  repeated Exemplar exemplars = 4;
 }

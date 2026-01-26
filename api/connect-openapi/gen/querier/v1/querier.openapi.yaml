@@ -230,6 +230,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/querier.v1.ProfileTypesResponse'
+  /querier.v1.QuerierService/SelectHeatmap:
+    post:
+      tags:
+        - scope/public
+        - querier.v1.QuerierService
+      summary: 'SelectHeatmap returns a heatmap visualization for the requested profiles.  Note: This endpoint is only available in the v2 storage layer'
+      description: |-
+        SelectHeatmap returns a heatmap visualization for the requested profiles.
+         Note: This endpoint is only available in the v2 storage layer
+      operationId: querier.v1.QuerierService.SelectHeatmap
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.SelectHeatmapRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/querier.v1.SelectHeatmapResponse'
   /querier.v1.QuerierService/SelectMergeProfile:
     post:
       tags:
@@ -1024,6 +1063,13 @@ components:
           format: int64
       title: FlameGraphDiff
       additionalProperties: false
+    querier.v1.HeatmapQueryType:
+      type: string
+      title: HeatmapQueryType
+      enum:
+        - HEATMAP_QUERY_TYPE_UNSPECIFIED
+        - HEATMAP_QUERY_TYPE_INDIVIDUAL
+        - HEATMAP_QUERY_TYPE_SPAN
     querier.v1.Level:
       type: object
       properties:
@@ -1158,6 +1204,88 @@ components:
           title: symbol_bytes
           format: int64
       title: QueryScope
+      additionalProperties: false
+    querier.v1.SelectHeatmapRequest:
+      type: object
+      properties:
+        profileTypeID:
+          type: string
+          examples:
+            - process_cpu:cpu:nanoseconds:cpu:nanoseconds
+          title: profile_typeID
+          description: |-
+            Profile Type ID string in the form
+             <name>:<type>:<unit>:<period_type>:<period_unit>.
+        labelSelector:
+          type: string
+          examples:
+            - '{namespace="my-namespace"}'
+          title: label_selector
+          description: Label selector string
+        start:
+          type:
+            - integer
+            - string
+          examples:
+            - "1676282400000"
+          title: start
+          format: int64
+          description: Milliseconds since epoch.
+        end:
+          type:
+            - integer
+            - string
+          examples:
+            - "1676289600000"
+          title: end
+          format: int64
+          description: Milliseconds since epoch.
+        step:
+          type: number
+          title: step
+          format: double
+          description: Query resolution step width in seconds
+        groupBy:
+          type: array
+          examples:
+            - - pod
+          items:
+            type: string
+            examples:
+              - - pod
+          title: group_by
+          description: Group by labels
+        queryType:
+          examples:
+            - HEATMAP_QUERY_TYPE_SPAN
+          title: query_type
+          description: 'Query type: individual profiles or span profiles'
+          $ref: '#/components/schemas/querier.v1.HeatmapQueryType'
+        exemplarType:
+          examples:
+            - EXEMPLAR_TYPE_SPAN
+          title: exemplar_type
+          description: Type of exemplars to include in the response. Needs to matching query_type or be NONE
+          $ref: '#/components/schemas/types.v1.ExemplarType'
+        limit:
+          type:
+            - integer
+            - string
+          title: limit
+          format: int64
+          description: Select the top N series by total value.
+          nullable: true
+      title: SelectHeatmapRequest
+      additionalProperties: false
+    querier.v1.SelectHeatmapResponse:
+      type: object
+      properties:
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.HeatmapSeries'
+          title: series
+      title: SelectHeatmapResponse
       additionalProperties: false
     querier.v1.SelectMergeProfileRequest:
       type: object
@@ -1614,6 +1742,53 @@ components:
             Aggregate callees causes the leaf location line number to be ignored,
              thus aggregating all callee samples (but not callers).
       title: GoPGO
+      additionalProperties: false
+    types.v1.HeatmapSeries:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.HeatmapSlot'
+          title: slots
+      title: HeatmapSeries
+      additionalProperties: false
+    types.v1.HeatmapSlot:
+      type: object
+      properties:
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: Milliseconds unix timestamp
+        yMin:
+          type: array
+          items:
+            type: number
+            format: double
+          title: y_min
+          description: Minimum y value
+        counts:
+          type: array
+          items:
+            type: integer
+            format: int32
+          title: counts
+          description: How many matches
+        exemplars:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Exemplar'
+          title: exemplars
+          description: Provide exemplars
+      title: HeatmapSlot
       additionalProperties: false
     types.v1.LabelNamesRequest:
       type: object

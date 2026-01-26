@@ -416,6 +416,26 @@
         }
       }
     },
+    "queryv1HeatmapSeries": {
+      "type": "object",
+      "properties": {
+        "attributeRefs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1HeatmapPoint"
+          },
+          "title": "Points are timestamp, then span_id, then porfile_id ordered"
+        }
+      }
+    },
     "queryv1Query": {
       "type": "object",
       "properties": {
@@ -439,7 +459,10 @@
           "$ref": "#/definitions/v1TreeQuery"
         },
         "pprof": {
-          "$ref": "#/definitions/v1PprofQuery",
+          "$ref": "#/definitions/v1PprofQuery"
+        },
+        "heatmap": {
+          "$ref": "#/definitions/v1HeatmapQuery",
           "description": "function_details\n call_graph\n top_table\n ..."
         }
       }
@@ -465,6 +488,25 @@
     },
     "segmentwriterv1PushResponse": {
       "type": "object"
+    },
+    "typesv1HeatmapSeries": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          }
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1HeatmapSlot"
+          }
+        }
+      }
     },
     "typesv1Location": {
       "type": "object",
@@ -567,6 +609,23 @@
         "queryImpact": {
           "$ref": "#/definitions/v1QueryImpact",
           "title": "summary of the query impact / performance"
+        }
+      }
+    },
+    "v1AttributeTable": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -979,7 +1038,7 @@
         },
         "value": {
           "type": "string",
-          "format": "uint64",
+          "format": "int64",
           "description": "Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated)."
         },
         "labels": {
@@ -1367,6 +1426,125 @@
         "aggregateCallees": {
           "type": "boolean",
           "description": "Aggregate callees causes the leaf location line number to be ignored,\nthus aggregating all callee samples (but not callers)."
+        }
+      }
+    },
+    "v1HeatmapPoint": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Milliseconds since epoch when the profile was captured."
+        },
+        "profileId": {
+          "type": "string",
+          "format": "int64",
+          "title": "Unique identifier for the profile (UUID), reference into AttributeTable with only value set"
+        },
+        "spanId": {
+          "type": "string",
+          "format": "uint64",
+          "title": "Span ID if this profile was split by span during ingestion"
+        },
+        "value": {
+          "type": "string",
+          "format": "int64",
+          "description": "Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated)."
+        },
+        "attributeRefs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          },
+          "title": "labels as references into AttributeTable"
+        }
+      }
+    },
+    "v1HeatmapQuery": {
+      "type": "object",
+      "properties": {
+        "step": {
+          "type": "number",
+          "format": "double"
+        },
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "queryType": {
+          "$ref": "#/definitions/v1HeatmapQueryType"
+        },
+        "limit": {
+          "type": "string",
+          "format": "int64"
+        },
+        "exemplarType": {
+          "$ref": "#/definitions/v1ExemplarType"
+        }
+      }
+    },
+    "v1HeatmapQueryType": {
+      "type": "string",
+      "enum": [
+        "HEATMAP_QUERY_TYPE_UNSPECIFIED",
+        "HEATMAP_QUERY_TYPE_INDIVIDUAL",
+        "HEATMAP_QUERY_TYPE_SPAN"
+      ],
+      "default": "HEATMAP_QUERY_TYPE_UNSPECIFIED"
+    },
+    "v1HeatmapReport": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "$ref": "#/definitions/v1HeatmapQuery"
+        },
+        "heatmapSeries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/queryv1HeatmapSeries"
+          }
+        },
+        "attributeTable": {
+          "$ref": "#/definitions/v1AttributeTable"
+        }
+      }
+    },
+    "v1HeatmapSlot": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "Milliseconds unix timestamp"
+        },
+        "yMin": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "title": "Minimum y value"
+        },
+        "counts": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": "How many matches"
+        },
+        "exemplars": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Exemplar"
+          },
+          "title": "Provide exemplars"
         }
       }
     },
@@ -1973,7 +2151,8 @@
         "QUERY_SERIES_LABELS",
         "QUERY_TIME_SERIES",
         "QUERY_TREE",
-        "QUERY_PPROF"
+        "QUERY_PPROF",
+        "QUERY_HEATMAP"
       ],
       "default": "QUERY_UNSPECIFIED"
     },
@@ -2095,6 +2274,9 @@
         },
         "pprof": {
           "$ref": "#/definitions/v1PprofReport"
+        },
+        "heatmap": {
+          "$ref": "#/definitions/v1HeatmapReport"
         }
       }
     },
@@ -2107,7 +2289,8 @@
         "REPORT_SERIES_LABELS",
         "REPORT_TIME_SERIES",
         "REPORT_TREE",
-        "REPORT_PPROF"
+        "REPORT_PPROF",
+        "REPORT_HEATMAP"
       ],
       "default": "REPORT_UNSPECIFIED"
     },
@@ -2140,6 +2323,18 @@
         }
       },
       "description": "Each Sample records values encountered in some program\ncontext. The program context is typically a stack trace, perhaps\naugmented with auxiliary information like the thread-id, some\nindicator of a higher level request being handled etc."
+    },
+    "v1SelectHeatmapResponse": {
+      "type": "object",
+      "properties": {
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/typesv1HeatmapSeries"
+          }
+        }
+      }
     },
     "v1SelectMergeSpanProfileResponse": {
       "type": "object",

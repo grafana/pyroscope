@@ -383,6 +383,65 @@ func (_c *MockQuerierServiceClient_ProfileTypes_Call) RunAndReturn(run func(cont
 	return _c
 }
 
+// SelectHeatmap provides a mock function with given fields: _a0, _a1
+func (_m *MockQuerierServiceClient) SelectHeatmap(_a0 context.Context, _a1 *connect.Request[querierv1.SelectHeatmapRequest]) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SelectHeatmap")
+	}
+
+	var r0 *connect.Response[querierv1.SelectHeatmapResponse]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[querierv1.SelectHeatmapRequest]) (*connect.Response[querierv1.SelectHeatmapResponse], error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[querierv1.SelectHeatmapRequest]) *connect.Response[querierv1.SelectHeatmapResponse]); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*connect.Response[querierv1.SelectHeatmapResponse])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *connect.Request[querierv1.SelectHeatmapRequest]) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerierServiceClient_SelectHeatmap_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SelectHeatmap'
+type MockQuerierServiceClient_SelectHeatmap_Call struct {
+	*mock.Call
+}
+
+// SelectHeatmap is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *connect.Request[querierv1.SelectHeatmapRequest]
+func (_e *MockQuerierServiceClient_Expecter) SelectHeatmap(_a0 interface{}, _a1 interface{}) *MockQuerierServiceClient_SelectHeatmap_Call {
+	return &MockQuerierServiceClient_SelectHeatmap_Call{Call: _e.mock.On("SelectHeatmap", _a0, _a1)}
+}
+
+func (_c *MockQuerierServiceClient_SelectHeatmap_Call) Run(run func(_a0 context.Context, _a1 *connect.Request[querierv1.SelectHeatmapRequest])) *MockQuerierServiceClient_SelectHeatmap_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*connect.Request[querierv1.SelectHeatmapRequest]))
+	})
+	return _c
+}
+
+func (_c *MockQuerierServiceClient_SelectHeatmap_Call) Return(_a0 *connect.Response[querierv1.SelectHeatmapResponse], _a1 error) *MockQuerierServiceClient_SelectHeatmap_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerierServiceClient_SelectHeatmap_Call) RunAndReturn(run func(context.Context, *connect.Request[querierv1.SelectHeatmapRequest]) (*connect.Response[querierv1.SelectHeatmapResponse], error)) *MockQuerierServiceClient_SelectHeatmap_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SelectMergeProfile provides a mock function with given fields: _a0, _a1
 func (_m *MockQuerierServiceClient) SelectMergeProfile(_a0 context.Context, _a1 *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[googlev1.Profile], error) {
 	ret := _m.Called(_a0, _a1)
