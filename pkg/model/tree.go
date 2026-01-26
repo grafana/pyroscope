@@ -104,10 +104,6 @@ type NodeName interface {
 	~string | ~int
 }
 
-type StringNodeName interface {
-	~string
-}
-
 type NodeNameI[N ~string | ~int] interface {
 	newOther() N
 	nameFromLocationID([]N, int32) N
@@ -480,7 +476,7 @@ var errMalformedTreeBytes = fmt.Errorf("malformed tree bytes")
 
 const estimateBytesPerNode = 16 // Chosen empirically.
 
-func MustUnmarshalTree[N StringNodeName, I NodeNameI[N]](b []byte) *Tree[N, I] {
+func MustUnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) *Tree[N, I] {
 	if len(b) == 0 {
 		return new(Tree[N, I])
 	}
@@ -491,7 +487,7 @@ func MustUnmarshalTree[N StringNodeName, I NodeNameI[N]](b []byte) *Tree[N, I] {
 	return t
 }
 
-func UnmarshalTree[N StringNodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
+func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 	var initializer I
 	t := new(Tree[N, I])
 	if len(b) < 2 {

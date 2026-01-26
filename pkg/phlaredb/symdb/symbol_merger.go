@@ -62,18 +62,18 @@ type InlineMapping = unique.Handle[InMemoryMapping]
 type InlineLocation = unique.Handle[InMemoryLocation]
 type InlineFunction = unique.Handle[InMemoryFunction]
 
-type symbolMerger struct {
+type SymbolMerger struct {
 	locationsLookup map[InlineLocation]int
 	locations       []InlineLocation
 }
 
-func newSymbolMerger() *symbolMerger {
-	return &symbolMerger{
+func NewSymbolMerger() *SymbolMerger {
+	return &SymbolMerger{
 		locationsLookup: make(map[InlineLocation]int),
 	}
 }
 
-func (m *symbolMerger) add(symbols *Symbols) func(model.LocationRefName) model.LocationRefName {
+func (m *SymbolMerger) addSymbols(symbols *Symbols) func(model.LocationRefName) model.LocationRefName {
 	adder := newAdder(symbols)
 
 	return func(in model.LocationRefName) model.LocationRefName {
@@ -94,8 +94,32 @@ func (m *symbolMerger) add(symbols *Symbols) func(model.LocationRefName) model.L
 	}
 }
 
-// This should append strings, mappings, functions, locations to the TreeSymbols, ensuring via maps that each element is unique.
-func (m *symbolMerger) resultBuilder() *symbolResultBuilder {
+// Add adds symbols from a TreeSymbols protobuf message to the merger.
+// It returns a mapping function that can be used to remap LocationRefName values.
+func (m *SymbolMerger) Add(ts *queryv1.TreeSymbols) func(model.LocationRefName) model.LocationRefName {
+	adder := newTreeSymbolsAdder(ts)
+
+	return func(in model.LocationRefName) model.LocationRefName {
+		// Get the unique location handle for this location
+		loc := adder.getLoc(int(in))
+
+		// Look up if we've already seen this location
+		if idx, ok := m.locationsLookup[loc]; ok {
+			return model.LocationRefName(idx)
+		}
+
+		// New location - add it to our merged list
+		idx := len(m.locations)
+		m.locations = append(m.locations, loc)
+		m.locationsLookup[loc] = idx
+
+		return model.LocationRefName(idx)
+	}
+}
+
+// ResultBuilder creates a result builder that can be used to build the final TreeSymbols
+// after all symbols have been added via Add() or addSymbols().
+func (m *SymbolMerger) ResultBuilder() *symbolResultBuilder {
 	return &symbolResultBuilder{
 		allLocations:    m.locations,
 		locationsLookup: make(map[InlineLocation]int),
@@ -125,6 +149,24 @@ func newAdder(symbols *Symbols) *symbolAdder {
 		mCache:  make([]InlineMapping, len(symbols.Mappings)),
 		fCache:  make([]InlineFunction, len(symbols.Functions)),
 		sCache:  make([]unique.Handle[string], len(symbols.Strings)),
+	}
+}
+
+type treeSymbolsAdder struct {
+	treeSymbols *queryv1.TreeSymbols
+	lCache      []InlineLocation
+	mCache      []InlineMapping
+	fCache      []InlineFunction
+	sCache      []unique.Handle[string]
+}
+
+func newTreeSymbolsAdder(ts *queryv1.TreeSymbols) *treeSymbolsAdder {
+	return &treeSymbolsAdder{
+		treeSymbols: ts,
+		lCache:      make([]InlineLocation, len(ts.Locations)),
+		mCache:      make([]InlineMapping, len(ts.Mappings)),
+		fCache:      make([]InlineFunction, len(ts.Functions)),
+		sCache:      make([]unique.Handle[string], len(ts.Strings)),
 	}
 }
 
@@ -215,6 +257,94 @@ func (a *symbolAdder) getString(strID uint32) unique.Handle[string] {
 	return h
 }
 
+func (a *treeSymbolsAdder) getLoc(locID int) InlineLocation {
+	if r := a.lCache[locID]; r != lZero {
+		return r
+	}
+
+	loc := a.treeSymbols.Locations[locID]
+
+	nLoc := InMemoryLocation{
+		Address:   loc.Address,
+		MappingId: a.getMap(int(loc.MappingId)),
+		IsFolded:  loc.IsFolded,
+	}
+
+	for idx, line := range loc.Line {
+		if idx > 7 {
+			panic("not ready for more than 8 inlines")
+		}
+		nLoc.Line[idx].FunctionId = a.getFunc(int(line.FunctionId))
+		nLoc.Line[idx].Line = int32(line.Line)
+	}
+
+	h := unique.Make(nLoc)
+	a.lCache[locID] = h
+
+	return h
+}
+
+func (a *treeSymbolsAdder) getMap(mapID int) InlineMapping {
+	if r := a.mCache[mapID]; r != mZero {
+		return r
+	}
+
+	m := a.treeSymbols.Mappings[mapID]
+
+	nMap := InMemoryMapping{
+		MemoryStart:     m.MemoryStart,
+		MemoryLimit:     m.MemoryLimit,
+		FileOffset:      m.FileOffset,
+		Filename:        a.getString(int(m.Filename)),
+		BuildId:         a.getString(int(m.BuildId)),
+		HasFunctions:    m.HasFunctions,
+		HasFilenames:    m.HasFilenames,
+		HasLineNumbers:  m.HasLineNumbers,
+		HasInlineFrames: m.HasInlineFrames,
+	}
+
+	h := unique.Make(nMap)
+	a.mCache[mapID] = h
+
+	return h
+}
+
+func (a *treeSymbolsAdder) getFunc(funcID int) InlineFunction {
+	if r := a.fCache[funcID]; r != fZero {
+		return r
+	}
+
+	f := a.treeSymbols.Functions[funcID]
+
+	nFunc := InMemoryFunction{
+		Name:       a.getString(int(f.Name)),
+		SystemName: a.getString(int(f.SystemName)),
+		Filename:   a.getString(int(f.Filename)),
+		StartLine:  a.getString(int(f.StartLine)),
+	}
+
+	h := unique.Make(nFunc)
+	a.fCache[funcID] = h
+
+	return h
+}
+
+func (a *treeSymbolsAdder) getString(strID int) unique.Handle[string] {
+	if strID == 0 {
+		return unique.Make("")
+	}
+
+	if r := a.sCache[strID]; r != (unique.Handle[string]{}) {
+		return r
+	}
+
+	str := a.treeSymbols.Strings[strID]
+	h := unique.Make(str)
+	a.sCache[strID] = h
+
+	return h
+}
+
 type lookup[K comparable] struct {
 	count int
 	m     map[K]int
@@ -272,6 +402,7 @@ func (m *symbolResultBuilder) KeepSymbol(in model.LocationRefName) model.Locatio
 
 }
 
+// Build constructs the final TreeSymbols protobuf message from the merged symbols.
 // This should append strings, mappings, functions, locations to the TreeSymbols, ensuring via maps that each element is unique.
 func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 	var (

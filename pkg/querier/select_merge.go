@@ -364,7 +364,7 @@ func selectMergeTree(ctx context.Context, responses []ResponseFromReplica[client
 	// Collects the results in parallel.
 	span.LogFields(otlog.String("msg", "collecting merge results"))
 	g, _ := errgroup.WithContext(ctx)
-	m := phlaremodel.NewTreeMerger()
+	m := phlaremodel.NewTreeMerger[phlaremodel.FuntionName, phlaremodel.FuntionNameI]()
 	sm := phlaremodel.NewStackTraceMerger()
 	for _, iter := range mergeResults {
 		iter := iter
@@ -543,7 +543,7 @@ func selectMergeSpanProfile(ctx context.Context, responses []ResponseFromReplica
 	// Collects the results in parallel.
 	span.LogFields(otlog.String("msg", "collecting merge results"))
 	g, _ := errgroup.WithContext(ctx)
-	m := phlaremodel.NewTreeMerger()
+	m := phlaremodel.NewTreeMerger[phlaremodel.FuntionName, phlaremodel.FuntionNameI]()
 	for _, iter := range mergeResults {
 		iter := iter
 		g.Go(util.RecoverPanic(func() error {
