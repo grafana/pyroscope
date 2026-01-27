@@ -314,14 +314,13 @@ func unsafeStringBytes(s string) []byte {
 }
 
 func (t *StacktraceTree) Tree(maxNodes int64, names []FuntionName) *FunctionNameTree {
-	return TreeFromStacktraceTree[FuntionName, FuntionNameI](t, maxNodes, names)
+	lookup := func(i int32) FuntionName {
+		return names[i]
+	}
+	return TreeFromStacktraceTree[FuntionName, FuntionNameI](t, maxNodes, lookup)
 }
 
-func (t *StacktraceTree) LocationRefNameTree(maxNodes int64) *LocationRefNameTree {
-	return TreeFromStacktraceTree[LocationRefName, LocationRefNameI](t, maxNodes, nil)
-}
-
-func TreeFromStacktraceTree[N NodeName, I NodeNameI[N]](t *StacktraceTree, maxNodes int64, names []N) *Tree[N, I] {
+func TreeFromStacktraceTree[N NodeName, I NodeNameI[N]](t *StacktraceTree, maxNodes int64, lookup func(int32) N) *Tree[N, I] {
 	var initializer I
 	if len(t.Nodes) < 2 {
 		// stack trace tree has root at 0: trees with less
@@ -346,7 +345,7 @@ func TreeFromStacktraceTree[N NodeName, I NodeNameI[N]](t *StacktraceTree, maxNo
 			name = initializer.newOther()
 			sn.Total = sn.Value
 		} else {
-			name = initializer.nameFromLocationID(names, sn.Location)
+			name = lookup(sn.Location)
 		}
 		n := current.insert(name)
 		n.self = sn.Value

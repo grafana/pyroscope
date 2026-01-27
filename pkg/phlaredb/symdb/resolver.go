@@ -250,12 +250,24 @@ func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuil
 	var lock sync.Mutex
 	tree := new(model.LocationRefNameTree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
-		resolved, err := symbols.LocationRefNameTree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
+		hSymbols, err := NewHashedSymbols(symbols)
 		if err != nil {
 			return err
 		}
+
+		inTree := make(map[int32]struct{}, len(symbols.Locations))
+		lookup := func(locID int32) model.LocationRefName {
+			inTree[locID] = struct{}{}
+			return model.LocationRefName(locID)
+		}
+
+		resolved, err := symbols.LocationRefNameTree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts), lookup)
+		if err != nil {
+			return err
+		}
+
 		symLock.Lock()
-		cb := sym.addSymbols(symbols)
+		cb := sym.addSymbols(hSymbols, loc)
 		resolved.FormatNodeNames(cb)
 		symLock.Unlock()
 		lock.Lock()
@@ -271,9 +283,11 @@ func (r *Resolver) Tree() (*model.FunctionNameTree, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Tree")
 	defer span.Finish()
 	var lock sync.Mutex
+
 	tree := new(model.FunctionNameTree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
-		resolved, err := symbols.Tree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
+		names := *(*[]model.FuntionName)(unsafe.Pointer(&symbols.Strings))
+		resolved, err := symbols.Tree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts), names)
 		if err != nil {
 			return err
 		}
@@ -368,8 +382,9 @@ func (r *Symbols) Tree(
 	appender *SampleAppender,
 	maxNodes int64,
 	selection *SelectedStackTraces,
+	lookup func(int32) model.FuntionName,
 ) (*model.FunctionNameTree, error) {
-	return buildTree[model.FuntionName, model.FuntionNameI](ctx, r, appender, maxNodes, selection)
+	return buildTree[model.FuntionName, model.FuntionNameI](ctx, r, appender, maxNodes, selection, lookup)
 }
 
 func (r *Symbols) LocationRefNameTree(
@@ -377,6 +392,7 @@ func (r *Symbols) LocationRefNameTree(
 	appender *SampleAppender,
 	maxNodes int64,
 	selection *SelectedStackTraces,
+	lookup func(int32) model.LocationRefName,
 ) (*model.LocationRefNameTree, error) {
-	return buildTree[model.LocationRefName, model.LocationRefNameI](ctx, r, appender, maxNodes, selection)
+	return buildTree[model.LocationRefName, model.LocationRefNameI](ctx, r, appender, maxNodes, selection, lookup)
 }
