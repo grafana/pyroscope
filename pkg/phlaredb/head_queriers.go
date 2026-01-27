@@ -16,6 +16,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/timeseries"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
@@ -598,7 +599,7 @@ func (q *headInMemoryQuerier) MergeByLabels(
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByLabels - HeadInMemory")
 	defer sp.Finish()
 
-	seriesBuilder := phlaremodel.NewTimeSeriesBuilder(by...)
+	seriesBuilder := timeseries.NewBuilder(by...)
 	if len(sts.GetCallSite()) == 0 {
 		for rows.Next() {
 			p, ok := rows.At().(ProfileWithLabels)
@@ -652,7 +653,7 @@ func (q *headInMemoryQuerier) SelectMergeByLabels(
 		start = model.Time(params.Start)
 		end   = model.Time(params.End)
 	)
-	seriesBuilder := phlaremodel.NewTimeSeriesBuilder(by...)
+	seriesBuilder := timeseries.NewBuilder(by...)
 
 	index.mutex.RLock()
 	defer index.mutex.RUnlock()
