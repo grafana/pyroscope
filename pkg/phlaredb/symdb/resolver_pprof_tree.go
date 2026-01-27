@@ -80,10 +80,10 @@ func (r *pprofTree) InsertStacktrace(stacktraceID uint32, locations []int32) {
 	r.cur++
 	treeNodeValues, ok := r.treeNodeValues(locations)
 	if ok {
-		functionNodeIdx := r.functionTree.Insert(treeNodeValues, value)
+		nodeIdx := r.functionTree.Insert(treeNodeValues, value)
 		r.stacktraces = append(r.stacktraces, truncatedStacktraceSample{
 			stacktraceID: stacktraceID,
-			nodeIdx:      functionNodeIdx,
+			nodeIdx:      nodeIdx,
 			value:        value,
 		})
 	}
