@@ -43,13 +43,12 @@ var errGoTooOld = errors.New("go too old")
 
 func GoFunctions(f *elf.File) ([]Func, error) {
 	const headerSize = 64
-	obj := f
 	var err error
-	text := obj.Section(".text")
+	text := f.Section(".text")
 	if text == nil {
 		return nil, errEmptyText
 	}
-	pclntab := obj.Section(".gopclntab")
+	pclntab := f.Section(".gopclntab")
 	if pclntab == nil {
 		return nil, errGoPCLNTabNotFound
 	}
