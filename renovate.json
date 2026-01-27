@@ -7,6 +7,16 @@
   "ignoreDeps": [],
   "separateMajorMinor": true,
   "separateMultipleMajor": true,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["^Makefile$"],
+      "matchStrings": [
+        "go install (?<depName>[^@]+)@(?<currentValue>v[\\d.]+)"
+      ],
+      "datasourceTemplate": "go"
+    }
+  ],
   "packageRules": [
     {
       "description": "Group all Go module updates (main project)",
@@ -58,6 +68,13 @@
       "automergeType": "pr",
       "automergeStrategy": "squash",
       "platformAutomerge": true
+    },
+    {
+      "description": "Group all Makefile tool updates",
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["Makefile"],
+      "groupName": "makefile-tools",
+      "schedule": ["before 4am on monday"]
     }
   ]
 }
