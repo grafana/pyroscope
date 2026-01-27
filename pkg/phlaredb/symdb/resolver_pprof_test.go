@@ -6,11 +6,11 @@ import (
 	"sort"
 	"testing"
 
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
