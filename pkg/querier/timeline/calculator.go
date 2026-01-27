@@ -12,18 +12,29 @@ var (
 )
 
 // CalcPointInterval calculates the appropriate interval between each point (aka step)
+// using the default minimum interval of 15 seconds.
 // Note that its main usage is with SelectSeries, therefore its
 // * inputs are in ms
 // * output is in seconds
 func CalcPointInterval(fromMs int64, untilMs int64) float64 {
+	return CalcPointIntervalWithMinInterval(fromMs, untilMs, DefaultMinInterval)
+}
+
+// CalcPointIntervalWithMinInterval calculates the appropriate interval between each point (aka step)
+// with a custom minimum interval. This allows for finer-grained resolution when using fast
+// collection intervals (e.g., eBPF with collect_interval < 15s).
+// Note that its main usage is with SelectSeries, therefore its
+// * inputs are in ms
+// * output is in seconds
+func CalcPointIntervalWithMinInterval(fromMs int64, untilMs int64, minInterval time.Duration) float64 {
 	resolution := DefaultRes
 
 	fromNano := fromMs * 1000000
 	untilNano := untilMs * 1000000
 	calculatedIntervalNano := time.Duration((untilNano - fromNano) / resolution)
 
-	if calculatedIntervalNano < DefaultMinInterval {
-		return DefaultMinInterval.Seconds()
+	if calculatedIntervalNano < minInterval {
+		return minInterval.Seconds()
 	}
 
 	return roundInterval(calculatedIntervalNano).Seconds()
