@@ -42,6 +42,7 @@ var errGoPCLNTabNotFound = errors.New(".gopclntab not found")
 var errGoTooOld = errors.New("go too old")
 
 func GoFunctions(f *elf.File) ([]Func, error) {
+	const headerSize = 64
 	obj := f
 	var err error
 	text := obj.Section(".text")
@@ -56,10 +57,11 @@ func GoFunctions(f *elf.File) ([]Func, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(pclntabData) < 64 {
+
+	if len(pclntabData) < headerSize {
 		return nil, fmt.Errorf("invalid .gopclntab header")
 	}
-	pclntabHeader := pclntabData[:64]
+	pclntabHeader := pclntabData[:headerSize]
 
 	textStart := ParseRuntimeTextFromPclntab18(pclntabHeader)
 
