@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -214,6 +215,76 @@ func Test_Pprof_subtree_multiple_versions(t *testing.T) {
 	require.Equal(t, expected, actual)
 }
 
+func Test_Pprof_unsymbolized(t *testing.T) {
+	profile := &googlev1.Profile{
+		StringTable: []string{"", "library.so", "foo", "bar"},
+		Mapping: []*googlev1.Mapping{
+			{Id: 1},
+			{Id: 2, Filename: 1},
+		},
+		Function: []*googlev1.Function{
+			{Id: 1, Name: 2},
+			{Id: 2, Name: 3},
+		},
+		Location: []*googlev1.Location{
+			{Id: 1, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 1}}},
+			{Id: 2, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 2}}},
+			{Id: 3, MappingId: 2, Address: 0xcafe0_3000},
+			{Id: 4, MappingId: 2, Address: 0xcafe0_4000},
+			{Id: 5, MappingId: 2, Address: 0xcafe0_5000},
+			{Id: 6, MappingId: 2, Address: 0xcafe0_6000},
+		},
+		Sample: []*googlev1.Sample{
+			{LocationId: []uint64{5, 6}, Value: []int64{1_000_000_000}}, // 0xcafe0_6000;0xcafe0_5000
+			{LocationId: []uint64{3, 4}, Value: []int64{1_000_000_000}}, // 0xcafe0_4000;0xcafe0_3000
+			{LocationId: []uint64{1, 2}, Value: []int64{1_000_000_000}}, // bar;foo
+		},
+	}
+
+	db := NewSymDB(DefaultConfig().WithDirectory(t.TempDir()))
+	w := db.WriteProfileSymbols(0, profile)
+	r := NewResolver(context.Background(), db,
+		WithResolverMaxNodes(10),
+		WithResolverPprofTreeNodeKind(queryv1.TreeNodeKind_Location),
+	)
+
+	r.AddSamples(0, w[0].Samples)
+	actual, err := r.Pprof()
+	require.NoError(t, err)
+	// Sample order is not deterministic.
+	sort.Slice(actual.Sample, func(i, j int) bool {
+		return slices.Compare(actual.Sample[i].LocationId, actual.Sample[j].LocationId) >= 0
+	})
+
+	expected := &googlev1.Profile{
+		PeriodType:  &googlev1.ValueType{},
+		SampleType:  []*googlev1.ValueType{{}},
+		StringTable: []string{"", "library.so", "foo", "bar"},
+		Mapping: []*googlev1.Mapping{
+			{Id: 1},
+			{Id: 2, Filename: 1},
+		},
+		Function: []*googlev1.Function{
+			{Id: 1, Name: 2},
+			{Id: 2, Name: 3},
+		},
+		Location: []*googlev1.Location{
+			{Id: 1, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 1}}},
+			{Id: 2, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 2}}},
+			{Id: 3, MappingId: 2, Address: 0xcafe0_3000, Line: []*googlev1.Line{}},
+			{Id: 4, MappingId: 2, Address: 0xcafe0_4000, Line: []*googlev1.Line{}},
+			{Id: 5, MappingId: 2, Address: 0xcafe0_5000, Line: []*googlev1.Line{}},
+			{Id: 6, MappingId: 2, Address: 0xcafe0_6000, Line: []*googlev1.Line{}},
+		},
+		Sample: []*googlev1.Sample{
+			{LocationId: []uint64{5, 6}, Value: []int64{1_000_000_000}}, // 0xcafe0_6000;0xcafe0_5000
+			{LocationId: []uint64{3, 4}, Value: []int64{1_000_000_000}}, // 0xcafe0_4000;0xcafe0_3000
+			{LocationId: []uint64{1, 2}, Value: []int64{1_000_000_000}}, // bar;foo
+		},
+	}
+	require.Equal(t, expected, actual)
+}
+
 func Test_Resolver_pprof_options(t *testing.T) {
 	s := newMemSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	samples := s.indexed[0][0].Samples
@@ -239,6 +310,14 @@ func Test_Resolver_pprof_options(t *testing.T) {
 			expected: samplesTotal,
 			options: []ResolverOption{
 				WithResolverMaxNodes(0),
+			},
+		},
+		{
+			name:     "queryv1.TreeNodeKind_Location",
+			expected: samplesTotal, // should do no truncation in this setup
+			options: []ResolverOption{
+				WithResolverMaxNodes(2000),
+				WithResolverPprofTreeNodeKind(queryv1.TreeNodeKind_Location),
 			},
 		},
 		{
