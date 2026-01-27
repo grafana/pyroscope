@@ -25,6 +25,10 @@ type FuntionName string
 type FuntionNameI struct {
 }
 
+func (FuntionNameI) IsLocationTree() bool {
+	return false
+}
+
 func (FuntionNameI) newOther() FuntionName { //nolint:unused
 	return OtherFunctionName
 }
@@ -57,15 +61,15 @@ func (FuntionNameI) unmarshalNode(b []byte, offset int) (FuntionName, int64, int
 	return name, int64(value), offset, nil
 }
 
-func (FuntionNameI) nameFromLocationID(names []FuntionName, loc int32) FuntionName {
-	return names[loc]
-}
-
 const OtherLocationRef = LocationRefName(0)
 
 type LocationRefName int
 
 type LocationRefNameI struct {
+}
+
+func (LocationRefNameI) IsLocationTree() bool {
+	return true
 }
 
 func (LocationRefNameI) newOther() LocationRefName { //nolint:unused
@@ -96,17 +100,13 @@ func (LocationRefNameI) unmarshalNode(b []byte, offset int) (LocationRefName, in
 	return LocationRefName(name), int64(value), offset, nil
 }
 
-func (LocationRefNameI) nameFromLocationID(_ []LocationRefName, loc int32) LocationRefName {
-	return LocationRefName(loc)
-}
-
 type NodeName interface {
 	~string | ~int
 }
 
 type NodeNameI[N ~string | ~int] interface {
+	IsLocationTree() bool
 	newOther() N
-	nameFromLocationID([]N, int32) N
 	marshalNode(io.Writer, varint.Writer, *node[N], func(N) N) error
 	unmarshalNode([]byte, int) (N, int64, int, error)
 }

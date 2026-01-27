@@ -20,6 +20,7 @@ func buildTree[N model.NodeName, I model.NodeNameI[N]](
 	appender *SampleAppender,
 	maxNodes int64,
 	selection *SelectedStackTraces,
+	lookup func(int32) N,
 ) (*model.Tree[N, I], error) {
 	if !selection.HasValidCallSite() {
 		// TODO(bryan) Maybe return an error here? buildPprof returns a blank
@@ -36,7 +37,7 @@ func buildTree[N model.NodeName, I model.NodeNameI[N]](
 	iterator, ok := symbols.Stacktraces.(StacktraceIDRangeIterator)
 	if ok && shouldCopyTree(appender, maxNodes) {
 		ranges := iterator.SplitStacktraceIDRanges(appender)
-		return buildTreeFromParentPointerTrees[N, I](ctx, ranges, symbols, maxNodes, selection)
+		return buildTreeFromParentPointerTrees[N, I](ctx, ranges, symbols, maxNodes, selection, lookup)
 	}
 	// Otherwise, use the basic approach: resolve each stack trace
 	// and insert them into the new tree one by one. The method
@@ -48,13 +49,7 @@ func buildTree[N model.NodeName, I model.NodeNameI[N]](
 	if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
 		return nil, err
 	}
-	var names []N
-	/* TODO:
-	for i, s := range t.symbols.Strings {
-		names[i] = model.FuntionName(s)
-	}
-	*/
-	return model.TreeFromStacktraceTree[N, I](t.tree, maxNodes, names), nil
+	return model.TreeFromStacktraceTree[N, I](t.tree, maxNodes, lookup), nil
 }
 
 func shouldCopyTree(appender *SampleAppender, maxNodes int64) bool {
@@ -140,13 +135,14 @@ func buildTreeFromParentPointerTrees[N model.NodeName, I model.NodeNameI[N]](
 	symbols *Symbols,
 	maxNodes int64,
 	selection *SelectedStackTraces,
+	names []N,
 ) (*model.Tree[N, I], error) {
 	m := model.NewTreeMerger[N, I]()
 	g, _ := errgroup.WithContext(ctx)
 	for ranges.Next() {
 		sr := ranges.At()
 		g.Go(util.RecoverPanic(func() error {
-			m.MergeTree(buildTreeForStacktraceIDRange[N, I](sr, symbols, maxNodes, selection))
+			m.MergeTree(buildTreeForStacktraceIDRange[N, I](sr, symbols, maxNodes, selection, names))
 			return nil
 		}))
 	}
@@ -318,6 +314,7 @@ func buildTreeForStacktraceIDRange[N model.NodeName, I model.NodeNameI[N]](
 	symbols *Symbols,
 	maxNodes int64,
 	selection *SelectedStackTraces,
+	lookup func(int32) N,
 ) *model.Tree[N, I] {
 	// Get the parent pointer tree for the range. The tree is
 	// not specific to the samples we've collected and includes
@@ -353,19 +350,19 @@ func buildTreeForStacktraceIDRange[N model.NodeName, I model.NodeNameI[N]](
 	// tree is optimized for inserts and lookups, while the output
 	// tree is optimized for merge operations.
 	t := model.NewStacktraceTree(int(maxNodes))
-	insertStacktraces(t, nodes, symbols)
+
+	// Select insert method depending on type
+	var treeI I
+	if treeI.IsLocationTree() {
+		insertStacktraces(t, nodes, symbols, resolveLocationStack)
+	} else {
+		insertStacktraces(t, nodes, symbols, resolveFunctionNameStack)
+	}
+
 	// Finally, we convert the stack trace tree into the function
 	// tree, dropping insignificant functions, and symbolizing the
 	// nodes (function names).
-	// TODO get the names otu
-	var names []N
-	/*
-		names := make([]model.FuntionName, len(symbols.Strings))
-		for i, s := range symbols.Strings {
-			names[i] = model.FuntionName(s)
-		}
-	*/
-	return model.TreeFromStacktraceTree[N, I](t, maxNodes, names)
+	return model.TreeFromStacktraceTree[N, I](t, maxNodes, lookup)
 }
 
 func propagateNodeValues(nodes []Node) {
@@ -400,20 +397,22 @@ func markNodesForTruncation(nodes []Node, maxNodes int64) {
 	}
 }
 
-func insertStacktraces(t *model.StacktraceTree, nodes []Node, symbols *Symbols) {
+type resolveFunc func(dst []int32, nodes []Node, i int32, symbols *Symbols) []int32
+
+func insertStacktraces(t *model.StacktraceTree, nodes []Node, symbols *Symbols, resolve resolveFunc) {
 	l := int32(len(nodes))
 	s := make([]int32, 0, 64)
 	for i := int32(1); i < l; i++ {
 		p := nodes[i].Parent
 		v := nodes[i].Value
 		if v > 0 && nodes[p].Location&truncationMark == 0 {
-			s = resolveStack(s, nodes, i, symbols)
+			s = resolve(s, nodes, i, symbols)
 			t.Insert(s, v)
 		}
 	}
 }
 
-func resolveStack(dst []int32, nodes []Node, i int32, symbols *Symbols) []int32 {
+func resolveFunctionNameStack(dst []int32, nodes []Node, i int32, symbols *Symbols) []int32 {
 	dst = dst[:0]
 	for i > 0 {
 		j := nodes[i].Location
@@ -424,6 +423,20 @@ func resolveStack(dst []int32, nodes []Node, i int32, symbols *Symbols) []int32 
 			for l := 0; l < len(loc.Line); l++ {
 				dst = append(dst, int32(symbols.Functions[loc.Line[l].FunctionId].Name))
 			}
+		}
+		i = nodes[i].Parent
+	}
+	return dst
+}
+
+func resolveLocationStack(dst []int32, nodes []Node, i int32, symbols *Symbols) []int32 {
+	dst = dst[:0]
+	for i > 0 {
+		j := nodes[i].Location
+		if j&truncationMark > 0 {
+			dst = append(dst, sentinel)
+		} else {
+			dst = append(dst, j)
 		}
 		i = nodes[i].Parent
 	}
