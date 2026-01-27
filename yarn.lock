@@ -4483,7 +4483,7 @@ debug@^3.1.0, debug@^3.2.7:
   dependencies:
     ms "^2.1.1"
 
-debug@^4.1.0, debug@^4.3.1, debug@^4.3.2, debug@^4.3.3, debug@^4.3.4, debug@^4.4.1, debug@^4.4.3:
+debug@^4.1.0, debug@^4.3.1, debug@^4.3.2, debug@^4.3.3, debug@^4.3.4, debug@^4.4.3:
   version "4.4.3"
   resolved "https://registry.yarnpkg.com/debug/-/debug-4.4.3.tgz#c6ae432d9bd9662582fce08709b038c58e9e3d6a"
   integrity sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==
@@ -5288,15 +5288,15 @@ eslint-plugin-jsdoc@46.2.6:
     semver "^7.5.1"
     spdx-expression-parse "^3.0.1"
 
-eslint-plugin-jsdoc@^55.0.0:
-  version "55.4.0"
-  resolved "https://registry.yarnpkg.com/eslint-plugin-jsdoc/-/eslint-plugin-jsdoc-55.4.0.tgz#6bd07591ce22da63f380323ea6f32bd87f1b6cea"
-  integrity sha512-T85lylJvrnKPg8pCe9VNfPNDLo76CObyu7BOxjB2pGFpqBXzSl0roEDjI3oNgLWMFzEQZXIa4w+UX96uuF4b/g==
+eslint-plugin-jsdoc@^58.0.0:
+  version "58.1.1"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-jsdoc/-/eslint-plugin-jsdoc-58.1.1.tgz#4f1c7778efc2715ed77114b24ea2f4e973318700"
+  integrity sha512-PJ3WMVrusBPN5mtFiV0cSSS1GuEBTvUAEnEsAr7x8M+5S/EO1G6nKVwLyGN69lUeMB9of0N4dvoFMNdl/X98yA==
   dependencies:
     "@es-joy/jsdoccomment" "~0.58.0"
     are-docs-informative "^0.0.2"
     comment-parser "1.4.1"
-    debug "^4.4.1"
+    debug "^4.4.3"
     escape-string-regexp "^4.0.0"
     espree "^10.4.0"
     esquery "^1.6.0"
