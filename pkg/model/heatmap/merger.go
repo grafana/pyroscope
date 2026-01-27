@@ -7,14 +7,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"unique"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/pkg/model"
 )
 
 type Merger struct {
 	mu             sync.Mutex
-	attributeTable *attributeTable
+	attributeTable *model.Table
 	series         map[string]*mergedSeries // key is the serialized attribute refs
 	sum            bool
 }
@@ -28,7 +28,7 @@ type mergedSeries struct {
 // with matching timestamps, profileIDs, and spanIDs have their values summed.
 func NewMerger(sum bool) *Merger {
 	return &Merger{
-		attributeTable: newAttributeTable(),
+		attributeTable: model.NewTable(),
 		series:         make(map[string]*mergedSeries),
 		sum:            sum,
 	}
@@ -92,9 +92,9 @@ func (m *Merger) remapAttributeTable(table *queryv1.AttributeTable) map[int64]in
 	}
 	for i := range table.Keys {
 		oldRef := int64(i)
-		key := unique.Make(table.Keys[i])
-		value := unique.Make(table.Values[i])
-		newRef := m.attributeTable.lookupOrAdd(attributeKey{key: key, value: value})
+		key := table.Keys[i]
+		value := table.Values[i]
+		newRef := m.attributeTable.AddKeyValue(key, value)
 		if refMap != nil {
 			refMap[oldRef] = newRef
 		}
@@ -167,7 +167,7 @@ func (m *Merger) Build() *queryv1.HeatmapReport {
 		report.HeatmapSeries = append(report.HeatmapSeries, series)
 	}
 
-	report.AttributeTable = m.attributeTable.build(report.AttributeTable)
+	report.AttributeTable = m.attributeTable.Build(report.AttributeTable)
 
 	return report
 }

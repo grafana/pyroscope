@@ -152,6 +152,7 @@ func (a *timeSeriesAggregator) aggregate(report *queryv1.Report) error {
 		a.series = phlaremodel.NewTimeSeriesMerger(true)
 		a.query = r.Query.CloneVT()
 	})
+
 	a.series.MergeTimeSeries(r.TimeSeries)
 	return nil
 }

@@ -86,6 +86,7 @@ message Query {
   TreeQuery tree = 6;
   PprofQuery pprof = 7;
   HeatmapQuery heatmap = 8;
+  TimeSeriesQuery time_series_with_attribute_table = 9;
   // function_details
   // call_graph
   // top_table
@@ -101,6 +102,7 @@ enum QueryType {
   QUERY_TREE = 5;
   QUERY_PPROF = 6;
   QUERY_HEATMAP = 7;
+  QUERY_TIME_SERIES_WITH_ATTRIBUTE_TABLE = 8;
 }
 
 message InvokeResponse {
@@ -124,6 +126,7 @@ message Report {
   TreeReport tree = 6;
   PprofReport pprof = 7;
   HeatmapReport heatmap = 8;
+  TimeSeriesWithAttributeTableReport time_series_with_attribute_table = 9;
 }
 
 enum ReportType {
@@ -135,6 +138,7 @@ enum ReportType {
   REPORT_TREE = 5;
   REPORT_PPROF = 6;
   REPORT_HEATMAP = 7;
+  REPORT_TIME_SERIES_WITH_ATTRIBUTE_TABLE = 8;
 }
 
 message LabelNamesQuery {}
@@ -227,5 +231,31 @@ message HeatmapSeries {
 message HeatmapReport {
   HeatmapQuery query = 1;
   repeated HeatmapSeries heatmap_series = 2;
+  AttributeTable attribute_table = 3;
+}
+
+message Exemplar {
+  int64 timestamp = 1;
+  string profile_id = 2;
+  string span_id = 3;
+  int64 value = 4;
+  repeated int64 attribute_refs = 5;
+}
+
+message Point {
+  double value = 1;
+  int64 timestamp = 2;
+  repeated types.v1.ProfileAnnotation annotations = 3;
+  repeated Exemplar exemplars = 4;
+}
+
+message Series {
+  repeated int64 attribute_refs = 1;
+  repeated Point points = 2;
+}
+
+message TimeSeriesWithAttributeTableReport {
+  TimeSeriesQuery query = 1;
+  repeated Series time_series = 2;
   AttributeTable attribute_table = 3;
 }

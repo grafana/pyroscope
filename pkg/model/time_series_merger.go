@@ -176,7 +176,7 @@ func mergeAnnotations(a, b []*typesv1.ProfileAnnotation) []*typesv1.ProfileAnnot
 }
 
 // mergeExemplars combines two exemplar lists.
-// For exemplars with the same profileID, it keeps the highest value and intersects labels.
+// For exemplars with the same profileID, it keeps the highest value.
 func mergeExemplars(a, b []*typesv1.Exemplar) []*typesv1.Exemplar {
 	if len(a) == 0 {
 		return b
@@ -185,40 +185,26 @@ func mergeExemplars(a, b []*typesv1.Exemplar) []*typesv1.Exemplar {
 		return a
 	}
 
-	type exemplarGroup struct {
-		exemplar  *typesv1.Exemplar
-		labelSets []Labels
-	}
-	byProfileID := make(map[string]*exemplarGroup)
+	byProfileID := make(map[string]*typesv1.Exemplar)
 
 	for _, ex := range a {
-		byProfileID[ex.ProfileId] = &exemplarGroup{
-			exemplar:  ex,
-			labelSets: []Labels{ex.Labels},
-		}
+		byProfileID[ex.ProfileId] = ex
 	}
 
 	for _, ex := range b {
 		existing, found := byProfileID[ex.ProfileId]
 		if !found {
-			byProfileID[ex.ProfileId] = &exemplarGroup{
-				exemplar:  ex,
-				labelSets: []Labels{Labels(ex.Labels)},
-			}
+			byProfileID[ex.ProfileId] = ex
 		} else {
-			if ex.Value > existing.exemplar.Value {
-				existing.exemplar = ex
+			// Keep the exemplar with the higher value
+			if ex.Value > existing.Value {
+				byProfileID[ex.ProfileId] = ex
 			}
-			existing.labelSets = append(existing.labelSets, Labels(ex.Labels))
 		}
 	}
 
 	result := make([]*typesv1.Exemplar, 0, len(byProfileID))
-	for _, group := range byProfileID {
-		ex := group.exemplar
-		if len(group.labelSets) > 1 {
-			ex.Labels = IntersectAll(group.labelSets)
-		}
+	for _, ex := range byProfileID {
 		result = append(result, ex)
 	}
 

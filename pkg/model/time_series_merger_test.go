@@ -521,7 +521,7 @@ func Test_SeriesMerger_WithExemplars(t *testing.T) {
 										ProfileId: "prof-1",
 										Value:     100,
 										Timestamp: 1000,
-										Labels:    []*typesv1.LabelPair{{Name: "pod", Value: "pod-123"}},
+										Labels:    []*typesv1.LabelPair{}, // Simplified for test - merger tests don't need actual labels
 									},
 								},
 							},
@@ -541,7 +541,7 @@ func Test_SeriesMerger_WithExemplars(t *testing.T) {
 									ProfileId: "prof-1",
 									Value:     100,
 									Timestamp: 1000,
-									Labels:    []*typesv1.LabelPair{{Name: "pod", Value: "pod-123"}},
+									Labels:    []*typesv1.LabelPair{},
 								},
 							},
 						},

@@ -6,6 +6,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
@@ -17,6 +18,7 @@ type TimeSeriesBuilder struct {
 	series seriesByLabels
 
 	exemplarBuilders map[string]*ExemplarBuilder
+	attributeTable   *Table
 }
 
 func NewTimeSeriesBuilder(by ...string) *TimeSeriesBuilder {
@@ -30,6 +32,7 @@ func (s *TimeSeriesBuilder) Init(by ...string) {
 	s.labelBuf = make([]byte, 0, 1024)
 	s.by = by
 	s.exemplarBuilders = make(map[string]*ExemplarBuilder)
+	s.attributeTable = NewTable()
 }
 
 // Add adds a data point with full labels.
@@ -82,6 +85,12 @@ func (s *TimeSeriesBuilder) BuildWithExemplars() []*typesv1.Series {
 	return series
 }
 
+// BuildWithAttributeTable returns the time series with exemplars using AttributeTable optimization.
+func (s *TimeSeriesBuilder) BuildWithAttributeTable() []*queryv1.Series {
+	series := s.series.normalize()
+	return s.attachExemplarsWithAttributeTable(series)
+}
+
 // ExemplarCount returns the number of raw exemplars added (before deduplication).
 func (s *TimeSeriesBuilder) ExemplarCount() int {
 	total := 0
@@ -89,6 +98,11 @@ func (s *TimeSeriesBuilder) ExemplarCount() int {
 		total += builder.Count()
 	}
 	return total
+}
+
+// AttributeTable returns the attribute table built during BuildWithExemplars().
+func (s *TimeSeriesBuilder) AttributeTable() *Table {
+	return s.attributeTable
 }
 
 // attachExemplars attaches exemplars from ExemplarBuilders to the corresponding points.
@@ -106,7 +120,19 @@ func (s *TimeSeriesBuilder) attachExemplars(series []*typesv1.Series) {
 			continue
 		}
 
-		exemplars := exemplarBuilder.Build()
+		exemplarBuilder.Build()
+
+		var exemplars []*typesv1.Exemplar
+		exemplarBuilder.ForEach(func(labels Labels, ts int64, profileID string, value int64) {
+			ex := &typesv1.Exemplar{
+				Timestamp: ts,
+				ProfileId: profileID,
+				Value:     value,
+				Labels:    []*typesv1.LabelPair(labels),
+			}
+			exemplars = append(exemplars, ex)
+		})
+
 		if len(exemplars) == 0 {
 			continue
 		}
@@ -131,6 +157,71 @@ func (s *TimeSeriesBuilder) attachExemplars(series []*typesv1.Series) {
 			}
 		}
 	}
+}
+
+// attachExemplarsWithAttributeTable attaches exemplars using AttributeTable optimization.
+func (s *TimeSeriesBuilder) attachExemplarsWithAttributeTable(series []*typesv1.Series) []*queryv1.Series {
+	result := make([]*queryv1.Series, len(series))
+	seriesMap := make(map[string]*queryv1.Series)
+
+	for i, ts := range series {
+		points := make([]*queryv1.Point, len(ts.Points))
+		for j, p := range ts.Points {
+			points[j] = &queryv1.Point{
+				Value:       p.Value,
+				Timestamp:   p.Timestamp,
+				Annotations: p.Annotations,
+			}
+		}
+		querySeries := &queryv1.Series{
+			AttributeRefs: s.attributeTable.Refs(ts.Labels, nil),
+			Points:        points,
+		}
+		result[i] = querySeries
+
+		seriesKey := string(Labels(ts.Labels).BytesWithLabels(nil, s.by...))
+		seriesMap[seriesKey] = querySeries
+	}
+
+	for seriesKey, exemplarBuilder := range s.exemplarBuilders {
+		querySeries, found := seriesMap[seriesKey]
+		if !found {
+			continue
+		}
+
+		exemplarBuilder.Build()
+
+		var exemplars []*queryv1.Exemplar
+		exemplarBuilder.ForEach(func(labels Labels, ts int64, profileID string, value int64) {
+			ex := &queryv1.Exemplar{
+				Timestamp:     ts,
+				ProfileId:     profileID,
+				Value:         value,
+				AttributeRefs: nil,
+			}
+			ex.AttributeRefs = s.attributeTable.Refs(labels, ex.AttributeRefs)
+			exemplars = append(exemplars, ex)
+		})
+
+		if len(exemplars) == 0 {
+			continue
+		}
+
+		exIdx := 0
+		for _, point := range querySeries.Points {
+			// Skip exemplars with timestamp < point timestamp
+			for exIdx < len(exemplars) && exemplars[exIdx].Timestamp < point.Timestamp {
+				exIdx++
+			}
+
+			// Collect all exemplars with timestamp == point timestamp
+			for i := exIdx; i < len(exemplars) && exemplars[i].Timestamp == point.Timestamp; i++ {
+				point.Exemplars = append(point.Exemplars, exemplars[i])
+			}
+		}
+	}
+
+	return result
 }
 
 type seriesByLabels map[string]*typesv1.Series
