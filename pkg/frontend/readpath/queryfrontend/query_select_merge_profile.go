@@ -85,6 +85,21 @@ func (q *QueryFrontend) SelectMergeProfile(
 	p.Location = report.Tree.Symbols.Locations
 	p.Function = report.Tree.Symbols.Functions
 
+	// renumber mapping ids, as 0 is reserved by for pprof
+	for _, m := range p.Mapping {
+		m.Id += 1
+	}
+	for _, m := range p.Function {
+		m.Id += 1
+	}
+	for _, l := range p.Location {
+		l.Id += 1
+		l.MappingId += 1
+		for _, l := range l.Line {
+			l.FunctionId += 1
+		}
+	}
+
 	t, err := model.UnmarshalTree[model.LocationRefName, model.LocationRefNameI](report.Tree.Tree)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -96,7 +111,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 	t.IterateStacks(func(_ model.LocationRefName, self int64, stack []model.LocationRefName) {
 		locationID := make([]uint64, len(stack))
 		for idx := range locationID {
-			locationID[idx] = uint64(stack[idx])
+			locationID[idx] = uint64(stack[idx] + 1)
 		}
 		p.Sample = append(p.Sample, &profilev1.Sample{
 			LocationId: locationID,
@@ -113,7 +128,6 @@ func (q *QueryFrontend) SelectMergeProfile(
 		Type: int64(sampleTypeRef),
 		Unit: int64(sampleUnitRef),
 	}}
-
 	// TODO: Set more fields on profile
 
 	return connect.NewResponse(&p), nil
