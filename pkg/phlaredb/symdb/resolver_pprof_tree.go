@@ -170,11 +170,16 @@ func (r *pprofTree) addSample(n truncatedStacktraceSample) {
 		r.fullyTruncated += n.value
 		return
 	}
-	r.locationsBuf = r.symbols.Stacktraces.LookupLocations(r.locationsBuf, n.stacktraceID)
-	if off > 0 {
-		// Some functions were truncated.
-		r.locationsBuf = truncateLocations(r.locationsBuf, r.stackBuf, off, r.symbols)
-		// Otherwise, if the offset is zero, the stack can be taken as is.
+	if r.opt.TreeNodeKind == queryv1.TreeNodeKind_Location {
+		//todo add test for this case
+		r.locationsBuf = truncateStack(r.locationsBuf, r.stackBuf, off)
+	} else {
+		r.locationsBuf = r.symbols.Stacktraces.LookupLocations(r.locationsBuf, n.stacktraceID)
+		if off > 0 {
+			// Some functions were truncated.
+			r.locationsBuf = truncateLocations(r.locationsBuf, r.stackBuf, off, r.symbols)
+			// Otherwise, if the offset is zero, the stack can be taken as is.
+		}
 	}
 	// Truncation may result in vast duplication of stack traces.
 	// Even if a particular stack trace is not truncated, we still
@@ -222,6 +227,17 @@ func (r *pprofTree) createSamples() {
 	if r.fullyTruncated > 0 {
 		r.createStubSample()
 	}
+}
+
+func truncateStack(dst []uint64, stack []int32, offset int) []uint64 {
+	dst = dst[:0]
+	if offset != 0 {
+		dst = append(dst, truncationMark)
+	}
+	for _, l := range stack[offset:] {
+		dst = append(dst, uint64(l))
+	}
+	return dst
 }
 
 func truncateLocations(locations []uint64, functions []int32, offset int, symbols *Symbols) []uint64 {
