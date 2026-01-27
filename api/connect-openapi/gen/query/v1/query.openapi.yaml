@@ -593,7 +593,10 @@ components:
           items:
             type: string
           title: profile_id_selector
+        treeNodeKind:
+          title: tree_node_kind
           description: 'TODO(kolesnikovae): Go PGO options.'
+          $ref: '#/components/schemas/query.v1.TreeNodeKind'
       title: PprofQuery
       additionalProperties: false
     query.v1.PprofReport:
@@ -834,6 +837,12 @@ components:
           title: time_series
       title: TimeSeriesReport
       additionalProperties: false
+    query.v1.TreeNodeKind:
+      type: string
+      title: TreeNodeKind
+      enum:
+        - Function
+        - Location
     query.v1.TreeQuery:
       type: object
       properties:

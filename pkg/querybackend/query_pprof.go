@@ -67,6 +67,7 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 
 	resolverOptions := make([]symdb.ResolverOption, 0)
 	resolverOptions = append(resolverOptions, symdb.WithResolverMaxNodes(query.Pprof.MaxNodes))
+	resolverOptions = append(resolverOptions, symdb.WithResolverPprofTreeNodeKind(query.Pprof.TreeNodeKind))
 	if query.Pprof.StackTraceSelector != nil {
 		resolverOptions = append(
 			resolverOptions,
