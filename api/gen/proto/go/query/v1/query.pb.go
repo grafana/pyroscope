@@ -153,6 +153,55 @@ func (ReportType) EnumDescriptor() ([]byte, []int) {
 	return file_query_v1_query_proto_rawDescGZIP(), []int{1}
 }
 
+type TreeNodeKind int32
+
+const (
+	// Use function ids when building a tree for truncation
+	TreeNodeKind_Function TreeNodeKind = 0
+	// Use location ids when building a tree for truncation
+	// Less efficient than Function. Required for unsymbolized profiles (no Line/Function).
+	TreeNodeKind_Location TreeNodeKind = 1
+)
+
+// Enum value maps for TreeNodeKind.
+var (
+	TreeNodeKind_name = map[int32]string{
+		0: "Function",
+		1: "Location",
+	}
+	TreeNodeKind_value = map[string]int32{
+		"Function": 0,
+		"Location": 1,
+	}
+)
+
+func (x TreeNodeKind) Enum() *TreeNodeKind {
+	p := new(TreeNodeKind)
+	*p = x
+	return p
+}
+
+func (x TreeNodeKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TreeNodeKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_query_v1_query_proto_enumTypes[2].Descriptor()
+}
+
+func (TreeNodeKind) Type() protoreflect.EnumType {
+	return &file_query_v1_query_proto_enumTypes[2]
+}
+
+func (x TreeNodeKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TreeNodeKind.Descriptor instead.
+func (TreeNodeKind) EnumDescriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{2}
+}
+
 type QueryNode_Type int32
 
 const (
@@ -186,11 +235,11 @@ func (x QueryNode_Type) String() string {
 }
 
 func (QueryNode_Type) Descriptor() protoreflect.EnumDescriptor {
-	return file_query_v1_query_proto_enumTypes[2].Descriptor()
+	return file_query_v1_query_proto_enumTypes[3].Descriptor()
 }
 
 func (QueryNode_Type) Type() protoreflect.EnumType {
-	return &file_query_v1_query_proto_enumTypes[2]
+	return &file_query_v1_query_proto_enumTypes[3]
 }
 
 func (x QueryNode_Type) Number() protoreflect.EnumNumber {
@@ -1387,9 +1436,11 @@ type PprofQuery struct {
 	state              protoimpl.MessageState  `protogen:"open.v1"`
 	MaxNodes           int64                   `protobuf:"varint,1,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
 	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,2,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
-	ProfileIdSelector  []string                `protobuf:"bytes,3,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"` // TODO(kolesnikovae): Go PGO options.
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	ProfileIdSelector  []string                `protobuf:"bytes,3,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
+	// TODO(kolesnikovae): Go PGO options.
+	TreeNodeKind  TreeNodeKind `protobuf:"varint,4,opt,name=tree_node_kind,json=treeNodeKind,proto3,enum=query.v1.TreeNodeKind" json:"tree_node_kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PprofQuery) Reset() {
@@ -1441,6 +1492,13 @@ func (x *PprofQuery) GetProfileIdSelector() []string {
 		return x.ProfileIdSelector
 	}
 	return nil
+}
+
+func (x *PprofQuery) GetTreeNodeKind() TreeNodeKind {
+	if x != nil {
+		return x.TreeNodeKind
+	}
+	return TreeNodeKind_Function
 }
 
 type PprofReport struct {
@@ -1911,12 +1969,13 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\n" +
 	"TreeReport\x12)\n" +
 	"\x05query\x18\x01 \x01(\v2\x13.query.v1.TreeQueryR\x05query\x12\x12\n" +
-	"\x04tree\x18\x02 \x01(\fR\x04tree\"\xc7\x01\n" +
+	"\x04tree\x18\x02 \x01(\fR\x04tree\"\x85\x02\n" +
 	"\n" +
 	"PprofQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12S\n" +
 	"\x14stack_trace_selector\x18\x02 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
-	"\x13profile_id_selector\x18\x03 \x03(\tR\x11profileIdSelectorB\x17\n" +
+	"\x13profile_id_selector\x18\x03 \x03(\tR\x11profileIdSelector\x12<\n" +
+	"\x0etree_node_kind\x18\x04 \x01(\x0e2\x16.query.v1.TreeNodeKindR\ftreeNodeKindB\x17\n" +
 	"\x15_stack_trace_selector\"O\n" +
 	"\vPprofReport\x12*\n" +
 	"\x05query\x18\x01 \x01(\v2\x14.query.v1.PprofQueryR\x05query\x12\x14\n" +
@@ -1964,7 +2023,10 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x12REPORT_TIME_SERIES\x10\x04\x12\x0f\n" +
 	"\vREPORT_TREE\x10\x05\x12\x10\n" +
 	"\fREPORT_PPROF\x10\x06\x12\x12\n" +
-	"\x0eREPORT_HEATMAP\x10\a2R\n" +
+	"\x0eREPORT_HEATMAP\x10\a**\n" +
+	"\fTreeNodeKind\x12\f\n" +
+	"\bFunction\x10\x00\x12\f\n" +
+	"\bLocation\x10\x012R\n" +
 	"\x14QueryFrontendService\x12:\n" +
 	"\x05Query\x12\x16.query.v1.QueryRequest\x1a\x17.query.v1.QueryResponse\"\x002T\n" +
 	"\x13QueryBackendService\x12=\n" +
@@ -1984,101 +2046,103 @@ func file_query_v1_query_proto_rawDescGZIP() []byte {
 	return file_query_v1_query_proto_rawDescData
 }
 
-var file_query_v1_query_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_query_v1_query_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_query_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_query_v1_query_proto_goTypes = []any{
 	(QueryType)(0),                 // 0: query.v1.QueryType
 	(ReportType)(0),                // 1: query.v1.ReportType
-	(QueryNode_Type)(0),            // 2: query.v1.QueryNode.Type
-	(*QueryRequest)(nil),           // 3: query.v1.QueryRequest
-	(*QueryResponse)(nil),          // 4: query.v1.QueryResponse
-	(*InvokeOptions)(nil),          // 5: query.v1.InvokeOptions
-	(*InvokeRequest)(nil),          // 6: query.v1.InvokeRequest
-	(*QueryPlan)(nil),              // 7: query.v1.QueryPlan
-	(*QueryNode)(nil),              // 8: query.v1.QueryNode
-	(*Query)(nil),                  // 9: query.v1.Query
-	(*InvokeResponse)(nil),         // 10: query.v1.InvokeResponse
-	(*Diagnostics)(nil),            // 11: query.v1.Diagnostics
-	(*Report)(nil),                 // 12: query.v1.Report
-	(*LabelNamesQuery)(nil),        // 13: query.v1.LabelNamesQuery
-	(*LabelNamesReport)(nil),       // 14: query.v1.LabelNamesReport
-	(*LabelValuesQuery)(nil),       // 15: query.v1.LabelValuesQuery
-	(*LabelValuesReport)(nil),      // 16: query.v1.LabelValuesReport
-	(*SeriesLabelsQuery)(nil),      // 17: query.v1.SeriesLabelsQuery
-	(*SeriesLabelsReport)(nil),     // 18: query.v1.SeriesLabelsReport
-	(*TimeSeriesQuery)(nil),        // 19: query.v1.TimeSeriesQuery
-	(*TimeSeriesReport)(nil),       // 20: query.v1.TimeSeriesReport
-	(*TreeQuery)(nil),              // 21: query.v1.TreeQuery
-	(*TreeReport)(nil),             // 22: query.v1.TreeReport
-	(*PprofQuery)(nil),             // 23: query.v1.PprofQuery
-	(*PprofReport)(nil),            // 24: query.v1.PprofReport
-	(*HeatmapQuery)(nil),           // 25: query.v1.HeatmapQuery
-	(*AttributeTable)(nil),         // 26: query.v1.AttributeTable
-	(*HeatmapPoint)(nil),           // 27: query.v1.HeatmapPoint
-	(*HeatmapSeries)(nil),          // 28: query.v1.HeatmapSeries
-	(*HeatmapReport)(nil),          // 29: query.v1.HeatmapReport
-	(*v1.BlockMeta)(nil),           // 30: metastore.v1.BlockMeta
-	(*v11.Labels)(nil),             // 31: types.v1.Labels
-	(v11.ExemplarType)(0),          // 32: types.v1.ExemplarType
-	(*v11.Series)(nil),             // 33: types.v1.Series
-	(*v11.StackTraceSelector)(nil), // 34: types.v1.StackTraceSelector
-	(v12.HeatmapQueryType)(0),      // 35: querier.v1.HeatmapQueryType
+	(TreeNodeKind)(0),              // 2: query.v1.TreeNodeKind
+	(QueryNode_Type)(0),            // 3: query.v1.QueryNode.Type
+	(*QueryRequest)(nil),           // 4: query.v1.QueryRequest
+	(*QueryResponse)(nil),          // 5: query.v1.QueryResponse
+	(*InvokeOptions)(nil),          // 6: query.v1.InvokeOptions
+	(*InvokeRequest)(nil),          // 7: query.v1.InvokeRequest
+	(*QueryPlan)(nil),              // 8: query.v1.QueryPlan
+	(*QueryNode)(nil),              // 9: query.v1.QueryNode
+	(*Query)(nil),                  // 10: query.v1.Query
+	(*InvokeResponse)(nil),         // 11: query.v1.InvokeResponse
+	(*Diagnostics)(nil),            // 12: query.v1.Diagnostics
+	(*Report)(nil),                 // 13: query.v1.Report
+	(*LabelNamesQuery)(nil),        // 14: query.v1.LabelNamesQuery
+	(*LabelNamesReport)(nil),       // 15: query.v1.LabelNamesReport
+	(*LabelValuesQuery)(nil),       // 16: query.v1.LabelValuesQuery
+	(*LabelValuesReport)(nil),      // 17: query.v1.LabelValuesReport
+	(*SeriesLabelsQuery)(nil),      // 18: query.v1.SeriesLabelsQuery
+	(*SeriesLabelsReport)(nil),     // 19: query.v1.SeriesLabelsReport
+	(*TimeSeriesQuery)(nil),        // 20: query.v1.TimeSeriesQuery
+	(*TimeSeriesReport)(nil),       // 21: query.v1.TimeSeriesReport
+	(*TreeQuery)(nil),              // 22: query.v1.TreeQuery
+	(*TreeReport)(nil),             // 23: query.v1.TreeReport
+	(*PprofQuery)(nil),             // 24: query.v1.PprofQuery
+	(*PprofReport)(nil),            // 25: query.v1.PprofReport
+	(*HeatmapQuery)(nil),           // 26: query.v1.HeatmapQuery
+	(*AttributeTable)(nil),         // 27: query.v1.AttributeTable
+	(*HeatmapPoint)(nil),           // 28: query.v1.HeatmapPoint
+	(*HeatmapSeries)(nil),          // 29: query.v1.HeatmapSeries
+	(*HeatmapReport)(nil),          // 30: query.v1.HeatmapReport
+	(*v1.BlockMeta)(nil),           // 31: metastore.v1.BlockMeta
+	(*v11.Labels)(nil),             // 32: types.v1.Labels
+	(v11.ExemplarType)(0),          // 33: types.v1.ExemplarType
+	(*v11.Series)(nil),             // 34: types.v1.Series
+	(*v11.StackTraceSelector)(nil), // 35: types.v1.StackTraceSelector
+	(v12.HeatmapQueryType)(0),      // 36: querier.v1.HeatmapQueryType
 }
 var file_query_v1_query_proto_depIdxs = []int32{
-	9,  // 0: query.v1.QueryRequest.query:type_name -> query.v1.Query
-	12, // 1: query.v1.QueryResponse.reports:type_name -> query.v1.Report
-	9,  // 2: query.v1.InvokeRequest.query:type_name -> query.v1.Query
-	7,  // 3: query.v1.InvokeRequest.query_plan:type_name -> query.v1.QueryPlan
-	5,  // 4: query.v1.InvokeRequest.options:type_name -> query.v1.InvokeOptions
-	8,  // 5: query.v1.QueryPlan.root:type_name -> query.v1.QueryNode
-	2,  // 6: query.v1.QueryNode.type:type_name -> query.v1.QueryNode.Type
-	8,  // 7: query.v1.QueryNode.children:type_name -> query.v1.QueryNode
-	30, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
+	10, // 0: query.v1.QueryRequest.query:type_name -> query.v1.Query
+	13, // 1: query.v1.QueryResponse.reports:type_name -> query.v1.Report
+	10, // 2: query.v1.InvokeRequest.query:type_name -> query.v1.Query
+	8,  // 3: query.v1.InvokeRequest.query_plan:type_name -> query.v1.QueryPlan
+	6,  // 4: query.v1.InvokeRequest.options:type_name -> query.v1.InvokeOptions
+	9,  // 5: query.v1.QueryPlan.root:type_name -> query.v1.QueryNode
+	3,  // 6: query.v1.QueryNode.type:type_name -> query.v1.QueryNode.Type
+	9,  // 7: query.v1.QueryNode.children:type_name -> query.v1.QueryNode
+	31, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
 	0,  // 9: query.v1.Query.query_type:type_name -> query.v1.QueryType
-	13, // 10: query.v1.Query.label_names:type_name -> query.v1.LabelNamesQuery
-	15, // 11: query.v1.Query.label_values:type_name -> query.v1.LabelValuesQuery
-	17, // 12: query.v1.Query.series_labels:type_name -> query.v1.SeriesLabelsQuery
-	19, // 13: query.v1.Query.time_series:type_name -> query.v1.TimeSeriesQuery
-	21, // 14: query.v1.Query.tree:type_name -> query.v1.TreeQuery
-	23, // 15: query.v1.Query.pprof:type_name -> query.v1.PprofQuery
-	25, // 16: query.v1.Query.heatmap:type_name -> query.v1.HeatmapQuery
-	12, // 17: query.v1.InvokeResponse.reports:type_name -> query.v1.Report
-	11, // 18: query.v1.InvokeResponse.diagnostics:type_name -> query.v1.Diagnostics
-	7,  // 19: query.v1.Diagnostics.query_plan:type_name -> query.v1.QueryPlan
+	14, // 10: query.v1.Query.label_names:type_name -> query.v1.LabelNamesQuery
+	16, // 11: query.v1.Query.label_values:type_name -> query.v1.LabelValuesQuery
+	18, // 12: query.v1.Query.series_labels:type_name -> query.v1.SeriesLabelsQuery
+	20, // 13: query.v1.Query.time_series:type_name -> query.v1.TimeSeriesQuery
+	22, // 14: query.v1.Query.tree:type_name -> query.v1.TreeQuery
+	24, // 15: query.v1.Query.pprof:type_name -> query.v1.PprofQuery
+	26, // 16: query.v1.Query.heatmap:type_name -> query.v1.HeatmapQuery
+	13, // 17: query.v1.InvokeResponse.reports:type_name -> query.v1.Report
+	12, // 18: query.v1.InvokeResponse.diagnostics:type_name -> query.v1.Diagnostics
+	8,  // 19: query.v1.Diagnostics.query_plan:type_name -> query.v1.QueryPlan
 	1,  // 20: query.v1.Report.report_type:type_name -> query.v1.ReportType
-	14, // 21: query.v1.Report.label_names:type_name -> query.v1.LabelNamesReport
-	16, // 22: query.v1.Report.label_values:type_name -> query.v1.LabelValuesReport
-	18, // 23: query.v1.Report.series_labels:type_name -> query.v1.SeriesLabelsReport
-	20, // 24: query.v1.Report.time_series:type_name -> query.v1.TimeSeriesReport
-	22, // 25: query.v1.Report.tree:type_name -> query.v1.TreeReport
-	24, // 26: query.v1.Report.pprof:type_name -> query.v1.PprofReport
-	29, // 27: query.v1.Report.heatmap:type_name -> query.v1.HeatmapReport
-	13, // 28: query.v1.LabelNamesReport.query:type_name -> query.v1.LabelNamesQuery
-	15, // 29: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
-	17, // 30: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
-	31, // 31: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
-	32, // 32: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
-	19, // 33: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
-	33, // 34: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
-	34, // 35: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	21, // 36: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
-	34, // 37: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	23, // 38: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
-	35, // 39: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
-	32, // 40: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
-	27, // 41: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
-	25, // 42: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
-	28, // 43: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
-	26, // 44: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
-	3,  // 45: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
-	6,  // 46: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
-	4,  // 47: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
-	10, // 48: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
-	47, // [47:49] is the sub-list for method output_type
-	45, // [45:47] is the sub-list for method input_type
-	45, // [45:45] is the sub-list for extension type_name
-	45, // [45:45] is the sub-list for extension extendee
-	0,  // [0:45] is the sub-list for field type_name
+	15, // 21: query.v1.Report.label_names:type_name -> query.v1.LabelNamesReport
+	17, // 22: query.v1.Report.label_values:type_name -> query.v1.LabelValuesReport
+	19, // 23: query.v1.Report.series_labels:type_name -> query.v1.SeriesLabelsReport
+	21, // 24: query.v1.Report.time_series:type_name -> query.v1.TimeSeriesReport
+	23, // 25: query.v1.Report.tree:type_name -> query.v1.TreeReport
+	25, // 26: query.v1.Report.pprof:type_name -> query.v1.PprofReport
+	30, // 27: query.v1.Report.heatmap:type_name -> query.v1.HeatmapReport
+	14, // 28: query.v1.LabelNamesReport.query:type_name -> query.v1.LabelNamesQuery
+	16, // 29: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
+	18, // 30: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
+	32, // 31: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
+	33, // 32: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	20, // 33: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
+	34, // 34: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
+	35, // 35: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	22, // 36: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
+	35, // 37: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	2,  // 38: query.v1.PprofQuery.tree_node_kind:type_name -> query.v1.TreeNodeKind
+	24, // 39: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
+	36, // 40: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
+	33, // 41: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	28, // 42: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
+	26, // 43: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
+	29, // 44: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
+	27, // 45: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
+	4,  // 46: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
+	7,  // 47: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
+	5,  // 48: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
+	11, // 49: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
+	48, // [48:50] is the sub-list for method output_type
+	46, // [46:48] is the sub-list for method input_type
+	46, // [46:46] is the sub-list for extension type_name
+	46, // [46:46] is the sub-list for extension extendee
+	0,  // [0:46] is the sub-list for field type_name
 }
 
 func init() { file_query_v1_query_proto_init() }
@@ -2093,7 +2157,7 @@ func file_query_v1_query_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_query_v1_query_proto_rawDesc), len(file_query_v1_query_proto_rawDesc)),
-			NumEnums:      3,
+			NumEnums:      4,
 			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   2,

@@ -4,6 +4,7 @@ import (
 	"unsafe"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
@@ -14,6 +15,12 @@ const (
 	truncatedNodeName = "other"
 )
 
+type TreeOptions struct {
+	MaxNodes int64
+	// only used for pprof / pprofTree at the moment
+	TreeNodeKind queryv1.TreeNodeKind
+}
+
 type pprofTree struct {
 	symbols *Symbols
 	samples *schemav1.Samples
@@ -21,7 +28,7 @@ type pprofTree struct {
 	lut     []uint32
 	cur     int
 
-	maxNodes  int64
+	opt       TreeOptions
 	truncated int
 
 	functionTree *model.StacktraceTree
@@ -60,7 +67,11 @@ func (r *pprofTree) init(symbols *Symbols, samples schemav1.Samples) {
 	if r.selection != nil && len(r.selection.callSite) > 0 {
 		r.fnNames = r.locFunctionsFiltered
 	} else {
-		r.fnNames = r.locFunctions
+		if r.opt.TreeNodeKind == queryv1.TreeNodeKind_Location {
+			r.fnNames = r.locLocations
+		} else {
+			r.fnNames = r.locFunctions
+		}
 	}
 }
 
@@ -76,6 +87,10 @@ func (r *pprofTree) InsertStacktrace(stacktraceID uint32, locations []int32) {
 			value:           value,
 		})
 	}
+}
+
+func (r *pprofTree) locLocations(locations []int32) ([]int32, bool) {
+	return locations, true
 }
 
 func (r *pprofTree) locFunctions(locations []int32) ([]int32, bool) {
@@ -133,7 +148,7 @@ func (r *pprofTree) buildPprof() *googlev1.Profile {
 }
 
 func (r *pprofTree) markNodesForTruncation() {
-	minValue := r.functionTree.MinValue(r.maxNodes)
+	minValue := r.functionTree.MinValue(r.opt.MaxNodes)
 	if minValue == 0 {
 		return
 	}

@@ -18,7 +18,7 @@ func buildPprof(
 	ctx context.Context,
 	symbols *Symbols,
 	samples schemav1.Samples,
-	maxNodes int64,
+	opt TreeOptions,
 	selection *SelectedStackTraces,
 ) (*googlev1.Profile, error) {
 	// By default, we use a builder that's optimized for the most
@@ -38,8 +38,8 @@ func buildPprof(
 	// Truncation is applicable when there is an explicit
 	// limit on the number of the nodes in the profile, or
 	// if stack traces should be filtered by the call site.
-	case maxNodes > 0 || len(selection.callSite) > 0:
-		b = &pprofTree{maxNodes: maxNodes, selection: selection}
+	case opt.MaxNodes > 0 || len(selection.callSite) > 0:
+		b = &pprofTree{opt: opt, selection: selection}
 	}
 	b.init(symbols, samples)
 	if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {

@@ -1917,7 +1917,10 @@
           "type": "array",
           "items": {
             "type": "string"
-          },
+          }
+        },
+        "treeNodeKind": {
+          "$ref": "#/definitions/v1TreeNodeKind",
           "description": "TODO(kolesnikovae): Go PGO options."
         }
       }
@@ -2703,6 +2706,15 @@
         }
       },
       "description": "Tombstones represent objects removed from the index but still stored."
+    },
+    "v1TreeNodeKind": {
+      "type": "string",
+      "enum": [
+        "Function",
+        "Location"
+      ],
+      "default": "Function",
+      "description": " - Function: Use function ids when building a tree for truncation\n - Location: Use location ids when building a tree for truncation\nLess efficient than Function. Required for unsymbolized profiles (no Line/Function)."
     },
     "v1TreeQuery": {
       "type": "object",

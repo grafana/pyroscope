@@ -120,7 +120,8 @@ func (q *QueryFrontend) Query(
 		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
-				MaxNodes: originalQuery.Tree.GetMaxNodes(),
+				MaxNodes:     originalQuery.Tree.GetMaxNodes(),
+				TreeNodeKind: queryv1.TreeNodeKind_Location,
 			}
 			modifiedQueries[i].Tree = nil
 		}

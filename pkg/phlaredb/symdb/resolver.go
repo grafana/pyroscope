@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"sync"
 
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
@@ -35,7 +36,7 @@ type Resolver struct {
 	m sync.RWMutex
 	p map[uint64]*lazyPartition
 
-	maxNodes        int64
+	opt             TreeOptions
 	sts             *typesv1.StackTraceSelector
 	sanitizeOnMerge bool
 }
@@ -54,7 +55,13 @@ func WithResolverMaxConcurrent(n int) ResolverOption {
 // of nodes the resulting profile should include.
 func WithResolverMaxNodes(n int64) ResolverOption {
 	return func(r *Resolver) {
-		r.maxNodes = n
+		r.opt.MaxNodes = n
+	}
+}
+
+func WithResolverPprofTreeNodeKind(kind queryv1.TreeNodeKind) ResolverOption {
+	return func(r *Resolver) {
+		r.opt.TreeNodeKind = kind
 	}
 }
 
@@ -242,7 +249,7 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 	var lock sync.Mutex
 	tree := new(model.Tree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
-		resolved, err := symbols.Tree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
+		resolved, err := symbols.Tree(ctx, appender, r.opt.MaxNodes, SelectStackTraces(symbols, r.sts))
 		if err != nil {
 			return err
 		}
@@ -262,7 +269,7 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 		// this is the same as the block below, without the profile merge
 		var p *googlev1.Profile
 		err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
-			resolved, err := symbols.Pprof(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
+			resolved, err := symbols.Pprof(ctx, appender, r.opt, SelectStackTraces(symbols, r.sts))
 			if err != nil {
 				return err
 			}
@@ -284,7 +291,7 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 
 	var p pprof.ProfileMerge
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
-		resolved, err := symbols.Pprof(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts))
+		resolved, err := symbols.Pprof(ctx, appender, r.opt, SelectStackTraces(symbols, r.sts))
 		if err != nil {
 			return err
 		}
@@ -326,10 +333,10 @@ func (r *Resolver) canSkipProfileMerge() bool {
 func (r *Symbols) Pprof(
 	ctx context.Context,
 	appender *SampleAppender,
-	maxNodes int64,
+	opt TreeOptions,
 	selection *SelectedStackTraces,
 ) (*googlev1.Profile, error) {
-	return buildPprof(ctx, r, appender.Samples(), maxNodes, selection)
+	return buildPprof(ctx, r, appender.Samples(), opt, selection)
 }
 
 func (r *Symbols) Tree(
