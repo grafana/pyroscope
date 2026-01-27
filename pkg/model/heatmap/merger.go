@@ -1,37 +1,26 @@
 package heatmap
 
 import (
-	"fmt"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
-	"unique"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/model/attributetable"
 )
 
 type Merger struct {
-	mu        sync.Mutex
-	attrTable *attributetable.Table
-	series    map[string]*mergedSeries // key is the serialized attribute refs
-	sum       bool
-}
-
-type mergedSeries struct {
-	attributeRefs []int64
-	points        []*queryv1.HeatmapPoint
+	merger *attributetable.Merger[*queryv1.HeatmapPoint, string]
+	sum    bool
 }
 
 // NewMerger creates a new heatmap merger. If sum is set, points
 // with matching timestamps, profileIDs, and spanIDs have their values summed.
 func NewMerger(sum bool) *Merger {
 	return &Merger{
-		attrTable: attributetable.New(),
-		series:    make(map[string]*mergedSeries),
-		sum:       sum,
+		merger: attributetable.NewMerger[*queryv1.HeatmapPoint, string](),
+		sum:    sum,
 	}
 }
 
@@ -41,134 +30,84 @@ func (m *Merger) MergeHeatmap(report *queryv1.HeatmapReport) {
 		return
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.merger.Lock()
+	defer m.merger.Unlock()
 
 	// Build a mapping from old attribute refs to new attribute refs
-	refMap := m.remapAttributeTable(report.AttributeTable)
+	refMap := m.merger.RemapAttributeTable(report.AttributeTable)
 
 	for _, s := range report.HeatmapSeries {
 		// Remap the series attribute refs
-		remappedSeriesRefs := m.remapRefs(s.AttributeRefs, refMap)
+		remappedSeriesRefs := m.merger.RemapRefs(s.AttributeRefs, refMap)
 		key := seriesKey(remappedSeriesRefs)
 
-		existing, ok := m.series[key]
-		if !ok {
-			m.series[key] = &mergedSeries{
-				attributeRefs: remappedSeriesRefs,
-				points:        make([]*queryv1.HeatmapPoint, 0, len(s.Points)),
-			}
-			existing = m.series[key]
-		} else {
-			// Ensure slice is big enough to hold all the points
-			existing.points = slices.Grow(existing.points, len(s.Points))
-		}
+		existing := m.merger.GetOrCreateSeries(key, remappedSeriesRefs)
+
+		// Ensure slice is big enough to hold all the points
+		existing.Points = slices.Grow(existing.Points, len(s.Points))
 
 		// Remap and add points
 		for _, p := range s.Points {
 			remappedPoint := &queryv1.HeatmapPoint{
 				Timestamp:     p.Timestamp,
-				ProfileId:     m.remapProfileId(p.ProfileId, refMap),
+				ProfileId:     remapRef(p.ProfileId, refMap),
 				SpanId:        p.SpanId,
 				Value:         p.Value,
-				AttributeRefs: m.remapRefs(p.AttributeRefs, refMap),
+				AttributeRefs: m.merger.RemapRefs(p.AttributeRefs, refMap),
 			}
-			existing.points = append(existing.points, remappedPoint)
+			existing.Points = append(existing.Points, remappedPoint)
 		}
 	}
 }
 
-// remapAttributeTable adds entries from the input attribute table to the merger's
-// attribute table and returns a mapping from old refs to new refs
-func (m *Merger) remapAttributeTable(table *queryv1.AttributeTable) map[int64]int64 {
-	// Keys and Values must have the same length - this is a data corruption bug
-	if len(table.Keys) != len(table.Values) {
-		panic(fmt.Sprintf("attribute table corruption: Keys length (%d) != Values length (%d)", len(table.Keys), len(table.Values)))
-	}
-
-	// only build the refMap if there we are not the first report
-	var refMap map[int64]int64
-	if len(table.Keys) > 0 {
-		refMap = make(map[int64]int64, len(table.Keys))
-	}
-	for i := range table.Keys {
-		oldRef := int64(i)
-		key := unique.Make(table.Keys[i])
-		value := unique.Make(table.Values[i])
-		newRef := m.attrTable.LookupOrAdd(attributetable.Key{Key: key, Value: value})
-		if refMap != nil {
-			refMap[oldRef] = newRef
-		}
-	}
-	return refMap
-}
-
-// remapRefs remaps a slice of attribute refs using the provided mapping
-func (m *Merger) remapRefs(refs []int64, refMap map[int64]int64) []int64 {
+// remapRef remaps a single ref (like profile ID) using the provided mapping
+func remapRef(ref int64, refMap map[int64]int64) int64 {
 	// if we are the first report, we don't have a refMap yet
 	if refMap == nil {
-		return refs
+		return ref
 	}
-
-	for i, ref := range refs {
-		if newRef, ok := refMap[ref]; ok {
-			refs[i] = newRef
-		} else {
-			panic(fmt.Sprintf("attribute ref %d not found in attribute table", ref))
-		}
-	}
-	return refs
-}
-
-// remapProfileId remaps a profile ID (which is a reference into the attribute table)
-func (m *Merger) remapProfileId(profileId int64, refMap map[int64]int64) int64 {
-	// if we are the first report, we don't have a refMap yet
-	if refMap == nil {
-		return profileId
-	}
-	if newRef, ok := refMap[profileId]; ok {
+	if newRef, ok := refMap[ref]; ok {
 		return newRef
 	}
-	panic(fmt.Sprintf("profile ID ref %d not found in attribute table", profileId))
+	panic("ref not found in attribute table")
 }
 
 // IsEmpty returns true if no series have been merged
 func (m *Merger) IsEmpty() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return len(m.series) == 0
+	return m.merger.IsEmpty()
 }
 
 // Build returns the merged heatmap report
 func (m *Merger) Build() *queryv1.HeatmapReport {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.merger.Lock()
+	defer m.merger.Unlock()
 
-	if len(m.series) == 0 {
+	series := m.merger.Series()
+	if len(series) == 0 {
 		return &queryv1.HeatmapReport{}
 	}
 
 	report := &queryv1.HeatmapReport{
-		HeatmapSeries: make([]*queryv1.HeatmapSeries, 0, len(m.series)),
+		HeatmapSeries: make([]*queryv1.HeatmapSeries, 0, len(series)),
 	}
 
 	// Get sorted keys for deterministic output
-	keys := make([]string, 0, len(m.series))
-	for k := range m.series {
+	keys := make([]string, 0, len(series))
+	for k := range series {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
 	for _, key := range keys {
-		ms := m.series[key]
-		series := &queryv1.HeatmapSeries{
-			AttributeRefs: ms.attributeRefs,
-			Points:        ms.points[:m.mergePoints(ms.points)],
+		ms := series[key]
+		heatmapSeries := &queryv1.HeatmapSeries{
+			AttributeRefs: ms.AttributeRefs,
+			Points:        ms.Points[:m.mergePoints(ms.Points)],
 		}
-		report.HeatmapSeries = append(report.HeatmapSeries, series)
+		report.HeatmapSeries = append(report.HeatmapSeries, heatmapSeries)
 	}
 
-	report.AttributeTable = m.attrTable.Build(report.AttributeTable)
+	report.AttributeTable = m.merger.BuildAttributeTable(report.AttributeTable)
 
 	return report
 }
