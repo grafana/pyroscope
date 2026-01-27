@@ -14,57 +14,17 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/minheap"
 )
 
-func buildLocationRefNameTree(
+func buildTree[N model.NodeName, I model.NodeNameI[N]](
 	ctx context.Context,
 	symbols *Symbols,
 	appender *SampleAppender,
 	maxNodes int64,
 	selection *SelectedStackTraces,
-) (*model.LocationRefNameTree, error) {
+) (*model.Tree[N, I], error) {
 	if !selection.HasValidCallSite() {
 		// TODO(bryan) Maybe return an error here? buildPprof returns a blank
 		// profile. So mimicking that behavior for now.
-		return &model.LocationRefNameTree{}, nil
-	}
-
-	/*
-		// If the number of samples is large (> 128K) and the StacktraceResolver
-		// implements the range iterator, we will be building the tree based on
-		// the parent pointer tree of the partition (a copy of). The only exception
-		// is when the number of nodes is not limited, or is close to the number of
-		// nodes in the original tree: the optimization is still beneficial in terms
-		// of CPU, but is very expensive in terms of memory.
-		iterator, ok := symbols.Stacktraces.(StacktraceIDRangeIterator)
-		if ok && shouldCopyTree(appender, maxNodes) {
-			ranges := iterator.SplitStacktraceIDRanges(appender)
-			return buildTreeFromParentPointerTrees(ctx, ranges, symbols, maxNodes, selection)
-		}
-	*/
-
-	// Otherwise, use the basic approach: resolve each stack trace
-	// and insert them into the new tree one by one. The method
-	// performs best on small sample sets.
-	samples := appender.Samples()
-	t := treeSymbolsFromPool()
-	defer t.reset()
-	t.init(symbols, samples, selection)
-	if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
-		return nil, err
-	}
-	return t.tree.LocationRefNameTree(maxNodes), nil
-}
-
-func buildTree(
-	ctx context.Context,
-	symbols *Symbols,
-	appender *SampleAppender,
-	maxNodes int64,
-	selection *SelectedStackTraces,
-) (*model.FunctionNameTree, error) {
-	if !selection.HasValidCallSite() {
-		// TODO(bryan) Maybe return an error here? buildPprof returns a blank
-		// profile. So mimicking that behavior for now.
-		return &model.FunctionNameTree{}, nil
+		return &model.Tree[N, I]{}, nil
 	}
 
 	// If the number of samples is large (> 128K) and the StacktraceResolver
@@ -76,7 +36,7 @@ func buildTree(
 	iterator, ok := symbols.Stacktraces.(StacktraceIDRangeIterator)
 	if ok && shouldCopyTree(appender, maxNodes) {
 		ranges := iterator.SplitStacktraceIDRanges(appender)
-		return buildTreeFromParentPointerTrees(ctx, ranges, symbols, maxNodes, selection)
+		return buildTreeFromParentPointerTrees[N, I](ctx, ranges, symbols, maxNodes, selection)
 	}
 	// Otherwise, use the basic approach: resolve each stack trace
 	// and insert them into the new tree one by one. The method
@@ -88,11 +48,13 @@ func buildTree(
 	if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
 		return nil, err
 	}
-	names := make([]model.FuntionName, len(t.symbols.Strings))
+	var names []N
+	/* TODO:
 	for i, s := range t.symbols.Strings {
 		names[i] = model.FuntionName(s)
 	}
-	return t.tree.Tree(maxNodes, names), nil
+	*/
+	return model.TreeFromStacktraceTree[N, I](t.tree, maxNodes, names), nil
 }
 
 func shouldCopyTree(appender *SampleAppender, maxNodes int64) bool {
@@ -172,19 +134,19 @@ func (r *treeSymbols) funcNamesMatchSelection(funcNames []int32) bool {
 	return true
 }
 
-func buildTreeFromParentPointerTrees(
+func buildTreeFromParentPointerTrees[N model.NodeName, I model.NodeNameI[N]](
 	ctx context.Context,
 	ranges iter.Iterator[*StacktraceIDRange],
 	symbols *Symbols,
 	maxNodes int64,
 	selection *SelectedStackTraces,
-) (*model.FunctionNameTree, error) {
-	m := model.NewTreeMerger[model.FuntionName, model.FuntionNameI]()
+) (*model.Tree[N, I], error) {
+	m := model.NewTreeMerger[N, I]()
 	g, _ := errgroup.WithContext(ctx)
 	for ranges.Next() {
 		sr := ranges.At()
 		g.Go(util.RecoverPanic(func() error {
-			m.MergeTree(buildTreeForStacktraceIDRange(sr, symbols, maxNodes, selection))
+			m.MergeTree(buildTreeForStacktraceIDRange[N, I](sr, symbols, maxNodes, selection))
 			return nil
 		}))
 	}
@@ -351,12 +313,12 @@ func markSelectedNodes(
 	return m.nodes
 }
 
-func buildTreeForStacktraceIDRange(
+func buildTreeForStacktraceIDRange[N model.NodeName, I model.NodeNameI[N]](
 	stacktraces *StacktraceIDRange,
 	symbols *Symbols,
 	maxNodes int64,
 	selection *SelectedStackTraces,
-) *model.FunctionNameTree {
+) *model.Tree[N, I] {
 	// Get the parent pointer tree for the range. The tree is
 	// not specific to the samples we've collected and includes
 	// all the stack traces.
@@ -395,11 +357,15 @@ func buildTreeForStacktraceIDRange(
 	// Finally, we convert the stack trace tree into the function
 	// tree, dropping insignificant functions, and symbolizing the
 	// nodes (function names).
-	names := make([]model.FuntionName, len(symbols.Strings))
-	for i, s := range symbols.Strings {
-		names[i] = model.FuntionName(s)
-	}
-	return t.Tree(maxNodes, names)
+	// TODO get the names otu
+	var names []N
+	/*
+		names := make([]model.FuntionName, len(symbols.Strings))
+		for i, s := range symbols.Strings {
+			names[i] = model.FuntionName(s)
+		}
+	*/
+	return model.TreeFromStacktraceTree[N, I](t, maxNodes, names)
 }
 
 func propagateNodeValues(nodes []Node) {

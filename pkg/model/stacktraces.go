@@ -314,14 +314,14 @@ func unsafeStringBytes(s string) []byte {
 }
 
 func (t *StacktraceTree) Tree(maxNodes int64, names []FuntionName) *FunctionNameTree {
-	return treeFromStacktraceTree[FuntionName, FuntionNameI](t, maxNodes, names)
+	return TreeFromStacktraceTree[FuntionName, FuntionNameI](t, maxNodes, names)
 }
 
 func (t *StacktraceTree) LocationRefNameTree(maxNodes int64) *LocationRefNameTree {
-	return treeFromStacktraceTree[LocationRefName, LocationRefNameI](t, maxNodes, nil)
+	return TreeFromStacktraceTree[LocationRefName, LocationRefNameI](t, maxNodes, nil)
 }
 
-func treeFromStacktraceTree[N NodeName, I NodeNameI[N]](t *StacktraceTree, maxNodes int64, names []N) *Tree[N, I] {
+func TreeFromStacktraceTree[N NodeName, I NodeNameI[N]](t *StacktraceTree, maxNodes int64, names []N) *Tree[N, I] {
 	var initializer I
 	if len(t.Nodes) < 2 {
 		// stack trace tree has root at 0: trees with less

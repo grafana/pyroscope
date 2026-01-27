@@ -369,7 +369,7 @@ func (r *Symbols) Tree(
 	maxNodes int64,
 	selection *SelectedStackTraces,
 ) (*model.FunctionNameTree, error) {
-	return buildTree(ctx, r, appender, maxNodes, selection)
+	return buildTree[model.FuntionName, model.FuntionNameI](ctx, r, appender, maxNodes, selection)
 }
 
 func (r *Symbols) LocationRefNameTree(
@@ -378,5 +378,5 @@ func (r *Symbols) LocationRefNameTree(
 	maxNodes int64,
 	selection *SelectedStackTraces,
 ) (*model.LocationRefNameTree, error) {
-	return buildLocationRefNameTree(ctx, r, appender, maxNodes, selection)
+	return buildTree[model.LocationRefName, model.LocationRefNameI](ctx, r, appender, maxNodes, selection)
 }

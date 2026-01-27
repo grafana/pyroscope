@@ -1,7 +1,6 @@
 package symdb
 
 import (
-	"fmt"
 	"iter"
 	"unique"
 
@@ -24,6 +23,11 @@ type InMemoryLocation struct {
 	IsFolded  bool
 	Line      [8]InMemoryLine
 }
+
+var (
+	emptyMapping = unique.Make(InMemoryMapping{})
+	emptyString  = unique.Make("")
+)
 
 type InMemoryMapping struct {
 	// Address at which the binary (or DLL) is loaded into memory.
@@ -66,6 +70,8 @@ type InlineFunction = unique.Handle[InMemoryFunction]
 type SymbolMerger struct {
 	locationsLookup map[InlineLocation]int
 	locations       []InlineLocation
+
+	mappingsCount, stringsCount, functionsCount int
 }
 
 func NewSymbolMerger() *SymbolMerger {
@@ -78,12 +84,6 @@ func (m *SymbolMerger) addSymbols(symbols *Symbols) func(model.LocationRefName) 
 	adder := newAdder(symbols)
 
 	return func(in model.LocationRefName) model.LocationRefName {
-		if in <= 0 {
-			// TODO: Handle this better
-			fmt.Printf("adder handled loc %d\n", in)
-			return in
-		}
-
 		// Get the unique location handle for this location
 		loc := adder.getLoc(int(in))
 
@@ -107,9 +107,7 @@ func (m *SymbolMerger) Add(ts *queryv1.TreeSymbols) func(model.LocationRefName) 
 	adder := newTreeSymbolsAdder(ts)
 
 	return func(in model.LocationRefName) model.LocationRefName {
-		if in <= 0 {
-			// TODO: Handle this better
-			fmt.Printf("tree adder handled loc %d\n", in)
+		if in < 0 {
 			return in
 		}
 
@@ -238,7 +236,7 @@ func (a *symbolAdder) getFunc(funcID int) InlineFunction {
 
 func (a *symbolAdder) getString(strID uint32) unique.Handle[string] {
 	if strID == 0 {
-		return unique.Make("")
+		return emptyString
 	}
 
 	if r := a.sCache[strID]; r != sZero {
@@ -344,10 +342,10 @@ func (a *treeSymbolsAdder) getFunc(funcID int) InlineFunction {
 
 func (a *treeSymbolsAdder) getString(strID int) unique.Handle[string] {
 	if strID == 0 {
-		return unique.Make("")
+		return emptyString
 	}
 
-	if r := a.sCache[strID]; r != (unique.Handle[string]{}) {
+	if r := a.sCache[strID]; r != sZero {
 		return r
 	}
 
@@ -359,34 +357,36 @@ func (a *treeSymbolsAdder) getString(strID int) unique.Handle[string] {
 }
 
 type lookup[K comparable] struct {
-	count int
-	m     map[K]int
+	m    map[K]int
+	keys []K
 }
 
-func newLookup[K comparable]() *lookup[K] {
+func newLookup[K comparable](size int) *lookup[K] {
 	return &lookup[K]{
-		m: make(map[K]int),
+		m:    make(map[K]int, size),
+		keys: make([]K, 0, size),
 	}
 }
 
-func (l lookup[K]) get(v K) int {
-	if v, ok := l.m[v]; ok {
-		return v
+func (l *lookup[K]) get(v K) int {
+	if idx, ok := l.m[v]; ok {
+		return idx
 	}
-	r := l.count
-	l.count += 1
+
+	r := len(l.keys)
 	l.m[v] = r
+	l.keys = append(l.keys, v)
 	return r
 }
 
-func (l lookup[K]) len() int {
-	return len(l.m)
+func (l *lookup[K]) len() int {
+	return len(l.keys)
 }
 
-func (l lookup[K]) iter() iter.Seq2[int, K] {
+func (l *lookup[K]) iter() iter.Seq2[int, K] {
 	return func(yield func(int, K) bool) {
-		for k, v := range l.m {
-			if !yield(v, k) {
+		for idx, k := range l.keys {
+			if !yield(idx, k) {
 				return
 			}
 		}
@@ -401,6 +401,10 @@ type symbolResultBuilder struct {
 }
 
 func (m *symbolResultBuilder) KeepSymbol(in model.LocationRefName) model.LocationRefName {
+	if in < 0 {
+		return in
+	}
+
 	h := m.allLocations[in]
 
 	v, ok := m.locationsLookup[h]
@@ -418,15 +422,52 @@ func (m *symbolResultBuilder) KeepSymbol(in model.LocationRefName) model.Locatio
 // Build constructs the final TreeSymbols protobuf message from the merged symbols.
 // This should append strings, mappings, functions, locations to the TreeSymbols, ensuring via maps that each element is unique.
 func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
+	// Estimate sizes for better pre-allocation
+	numLocs := len(m.locationsRef)
+	estimatedMappings := numLocs / 10
+	if estimatedMappings < 5 {
+		estimatedMappings = 5
+	}
+	estimatedFunctions := numLocs / 2
+	if estimatedFunctions < 10 {
+		estimatedFunctions = 10
+	}
+	estimatedStrings := numLocs * 3 / 2
+	if estimatedStrings < 20 {
+		estimatedStrings = 20
+	}
+
 	var (
-		mappings  = newLookup[InlineMapping]()
-		functions = newLookup[InlineFunction]()
-		strings   = newLookup[unique.Handle[string]]()
+		mappings  = newLookup[InlineMapping](estimatedMappings)
+		functions = newLookup[InlineFunction](estimatedFunctions)
+		strings   = newLookup[unique.Handle[string]](estimatedStrings)
 	)
+
+	// Ensure empty string is always at index 0 (pprof convention)
+	strings.get(emptyString)
 
 	// first resolve all locations
 	r.Locations = make([]*googlev1.Location, len(m.locationsRef))
 	locationsObj := make([]googlev1.Location, len(m.locationsRef))
+
+	// For larger profiles, batch-allocate Line objects to reduce allocations
+	var allLines []googlev1.Line
+	var lineIdx int
+	if len(m.locationsRef) > 10 {
+		// Count total lines needed for batch allocation
+		totalLines := 0
+		for _, ref := range m.locationsRef {
+			orig := m.allLocations[ref].Value()
+			for _, line := range orig.Line {
+				if line.FunctionId == fZero {
+					break
+				}
+				totalLines++
+			}
+		}
+		allLines = make([]googlev1.Line, totalLines)
+	}
+
 	for idx, ref := range m.locationsRef {
 		orig := m.allLocations[ref].Value()
 		loc := &locationsObj[idx]
@@ -434,16 +475,34 @@ func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 		loc.Address = orig.Address
 		loc.Id = uint64(idx)
 		loc.IsFolded = orig.IsFolded
+
+		// Count non-zero lines
+		lineCount := 0
 		for _, line := range orig.Line {
 			if line.FunctionId == fZero {
 				break
 			}
-			loc.Line = append(loc.Line,
-				&googlev1.Line{
-					FunctionId: uint64(functions.get(line.FunctionId)),
-					Line:       int64(line.Line),
-				},
-			)
+			lineCount++
+		}
+
+		// Assign lines
+		if lineCount > 0 {
+			loc.Line = make([]*googlev1.Line, lineCount)
+			for i := 0; i < lineCount; i++ {
+				line := orig.Line[i]
+				var lineObj *googlev1.Line
+				if allLines != nil {
+					// Use pre-allocated batch
+					lineObj = &allLines[lineIdx]
+					lineIdx++
+				} else {
+					// Allocate individually for small profiles
+					lineObj = &googlev1.Line{}
+				}
+				lineObj.FunctionId = uint64(functions.get(line.FunctionId))
+				lineObj.Line = int64(line.Line)
+				loc.Line[i] = lineObj
+			}
 		}
 		r.Locations[idx] = loc
 	}
@@ -486,6 +545,4 @@ func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 	for idx, ref := range strings.iter() {
 		r.Strings[idx] = ref.Value()
 	}
-
-	return
 }

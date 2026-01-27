@@ -158,8 +158,8 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 			a.symbolMerger = symdb.NewSymbolMerger()
 		})
 		a.symbolLock.Lock()
+		defer a.symbolLock.Unlock()
 		adder := a.symbolMerger.Add(r.Symbols)
-		a.symbolLock.Unlock()
 		return a.lrTree.MergeTreeBytes(r.Tree, model.WithTreeMergeFormatNodeNames(adder))
 	}
 
