@@ -48,6 +48,7 @@
 | pyroscope.disableSelfProfile | bool | `true` | Enable or disable Self profile push, useful to test |
 | pyroscope.dnsPolicy | string | `"ClusterFirst"` |  |
 | pyroscope.extraArgs."log.level" | string | `"debug"` |  |
+| pyroscope.extraContainers | list | `[]` |  |
 | pyroscope.extraCustomEnvVars | object | `{}` |  |
 | pyroscope.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |
 | pyroscope.extraEnvVars | object | `{}` |  |
