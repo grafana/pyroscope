@@ -69,7 +69,7 @@ func GoFunctions(f *elf.File) ([]Func, error) {
 		textStart = text.Addr
 	}
 	if textStart < text.Addr || textStart >= text.Addr+text.Size {
-		return nil, fmt.Errorf(" runtime.text out of .text bounds %d %d %d", textStart, text.Addr, text.Size)
+		return nil, fmt.Errorf("runtime.text out of .text bounds %d %d %d", textStart, text.Addr, text.Size)
 	}
 	pcln := NewLineTable(pclntabData, textStart)
 
