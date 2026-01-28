@@ -83,6 +83,7 @@ func (m *InvokeOptions) CloneVT() *InvokeOptions {
 	}
 	r := new(InvokeOptions)
 	r.SanitizeOnMerge = m.SanitizeOnMerge
+	r.CollectDiagnostics = m.CollectDiagnostics
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -233,6 +234,7 @@ func (m *Diagnostics) CloneVT() *Diagnostics {
 	}
 	r := new(Diagnostics)
 	r.QueryPlan = m.QueryPlan.CloneVT()
+	r.ExecutionNode = m.ExecutionNode.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -241,6 +243,83 @@ func (m *Diagnostics) CloneVT() *Diagnostics {
 }
 
 func (m *Diagnostics) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ExecutionNode) CloneVT() *ExecutionNode {
+	if m == nil {
+		return (*ExecutionNode)(nil)
+	}
+	r := new(ExecutionNode)
+	r.Type = m.Type
+	r.Executor = m.Executor
+	r.StartTimeNs = m.StartTimeNs
+	r.EndTimeNs = m.EndTimeNs
+	r.Stats = m.Stats.CloneVT()
+	r.Error = m.Error
+	if rhs := m.Children; rhs != nil {
+		tmpContainer := make([]*ExecutionNode, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Children = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ExecutionNode) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ExecutionStats) CloneVT() *ExecutionStats {
+	if m == nil {
+		return (*ExecutionStats)(nil)
+	}
+	r := new(ExecutionStats)
+	r.BlocksRead = m.BlocksRead
+	r.DatasetsProcessed = m.DatasetsProcessed
+	if rhs := m.BlockExecutions; rhs != nil {
+		tmpContainer := make([]*BlockExecution, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.BlockExecutions = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ExecutionStats) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *BlockExecution) CloneVT() *BlockExecution {
+	if m == nil {
+		return (*BlockExecution)(nil)
+	}
+	r := new(BlockExecution)
+	r.BlockId = m.BlockId
+	r.StartTimeNs = m.StartTimeNs
+	r.EndTimeNs = m.EndTimeNs
+	r.DatasetsProcessed = m.DatasetsProcessed
+	r.Size = m.Size
+	r.Shard = m.Shard
+	r.CompactionLevel = m.CompactionLevel
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *BlockExecution) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -770,6 +849,9 @@ func (this *InvokeOptions) EqualVT(that *InvokeOptions) bool {
 	if this.SanitizeOnMerge != that.SanitizeOnMerge {
 		return false
 	}
+	if this.CollectDiagnostics != that.CollectDiagnostics {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -998,11 +1080,141 @@ func (this *Diagnostics) EqualVT(that *Diagnostics) bool {
 	if !this.QueryPlan.EqualVT(that.QueryPlan) {
 		return false
 	}
+	if !this.ExecutionNode.EqualVT(that.ExecutionNode) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
 func (this *Diagnostics) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*Diagnostics)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ExecutionNode) EqualVT(that *ExecutionNode) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Type != that.Type {
+		return false
+	}
+	if this.Executor != that.Executor {
+		return false
+	}
+	if this.StartTimeNs != that.StartTimeNs {
+		return false
+	}
+	if this.EndTimeNs != that.EndTimeNs {
+		return false
+	}
+	if len(this.Children) != len(that.Children) {
+		return false
+	}
+	for i, vx := range this.Children {
+		vy := that.Children[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &ExecutionNode{}
+			}
+			if q == nil {
+				q = &ExecutionNode{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if !this.Stats.EqualVT(that.Stats) {
+		return false
+	}
+	if this.Error != that.Error {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ExecutionNode) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ExecutionNode)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ExecutionStats) EqualVT(that *ExecutionStats) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.BlocksRead != that.BlocksRead {
+		return false
+	}
+	if this.DatasetsProcessed != that.DatasetsProcessed {
+		return false
+	}
+	if len(this.BlockExecutions) != len(that.BlockExecutions) {
+		return false
+	}
+	for i, vx := range this.BlockExecutions {
+		vy := that.BlockExecutions[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &BlockExecution{}
+			}
+			if q == nil {
+				q = &BlockExecution{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ExecutionStats) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ExecutionStats)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *BlockExecution) EqualVT(that *BlockExecution) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.BlockId != that.BlockId {
+		return false
+	}
+	if this.StartTimeNs != that.StartTimeNs {
+		return false
+	}
+	if this.EndTimeNs != that.EndTimeNs {
+		return false
+	}
+	if this.DatasetsProcessed != that.DatasetsProcessed {
+		return false
+	}
+	if this.Size != that.Size {
+		return false
+	}
+	if this.Shard != that.Shard {
+		return false
+	}
+	if this.CompactionLevel != that.CompactionLevel {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *BlockExecution) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*BlockExecution)
 	if !ok {
 		return false
 	}
@@ -1909,6 +2121,16 @@ func (m *InvokeOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.CollectDiagnostics {
+		i--
+		if m.CollectDiagnostics {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x10
+	}
 	if m.SanitizeOnMerge {
 		i--
 		if m.SanitizeOnMerge {
@@ -2323,6 +2545,16 @@ func (m *Diagnostics) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.ExecutionNode != nil {
+		size, err := m.ExecutionNode.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
+	}
 	if m.QueryPlan != nil {
 		size, err := m.QueryPlan.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -2330,6 +2562,215 @@ func (m *Diagnostics) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		}
 		i -= size
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ExecutionNode) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ExecutionNode) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ExecutionNode) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Error) > 0 {
+		i -= len(m.Error)
+		copy(dAtA[i:], m.Error)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Error)))
+		i--
+		dAtA[i] = 0x3a
+	}
+	if m.Stats != nil {
+		size, err := m.Stats.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x32
+	}
+	if len(m.Children) > 0 {
+		for iNdEx := len(m.Children) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.Children[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0x2a
+		}
+	}
+	if m.EndTimeNs != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.EndTimeNs))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.StartTimeNs != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.StartTimeNs))
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.Executor) > 0 {
+		i -= len(m.Executor)
+		copy(dAtA[i:], m.Executor)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Executor)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Type != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Type))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ExecutionStats) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ExecutionStats) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ExecutionStats) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.BlockExecutions) > 0 {
+		for iNdEx := len(m.BlockExecutions) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.BlockExecutions[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
+	if m.DatasetsProcessed != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.DatasetsProcessed))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.BlocksRead != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BlocksRead))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *BlockExecution) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *BlockExecution) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *BlockExecution) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.CompactionLevel != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.CompactionLevel))
+		i--
+		dAtA[i] = 0x38
+	}
+	if m.Shard != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Shard))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.Size != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Size))
+		i--
+		dAtA[i] = 0x28
+	}
+	if m.DatasetsProcessed != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.DatasetsProcessed))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.EndTimeNs != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.EndTimeNs))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.StartTimeNs != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.StartTimeNs))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.BlockId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -3472,6 +3913,9 @@ func (m *InvokeOptions) SizeVT() (n int) {
 	if m.SanitizeOnMerge {
 		n += 2
 	}
+	if m.CollectDiagnostics {
+		n += 2
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -3631,6 +4075,101 @@ func (m *Diagnostics) SizeVT() (n int) {
 	if m.QueryPlan != nil {
 		l = m.QueryPlan.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.ExecutionNode != nil {
+		l = m.ExecutionNode.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ExecutionNode) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Type != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Type))
+	}
+	l = len(m.Executor)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.StartTimeNs != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.StartTimeNs))
+	}
+	if m.EndTimeNs != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.EndTimeNs))
+	}
+	if len(m.Children) > 0 {
+		for _, e := range m.Children {
+			l = e.SizeVT()
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if m.Stats != nil {
+		l = m.Stats.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.Error)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ExecutionStats) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.BlocksRead != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.BlocksRead))
+	}
+	if m.DatasetsProcessed != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.DatasetsProcessed))
+	}
+	if len(m.BlockExecutions) > 0 {
+		for _, e := range m.BlockExecutions {
+			l = e.SizeVT()
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *BlockExecution) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.BlockId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.StartTimeNs != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.StartTimeNs))
+	}
+	if m.EndTimeNs != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.EndTimeNs))
+	}
+	if m.DatasetsProcessed != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.DatasetsProcessed))
+	}
+	if m.Size != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Size))
+	}
+	if m.Shard != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Shard))
+	}
+	if m.CompactionLevel != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.CompactionLevel))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -4349,6 +4888,26 @@ func (m *InvokeOptions) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.SanitizeOnMerge = bool(v != 0)
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CollectDiagnostics", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.CollectDiagnostics = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -5371,6 +5930,604 @@ func (m *Diagnostics) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExecutionNode", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.ExecutionNode == nil {
+				m.ExecutionNode = &ExecutionNode{}
+			}
+			if err := m.ExecutionNode.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ExecutionNode) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ExecutionNode: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ExecutionNode: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+			}
+			m.Type = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Type |= QueryNode_Type(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Executor", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Executor = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StartTimeNs", wireType)
+			}
+			m.StartTimeNs = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.StartTimeNs |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EndTimeNs", wireType)
+			}
+			m.EndTimeNs = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.EndTimeNs |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Children", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Children = append(m.Children, &ExecutionNode{})
+			if err := m.Children[len(m.Children)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Stats", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Stats == nil {
+				m.Stats = &ExecutionStats{}
+			}
+			if err := m.Stats.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Error = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ExecutionStats) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ExecutionStats: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ExecutionStats: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlocksRead", wireType)
+			}
+			m.BlocksRead = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BlocksRead |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DatasetsProcessed", wireType)
+			}
+			m.DatasetsProcessed = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DatasetsProcessed |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockExecutions", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockExecutions = append(m.BlockExecutions, &BlockExecution{})
+			if err := m.BlockExecutions[len(m.BlockExecutions)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *BlockExecution) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BlockExecution: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BlockExecution: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StartTimeNs", wireType)
+			}
+			m.StartTimeNs = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.StartTimeNs |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EndTimeNs", wireType)
+			}
+			m.EndTimeNs = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.EndTimeNs |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DatasetsProcessed", wireType)
+			}
+			m.DatasetsProcessed = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DatasetsProcessed |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Size", wireType)
+			}
+			m.Size = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Size |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Shard", wireType)
+			}
+			m.Shard = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Shard |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CompactionLevel", wireType)
+			}
+			m.CompactionLevel = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.CompactionLevel |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

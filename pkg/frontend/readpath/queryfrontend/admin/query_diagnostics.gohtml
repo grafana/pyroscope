@@ -71,6 +71,56 @@
         .tree-node-blocks code {
             font-size: 0.75rem;
         }
+        /* Execution Tree Styles */
+        .execution-tree {
+            font-family: monospace;
+            font-size: 0.875rem;
+            padding: 1rem;
+            background-color: var(--bs-secondary-bg);
+            border-radius: 0.375rem;
+        }
+        .exec-node {
+            margin: 0.25rem 0;
+        }
+        .exec-node-merge > .exec-node-header {
+            border-left: 3px solid #0d6efd;
+            padding-left: 0.5rem;
+        }
+        .exec-node-read > .exec-node-header {
+            border-left: 3px solid #198754;
+            padding-left: 0.5rem;
+        }
+        .exec-node-header {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .exec-children {
+            margin-left: 1.5rem;
+            border-left: 1px solid var(--bs-border-color);
+            padding-left: 0.5rem;
+        }
+        .exec-error {
+            margin-left: 0.5rem;
+            font-size: 0.8rem;
+        }
+        .exec-type {
+            font-weight: 600;
+        }
+        .exec-blocks {
+            margin-left: 0.5rem;
+        }
+        .exec-blocks table {
+            margin-bottom: 0;
+        }
+        .exec-blocks code {
+            font-size: 0.75rem;
+        }
+        /* Query parameter visibility */
+        .query-param {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -128,10 +178,11 @@
 
                             <div class="form-section">
                                 <label for="query_type" class="form-label">Query Type</label>
-                                <select class="form-select" id="query_type" name="query_type">
+                                <select class="form-select" id="query_type" name="query_type" onchange="updateQueryParams()">
                                     <option value="QUERY_PPROF" {{ if eq .QueryType "QUERY_PPROF" }}selected{{ end }}>QUERY_PPROF</option>
                                     <option value="QUERY_TREE" {{ if eq .QueryType "QUERY_TREE" }}selected{{ end }}>QUERY_TREE</option>
                                     <option value="QUERY_TIME_SERIES" {{ if eq .QueryType "QUERY_TIME_SERIES" }}selected{{ end }}>QUERY_TIME_SERIES</option>
+                                    <option value="QUERY_HEATMAP" {{ if eq .QueryType "QUERY_HEATMAP" }}selected{{ end }}>QUERY_HEATMAP</option>
                                     <option value="QUERY_LABEL_NAMES" {{ if eq .QueryType "QUERY_LABEL_NAMES" }}selected{{ end }}>QUERY_LABEL_NAMES</option>
                                     <option value="QUERY_LABEL_VALUES" {{ if eq .QueryType "QUERY_LABEL_VALUES" }}selected{{ end }}>QUERY_LABEL_VALUES</option>
                                     <option value="QUERY_SERIES_LABELS" {{ if eq .QueryType "QUERY_SERIES_LABELS" }}selected{{ end }}>QUERY_SERIES_LABELS</option>
@@ -142,6 +193,52 @@
                                 <label for="label_selector" class="form-label">Label Selector</label>
                                 <input type="text" class="form-control" id="label_selector" name="label_selector"
                                        value="{{ .LabelSelector }}" placeholder='{service_name="my-service"}'>
+                            </div>
+
+                            <!-- PPROF/TREE: MaxNodes -->
+                            <div class="form-section query-param" id="param-max-nodes">
+                                <label for="max_nodes" class="form-label">Max Nodes</label>
+                                <input type="number" class="form-control" id="max_nodes" name="max_nodes"
+                                       value="{{ .MaxNodes }}" placeholder="16384">
+                                <div class="form-text">Maximum number of nodes in the result (PPROF/TREE)</div>
+                            </div>
+
+                            <!-- LABEL_VALUES: LabelName -->
+                            <div class="form-section query-param" id="param-label-name">
+                                <label for="label_name" class="form-label">Label Name</label>
+                                <input type="text" class="form-control" id="label_name" name="label_name"
+                                       value="{{ .LabelName }}" placeholder="service_name">
+                                <div class="form-text">Label name to get values for</div>
+                            </div>
+
+                            <!-- SERIES_LABELS: LabelNames -->
+                            <div class="form-section query-param" id="param-series-label-names">
+                                <label for="series_label_names" class="form-label">Label Names (comma-separated)</label>
+                                <input type="text" class="form-control" id="series_label_names" name="series_label_names"
+                                       value="{{ .SeriesLabelNames }}" placeholder="service_name,__profile_type__">
+                                <div class="form-text">Filter returned labels to these names (empty = all)</div>
+                            </div>
+
+                            <!-- TIME_SERIES: Step, GroupBy, Limit -->
+                            <div class="form-section query-param" id="param-step">
+                                <label for="step" class="form-label">Step (seconds)</label>
+                                <input type="number" class="form-control" id="step" name="step"
+                                       value="{{ .Step }}" placeholder="auto" step="any">
+                                <div class="form-text">Time step between data points (leave empty for auto)</div>
+                            </div>
+
+                            <div class="form-section query-param" id="param-group-by">
+                                <label for="group_by" class="form-label">Group By (comma-separated)</label>
+                                <input type="text" class="form-control" id="group_by" name="group_by"
+                                       value="{{ .GroupBy }}" placeholder="service_name">
+                                <div class="form-text">Labels to group time series by</div>
+                            </div>
+
+                            <div class="form-section query-param" id="param-limit">
+                                <label for="limit" class="form-label">Limit</label>
+                                <input type="number" class="form-control" id="limit" name="limit"
+                                       value="{{ .Limit }}" placeholder="0">
+                                <div class="form-text">Maximum number of series (0 = unlimited)</div>
                             </div>
 
                             <div class="d-grid gap-2">
@@ -231,6 +328,23 @@
                 </div>
             </div>
             {{ end }}
+
+            {{ if .ExecutionTree }}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Execution Trace</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="execution-tree">
+                                {{ template "executionNode" .ExecutionTree }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
         </form>
     </div>
 </main>
@@ -239,6 +353,42 @@
         <small class="text-muted">Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}</small>
     </div>
 </footer>
+<script>
+    function updateQueryParams() {
+        const queryType = document.getElementById('query_type').value;
+
+        // Hide all query params first
+        document.querySelectorAll('.query-param').forEach(el => {
+            el.style.display = 'none';
+        });
+
+        // Show relevant params based on query type
+        switch (queryType) {
+            case 'QUERY_PPROF':
+            case 'QUERY_TREE':
+                document.getElementById('param-max-nodes').style.display = 'block';
+                break;
+            case 'QUERY_TIME_SERIES':
+            case 'QUERY_HEATMAP':
+                document.getElementById('param-step').style.display = 'block';
+                document.getElementById('param-group-by').style.display = 'block';
+                document.getElementById('param-limit').style.display = 'block';
+                break;
+            case 'QUERY_LABEL_VALUES':
+                document.getElementById('param-label-name').style.display = 'block';
+                break;
+            case 'QUERY_SERIES_LABELS':
+                document.getElementById('param-series-label-names').style.display = 'block';
+                break;
+            case 'QUERY_LABEL_NAMES':
+                // No additional parameters
+                break;
+        }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', updateQueryParams);
+</script>
 </body>
 </html>
 
@@ -272,6 +422,64 @@
     <div class="tree-node-children">
         {{ range .Children }}
         {{ template "treeNode" . }}
+        {{ end }}
+    </div>
+    {{ end }}
+</div>
+{{ end }}
+{{ end }}
+
+{{ define "executionNode" }}
+{{ if . }}
+<div class="exec-node exec-node-{{ .Type | lower }}">
+    <div class="exec-node-header">
+        <span class="exec-type">{{ .Type }}</span>
+        <span class="badge bg-secondary">{{ .Executor }}</span>
+        <span class="badge bg-warning text-dark" title="Started at">@{{ .RelativeStartStr }}</span>
+        <span class="badge bg-info" title="Duration">{{ .DurationStr }}</span>
+        {{ if .Stats }}
+        <span class="badge bg-light text-dark">{{ .Stats.BlocksRead }} blocks, {{ .Stats.DatasetsProcessed }} datasets</span>
+        {{ end }}
+    </div>
+    {{ if .Error }}
+    <div class="exec-error text-danger"><small>Error: {{ .Error }}</small></div>
+    {{ end }}
+    {{ if and .Stats .Stats.BlockExecutions }}
+    <div class="exec-blocks mt-2">
+        <table class="table table-sm table-hover mb-0" style="font-size: 0.8rem;">
+            <thead>
+                <tr>
+                    <th>Block ID</th>
+                    <th>Start</th>
+                    <th>Duration</th>
+                    <th>End</th>
+                    <th>Datasets</th>
+                    <th>Size</th>
+                    <th>Shard</th>
+                    <th>Level</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ range .Stats.BlockExecutions }}
+                <tr>
+                    <td><code>{{ .BlockID }}</code></td>
+                    <td><span class="badge bg-warning text-dark">@{{ .RelativeStartStr }}</span></td>
+                    <td><span class="badge bg-info">{{ .DurationStr }}</span></td>
+                    <td><span class="badge bg-secondary">@{{ .RelativeEndStr }}</span></td>
+                    <td>{{ .DatasetsProcessed }}</td>
+                    <td>{{ .Size }}</td>
+                    <td>{{ .Shard }}</td>
+                    <td>L{{ .CompactionLevel }}</td>
+                </tr>
+                {{ end }}
+            </tbody>
+        </table>
+    </div>
+    {{ end }}
+    {{ if .Children }}
+    <div class="exec-children">
+        {{ range .Children }}
+        {{ template "executionNode" . }}
         {{ end }}
     </div>
     {{ end }}

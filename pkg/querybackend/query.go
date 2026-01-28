@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -82,15 +83,18 @@ func registerQueryType(
 }
 
 type blockContext struct {
-	ctx context.Context
-	log log.Logger
-	req *request
-	agg *reportAggregator
-	obj *block.Object
-	grp *errgroup.Group
+	ctx           context.Context
+	log           log.Logger
+	req           *request
+	agg           *reportAggregator
+	obj           *block.Object
+	grp           *errgroup.Group
+	execCollector *blockExecutionCollector
 }
 
 func (b *blockContext) execute() error {
+	startTime := time.Now()
+
 	var span opentracing.Span
 	span, b.ctx = opentracing.StartSpanFromContext(b.ctx, "blockContext.execute")
 	defer span.Finish()
@@ -105,7 +109,8 @@ func (b *blockContext) execute() error {
 		}
 	}
 
-	for _, ds := range b.obj.Metadata().Datasets {
+	md := b.obj.Metadata()
+	for _, ds := range md.Datasets {
 		q := b.newQueryContext(ds)
 		for _, query := range b.req.src.Query {
 			q.grp.Go(util.RecoverPanic(func() error {
@@ -115,6 +120,18 @@ func (b *blockContext) execute() error {
 		if err := q.grp.Wait(); err != nil {
 			return err
 		}
+	}
+
+	if b.execCollector != nil {
+		b.execCollector.record(&queryv1.BlockExecution{
+			BlockId:           md.Id,
+			StartTimeNs:       startTime.UnixNano(),
+			EndTimeNs:         time.Now().UnixNano(),
+			DatasetsProcessed: int64(len(md.Datasets)),
+			Size:              md.Size,
+			Shard:             md.Shard,
+			CompactionLevel:   md.CompactionLevel,
+		})
 	}
 
 	return nil

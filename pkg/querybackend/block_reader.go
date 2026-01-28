@@ -3,7 +3,10 @@ package querybackend
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -47,7 +50,8 @@ type BlockReader struct {
 	log     log.Logger
 	storage objstore.Bucket
 
-	metrics *metrics
+	metrics  *metrics
+	hostname string
 
 	// TODO:
 	//  - Use a worker pool instead of the errgroup.
@@ -58,10 +62,12 @@ type BlockReader struct {
 }
 
 func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.Registerer) *BlockReader {
+	hostname, _ := os.Hostname()
 	return &BlockReader{
-		log:     logger,
-		storage: storage,
-		metrics: newMetrics(reg),
+		log:      logger,
+		storage:  storage,
+		metrics:  newMetrics(reg),
+		hostname: hostname,
 	}
 }
 
@@ -71,6 +77,10 @@ func (b *BlockReader) Invoke(
 ) (*queryv1.InvokeResponse, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "BlockReader.Invoke")
 	defer span.Finish()
+
+	collectDiag := req.Options != nil && req.Options.CollectDiagnostics
+	startTime := time.Now()
+
 	r, err := validateRequest(req)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "request validation failed: %v", err)
@@ -85,6 +95,12 @@ func (b *BlockReader) Invoke(
 		tenantMap[tenant] = struct{}{}
 	}
 
+	var blockExecCollector *blockExecutionCollector
+	if collectDiag {
+		blockExecCollector = &blockExecutionCollector{}
+	}
+
+	var blocksCount, datasetsCount int64
 	for _, md := range req.QueryPlan.Root.Blocks {
 		md.Datasets, err = filterNotOwnedDatasets(md, tenantMap)
 		if err != nil {
@@ -95,21 +111,47 @@ func (b *BlockReader) Invoke(
 		if len(md.Datasets) == 0 {
 			continue
 		}
+		blocksCount++
+		datasetsCount += int64(len(md.Datasets))
 		obj := block.NewObject(b.storage, md)
 		g.Go(util.RecoverPanic((&blockContext{
-			ctx: ctx,
-			log: b.log,
-			req: r,
-			agg: agg,
-			obj: obj,
-			grp: g,
+			ctx:           ctx,
+			log:           b.log,
+			req:           r,
+			agg:           agg,
+			obj:           obj,
+			grp:           g,
+			execCollector: blockExecCollector,
 		}).execute))
 	}
 
 	if err = g.Wait(); err != nil {
 		return nil, err
 	}
-	return agg.response()
+
+	resp, err := agg.response()
+	if err != nil {
+		return nil, err
+	}
+
+	if collectDiag {
+		if resp.Diagnostics == nil {
+			resp.Diagnostics = &queryv1.Diagnostics{}
+		}
+		resp.Diagnostics.ExecutionNode = &queryv1.ExecutionNode{
+			Type:        queryv1.QueryNode_READ,
+			Executor:    b.hostname,
+			StartTimeNs: startTime.UnixNano(),
+			EndTimeNs:   time.Now().UnixNano(),
+			Stats: &queryv1.ExecutionStats{
+				BlocksRead:        blocksCount,
+				DatasetsProcessed: datasetsCount,
+				BlockExecutions:   blockExecCollector.collect(),
+			},
+		}
+	}
+
+	return resp, nil
 }
 
 type request struct {
@@ -174,4 +216,28 @@ func filterNotOwnedDatasets(b *metastorev1.BlockMeta, tenantMap map[string]struc
 		}
 	}
 	return datasets, errs.Err()
+}
+
+// blockExecutionCollector collects per-block execution stats in a thread-safe manner.
+type blockExecutionCollector struct {
+	mu         sync.Mutex
+	executions []*queryv1.BlockExecution
+}
+
+func (c *blockExecutionCollector) record(exec *queryv1.BlockExecution) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	c.executions = append(c.executions, exec)
+	c.mu.Unlock()
+}
+
+func (c *blockExecutionCollector) collect() []*queryv1.BlockExecution {
+	if c == nil {
+		return nil
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.executions
 }

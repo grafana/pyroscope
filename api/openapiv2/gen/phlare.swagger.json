@@ -650,6 +650,39 @@
         }
       }
     },
+    "v1BlockExecution": {
+      "type": "object",
+      "properties": {
+        "blockId": {
+          "type": "string"
+        },
+        "startTimeNs": {
+          "type": "string",
+          "format": "int64"
+        },
+        "endTimeNs": {
+          "type": "string",
+          "format": "int64"
+        },
+        "datasetsProcessed": {
+          "type": "string",
+          "format": "int64"
+        },
+        "size": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "shard": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "compactionLevel": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "description": "BlockExecution captures execution details for a single block."
+    },
     "v1BlockHints": {
       "type": "object",
       "properties": {
@@ -1008,6 +1041,9 @@
       "properties": {
         "queryPlan": {
           "$ref": "#/definitions/v1QueryPlan"
+        },
+        "executionNode": {
+          "$ref": "#/definitions/v1ExecutionNode"
         }
       },
       "description": "Diagnostic messages, events, statistics, analytics, etc."
@@ -1019,6 +1055,60 @@
           "$ref": "#/definitions/v1FlameGraphDiff"
         }
       }
+    },
+    "v1ExecutionNode": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/v1QueryNodeType"
+        },
+        "executor": {
+          "type": "string"
+        },
+        "startTimeNs": {
+          "type": "string",
+          "format": "int64"
+        },
+        "endTimeNs": {
+          "type": "string",
+          "format": "int64"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1ExecutionNode"
+          }
+        },
+        "stats": {
+          "$ref": "#/definitions/v1ExecutionStats"
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "description": "ExecutionNode captures how a query plan node was actually executed."
+    },
+    "v1ExecutionStats": {
+      "type": "object",
+      "properties": {
+        "blocksRead": {
+          "type": "string",
+          "format": "int64"
+        },
+        "datasetsProcessed": {
+          "type": "string",
+          "format": "int64"
+        },
+        "blockExecutions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockExecution"
+          }
+        }
+      },
+      "description": "ExecutionStats captures statistics for READ node execution."
     },
     "v1Exemplar": {
       "type": "object",
@@ -1563,6 +1653,9 @@
         "sanitizeOnMerge": {
           "type": "boolean",
           "description": "Query workers might not have access to the tenant\noverrides, therefore all the necessary options should\nbe listed in the request explicitly."
+        },
+        "collectDiagnostics": {
+          "type": "boolean"
         }
       }
     },
