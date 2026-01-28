@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/grafana/dskit/services"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/querybackend/queryplan"
@@ -85,6 +87,14 @@ func (a *Admin) DiagnosticsHandler() http.Handler {
 			content.QueryType = r.FormValue("query_type")
 			content.LabelSelector = r.FormValue("label_selector")
 			content.PlanJSON = r.FormValue("plan_json")
+
+			// Query-type specific parameters
+			content.MaxNodes = r.FormValue("max_nodes")
+			content.LabelName = r.FormValue("label_name")
+			content.SeriesLabelNames = r.FormValue("series_label_names")
+			content.Step = r.FormValue("step")
+			content.GroupBy = r.FormValue("group_by")
+			content.Limit = r.FormValue("limit")
 
 			action := r.FormValue("action")
 			switch action {
@@ -381,19 +391,75 @@ func (a *Admin) handleExecuteQuery(ctx context.Context, content *diagnosticsPage
 		QueryType: queryType,
 	}
 
+	// Parse common parameters
+	maxNodes := parseIntOrDefault(content.MaxNodes, 16384)
+	limit := parseIntOrDefault(content.Limit, 0)
+
 	switch queryType {
 	case queryv1.QueryType_QUERY_PPROF:
-		query.Pprof = &queryv1.PprofQuery{}
+		query.Pprof = &queryv1.PprofQuery{
+			MaxNodes: maxNodes,
+		}
 	case queryv1.QueryType_QUERY_TREE:
-		query.Tree = &queryv1.TreeQuery{MaxNodes: 16384}
+		query.Tree = &queryv1.TreeQuery{
+			MaxNodes: maxNodes,
+		}
 	case queryv1.QueryType_QUERY_TIME_SERIES:
-		query.TimeSeries = &queryv1.TimeSeriesQuery{}
+		// Parse step or calculate a sensible default (~100 data points)
+		stepSeconds := parseFloatOrDefault(content.Step, 0)
+		if stepSeconds <= 0 {
+			rangeMs := endTime.UnixMilli() - startTime.UnixMilli()
+			stepSeconds = float64(rangeMs) / 1000.0 / 100.0
+			if stepSeconds < 15 {
+				stepSeconds = 15 // minimum 15 second step
+			}
+		}
+
+		var groupBy []string
+		if content.GroupBy != "" {
+			groupBy = splitAndTrim(content.GroupBy)
+		}
+
+		query.TimeSeries = &queryv1.TimeSeriesQuery{
+			Step:    stepSeconds,
+			GroupBy: groupBy,
+			Limit:   limit,
+		}
+	case queryv1.QueryType_QUERY_HEATMAP:
+		stepSeconds := parseFloatOrDefault(content.Step, 0)
+		if stepSeconds <= 0 {
+			rangeMs := endTime.UnixMilli() - startTime.UnixMilli()
+			stepSeconds = float64(rangeMs) / 1000.0 / 100.0
+			if stepSeconds < 15 {
+				stepSeconds = 15
+			}
+		}
+
+		var groupBy []string
+		if content.GroupBy != "" {
+			groupBy = splitAndTrim(content.GroupBy)
+		}
+
+		query.Heatmap = &queryv1.HeatmapQuery{
+			Step:      stepSeconds,
+			GroupBy:   groupBy,
+			Limit:     limit,
+			QueryType: querierv1.HeatmapQueryType_HEATMAP_QUERY_TYPE_INDIVIDUAL,
+		}
 	case queryv1.QueryType_QUERY_LABEL_NAMES:
 		query.LabelNames = &queryv1.LabelNamesQuery{}
 	case queryv1.QueryType_QUERY_LABEL_VALUES:
-		query.LabelValues = &queryv1.LabelValuesQuery{}
+		query.LabelValues = &queryv1.LabelValuesQuery{
+			LabelName: content.LabelName,
+		}
 	case queryv1.QueryType_QUERY_SERIES_LABELS:
-		query.SeriesLabels = &queryv1.SeriesLabelsQuery{}
+		var labelNames []string
+		if content.SeriesLabelNames != "" {
+			labelNames = splitAndTrim(content.SeriesLabelNames)
+		}
+		query.SeriesLabels = &queryv1.SeriesLabelsQuery{
+			LabelNames: labelNames,
+		}
 	}
 
 	req := &queryv1.InvokeRequest{
@@ -403,6 +469,9 @@ func (a *Admin) handleExecuteQuery(ctx context.Context, content *diagnosticsPage
 		LabelSelector: content.LabelSelector,
 		QueryPlan:     &plan,
 		Query:         []*queryv1.Query{query},
+		Options: &queryv1.InvokeOptions{
+			CollectDiagnostics: true,
+		},
 	}
 
 	level.Debug(a.logger).Log(
@@ -420,6 +489,10 @@ func (a *Admin) handleExecuteQuery(ctx context.Context, content *diagnosticsPage
 		return
 	}
 
+	if resp.Diagnostics != nil && resp.Diagnostics.ExecutionNode != nil {
+		content.ExecutionTree = convertExecutionNodeToTree(resp.Diagnostics.ExecutionNode)
+	}
+
 	content.ReportStats = a.buildReportStats(resp)
 }
 
@@ -431,6 +504,8 @@ func (a *Admin) parseQueryType(queryTypeStr string) queryv1.QueryType {
 		return queryv1.QueryType_QUERY_TREE
 	case "QUERY_TIME_SERIES":
 		return queryv1.QueryType_QUERY_TIME_SERIES
+	case "QUERY_HEATMAP":
+		return queryv1.QueryType_QUERY_HEATMAP
 	case "QUERY_LABEL_NAMES":
 		return queryv1.QueryType_QUERY_LABEL_NAMES
 	case "QUERY_LABEL_VALUES":
@@ -440,6 +515,98 @@ func (a *Admin) parseQueryType(queryTypeStr string) queryv1.QueryType {
 	default:
 		return queryv1.QueryType_QUERY_PPROF
 	}
+}
+
+func convertExecutionNodeToTree(node *queryv1.ExecutionNode) *ExecutionTreeNode {
+	if node == nil {
+		return nil
+	}
+
+	// Find the earliest start time across all nodes to use as query start reference
+	queryStartNs := findEarliestStartTime(node)
+
+	return convertExecutionNodeToTreeWithBase(node, queryStartNs)
+}
+
+func findEarliestStartTime(node *queryv1.ExecutionNode) int64 {
+	if node == nil {
+		return 0
+	}
+
+	earliest := node.StartTimeNs
+
+	// Check block executions
+	if node.Stats != nil {
+		for _, blockExec := range node.Stats.BlockExecutions {
+			if blockExec.StartTimeNs < earliest {
+				earliest = blockExec.StartTimeNs
+			}
+		}
+	}
+
+	// Check children
+	for _, child := range node.Children {
+		childEarliest := findEarliestStartTime(child)
+		if childEarliest > 0 && childEarliest < earliest {
+			earliest = childEarliest
+		}
+	}
+
+	return earliest
+}
+
+func convertExecutionNodeToTreeWithBase(node *queryv1.ExecutionNode, queryStartNs int64) *ExecutionTreeNode {
+	if node == nil {
+		return nil
+	}
+
+	duration := time.Duration(node.EndTimeNs - node.StartTimeNs)
+	relativeStart := time.Duration(node.StartTimeNs - queryStartNs)
+
+	tree := &ExecutionTreeNode{
+		Type:             node.Type.String(),
+		Executor:         node.Executor,
+		Duration:         duration,
+		DurationStr:      duration.String(),
+		RelativeStart:    relativeStart,
+		RelativeStartStr: relativeStart.String(),
+		Error:            node.Error,
+	}
+
+	if node.Stats != nil {
+		tree.Stats = &ExecutionTreeStats{
+			BlocksRead:        node.Stats.BlocksRead,
+			DatasetsProcessed: node.Stats.DatasetsProcessed,
+		}
+
+		for _, blockExec := range node.Stats.BlockExecutions {
+			blockDuration := time.Duration(blockExec.EndTimeNs - blockExec.StartTimeNs)
+			blockRelStart := time.Duration(blockExec.StartTimeNs - queryStartNs)
+			blockRelEnd := time.Duration(blockExec.EndTimeNs - queryStartNs)
+
+			tree.Stats.BlockExecutions = append(tree.Stats.BlockExecutions, &BlockExecutionInfo{
+				BlockID:           blockExec.BlockId,
+				Duration:          blockDuration,
+				DurationStr:       blockDuration.String(),
+				RelativeStart:     blockRelStart,
+				RelativeStartStr:  blockRelStart.String(),
+				RelativeEnd:       blockRelEnd,
+				RelativeEndStr:    blockRelEnd.String(),
+				DatasetsProcessed: blockExec.DatasetsProcessed,
+				Size:              humanize.Bytes(blockExec.Size),
+				Shard:             blockExec.Shard,
+				CompactionLevel:   blockExec.CompactionLevel,
+			})
+		}
+	}
+
+	for _, child := range node.Children {
+		if childTree := convertExecutionNodeToTreeWithBase(child, queryStartNs); childTree != nil {
+			tree.Children = append(tree.Children, childTree)
+		}
+	}
+
+	return tree
 }
 
 func (a *Admin) buildReportStats(resp *queryv1.InvokeResponse) string {
@@ -460,6 +627,8 @@ func (a *Admin) buildReportStats(resp *queryv1.InvokeResponse) string {
 			fmt.Fprintf(&sb, "  Tree size: %s\n", humanize.Bytes(uint64(len(report.Tree.Tree))))
 		case report.TimeSeries != nil:
 			fmt.Fprintf(&sb, "  Time series count: %d\n", len(report.TimeSeries.TimeSeries))
+		case report.Heatmap != nil:
+			fmt.Fprintf(&sb, "  Heatmap series count: %d\n", len(report.Heatmap.HeatmapSeries))
 		case report.LabelNames != nil:
 			fmt.Fprintf(&sb, "  Label names count: %d\n", len(report.LabelNames.LabelNames))
 		case report.LabelValues != nil:
@@ -470,4 +639,40 @@ func (a *Admin) buildReportStats(resp *queryv1.InvokeResponse) string {
 	}
 
 	return sb.String()
+}
+
+// Helper functions for parsing form values
+
+func parseIntOrDefault(s string, defaultVal int64) int64 {
+	if s == "" {
+		return defaultVal
+	}
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return defaultVal
+	}
+	return v
+}
+
+func parseFloatOrDefault(s string, defaultVal float64) float64 {
+	if s == "" {
+		return defaultVal
+	}
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return defaultVal
+	}
+	return v
+}
+
+func splitAndTrim(s string) []string {
+	parts := strings.Split(s, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
 }

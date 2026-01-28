@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -51,6 +53,7 @@ type QueryBackend struct {
 
 	backendClient QueryHandler
 	blockReader   QueryHandler
+	hostname      string
 }
 
 func New(
@@ -60,12 +63,14 @@ func New(
 	backendClient QueryHandler,
 	blockReader QueryHandler,
 ) (*QueryBackend, error) {
+	hostname, _ := os.Hostname()
 	q := QueryBackend{
 		config:        config,
 		logger:        logger,
 		reg:           reg,
 		backendClient: backendClient,
 		blockReader:   blockReader,
+		hostname:      hostname,
 	}
 	q.service = services.NewIdleService(q.starting, q.stopping)
 	return &q, nil
@@ -82,38 +87,97 @@ func (q *QueryBackend) Invoke(
 	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryBackend.Invoke")
 	defer span.Finish()
 
-	switch r := req.QueryPlan.Root; r.Type {
+	collectDiag := req.Options != nil && req.Options.CollectDiagnostics
+	startTime := time.Now()
+
+	var resp *queryv1.InvokeResponse
+	var err error
+	var childNodes []*queryv1.ExecutionNode
+
+	// Capture the node type before merge() sets QueryPlan to nil.
+	root := req.QueryPlan.Root
+	nodeType := root.Type
+
+	switch nodeType {
 	case queryv1.QueryNode_MERGE:
-		return q.merge(ctx, req, r.Children)
+		resp, childNodes, err = q.merge(ctx, req, root.Children, collectDiag)
 	case queryv1.QueryNode_READ:
-		return q.read(ctx, req, r.Blocks)
+		resp, err = q.read(ctx, req, root.Blocks)
 	default:
 		panic("query plan: unknown node type")
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	if collectDiag {
+		// For READ nodes, BlockReader already set the ExecutionNode with stats.
+		// We just need to wrap it for MERGE nodes.
+		if nodeType == queryv1.QueryNode_MERGE {
+			execNode := &queryv1.ExecutionNode{
+				Type:        nodeType,
+				Executor:    q.hostname,
+				StartTimeNs: startTime.UnixNano(),
+				EndTimeNs:   time.Now().UnixNano(),
+				Children:    childNodes,
+			}
+			if resp.Diagnostics == nil {
+				resp.Diagnostics = &queryv1.Diagnostics{}
+			}
+			resp.Diagnostics.ExecutionNode = execNode
+		}
+	}
+
+	return resp, nil
 }
 
 func (q *QueryBackend) merge(
 	ctx context.Context,
 	request *queryv1.InvokeRequest,
 	children []*queryv1.QueryNode,
-) (*queryv1.InvokeResponse, error) {
+	collectDiag bool,
+) (*queryv1.InvokeResponse, []*queryv1.ExecutionNode, error) {
 	request.QueryPlan = nil
 	m := newAggregator(request)
 	g, ctx := errgroup.WithContext(ctx)
-	for _, child := range children {
+
+	childExecNodes := make([]*queryv1.ExecutionNode, len(children))
+	var mu sync.Mutex
+
+	for i, child := range children {
+		idx := i
 		req := request.CloneVT()
 		req.QueryPlan = &queryv1.QueryPlan{
 			Root: child,
 		}
 		g.Go(util.RecoverPanic(func() error {
 			// TODO: Speculative retry.
-			return m.aggregateResponse(q.backendClient.Invoke(ctx, req))
+			resp, err := q.backendClient.Invoke(ctx, req)
+			if err != nil {
+				return err
+			}
+			if collectDiag && resp.Diagnostics != nil && resp.Diagnostics.ExecutionNode != nil {
+				mu.Lock()
+				childExecNodes[idx] = resp.Diagnostics.ExecutionNode
+				mu.Unlock()
+			}
+			return m.aggregateResponse(resp, nil)
 		}))
 	}
 	if err := g.Wait(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return m.response()
+
+	var validChildren []*queryv1.ExecutionNode
+	for _, n := range childExecNodes {
+		if n != nil {
+			validChildren = append(validChildren, n)
+		}
+	}
+
+	resp, err := m.response()
+	return resp, validChildren, err
 }
 
 func (q *QueryBackend) read(

@@ -20,6 +20,18 @@ type diagnosticsPageContent struct {
 	QueryType     string
 	LabelSelector string
 
+	// Query-type specific parameters
+	// PPROF/TREE: MaxNodes
+	MaxNodes string
+	// LABEL_VALUES: LabelName
+	LabelName string
+	// SERIES_LABELS: LabelNames (comma-separated)
+	SeriesLabelNames string
+	// TIME_SERIES: Step, GroupBy, Limit
+	Step    string
+	GroupBy string
+	Limit   string
+
 	PlanJSON          string
 	PlanTree          *PlanTreeNode
 	MetadataStats     string
@@ -27,6 +39,7 @@ type diagnosticsPageContent struct {
 
 	QueryResponseTime time.Duration
 	ReportStats       string
+	ExecutionTree     *ExecutionTreeNode
 
 	Error string
 }
@@ -46,6 +59,41 @@ type PlanTreeBlock struct {
 	Shard           uint32
 	Size            string // Human-readable size
 	CompactionLevel uint32
+}
+
+// ExecutionTreeNode represents a node in the execution trace visualization.
+type ExecutionTreeNode struct {
+	Type             string
+	Executor         string
+	Duration         time.Duration
+	DurationStr      string
+	RelativeStart    time.Duration // Time offset from query start
+	RelativeStartStr string
+	Children         []*ExecutionTreeNode
+	Stats            *ExecutionTreeStats
+	Error            string
+}
+
+// ExecutionTreeStats contains stats for READ node execution.
+type ExecutionTreeStats struct {
+	BlocksRead        int64
+	DatasetsProcessed int64
+	BlockExecutions   []*BlockExecutionInfo
+}
+
+// BlockExecutionInfo contains execution details for a single block.
+type BlockExecutionInfo struct {
+	BlockID           string
+	Duration          time.Duration
+	DurationStr       string
+	RelativeStart     time.Duration
+	RelativeStartStr  string
+	RelativeEnd       time.Duration
+	RelativeEndStr    string
+	DatasetsProcessed int64
+	Size              string // Human-readable size
+	Shard             uint32
+	CompactionLevel   uint32
 }
 
 type templates struct {
