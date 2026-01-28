@@ -5,6 +5,7 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	queryfrontendadmin "github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/admin"
 	metastoreadmin "github.com/grafana/pyroscope/pkg/metastore/admin"
 	"github.com/grafana/pyroscope/pkg/querybackend"
 	"github.com/grafana/pyroscope/pkg/segmentwriter"
@@ -34,5 +35,12 @@ func (a *API) RegisterMetastoreAdmin(adm *metastoreadmin.Admin) {
 	a.indexPage.AddLinks(defaultWeight, "Metastore", []IndexPageLink{
 		{Desc: "Nodes", Path: "/metastore-nodes"},
 		{Desc: "Client Test", Path: "/metastore-client-test"},
+	})
+}
+
+func (a *API) RegisterQueryFrontendAdmin(adm *queryfrontendadmin.Admin) {
+	a.RegisterRoute("/query-diagnostics", adm.DiagnosticsHandler(), a.registerOptionsRingPage()...)
+	a.indexPage.AddLinks(defaultWeight, "Query Frontend", []IndexPageLink{
+		{Desc: "Query Diagnostics", Path: "/query-diagnostics"},
 	})
 }

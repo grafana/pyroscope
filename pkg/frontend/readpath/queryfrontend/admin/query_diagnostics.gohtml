@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Query Diagnostics</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+
+    <style>
+        .form-section {
+            margin-bottom: 1.5rem;
+        }
+        .plan-textarea {
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+        .stats-box {
+            background-color: var(--bs-secondary-bg);
+            border-radius: 0.375rem;
+            padding: 1rem;
+            margin-top: 0.5rem;
+        }
+        /* Query Plan Tree Styles */
+        .plan-tree {
+            font-family: monospace;
+            font-size: 0.875rem;
+            padding: 1rem;
+            background-color: var(--bs-secondary-bg);
+            border-radius: 0.375rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .tree-node-children {
+            margin-left: 1.5rem;
+            border-left: 1px dashed var(--bs-border-color);
+            padding-left: 1rem;
+        }
+        .tree-node-header {
+            display: flex;
+            align-items: center;
+            padding: 0.25rem 0;
+        }
+        .tree-node-icon {
+            margin-right: 0.5rem;
+            font-size: 1rem;
+        }
+        .tree-node-merge .tree-node-icon {
+            color: #6ea8fe;
+        }
+        .tree-node-read .tree-node-icon {
+            color: #75b798;
+        }
+        .tree-node-label {
+            font-weight: 600;
+        }
+        .tree-node-badge {
+            margin-left: 0.5rem;
+            font-size: 0.75rem;
+        }
+        .tree-node-blocks {
+            margin-left: 1.5rem;
+            font-size: 0.8rem;
+            color: var(--bs-secondary-color);
+        }
+        .tree-node-blocks code {
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <div class="container mt-5">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h1>Query Diagnostics</h1>
+                <p class="text-muted">Debug V2 query execution by building and executing query plans</p>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+
+        {{ if .Error }}
+        <div class="alert alert-danger mt-3" role="alert">
+            <strong>Error:</strong> {{ .Error }}
+        </div>
+        {{ end }}
+
+        <form action="" method="POST">
+            <div class="row mt-4">
+                <div class="col-12 col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Query Parameters</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-section">
+                                <label for="tenant_id" class="form-label">Tenant ID</label>
+                                <input type="text" class="form-control" id="tenant_id" name="tenant_id"
+                                       value="{{ .TenantID }}" placeholder="anonymous" list="tenant_list" required>
+                                <datalist id="tenant_list">
+                                    {{ range .Tenants }}
+                                    <option value="{{ . }}">
+                                    {{ end }}
+                                </datalist>
+                            </div>
+
+                            <div class="row form-section">
+                                <div class="col-6">
+                                    <label for="start_time" class="form-label">Start Time</label>
+                                    <input type="text" class="form-control" id="start_time" name="start_time"
+                                           value="{{ .StartTime }}" placeholder="now-30m" required>
+                                </div>
+                                <div class="col-6">
+                                    <label for="end_time" class="form-label">End Time</label>
+                                    <input type="text" class="form-control" id="end_time" name="end_time"
+                                           value="{{ .EndTime }}" placeholder="now" required>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <label for="query_type" class="form-label">Query Type</label>
+                                <select class="form-select" id="query_type" name="query_type">
+                                    <option value="QUERY_PPROF" {{ if eq .QueryType "QUERY_PPROF" }}selected{{ end }}>QUERY_PPROF</option>
+                                    <option value="QUERY_TREE" {{ if eq .QueryType "QUERY_TREE" }}selected{{ end }}>QUERY_TREE</option>
+                                    <option value="QUERY_TIME_SERIES" {{ if eq .QueryType "QUERY_TIME_SERIES" }}selected{{ end }}>QUERY_TIME_SERIES</option>
+                                    <option value="QUERY_LABEL_NAMES" {{ if eq .QueryType "QUERY_LABEL_NAMES" }}selected{{ end }}>QUERY_LABEL_NAMES</option>
+                                    <option value="QUERY_LABEL_VALUES" {{ if eq .QueryType "QUERY_LABEL_VALUES" }}selected{{ end }}>QUERY_LABEL_VALUES</option>
+                                    <option value="QUERY_SERIES_LABELS" {{ if eq .QueryType "QUERY_SERIES_LABELS" }}selected{{ end }}>QUERY_SERIES_LABELS</option>
+                                </select>
+                            </div>
+
+                            <div class="form-section">
+                                <label for="label_selector" class="form-label">Label Selector</label>
+                                <input type="text" class="form-control" id="label_selector" name="label_selector"
+                                       value="{{ .LabelSelector }}" placeholder='{service_name="my-service"}'>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary" name="action" value="create_plan">
+                                    <i class="bi bi-diagram-3"></i> Create Query Plan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-8 mt-4 mt-lg-0">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Query Plan</h5>
+                            {{ if .MetadataQueryTime }}
+                            <span class="badge bg-info">Metadata query: {{ .MetadataQueryTime }}</span>
+                            {{ end }}
+                        </div>
+                        <div class="card-body">
+                            {{ if .MetadataStats }}
+                            <div class="stats-box mb-3">
+                                <strong>Metadata Stats:</strong>
+                                <pre class="mb-0 mt-2">{{ .MetadataStats }}</pre>
+                            </div>
+                            {{ end }}
+
+                            {{ if .PlanTree }}
+                            <ul class="nav nav-tabs mb-3" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="visual-tab" data-bs-toggle="tab" data-bs-target="#visual-view" type="button" role="tab">
+                                        <i class="bi bi-diagram-3"></i> Visual
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="json-tab" data-bs-toggle="tab" data-bs-target="#json-view" type="button" role="tab">
+                                        <i class="bi bi-code-slash"></i> JSON (editable)
+                                    </button>
+                                </li>
+                            </ul>
+                            <div class="tab-content">
+                                <div class="tab-pane fade show active" id="visual-view" role="tabpanel">
+                                    <div class="plan-tree">
+                                        {{ template "treeNode" .PlanTree }}
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="json-view" role="tabpanel">
+                                    <textarea class="form-control plan-textarea" id="plan_json" name="plan_json" rows="15">{{ .PlanJSON }}</textarea>
+                                    <div class="form-text">You can modify this plan before executing the query</div>
+                                </div>
+                            </div>
+                            {{ else }}
+                            <div class="form-section">
+                                <label for="plan_json" class="form-label">Plan JSON (editable)</label>
+                                <textarea class="form-control plan-textarea" id="plan_json" name="plan_json" rows="15">{{ .PlanJSON }}</textarea>
+                                <div class="form-text">You can modify this plan before executing the query</div>
+                            </div>
+                            {{ end }}
+
+                            <div class="d-grid gap-2 d-md-flex mt-3">
+                                <button type="submit" class="btn btn-success" name="action" value="execute_query" {{ if not .PlanJSON }}disabled{{ end }}>
+                                    <i class="bi bi-play-fill"></i> Execute Query
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{ if .ReportStats }}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Query Results</h5>
+                            {{ if .QueryResponseTime }}
+                            <span class="badge bg-success">Response time: {{ .QueryResponseTime }}</span>
+                            {{ end }}
+                        </div>
+                        <div class="card-body">
+                            <div class="stats-box">
+                                <strong>Report Stats:</strong>
+                                <pre class="mb-0 mt-2">{{ .ReportStats }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+        </form>
+    </div>
+</main>
+<footer class="footer mt-auto py-3">
+    <div class="container">
+        <small class="text-muted">Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}</small>
+    </div>
+</footer>
+</body>
+</html>
+
+{{ define "treeNode" }}
+{{ if . }}
+<div class="tree-node tree-node-{{ .Type | lower }}">
+    <div class="tree-node-header">
+        {{ if eq .Type "MERGE" }}
+        <i class="bi bi-arrows-collapse tree-node-icon"></i>
+        <span class="tree-node-label">MERGE</span>
+        <span class="badge bg-primary tree-node-badge">{{ len .Children }} children</span>
+        <span class="badge bg-secondary tree-node-badge">{{ .TotalBlocks }} blocks total</span>
+        {{ else if eq .Type "READ" }}
+        <i class="bi bi-database tree-node-icon"></i>
+        <span class="tree-node-label">READ</span>
+        <span class="badge bg-success tree-node-badge">{{ .BlockCount }} blocks</span>
+        {{ else }}
+        <i class="bi bi-question-circle tree-node-icon"></i>
+        <span class="tree-node-label">{{ .Type }}</span>
+        {{ end }}
+    </div>
+    {{ if eq .Type "READ" }}
+    {{ if .Blocks }}
+    <div class="tree-node-blocks">
+        {{ range .Blocks }}<div><code>{{ .ID }}</code> <span class="text-muted">(shard {{ .Shard }}, L{{ .CompactionLevel }}, {{ .Size }})</span></div>{{ end }}
+        {{ if gt .BlockCount 5 }}<div><em>... and {{ subtract .BlockCount 5 }} more</em></div>{{ end }}
+    </div>
+    {{ end }}
+    {{ end }}
+    {{ if .Children }}
+    <div class="tree-node-children">
+        {{ range .Children }}
+        {{ template "treeNode" . }}
+        {{ end }}
+    </div>
+    {{ end }}
+</div>
+{{ end }}
+{{ end }}

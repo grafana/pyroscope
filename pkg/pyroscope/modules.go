@@ -105,6 +105,7 @@ const (
 	HealthServer         string = "health-server"
 	RecordingRulesClient string = "recording-rules-client"
 	Symbolizer           string = "symbolizer"
+	QueryFrontendAdmin   string = "query-frontend-admin"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
