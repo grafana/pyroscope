@@ -53,7 +53,7 @@ func (m *Merger) MergeHeatmap(report *queryv1.HeatmapReport) {
 				existing = &atHeatmapSeries{
 					attributeRefs: remappedSeriesRefs,
 				}
-			m.series[key] = existing
+				m.series[key] = existing
 			}
 
 			// Ensure slice is big enough to hold all the points
