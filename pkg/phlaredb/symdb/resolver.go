@@ -250,24 +250,16 @@ func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuil
 	var lock sync.Mutex
 	tree := new(model.LocationRefNameTree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
-		hSymbols, err := NewHashedSymbols(symbols)
-		if err != nil {
-			return err
-		}
-
-		inTree := make(map[int32]struct{}, len(symbols.Locations))
 		lookup := func(locID int32) model.LocationRefName {
-			inTree[locID] = struct{}{}
 			return model.LocationRefName(locID)
 		}
-
 		resolved, err := symbols.LocationRefNameTree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts), lookup)
 		if err != nil {
 			return err
 		}
 
 		symLock.Lock()
-		cb := sym.addSymbols(hSymbols, loc)
+		cb := sym.addSymbols(symbols)
 		resolved.FormatNodeNames(cb)
 		symLock.Unlock()
 		lock.Lock()
@@ -286,8 +278,10 @@ func (r *Resolver) Tree() (*model.FunctionNameTree, error) {
 
 	tree := new(model.FunctionNameTree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
-		names := *(*[]model.FuntionName)(unsafe.Pointer(&symbols.Strings))
-		resolved, err := symbols.Tree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts), names)
+		lookup := func(i int32) model.FuntionName {
+			return model.FuntionName(symbols.Strings[i])
+		}
+		resolved, err := symbols.Tree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts), lookup)
 		if err != nil {
 			return err
 		}

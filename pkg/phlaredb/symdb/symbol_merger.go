@@ -25,8 +25,7 @@ type InMemoryLocation struct {
 }
 
 var (
-	emptyMapping = unique.Make(InMemoryMapping{})
-	emptyString  = unique.Make("")
+	emptyString = unique.Make("")
 )
 
 type InMemoryMapping struct {
@@ -70,8 +69,6 @@ type InlineFunction = unique.Handle[InMemoryFunction]
 type SymbolMerger struct {
 	locationsLookup map[InlineLocation]int
 	locations       []InlineLocation
-
-	mappingsCount, stringsCount, functionsCount int
 }
 
 func NewSymbolMerger() *SymbolMerger {
