@@ -15,6 +15,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
@@ -1439,6 +1440,40 @@ func Test_SampleExporter_Partial(t *testing.T) {
 		Period: 10000000,
 	}
 	requireProfilesEqual(t, expected, n)
+}
+
+func Test_Tree_Pprof_conversion(t *testing.T) {
+	// take a real pprof
+	p, err := OpenFile("testdata/go.cpu.labels.pprof")
+	require.NoError(t, err)
+
+	profileType := typesv1.ProfileType{
+		ID:         "",
+		Name:       "process_cpu",
+		SampleType: "cpu",
+		SampleUnit: "nanoseconds",
+		PeriodType: "cpu",
+		PeriodUnit: "nanoseconds",
+	}
+	maxNodes := int64(1000000)
+	timeNanos := int64(1234)
+
+	// getting tree from pprof - losing data (mappings, lines, inline functions, etc)
+	bytes, err := model.TreeFromBackendProfile(p.Profile, maxNodes)
+	require.NoError(t, err)
+	treeFromPprof, err := model.UnmarshalTree(bytes)
+	require.NoError(t, err)
+	pprofFromTree := FromTree(treeFromPprof, &profileType, timeNanos)
+
+	// repeat the process
+	bytes, err = model.TreeFromBackendProfile(pprofFromTree, maxNodes)
+	require.NoError(t, err)
+	treeFromPprofFromTree, err := model.UnmarshalTree(bytes)
+	require.NoError(t, err)
+	pprofFromTreeFromTree := FromTree(treeFromPprofFromTree, &profileType, timeNanos)
+
+	// FromTree <-> model.TreeFromBackendProfile should be inverse:
+	requireProfilesEqual(t, pprofFromTree, pprofFromTreeFromTree)
 }
 
 func Test_GroupSamplesWithout_Go_CPU_profile(t *testing.T) {
