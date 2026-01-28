@@ -179,6 +179,28 @@ source_code:
           path: src
 `
 
+const javascriptPyroscopeYAML = `---
+source_code:
+  mappings:
+    - path:
+        - prefix: /usr/src/app
+      language: javascript
+      source:
+        local:
+          path: src/paymentservice
+`
+
+const typescriptPyroscopeYAML = `---
+source_code:
+  mappings:
+    - path:
+        - prefix: /usr/src/app
+      language: typescript
+      source:
+        local:
+          path: src/paymentservice
+`
+
 // TestFileFinder_Find tests the complete happy path integration for find.go using table-driven tests
 func TestFileFinder_Find(t *testing.T) {
 	tests := []struct {
@@ -486,6 +508,83 @@ require (
 			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/python-app/recommendation_server.py",
 			expectedError:   false,
 		},
+		// JavaScript tests
+		{
+			name: "javascript/mapped-local-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "./index.js:chargeServiceHandler:47",
+				Path:         "/usr/src/app/index.js",
+			},
+			owner:         "grafana",
+			repo:          "pyroscope",
+			rootPath:      "",
+			ref:           "a35e42d4b114cfada7ef6d53c4a63d6ba44a72d9",
+			pyroscopeYAML: javascriptPyroscopeYAML,
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Owner: "grafana",
+						Repo:  "pyroscope",
+						Ref:   "a35e42d4b114cfada7ef6d53c4a63d6ba44a72d9",
+						Path:  "src/paymentservice/index.js",
+					},
+					content: "// CONTENT index.js\nfunction chargeServiceHandler() {}",
+				},
+			},
+			expectedContent: "// CONTENT index.js\nfunction chargeServiceHandler() {}",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/a35e42d4b114cfada7ef6d53c4a63d6ba44a72d9/src/paymentservice/index.js",
+			expectedError:   false,
+		},
+		// TypeScript tests
+		{
+			name: "typescript/mapped-local-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "./handler.ts:processPayment:123",
+				Path:         "/usr/src/app/handler.ts",
+			},
+			owner:         "grafana",
+			repo:          "pyroscope",
+			rootPath:      "",
+			ref:           "main",
+			pyroscopeYAML: typescriptPyroscopeYAML,
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Owner: "grafana",
+						Repo:  "pyroscope",
+						Ref:   "main",
+						Path:  "src/paymentservice/handler.ts",
+					},
+					content: "// CONTENT handler.ts\nexport function processPayment() {}",
+				},
+			},
+			expectedContent: "// CONTENT handler.ts\nexport function processPayment() {}",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/src/paymentservice/handler.ts",
+			expectedError:   false,
+		},
+		{
+			name: "javascript/relative-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "./server.js:handleRequest:10",
+				Path:         "server.js",
+			},
+			rootPath: "examples/nodejs-app",
+			ref:      "main",
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Owner: "grafana",
+						Repo:  "pyroscope",
+						Ref:   "main",
+						Path:  "examples/nodejs-app/server.js",
+					},
+					content: "// CONTENT server.js",
+				},
+			},
+			expectedContent: "// CONTENT server.js",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/nodejs-app/server.js",
+			expectedError:   false,
+		},
 		{
 			name: "fallback/unknown-file-extension",
 			fileSpec: config.FileSpec{
@@ -656,6 +755,23 @@ source_code:
 				Path:         "/Users/christian/.golang/packages/pkg/mod/github.com/parquet-go/parquet-go@v0.23.0/buffer.go",
 			},
 			ref: "main",
+		},
+		{
+			name: "javascript/no-mappings",
+			fileSpec: config.FileSpec{
+				FunctionName: "./app.js:handler:10",
+				Path:         "/usr/src/app/app.js",
+			},
+			ref: "main",
+		},
+		{
+			name: "javascript/mappings-file-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "./missing.js:handler:10",
+				Path:         "/usr/src/app/missing.js",
+			},
+			ref:           "main",
+			pyroscopeYAML: javascriptPyroscopeYAML,
 		},
 	}
 
