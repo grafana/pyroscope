@@ -304,7 +304,10 @@ func Test_buildTreeFromParentPointerTrees(t *testing.T) {
 			appender := NewSampleAppender()
 			appender.AppendMany(expectedSamples.StacktraceIDs, expectedSamples.Values)
 			ranges := iterator.SplitStacktraceIDRanges(appender)
-			resolved, err := buildTreeFromParentPointerTrees(context.Background(), ranges, symbols, maxNodes, SelectStackTraces(symbols, tc.selector))
+			lookup := func(i int32) phlaremodel.FuntionName {
+				return phlaremodel.FuntionName(symbols.Strings[i])
+			}
+			resolved, err := buildTreeFromParentPointerTrees[phlaremodel.FuntionName, phlaremodel.FuntionNameI](context.Background(), ranges, symbols, maxNodes, SelectStackTraces(symbols, tc.selector), lookup)
 			require.NoError(t, err)
 
 			require.Equal(t, tc.expected, resolved.String())

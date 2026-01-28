@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
+
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 const expectedTreeSymbols = `
@@ -101,10 +102,10 @@ func TestSymbolMerger_TwoDistinctProfiles(t *testing.T) {
 	// Create two different symbol tables
 	symbols1 := &queryv1.TreeSymbols{
 		Strings: []string{
-			"",               // 0
-			"binary1",        // 1
-			"main",           // 2
-			"/src/main.go",   // 3
+			"",             // 0
+			"binary1",      // 1
+			"main",         // 2
+			"/src/main.go", // 3
 		},
 		Mappings: []*googlev1.Mapping{
 			{
@@ -137,10 +138,10 @@ func TestSymbolMerger_TwoDistinctProfiles(t *testing.T) {
 
 	symbols2 := &queryv1.TreeSymbols{
 		Strings: []string{
-			"",                  // 0
-			"binary2",           // 1
-			"handler",           // 2
-			"/src/handler.go",   // 3
+			"",                // 0
+			"binary2",         // 1
+			"handler",         // 2
+			"/src/handler.go", // 3
 		},
 		Mappings: []*googlev1.Mapping{
 			{
@@ -279,10 +280,10 @@ func TestSymbolMerger_SharedSymbols(t *testing.T) {
 	// Create two profiles that share the same binary/mapping but have different locations
 	symbols1 := &queryv1.TreeSymbols{
 		Strings: []string{
-			"",                  // 0
-			"shared_binary",     // 1
-			"funcA",             // 2
-			"/src/shared.go",    // 3
+			"",               // 0
+			"shared_binary",  // 1
+			"funcA",          // 2
+			"/src/shared.go", // 3
 		},
 		Mappings: []*googlev1.Mapping{
 			{
@@ -316,18 +317,18 @@ func TestSymbolMerger_SharedSymbols(t *testing.T) {
 
 	symbols2 := &queryv1.TreeSymbols{
 		Strings: []string{
-			"",                  // 0
-			"shared_binary",     // 1 - SAME as symbols1
-			"funcB",             // 2 - DIFFERENT
-			"/src/shared.go",    // 3 - SAME as symbols1
+			"",               // 0
+			"shared_binary",  // 1 - SAME as symbols1
+			"funcB",          // 2 - DIFFERENT
+			"/src/shared.go", // 3 - SAME as symbols1
 		},
 		Mappings: []*googlev1.Mapping{
 			{
 				Id:          0,
-				MemoryStart: 0x1000,  // SAME as symbols1
-				MemoryLimit: 0x2000,  // SAME as symbols1
+				MemoryStart: 0x1000, // SAME as symbols1
+				MemoryLimit: 0x2000, // SAME as symbols1
 				Filename:    1,
-				BuildId:     1,       // Same build ID
+				BuildId:     1, // Same build ID
 			},
 		},
 		Functions: []*googlev1.Function{
@@ -336,13 +337,13 @@ func TestSymbolMerger_SharedSymbols(t *testing.T) {
 				Name:       2,
 				SystemName: 2,
 				Filename:   3,
-				StartLine:  20,  // Different line
+				StartLine:  20, // Different line
 			},
 		},
 		Locations: []*googlev1.Location{
 			{
 				Id:        0,
-				Address:   0x1200,  // Different address
+				Address:   0x1200, // Different address
 				MappingId: 0,
 				Line: []*googlev1.Line{
 					{FunctionId: 0, Line: 20},
@@ -490,12 +491,8 @@ func createRealisticSymbols(numLocations, numMappings, numFunctions int) *Symbol
 	}
 
 	// Add binaries and file paths to strings
-	for _, s := range binaries {
-		strings = append(strings, s)
-	}
-	for _, s := range filePaths {
-		strings = append(strings, s)
-	}
+	strings = append(strings, binaries...)
+	strings = append(strings, filePaths...)
 
 	// Create function names
 	functionNames := []string{
@@ -514,9 +511,7 @@ func createRealisticSymbols(numLocations, numMappings, numFunctions int) *Symbol
 		functionNames = append(functionNames, fmt.Sprintf("pkg/module.Function%d", len(functionNames)))
 	}
 
-	for _, name := range functionNames {
-		strings = append(strings, name)
-	}
+	strings = append(strings, functionNames...)
 
 	// Create mappings
 	mappings := make([]schemav1.InMemoryMapping, numMappings)
@@ -771,12 +766,12 @@ func BenchmarkSymbolMerger(b *testing.B) {
 
 func BenchmarkSymbolMergerRealistic(b *testing.B) {
 	sizes := []struct {
-		name          string
-		numLocations  int
-		numMappings   int
-		numFunctions  int
-		numToRemap    int
-		numProfiles   int
+		name         string
+		numLocations int
+		numMappings  int
+		numFunctions int
+		numToRemap   int
+		numProfiles  int
 	}{
 		{"Small_100loc", 100, 3, 50, 50, 3},
 		{"Medium_1Kloc", 1000, 5, 200, 500, 3},
