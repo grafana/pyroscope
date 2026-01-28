@@ -1,4 +1,4 @@
-package model
+package timeseries
 
 import (
 	"sort"
@@ -8,12 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
-func TestTimeSeriesBuilder_NoExemplarsForEmptyProfileID(t *testing.T) {
-	builder := NewTimeSeriesBuilder()
-	labels := Labels{
+func TestBuilder_NoExemplarsForEmptyProfileID(t *testing.T) {
+	builder := NewBuilder()
+	labels := phlaremodel.Labels{
 		{Name: "service_name", Value: "api"},
 		{Name: "env", Value: "prod"},
 	}
@@ -30,9 +31,9 @@ func TestTimeSeriesBuilder_NoExemplarsForEmptyProfileID(t *testing.T) {
 	}
 }
 
-func TestTimeSeriesBuilder_Build_NoExemplars(t *testing.T) {
-	builder := NewTimeSeriesBuilder()
-	labels := Labels{
+func TestBuilder_Build_NoExemplars(t *testing.T) {
+	builder := NewBuilder()
+	labels := phlaremodel.Labels{
 		{Name: "service_name", Value: "api"},
 	}
 
@@ -44,9 +45,9 @@ func TestTimeSeriesBuilder_Build_NoExemplars(t *testing.T) {
 	assert.Empty(t, series[0].Points[0].Exemplars, "Build() should not attach exemplars")
 }
 
-func TestTimeSeriesBuilder_BuildWithExemplars_AttachesExemplars(t *testing.T) {
-	builder := NewTimeSeriesBuilder()
-	labels := Labels{
+func TestBuilder_BuildWithExemplars_AttachesExemplars(t *testing.T) {
+	builder := NewBuilder()
+	labels := phlaremodel.Labels{
 		{Name: "service_name", Value: "api"},
 		{Name: "pod", Value: "pod-123"},
 	}
@@ -68,9 +69,9 @@ func TestTimeSeriesBuilder_BuildWithExemplars_AttachesExemplars(t *testing.T) {
 	assert.Equal(t, "pod-123", findLabelValue(exemplar.Labels, "pod"))
 }
 
-func TestTimeSeriesBuilder_MultipleExemplarsAtSameTimestamp(t *testing.T) {
-	builder := NewTimeSeriesBuilder()
-	labels := Labels{
+func TestBuilder_MultipleExemplarsAtSameTimestamp(t *testing.T) {
+	builder := NewBuilder()
+	labels := phlaremodel.Labels{
 		{Name: "service_name", Value: "api"},
 	}
 
@@ -95,13 +96,13 @@ func TestTimeSeriesBuilder_MultipleExemplarsAtSameTimestamp(t *testing.T) {
 	}
 }
 
-func TestTimeSeriesBuilder_GroupBy(t *testing.T) {
-	builder := NewTimeSeriesBuilder("service_name")
-	labels1 := Labels{
+func TestBuilder_GroupBy(t *testing.T) {
+	builder := NewBuilder("service_name")
+	labels1 := phlaremodel.Labels{
 		{Name: "service_name", Value: "api"},
 		{Name: "pod", Value: "pod-1"},
 	}
-	labels2 := Labels{
+	labels2 := phlaremodel.Labels{
 		{Name: "service_name", Value: "api"},
 		{Name: "pod", Value: "pod-2"},
 	}
@@ -131,9 +132,9 @@ func TestTimeSeriesBuilder_GroupBy(t *testing.T) {
 	}
 }
 
-func TestTimeSeriesBuilder_ExemplarDeduplication(t *testing.T) {
-	builder := NewTimeSeriesBuilder()
-	labels := Labels{
+func TestBuilder_ExemplarDeduplication(t *testing.T) {
+	builder := NewBuilder()
+	labels := phlaremodel.Labels{
 		{Name: "service_name", Value: "api"},
 		{Name: "pod", Value: "pod-1"},
 	}
@@ -153,12 +154,12 @@ func TestTimeSeriesBuilder_ExemplarDeduplication(t *testing.T) {
 }
 
 func TestExemplarBuilder_SameProfileIDDifferentValues(t *testing.T) {
-	builder := NewExemplarBuilder()
+	builder := newExemplarBuilder()
 
-	labels1 := Labels{
+	labels1 := phlaremodel.Labels{
 		{Name: "pod", Value: "pod-1"},
 	}
-	labels2 := Labels{
+	labels2 := phlaremodel.Labels{
 		{Name: "pod", Value: "pod-1"},
 		{Name: "span_name", Value: "POST"},
 	}
@@ -181,13 +182,13 @@ func TestExemplarBuilder_SameProfileIDDifferentValues(t *testing.T) {
 }
 
 func TestExemplarBuilder_DifferentProfileIDsNotSummed(t *testing.T) {
-	builder := NewExemplarBuilder()
+	builder := newExemplarBuilder()
 
-	labels1 := Labels{
+	labels1 := phlaremodel.Labels{
 		{Name: "pod", Value: "pod-1"},
 		{Name: "span_name", Value: "POST"},
 	}
-	labels2 := Labels{
+	labels2 := phlaremodel.Labels{
 		{Name: "pod", Value: "pod-2"},
 		{Name: "span_name", Value: "POST"},
 	}
@@ -212,13 +213,13 @@ func TestExemplarBuilder_DifferentProfileIDsNotSummed(t *testing.T) {
 	assert.Equal(t, int64(150000000), exemplars[1].Value)
 }
 
-func TestTimeSeriesBuilder_MultipleSeries(t *testing.T) {
-	builder := NewTimeSeriesBuilder("env")
-	labels1 := Labels{
+func TestBuilder_MultipleSeries(t *testing.T) {
+	builder := NewBuilder("env")
+	labels1 := phlaremodel.Labels{
 		{Name: "service_name", Value: "api"},
 		{Name: "env", Value: "prod"},
 	}
-	labels2 := Labels{
+	labels2 := phlaremodel.Labels{
 		{Name: "service_name", Value: "api"},
 		{Name: "env", Value: "staging"},
 	}

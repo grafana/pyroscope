@@ -11,7 +11,7 @@ import (
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/timeseries"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	validationutil "github.com/grafana/pyroscope/pkg/util/validation"
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -42,7 +42,7 @@ func (f *Frontend) SelectSeries(
 		g.SetLimit(maxConcurrent)
 	}
 
-	m := phlaremodel.NewTimeSeriesMerger(true)
+	m := timeseries.NewMerger(true)
 	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
 	intervals := NewTimeIntervalIterator(time.UnixMilli(c.Msg.Start), time.UnixMilli(c.Msg.End), interval,
 		WithAlignment(time.Second*time.Duration(c.Msg.Step)))

@@ -1,4 +1,4 @@
-package model
+package timeseries
 
 import (
 	"sort"
@@ -7,34 +7,35 @@ import (
 	"github.com/samber/lo"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
-type TimeSeriesBuilder struct {
+type Builder struct {
 	labelBuf []byte
 	by       []string
 
 	series seriesByLabels
 
-	exemplarBuilders map[string]*ExemplarBuilder
+	exemplarBuilders map[string]*exemplarBuilder
 }
 
-func NewTimeSeriesBuilder(by ...string) *TimeSeriesBuilder {
-	var b TimeSeriesBuilder
+func NewBuilder(by ...string) *Builder {
+	var b Builder
 	b.Init(by...)
 	return &b
 }
 
-func (s *TimeSeriesBuilder) Init(by ...string) {
+func (s *Builder) Init(by ...string) {
 	s.series = make(seriesByLabels)
 	s.labelBuf = make([]byte, 0, 1024)
 	s.by = by
-	s.exemplarBuilders = make(map[string]*ExemplarBuilder)
+	s.exemplarBuilders = make(map[string]*exemplarBuilder)
 }
 
 // Add adds a data point with full labels.
 // The series is grouped by the 'by' labels, but exemplars retain full labels.
-func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, value float64, annotations schemav1.Annotations, profileID string) {
+func (s *Builder) Add(fp model.Fingerprint, lbs phlaremodel.Labels, ts int64, value float64, annotations schemav1.Annotations, profileID string) {
 	s.labelBuf = lbs.BytesWithLabels(s.labelBuf, s.by...)
 	seriesKey := string(s.labelBuf)
 
@@ -63,7 +64,7 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 
 	if profileID != "" {
 		if s.exemplarBuilders[seriesKey] == nil {
-			s.exemplarBuilders[seriesKey] = NewExemplarBuilder()
+			s.exemplarBuilders[seriesKey] = newExemplarBuilder()
 		}
 		exemplarLabels := lbs.WithoutLabels(s.by...)
 		s.exemplarBuilders[seriesKey].Add(fp, exemplarLabels, ts, profileID, int64(value))
@@ -71,19 +72,19 @@ func (s *TimeSeriesBuilder) Add(fp model.Fingerprint, lbs Labels, ts int64, valu
 }
 
 // Build returns the time series without exemplars.
-func (s *TimeSeriesBuilder) Build() []*typesv1.Series {
+func (s *Builder) Build() []*typesv1.Series {
 	return s.series.normalize()
 }
 
 // BuildWithExemplars returns the time series with exemplars attached.
-func (s *TimeSeriesBuilder) BuildWithExemplars() []*typesv1.Series {
+func (s *Builder) BuildWithExemplars() []*typesv1.Series {
 	series := s.series.normalize()
 	s.attachExemplars(series)
 	return series
 }
 
 // ExemplarCount returns the number of raw exemplars added (before deduplication).
-func (s *TimeSeriesBuilder) ExemplarCount() int {
+func (s *Builder) ExemplarCount() int {
 	total := 0
 	for _, builder := range s.exemplarBuilders {
 		total += builder.Count()
@@ -91,12 +92,12 @@ func (s *TimeSeriesBuilder) ExemplarCount() int {
 	return total
 }
 
-// attachExemplars attaches exemplars from ExemplarBuilders to the corresponding points.
-func (s *TimeSeriesBuilder) attachExemplars(series []*typesv1.Series) {
+// attachExemplars attaches exemplars from exemplarBuilders to the corresponding points.
+func (s *Builder) attachExemplars(series []*typesv1.Series) {
 	// Create a map from seriesKey to series for fast lookup
 	seriesMap := make(map[string]*typesv1.Series)
 	for _, ser := range series {
-		seriesKey := string(Labels(ser.Labels).BytesWithLabels(nil, s.by...))
+		seriesKey := string(phlaremodel.Labels(ser.Labels).BytesWithLabels(nil, s.by...))
 		seriesMap[seriesKey] = ser
 	}
 
@@ -138,7 +139,7 @@ type seriesByLabels map[string]*typesv1.Series
 func (m seriesByLabels) normalize() []*typesv1.Series {
 	result := lo.Values(m)
 	sort.Slice(result, func(i, j int) bool {
-		return CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
+		return phlaremodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
 	})
 	for _, s := range result {
 		sort.Slice(s.Points, func(i, j int) bool {

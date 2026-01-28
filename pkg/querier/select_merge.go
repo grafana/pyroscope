@@ -19,6 +19,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/timeseries"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/loser"
@@ -459,7 +460,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 }
 
 // selectMergeSeries selects the  profile from each ingester by deduping them and request merges of total values.
-func selectMergeSeries(ctx context.Context, aggregation *typesv1.TimeSeriesAggregationType, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[phlaremodel.TimeSeriesValue], error) {
+func selectMergeSeries(ctx context.Context, aggregation *typesv1.TimeSeriesAggregationType, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[timeseries.Value], error) {
 	mergeResults := make([]MergeResult[[]*typesv1.Series], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	var wg sync.WaitGroup
@@ -502,14 +503,14 @@ func selectMergeSeries(ctx context.Context, aggregation *typesv1.TimeSeriesAggre
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
-	var series = phlaremodel.MergeSeries(aggregation, results...)
+	var series = timeseries.MergeSeries(aggregation, results...)
 
-	seriesIters := make([]iter.Iterator[phlaremodel.TimeSeriesValue], 0, len(series))
+	seriesIters := make([]iter.Iterator[timeseries.Value], 0, len(series))
 	for _, s := range series {
 		s := s
-		seriesIters = append(seriesIters, phlaremodel.NewSeriesIterator(s.Labels, s.Points))
+		seriesIters = append(seriesIters, timeseries.NewSeriesIterator(s.Labels, s.Points))
 	}
-	return phlaremodel.NewMergeIterator(phlaremodel.TimeSeriesValue{Ts: math.MaxInt64}, false, seriesIters...), nil
+	return phlaremodel.NewMergeIterator(timeseries.Value{Ts: math.MaxInt64}, false, seriesIters...), nil
 }
 
 // selectMergeSpanProfile selects the  profile from each ingester by deduping them and

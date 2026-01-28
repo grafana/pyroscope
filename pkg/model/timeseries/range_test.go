@@ -1,24 +1,25 @@
-package model
+package timeseries
 
 import (
 	"testing"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
 func Test_RangeSeriesSum(t *testing.T) {
-	seriesA := NewLabelsBuilder(nil).Set("foo", "bar").Labels()
-	seriesB := NewLabelsBuilder(nil).Set("foo", "buzz").Labels()
+	seriesA := phlaremodel.NewLabelsBuilder(nil).Set("foo", "bar").Labels()
+	seriesB := phlaremodel.NewLabelsBuilder(nil).Set("foo", "buzz").Labels()
 	for _, tc := range []struct {
 		name string
-		in   []TimeSeriesValue
+		in   []Value
 		out  []*typesv1.Series
 	}{
 		{
 			name: "single series",
-			in: []TimeSeriesValue{
+			in: []Value{
 				{Ts: 1, Value: 1},
 				{Ts: 1, Value: 1},
 				{Ts: 2, Value: 2},
@@ -40,7 +41,7 @@ func Test_RangeSeriesSum(t *testing.T) {
 		},
 		{
 			name: "multiple series",
-			in: []TimeSeriesValue{
+			in: []Value{
 				{Ts: 1, Value: 1, Lbs: seriesA, LabelsHash: seriesA.Hash()},
 				{Ts: 1, Value: 1, Lbs: seriesB, LabelsHash: seriesB.Hash()},
 				{Ts: 2, Value: 1, Lbs: seriesA, LabelsHash: seriesA.Hash()},
@@ -83,16 +84,16 @@ func Test_RangeSeriesSum(t *testing.T) {
 }
 
 func Test_RangeSeriesAvg(t *testing.T) {
-	seriesA := NewLabelsBuilder(nil).Set("foo", "bar").Labels()
-	seriesB := NewLabelsBuilder(nil).Set("foo", "buzz").Labels()
+	seriesA := phlaremodel.NewLabelsBuilder(nil).Set("foo", "bar").Labels()
+	seriesB := phlaremodel.NewLabelsBuilder(nil).Set("foo", "buzz").Labels()
 	for _, tc := range []struct {
 		name string
-		in   []TimeSeriesValue
+		in   []Value
 		out  []*typesv1.Series
 	}{
 		{
 			name: "single series",
-			in: []TimeSeriesValue{
+			in: []Value{
 				{Ts: 1, Value: 1},
 				{Ts: 1, Value: 2},
 				{Ts: 2, Value: 2},
@@ -113,7 +114,7 @@ func Test_RangeSeriesAvg(t *testing.T) {
 		},
 		{
 			name: "multiple series",
-			in: []TimeSeriesValue{
+			in: []Value{
 				{Ts: 1, Value: 1, Lbs: seriesA, LabelsHash: seriesA.Hash()},
 				{Ts: 1, Value: 1, Lbs: seriesB, LabelsHash: seriesB.Hash()},
 				{Ts: 2, Value: 1, Lbs: seriesA, LabelsHash: seriesA.Hash()},

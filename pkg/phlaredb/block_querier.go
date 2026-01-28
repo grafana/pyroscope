@@ -36,6 +36,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/timeseries"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	parquetobj "github.com/grafana/pyroscope/pkg/objstore/parquet"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -1185,7 +1186,7 @@ func MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv
 
 	// sends the final result to the client.
 	err = stream.Send(&ingestv1.MergeProfilesLabelsResponse{
-		Series: phlaremodel.MergeSeries(request.Aggregation, result...),
+		Series: timeseries.MergeSeries(request.Aggregation, result...),
 	})
 	if err != nil {
 		if errors.Is(err, io.EOF) {

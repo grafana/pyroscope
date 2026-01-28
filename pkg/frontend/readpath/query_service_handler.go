@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/timeseries"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
@@ -154,7 +155,7 @@ func (r *Router) SelectSeries(
 			}
 		},
 		func(a, b *querierv1.SelectSeriesResponse) (*querierv1.SelectSeriesResponse, error) {
-			m := phlaremodel.NewTimeSeriesMerger(true)
+			m := timeseries.NewMerger(true)
 			m.MergeTimeSeries(a.Series)
 			m.MergeTimeSeries(b.Series)
 			return &querierv1.SelectSeriesResponse{Series: m.Top(limit)}, nil

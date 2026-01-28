@@ -12,6 +12,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/timeseries"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
@@ -184,7 +185,7 @@ func mergeByLabels[T Profile](
 	)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
-	seriesBuilder := phlaremodel.NewTimeSeriesBuilder(by...)
+	seriesBuilder := timeseries.NewBuilder(by...)
 
 	for profiles.Next() {
 		values := profiles.At()
@@ -231,7 +232,7 @@ func mergeByLabelsWithStackTraceSelector[T Profile](
 		columns.Value.ColumnIndex,
 	)
 
-	seriesBuilder := phlaremodel.TimeSeriesBuilder{}
+	seriesBuilder := timeseries.Builder{}
 	seriesBuilder.Init(by...)
 
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
