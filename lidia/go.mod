@@ -2,7 +2,7 @@ module github.com/grafana/pyroscope/lidia
 
 go 1.24.6
 
-toolchain go1.24.9
+toolchain go1.25.6
 
 require github.com/stretchr/testify v1.11.1
 
