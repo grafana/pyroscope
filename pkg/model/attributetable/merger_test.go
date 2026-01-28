@@ -8,160 +8,124 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 )
 
-// Simple test point type
-type testPoint struct {
-	Timestamp int64
-	Value     int64
-}
-
-func TestMerger_RemapAttributeTable(t *testing.T) {
-	merger := NewMerger[testPoint, string]()
+func TestMerger_Merge_SingleTable(t *testing.T) {
+	merger := NewMerger()
 
 	table := &queryv1.AttributeTable{
 		Keys:   []string{"foo", "bar"},
 		Values: []string{"val1", "val2"},
 	}
 
-	refMap := merger.RemapAttributeTable(table)
+	var remappedRefs []int64
+	merger.Merge(table, func(r *Remapper) {
+		// First merge should have no remapping
+		remappedRefs = r.Refs([]int64{0, 1})
+	})
 
-	require.NotNil(t, refMap)
-	require.Len(t, refMap, 2)
-	require.Equal(t, int64(0), refMap[0])
-	require.Equal(t, int64(1), refMap[1])
+	require.Equal(t, []int64{0, 1}, remappedRefs)
 }
 
-func TestMerger_RemapAttributeTable_Multiple(t *testing.T) {
-	merger := NewMerger[testPoint, string]()
+func TestMerger_Merge_MultipleTables(t *testing.T) {
+	merger := NewMerger()
 
 	// First table
 	table1 := &queryv1.AttributeTable{
 		Keys:   []string{"foo"},
 		Values: []string{"val1"},
 	}
-	refMap1 := merger.RemapAttributeTable(table1)
-	require.Equal(t, int64(0), refMap1[0])
+	merger.Merge(table1, func(r *Remapper) {
+		refs := r.Refs([]int64{0})
+		require.Equal(t, []int64{0}, refs)
+	})
 
-	// Second table with same key
+	// Second table with same key-value pair
 	table2 := &queryv1.AttributeTable{
 		Keys:   []string{"foo"},
 		Values: []string{"val1"},
 	}
-	refMap2 := merger.RemapAttributeTable(table2)
-	require.Equal(t, int64(0), refMap2[0]) // Should map to same ref
+	merger.Merge(table2, func(r *Remapper) {
+		// Should map to the same ref
+		refs := r.Refs([]int64{0})
+		require.Equal(t, []int64{0}, refs)
+	})
 
-	// Third table with different key
+	// Third table with different key-value pair
 	table3 := &queryv1.AttributeTable{
 		Keys:   []string{"bar"},
 		Values: []string{"val2"},
 	}
-	refMap3 := merger.RemapAttributeTable(table3)
-	require.Equal(t, int64(1), refMap3[0]) // Should get new ref
+	merger.Merge(table3, func(r *Remapper) {
+		// Should get a new ref
+		refs := r.Refs([]int64{0})
+		require.Equal(t, []int64{1}, refs)
+	})
+
+	// Verify final table has 2 entries
+	result := merger.BuildAttributeTable(nil)
+	require.Len(t, result.Keys, 2)
+	require.Len(t, result.Values, 2)
 }
 
-func TestMerger_RemapRefs(t *testing.T) {
-	merger := NewMerger[testPoint, string]()
+func TestMerger_Merge_ComplexRemapping(t *testing.T) {
+	merger := NewMerger()
 
-	table := &queryv1.AttributeTable{
+	// First table with multiple entries
+	table1 := &queryv1.AttributeTable{
 		Keys:   []string{"foo", "bar", "baz"},
 		Values: []string{"val1", "val2", "val3"},
 	}
-	refMap := merger.RemapAttributeTable(table)
+	merger.Merge(table1, func(r *Remapper) {
+		refs := r.Refs([]int64{0, 1, 2})
+		require.Equal(t, []int64{0, 1, 2}, refs)
+	})
 
-	refs := []int64{0, 2}
-	remapped := merger.RemapRefs(refs, refMap)
-
-	require.Equal(t, []int64{0, 2}, remapped)
-}
-
-func TestMerger_RemapRefs_NilRefMap(t *testing.T) {
-	merger := NewMerger[testPoint, string]()
-
-	refs := []int64{0, 1, 2}
-	remapped := merger.RemapRefs(refs, nil)
-
-	require.Equal(t, refs, remapped)
-}
-
-func TestMerger_GetOrCreateSeries(t *testing.T) {
-	merger := NewMerger[testPoint, string]()
-
-	// Create first series
-	series1 := merger.GetOrCreateSeries("key1", []int64{0, 1})
-	require.NotNil(t, series1)
-	require.Equal(t, []int64{0, 1}, series1.AttributeRefs)
-	require.Empty(t, series1.Points)
-
-	// Get existing series
-	series1Again := merger.GetOrCreateSeries("key1", []int64{0, 1})
-	require.Same(t, series1, series1Again)
-
-	// Create second series
-	series2 := merger.GetOrCreateSeries("key2", []int64{2, 3})
-	require.NotNil(t, series2)
-	require.NotSame(t, series1, series2)
-}
-
-func TestMerger_IsEmpty(t *testing.T) {
-	merger := NewMerger[testPoint, string]()
-
-	require.True(t, merger.IsEmpty())
-
-	merger.GetOrCreateSeries("key1", []int64{0, 1})
-	require.False(t, merger.IsEmpty())
-}
-
-func TestMerger_BuildAttributeTable(t *testing.T) {
-	merger := NewMerger[testPoint, string]()
-
-	table := &queryv1.AttributeTable{
-		Keys:   []string{"foo", "bar"},
-		Values: []string{"val1", "val2"},
+	// Second table with overlapping entries in different order
+	table2 := &queryv1.AttributeTable{
+		Keys:   []string{"baz", "foo", "new"},
+		Values: []string{"val3", "val1", "val4"},
 	}
-	merger.RemapAttributeTable(table)
+	merger.Merge(table2, func(r *Remapper) {
+		// table2[0] = "baz:val3" should map to table1[2]
+		// table2[1] = "foo:val1" should map to table1[0]
+		// table2[2] = "new:val4" should get a new ref (3)
+		refs := r.Refs([]int64{0, 1, 2})
+		require.Equal(t, []int64{2, 0, 3}, refs)
+	})
 
+	// Verify final table has 4 entries
 	result := merger.BuildAttributeTable(nil)
-
-	require.NotNil(t, result)
-	require.Len(t, result.Keys, 2)
-	require.Len(t, result.Values, 2)
+	require.Len(t, result.Keys, 4)
+	require.Len(t, result.Values, 4)
 	require.Equal(t, "foo", result.Keys[0])
 	require.Equal(t, "val1", result.Values[0])
 	require.Equal(t, "bar", result.Keys[1])
 	require.Equal(t, "val2", result.Values[1])
+	require.Equal(t, "baz", result.Keys[2])
+	require.Equal(t, "val3", result.Values[2])
+	require.Equal(t, "new", result.Keys[3])
+	require.Equal(t, "val4", result.Values[3])
 }
 
-func TestMerger_TableAccess(t *testing.T) {
-	merger := NewMerger[testPoint, string]()
+func TestMerger_Merge_EmptyTable(t *testing.T) {
+	merger := NewMerger()
 
-	table := merger.Table()
-	require.NotNil(t, table)
+	table := &queryv1.AttributeTable{
+		Keys:   []string{},
+		Values: []string{},
+	}
+
+	merger.Merge(table, func(r *Remapper) {
+		refs := r.Refs([]int64{})
+		require.Empty(t, refs)
+	})
+
+	result := merger.BuildAttributeTable(nil)
+	require.Empty(t, result.Keys)
+	require.Empty(t, result.Values)
 }
 
-func TestMerger_SeriesAccess(t *testing.T) {
-	merger := NewMerger[testPoint, string]()
-
-	merger.GetOrCreateSeries("key1", []int64{0, 1})
-	merger.GetOrCreateSeries("key2", []int64{2, 3})
-
-	series := merger.Series()
-	require.Len(t, series, 2)
-	require.Contains(t, series, "key1")
-	require.Contains(t, series, "key2")
-}
-
-func TestMerger_ThreadSafety(t *testing.T) {
-	merger := NewMerger[testPoint, string]()
-
-	// Test that Lock/Unlock work
-	merger.Lock()
-	merger.GetOrCreateSeries("key1", []int64{0, 1})
-	merger.Unlock()
-
-	require.False(t, merger.IsEmpty())
-}
-
-func TestMerger_AttributeTableCorruption(t *testing.T) {
-	merger := NewMerger[testPoint, string]()
+func TestMerger_Merge_AttributeTableCorruption(t *testing.T) {
+	merger := NewMerger()
 
 	table := &queryv1.AttributeTable{
 		Keys:   []string{"foo", "bar"},
@@ -169,6 +133,112 @@ func TestMerger_AttributeTableCorruption(t *testing.T) {
 	}
 
 	require.Panics(t, func() {
-		merger.RemapAttributeTable(table)
+		merger.Merge(table, func(r *Remapper) {})
 	})
+}
+
+func TestRemapper_Ref_SingleValue(t *testing.T) {
+	merger := NewMerger()
+
+	table := &queryv1.AttributeTable{
+		Keys:   []string{"foo", "bar", "baz"},
+		Values: []string{"val1", "val2", "val3"},
+	}
+
+	merger.Merge(table, func(r *Remapper) {
+		require.Equal(t, int64(0), r.Ref(0))
+		require.Equal(t, int64(1), r.Ref(1))
+		require.Equal(t, int64(2), r.Ref(2))
+	})
+
+	// Second merge with overlapping data
+	table2 := &queryv1.AttributeTable{
+		Keys:   []string{"bar"},
+		Values: []string{"val2"},
+	}
+	merger.Merge(table2, func(r *Remapper) {
+		// "bar:val2" should map to ref 1 from the first table
+		require.Equal(t, int64(1), r.Ref(0))
+	})
+}
+
+func TestRemapper_Ref_Panic_UnknownRef(t *testing.T) {
+	merger := NewMerger()
+
+	table := &queryv1.AttributeTable{
+		Keys:   []string{"foo"},
+		Values: []string{"val1"},
+	}
+
+	// Second merge - should have a remapper with mapping
+	table2 := &queryv1.AttributeTable{
+		Keys:   []string{"bar"},
+		Values: []string{"val2"},
+	}
+
+	merger.Merge(table, func(r *Remapper) {})
+
+	require.Panics(t, func() {
+		merger.Merge(table2, func(r *Remapper) {
+			// Try to remap a ref that doesn't exist in table2
+			r.Ref(99)
+		})
+	})
+}
+
+func TestMerger_BuildAttributeTable_ReuseSlices(t *testing.T) {
+	merger := NewMerger()
+
+	table := &queryv1.AttributeTable{
+		Keys:   []string{"foo"},
+		Values: []string{"val1"},
+	}
+	merger.Merge(table, func(r *Remapper) {})
+
+	// Build with pre-allocated slices
+	result := &queryv1.AttributeTable{
+		Keys:   make([]string, 0, 10),
+		Values: make([]string, 0, 10),
+	}
+	result = merger.BuildAttributeTable(result)
+
+	// Verify capacity is reused
+	require.Equal(t, 10, cap(result.Keys))
+	require.Equal(t, 10, cap(result.Values))
+	require.Len(t, result.Keys, 1)
+	require.Len(t, result.Values, 1)
+}
+
+func TestMerger_Concurrency(t *testing.T) {
+	merger := NewMerger()
+
+	// Add some initial data
+	table1 := &queryv1.AttributeTable{
+		Keys:   []string{"foo"},
+		Values: []string{"val1"},
+	}
+	merger.Merge(table1, func(r *Remapper) {})
+
+	// The merger should be safe to use from multiple goroutines
+	// as it uses a mutex internally
+	done := make(chan bool)
+	go func() {
+		table2 := &queryv1.AttributeTable{
+			Keys:   []string{"bar"},
+			Values: []string{"val2"},
+		}
+		merger.Merge(table2, func(r *Remapper) {})
+		done <- true
+	}()
+
+	go func() {
+		merger.BuildAttributeTable(nil)
+		done <- true
+	}()
+
+	<-done
+	<-done
+
+	result := merger.BuildAttributeTable(nil)
+	require.Len(t, result.Keys, 2)
 }

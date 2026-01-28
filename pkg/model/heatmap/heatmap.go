@@ -20,8 +20,6 @@ type heatmapSeries struct {
 type labelKey string
 
 type Builder struct {
-	attrTable *attributetable.Table
-
 	labelBuf []byte
 
 	series map[labelKey]*heatmapSeries // by series
@@ -31,9 +29,8 @@ type Builder struct {
 
 func NewBuilder(by []string) *Builder {
 	return &Builder{
-		attrTable: attributetable.New(),
-		series:    make(map[labelKey]*heatmapSeries),
-		by:        by,
+		series: make(map[labelKey]*heatmapSeries),
+		by:     by,
 	}
 }
 

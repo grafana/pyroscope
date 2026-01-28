@@ -21,8 +21,7 @@ type Table struct {
 
 func New() *Table {
 	return &Table{
-		table:   make(map[Key]int64),
-		entries: make([]Key, 0),
+		table: make(map[Key]int64),
 	}
 }
 
