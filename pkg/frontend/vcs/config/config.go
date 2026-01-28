@@ -14,10 +14,12 @@ type Language string
 const (
 	PyroscopeConfigPath = ".pyroscope.yaml"
 
-	LanguageUnknown = Language("")
-	LanguageGo      = Language("go")
-	LanguageJava    = Language("java")
-	LanguagePython  = Language("python")
+	LanguageUnknown    = Language("")
+	LanguageGo         = Language("go")
+	LanguageJava       = Language("java")
+	LanguagePython     = Language("python")
+	LanguageJavaScript = Language("javascript")
+	LanguageTypeScript = Language("typescript")
 )
 
 type Version string
@@ -31,6 +33,8 @@ var validLanguages = []Language{
 	LanguageGo,
 	LanguageJava,
 	LanguagePython,
+	LanguageJavaScript,
+	LanguageTypeScript,
 }
 
 // PyroscopeConfig represents the structure of .pyroscope.yaml configuration file
