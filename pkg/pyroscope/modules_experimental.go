@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend"
+	queryfrontendadmin "github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/admin"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs"
 	"github.com/grafana/pyroscope/pkg/metastore"
 	metastoreadmin "github.com/grafana/pyroscope/pkg/metastore/admin"
@@ -327,6 +328,18 @@ func (f *Pyroscope) initMetastoreAdmin() (services.Service, error) {
 	level.Info(f.logger).Log("msg", "registering metastore admin routes")
 	f.API.RegisterMetastoreAdmin(f.metastoreAdmin)
 	return f.metastoreAdmin.Service(), nil
+}
+
+func (f *Pyroscope) initQueryFrontendAdmin() (services.Service, error) {
+	level.Info(f.logger).Log("msg", "initializing query frontend admin")
+	f.queryFrontendAdmin = queryfrontendadmin.New(
+		f.logger,
+		f.metastoreClient,
+		f.queryBackendClient,
+	)
+	level.Info(f.logger).Log("msg", "registering query frontend admin routes")
+	f.API.RegisterQueryFrontendAdmin(f.queryFrontendAdmin)
+	return f.queryFrontendAdmin.Service(), nil
 }
 
 func (f *Pyroscope) initAdminV2() (services.Service, error) {
