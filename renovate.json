@@ -4,6 +4,8 @@
   "timezone": "UTC",
   "schedule": ["before 4am on monday"],
   "prConcurrentLimit": 10,
+  "prCreation": "not-pending",
+  "internalChecksFilter": "strict",
   "ignoreDeps": [],
   "separateMajorMinor": true,
   "separateMultipleMajor": true,
@@ -13,27 +15,31 @@
       "matchManagers": ["gomod"],
       "matchFileNames": ["go.mod", "api/go.mod", "lidia/go.mod"],
       "groupName": "gomod",
-      "schedule": ["before 4am on monday"]
+      "schedule": ["before 4am on monday"],
+      "minimumReleaseAge": "3 days"
     },
     {
       "description": "Group all npm updates",
       "matchManagers": ["npm"],
       "matchFileNames": ["package.json"],
       "groupName": "npm",
-      "schedule": ["before 4am on monday"]
+      "schedule": ["before 4am on monday"],
+      "minimumReleaseAge": "3 days"
     },
     {
       "description": "Group all Docker updates",
       "matchManagers": ["dockerfile"],
       "matchFileNames": ["cmd/pyroscope/**"],
       "groupName": "docker",
-      "schedule": ["before 4am on the first day of the month"]
+      "schedule": ["before 4am on the first day of the month"],
+      "minimumReleaseAge": "3 days"
     },
     {
       "description": "Group all GitHub Actions updates",
       "matchManagers": ["github-actions"],
       "groupName": "github-actions",
-      "schedule": ["before 4am on monday"]
+      "schedule": ["before 4am on monday"],
+      "minimumReleaseAge": "3 days"
     },
     {
       "description": "Go modules examples - only pyroscope-go package",
@@ -49,7 +55,8 @@
       "allowedVersions": "/.*/",
       "matchPackageNames": ["github.com/grafana/pyroscope-go"],
       "groupName": "examples-gomod",
-      "schedule": ["before 4am on monday"]
+      "schedule": ["before 4am on monday"],
+      "minimumReleaseAge": "3 days"
     },
     {
       "description": "Automatically merge patch updates",
