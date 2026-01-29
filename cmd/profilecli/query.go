@@ -203,7 +203,7 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 		return nil, err
 	}
 
-	return pprof.FromTree(tree, ty, req.End), nil
+	return pprof.FromTree(tree, ty, req.End*1e6), nil
 }
 
 func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag string, force bool, req *querierv1.SelectMergeProfileRequest) error {

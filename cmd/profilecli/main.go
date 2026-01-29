@@ -74,7 +74,7 @@ func main() {
 	queryProfileCmd := queryCmd.Command("profile", "Request merged profile.").Alias("merge")
 	queryProfileOutput := queryProfileCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
 	queryProfileForce := queryProfileCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").Bool()
-	queryProfileTree := queryProfileCmd.Flag("tree", "Reconstruct pprof from the native profile tree.").Default("false").Bool()
+	queryProfileFunctionNamesOnly := queryProfileCmd.Flag("function-names-only", "Faster call, without details about mappings, line number, and inlining").Default("false").Bool()
 	queryProfileParams := addQueryProfileParams(queryProfileCmd)
 	queryGoPGOCmd := queryCmd.Command("go-pgo", "Request profile for Go PGO.")
 	queryGoPGOOutput := queryGoPGOCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("pprof=./default.pgo").String()
@@ -144,7 +144,7 @@ func main() {
 			}
 		}
 	case queryProfileCmd.FullCommand():
-		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput, *queryProfileForce, *queryProfileTree); err != nil {
+		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput, *queryProfileForce, *queryProfileFunctionNamesOnly); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryGoPGOCmd.FullCommand():

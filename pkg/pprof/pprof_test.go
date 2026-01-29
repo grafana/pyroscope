@@ -1472,7 +1472,7 @@ func Test_Tree_Pprof_conversion(t *testing.T) {
 	require.NoError(t, err)
 	pprofFromTreeFromTree := FromTree(treeFromPprofFromTree, &profileType, timeNanos)
 
-	// FromTree <-> model.TreeFromBackendProfile should be inverse:
+	// FromTree <-> model.TreeFromBackendProfile should be immutable:
 	requireProfilesEqual(t, pprofFromTree, pprofFromTreeFromTree)
 }
 
