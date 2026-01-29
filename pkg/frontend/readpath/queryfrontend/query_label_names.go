@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
+	"github.com/prometheus/common/model"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -54,7 +55,7 @@ func (q *QueryFrontend) LabelNames(
 		// Filter out label names not passing legacy validation if utf8 label names not enabled
 		filteredLabelNames := make([]string, 0, len(labelNames))
 		for _, labelName := range labelNames {
-			if _, _, ok := validation.SanitizeLegacyLabelName(labelName); !ok {
+			if !model.LegacyValidation.IsValidLabelName(labelName) {
 				level.Debug(q.logger).Log("msg", "filtering out label", "label_name", labelName)
 				continue
 			}

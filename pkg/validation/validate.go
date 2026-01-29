@@ -3,7 +3,6 @@ package validation
 import (
 	"encoding/hex"
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -68,23 +67,22 @@ const (
 	// Those profiles were dropped because of relabeling rules
 	DroppedByRelabelRules Reason = "dropped_by_relabel_rules"
 
-	SeriesLimitErrorMsg                          = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
-	MissingLabelsErrorMsg                        = "error at least one label pair is required per profile"
-	InvalidLabelsErrorMsg                        = "invalid labels '%s' with error: %s"
-	MaxLabelNamesPerSeriesErrorMsg               = "profile series '%s' has %d label names; limit %d"
-	LabelNameTooLongErrorMsg                     = "profile with labels '%s' has label name too long: '%s'"
-	LabelValueTooLongErrorMsg                    = "profile with labels '%s' has label value too long: '%s'"
-	DuplicateLabelNamesErrorMsg                  = "profile with labels '%s' has duplicate label name: '%s'"
-	DuplicateLabelNamesAfterSanitizationErrorMsg = "profile with labels '%s' has duplicate label name '%s' after label name sanitization from '%s'"
-	QueryTooLongErrorMsg                         = "the query time range exceeds the limit (max_query_length, actual: %s, limit: %s)"
-	ProfileTooBigErrorMsg                        = "the profile with labels '%s' exceeds the size limit (max_profile_size_byte, actual: %d, limit: %d)"
-	ProfileTooManySamplesErrorMsg                = "the profile with labels '%s' exceeds the samples count limit (max_profile_stacktrace_samples, actual: %d, limit: %d)"
-	ProfileTooManySampleLabelsErrorMsg           = "the profile with labels '%s' exceeds the sample labels limit (max_profile_stacktrace_sample_labels, actual: %d, limit: %d)"
-	NotInIngestionWindowErrorMsg                 = "profile with labels '%s' is outside of ingestion window (profile timestamp: %s, %s)"
-	MaxFlameGraphNodesErrorMsg                   = "max flamegraph nodes limit %d is greater than allowed %d"
-	MaxFlameGraphNodesUnlimitedErrorMsg          = "max flamegraph nodes limit must be set (max allowed %d)"
-	QueryMissingTimeRangeErrorMsg                = "missing time range in the query"
-	QueryStartAfterEndErrorMsg                   = "query start time is after end time"
+	SeriesLimitErrorMsg                 = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
+	MissingLabelsErrorMsg               = "error at least one label pair is required per profile"
+	InvalidLabelsErrorMsg               = "invalid labels '%s' with error: %s"
+	MaxLabelNamesPerSeriesErrorMsg      = "profile series '%s' has %d label names; limit %d"
+	LabelNameTooLongErrorMsg            = "profile with labels '%s' has label name too long: '%s'"
+	LabelValueTooLongErrorMsg           = "profile with labels '%s' has label value too long: '%s'"
+	DuplicateLabelNamesErrorMsg         = "profile with labels '%s' has duplicate label name: '%s'"
+	QueryTooLongErrorMsg                = "the query time range exceeds the limit (max_query_length, actual: %s, limit: %s)"
+	ProfileTooBigErrorMsg               = "the profile with labels '%s' exceeds the size limit (max_profile_size_byte, actual: %d, limit: %d)"
+	ProfileTooManySamplesErrorMsg       = "the profile with labels '%s' exceeds the samples count limit (max_profile_stacktrace_samples, actual: %d, limit: %d)"
+	ProfileTooManySampleLabelsErrorMsg  = "the profile with labels '%s' exceeds the sample labels limit (max_profile_stacktrace_sample_labels, actual: %d, limit: %d)"
+	NotInIngestionWindowErrorMsg        = "profile with labels '%s' is outside of ingestion window (profile timestamp: %s, %s)"
+	MaxFlameGraphNodesErrorMsg          = "max flamegraph nodes limit %d is greater than allowed %d"
+	MaxFlameGraphNodesUnlimitedErrorMsg = "max flamegraph nodes limit must be set (max allowed %d)"
+	QueryMissingTimeRangeErrorMsg       = "missing time range in the query"
+	QueryStartAfterEndErrorMsg          = "query start time is after end time"
 )
 
 var (
@@ -106,16 +104,6 @@ var (
 			Help:      "The total number of samples that were discarded.",
 		},
 		[]string{ReasonLabel, "tenant"},
-	)
-
-	// sanitizedLabelNames is a metric of the number of label names that were sanitized.
-	sanitizedLabelNames = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Name:      "sanitized_label_names_total",
-			Help:      "The total number of label names that were sanitized (e.g., dots replaced with underscores).",
-		},
-		[]string{"tenant"},
 	)
 )
 
@@ -158,26 +146,8 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return nil, NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
-		if origName, newName, ok := SanitizeLegacyLabelName(l.Name); ok && origName != newName {
-			var err error
-			// todo update canary exporter to check for utf8 labels, at least service.name once the write path supports utf8
-			ls, idx, err = handleSanitizedLabel(ls, idx, origName, newName)
-			if err != nil {
-				return nil, err
-			}
-			level.Debug(logger).Log(
-				"msg", "label name sanitized",
-				"origName", origName,
-				"serviceName", serviceNameValue)
-
-			sanitizedLabelNames.WithLabelValues(tenantID).Inc()
-			lastLabelName = ""
-			if idx > 0 && idx <= len(ls) {
-				lastLabelName = ls[idx-1].Name
-			}
-			continue
-		} else if !ok {
-			return nil, NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+origName+"'")
+		if !model.UTF8Validation.IsValidLabelName(l.Name) {
+			return nil, NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+l.Name+"'")
 		}
 		if !model.LabelValue(l.Value).IsValid() {
 			return nil, NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label value '"+l.Value+"'")
@@ -190,75 +160,6 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 	}
 
 	return ls, nil
-}
-
-// handleSanitizedLabel handles the case where a label name is sanitized. It ensures that the label name is unique and fails if the value is distinct.
-func handleSanitizedLabel(ls []*typesv1.LabelPair, origIdx int, origName, newName string) ([]*typesv1.LabelPair, int, error) {
-	newLabel := &typesv1.LabelPair{Name: newName, Value: ls[origIdx].Value}
-
-	// Create new slice without the original element
-	newSlice := make([]*typesv1.LabelPair, 0, len(ls))
-	newSlice = append(newSlice, ls[:origIdx]...)
-	newSlice = append(newSlice, ls[origIdx+1:]...)
-
-	insertIdx, found := slices.BinarySearchFunc(newSlice, newLabel,
-		func(a, b *typesv1.LabelPair) int {
-			return strings.Compare(a.Name, b.Name)
-		})
-
-	if found {
-		if newSlice[insertIdx].Value == newLabel.Value {
-			// Same name and value we are done and can just return newSlice
-			return newSlice, origIdx, nil
-		} else {
-			// Same name, different value - error
-			return nil, 0, NewErrorf(DuplicateLabelNames,
-				DuplicateLabelNamesAfterSanitizationErrorMsg,
-				phlaremodel.LabelPairsString(ls), newName, origName)
-		}
-	}
-
-	// Insert the new label at correct position
-	newSlice = slices.Insert(newSlice, insertIdx, newLabel)
-
-	finalIdx := insertIdx
-	if insertIdx >= origIdx {
-		finalIdx = origIdx
-	}
-
-	copy(ls, newSlice)
-	return ls[:len(newSlice)], finalIdx, nil
-}
-
-// SanitizeLegacyLabelName reports whether the label name is a valid legacy label name,
-// and returns the sanitized value. Legacy label names are non utf-8 and contain characters
-// [a-zA-Z0-9_.].
-//
-// The only sanitization the function makes is replacing dots with underscores.
-func SanitizeLegacyLabelName(ln string) (old, sanitized string, ok bool) {
-	if len(ln) == 0 {
-		return ln, ln, false
-	}
-	hasDots := false
-	for i, b := range ln {
-		if (b < 'a' || b > 'z') && (b < 'A' || b > 'Z') && b != '_' && (b < '0' || b > '9' || i == 0) {
-			if b == '.' {
-				hasDots = true
-			} else {
-				return ln, ln, false
-			}
-		}
-	}
-	if !hasDots {
-		return ln, ln, true
-	}
-	r := []rune(ln)
-	for i, b := range r {
-		if b == '.' {
-			r[i] = '_'
-		}
-	}
-	return ln, string(r), true
 }
 
 type ProfileValidationLimits interface {
