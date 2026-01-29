@@ -171,7 +171,7 @@ func TestConvertQueryPlanToTree(t *testing.T) {
 		assert.Equal(t, 2, result.Children[1].TotalBlocks)
 	})
 
-	t.Run("READ node limits displayed blocks to 5", func(t *testing.T) {
+	t.Run("READ node with many blocks", func(t *testing.T) {
 		blocks := make([]*metastorev1.BlockMeta, 10)
 		for i := 0; i < 10; i++ {
 			blocks[i] = &metastorev1.BlockMeta{Id: "block", Shard: uint32(i), Size: 1024}
@@ -187,7 +187,7 @@ func TestConvertQueryPlanToTree(t *testing.T) {
 		result := convertQueryPlanToTree(plan)
 		require.NotNil(t, result)
 		assert.Equal(t, 10, result.BlockCount)
-		assert.Len(t, result.Blocks, 5) // limited to 5 for display
+		assert.Len(t, result.Blocks, 10)
 	})
 }
 
@@ -215,7 +215,7 @@ func TestConvertExecutionNodeToTree(t *testing.T) {
 		assert.Equal(t, "READ", result.Type)
 		assert.Equal(t, "host-1", result.Executor)
 		assert.Equal(t, 500*time.Millisecond, result.Duration)
-		assert.Equal(t, "500ms", result.DurationStr)
+		assert.Equal(t, "500.000ms", result.DurationStr)
 		assert.Equal(t, time.Duration(0), result.RelativeStart)
 		require.NotNil(t, result.Stats)
 		assert.Equal(t, int64(5), result.Stats.BlocksRead)

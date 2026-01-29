@@ -40,7 +40,9 @@ func (a *API) RegisterMetastoreAdmin(adm *metastoreadmin.Admin) {
 
 func (a *API) RegisterQueryFrontendAdmin(adm *queryfrontendadmin.Admin) {
 	a.RegisterRoute("/query-diagnostics", adm.DiagnosticsHandler(), a.registerOptionsRingPage()...)
+	a.RegisterRoute("/query-diagnostics/list", adm.DiagnosticsListHandler(), a.registerOptionsRingPage()...)
 	a.indexPage.AddLinks(defaultWeight, "Query Frontend", []IndexPageLink{
 		{Desc: "Query Diagnostics", Path: "/query-diagnostics"},
+		{Desc: "Stored Diagnostics", Path: "/query-diagnostics/list"},
 	})
 }

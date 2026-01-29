@@ -234,6 +234,7 @@ func (m *Diagnostics) CloneVT() *Diagnostics {
 	}
 	r := new(Diagnostics)
 	r.QueryPlan = m.QueryPlan.CloneVT()
+	r.QueryRequest = m.QueryRequest.CloneVT()
 	r.ExecutionNode = m.ExecutionNode.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -1078,6 +1079,9 @@ func (this *Diagnostics) EqualVT(that *Diagnostics) bool {
 		return false
 	}
 	if !this.QueryPlan.EqualVT(that.QueryPlan) {
+		return false
+	}
+	if !this.QueryRequest.EqualVT(that.QueryRequest) {
 		return false
 	}
 	if !this.ExecutionNode.EqualVT(that.ExecutionNode) {
@@ -2547,6 +2551,16 @@ func (m *Diagnostics) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	}
 	if m.ExecutionNode != nil {
 		size, err := m.ExecutionNode.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.QueryRequest != nil {
+		size, err := m.QueryRequest.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
 			return 0, err
 		}
@@ -4074,6 +4088,10 @@ func (m *Diagnostics) SizeVT() (n int) {
 	_ = l
 	if m.QueryPlan != nil {
 		l = m.QueryPlan.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.QueryRequest != nil {
+		l = m.QueryRequest.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	if m.ExecutionNode != nil {
@@ -5931,6 +5949,42 @@ func (m *Diagnostics) UnmarshalVT(dAtA []byte) error {
 			}
 			iNdEx = postIndex
 		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field QueryRequest", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.QueryRequest == nil {
+				m.QueryRequest = &QueryRequest{}
+			}
+			if err := m.QueryRequest.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ExecutionNode", wireType)
 			}

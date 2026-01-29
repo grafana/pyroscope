@@ -2,13 +2,28 @@ package admin
 
 import (
 	_ "embed"
+	"fmt"
 	"html/template"
 	"strings"
 	"time"
+
+	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 )
 
 //go:embed query_diagnostics.gohtml
 var diagnosticsPageHtml string
+
+//go:embed diagnostics_list.gohtml
+var diagnosticsListPageHtml string
+
+// diagnosticsListPageContent contains data for the diagnostics list page.
+type diagnosticsListPageContent struct {
+	Now            time.Time
+	Tenants        []string
+	SelectedTenant string
+	Diagnostics    []*diagnostics.DiagnosticSummary
+	Error          string
+}
 
 type diagnosticsPageContent struct {
 	Now time.Time
@@ -38,8 +53,8 @@ type diagnosticsPageContent struct {
 	MetadataQueryTime time.Duration
 
 	QueryResponseTime time.Duration
-	ReportStats       string
 	ExecutionTree     *ExecutionTreeNode
+	DiagnosticsID     string // ID for retrieving stored diagnostics
 
 	Error string
 }
@@ -97,7 +112,8 @@ type BlockExecutionInfo struct {
 }
 
 type templates struct {
-	diagnosticsTemplate *template.Template
+	diagnosticsTemplate     *template.Template
+	diagnosticsListTemplate *template.Template
 }
 
 var templateFuncs = template.FuncMap{
@@ -105,6 +121,43 @@ var templateFuncs = template.FuncMap{
 	"subtract": func(a, b int) int {
 		return a - b
 	},
+	"formatTime": func(t time.Time) string {
+		return t.Format("2006-01-02 15:04:05")
+	},
+	"formatMs": func(ms int64) string {
+		if ms < 1000 {
+			return fmt.Sprintf("%dms", ms)
+		}
+		return fmt.Sprintf("%.2fs", float64(ms)/1000)
+	},
+	"formatDuration": func(d time.Duration) string {
+		if d < time.Millisecond {
+			return fmt.Sprintf("%.3fms", float64(d.Nanoseconds())/1e6)
+		}
+		if d < time.Second {
+			return fmt.Sprintf("%.3fms", float64(d.Nanoseconds())/1e6)
+		}
+		return fmt.Sprintf("%.3fs", d.Seconds())
+	},
+	"formatTimeRange": func(startMs, endMs int64) string {
+		start := time.UnixMilli(startMs).UTC()
+		end := time.UnixMilli(endMs).UTC()
+		duration := end.Sub(start)
+		if duration < time.Hour {
+			return fmt.Sprintf("%s (%s)", start.Format("15:04:05"), formatDurationShort(duration))
+		}
+		return fmt.Sprintf("%s to %s", start.Format("Jan 2 15:04"), end.Format("Jan 2 15:04"))
+	},
+}
+
+func formatDurationShort(d time.Duration) string {
+	if d < time.Millisecond {
+		return fmt.Sprintf("%.3fms", float64(d.Nanoseconds())/1e6)
+	}
+	if d < time.Second {
+		return fmt.Sprintf("%.3fms", float64(d.Nanoseconds())/1e6)
+	}
+	return fmt.Sprintf("%.3fs", d.Seconds())
 }
 
 var pageTemplates = initTemplates()
@@ -112,7 +165,12 @@ var pageTemplates = initTemplates()
 func initTemplates() *templates {
 	diagnosticsTemplate := template.New("diagnostics").Funcs(templateFuncs)
 	template.Must(diagnosticsTemplate.Parse(diagnosticsPageHtml))
+
+	diagnosticsListTemplate := template.New("diagnostics-list").Funcs(templateFuncs)
+	template.Must(diagnosticsListTemplate.Parse(diagnosticsListPageHtml))
+
 	return &templates{
-		diagnosticsTemplate: diagnosticsTemplate,
+		diagnosticsTemplate:     diagnosticsTemplate,
+		diagnosticsListTemplate: diagnosticsListTemplate,
 	}
 }

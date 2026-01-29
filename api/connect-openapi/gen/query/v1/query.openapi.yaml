@@ -409,6 +409,9 @@ components:
         queryPlan:
           title: query_plan
           $ref: '#/components/schemas/query.v1.QueryPlan'
+        queryRequest:
+          title: query_request
+          $ref: '#/components/schemas/query.v1.QueryRequest'
         executionNode:
           title: execution_node
           $ref: '#/components/schemas/query.v1.ExecutionNode'

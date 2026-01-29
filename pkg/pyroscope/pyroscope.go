@@ -49,7 +49,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/frontend"
-	queryfrontendadmin "github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/admin"
+	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	"github.com/grafana/pyroscope/pkg/metastore"
 	metastoreadmin "github.com/grafana/pyroscope/pkg/metastore/admin"
@@ -378,7 +378,7 @@ type Pyroscope struct {
 	metastore            *metastore.Metastore
 	metastoreClient      *metastoreclient.Client
 	metastoreAdmin       *metastoreadmin.Admin
-	queryFrontendAdmin   *queryfrontendadmin.Admin
+	queryFrontend        *queryfrontend.QueryFrontend
 	queryBackendClient   *querybackendclient.Client
 	compactionWorker     *compactionworker.Worker
 	healthServer         *health.Server
@@ -500,7 +500,6 @@ func (f *Pyroscope) setupModuleManager() error {
 			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
 			Metastore:           {Overrides, API, MetastoreClient, Storage, PlacementManager},
 			MetastoreAdmin:      {API, MetastoreClient},
-			QueryFrontendAdmin:  {API, MetastoreClient, QueryBackendClient},
 			CompactionWorker:    {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
 			QueryBackend:        {Overrides, API, Storage, QueryBackendClient},
 			SegmentWriterRing:   {Overrides, API, MemberlistKV},
@@ -514,7 +513,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		}
 
 		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend)
-		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient, Symbolizer, QueryFrontendAdmin)
+		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient, Symbolizer)
 		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
 		deps[Server] = append(deps[Server], HealthServer)
 		deps[Admin] = append(deps[Admin], MetastoreAdmin)
@@ -529,7 +528,6 @@ func (f *Pyroscope) setupModuleManager() error {
 		mm.RegisterModule(SegmentWriterClient, f.initSegmentWriterClient, modules.UserInvisibleModule)
 		mm.RegisterModule(MetastoreClient, f.initMetastoreClient, modules.UserInvisibleModule)
 		mm.RegisterModule(MetastoreAdmin, f.initMetastoreAdmin, modules.UserInvisibleModule)
-		mm.RegisterModule(QueryFrontendAdmin, f.initQueryFrontendAdmin, modules.UserInvisibleModule)
 		mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
 		mm.RegisterModule(PlacementAgent, f.initPlacementAgent, modules.UserInvisibleModule)
 		mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)

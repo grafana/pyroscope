@@ -8,10 +8,9 @@ import (
 	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/common/model"
 
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/featureflags"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -102,9 +101,10 @@ func (q *QueryFrontend) Series(
 	if err != nil {
 		return nil, err
 	}
-	if report == nil {
-		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
-	}
 
-	return connect.NewResponse(&querierv1.SeriesResponse{LabelsSet: report.SeriesLabels.SeriesLabels}), nil
+	resp := connect.NewResponse(&querierv1.SeriesResponse{})
+	if report != nil {
+		resp.Msg.LabelsSet = report.SeriesLabels.SeriesLabels
+	}
+	return resp, nil
 }

@@ -129,7 +129,13 @@
         <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
             <div class="col-12 col-sm-9 text-center text-sm-start">
                 <h1>Query Diagnostics</h1>
-                <p class="text-muted">Debug V2 query execution by building and executing query plans</p>
+                <p class="text-muted">
+                    Debug V2 query execution by building and executing query plans
+                    <span class="ms-2">|</span>
+                    <a href="/query-diagnostics/list" class="ms-2">
+                        <i class="bi bi-clock-history"></i> View Stored Diagnostics
+                    </a>
+                </p>
             </div>
             <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
                 <a href="/">
@@ -245,6 +251,9 @@
                                 <button type="submit" class="btn btn-primary" name="action" value="create_plan">
                                     <i class="bi bi-diagram-3"></i> Create Query Plan
                                 </button>
+                                <button type="submit" class="btn btn-success" name="action" value="create_and_execute">
+                                    <i class="bi bi-play-fill"></i> Execute Query
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -308,33 +317,20 @@
                 </div>
             </div>
 
-            {{ if .ReportStats }}
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Query Results</h5>
-                            {{ if .QueryResponseTime }}
-                            <span class="badge bg-success">Response time: {{ .QueryResponseTime }}</span>
-                            {{ end }}
-                        </div>
-                        <div class="card-body">
-                            <div class="stats-box">
-                                <strong>Report Stats:</strong>
-                                <pre class="mb-0 mt-2">{{ .ReportStats }}</pre>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {{ end }}
-
             {{ if .ExecutionTree }}
             <div class="row mt-4">
                 <div class="col-12">
                     <div class="card">
-                        <div class="card-header">
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">Execution Trace</h5>
+                            <div>
+                                {{ if .QueryResponseTime }}
+                                <span class="badge bg-success">Response time: {{ formatDuration .QueryResponseTime }}</span>
+                                {{ end }}
+                                {{ if .DiagnosticsID }}
+                                <span class="badge bg-secondary font-monospace">ID: {{ .DiagnosticsID }}</span>
+                                {{ end }}
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="execution-tree">
