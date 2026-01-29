@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"context"
+	"unsafe"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
@@ -35,11 +36,18 @@ func buildPprof(
 	// profile can exist. Otherwise, build an empty profile.
 	case !selection.HasValidCallSite():
 		return b.buildPprof(), nil
-	// Truncation is applicable when there is an explicit
-	// limit on the number of the nodes in the profile, or
-	// if stack traces should be filtered by the call site.
-	case maxNodes > 0 || len(selection.callSite) > 0:
-		b = &pprofTree{maxNodes: maxNodes, selection: selection}
+	// Stack trace filtering is only possible when the profile
+	// has functions (symbolized); for that, we first build a
+	// function call tree and then trim nodes according to the
+	// max nodes limit.
+	case len(selection.callSite) > 0:
+		b = &pprofFuncTree{maxNodes: maxNodes, selection: selection}
+	// Otherwise, if the max nodes limit is provided, we rely on
+	// the location tree, and ignore symbols altogether. Note that
+	// the result of truncation may be slightly different compared
+	// to the function tree.
+	case maxNodes > 0:
+		b = &pprofLocTree{maxNodes: maxNodes}
 	}
 	b.init(symbols, samples)
 	if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
@@ -260,4 +268,18 @@ func copyStrings(profile *googlev1.Profile, symbols *Symbols, lut []uint32) {
 		f.Filename = int64(lut[f.Filename+o])
 		f.SystemName = int64(lut[f.SystemName+o])
 	}
+}
+
+func uint64sliceString(u []uint64) string {
+	if len(u) == 0 {
+		return ""
+	}
+	return unsafe.String((*byte)(unsafe.Pointer(&u[0])), len(u)*8)
+}
+
+func int32sliceString(u []int32) string {
+	if len(u) == 0 {
+		return ""
+	}
+	return unsafe.String((*byte)(unsafe.Pointer(&u[0])), len(u)*4)
 }
