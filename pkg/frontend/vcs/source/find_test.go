@@ -190,17 +190,6 @@ source_code:
           path: src/paymentservice
 `
 
-const typescriptPyroscopeYAML = `---
-source_code:
-  mappings:
-    - path:
-        - prefix: /usr/src/app
-      language: typescript
-      source:
-        local:
-          path: src/paymentservice
-`
-
 // TestFileFinder_Find tests the complete happy path integration for find.go using table-driven tests
 func TestFileFinder_Find(t *testing.T) {
 	tests := []struct {
@@ -535,7 +524,7 @@ require (
 			expectedURL:     "https://github.com/grafana/pyroscope/blob/a35e42d4b114cfada7ef6d53c4a63d6ba44a72d9/src/paymentservice/index.js",
 			expectedError:   false,
 		},
-		// TypeScript tests
+		// TypeScript tests (uses language: javascript)
 		{
 			name: "typescript/mapped-local-path",
 			fileSpec: config.FileSpec{
@@ -546,7 +535,7 @@ require (
 			repo:          "pyroscope",
 			rootPath:      "",
 			ref:           "main",
-			pyroscopeYAML: typescriptPyroscopeYAML,
+			pyroscopeYAML: javascriptPyroscopeYAML,
 			mockFiles: []mockFileResponse{
 				{
 					request: client.FileRequest{

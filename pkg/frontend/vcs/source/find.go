@@ -75,7 +75,7 @@ func (ff *FileFinder) Find(ctx context.Context) (*vcsv1.GetFileResponse, error) 
 		return ff.findJavaFile(ctx, mapping)
 	case config.LanguagePython:
 		return ff.findPythonFile(ctx, mapping)
-	case config.LanguageJavaScript, config.LanguageTypeScript:
+	case config.LanguageJavaScript:
 		return ff.findJavaScriptFile(ctx, mapping)
 	default:
 		return ff.findFallback(ctx)

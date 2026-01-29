@@ -19,7 +19,6 @@ const (
 	LanguageJava       = Language("java")
 	LanguagePython     = Language("python")
 	LanguageJavaScript = Language("javascript")
-	LanguageTypeScript = Language("typescript")
 )
 
 type Version string
@@ -34,7 +33,6 @@ var validLanguages = []Language{
 	LanguageJava,
 	LanguagePython,
 	LanguageJavaScript,
-	LanguageTypeScript,
 }
 
 // PyroscopeConfig represents the structure of .pyroscope.yaml configuration file
