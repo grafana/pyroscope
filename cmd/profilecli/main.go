@@ -119,6 +119,9 @@ func main() {
 	v2MigrationBucketCleanupCmd := v2MigrationCmd.Command("bucket-cleanup", "Clean up v1 artificats from data bucket.")
 	v2MigrationBucketCleanupParams := addV2MigrationBackupCleanupParam(v2MigrationBucketCleanupCmd)
 
+	kubeProxyCmd := adminCmd.Command("kube-proxy", "Start a reverse proxy unifying all the micro services in a single endpoint.")
+	kubeProxyParams := addKubeProxyParams(kubeProxyCmd)
+
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -212,6 +215,10 @@ func main() {
 		}
 	case v2MigrationBucketCleanupCmd.FullCommand():
 		if err := v2MigrationBucketCleanup(ctx, v2MigrationBucketCleanupParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case kubeProxyCmd.FullCommand():
+		if err := kubeProxyCommand(ctx, kubeProxyParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:
