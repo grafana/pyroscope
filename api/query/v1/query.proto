@@ -31,7 +31,6 @@ message QueryRequest {
 
 message QueryResponse {
   repeated Report reports = 1;
-  Diagnostics diagnostics = 2;
 }
 
 service QueryBackendService {

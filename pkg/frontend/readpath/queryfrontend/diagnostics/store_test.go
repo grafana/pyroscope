@@ -19,15 +19,17 @@ func newTestStore(t *testing.T) *Store {
 	return NewStore(log.NewNopLogger(), bucket)
 }
 
-func TestStore_SaveAndGet(t *testing.T) {
+func TestStore_SaveDirectAndGet(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
-	query := &StoredQuery{
+	request := &queryv1.QueryRequest{
 		StartTime:     1000,
 		EndTime:       2000,
 		LabelSelector: `{service="test"}`,
-		QueryType:     "QUERY_PPROF",
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_PPROF,
+		}},
 	}
 
 	plan := &queryv1.QueryPlan{
@@ -48,7 +50,7 @@ func TestStore_SaveAndGet(t *testing.T) {
 	}
 
 	// Save
-	id, err := store.Save(ctx, "tenant-1", query, plan, execution)
+	id, err := store.SaveDirect(ctx, "tenant-1", 500, request, plan, execution)
 	require.NoError(t, err)
 	assert.Len(t, id, 32) // hex-encoded 16 bytes UUID
 
@@ -57,7 +59,9 @@ func TestStore_SaveAndGet(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, id, stored.ID)
 	assert.Equal(t, "tenant-1", stored.TenantID)
-	assert.Equal(t, query.LabelSelector, stored.Query.LabelSelector)
+	assert.Equal(t, int64(500), stored.ResponseTimeMs)
+	assert.NotNil(t, stored.Request)
+	assert.Equal(t, request.LabelSelector, stored.Request.LabelSelector)
 	assert.NotNil(t, stored.Plan)
 	assert.Equal(t, queryv1.QueryNode_READ, stored.Plan.Root.Type)
 	assert.NotNil(t, stored.Execution)
@@ -99,7 +103,7 @@ func TestStore_Delete(t *testing.T) {
 	store := newTestStore(t)
 
 	// Save first
-	id, err := store.Save(ctx, "tenant-1", nil, nil, nil)
+	id, err := store.SaveDirect(ctx, "tenant-1", 100, nil, nil, nil)
 	require.NoError(t, err)
 
 	// Verify it exists
@@ -158,10 +162,10 @@ func TestStore_Cleanup(t *testing.T) {
 	store.ttl = 1 * time.Millisecond
 
 	// Save some diagnostics
-	id1, err := store.Save(ctx, "tenant-1", nil, nil, nil)
+	id1, err := store.SaveDirect(ctx, "tenant-1", 100, nil, nil, nil)
 	require.NoError(t, err)
 
-	id2, err := store.Save(ctx, "tenant-2", nil, nil, nil)
+	id2, err := store.SaveDirect(ctx, "tenant-2", 200, nil, nil, nil)
 	require.NoError(t, err)
 
 	// Verify both exist
@@ -195,7 +199,7 @@ func TestStore_CleanupPreservesRecent(t *testing.T) {
 
 	// Use default TTL (7 days) - recent items should not be cleaned up
 	// Save some diagnostics
-	id, err := store.Save(ctx, "tenant-1", nil, nil, nil)
+	id, err := store.SaveDirect(ctx, "tenant-1", 100, nil, nil, nil)
 	require.NoError(t, err)
 
 	// Run cleanup immediately
@@ -206,4 +210,43 @@ func TestStore_CleanupPreservesRecent(t *testing.T) {
 	// Verify it still exists
 	_, err = store.Get(ctx, "tenant-1", id)
 	require.NoError(t, err)
+}
+
+func TestStore_AddAndFlush(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+
+	diag := &queryv1.Diagnostics{
+		QueryRequest: &queryv1.QueryRequest{
+			StartTime:     1000,
+			EndTime:       2000,
+			LabelSelector: `{service="test"}`,
+		},
+		QueryPlan: &queryv1.QueryPlan{
+			Root: &queryv1.QueryNode{
+				Type: queryv1.QueryNode_READ,
+			},
+		},
+		ExecutionNode: &queryv1.ExecutionNode{
+			Type:     queryv1.QueryNode_READ,
+			Executor: "test-host",
+		},
+	}
+
+	id := "abcdef0123456789abcdef0123456789"
+	store.Add(id, diag)
+
+	// Flush
+	err := store.Flush(ctx, "tenant-1", id, 500)
+	require.NoError(t, err)
+
+	// Get and verify
+	stored, err := store.Get(ctx, "tenant-1", id)
+	require.NoError(t, err)
+	assert.Equal(t, id, stored.ID)
+	assert.Equal(t, int64(500), stored.ResponseTimeMs)
+	assert.NotNil(t, stored.Request)
+	assert.Equal(t, int64(1000), stored.Request.StartTime)
+	assert.NotNil(t, stored.Plan)
+	assert.NotNil(t, stored.Execution)
 }

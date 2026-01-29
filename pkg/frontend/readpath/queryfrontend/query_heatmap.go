@@ -64,7 +64,7 @@ func (q *QueryFrontend) SelectHeatmap(
 	if err != nil {
 		return nil, err
 	}
-	report, diag, err := q.querySingle(ctx, &queryv1.QueryRequest{
+	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     start,
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,
@@ -100,10 +100,7 @@ func (q *QueryFrontend) SelectHeatmap(
 		series = heatmap.TopSeries(series, int(c.Msg.GetLimit()))
 	}
 
-	resp := connect.NewResponse(&querierv1.SelectHeatmapResponse{
+	return connect.NewResponse(&querierv1.SelectHeatmapResponse{
 		Series: series,
-	})
-	q.saveDiagnostics(ctx, diag, resp.Header())
-
-	return resp, nil
+	}), nil
 }

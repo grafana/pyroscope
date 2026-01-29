@@ -54,12 +54,12 @@ func (q *QueryFrontend) Diff(
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		var leftErr error
-		left, _, leftErr = q.selectMergeStacktracesTree(ctx, connect.NewRequest(c.Msg.Left))
+		left, leftErr = q.selectMergeStacktracesTree(ctx, connect.NewRequest(c.Msg.Left))
 		return leftErr
 	})
 	g.Go(func() error {
 		var rightErr error
-		right, _, rightErr = q.selectMergeStacktracesTree(ctx, connect.NewRequest(c.Msg.Right))
+		right, rightErr = q.selectMergeStacktracesTree(ctx, connect.NewRequest(c.Msg.Right))
 		return rightErr
 	})
 	if err = g.Wait(); err != nil {

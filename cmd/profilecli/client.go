@@ -122,9 +122,7 @@ type commander interface {
 }
 
 const (
-	diagnosticsIDHeader        = "X-Pyroscope-Diagnostics-Id"
-	diagnosticsBlocksHeader    = "X-Pyroscope-Blocks-Read"
-	diagnosticsExecTimeHeader  = "X-Pyroscope-Execution-Time-Ms"
+	diagnosticsIDHeader = "X-Pyroscope-Diagnostics-Id"
 )
 
 func addPhlareClient(cmd commander) *phlareClient {

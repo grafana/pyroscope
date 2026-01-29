@@ -16,7 +16,7 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
-	b, diag, err := q.selectMergeStacktracesTree(ctx, c)
+	b, err := q.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -31,43 +31,40 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 		}
 		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
 	}
-	cResp := connect.NewResponse(&resp)
-	q.saveDiagnostics(ctx, diag, cResp.Header())
-
-	return cResp, nil
+	return connect.NewResponse(&resp), nil
 }
 
 func (q *QueryFrontend) selectMergeStacktracesTree(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
-) (tree []byte, diag *queryv1.Diagnostics, err error) {
+) (tree []byte, err error) {
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
-		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	empty, err := validation.SanitizeTimeRange(q.limits, tenantIDs, &c.Msg.Start, &c.Msg.End)
 	if err != nil {
-		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if empty {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	maxNodes, err := validation.ValidateMaxNodes(q.limits, tenantIDs, c.Msg.GetMaxNodes())
 	if err != nil {
-		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	_, err = phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
 	if err != nil {
-		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	labelSelector, err := buildLabelSelectorWithProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
-		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	report, diag, err := q.querySingle(ctx, &queryv1.QueryRequest{
+	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,
@@ -81,10 +78,10 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 		}},
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if report == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
-	return report.Tree.Tree, diag, nil
+	return report.Tree.Tree, nil
 }

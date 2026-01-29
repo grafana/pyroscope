@@ -42,7 +42,8 @@ type Symbolizer interface {
 
 // DiagnosticsStore is an optional interface for storing query diagnostics.
 type DiagnosticsStore interface {
-	Save(ctx context.Context, tenantID string, query *diagnostics.StoredQuery, plan *queryv1.QueryPlan, execution *queryv1.ExecutionNode) (string, error)
+	// Add stores diagnostics in memory for later flushing. Called by Query() with the collected diagnostics.
+	Add(id string, diag *queryv1.Diagnostics)
 }
 
 type QueryFrontend struct {
@@ -64,6 +65,7 @@ func NewQueryFrontend(
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
 	sym Symbolizer,
+	diagnosticsStore DiagnosticsStore,
 ) *QueryFrontend {
 	return &QueryFrontend{
 		logger:              logger,
@@ -72,6 +74,7 @@ func NewQueryFrontend(
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
 		symbolizer:          sym,
+		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
 	}
 }
@@ -93,8 +96,10 @@ func (q *QueryFrontend) Query(
 	span.SetTag("start_time", req.StartTime)
 	span.SetTag("end_time", req.EndTime)
 	span.SetTag("label_selector", req.LabelSelector)
-	collectDiagnostics := diagnostics.ShouldCollect(ctx)
-	span.SetTag("collect_diagnostics", collectDiagnostics)
+	diagCtx := diagnostics.From(ctx)
+	if diagCtx != nil && diagCtx.Collect {
+		span.SetTag("diagnostics_id", diagCtx.ID)
+	}
 
 	tenants, err := tenant.TenantIDs(ctx)
 	if err != nil {
@@ -140,7 +145,7 @@ func (q *QueryFrontend) Query(
 		LabelSelector: req.LabelSelector,
 		Options: &queryv1.InvokeOptions{
 			SanitizeOnMerge:    q.limits.QuerySanitizeOnMerge(tenants[0]),
-			CollectDiagnostics: collectDiagnostics,
+			CollectDiagnostics: diagCtx != nil && diagCtx.Collect,
 		},
 		QueryPlan: p,
 		Query:     modifiedQueries,
@@ -163,7 +168,11 @@ func (q *QueryFrontend) Query(
 	resp.Diagnostics.QueryPlan = p
 	resp.Diagnostics.QueryRequest = req
 
-	return &queryv1.QueryResponse{Reports: resp.Reports, Diagnostics: resp.Diagnostics}, nil
+	if diagCtx != nil && diagCtx.Collect {
+		q.diagnosticsStore.Add(diagCtx.ID, resp.Diagnostics)
+	}
+
+	return &queryv1.QueryResponse{Reports: resp.Reports}, nil
 }
 
 func (q *QueryFrontend) QueryMetadata(

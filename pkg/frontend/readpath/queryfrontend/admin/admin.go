@@ -82,7 +82,6 @@ func (a *Admin) DiagnosticsListHandler() http.Handler {
 			return
 		}
 
-		// List all tenants
 		tenants, err := a.diagnosticsStore.ListTenants(r.Context())
 		if err != nil {
 			content.Error = fmt.Sprintf("failed to list tenants: %v", err)
@@ -91,7 +90,6 @@ func (a *Admin) DiagnosticsListHandler() http.Handler {
 		}
 		content.Tenants = tenants
 
-		// If a tenant is selected, list their diagnostics
 		selectedTenant := r.URL.Query().Get("tenant")
 		if selectedTenant != "" {
 			content.SelectedTenant = selectedTenant
@@ -122,12 +120,10 @@ func (a *Admin) DiagnosticsHandler() http.Handler {
 			EndTime:   "now",
 		}
 
-		// Fetch tenants for autocomplete
 		if tenants, err := a.fetchTenants(r.Context()); err == nil {
 			content.Tenants = tenants
 		}
 
-		// Check if we should load a stored diagnostic
 		if loadID := r.URL.Query().Get("load"); loadID != "" && a.diagnosticsStore != nil {
 			tenant := r.URL.Query().Get("tenant")
 			if tenant == "" {
@@ -152,7 +148,6 @@ func (a *Admin) DiagnosticsHandler() http.Handler {
 			content.LabelSelector = r.FormValue("label_selector")
 			content.PlanJSON = r.FormValue("plan_json")
 
-			// Query-type specific parameters
 			content.MaxNodes = r.FormValue("max_nodes")
 			content.LabelName = r.FormValue("label_name")
 			content.SeriesLabelNames = r.FormValue("series_label_names")
@@ -210,31 +205,61 @@ func (a *Admin) loadStoredDiagnostic(ctx context.Context, tenant string, id stri
 	content.TenantID = stored.TenantID
 	content.DiagnosticsID = stored.ID
 
-	if stored.Query != nil {
-		content.StartTime = time.UnixMilli(stored.Query.StartTime).UTC().Format(time.RFC3339)
-		content.EndTime = time.UnixMilli(stored.Query.EndTime).UTC().Format(time.RFC3339)
-		content.LabelSelector = stored.Query.LabelSelector
-		content.QueryType = stored.Query.QueryType
+	if stored.ResponseTimeMs > 0 {
+		content.QueryResponseTime = time.Duration(stored.ResponseTimeMs) * time.Millisecond
+	}
 
-		if stored.Query.MaxNodes > 0 {
-			content.MaxNodes = fmt.Sprintf("%d", stored.Query.MaxNodes)
-		}
-		if stored.Query.Step > 0 {
-			content.Step = fmt.Sprintf("%g", stored.Query.Step)
-		}
-		if len(stored.Query.GroupBy) > 0 {
-			content.GroupBy = strings.Join(stored.Query.GroupBy, ", ")
-		}
-		if stored.Query.Limit > 0 {
-			content.Limit = fmt.Sprintf("%d", stored.Query.Limit)
-		}
-		content.LabelName = stored.Query.LabelName
-		if len(stored.Query.SeriesLabelNames) > 0 {
-			content.SeriesLabelNames = strings.Join(stored.Query.SeriesLabelNames, ", ")
-		}
+	if stored.Request != nil {
+		content.StartTime = time.UnixMilli(stored.Request.StartTime).UTC().Format(time.RFC3339)
+		content.EndTime = time.UnixMilli(stored.Request.EndTime).UTC().Format(time.RFC3339)
+		content.LabelSelector = stored.Request.LabelSelector
 
-		if stored.Query.ResponseTimeMs > 0 {
-			content.QueryResponseTime = time.Duration(stored.Query.ResponseTimeMs) * time.Millisecond
+		if len(stored.Request.Query) > 0 {
+			q := stored.Request.Query[0]
+			content.QueryType = q.QueryType.String()
+
+			switch q.QueryType {
+			case queryv1.QueryType_QUERY_TREE:
+				if q.Tree != nil && q.Tree.MaxNodes > 0 {
+					content.MaxNodes = fmt.Sprintf("%d", q.Tree.MaxNodes)
+				}
+			case queryv1.QueryType_QUERY_PPROF:
+				if q.Pprof != nil && q.Pprof.MaxNodes > 0 {
+					content.MaxNodes = fmt.Sprintf("%d", q.Pprof.MaxNodes)
+				}
+			case queryv1.QueryType_QUERY_TIME_SERIES:
+				if q.TimeSeries != nil {
+					if q.TimeSeries.Step > 0 {
+						content.Step = fmt.Sprintf("%g", q.TimeSeries.Step)
+					}
+					if len(q.TimeSeries.GroupBy) > 0 {
+						content.GroupBy = strings.Join(q.TimeSeries.GroupBy, ", ")
+					}
+					if q.TimeSeries.Limit > 0 {
+						content.Limit = fmt.Sprintf("%d", q.TimeSeries.Limit)
+					}
+				}
+			case queryv1.QueryType_QUERY_HEATMAP:
+				if q.Heatmap != nil {
+					if q.Heatmap.Step > 0 {
+						content.Step = fmt.Sprintf("%g", q.Heatmap.Step)
+					}
+					if len(q.Heatmap.GroupBy) > 0 {
+						content.GroupBy = strings.Join(q.Heatmap.GroupBy, ", ")
+					}
+					if q.Heatmap.GetLimit() > 0 {
+						content.Limit = fmt.Sprintf("%d", q.Heatmap.GetLimit())
+					}
+				}
+			case queryv1.QueryType_QUERY_LABEL_VALUES:
+				if q.LabelValues != nil {
+					content.LabelName = q.LabelValues.LabelName
+				}
+			case queryv1.QueryType_QUERY_SERIES_LABELS:
+				if q.SeriesLabels != nil && len(q.SeriesLabels.LabelNames) > 0 {
+					content.SeriesLabelNames = strings.Join(q.SeriesLabels.LabelNames, ", ")
+				}
+			}
 		}
 	}
 
@@ -247,9 +272,9 @@ func (a *Admin) loadStoredDiagnostic(ctx context.Context, tenant string, id stri
 
 		// Rebuild metadata stats from the plan
 		blocks := extractBlocksFromPlan(stored.Plan)
-		if stored.Query != nil {
-			startTime := time.UnixMilli(stored.Query.StartTime)
-			endTime := time.UnixMilli(stored.Query.EndTime)
+		if stored.Request != nil {
+			startTime := time.UnixMilli(stored.Request.StartTime)
+			endTime := time.UnixMilli(stored.Request.EndTime)
 			content.MetadataStats = buildMetadataStats(blocks, startTime, endTime)
 		}
 	}
@@ -440,12 +465,7 @@ func convertQueryNodeToTree(node *queryv1.QueryNode) *PlanTreeNode {
 		treeNode.Type = "READ"
 		treeNode.BlockCount = len(node.Blocks)
 		treeNode.TotalBlocks = len(node.Blocks)
-		// Limit blocks shown for display
-		maxBlocks := 5
-		for i, block := range node.Blocks {
-			if i >= maxBlocks {
-				break
-			}
+		for _, block := range node.Blocks {
 			treeNode.Blocks = append(treeNode.Blocks, PlanTreeBlock{
 				ID:              block.Id,
 				Shard:           block.Shard,
@@ -624,39 +644,27 @@ func (a *Admin) handleExecuteQuery(ctx context.Context, content *diagnosticsPage
 		return
 	}
 
-	if resp.Diagnostics != nil && resp.Diagnostics.ExecutionNode != nil {
-		content.ExecutionTree = convertExecutionNodeToTree(resp.Diagnostics.ExecutionNode)
-
-		// Save diagnostics to store if available
-		if a.diagnosticsStore != nil {
-			storedQuery := &diagnostics.StoredQuery{
-				StartTime:        startTime.UnixMilli(),
-				EndTime:          endTime.UnixMilli(),
-				LabelSelector:    content.LabelSelector,
-				QueryType:        content.QueryType,
-				MaxNodes:         parseIntOrDefault(content.MaxNodes, 0),
-				Step:             parseFloatOrDefault(content.Step, 0),
-				GroupBy:          splitAndTrim(content.GroupBy),
-				Limit:            parseIntOrDefault(content.Limit, 0),
-				LabelName:        content.LabelName,
-				SeriesLabelNames: splitAndTrim(content.SeriesLabelNames),
-				ResponseTimeMs:   content.QueryResponseTime.Milliseconds(),
-			}
-			// Use the local plan (from the form) since the query backend doesn't return it in diagnostics
-			var execution *queryv1.ExecutionNode
-			if resp.Diagnostics != nil {
-				execution = resp.Diagnostics.ExecutionNode
-			}
-			id, err := a.diagnosticsStore.Save(ctx, content.TenantID, storedQuery, &plan, execution)
-			if err != nil {
-				level.Warn(a.logger).Log("msg", "failed to save diagnostics", "err", err)
-			} else {
-				content.DiagnosticsID = id
-			}
-		}
+	// Build QueryRequest from the form data for storage
+	request := &queryv1.QueryRequest{
+		StartTime:     startTime.UnixMilli(),
+		EndTime:       endTime.UnixMilli(),
+		LabelSelector: content.LabelSelector,
+		Query:         []*queryv1.Query{query},
 	}
 
-	content.ReportStats = a.buildReportStats(resp)
+	var execution *queryv1.ExecutionNode
+	if resp.Diagnostics != nil && resp.Diagnostics.ExecutionNode != nil {
+		execution = resp.Diagnostics.ExecutionNode
+		content.ExecutionTree = convertExecutionNodeToTree(execution)
+	}
+
+	id, err := a.diagnosticsStore.SaveDirect(ctx, content.TenantID, content.QueryResponseTime.Milliseconds(), request, &plan, execution)
+	if err != nil {
+		level.Warn(a.logger).Log("msg", "failed to save diagnostics", "err", err)
+	} else {
+		content.DiagnosticsID = id
+	}
+
 }
 
 func (a *Admin) parseQueryType(queryTypeStr string) queryv1.QueryType {
@@ -770,38 +778,6 @@ func convertExecutionNodeToTreeWithBase(node *queryv1.ExecutionNode, queryStartN
 	}
 
 	return tree
-}
-
-func (a *Admin) buildReportStats(resp *queryv1.InvokeResponse) string {
-	if resp == nil || len(resp.Reports) == 0 {
-		return "No reports returned"
-	}
-
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "Reports: %d\n", len(resp.Reports))
-	for i, report := range resp.Reports {
-		fmt.Fprintf(&sb, "\nReport %d:\n", i+1)
-		fmt.Fprintf(&sb, "  Type: %s\n", report.ReportType.String())
-
-		switch {
-		case report.Pprof != nil && report.Pprof.Pprof != nil:
-			fmt.Fprintf(&sb, "  Pprof size: %s\n", humanize.Bytes(uint64(len(report.Pprof.Pprof))))
-		case report.Tree != nil && report.Tree.Tree != nil:
-			fmt.Fprintf(&sb, "  Tree size: %s\n", humanize.Bytes(uint64(len(report.Tree.Tree))))
-		case report.TimeSeries != nil:
-			fmt.Fprintf(&sb, "  Time series count: %d\n", len(report.TimeSeries.TimeSeries))
-		case report.Heatmap != nil:
-			fmt.Fprintf(&sb, "  Heatmap series count: %d\n", len(report.Heatmap.HeatmapSeries))
-		case report.LabelNames != nil:
-			fmt.Fprintf(&sb, "  Label names count: %d\n", len(report.LabelNames.LabelNames))
-		case report.LabelValues != nil:
-			fmt.Fprintf(&sb, "  Label values count: %d\n", len(report.LabelValues.LabelValues))
-		case report.SeriesLabels != nil:
-			fmt.Fprintf(&sb, "  Series count: %d\n", len(report.SeriesLabels.SeriesLabels))
-		}
-	}
-
-	return sb.String()
 }
 
 // Helper functions for parsing form values

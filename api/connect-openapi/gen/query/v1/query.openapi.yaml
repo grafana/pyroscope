@@ -823,9 +823,6 @@ components:
           items:
             $ref: '#/components/schemas/query.v1.Report'
           title: reports
-        diagnostics:
-          title: diagnostics
-          $ref: '#/components/schemas/query.v1.Diagnostics'
       title: QueryResponse
       additionalProperties: false
     query.v1.QueryType:

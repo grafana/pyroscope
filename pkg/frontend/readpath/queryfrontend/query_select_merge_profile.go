@@ -57,7 +57,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	report, diag, err := q.querySingle(ctx, &queryv1.QueryRequest{
+	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,
@@ -81,8 +81,5 @@ func (q *QueryFrontend) SelectMergeProfile(
 		return nil, err
 	}
 
-	resp := connect.NewResponse(&p)
-	q.saveDiagnostics(ctx, diag, resp.Header())
-
-	return resp, nil
+	return connect.NewResponse(&p), nil
 }

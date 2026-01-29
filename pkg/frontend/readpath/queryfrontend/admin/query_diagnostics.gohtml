@@ -317,27 +317,6 @@
                 </div>
             </div>
 
-            {{ if .ReportStats }}
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Query Results</h5>
-                            {{ if .QueryResponseTime }}
-                            <span class="badge bg-success">Response time: {{ formatDuration .QueryResponseTime }}</span>
-                            {{ end }}
-                        </div>
-                        <div class="card-body">
-                            <div class="stats-box">
-                                <strong>Report Stats:</strong>
-                                <pre class="mb-0 mt-2">{{ .ReportStats }}</pre>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {{ end }}
-
             {{ if .ExecutionTree }}
             <div class="row mt-4">
                 <div class="col-12">

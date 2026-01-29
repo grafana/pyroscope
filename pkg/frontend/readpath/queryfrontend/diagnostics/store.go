@@ -10,29 +10,17 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/dskit/services"
 	"github.com/thanos-io/objstore"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 )
 
 const (
-	// RequestHeader is the header clients send to request diagnostics collection.
-	RequestHeader = "X-Pyroscope-Collect-Diagnostics"
-
-	// ResponseIDHeader is the header containing the diagnostics ID in responses.
-	ResponseIDHeader = "X-Pyroscope-Diagnostics-Id"
-
-	// ResponseBlocksReadHeader contains the number of blocks read.
-	ResponseBlocksReadHeader = "X-Pyroscope-Blocks-Read"
-
-	// ResponseExecutionTimeHeader contains the total execution time in milliseconds.
-	ResponseExecutionTimeHeader = "X-Pyroscope-Execution-Time-Ms"
-
 	// storagePrefix is the prefix for diagnostics objects in the bucket.
 	storagePrefix = "query-diagnostics/"
 
@@ -45,51 +33,37 @@ const (
 
 // StoredDiagnostics wraps the query diagnostics with metadata.
 // Data is stored in separate files:
-//   - <uuid>/query.json - metadata and query parameters
+//   - <uuid>/metadata.json - ID, timestamps, tenant, response time
+//   - <uuid>/request.json - query request
 //   - <uuid>/plan.json - query plan
 //   - <uuid>/execution.json - execution trace
 type StoredDiagnostics struct {
-	ID        string                 `json:"id"`
-	CreatedAt time.Time              `json:"created_at"`
-	TenantID  string                 `json:"tenant_id"`
-	Query     *StoredQuery           `json:"query,omitempty"`
-	Plan      *queryv1.QueryPlan     `json:"plan,omitempty"`
-	Execution *queryv1.ExecutionNode `json:"execution,omitempty"`
+	ID             string                 `json:"id"`
+	CreatedAt      time.Time              `json:"created_at"`
+	TenantID       string                 `json:"tenant_id"`
+	ResponseTimeMs int64                  `json:"response_time_ms,omitempty"`
+	Request        *queryv1.QueryRequest  `json:"request,omitempty"`
+	Plan           *queryv1.QueryPlan     `json:"plan,omitempty"`
+	Execution      *queryv1.ExecutionNode `json:"execution,omitempty"`
 }
 
-// storedMetadata is the structure saved in query.json
+// storedMetadata is the structure saved in metadata.json
 type storedMetadata struct {
-	ID        string       `json:"id"`
-	CreatedAt time.Time    `json:"created_at"`
-	TenantID  string       `json:"tenant_id"`
-	Query     *StoredQuery `json:"query,omitempty"`
-}
-
-// StoredQuery contains the query parameters for reference.
-type StoredQuery struct {
-	StartTime     int64  `json:"start_time"`
-	EndTime       int64  `json:"end_time"`
-	LabelSelector string `json:"label_selector,omitempty"`
-	QueryType     string `json:"query_type"`
-
-	// Query-type specific parameters
-	MaxNodes         int64    `json:"max_nodes,omitempty"`
-	Step             float64  `json:"step,omitempty"`
-	GroupBy          []string `json:"group_by,omitempty"`
-	Limit            int64    `json:"limit,omitempty"`
-	LabelName        string   `json:"label_name,omitempty"`
-	SeriesLabelNames []string `json:"series_label_names,omitempty"`
-
-	// Response metadata
-	ResponseTimeMs int64 `json:"response_time_ms,omitempty"`
+	ID             string    `json:"id"`
+	CreatedAt      time.Time `json:"created_at"`
+	TenantID       string    `json:"tenant_id"`
+	ResponseTimeMs int64     `json:"response_time_ms,omitempty"`
 }
 
 // Store manages query diagnostics storage and retrieval.
 type Store struct {
-	service services.Service
-	logger  log.Logger
-	bucket  objstore.Bucket
-	ttl     time.Duration
+	logger log.Logger
+	bucket objstore.Bucket
+	ttl    time.Duration
+
+	// inflightDiagnostics holds diagnostics in memory before flushing to bucket.
+	// Key is the diagnostics ID, value is *queryv1.Diagnostics.
+	inflightDiagnostics sync.Map
 }
 
 // NewStore creates a new diagnostics store.
@@ -99,17 +73,11 @@ func NewStore(logger log.Logger, bucket objstore.Bucket) *Store {
 		bucket: bucket,
 		ttl:    defaultTTL,
 	}
-	s.service = services.NewBasicService(s.starting, s.running, s.stopping)
+	go s.run(context.Background())
 	return s
 }
 
-func (s *Store) Service() services.Service {
-	return s.service
-}
-
-func (s *Store) starting(context.Context) error { return nil }
-
-func (s *Store) running(ctx context.Context) error {
+func (s *Store) run(ctx context.Context) error {
 	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 
@@ -139,24 +107,100 @@ func (s *Store) runCleanup(ctx context.Context) {
 
 func (s *Store) stopping(error) error { return nil }
 
-// Save stores diagnostics and returns the generated ID (UUID only).
-// Data is stored in separate files:
-//   - query-diagnostics/<tenant>/<uuid>/query.json
-//   - query-diagnostics/<tenant>/<uuid>/plan.json
-//   - query-diagnostics/<tenant>/<uuid>/execution.json
-func (s *Store) Save(ctx context.Context, tenantID string, query *StoredQuery, plan *queryv1.QueryPlan, execution *queryv1.ExecutionNode) (string, error) {
-	uuid := generateUUID()
-	basePath := storagePrefix + tenantID + "/" + uuid + "/"
-
-	// Save query metadata
-	metadata := &storedMetadata{
-		ID:        uuid,
-		CreatedAt: time.Now().UTC(),
-		TenantID:  tenantID,
-		Query:     query,
+// Add stores diagnostics in memory for later flushing.
+// Called by Query() when diagnostics collection is enabled.
+func (s *Store) Add(id string, diag *queryv1.Diagnostics) {
+	if id == "" || diag == nil {
+		return
 	}
-	if err := s.saveJSON(ctx, basePath+"query.json", metadata); err != nil {
-		return "", fmt.Errorf("failed to save query metadata: %w", err)
+	s.inflightDiagnostics.Store(id, diag)
+}
+
+// Flush saves the in-memory diagnostics to the bucket and removes from memory.
+// Called by the wrapper after the request completes.
+func (s *Store) Flush(ctx context.Context, tenantID, id string, responseTimeMs int64) error {
+	if id == "" || tenantID == "" {
+		return nil
+	}
+
+	// Get and remove from in-memory store
+	val, ok := s.inflightDiagnostics.LoadAndDelete(id)
+	if !ok {
+		level.Debug(s.logger).Log("msg", "no inflight diagnostics found", "id", id)
+		return nil
+	}
+
+	diag, ok := val.(*queryv1.Diagnostics)
+	if !ok || diag == nil {
+		return nil
+	}
+
+	basePath := storagePrefix + tenantID + "/" + id + "/"
+
+	// Save metadata
+	metadata := &storedMetadata{
+		ID:             id,
+		CreatedAt:      time.Now().UTC(),
+		TenantID:       tenantID,
+		ResponseTimeMs: responseTimeMs,
+	}
+	if err := s.saveJSON(ctx, basePath+"metadata.json", metadata); err != nil {
+		return fmt.Errorf("failed to save metadata: %w", err)
+	}
+
+	// Save request if provided
+	if diag.QueryRequest != nil {
+		if err := s.saveJSON(ctx, basePath+"request.json", diag.QueryRequest); err != nil {
+			return fmt.Errorf("failed to save query request: %w", err)
+		}
+	}
+
+	// Save plan if provided and has content
+	if diag.QueryPlan != nil && diag.QueryPlan.Root != nil {
+		if err := s.saveJSON(ctx, basePath+"plan.json", diag.QueryPlan); err != nil {
+			return fmt.Errorf("failed to save query plan: %w", err)
+		}
+	}
+
+	// Save execution trace if provided
+	if diag.ExecutionNode != nil {
+		if err := s.saveJSON(ctx, basePath+"execution.json", diag.ExecutionNode); err != nil {
+			return fmt.Errorf("failed to save execution trace: %w", err)
+		}
+	}
+
+	level.Debug(s.logger).Log(
+		"msg", "stored query diagnostics",
+		"id", id,
+		"tenant_id", tenantID,
+		"response_time_ms", responseTimeMs,
+	)
+
+	return nil
+}
+
+// SaveDirect saves diagnostics directly to the store without going through the in-memory cache.
+// This is used by the admin UI for re-running queries.
+func (s *Store) SaveDirect(ctx context.Context, tenantID string, responseTimeMs int64, request *queryv1.QueryRequest, plan *queryv1.QueryPlan, execution *queryv1.ExecutionNode) (string, error) {
+	id := generateUUID()
+	basePath := storagePrefix + tenantID + "/" + id + "/"
+
+	// Save metadata
+	metadata := &storedMetadata{
+		ID:             id,
+		CreatedAt:      time.Now().UTC(),
+		TenantID:       tenantID,
+		ResponseTimeMs: responseTimeMs,
+	}
+	if err := s.saveJSON(ctx, basePath+"metadata.json", metadata); err != nil {
+		return "", fmt.Errorf("failed to save metadata: %w", err)
+	}
+
+	// Save request if provided
+	if request != nil {
+		if err := s.saveJSON(ctx, basePath+"request.json", request); err != nil {
+			return "", fmt.Errorf("failed to save query request: %w", err)
+		}
 	}
 
 	// Save plan if provided and has content
@@ -164,8 +208,6 @@ func (s *Store) Save(ctx context.Context, tenantID string, query *StoredQuery, p
 		if err := s.saveJSON(ctx, basePath+"plan.json", plan); err != nil {
 			return "", fmt.Errorf("failed to save query plan: %w", err)
 		}
-	} else {
-		level.Debug(s.logger).Log("msg", "no query plan to save", "plan_nil", plan == nil, "root_nil", plan == nil || plan.Root == nil)
 	}
 
 	// Save execution trace if provided
@@ -176,12 +218,13 @@ func (s *Store) Save(ctx context.Context, tenantID string, query *StoredQuery, p
 	}
 
 	level.Debug(s.logger).Log(
-		"msg", "stored query diagnostics",
-		"id", uuid,
+		"msg", "stored query diagnostics (direct)",
+		"id", id,
 		"tenant_id", tenantID,
+		"response_time_ms", responseTimeMs,
 	)
 
-	return uuid, nil
+	return id, nil
 }
 
 func (s *Store) saveJSON(ctx context.Context, path string, v any) error {
@@ -193,10 +236,6 @@ func (s *Store) saveJSON(ctx context.Context, path string, v any) error {
 }
 
 // Get retrieves diagnostics by tenant and ID.
-// Data is read from separate files:
-//   - <uuid>/query.json - metadata and query parameters
-//   - <uuid>/plan.json - query plan (optional)
-//   - <uuid>/execution.json - execution trace (optional)
 func (s *Store) Get(ctx context.Context, tenantID, id string) (*StoredDiagnostics, error) {
 	if !isValidUUID(id) {
 		return nil, fmt.Errorf("invalid diagnostics ID: %s", id)
@@ -204,9 +243,9 @@ func (s *Store) Get(ctx context.Context, tenantID, id string) (*StoredDiagnostic
 
 	basePath := storagePrefix + tenantID + "/" + id + "/"
 
-	// Read query metadata (required)
+	// Read metadata (required)
 	var metadata storedMetadata
-	if err := s.readJSON(ctx, basePath+"query.json", &metadata); err != nil {
+	if err := s.readJSON(ctx, basePath+"metadata.json", &metadata); err != nil {
 		if s.bucket.IsObjNotFoundErr(err) {
 			return nil, fmt.Errorf("diagnostics not found: %s", id)
 		}
@@ -214,10 +253,18 @@ func (s *Store) Get(ctx context.Context, tenantID, id string) (*StoredDiagnostic
 	}
 
 	stored := &StoredDiagnostics{
-		ID:        metadata.ID,
-		CreatedAt: metadata.CreatedAt,
-		TenantID:  metadata.TenantID,
-		Query:     metadata.Query,
+		ID:             metadata.ID,
+		CreatedAt:      metadata.CreatedAt,
+		TenantID:       metadata.TenantID,
+		ResponseTimeMs: metadata.ResponseTimeMs,
+	}
+
+	// Read request (optional)
+	var request queryv1.QueryRequest
+	if err := s.readJSON(ctx, basePath+"request.json", &request); err == nil {
+		stored.Request = &request
+	} else if !s.bucket.IsObjNotFoundErr(err) {
+		level.Warn(s.logger).Log("msg", "failed to read query request", "id", id, "err", err)
 	}
 
 	// Read query plan (optional)
@@ -255,14 +302,13 @@ func (s *Store) readJSON(ctx context.Context, path string, v any) error {
 }
 
 // Delete removes diagnostics by tenant and ID.
-// Deletes all files in the diagnostic directory.
 func (s *Store) Delete(ctx context.Context, tenantID, id string) error {
 	if !isValidUUID(id) {
 		return fmt.Errorf("invalid diagnostics ID: %s", id)
 	}
 
 	basePath := storagePrefix + tenantID + "/" + id + "/"
-	files := []string{"query.json", "plan.json", "execution.json"}
+	files := []string{"metadata.json", "request.json", "plan.json", "execution.json"}
 
 	for _, file := range files {
 		if err := s.bucket.Delete(ctx, basePath+file); err != nil {
@@ -297,7 +343,6 @@ func (s *Store) ListTenants(ctx context.Context) ([]string, error) {
 	for tenant := range tenants {
 		result = append(result, tenant)
 	}
-	// Sort for consistent ordering
 	sort.Strings(result)
 	return result, nil
 }
@@ -314,18 +359,17 @@ type DiagnosticSummary struct {
 }
 
 // ListByTenant returns all diagnostics for a given tenant.
-// Searches for query.json files in subdirectories: <tenant>/<uuid>/query.json
 func (s *Store) ListByTenant(ctx context.Context, tenant string) ([]*DiagnosticSummary, error) {
 	var summaries []*DiagnosticSummary
 
 	prefix := storagePrefix + tenant + "/"
 	err := s.bucket.Iter(ctx, prefix, func(name string) error {
-		// Only process query.json files (metadata files)
-		if !strings.HasSuffix(name, "/query.json") {
+		// Only process metadata.json files
+		if !strings.HasSuffix(name, "/metadata.json") {
 			return nil
 		}
 
-		// Read and parse the metadata to get summary info
+		// Read metadata
 		var metadata storedMetadata
 		if err := s.readJSON(ctx, name, &metadata); err != nil {
 			level.Warn(s.logger).Log("msg", "failed to read diagnostics metadata", "object", name, "err", err)
@@ -333,15 +377,21 @@ func (s *Store) ListByTenant(ctx context.Context, tenant string) ([]*DiagnosticS
 		}
 
 		summary := &DiagnosticSummary{
-			ID:        metadata.ID,
-			CreatedAt: metadata.CreatedAt,
+			ID:             metadata.ID,
+			CreatedAt:      metadata.CreatedAt,
+			ResponseTimeMs: metadata.ResponseTimeMs,
 		}
-		if metadata.Query != nil {
-			summary.QueryType = metadata.Query.QueryType
-			summary.StartTime = metadata.Query.StartTime
-			summary.EndTime = metadata.Query.EndTime
-			summary.LabelSelector = metadata.Query.LabelSelector
-			summary.ResponseTimeMs = metadata.Query.ResponseTimeMs
+
+		// Try to read request for additional info
+		basePath := strings.TrimSuffix(name, "metadata.json")
+		var request queryv1.QueryRequest
+		if err := s.readJSON(ctx, basePath+"request.json", &request); err == nil {
+			summary.StartTime = request.StartTime
+			summary.EndTime = request.EndTime
+			summary.LabelSelector = request.LabelSelector
+			if len(request.Query) > 0 {
+				summary.QueryType = request.Query[0].QueryType.String()
+			}
 		}
 
 		summaries = append(summaries, summary)
@@ -365,22 +415,18 @@ func (s *Store) Cleanup(ctx context.Context) (int, error) {
 	cutoff := time.Now().Add(-s.ttl)
 	deleted := 0
 
-	// Use recursive iteration to find all .json files under tenant subdirectories
 	err := s.bucket.Iter(ctx, storagePrefix, func(name string) error {
-		// Skip directories (they end with /)
 		if strings.HasSuffix(name, "/") {
 			return nil
 		}
-		// Only process .json files
 		if !strings.HasSuffix(name, ".json") {
 			return nil
 		}
 
-		// Get object attributes to check age
 		attrs, err := s.bucket.Attributes(ctx, name)
 		if err != nil {
 			level.Warn(s.logger).Log("msg", "failed to get attributes", "object", name, "err", err)
-			return nil // Continue iteration
+			return nil
 		}
 
 		if attrs.LastModified.Before(cutoff) {
@@ -395,10 +441,6 @@ func (s *Store) Cleanup(ctx context.Context) (int, error) {
 
 	if err != nil {
 		return deleted, fmt.Errorf("cleanup iteration failed: %w", err)
-	}
-
-	if deleted > 0 {
-		level.Info(s.logger).Log("msg", "cleaned up old diagnostics", "deleted", deleted)
 	}
 
 	return deleted, nil

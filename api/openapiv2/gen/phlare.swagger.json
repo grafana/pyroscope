@@ -2215,9 +2215,6 @@
             "type": "object",
             "$ref": "#/definitions/v1Report"
           }
-        },
-        "diagnostics": {
-          "$ref": "#/definitions/v1Diagnostics"
         }
       }
     },

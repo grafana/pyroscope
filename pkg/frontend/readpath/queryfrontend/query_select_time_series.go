@@ -46,7 +46,7 @@ func (q *QueryFrontend) SelectSeries(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	report, diag, err := q.querySingle(ctx, &queryv1.QueryRequest{
+	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     start,
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,
@@ -67,8 +67,5 @@ func (q *QueryFrontend) SelectSeries(
 		return connect.NewResponse(&querierv1.SelectSeriesResponse{}), nil
 	}
 	series := phlaremodel.TopSeries(report.TimeSeries.TimeSeries, int(c.Msg.GetLimit()))
-	resp := connect.NewResponse(&querierv1.SelectSeriesResponse{Series: series})
-	q.saveDiagnostics(ctx, diag, resp.Header())
-
-	return resp, nil
+	return connect.NewResponse(&querierv1.SelectSeriesResponse{Series: series}), nil
 }

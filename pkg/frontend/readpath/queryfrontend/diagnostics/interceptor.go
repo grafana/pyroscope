@@ -15,31 +15,36 @@ const (
 // Context key for diagnostics context.
 type contextKey struct{}
 
-// diagnosticsContext holds diagnostics collection state injected into the context.
-type diagnosticsContext struct {
-	collect   bool
+// Context holds diagnostics collection state injected into the context.
+type Context struct {
+	Collect   bool
 	startTime time.Time
+	ID        string
 }
 
 // InjectCollectDiagnostics injects the diagnostics collection flag and start time into the context.
 func InjectCollectDiagnostics(ctx context.Context, collect bool) context.Context {
-	return context.WithValue(ctx, contextKey{}, &diagnosticsContext{
-		collect:   collect,
+	id := ""
+	if collect {
+		id = generateUUID()
+	}
+	return context.WithValue(ctx, contextKey{}, &Context{
+		Collect:   collect,
 		startTime: time.Now(),
+		ID:        id,
 	})
 }
 
-// ShouldCollect extracts the diagnostics collection flag from context.
-func ShouldCollect(ctx context.Context) bool {
-	if v, ok := ctx.Value(contextKey{}).(*diagnosticsContext); ok {
-		return v.collect
+func From(ctx context.Context) *Context {
+	if v, ok := ctx.Value(contextKey{}).(*Context); ok {
+		return v
 	}
-	return false
+	return nil
 }
 
 // QueryStartTime extracts the diagnostics start time from context.
 func QueryStartTime(ctx context.Context) time.Time {
-	if v, ok := ctx.Value(contextKey{}).(*diagnosticsContext); ok {
+	if v, ok := ctx.Value(contextKey{}).(*Context); ok {
 		return v.startTime
 	}
 	return time.Time{}

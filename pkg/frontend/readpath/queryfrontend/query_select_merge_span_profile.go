@@ -43,7 +43,7 @@ func (q *QueryFrontend) SelectMergeSpanProfile(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	report, diag, err := q.querySingle(ctx, &queryv1.QueryRequest{
+	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,
@@ -73,8 +73,5 @@ func (q *QueryFrontend) SelectMergeSpanProfile(
 		}
 		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
 	}
-	cResp := connect.NewResponse(&resp)
-	q.saveDiagnostics(ctx, diag, cResp.Header())
-
-	return cResp, nil
+	return connect.NewResponse(&resp), nil
 }

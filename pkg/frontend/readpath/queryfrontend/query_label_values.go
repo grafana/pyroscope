@@ -36,7 +36,7 @@ func (q *QueryFrontend) LabelValues(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	report, diag, err := q.querySingle(ctx, &queryv1.QueryRequest{
+	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,
@@ -52,7 +52,5 @@ func (q *QueryFrontend) LabelValues(
 		return connect.NewResponse(&typesv1.LabelValuesResponse{}), nil
 	}
 
-	resp := connect.NewResponse(&typesv1.LabelValuesResponse{Names: report.LabelValues.LabelValues})
-	q.saveDiagnostics(ctx, diag, resp.Header())
-	return resp, nil
+	return connect.NewResponse(&typesv1.LabelValuesResponse{Names: report.LabelValues.LabelValues}), nil
 }

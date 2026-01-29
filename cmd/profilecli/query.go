@@ -159,15 +159,11 @@ func logDiagnosticsHeaders(client *phlareClient, headers http.Header) {
 	}
 
 	diagID := headers.Get(diagnosticsIDHeader)
-	blocksRead := headers.Get(diagnosticsBlocksHeader)
-	execTimeMs := headers.Get(diagnosticsExecTimeHeader)
 
-	if diagID != "" || blocksRead != "" || execTimeMs != "" {
+	if diagID != "" {
 		level.Info(logger).Log(
 			"msg", "query diagnostics",
 			"diagnostics_id", diagID,
-			"blocks_read", blocksRead,
-			"execution_time_ms", execTimeMs,
 		)
 	}
 }
@@ -264,7 +260,6 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 		if err != nil {
 			return errors.Wrap(err, "failed to query")
 		}
-		logDiagnosticsHeaders(params.phlareClient, resp.Header())
 		result = resp.Msg.LabelsSet
 	case "store-gateway":
 		sc := params.phlareClient.storeGatewayClient()
@@ -277,7 +272,6 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 		if err != nil {
 			return errors.Wrap(err, "failed to query")
 		}
-		logDiagnosticsHeaders(params.phlareClient, resp.Header())
 		result = resp.Msg.LabelsSet
 	default:
 		return errors.Errorf("unknown api type %s", params.APIType)

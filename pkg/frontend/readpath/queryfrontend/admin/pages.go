@@ -53,7 +53,6 @@ type diagnosticsPageContent struct {
 	MetadataQueryTime time.Duration
 
 	QueryResponseTime time.Duration
-	ReportStats       string
 	ExecutionTree     *ExecutionTreeNode
 	DiagnosticsID     string // ID for retrieving stored diagnostics
 
