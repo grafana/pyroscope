@@ -1,9 +1,10 @@
-package model
+package timeseries
 
 import (
 	"testing"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
@@ -22,31 +23,31 @@ func Test_SeriesMerger(t *testing.T) {
 			name: "merge two series",
 			in: [][]*typesv1.Series{
 				{
-					{Labels: LabelsFromStrings("foor", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foor", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
 				},
 				{
-					{Labels: LabelsFromStrings("foor", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 2}}},
+					{Labels: phlaremodel.LabelsFromStrings("foor", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 2}}},
 				},
 			},
 			out: []*typesv1.Series{
-				{Labels: LabelsFromStrings("foor", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},
+				{Labels: phlaremodel.LabelsFromStrings("foor", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},
 			},
 		},
 		{
 			name: "merge multiple series",
 			in: [][]*typesv1.Series{
 				{
-					{Labels: LabelsFromStrings("foor", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
-					{Labels: LabelsFromStrings("foor", "buzz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foor", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foor", "buzz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}}},
 				},
 				{
-					{Labels: LabelsFromStrings("foor", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 2}}},
-					{Labels: LabelsFromStrings("foor", "buzz"), Points: []*typesv1.Point{{Timestamp: 3, Value: 3}}},
+					{Labels: phlaremodel.LabelsFromStrings("foor", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 2}}},
+					{Labels: phlaremodel.LabelsFromStrings("foor", "buzz"), Points: []*typesv1.Point{{Timestamp: 3, Value: 3}}},
 				},
 			},
 			out: []*typesv1.Series{
-				{Labels: LabelsFromStrings("foor", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},
-				{Labels: LabelsFromStrings("foor", "buzz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 3, Value: 3}}},
+				{Labels: phlaremodel.LabelsFromStrings("foor", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},
+				{Labels: phlaremodel.LabelsFromStrings("foor", "buzz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 3, Value: 3}}},
 			},
 		},
 	} {
@@ -67,7 +68,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 			in: [][]*typesv1.Series{
 				{
 					{
-						Labels: LabelsFromStrings("foo", "bar"),
+						Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp: 1,
@@ -81,7 +82,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 				},
 				{
 					{
-						Labels: LabelsFromStrings("foo", "bar"),
+						Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp: 1,
@@ -96,7 +97,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 			},
 			out: []*typesv1.Series{
 				{
-					Labels: LabelsFromStrings("foo", "bar"),
+					Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 					Points: []*typesv1.Point{
 						{
 							Timestamp: 1,
@@ -115,7 +116,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 			in: [][]*typesv1.Series{
 				{
 					{
-						Labels: LabelsFromStrings("foo", "bar"),
+						Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp: 1,
@@ -130,7 +131,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 				},
 				{
 					{
-						Labels: LabelsFromStrings("foo", "bar"),
+						Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp: 1,
@@ -146,7 +147,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 			},
 			out: []*typesv1.Series{
 				{
-					Labels: LabelsFromStrings("foo", "bar"),
+					Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 					Points: []*typesv1.Point{
 						{
 							Timestamp: 1,
@@ -166,7 +167,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 			in: [][]*typesv1.Series{
 				{
 					{
-						Labels: LabelsFromStrings("foo", "bar"),
+						Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp: 1,
@@ -181,7 +182,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 				},
 				{
 					{
-						Labels: LabelsFromStrings("foo", "bar"),
+						Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp: 1,
@@ -197,7 +198,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 			},
 			out: []*typesv1.Series{
 				{
-					Labels: LabelsFromStrings("foo", "bar"),
+					Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 					Points: []*typesv1.Point{
 						{
 							Timestamp: 1,
@@ -216,7 +217,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 			in: [][]*typesv1.Series{
 				{
 					{
-						Labels: LabelsFromStrings("foo", "bar"),
+						Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp: 1,
@@ -231,7 +232,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 				},
 				{
 					{
-						Labels: LabelsFromStrings("foo", "bar"),
+						Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp: 1,
@@ -246,7 +247,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 			},
 			out: []*typesv1.Series{
 				{
-					Labels: LabelsFromStrings("foo", "bar"),
+					Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 					Points: []*typesv1.Point{
 						{
 							Timestamp: 1,
@@ -266,7 +267,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 			in: [][]*typesv1.Series{
 				{
 					{
-						Labels: LabelsFromStrings("foo", "bar"),
+						Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp:   1,
@@ -278,7 +279,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 				},
 				{
 					{
-						Labels: LabelsFromStrings("foo", "bar"),
+						Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp: 1,
@@ -293,7 +294,7 @@ func Test_SeriesMerger_Annotations(t *testing.T) {
 			},
 			out: []*typesv1.Series{
 				{
-					Labels: LabelsFromStrings("foo", "bar"),
+					Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 					Points: []*typesv1.Point{
 						{
 							Timestamp: 1,
@@ -323,17 +324,17 @@ func Test_SeriesMerger_Overlap_Sum(t *testing.T) {
 			name: "merge deduplicate overlapping series",
 			in: [][]*typesv1.Series{
 				{
-					{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
 				},
 				{
-					{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
 				},
 			},
 			out: []*typesv1.Series{
-				{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 1}}},
-				{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 1}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 1}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 1}}},
 			},
 		},
 	} {
@@ -354,95 +355,95 @@ func Test_SeriesMerger_Top(t *testing.T) {
 			name: "top == len",
 			in: [][]*typesv1.Series{
 				{
-					{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
 				},
 				{
-					{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
 				},
 			},
 			top: 2,
 			out: []*typesv1.Series{
-				{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 2}}},
-				{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 1}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 2}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 1}}},
 			},
 		},
 		{
 			name: "top < len",
 			in: [][]*typesv1.Series{
 				{
-					{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
 				},
 				{
-					{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
 				},
 			},
 			top: 1,
 			out: []*typesv1.Series{
-				{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 2}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 2}}},
 			},
 		},
 		{
 			name: "top > len",
 			in: [][]*typesv1.Series{
 				{
-					{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
 				},
 				{
-					{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
 				},
 			},
 			top: 3,
 			out: []*typesv1.Series{
-				{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 2}}},
-				{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 1}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 2}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}, {Timestamp: 3, Value: 1}}},
 			},
 		},
 		{
 			name: "order",
 			in: [][]*typesv1.Series{
 				{
-					{Labels: LabelsFromStrings("foo", "d"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "e"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "c"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "a"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
-					{Labels: LabelsFromStrings("foo", "b"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 3}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "d"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "e"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "c"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "a"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "b"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 3}}},
 				},
 			},
 			top: 4,
 			out: []*typesv1.Series{
-				{Labels: LabelsFromStrings("foo", "b"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 3}}},
-				{Labels: LabelsFromStrings("foo", "a"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
-				{Labels: LabelsFromStrings("foo", "c"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
-				{Labels: LabelsFromStrings("foo", "d"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "b"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 3}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "a"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "c"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "d"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
 			},
 		},
 		{
 			name: "k == 0",
 			in: [][]*typesv1.Series{
 				{
-					{Labels: LabelsFromStrings("foo", "d"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "c"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "a"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
-					{Labels: LabelsFromStrings("foo", "b"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 3}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "d"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "c"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "a"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
+					{Labels: phlaremodel.LabelsFromStrings("foo", "b"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 3}}},
 				},
 			},
 			top: 0,
 			out: []*typesv1.Series{
-				{Labels: LabelsFromStrings("foo", "b"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 3}}},
-				{Labels: LabelsFromStrings("foo", "a"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
-				{Labels: LabelsFromStrings("foo", "c"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
-				{Labels: LabelsFromStrings("foo", "d"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "b"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 3}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "a"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 2}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "c"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
+				{Labels: phlaremodel.LabelsFromStrings("foo", "d"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1}}},
 			},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m := NewTimeSeriesMerger(true)
+			m := NewMerger(true)
 			for _, s := range tc.in {
 				m.MergeTimeSeries(s)
 			}
@@ -462,7 +463,7 @@ func Test_SeriesMerger_WithExemplars(t *testing.T) {
 			in: [][]*typesv1.Series{
 				{
 					{
-						Labels: LabelsFromStrings("foo", "bar"),
+						Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp: 1,
@@ -476,7 +477,7 @@ func Test_SeriesMerger_WithExemplars(t *testing.T) {
 				},
 				{
 					{
-						Labels: LabelsFromStrings("foo", "bar"),
+						Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp: 1,
@@ -492,7 +493,7 @@ func Test_SeriesMerger_WithExemplars(t *testing.T) {
 			},
 			out: []*typesv1.Series{
 				{
-					Labels: LabelsFromStrings("foo", "bar"),
+					Labels: phlaremodel.LabelsFromStrings("foo", "bar"),
 					Points: []*typesv1.Point{
 						{
 							Timestamp: 1,
@@ -511,7 +512,7 @@ func Test_SeriesMerger_WithExemplars(t *testing.T) {
 			in: [][]*typesv1.Series{
 				{
 					{
-						Labels: LabelsFromStrings("service_name", "api"),
+						Labels: phlaremodel.LabelsFromStrings("service_name", "api"),
 						Points: []*typesv1.Point{
 							{
 								Timestamp: 1000,
@@ -531,7 +532,7 @@ func Test_SeriesMerger_WithExemplars(t *testing.T) {
 			},
 			out: []*typesv1.Series{
 				{
-					Labels: LabelsFromStrings("service_name", "api"),
+					Labels: phlaremodel.LabelsFromStrings("service_name", "api"),
 					Points: []*typesv1.Point{
 						{
 							Timestamp: 1000,

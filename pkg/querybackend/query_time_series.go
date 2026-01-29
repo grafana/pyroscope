@@ -14,7 +14,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/block"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/timeseries"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
@@ -84,7 +84,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 	)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
-	builder := phlaremodel.NewTimeSeriesBuilder(query.TimeSeries.GroupBy...)
+	builder := timeseries.NewBuilder(query.TimeSeries.GroupBy...)
 	for rows.Next() {
 		row := rows.At()
 		annotations := schemav1.Annotations{
@@ -136,7 +136,7 @@ type timeSeriesAggregator struct {
 	startTime int64
 	endTime   int64
 	query     *queryv1.TimeSeriesQuery
-	series    *phlaremodel.TimeSeriesMerger
+	series    *timeseries.Merger
 }
 
 func newTimeSeriesAggregator(req *queryv1.InvokeRequest) aggregator {
@@ -149,7 +149,7 @@ func newTimeSeriesAggregator(req *queryv1.InvokeRequest) aggregator {
 func (a *timeSeriesAggregator) aggregate(report *queryv1.Report) error {
 	r := report.TimeSeries
 	a.init.Do(func() {
-		a.series = phlaremodel.NewTimeSeriesMerger(true)
+		a.series = timeseries.NewMerger(true)
 		a.query = r.Query.CloneVT()
 	})
 	a.series.MergeTimeSeries(r.TimeSeries)
@@ -162,8 +162,8 @@ func (a *timeSeriesAggregator) build() *queryv1.Report {
 	//  at "aggregate" call.
 	sum := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
 	stepMilli := time.Duration(a.query.GetStep() * float64(time.Second)).Milliseconds()
-	seriesIterator := phlaremodel.NewTimeSeriesMergeIterator(a.series.TimeSeries())
-	series := phlaremodel.RangeSeries(
+	seriesIterator := timeseries.NewTimeSeriesMergeIterator(a.series.TimeSeries())
+	series := timeseries.RangeSeries(
 		seriesIterator,
 		a.startTime,
 		a.endTime,
