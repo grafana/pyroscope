@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend/readpath"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend"
 	queryfrontendadmin "github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/admin"
+	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs"
 	"github.com/grafana/pyroscope/pkg/metastore"
 	metastoreadmin "github.com/grafana/pyroscope/pkg/metastore/admin"
@@ -90,7 +91,7 @@ func (f *Pyroscope) initQueryFrontendV1() (services.Service, error) {
 
 func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	queryFrontendLogger := log.With(f.logger, "component", "query-frontend")
-	queryFrontend := queryfrontend.NewQueryFrontend(
+	f.queryFrontend = queryfrontend.NewQueryFrontend(
 		queryFrontendLogger,
 		f.Overrides,
 		f.metastoreClient,
@@ -104,8 +105,8 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 		f.reg,
 	)
 
-	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(queryFrontend, queryFrontendLogger))
-	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(queryFrontend, queryFrontendLogger))
+	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(f.queryFrontend, queryFrontendLogger))
+	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(f.queryFrontend, queryFrontendLogger))
 	f.API.RegisterVCSServiceHandler(vcsService)
 
 	// New query frontend does not have any state.
@@ -126,7 +127,7 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 	}
 
 	queryFrontendLogger := log.With(f.logger, "component", "query-frontend")
-	newFrontend := queryfrontend.NewQueryFrontend(
+	f.queryFrontend = queryfrontend.NewQueryFrontend(
 		queryFrontendLogger,
 		f.Overrides,
 		f.metastoreClient,
@@ -139,7 +140,7 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 		log.With(f.logger, "component", "read-path-router"),
 		f.Overrides,
 		f.frontend,
-		newFrontend,
+		f.queryFrontend,
 	)
 
 	vcsService := vcs.New(
@@ -332,10 +333,26 @@ func (f *Pyroscope) initMetastoreAdmin() (services.Service, error) {
 
 func (f *Pyroscope) initQueryFrontendAdmin() (services.Service, error) {
 	level.Info(f.logger).Log("msg", "initializing query frontend admin")
+
+	// Create diagnostics store using the application's storage bucket
+	diagnosticsStore := diagnostics.NewStore(
+		log.With(f.logger, "component", "query-diagnostics"),
+		f.storageBucket,
+	)
+
+	// Set diagnostics store on the query frontend if available
+	if f.queryFrontend != nil {
+		level.Info(f.logger).Log("msg", "setting diagnostics store on query frontend")
+		f.queryFrontend.SetDiagnosticsStore(diagnosticsStore)
+	} else {
+		level.Warn(f.logger).Log("msg", "query frontend not available, diagnostics collection via API will not work")
+	}
+
 	f.queryFrontendAdmin = queryfrontendadmin.New(
 		f.logger,
 		f.metastoreClient,
 		f.queryBackendClient,
+		diagnosticsStore,
 	)
 	level.Info(f.logger).Log("msg", "registering query frontend admin routes")
 	f.API.RegisterQueryFrontendAdmin(f.queryFrontendAdmin)

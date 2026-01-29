@@ -59,6 +59,7 @@ func (m *QueryResponse) CloneVT() *QueryResponse {
 		return (*QueryResponse)(nil)
 	}
 	r := new(QueryResponse)
+	r.Diagnostics = m.Diagnostics.CloneVT()
 	if rhs := m.Reports; rhs != nil {
 		tmpContainer := make([]*Report, len(rhs))
 		for k, v := range rhs {
@@ -234,6 +235,7 @@ func (m *Diagnostics) CloneVT() *Diagnostics {
 	}
 	r := new(Diagnostics)
 	r.QueryPlan = m.QueryPlan.CloneVT()
+	r.QueryRequest = m.QueryRequest.CloneVT()
 	r.ExecutionNode = m.ExecutionNode.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -830,6 +832,9 @@ func (this *QueryResponse) EqualVT(that *QueryResponse) bool {
 			}
 		}
 	}
+	if !this.Diagnostics.EqualVT(that.Diagnostics) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1078,6 +1083,9 @@ func (this *Diagnostics) EqualVT(that *Diagnostics) bool {
 		return false
 	}
 	if !this.QueryPlan.EqualVT(that.QueryPlan) {
+		return false
+	}
+	if !this.QueryRequest.EqualVT(that.QueryRequest) {
 		return false
 	}
 	if !this.ExecutionNode.EqualVT(that.ExecutionNode) {
@@ -2076,6 +2084,16 @@ func (m *QueryResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Diagnostics != nil {
+		size, err := m.Diagnostics.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
+	}
 	if len(m.Reports) > 0 {
 		for iNdEx := len(m.Reports) - 1; iNdEx >= 0; iNdEx-- {
 			size, err := m.Reports[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
@@ -2547,6 +2565,16 @@ func (m *Diagnostics) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	}
 	if m.ExecutionNode != nil {
 		size, err := m.ExecutionNode.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.QueryRequest != nil {
+		size, err := m.QueryRequest.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
 			return 0, err
 		}
@@ -3900,6 +3928,10 @@ func (m *QueryResponse) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
+	if m.Diagnostics != nil {
+		l = m.Diagnostics.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -4074,6 +4106,10 @@ func (m *Diagnostics) SizeVT() (n int) {
 	_ = l
 	if m.QueryPlan != nil {
 		l = m.QueryPlan.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.QueryRequest != nil {
+		l = m.QueryRequest.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	if m.ExecutionNode != nil {
@@ -4814,6 +4850,42 @@ func (m *QueryResponse) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Reports = append(m.Reports, &Report{})
 			if err := m.Reports[len(m.Reports)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Diagnostics", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Diagnostics == nil {
+				m.Diagnostics = &Diagnostics{}
+			}
+			if err := m.Diagnostics.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -5931,6 +6003,42 @@ func (m *Diagnostics) UnmarshalVT(dAtA []byte) error {
 			}
 			iNdEx = postIndex
 		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field QueryRequest", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.QueryRequest == nil {
+				m.QueryRequest = &QueryRequest{}
+			}
+			if err := m.QueryRequest.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ExecutionNode", wireType)
 			}

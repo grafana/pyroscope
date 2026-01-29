@@ -24,6 +24,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/block/metadata"
 	"github.com/grafana/pyroscope/pkg/frontend"
+	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/querybackend/queryplan"
@@ -39,6 +40,11 @@ type Symbolizer interface {
 	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
 }
 
+// DiagnosticsStore is an optional interface for storing query diagnostics.
+type DiagnosticsStore interface {
+	Save(ctx context.Context, tenantID string, query *diagnostics.StoredQuery, plan *queryv1.QueryPlan, execution *queryv1.ExecutionNode) (string, error)
+}
+
 type QueryFrontend struct {
 	logger log.Logger
 	limits frontend.Limits
@@ -47,6 +53,7 @@ type QueryFrontend struct {
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
 	symbolizer          Symbolizer
+	diagnosticsStore    DiagnosticsStore
 	now                 func() time.Time
 }
 
@@ -69,6 +76,11 @@ func NewQueryFrontend(
 	}
 }
 
+// SetDiagnosticsStore sets the optional diagnostics store for collecting query diagnostics.
+func (q *QueryFrontend) SetDiagnosticsStore(store DiagnosticsStore) {
+	q.diagnosticsStore = store
+}
+
 var xrand = rand.New(rand.NewSource(4349676827832284783))
 var xrandMutex = sync.Mutex{} // todo fix the race properly
 
@@ -76,15 +88,14 @@ func (q *QueryFrontend) Query(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (*queryv1.QueryResponse, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.Query")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.QueryWithDiagnostics")
 	defer span.Finish()
 	span.SetTag("start_time", req.StartTime)
 	span.SetTag("end_time", req.EndTime)
 	span.SetTag("label_selector", req.LabelSelector)
+	collectDiagnostics := diagnostics.ShouldCollect(ctx)
+	span.SetTag("collect_diagnostics", collectDiagnostics)
 
-	// This method is supposed to be the entry point of the read path
-	// in the future versions. Therefore, validation, overrides, and
-	// rest of the request handling should be moved here.
 	tenants, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -99,24 +110,20 @@ func (q *QueryFrontend) Query(
 	if len(blocks) == 0 {
 		return new(queryv1.QueryResponse), nil
 	}
-	// Randomize the order of blocks to avoid hotspots.
+
 	xrandMutex.Lock()
 	xrand.Shuffle(len(blocks), func(i, j int) {
 		blocks[i], blocks[j] = blocks[j], blocks[i]
 	})
 	xrandMutex.Unlock()
-	// TODO(kolesnikovae): Should be dynamic.
-	p := queryplan.Build(blocks, 4, 20)
 
-	// Only check for symbolization if all tenants have it enabled
+	p := queryplan.Build(blocks, 4, 20)
 	shouldSymbolize := q.shouldSymbolize(ctx, tenants, blocks)
 	span.SetTag("should_symbolize", shouldSymbolize)
 
 	modifiedQueries := make([]*queryv1.Query, len(req.Query))
 	for i, originalQuery := range req.Query {
 		modifiedQueries[i] = originalQuery.CloneVT()
-
-		// If we need symbolization and this is a TREE query, convert it to PPROF
 		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
@@ -132,7 +139,8 @@ func (q *QueryFrontend) Query(
 		EndTime:       req.EndTime,
 		LabelSelector: req.LabelSelector,
 		Options: &queryv1.InvokeOptions{
-			SanitizeOnMerge: q.limits.QuerySanitizeOnMerge(tenants[0]),
+			SanitizeOnMerge:    q.limits.QuerySanitizeOnMerge(tenants[0]),
+			CollectDiagnostics: collectDiagnostics,
 		},
 		QueryPlan: p,
 		Query:     modifiedQueries,
@@ -148,13 +156,14 @@ func (q *QueryFrontend) Query(
 		}
 	}
 
-	// TODO(kolesnikovae): Extend diagnostics
 	if resp.Diagnostics == nil {
 		resp.Diagnostics = new(queryv1.Diagnostics)
 	}
 
 	resp.Diagnostics.QueryPlan = p
-	return &queryv1.QueryResponse{Reports: resp.Reports}, nil
+	resp.Diagnostics.QueryRequest = req
+
+	return &queryv1.QueryResponse{Reports: resp.Reports, Diagnostics: resp.Diagnostics}, nil
 }
 
 func (q *QueryFrontend) QueryMetadata(

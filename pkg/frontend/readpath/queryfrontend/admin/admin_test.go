@@ -215,7 +215,7 @@ func TestConvertExecutionNodeToTree(t *testing.T) {
 		assert.Equal(t, "READ", result.Type)
 		assert.Equal(t, "host-1", result.Executor)
 		assert.Equal(t, 500*time.Millisecond, result.Duration)
-		assert.Equal(t, "500ms", result.DurationStr)
+		assert.Equal(t, "500.000ms", result.DurationStr)
 		assert.Equal(t, time.Duration(0), result.RelativeStart)
 		require.NotNil(t, result.Stats)
 		assert.Equal(t, int64(5), result.Stats.BlocksRead)

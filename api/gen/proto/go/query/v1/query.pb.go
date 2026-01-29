@@ -273,6 +273,7 @@ func (x *QueryRequest) GetQuery() []*Query {
 type QueryResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Reports       []*Report              `protobuf:"bytes,1,rep,name=reports,proto3" json:"reports,omitempty"`
+	Diagnostics   *Diagnostics           `protobuf:"bytes,2,opt,name=diagnostics,proto3" json:"diagnostics,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -310,6 +311,13 @@ func (*QueryResponse) Descriptor() ([]byte, []int) {
 func (x *QueryResponse) GetReports() []*Report {
 	if x != nil {
 		return x.Reports
+	}
+	return nil
+}
+
+func (x *QueryResponse) GetDiagnostics() *Diagnostics {
+	if x != nil {
+		return x.Diagnostics
 	}
 	return nil
 }
@@ -728,7 +736,8 @@ func (x *InvokeResponse) GetDiagnostics() *Diagnostics {
 type Diagnostics struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	QueryPlan     *QueryPlan             `protobuf:"bytes,1,opt,name=query_plan,json=queryPlan,proto3" json:"query_plan,omitempty"`
-	ExecutionNode *ExecutionNode         `protobuf:"bytes,2,opt,name=execution_node,json=executionNode,proto3" json:"execution_node,omitempty"`
+	QueryRequest  *QueryRequest          `protobuf:"bytes,2,opt,name=query_request,json=queryRequest,proto3" json:"query_request,omitempty"`
+	ExecutionNode *ExecutionNode         `protobuf:"bytes,3,opt,name=execution_node,json=executionNode,proto3" json:"execution_node,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -766,6 +775,13 @@ func (*Diagnostics) Descriptor() ([]byte, []int) {
 func (x *Diagnostics) GetQueryPlan() *QueryPlan {
 	if x != nil {
 		return x.QueryPlan
+	}
+	return nil
+}
+
+func (x *Diagnostics) GetQueryRequest() *QueryRequest {
+	if x != nil {
+		return x.QueryRequest
 	}
 	return nil
 }
@@ -2084,9 +2100,10 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"start_time\x18\x01 \x01(\x03R\tstartTime\x12\x19\n" +
 	"\bend_time\x18\x02 \x01(\x03R\aendTime\x12%\n" +
 	"\x0elabel_selector\x18\x03 \x01(\tR\rlabelSelector\x12%\n" +
-	"\x05query\x18\x04 \x03(\v2\x0f.query.v1.QueryR\x05query\";\n" +
+	"\x05query\x18\x04 \x03(\v2\x0f.query.v1.QueryR\x05query\"t\n" +
 	"\rQueryResponse\x12*\n" +
-	"\areports\x18\x01 \x03(\v2\x10.query.v1.ReportR\areports\"l\n" +
+	"\areports\x18\x01 \x03(\v2\x10.query.v1.ReportR\areports\x127\n" +
+	"\vdiagnostics\x18\x02 \x01(\v2\x15.query.v1.DiagnosticsR\vdiagnostics\"l\n" +
 	"\rInvokeOptions\x12*\n" +
 	"\x11sanitize_on_merge\x18\x01 \x01(\bR\x0fsanitizeOnMerge\x12/\n" +
 	"\x13collect_diagnostics\x18\x02 \x01(\bR\x12collectDiagnostics\"\x96\x02\n" +
@@ -2124,11 +2141,12 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\aheatmap\x18\b \x01(\v2\x16.query.v1.HeatmapQueryR\aheatmap\"u\n" +
 	"\x0eInvokeResponse\x12*\n" +
 	"\areports\x18\x01 \x03(\v2\x10.query.v1.ReportR\areports\x127\n" +
-	"\vdiagnostics\x18\x02 \x01(\v2\x15.query.v1.DiagnosticsR\vdiagnostics\"\x81\x01\n" +
+	"\vdiagnostics\x18\x02 \x01(\v2\x15.query.v1.DiagnosticsR\vdiagnostics\"\xbe\x01\n" +
 	"\vDiagnostics\x122\n" +
 	"\n" +
-	"query_plan\x18\x01 \x01(\v2\x13.query.v1.QueryPlanR\tqueryPlan\x12>\n" +
-	"\x0eexecution_node\x18\x02 \x01(\v2\x17.query.v1.ExecutionNodeR\rexecutionNode\"\x98\x02\n" +
+	"query_plan\x18\x01 \x01(\v2\x13.query.v1.QueryPlanR\tqueryPlan\x12;\n" +
+	"\rquery_request\x18\x02 \x01(\v2\x16.query.v1.QueryRequestR\fqueryRequest\x12>\n" +
+	"\x0eexecution_node\x18\x03 \x01(\v2\x17.query.v1.ExecutionNodeR\rexecutionNode\"\x98\x02\n" +
 	"\rExecutionNode\x12,\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x18.query.v1.QueryNode.TypeR\x04type\x12\x1a\n" +
 	"\bexecutor\x18\x02 \x01(\tR\bexecutor\x12\"\n" +
@@ -2316,63 +2334,65 @@ var file_query_v1_query_proto_goTypes = []any{
 var file_query_v1_query_proto_depIdxs = []int32{
 	9,  // 0: query.v1.QueryRequest.query:type_name -> query.v1.Query
 	15, // 1: query.v1.QueryResponse.reports:type_name -> query.v1.Report
-	9,  // 2: query.v1.InvokeRequest.query:type_name -> query.v1.Query
-	7,  // 3: query.v1.InvokeRequest.query_plan:type_name -> query.v1.QueryPlan
-	5,  // 4: query.v1.InvokeRequest.options:type_name -> query.v1.InvokeOptions
-	8,  // 5: query.v1.QueryPlan.root:type_name -> query.v1.QueryNode
-	2,  // 6: query.v1.QueryNode.type:type_name -> query.v1.QueryNode.Type
-	8,  // 7: query.v1.QueryNode.children:type_name -> query.v1.QueryNode
-	33, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
-	0,  // 9: query.v1.Query.query_type:type_name -> query.v1.QueryType
-	16, // 10: query.v1.Query.label_names:type_name -> query.v1.LabelNamesQuery
-	18, // 11: query.v1.Query.label_values:type_name -> query.v1.LabelValuesQuery
-	20, // 12: query.v1.Query.series_labels:type_name -> query.v1.SeriesLabelsQuery
-	22, // 13: query.v1.Query.time_series:type_name -> query.v1.TimeSeriesQuery
-	24, // 14: query.v1.Query.tree:type_name -> query.v1.TreeQuery
-	26, // 15: query.v1.Query.pprof:type_name -> query.v1.PprofQuery
-	28, // 16: query.v1.Query.heatmap:type_name -> query.v1.HeatmapQuery
-	15, // 17: query.v1.InvokeResponse.reports:type_name -> query.v1.Report
-	11, // 18: query.v1.InvokeResponse.diagnostics:type_name -> query.v1.Diagnostics
-	7,  // 19: query.v1.Diagnostics.query_plan:type_name -> query.v1.QueryPlan
-	12, // 20: query.v1.Diagnostics.execution_node:type_name -> query.v1.ExecutionNode
-	2,  // 21: query.v1.ExecutionNode.type:type_name -> query.v1.QueryNode.Type
-	12, // 22: query.v1.ExecutionNode.children:type_name -> query.v1.ExecutionNode
-	13, // 23: query.v1.ExecutionNode.stats:type_name -> query.v1.ExecutionStats
-	14, // 24: query.v1.ExecutionStats.block_executions:type_name -> query.v1.BlockExecution
-	1,  // 25: query.v1.Report.report_type:type_name -> query.v1.ReportType
-	17, // 26: query.v1.Report.label_names:type_name -> query.v1.LabelNamesReport
-	19, // 27: query.v1.Report.label_values:type_name -> query.v1.LabelValuesReport
-	21, // 28: query.v1.Report.series_labels:type_name -> query.v1.SeriesLabelsReport
-	23, // 29: query.v1.Report.time_series:type_name -> query.v1.TimeSeriesReport
-	25, // 30: query.v1.Report.tree:type_name -> query.v1.TreeReport
-	27, // 31: query.v1.Report.pprof:type_name -> query.v1.PprofReport
-	32, // 32: query.v1.Report.heatmap:type_name -> query.v1.HeatmapReport
-	16, // 33: query.v1.LabelNamesReport.query:type_name -> query.v1.LabelNamesQuery
-	18, // 34: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
-	20, // 35: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
-	34, // 36: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
-	35, // 37: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
-	22, // 38: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
-	36, // 39: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
-	37, // 40: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	24, // 41: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
-	37, // 42: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	26, // 43: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
-	38, // 44: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
-	35, // 45: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
-	30, // 46: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
-	28, // 47: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
-	31, // 48: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
-	29, // 49: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
-	3,  // 50: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
-	6,  // 51: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
-	4,  // 52: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
-	10, // 53: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
-	52, // [52:54] is the sub-list for method output_type
-	50, // [50:52] is the sub-list for method input_type
-	50, // [50:50] is the sub-list for extension type_name
-	50, // [50:50] is the sub-list for extension extendee
-	0,  // [0:50] is the sub-list for field type_name
+	11, // 2: query.v1.QueryResponse.diagnostics:type_name -> query.v1.Diagnostics
+	9,  // 3: query.v1.InvokeRequest.query:type_name -> query.v1.Query
+	7,  // 4: query.v1.InvokeRequest.query_plan:type_name -> query.v1.QueryPlan
+	5,  // 5: query.v1.InvokeRequest.options:type_name -> query.v1.InvokeOptions
+	8,  // 6: query.v1.QueryPlan.root:type_name -> query.v1.QueryNode
+	2,  // 7: query.v1.QueryNode.type:type_name -> query.v1.QueryNode.Type
+	8,  // 8: query.v1.QueryNode.children:type_name -> query.v1.QueryNode
+	33, // 9: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
+	0,  // 10: query.v1.Query.query_type:type_name -> query.v1.QueryType
+	16, // 11: query.v1.Query.label_names:type_name -> query.v1.LabelNamesQuery
+	18, // 12: query.v1.Query.label_values:type_name -> query.v1.LabelValuesQuery
+	20, // 13: query.v1.Query.series_labels:type_name -> query.v1.SeriesLabelsQuery
+	22, // 14: query.v1.Query.time_series:type_name -> query.v1.TimeSeriesQuery
+	24, // 15: query.v1.Query.tree:type_name -> query.v1.TreeQuery
+	26, // 16: query.v1.Query.pprof:type_name -> query.v1.PprofQuery
+	28, // 17: query.v1.Query.heatmap:type_name -> query.v1.HeatmapQuery
+	15, // 18: query.v1.InvokeResponse.reports:type_name -> query.v1.Report
+	11, // 19: query.v1.InvokeResponse.diagnostics:type_name -> query.v1.Diagnostics
+	7,  // 20: query.v1.Diagnostics.query_plan:type_name -> query.v1.QueryPlan
+	3,  // 21: query.v1.Diagnostics.query_request:type_name -> query.v1.QueryRequest
+	12, // 22: query.v1.Diagnostics.execution_node:type_name -> query.v1.ExecutionNode
+	2,  // 23: query.v1.ExecutionNode.type:type_name -> query.v1.QueryNode.Type
+	12, // 24: query.v1.ExecutionNode.children:type_name -> query.v1.ExecutionNode
+	13, // 25: query.v1.ExecutionNode.stats:type_name -> query.v1.ExecutionStats
+	14, // 26: query.v1.ExecutionStats.block_executions:type_name -> query.v1.BlockExecution
+	1,  // 27: query.v1.Report.report_type:type_name -> query.v1.ReportType
+	17, // 28: query.v1.Report.label_names:type_name -> query.v1.LabelNamesReport
+	19, // 29: query.v1.Report.label_values:type_name -> query.v1.LabelValuesReport
+	21, // 30: query.v1.Report.series_labels:type_name -> query.v1.SeriesLabelsReport
+	23, // 31: query.v1.Report.time_series:type_name -> query.v1.TimeSeriesReport
+	25, // 32: query.v1.Report.tree:type_name -> query.v1.TreeReport
+	27, // 33: query.v1.Report.pprof:type_name -> query.v1.PprofReport
+	32, // 34: query.v1.Report.heatmap:type_name -> query.v1.HeatmapReport
+	16, // 35: query.v1.LabelNamesReport.query:type_name -> query.v1.LabelNamesQuery
+	18, // 36: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
+	20, // 37: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
+	34, // 38: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
+	35, // 39: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	22, // 40: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
+	36, // 41: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
+	37, // 42: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	24, // 43: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
+	37, // 44: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	26, // 45: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
+	38, // 46: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
+	35, // 47: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	30, // 48: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
+	28, // 49: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
+	31, // 50: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
+	29, // 51: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
+	3,  // 52: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
+	6,  // 53: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
+	4,  // 54: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
+	10, // 55: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
+	54, // [54:56] is the sub-list for method output_type
+	52, // [52:54] is the sub-list for method input_type
+	52, // [52:52] is the sub-list for extension type_name
+	52, // [52:52] is the sub-list for extension extendee
+	0,  // [0:52] is the sub-list for field type_name
 }
 
 func init() { file_query_v1_query_proto_init() }

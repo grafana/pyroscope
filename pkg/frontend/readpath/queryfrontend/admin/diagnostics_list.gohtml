@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Stored Diagnostics</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+
+    <style>
+        .tenant-list {
+            max-height: calc(100vh - 250px);
+            overflow-y: auto;
+        }
+        .tenant-item {
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid var(--bs-border-color);
+        }
+        .tenant-item:hover {
+            background-color: var(--bs-tertiary-bg);
+        }
+        .tenant-item.active {
+            background-color: var(--bs-primary);
+            color: white;
+        }
+        .diagnostics-table {
+            font-size: 0.875rem;
+        }
+        .diagnostics-table td {
+            vertical-align: middle;
+        }
+        .query-type-badge {
+            font-family: monospace;
+            font-size: 0.75rem;
+        }
+        .label-selector {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <div class="container-fluid mt-4">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h1>Stored Diagnostics</h1>
+                <p class="text-muted">Browse and view stored query diagnostics</p>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+
+        {{ if .Error }}
+        <div class="alert alert-danger mt-3" role="alert">
+            <strong>Error:</strong> {{ .Error }}
+        </div>
+        {{ end }}
+
+        <div class="row mt-4">
+            <!-- Tenant List -->
+            <div class="col-12 col-md-3 col-lg-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Tenants</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        {{ if .Tenants }}
+                        <div class="tenant-list">
+                            {{ range .Tenants }}
+                            <a href="?tenant={{ . }}" class="tenant-item d-block text-decoration-none {{ if eq . $.SelectedTenant }}active{{ end }}">
+                                {{ . }}
+                            </a>
+                            {{ end }}
+                        </div>
+                        {{ else }}
+                        <div class="p-3 text-muted">
+                            <small>No diagnostics stored yet</small>
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <a href="/query-diagnostics" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-plus-circle"></i> New Query
+                    </a>
+                </div>
+            </div>
+
+            <!-- Diagnostics Table -->
+            <div class="col-12 col-md-9 col-lg-10 mt-4 mt-md-0">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            {{ if .SelectedTenant }}
+                            Diagnostics for <code>{{ .SelectedTenant }}</code>
+                            {{ else }}
+                            Select a tenant to view diagnostics
+                            {{ end }}
+                        </h6>
+                        {{ if .Diagnostics }}
+                        <span class="badge bg-secondary">{{ len .Diagnostics }} entries</span>
+                        {{ end }}
+                    </div>
+                    <div class="card-body">
+                        {{ if .SelectedTenant }}
+                            {{ if .Diagnostics }}
+                            <div class="table-responsive">
+                                <table class="table table-hover diagnostics-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Created</th>
+                                            <th>Query Type</th>
+                                            <th>Time Range</th>
+                                            <th>Label Selector</th>
+                                            <th>Response Time</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{ $tenant := .SelectedTenant}}
+                                        {{ range .Diagnostics }}
+                                        <tr>
+                                            <td>
+                                                <small>{{ formatTime .CreatedAt }}</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info query-type-badge">{{ .QueryType }}</span>
+                                            </td>
+                                            <td>
+                                                <small>{{ formatTimeRange .StartTime .EndTime }}</small>
+                                            </td>
+                                            <td>
+                                                <code class="label-selector" title="{{ .LabelSelector }}">{{ .LabelSelector }}</code>
+                                            </td>
+                                            <td>
+                                                {{ if .ResponseTimeMs }}
+                                                <span class="badge bg-success">{{ formatMs .ResponseTimeMs }}</span>
+                                                {{ else }}
+                                                <span class="text-muted">-</span>
+                                                {{ end }}
+                                            </td>
+                                            <td>
+                                                <a href="/query-diagnostics?load={{ .ID }}&tenant={{ $tenant }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-eye"></i> View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {{ else }}
+                            <div class="text-center text-muted py-5">
+                                <i class="bi bi-inbox display-4"></i>
+                                <p class="mt-3">No diagnostics stored for this tenant</p>
+                            </div>
+                            {{ end }}
+                        {{ else }}
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-arrow-left display-4"></i>
+                            <p class="mt-3">Select a tenant from the list to view their stored diagnostics</p>
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3">
+    <div class="container">
+        <small class="text-muted">Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}</small>
+    </div>
+</footer>
+</body>
+</html>

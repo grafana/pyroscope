@@ -17,6 +17,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/querybackend/queryplan"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
@@ -35,19 +36,22 @@ type Admin struct {
 	service services.Service
 	logger  log.Logger
 
-	metastoreClient MetastoreClient
-	queryBackend    QueryBackend
+	metastoreClient  MetastoreClient
+	queryBackend     QueryBackend
+	diagnosticsStore *diagnostics.Store
 }
 
 func New(
 	logger log.Logger,
 	metastoreClient MetastoreClient,
 	queryBackend QueryBackend,
+	diagnosticsStore *diagnostics.Store,
 ) *Admin {
 	adm := &Admin{
-		logger:          logger,
-		metastoreClient: metastoreClient,
-		queryBackend:    queryBackend,
+		logger:           logger,
+		metastoreClient:  metastoreClient,
+		queryBackend:     queryBackend,
+		diagnosticsStore: diagnosticsStore,
 	}
 	adm.service = services.NewIdleService(adm.starting, adm.stopping)
 	return adm
@@ -59,6 +63,55 @@ func (a *Admin) Service() services.Service {
 
 func (a *Admin) starting(context.Context) error { return nil }
 func (a *Admin) stopping(error) error           { return nil }
+
+// DiagnosticsStore returns the diagnostics store for API registration.
+func (a *Admin) DiagnosticsStore() *diagnostics.Store {
+	return a.diagnosticsStore
+}
+
+// DiagnosticsListHandler returns an HTTP handler for listing stored diagnostics.
+func (a *Admin) DiagnosticsListHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		content := diagnosticsListPageContent{
+			Now: time.Now().UTC(),
+		}
+
+		if a.diagnosticsStore == nil {
+			content.Error = "diagnostics store is not configured"
+			a.renderDiagnosticsListPage(w, content)
+			return
+		}
+
+		// List all tenants
+		tenants, err := a.diagnosticsStore.ListTenants(r.Context())
+		if err != nil {
+			content.Error = fmt.Sprintf("failed to list tenants: %v", err)
+			a.renderDiagnosticsListPage(w, content)
+			return
+		}
+		content.Tenants = tenants
+
+		// If a tenant is selected, list their diagnostics
+		selectedTenant := r.URL.Query().Get("tenant")
+		if selectedTenant != "" {
+			content.SelectedTenant = selectedTenant
+			diagnosticsList, err := a.diagnosticsStore.ListByTenant(r.Context(), selectedTenant)
+			if err != nil {
+				content.Error = fmt.Sprintf("failed to list diagnostics: %v", err)
+			} else {
+				content.Diagnostics = diagnosticsList
+			}
+		}
+
+		a.renderDiagnosticsListPage(w, content)
+	})
+}
+
+func (a *Admin) renderDiagnosticsListPage(w http.ResponseWriter, content diagnosticsListPageContent) {
+	if err := pageTemplates.diagnosticsListTemplate.Execute(w, content); err != nil {
+		httputil.Error(w, err)
+	}
+}
 
 func (a *Admin) DiagnosticsHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -72,6 +125,17 @@ func (a *Admin) DiagnosticsHandler() http.Handler {
 		// Fetch tenants for autocomplete
 		if tenants, err := a.fetchTenants(r.Context()); err == nil {
 			content.Tenants = tenants
+		}
+
+		// Check if we should load a stored diagnostic
+		if loadID := r.URL.Query().Get("load"); loadID != "" && a.diagnosticsStore != nil {
+			tenant := r.URL.Query().Get("tenant")
+			if tenant == "" {
+				content.Error = "tenant is required to load a stored diagnostic"
+				a.renderDiagnosticsPage(w, content)
+				return
+			}
+			a.loadStoredDiagnostic(r.Context(), tenant, loadID, &content)
 		}
 
 		if r.Method == http.MethodPost {
@@ -102,6 +166,18 @@ func (a *Admin) DiagnosticsHandler() http.Handler {
 				a.handleCreatePlan(r.Context(), &content)
 			case "execute_query":
 				a.handleExecuteQuery(r.Context(), &content)
+			case "create_and_execute":
+				a.handleCreatePlan(r.Context(), &content)
+				if content.Error == "" && content.PlanJSON != "" {
+					a.handleExecuteQuery(r.Context(), &content)
+				}
+			}
+
+			// Redirect to load URL after successful query execution (POST-Redirect-GET pattern)
+			if content.DiagnosticsID != "" && content.Error == "" {
+				redirectURL := fmt.Sprintf("%s?load=%s&tenant=%s", r.URL.Path, content.DiagnosticsID, content.TenantID)
+				http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+				return
 			}
 		}
 
@@ -122,6 +198,65 @@ func (a *Admin) fetchTenants(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	return resp.TenantIds, nil
+}
+
+func (a *Admin) loadStoredDiagnostic(ctx context.Context, tenant string, id string, content *diagnosticsPageContent) {
+	stored, err := a.diagnosticsStore.Get(ctx, tenant, id)
+	if err != nil {
+		content.Error = fmt.Sprintf("failed to load diagnostic: %v", err)
+		return
+	}
+
+	content.TenantID = stored.TenantID
+	content.DiagnosticsID = stored.ID
+
+	if stored.Query != nil {
+		content.StartTime = time.UnixMilli(stored.Query.StartTime).UTC().Format(time.RFC3339)
+		content.EndTime = time.UnixMilli(stored.Query.EndTime).UTC().Format(time.RFC3339)
+		content.LabelSelector = stored.Query.LabelSelector
+		content.QueryType = stored.Query.QueryType
+
+		if stored.Query.MaxNodes > 0 {
+			content.MaxNodes = fmt.Sprintf("%d", stored.Query.MaxNodes)
+		}
+		if stored.Query.Step > 0 {
+			content.Step = fmt.Sprintf("%g", stored.Query.Step)
+		}
+		if len(stored.Query.GroupBy) > 0 {
+			content.GroupBy = strings.Join(stored.Query.GroupBy, ", ")
+		}
+		if stored.Query.Limit > 0 {
+			content.Limit = fmt.Sprintf("%d", stored.Query.Limit)
+		}
+		content.LabelName = stored.Query.LabelName
+		if len(stored.Query.SeriesLabelNames) > 0 {
+			content.SeriesLabelNames = strings.Join(stored.Query.SeriesLabelNames, ", ")
+		}
+
+		if stored.Query.ResponseTimeMs > 0 {
+			content.QueryResponseTime = time.Duration(stored.Query.ResponseTimeMs) * time.Millisecond
+		}
+	}
+
+	if stored.Plan != nil {
+		planJSON, err := json.MarshalIndent(stored.Plan, "", "  ")
+		if err == nil {
+			content.PlanJSON = string(planJSON)
+		}
+		content.PlanTree = convertQueryPlanToTree(stored.Plan)
+
+		// Rebuild metadata stats from the plan
+		blocks := extractBlocksFromPlan(stored.Plan)
+		if stored.Query != nil {
+			startTime := time.UnixMilli(stored.Query.StartTime)
+			endTime := time.UnixMilli(stored.Query.EndTime)
+			content.MetadataStats = buildMetadataStats(blocks, startTime, endTime)
+		}
+	}
+
+	if stored.Execution != nil {
+		content.ExecutionTree = convertExecutionNodeToTree(stored.Execution)
+	}
 }
 
 func (a *Admin) handleCreatePlan(ctx context.Context, content *diagnosticsPageContent) {
@@ -491,6 +626,34 @@ func (a *Admin) handleExecuteQuery(ctx context.Context, content *diagnosticsPage
 
 	if resp.Diagnostics != nil && resp.Diagnostics.ExecutionNode != nil {
 		content.ExecutionTree = convertExecutionNodeToTree(resp.Diagnostics.ExecutionNode)
+
+		// Save diagnostics to store if available
+		if a.diagnosticsStore != nil {
+			storedQuery := &diagnostics.StoredQuery{
+				StartTime:        startTime.UnixMilli(),
+				EndTime:          endTime.UnixMilli(),
+				LabelSelector:    content.LabelSelector,
+				QueryType:        content.QueryType,
+				MaxNodes:         parseIntOrDefault(content.MaxNodes, 0),
+				Step:             parseFloatOrDefault(content.Step, 0),
+				GroupBy:          splitAndTrim(content.GroupBy),
+				Limit:            parseIntOrDefault(content.Limit, 0),
+				LabelName:        content.LabelName,
+				SeriesLabelNames: splitAndTrim(content.SeriesLabelNames),
+				ResponseTimeMs:   content.QueryResponseTime.Milliseconds(),
+			}
+			// Use the local plan (from the form) since the query backend doesn't return it in diagnostics
+			var execution *queryv1.ExecutionNode
+			if resp.Diagnostics != nil {
+				execution = resp.Diagnostics.ExecutionNode
+			}
+			id, err := a.diagnosticsStore.Save(ctx, content.TenantID, storedQuery, &plan, execution)
+			if err != nil {
+				level.Warn(a.logger).Log("msg", "failed to save diagnostics", "err", err)
+			} else {
+				content.DiagnosticsID = id
+			}
+		}
 	}
 
 	content.ReportStats = a.buildReportStats(resp)
@@ -567,9 +730,9 @@ func convertExecutionNodeToTreeWithBase(node *queryv1.ExecutionNode, queryStartN
 		Type:             node.Type.String(),
 		Executor:         node.Executor,
 		Duration:         duration,
-		DurationStr:      duration.String(),
+		DurationStr:      formatDurationShort(duration),
 		RelativeStart:    relativeStart,
-		RelativeStartStr: relativeStart.String(),
+		RelativeStartStr: formatDurationShort(relativeStart),
 		Error:            node.Error,
 	}
 
@@ -587,11 +750,11 @@ func convertExecutionNodeToTreeWithBase(node *queryv1.ExecutionNode, queryStartN
 			tree.Stats.BlockExecutions = append(tree.Stats.BlockExecutions, &BlockExecutionInfo{
 				BlockID:           blockExec.BlockId,
 				Duration:          blockDuration,
-				DurationStr:       blockDuration.String(),
+				DurationStr:       formatDurationShort(blockDuration),
 				RelativeStart:     blockRelStart,
-				RelativeStartStr:  blockRelStart.String(),
+				RelativeStartStr:  formatDurationShort(blockRelStart),
 				RelativeEnd:       blockRelEnd,
-				RelativeEndStr:    blockRelEnd.String(),
+				RelativeEndStr:    formatDurationShort(blockRelEnd),
 				DatasetsProcessed: blockExec.DatasetsProcessed,
 				Size:              humanize.Bytes(blockExec.Size),
 				Shard:             blockExec.Shard,

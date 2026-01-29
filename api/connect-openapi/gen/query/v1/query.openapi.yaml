@@ -409,6 +409,9 @@ components:
         queryPlan:
           title: query_plan
           $ref: '#/components/schemas/query.v1.QueryPlan'
+        queryRequest:
+          title: query_request
+          $ref: '#/components/schemas/query.v1.QueryRequest'
         executionNode:
           title: execution_node
           $ref: '#/components/schemas/query.v1.ExecutionNode'
@@ -820,6 +823,9 @@ components:
           items:
             $ref: '#/components/schemas/query.v1.Report'
           title: reports
+        diagnostics:
+          title: diagnostics
+          $ref: '#/components/schemas/query.v1.Diagnostics'
       title: QueryResponse
       additionalProperties: false
     query.v1.QueryType:

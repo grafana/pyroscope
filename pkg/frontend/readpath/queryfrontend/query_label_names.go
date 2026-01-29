@@ -33,7 +33,7 @@ func (q *QueryFrontend) LabelNames(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
+	report, diag, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,
@@ -63,5 +63,8 @@ func (q *QueryFrontend) LabelNames(
 		labelNames = filteredLabelNames
 	}
 
-	return connect.NewResponse(&typesv1.LabelNamesResponse{Names: labelNames}), nil
+	resp := connect.NewResponse(&typesv1.LabelNamesResponse{Names: labelNames})
+	q.saveDiagnostics(ctx, diag, resp.Header())
+
+	return resp, nil
 }

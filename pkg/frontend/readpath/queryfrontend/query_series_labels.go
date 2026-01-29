@@ -7,10 +7,9 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/featureflags"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -87,7 +86,7 @@ func (q *QueryFrontend) Series(
 		return nil, err
 	}
 
-	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
+	report, diag, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
 		EndTime:       c.Msg.End,
 		LabelSelector: labelSelector,
@@ -101,9 +100,13 @@ func (q *QueryFrontend) Series(
 	if err != nil {
 		return nil, err
 	}
-	if report == nil {
-		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
+
+	resp := connect.NewResponse(&querierv1.SeriesResponse{})
+	if report != nil {
+		resp.Msg.LabelsSet = report.SeriesLabels.SeriesLabels
 	}
 
-	return connect.NewResponse(&querierv1.SeriesResponse{LabelsSet: report.SeriesLabels.SeriesLabels}), nil
+	q.saveDiagnostics(ctx, diag, resp.Header())
+
+	return resp, nil
 }

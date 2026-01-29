@@ -225,7 +225,7 @@ func (a *API) RegisterIngesterRing(r http.Handler) {
 }
 
 func (a *API) RegisterQuerierServiceHandler(svc querierv1connect.QuerierServiceHandler) {
-	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
+	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogDiagnosticsRecovery()...)
 }
 
 func (a *API) RegisterVCSServiceHandler(svc vcsv1connect.VCSServiceHandler) {

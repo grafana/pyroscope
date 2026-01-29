@@ -22,16 +22,16 @@ import (
 func (q *QueryFrontend) querySingle(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
-) (*queryv1.Report, error) {
+) (*queryv1.Report, *queryv1.Diagnostics, error) {
 	if len(req.Query) != 1 {
 		// Nil report is a valid response.
-		return nil, nil
+		return nil, nil, nil
 	}
 	t := querybackend.QueryReportType(req.Query[0].QueryType)
 	resp, err := q.Query(ctx, req)
 	if err != nil {
 		code, sanitized := http.ClientHTTPStatusAndError(err)
-		return nil, connect.NewError(connectgrpc.HTTPToCode(int32(code)), sanitized)
+		return nil, nil, connect.NewError(connectgrpc.HTTPToCode(int32(code)), sanitized)
 	}
 	var r *queryv1.Report
 	for _, x := range resp.Reports {
@@ -40,7 +40,7 @@ func (q *QueryFrontend) querySingle(
 			break
 		}
 	}
-	return r, nil
+	return r, resp.Diagnostics, nil
 }
 
 func buildLabelSelectorFromMatchers(matchers []string) (string, error) {

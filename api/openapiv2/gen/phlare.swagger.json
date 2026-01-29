@@ -1042,6 +1042,9 @@
         "queryPlan": {
           "$ref": "#/definitions/v1QueryPlan"
         },
+        "queryRequest": {
+          "$ref": "#/definitions/v1QueryRequest"
+        },
         "executionNode": {
           "$ref": "#/definitions/v1ExecutionNode"
         }
@@ -2180,6 +2183,29 @@
       },
       "description": "A query plan is represented by a directed acyclic graph (DAG),\nwhere each node is either a \"merge\" node or a \"read\" node.\n\nMerge nodes reference other nodes in the plan as their \"children\".\nRead nodes reference the blocks which contain the actual data to be processed."
     },
+    "v1QueryRequest": {
+      "type": "object",
+      "properties": {
+        "startTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "labelSelector": {
+          "type": "string"
+        },
+        "query": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/queryv1Query"
+          }
+        }
+      }
+    },
     "v1QueryResponse": {
       "type": "object",
       "properties": {
@@ -2189,6 +2215,9 @@
             "type": "object",
             "$ref": "#/definitions/v1Report"
           }
+        },
+        "diagnostics": {
+          "$ref": "#/definitions/v1Diagnostics"
         }
       }
     },
