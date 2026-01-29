@@ -4,6 +4,7 @@ import (
 	"unsafe"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
@@ -14,6 +15,12 @@ const (
 	truncatedNodeName = "other"
 )
 
+type TreeOptions struct {
+	MaxNodes int64
+	// only used for pprof / pprofTree at the moment
+	TreeNodeKind queryv1.TreeNodeKind
+}
+
 type pprofTree struct {
 	symbols *Symbols
 	samples *schemav1.Samples
@@ -21,18 +28,18 @@ type pprofTree struct {
 	lut     []uint32
 	cur     int
 
-	maxNodes  int64
+	opt       TreeOptions
 	truncated int
 
 	functionTree *model.StacktraceTree
 	stacktraces  []truncatedStacktraceSample
 	// Two buffers are needed as we handle both function and location
 	// stacks simultaneously.
-	functionsBuf []int32
+	stackBuf     []int32
 	locationsBuf []uint64
 
-	selection *SelectedStackTraces
-	fnNames   func(locations []int32) ([]int32, bool)
+	selection      *SelectedStackTraces
+	treeNodeValues func(locations []int32) ([]int32, bool)
 
 	// After truncation many samples will have the same stack trace.
 	// The map is used to deduplicate them. The key is sample.LocationId
@@ -44,9 +51,9 @@ type pprofTree struct {
 }
 
 type truncatedStacktraceSample struct {
-	stacktraceID    uint32
-	functionNodeIdx int32
-	value           int64
+	stacktraceID uint32
+	nodeIdx      int32
+	value        int64
 }
 
 func (r *pprofTree) init(symbols *Symbols, samples schemav1.Samples) {
@@ -58,39 +65,47 @@ func (r *pprofTree) init(symbols *Symbols, samples schemav1.Samples) {
 	r.stacktraces = make([]truncatedStacktraceSample, 0, samples.Len())
 	r.sampleMap = make(map[string]*googlev1.Sample, samples.Len())
 	if r.selection != nil && len(r.selection.callSite) > 0 {
-		r.fnNames = r.locFunctionsFiltered
+		r.treeNodeValues = r.functionsValuesFiltered
 	} else {
-		r.fnNames = r.locFunctions
+		if r.opt.TreeNodeKind == queryv1.TreeNodeKind_Location {
+			r.treeNodeValues = r.locationsValues
+		} else {
+			r.treeNodeValues = r.functionValues
+		}
 	}
 }
 
 func (r *pprofTree) InsertStacktrace(stacktraceID uint32, locations []int32) {
 	value := int64(r.samples.Values[r.cur])
 	r.cur++
-	functions, ok := r.fnNames(locations)
+	treeNodeValues, ok := r.treeNodeValues(locations)
 	if ok {
-		functionNodeIdx := r.functionTree.Insert(functions, value)
+		nodeIdx := r.functionTree.Insert(treeNodeValues, value)
 		r.stacktraces = append(r.stacktraces, truncatedStacktraceSample{
-			stacktraceID:    stacktraceID,
-			functionNodeIdx: functionNodeIdx,
-			value:           value,
+			stacktraceID: stacktraceID,
+			nodeIdx:      nodeIdx,
+			value:        value,
 		})
 	}
 }
 
-func (r *pprofTree) locFunctions(locations []int32) ([]int32, bool) {
-	r.functionsBuf = r.functionsBuf[:0]
+func (r *pprofTree) locationsValues(locations []int32) ([]int32, bool) {
+	return locations, true
+}
+
+func (r *pprofTree) functionValues(locations []int32) ([]int32, bool) {
+	r.stackBuf = r.stackBuf[:0]
 	for i := 0; i < len(locations); i++ {
 		lines := r.symbols.Locations[locations[i]].Line
 		for j := 0; j < len(lines); j++ {
-			r.functionsBuf = append(r.functionsBuf, int32(lines[j].FunctionId))
+			r.stackBuf = append(r.stackBuf, int32(lines[j].FunctionId))
 		}
 	}
-	return r.functionsBuf, true
+	return r.stackBuf, true
 }
 
-func (r *pprofTree) locFunctionsFiltered(locations []int32) ([]int32, bool) {
-	r.functionsBuf = r.functionsBuf[:0]
+func (r *pprofTree) functionsValuesFiltered(locations []int32) ([]int32, bool) {
+	r.stackBuf = r.stackBuf[:0]
 	var pos int
 	pathLen := int(r.selection.depth)
 	// Even if len(locations) < pathLen, we still
@@ -105,14 +120,14 @@ func (r *pprofTree) locFunctionsFiltered(locations []int32) ([]int32, bool) {
 				}
 				pos++
 			}
-			r.functionsBuf = append(r.functionsBuf, int32(f))
+			r.stackBuf = append(r.stackBuf, int32(f))
 		}
 	}
 	if pos < pathLen {
 		return nil, false
 	}
-	slices.Reverse(r.functionsBuf)
-	return r.functionsBuf, true
+	slices.Reverse(r.stackBuf)
+	return r.stackBuf, true
 }
 
 func (r *pprofTree) buildPprof() *googlev1.Profile {
@@ -133,7 +148,7 @@ func (r *pprofTree) buildPprof() *googlev1.Profile {
 }
 
 func (r *pprofTree) markNodesForTruncation() {
-	minValue := r.functionTree.MinValue(r.maxNodes)
+	minValue := r.functionTree.MinValue(r.opt.MaxNodes)
 	if minValue == 0 {
 		return
 	}
@@ -149,17 +164,22 @@ func (r *pprofTree) addSample(n truncatedStacktraceSample) {
 	// Find the original stack trace and remove truncated
 	// locations based on the truncated functions.
 	var off int
-	r.functionsBuf, off = r.buildFunctionsStack(r.functionsBuf, n.functionNodeIdx)
+	r.stackBuf, off = r.buildStackFromTreeNode(r.stackBuf, n.nodeIdx)
 	if off < 0 {
 		// The stack has no functions without the truncation mark.
 		r.fullyTruncated += n.value
 		return
 	}
-	r.locationsBuf = r.symbols.Stacktraces.LookupLocations(r.locationsBuf, n.stacktraceID)
-	if off > 0 {
-		// Some functions were truncated.
-		r.locationsBuf = truncateLocations(r.locationsBuf, r.functionsBuf, off, r.symbols)
-		// Otherwise, if the offset is zero, the stack can be taken as is.
+	if r.opt.TreeNodeKind == queryv1.TreeNodeKind_Location {
+		//todo add test for this case
+		r.locationsBuf = truncateStack(r.locationsBuf, r.stackBuf, off)
+	} else {
+		r.locationsBuf = r.symbols.Stacktraces.LookupLocations(r.locationsBuf, n.stacktraceID)
+		if off > 0 {
+			// Some functions were truncated.
+			r.locationsBuf = truncateLocations(r.locationsBuf, r.stackBuf, off, r.symbols)
+			// Otherwise, if the offset is zero, the stack can be taken as is.
+		}
 	}
 	// Truncation may result in vast duplication of stack traces.
 	// Even if a particular stack trace is not truncated, we still
@@ -182,18 +202,18 @@ func (r *pprofTree) addSample(n truncatedStacktraceSample) {
 	r.sampleMap[uint64sliceString(locationsCopy)] = s
 }
 
-func (r *pprofTree) buildFunctionsStack(funcs []int32, idx int32) ([]int32, int) {
+func (r *pprofTree) buildStackFromTreeNode(stack []int32, idx int32) ([]int32, int) {
 	offset := -1
-	funcs = funcs[:0]
+	stack = stack[:0]
 	for i := idx; i > 0; i = r.functionTree.Nodes[i].Parent {
 		n := r.functionTree.Nodes[i]
 		if offset < 0 && n.Location&truncationMark == 0 {
 			// Remember the first node to keep.
-			offset = len(funcs)
+			offset = len(stack)
 		}
-		funcs = append(funcs, n.Location&^truncationMark)
+		stack = append(stack, n.Location&^truncationMark)
 	}
-	return funcs, offset
+	return stack, offset
 }
 
 func (r *pprofTree) createSamples() {
@@ -207,6 +227,17 @@ func (r *pprofTree) createSamples() {
 	if r.fullyTruncated > 0 {
 		r.createStubSample()
 	}
+}
+
+func truncateStack(dst []uint64, stack []int32, offset int) []uint64 {
+	dst = dst[:0]
+	if offset != 0 {
+		dst = append(dst, truncationMark)
+	}
+	for _, l := range stack[offset:] {
+		dst = append(dst, uint64(l))
+	}
+	return dst
 }
 
 func truncateLocations(locations []uint64, functions []int32, offset int, symbols *Symbols) []uint64 {
