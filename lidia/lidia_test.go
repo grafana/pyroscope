@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -197,6 +198,44 @@ func (b *bufferCloser) ReadAt(p []byte, off int64) (n int, err error) {
 
 func (b *bufferCloser) Close() error {
 	return nil
+}
+
+// TestGoPclntabSelfExe tests creating a lidia table from /proc/self/exe using only gopclntab
+// (no symtab) and resolving the test function's address.
+func TestGoPclntabSelfExe(t *testing.T) {
+	// Get the address of this test function using reflect
+	testFuncAddr := reflect.ValueOf(TestGoPclntabSelfExe).Pointer()
+
+	tmpDir := t.TempDir()
+	lidiaPath := filepath.Join(tmpDir, "self.lidia")
+
+	// Create lidia file from /proc/self/exe using only gopclntab (disable symtab)
+	err := lidia.CreateLidia("/proc/self/exe", lidiaPath,
+		lidia.WithCRC(),
+		lidia.WithSymtab(false),        // Disable symtab
+		lidia.WithParseGoPclntab(true), // Use only gopclntab
+	)
+	require.NoError(t, err)
+
+	// Read the created lidia file
+	bs, err := os.ReadFile(lidiaPath)
+	require.NoError(t, err)
+
+	// Open the lidia table
+	var reader lidia.ReaderAtCloser = &bufferCloser{bs, 0}
+	table, err := lidia.OpenReader(reader, lidia.WithCRC())
+	require.NoError(t, err)
+	defer table.Close()
+
+	// Lookup the test function's address
+	var results []lidia.SourceInfoFrame
+	results, err = table.Lookup(results, uint64(testFuncAddr))
+	require.NoError(t, err)
+
+	// Verify we found the function and the name matches
+	require.NotEmpty(t, results, "Expected to find the test function at address %#x", testFuncAddr)
+	require.Equal(t, "github.com/grafana/pyroscope/lidia_test.TestGoPclntabSelfExe", results[0].FunctionName,
+		"Function name should match the test function")
 }
 
 // decompressBinary decompresses the test binary from zip to a temporary location and returns its path

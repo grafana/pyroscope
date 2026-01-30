@@ -36,6 +36,7 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/timeseries"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -1049,7 +1050,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	result := phlaremodel.RangeSeries(it, req.Msg.Start, req.Msg.End, stepMs, req.Msg.Aggregation)
+	result := timeseries.RangeSeries(it, req.Msg.Start, req.Msg.End, stepMs, req.Msg.Aggregation)
 	if it.Err() != nil {
 		return nil, connect.NewError(connect.CodeInternal, it.Err())
 	}

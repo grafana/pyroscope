@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -20,7 +21,9 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
+	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/operations"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
@@ -106,13 +109,39 @@ func addQueryProfileParams(queryCmd commander) *queryProfileParams {
 	return params
 }
 
-func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool) (err error) {
+func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool, profileTree bool) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
 	}
 	level.Info(logger).Log("msg", "query aggregated profile from profile store", "url", params.URL, "from", from, "to", to, "query", params.Query, "type", params.ProfileType)
 
+	var locations []*typesv1.Location
+	if len(params.StacktraceSelector) > 0 {
+		locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+		for _, cs := range params.StacktraceSelector {
+			locations = append(locations, &typesv1.Location{
+				Name: cs,
+			})
+		}
+		level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
+	}
+
+	var profile *googlev1.Profile
+
+	if profileTree {
+		profile, err = queryProfileTree(ctx, params, from, to, locations)
+	} else {
+		profile, err = queryProfilePprof(ctx, params, from, to, locations)
+	}
+	if err != nil {
+		return err
+	}
+
+	return outputMergeProfile(ctx, outputFlag, force, profile)
+}
+
+func queryProfilePprof(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, locations []*typesv1.Location) (*googlev1.Profile, error) {
 	req := &querierv1.SelectMergeProfileRequest{
 		ProfileTypeID: params.ProfileType,
 		Start:         from.UnixMilli(),
@@ -125,19 +154,56 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 	}
 
 	if len(params.StacktraceSelector) > 0 {
-		locations := make([]*typesv1.Location, 0, len(params.StacktraceSelector))
-		for _, cs := range params.StacktraceSelector {
-			locations = append(locations, &typesv1.Location{
-				Name: cs,
-			})
-		}
 		req.StackTraceSelector = &typesv1.StackTraceSelector{
 			CallSite: locations,
 		}
-		level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
 	}
 
-	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force, req)
+	qc := params.phlareClient.queryClient()
+
+	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
+	if err != nil {
+		return nil, err
+	}
+	return resp.Msg, err
+}
+
+func queryProfileTree(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, locations []*typesv1.Location) (*googlev1.Profile, error) {
+	req := &querierv1.SelectMergeStacktracesRequest{
+		ProfileTypeID: params.ProfileType,
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
+		LabelSelector: params.Query,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+	}
+
+	if params.MaxNodes > 0 {
+		req.MaxNodes = &params.MaxNodes
+	}
+
+	if len(params.StacktraceSelector) > 0 {
+		req.StackTraceSelector = &typesv1.StackTraceSelector{
+			CallSite: locations,
+		}
+	}
+
+	qc := params.phlareClient.queryClient()
+	resp, err := qc.SelectMergeStacktraces(ctx, connect.NewRequest(req))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to query")
+	}
+
+	tree, err := model.UnmarshalTree(resp.Msg.Tree)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal tree")
+	}
+
+	ty, err := model.ParseProfileTypeSelector(params.ProfileType)
+	if err != nil {
+		return nil, err
+	}
+
+	return pprof.FromTree(tree, ty, req.End*1e6), nil
 }
 
 func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag string, force bool, req *querierv1.SelectMergeProfileRequest) error {

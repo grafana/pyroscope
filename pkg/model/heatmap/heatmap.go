@@ -3,11 +3,13 @@ package heatmap
 import (
 	"slices"
 	"strings"
+	"unique"
 
 	prommodel "github.com/prometheus/common/model"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/attributetable"
 )
 
 type heatmapSeries struct {
@@ -18,8 +20,6 @@ type heatmapSeries struct {
 type labelKey string
 
 type Builder struct {
-	attributeTable *model.Table
-
 	labelBuf []byte
 
 	series map[labelKey]*heatmapSeries // by series
@@ -29,9 +29,8 @@ type Builder struct {
 
 func NewBuilder(by []string) *Builder {
 	return &Builder{
-		attributeTable: model.NewTable(),
-		series:         make(map[labelKey]*heatmapSeries),
-		by:             by,
+		series: make(map[labelKey]*heatmapSeries),
+		by:     by,
 	}
 }
 
@@ -65,7 +64,7 @@ func (h *Builder) Build(report *queryv1.HeatmapReport) *queryv1.HeatmapReport {
 	if report == nil {
 		report = &queryv1.HeatmapReport{}
 	}
-	at := model.NewTable()
+	at := attributetable.New()
 
 	var keys []labelKey
 	for k := range h.series {
@@ -87,7 +86,7 @@ func (h *Builder) Build(report *queryv1.HeatmapReport) *queryv1.HeatmapReport {
 			p := &points[idx]
 			p.AttributeRefs = at.Refs(labels, p.AttributeRefs)
 			p.Timestamp = ts
-			p.ProfileId = at.AddKeyValue("", profileID)
+			p.ProfileId = at.LookupOrAdd(attributetable.Key{Key: unique.Make(""), Value: unique.Make(profileID)})
 			p.SpanId = spanID
 			p.Value = value
 

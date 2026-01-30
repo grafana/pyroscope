@@ -74,6 +74,7 @@ func main() {
 	queryProfileCmd := queryCmd.Command("profile", "Request merged profile.").Alias("merge")
 	queryProfileOutput := queryProfileCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
 	queryProfileForce := queryProfileCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").Bool()
+	queryProfileFunctionNamesOnly := queryProfileCmd.Flag("function-names-only", "Faster call, without details about mappings, line number, and inlining").Default("false").Bool()
 	queryProfileParams := addQueryProfileParams(queryProfileCmd)
 	queryGoPGOCmd := queryCmd.Command("go-pgo", "Request profile for Go PGO.")
 	queryGoPGOOutput := queryGoPGOCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("pprof=./default.pgo").String()
@@ -119,6 +120,9 @@ func main() {
 	v2MigrationBucketCleanupCmd := v2MigrationCmd.Command("bucket-cleanup", "Clean up v1 artificats from data bucket.")
 	v2MigrationBucketCleanupParams := addV2MigrationBackupCleanupParam(v2MigrationBucketCleanupCmd)
 
+	kubeProxyCmd := adminCmd.Command("kube-proxy", "Start a reverse proxy unifying all the micro services in a single endpoint.")
+	kubeProxyParams := addKubeProxyParams(kubeProxyCmd)
+
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -143,7 +147,7 @@ func main() {
 			}
 		}
 	case queryProfileCmd.FullCommand():
-		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput, *queryProfileForce); err != nil {
+		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput, *queryProfileForce, *queryProfileFunctionNamesOnly); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryGoPGOCmd.FullCommand():
@@ -212,6 +216,10 @@ func main() {
 		}
 	case v2MigrationBucketCleanupCmd.FullCommand():
 		if err := v2MigrationBucketCleanup(ctx, v2MigrationBucketCleanupParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case kubeProxyCmd.FullCommand():
+		if err := kubeProxyCommand(ctx, kubeProxyParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:
