@@ -28,7 +28,7 @@ require (
 	github.com/gogo/status v1.1.1
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-github/v58 v58.0.1-0.20240111193443-e9f52699f5e5
+	github.com/google/go-github/v81 v81.0.0
 	github.com/google/pprof v0.0.0-20250607225305-033d6d78b36a
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
