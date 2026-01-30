@@ -1,0 +1,191 @@
+.form-section {
+  margin-bottom: 1.5rem;
+}
+
+.plan-textarea {
+  font-family: monospace;
+  font-size: 0.875rem;
+}
+
+.stats-box {
+  background-color: var(--bs-secondary-bg);
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin-top: 0.5rem;
+}
+
+/* Query Plan Tree Styles */
+.plan-tree {
+  font-family: monospace;
+  font-size: 0.875rem;
+  padding: 1rem;
+  background-color: var(--bs-secondary-bg);
+  border-radius: 0.375rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.tree-node-children {
+  margin-left: 1.5rem;
+  border-left: 1px dashed var(--bs-border-color);
+  padding-left: 1rem;
+}
+
+.tree-node-header {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem 0;
+}
+
+.tree-node-icon {
+  margin-right: 0.5rem;
+  font-size: 1rem;
+}
+
+.tree-node-merge .tree-node-icon {
+  color: #6ea8fe;
+}
+
+.tree-node-read .tree-node-icon {
+  color: #75b798;
+}
+
+.tree-node-label {
+  font-weight: 600;
+}
+
+.tree-node-badge {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.tree-node-blocks {
+  margin-left: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+}
+
+.tree-node-blocks code {
+  font-size: 0.75rem;
+}
+
+/* Execution Tree Styles */
+.execution-tree {
+  font-family: monospace;
+  font-size: 0.875rem;
+  padding: 1rem;
+  background-color: var(--bs-secondary-bg);
+  border-radius: 0.375rem;
+}
+
+.exec-node {
+  margin: 0.25rem 0;
+}
+
+.exec-node-merge > .exec-node-header {
+  border-left: 3px solid #0d6efd;
+  padding-left: 0.5rem;
+}
+
+.exec-node-read > .exec-node-header {
+  border-left: 3px solid #198754;
+  padding-left: 0.5rem;
+}
+
+.exec-node-header {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.exec-children {
+  margin-left: 1.5rem;
+  border-left: 1px solid var(--bs-border-color);
+  padding-left: 0.5rem;
+}
+
+.exec-error {
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.exec-type {
+  font-weight: 600;
+}
+
+.exec-blocks {
+  margin-left: 0.5rem;
+}
+
+.exec-blocks table {
+  margin-bottom: 0;
+}
+
+.exec-blocks code {
+  font-size: 0.75rem;
+}
+
+/* Diagnostics List Page Styles */
+.tenant-list {
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
+}
+
+.tenant-item {
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.tenant-item:hover {
+  background-color: var(--bs-tertiary-bg);
+}
+
+.tenant-item.active {
+  background-color: var(--bs-primary);
+  color: white;
+}
+
+.diagnostics-table {
+  font-size: 0.875rem;
+}
+
+.diagnostics-table td,
+.diagnostics-table th {
+  vertical-align: middle;
+}
+
+.diagnostics-table .col-narrow {
+  white-space: nowrap;
+  width: 1px;
+}
+
+.diagnostics-table .col-payload {
+  width: 100%;
+  max-width: 0;
+}
+
+.query-type-badge {
+  font-family: monospace;
+  font-size: 0.75rem;
+}
+
+.payload-json {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
+/* Diff parameters section */
+.diff-params {
+  background-color: var(--bs-secondary-bg);
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin-top: 0.5rem;
+}

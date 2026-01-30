@@ -1,15 +1,10 @@
 package admin
 
 import (
-	"embed"
-	"fmt"
+	_ "embed"
 	"html/template"
-	"io/fs"
 	"net/http"
-	"strings"
 	"time"
-
-	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 )
 
 //go:embed query_diagnostics.gohtml
@@ -18,130 +13,22 @@ var diagnosticsPageHtml string
 //go:embed diagnostics_list.gohtml
 var diagnosticsListPageHtml string
 
-//go:embed static
-var staticFiles embed.FS
-
 // StaticHandler returns an HTTP handler for serving static files.
+// This is a no-op handler since static files are now served by React bundle.
 func StaticHandler() http.Handler {
-	sub, _ := fs.Sub(staticFiles, "static")
-	return http.FileServer(http.FS(sub))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	})
 }
 
-// diagnosticsListPageContent contains data for the diagnostics list page.
+// diagnosticsListPageContent contains data for the diagnostics list page shell.
 type diagnosticsListPageContent struct {
-	Now            time.Time
-	Tenants        []string
-	SelectedTenant string
-	Diagnostics    []*diagnostics.DiagnosticSummary
-	Error          string
+	Now time.Time
 }
 
+// diagnosticsPageContent contains data for the diagnostics page shell.
 type diagnosticsPageContent struct {
 	Now time.Time
-
-	Tenants       []string
-	TenantID      string
-	StartTime     string
-	EndTime       string
-	LabelSelector string
-
-	// Method selection
-	QueryMethods  []string
-	Method        string
-	ProfileTypeID string
-
-	// Query-type specific parameters
-	// PPROF/TREE: MaxNodes, Format
-	MaxNodes string
-	Format   string
-	// Span profile: SpanSelector
-	SpanSelector string
-	// LABEL_VALUES: LabelName
-	LabelName string
-	// Series: LabelNames
-	LabelNames string
-	// TIME_SERIES: Step, GroupBy, Aggregation, Limit
-	Step        string
-	GroupBy     string
-	Aggregation string
-	Limit       string
-	// Heatmap: HeatmapQueryType
-	HeatmapQueryType string
-	// Exemplars
-	ExemplarType string
-
-	// Diff parameters
-	DiffLeftSelector     string
-	DiffLeftProfileType  string
-	DiffLeftStart        string
-	DiffLeftEnd          string
-	DiffRightSelector    string
-	DiffRightProfileType string
-	DiffRightStart       string
-	DiffRightEnd         string
-
-	PlanJSON          string
-	PlanTree          *PlanTreeNode
-	MetadataStats     string
-	MetadataQueryTime time.Duration
-
-	QueryResponseTime time.Duration
-	ExecutionTree     *ExecutionTreeNode
-	DiagnosticsID     string // ID for retrieving stored diagnostics
-
-	Error string
-}
-
-// PlanTreeNode represents a node in the visual query plan tree.
-type PlanTreeNode struct {
-	Type        string          // "MERGE" or "READ"
-	Children    []*PlanTreeNode // Child nodes (for MERGE)
-	BlockCount  int             // Number of blocks (for READ)
-	Blocks      []PlanTreeBlock // Block info (for READ, limited for display)
-	TotalBlocks int             // Total blocks in subtree
-}
-
-// PlanTreeBlock represents a block in the visual query plan tree.
-type PlanTreeBlock struct {
-	ID              string
-	Shard           uint32
-	Size            string // Human-readable size
-	CompactionLevel uint32
-}
-
-// ExecutionTreeNode represents a node in the execution trace visualization.
-type ExecutionTreeNode struct {
-	Type             string
-	Executor         string
-	Duration         time.Duration
-	DurationStr      string
-	RelativeStart    time.Duration // Time offset from query start
-	RelativeStartStr string
-	Children         []*ExecutionTreeNode
-	Stats            *ExecutionTreeStats
-	Error            string
-}
-
-// ExecutionTreeStats contains stats for READ node execution.
-type ExecutionTreeStats struct {
-	BlocksRead        int64
-	DatasetsProcessed int64
-	BlockExecutions   []*BlockExecutionInfo
-}
-
-// BlockExecutionInfo contains execution details for a single block.
-type BlockExecutionInfo struct {
-	BlockID           string
-	Duration          time.Duration
-	DurationStr       string
-	RelativeStart     time.Duration
-	RelativeStartStr  string
-	RelativeEnd       time.Duration
-	RelativeEndStr    string
-	DatasetsProcessed int64
-	Size              string // Human-readable size
-	Shard             uint32
-	CompactionLevel   uint32
 }
 
 type templates struct {
@@ -149,72 +36,13 @@ type templates struct {
 	diagnosticsListTemplate *template.Template
 }
 
-var templateFuncs = template.FuncMap{
-	"lower": strings.ToLower,
-	"subtract": func(a, b int) int {
-		return a - b
-	},
-	"formatTime": func(t time.Time) string {
-		return t.Format("2006-01-02 15:04:05")
-	},
-	"formatMs": func(ms int64) string {
-		if ms < 1000 {
-			return fmt.Sprintf("%dms", ms)
-		}
-		return fmt.Sprintf("%.2fs", float64(ms)/1000)
-	},
-	"formatBytes": func(bytes int64) string {
-		if bytes == 0 {
-			return "-"
-		}
-		const unit = 1024
-		if bytes < unit {
-			return fmt.Sprintf("%d B", bytes)
-		}
-		div, exp := int64(unit), 0
-		for n := bytes / unit; n >= unit; n /= unit {
-			div *= unit
-			exp++
-		}
-		return fmt.Sprintf("%.1f %ciB", float64(bytes)/float64(div), "KMGTPE"[exp])
-	},
-	"formatDuration": func(d time.Duration) string {
-		if d < time.Millisecond {
-			return fmt.Sprintf("%.3fms", float64(d.Nanoseconds())/1e6)
-		}
-		if d < time.Second {
-			return fmt.Sprintf("%.3fms", float64(d.Nanoseconds())/1e6)
-		}
-		return fmt.Sprintf("%.3fs", d.Seconds())
-	},
-	"formatTimeRange": func(startMs, endMs int64) string {
-		start := time.UnixMilli(startMs).UTC()
-		end := time.UnixMilli(endMs).UTC()
-		duration := end.Sub(start)
-		if duration < time.Hour {
-			return fmt.Sprintf("%s (%s)", start.Format("15:04:05"), formatDurationShort(duration))
-		}
-		return fmt.Sprintf("%s to %s", start.Format("Jan 2 15:04"), end.Format("Jan 2 15:04"))
-	},
-}
-
-func formatDurationShort(d time.Duration) string {
-	if d < time.Millisecond {
-		return fmt.Sprintf("%.3fms", float64(d.Nanoseconds())/1e6)
-	}
-	if d < time.Second {
-		return fmt.Sprintf("%.3fms", float64(d.Nanoseconds())/1e6)
-	}
-	return fmt.Sprintf("%.3fs", d.Seconds())
-}
-
 var pageTemplates = initTemplates()
 
 func initTemplates() *templates {
-	diagnosticsTemplate := template.New("diagnostics").Funcs(templateFuncs)
+	diagnosticsTemplate := template.New("diagnostics")
 	template.Must(diagnosticsTemplate.Parse(diagnosticsPageHtml))
 
-	diagnosticsListTemplate := template.New("diagnostics-list").Funcs(templateFuncs)
+	diagnosticsListTemplate := template.New("diagnostics-list")
 	template.Must(diagnosticsListTemplate.Parse(diagnosticsListPageHtml))
 
 	return &templates{
