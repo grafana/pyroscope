@@ -7,7 +7,7 @@ import './styles.css';
 function AdminApp() {
   const path = window.location.pathname;
 
-  if (path === '/query-diagnostics/list') {
+  if (path.endsWith('/query-diagnostics/list')) {
     return <DiagnosticsListPage />;
   }
 

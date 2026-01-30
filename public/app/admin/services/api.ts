@@ -4,9 +4,11 @@ import type {
   QueryParams,
   RawDiagnostic,
 } from '../types';
+import { getBasePath } from '../utils';
 
 export async function fetchTenants(): Promise<string[]> {
-  const response = await fetch('/query-diagnostics/api/tenants');
+  const basePath = getBasePath();
+  const response = await fetch(`${basePath}/query-diagnostics/api/tenants`);
   if (!response.ok) {
     throw new Error(`Failed to fetch tenants: ${response.status}`);
   }
@@ -18,7 +20,8 @@ export async function fetchProfileTypes(
   startMs: number,
   endMs: number
 ): Promise<string[]> {
-  const response = await fetch('/querier.v1.QuerierService/ProfileTypes', {
+  const basePath = getBasePath();
+  const response = await fetch(`${basePath}/querier.v1.QuerierService/ProfileTypes`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -38,8 +41,9 @@ export async function fetchProfileTypes(
 export async function listDiagnostics(
   tenant: string
 ): Promise<DiagnosticSummary[]> {
+  const basePath = getBasePath();
   const response = await fetch(
-    `/query-diagnostics/api/diagnostics?tenant=${encodeURIComponent(tenant)}`
+    `${basePath}/query-diagnostics/api/diagnostics?tenant=${encodeURIComponent(tenant)}`
   );
   if (!response.ok) {
     throw new Error(`Failed to list diagnostics: ${response.status}`);
@@ -51,8 +55,9 @@ export async function loadDiagnostic(
   tenant: string,
   id: string
 ): Promise<RawDiagnostic> {
+  const basePath = getBasePath();
   const response = await fetch(
-    `/query-diagnostics/api/diagnostics/${encodeURIComponent(id)}?tenant=${encodeURIComponent(tenant)}`
+    `${basePath}/query-diagnostics/api/diagnostics/${encodeURIComponent(id)}?tenant=${encodeURIComponent(tenant)}`
   );
   if (!response.ok) {
     throw new Error(`Failed to load diagnostic: ${response.status}`);
@@ -231,7 +236,8 @@ export interface ExecuteQueryResult {
 export async function executeQuery(
   params: QueryParams
 ): Promise<ExecuteQueryResult> {
-  const endpoint = `/querier.v1.QuerierService/${params.method}`;
+  const basePath = getBasePath();
+  const endpoint = `${basePath}/querier.v1.QuerierService/${params.method}`;
   const body = buildRequestBody(params.method, params);
 
   const response = await fetch(endpoint, {
@@ -252,4 +258,41 @@ export async function executeQuery(
   }
 
   return { diagnosticsId };
+}
+
+export async function exportDiagnostic(
+  tenant: string,
+  id: string
+): Promise<Blob> {
+  const basePath = getBasePath();
+  const response = await fetch(
+    `${basePath}/query-diagnostics/api/export/${encodeURIComponent(id)}?tenant=${encodeURIComponent(tenant)}`
+  );
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Failed to export diagnostic: ${response.status}`);
+  }
+  return response.blob();
+}
+
+export async function importDiagnostic(
+  tenant: string,
+  file: File
+): Promise<{ id: string }> {
+  const basePath = getBasePath();
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(
+    `${basePath}/query-diagnostics/api/import?tenant=${encodeURIComponent(tenant)}`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  );
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Failed to import diagnostic: ${response.status}`);
+  }
+  return response.json();
 }

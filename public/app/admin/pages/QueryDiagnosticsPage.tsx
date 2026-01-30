@@ -9,6 +9,7 @@ import {
   convertExecutionNodeToTree,
   convertQueryPlanToTree,
   extractBlocksFromPlan,
+  getBasePath,
 } from '../utils';
 import type {
   ExecutionTreeNode,
@@ -329,7 +330,7 @@ export function QueryDiagnosticsPage() {
     try {
       const result = await executeQuery(params);
       if (result.diagnosticsId) {
-        window.location.href = `/query-diagnostics?load=${result.diagnosticsId}&tenant=${params.tenantId}`;
+        window.location.href = `${getBasePath()}/query-diagnostics?load=${result.diagnosticsId}&tenant=${params.tenantId}`;
       } else {
         setError('Query succeeded but no diagnostics ID was returned');
       }
@@ -343,34 +344,32 @@ export function QueryDiagnosticsPage() {
   }, [params]);
 
   return (
-    <main>
-      <div className="container mt-5">
+    <div className="query-diagnostics-page">
+      <div className="page-header">
         <Header
           title="Query Diagnostics"
           subtitle="Debug V2 query execution by running queries and viewing execution traces"
           showNewQueryLink={true}
           showStoredDiagnosticsLink={true}
         />
-
         {globalError && (
-          <div className="alert alert-danger mt-3" role="alert">
+          <div className="alert alert-danger mt-2 mb-0" role="alert">
             <strong>Error:</strong> {globalError}
           </div>
         )}
+      </div>
 
-        <div className="row mt-4">
-          <div className="col-12 col-lg-5">
-            <QueryForm
-              tenants={tenants}
-              params={params}
-              onParamsChange={setParams}
-              onSubmit={handleSubmit}
-              isSubmitting={isSubmitting}
-              error={error}
-            />
-          </div>
-
-          <div className="col-12 col-lg-7 mt-4 mt-lg-0">
+      <div className="page-content">
+        <div className="left-panel">
+          <QueryForm
+            tenants={tenants}
+            params={params}
+            onParamsChange={setParams}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            error={error}
+          />
+          <div className="mt-3">
             <QueryPlanViewer
               planTree={planTree}
               planJson={planJson}
@@ -379,12 +378,15 @@ export function QueryDiagnosticsPage() {
           </div>
         </div>
 
-        <ExecutionTraceViewer
-          executionTree={executionTree}
-          responseTimeMs={responseTimeMs}
-          diagnosticsId={diagnosticsId}
-        />
+        <div className="right-panel">
+          <ExecutionTraceViewer
+            executionTree={executionTree}
+            responseTimeMs={responseTimeMs}
+            diagnosticsId={diagnosticsId}
+            tenantId={params.tenantId}
+          />
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

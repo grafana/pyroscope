@@ -1,6 +1,7 @@
 package diagnostics
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -481,6 +482,114 @@ func (s *Store) Cleanup(ctx context.Context) (int, error) {
 	}
 
 	return deleted, nil
+}
+
+// Export creates a zip archive containing all files for a diagnostic.
+func (s *Store) Export(ctx context.Context, tenantID, id string) ([]byte, error) {
+	if _, err := uuid.Parse(id); err != nil {
+		return nil, fmt.Errorf("invalid diagnostics ID: %s", err)
+	}
+
+	basePath := storagePrefix + tenantID + "/" + id + "/"
+	files := []string{"metadata.json", "request.json", "response.json", "plan.json", "execution.json"}
+
+	var buf bytes.Buffer
+	zipWriter := zip.NewWriter(&buf)
+
+	for _, file := range files {
+		data, err := s.readRaw(ctx, basePath+file)
+		if err != nil {
+			if s.bucket.IsObjNotFoundErr(err) {
+				continue
+			}
+			return nil, fmt.Errorf("failed to read %s: %w", file, err)
+		}
+
+		w, err := zipWriter.Create(file)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create zip entry for %s: %w", file, err)
+		}
+		if _, err := w.Write(data); err != nil {
+			return nil, fmt.Errorf("failed to write %s to zip: %w", file, err)
+		}
+	}
+
+	if err := zipWriter.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close zip: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+// Import extracts a zip archive and stores the diagnostic files.
+// If newID is empty, generates a new UUID. Returns the ID used.
+func (s *Store) Import(ctx context.Context, tenantID string, newID string, zipData []byte) (string, error) {
+	if newID == "" {
+		newID = generateUUID()
+	} else if _, err := uuid.Parse(newID); err != nil {
+		return "", fmt.Errorf("invalid diagnostics ID: %s", err)
+	}
+
+	zipReader, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
+	if err != nil {
+		return "", fmt.Errorf("failed to read zip: %w", err)
+	}
+
+	basePath := storagePrefix + tenantID + "/" + newID + "/"
+	allowedFiles := map[string]bool{
+		"metadata.json":  true,
+		"request.json":   true,
+		"response.json":  true,
+		"plan.json":      true,
+		"execution.json": true,
+	}
+
+	var hasMetadata bool
+	for _, file := range zipReader.File {
+		if !allowedFiles[file.Name] {
+			continue
+		}
+		if file.Name == "metadata.json" {
+			hasMetadata = true
+		}
+
+		rc, err := file.Open()
+		if err != nil {
+			return "", fmt.Errorf("failed to open %s from zip: %w", file.Name, err)
+		}
+
+		data, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			return "", fmt.Errorf("failed to read %s from zip: %w", file.Name, err)
+		}
+
+		// For metadata, update the ID and tenant to match the import
+		if file.Name == "metadata.json" {
+			var metadata storedMetadata
+			if err := json.Unmarshal(data, &metadata); err != nil {
+				return "", fmt.Errorf("failed to parse metadata: %w", err)
+			}
+			metadata.ID = newID
+			metadata.TenantID = tenantID
+			metadata.CreatedAt = time.Now().UTC()
+			data, err = json.Marshal(metadata)
+			if err != nil {
+				return "", fmt.Errorf("failed to marshal updated metadata: %w", err)
+			}
+		}
+
+		if err := s.bucket.Upload(ctx, basePath+file.Name, bytes.NewReader(data)); err != nil {
+			return "", fmt.Errorf("failed to upload %s: %w", file.Name, err)
+		}
+	}
+
+	if !hasMetadata {
+		return "", fmt.Errorf("zip archive must contain metadata.json")
+	}
+
+	level.Info(s.logger).Log("msg", "imported diagnostics", "id", newID, "tenant_id", tenantID)
+	return newID, nil
 }
 
 func generateUUID() string {

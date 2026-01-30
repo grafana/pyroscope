@@ -47,6 +47,8 @@ func (a *API) RegisterQueryFrontendAdmin(adm *queryfrontendadmin.Admin) {
 	a.RegisterRoute("/query-diagnostics/api/tenants", adm.TenantsAPIHandler(), a.registerOptionsRingPage()...)
 	a.RegisterRoute("/query-diagnostics/api/diagnostics", adm.DiagnosticsListAPIHandler(), a.registerOptionsRingPage()...)
 	a.RegisterRoute("/query-diagnostics/api/diagnostics/", adm.DiagnosticsGetAPIHandler(), WithGzipMiddleware(), WithMethod("GET"), WithPrefix())
+	a.RegisterRoute("/query-diagnostics/api/export/", adm.DiagnosticsExportAPIHandler(), WithMethod("GET"), WithPrefix())
+	a.RegisterRoute("/query-diagnostics/api/import", adm.DiagnosticsImportAPIHandler(), WithMethod("POST"))
 
 	a.indexPage.AddLinks(defaultWeight, "Query Frontend", []IndexPageLink{
 		{Desc: "Query Diagnostics", Path: "/query-diagnostics"},

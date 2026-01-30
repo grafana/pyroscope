@@ -10,6 +10,15 @@ import type {
   RawQueryPlan,
 } from './types';
 
+export function getBasePath(): string {
+  const path = window.location.pathname;
+  const match = path.match(/^(.*\/query-frontend)\//);
+  if (match) {
+    return match[1];
+  }
+  return '';
+}
+
 // Protobuf enums are serialized as numbers by Go's json.Marshal
 // QueryNode_UNKNOWN = 0, QueryNode_MERGE = 1, QueryNode_READ = 2
 const QUERY_NODE_TYPE_MAP: Record<number | string, 'MERGE' | 'READ'> = {
@@ -93,9 +102,9 @@ function convertQueryNodeToTree(node: RawQueryNode): PlanTreeNode | null {
     treeNode.totalBlocks = treeNode.blockCount;
     treeNode.blocks = (node.blocks || []).map((block: RawBlockMeta) => ({
       id: block.id,
-      shard: block.shard,
+      shard: block.shard ?? 0,
       size: formatBytes(block.size),
-      compactionLevel: block.compaction_level,
+      compactionLevel: block.compaction_level ?? 0,
     }));
   }
 
@@ -187,10 +196,10 @@ export function buildMetadataStats(
     result += `  Average size: ${formatBytes(avgBlockSize)}\n`;
   }
   if (largestBlock) {
-    result += `  Largest: ${formatBytes(largestBlock.size)} (${largestBlock.id}, shard ${largestBlock.shard}, L${largestBlock.compaction_level})\n`;
+    result += `  Largest: ${formatBytes(largestBlock.size)} (${largestBlock.id}, shard ${largestBlock.shard}, L${largestBlock.compaction_level ?? 0})\n`;
   }
   if (smallestBlock) {
-    result += `  Smallest: ${formatBytes(smallestBlock.size)} (${smallestBlock.id}, shard ${smallestBlock.shard}, L${smallestBlock.compaction_level})`;
+    result += `  Smallest: ${formatBytes(smallestBlock.size)} (${smallestBlock.id}, shard ${smallestBlock.shard}, L${smallestBlock.compaction_level ?? 0})`;
   }
 
   if (totalDatasets > 0) {
@@ -201,11 +210,11 @@ export function buildMetadataStats(
     result += `  Average size: ${formatBytes(avgDatasetSize)}\n`;
     if (largestDataset) {
       const dsName = getDatasetName(largestDataset.dataset, largestDataset.block);
-      result += `  Largest: ${formatBytes(largestDataset.dataset.size)} (${dsName} in ${largestDataset.block.id}, shard ${largestDataset.block.shard}, L${largestDataset.block.compaction_level})\n`;
+      result += `  Largest: ${formatBytes(largestDataset.dataset.size)} (${dsName} in ${largestDataset.block.id}, shard ${largestDataset.block.shard}, L${largestDataset.block.compaction_level ?? 0})\n`;
     }
     if (smallestDataset) {
       const dsName = getDatasetName(smallestDataset.dataset, smallestDataset.block);
-      result += `  Smallest: ${formatBytes(smallestDataset.dataset.size)} (${dsName} in ${smallestDataset.block.id}, shard ${smallestDataset.block.shard}, L${smallestDataset.block.compaction_level})`;
+      result += `  Smallest: ${formatBytes(smallestDataset.dataset.size)} (${dsName} in ${smallestDataset.block.id}, shard ${smallestDataset.block.shard}, L${smallestDataset.block.compaction_level ?? 0})`;
     }
   }
 
@@ -303,10 +312,10 @@ function convertExecutionNodeToTreeWithBase(
         relativeStartStr: formatDuration(blockRelStartNs),
         relativeEnd: blockRelEndNs,
         relativeEndStr: formatDuration(blockRelEndNs),
-        datasetsProcessed: blockExec.datasets_processed,
+        datasetsProcessed: blockExec.datasets_processed ?? 0,
         size: formatBytes(blockExec.size),
-        shard: blockExec.shard,
-        compactionLevel: blockExec.compaction_level,
+        shard: blockExec.shard ?? 0,
+        compactionLevel: blockExec.compaction_level ?? 0,
       };
       stats.blockExecutions!.push(blockInfo);
     }
