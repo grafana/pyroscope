@@ -32,18 +32,27 @@
         .diagnostics-table {
             font-size: 0.875rem;
         }
-        .diagnostics-table td {
+        .diagnostics-table td, .diagnostics-table th {
             vertical-align: middle;
+        }
+        .diagnostics-table .col-narrow {
+            white-space: nowrap;
+            width: 1px;
+        }
+        .diagnostics-table .col-payload {
+            width: 100%;
+            max-width: 0;
         }
         .query-type-badge {
             font-family: monospace;
             font-size: 0.75rem;
         }
-        .label-selector {
-            max-width: 200px;
+        .payload-json {
+            display: block;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            font-size: 0.75rem;
         }
     </style>
 </head>
@@ -53,7 +62,13 @@
         <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
             <div class="col-12 col-sm-9 text-center text-sm-start">
                 <h1>Stored Diagnostics</h1>
-                <p class="text-muted">Browse and view stored query diagnostics</p>
+                <p class="text-muted">
+                    Browse and view stored query diagnostics
+                    <span class="ms-2">|</span>
+                    <a href="/query-diagnostics" class="ms-2">
+                        <i class="bi bi-plus-circle"></i> New Query
+                    </a>
+                </p>
             </div>
             <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
                 <a href="/">
@@ -120,38 +135,42 @@
                                 <table class="table table-hover diagnostics-table mb-0">
                                     <thead>
                                         <tr>
-                                            <th>Created</th>
-                                            <th>Query Type</th>
-                                            <th>Time Range</th>
-                                            <th>Label Selector</th>
-                                            <th>Response Time</th>
-                                            <th></th>
+                                            <th class="col-narrow">Created</th>
+                                            <th class="col-narrow">Method</th>
+                                            <th class="col-payload">Payload</th>
+                                            <th class="col-narrow">Time</th>
+                                            <th class="col-narrow">Size</th>
+                                            <th class="col-narrow"></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {{ $tenant := .SelectedTenant}}
                                         {{ range .Diagnostics }}
                                         <tr>
-                                            <td>
+                                            <td class="col-narrow">
                                                 <small>{{ formatTime .CreatedAt }}</small>
                                             </td>
-                                            <td>
-                                                <span class="badge bg-info query-type-badge">{{ .QueryType }}</span>
+                                            <td class="col-narrow">
+                                                <span class="badge bg-info query-type-badge">{{ .Method }}</span>
                                             </td>
-                                            <td>
-                                                <small>{{ formatTimeRange .StartTime .EndTime }}</small>
+                                            <td class="col-payload">
+                                                {{ if .Request }}
+                                                <code class="payload-json" title="{{ printf "%s" .Request }}">{{ printf "%s" .Request }}</code>
+                                                {{ else }}
+                                                <span class="text-muted">-</span>
+                                                {{ end }}
                                             </td>
-                                            <td>
-                                                <code class="label-selector" title="{{ .LabelSelector }}">{{ .LabelSelector }}</code>
-                                            </td>
-                                            <td>
+                                            <td class="col-narrow">
                                                 {{ if .ResponseTimeMs }}
                                                 <span class="badge bg-success">{{ formatMs .ResponseTimeMs }}</span>
                                                 {{ else }}
                                                 <span class="text-muted">-</span>
                                                 {{ end }}
                                             </td>
-                                            <td>
+                                            <td class="col-narrow">
+                                                <span class="badge bg-secondary">{{ formatBytes .ResponseSizeBytes }}</span>
+                                            </td>
+                                            <td class="col-narrow">
                                                 <a href="/query-diagnostics?load={{ .ID }}&tenant={{ $tenant }}" class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-eye"></i> View
                                                 </a>

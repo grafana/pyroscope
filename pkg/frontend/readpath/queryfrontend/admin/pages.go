@@ -1,9 +1,11 @@
 package admin
 
 import (
-	_ "embed"
+	"embed"
 	"fmt"
 	"html/template"
+	"io/fs"
+	"net/http"
 	"strings"
 	"time"
 
@@ -15,6 +17,15 @@ var diagnosticsPageHtml string
 
 //go:embed diagnostics_list.gohtml
 var diagnosticsListPageHtml string
+
+//go:embed static
+var staticFiles embed.FS
+
+// StaticHandler returns an HTTP handler for serving static files.
+func StaticHandler() http.Handler {
+	sub, _ := fs.Sub(staticFiles, "static")
+	return http.FileServer(http.FS(sub))
+}
 
 // diagnosticsListPageContent contains data for the diagnostics list page.
 type diagnosticsListPageContent struct {
@@ -32,20 +43,42 @@ type diagnosticsPageContent struct {
 	TenantID      string
 	StartTime     string
 	EndTime       string
-	QueryType     string
 	LabelSelector string
 
+	// Method selection
+	QueryMethods  []string
+	Method        string
+	ProfileTypeID string
+
 	// Query-type specific parameters
-	// PPROF/TREE: MaxNodes
+	// PPROF/TREE: MaxNodes, Format
 	MaxNodes string
+	Format   string
+	// Span profile: SpanSelector
+	SpanSelector string
 	// LABEL_VALUES: LabelName
 	LabelName string
-	// SERIES_LABELS: LabelNames (comma-separated)
-	SeriesLabelNames string
-	// TIME_SERIES: Step, GroupBy, Limit
-	Step    string
-	GroupBy string
-	Limit   string
+	// Series: LabelNames
+	LabelNames string
+	// TIME_SERIES: Step, GroupBy, Aggregation, Limit
+	Step        string
+	GroupBy     string
+	Aggregation string
+	Limit       string
+	// Heatmap: HeatmapQueryType
+	HeatmapQueryType string
+	// Exemplars
+	ExemplarType string
+
+	// Diff parameters
+	DiffLeftSelector     string
+	DiffLeftProfileType  string
+	DiffLeftStart        string
+	DiffLeftEnd          string
+	DiffRightSelector    string
+	DiffRightProfileType string
+	DiffRightStart       string
+	DiffRightEnd         string
 
 	PlanJSON          string
 	PlanTree          *PlanTreeNode
@@ -129,6 +162,21 @@ var templateFuncs = template.FuncMap{
 			return fmt.Sprintf("%dms", ms)
 		}
 		return fmt.Sprintf("%.2fs", float64(ms)/1000)
+	},
+	"formatBytes": func(bytes int64) string {
+		if bytes == 0 {
+			return "-"
+		}
+		const unit = 1024
+		if bytes < unit {
+			return fmt.Sprintf("%d B", bytes)
+		}
+		div, exp := int64(unit), 0
+		for n := bytes / unit; n >= unit; n /= unit {
+			div *= unit
+			exp++
+		}
+		return fmt.Sprintf("%.1f %ciB", float64(bytes)/float64(div), "KMGTPE"[exp])
 	},
 	"formatDuration": func(d time.Duration) string {
 		if d < time.Millisecond {

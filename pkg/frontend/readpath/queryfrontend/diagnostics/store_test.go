@@ -2,6 +2,7 @@ package diagnostics
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -19,54 +20,38 @@ func newTestStore(t *testing.T) *Store {
 	return NewStore(log.NewNopLogger(), bucket)
 }
 
-func TestStore_SaveDirectAndGet(t *testing.T) {
+func TestStore_Get(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
-	request := &queryv1.QueryRequest{
-		StartTime:     1000,
-		EndTime:       2000,
-		LabelSelector: `{service="test"}`,
-		Query: []*queryv1.Query{{
-			QueryType: queryv1.QueryType_QUERY_PPROF,
-		}},
+	type testRequest struct {
+		Query       string `json:"query"`
+		LabelFilter string `json:"label_filter"`
 	}
 
-	plan := &queryv1.QueryPlan{
-		Root: &queryv1.QueryNode{
-			Type: queryv1.QueryNode_READ,
-		},
-	}
-
-	execution := &queryv1.ExecutionNode{
-		Type:        queryv1.QueryNode_READ,
-		Executor:    "test-host",
-		StartTimeNs: 1000000000,
-		EndTimeNs:   1500000000,
-		Stats: &queryv1.ExecutionStats{
-			BlocksRead:        5,
-			DatasetsProcessed: 10,
-		},
+	request := &testRequest{
+		Query:       "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+		LabelFilter: `{service="test"}`,
 	}
 
 	// Save
-	id, err := store.SaveDirect(ctx, "tenant-1", 500, request, plan, execution)
+	id := generateUUID()
+	store.AddRequest(id, "SelectMergeStacktraces", request)
+	err := store.Flush(ctx, "tenant-1", id)
 	require.NoError(t, err)
-	assert.Len(t, id, 32) // hex-encoded 16 bytes UUID
 
 	// Get
 	stored, err := store.Get(ctx, "tenant-1", id)
 	require.NoError(t, err)
-	assert.Equal(t, id, stored.ID)
-	assert.Equal(t, "tenant-1", stored.TenantID)
-	assert.Equal(t, int64(500), stored.ResponseTimeMs)
-	assert.NotNil(t, stored.Request)
-	assert.Equal(t, request.LabelSelector, stored.Request.LabelSelector)
-	assert.NotNil(t, stored.Plan)
-	assert.Equal(t, queryv1.QueryNode_READ, stored.Plan.Root.Type)
-	assert.NotNil(t, stored.Execution)
-	assert.Equal(t, "test-host", stored.Execution.Executor)
-	assert.Equal(t, int64(5), stored.Execution.Stats.BlocksRead)
+	require.Equal(t, id, stored.ID)
+	require.Equal(t, "tenant-1", stored.TenantID)
+	require.Equal(t, "SelectMergeStacktraces", stored.Method)
+	require.NotNil(t, stored.Request)
+
+	// Request is JSON - deserialize to verify
+	var storedRequest testRequest
+	require.NoError(t, json.Unmarshal(stored.Request, &storedRequest))
+	require.Equal(t, request.LabelFilter, storedRequest.LabelFilter)
 }
 
 func TestStore_GetNotFound(t *testing.T) {
@@ -85,8 +70,7 @@ func TestStore_GetInvalidID(t *testing.T) {
 	tests := []string{
 		"",
 		"short",
-		"0000000000000000000000000000000g",     // invalid hex char
-		"00000000-0000-0000-0000-000000000000", // UUID format not allowed (dashes)
+		"0000000000000000000000000000000g", // invalid hex char
 	}
 
 	for _, id := range tests {
@@ -103,7 +87,9 @@ func TestStore_Delete(t *testing.T) {
 	store := newTestStore(t)
 
 	// Save first
-	id, err := store.SaveDirect(ctx, "tenant-1", 100, nil, nil, nil)
+	id := generateUUID()
+	store.AddRequest(id, "ProfileTypes", nil)
+	err := store.Flush(ctx, "tenant-1", id)
 	require.NoError(t, err)
 
 	// Verify it exists
@@ -120,52 +106,22 @@ func TestStore_Delete(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-func TestIsValidUUID(t *testing.T) {
-	tests := []struct {
-		uuid     string
-		expected bool
-	}{
-		{"00000000000000000000000000000000", true},
-		{"abcdef0123456789abcdef0123456789", true},
-		{"", false},
-		{"short", false},
-		{"0000000000000000000000000000000", false},   // 31 chars
-		{"000000000000000000000000000000000", false}, // 33 chars
-		{"0000000000000000000000000000000g", false},  // invalid char
-		{"0000000000000000000000000000000G", false},  // uppercase not allowed
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.uuid, func(t *testing.T) {
-			assert.Equal(t, tt.expected, isValidUUID(tt.uuid))
-		})
-	}
-}
-
-func TestGenerateUUID(t *testing.T) {
-	uuid1 := generateUUID()
-	uuid2 := generateUUID()
-
-	assert.Len(t, uuid1, 32)
-	assert.Len(t, uuid2, 32)
-	assert.NotEqual(t, uuid1, uuid2)
-	assert.True(t, isValidUUID(uuid1))
-	assert.True(t, isValidUUID(uuid2))
-}
-
 func TestStore_Cleanup(t *testing.T) {
 	ctx := context.Background()
 	bucket := objstore.NewInMemBucket()
-	store := NewStore(log.NewNopLogger(), bucket)
-
-	// Override TTL to a very short duration for testing
-	store.ttl = 1 * time.Millisecond
+	store := NewStore(log.NewNopLogger(), bucket, WithTTL(1*time.Millisecond))
 
 	// Save some diagnostics
-	id1, err := store.SaveDirect(ctx, "tenant-1", 100, nil, nil, nil)
+	id1 := generateUUID()
+	store.AddRequest(id1, "ProfileTypes", nil)
+	err := store.Flush(ctx, "tenant-1", id1)
 	require.NoError(t, err)
 
-	id2, err := store.SaveDirect(ctx, "tenant-2", 200, nil, nil, nil)
+	id2 := generateUUID()
+	store.AddRequest(id2, "ProfileTypes", nil)
+	err = store.Flush(ctx, "tenant-2", id2)
+	require.NoError(t, err)
+
 	require.NoError(t, err)
 
 	// Verify both exist
@@ -199,7 +155,9 @@ func TestStore_CleanupPreservesRecent(t *testing.T) {
 
 	// Use default TTL (7 days) - recent items should not be cleaned up
 	// Save some diagnostics
-	id, err := store.SaveDirect(ctx, "tenant-1", 100, nil, nil, nil)
+	id := generateUUID()
+	store.AddRequest(id, "ProfileTypes", nil)
+	err := store.Flush(ctx, "tenant-1", id)
 	require.NoError(t, err)
 
 	// Run cleanup immediately
@@ -216,12 +174,21 @@ func TestStore_AddAndFlush(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
+	type testRequest struct {
+		Query       string `json:"query"`
+		StartTime   int64  `json:"start_time"`
+		EndTime     int64  `json:"end_time"`
+		LabelFilter string `json:"label_filter"`
+	}
+
+	request := &testRequest{
+		Query:       "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+		StartTime:   1000,
+		EndTime:     2000,
+		LabelFilter: `{service="test"}`,
+	}
+
 	diag := &queryv1.Diagnostics{
-		QueryRequest: &queryv1.QueryRequest{
-			StartTime:     1000,
-			EndTime:       2000,
-			LabelSelector: `{service="test"}`,
-		},
 		QueryPlan: &queryv1.QueryPlan{
 			Root: &queryv1.QueryNode{
 				Type: queryv1.QueryNode_READ,
@@ -234,19 +201,27 @@ func TestStore_AddAndFlush(t *testing.T) {
 	}
 
 	id := "abcdef0123456789abcdef0123456789"
+
+	// Add request info (as done by the wrapper)
+	store.AddRequest(id, "SelectMergeStacktraces", request)
+
+	// Add diagnostics (as done by query execution)
 	store.Add(id, diag)
 
 	// Flush
-	err := store.Flush(ctx, "tenant-1", id, 500)
+	err := store.Flush(ctx, "tenant-1", id)
 	require.NoError(t, err)
 
 	// Get and verify
 	stored, err := store.Get(ctx, "tenant-1", id)
 	require.NoError(t, err)
 	assert.Equal(t, id, stored.ID)
-	assert.Equal(t, int64(500), stored.ResponseTimeMs)
+	assert.Equal(t, "SelectMergeStacktraces", stored.Method)
 	assert.NotNil(t, stored.Request)
-	assert.Equal(t, int64(1000), stored.Request.StartTime)
+	// Deserialize to verify content
+	var storedRequest testRequest
+	require.NoError(t, json.Unmarshal(stored.Request, &storedRequest))
+	assert.Equal(t, int64(1000), storedRequest.StartTime)
 	assert.NotNil(t, stored.Plan)
 	assert.NotNil(t, stored.Execution)
 }

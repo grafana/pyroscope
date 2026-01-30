@@ -10,118 +10,9 @@
     <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
     <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
     <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <link rel="stylesheet" href="/query-diagnostics/static/styles.css">
     <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
-
-    <style>
-        .form-section {
-            margin-bottom: 1.5rem;
-        }
-        .plan-textarea {
-            font-family: monospace;
-            font-size: 0.875rem;
-        }
-        .stats-box {
-            background-color: var(--bs-secondary-bg);
-            border-radius: 0.375rem;
-            padding: 1rem;
-            margin-top: 0.5rem;
-        }
-        /* Query Plan Tree Styles */
-        .plan-tree {
-            font-family: monospace;
-            font-size: 0.875rem;
-            padding: 1rem;
-            background-color: var(--bs-secondary-bg);
-            border-radius: 0.375rem;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .tree-node-children {
-            margin-left: 1.5rem;
-            border-left: 1px dashed var(--bs-border-color);
-            padding-left: 1rem;
-        }
-        .tree-node-header {
-            display: flex;
-            align-items: center;
-            padding: 0.25rem 0;
-        }
-        .tree-node-icon {
-            margin-right: 0.5rem;
-            font-size: 1rem;
-        }
-        .tree-node-merge .tree-node-icon {
-            color: #6ea8fe;
-        }
-        .tree-node-read .tree-node-icon {
-            color: #75b798;
-        }
-        .tree-node-label {
-            font-weight: 600;
-        }
-        .tree-node-badge {
-            margin-left: 0.5rem;
-            font-size: 0.75rem;
-        }
-        .tree-node-blocks {
-            margin-left: 1.5rem;
-            font-size: 0.8rem;
-            color: var(--bs-secondary-color);
-        }
-        .tree-node-blocks code {
-            font-size: 0.75rem;
-        }
-        /* Execution Tree Styles */
-        .execution-tree {
-            font-family: monospace;
-            font-size: 0.875rem;
-            padding: 1rem;
-            background-color: var(--bs-secondary-bg);
-            border-radius: 0.375rem;
-        }
-        .exec-node {
-            margin: 0.25rem 0;
-        }
-        .exec-node-merge > .exec-node-header {
-            border-left: 3px solid #0d6efd;
-            padding-left: 0.5rem;
-        }
-        .exec-node-read > .exec-node-header {
-            border-left: 3px solid #198754;
-            padding-left: 0.5rem;
-        }
-        .exec-node-header {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .exec-children {
-            margin-left: 1.5rem;
-            border-left: 1px solid var(--bs-border-color);
-            padding-left: 0.5rem;
-        }
-        .exec-error {
-            margin-left: 0.5rem;
-            font-size: 0.8rem;
-        }
-        .exec-type {
-            font-weight: 600;
-        }
-        .exec-blocks {
-            margin-left: 0.5rem;
-        }
-        .exec-blocks table {
-            margin-bottom: 0;
-        }
-        .exec-blocks code {
-            font-size: 0.75rem;
-        }
-        /* Query parameter visibility */
-        .query-param {
-            display: none;
-        }
-    </style>
+    <script src="/query-diagnostics/static/util.js"></script>
 </head>
 <body>
 <main>
@@ -130,7 +21,11 @@
             <div class="col-12 col-sm-9 text-center text-sm-start">
                 <h1>Query Diagnostics</h1>
                 <p class="text-muted">
-                    Debug V2 query execution by building and executing query plans
+                    Debug V2 query execution by running queries and viewing execution traces
+                    <span class="ms-2">|</span>
+                    <a href="/query-diagnostics" class="ms-2">
+                        <i class="bi bi-plus-circle"></i> New Query
+                    </a>
                     <span class="ms-2">|</span>
                     <a href="/query-diagnostics/list" class="ms-2">
                         <i class="bi bi-clock-history"></i> View Stored Diagnostics
@@ -150,9 +45,9 @@
         </div>
         {{ end }}
 
-        <form action="" method="POST">
+        <form id="query-form" onsubmit="return executeQuery(event)">
             <div class="row mt-4">
-                <div class="col-12 col-lg-4">
+                <div class="col-12 col-lg-5">
                     <div class="card">
                         <div class="card-header">
                             <h5 class="mb-0">Query Parameters</h5>
@@ -160,20 +55,28 @@
                         <div class="card-body">
                             <div class="form-section">
                                 <label for="tenant_id" class="form-label">Tenant ID</label>
-                                <input type="text" class="form-control" id="tenant_id" name="tenant_id"
-                                       value="{{ .TenantID }}" placeholder="anonymous" list="tenant_list" required>
-                                <datalist id="tenant_list">
+                                <select class="form-select" id="tenant_id" name="tenant_id" onchange="onTenantChange()" required>
+                                    <option value="">-- Select tenant --</option>
                                     {{ range .Tenants }}
-                                    <option value="{{ . }}">
+                                    <option value="{{ . }}" {{ if eq $.TenantID . }}selected{{ end }}>{{ . }}</option>
                                     {{ end }}
-                                </datalist>
+                                </select>
+                            </div>
+
+                            <div class="form-section">
+                                <label for="method" class="form-label">API Method</label>
+                                <select class="form-select" id="method" name="method" onchange="updateQueryParams()">
+                                    {{ range .QueryMethods }}
+                                    <option value="{{ . }}" {{ if eq $.Method . }}selected{{ end }}>{{ . }}</option>
+                                    {{ end }}
+                                </select>
                             </div>
 
                             <div class="row form-section">
                                 <div class="col-6">
                                     <label for="start_time" class="form-label">Start Time</label>
                                     <input type="text" class="form-control" id="start_time" name="start_time"
-                                           value="{{ .StartTime }}" placeholder="now-30m" required>
+                                           value="{{ .StartTime }}" placeholder="now-1h" required>
                                 </div>
                                 <div class="col-6">
                                     <label for="end_time" class="form-label">End Time</label>
@@ -183,33 +86,46 @@
                             </div>
 
                             <div class="form-section">
-                                <label for="query_type" class="form-label">Query Type</label>
-                                <select class="form-select" id="query_type" name="query_type" onchange="updateQueryParams()">
-                                    <option value="QUERY_PPROF" {{ if eq .QueryType "QUERY_PPROF" }}selected{{ end }}>QUERY_PPROF</option>
-                                    <option value="QUERY_TREE" {{ if eq .QueryType "QUERY_TREE" }}selected{{ end }}>QUERY_TREE</option>
-                                    <option value="QUERY_TIME_SERIES" {{ if eq .QueryType "QUERY_TIME_SERIES" }}selected{{ end }}>QUERY_TIME_SERIES</option>
-                                    <option value="QUERY_HEATMAP" {{ if eq .QueryType "QUERY_HEATMAP" }}selected{{ end }}>QUERY_HEATMAP</option>
-                                    <option value="QUERY_LABEL_NAMES" {{ if eq .QueryType "QUERY_LABEL_NAMES" }}selected{{ end }}>QUERY_LABEL_NAMES</option>
-                                    <option value="QUERY_LABEL_VALUES" {{ if eq .QueryType "QUERY_LABEL_VALUES" }}selected{{ end }}>QUERY_LABEL_VALUES</option>
-                                    <option value="QUERY_SERIES_LABELS" {{ if eq .QueryType "QUERY_SERIES_LABELS" }}selected{{ end }}>QUERY_SERIES_LABELS</option>
-                                </select>
-                            </div>
-
-                            <div class="form-section">
                                 <label for="label_selector" class="form-label">Label Selector</label>
                                 <input type="text" class="form-control" id="label_selector" name="label_selector"
                                        value="{{ .LabelSelector }}" placeholder='{service_name="my-service"}'>
                             </div>
 
-                            <!-- PPROF/TREE: MaxNodes -->
+                            <div class="form-section query-param" id="param-profile-type-id">
+                                <label for="profile_type_id" class="form-label">Profile Type ID</label>
+                                <select class="form-select" id="profile_type_id" name="profile_type_id" data-initial-value="{{ .ProfileTypeID }}">
+                                    <option value="">-- Select tenant first --</option>
+                                </select>
+                                <div class="form-text">Select a tenant to load available profile types</div>
+                            </div>
+
+                            <!-- MaxNodes -->
                             <div class="form-section query-param" id="param-max-nodes">
                                 <label for="max_nodes" class="form-label">Max Nodes</label>
                                 <input type="number" class="form-control" id="max_nodes" name="max_nodes"
                                        value="{{ .MaxNodes }}" placeholder="16384">
-                                <div class="form-text">Maximum number of nodes in the result (PPROF/TREE)</div>
+                                <div class="form-text">Maximum number of nodes in the result</div>
                             </div>
 
-                            <!-- LABEL_VALUES: LabelName -->
+                            <!-- Profile Format -->
+                            <div class="form-section query-param" id="param-format">
+                                <label for="format" class="form-label">Profile Format</label>
+                                <select class="form-select" id="format" name="format">
+                                    <option value="PROFILE_FORMAT_FLAMEGRAPH" {{ if or (eq .Format "") (eq .Format "PROFILE_FORMAT_FLAMEGRAPH") }}selected{{ end }}>Flame Graph</option>
+                                    <option value="PROFILE_FORMAT_TREE" {{ if eq .Format "PROFILE_FORMAT_TREE" }}selected{{ end }}>Tree</option>
+                                </select>
+                                <div class="form-text">Format of the profile response</div>
+                            </div>
+
+                            <!-- Span Selector -->
+                            <div class="form-section query-param" id="param-span-selector">
+                                <label for="span_selector" class="form-label">Span IDs (comma-separated)</label>
+                                <input type="text" class="form-control" id="span_selector" name="span_selector"
+                                       value="{{ .SpanSelector }}" placeholder="9a517183f26a089d, 5a4fe264a9c987fe">
+                                <div class="form-text">List of Span IDs to query</div>
+                            </div>
+
+                            <!-- LabelName -->
                             <div class="form-section query-param" id="param-label-name">
                                 <label for="label_name" class="form-label">Label Name</label>
                                 <input type="text" class="form-control" id="label_name" name="label_name"
@@ -217,20 +133,20 @@
                                 <div class="form-text">Label name to get values for</div>
                             </div>
 
-                            <!-- SERIES_LABELS: LabelNames -->
-                            <div class="form-section query-param" id="param-series-label-names">
-                                <label for="series_label_names" class="form-label">Label Names (comma-separated)</label>
-                                <input type="text" class="form-control" id="series_label_names" name="series_label_names"
-                                       value="{{ .SeriesLabelNames }}" placeholder="service_name,__profile_type__">
-                                <div class="form-text">Filter returned labels to these names (empty = all)</div>
+                            <!-- Label Names filter for Series -->
+                            <div class="form-section query-param" id="param-label-names">
+                                <label for="label_names" class="form-label">Label Names (comma-separated)</label>
+                                <input type="text" class="form-control" id="label_names" name="label_names"
+                                       value="{{ .LabelNames }}" placeholder="service_name, namespace">
+                                <div class="form-text">Filter which label names to return (empty = all)</div>
                             </div>
 
-                            <!-- TIME_SERIES: Step, GroupBy, Limit -->
+                            <!-- Step, GroupBy, Aggregation, Limit for time series -->
                             <div class="form-section query-param" id="param-step">
                                 <label for="step" class="form-label">Step (seconds)</label>
                                 <input type="number" class="form-control" id="step" name="step"
-                                       value="{{ .Step }}" placeholder="auto" step="any">
-                                <div class="form-text">Time step between data points (leave empty for auto)</div>
+                                       value="{{ .Step }}" placeholder="auto" min="1">
+                                <div class="form-text">Time step between data points (empty = auto, min 15s, ~100 points)</div>
                             </div>
 
                             <div class="form-section query-param" id="param-group-by">
@@ -240,26 +156,115 @@
                                 <div class="form-text">Labels to group time series by</div>
                             </div>
 
+                            <div class="form-section query-param" id="param-aggregation">
+                                <label for="aggregation" class="form-label">Aggregation</label>
+                                <select class="form-select" id="aggregation" name="aggregation">
+                                    <option value="" {{ if eq .Aggregation "" }}selected{{ end }}>None</option>
+                                    <option value="sum" {{ if eq .Aggregation "sum" }}selected{{ end }}>Sum</option>
+                                    <option value="avg" {{ if eq .Aggregation "avg" }}selected{{ end }}>Average</option>
+                                </select>
+                                <div class="form-text">Aggregation type for time series</div>
+                            </div>
+
                             <div class="form-section query-param" id="param-limit">
                                 <label for="limit" class="form-label">Limit</label>
                                 <input type="number" class="form-control" id="limit" name="limit"
-                                       value="{{ .Limit }}" placeholder="0">
+                                       value="{{ .Limit }}" placeholder="0" min="0">
                                 <div class="form-text">Maximum number of series (0 = unlimited)</div>
                             </div>
 
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary" name="action" value="create_plan">
-                                    <i class="bi bi-diagram-3"></i> Create Query Plan
-                                </button>
-                                <button type="submit" class="btn btn-success" name="action" value="create_and_execute">
+                            <div class="form-section query-param" id="param-heatmap-query-type">
+                                <label for="heatmap_query_type" class="form-label">Heatmap Query Type</label>
+                                <select class="form-select" id="heatmap_query_type" name="heatmap_query_type">
+                                    <option value="HEATMAP_QUERY_TYPE_INDIVIDUAL" {{ if or (eq .HeatmapQueryType "") (eq .HeatmapQueryType "HEATMAP_QUERY_TYPE_INDIVIDUAL") }}selected{{ end }}>Individual Profiles</option>
+                                    <option value="HEATMAP_QUERY_TYPE_SPAN" {{ if eq .HeatmapQueryType "HEATMAP_QUERY_TYPE_SPAN" }}selected{{ end }}>Span Profiles</option>
+                                </select>
+                                <div class="form-text">Type of profiles to query</div>
+                            </div>
+
+                            <div class="form-section query-param" id="param-exemplar-type">
+                                <label for="exemplar_type" class="form-label">Exemplar Type</label>
+                                <select class="form-select" id="exemplar_type" name="exemplar_type">
+                                    <option value="" {{ if eq .ExemplarType "" }}selected{{ end }}>None</option>
+                                    <option value="EXEMPLAR_TYPE_INDIVIDUAL" {{ if eq .ExemplarType "EXEMPLAR_TYPE_INDIVIDUAL" }}selected{{ end }}>Individual</option>
+                                    <option value="EXEMPLAR_TYPE_SPAN" {{ if eq .ExemplarType "EXEMPLAR_TYPE_SPAN" }}selected{{ end }}>Span</option>
+                                </select>
+                                <div class="form-text">Type of exemplars to include in the response</div>
+                            </div>
+
+                            <!-- Diff parameters -->
+                            <div class="diff-params" id="diff-params">
+                                <h6 class="mb-3">Diff Parameters</h6>
+                                <div class="row mb-2">
+                                    <div class="col-6">
+                                        <strong>Left (baseline)</strong>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>Right (comparison)</strong>
+                                    </div>
+                                </div>
+                                <div class="row form-section">
+                                    <div class="col-6">
+                                        <label for="diff_left_selector" class="form-label">Label Selector</label>
+                                        <input type="text" class="form-control form-control-sm" id="diff_left_selector" name="diff_left_selector"
+                                               value="{{ .DiffLeftSelector }}" placeholder='{service_name="my-service"}'>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="diff_right_selector" class="form-label">Label Selector</label>
+                                        <input type="text" class="form-control form-control-sm" id="diff_right_selector" name="diff_right_selector"
+                                               value="{{ .DiffRightSelector }}" placeholder='{service_name="my-service"}'>
+                                    </div>
+                                </div>
+                                <div class="row form-section">
+                                    <div class="col-6">
+                                        <label for="diff_left_profile_type" class="form-label">Profile Type</label>
+                                        <select class="form-select form-select-sm profile-type-select" id="diff_left_profile_type" name="diff_left_profile_type" data-initial-value="{{ .DiffLeftProfileType }}">
+                                            <option value="">-- Select tenant first --</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="diff_right_profile_type" class="form-label">Profile Type</label>
+                                        <select class="form-select form-select-sm profile-type-select" id="diff_right_profile_type" name="diff_right_profile_type" data-initial-value="{{ .DiffRightProfileType }}">
+                                            <option value="">-- Select tenant first --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row form-section">
+                                    <div class="col-3">
+                                        <label for="diff_left_start" class="form-label">Start</label>
+                                        <input type="text" class="form-control form-control-sm" id="diff_left_start" name="diff_left_start"
+                                               value="{{ .DiffLeftStart }}" placeholder="now-2h">
+                                    </div>
+                                    <div class="col-3">
+                                        <label for="diff_left_end" class="form-label">End</label>
+                                        <input type="text" class="form-control form-control-sm" id="diff_left_end" name="diff_left_end"
+                                               value="{{ .DiffLeftEnd }}" placeholder="now-1h">
+                                    </div>
+                                    <div class="col-3">
+                                        <label for="diff_right_start" class="form-label">Start</label>
+                                        <input type="text" class="form-control form-control-sm" id="diff_right_start" name="diff_right_start"
+                                               value="{{ .DiffRightStart }}" placeholder="now-1h">
+                                    </div>
+                                    <div class="col-3">
+                                        <label for="diff_right_end" class="form-label">End</label>
+                                        <input type="text" class="form-control form-control-sm" id="diff_right_end" name="diff_right_end"
+                                               value="{{ .DiffRightEnd }}" placeholder="now">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2 mt-3">
+                                <button type="submit" class="btn btn-success" id="execute-btn">
                                     <i class="bi bi-play-fill"></i> Execute Query
                                 </button>
                             </div>
+                            <div id="query-error" class="alert alert-danger mt-3" style="display: none;"></div>
                         </div>
                     </div>
                 </div>
 
-                <div class="col-12 col-lg-8 mt-4 mt-lg-0">
+                <div class="col-12 col-lg-7 mt-4 mt-lg-0">
+                    {{ if or .PlanTree .MetadataStats }}
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">Query Plan</h5>
@@ -284,7 +289,7 @@
                                 </li>
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link" id="json-tab" data-bs-toggle="tab" data-bs-target="#json-view" type="button" role="tab">
-                                        <i class="bi bi-code-slash"></i> JSON (editable)
+                                        <i class="bi bi-code-slash"></i> JSON
                                     </button>
                                 </li>
                             </ul>
@@ -295,25 +300,22 @@
                                     </div>
                                 </div>
                                 <div class="tab-pane fade" id="json-view" role="tabpanel">
-                                    <textarea class="form-control plan-textarea" id="plan_json" name="plan_json" rows="15">{{ .PlanJSON }}</textarea>
-                                    <div class="form-text">You can modify this plan before executing the query</div>
+                                    <textarea class="form-control plan-textarea" id="plan_json" rows="15" readonly>{{ .PlanJSON }}</textarea>
                                 </div>
                             </div>
-                            {{ else }}
-                            <div class="form-section">
-                                <label for="plan_json" class="form-label">Plan JSON (editable)</label>
-                                <textarea class="form-control plan-textarea" id="plan_json" name="plan_json" rows="15">{{ .PlanJSON }}</textarea>
-                                <div class="form-text">You can modify this plan before executing the query</div>
-                            </div>
                             {{ end }}
-
-                            <div class="d-grid gap-2 d-md-flex mt-3">
-                                <button type="submit" class="btn btn-success" name="action" value="execute_query" {{ if not .PlanJSON }}disabled{{ end }}>
-                                    <i class="bi bi-play-fill"></i> Execute Query
-                                </button>
-                            </div>
                         </div>
                     </div>
+                    {{ else }}
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Results</h5>
+                        </div>
+                        <div class="card-body text-muted">
+                            <p>Execute a query to see the query plan and execution trace.</p>
+                        </div>
+                    </div>
+                    {{ end }}
                 </div>
             </div>
 
@@ -349,42 +351,6 @@
         <small class="text-muted">Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}</small>
     </div>
 </footer>
-<script>
-    function updateQueryParams() {
-        const queryType = document.getElementById('query_type').value;
-
-        // Hide all query params first
-        document.querySelectorAll('.query-param').forEach(el => {
-            el.style.display = 'none';
-        });
-
-        // Show relevant params based on query type
-        switch (queryType) {
-            case 'QUERY_PPROF':
-            case 'QUERY_TREE':
-                document.getElementById('param-max-nodes').style.display = 'block';
-                break;
-            case 'QUERY_TIME_SERIES':
-            case 'QUERY_HEATMAP':
-                document.getElementById('param-step').style.display = 'block';
-                document.getElementById('param-group-by').style.display = 'block';
-                document.getElementById('param-limit').style.display = 'block';
-                break;
-            case 'QUERY_LABEL_VALUES':
-                document.getElementById('param-label-name').style.display = 'block';
-                break;
-            case 'QUERY_SERIES_LABELS':
-                document.getElementById('param-series-label-names').style.display = 'block';
-                break;
-            case 'QUERY_LABEL_NAMES':
-                // No additional parameters
-                break;
-        }
-    }
-
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', updateQueryParams);
-</script>
 </body>
 </html>
 

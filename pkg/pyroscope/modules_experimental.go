@@ -126,7 +126,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	queryFrontendAdmin := queryfrontendadmin.New(
 		f.logger,
 		f.metastoreClient,
-		f.queryBackendClient,
+		handler,
 		diagnosticsStore,
 	)
 	f.API.RegisterQueryFrontendAdmin(queryFrontendAdmin)
