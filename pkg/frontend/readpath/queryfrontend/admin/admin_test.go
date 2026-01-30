@@ -11,101 +11,6 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 )
 
-func TestParseQueryType(t *testing.T) {
-	a := &Admin{}
-
-	tests := []struct {
-		input    string
-		expected queryv1.QueryType
-	}{
-		{"QUERY_PPROF", queryv1.QueryType_QUERY_PPROF},
-		{"QUERY_TREE", queryv1.QueryType_QUERY_TREE},
-		{"QUERY_TIME_SERIES", queryv1.QueryType_QUERY_TIME_SERIES},
-		{"QUERY_HEATMAP", queryv1.QueryType_QUERY_HEATMAP},
-		{"QUERY_LABEL_NAMES", queryv1.QueryType_QUERY_LABEL_NAMES},
-		{"QUERY_LABEL_VALUES", queryv1.QueryType_QUERY_LABEL_VALUES},
-		{"QUERY_SERIES_LABELS", queryv1.QueryType_QUERY_SERIES_LABELS},
-		{"", queryv1.QueryType_QUERY_PPROF},           // default
-		{"INVALID", queryv1.QueryType_QUERY_PPROF},   // default
-		{"query_pprof", queryv1.QueryType_QUERY_PPROF}, // case sensitive, defaults
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := a.parseQueryType(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestParseIntOrDefault(t *testing.T) {
-	tests := []struct {
-		name       string
-		input      string
-		defaultVal int64
-		expected   int64
-	}{
-		{"valid positive", "42", 0, 42},
-		{"valid negative", "-10", 0, -10},
-		{"valid zero", "0", 99, 0},
-		{"empty string", "", 100, 100},
-		{"invalid string", "abc", 50, 50},
-		{"float string", "3.14", 0, 0}, // ParseInt fails on floats
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := parseIntOrDefault(tt.input, tt.defaultVal)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestParseFloatOrDefault(t *testing.T) {
-	tests := []struct {
-		name       string
-		input      string
-		defaultVal float64
-		expected   float64
-	}{
-		{"valid integer", "42", 0, 42.0},
-		{"valid float", "3.14", 0, 3.14},
-		{"valid negative", "-2.5", 0, -2.5},
-		{"empty string", "", 1.5, 1.5},
-		{"invalid string", "abc", 2.5, 2.5},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := parseFloatOrDefault(tt.input, tt.defaultVal)
-			assert.InDelta(t, tt.expected, result, 0.001)
-		})
-	}
-}
-
-func TestSplitAndTrim(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected []string
-	}{
-		{"simple", "a,b,c", []string{"a", "b", "c"}},
-		{"with spaces", "a, b , c", []string{"a", "b", "c"}},
-		{"single item", "foo", []string{"foo"}},
-		{"empty string", "", []string{}},
-		{"empty items", "a,,b", []string{"a", "b"}},
-		{"only spaces", " , , ", []string{}},
-		{"trailing comma", "a,b,", []string{"a", "b"}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := splitAndTrim(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestConvertQueryPlanToTree(t *testing.T) {
 	t.Run("nil plan", func(t *testing.T) {
 		result := convertQueryPlanToTree(nil)
@@ -233,14 +138,14 @@ func TestConvertExecutionNodeToTree(t *testing.T) {
 				{
 					Type:        queryv1.QueryNode_READ,
 					Executor:    "host-2",
-					StartTimeNs: baseTime + 100000000,  // started 100ms after parent
-					EndTimeNs:   baseTime + 600000000,  // 500ms duration
+					StartTimeNs: baseTime + 100000000, // started 100ms after parent
+					EndTimeNs:   baseTime + 600000000, // 500ms duration
 				},
 				{
 					Type:        queryv1.QueryNode_READ,
 					Executor:    "host-3",
-					StartTimeNs: baseTime + 200000000,  // started 200ms after parent
-					EndTimeNs:   baseTime + 800000000,  // 600ms duration
+					StartTimeNs: baseTime + 200000000, // started 200ms after parent
+					EndTimeNs:   baseTime + 800000000, // 600ms duration
 				},
 			},
 		}
@@ -331,8 +236,8 @@ func TestBuildMetadataStats(t *testing.T) {
 		blocks := []*metastorev1.BlockMeta{
 			{
 				Id:              "block-1",
-				Shard:          1,
-				Size:           1024,
+				Shard:           1,
+				Size:            1024,
 				CompactionLevel: 0,
 				Datasets: []*metastorev1.Dataset{
 					{Size: 512},
@@ -341,8 +246,8 @@ func TestBuildMetadataStats(t *testing.T) {
 			},
 			{
 				Id:              "block-2",
-				Shard:          2,
-				Size:           2048,
+				Shard:           2,
+				Size:            2048,
 				CompactionLevel: 1,
 				Datasets: []*metastorev1.Dataset{
 					{Size: 2048},

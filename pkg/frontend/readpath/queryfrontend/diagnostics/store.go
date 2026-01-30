@@ -3,8 +3,6 @@ package diagnostics
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +13,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/google/uuid"
 	"github.com/thanos-io/objstore"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -33,26 +32,31 @@ const (
 
 // StoredDiagnostics wraps the query diagnostics with metadata.
 // Data is stored in separate files:
-//   - <uuid>/metadata.json - ID, timestamps, tenant, response time
-//   - <uuid>/request.json - query request
+//   - <uuid>/metadata.json - ID, timestamps, tenant, response time, method
+//   - <uuid>/request.json - the original request (JSON serialized)
 //   - <uuid>/plan.json - query plan
 //   - <uuid>/execution.json - execution trace
 type StoredDiagnostics struct {
-	ID             string                 `json:"id"`
-	CreatedAt      time.Time              `json:"created_at"`
-	TenantID       string                 `json:"tenant_id"`
-	ResponseTimeMs int64                  `json:"response_time_ms,omitempty"`
-	Request        *queryv1.QueryRequest  `json:"request,omitempty"`
-	Plan           *queryv1.QueryPlan     `json:"plan,omitempty"`
-	Execution      *queryv1.ExecutionNode `json:"execution,omitempty"`
+	ID                string                 `json:"id"`
+	CreatedAt         time.Time              `json:"created_at"`
+	TenantID          string                 `json:"tenant_id"`
+	ResponseTimeMs    int64                  `json:"response_time_ms,omitempty"`
+	ResponseSizeBytes int64                  `json:"response_size_bytes,omitempty"`
+	Method            string                 `json:"method,omitempty"`
+	Request           json.RawMessage        `json:"request,omitempty"`
+	Response          json.RawMessage        `json:"response,omitempty"`
+	Plan              *queryv1.QueryPlan     `json:"plan,omitempty"`
+	Execution         *queryv1.ExecutionNode `json:"execution,omitempty"`
 }
 
 // storedMetadata is the structure saved in metadata.json
 type storedMetadata struct {
-	ID             string    `json:"id"`
-	CreatedAt      time.Time `json:"created_at"`
-	TenantID       string    `json:"tenant_id"`
-	ResponseTimeMs int64     `json:"response_time_ms,omitempty"`
+	ID                string    `json:"id"`
+	CreatedAt         time.Time `json:"created_at"`
+	TenantID          string    `json:"tenant_id"`
+	ResponseTimeMs    int64     `json:"response_time_ms,omitempty"`
+	ResponseSizeBytes int64     `json:"response_size_bytes,omitempty"`
+	Method            string    `json:"method,omitempty"`
 }
 
 // Store manages query diagnostics storage and retrieval.
@@ -66,18 +70,31 @@ type Store struct {
 	inflightDiagnostics sync.Map
 }
 
+// StoreOption is a functional option for configuring a Store.
+type StoreOption func(*Store)
+
+// WithTTL sets the TTL for stored diagnostics.
+func WithTTL(ttl time.Duration) StoreOption {
+	return func(s *Store) {
+		s.ttl = ttl
+	}
+}
+
 // NewStore creates a new diagnostics store.
-func NewStore(logger log.Logger, bucket objstore.Bucket) *Store {
+func NewStore(logger log.Logger, bucket objstore.Bucket, opts ...StoreOption) *Store {
 	s := &Store{
 		logger: logger,
 		bucket: bucket,
 		ttl:    defaultTTL,
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
 	go s.run(context.Background())
 	return s
 }
 
-func (s *Store) run(ctx context.Context) error {
+func (s *Store) run(ctx context.Context) {
 	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 
@@ -87,7 +104,7 @@ func (s *Store) run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		case <-ticker.C:
 			s.runCleanup(ctx)
 		}
@@ -105,7 +122,15 @@ func (s *Store) runCleanup(ctx context.Context) {
 	}
 }
 
-func (s *Store) stopping(error) error { return nil }
+// inflightData holds request info and diagnostics for an in-progress request.
+type inflightData struct {
+	Method            string
+	Request           any // The original request
+	Response          any // The original response
+	ResponseSizeBytes int64
+	ResponseTimeMs    int64
+	Diagnostics       *queryv1.Diagnostics
+}
 
 // Add stores diagnostics in memory for later flushing.
 // Called by Query() when diagnostics collection is enabled.
@@ -113,12 +138,51 @@ func (s *Store) Add(id string, diag *queryv1.Diagnostics) {
 	if id == "" || diag == nil {
 		return
 	}
-	s.inflightDiagnostics.Store(id, diag)
+	// Load existing inflight data or create new
+	val, _ := s.inflightDiagnostics.Load(id)
+	data, ok := val.(*inflightData)
+	if !ok {
+		data = &inflightData{}
+	}
+	data.Diagnostics = diag
+	s.inflightDiagnostics.Store(id, data)
+}
+
+// AddRequest stores the method name, request, and response size in memory for later flushing.
+// Called by the wrapper to capture the API method and its parameters.
+func (s *Store) AddRequest(id string, method string, request any) {
+	if id == "" {
+		return
+	}
+	// Load existing inflight data or create new
+	val, _ := s.inflightDiagnostics.Load(id)
+	data, ok := val.(*inflightData)
+	if !ok {
+		data = &inflightData{}
+	}
+	data.Method = method
+	data.Request = request
+	s.inflightDiagnostics.Store(id, data)
+}
+
+func (s *Store) AddResponse(id string, response any, sizeBytes int64, responseTimeMs int64) {
+	if id == "" {
+		return
+	}
+	// Load existing inflight data or create new
+	val, _ := s.inflightDiagnostics.Load(id)
+	data, ok := val.(*inflightData)
+	if !ok {
+		data = &inflightData{}
+	}
+	data.Response = response
+	data.ResponseSizeBytes = sizeBytes
+	data.ResponseTimeMs = responseTimeMs
 }
 
 // Flush saves the in-memory diagnostics to the bucket and removes from memory.
 // Called by the wrapper after the request completes.
-func (s *Store) Flush(ctx context.Context, tenantID, id string, responseTimeMs int64) error {
+func (s *Store) Flush(ctx context.Context, tenantID, id string) error {
 	if id == "" || tenantID == "" {
 		return nil
 	}
@@ -130,41 +194,50 @@ func (s *Store) Flush(ctx context.Context, tenantID, id string, responseTimeMs i
 		return nil
 	}
 
-	diag, ok := val.(*queryv1.Diagnostics)
-	if !ok || diag == nil {
+	data, ok := val.(*inflightData)
+	if !ok || data == nil {
 		return nil
 	}
 
 	basePath := storagePrefix + tenantID + "/" + id + "/"
 
-	// Save metadata
+	// Save metadata (including method name and response size)
 	metadata := &storedMetadata{
-		ID:             id,
-		CreatedAt:      time.Now().UTC(),
-		TenantID:       tenantID,
-		ResponseTimeMs: responseTimeMs,
+		ID:                id,
+		CreatedAt:         time.Now().UTC(),
+		TenantID:          tenantID,
+		ResponseTimeMs:    data.ResponseTimeMs,
+		ResponseSizeBytes: data.ResponseSizeBytes,
+		Method:            data.Method,
 	}
 	if err := s.saveJSON(ctx, basePath+"metadata.json", metadata); err != nil {
 		return fmt.Errorf("failed to save metadata: %w", err)
 	}
 
-	// Save request if provided
-	if diag.QueryRequest != nil {
-		if err := s.saveJSON(ctx, basePath+"request.json", diag.QueryRequest); err != nil {
-			return fmt.Errorf("failed to save query request: %w", err)
+	// Save request if provided (serialized as JSON)
+	if data.Request != nil {
+		if err := s.saveJSON(ctx, basePath+"request.json", data.Request); err != nil {
+			return fmt.Errorf("failed to save request: %w", err)
+		}
+	}
+
+	// Save response if provided
+	if data.Response != nil {
+		if err := s.saveJSON(ctx, basePath+"response.json", data.Response); err != nil {
+			return fmt.Errorf("failed to save response: %w", err)
 		}
 	}
 
 	// Save plan if provided and has content
-	if diag.QueryPlan != nil && diag.QueryPlan.Root != nil {
-		if err := s.saveJSON(ctx, basePath+"plan.json", diag.QueryPlan); err != nil {
+	if data.Diagnostics != nil && data.Diagnostics.QueryPlan != nil && data.Diagnostics.QueryPlan.Root != nil {
+		if err := s.saveJSON(ctx, basePath+"plan.json", data.Diagnostics.QueryPlan); err != nil {
 			return fmt.Errorf("failed to save query plan: %w", err)
 		}
 	}
 
 	// Save execution trace if provided
-	if diag.ExecutionNode != nil {
-		if err := s.saveJSON(ctx, basePath+"execution.json", diag.ExecutionNode); err != nil {
+	if data.Diagnostics != nil && data.Diagnostics.ExecutionNode != nil {
+		if err := s.saveJSON(ctx, basePath+"execution.json", data.Diagnostics.ExecutionNode); err != nil {
 			return fmt.Errorf("failed to save execution trace: %w", err)
 		}
 	}
@@ -173,58 +246,11 @@ func (s *Store) Flush(ctx context.Context, tenantID, id string, responseTimeMs i
 		"msg", "stored query diagnostics",
 		"id", id,
 		"tenant_id", tenantID,
-		"response_time_ms", responseTimeMs,
+		"method", data.Method,
+		"response_time_ms", data.ResponseTimeMs,
 	)
 
 	return nil
-}
-
-// SaveDirect saves diagnostics directly to the store without going through the in-memory cache.
-// This is used by the admin UI for re-running queries.
-func (s *Store) SaveDirect(ctx context.Context, tenantID string, responseTimeMs int64, request *queryv1.QueryRequest, plan *queryv1.QueryPlan, execution *queryv1.ExecutionNode) (string, error) {
-	id := generateUUID()
-	basePath := storagePrefix + tenantID + "/" + id + "/"
-
-	// Save metadata
-	metadata := &storedMetadata{
-		ID:             id,
-		CreatedAt:      time.Now().UTC(),
-		TenantID:       tenantID,
-		ResponseTimeMs: responseTimeMs,
-	}
-	if err := s.saveJSON(ctx, basePath+"metadata.json", metadata); err != nil {
-		return "", fmt.Errorf("failed to save metadata: %w", err)
-	}
-
-	// Save request if provided
-	if request != nil {
-		if err := s.saveJSON(ctx, basePath+"request.json", request); err != nil {
-			return "", fmt.Errorf("failed to save query request: %w", err)
-		}
-	}
-
-	// Save plan if provided and has content
-	if plan != nil && plan.Root != nil {
-		if err := s.saveJSON(ctx, basePath+"plan.json", plan); err != nil {
-			return "", fmt.Errorf("failed to save query plan: %w", err)
-		}
-	}
-
-	// Save execution trace if provided
-	if execution != nil {
-		if err := s.saveJSON(ctx, basePath+"execution.json", execution); err != nil {
-			return "", fmt.Errorf("failed to save execution trace: %w", err)
-		}
-	}
-
-	level.Debug(s.logger).Log(
-		"msg", "stored query diagnostics (direct)",
-		"id", id,
-		"tenant_id", tenantID,
-		"response_time_ms", responseTimeMs,
-	)
-
-	return id, nil
 }
 
 func (s *Store) saveJSON(ctx context.Context, path string, v any) error {
@@ -237,8 +263,8 @@ func (s *Store) saveJSON(ctx context.Context, path string, v any) error {
 
 // Get retrieves diagnostics by tenant and ID.
 func (s *Store) Get(ctx context.Context, tenantID, id string) (*StoredDiagnostics, error) {
-	if !isValidUUID(id) {
-		return nil, fmt.Errorf("invalid diagnostics ID: %s", id)
+	if _, err := uuid.Parse(id); err != nil {
+		return nil, fmt.Errorf("invalid diagnostics ID: %s", err)
 	}
 
 	basePath := storagePrefix + tenantID + "/" + id + "/"
@@ -253,18 +279,19 @@ func (s *Store) Get(ctx context.Context, tenantID, id string) (*StoredDiagnostic
 	}
 
 	stored := &StoredDiagnostics{
-		ID:             metadata.ID,
-		CreatedAt:      metadata.CreatedAt,
-		TenantID:       metadata.TenantID,
-		ResponseTimeMs: metadata.ResponseTimeMs,
+		ID:                metadata.ID,
+		CreatedAt:         metadata.CreatedAt,
+		TenantID:          metadata.TenantID,
+		ResponseTimeMs:    metadata.ResponseTimeMs,
+		ResponseSizeBytes: metadata.ResponseSizeBytes,
+		Method:            metadata.Method,
 	}
 
-	// Read request (optional)
-	var request queryv1.QueryRequest
-	if err := s.readJSON(ctx, basePath+"request.json", &request); err == nil {
-		stored.Request = &request
+	// Read request as raw JSON (optional)
+	if data, err := s.readRaw(ctx, basePath+"request.json"); err == nil {
+		stored.Request = data
 	} else if !s.bucket.IsObjNotFoundErr(err) {
-		level.Warn(s.logger).Log("msg", "failed to read query request", "id", id, "err", err)
+		level.Warn(s.logger).Log("msg", "failed to read request", "id", id, "err", err)
 	}
 
 	// Read query plan (optional)
@@ -301,10 +328,25 @@ func (s *Store) readJSON(ctx context.Context, path string, v any) error {
 	return json.Unmarshal(data, v)
 }
 
+func (s *Store) readRaw(ctx context.Context, path string) (json.RawMessage, error) {
+	reader, err := s.bucket.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read: %w", err)
+	}
+
+	return data, nil
+}
+
 // Delete removes diagnostics by tenant and ID.
 func (s *Store) Delete(ctx context.Context, tenantID, id string) error {
-	if !isValidUUID(id) {
-		return fmt.Errorf("invalid diagnostics ID: %s", id)
+	if _, err := uuid.Parse(id); err != nil {
+		return fmt.Errorf("invalid diagnostics ID: %s", err)
 	}
 
 	basePath := storagePrefix + tenantID + "/" + id + "/"
@@ -349,13 +391,12 @@ func (s *Store) ListTenants(ctx context.Context) ([]string, error) {
 
 // DiagnosticSummary contains minimal info for listing diagnostics.
 type DiagnosticSummary struct {
-	ID             string    `json:"id"`
-	CreatedAt      time.Time `json:"created_at"`
-	QueryType      string    `json:"query_type"`
-	StartTime      int64     `json:"start_time"`
-	EndTime        int64     `json:"end_time"`
-	LabelSelector  string    `json:"label_selector"`
-	ResponseTimeMs int64     `json:"response_time_ms"`
+	ID                string          `json:"id"`
+	CreatedAt         time.Time       `json:"created_at"`
+	Method            string          `json:"method"`
+	ResponseTimeMs    int64           `json:"response_time_ms"`
+	ResponseSizeBytes int64           `json:"response_size_bytes"`
+	Request           json.RawMessage `json:"request,omitempty"`
 }
 
 // ListByTenant returns all diagnostics for a given tenant.
@@ -377,21 +418,17 @@ func (s *Store) ListByTenant(ctx context.Context, tenant string) ([]*DiagnosticS
 		}
 
 		summary := &DiagnosticSummary{
-			ID:             metadata.ID,
-			CreatedAt:      metadata.CreatedAt,
-			ResponseTimeMs: metadata.ResponseTimeMs,
+			ID:                metadata.ID,
+			CreatedAt:         metadata.CreatedAt,
+			Method:            metadata.Method,
+			ResponseTimeMs:    metadata.ResponseTimeMs,
+			ResponseSizeBytes: metadata.ResponseSizeBytes,
 		}
 
-		// Try to read request for additional info
-		basePath := strings.TrimSuffix(name, "metadata.json")
-		var request queryv1.QueryRequest
-		if err := s.readJSON(ctx, basePath+"request.json", &request); err == nil {
-			summary.StartTime = request.StartTime
-			summary.EndTime = request.EndTime
-			summary.LabelSelector = request.LabelSelector
-			if len(request.Query) > 0 {
-				summary.QueryType = request.Query[0].QueryType.String()
-			}
+		// Try to read request payload
+		requestPath := strings.TrimSuffix(name, "metadata.json") + "request.json"
+		if data, err := s.readRaw(ctx, requestPath); err == nil {
+			summary.Request = data
 		}
 
 		summaries = append(summaries, summary)
@@ -447,19 +484,5 @@ func (s *Store) Cleanup(ctx context.Context) (int, error) {
 }
 
 func generateUUID() string {
-	b := make([]byte, 16)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
-}
-
-func isValidUUID(uuid string) bool {
-	if len(uuid) != 32 {
-		return false
-	}
-	for _, c := range uuid {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
-			return false
-		}
-	}
-	return true
+	return uuid.New().String()
 }

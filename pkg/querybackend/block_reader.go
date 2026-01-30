@@ -129,10 +129,7 @@ func (b *BlockReader) Invoke(
 		return nil, err
 	}
 
-	resp, err := agg.response()
-	if err != nil {
-		return nil, err
-	}
+	resp := agg.response()
 
 	if collectDiag {
 		if resp.Diagnostics == nil {

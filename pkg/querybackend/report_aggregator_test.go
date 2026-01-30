@@ -70,8 +70,7 @@ func TestReportAggregator_SingleReport(t *testing.T) {
 	assert.Equal(t, report, ra.staged[reportType])
 
 	// the response should contain the single report
-	resp, err := ra.response()
-	require.NoError(t, err)
+	resp := ra.response()
 	require.Len(t, resp.Reports, 1)
 	assert.Equal(t, report, resp.Reports[0])
 }
@@ -105,8 +104,7 @@ func TestReportAggregator_TwoReports(t *testing.T) {
 	assert.Equal(t, 2, agg.getReportCount())
 
 	// the response should contain the aggregated result
-	resp, err := ra.response()
-	require.NoError(t, err)
+	resp := ra.response()
 	require.Len(t, resp.Reports, 1)
 	assert.Equal(t, reportType, resp.Reports[0].ReportType)
 }
@@ -143,8 +141,7 @@ func TestReportAggregator_MultipleTypes(t *testing.T) {
 	assert.Nil(t, ra.staged[type1])
 	assert.Len(t, ra.aggregators, 1)
 
-	resp, err := ra.response()
-	require.NoError(t, err)
+	resp := ra.response()
 	require.Len(t, resp.Reports, 2)
 
 	reportTypes := make(map[queryv1.ReportType]bool)
@@ -223,8 +220,7 @@ func TestReportAggregator_ConcurrentAccess(t *testing.T) {
 
 	wg.Wait()
 
-	resp, err := ra.response()
-	require.NoError(t, err)
+	resp := ra.response()
 	assert.Len(t, resp.Reports, 1)
 }
 

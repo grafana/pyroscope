@@ -169,15 +169,15 @@ func (q *QueryBackend) merge(
 		return nil, nil, err
 	}
 
-	var validChildren []*queryv1.ExecutionNode
+	var executionNodes []*queryv1.ExecutionNode
 	for _, n := range childExecNodes {
 		if n != nil {
-			validChildren = append(validChildren, n)
+			executionNodes = append(executionNodes, n)
 		}
 	}
 
-	resp, err := m.response()
-	return resp, validChildren, err
+	resp := m.response()
+	return resp, executionNodes, nil
 }
 
 func (q *QueryBackend) read(

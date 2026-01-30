@@ -155,7 +155,7 @@ func (ra *reportAggregator) aggregateReportNoCheck(report *queryv1.Report) (err 
 	return a.aggregate(report)
 }
 
-func (ra *reportAggregator) response() (*queryv1.InvokeResponse, error) {
+func (ra *reportAggregator) response() *queryv1.InvokeResponse {
 	// if there are staged reports, we can just add them, no need to aggregate because there is one per type
 	reports := make([]*queryv1.Report, 0, len(ra.staged))
 	for _, st := range ra.staged {
@@ -169,5 +169,5 @@ func (ra *reportAggregator) response() (*queryv1.InvokeResponse, error) {
 		r.ReportType = t
 		reports = append(reports, r)
 	}
-	return &queryv1.InvokeResponse{Reports: reports}, nil
+	return &queryv1.InvokeResponse{Reports: reports}
 }

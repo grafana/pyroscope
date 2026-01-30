@@ -10,6 +10,9 @@ import (
 const (
 	requestHeader = "X-Pyroscope-Collect-Diagnostics"
 	idHeader      = "X-Pyroscope-Diagnostics-Id"
+
+	// IDHeader is the exported constant for the diagnostics ID header.
+	IDHeader = idHeader
 )
 
 // Context key for diagnostics context.
