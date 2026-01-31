@@ -84,7 +84,7 @@ export function ExecutionTraceViewer({
         </div>
       </div>
       <div className="execution-trace-body">
-        <ExecutionFlowGraph executionTree={executionTree} />
+        <ExecutionFlowGraph executionTree={executionTree} responseTimeMs={responseTimeMs} />
       </div>
     </div>
   );

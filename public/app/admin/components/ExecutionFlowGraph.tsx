@@ -1,13 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
   Controls,
-  MiniMap,
   useNodesState,
   useEdgesState,
   Handle,
   Position,
+  Panel,
 } from '@xyflow/react';
 import type { Node, Edge, NodeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -16,7 +16,10 @@ import type { ExecutionTreeNode, BlockExecutionInfo } from '../types';
 
 interface ExecutionFlowGraphProps {
   executionTree: ExecutionTreeNode;
+  responseTimeMs: number | null;
 }
+
+type AnimationState = 'pending' | 'active' | 'completed';
 
 interface ExecutionNodeData extends Record<string, unknown> {
   label: string;
@@ -26,6 +29,7 @@ interface ExecutionNodeData extends Record<string, unknown> {
   relativeStartStr: string;
   duration: number;
   relativeStart: number;
+  animationState: AnimationState;
   stats?: {
     blocksRead: number;
     datasetsProcessed: number;
@@ -36,28 +40,62 @@ interface ExecutionNodeData extends Record<string, unknown> {
 
 type ExecutionFlowNode = Node<ExecutionNodeData, 'executionNode'>;
 
-const NODE_WIDTH = 240;
-const NODE_HEIGHT = 65;
-const HORIZONTAL_GAP = 40;
-const VERTICAL_GAP = 50;
-const GRID_THRESHOLD = 4;
+const NODE_WIDTH = 140;
+const NODE_HEIGHT = 44;
+const HORIZONTAL_GAP = 60;
+const VERTICAL_GAP = 15;
+const LEAF_GRID_THRESHOLD = 6;
+const LEAF_GRID_COLUMNS = 4;
+
+function getNodeClass(nodeType: string): string {
+  switch (nodeType) {
+    case 'MERGE':
+      return 'merge';
+    case 'READ':
+      return 'read';
+    case 'FRONTEND':
+      return 'frontend';
+    default:
+      return 'read';
+  }
+}
+
+function shortenExecutorName(executor: string): string {
+  // Handle k8s-style pod names: prefix-deployment-hash-podid
+  // e.g., "fire-query-backend-0457f4f8d-lx55c" -> "lx55c"
+  const parts = executor.split('-');
+  if (parts.length >= 2) {
+    // Return last part (pod ID) if it looks like a hash
+    const lastPart = parts[parts.length - 1];
+    if (/^[a-z0-9]{4,}$/i.test(lastPart)) {
+      return lastPart;
+    }
+  }
+  // Fallback: return last 12 chars if too long
+  if (executor.length > 12) {
+    return '…' + executor.slice(-11);
+  }
+  return executor;
+}
 
 function ExecutionNode({ data, selected }: NodeProps<ExecutionFlowNode>) {
-  const nodeClass = data.nodeType === 'MERGE' ? 'merge' : 'read';
+  const nodeClass = getNodeClass(data.nodeType);
+  const animClass = data.animationState || 'pending';
+  const isFrontend = data.nodeType === 'FRONTEND';
+  const shortName = isFrontend ? data.executor : shortenExecutorName(data.executor);
 
   return (
-    <div className={`execution-flow-node ${nodeClass} ${selected ? 'selected' : ''}`}>
-      <Handle type="target" position={Position.Top} />
+    <div className={`execution-flow-node ${nodeClass} ${animClass} ${selected ? 'selected' : ''}`}>
+      {!isFrontend && <Handle type="target" position={Position.Left} />}
       <div className="node-header">
-        <span className={`node-type ${nodeClass}`}>{data.nodeType}</span>
-        <span className="node-executor">{data.executor}</span>
+        <span className="node-executor" title={data.executor}>{shortName}</span>
       </div>
       <div className="node-timing">
         <span className="node-start" title="Started at">@{data.relativeStartStr}</span>
         <span className="node-duration" title="Duration">{data.durationStr}</span>
       </div>
       {data.error && <div className="node-error">Error</div>}
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }
@@ -95,6 +133,7 @@ function buildLayoutTree(tree: ExecutionTreeNode, idCounter = { value: 0 }): Lay
       relativeStartStr: tree.relativeStartStr,
       duration: tree.duration,
       relativeStart: tree.relativeStart,
+      animationState: 'pending' as AnimationState,
       stats: tree.stats,
       error: tree.error,
     },
@@ -106,6 +145,14 @@ function buildLayoutTree(tree: ExecutionTreeNode, idCounter = { value: 0 }): Lay
     subtreeWidth: 0,
     subtreeHeight: 0,
   };
+}
+
+function isLeafParent(node: LayoutNode): boolean {
+  return node.children.length > 0 && node.children.every(c => c.children.length === 0);
+}
+
+function shouldUseLeafGrid(node: LayoutNode): boolean {
+  return isLeafParent(node) && node.children.length >= LEAF_GRID_THRESHOLD;
 }
 
 function calculateSubtreeSizes(node: LayoutNode): void {
@@ -121,67 +168,59 @@ function calculateSubtreeSizes(node: LayoutNode): void {
 
   const childCount = node.children.length;
 
-  if (childCount > GRID_THRESHOLD) {
-    const cols = Math.ceil(Math.sqrt(childCount));
+  if (shouldUseLeafGrid(node)) {
+    const cols = LEAF_GRID_COLUMNS;
     const rows = Math.ceil(childCount / cols);
 
-    const maxChildWidth = Math.max(...node.children.map(c => c.subtreeWidth));
-    const maxChildHeight = Math.max(...node.children.map(c => c.subtreeHeight));
+    const gridWidth = cols * NODE_WIDTH + (cols - 1) * HORIZONTAL_GAP;
+    const gridHeight = rows * NODE_HEIGHT + (rows - 1) * VERTICAL_GAP;
 
-    const gridWidth = cols * maxChildWidth + (cols - 1) * HORIZONTAL_GAP;
-    const gridHeight = rows * maxChildHeight + (rows - 1) * VERTICAL_GAP;
-
-    node.subtreeWidth = Math.max(node.width, gridWidth);
-    node.subtreeHeight = node.height + VERTICAL_GAP + gridHeight;
+    node.subtreeWidth = node.width + HORIZONTAL_GAP + gridWidth;
+    node.subtreeHeight = Math.max(node.height, gridHeight);
   } else {
-    const totalChildWidth = node.children.reduce((sum, c) => sum + c.subtreeWidth, 0)
-      + (childCount - 1) * HORIZONTAL_GAP;
-    const maxChildHeight = Math.max(...node.children.map(c => c.subtreeHeight));
+    const totalChildHeight = node.children.reduce((sum, c) => sum + c.subtreeHeight, 0)
+      + (childCount - 1) * VERTICAL_GAP;
+    const maxChildWidth = Math.max(...node.children.map(c => c.subtreeWidth));
 
-    node.subtreeWidth = Math.max(node.width, totalChildWidth);
-    node.subtreeHeight = node.height + VERTICAL_GAP + maxChildHeight;
+    node.subtreeWidth = node.width + HORIZONTAL_GAP + maxChildWidth;
+    node.subtreeHeight = Math.max(node.height, totalChildHeight);
   }
 }
 
 function positionNodes(node: LayoutNode, startX: number, startY: number): void {
-  node.x = startX + (node.subtreeWidth - node.width) / 2;
-  node.y = startY;
+  node.x = startX;
+  node.y = startY + (node.subtreeHeight - node.height) / 2;
 
   if (node.children.length === 0) {
     return;
   }
 
-  const childStartY = startY + node.height + VERTICAL_GAP;
+  const childStartX = startX + node.width + HORIZONTAL_GAP;
   const childCount = node.children.length;
 
-  if (childCount > GRID_THRESHOLD) {
-    const cols = Math.ceil(Math.sqrt(childCount));
+  if (shouldUseLeafGrid(node)) {
+    const cols = LEAF_GRID_COLUMNS;
+    const rows = Math.ceil(childCount / cols);
 
-    const maxChildWidth = Math.max(...node.children.map(c => c.subtreeWidth));
-    const maxChildHeight = Math.max(...node.children.map(c => c.subtreeHeight));
-
-    const gridWidth = cols * maxChildWidth + (cols - 1) * HORIZONTAL_GAP;
-    const gridStartX = startX + (node.subtreeWidth - gridWidth) / 2;
+    const gridHeight = rows * NODE_HEIGHT + (rows - 1) * VERTICAL_GAP;
+    const gridStartY = startY + (node.subtreeHeight - gridHeight) / 2;
 
     for (let i = 0; i < node.children.length; i++) {
       const child = node.children[i];
-      const col = i % cols;
-      const row = Math.floor(i / cols);
+      const col = Math.floor(i / rows);
+      const row = i % rows;
 
-      const cellX = gridStartX + col * (maxChildWidth + HORIZONTAL_GAP);
-      const cellY = childStartY + row * (maxChildHeight + VERTICAL_GAP);
-
-      const childOffsetX = (maxChildWidth - child.subtreeWidth) / 2;
-      positionNodes(child, cellX + childOffsetX, cellY);
+      child.x = childStartX + col * (NODE_WIDTH + HORIZONTAL_GAP);
+      child.y = gridStartY + row * (NODE_HEIGHT + VERTICAL_GAP);
     }
   } else {
-    const totalChildWidth = node.children.reduce((sum, c) => sum + c.subtreeWidth, 0)
-      + (childCount - 1) * HORIZONTAL_GAP;
-    let currentX = startX + (node.subtreeWidth - totalChildWidth) / 2;
+    const totalChildHeight = node.children.reduce((sum, c) => sum + c.subtreeHeight, 0)
+      + (childCount - 1) * VERTICAL_GAP;
+    let currentY = startY + (node.subtreeHeight - totalChildHeight) / 2;
 
     for (const child of node.children) {
-      positionNodes(child, currentX, childStartY);
-      currentX += child.subtreeWidth + HORIZONTAL_GAP;
+      positionNodes(child, childStartX, currentY);
+      currentY += child.subtreeHeight + VERTICAL_GAP;
     }
   }
 }
@@ -207,7 +246,7 @@ function flattenLayoutTree(
       source: parentId,
       target: node.id,
       type: 'smoothstep',
-      style: { stroke: '#6c757d', strokeWidth: 2 },
+      style: { stroke: '#6c757d', strokeWidth: 1.5 },
     });
   }
 
@@ -216,16 +255,95 @@ function flattenLayoutTree(
   }
 }
 
-function layoutTree(tree: ExecutionTreeNode): { nodes: ExecutionFlowNode[]; edges: Edge[] } {
+function formatDurationNs(ns: number): string {
+  const ms = ns / NS_PER_MS;
+  if (ms < 1) {
+    return `${(ms * 1000).toFixed(0)}µs`;
+  }
+  if (ms < 1000) {
+    return `${ms.toFixed(2)}ms`;
+  }
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
+function layoutTree(
+  tree: ExecutionTreeNode,
+  responseTimeMs: number | null
+): { nodes: ExecutionFlowNode[]; edges: Edge[] } {
   const layoutRoot = buildLayoutTree(tree);
-  calculateSubtreeSizes(layoutRoot);
-  positionNodes(layoutRoot, 0, 0);
+
+  // Wrap with frontend node if we have response time
+  let rootToLayout: LayoutNode;
+  if (responseTimeMs != null && responseTimeMs > 0) {
+    const frontendDurationNs = responseTimeMs * NS_PER_MS;
+    const frontendNode: LayoutNode = {
+      id: 'frontend',
+      data: {
+        label: 'Query Frontend',
+        nodeType: 'FRONTEND',
+        executor: 'query-frontend',
+        durationStr: formatDurationNs(frontendDurationNs),
+        relativeStartStr: '0.00ms',
+        duration: frontendDurationNs,
+        relativeStart: 0,
+        animationState: 'pending' as AnimationState,
+      },
+      children: [layoutRoot],
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+      x: 0,
+      y: 0,
+      subtreeWidth: 0,
+      subtreeHeight: 0,
+    };
+    rootToLayout = frontendNode;
+  } else {
+    rootToLayout = layoutRoot;
+  }
+
+  calculateSubtreeSizes(rootToLayout);
+  positionNodes(rootToLayout, 0, 0);
 
   const nodes: ExecutionFlowNode[] = [];
   const edges: Edge[] = [];
-  flattenLayoutTree(layoutRoot, nodes, edges);
+  flattenLayoutTree(rootToLayout, nodes, edges);
 
   return { nodes, edges };
+}
+
+function calculateTotalDuration(nodes: ExecutionFlowNode[]): number {
+  let maxEnd = 0;
+  for (const node of nodes) {
+    const end = node.data.relativeStart + node.data.duration;
+    if (end > maxEnd) {
+      maxEnd = end;
+    }
+  }
+  return maxEnd;
+}
+
+function getNodeAnimationState(node: ExecutionFlowNode, currentTime: number): AnimationState {
+  const start = node.data.relativeStart;
+  const end = start + node.data.duration;
+
+  if (currentTime < start) {
+    return 'pending';
+  } else if (currentTime < end) {
+    return 'active';
+  } else {
+    return 'completed';
+  }
+}
+
+function getEdgeStyleFromState(state: AnimationState): { stroke: string; strokeWidth: number } {
+  switch (state) {
+    case 'active':
+      return { stroke: '#ffc107', strokeWidth: 2.5 };
+    case 'completed':
+      return { stroke: '#198754', strokeWidth: 2 };
+    default:
+      return { stroke: '#6c757d', strokeWidth: 1.5 };
+  }
 }
 
 function NodeDetailsPanel({
@@ -331,21 +449,209 @@ function NodeDetailsPanel({
   );
 }
 
-export function ExecutionFlowGraph({ executionTree }: ExecutionFlowGraphProps) {
+const NS_PER_MS = 1_000_000; // Nanoseconds per millisecond
+const TICK_INTERVAL = 50; // Check every 50ms
+const SPEED_OPTIONS = [0.1, 0.25, 0.5, 1, 2, 5] as const;
+
+function formatTime(ns: number): string {
+  const ms = ns / NS_PER_MS;
+  if (ms < 1000) {
+    return `${ms.toFixed(0)}ms`;
+  }
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
+interface PlaybackControlsProps {
+  isPlaying: boolean;
+  speed: number;
+  currentTime: number;
+  totalDuration: number;
+  onPlayPause: () => void;
+  onSpeedChange: (speed: number) => void;
+  onSeek: (time: number) => void;
+  onRestart: () => void;
+}
+
+function PlaybackControls({
+  isPlaying,
+  speed,
+  currentTime,
+  totalDuration,
+  onPlayPause,
+  onSpeedChange,
+  onSeek,
+  onRestart,
+}: PlaybackControlsProps) {
+  const progress = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
+
+  return (
+    <div className="playback-controls">
+      <button
+        className="playback-btn"
+        onClick={onRestart}
+        title="Restart"
+      >
+        ⏮
+      </button>
+      <button
+        className="playback-btn play-pause"
+        onClick={onPlayPause}
+        title={isPlaying ? 'Pause' : 'Play'}
+      >
+        {isPlaying ? '⏸' : '▶'}
+      </button>
+      <div className="playback-progress">
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={progress}
+          onChange={(e) => onSeek((parseFloat(e.target.value) / 100) * totalDuration)}
+          className="progress-slider"
+        />
+        <span className="time-display">
+          {formatTime(currentTime)} / {formatTime(totalDuration)}
+        </span>
+      </div>
+      <div className="speed-control">
+        <select
+          value={speed}
+          onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
+          className="speed-select"
+        >
+          {SPEED_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {s}x
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+export function ExecutionFlowGraph({ executionTree, responseTimeMs }: ExecutionFlowGraphProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
-    return layoutTree(executionTree);
-  }, [executionTree]);
+    return layoutTree(executionTree, responseTimeMs);
+  }, [executionTree, responseTimeMs]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<ExecutionFlowNode>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<ExecutionFlowNode | null>(null);
 
+  const [isPlaying, setIsPlaying] = useState(true); // Auto-play on load
+  const [speed, setSpeed] = useState(1);
+  const [currentTime, setCurrentTime] = useState(0);
+
+  const baseNodesRef = useRef<ExecutionFlowNode[]>(initialNodes);
+  const baseEdgesRef = useRef<Edge[]>(initialEdges);
+  const totalDurationRef = useRef<number>(calculateTotalDuration(initialNodes));
+  const currentTimeRef = useRef<number>(0);
+  const nodeStatesRef = useRef<Map<string, AnimationState>>(new Map());
+
   useEffect(() => {
-    const { nodes: newNodes, edges: newEdges } = layoutTree(executionTree);
+    const { nodes: newNodes, edges: newEdges } = layoutTree(executionTree, responseTimeMs);
+    baseNodesRef.current = newNodes;
+    baseEdgesRef.current = newEdges;
+    totalDurationRef.current = calculateTotalDuration(newNodes);
+    currentTimeRef.current = 0;
+    nodeStatesRef.current = new Map();
+    setCurrentTime(0);
+    setIsPlaying(true); // Auto-play on new data
     setNodes(newNodes);
     setEdges(newEdges);
     setSelectedNode(null);
-  }, [executionTree, setNodes, setEdges]);
+  }, [executionTree, responseTimeMs, setNodes, setEdges]);
+
+  const updateAnimationState = useCallback((time: number) => {
+    const baseNodes = baseNodesRef.current;
+    const baseEdges = baseEdgesRef.current;
+    const prevStates = nodeStatesRef.current;
+
+    const newStates = new Map<string, AnimationState>();
+    let hasChanges = false;
+
+    for (const node of baseNodes) {
+      const newState = getNodeAnimationState(node, time);
+      newStates.set(node.id, newState);
+      if (prevStates.get(node.id) !== newState) {
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      nodeStatesRef.current = newStates;
+
+      setNodes(currentNodes =>
+        currentNodes.map(node => ({
+          ...node,
+          data: {
+            ...node.data,
+            animationState: newStates.get(node.id) || 'pending',
+          },
+        }))
+      );
+
+      setEdges(currentEdges =>
+        currentEdges.map(edge => {
+          const targetState = newStates.get(edge.target) || 'pending';
+          return {
+            ...edge,
+            animated: targetState === 'active',
+            style: getEdgeStyleFromState(targetState),
+          };
+        })
+      );
+    }
+  }, [setNodes, setEdges]);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      return;
+    }
+
+    const animate = () => {
+      const totalDuration = totalDurationRef.current;
+      const newTime = currentTimeRef.current + TICK_INTERVAL * speed * NS_PER_MS;
+
+      if (newTime > totalDuration) {
+        currentTimeRef.current = totalDuration;
+        setCurrentTime(totalDuration);
+        updateAnimationState(totalDuration);
+        setIsPlaying(false); // Stop at end, no looping
+        return;
+      }
+
+      currentTimeRef.current = newTime;
+      setCurrentTime(newTime);
+      updateAnimationState(newTime);
+    };
+
+    const intervalId = setInterval(animate, TICK_INTERVAL);
+    return () => clearInterval(intervalId);
+  }, [isPlaying, speed, updateAnimationState]);
+
+  const handlePlayPause = useCallback(() => {
+    setIsPlaying(prev => !prev);
+  }, []);
+
+  const handleSpeedChange = useCallback((newSpeed: number) => {
+    setSpeed(newSpeed);
+  }, []);
+
+  const handleSeek = useCallback((time: number) => {
+    currentTimeRef.current = time;
+    setCurrentTime(time);
+    updateAnimationState(time);
+  }, [updateAnimationState]);
+
+  const handleRestart = useCallback(() => {
+    currentTimeRef.current = 0;
+    nodeStatesRef.current = new Map();
+    setCurrentTime(0);
+    updateAnimationState(0);
+    setIsPlaying(true);
+  }, [updateAnimationState]);
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: ExecutionFlowNode) => {
     setSelectedNode(node);
@@ -353,10 +659,6 @@ export function ExecutionFlowGraph({ executionTree }: ExecutionFlowGraphProps) {
 
   const handleClosePanel = useCallback(() => {
     setSelectedNode(null);
-  }, []);
-
-  const minimapNodeColor = useCallback((node: ExecutionFlowNode) => {
-    return node.data.nodeType === 'MERGE' ? '#0d6efd' : '#198754';
   }, []);
 
   return (
@@ -377,13 +679,18 @@ export function ExecutionFlowGraph({ executionTree }: ExecutionFlowGraphProps) {
         >
           <Background color="#444" gap={16} />
           <Controls />
-          <MiniMap
-            nodeColor={minimapNodeColor}
-            nodeStrokeWidth={3}
-            zoomable
-            pannable
-            maskColor="rgba(0, 0, 0, 0.7)"
-          />
+          <Panel position="bottom-center">
+            <PlaybackControls
+              isPlaying={isPlaying}
+              speed={speed}
+              currentTime={currentTime}
+              totalDuration={totalDurationRef.current}
+              onPlayPause={handlePlayPause}
+              onSpeedChange={handleSpeedChange}
+              onSeek={handleSeek}
+              onRestart={handleRestart}
+            />
+          </Panel>
         </ReactFlow>
       </div>
       <NodeDetailsPanel node={selectedNode} onClose={handleClosePanel} />

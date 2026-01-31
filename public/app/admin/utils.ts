@@ -35,12 +35,12 @@ function getNodeType(type: number | string): 'MERGE' | 'READ' {
 export function formatDuration(ns: number): string {
   const ms = ns / 1e6;
   if (ms < 1) {
-    return `${ms.toFixed(3)}ms`;
+    return `${ms.toFixed(2)}ms`;
   }
   if (ms < 1000) {
-    return `${ms.toFixed(3)}ms`;
+    return `${ms.toFixed(2)}ms`;
   }
-  return `${(ms / 1000).toFixed(3)}s`;
+  return `${(ms / 1000).toFixed(2)}s`;
 }
 
 export function formatMs(ms: number): string {
