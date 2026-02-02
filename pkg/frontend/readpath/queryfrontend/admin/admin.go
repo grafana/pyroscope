@@ -213,7 +213,7 @@ func (a *Admin) DiagnosticsExportAPIHandler() http.Handler {
 
 		w.Header().Set("Content-Type", "application/zip")
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"diagnostic-%s-%s.zip\"", tenant, id))
-		w.Write(zipData)
+		_, _ = w.Write(zipData)
 	})
 }
 
