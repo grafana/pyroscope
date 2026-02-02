@@ -47,6 +47,18 @@ func (t *Table) Refs(lbls model.Labels, refs []int64) []int64 {
 	return refs
 }
 
+func (t *Table) AnnotationRefs(keys, values []string, refs []int64) []int64 {
+	if cap(refs) < len(keys) {
+		refs = make([]int64, len(keys))
+	} else {
+		refs = refs[:len(keys)]
+	}
+	for i := range keys {
+		refs[i] = t.LookupOrAdd(Key{Key: unique.Make(keys[i]), Value: unique.Make(values[i])})
+	}
+	return refs
+}
+
 func (t *Table) Build(res *queryv1.AttributeTable) *queryv1.AttributeTable {
 	if res == nil {
 		res = &queryv1.AttributeTable{}

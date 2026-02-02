@@ -906,8 +906,8 @@ components:
             $ref: '#/components/schemas/types.v1.LabelPair'
           title: labels
           description: |-
-            Additional labels specific to this exemplar (e.g., pod name, node name).
-             These labels are not included in the series group_by labels.
+            Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
+             label overlaps with the series label, it is not included here.
       title: Exemplar
       additionalProperties: false
       description: |-

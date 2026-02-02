@@ -159,8 +159,8 @@ message Exemplar {
   // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
   int64 value = 4 [(gnostic.openapi.v3.property).example = {yaml: "2450000000"}];
 
-  // Additional labels specific to this exemplar (e.g., pod name, node name).
-  // These labels are not included in the series group_by labels.
+  // Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
+  // label overlaps with the series label, it is not included here.
   repeated LabelPair labels = 5;
 }
 

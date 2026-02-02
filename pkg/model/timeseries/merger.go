@@ -183,7 +183,12 @@ func mergeExemplars(a, b []*typesv1.Exemplar) []*typesv1.Exemplar {
 	for _, group := range byProfileID {
 		ex := group.exemplar
 		if len(group.labelSets) > 1 {
-			ex.Labels = phlaremodel.IntersectAll(group.labelSets)
+			intersected := phlaremodel.IntersectAll(group.labelSets)
+			if intersected == nil && ex.Labels != nil {
+				ex.Labels = []*typesv1.LabelPair{}
+			} else {
+				ex.Labels = intersected
+			}
 		}
 		result = append(result, ex)
 	}

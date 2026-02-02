@@ -192,7 +192,7 @@ func (m *Query) CloneVT() *Query {
 	r.Tree = m.Tree.CloneVT()
 	r.Pprof = m.Pprof.CloneVT()
 	r.Heatmap = m.Heatmap.CloneVT()
-	r.TimeSeriesWithAttributeTable = m.TimeSeriesWithAttributeTable.CloneVT()
+	r.TimeSeriesCompact = m.TimeSeriesCompact.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -258,7 +258,7 @@ func (m *Report) CloneVT() *Report {
 	r.Tree = m.Tree.CloneVT()
 	r.Pprof = m.Pprof.CloneVT()
 	r.Heatmap = m.Heatmap.CloneVT()
-	r.TimeSeriesWithAttributeTable = m.TimeSeriesWithAttributeTable.CloneVT()
+	r.TimeSeriesCompact = m.TimeSeriesCompact.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -720,16 +720,10 @@ func (m *Point) CloneVT() *Point {
 	r := new(Point)
 	r.Value = m.Value
 	r.Timestamp = m.Timestamp
-	if rhs := m.Annotations; rhs != nil {
-		tmpContainer := make([]*v11.ProfileAnnotation, len(rhs))
-		for k, v := range rhs {
-			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v11.ProfileAnnotation }); ok {
-				tmpContainer[k] = vtpb.CloneVT()
-			} else {
-				tmpContainer[k] = proto.Clone(v).(*v11.ProfileAnnotation)
-			}
-		}
-		r.Annotations = tmpContainer
+	if rhs := m.AnnotationRefs; rhs != nil {
+		tmpContainer := make([]int64, len(rhs))
+		copy(tmpContainer, rhs)
+		r.AnnotationRefs = tmpContainer
 	}
 	if rhs := m.Exemplars; rhs != nil {
 		tmpContainer := make([]*Exemplar, len(rhs))
@@ -777,11 +771,11 @@ func (m *Series) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *TimeSeriesWithAttributeTableReport) CloneVT() *TimeSeriesWithAttributeTableReport {
+func (m *TimeSeriesCompactReport) CloneVT() *TimeSeriesCompactReport {
 	if m == nil {
-		return (*TimeSeriesWithAttributeTableReport)(nil)
+		return (*TimeSeriesCompactReport)(nil)
 	}
-	r := new(TimeSeriesWithAttributeTableReport)
+	r := new(TimeSeriesCompactReport)
 	r.Query = m.Query.CloneVT()
 	r.AttributeTable = m.AttributeTable.CloneVT()
 	if rhs := m.TimeSeries; rhs != nil {
@@ -798,7 +792,7 @@ func (m *TimeSeriesWithAttributeTableReport) CloneVT() *TimeSeriesWithAttributeT
 	return r
 }
 
-func (m *TimeSeriesWithAttributeTableReport) CloneMessageVT() proto.Message {
+func (m *TimeSeriesCompactReport) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -1059,7 +1053,7 @@ func (this *Query) EqualVT(that *Query) bool {
 	if !this.Heatmap.EqualVT(that.Heatmap) {
 		return false
 	}
-	if !this.TimeSeriesWithAttributeTable.EqualVT(that.TimeSeriesWithAttributeTable) {
+	if !this.TimeSeriesCompact.EqualVT(that.TimeSeriesCompact) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1157,7 +1151,7 @@ func (this *Report) EqualVT(that *Report) bool {
 	if !this.Heatmap.EqualVT(that.Heatmap) {
 		return false
 	}
-	if !this.TimeSeriesWithAttributeTable.EqualVT(that.TimeSeriesWithAttributeTable) {
+	if !this.TimeSeriesCompact.EqualVT(that.TimeSeriesCompact) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1765,29 +1759,6 @@ func (this *Point) EqualVT(that *Point) bool {
 	if this.Timestamp != that.Timestamp {
 		return false
 	}
-	if len(this.Annotations) != len(that.Annotations) {
-		return false
-	}
-	for i, vx := range this.Annotations {
-		vy := that.Annotations[i]
-		if p, q := vx, vy; p != q {
-			if p == nil {
-				p = &v11.ProfileAnnotation{}
-			}
-			if q == nil {
-				q = &v11.ProfileAnnotation{}
-			}
-			if equal, ok := interface{}(p).(interface {
-				EqualVT(*v11.ProfileAnnotation) bool
-			}); ok {
-				if !equal.EqualVT(q) {
-					return false
-				}
-			} else if !proto.Equal(p, q) {
-				return false
-			}
-		}
-	}
 	if len(this.Exemplars) != len(that.Exemplars) {
 		return false
 	}
@@ -1803,6 +1774,15 @@ func (this *Point) EqualVT(that *Point) bool {
 			if !p.EqualVT(q) {
 				return false
 			}
+		}
+	}
+	if len(this.AnnotationRefs) != len(that.AnnotationRefs) {
+		return false
+	}
+	for i, vx := range this.AnnotationRefs {
+		vy := that.AnnotationRefs[i]
+		if vx != vy {
+			return false
 		}
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1857,7 +1837,7 @@ func (this *Series) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *TimeSeriesWithAttributeTableReport) EqualVT(that *TimeSeriesWithAttributeTableReport) bool {
+func (this *TimeSeriesCompactReport) EqualVT(that *TimeSeriesCompactReport) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -1889,8 +1869,8 @@ func (this *TimeSeriesWithAttributeTableReport) EqualVT(that *TimeSeriesWithAttr
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *TimeSeriesWithAttributeTableReport) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*TimeSeriesWithAttributeTableReport)
+func (this *TimeSeriesCompactReport) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*TimeSeriesCompactReport)
 	if !ok {
 		return false
 	}
@@ -2462,8 +2442,8 @@ func (m *Query) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.TimeSeriesWithAttributeTable != nil {
-		size, err := m.TimeSeriesWithAttributeTable.MarshalToSizedBufferVT(dAtA[:i])
+	if m.TimeSeriesCompact != nil {
+		size, err := m.TimeSeriesCompact.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
 			return 0, err
 		}
@@ -2678,8 +2658,8 @@ func (m *Report) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.TimeSeriesWithAttributeTable != nil {
-		size, err := m.TimeSeriesWithAttributeTable.MarshalToSizedBufferVT(dAtA[:i])
+	if m.TimeSeriesCompact != nil {
+		size, err := m.TimeSeriesCompact.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
 			return 0, err
 		}
@@ -3851,6 +3831,27 @@ func (m *Point) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.AnnotationRefs) > 0 {
+		var pksize2 int
+		for _, num := range m.AnnotationRefs {
+			pksize2 += protohelpers.SizeOfVarint(uint64(num))
+		}
+		i -= pksize2
+		j1 := i
+		for _, num1 := range m.AnnotationRefs {
+			num := uint64(num1)
+			for num >= 1<<7 {
+				dAtA[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA[j1] = uint8(num)
+			j1++
+		}
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize2))
+		i--
+		dAtA[i] = 0x2a
+	}
 	if len(m.Exemplars) > 0 {
 		for iNdEx := len(m.Exemplars) - 1; iNdEx >= 0; iNdEx-- {
 			size, err := m.Exemplars[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
@@ -3861,30 +3862,6 @@ func (m *Point) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 			i--
 			dAtA[i] = 0x22
-		}
-	}
-	if len(m.Annotations) > 0 {
-		for iNdEx := len(m.Annotations) - 1; iNdEx >= 0; iNdEx-- {
-			if vtmsg, ok := interface{}(m.Annotations[iNdEx]).(interface {
-				MarshalToSizedBufferVT([]byte) (int, error)
-			}); ok {
-				size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-			} else {
-				encoded, err := proto.Marshal(m.Annotations[iNdEx])
-				if err != nil {
-					return 0, err
-				}
-				i -= len(encoded)
-				copy(dAtA[i:], encoded)
-				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
-			}
-			i--
-			dAtA[i] = 0x1a
 		}
 	}
 	if m.Timestamp != 0 {
@@ -3967,7 +3944,7 @@ func (m *Series) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *TimeSeriesWithAttributeTableReport) MarshalVT() (dAtA []byte, err error) {
+func (m *TimeSeriesCompactReport) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -3980,12 +3957,12 @@ func (m *TimeSeriesWithAttributeTableReport) MarshalVT() (dAtA []byte, err error
 	return dAtA[:n], nil
 }
 
-func (m *TimeSeriesWithAttributeTableReport) MarshalToVT(dAtA []byte) (int, error) {
+func (m *TimeSeriesCompactReport) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *TimeSeriesWithAttributeTableReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *TimeSeriesCompactReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -4209,8 +4186,8 @@ func (m *Query) SizeVT() (n int) {
 		l = m.Heatmap.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	if m.TimeSeriesWithAttributeTable != nil {
-		l = m.TimeSeriesWithAttributeTable.SizeVT()
+	if m.TimeSeriesCompact != nil {
+		l = m.TimeSeriesCompact.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -4288,8 +4265,8 @@ func (m *Report) SizeVT() (n int) {
 		l = m.Heatmap.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	if m.TimeSeriesWithAttributeTable != nil {
-		l = m.TimeSeriesWithAttributeTable.SizeVT()
+	if m.TimeSeriesCompact != nil {
+		l = m.TimeSeriesCompact.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -4722,23 +4699,18 @@ func (m *Point) SizeVT() (n int) {
 	if m.Timestamp != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Timestamp))
 	}
-	if len(m.Annotations) > 0 {
-		for _, e := range m.Annotations {
-			if size, ok := interface{}(e).(interface {
-				SizeVT() int
-			}); ok {
-				l = size.SizeVT()
-			} else {
-				l = proto.Size(e)
-			}
-			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-		}
-	}
 	if len(m.Exemplars) > 0 {
 		for _, e := range m.Exemplars {
 			l = e.SizeVT()
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if len(m.AnnotationRefs) > 0 {
+		l = 0
+		for _, e := range m.AnnotationRefs {
+			l += protohelpers.SizeOfVarint(uint64(e))
+		}
+		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
 	}
 	n += len(m.unknownFields)
 	return n
@@ -4767,7 +4739,7 @@ func (m *Series) SizeVT() (n int) {
 	return n
 }
 
-func (m *TimeSeriesWithAttributeTableReport) SizeVT() (n int) {
+func (m *TimeSeriesCompactReport) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5896,7 +5868,7 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 9:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TimeSeriesWithAttributeTable", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TimeSeriesCompact", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -5923,10 +5895,10 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.TimeSeriesWithAttributeTable == nil {
-				m.TimeSeriesWithAttributeTable = &TimeSeriesQuery{}
+			if m.TimeSeriesCompact == nil {
+				m.TimeSeriesCompact = &TimeSeriesQuery{}
 			}
-			if err := m.TimeSeriesWithAttributeTable.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.TimeSeriesCompact.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -6462,7 +6434,7 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 9:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TimeSeriesWithAttributeTable", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TimeSeriesCompact", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -6489,10 +6461,10 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.TimeSeriesWithAttributeTable == nil {
-				m.TimeSeriesWithAttributeTable = &TimeSeriesWithAttributeTableReport{}
+			if m.TimeSeriesCompact == nil {
+				m.TimeSeriesCompact = &TimeSeriesCompactReport{}
 			}
-			if err := m.TimeSeriesWithAttributeTable.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.TimeSeriesCompact.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -9004,48 +8976,6 @@ func (m *Point) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Annotations", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Annotations = append(m.Annotations, &v11.ProfileAnnotation{})
-			if unmarshal, ok := interface{}(m.Annotations[len(m.Annotations)-1]).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Annotations[len(m.Annotations)-1]); err != nil {
-					return err
-				}
-			}
-			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Exemplars", wireType)
@@ -9080,6 +9010,82 @@ func (m *Point) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 5:
+			if wireType == 0 {
+				var v int64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.AnnotationRefs = append(m.AnnotationRefs, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
+				}
+				elementCount = count
+				if elementCount != 0 && len(m.AnnotationRefs) == 0 {
+					m.AnnotationRefs = make([]int64, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v int64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return protohelpers.ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= int64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.AnnotationRefs = append(m.AnnotationRefs, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field AnnotationRefs", wireType)
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -9263,7 +9269,7 @@ func (m *Series) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *TimeSeriesWithAttributeTableReport) UnmarshalVT(dAtA []byte) error {
+func (m *TimeSeriesCompactReport) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9286,10 +9292,10 @@ func (m *TimeSeriesWithAttributeTableReport) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: TimeSeriesWithAttributeTableReport: wiretype end group for non-group")
+			return fmt.Errorf("proto: TimeSeriesCompactReport: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: TimeSeriesWithAttributeTableReport: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: TimeSeriesCompactReport: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

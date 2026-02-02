@@ -382,6 +382,7 @@ components:
             - string
           title: timestamp
           format: int64
+          description: Milliseconds unix timestamp
         profileId:
           type: string
           title: profile_id
@@ -619,16 +620,22 @@ components:
             - string
           title: timestamp
           format: int64
-        annotations:
+          description: Milliseconds unix timestamp
+        annotationRefs:
           type: array
           items:
-            $ref: '#/components/schemas/types.v1.ProfileAnnotation'
-          title: annotations
+            type:
+              - integer
+              - string
+            format: int64
+          title: annotation_refs
+          description: Annotations as references into AttributeTable
         exemplars:
           type: array
           items:
             $ref: '#/components/schemas/query.v1.Exemplar'
           title: exemplars
+          description: Exemplars are samples of individual profiles that contributed to this aggregated point
       title: Point
       additionalProperties: false
     query.v1.PprofQuery:
@@ -694,8 +701,8 @@ components:
         heatmap:
           title: heatmap
           $ref: '#/components/schemas/query.v1.HeatmapQuery'
-        timeSeriesWithAttributeTable:
-          title: time_series_with_attribute_table
+        timeSeriesCompact:
+          title: time_series_compact
           description: |-
             function_details
              call_graph
@@ -790,7 +797,7 @@ components:
         - QUERY_TREE
         - QUERY_PPROF
         - QUERY_HEATMAP
-        - QUERY_TIME_SERIES_WITH_ATTRIBUTE_TABLE
+        - QUERY_TIME_SERIES_COMPACT
     query.v1.Report:
       type: object
       properties:
@@ -821,9 +828,9 @@ components:
         heatmap:
           title: heatmap
           $ref: '#/components/schemas/query.v1.HeatmapReport'
-        timeSeriesWithAttributeTable:
-          title: time_series_with_attribute_table
-          $ref: '#/components/schemas/query.v1.TimeSeriesWithAttributeTableReport'
+        timeSeriesCompact:
+          title: time_series_compact
+          $ref: '#/components/schemas/query.v1.TimeSeriesCompactReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -838,7 +845,7 @@ components:
         - REPORT_TREE
         - REPORT_PPROF
         - REPORT_HEATMAP
-        - REPORT_TIME_SERIES_WITH_ATTRIBUTE_TABLE
+        - REPORT_TIME_SERIES_COMPACT
     query.v1.Series:
       type: object
       properties:
@@ -850,13 +857,16 @@ components:
               - string
             format: int64
           title: attribute_refs
+          description: References to label key-value pairs in the AttributeTable that identify this series.
         points:
           type: array
           items:
             $ref: '#/components/schemas/query.v1.Point'
           title: points
+          description: Time series data points. Each point may contain exemplars with their own attribute_refs.
       title: Series
       additionalProperties: false
+      description: Series represents a time series with optimized label storage using attribute references.
     query.v1.SeriesLabelsQuery:
       type: object
       properties:
@@ -879,6 +889,22 @@ components:
             $ref: '#/components/schemas/types.v1.Labels'
           title: series_labels
       title: SeriesLabelsReport
+      additionalProperties: false
+    query.v1.TimeSeriesCompactReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+        timeSeries:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Series'
+          title: time_series
+        attributeTable:
+          title: attribute_table
+          $ref: '#/components/schemas/query.v1.AttributeTable'
+      title: TimeSeriesCompactReport
       additionalProperties: false
     query.v1.TimeSeriesQuery:
       type: object
@@ -915,22 +941,6 @@ components:
             $ref: '#/components/schemas/types.v1.Series'
           title: time_series
       title: TimeSeriesReport
-      additionalProperties: false
-    query.v1.TimeSeriesWithAttributeTableReport:
-      type: object
-      properties:
-        query:
-          title: query
-          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
-        timeSeries:
-          type: array
-          items:
-            $ref: '#/components/schemas/query.v1.Series'
-          title: time_series
-        attributeTable:
-          title: attribute_table
-          $ref: '#/components/schemas/query.v1.AttributeTable'
-      title: TimeSeriesWithAttributeTableReport
       additionalProperties: false
     query.v1.TreeQuery:
       type: object
@@ -1008,8 +1018,8 @@ components:
             $ref: '#/components/schemas/types.v1.LabelPair'
           title: labels
           description: |-
-            Additional labels specific to this exemplar (e.g., pod name, node name).
-             These labels are not included in the series group_by labels.
+            Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
+             label overlaps with the series label, it is not included here.
       title: Exemplar
       additionalProperties: false
       description: |-

@@ -1115,8 +1115,8 @@ type Exemplar struct {
 	SpanId string `protobuf:"bytes,3,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
 	// Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
 	Value int64 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
-	// Additional labels specific to this exemplar (e.g., pod name, node name).
-	// These labels are not included in the series group_by labels.
+	// Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
+	// label overlaps with the series label, it is not included here.
 	Labels        []*LabelPair `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
