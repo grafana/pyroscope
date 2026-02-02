@@ -25,16 +25,16 @@ func TestGetCommit(t *testing.T) {
 	}{
 		{
 			mockCommit: &github.RepositoryCommit{
-				SHA: github.String("abc123"),
+				SHA: github.Ptr("abc123"),
 				Commit: &github.Commit{
-					Message: github.String("test commit message"),
+					Message: github.Ptr("test commit message"),
 					Author: &github.CommitAuthor{
 						Date: &github.Timestamp{Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 					},
 				},
 				Author: &github.User{
-					Login:     github.String("test-user"),
-					AvatarURL: github.String("https://example.com/avatar.png"),
+					Login:     github.Ptr("test-user"),
+					AvatarURL: github.Ptr("https://example.com/avatar.png"),
 				},
 			},
 			expected: &vcsv1.CommitInfo{
@@ -50,9 +50,9 @@ func TestGetCommit(t *testing.T) {
 		{
 			name: "example without author",
 			mockCommit: &github.RepositoryCommit{
-				SHA: github.String("abc123"),
+				SHA: github.Ptr("abc123"),
 				Commit: &github.Commit{
-					Message: github.String("test commit message"),
+					Message: github.Ptr("test commit message"),
 					Author: &github.CommitAuthor{
 						Date: &github.Timestamp{Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
 					},
@@ -79,7 +79,7 @@ func TestGetCommit(t *testing.T) {
 			name: "fail without commit date message",
 			mockCommit: &github.RepositoryCommit{
 				Commit: &github.Commit{
-					Message: github.String("test commit message"),
+					Message: github.Ptr("test commit message"),
 				},
 			},
 			expectedError: connect.NewError(connect.CodeInternal, errors.New("commit contains no date")),
