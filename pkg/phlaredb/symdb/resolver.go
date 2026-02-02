@@ -250,7 +250,9 @@ func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuil
 	var lock sync.Mutex
 	tree := new(model.LocationRefNameTree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+		locMap := make(map[uint32]struct{})
 		lookup := func(locID int32) model.LocationRefName {
+			locMap[uint32(locID)] = struct{}{}
 			return model.LocationRefName(locID)
 		}
 		resolved, err := symbols.LocationRefNameTree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts), lookup)
@@ -258,8 +260,10 @@ func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuil
 			return err
 		}
 
+		locIDs := sortedList(locMap, nil)
+
 		symLock.Lock()
-		cb := sym.addSymbols(symbols)
+		cb := sym.addSymbols(symbols, locIDs)
 		resolved.FormatNodeNames(cb)
 		symLock.Unlock()
 		lock.Lock()

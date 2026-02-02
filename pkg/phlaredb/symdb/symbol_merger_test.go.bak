@@ -1,0 +1,208 @@
+package symdb
+
+import (
+	"testing"
+
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/stretchr/testify/assert"
+)
+
+// Test that the first index for every type always remains the zero object
+func TestSymbolMerger_ZeroIndexPreservation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		addSymbols       func(*SymbolMerger)
+		keep             func(*symbolResultBuilder)
+		expectedStrings  []string
+		expectedMappings int
+		expectedFuncs    int
+		expectedLocs     int
+		description      string
+	}{
+		{
+			name: "empty merger",
+			addSymbols: func(m *SymbolMerger) {
+				// Don't add anything
+			},
+			expectedStrings:  []string{""},
+			expectedMappings: 0,
+			expectedFuncs:    1, // Just the zero function
+			expectedLocs:     1, // Just the zero location
+			description:      "Even with no symbols added, Build should produce zero elements at index 0",
+		},
+		{
+			name: "single symbol source",
+			addSymbols: func(m *SymbolMerger) {
+				ts := createTestTreeSymbols()
+				remap := m.Add(ts)
+				// Call the remapping function for each location to add them
+				for _, loc := range ts.Locations {
+					if loc != nil {
+						remap(model.LocationRefName(loc.Id))
+					}
+				}
+			},
+			expectedStrings: []string{"", "main", "/path/to/file.go", "executable"},
+			expectedLocs:    2, // Zero location + 1 from test data
+			description:     "Single source should preserve zero index",
+		},
+		{
+			name: "multiple symbol sources",
+			addSymbols: func(m *SymbolMerger) {
+				ts1 := createTestTreeSymbols()
+				ts2 := createTestTreeSymbols()
+				ts2.Strings = append(ts2.Strings, "different")
+
+				remap1 := m.Add(ts1)
+				for _, loc := range ts1.Locations {
+					if loc != nil {
+						remap1(model.LocationRefName(loc.Id))
+					}
+				}
+
+				remap2 := m.Add(ts2)
+				for _, loc := range ts2.Locations {
+					if loc != nil {
+						remap2(model.LocationRefName(loc.Id))
+					}
+				}
+			},
+			description: "Multiple sources should preserve zero index",
+		},
+		{
+			name: "with zero mappings",
+			addSymbols: func(m *SymbolMerger) {
+				ts := &queryv1.TreeSymbols{
+					Strings:  []string{"", "test"},
+					Mappings: []*googlev1.Mapping{},
+					Functions: []*googlev1.Function{
+						{Id: 0, Name: 0, SystemName: 0, Filename: 0},
+						{Id: 1, Name: 1, SystemName: 1, Filename: 1},
+					},
+					Locations: []*googlev1.Location{
+						nil, // Index 0 is implicit zero location
+						{
+							Id:        1,
+							MappingId: 0, // Zero mapping ID
+							Line: []*googlev1.Line{
+								{FunctionId: 1, Line: 42},
+							},
+						},
+					},
+				}
+				remap := m.Add(ts)
+				for _, loc := range ts.Locations {
+					if loc != nil {
+						remap(model.LocationRefName(loc.Id))
+					}
+				}
+			},
+			description: "Locations with zero mapping should preserve zero index",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			merger := NewSymbolMerger()
+			tt.addSymbols(merger)
+
+			builder := merger.ResultBuilder()
+			if tt.keep != nil {
+				// Use custom keep function
+				tt.keep(builder)
+			} else {
+				// Keep all symbols by default
+				for i := 0; i < len(merger.locations); i++ {
+					builder.KeepSymbol(model.LocationRefName(i))
+				}
+			}
+
+			result := &queryv1.TreeSymbols{}
+			builder.Build(result)
+
+			// Verify that index 0 for locations is always the zero location
+			if len(result.Locations) > 0 {
+				loc := result.Locations[0]
+				assert.NotNil(t, loc, "locations[0] should not be nil")
+				assert.Equal(t, uint64(0), loc.Id, "locations[0].Id should be 0")
+				assert.Equal(t, uint64(0), loc.MappingId, "locations[0].MappingId should be 0")
+				assert.Equal(t, uint64(0), loc.Address, "locations[0].Address should be 0")
+				assert.False(t, loc.IsFolded, "locations[0].IsFolded should be false")
+				assert.Empty(t, loc.Line, "locations[0].Line should be empty")
+			}
+
+			// Verify that index 0 for functions is always the zero function
+			if len(result.Functions) > 0 {
+				fn := result.Functions[0]
+				assert.NotNil(t, fn, "functions[0] should not be nil")
+				assert.Equal(t, uint64(0), fn.Id, "functions[0].Id should be 0")
+				assert.Equal(t, int64(0), fn.Name, "functions[0].Name should be 0")
+				assert.Equal(t, int64(0), fn.SystemName, "functions[0].SystemName should be 0")
+				assert.Equal(t, int64(0), fn.Filename, "functions[0].Filename should be 0")
+				assert.Equal(t, int64(0), fn.StartLine, "functions[0].StartLine should be 0")
+			}
+
+			// Verify that index 0 for strings is always empty string
+			if len(result.Strings) > 0 {
+				assert.Equal(t, "", result.Strings[0], "strings[0] should be empty string")
+			}
+
+			// Note: Mappings don't have a guaranteed 0 element in the output,
+			// but when emptyMapping is used, it should not be in the output slice
+
+			// Verify expected output if specified
+			if tt.expectedStrings != nil {
+				assert.Equal(t, tt.expectedStrings, result.Strings, "strings mismatch")
+			}
+			if tt.expectedMappings > 0 {
+				assert.Len(t, result.Mappings, tt.expectedMappings, "mappings count mismatch")
+			}
+			if tt.expectedFuncs > 0 {
+				assert.Len(t, result.Functions, tt.expectedFuncs, "functions count mismatch")
+			}
+			if tt.expectedLocs > 0 {
+				assert.Len(t, result.Locations, tt.expectedLocs, "locations count mismatch")
+			}
+		})
+	}
+}
+
+// createTestTreeSymbols creates a sample TreeSymbols for testing
+func createTestTreeSymbols() *queryv1.TreeSymbols {
+	return &queryv1.TreeSymbols{
+		Strings: []string{"", "main", "/path/to/file.go", "executable"},
+		Mappings: []*googlev1.Mapping{
+			{
+				Id:          1,
+				MemoryStart: 0x1000,
+				MemoryLimit: 0x2000,
+				FileOffset:  0,
+				Filename:    3,
+				BuildId:     0,
+			},
+		},
+		Functions: []*googlev1.Function{
+			{Id: 1, Name: 1, SystemName: 1, Filename: 2, StartLine: 10},
+		},
+		Locations: []*googlev1.Location{
+			{
+				Id:        1,
+				MappingId: 1,
+				Address:   0x1234,
+				Line: []*googlev1.Line{
+					{FunctionId: 1, Line: 42},
+				},
+			},
+			{
+				Id:      2,
+				Address: 0x5678,
+			},
+		},
+	}
+}
