@@ -97,7 +97,8 @@ func (q *QueryFrontend) Query(
 	span.SetTag("end_time", req.EndTime)
 	span.SetTag("label_selector", req.LabelSelector)
 	diagCtx := diagnostics.From(ctx)
-	if diagCtx != nil && diagCtx.Collect {
+	collectDiagnostics := diagCtx != nil && diagCtx.Collect && q.diagnosticsStore != nil
+	if collectDiagnostics {
 		span.SetTag("diagnostics_id", diagCtx.ID)
 	}
 
@@ -145,7 +146,7 @@ func (q *QueryFrontend) Query(
 		LabelSelector: req.LabelSelector,
 		Options: &queryv1.InvokeOptions{
 			SanitizeOnMerge:    q.limits.QuerySanitizeOnMerge(tenants[0]),
-			CollectDiagnostics: diagCtx != nil && diagCtx.Collect,
+			CollectDiagnostics: collectDiagnostics,
 		},
 		QueryPlan: p,
 		Query:     modifiedQueries,
@@ -168,7 +169,7 @@ func (q *QueryFrontend) Query(
 	resp.Diagnostics.QueryPlan = p
 	resp.Diagnostics.QueryRequest = req
 
-	if diagCtx != nil && diagCtx.Collect {
+	if collectDiagnostics {
 		q.diagnosticsStore.Add(diagCtx.ID, resp.Diagnostics)
 	}
 

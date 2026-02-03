@@ -246,7 +246,6 @@ function flattenLayoutTree(
       source: parentId,
       target: node.id,
       type: 'default',
-      pathOptions: { curvature: 0.4 },
       style: { stroke: '#6c757d', strokeWidth: 1.5 },
     });
   }

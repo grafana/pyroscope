@@ -351,7 +351,7 @@ func (s *Store) Delete(ctx context.Context, tenantID, id string) error {
 	}
 
 	basePath := storagePrefix + tenantID + "/" + id + "/"
-	files := []string{"metadata.json", "request.json", "plan.json", "execution.json"}
+	files := []string{"metadata.json", "request.json", "response.json", "plan.json", "execution.json"}
 
 	for _, file := range files {
 		if err := s.bucket.Delete(ctx, basePath+file); err != nil {
