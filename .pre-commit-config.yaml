@@ -20,3 +20,5 @@ repos:
         # This matches: api/**/*.proto, pkg/**/*.proto, api/buf*.yaml, pkg/buf*.yaml
         # Root-level YAML files (renovate.json, .golangci.yml, etc.) are excluded
         files: '^(api|pkg)/.*\.(proto|yaml)$'
+
+default_install_hook_types: [pre-push]
