@@ -142,6 +142,7 @@ type Limits interface {
 	MaxProfileSymbolValueLength(tenantID string) int
 	MaxSessionsPerSeries(tenantID string) int
 	EnforceLabelsOrder(tenantID string) bool
+	DisableLabelSanitization(tenantID string) bool
 	IngestionRelabelingRules(tenantID string) []*relabel.Config
 	SampleTypeRelabelingRules(tenantID string) []*relabel.Config
 	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
