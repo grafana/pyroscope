@@ -245,7 +245,8 @@ function flattenLayoutTree(
       id: `edge-${parentId}-${node.id}`,
       source: parentId,
       target: node.id,
-      type: 'smoothstep',
+      type: 'default',
+      pathOptions: { curvature: 0.4 },
       style: { stroke: '#6c757d', strokeWidth: 1.5 },
     });
   }
