@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
@@ -64,28 +63,6 @@ func (a *Admin) TenantsAPIHandler() http.Handler {
 				level.Debug(a.logger).Log("msg", "failed to fetch tenants from tenant service", "err", err)
 			} else {
 				tenants = resp.TenantIds
-			}
-		}
-
-		// If we have a diagnostics store, also get tenants from there
-		if a.diagnosticsStore != nil {
-			storeTenants, err := a.diagnosticsStore.ListTenants(r.Context())
-			if err != nil {
-				level.Debug(a.logger).Log("msg", "failed to list tenants from diagnostics store", "err", err)
-			} else {
-				// Merge tenant lists, removing duplicates
-				tenantSet := make(map[string]struct{})
-				for _, t := range tenants {
-					tenantSet[t] = struct{}{}
-				}
-				for _, t := range storeTenants {
-					tenantSet[t] = struct{}{}
-				}
-				tenants = make([]string, 0, len(tenantSet))
-				for t := range tenantSet {
-					tenants = append(tenants, t)
-				}
-				sort.Strings(tenants)
 			}
 		}
 
