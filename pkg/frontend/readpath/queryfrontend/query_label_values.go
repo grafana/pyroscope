@@ -51,6 +51,5 @@ func (q *QueryFrontend) LabelValues(
 	if report == nil {
 		return connect.NewResponse(&typesv1.LabelValuesResponse{}), nil
 	}
-
 	return connect.NewResponse(&typesv1.LabelValuesResponse{Names: report.LabelValues.LabelValues}), nil
 }

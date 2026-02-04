@@ -34,13 +34,11 @@ func TestStore_Get(t *testing.T) {
 		LabelFilter: `{service="test"}`,
 	}
 
-	// Save
 	id := generateUUID()
 	store.AddRequest(id, "SelectMergeStacktraces", request)
 	err := store.Flush(ctx, "tenant-1", id)
 	require.NoError(t, err)
 
-	// Get
 	stored, err := store.Get(ctx, "tenant-1", id)
 	require.NoError(t, err)
 	require.Equal(t, id, stored.ID)
@@ -48,7 +46,6 @@ func TestStore_Get(t *testing.T) {
 	require.Equal(t, "SelectMergeStacktraces", stored.Method)
 	require.NotNil(t, stored.Request)
 
-	// Request is JSON - deserialize to verify
 	var storedRequest testRequest
 	require.NoError(t, json.Unmarshal(stored.Request, &storedRequest))
 	require.Equal(t, request.LabelFilter, storedRequest.LabelFilter)
@@ -86,21 +83,17 @@ func TestStore_Delete(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
-	// Save first
 	id := generateUUID()
 	store.AddRequest(id, "ProfileTypes", nil)
 	err := store.Flush(ctx, "tenant-1", id)
 	require.NoError(t, err)
 
-	// Verify it exists
 	_, err = store.Get(ctx, "tenant-1", id)
 	require.NoError(t, err)
 
-	// Delete
 	err = store.Delete(ctx, "tenant-1", id)
 	require.NoError(t, err)
 
-	// Verify it's gone
 	_, err = store.Get(ctx, "tenant-1", id)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -133,12 +126,10 @@ func TestStore_Cleanup(t *testing.T) {
 	// Wait for TTL to expire
 	time.Sleep(10 * time.Millisecond)
 
-	// Run cleanup
 	deleted, err := store.Cleanup(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 2, deleted)
 
-	// Verify both are gone
 	_, err = store.Get(ctx, "tenant-1", id1)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -202,23 +193,17 @@ func TestStore_AddAndFlush(t *testing.T) {
 
 	id := "abcdef0123456789abcdef0123456789"
 
-	// Add request info (as done by the wrapper)
 	store.AddRequest(id, "SelectMergeStacktraces", request)
-
-	// Add diagnostics (as done by query execution)
 	store.Add(id, diag)
-
-	// Flush
 	err := store.Flush(ctx, "tenant-1", id)
 	require.NoError(t, err)
 
-	// Get and verify
 	stored, err := store.Get(ctx, "tenant-1", id)
 	require.NoError(t, err)
 	assert.Equal(t, id, stored.ID)
 	assert.Equal(t, "SelectMergeStacktraces", stored.Method)
 	assert.NotNil(t, stored.Request)
-	// Deserialize to verify content
+
 	var storedRequest testRequest
 	require.NoError(t, json.Unmarshal(stored.Request, &storedRequest))
 	assert.Equal(t, int64(1000), storedRequest.StartTime)

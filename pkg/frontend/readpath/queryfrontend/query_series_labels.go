@@ -101,10 +101,9 @@ func (q *QueryFrontend) Series(
 	if err != nil {
 		return nil, err
 	}
-
-	resp := connect.NewResponse(&querierv1.SeriesResponse{})
-	if report != nil {
-		resp.Msg.LabelsSet = report.SeriesLabels.SeriesLabels
+	if report == nil {
+		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
 	}
-	return resp, nil
+
+	return connect.NewResponse(&querierv1.SeriesResponse{LabelsSet: report.SeriesLabels.SeriesLabels}), nil
 }

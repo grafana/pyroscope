@@ -2,6 +2,7 @@ package diagnostics
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -10,9 +11,6 @@ import (
 const (
 	requestHeader = "X-Pyroscope-Collect-Diagnostics"
 	idHeader      = "X-Pyroscope-Diagnostics-Id"
-
-	// IDHeader is the exported constant for the diagnostics ID header.
-	IDHeader = idHeader
 )
 
 // Context key for diagnostics context.
@@ -38,6 +36,7 @@ func InjectCollectDiagnostics(ctx context.Context, collect bool) context.Context
 	})
 }
 
+// From reads the diagnostics context from the context.
 func From(ctx context.Context) *Context {
 	if v, ok := ctx.Value(contextKey{}).(*Context); ok {
 		return v
@@ -45,25 +44,16 @@ func From(ctx context.Context) *Context {
 	return nil
 }
 
-// QueryStartTime extracts the diagnostics start time from context.
-func QueryStartTime(ctx context.Context) time.Time {
-	if v, ok := ctx.Value(contextKey{}).(*Context); ok {
-		return v.startTime
-	}
-	return time.Time{}
-}
-
 // InjectCollectDiagnosticsFromHeader checks the request header and injects the flag into context.
 func InjectCollectDiagnosticsFromHeader(ctx context.Context, headers map[string][]string) context.Context {
 	return InjectCollectDiagnostics(ctx, shouldCollectDiagnostics(headers))
 }
 
-// shouldCollectDiagnostics checks if diagnostics collection was requested.
+// shouldCollectDiagnostics checks if a diagnostics collection was requested.
 func shouldCollectDiagnostics(headers map[string][]string) bool {
 	values := headers[requestHeader]
 	if len(values) == 0 {
-		// Try lowercase (HTTP/2 normalizes to lowercase)
-		values = headers["x-pyroscope-collect-diagnostics"]
+		values = headers[strings.ToLower(requestHeader)]
 	}
 	for _, v := range values {
 		if v == "true" || v == "1" {
@@ -96,12 +86,5 @@ func (i *interceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) co
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
 		ctx = InjectCollectDiagnosticsFromHeader(ctx, conn.RequestHeader())
 		return next(ctx, conn)
-	}
-}
-
-// SetHeader sets the diagnostics ID header in the response.
-func SetHeader(respHeaders map[string][]string, diagID string) {
-	if diagID != "" {
-		respHeaders[idHeader] = []string{diagID}
 	}
 }

@@ -24,6 +24,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/block/metadata"
 	"github.com/grafana/pyroscope/pkg/frontend"
+	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/admin"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -42,7 +43,8 @@ type Symbolizer interface {
 
 // DiagnosticsStore is an optional interface for storing query diagnostics.
 type DiagnosticsStore interface {
-	// Add stores diagnostics in memory for later flushing. Called by Query() with the collected diagnostics.
+	admin.DiagnosticsStore
+	// Add stores diagnostics in memory for later flushing.
 	Add(id string, diag *queryv1.Diagnostics)
 }
 
@@ -55,6 +57,7 @@ type QueryFrontend struct {
 	querybackend        QueryBackend
 	symbolizer          Symbolizer
 	diagnosticsStore    DiagnosticsStore
+	admin               *admin.Admin
 	now                 func() time.Time
 }
 
@@ -67,7 +70,7 @@ func NewQueryFrontend(
 	sym Symbolizer,
 	diagnosticsStore DiagnosticsStore,
 ) *QueryFrontend {
-	return &QueryFrontend{
+	qf := &QueryFrontend{
 		logger:              logger,
 		limits:              limits,
 		metadataQueryClient: metadataQueryClient,
@@ -77,11 +80,14 @@ func NewQueryFrontend(
 		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
 	}
-}
-
-// SetDiagnosticsStore sets the optional diagnostics store for collecting query diagnostics.
-func (q *QueryFrontend) SetDiagnosticsStore(store DiagnosticsStore) {
-	q.diagnosticsStore = store
+	if diagnosticsStore != nil {
+		qf.admin = admin.New(
+			logger,
+			tenantServiceClient,
+			diagnosticsStore,
+		)
+	}
+	return qf
 }
 
 var xrand = rand.New(rand.NewSource(4349676827832284783))
@@ -102,6 +108,9 @@ func (q *QueryFrontend) Query(
 		span.SetTag("diagnostics_id", diagCtx.ID)
 	}
 
+	// This method is supposed to be the entry point of the read path
+	// in the future versions. Therefore, validation, overrides, and
+	// rest of the request handling should be moved here.
 	tenants, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -116,20 +125,24 @@ func (q *QueryFrontend) Query(
 	if len(blocks) == 0 {
 		return new(queryv1.QueryResponse), nil
 	}
-
+	// Randomize the order of blocks to avoid hotspots.
 	xrandMutex.Lock()
 	xrand.Shuffle(len(blocks), func(i, j int) {
 		blocks[i], blocks[j] = blocks[j], blocks[i]
 	})
 	xrandMutex.Unlock()
-
+	// TODO(kolesnikovae): Should be dynamic.
 	p := queryplan.Build(blocks, 4, 20)
+
+	// Only check for symbolization if all tenants have it enabled
 	shouldSymbolize := q.shouldSymbolize(ctx, tenants, blocks)
 	span.SetTag("should_symbolize", shouldSymbolize)
 
 	modifiedQueries := make([]*queryv1.Query, len(req.Query))
 	for i, originalQuery := range req.Query {
 		modifiedQueries[i] = originalQuery.CloneVT()
+
+		// If we need symbolization and this is a TREE query, convert it to PPROF
 		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
@@ -167,7 +180,6 @@ func (q *QueryFrontend) Query(
 	}
 
 	resp.Diagnostics.QueryPlan = p
-	resp.Diagnostics.QueryRequest = req
 
 	if collectDiagnostics {
 		q.diagnosticsStore.Add(diagCtx.ID, resp.Diagnostics)
@@ -335,4 +347,8 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 	}
 
 	return nil
+}
+
+func (q *QueryFrontend) Admin() *admin.Admin {
+	return q.admin
 }

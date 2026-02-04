@@ -12,13 +12,7 @@ var diagnosticsPageHtml string
 //go:embed diagnostics_list.gohtml
 var diagnosticsListPageHtml string
 
-// diagnosticsListPageContent contains data for the diagnostics list page shell.
-type diagnosticsListPageContent struct {
-	Now time.Time
-}
-
-// diagnosticsPageContent contains data for the diagnostics page shell.
-type diagnosticsPageContent struct {
+type pageContent struct {
 	Now time.Time
 }
 

@@ -11,45 +11,38 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/dskit/services"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
+type DiagnosticsStore interface {
+	ListByTenant(ctx context.Context, tenant string) ([]*diagnostics.DiagnosticSummary, error)
+	Get(ctx context.Context, tenant string, id string) (*diagnostics.StoredDiagnostics, error)
+	Export(ctx context.Context, tenant string, id string) ([]byte, error)
+	Import(ctx context.Context, tenant string, id string, data []byte) (string, error)
+}
+
 type Admin struct {
-	service services.Service
-	logger  log.Logger
+	logger log.Logger
 
 	tenantService    metastorev1.TenantServiceClient
-	queryFrontend    querierv1connect.QuerierServiceClient
-	diagnosticsStore *diagnostics.Store
+	diagnosticsStore DiagnosticsStore
 }
 
 func New(
 	logger log.Logger,
 	tenantService metastorev1.TenantServiceClient,
-	queryFrontend querierv1connect.QuerierServiceClient,
-	diagnosticsStore *diagnostics.Store,
+	diagnosticsStore DiagnosticsStore,
 ) *Admin {
 	adm := &Admin{
 		logger:           logger,
 		tenantService:    tenantService,
-		queryFrontend:    queryFrontend,
 		diagnosticsStore: diagnosticsStore,
 	}
-	adm.service = services.NewIdleService(adm.starting, adm.stopping)
 	return adm
 }
-
-func (a *Admin) Service() services.Service {
-	return a.service
-}
-
-func (a *Admin) starting(context.Context) error { return nil }
-func (a *Admin) stopping(error) error           { return nil }
 
 // TenantsAPIHandler returns a JSON API handler for listing tenants.
 func (a *Admin) TenantsAPIHandler() http.Handler {
@@ -252,39 +245,26 @@ func (a *Admin) DiagnosticsImportAPIHandler() http.Handler {
 	})
 }
 
-// DiagnosticsStore returns the diagnostics store for API registration.
-func (a *Admin) DiagnosticsStore() *diagnostics.Store {
-	return a.diagnosticsStore
-}
-
 // DiagnosticsListHandler returns an HTTP handler for the stored diagnostics page shell.
 func (a *Admin) DiagnosticsListHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		content := diagnosticsListPageContent{
+		content := pageContent{
 			Now: time.Now().UTC(),
 		}
-		a.renderDiagnosticsListPage(w, content)
+		if err := pageTemplates.diagnosticsListTemplate.Execute(w, content); err != nil {
+			httputil.Error(w, err)
+		}
 	})
-}
-
-func (a *Admin) renderDiagnosticsListPage(w http.ResponseWriter, content diagnosticsListPageContent) {
-	if err := pageTemplates.diagnosticsListTemplate.Execute(w, content); err != nil {
-		httputil.Error(w, err)
-	}
 }
 
 // DiagnosticsHandler returns an HTTP handler for the query diagnostics page shell.
 func (a *Admin) DiagnosticsHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		content := diagnosticsPageContent{
+		content := pageContent{
 			Now: time.Now().UTC(),
 		}
-		a.renderDiagnosticsPage(w, content)
+		if err := pageTemplates.diagnosticsTemplate.Execute(w, content); err != nil {
+			httputil.Error(w, err)
+		}
 	})
-}
-
-func (a *Admin) renderDiagnosticsPage(w http.ResponseWriter, content diagnosticsPageContent) {
-	if err := pageTemplates.diagnosticsTemplate.Execute(w, content); err != nil {
-		httputil.Error(w, err)
-	}
 }

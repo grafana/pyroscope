@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -31,12 +32,10 @@ const (
 	cleanupInterval = 1 * time.Hour
 )
 
+// diagnosticFiles lists all files that make up a stored diagnostic.
+var diagnosticFiles = []string{"metadata.json", "request.json", "response.json", "plan.json", "execution.json"}
+
 // StoredDiagnostics wraps the query diagnostics with metadata.
-// Data is stored in separate files:
-//   - <uuid>/metadata.json - ID, timestamps, tenant, response time, method
-//   - <uuid>/request.json - the original request (JSON serialized)
-//   - <uuid>/plan.json - query plan
-//   - <uuid>/execution.json - execution trace
 type StoredDiagnostics struct {
 	ID                string                 `json:"id"`
 	CreatedAt         time.Time              `json:"created_at"`
@@ -99,7 +98,6 @@ func (s *Store) run(ctx context.Context) {
 	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 
-	// Run initial cleanup on startup
 	s.runCleanup(ctx)
 
 	for {
@@ -134,12 +132,10 @@ type inflightData struct {
 }
 
 // Add stores diagnostics in memory for later flushing.
-// Called by Query() when diagnostics collection is enabled.
 func (s *Store) Add(id string, diag *queryv1.Diagnostics) {
 	if id == "" || diag == nil {
 		return
 	}
-	// Load existing inflight data or create new
 	val, _ := s.inflightDiagnostics.Load(id)
 	data, ok := val.(*inflightData)
 	if !ok {
@@ -149,13 +145,11 @@ func (s *Store) Add(id string, diag *queryv1.Diagnostics) {
 	s.inflightDiagnostics.Store(id, data)
 }
 
-// AddRequest stores the method name, request, and response size in memory for later flushing.
-// Called by the wrapper to capture the API method and its parameters.
+// AddRequest stores request related data for later flushing.
 func (s *Store) AddRequest(id string, method string, request any) {
 	if id == "" {
 		return
 	}
-	// Load existing inflight data or create new
 	val, _ := s.inflightDiagnostics.Load(id)
 	data, ok := val.(*inflightData)
 	if !ok {
@@ -166,11 +160,11 @@ func (s *Store) AddRequest(id string, method string, request any) {
 	s.inflightDiagnostics.Store(id, data)
 }
 
+// AddResponse stores response related data for later flushing.
 func (s *Store) AddResponse(id string, response any, sizeBytes int64, responseTimeMs int64) {
 	if id == "" {
 		return
 	}
-	// Load existing inflight data or create new
 	val, _ := s.inflightDiagnostics.Load(id)
 	data, ok := val.(*inflightData)
 	if !ok {
@@ -182,13 +176,11 @@ func (s *Store) AddResponse(id string, response any, sizeBytes int64, responseTi
 }
 
 // Flush saves the in-memory diagnostics to the bucket and removes from memory.
-// Called by the wrapper after the request completes.
 func (s *Store) Flush(ctx context.Context, tenantID, id string) error {
 	if id == "" || tenantID == "" {
 		return nil
 	}
 
-	// Get and remove from in-memory store
 	val, ok := s.inflightDiagnostics.LoadAndDelete(id)
 	if !ok {
 		level.Debug(s.logger).Log("msg", "no inflight diagnostics found", "id", id)
@@ -202,7 +194,6 @@ func (s *Store) Flush(ctx context.Context, tenantID, id string) error {
 
 	basePath := storagePrefix + tenantID + "/" + id + "/"
 
-	// Save metadata (including method name and response size)
 	metadata := &storedMetadata{
 		ID:                id,
 		CreatedAt:         time.Now().UTC(),
@@ -215,28 +206,24 @@ func (s *Store) Flush(ctx context.Context, tenantID, id string) error {
 		return fmt.Errorf("failed to save metadata: %w", err)
 	}
 
-	// Save request if provided (serialized as JSON)
 	if data.Request != nil {
 		if err := s.saveJSON(ctx, basePath+"request.json", data.Request); err != nil {
 			return fmt.Errorf("failed to save request: %w", err)
 		}
 	}
 
-	// Save response if provided
 	if data.Response != nil {
 		if err := s.saveJSON(ctx, basePath+"response.json", data.Response); err != nil {
 			return fmt.Errorf("failed to save response: %w", err)
 		}
 	}
 
-	// Save plan if provided and has content
 	if data.Diagnostics != nil && data.Diagnostics.QueryPlan != nil && data.Diagnostics.QueryPlan.Root != nil {
 		if err := s.saveJSON(ctx, basePath+"plan.json", data.Diagnostics.QueryPlan); err != nil {
 			return fmt.Errorf("failed to save query plan: %w", err)
 		}
 	}
 
-	// Save execution trace if provided
 	if data.Diagnostics != nil && data.Diagnostics.ExecutionNode != nil {
 		if err := s.saveJSON(ctx, basePath+"execution.json", data.Diagnostics.ExecutionNode); err != nil {
 			return fmt.Errorf("failed to save execution trace: %w", err)
@@ -270,7 +257,6 @@ func (s *Store) Get(ctx context.Context, tenantID, id string) (*StoredDiagnostic
 
 	basePath := storagePrefix + tenantID + "/" + id + "/"
 
-	// Read metadata (required)
 	var metadata storedMetadata
 	if err := s.readJSON(ctx, basePath+"metadata.json", &metadata); err != nil {
 		if s.bucket.IsObjNotFoundErr(err) {
@@ -288,27 +274,18 @@ func (s *Store) Get(ctx context.Context, tenantID, id string) (*StoredDiagnostic
 		Method:            metadata.Method,
 	}
 
-	// Read request as raw JSON (optional)
 	if data, err := s.readRaw(ctx, basePath+"request.json"); err == nil {
 		stored.Request = data
-	} else if !s.bucket.IsObjNotFoundErr(err) {
-		level.Warn(s.logger).Log("msg", "failed to read request", "id", id, "err", err)
 	}
 
-	// Read query plan (optional)
 	var plan queryv1.QueryPlan
 	if err := s.readJSON(ctx, basePath+"plan.json", &plan); err == nil {
 		stored.Plan = &plan
-	} else if !s.bucket.IsObjNotFoundErr(err) {
-		level.Warn(s.logger).Log("msg", "failed to read query plan", "id", id, "err", err)
 	}
 
-	// Read execution trace (optional)
 	var execution queryv1.ExecutionNode
 	if err := s.readJSON(ctx, basePath+"execution.json", &execution); err == nil {
 		stored.Execution = &execution
-	} else if !s.bucket.IsObjNotFoundErr(err) {
-		level.Warn(s.logger).Log("msg", "failed to read execution trace", "id", id, "err", err)
 	}
 
 	return stored, nil
@@ -351,9 +328,8 @@ func (s *Store) Delete(ctx context.Context, tenantID, id string) error {
 	}
 
 	basePath := storagePrefix + tenantID + "/" + id + "/"
-	files := []string{"metadata.json", "request.json", "response.json", "plan.json", "execution.json"}
 
-	for _, file := range files {
+	for _, file := range diagnosticFiles {
 		if err := s.bucket.Delete(ctx, basePath+file); err != nil {
 			if !s.bucket.IsObjNotFoundErr(err) {
 				return fmt.Errorf("failed to delete diagnostics file %s: %w", file, err)
@@ -362,32 +338,6 @@ func (s *Store) Delete(ctx context.Context, tenantID, id string) error {
 	}
 
 	return nil
-}
-
-// ListTenants returns a list of all tenants that have stored diagnostics.
-func (s *Store) ListTenants(ctx context.Context) ([]string, error) {
-	tenants := make(map[string]struct{})
-
-	err := s.bucket.Iter(ctx, storagePrefix, func(name string) error {
-		// Extract tenant from path: query-diagnostics/<tenant>/
-		rel := strings.TrimPrefix(name, storagePrefix)
-		if idx := strings.Index(rel, "/"); idx > 0 {
-			tenant := rel[:idx]
-			tenants[tenant] = struct{}{}
-		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to list tenants: %w", err)
-	}
-
-	result := make([]string, 0, len(tenants))
-	for tenant := range tenants {
-		result = append(result, tenant)
-	}
-	sort.Strings(result)
-	return result, nil
 }
 
 // DiagnosticSummary contains minimal info for listing diagnostics.
@@ -406,15 +356,27 @@ func (s *Store) ListByTenant(ctx context.Context, tenant string) ([]*DiagnosticS
 
 	prefix := storagePrefix + tenant + "/"
 	err := s.bucket.Iter(ctx, prefix, func(name string) error {
-		// Only process metadata.json files
-		if !strings.HasSuffix(name, "/metadata.json") {
+		// Iter returns directory names with trailing slash (e.g., "query-diagnostics/tenant/<uuid>/")
+		if !strings.HasSuffix(name, "/") {
 			return nil
 		}
 
-		// Read metadata
+		// Extract the diagnostic ID from the directory name
+		rel := strings.TrimPrefix(name, prefix)
+		diagID := strings.TrimSuffix(rel, "/")
+		if diagID == "" {
+			return nil
+		}
+
+		if _, err := uuid.Parse(diagID); err != nil {
+			return nil
+		}
+
+		basePath := name
+
 		var metadata storedMetadata
-		if err := s.readJSON(ctx, name, &metadata); err != nil {
-			level.Warn(s.logger).Log("msg", "failed to read diagnostics metadata", "object", name, "err", err)
+		if err := s.readJSON(ctx, basePath+"metadata.json", &metadata); err != nil {
+			level.Warn(s.logger).Log("msg", "failed to read diagnostics metadata", "id", diagID, "err", err)
 			return nil
 		}
 
@@ -426,15 +388,13 @@ func (s *Store) ListByTenant(ctx context.Context, tenant string) ([]*DiagnosticS
 			ResponseSizeBytes: metadata.ResponseSizeBytes,
 		}
 
-		// Try to read request payload
-		requestPath := strings.TrimSuffix(name, "metadata.json") + "request.json"
-		if data, err := s.readRaw(ctx, requestPath); err == nil {
+		if data, err := s.readRaw(ctx, basePath+"request.json"); err == nil {
 			summary.Request = data
 		}
 
 		summaries = append(summaries, summary)
 		return nil
-	}, objstore.WithRecursiveIter())
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to list diagnostics: %w", err)
@@ -491,12 +451,12 @@ func (s *Store) Export(ctx context.Context, tenantID, id string) ([]byte, error)
 	}
 
 	basePath := storagePrefix + tenantID + "/" + id + "/"
-	files := []string{"metadata.json", "request.json", "response.json", "plan.json", "execution.json"}
 
 	var buf bytes.Buffer
 	zipWriter := zip.NewWriter(&buf)
+	defer zipWriter.Close()
 
-	for _, file := range files {
+	for _, file := range diagnosticFiles {
 		data, err := s.readRaw(ctx, basePath+file)
 		if err != nil {
 			if s.bucket.IsObjNotFoundErr(err) {
@@ -514,15 +474,11 @@ func (s *Store) Export(ctx context.Context, tenantID, id string) ([]byte, error)
 		}
 	}
 
-	if err := zipWriter.Close(); err != nil {
-		return nil, fmt.Errorf("failed to close zip: %w", err)
-	}
-
 	return buf.Bytes(), nil
 }
 
 // Import extracts a zip archive and stores the diagnostic files.
-// If newID is empty, generates a new UUID. Returns the ID used.
+// The files are stored under the tenantID provided as an argument; the tenantID from the zip file is ignored.
 func (s *Store) Import(ctx context.Context, tenantID string, newID string, zipData []byte) (string, error) {
 	if newID == "" {
 		newID = generateUUID()
@@ -536,17 +492,10 @@ func (s *Store) Import(ctx context.Context, tenantID string, newID string, zipDa
 	}
 
 	basePath := storagePrefix + tenantID + "/" + newID + "/"
-	allowedFiles := map[string]bool{
-		"metadata.json":  true,
-		"request.json":   true,
-		"response.json":  true,
-		"plan.json":      true,
-		"execution.json": true,
-	}
 
 	var hasMetadata bool
 	for _, file := range zipReader.File {
-		if !allowedFiles[file.Name] {
+		if !slices.Contains(diagnosticFiles, file.Name) {
 			continue
 		}
 		if file.Name == "metadata.json" {

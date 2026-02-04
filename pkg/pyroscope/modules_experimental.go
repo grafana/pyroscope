@@ -22,7 +22,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend"
-	queryfrontendadmin "github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/admin"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs"
 	"github.com/grafana/pyroscope/pkg/metastore"
@@ -122,14 +121,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	f.API.RegisterQuerierServiceHandler(handler)
 	f.API.RegisterPyroscopeHandlers(handler)
 	f.API.RegisterVCSServiceHandler(vcsService)
-
-	queryFrontendAdmin := queryfrontendadmin.New(
-		f.logger,
-		f.metastoreClient,
-		handler,
-		diagnosticsStore,
-	)
-	f.API.RegisterQueryFrontendAdmin(queryFrontendAdmin)
+	f.API.RegisterQueryFrontendAdmin(f.queryFrontend.Admin())
 
 	// New query frontend does not have any state.
 	// For simplicity, we return a no-op service.

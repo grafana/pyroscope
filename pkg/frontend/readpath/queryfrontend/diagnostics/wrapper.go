@@ -20,14 +20,20 @@ import (
 type Wrapper struct {
 	logger log.Logger
 	client querierv1connect.QuerierServiceClient
-	store  *Store
+	store  Writer
 }
 
-func NewWrapper(logger log.Logger, client querierv1connect.QuerierServiceClient, store *Store) *Wrapper {
+type Writer interface {
+	AddRequest(id string, method string, req any)
+	AddResponse(id string, resp any, responseSizeBytes int64, responseTimeMs int64)
+	Flush(ctx context.Context, tenantID string, id string) error
+}
+
+func NewWrapper(logger log.Logger, client querierv1connect.QuerierServiceClient, writer Writer) *Wrapper {
 	return &Wrapper{
 		logger: logger,
 		client: client,
-		store:  store,
+		store:  writer,
 	}
 }
 
@@ -46,24 +52,20 @@ func flushDiagnostics[Req, Resp any](w *Wrapper, ctx context.Context, method str
 
 	w.store.AddRequest(diagCtx.ID, method, req.Msg)
 
-	// Calculate response size
-	var responseSizeBytes int64
-	var respMsg any
 	if resp != nil {
-		respMsg = resp.Msg
+		var respMsg any = resp.Msg
+		var responseSizeBytes int64
 		if respMsgProto, ok := respMsg.(proto.Message); ok {
 			responseSizeBytes = int64(proto.Size(respMsgProto))
 		}
+		responseTimeMs := time.Since(diagCtx.startTime).Milliseconds()
+		w.store.AddResponse(diagCtx.ID, respMsg, responseSizeBytes, responseTimeMs)
 	}
-
-	responseTimeMs := time.Since(diagCtx.startTime).Milliseconds()
-	w.store.AddResponse(diagCtx.ID, respMsg, responseSizeBytes, responseTimeMs)
 
 	if err := w.store.Flush(ctx, tenantIDs[0], diagCtx.ID); err != nil {
 		level.Warn(w.logger).Log("msg", "failed to flush diagnostics", "id", diagCtx.ID, "err", err)
 	}
 
-	// Set the diagnostics ID header in the response
 	if resp != nil {
 		resp.Header().Set(idHeader, diagCtx.ID)
 	}

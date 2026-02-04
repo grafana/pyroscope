@@ -112,8 +112,7 @@ message InvokeResponse {
 // Diagnostic messages, events, statistics, analytics, etc.
 message Diagnostics {
   QueryPlan query_plan = 1;
-  QueryRequest query_request = 2;
-  ExecutionNode execution_node = 3;
+  ExecutionNode execution_node = 2;
 }
 
 // ExecutionNode captures how a query plan node was actually executed.
