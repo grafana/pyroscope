@@ -133,6 +133,15 @@ func (h *hashedSlice[A]) len() int {
 	return len(h.sl)
 }
 
+func (h *hashedSlice[A]) grow(size int) {
+	h.sl = slices.Grow(h.sl, size)
+	h.hashes = slices.Grow(h.hashes, size)
+	// grow map if still empty
+	if len(h.m) == 0 {
+		h.m = make(map[uint64]int, size)
+	}
+}
+
 func (h *hashedSlice[A]) add(hash uint64, v A) int32 {
 	idx, found := h.m[hash]
 	if !found {
@@ -333,6 +342,7 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 
 	// add the strings to the merger
 	stringIDs := rm.stringIDs()
+	sm.strings.grow(len(stringIDs))
 	h := xxhash.New()
 	for _, sID := range stringIDs {
 		s := symbols.Strings[sID]
@@ -347,6 +357,7 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 	// add the functions to the merger
 	var f schemav1.InMemoryFunction
 	functionIDs := rm.functionIDs()
+	sm.functions.grow(len(functionIDs))
 	buf := make([]byte, 8)
 	for _, fID := range functionIDs {
 		h.Reset()
@@ -361,6 +372,7 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 	// add the mappings to the merger
 	var mp schemav1.InMemoryMapping
 	mappingIDs := rm.mappingIDs()
+	sm.mappings.grow(len(mappingIDs))
 	for _, mID := range mappingIDs {
 		h.Reset()
 		mp = symbols.Mappings[mID]
@@ -373,7 +385,7 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 
 	// add the locations to the merger
 	var loc schemav1.InMemoryLocation
-	locationRemap := make(map[int32]int32)
+	locationRemap := make(map[int32]int32, len(locationIDs))
 	for _, lID := range locationIDs {
 		h.Reset()
 		loc = symbols.Locations[lID]
@@ -404,12 +416,14 @@ func (sm *SymbolMerger) Add(ts *queryv1.TreeSymbols) (func(model.LocationRefName
 
 	// add the strings to the merger
 	for idx, s := range ts.Strings {
+		sm.strings.grow(len(ts.Strings))
 		rm.strings[int32(idx)] = sm.strings.add(ts.StringHashes[idx], s)
 	}
 
 	// add the functions to the merger
 	{
 		var f schemav1.InMemoryFunction
+		sm.functions.grow(len(ts.Functions))
 		for idx, orig := range ts.Functions {
 			f.StartLine = uint32(orig.StartLine)
 			f.Name = uint32(orig.Name)
@@ -423,6 +437,7 @@ func (sm *SymbolMerger) Add(ts *queryv1.TreeSymbols) (func(model.LocationRefName
 	// add the mappings to the merger
 	{
 		var m schemav1.InMemoryMapping
+		sm.mappings.grow(len(ts.Mappings))
 		for idx, orig := range ts.Mappings {
 			m.MemoryStart = orig.MemoryStart
 			m.MemoryLimit = orig.MemoryLimit
@@ -440,7 +455,8 @@ func (sm *SymbolMerger) Add(ts *queryv1.TreeSymbols) (func(model.LocationRefName
 
 	// add the locations to the merger
 	var loc schemav1.InMemoryLocation
-	locationRemap := make(map[int32]int32)
+	sm.locations.grow(len(ts.Locations))
+	locationRemap := make(map[int32]int32, len(ts.Locations))
 	for idx, orig := range ts.Locations {
 		loc.Address = orig.Address
 		loc.MappingId = uint32(orig.MappingId)
