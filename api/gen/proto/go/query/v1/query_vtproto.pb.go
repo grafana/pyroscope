@@ -527,6 +527,26 @@ func (m *TreeSymbols) CloneVT() *TreeSymbols {
 		copy(tmpContainer, rhs)
 		r.Strings = tmpContainer
 	}
+	if rhs := m.MappingHashes; rhs != nil {
+		tmpContainer := make([]uint64, len(rhs))
+		copy(tmpContainer, rhs)
+		r.MappingHashes = tmpContainer
+	}
+	if rhs := m.LocationHashes; rhs != nil {
+		tmpContainer := make([]uint64, len(rhs))
+		copy(tmpContainer, rhs)
+		r.LocationHashes = tmpContainer
+	}
+	if rhs := m.FunctionHashes; rhs != nil {
+		tmpContainer := make([]uint64, len(rhs))
+		copy(tmpContainer, rhs)
+		r.FunctionHashes = tmpContainer
+	}
+	if rhs := m.StringHashes; rhs != nil {
+		tmpContainer := make([]uint64, len(rhs))
+		copy(tmpContainer, rhs)
+		r.StringHashes = tmpContainer
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -1458,6 +1478,42 @@ func (this *TreeSymbols) EqualVT(that *TreeSymbols) bool {
 	}
 	for i, vx := range this.Strings {
 		vy := that.Strings[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.MappingHashes) != len(that.MappingHashes) {
+		return false
+	}
+	for i, vx := range this.MappingHashes {
+		vy := that.MappingHashes[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.LocationHashes) != len(that.LocationHashes) {
+		return false
+	}
+	for i, vx := range this.LocationHashes {
+		vy := that.LocationHashes[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.FunctionHashes) != len(that.FunctionHashes) {
+		return false
+	}
+	for i, vx := range this.FunctionHashes {
+		vy := that.FunctionHashes[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.StringHashes) != len(that.StringHashes) {
+		return false
+	}
+	for i, vx := range this.StringHashes {
+		vy := that.StringHashes[i]
 		if vx != vy {
 			return false
 		}
@@ -3124,6 +3180,86 @@ func (m *TreeSymbols) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.StringHashes) > 0 {
+		var pksize2 int
+		for _, num := range m.StringHashes {
+			pksize2 += protohelpers.SizeOfVarint(uint64(num))
+		}
+		i -= pksize2
+		j1 := i
+		for _, num := range m.StringHashes {
+			for num >= 1<<7 {
+				dAtA[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA[j1] = uint8(num)
+			j1++
+		}
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize2))
+		i--
+		dAtA[i] = 0x42
+	}
+	if len(m.FunctionHashes) > 0 {
+		var pksize4 int
+		for _, num := range m.FunctionHashes {
+			pksize4 += protohelpers.SizeOfVarint(uint64(num))
+		}
+		i -= pksize4
+		j3 := i
+		for _, num := range m.FunctionHashes {
+			for num >= 1<<7 {
+				dAtA[j3] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j3++
+			}
+			dAtA[j3] = uint8(num)
+			j3++
+		}
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize4))
+		i--
+		dAtA[i] = 0x3a
+	}
+	if len(m.LocationHashes) > 0 {
+		var pksize6 int
+		for _, num := range m.LocationHashes {
+			pksize6 += protohelpers.SizeOfVarint(uint64(num))
+		}
+		i -= pksize6
+		j5 := i
+		for _, num := range m.LocationHashes {
+			for num >= 1<<7 {
+				dAtA[j5] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j5++
+			}
+			dAtA[j5] = uint8(num)
+			j5++
+		}
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize6))
+		i--
+		dAtA[i] = 0x32
+	}
+	if len(m.MappingHashes) > 0 {
+		var pksize8 int
+		for _, num := range m.MappingHashes {
+			pksize8 += protohelpers.SizeOfVarint(uint64(num))
+		}
+		i -= pksize8
+		j7 := i
+		for _, num := range m.MappingHashes {
+			for num >= 1<<7 {
+				dAtA[j7] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j7++
+			}
+			dAtA[j7] = uint8(num)
+			j7++
+		}
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize8))
+		i--
+		dAtA[i] = 0x2a
+	}
 	if len(m.Strings) > 0 {
 		for iNdEx := len(m.Strings) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.Strings[iNdEx])
@@ -4204,6 +4340,34 @@ func (m *TreeSymbols) SizeVT() (n int) {
 			l = len(s)
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if len(m.MappingHashes) > 0 {
+		l = 0
+		for _, e := range m.MappingHashes {
+			l += protohelpers.SizeOfVarint(uint64(e))
+		}
+		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
+	}
+	if len(m.LocationHashes) > 0 {
+		l = 0
+		for _, e := range m.LocationHashes {
+			l += protohelpers.SizeOfVarint(uint64(e))
+		}
+		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
+	}
+	if len(m.FunctionHashes) > 0 {
+		l = 0
+		for _, e := range m.FunctionHashes {
+			l += protohelpers.SizeOfVarint(uint64(e))
+		}
+		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
+	}
+	if len(m.StringHashes) > 0 {
+		l = 0
+		for _, e := range m.StringHashes {
+			l += protohelpers.SizeOfVarint(uint64(e))
+		}
+		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
 	}
 	n += len(m.unknownFields)
 	return n
@@ -7289,6 +7453,310 @@ func (m *TreeSymbols) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Strings = append(m.Strings, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
+		case 5:
+			if wireType == 0 {
+				var v uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.MappingHashes = append(m.MappingHashes, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
+				}
+				elementCount = count
+				if elementCount != 0 && len(m.MappingHashes) == 0 {
+					m.MappingHashes = make([]uint64, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return protohelpers.ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.MappingHashes = append(m.MappingHashes, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field MappingHashes", wireType)
+			}
+		case 6:
+			if wireType == 0 {
+				var v uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.LocationHashes = append(m.LocationHashes, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
+				}
+				elementCount = count
+				if elementCount != 0 && len(m.LocationHashes) == 0 {
+					m.LocationHashes = make([]uint64, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return protohelpers.ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.LocationHashes = append(m.LocationHashes, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field LocationHashes", wireType)
+			}
+		case 7:
+			if wireType == 0 {
+				var v uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.FunctionHashes = append(m.FunctionHashes, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
+				}
+				elementCount = count
+				if elementCount != 0 && len(m.FunctionHashes) == 0 {
+					m.FunctionHashes = make([]uint64, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return protohelpers.ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.FunctionHashes = append(m.FunctionHashes, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field FunctionHashes", wireType)
+			}
+		case 8:
+			if wireType == 0 {
+				var v uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.StringHashes = append(m.StringHashes, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
+				}
+				elementCount = count
+				if elementCount != 0 && len(m.StringHashes) == 0 {
+					m.StringHashes = make([]uint64, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return protohelpers.ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.StringHashes = append(m.StringHashes, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field StringHashes", wireType)
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

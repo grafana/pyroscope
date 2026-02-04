@@ -187,6 +187,10 @@ message TreeSymbols {
   repeated google.v1.Location locations = 2;
   repeated google.v1.Function functions = 3;
   repeated string strings = 4;
+  repeated uint64 mapping_hashes = 5;
+  repeated uint64 location_hashes = 6;
+  repeated uint64 function_hashes = 7;
+  repeated uint64 string_hashes = 8;
 }
 
 message TreeReport {

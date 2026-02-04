@@ -245,7 +245,6 @@ type ResultBuilder interface {
 func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuilder, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.LocationRefNameTree")
 	defer span.Finish()
-	var symLock sync.Mutex
 	sym := NewSymbolMerger()
 	var lock sync.Mutex
 	tree := new(model.LocationRefNameTree)
@@ -262,10 +261,13 @@ func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuil
 
 		locIDs := sortedList(locMap, nil)
 
-		symLock.Lock()
-		cb := sym.addSymbols(symbols, locIDs)
+		// merge symbols
+		cb, err := sym.addSymbols(symbols, locIDs)
+		if err != nil {
+			return err
+		}
 		resolved.FormatNodeNames(cb)
-		symLock.Unlock()
+
 		lock.Lock()
 		tree.Merge(resolved)
 		lock.Unlock()

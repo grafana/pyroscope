@@ -1087,6 +1087,38 @@ components:
           items:
             type: string
           title: strings
+        mappingHashes:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: mapping_hashes
+        locationHashes:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: location_hashes
+        functionHashes:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: function_hashes
+        stringHashes:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: string_hashes
       title: TreeSymbols
       additionalProperties: false
     types.v1.Exemplar:

@@ -1340,13 +1340,17 @@ func (x *TreeQuery) GetFullSymbols() bool {
 }
 
 type TreeSymbols struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Mappings      []*v12.Mapping         `protobuf:"bytes,1,rep,name=mappings,proto3" json:"mappings,omitempty"`
-	Locations     []*v12.Location        `protobuf:"bytes,2,rep,name=locations,proto3" json:"locations,omitempty"`
-	Functions     []*v12.Function        `protobuf:"bytes,3,rep,name=functions,proto3" json:"functions,omitempty"`
-	Strings       []string               `protobuf:"bytes,4,rep,name=strings,proto3" json:"strings,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Mappings       []*v12.Mapping         `protobuf:"bytes,1,rep,name=mappings,proto3" json:"mappings,omitempty"`
+	Locations      []*v12.Location        `protobuf:"bytes,2,rep,name=locations,proto3" json:"locations,omitempty"`
+	Functions      []*v12.Function        `protobuf:"bytes,3,rep,name=functions,proto3" json:"functions,omitempty"`
+	Strings        []string               `protobuf:"bytes,4,rep,name=strings,proto3" json:"strings,omitempty"`
+	MappingHashes  []uint64               `protobuf:"varint,5,rep,packed,name=mapping_hashes,json=mappingHashes,proto3" json:"mapping_hashes,omitempty"`
+	LocationHashes []uint64               `protobuf:"varint,6,rep,packed,name=location_hashes,json=locationHashes,proto3" json:"location_hashes,omitempty"`
+	FunctionHashes []uint64               `protobuf:"varint,7,rep,packed,name=function_hashes,json=functionHashes,proto3" json:"function_hashes,omitempty"`
+	StringHashes   []uint64               `protobuf:"varint,8,rep,packed,name=string_hashes,json=stringHashes,proto3" json:"string_hashes,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TreeSymbols) Reset() {
@@ -1403,6 +1407,34 @@ func (x *TreeSymbols) GetFunctions() []*v12.Function {
 func (x *TreeSymbols) GetStrings() []string {
 	if x != nil {
 		return x.Strings
+	}
+	return nil
+}
+
+func (x *TreeSymbols) GetMappingHashes() []uint64 {
+	if x != nil {
+		return x.MappingHashes
+	}
+	return nil
+}
+
+func (x *TreeSymbols) GetLocationHashes() []uint64 {
+	if x != nil {
+		return x.LocationHashes
+	}
+	return nil
+}
+
+func (x *TreeSymbols) GetFunctionHashes() []uint64 {
+	if x != nil {
+		return x.FunctionHashes
+	}
+	return nil
+}
+
+func (x *TreeSymbols) GetStringHashes() []uint64 {
+	if x != nil {
+		return x.StringHashes
 	}
 	return nil
 }
@@ -1992,12 +2024,16 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x14stack_trace_selector\x18\x03 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
 	"\x13profile_id_selector\x18\x04 \x03(\tR\x11profileIdSelector\x12!\n" +
 	"\ffull_symbols\x18\x05 \x01(\bR\vfullSymbolsB\x17\n" +
-	"\x15_stack_trace_selector\"\xbd\x01\n" +
+	"\x15_stack_trace_selector\"\xdb\x02\n" +
 	"\vTreeSymbols\x12.\n" +
 	"\bmappings\x18\x01 \x03(\v2\x12.google.v1.MappingR\bmappings\x121\n" +
 	"\tlocations\x18\x02 \x03(\v2\x13.google.v1.LocationR\tlocations\x121\n" +
 	"\tfunctions\x18\x03 \x03(\v2\x13.google.v1.FunctionR\tfunctions\x12\x18\n" +
-	"\astrings\x18\x04 \x03(\tR\astrings\"\x8d\x01\n" +
+	"\astrings\x18\x04 \x03(\tR\astrings\x12%\n" +
+	"\x0emapping_hashes\x18\x05 \x03(\x04R\rmappingHashes\x12'\n" +
+	"\x0flocation_hashes\x18\x06 \x03(\x04R\x0elocationHashes\x12'\n" +
+	"\x0ffunction_hashes\x18\a \x03(\x04R\x0efunctionHashes\x12#\n" +
+	"\rstring_hashes\x18\b \x03(\x04R\fstringHashes\"\x8d\x01\n" +
 	"\n" +
 	"TreeReport\x12)\n" +
 	"\x05query\x18\x01 \x01(\v2\x13.query.v1.TreeQueryR\x05query\x12\x12\n" +
