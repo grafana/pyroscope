@@ -1,9 +1,6 @@
 package querybackend
 
 import (
-	"slices"
-	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +17,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/model/attributetable"
 	"github.com/grafana/pyroscope/pkg/model/timeseries"
+	"github.com/grafana/pyroscope/pkg/model/timeseriescompact"
 	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
@@ -247,7 +245,7 @@ type timeSeriesCompactAggregator struct {
 	startTime int64
 	endTime   int64
 	query     *queryv1.TimeSeriesQuery
-	merger    *timeSeriesCompactMerger
+	merger    *timeseriescompact.Merger
 }
 
 func newTimeSeriesCompactAggregator(req *queryv1.InvokeRequest) aggregator {
@@ -260,330 +258,24 @@ func newTimeSeriesCompactAggregator(req *queryv1.InvokeRequest) aggregator {
 func (a *timeSeriesCompactAggregator) aggregate(report *queryv1.Report) error {
 	r := report.TimeSeriesCompact
 	a.init.Do(func() {
-		a.merger = newTimeSeriesCompactMerger(true)
+		a.merger = timeseriescompact.NewMerger()
 		a.query = r.Query.CloneVT()
 	})
-	a.merger.Merge(r)
+	a.merger.MergeReport(r)
 	return nil
 }
 
 func (a *timeSeriesCompactAggregator) build() *queryv1.Report {
 	stepMilli := time.Duration(a.query.GetStep() * float64(time.Second)).Milliseconds()
-	report := a.merger.Build(a.startTime, a.endTime, stepMilli)
-	report.Query = a.query
-	return &queryv1.Report{TimeSeriesCompact: report}
-}
-
-// timeSeriesCompactMerger merges time series reports in compact format.
-type timeSeriesCompactMerger struct {
-	mu       sync.Mutex
-	atMerger *attributetable.Merger
-	sum      bool
-	series   map[string]*compactSeries
-}
-
-type compactSeries struct {
-	refs   []int64
-	points []*queryv1.Point
-}
-
-func newTimeSeriesCompactMerger(sum bool) *timeSeriesCompactMerger {
-	return &timeSeriesCompactMerger{
-		atMerger: attributetable.NewMerger(),
-		sum:      sum,
-		series:   make(map[string]*compactSeries),
+	seriesIterator := a.merger.Iterator()
+	series := timeseriescompact.RangeSeries(seriesIterator, a.startTime, a.endTime, stepMilli)
+	return &queryv1.Report{
+		TimeSeriesCompact: &queryv1.TimeSeriesCompactReport{
+			Query:          a.query,
+			TimeSeries:     series,
+			AttributeTable: a.merger.BuildAttributeTable(),
+		},
 	}
-}
-
-// Merge adds a report to the merger, remapping attribute refs to the merged table.
-func (m *timeSeriesCompactMerger) Merge(r *queryv1.TimeSeriesCompactReport) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if r == nil || len(r.TimeSeries) == 0 {
-		return
-	}
-
-	m.atMerger.Merge(r.AttributeTable, func(remap *attributetable.Remapper) {
-		for _, s := range r.TimeSeries {
-			refs := remap.Refs(s.AttributeRefs)
-			key := seriesKey(refs)
-
-			existing, ok := m.series[key]
-			if !ok {
-				existing = &compactSeries{refs: refs}
-				m.series[key] = existing
-			}
-
-			existing.points = slices.Grow(existing.points, len(s.Points))
-			for _, p := range s.Points {
-				pt := &queryv1.Point{Timestamp: p.Timestamp, Value: p.Value}
-				if len(p.AnnotationRefs) > 0 {
-					pt.AnnotationRefs = remap.Refs(p.AnnotationRefs)
-				}
-				if len(p.Exemplars) > 0 {
-					pt.Exemplars = make([]*queryv1.Exemplar, len(p.Exemplars))
-					for i, ex := range p.Exemplars {
-						pt.Exemplars[i] = &queryv1.Exemplar{
-							Timestamp:     ex.Timestamp,
-							ProfileId:     ex.ProfileId,
-							SpanId:        ex.SpanId,
-							Value:         ex.Value,
-							AttributeRefs: remap.Refs(ex.AttributeRefs),
-						}
-					}
-				}
-				existing.points = append(existing.points, pt)
-			}
-		}
-	})
-}
-
-// Build returns the merged report with step-based aggregation applied.
-func (m *timeSeriesCompactMerger) Build(start, end, step int64) *queryv1.TimeSeriesCompactReport {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if len(m.series) == 0 {
-		return &queryv1.TimeSeriesCompactReport{}
-	}
-
-	keys := make([]string, 0, len(m.series))
-	for k := range m.series {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	result := make([]*queryv1.Series, 0, len(m.series))
-	for _, k := range keys {
-		s := m.series[k]
-		sort.Slice(s.points, func(i, j int) bool {
-			return s.points[i].Timestamp < s.points[j].Timestamp
-		})
-
-		// Apply step-based aggregation
-		rangedPoints := m.rangePoints(s.points, start, end, step)
-		if len(rangedPoints) == 0 {
-			continue
-		}
-
-		result = append(result, &queryv1.Series{
-			AttributeRefs: s.refs,
-			Points:        rangedPoints,
-		})
-	}
-
-	return &queryv1.TimeSeriesCompactReport{
-		TimeSeries:     result,
-		AttributeTable: m.atMerger.BuildAttributeTable(nil),
-	}
-}
-
-// rangePoints aggregates points into time steps, similar to timeseries.RangeSeries but operating on compact format.
-func (m *timeSeriesCompactMerger) rangePoints(points []*queryv1.Point, start, end, step int64) []*queryv1.Point {
-	if len(points) == 0 || step <= 0 {
-		return nil
-	}
-
-	var result []*queryv1.Point
-	var agg *compactPointAggregator
-	pointIdx := 0
-
-	for currentStep := start; currentStep <= end; currentStep += step {
-		// Aggregate all points that fall into this step
-		for pointIdx < len(points) && points[pointIdx].Timestamp <= currentStep {
-			if agg == nil {
-				agg = &compactPointAggregator{sum: m.sum}
-			}
-			agg.Add(currentStep, points[pointIdx])
-			pointIdx++
-		}
-
-		if agg != nil && !agg.IsEmpty() {
-			result = append(result, agg.GetAndReset())
-		}
-	}
-
-	return result
-}
-
-type compactPointAggregator struct {
-	sum            bool
-	ts             int64
-	value          float64
-	annotationRefs []int64
-	exemplars      []*queryv1.Exemplar
-	hasData        bool
-}
-
-func (a *compactPointAggregator) Add(ts int64, p *queryv1.Point) {
-	a.ts = ts
-	if a.sum {
-		a.value += p.Value
-	} else {
-		a.value = p.Value
-	}
-	a.annotationRefs = append(a.annotationRefs, p.AnnotationRefs...)
-	if len(p.Exemplars) > 0 {
-		a.exemplars = mergeExemplars(a.exemplars, p.Exemplars)
-	}
-	a.hasData = true
-}
-
-func (a *compactPointAggregator) GetAndReset() *queryv1.Point {
-	pt := &queryv1.Point{
-		Timestamp: a.ts,
-		Value:     a.value,
-	}
-	if len(a.annotationRefs) > 0 {
-		pt.AnnotationRefs = dedupeAnnotationRefs(a.annotationRefs)
-	}
-	if len(a.exemplars) > 0 {
-		pt.Exemplars = selectTopNExemplars(a.exemplars, timeseries.DefaultMaxExemplarsPerPoint)
-	}
-
-	a.ts = 0
-	a.value = 0
-	a.annotationRefs = nil
-	a.exemplars = nil
-	a.hasData = false
-
-	return pt
-}
-
-func (a *compactPointAggregator) IsEmpty() bool {
-	return !a.hasData
-}
-
-func dedupeAnnotationRefs(refs []int64) []int64 {
-	if len(refs) <= 1 {
-		return refs
-	}
-	slices.Sort(refs)
-	j := 0
-	for i := 1; i < len(refs); i++ {
-		if refs[j] != refs[i] {
-			j++
-			refs[j] = refs[i]
-		}
-	}
-	return refs[:j+1]
-}
-
-func selectTopNExemplars(exemplars []*queryv1.Exemplar, n int) []*queryv1.Exemplar {
-	if len(exemplars) <= n {
-		return exemplars
-	}
-	sort.Slice(exemplars, func(i, j int) bool {
-		return exemplars[i].Value > exemplars[j].Value
-	})
-	return exemplars[:n]
-}
-
-// mergeExemplars combines two exemplar lists.
-// For exemplars with the same profileID, it keeps the highest value and intersects attribute refs.
-func mergeExemplars(a, b []*queryv1.Exemplar) []*queryv1.Exemplar {
-	if len(a) == 0 {
-		return b
-	}
-	if len(b) == 0 {
-		return a
-	}
-
-	type exemplarGroup struct {
-		exemplar *queryv1.Exemplar
-		refSets  [][]int64
-	}
-	byProfileID := make(map[string]*exemplarGroup, len(a)+len(b))
-
-	for _, ex := range a {
-		byProfileID[ex.ProfileId] = &exemplarGroup{
-			exemplar: ex,
-			refSets:  [][]int64{ex.AttributeRefs},
-		}
-	}
-
-	for _, ex := range b {
-		existing, found := byProfileID[ex.ProfileId]
-		if !found {
-			byProfileID[ex.ProfileId] = &exemplarGroup{
-				exemplar: ex,
-				refSets:  [][]int64{ex.AttributeRefs},
-			}
-		} else {
-			if ex.Value > existing.exemplar.Value {
-				existing.exemplar = ex
-			}
-			existing.refSets = append(existing.refSets, ex.AttributeRefs)
-		}
-	}
-
-	result := make([]*queryv1.Exemplar, 0, len(byProfileID))
-	for _, group := range byProfileID {
-		ex := group.exemplar
-		if len(group.refSets) > 1 {
-			intersected := intersectRefs(group.refSets)
-			if intersected == nil && ex.AttributeRefs != nil {
-				ex.AttributeRefs = []int64{}
-			} else {
-				ex.AttributeRefs = intersected
-			}
-		}
-		result = append(result, ex)
-	}
-
-	sort.Slice(result, func(i, j int) bool { return result[i].ProfileId < result[j].ProfileId })
-	return result
-}
-
-// intersectRefs returns the intersection of multiple ref slices.
-func intersectRefs(refSets [][]int64) []int64 {
-	if len(refSets) == 0 {
-		return nil
-	}
-	if len(refSets) == 1 {
-		return refSets[0]
-	}
-
-	// Build set from first
-	set := make(map[int64]struct{}, len(refSets[0]))
-	for _, ref := range refSets[0] {
-		set[ref] = struct{}{}
-	}
-
-	// Intersect with remaining
-	for i := 1; i < len(refSets); i++ {
-		newSet := make(map[int64]struct{})
-		for _, ref := range refSets[i] {
-			if _, ok := set[ref]; ok {
-				newSet[ref] = struct{}{}
-			}
-		}
-		set = newSet
-	}
-
-	if len(set) == 0 {
-		return nil
-	}
-
-	// Convert back to sorted slice
-	result := make([]int64, 0, len(set))
-	for ref := range set {
-		result = append(result, ref)
-	}
-	slices.Sort(result)
-	return result
-}
-
-func seriesKey(refs []int64) string {
-	var sb strings.Builder
-	for i, ref := range refs {
-		if i > 0 {
-			sb.WriteByte(',')
-		}
-		sb.WriteString(strconv.FormatInt(ref, 16))
-	}
-	return sb.String()
 }
 
 func validateExemplarType(exemplarType typesv1.ExemplarType) (bool, error) {
