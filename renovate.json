@@ -83,5 +83,39 @@
       "groupName": "makefile-tools",
       "schedule": ["before 4am on monday"]
     }
+  ],
+  "regexManagers": [
+    {
+      "description": "Update embedded Grafana version",
+      "fileMatch": ["^pkg/embedded/grafana/grafana\\.go$"],
+      "matchStrings": [
+        "https://dl\\.grafana\\.com/oss/release/grafana-(?<currentValue>[0-9.]+)\\."
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "grafana/grafana",
+      "versioningTemplate": "semver",
+      "groupName": "embedded-grafana",
+      "postUpgradeTasks": {
+        "commands": ["go run tools/update-embedded-checksums/main.go"],
+        "fileFilters": ["pkg/embedded/grafana/grafana.go"],
+        "executionMode": "update"
+      }
+    },
+    {
+      "description": "Update grafana-pyroscope-app plugin version",
+      "fileMatch": ["^pkg/embedded/grafana/grafana\\.go$"],
+      "matchStrings": [
+        "https://github\\.com/grafana/profiles-drilldown/releases/download/v(?<currentValue>[0-9.]+)/grafana-pyroscope-app-[0-9.]+\\.zip"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "grafana/profiles-drilldown",
+      "versioningTemplate": "semver",
+      "groupName": "embedded-grafana",
+      "postUpgradeTasks": {
+        "commands": ["go run tools/update-embedded-checksums/main.go"],
+        "fileFilters": ["pkg/embedded/grafana/grafana.go"],
+        "executionMode": "update"
+      }
+    }
   ]
 }
