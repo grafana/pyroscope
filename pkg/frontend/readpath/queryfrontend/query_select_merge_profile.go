@@ -4,12 +4,14 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -56,6 +58,46 @@ func (q *QueryFrontend) SelectMergeProfile(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+
+	// TODO: Remove this path and anwser all queries using the tree
+	// Use the pprof querybackend path,
+	usePprofTree := false
+	for _, v := range c.Header().Values("X-Pyroscope-Feature-Flag") {
+		if v == "pprof-tree" {
+			usePprofTree = true
+		}
+	}
+
+	if !usePprofTree {
+		level.Info(q.logger).Log("msg", "use pprof query-backend based query")
+		report, err := q.querySingle(ctx, &queryv1.QueryRequest{
+			StartTime:     c.Msg.Start,
+			EndTime:       c.Msg.End,
+			LabelSelector: labelSelector,
+			Query: []*queryv1.Query{{
+				QueryType: queryv1.QueryType_QUERY_PPROF,
+				Pprof: &queryv1.PprofQuery{
+					MaxNodes:           maxNodes,
+					StackTraceSelector: c.Msg.StackTraceSelector,
+					ProfileIdSelector:  c.Msg.ProfileIdSelector,
+				},
+			}},
+		})
+		if err != nil {
+			return nil, err
+		}
+		if report == nil {
+			return connect.NewResponse(&profilev1.Profile{}), nil
+		}
+		var p profilev1.Profile
+		if err = pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&p), nil
+	}
+
+	// From now own anwser using the more experimental tree based approach
+	level.Info(q.logger).Log("msg", "use tree query-backend based query")
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
 		EndTime:       c.Msg.End,
