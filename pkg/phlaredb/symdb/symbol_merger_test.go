@@ -31,7 +31,8 @@ const expectedTreeSymbols = `
       ]
     },
     {
-      "address": "22136"
+      "address": "22136",
+      "id": "1"
     }
   ],
   "functions": [
