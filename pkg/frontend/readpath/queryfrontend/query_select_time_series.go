@@ -116,6 +116,9 @@ func expandQuerySeries(series []*queryv1.Series, table *queryv1.AttributeTable) 
 	if len(series) == 0 {
 		return nil
 	}
+	if table == nil {
+		table = &queryv1.AttributeTable{}
+	}
 
 	labelMap := make(map[int64]*typesv1.LabelPair, len(table.Keys))
 	for i := range table.Keys {
