@@ -273,11 +273,11 @@ func Test_QueryFrontend_LabelNames_WithFiltering(t *testing.T) {
 			expectedLabelNames: []string{"valid_name"},
 		},
 		{
-			name:                "labels with dots pass through",
+			name:                "labels with dots do not pass through",
 			allowUtf8LabelNames: false,
 			setCapabilities:     true,
 			backendLabelNames:   []string{"service.name", "app.version"},
-			expectedLabelNames:  []string{"service.name", "app.version"},
+			expectedLabelNames:  []string{},
 		},
 	}
 
@@ -376,11 +376,11 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 			expectedQueryRequest: []string{"foo", "bar", "service_name"},
 		},
 		{
-			name:                 "labels with dots pass through",
+			name:                 "labels with dots do not pass through",
 			allowUtf8LabelNames:  false,
 			setCapabilities:      true,
 			requestLabelNames:    []string{"service.name", "app.version"},
-			expectedQueryRequest: []string{"service.name", "app.version"},
+			expectedQueryRequest: []string{},
 		},
 		{
 			name:                 "empty label names with UTF8 disabled queries and filters all labels",
