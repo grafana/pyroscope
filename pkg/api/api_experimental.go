@@ -41,7 +41,6 @@ func (a *API) RegisterMetastoreAdmin(adm *metastoreadmin.Admin) {
 func (a *API) RegisterQueryFrontendAdmin(adm *queryfrontendadmin.Admin) {
 	a.RegisterRoute("/query-diagnostics", adm.DiagnosticsHandler(), a.registerOptionsRingPage()...)
 	a.RegisterRoute("/query-diagnostics/list", adm.DiagnosticsListHandler(), a.registerOptionsRingPage()...)
-	a.RegisterRoute("/query-diagnostics/static/", http.StripPrefix("/query-diagnostics/static/", queryfrontendadmin.StaticHandler()), a.registerOptionsPrefixPublicAccess()...)
 
 	// JSON API endpoints for React frontend
 	a.RegisterRoute("/query-diagnostics/api/tenants", adm.TenantsAPIHandler(), a.registerOptionsRingPage()...)

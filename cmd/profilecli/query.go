@@ -214,12 +214,12 @@ func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag st
 		return errors.Wrap(err, "failed to query")
 	}
 
-	logDiagnosticsHeaders(client, resp.Header())
+	logDiagnostics(client, resp.Header())
 
 	return outputMergeProfile(ctx, outputFlag, force, resp.Msg)
 }
 
-func logDiagnosticsHeaders(client *phlareClient, headers http.Header) {
+func logDiagnostics(client *phlareClient, headers http.Header) {
 	if !client.CollectDiagnostics {
 		return
 	}
@@ -313,7 +313,7 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 		if err != nil {
 			return errors.Wrap(err, "failed to query")
 		}
-		logDiagnosticsHeaders(params.phlareClient, resp.Header())
+		logDiagnostics(params.phlareClient, resp.Header())
 		result = resp.Msg.LabelsSet
 	case "ingester":
 		ic := params.phlareClient.ingesterClient()
@@ -376,7 +376,7 @@ func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCa
 	if err != nil {
 		return errors.Wrap(err, "failed to query")
 	}
-	logDiagnosticsHeaders(params.phlareClient, resp.Header())
+	logDiagnostics(params.phlareClient, resp.Header())
 
 	level.Info(logger).Log("msg", fmt.Sprintf("received %d label names", len(resp.Msg.Names)))
 
