@@ -241,6 +241,8 @@ func (t *Tree[N, I]) Merge(src *Tree[N, I]) {
 		return
 	}
 
+	nodeBuffer := newNodeBuffer[N](defaultDFSSize)
+
 	srcNodes := make([]*node[N], 0, defaultDFSSize)
 	srcRoot := &node[N]{children: src.root}
 	srcNodes = append(srcNodes, srcRoot)
@@ -259,7 +261,7 @@ func (t *Tree[N, I]) Merge(src *Tree[N, I]) {
 
 		for _, srcChildNode := range st.children {
 			// Note that we don't copy the name, but reference it.
-			dstChildNode := dt.insert(srcChildNode.name)
+			dstChildNode := dt.insert(srcChildNode.name, nodeBuffer.newNode)
 			srcNodes = append(srcNodes, srcChildNode)
 			dstNodes = append(dstNodes, dstChildNode)
 		}
@@ -337,7 +339,7 @@ func (n *node[N]) String() string {
 	return fmt.Sprintf("{%v: self %d total %d}", n.name, n.self, n.total)
 }
 
-func (n *node[N]) insert(name N) *node[N] {
+func (n *node[N]) insert(name N, newNode func() *node[N]) *node[N] {
 	i := sort.Search(len(n.children), func(i int) bool {
 		return n.children[i].name >= name
 	})
@@ -346,7 +348,14 @@ func (n *node[N]) insert(name N) *node[N] {
 	}
 	// We don't clone the name: it is caller responsibility
 	// to maintain the memory ownership.
-	child := &node[N]{parent: n, name: name}
+	var child *node[N]
+	if newNode == nil {
+		child = &node[N]{}
+	} else {
+		child = newNode()
+	}
+	child.parent = n
+	child.name = name
 	n.children = append(n.children, child)
 	copy(n.children[i+1:], n.children[i:])
 	n.children[i] = child
@@ -456,7 +465,7 @@ func (t *Tree[N, I]) MarshalTruncate(w io.Writer, maxNodes int64, keepName func(
 
 		n.children = n.children[:j]
 		if other > 0 {
-			o := n.insert(otherName)
+			o := n.insert(otherName, nil)
 			o.total += other
 			o.self += other
 		}
@@ -487,6 +496,27 @@ func MustUnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) *Tree[N, I] {
 	return t
 }
 
+type nodeBuffer[N NodeName] struct {
+	size  int
+	nodes []node[N]
+}
+
+func newNodeBuffer[N NodeName](size int) *nodeBuffer[N] {
+	return &nodeBuffer[N]{
+		size: size,
+	}
+}
+
+func (nb *nodeBuffer[N]) newNode() *node[N] {
+	if len(nb.nodes) == 0 {
+		nb.nodes = make([]node[N], nb.size)
+	}
+	n := &nb.nodes[0]
+	nb.nodes = nb.nodes[1:]
+	return n
+
+}
+
 func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 	var initializer I
 	t := new(Tree[N, I])
@@ -503,6 +533,8 @@ func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 	parents[0] = root
 	var parent *node[N]
 	var offset int
+
+	nodeBuffer := newNodeBuffer[N](size)
 
 	for len(parents) > 0 {
 		parent, parents = parents[len(parents)-1], parents[:len(parents)-1]
@@ -521,7 +553,7 @@ func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 		}
 		offset += o
 
-		n := parent.insert(name)
+		n := parent.insert(name, nodeBuffer.newNode)
 		n.children = make([]*node[N], 0, childrenLen)
 		n.self = value
 

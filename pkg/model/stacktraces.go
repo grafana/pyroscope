@@ -337,6 +337,8 @@ func TreeFromStacktraceTree[N NodeName, I NodeNameI[N]](t *StacktraceTree, maxNo
 	nodes[0] = root
 	var current *node[N]
 
+	nodeBuf := newNodeBuffer[N](int(nodesSize))
+
 	_ = t.Traverse(maxNodes, func(index int32, children []int32) error {
 		current, nodes = nodes[len(nodes)-1], nodes[:len(nodes)-1]
 		sn := &t.Nodes[index]
@@ -347,7 +349,7 @@ func TreeFromStacktraceTree[N NodeName, I NodeNameI[N]](t *StacktraceTree, maxNo
 		} else {
 			name = lookup(sn.Location)
 		}
-		n := current.insert(name)
+		n := current.insert(name, nodeBuf.newNode)
 		n.self = sn.Value
 		n.total = sn.Total
 		n.children = make([]*node[N], 0, len(children))
