@@ -60,15 +60,18 @@ func flushDiagnostics[Req, Resp any](w *Wrapper, ctx context.Context, method str
 		}
 		responseTimeMs := time.Since(diagCtx.startTime).Milliseconds()
 		w.store.AddResponse(diagCtx.ID, respMsg, responseSizeBytes, responseTimeMs)
-	}
-
-	if err := w.store.Flush(ctx, tenantIDs[0], diagCtx.ID); err != nil {
-		level.Warn(w.logger).Log("msg", "failed to flush diagnostics", "id", diagCtx.ID, "err", err)
-	}
-
-	if resp != nil {
 		resp.Header().Set(idHeader, diagCtx.ID)
 	}
+
+	// Flush asynchronously to avoid blocking the response.
+	// Use a detached context since the request context may be cancelled.
+	tenantID := tenantIDs[0]
+	diagID := diagCtx.ID
+	go func() {
+		if err := w.store.Flush(context.Background(), tenantID, diagID); err != nil {
+			level.Warn(w.logger).Log("msg", "failed to flush diagnostics", "id", diagID, "err", err)
+		}
+	}()
 }
 
 func (w *Wrapper) ProfileTypes(ctx context.Context, req *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
