@@ -21,21 +21,22 @@ export async function fetchProfileTypes(
   endMs: number
 ): Promise<string[]> {
   const basePath = getBasePath();
-  const response = await fetch(`${basePath}/querier.v1.QuerierService/ProfileTypes`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Scope-OrgID': tenantId,
-    },
-    body: JSON.stringify({ start: startMs, end: endMs }),
-  });
+  const response = await fetch(
+    `${basePath}/querier.v1.QuerierService/ProfileTypes`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Scope-OrgID': tenantId,
+      },
+      body: JSON.stringify({ start: startMs, end: endMs }),
+    }
+  );
   if (!response.ok) {
     throw new Error(`Failed to fetch profile types: ${response.status}`);
   }
   const data = await response.json();
-  return (data.profileTypes || []).map(
-    (pt: { ID: string }) => pt.ID
-  );
+  return (data.profileTypes || []).map((pt: { ID: string }) => pt.ID);
 }
 
 export async function listDiagnostics(
@@ -43,7 +44,9 @@ export async function listDiagnostics(
 ): Promise<DiagnosticSummary[]> {
   const basePath = getBasePath();
   const response = await fetch(
-    `${basePath}/query-diagnostics/api/diagnostics?tenant=${encodeURIComponent(tenant)}`
+    `${basePath}/query-diagnostics/api/diagnostics?tenant=${encodeURIComponent(
+      tenant
+    )}`
   );
   if (!response.ok) {
     throw new Error(`Failed to list diagnostics: ${response.status}`);
@@ -57,7 +60,9 @@ export async function loadDiagnostic(
 ): Promise<RawDiagnostic> {
   const basePath = getBasePath();
   const response = await fetch(
-    `${basePath}/query-diagnostics/api/diagnostics/${encodeURIComponent(id)}?tenant=${encodeURIComponent(tenant)}`
+    `${basePath}/query-diagnostics/api/diagnostics/${encodeURIComponent(
+      id
+    )}?tenant=${encodeURIComponent(tenant)}`
   );
   if (!response.ok) {
     throw new Error(`Failed to load diagnostic: ${response.status}`);
@@ -66,11 +71,15 @@ export async function loadDiagnostic(
 }
 
 function parseTime(timeStr: string): number {
-  if (!timeStr) return 0;
+  if (!timeStr) {
+    return 0;
+  }
   const now = Date.now();
   const match = timeStr.match(/^now(-(\d+)([smhd]))?$/);
   if (match) {
-    if (!match[1]) return now;
+    if (!match[1]) {
+      return now;
+    }
     const value = parseInt(match[2], 10);
     const unit = match[3];
     const multipliers: Record<string, number> = {
@@ -109,8 +118,12 @@ function buildRequestBody(
         labelSelector: params.labelSelector,
         profileTypeID: params.profileTypeId,
       };
-      if (params.maxNodes) body.maxNodes = parseInt(params.maxNodes, 10);
-      if (params.format) body.format = params.format;
+      if (params.maxNodes) {
+        body.maxNodes = parseInt(params.maxNodes, 10);
+      }
+      if (params.format) {
+        body.format = params.format;
+      }
       return body;
     }
     case 'SelectMergeSpanProfile': {
@@ -120,8 +133,12 @@ function buildRequestBody(
         labelSelector: params.labelSelector,
         profileTypeID: params.profileTypeId,
       };
-      if (params.maxNodes) body.maxNodes = parseInt(params.maxNodes, 10);
-      if (params.format) body.format = params.format;
+      if (params.maxNodes) {
+        body.maxNodes = parseInt(params.maxNodes, 10);
+      }
+      if (params.format) {
+        body.format = params.format;
+      }
       if (params.spanSelector) {
         body.spanSelector = params.spanSelector
           .split(',')
@@ -146,12 +163,17 @@ function buildRequestBody(
           .map((s) => s.trim())
           .filter(Boolean);
       }
-      if (params.aggregation === 'sum')
+      if (params.aggregation === 'sum') {
         body.aggregation = 'TIME_SERIES_AGGREGATION_TYPE_SUM';
-      else if (params.aggregation === 'avg')
+      } else if (params.aggregation === 'avg') {
         body.aggregation = 'TIME_SERIES_AGGREGATION_TYPE_AVERAGE';
-      if (params.limit) body.limit = parseInt(params.limit, 10);
-      if (params.exemplarType) body.exemplarType = params.exemplarType;
+      }
+      if (params.limit) {
+        body.limit = parseInt(params.limit, 10);
+      }
+      if (params.exemplarType) {
+        body.exemplarType = params.exemplarType;
+      }
       return body;
     }
     case 'SelectHeatmap': {
@@ -171,8 +193,12 @@ function buildRequestBody(
           .map((s) => s.trim())
           .filter(Boolean);
       }
-      if (params.limit) body.limit = parseInt(params.limit, 10);
-      if (params.exemplarType) body.exemplarType = params.exemplarType;
+      if (params.limit) {
+        body.limit = parseInt(params.limit, 10);
+      }
+      if (params.exemplarType) {
+        body.exemplarType = params.exemplarType;
+      }
       return body;
     }
     case 'Diff': {
@@ -266,7 +292,9 @@ export async function exportDiagnostic(
 ): Promise<Blob> {
   const basePath = getBasePath();
   const response = await fetch(
-    `${basePath}/query-diagnostics/api/export/${encodeURIComponent(id)}?tenant=${encodeURIComponent(tenant)}`
+    `${basePath}/query-diagnostics/api/export/${encodeURIComponent(
+      id
+    )}?tenant=${encodeURIComponent(tenant)}`
   );
   if (!response.ok) {
     const text = await response.text();
@@ -284,7 +312,9 @@ export async function importDiagnostic(
   formData.append('file', file);
 
   const response = await fetch(
-    `${basePath}/query-diagnostics/api/import?tenant=${encodeURIComponent(tenant)}`,
+    `${basePath}/query-diagnostics/api/import?tenant=${encodeURIComponent(
+      tenant
+    )}`,
     {
       method: 'POST',
       body: formData,

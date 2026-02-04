@@ -939,7 +939,8 @@
 }
 
 @keyframes pulseGlow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -955,7 +956,8 @@
 }
 
 .execution-flow-node.active {
-  animation: borderRotate 1s ease-in-out infinite, pulseGlow 1s ease-in-out infinite;
+  animation: borderRotate 1s ease-in-out infinite,
+    pulseGlow 1s ease-in-out infinite;
   border-width: 2px;
 }
 

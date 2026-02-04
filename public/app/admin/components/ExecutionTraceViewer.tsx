@@ -38,7 +38,10 @@ export function ExecutionTraceViewer({
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to export diagnostic:', err);
-      alert('Failed to export diagnostic: ' + (err instanceof Error ? err.message : String(err)));
+      alert(
+        'Failed to export diagnostic: ' +
+          (err instanceof Error ? err.message : String(err))
+      );
     } finally {
       setIsExporting(false);
     }
@@ -84,7 +87,10 @@ export function ExecutionTraceViewer({
         </div>
       </div>
       <div className="execution-trace-body">
-        <ExecutionFlowGraph executionTree={executionTree} responseTimeMs={responseTimeMs} />
+        <ExecutionFlowGraph
+          executionTree={executionTree}
+          responseTimeMs={responseTimeMs}
+        />
       </div>
     </div>
   );

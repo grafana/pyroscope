@@ -51,7 +51,9 @@ export function formatMs(ms: number): string {
 }
 
 export function formatBytes(bytes: number): string {
-  if (bytes === 0) return '-';
+  if (bytes === 0) {
+    return '-';
+  }
   const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
   let unitIndex = 0;
   let size = bytes;
@@ -67,7 +69,9 @@ export function formatTime(isoString: string): string {
   return d.toISOString().replace('T', ' ').substring(0, 19);
 }
 
-export function convertQueryPlanToTree(plan: RawQueryPlan): PlanTreeNode | null {
+export function convertQueryPlanToTree(
+  plan: RawQueryPlan
+): PlanTreeNode | null {
   if (!plan || !plan.root) {
     return null;
   }
@@ -121,7 +125,9 @@ export function extractBlocksFromPlan(plan: RawQueryPlan): BlockMeta[] {
 }
 
 function extractBlocksFromNode(node: RawQueryNode, blocks: BlockMeta[]): void {
-  if (!node) return;
+  if (!node) {
+    return;
+  }
   const nodeType = getNodeType(node.type);
   if (nodeType === 'READ' && node.blocks) {
     for (const rawBlock of node.blocks) {
@@ -196,10 +202,14 @@ export function buildMetadataStats(
     result += `  Average size: ${formatBytes(avgBlockSize)}\n`;
   }
   if (largestBlock) {
-    result += `  Largest: ${formatBytes(largestBlock.size)} (${largestBlock.id}, shard ${largestBlock.shard}, L${largestBlock.compaction_level ?? 0})\n`;
+    result += `  Largest: ${formatBytes(largestBlock.size)} (${
+      largestBlock.id
+    }, shard ${largestBlock.shard}, L${largestBlock.compaction_level ?? 0})\n`;
   }
   if (smallestBlock) {
-    result += `  Smallest: ${formatBytes(smallestBlock.size)} (${smallestBlock.id}, shard ${smallestBlock.shard}, L${smallestBlock.compaction_level ?? 0})`;
+    result += `  Smallest: ${formatBytes(smallestBlock.size)} (${
+      smallestBlock.id
+    }, shard ${smallestBlock.shard}, L${smallestBlock.compaction_level ?? 0})`;
   }
 
   if (totalDatasets > 0) {
@@ -209,12 +219,26 @@ export function buildMetadataStats(
     const avgDatasetSize = Math.floor(totalDatasetSize / totalDatasets);
     result += `  Average size: ${formatBytes(avgDatasetSize)}\n`;
     if (largestDataset) {
-      const dsName = getDatasetName(largestDataset.dataset, largestDataset.block);
-      result += `  Largest: ${formatBytes(largestDataset.dataset.size)} (${dsName} in ${largestDataset.block.id}, shard ${largestDataset.block.shard}, L${largestDataset.block.compaction_level ?? 0})\n`;
+      const dsName = getDatasetName(
+        largestDataset.dataset,
+        largestDataset.block
+      );
+      result += `  Largest: ${formatBytes(
+        largestDataset.dataset.size
+      )} (${dsName} in ${largestDataset.block.id}, shard ${
+        largestDataset.block.shard
+      }, L${largestDataset.block.compaction_level ?? 0})\n`;
     }
     if (smallestDataset) {
-      const dsName = getDatasetName(smallestDataset.dataset, smallestDataset.block);
-      result += `  Smallest: ${formatBytes(smallestDataset.dataset.size)} (${dsName} in ${smallestDataset.block.id}, shard ${smallestDataset.block.shard}, L${smallestDataset.block.compaction_level ?? 0})`;
+      const dsName = getDatasetName(
+        smallestDataset.dataset,
+        smallestDataset.block
+      );
+      result += `  Smallest: ${formatBytes(
+        smallestDataset.dataset.size
+      )} (${dsName} in ${smallestDataset.block.id}, shard ${
+        smallestDataset.block.shard
+      }, L${smallestDataset.block.compaction_level ?? 0})`;
     }
   }
 
@@ -247,7 +271,9 @@ export function convertExecutionNodeToTree(
 }
 
 function findEarliestStartTime(node: RawExecutionNode): number {
-  if (!node) return 0;
+  if (!node) {
+    return 0;
+  }
 
   let earliest = node.start_time_ns;
 

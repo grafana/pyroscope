@@ -46,7 +46,9 @@ export function QueryPlanViewer({
             <ul className="nav nav-tabs mb-3" role="tablist">
               <li className="nav-item" role="presentation">
                 <button
-                  className={`nav-link ${activeTab === 'visual' ? 'active' : ''}`}
+                  className={`nav-link ${
+                    activeTab === 'visual' ? 'active' : ''
+                  }`}
                   onClick={() => setActiveTab('visual')}
                   type="button"
                   role="tab"

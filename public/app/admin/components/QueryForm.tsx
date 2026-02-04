@@ -13,11 +13,15 @@ interface QueryFormProps {
 }
 
 function parseTimeForApi(timeStr: string): number {
-  if (!timeStr) return 0;
+  if (!timeStr) {
+    return 0;
+  }
   const now = Date.now();
   const match = timeStr.match(/^now(-(\d+)([smhd]))?$/);
   if (match) {
-    if (!match[1]) return now;
+    if (!match[1]) {
+      return now;
+    }
     const value = parseInt(match[2], 10);
     const unit = match[3];
     const multipliers: Record<string, number> = {
@@ -77,7 +81,7 @@ export function QueryForm({
 
   useEffect(() => {
     loadProfileTypes();
-  }, [params.tenantId]);
+  }, [loadProfileTypes]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -233,10 +237,10 @@ export function QueryForm({
                   {profileTypesLoading
                     ? 'Loading...'
                     : profileTypesError
-                      ? 'Failed to load'
-                      : params.tenantId
-                        ? '-- Select profile type --'
-                        : '-- Select tenant first --'}
+                    ? 'Failed to load'
+                    : params.tenantId
+                    ? '-- Select profile type --'
+                    : '-- Select tenant first --'}
                 </option>
                 {profileTypes.map((pt) => (
                   <option key={pt} value={pt}>
@@ -524,8 +528,8 @@ export function QueryForm({
                       {profileTypesLoading
                         ? 'Loading...'
                         : params.tenantId
-                          ? '-- Select profile type --'
-                          : '-- Select tenant first --'}
+                        ? '-- Select profile type --'
+                        : '-- Select tenant first --'}
                     </option>
                     {profileTypes.map((pt) => (
                       <option key={pt} value={pt}>
@@ -554,8 +558,8 @@ export function QueryForm({
                       {profileTypesLoading
                         ? 'Loading...'
                         : params.tenantId
-                          ? '-- Select profile type --'
-                          : '-- Select tenant first --'}
+                        ? '-- Select profile type --'
+                        : '-- Select tenant first --'}
                     </option>
                     {profileTypes.map((pt) => (
                       <option key={pt} value={pt}>

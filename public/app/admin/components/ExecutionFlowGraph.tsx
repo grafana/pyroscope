@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ReactFlow,
   Background,
@@ -82,17 +88,29 @@ function ExecutionNode({ data, selected }: NodeProps<ExecutionFlowNode>) {
   const nodeClass = getNodeClass(data.nodeType);
   const animClass = data.animationState || 'pending';
   const isFrontend = data.nodeType === 'FRONTEND';
-  const shortName = isFrontend ? data.executor : shortenExecutorName(data.executor);
+  const shortName = isFrontend
+    ? data.executor
+    : shortenExecutorName(data.executor);
 
   return (
-    <div className={`execution-flow-node ${nodeClass} ${animClass} ${selected ? 'selected' : ''}`}>
+    <div
+      className={`execution-flow-node ${nodeClass} ${animClass} ${
+        selected ? 'selected' : ''
+      }`}
+    >
       {!isFrontend && <Handle type="target" position={Position.Left} />}
       <div className="node-header">
-        <span className="node-executor" title={data.executor}>{shortName}</span>
+        <span className="node-executor" title={data.executor}>
+          {shortName}
+        </span>
       </div>
       <div className="node-timing">
-        <span className="node-start" title="Started at">@{data.relativeStartStr}</span>
-        <span className="node-duration" title="Duration">{data.durationStr}</span>
+        <span className="node-start" title="Started at">
+          @{data.relativeStartStr}
+        </span>
+        <span className="node-duration" title="Duration">
+          {data.durationStr}
+        </span>
       </div>
       {data.error && <div className="node-error">Error</div>}
       <Handle type="source" position={Position.Right} />
@@ -116,10 +134,13 @@ interface LayoutNode {
   subtreeHeight: number;
 }
 
-function buildLayoutTree(tree: ExecutionTreeNode, idCounter = { value: 0 }): LayoutNode {
+function buildLayoutTree(
+  tree: ExecutionTreeNode,
+  idCounter = { value: 0 }
+): LayoutNode {
   const nodeId = `node-${idCounter.value++}`;
 
-  const children: LayoutNode[] = (tree.children || []).map(child =>
+  const children: LayoutNode[] = (tree.children || []).map((child) =>
     buildLayoutTree(child, idCounter)
   );
 
@@ -148,7 +169,10 @@ function buildLayoutTree(tree: ExecutionTreeNode, idCounter = { value: 0 }): Lay
 }
 
 function isLeafParent(node: LayoutNode): boolean {
-  return node.children.length > 0 && node.children.every(c => c.children.length === 0);
+  return (
+    node.children.length > 0 &&
+    node.children.every((c) => c.children.length === 0)
+  );
 }
 
 function shouldUseLeafGrid(node: LayoutNode): boolean {
@@ -178,9 +202,10 @@ function calculateSubtreeSizes(node: LayoutNode): void {
     node.subtreeWidth = node.width + HORIZONTAL_GAP + gridWidth;
     node.subtreeHeight = Math.max(node.height, gridHeight);
   } else {
-    const totalChildHeight = node.children.reduce((sum, c) => sum + c.subtreeHeight, 0)
-      + (childCount - 1) * VERTICAL_GAP;
-    const maxChildWidth = Math.max(...node.children.map(c => c.subtreeWidth));
+    const totalChildHeight =
+      node.children.reduce((sum, c) => sum + c.subtreeHeight, 0) +
+      (childCount - 1) * VERTICAL_GAP;
+    const maxChildWidth = Math.max(...node.children.map((c) => c.subtreeWidth));
 
     node.subtreeWidth = node.width + HORIZONTAL_GAP + maxChildWidth;
     node.subtreeHeight = Math.max(node.height, totalChildHeight);
@@ -214,8 +239,9 @@ function positionNodes(node: LayoutNode, startX: number, startY: number): void {
       child.y = gridStartY + row * (NODE_HEIGHT + VERTICAL_GAP);
     }
   } else {
-    const totalChildHeight = node.children.reduce((sum, c) => sum + c.subtreeHeight, 0)
-      + (childCount - 1) * VERTICAL_GAP;
+    const totalChildHeight =
+      node.children.reduce((sum, c) => sum + c.subtreeHeight, 0) +
+      (childCount - 1) * VERTICAL_GAP;
     let currentY = startY + (node.subtreeHeight - totalChildHeight) / 2;
 
     for (const child of node.children) {
@@ -322,7 +348,10 @@ function calculateTotalDuration(nodes: ExecutionFlowNode[]): number {
   return maxEnd;
 }
 
-function getNodeAnimationState(node: ExecutionFlowNode, currentTime: number): AnimationState {
+function getNodeAnimationState(
+  node: ExecutionFlowNode,
+  currentTime: number
+): AnimationState {
   const start = node.data.relativeStart;
   const end = start + node.data.duration;
 
@@ -335,7 +364,10 @@ function getNodeAnimationState(node: ExecutionFlowNode, currentTime: number): An
   }
 }
 
-function getEdgeStyleFromState(state: AnimationState): { stroke: string; strokeWidth: number } {
+function getEdgeStyleFromState(state: AnimationState): {
+  stroke: string;
+  strokeWidth: number;
+} {
   switch (state) {
     case 'active':
       return { stroke: '#ffc107', strokeWidth: 2.5 };
@@ -363,12 +395,21 @@ function NodeDetailsPanel({
     <div className="node-details-panel">
       <div className="panel-header">
         <h6>Node Details</h6>
-        <button type="button" className="btn-close" onClick={onClose} aria-label="Close" />
+        <button
+          type="button"
+          className="btn-close"
+          onClick={onClose}
+          aria-label="Close"
+        />
       </div>
       <div className="panel-body">
         <div className="detail-row">
           <label>Type:</label>
-          <span className={`badge bg-${data.nodeType === 'MERGE' ? 'primary' : 'success'}`}>
+          <span
+            className={`badge bg-${
+              data.nodeType === 'MERGE' ? 'primary' : 'success'
+            }`}
+          >
             {data.nodeType}
           </span>
         </div>
@@ -378,7 +419,9 @@ function NodeDetailsPanel({
         </div>
         <div className="detail-row">
           <label>Started at:</label>
-          <span className="badge bg-warning text-dark">@{data.relativeStartStr}</span>
+          <span className="badge bg-warning text-dark">
+            @{data.relativeStartStr}
+          </span>
         </div>
         <div className="detail-row">
           <label>Duration:</label>
@@ -403,45 +446,50 @@ function NodeDetailsPanel({
               <span>{data.stats.datasetsProcessed}</span>
             </div>
 
-            {data.stats.blockExecutions && data.stats.blockExecutions.length > 0 && (
-              <div className="block-executions">
-                <h6>Block Executions</h6>
-                <div className="block-table-wrapper">
-                  <table className="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Block ID</th>
-                        <th>Start</th>
-                        <th>Duration</th>
-                        <th>Datasets</th>
-                        <th>Size</th>
-                        <th>Shard</th>
-                        <th>Level</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.stats.blockExecutions.map((block, idx) => (
-                        <tr key={idx}>
-                          <td><code>{block.blockId}</code></td>
-                          <td>
-                            <span className="badge bg-warning text-dark">
-                              @{block.relativeStartStr}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="badge bg-info">{block.durationStr}</span>
-                          </td>
-                          <td>{block.datasetsProcessed}</td>
-                          <td>{block.size}</td>
-                          <td>{block.shard}</td>
-                          <td>L{block.compactionLevel}</td>
+            {data.stats.blockExecutions &&
+              data.stats.blockExecutions.length > 0 && (
+                <div className="block-executions">
+                  <h6>Block Executions</h6>
+                  <div className="block-table-wrapper">
+                    <table className="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Block ID</th>
+                          <th>Start</th>
+                          <th>Duration</th>
+                          <th>Datasets</th>
+                          <th>Size</th>
+                          <th>Shard</th>
+                          <th>Level</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {data.stats.blockExecutions.map((block, idx) => (
+                          <tr key={idx}>
+                            <td>
+                              <code>{block.blockId}</code>
+                            </td>
+                            <td>
+                              <span className="badge bg-warning text-dark">
+                                @{block.relativeStartStr}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="badge bg-info">
+                                {block.durationStr}
+                              </span>
+                            </td>
+                            <td>{block.datasetsProcessed}</td>
+                            <td>{block.size}</td>
+                            <td>{block.shard}</td>
+                            <td>L{block.compactionLevel}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </>
         )}
       </div>
@@ -486,11 +534,7 @@ function PlaybackControls({
 
   return (
     <div className="playback-controls">
-      <button
-        className="playback-btn"
-        onClick={onRestart}
-        title="Restart"
-      >
+      <button className="playback-btn" onClick={onRestart} title="Restart">
         ⏮
       </button>
       <button
@@ -506,7 +550,9 @@ function PlaybackControls({
           min="0"
           max="100"
           value={progress}
-          onChange={(e) => onSeek((parseFloat(e.target.value) / 100) * totalDuration)}
+          onChange={(e) =>
+            onSeek((parseFloat(e.target.value) / 100) * totalDuration)
+          }
           className="progress-slider"
         />
         <span className="time-display">
@@ -530,14 +576,20 @@ function PlaybackControls({
   );
 }
 
-export function ExecutionFlowGraph({ executionTree, responseTimeMs }: ExecutionFlowGraphProps) {
+export function ExecutionFlowGraph({
+  executionTree,
+  responseTimeMs,
+}: ExecutionFlowGraphProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     return layoutTree(executionTree, responseTimeMs);
   }, [executionTree, responseTimeMs]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<ExecutionFlowNode>(initialNodes);
+  const [nodes, setNodes, onNodesChange] =
+    useNodesState<ExecutionFlowNode>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [selectedNode, setSelectedNode] = useState<ExecutionFlowNode | null>(null);
+  const [selectedNode, setSelectedNode] = useState<ExecutionFlowNode | null>(
+    null
+  );
 
   const [isPlaying, setIsPlaying] = useState(true); // Auto-play on load
   const [speed, setSpeed] = useState(1);
@@ -550,7 +602,10 @@ export function ExecutionFlowGraph({ executionTree, responseTimeMs }: ExecutionF
   const nodeStatesRef = useRef<Map<string, AnimationState>>(new Map());
 
   useEffect(() => {
-    const { nodes: newNodes, edges: newEdges } = layoutTree(executionTree, responseTimeMs);
+    const { nodes: newNodes, edges: newEdges } = layoutTree(
+      executionTree,
+      responseTimeMs
+    );
     baseNodesRef.current = newNodes;
     baseEdgesRef.current = newEdges;
     totalDurationRef.current = calculateTotalDuration(newNodes);
@@ -563,47 +618,49 @@ export function ExecutionFlowGraph({ executionTree, responseTimeMs }: ExecutionF
     setSelectedNode(null);
   }, [executionTree, responseTimeMs, setNodes, setEdges]);
 
-  const updateAnimationState = useCallback((time: number) => {
-    const baseNodes = baseNodesRef.current;
-    const baseEdges = baseEdgesRef.current;
-    const prevStates = nodeStatesRef.current;
+  const updateAnimationState = useCallback(
+    (time: number) => {
+      const baseNodes = baseNodesRef.current;
+      const prevStates = nodeStatesRef.current;
 
-    const newStates = new Map<string, AnimationState>();
-    let hasChanges = false;
+      const newStates = new Map<string, AnimationState>();
+      let hasChanges = false;
 
-    for (const node of baseNodes) {
-      const newState = getNodeAnimationState(node, time);
-      newStates.set(node.id, newState);
-      if (prevStates.get(node.id) !== newState) {
-        hasChanges = true;
+      for (const node of baseNodes) {
+        const newState = getNodeAnimationState(node, time);
+        newStates.set(node.id, newState);
+        if (prevStates.get(node.id) !== newState) {
+          hasChanges = true;
+        }
       }
-    }
 
-    if (hasChanges) {
-      nodeStatesRef.current = newStates;
+      if (hasChanges) {
+        nodeStatesRef.current = newStates;
 
-      setNodes(currentNodes =>
-        currentNodes.map(node => ({
-          ...node,
-          data: {
-            ...node.data,
-            animationState: newStates.get(node.id) || 'pending',
-          },
-        }))
-      );
+        setNodes((currentNodes) =>
+          currentNodes.map((node) => ({
+            ...node,
+            data: {
+              ...node.data,
+              animationState: newStates.get(node.id) || 'pending',
+            },
+          }))
+        );
 
-      setEdges(currentEdges =>
-        currentEdges.map(edge => {
-          const targetState = newStates.get(edge.target) || 'pending';
-          return {
-            ...edge,
-            animated: targetState === 'active',
-            style: getEdgeStyleFromState(targetState),
-          };
-        })
-      );
-    }
-  }, [setNodes, setEdges]);
+        setEdges((currentEdges) =>
+          currentEdges.map((edge) => {
+            const targetState = newStates.get(edge.target) || 'pending';
+            return {
+              ...edge,
+              animated: targetState === 'active',
+              style: getEdgeStyleFromState(targetState),
+            };
+          })
+        );
+      }
+    },
+    [setNodes, setEdges]
+  );
 
   useEffect(() => {
     if (!isPlaying) {
@@ -612,7 +669,8 @@ export function ExecutionFlowGraph({ executionTree, responseTimeMs }: ExecutionF
 
     const animate = () => {
       const totalDuration = totalDurationRef.current;
-      const newTime = currentTimeRef.current + TICK_INTERVAL * speed * NS_PER_MS;
+      const newTime =
+        currentTimeRef.current + TICK_INTERVAL * speed * NS_PER_MS;
 
       if (newTime > totalDuration) {
         currentTimeRef.current = totalDuration;
@@ -632,18 +690,21 @@ export function ExecutionFlowGraph({ executionTree, responseTimeMs }: ExecutionF
   }, [isPlaying, speed, updateAnimationState]);
 
   const handlePlayPause = useCallback(() => {
-    setIsPlaying(prev => !prev);
+    setIsPlaying((prev) => !prev);
   }, []);
 
   const handleSpeedChange = useCallback((newSpeed: number) => {
     setSpeed(newSpeed);
   }, []);
 
-  const handleSeek = useCallback((time: number) => {
-    currentTimeRef.current = time;
-    setCurrentTime(time);
-    updateAnimationState(time);
-  }, [updateAnimationState]);
+  const handleSeek = useCallback(
+    (time: number) => {
+      currentTimeRef.current = time;
+      setCurrentTime(time);
+      updateAnimationState(time);
+    },
+    [updateAnimationState]
+  );
 
   const handleRestart = useCallback(() => {
     currentTimeRef.current = 0;
@@ -653,9 +714,12 @@ export function ExecutionFlowGraph({ executionTree, responseTimeMs }: ExecutionF
     setIsPlaying(true);
   }, [updateAnimationState]);
 
-  const onNodeClick = useCallback((_event: React.MouseEvent, node: ExecutionFlowNode) => {
-    setSelectedNode(node);
-  }, []);
+  const onNodeClick = useCallback(
+    (_event: React.MouseEvent, node: ExecutionFlowNode) => {
+      setSelectedNode(node);
+    },
+    []
+  );
 
   const handleClosePanel = useCallback(() => {
     setSelectedNode(null);

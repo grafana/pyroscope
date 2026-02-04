@@ -19,11 +19,15 @@ import type {
 } from '../types';
 
 function parseTimeForStats(timeStr: string): Date {
-  if (!timeStr) return new Date();
+  if (!timeStr) {
+    return new Date();
+  }
   const now = Date.now();
   const match = timeStr.match(/^now(-(\d+)([smhd]))?$/);
   if (match) {
-    if (!match[1]) return new Date(now);
+    if (!match[1]) {
+      return new Date(now);
+    }
     const value = parseInt(match[2], 10);
     const unit = match[3];
     const multipliers: Record<string, number> = {
@@ -77,7 +81,9 @@ function deserializeRequest(
   method: string,
   request: unknown
 ): Partial<QueryParams> {
-  if (!request) return {};
+  if (!request) {
+    return {};
+  }
 
   const req = request as RequestData;
   const params: Partial<QueryParams> = {};
@@ -257,6 +263,37 @@ export function QueryDiagnosticsPage() {
     loadTenants();
   }, []);
 
+  const loadStoredDiagnostic = useCallback(
+    async (tenant: string, id: string) => {
+      try {
+        const diagnostic: RawDiagnostic = await loadDiagnostic(tenant, id);
+
+        // Deserialize request to get form fields
+        const requestParams = deserializeRequest(
+          diagnostic.method,
+          diagnostic.request
+        );
+
+        const newParams = {
+          ...defaultParams,
+          tenantId: diagnostic.tenant_id,
+          method:
+            (diagnostic.method as QueryParams['method']) ||
+            defaultParams.method,
+          ...requestParams,
+        };
+
+        setParams(newParams);
+        populateFromDiagnostic(diagnostic, newParams);
+      } catch (err) {
+        setGlobalError(
+          err instanceof Error ? err.message : 'Failed to load diagnostic'
+        );
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const loadId = urlParams.get('load');
@@ -265,33 +302,7 @@ export function QueryDiagnosticsPage() {
     if (loadId && tenant) {
       loadStoredDiagnostic(tenant, loadId);
     }
-  }, []);
-
-  const loadStoredDiagnostic = async (tenant: string, id: string) => {
-    try {
-      const diagnostic: RawDiagnostic = await loadDiagnostic(tenant, id);
-
-      // Deserialize request to get form fields
-      const requestParams = deserializeRequest(
-        diagnostic.method,
-        diagnostic.request
-      );
-
-      const newParams = {
-        ...defaultParams,
-        tenantId: diagnostic.tenant_id,
-        method: (diagnostic.method as QueryParams['method']) || defaultParams.method,
-        ...requestParams,
-      };
-
-      setParams(newParams);
-      populateFromDiagnostic(diagnostic, newParams);
-    } catch (err) {
-      setGlobalError(
-        err instanceof Error ? err.message : 'Failed to load diagnostic'
-      );
-    }
-  };
+  }, [loadStoredDiagnostic]);
 
   const populateFromDiagnostic = (
     diagnostic: RawDiagnostic,
@@ -330,7 +341,9 @@ export function QueryDiagnosticsPage() {
     try {
       const result = await executeQuery(params);
       if (result.diagnosticsId) {
-        window.location.href = `${getBasePath()}/query-diagnostics?load=${result.diagnosticsId}&tenant=${params.tenantId}`;
+        window.location.href = `${getBasePath()}/query-diagnostics?load=${
+          result.diagnosticsId
+        }&tenant=${params.tenantId}`;
       } else {
         setError('Query succeeded but no diagnostics ID was returned');
       }

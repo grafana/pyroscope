@@ -1,11 +1,25 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { Header } from '../components/Header';
-import { fetchTenants, listDiagnostics, importDiagnostic } from '../services/api';
+import {
+  fetchTenants,
+  listDiagnostics,
+  importDiagnostic,
+} from '../services/api';
 import { formatBytes, formatMs, formatTime, getBasePath } from '../utils';
 import type { DiagnosticSummary } from '../types';
 
-type SortField = 'created_at' | 'method' | 'response_time_ms' | 'response_size_bytes';
+type SortField =
+  | 'created_at'
+  | 'method'
+  | 'response_time_ms'
+  | 'response_size_bytes';
 type SortDirection = 'asc' | 'desc';
 
 export function DiagnosticsListPage() {
@@ -29,11 +43,7 @@ export function DiagnosticsListPage() {
         const tenantList = await fetchTenants();
         setTenants(tenantList);
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Failed to load tenants'
-        );
+        setError(err instanceof Error ? err.message : 'Failed to load tenants');
       }
     }
     loadTenants();
@@ -61,9 +71,7 @@ export function DiagnosticsListPage() {
         setDiagnostics(diagList);
       } catch (err) {
         setError(
-          err instanceof Error
-            ? err.message
-            : 'Failed to load diagnostics'
+          err instanceof Error ? err.message : 'Failed to load diagnostics'
         );
         setDiagnostics([]);
       } finally {
@@ -92,7 +100,9 @@ export function DiagnosticsListPage() {
     if (filterText) {
       const lowerFilter = filterText.toLowerCase();
       result = result.filter((diag) => {
-        const payloadStr = diag.request ? JSON.stringify(diag.request).toLowerCase() : '';
+        const payloadStr = diag.request
+          ? JSON.stringify(diag.request).toLowerCase()
+          : '';
         return (
           diag.method.toLowerCase().includes(lowerFilter) ||
           payloadStr.includes(lowerFilter) ||
@@ -109,7 +119,8 @@ export function DiagnosticsListPage() {
       let comparison = 0;
       switch (sortField) {
         case 'created_at':
-          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          comparison =
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
           break;
         case 'method':
           comparison = a.method.localeCompare(b.method);
@@ -118,7 +129,8 @@ export function DiagnosticsListPage() {
           comparison = (a.response_time_ms || 0) - (b.response_time_ms || 0);
           break;
         case 'response_size_bytes':
-          comparison = (a.response_size_bytes || 0) - (b.response_size_bytes || 0);
+          comparison =
+            (a.response_size_bytes || 0) - (b.response_size_bytes || 0);
           break;
       }
       return sortDirection === 'asc' ? comparison : -comparison;
@@ -147,29 +159,36 @@ export function DiagnosticsListPage() {
     fileInputRef.current?.click();
   }, []);
 
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedTenant) {
-      return;
-    }
-
-    setIsImporting(true);
-    setError(null);
-
-    try {
-      const result = await importDiagnostic(selectedTenant, file);
-      // Navigate to the imported diagnostic
-      window.location.href = `${getBasePath()}/query-diagnostics?load=${result.id}&tenant=${encodeURIComponent(selectedTenant)}`;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to import diagnostic');
-    } finally {
-      setIsImporting(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !selectedTenant) {
+        return;
       }
-    }
-  }, [selectedTenant]);
+
+      setIsImporting(true);
+      setError(null);
+
+      try {
+        const result = await importDiagnostic(selectedTenant, file);
+        // Navigate to the imported diagnostic
+        window.location.href = `${getBasePath()}/query-diagnostics?load=${
+          result.id
+        }&tenant=${encodeURIComponent(selectedTenant)}`;
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to import diagnostic'
+        );
+      } finally {
+        setIsImporting(false);
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    },
+    [selectedTenant]
+  );
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) {
@@ -232,7 +251,9 @@ export function DiagnosticsListPage() {
                       <a
                         key={tenant}
                         href={`?tenant=${encodeURIComponent(tenant)}`}
-                        className={`tenant-item ${selectedTenant === tenant ? 'active' : ''}`}
+                        className={`tenant-item ${
+                          selectedTenant === tenant ? 'active' : ''
+                        }`}
                         onClick={(e) => {
                           e.preventDefault();
                           handleTenantSelect(tenant);
@@ -273,10 +294,9 @@ export function DiagnosticsListPage() {
                   {filteredAndSortedDiagnostics.length > 0 && (
                     <span className="badge bg-secondary">
                       {filteredAndSortedDiagnostics.length}
-                      {filteredAndSortedDiagnostics.length !== diagnostics.length && (
-                        <> / {diagnostics.length}</>
-                      )}
-                      {' '}entries
+                      {filteredAndSortedDiagnostics.length !==
+                        diagnostics.length && <> / {diagnostics.length}</>}{' '}
+                      entries
                     </span>
                   )}
                   {selectedTenant && (
@@ -423,7 +443,9 @@ export function DiagnosticsListPage() {
                               </td>
                               <td className="col-narrow">
                                 <a
-                                  href={`${getBasePath()}/query-diagnostics?load=${diag.id}&tenant=${selectedTenant}`}
+                                  href={`${getBasePath()}/query-diagnostics?load=${
+                                    diag.id
+                                  }&tenant=${selectedTenant}`}
                                   className="btn btn-sm btn-outline-primary"
                                 >
                                   View
