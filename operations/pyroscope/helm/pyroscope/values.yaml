@@ -151,6 +151,7 @@ pyroscope:
       subPath: .metastore
 
     shared:
+      enabled: true
       # subPath to use of the data volume for the shared storage used as bucket replacement.
       subPath: .shared
 

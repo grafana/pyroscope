@@ -419,6 +419,7 @@
         "subPath": ".metastore"
       },
       "shared": {
+        "enabled": true,
         "subPath": ".shared"
       },
       "size": "10Gi"
