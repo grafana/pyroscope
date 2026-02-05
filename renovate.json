@@ -12,7 +12,7 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["^Makefile$"],
+      "managerFilePatterns": ["/^Makefile$/"],
       "matchStrings": [
         "\\$\\(GO\\) install\\s+(?:.*\\s)?(?<depName>[\\w.\\/-]+)@(?<currentValue>v[\\d.]+)"
       ],
