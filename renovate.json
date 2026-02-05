@@ -65,6 +65,16 @@
       "automergeType": "pr",
       "automergeStrategy": "squash",
       "platformAutomerge": true
+    },
+    {
+      "description": "Group embedded Grafana updates with post-upgrade tasks",
+      "matchPackageNames": ["grafana/grafana", "grafana/profiles-drilldown"],
+      "groupName": "embedded-grafana",
+      "postUpgradeTasks": {
+        "commands": ["go run tools/update-embedded-checksums/main.go"],
+        "fileFilters": ["pkg/embedded/grafana/grafana.go"],
+        "executionMode": "update"
+      }
     }
   ],
   "regexManagers": [
@@ -76,13 +86,7 @@
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "grafana/grafana",
-      "versioningTemplate": "semver",
-      "groupName": "embedded-grafana",
-      "postUpgradeTasks": {
-        "commands": ["go run tools/update-embedded-checksums/main.go"],
-        "fileFilters": ["pkg/embedded/grafana/grafana.go"],
-        "executionMode": "update"
-      }
+      "versioningTemplate": "semver"
     },
     {
       "description": "Update grafana-pyroscope-app plugin version",
@@ -92,13 +96,7 @@
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "grafana/profiles-drilldown",
-      "versioningTemplate": "semver",
-      "groupName": "embedded-grafana",
-      "postUpgradeTasks": {
-        "commands": ["go run tools/update-embedded-checksums/main.go"],
-        "fileFilters": ["pkg/embedded/grafana/grafana.go"],
-        "executionMode": "update"
-      }
+      "versioningTemplate": "semver"
     }
   ]
 }
