@@ -4,7 +4,7 @@ import type {
   QueryParams,
   RawDiagnostic,
 } from '../types';
-import { getBasePath } from '../utils';
+import { getBasePath, getQueryFrontendBasePath } from '../utils';
 
 export async function fetchTenants(): Promise<string[]> {
   const basePath = getBasePath();
@@ -20,7 +20,7 @@ export async function fetchProfileTypes(
   startMs: number,
   endMs: number
 ): Promise<string[]> {
-  const basePath = getBasePath();
+  const basePath = getQueryFrontendBasePath();
   const response = await fetch(
     `${basePath}/querier.v1.QuerierService/ProfileTypes`,
     {
@@ -262,7 +262,7 @@ export interface ExecuteQueryResult {
 export async function executeQuery(
   params: QueryParams
 ): Promise<ExecuteQueryResult> {
-  const basePath = getBasePath();
+  const basePath = getQueryFrontendBasePath();
   const endpoint = `${basePath}/querier.v1.QuerierService/${params.method}`;
   const body = buildRequestBody(params.method, params);
 

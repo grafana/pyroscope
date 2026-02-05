@@ -24,7 +24,6 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/block/metadata"
 	"github.com/grafana/pyroscope/pkg/frontend"
-	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/admin"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -41,9 +40,8 @@ type Symbolizer interface {
 	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
 }
 
-// DiagnosticsStore is an optional interface for storing query diagnostics.
+// DiagnosticsStore provides the ability to store query diagnostics.
 type DiagnosticsStore interface {
-	admin.DiagnosticsStore
 	// Add stores diagnostics in memory for later flushing.
 	Add(id string, diag *queryv1.Diagnostics)
 }
@@ -57,7 +55,6 @@ type QueryFrontend struct {
 	querybackend        QueryBackend
 	symbolizer          Symbolizer
 	diagnosticsStore    DiagnosticsStore
-	admin               *admin.Admin
 	now                 func() time.Time
 }
 
@@ -79,13 +76,6 @@ func NewQueryFrontend(
 		symbolizer:          sym,
 		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
-	}
-	if diagnosticsStore != nil {
-		qf.admin = admin.New(
-			logger,
-			tenantServiceClient,
-			diagnosticsStore,
-		)
 	}
 	return qf
 }
@@ -347,8 +337,4 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 	}
 
 	return nil
-}
-
-func (q *QueryFrontend) Admin() *admin.Admin {
-	return q.admin
 }

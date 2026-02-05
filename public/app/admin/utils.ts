@@ -12,11 +12,19 @@ import type {
 
 export function getBasePath(): string {
   const path = window.location.pathname;
-  const match = path.match(/^(.*\/query-frontend)\//);
+  const match = path.match(/^(.*\/admin)\//);
   if (match) {
     return match[1];
   }
   return '';
+}
+
+export function getQueryFrontendBasePath(): string {
+  const basePath = getBasePath();
+  if (basePath.endsWith('/admin')) {
+    return basePath.slice(0, -6) + '/query-frontend';
+  }
+  return basePath;
 }
 
 // Protobuf enums are serialized as numbers by Go's json.Marshal

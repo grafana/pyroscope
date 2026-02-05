@@ -5,8 +5,8 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
-	queryfrontendadmin "github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/admin"
 	metastoreadmin "github.com/grafana/pyroscope/pkg/metastore/admin"
+	"github.com/grafana/pyroscope/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/pkg/querybackend"
 	"github.com/grafana/pyroscope/pkg/segmentwriter"
 )
@@ -38,7 +38,7 @@ func (a *API) RegisterMetastoreAdmin(adm *metastoreadmin.Admin) {
 	})
 }
 
-func (a *API) RegisterQueryFrontendAdmin(adm *queryfrontendadmin.Admin) {
+func (a *API) RegisterQueryDiagnosticsAdmin(adm *querydiagnostics.Admin) {
 	a.RegisterRoute("/query-diagnostics", adm.DiagnosticsHandler(), a.registerOptionsRingPage()...)
 	a.RegisterRoute("/query-diagnostics/list", adm.DiagnosticsListHandler(), a.registerOptionsRingPage()...)
 
@@ -49,8 +49,8 @@ func (a *API) RegisterQueryFrontendAdmin(adm *queryfrontendadmin.Admin) {
 	a.RegisterRoute("/query-diagnostics/api/export/", adm.DiagnosticsExportAPIHandler(), WithMethod("GET"), WithPrefix())
 	a.RegisterRoute("/query-diagnostics/api/import", adm.DiagnosticsImportAPIHandler(), WithMethod("POST"))
 
-	a.indexPage.AddLinks(defaultWeight, "Query Frontend", []IndexPageLink{
-		{Desc: "Query Diagnostics", Path: "/query-diagnostics"},
-		{Desc: "Stored Diagnostics", Path: "/query-diagnostics/list"},
+	a.indexPage.AddLinks(defaultWeight, "Query Diagnostics", []IndexPageLink{
+		{Desc: "Collect Diagnostics", Path: "/query-diagnostics"},
+		{Desc: "View Stored Diagnostics", Path: "/query-diagnostics/list"},
 	})
 }

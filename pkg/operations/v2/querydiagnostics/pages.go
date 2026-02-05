@@ -1,4 +1,4 @@
-package admin
+package querydiagnostics
 
 import (
 	_ "embed"

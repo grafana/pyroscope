@@ -16,6 +16,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/services"
 	"github.com/thanos-io/objstore"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -61,6 +62,7 @@ type storedMetadata struct {
 
 // Store manages query diagnostics storage and retrieval.
 type Store struct {
+	services.Service
 	logger log.Logger
 	bucket objstore.Bucket
 	ttl    time.Duration
@@ -90,11 +92,11 @@ func NewStore(logger log.Logger, bucket objstore.Bucket, opts ...StoreOption) *S
 	for _, opt := range opts {
 		opt(s)
 	}
-	go s.run(context.Background())
+	s.Service = services.NewBasicService(s.starting, s.running, s.stopping)
 	return s
 }
 
-func (s *Store) run(ctx context.Context) {
+func (s *Store) run(ctx context.Context) error {
 	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 
@@ -103,7 +105,7 @@ func (s *Store) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case <-ticker.C:
 			s.runCleanup(ctx)
 		}
@@ -477,6 +479,10 @@ func (s *Store) Export(ctx context.Context, tenantID, id string) ([]byte, error)
 	return buf.Bytes(), nil
 }
 
+func generateUUID() string {
+	return uuid.New().String()
+}
+
 // Import extracts a zip archive and stores the diagnostic files.
 // The files are stored under the tenantID provided as an argument; the tenantID from the zip file is ignored.
 func (s *Store) Import(ctx context.Context, tenantID string, newID string, zipData []byte) (string, error) {
@@ -541,6 +547,14 @@ func (s *Store) Import(ctx context.Context, tenantID string, newID string, zipDa
 	return newID, nil
 }
 
-func generateUUID() string {
-	return uuid.New().String()
+func (s *Store) starting(context.Context) error {
+	return nil
+}
+
+func (s *Store) stopping(error) error {
+	return nil
+}
+
+func (s *Store) running(ctx context.Context) error {
+	return s.run(ctx)
 }

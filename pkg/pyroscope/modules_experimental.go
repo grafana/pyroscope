@@ -30,7 +30,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/metrics"
 	"github.com/grafana/pyroscope/pkg/objstore"
-	operationsv2 "github.com/grafana/pyroscope/pkg/operations/v2"
+	blocksv2 "github.com/grafana/pyroscope/pkg/operations/v2/blocks"
+	"github.com/grafana/pyroscope/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/pkg/querybackend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/querybackend/client"
 	"github.com/grafana/pyroscope/pkg/segmentwriter"
@@ -91,11 +92,6 @@ func (f *Pyroscope) initQueryFrontendV1() (services.Service, error) {
 func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	queryFrontendLogger := log.With(f.logger, "component", "query-frontend")
 
-	diagnosticsStore := diagnostics.NewStore(
-		log.With(f.logger, "component", "query-diagnostics"),
-		f.storageBucket,
-	)
-
 	f.queryFrontend = queryfrontend.NewQueryFrontend(
 		queryFrontendLogger,
 		f.Overrides,
@@ -103,14 +99,14 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 		f.metastoreClient,
 		f.queryBackendClient,
 		f.symbolizer,
-		diagnosticsStore,
+		f.queryDiagnosticsStore,
 	)
 
 	// Wrap the query frontend: diagnostics wrapper -> spanlogger wrapper -> query frontend
 	handler := diagnostics.NewWrapper(
 		log.With(f.logger, "component", "diagnostics-wrapper"),
 		spanlogger.NewLogSpanParametersWrapper(f.queryFrontend, queryFrontendLogger),
-		diagnosticsStore,
+		f.queryDiagnosticsStore,
 	)
 
 	vcsService := vcs.New(
@@ -121,7 +117,6 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	f.API.RegisterQuerierServiceHandler(handler)
 	f.API.RegisterPyroscopeHandlers(handler)
 	f.API.RegisterVCSServiceHandler(vcsService)
-	f.API.RegisterQueryFrontendAdmin(f.queryFrontend.Admin())
 
 	// New query frontend does not have any state.
 	// For simplicity, we return a no-op service.
@@ -349,7 +344,7 @@ func (f *Pyroscope) initMetastoreAdmin() (services.Service, error) {
 func (f *Pyroscope) initAdminV2() (services.Service, error) {
 	level.Info(f.logger).Log("msg", "initializing v2 admin (metastore-based)")
 
-	a, err := operationsv2.NewAdmin(f.metastoreClient, f.storageBucket, f.logger)
+	a, err := blocksv2.NewAdmin(f.metastoreClient, f.storageBucket, f.logger)
 	if err != nil {
 		level.Info(f.logger).Log("msg", "failed to initialize v2 admin", "err", err)
 		return nil, nil
@@ -427,6 +422,30 @@ func (f *Pyroscope) initSymbolizer() (services.Service, error) {
 
 	f.symbolizer = sym
 
+	return nil, nil
+}
+
+func (f *Pyroscope) initQueryDiagnosticsStore() (services.Service, error) {
+	if f.storageBucket == nil {
+		return nil, nil
+	}
+	f.queryDiagnosticsStore = diagnostics.NewStore(
+		log.With(f.logger, "component", "query-diagnostics-store"),
+		f.storageBucket,
+	)
+	return f.queryDiagnosticsStore, nil
+}
+
+func (f *Pyroscope) initQueryDiagnosticsAdmin() (services.Service, error) {
+	if f.queryDiagnosticsStore == nil {
+		return nil, nil
+	}
+	f.queryDiagnosticsAdmin = querydiagnostics.New(
+		log.With(f.logger, "component", "query-diagnostics-admin"),
+		f.metastoreClient,
+		f.queryDiagnosticsStore,
+	)
+	f.API.RegisterQueryDiagnosticsAdmin(f.queryDiagnosticsAdmin)
 	return nil, nil
 }
 
