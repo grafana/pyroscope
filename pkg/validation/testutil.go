@@ -38,6 +38,8 @@ type MockLimits struct {
 	SymbolizerEnabledValue bool
 
 	IngestionBodyLimitBytesValue int64
+
+	ProfileIDDeterministicValue bool
 }
 
 func (m MockLimits) QuerySplitDuration(string) time.Duration        { return m.QuerySplitDurationValue }
@@ -103,4 +105,8 @@ func (m MockLimits) SymbolizerEnabled(s string) bool { return m.SymbolizerEnable
 
 func (m MockLimits) IngestionBodyLimitBytes(tenantID string) int64 {
 	return m.IngestionBodyLimitBytesValue
+}
+
+func (m MockLimits) ProfileIDDeterministic(tenantID string) bool {
+	return m.ProfileIDDeterministicValue
 }
