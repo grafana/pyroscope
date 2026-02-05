@@ -7,11 +7,18 @@ module.exports = {
   target: 'web',
   entry: {
     app: './public/app/app.tsx',
+    admin: './public/app/admin/admin.tsx',
   },
   output: {
     clean: true,
     path: path.resolve(__dirname, '../../public/build'),
-    filename: '[name].[contenthash].js',
+    filename: (pathData) => {
+      // Use fixed filename for admin bundle (served from Go template)
+      // Use content hash for app bundle (injected by HtmlWebpackPlugin)
+      return pathData.chunk.name === 'admin'
+        ? '[name].js'
+        : '[name].[contenthash].js';
+    },
     publicPath: '',
   },
   resolve: {
@@ -58,7 +65,13 @@ module.exports = {
   },
   plugins: [
     new MiniCssExtractPlugin({
-      filename: '[name].[contenthash].css',
+      filename: (pathData) => {
+        // Use fixed filename for admin bundle (served from Go template)
+        // Use content hash for app bundle (injected by HtmlWebpackPlugin)
+        return pathData.chunk.name === 'admin'
+          ? '[name].css'
+          : '[name].[contenthash].css';
+      },
     }),
     new CopyWebpackPlugin({
       patterns: [

@@ -24,6 +24,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/block/metadata"
 	"github.com/grafana/pyroscope/pkg/frontend"
+	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/querybackend/queryplan"
@@ -39,6 +40,12 @@ type Symbolizer interface {
 	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
 }
 
+// DiagnosticsStore provides the ability to store query diagnostics.
+type DiagnosticsStore interface {
+	// Add stores diagnostics in memory for later flushing.
+	Add(id string, diag *queryv1.Diagnostics)
+}
+
 type QueryFrontend struct {
 	logger log.Logger
 	limits frontend.Limits
@@ -47,6 +54,7 @@ type QueryFrontend struct {
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
 	symbolizer          Symbolizer
+	diagnosticsStore    DiagnosticsStore
 	now                 func() time.Time
 }
 
@@ -57,16 +65,19 @@ func NewQueryFrontend(
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
 	sym Symbolizer,
+	diagnosticsStore DiagnosticsStore,
 ) *QueryFrontend {
-	return &QueryFrontend{
+	qf := &QueryFrontend{
 		logger:              logger,
 		limits:              limits,
 		metadataQueryClient: metadataQueryClient,
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
 		symbolizer:          sym,
+		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
 	}
+	return qf
 }
 
 var xrand = rand.New(rand.NewSource(4349676827832284783))
@@ -76,11 +87,16 @@ func (q *QueryFrontend) Query(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (*queryv1.QueryResponse, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.Query")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.QueryWithDiagnostics")
 	defer span.Finish()
 	span.SetTag("start_time", req.StartTime)
 	span.SetTag("end_time", req.EndTime)
 	span.SetTag("label_selector", req.LabelSelector)
+	diagCtx := diagnostics.From(ctx)
+	collectDiagnostics := diagCtx != nil && diagCtx.Collect && q.diagnosticsStore != nil
+	if collectDiagnostics {
+		span.SetTag("diagnostics_id", diagCtx.ID)
+	}
 
 	// This method is supposed to be the entry point of the read path
 	// in the future versions. Therefore, validation, overrides, and
@@ -132,7 +148,8 @@ func (q *QueryFrontend) Query(
 		EndTime:       req.EndTime,
 		LabelSelector: req.LabelSelector,
 		Options: &queryv1.InvokeOptions{
-			SanitizeOnMerge: q.limits.QuerySanitizeOnMerge(tenants[0]),
+			SanitizeOnMerge:    q.limits.QuerySanitizeOnMerge(tenants[0]),
+			CollectDiagnostics: collectDiagnostics,
 		},
 		QueryPlan: p,
 		Query:     modifiedQueries,
@@ -148,12 +165,16 @@ func (q *QueryFrontend) Query(
 		}
 	}
 
-	// TODO(kolesnikovae): Extend diagnostics
 	if resp.Diagnostics == nil {
 		resp.Diagnostics = new(queryv1.Diagnostics)
 	}
 
 	resp.Diagnostics.QueryPlan = p
+
+	if collectDiagnostics {
+		q.diagnosticsStore.Add(diagCtx.ID, resp.Diagnostics)
+	}
+
 	return &queryv1.QueryResponse{Reports: resp.Reports}, nil
 }
 

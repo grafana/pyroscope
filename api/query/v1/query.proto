@@ -42,6 +42,7 @@ message InvokeOptions {
   // overrides, therefore all the necessary options should
   // be listed in the request explicitly.
   bool sanitize_on_merge = 1;
+  bool collect_diagnostics = 2;
 }
 
 message InvokeRequest {
@@ -111,6 +112,36 @@ message InvokeResponse {
 // Diagnostic messages, events, statistics, analytics, etc.
 message Diagnostics {
   QueryPlan query_plan = 1;
+  ExecutionNode execution_node = 2;
+}
+
+// ExecutionNode captures how a query plan node was actually executed.
+message ExecutionNode {
+  QueryNode.Type type = 1;
+  string executor = 2;
+  int64 start_time_ns = 3;
+  int64 end_time_ns = 4;
+  repeated ExecutionNode children = 5;
+  ExecutionStats stats = 6;
+  string error = 7;
+}
+
+// ExecutionStats captures statistics for READ node execution.
+message ExecutionStats {
+  int64 blocks_read = 1;
+  int64 datasets_processed = 2;
+  repeated BlockExecution block_executions = 3;
+}
+
+// BlockExecution captures execution details for a single block.
+message BlockExecution {
+  string block_id = 1;
+  int64 start_time_ns = 2;
+  int64 end_time_ns = 3;
+  int64 datasets_processed = 4;
+  uint64 size = 5;
+  uint32 shard = 6;
+  uint32 compaction_level = 7;
 }
 
 message Report {

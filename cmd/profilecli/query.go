@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sort"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
+	querydiagnostics "github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -165,6 +167,9 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 	if err != nil {
 		return nil, err
 	}
+
+	logDiagnostics(params.phlareClient, resp.Header())
+
 	return resp.Msg, err
 }
 
@@ -193,6 +198,8 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 		return nil, errors.Wrap(err, "failed to query")
 	}
 
+	logDiagnostics(params.phlareClient, resp.Header())
+
 	tree, err := model.UnmarshalTree(resp.Msg.Tree)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal tree")
@@ -213,7 +220,24 @@ func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag st
 		return errors.Wrap(err, "failed to query")
 	}
 
+	logDiagnostics(client, resp.Header())
+
 	return outputMergeProfile(ctx, outputFlag, force, resp.Msg)
+}
+
+func logDiagnostics(client *phlareClient, headers http.Header) {
+	if !client.CollectDiagnostics {
+		return
+	}
+
+	diagID := headers.Get(querydiagnostics.IdHeader)
+
+	if diagID != "" {
+		level.Info(logger).Log(
+			"msg", "query diagnostics",
+			"diagnostics_id", diagID,
+		)
+	}
 }
 
 type queryGoPGOParams struct {
@@ -295,6 +319,7 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 		if err != nil {
 			return errors.Wrap(err, "failed to query")
 		}
+		logDiagnostics(params.phlareClient, resp.Header())
 		result = resp.Msg.LabelsSet
 	case "ingester":
 		ic := params.phlareClient.ingesterClient()
@@ -357,6 +382,7 @@ func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCa
 	if err != nil {
 		return errors.Wrap(err, "failed to query")
 	}
+	logDiagnostics(params.phlareClient, resp.Header())
 
 	level.Info(logger).Log("msg", fmt.Sprintf("received %d label names", len(resp.Msg.Names)))
 

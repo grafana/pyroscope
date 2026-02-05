@@ -5,6 +5,7 @@ tools/**
 operations/**
 api/**
 data/**
+data-*/**
 **/dist
 **/testdata
 *.md
