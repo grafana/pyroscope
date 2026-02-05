@@ -319,7 +319,7 @@ func Test_RangeSeriesWithExemplars(t *testing.T) {
 						Annotations: []*typesv1.ProfileAnnotation{},
 						// Profile-X has highest value (100 from block A), but labels differ across blocks (A/B/C), so intersection is empty
 						Exemplars: []*typesv1.Exemplar{
-							{ProfileId: "Profile-X", Value: 100, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
+							{ProfileId: "Profile-X", Value: 100, Timestamp: 1000, Labels: nil},
 						},
 					},
 				},

@@ -1,3 +1,9 @@
+// Package timeseries provides types for building and aggregating time series data.
+//
+// NOTE: This is the old time series implementation using string labels.
+// Currently used for all time series queries except exemplar retrieval.
+// Over time, we want to migrate to pkg/model/timeseriescompact which uses
+// attribute table interning for better performance, and remove this package.
 package timeseries
 
 import (

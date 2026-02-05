@@ -59,8 +59,8 @@ func TestMergeExemplars_SameProfile_NoCommonRefs(t *testing.T) {
 	result := MergeExemplars(a, b)
 	require.Len(t, result, 1)
 
-	// No common refs, should return empty slice (not nil)
-	assert.Equal(t, []int64{}, result[0].AttributeRefs)
+	// No common refs
+	assert.Empty(t, result[0].AttributeRefs)
 }
 
 func TestIntersectRefs_Empty(t *testing.T) {

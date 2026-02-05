@@ -4,6 +4,7 @@ import (
 	"unique"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 )
 
@@ -81,4 +82,22 @@ func (t *Table) Build(res *queryv1.AttributeTable) *queryv1.AttributeTable {
 	}
 
 	return res
+}
+
+// ResolveRefs converts attribute references to label pairs.
+func ResolveRefs(refs []int64, table *queryv1.AttributeTable) []*typesv1.LabelPair {
+	if table == nil || len(refs) == 0 {
+		return nil
+	}
+	labels := make([]*typesv1.LabelPair, 0, len(refs))
+	for _, ref := range refs {
+		if ref < 0 || ref >= int64(len(table.Keys)) {
+			continue
+		}
+		labels = append(labels, &typesv1.LabelPair{
+			Name:  table.Keys[ref],
+			Value: table.Values[ref],
+		})
+	}
+	return labels
 }

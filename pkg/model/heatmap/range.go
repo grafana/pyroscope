@@ -8,6 +8,7 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/model/attributetable"
 )
 
 const (
@@ -47,7 +48,7 @@ func RangeHeatmap(
 			}
 
 			// Resolve labels from attribute refs
-			labels := resolveAttributeRefs(series.AttributeRefs, report.AttributeTable)
+			labels := attributetable.ResolveRefs(series.AttributeRefs, report.AttributeTable)
 
 			// Track this series
 			allSeries = append(allSeries, seriesData{
@@ -187,29 +188,6 @@ func RangeHeatmap(
 	return result
 }
 
-// resolveAttributeRefs converts attribute references to actual label pairs
-// AttributeTable has parallel arrays: Keys[i] and Values[i] form a label pair
-func resolveAttributeRefs(refs []int64, table *queryv1.AttributeTable) []*typesv1.LabelPair {
-	if table == nil || len(refs) == 0 {
-		return nil
-	}
-
-	labels := make([]*typesv1.LabelPair, 0, len(refs))
-	for _, ref := range refs {
-		// Validate index
-		if ref < 0 || ref >= int64(len(table.Keys)) || ref >= int64(len(table.Values)) {
-			continue
-		}
-
-		labels = append(labels, &typesv1.LabelPair{
-			Name:  table.Keys[ref],
-			Value: table.Values[ref],
-		})
-	}
-
-	return labels
-}
-
 // yBucket represents a Y-axis bucket
 type yBucket struct {
 	min int64
@@ -307,7 +285,7 @@ func pointToExemplar(
 	}
 
 	// Resolve labels from attribute refs
-	pointLabels := resolveAttributeRefs(point.AttributeRefs, table)
+	pointLabels := attributetable.ResolveRefs(point.AttributeRefs, table)
 
 	// Filter out group_by labels
 	filteredLabels := filterExemplarLabels(pointLabels, groupBy)

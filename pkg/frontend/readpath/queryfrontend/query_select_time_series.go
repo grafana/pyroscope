@@ -12,6 +12,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/attributetable"
 	"github.com/grafana/pyroscope/pkg/model/timeseries"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -49,6 +50,7 @@ func (q *QueryFrontend) SelectSeries(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	// TODO: Once queryCompact is fully rolled out, use it for all queries and remove queryStandard.
 	var series []*typesv1.Series
 	if c.Msg.GetExemplarType() == typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL {
 		series, err = q.queryCompact(ctx, start, c.Msg.End, labelSelector, c.Msg)
@@ -87,6 +89,10 @@ func (q *QueryFrontend) queryStandard(ctx context.Context, start, end int64, lab
 	return report.TimeSeries.TimeSeries, nil
 }
 
+// queryCompact uses the compact time series format with attribute table interning.
+// Currently only used for exemplar retrieval (EXEMPLAR_TYPE_INDIVIDUAL).
+// The legacy queryStandard path is used for all other time series queries.
+// TODO: Migrate all queries to use queryCompact and remove queryStandard.
 func (q *QueryFrontend) queryCompact(ctx context.Context, start, end int64, labelSelector string, req *querierv1.SelectSeriesRequest) ([]*typesv1.Series, error) {
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     start,
@@ -120,48 +126,39 @@ func expandQuerySeries(series []*queryv1.Series, table *queryv1.AttributeTable) 
 		table = &queryv1.AttributeTable{}
 	}
 
-	labelMap := make(map[int64]*typesv1.LabelPair, len(table.Keys))
-	for i := range table.Keys {
-		labelMap[int64(i)] = &typesv1.LabelPair{Name: table.Keys[i], Value: table.Values[i]}
-	}
-
 	result := make([]*typesv1.Series, len(series))
 	for i, s := range series {
-		labels := make([]*typesv1.LabelPair, len(s.AttributeRefs))
-		for j, ref := range s.AttributeRefs {
-			labels[j] = labelMap[ref]
-		}
-
 		points := make([]*typesv1.Point, len(s.Points))
 		for j, p := range s.Points {
 			points[j] = &typesv1.Point{Value: p.Value, Timestamp: p.Timestamp}
 			if len(p.AnnotationRefs) > 0 {
-				points[j].Annotations = make([]*typesv1.ProfileAnnotation, len(p.AnnotationRefs))
-				for k, ref := range p.AnnotationRefs {
-					kv := labelMap[ref]
-					points[j].Annotations[k] = &typesv1.ProfileAnnotation{Key: kv.Name, Value: kv.Value}
+				points[j].Annotations = make([]*typesv1.ProfileAnnotation, 0, len(p.AnnotationRefs))
+				for _, ref := range p.AnnotationRefs {
+					if ref >= 0 && ref < int64(len(table.Keys)) {
+						points[j].Annotations = append(points[j].Annotations, &typesv1.ProfileAnnotation{
+							Key:   table.Keys[ref],
+							Value: table.Values[ref],
+						})
+					}
 				}
 			}
 			if len(p.Exemplars) > 0 {
 				points[j].Exemplars = make([]*typesv1.Exemplar, len(p.Exemplars))
 				for k, ex := range p.Exemplars {
-					exLabels := make([]*typesv1.LabelPair, len(ex.AttributeRefs))
-					for l, ref := range ex.AttributeRefs {
-						exLabels[l] = labelMap[ref]
-					}
 					points[j].Exemplars[k] = &typesv1.Exemplar{
 						Timestamp: ex.Timestamp,
 						ProfileId: ex.ProfileId,
 						SpanId:    ex.SpanId,
 						Value:     ex.Value,
-						Labels:    exLabels,
+						Labels:    attributetable.ResolveRefs(ex.AttributeRefs, table),
 					}
 				}
 			}
 		}
-
-		result[i] = &typesv1.Series{Labels: labels, Points: points}
+		result[i] = &typesv1.Series{
+			Labels: attributetable.ResolveRefs(s.AttributeRefs, table),
+			Points: points,
+		}
 	}
-
 	return result
 }

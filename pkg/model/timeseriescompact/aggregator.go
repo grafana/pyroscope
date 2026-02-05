@@ -126,12 +126,7 @@ func MergeExemplars(a, b []*queryv1.Exemplar) []*queryv1.Exemplar {
 	for _, group := range byProfileID {
 		ex := group.exemplar
 		if len(group.refSets) > 1 {
-			intersected := IntersectRefs(group.refSets)
-			if intersected == nil && ex.AttributeRefs != nil {
-				ex.AttributeRefs = []int64{}
-			} else {
-				ex.AttributeRefs = intersected
-			}
+			ex.AttributeRefs = IntersectRefs(group.refSets)
 		}
 		result = append(result, ex)
 	}
