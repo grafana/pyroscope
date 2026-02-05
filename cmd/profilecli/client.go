@@ -89,7 +89,6 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	addClientCapabilitiesHeader(req, acceptHeaderMimeType, acceptHeaderClientCapabilities)
 	req.Header.Set("User-Agent", userAgentHeader)
 
-	eq.Header.Set("X-ser-Agent", userAgentHeader)
 	return a.next.RoundTrip(req)
 }
 
