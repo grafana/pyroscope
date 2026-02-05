@@ -8,6 +8,8 @@ import (
 	"connectrpc.com/connect"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
+
+	querydiagnostics "github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 )
 
 const (
@@ -80,7 +82,7 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 			req.Header.Set("Authorization", "Bearer "+c.BearerToken)
 		}
 		if c.CollectDiagnostics {
-			req.Header.Set("X-Pyroscope-Collect-Diagnostics", "true")
+			req.Header.Set(querydiagnostics.RequestHeader, "true")
 		}
 	}
 
@@ -120,10 +122,6 @@ type commander interface {
 	Flag(name, help string) *kingpin.FlagClause
 	Arg(name, help string) *kingpin.ArgClause
 }
-
-const (
-	diagnosticsIDHeader = "X-Pyroscope-Diagnostics-Id"
-)
 
 func addPhlareClient(cmd commander) *phlareClient {
 	client := &phlareClient{}

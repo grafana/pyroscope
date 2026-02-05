@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
+	querydiagnostics "github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -166,6 +167,9 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 	if err != nil {
 		return nil, err
 	}
+
+	logDiagnostics(params.phlareClient, resp.Header())
+
 	return resp.Msg, err
 }
 
@@ -193,6 +197,8 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to query")
 	}
+
+	logDiagnostics(params.phlareClient, resp.Header())
 
 	tree, err := model.UnmarshalTree(resp.Msg.Tree)
 	if err != nil {
@@ -224,7 +230,7 @@ func logDiagnostics(client *phlareClient, headers http.Header) {
 		return
 	}
 
-	diagID := headers.Get(diagnosticsIDHeader)
+	diagID := headers.Get(querydiagnostics.IdHeader)
 
 	if diagID != "" {
 		level.Info(logger).Log(

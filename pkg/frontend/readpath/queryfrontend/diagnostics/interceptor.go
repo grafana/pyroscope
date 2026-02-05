@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	requestHeader = "X-Pyroscope-Collect-Diagnostics"
-	idHeader      = "X-Pyroscope-Diagnostics-Id"
+	RequestHeader = "X-Pyroscope-Collect-Diagnostics"
+	IdHeader      = "X-Pyroscope-Diagnostics-Id"
 )
 
 // Context key for diagnostics context.
@@ -51,9 +51,9 @@ func InjectCollectDiagnosticsFromHeader(ctx context.Context, headers map[string]
 
 // shouldCollectDiagnostics checks if a diagnostics collection was requested.
 func shouldCollectDiagnostics(headers map[string][]string) bool {
-	values := headers[requestHeader]
+	values := headers[RequestHeader]
 	if len(values) == 0 {
-		values = headers[strings.ToLower(requestHeader)]
+		values = headers[strings.ToLower(RequestHeader)]
 	}
 	for _, v := range values {
 		if v == "true" || v == "1" {

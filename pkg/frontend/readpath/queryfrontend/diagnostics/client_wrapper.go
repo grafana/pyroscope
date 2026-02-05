@@ -60,7 +60,7 @@ func flushDiagnostics[Req, Resp any](w *Wrapper, ctx context.Context, method str
 		}
 		responseTimeMs := time.Since(diagCtx.startTime).Milliseconds()
 		w.store.AddResponse(diagCtx.ID, respMsg, responseSizeBytes, responseTimeMs)
-		resp.Header().Set(idHeader, diagCtx.ID)
+		resp.Header().Set(IdHeader, diagCtx.ID)
 	}
 
 	// Flush asynchronously to avoid blocking the response.
