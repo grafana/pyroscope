@@ -584,16 +584,16 @@ type Querier interface {
 	Open(ctx context.Context) error
 	Sort([]Profile) []Profile
 
-	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*phlaremodel.Tree, error)
-	MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans phlaremodel.SpanSelector) (*phlaremodel.Tree, error)
+	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*phlaremodel.FunctionNameTree, error)
+	MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans phlaremodel.SpanSelector) (*phlaremodel.FunctionNameTree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], s *typesv1.StackTraceSelector, by ...string) ([]*typesv1.Series, error)
 	MergePprof(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64, s *typesv1.StackTraceSelector) (*profilev1.Profile, error)
 	Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error)
 
 	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
-	SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (*phlaremodel.Tree, error)
+	SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (*phlaremodel.FunctionNameTree, error)
 	SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, s *typesv1.StackTraceSelector, by ...string) ([]*typesv1.Series, error)
-	SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.Tree, error)
+	SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.FunctionNameTree, error)
 	SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64, s *typesv1.StackTraceSelector) (*profilev1.Profile, error)
 
 	ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error)
@@ -837,7 +837,7 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 	}
 
 	var m sync.Mutex
-	t := new(phlaremodel.Tree)
+	t := new(phlaremodel.FunctionNameTree)
 	g, ctx := errgroup.WithContext(ctx)
 
 	// depending on if new need deduplication or not there are two different code paths.
@@ -913,7 +913,7 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 	}
 
 	// sends the final result to the client.
-	treeBytes := t.Bytes(r.GetMaxNodes())
+	treeBytes := t.Bytes(r.GetMaxNodes(), nil)
 	sp.LogFields(
 		otlog.String("msg", "sending the final result to the client"),
 		otlog.Int("tree_bytes", len(treeBytes)),
@@ -974,7 +974,7 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 	}
 
 	var m sync.Mutex
-	t := new(phlaremodel.Tree)
+	t := new(phlaremodel.FunctionNameTree)
 	g, ctx := errgroup.WithContext(ctx)
 
 	// depending on if new need deduplication or not there are two different code paths.
@@ -1056,7 +1056,7 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 	}
 
 	// sends the final result to the client.
-	treeBytes := t.Bytes(r.GetMaxNodes())
+	treeBytes := t.Bytes(r.GetMaxNodes(), nil)
 	sp.LogFields(
 		otlog.String("msg", "sending the final result to the client"),
 		otlog.Int("tree_bytes", len(treeBytes)),
@@ -1711,7 +1711,7 @@ func (b *singleBlockQuerier) SelectMergeByLabels(
 	return mergeByLabelsWithStackTraceSelector[Profile](ctx, profiles.file, rows, r, by...)
 }
 
-func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (tree *phlaremodel.Tree, err error) {
+func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (tree *phlaremodel.FunctionNameTree, err error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByStacktraces - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
@@ -1780,7 +1780,7 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 	return r.Tree()
 }
 
-func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.Tree, error) {
+func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.FunctionNameTree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeBySpans - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())

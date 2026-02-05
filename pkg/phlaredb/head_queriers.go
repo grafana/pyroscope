@@ -112,7 +112,7 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 	return iter.NewSliceIterator(profiles), nil
 }
 
-func (q *headOnDiskQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (*phlaremodel.Tree, error) {
+func (q *headOnDiskQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (*phlaremodel.FunctionNameTree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByStacktraces - HeadOnDisk")
 	defer sp.Finish()
 
@@ -147,7 +147,7 @@ func (q *headOnDiskQuerier) SelectMergeByStacktraces(ctx context.Context, params
 	return r.Tree()
 }
 
-func (q *headOnDiskQuerier) SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.Tree, error) {
+func (q *headOnDiskQuerier) SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.FunctionNameTree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeBySpans - HeadOnDisk")
 	defer sp.Finish()
 
@@ -246,7 +246,7 @@ func (q *headOnDiskQuerier) LabelNames(ctx context.Context, req *connect.Request
 	return connect.NewResponse(&typesv1.LabelNamesResponse{}), nil
 }
 
-func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*phlaremodel.Tree, error) {
+func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*phlaremodel.FunctionNameTree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb, symdb.WithResolverMaxNodes(maxNodes))
@@ -325,7 +325,7 @@ func (q *headOnDiskQuerier) Series(ctx context.Context, params *ingestv1.SeriesR
 	return []*typesv1.Labels{}, nil
 }
 
-func (q *headOnDiskQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
+func (q *headOnDiskQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.FunctionNameTree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeBySpans")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb)
@@ -404,7 +404,7 @@ func (q *headInMemoryQuerier) SelectMatchingProfiles(ctx context.Context, params
 	return phlaremodel.NewMergeIterator(maxBlockProfile, false, iters...), nil
 }
 
-func (q *headInMemoryQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (*phlaremodel.Tree, error) {
+func (q *headInMemoryQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (*phlaremodel.FunctionNameTree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByStacktraces - HeadInMemory")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb, symdb.WithResolverMaxNodes(maxNodes))
@@ -443,7 +443,7 @@ func (q *headInMemoryQuerier) SelectMergeByStacktraces(ctx context.Context, para
 	return r.Tree()
 }
 
-func (q *headInMemoryQuerier) SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.Tree, error) {
+func (q *headInMemoryQuerier) SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.FunctionNameTree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeBySpans - HeadInMemory")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb)
@@ -552,7 +552,7 @@ func (q *headInMemoryQuerier) LabelNames(ctx context.Context, req *connect.Reque
 	return q.head.LabelNames(ctx, req)
 }
 
-func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*phlaremodel.Tree, error) {
+func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*phlaremodel.FunctionNameTree, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - HeadInMemory")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb, symdb.WithResolverMaxNodes(maxNodes))
@@ -709,7 +709,7 @@ func (q *headInMemoryQuerier) Series(ctx context.Context, params *ingestv1.Serie
 	return res.Msg.LabelsSet, nil
 }
 
-func (q *headInMemoryQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
+func (q *headInMemoryQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.FunctionNameTree, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - HeadInMemory")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb)
