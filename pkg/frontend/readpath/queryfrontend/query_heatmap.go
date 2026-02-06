@@ -91,7 +91,6 @@ func (q *QueryFrontend) SelectHeatmap(
 		c.Msg.Start, // This uses the query parameter instead of the shifted "start". So the first time slot of the heatmap ends at start
 		c.Msg.End,
 		stepMs,
-		c.Msg.GetGroupBy(),
 		c.Msg.GetExemplarType(),
 	)
 

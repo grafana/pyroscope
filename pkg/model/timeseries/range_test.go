@@ -203,7 +203,7 @@ func Test_RangeSeriesWithExemplars(t *testing.T) {
 							ProfileId: "prof-1",
 							Value:     100,
 							Timestamp: 1000,
-							Labels:    []*typesv1.LabelPair{{Name: "pod", Value: "pod-123"}, {Name: "region", Value: "us-east"}},
+							Labels:    []*typesv1.LabelPair{},
 						}},
 					},
 				},
@@ -223,7 +223,7 @@ func Test_RangeSeriesWithExemplars(t *testing.T) {
 							ProfileId: "prof-1",
 							Value:     100,
 							Timestamp: 1000,
-							Labels:    []*typesv1.LabelPair{{Name: "pod", Value: "pod-123"}, {Name: "region", Value: "us-east"}},
+							Labels:    []*typesv1.LabelPair{},
 						}},
 					},
 				},
@@ -238,16 +238,16 @@ func Test_RangeSeriesWithExemplars(t *testing.T) {
 						Timestamp: 1000,
 						Value:     100.0,
 						Exemplars: []*typesv1.Exemplar{
-							{ProfileId: "prof-1", Value: 100, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "pod", Value: "pod-1"}}},
-							{ProfileId: "prof-2", Value: 200, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "pod", Value: "pod-2"}}},
+							{ProfileId: "prof-1", Value: 100, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
+							{ProfileId: "prof-2", Value: 200, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
 						},
 					},
 					{
 						Timestamp: 1000,
 						Value:     150.0,
 						Exemplars: []*typesv1.Exemplar{
-							{ProfileId: "prof-3", Value: 300, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "pod", Value: "pod-3"}}},
-							{ProfileId: "prof-4", Value: 50, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "pod", Value: "pod-4"}}},
+							{ProfileId: "prof-3", Value: 300, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
+							{ProfileId: "prof-4", Value: 50, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
 						},
 					},
 				},
@@ -265,8 +265,8 @@ func Test_RangeSeriesWithExemplars(t *testing.T) {
 						Value:       250.0,
 						Annotations: []*typesv1.ProfileAnnotation{},
 						Exemplars: []*typesv1.Exemplar{
-							{ProfileId: "prof-3", Value: 300, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "pod", Value: "pod-3"}}},
-							{ProfileId: "prof-2", Value: 200, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "pod", Value: "pod-2"}}},
+							{ProfileId: "prof-3", Value: 300, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
+							{ProfileId: "prof-2", Value: 200, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
 						},
 					},
 				},
@@ -281,27 +281,27 @@ func Test_RangeSeriesWithExemplars(t *testing.T) {
 						Timestamp: 1000,
 						Value:     100.0,
 						Exemplars: []*typesv1.Exemplar{
-							{ProfileId: "Profile-X", Value: 100, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "A"}}},
-							{ProfileId: "Profile-Y", Value: 60, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "A"}}},
-							{ProfileId: "Profile-Z", Value: 40, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "A"}}},
+							{ProfileId: "Profile-X", Value: 100, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
+							{ProfileId: "Profile-Y", Value: 60, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
+							{ProfileId: "Profile-Z", Value: 40, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
 						},
 					},
 					{
 						Timestamp: 1000,
 						Value:     140.0,
 						Exemplars: []*typesv1.Exemplar{
-							{ProfileId: "Profile-X", Value: 20, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "B"}}},
-							{ProfileId: "Profile-Y", Value: 30, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "B"}}},
-							{ProfileId: "Profile-Z", Value: 90, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "B"}}},
+							{ProfileId: "Profile-X", Value: 20, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
+							{ProfileId: "Profile-Y", Value: 30, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
+							{ProfileId: "Profile-Z", Value: 90, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
 						},
 					},
 					{
 						Timestamp: 1000,
 						Value:     105.0,
 						Exemplars: []*typesv1.Exemplar{
-							{ProfileId: "Profile-X", Value: 10, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "C"}}},
-							{ProfileId: "Profile-Y", Value: 80, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "C"}}},
-							{ProfileId: "Profile-Z", Value: 15, Timestamp: 1000, Labels: []*typesv1.LabelPair{{Name: "block", Value: "C"}}},
+							{ProfileId: "Profile-X", Value: 10, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
+							{ProfileId: "Profile-Y", Value: 80, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
+							{ProfileId: "Profile-Z", Value: 15, Timestamp: 1000, Labels: []*typesv1.LabelPair{}},
 						},
 					},
 				},
@@ -317,9 +317,9 @@ func Test_RangeSeriesWithExemplars(t *testing.T) {
 						Timestamp:   1000,
 						Value:       345.0, // 100+140+105
 						Annotations: []*typesv1.ProfileAnnotation{},
-						// Profile-X has highest value (100 from block A), but labels differ across blocks (A/B/C), so intersection is nil
+						// Profile-X has highest value (100 from block A), but labels differ across blocks (A/B/C), so intersection is empty
 						Exemplars: []*typesv1.Exemplar{
-							{ProfileId: "Profile-X", Value: 100, Timestamp: 1000},
+							{ProfileId: "Profile-X", Value: 100, Timestamp: 1000, Labels: nil},
 						},
 					},
 				},

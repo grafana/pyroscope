@@ -87,6 +87,7 @@ message Query {
   TreeQuery tree = 6;
   PprofQuery pprof = 7;
   HeatmapQuery heatmap = 8;
+  TimeSeriesQuery time_series_compact = 9;
   // function_details
   // call_graph
   // top_table
@@ -102,6 +103,7 @@ enum QueryType {
   QUERY_TREE = 5;
   QUERY_PPROF = 6;
   QUERY_HEATMAP = 7;
+  QUERY_TIME_SERIES_COMPACT = 8;
 }
 
 message InvokeResponse {
@@ -155,6 +157,7 @@ message Report {
   TreeReport tree = 6;
   PprofReport pprof = 7;
   HeatmapReport heatmap = 8;
+  TimeSeriesCompactReport time_series_compact = 9;
 }
 
 enum ReportType {
@@ -166,6 +169,7 @@ enum ReportType {
   REPORT_TREE = 5;
   REPORT_PPROF = 6;
   REPORT_HEATMAP = 7;
+  REPORT_TIME_SERIES_COMPACT = 8;
 }
 
 message LabelNamesQuery {}
@@ -258,5 +262,38 @@ message HeatmapSeries {
 message HeatmapReport {
   HeatmapQuery query = 1;
   repeated HeatmapSeries heatmap_series = 2;
+  AttributeTable attribute_table = 3;
+}
+
+message Exemplar {
+  // Milliseconds unix timestamp
+  int64 timestamp = 1;
+  string profile_id = 2;
+  string span_id = 3;
+  int64 value = 4;
+  repeated int64 attribute_refs = 5;
+}
+
+message Point {
+  double value = 1;
+  // Milliseconds unix timestamp
+  int64 timestamp = 2;
+  // Annotations as references into AttributeTable
+  repeated int64 annotation_refs = 5;
+  // Exemplars are samples of individual profiles that contributed to this aggregated point
+  repeated Exemplar exemplars = 4;
+}
+
+// Series represents a time series with optimized label storage using attribute references.
+message Series {
+  // References to label key-value pairs in the AttributeTable that identify this series.
+  repeated int64 attribute_refs = 1;
+  // Time series data points. Each point may contain exemplars with their own attribute_refs.
+  repeated Point points = 2;
+}
+
+message TimeSeriesCompactReport {
+  TimeSeriesQuery query = 1;
+  repeated Series time_series = 2;
   AttributeTable attribute_table = 3;
 }
