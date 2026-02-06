@@ -30,7 +30,7 @@ jobs:
         run: npm install --production --prefix ./actions
 
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@bae259f9ed5b6fcb050e3b58adf7aee776d4edb5
+        uses: grafana/shared-workflows/actions/get-vault-secrets@7f983a8135eb58eaec83c96d8b842b2092e110e3
         with:
           repo_secrets: |
             GITHUB_APP_ID=pyroscope-development-app:app-id
