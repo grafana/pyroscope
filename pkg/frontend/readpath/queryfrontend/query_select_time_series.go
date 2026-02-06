@@ -132,31 +132,14 @@ func expandQuerySeries(series []*queryv1.Series, table *queryv1.AttributeTable) 
 		for j, p := range s.Points {
 			points[j] = &typesv1.Point{Value: p.Value, Timestamp: p.Timestamp}
 			if len(p.AnnotationRefs) > 0 {
-				points[j].Annotations = make([]*typesv1.ProfileAnnotation, 0, len(p.AnnotationRefs))
-				for _, ref := range p.AnnotationRefs {
-					if ref >= 0 && ref < int64(len(table.Keys)) {
-						points[j].Annotations = append(points[j].Annotations, &typesv1.ProfileAnnotation{
-							Key:   table.Keys[ref],
-							Value: table.Values[ref],
-						})
-					}
-				}
+				points[j].Annotations = attributetable.ResolveAnnotations(p.AnnotationRefs, table)
 			}
 			if len(p.Exemplars) > 0 {
-				points[j].Exemplars = make([]*typesv1.Exemplar, len(p.Exemplars))
-				for k, ex := range p.Exemplars {
-					points[j].Exemplars[k] = &typesv1.Exemplar{
-						Timestamp: ex.Timestamp,
-						ProfileId: ex.ProfileId,
-						SpanId:    ex.SpanId,
-						Value:     ex.Value,
-						Labels:    attributetable.ResolveRefs(ex.AttributeRefs, table),
-					}
-				}
+				points[j].Exemplars = attributetable.ResolveExemplars(p.Exemplars, table)
 			}
 		}
 		result[i] = &typesv1.Series{
-			Labels: attributetable.ResolveRefs(s.AttributeRefs, table),
+			Labels: attributetable.ResolveLabelPairs(s.AttributeRefs, table),
 			Points: points,
 		}
 	}

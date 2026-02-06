@@ -1,8 +1,6 @@
 package heatmap
 
 import (
-	"encoding/binary"
-	"encoding/hex"
 	"math"
 	"sort"
 
@@ -22,7 +20,6 @@ const (
 func RangeHeatmap(
 	reports []*queryv1.HeatmapReport,
 	start, end, step int64,
-	groupBy []string,
 	exemplarType typesv1.ExemplarType,
 ) []*typesv1.HeatmapSeries {
 	if len(reports) == 0 {
@@ -48,7 +45,7 @@ func RangeHeatmap(
 			}
 
 			// Resolve labels from attribute refs
-			labels := attributetable.ResolveRefs(series.AttributeRefs, report.AttributeTable)
+			labels := attributetable.ResolveLabelPairs(series.AttributeRefs, report.AttributeTable)
 
 			// Track this series
 			allSeries = append(allSeries, seriesData{
@@ -161,7 +158,7 @@ func RangeHeatmap(
 			// Attach exemplar for this Y-bucket
 			if includeExemplars {
 				if bestPoint := cellBestPoint[cell]; bestPoint != nil {
-					e := pointToExemplar(bestPoint, attributeTable, groupBy)
+					e := attributetable.ResolveHeatmapExemplar(bestPoint, attributeTable)
 					if e != nil {
 						slot.Exemplars = append(slot.Exemplars, e)
 					}
@@ -252,69 +249,4 @@ func findValueBucket(value int64, buckets []yBucket) int {
 		return len(buckets) - 1
 	}
 	return -1
-}
-
-// filterExemplarLabels removes group_by labels from exemplar labels.
-func filterExemplarLabels(labels []*typesv1.LabelPair, groupBy []string) []*typesv1.LabelPair {
-	if len(groupBy) == 0 {
-		return labels
-	}
-
-	groupBySet := make(map[string]struct{}, len(groupBy))
-	for _, name := range groupBy {
-		groupBySet[name] = struct{}{}
-	}
-
-	filtered := make([]*typesv1.LabelPair, 0, len(labels))
-	for _, label := range labels {
-		if _, isGroupBy := groupBySet[label.Name]; !isGroupBy {
-			filtered = append(filtered, label)
-		}
-	}
-	return filtered
-}
-
-// pointToExemplar converts a single HeatmapPoint to an Exemplar.
-func pointToExemplar(
-	point *queryv1.HeatmapPoint,
-	table *queryv1.AttributeTable,
-	groupBy []string,
-) *typesv1.Exemplar {
-	if point == nil || table == nil {
-		return nil
-	}
-
-	// Resolve labels from attribute refs
-	pointLabels := attributetable.ResolveRefs(point.AttributeRefs, table)
-
-	// Filter out group_by labels
-	filteredLabels := filterExemplarLabels(pointLabels, groupBy)
-
-	// Resolve profile ID from attribute table
-	profileID := ""
-	if point.ProfileId >= 0 && point.ProfileId < int64(len(table.Values)) {
-		profileID = table.Values[point.ProfileId]
-	}
-
-	// Convert span ID to hex string (little-endian, to match NewSpanSelector)
-	spanIDStr := ""
-	if point.SpanId != 0 {
-		b := make([]byte, 8)
-		binary.LittleEndian.PutUint64(b, point.SpanId)
-		spanIDStr = hex.EncodeToString(b)
-	}
-
-	// Don't create an exemplar if it has no identifying information
-	// An exemplar needs at least one of: profile ID, span ID, or labels
-	if profileID == "" && spanIDStr == "" && len(filteredLabels) == 0 {
-		return nil
-	}
-
-	return &typesv1.Exemplar{
-		Timestamp: point.Timestamp,
-		ProfileId: profileID,
-		SpanId:    spanIDStr,
-		Value:     point.Value,
-		Labels:    filteredLabels,
-	}
 }

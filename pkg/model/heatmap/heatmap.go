@@ -57,7 +57,8 @@ func (h *Builder) Add(fp prommodel.Fingerprint, labels model.Labels, ts int64, p
 		h.series[seriesKey] = series
 	}
 
-	series.pointsBuilder.add(fp, labels, ts, profileID, spanID, value)
+	pointLabels := labels.WithoutLabels(h.by...)
+	series.pointsBuilder.add(fp, pointLabels, ts, profileID, spanID, value)
 }
 
 func (h *Builder) Build(report *queryv1.HeatmapReport) *queryv1.HeatmapReport {
