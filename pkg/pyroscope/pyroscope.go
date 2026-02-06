@@ -49,12 +49,15 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/frontend"
+	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend"
+	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	"github.com/grafana/pyroscope/pkg/metastore"
 	metastoreadmin "github.com/grafana/pyroscope/pkg/metastore/admin"
 	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
+	"github.com/grafana/pyroscope/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
@@ -369,19 +372,22 @@ type Pyroscope struct {
 	frontend *frontend.Frontend
 
 	// Experimental modules.
-	segmentWriter        *segmentwriter.SegmentWriterService
-	segmentWriterClient  *segmentwriterclient.Client
-	segmentWriterRing    *ring.Ring
-	placementAgent       *placement.Agent
-	placementManager     *placement.Manager
-	metastore            *metastore.Metastore
-	metastoreClient      *metastoreclient.Client
-	metastoreAdmin       *metastoreadmin.Admin
-	queryBackendClient   *querybackendclient.Client
-	compactionWorker     *compactionworker.Worker
-	healthServer         *health.Server
-	recordingRulesClient *recordingrulesclient.Client
-	symbolizer           *symbolizer.Symbolizer
+	segmentWriter         *segmentwriter.SegmentWriterService
+	segmentWriterClient   *segmentwriterclient.Client
+	segmentWriterRing     *ring.Ring
+	placementAgent        *placement.Agent
+	placementManager      *placement.Manager
+	metastore             *metastore.Metastore
+	metastoreClient       *metastoreclient.Client
+	metastoreAdmin        *metastoreadmin.Admin
+	queryFrontend         *queryfrontend.QueryFrontend
+	queryBackendClient    *querybackendclient.Client
+	compactionWorker      *compactionworker.Worker
+	healthServer          *health.Server
+	recordingRulesClient  *recordingrulesclient.Client
+	symbolizer            *symbolizer.Symbolizer
+	queryDiagnosticsStore *diagnostics.Store
+	queryDiagnosticsAdmin *querydiagnostics.Admin
 }
 
 func New(cfg Config) (*Pyroscope, error) {
@@ -495,26 +501,28 @@ func (f *Pyroscope) setupModuleManager() error {
 
 	if f.Cfg.V2 {
 		v2Modules := map[string][]string{
-			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
-			Metastore:           {Overrides, API, MetastoreClient, Storage, PlacementManager},
-			MetastoreAdmin:      {API, MetastoreClient},
-			CompactionWorker:    {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
-			QueryBackend:        {Overrides, API, Storage, QueryBackendClient},
-			SegmentWriterRing:   {Overrides, API, MemberlistKV},
-			SegmentWriterClient: {Overrides, API, SegmentWriterRing, PlacementAgent},
-			PlacementAgent:      {Overrides, API, Storage},
-			PlacementManager:    {Overrides, API, Storage},
-			Symbolizer:          {Overrides, Storage},
+			SegmentWriter:         {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
+			Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},
+			MetastoreAdmin:        {API, MetastoreClient},
+			CompactionWorker:      {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
+			QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
+			SegmentWriterRing:     {Overrides, API, MemberlistKV},
+			SegmentWriterClient:   {Overrides, API, SegmentWriterRing, PlacementAgent},
+			PlacementAgent:        {Overrides, API, Storage},
+			PlacementManager:      {Overrides, API, Storage},
+			Symbolizer:            {Overrides, Storage},
+			QueryDiagnosticsStore: {Storage},
+			QueryDiagnosticsAdmin: {QueryDiagnosticsStore, API, MetastoreClient},
 		}
 		for k, v := range v2Modules {
 			deps[k] = v
 		}
 
 		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend)
-		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient, Symbolizer)
+		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore)
 		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
 		deps[Server] = append(deps[Server], HealthServer)
-		deps[Admin] = append(deps[Admin], MetastoreAdmin)
+		deps[Admin] = append(deps[Admin], MetastoreAdmin, QueryDiagnosticsAdmin)
 
 		mm.RegisterModule(SegmentWriter, f.initSegmentWriter)
 		mm.RegisterModule(Metastore, f.initMetastore)
@@ -531,6 +539,8 @@ func (f *Pyroscope) setupModuleManager() error {
 		mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)
 		mm.RegisterModule(HealthServer, f.initHealthServer, modules.UserInvisibleModule)
 		mm.RegisterModule(RecordingRulesClient, f.initRecordingRulesClient, modules.UserInvisibleModule)
+		mm.RegisterModule(QueryDiagnosticsStore, f.initQueryDiagnosticsStore, modules.UserInvisibleModule)
+		mm.RegisterModule(QueryDiagnosticsAdmin, f.initQueryDiagnosticsAdmin, modules.UserInvisibleModule)
 	}
 
 	for mod, targets := range deps {

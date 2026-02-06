@@ -364,15 +364,115 @@ components:
           title: values
       title: AttributeTable
       additionalProperties: false
+    query.v1.BlockExecution:
+      type: object
+      properties:
+        blockId:
+          type: string
+          title: block_id
+        startTimeNs:
+          type:
+            - integer
+            - string
+          title: start_time_ns
+          format: int64
+        endTimeNs:
+          type:
+            - integer
+            - string
+          title: end_time_ns
+          format: int64
+        datasetsProcessed:
+          type:
+            - integer
+            - string
+          title: datasets_processed
+          format: int64
+        size:
+          type:
+            - integer
+            - string
+          title: size
+          format: int64
+        shard:
+          type: integer
+          title: shard
+        compactionLevel:
+          type: integer
+          title: compaction_level
+      title: BlockExecution
+      additionalProperties: false
+      description: BlockExecution captures execution details for a single block.
     query.v1.Diagnostics:
       type: object
       properties:
         queryPlan:
           title: query_plan
           $ref: '#/components/schemas/query.v1.QueryPlan'
+        executionNode:
+          title: execution_node
+          $ref: '#/components/schemas/query.v1.ExecutionNode'
       title: Diagnostics
       additionalProperties: false
       description: Diagnostic messages, events, statistics, analytics, etc.
+    query.v1.ExecutionNode:
+      type: object
+      properties:
+        type:
+          title: type
+          $ref: '#/components/schemas/query.v1.QueryNode.Type'
+        executor:
+          type: string
+          title: executor
+        startTimeNs:
+          type:
+            - integer
+            - string
+          title: start_time_ns
+          format: int64
+        endTimeNs:
+          type:
+            - integer
+            - string
+          title: end_time_ns
+          format: int64
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.ExecutionNode'
+          title: children
+        stats:
+          title: stats
+          $ref: '#/components/schemas/query.v1.ExecutionStats'
+        error:
+          type: string
+          title: error
+      title: ExecutionNode
+      additionalProperties: false
+      description: ExecutionNode captures how a query plan node was actually executed.
+    query.v1.ExecutionStats:
+      type: object
+      properties:
+        blocksRead:
+          type:
+            - integer
+            - string
+          title: blocks_read
+          format: int64
+        datasetsProcessed:
+          type:
+            - integer
+            - string
+          title: datasets_processed
+          format: int64
+        blockExecutions:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.BlockExecution'
+          title: block_executions
+      title: ExecutionStats
+      additionalProperties: false
+      description: ExecutionStats captures statistics for READ node execution.
     query.v1.Exemplar:
       type: object
       properties:
@@ -518,6 +618,9 @@ components:
             Query workers might not have access to the tenant
              overrides, therefore all the necessary options should
              be listed in the request explicitly.
+        collectDiagnostics:
+          type: boolean
+          title: collect_diagnostics
       title: InvokeOptions
       additionalProperties: false
     query.v1.InvokeRequest:

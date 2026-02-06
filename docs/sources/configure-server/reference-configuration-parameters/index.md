@@ -2160,6 +2160,11 @@ The `limits` block configures default and per-tenant limits imposed by component
 # CLI flag: -validation.enforce-labels-order
 [enforce_labels_order: <boolean> | default = false]
 
+# Disable label name sanitization (converting dots to underscores). When
+# disabled, labels with dots are accepted as-is using UTF-8 validation.
+# CLI flag: -validation.disable-label-sanitization
+[disable_label_sanitization: <boolean> | default = false]
+
 # Maximum size of a profile in bytes. This is based off the uncompressed size. 0
 # to disable.
 # CLI flag: -validation.max-profile-size-bytes

@@ -204,9 +204,9 @@ func Test_filterLabelNames(t *testing.T) {
 			want:       []string{"foo", "bar", "buzz"},
 		},
 		{
-			name:       "label names with dots (valid but get sanitized)",
+			name:       "label names with dots",
 			labelNames: []string{"service.name", "app.version", "valid_label"},
-			want:       []string{"service.name", "app.version", "valid_label"},
+			want:       []string{"valid_label"},
 		},
 		{
 			name:       "single valid label",
@@ -224,14 +224,14 @@ func Test_filterLabelNames(t *testing.T) {
 			want:       []string{"_", "__a", "__a__", "_service_name_"},
 		},
 		{
-			name:       "mixed valid labels with dots and underscores",
+			name:       "mixed labels with dots and underscores",
 			labelNames: []string{"a.b.c", "a_b_c", "a.b_c.d"},
-			want:       []string{"a.b.c", "a_b_c", "a.b_c.d"},
+			want:       []string{"a_b_c"},
 		},
 		{
-			name:       "labels starting with dots (valid, dots are sanitized)",
+			name:       "labels starting with dots",
 			labelNames: []string{".abc", "..def", ".g.h.i"},
-			want:       []string{".abc", "..def", ".g.h.i"},
+			want:       []string{},
 		},
 		{
 			name:       "labels starting with invalid characters",
@@ -322,7 +322,7 @@ func Test_QueryLabelNames_WithFiltering(t *testing.T) {
 			expectedLabelNames: []string{"bar", "buzz", "foo"},
 		},
 		{
-			name:                "labels with dots pass through in both modes",
+			name:                "labels with dots filtered when disabled",
 			allowUtf8LabelNames: false,
 			setCapabilities:     true,
 			ingesterLabelNames: map[string][]string{
@@ -330,8 +330,7 @@ func Test_QueryLabelNames_WithFiltering(t *testing.T) {
 				"2": {"host.name", "service.name"},
 				"3": {"app.version", "host.name"},
 			},
-			// Dots are valid legacy characters (get sanitized to underscores)
-			expectedLabelNames: []string{"app.version", "host.name", "service.name"},
+			expectedLabelNames: []string{},
 		},
 	}
 
@@ -459,11 +458,11 @@ func Test_Series_WithLabelNameFiltering(t *testing.T) {
 			expectedLabelNames:  []string{"foo", "bar", "service_name"},
 		},
 		{
-			name:                "labels with dots pass through",
+			name:                "labels with dots do not pass through",
 			allowUtf8LabelNames: false,
 			setCapabilities:     true,
-			requestLabelNames:   []string{"service.name", "app.version"},
-			expectedLabelNames:  []string{"service.name", "app.version"},
+			requestLabelNames:   []string{"service.name", "app.version", "foo"},
+			expectedLabelNames:  []string{"foo"},
 		},
 		{
 			name:                "empty label names with UTF8 disabled queries all labels and filters",

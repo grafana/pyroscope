@@ -211,7 +211,7 @@ spec:
               mountPath: /data-compactor
               subPath: compactor
             {{- end }}
-            {{- if $hasV2 }}
+            {{- if (and $hasV2 $values.persistence.shared.enabled) }}
             - name: data
               mountPath: /data-shared
               subPath: {{ $values.persistence.shared.subPath }}

@@ -123,6 +123,7 @@ type LabelValidationLimits interface {
 	MaxLabelNameLength(tenantID string) int
 	MaxLabelValueLength(tenantID string) int
 	MaxLabelNamesPerSeries(tenantID string) int
+	DisableLabelSanitization(tenantID string) bool
 }
 
 // ValidateLabels validates the labels of a profile.
@@ -147,8 +148,9 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 	}
 
 	var (
-		lastLabelName = ""
-		idx           = 0
+		lastLabelName            = ""
+		idx                      = 0
+		disableLabelSanitization = limits.DisableLabelSanitization(tenantID)
 	)
 	for idx < len(ls) {
 		l := ls[idx]
@@ -158,26 +160,32 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return nil, NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
-		if origName, newName, ok := SanitizeLegacyLabelName(l.Name); ok && origName != newName {
-			var err error
-			// todo update canary exporter to check for utf8 labels, at least service.name once the write path supports utf8
-			ls, idx, err = handleSanitizedLabel(ls, idx, origName, newName)
-			if err != nil {
-				return nil, err
+		if disableLabelSanitization {
+			// When sanitization is disabled, use UTF-8 validation directly
+			if !model.UTF8Validation.IsValidLabelName(l.Name) {
+				return nil, NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+l.Name+"'")
 			}
-			level.Debug(logger).Log(
-				"msg", "label name sanitized",
-				"origName", origName,
-				"serviceName", serviceNameValue)
+		} else {
+			if origName, newName, ok := SanitizeLegacyLabelName(l.Name); ok && origName != newName {
+				var err error
+				ls, idx, err = handleSanitizedLabel(ls, idx, origName, newName)
+				if err != nil {
+					return nil, err
+				}
+				level.Debug(logger).Log(
+					"msg", "label name sanitized",
+					"origName", origName,
+					"serviceName", serviceNameValue)
 
-			sanitizedLabelNames.WithLabelValues(tenantID).Inc()
-			lastLabelName = ""
-			if idx > 0 && idx <= len(ls) {
-				lastLabelName = ls[idx-1].Name
+				sanitizedLabelNames.WithLabelValues(tenantID).Inc()
+				lastLabelName = ""
+				if idx > 0 && idx <= len(ls) {
+					lastLabelName = ls[idx-1].Name
+				}
+				continue
+			} else if !ok {
+				return nil, NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+origName+"'")
 			}
-			continue
-		} else if !ok {
-			return nil, NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+origName+"'")
 		}
 		if !model.LabelValue(l.Value).IsValid() {
 			return nil, NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label value '"+l.Value+"'")

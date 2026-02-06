@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Stored Diagnostics</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <link rel="stylesheet" href="/assets/admin.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script src="/assets/admin.js"></script>
+<footer class="footer mt-auto py-3">
+    <div class="container">
+        <small class="text-muted">Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}</small>
+    </div>
+</footer>
+</body>
+</html>
