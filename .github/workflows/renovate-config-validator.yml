@@ -26,4 +26,4 @@ jobs:
           persist-credentials: false
 
       - name: Validate Renovate Config
-        uses: grafana/shared-workflows/actions/validate-renovate-config@4178c5d9a0403e8b8e123baebc66e224d9c4f3cd # validate-renovate-config/v0.1.0
+        uses: grafana/shared-workflows/actions/validate-renovate-config@051f0a1cef0e1ef9f92fbe57c65b1eec029c3904 # validate-renovate-config/v0.1.1
