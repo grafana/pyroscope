@@ -166,10 +166,12 @@ func readInputRawDataFromRequest(ctx context.Context, r *http.Request, input *in
 	var (
 		sp          = opentracing.SpanFromContext(ctx)
 		format      = r.URL.Query().Get("format")
+		metricName  = r.URL.Query().Get("metric_name")
 		contentType = r.Header.Get("Content-Type")
 	)
 	if sp != nil {
 		sp.SetTag("format", format)
+		sp.SetTag("metric_name", metricName)
 		sp.SetTag("content_type", contentType)
 	}
 
@@ -204,7 +206,8 @@ func readInputRawDataFromRequest(ctx context.Context, r *http.Request, input *in
 	case format == "pprof":
 		input.Format = ingestion.FormatPprof
 		input.Profile = &pprof.RawProfile{
-			RawData: b,
+			RawData:    b,
+			MetricName: metricName,
 		}
 
 	case format == "speedscope":
@@ -217,6 +220,7 @@ func readInputRawDataFromRequest(ctx context.Context, r *http.Request, input *in
 		input.Profile = &pprof.RawProfile{
 			FormDataContentType: contentType,
 			RawData:             b,
+			MetricName:          metricName,
 		}
 	}
 

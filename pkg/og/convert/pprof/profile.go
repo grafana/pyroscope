@@ -26,6 +26,7 @@ import (
 )
 
 type RawProfile struct {
+	MetricName          string
 	RawData             []byte // Represents raw request body as per ingestion API.
 	FormDataContentType string // Set optionally, if RawData is multipart form.
 	// Initializes lazily on handleRawData, if not present.
@@ -170,6 +171,9 @@ func (p *RawProfile) loadPprofFromForm() error {
 }
 
 func (p *RawProfile) metricName(profile *pprof.Profile) string {
+	if p.MetricName != "" {
+		return p.MetricName
+	}
 	stConfigs := p.getSampleTypes()
 	var st string
 	for _, ist := range profile.Profile.SampleType {
