@@ -73,6 +73,7 @@
 | pyroscope.persistence.annotations | object | `{}` |  |
 | pyroscope.persistence.enabled | bool | `false` |  |
 | pyroscope.persistence.metastore.subPath | string | `".metastore"` |  |
+| pyroscope.persistence.shared.enabled | bool | `true` |  |
 | pyroscope.persistence.shared.subPath | string | `".shared"` |  |
 | pyroscope.persistence.size | string | `"10Gi"` |  |
 | pyroscope.podAnnotations."profiles.grafana.com/cpu.port_name" | string | `"http2"` |  |
