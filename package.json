@@ -78,7 +78,7 @@
     "tsconfig-paths-webpack-plugin": "^4.0.1",
     "typescript": "^4.5.2",
     "web-streams-polyfill": "^3.2.1",
-    "webpack": "^5.94.0",
+    "webpack": "^5.104.1",
     "webpack-cli": "^5.0.1",
     "webpack-dev-server": "^5.2.2",
     "webpack-merge": "^5.8.0"
