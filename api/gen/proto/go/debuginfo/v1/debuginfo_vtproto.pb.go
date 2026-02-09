@@ -562,6 +562,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DebuginfoServiceClient interface {
+	// clients are expected to send ShouldInitiateUploadRequest, receive ShouldInitiateUploadResponse and then
+	// if should_initiate_upload is true send a bunch of UploadChunk until EOF
 	Upload(ctx context.Context, opts ...grpc.CallOption) (DebuginfoService_UploadClient, error)
 }
 
@@ -608,6 +610,8 @@ func (x *debuginfoServiceUploadClient) Recv() (*UploadResponse, error) {
 // All implementations must embed UnimplementedDebuginfoServiceServer
 // for forward compatibility
 type DebuginfoServiceServer interface {
+	// clients are expected to send ShouldInitiateUploadRequest, receive ShouldInitiateUploadResponse and then
+	// if should_initiate_upload is true send a bunch of UploadChunk until EOF
 	Upload(DebuginfoService_UploadServer) error
 	mustEmbedUnimplementedDebuginfoServiceServer()
 }

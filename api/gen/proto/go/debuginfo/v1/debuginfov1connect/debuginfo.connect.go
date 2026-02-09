@@ -39,6 +39,8 @@ const (
 
 // DebuginfoServiceClient is a client for the debuginfo.v1.DebuginfoService service.
 type DebuginfoServiceClient interface {
+	// clients are expected to send ShouldInitiateUploadRequest, receive ShouldInitiateUploadResponse and then
+	// if should_initiate_upload is true send a bunch of UploadChunk until EOF
 	Upload(context.Context) *connect.BidiStreamForClient[v1.UploadRequest, v1.UploadResponse]
 }
 
@@ -74,6 +76,8 @@ func (c *debuginfoServiceClient) Upload(ctx context.Context) *connect.BidiStream
 
 // DebuginfoServiceHandler is an implementation of the debuginfo.v1.DebuginfoService service.
 type DebuginfoServiceHandler interface {
+	// clients are expected to send ShouldInitiateUploadRequest, receive ShouldInitiateUploadResponse and then
+	// if should_initiate_upload is true send a bunch of UploadChunk until EOF
 	Upload(context.Context, *connect.BidiStream[v1.UploadRequest, v1.UploadResponse]) error
 }
 
