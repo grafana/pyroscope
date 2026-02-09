@@ -41,7 +41,7 @@ func WithParseGoPclntab(parse bool) Option {
 	}
 }
 
-func WithSymTab(parse bool) Option {
+func WithSymtab(parse bool) Option {
 	return func(o *options) {
 		o.symtab = parse
 	}

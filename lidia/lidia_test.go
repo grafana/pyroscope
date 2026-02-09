@@ -212,7 +212,7 @@ func TestGoPclntabSelfExe(t *testing.T) {
 	// Create lidia file from /proc/self/exe using only gopclntab (disable symtab)
 	err := lidia.CreateLidia("/proc/self/exe", lidiaPath,
 		lidia.WithCRC(),
-		lidia.WithSymTab(false),        // Disable symtab
+		lidia.WithSymtab(false),        // Disable symtab
 		lidia.WithParseGoPclntab(true), // Use only gopclntab
 	)
 	require.NoError(t, err)
