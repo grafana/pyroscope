@@ -90,6 +90,7 @@ type Config struct {
 	SignatureVersion string         `yaml:"signature_version" category:"advanced"`
 	ForcePathStyle   bool           `yaml:"force_path_style" category:"advanced"`
 	BucketLookupType string         `yaml:"bucket_lookup_type" category:"advanced"`
+	AWSSDKAuth       bool           `yaml:"aws_sdk_auth" category:"advanced"`
 
 	SSE  SSEConfig  `yaml:"sse"`
 	HTTP HTTPConfig `yaml:"http"`
@@ -111,6 +112,7 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.BoolVar(&cfg.ForcePathStyle, prefix+"s3.force-path-style", false, "Deprecated, use s3.bucket-lookup-type instead. Set this to `true` to force the bucket lookup to be using path-style.")
 	f.StringVar(&cfg.BucketLookupType, prefix+"s3.bucket-lookup-type", AutoLookup, fmt.Sprintf("S3 bucket lookup style, use one of: %v", supportedBucketLookupTypes))
 	f.StringVar(&cfg.SignatureVersion, prefix+"s3.signature-version", SignatureVersionV4, fmt.Sprintf("The signature version to use for authenticating against S3. Supported values are: %s.", strings.Join(supportedSignatureVersions, ", ")))
+	f.BoolVar(&cfg.AWSSDKAuth, prefix+"s3.aws-sdk-auth", false, "Use the AWS SDK for authentication.")
 	cfg.SSE.RegisterFlagsWithPrefix(prefix+"s3.sse.", f)
 	cfg.HTTP.RegisterFlagsWithPrefix(prefix, f)
 }
