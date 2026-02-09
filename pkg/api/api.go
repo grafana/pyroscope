@@ -193,8 +193,8 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 // RegisterDistributor registers the endpoints associated with the distributor.
 func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, cfg server.Config) {
 	writePathOpts := a.registerOptionsWritePath(limits)
-	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, a.logger)
-	otlpHandler := otlp.NewOTLPIngestHandler(cfg, d, a.logger)
+	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, limits, a.logger)
+	otlpHandler := otlp.NewOTLPIngestHandler(cfg, d, a.logger, limits)
 
 	a.RegisterRoute("/ingest", pyroscopeHandler, writePathOpts...)
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, writePathOpts...)
@@ -225,7 +225,7 @@ func (a *API) RegisterIngesterRing(r http.Handler) {
 }
 
 func (a *API) RegisterQuerierServiceHandler(svc querierv1connect.QuerierServiceHandler) {
-	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
+	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogDiagnosticsRecovery()...)
 }
 
 func (a *API) RegisterVCSServiceHandler(svc vcsv1connect.VCSServiceHandler) {

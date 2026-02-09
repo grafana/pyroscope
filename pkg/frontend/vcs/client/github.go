@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/google/go-github/v58/github"
+	"github.com/google/go-github/v81/github"
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/oauth2"
 

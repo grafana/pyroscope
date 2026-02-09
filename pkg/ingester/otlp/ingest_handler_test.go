@@ -31,6 +31,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockotlp"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func TestGetServiceNameFromAttributes(t *testing.T) {
@@ -227,11 +228,11 @@ func TestConversion(t *testing.T) {
 				b.dictionary.LocationTable = []*v1experimental.Location{{
 					MappingIndex: 0,
 					Address:      0x1e0,
-					Line:         nil,
+					Lines:        nil,
 				}, {
 					MappingIndex: 0,
 					Address:      0x2f0,
-					Line:         nil,
+					Lines:        nil,
 				}}
 				b.dictionary.StackTable = []*v1experimental.Stack{{
 					LocationIndices: []int32{0, 1},
@@ -240,7 +241,7 @@ func TestConversion(t *testing.T) {
 					TypeStrindex: b.addstr("samples"),
 					UnitStrindex: b.addstr("ms"),
 				}
-				b.profile.Sample = []*v1experimental.Sample{{
+				b.profile.Samples = []*v1experimental.Sample{{
 					StackIndex: 0,
 					Values:     []int64{0xef},
 				}}
@@ -276,7 +277,7 @@ func TestConversion(t *testing.T) {
 				}, {
 					LocationIndices: []int32{2},
 				}}
-				b.profile.Sample = []*v1experimental.Sample{{
+				b.profile.Samples = []*v1experimental.Sample{{
 					StackIndex: 0,
 					Values:     []int64{0xef},
 				}, {
@@ -316,12 +317,11 @@ func TestConversion(t *testing.T) {
 					LocationIndices: []int32{2},
 				}}
 				b.profile.PeriodType = &v1experimental.ValueType{
-					TypeStrindex:           b.addstr("period_type"),
-					UnitStrindex:           b.addstr("period_unit"),
-					AggregationTemporality: 0,
+					TypeStrindex: b.addstr("period_type"),
+					UnitStrindex: b.addstr("period_unit"),
 				}
 				b.profile.Period = 100
-				b.profile.Sample = []*v1experimental.Sample{{
+				b.profile.Samples = []*v1experimental.Sample{{
 					StackIndex: 0,
 					Values:     []int64{0xef},
 				}, {
@@ -353,7 +353,7 @@ func TestConversion(t *testing.T) {
 						}}}}},
 				Dictionary: &b.dictionary}
 			logger := test.NewTestingLogger(t)
-			h := NewOTLPIngestHandler(testConfig(), svc, logger)
+			h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 			_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
 
 			if td.expectedError == "" {
@@ -415,7 +415,7 @@ func TestSampleAttributes(t *testing.T) {
 	}, {
 		LocationIndices: []int32{2, 3},
 	}}
-	otlpb.profile.Sample = []*v1experimental.Sample{{
+	otlpb.profile.Samples = []*v1experimental.Sample{{
 		StackIndex:       0,
 		Values:           []int64{0xef},
 		AttributeIndices: []int32{0},
@@ -452,7 +452,7 @@ func TestSampleAttributes(t *testing.T) {
 				}}}}},
 		Dictionary: &otlpb.dictionary}
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(profiles))
@@ -505,35 +505,35 @@ func TestDifferentServiceNames(t *testing.T) {
 	otlpb.dictionary.LocationTable = []*v1experimental.Location{{
 		MappingIndex: 0, // service-a.so
 		Address:      0x1100,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 0,
 			Line:          10,
 		}},
 	}, {
 		MappingIndex: 0, // service-a.so
 		Address:      0x1200,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 1,
 			Line:          20,
 		}},
 	}, {
 		MappingIndex: 1, // service-b.so
 		Address:      0x2100,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 2,
 			Line:          30,
 		}},
 	}, {
 		MappingIndex: 1, // service-b.so
 		Address:      0x2200,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 3,
 			Line:          40,
 		}},
 	}, {
 		MappingIndex: 2, // service-c.so
 		Address:      0xef0,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 4,
 			Line:          50,
 		}},
@@ -569,7 +569,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		LocationIndices: []int32{4, 4},
 	}}
 
-	otlpb.profile.Sample = []*v1experimental.Sample{{
+	otlpb.profile.Samples = []*v1experimental.Sample{{
 		StackIndex:       0,
 		Values:           []int64{100},
 		AttributeIndices: []int32{0},
@@ -618,7 +618,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		Dictionary: &otlpb.dictionary}
 
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
 	require.NoError(t, err)
 
@@ -682,6 +682,12 @@ func testConfig() server.Config {
 	return cfg
 }
 
+func defaultLimits() validation.MockLimits {
+	return validation.MockLimits{
+		IngestionBodyLimitBytesValue: 1024 * 1024 * 1024, // 1GB
+	}
+}
+
 // createValidOTLPRequest creates a minimal valid OTLP profile export request for testing
 func createValidOTLPRequest() *v1experimental2.ExportProfilesServiceRequest {
 	b := new(otlpbuilder)
@@ -701,7 +707,7 @@ func createValidOTLPRequest() *v1experimental2.ExportProfilesServiceRequest {
 		TypeStrindex: b.addstr("samples"),
 		UnitStrindex: b.addstr("count"),
 	}
-	b.profile.Sample = []*v1experimental.Sample{{
+	b.profile.Samples = []*v1experimental.Sample{{
 		StackIndex: 0,
 		Values:     []int64{100},
 	}}
@@ -728,14 +734,14 @@ func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
 	}).Return(nil, nil)
 
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 
 	jsonRequest := `{
 		"resourceProfiles": [{
 			"scopeProfiles": [{
 				"profiles": [{
 					"sampleType": {"typeStrindex": 0, "unitStrindex": 1},
-					"sample": [{"stackIndex": 0, "values": [100]}],
+					"samples": [{"stackIndex": 0, "values": [100]}],
 					"timeUnixNano": "1234567890"
 				}]
 			}]
@@ -770,7 +776,7 @@ func TestHTTPRequestWithGzipCompression(t *testing.T) {
 	}).Return(nil, nil)
 
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 
 	req := createValidOTLPRequest()
 	reqBytes, err := proto.Marshal(req)
@@ -805,14 +811,14 @@ func TestHTTPRequestWithGzipCompressionAndJSON(t *testing.T) {
 	}).Return(nil, nil)
 
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 
 	jsonRequest := `{
 		"resourceProfiles": [{
 			"scopeProfiles": [{
 				"profiles": [{
 					"sampleType": {"typeStrindex": 0, "unitStrindex": 1},
-					"sample": [{"stackIndex": 0, "values": [100]}],
+					"samples": [{"stackIndex": 0, "values": [100]}],
 					"timeUnixNano": "1234567890"
 				}]
 			}]

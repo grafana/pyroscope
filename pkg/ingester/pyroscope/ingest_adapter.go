@@ -32,16 +32,21 @@ type PushService interface {
 	PushBatch(ctx context.Context, req *model.PushRequest) error
 }
 
-func NewPyroscopeIngestHandler(svc PushService, logger log.Logger) http.Handler {
+type Limits interface {
+	MaxProfileSizeBytes(tenantID string) int
+}
+
+func NewPyroscopeIngestHandler(svc PushService, limits Limits, logger log.Logger) http.Handler {
 	return NewIngestHandler(
 		logger,
-		&pyroscopeIngesterAdapter{svc: svc, log: logger},
+		&pyroscopeIngesterAdapter{svc: svc, limits: limits, log: logger},
 	)
 }
 
 type pyroscopeIngesterAdapter struct {
-	svc PushService
-	log log.Logger
+	svc    PushService
+	limits Limits
+	log    log.Logger
 }
 
 func (p *pyroscopeIngesterAdapter) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
@@ -180,7 +185,7 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(
 	in *ingestion.IngestInput,
 	pprofable ingestion.ParseableToPprof,
 ) error {
-	plainReq, err := pprofable.ParseToPprof(ctx, in.Metadata)
+	plainReq, err := pprofable.ParseToPprof(ctx, in.Metadata, p.limits)
 	if err != nil {
 		return fmt.Errorf("parsing IngestInput-pprof failed %w", err)
 	}

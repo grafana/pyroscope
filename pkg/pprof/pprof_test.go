@@ -15,6 +15,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
@@ -1441,6 +1442,40 @@ func Test_SampleExporter_Partial(t *testing.T) {
 	requireProfilesEqual(t, expected, n)
 }
 
+func Test_Tree_Pprof_conversion(t *testing.T) {
+	// take a real pprof
+	p, err := OpenFile("testdata/go.cpu.labels.pprof")
+	require.NoError(t, err)
+
+	profileType := typesv1.ProfileType{
+		ID:         "",
+		Name:       "process_cpu",
+		SampleType: "cpu",
+		SampleUnit: "nanoseconds",
+		PeriodType: "cpu",
+		PeriodUnit: "nanoseconds",
+	}
+	maxNodes := int64(1000000)
+	timeNanos := int64(1234)
+
+	// getting tree from pprof - losing data (mappings, lines, inline functions, etc)
+	bytes, err := model.TreeFromBackendProfile(p.Profile, maxNodes)
+	require.NoError(t, err)
+	treeFromPprof, err := model.UnmarshalTree(bytes)
+	require.NoError(t, err)
+	pprofFromTree := FromTree(treeFromPprof, &profileType, timeNanos)
+
+	// repeat the process
+	bytes, err = model.TreeFromBackendProfile(pprofFromTree, maxNodes)
+	require.NoError(t, err)
+	treeFromPprofFromTree, err := model.UnmarshalTree(bytes)
+	require.NoError(t, err)
+	pprofFromTreeFromTree := FromTree(treeFromPprofFromTree, &profileType, timeNanos)
+
+	// FromTree <-> model.TreeFromBackendProfile should be immutable:
+	requireProfilesEqual(t, pprofFromTree, pprofFromTreeFromTree)
+}
+
 func Test_GroupSamplesWithout_Go_CPU_profile(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
@@ -1631,4 +1666,143 @@ func Test_pprof_zero_addr_no_line_locations(t *testing.T) {
 
 	expected := "samples_total=2 location_empty=1 sample_location_invalid=1"
 	assert.Equal(t, expected, b.stats.pretty())
+}
+
+func TestRawFromBytesWithLimit(t *testing.T) {
+	// Create a simple profile
+	p := &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{Type: 1, Unit: 2},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{1}, Value: []int64{100}},
+			{LocationId: []uint64{2}, Value: []int64{200}},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
+			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}}},
+		},
+		Mapping: []*profilev1.Mapping{
+			{Id: 1, Filename: 3},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 4, SystemName: 4, Filename: 3},
+			{Id: 2, Name: 5, SystemName: 5, Filename: 3},
+		},
+		StringTable: []string{
+			"",
+			"cpu", "nanoseconds",
+			"main.go",
+			"foo", "bar",
+		},
+		PeriodType: &profilev1.ValueType{Type: 1, Unit: 2},
+		TimeNanos:  1,
+		Period:     1,
+	}
+
+	// Marshal the profile to bytes (compressed)
+	data, err := Marshal(p, true)
+	require.NoError(t, err)
+	require.NotEmpty(t, data)
+
+	// Get the actual decompressed size
+	normalProfile, err := RawFromBytesWithLimit(data, -1)
+	require.NoError(t, err)
+	require.NotNil(t, normalProfile)
+	decompressedSize := normalProfile.rawSize
+
+	t.Logf("Compressed size: %d bytes, Decompressed size: %d bytes", len(data), decompressedSize)
+
+	t.Run("unlimited", func(t *testing.T) {
+		// Test with -1 (no limit) - should succeed
+		profile, err := RawFromBytesWithLimit(data, -1)
+		require.NoError(t, err)
+		require.NotNil(t, profile)
+		require.Equal(t, 2, len(profile.Sample))
+	})
+
+	t.Run("limit_exceeded", func(t *testing.T) {
+		// Test with a limit smaller than decompressed size - should fail
+		_, err := RawFromBytesWithLimit(data, int64(decompressedSize/2))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "decompressed size exceeds maximum allowed size")
+	})
+
+	t.Run("limit_sufficient", func(t *testing.T) {
+		// Test with a limit larger than decompressed size - should succeed
+		profile, err := RawFromBytesWithLimit(data, int64(decompressedSize*2))
+		require.NoError(t, err)
+		require.NotNil(t, profile)
+		require.Equal(t, 2, len(profile.Sample))
+	})
+
+	t.Run("limit_exact", func(t *testing.T) {
+		// Test with limit exactly equal to decompressed size - should succeed
+		profile, err := RawFromBytesWithLimit(data, int64(decompressedSize))
+		require.NoError(t, err)
+		require.NotNil(t, profile)
+		require.Equal(t, 2, len(profile.Sample))
+	})
+}
+
+func TestUnmarshalWithLimit(t *testing.T) {
+	// Create a simple profile
+	p := &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{Type: 1, Unit: 2},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{1}, Value: []int64{100}},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
+		},
+		Mapping: []*profilev1.Mapping{
+			{Id: 1, Filename: 3},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 4, SystemName: 4, Filename: 3},
+		},
+		StringTable: []string{
+			"",
+			"cpu", "nanoseconds",
+			"main.go",
+			"foo",
+		},
+		PeriodType: &profilev1.ValueType{Type: 1, Unit: 2},
+		TimeNanos:  1,
+		Period:     1,
+	}
+
+	// Marshal the profile to bytes (compressed)
+	data, err := Marshal(p, true)
+	require.NoError(t, err)
+
+	// Get the actual decompressed size
+	testProfile := &profilev1.Profile{}
+	err = UnmarshalWithLimit(data, testProfile, -1)
+	require.NoError(t, err)
+	decompressedSize, err := testProfile.MarshalVT()
+	require.NoError(t, err)
+
+	t.Run("unlimited", func(t *testing.T) {
+		result := &profilev1.Profile{}
+		err := UnmarshalWithLimit(data, result, -1)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(result.Sample))
+	})
+
+	t.Run("limit_exceeded", func(t *testing.T) {
+		result := &profilev1.Profile{}
+		err := UnmarshalWithLimit(data, result, int64(len(decompressedSize)/2))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "decompressed size exceeds maximum allowed size")
+	})
+
+	t.Run("limit_sufficient", func(t *testing.T) {
+		result := &profilev1.Profile{}
+		err := UnmarshalWithLimit(data, result, int64(len(decompressedSize)*2))
+		require.NoError(t, err)
+		require.Equal(t, 1, len(result.Sample))
+	})
 }

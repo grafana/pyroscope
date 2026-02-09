@@ -22,6 +22,8 @@ jobs:
           persist-credentials: 'false'
       - name: Set GIT_LAST_COMMIT_DATE
         run: echo "GIT_LAST_COMMIT_DATE=$(git log -1 --date=iso-strict --format=%cd)" >> $GITHUB_ENV
+      - name: Set IMAGE_TAG from git tag
+        run: echo "IMAGE_TAG=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
       - name: Set IMAGE_PUBLISH_LATEST=true, so we overwrite the latest docker image tag and update Homebrew
         run: echo "IMAGE_PUBLISH_LATEST=true" >> $GITHUB_ENV
       # Forces goreleaser to use the correct previous tag for the changelog
@@ -30,7 +32,7 @@ jobs:
       - run: git fetch --force --tags
       - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: "1.24.11"
+          go-version: "1.24.13"
           cache: false
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:

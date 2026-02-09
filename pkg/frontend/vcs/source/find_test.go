@@ -3,12 +3,14 @@ package source
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
 	"sync"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	giturl "github.com/kubescape/go-git-url"
 	"github.com/stretchr/testify/assert"
@@ -175,6 +177,17 @@ source_code:
       source:
         local:
           path: src
+`
+
+const javascriptPyroscopeYAML = `---
+source_code:
+  mappings:
+    - path:
+        - prefix: /usr/src/app
+      language: javascript
+      source:
+        local:
+          path: src/paymentservice
 `
 
 // TestFileFinder_Find tests the complete happy path integration for find.go using table-driven tests
@@ -441,7 +454,7 @@ require (
 			name: "python/mapped-local-path",
 			fileSpec: config.FileSpec{
 				FunctionName: "myproject.main.run",
-				Path:         "/app/myproject/main.py",
+				Path:         "/app/myproject/module/main.py",
 			},
 			rootPath:      "examples/python-app",
 			ref:           "main",
@@ -452,13 +465,113 @@ require (
 						Owner: "grafana",
 						Repo:  "pyroscope",
 						Ref:   "main",
-						Path:  "examples/python-app/src/app/myproject/main.py",
+						Path:  "examples/python-app/src/module/main.py",
 					},
 					content: "# CONTENT main.py",
 				},
 			},
 			expectedContent: "# CONTENT main.py",
-			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/python-app/src/app/myproject/main.py",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/python-app/src/module/main.py",
+			expectedError:   false,
+		},
+		{
+			name: "python/relative-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "ListRecommendations",
+				Path:         "recommendation_server.py",
+			},
+			rootPath: "examples/python-app",
+			ref:      "main",
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Owner: "grafana",
+						Repo:  "pyroscope",
+						Ref:   "main",
+						Path:  "examples/python-app/recommendation_server.py",
+					},
+					content: "# CONTENT recommendation_server.py",
+				},
+			},
+			expectedContent: "# CONTENT recommendation_server.py",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/python-app/recommendation_server.py",
+			expectedError:   false,
+		},
+		// JavaScript tests
+		{
+			name: "javascript/mapped-local-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "./index.js:chargeServiceHandler:47",
+				Path:         "/usr/src/app/index.js",
+			},
+			owner:         "grafana",
+			repo:          "pyroscope",
+			rootPath:      "",
+			ref:           "a35e42d4b114cfada7ef6d53c4a63d6ba44a72d9",
+			pyroscopeYAML: javascriptPyroscopeYAML,
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Owner: "grafana",
+						Repo:  "pyroscope",
+						Ref:   "a35e42d4b114cfada7ef6d53c4a63d6ba44a72d9",
+						Path:  "src/paymentservice/index.js",
+					},
+					content: "// CONTENT index.js\nfunction chargeServiceHandler() {}",
+				},
+			},
+			expectedContent: "// CONTENT index.js\nfunction chargeServiceHandler() {}",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/a35e42d4b114cfada7ef6d53c4a63d6ba44a72d9/src/paymentservice/index.js",
+			expectedError:   false,
+		},
+		// TypeScript tests (uses language: javascript)
+		{
+			name: "typescript/mapped-local-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "./handler.ts:processPayment:123",
+				Path:         "/usr/src/app/handler.ts",
+			},
+			owner:         "grafana",
+			repo:          "pyroscope",
+			rootPath:      "",
+			ref:           "main",
+			pyroscopeYAML: javascriptPyroscopeYAML,
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Owner: "grafana",
+						Repo:  "pyroscope",
+						Ref:   "main",
+						Path:  "src/paymentservice/handler.ts",
+					},
+					content: "// CONTENT handler.ts\nexport function processPayment() {}",
+				},
+			},
+			expectedContent: "// CONTENT handler.ts\nexport function processPayment() {}",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/src/paymentservice/handler.ts",
+			expectedError:   false,
+		},
+		{
+			name: "javascript/relative-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "./server.js:handleRequest:10",
+				Path:         "server.js",
+			},
+			rootPath: "examples/nodejs-app",
+			ref:      "main",
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Owner: "grafana",
+						Repo:  "pyroscope",
+						Ref:   "main",
+						Path:  "examples/nodejs-app/server.js",
+					},
+					content: "// CONTENT server.js",
+				},
+			},
+			expectedContent: "// CONTENT server.js",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/nodejs-app/server.js",
 			expectedError:   false,
 		},
 		{
@@ -543,6 +656,162 @@ require (
 				// Verify URL
 				assert.Equal(t, tt.expectedURL, response.URL, "URL should point to correct location")
 			}
+		})
+	}
+}
+
+// TestFileFinder_Find_FileNotFound tests that Find returns client.ErrNotFound when files are not found
+func TestFileFinder_Find_FileNotFound(t *testing.T) {
+	tests := []struct {
+		name          string
+		fileSpec      config.FileSpec
+		rootPath      string
+		ref           string
+		pyroscopeYAML string
+	}{
+		{
+			name: "fallback/file-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "some.function",
+				Path:         "nonexistent/file.txt",
+			},
+			ref: "main",
+		},
+		{
+			name: "go/local-file-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "github.com/grafana/pyroscope/pkg/foo.Bar",
+				Path:         "/Users/christian/git/github.com/grafana/pyroscope/pkg/foo/bar.go",
+			},
+			ref: "main",
+		},
+		{
+			name: "go/stdlib-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "bufio.(*Reader).ReadSlice",
+				Path:         "/usr/local/go/src/bufio/bufio.go",
+			},
+			ref: "main",
+		},
+		{
+			name: "python/stdlib-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "difflib.SequenceMatcher.find_longest_match",
+				Path:         "/usr/lib/python3.12/difflib.py",
+			},
+			ref: "main",
+		},
+		{
+			name: "python/no-stdlib-no-mappings",
+			fileSpec: config.FileSpec{
+				FunctionName: "myapp.module.function",
+				Path:         "/app/myapp/module.py",
+			},
+			ref: "main",
+		},
+		{
+			name: "python/mappings-file-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "myproject.main.run",
+				Path:         "/app/myproject/module/main.py",
+			},
+			rootPath:      "examples/python-app",
+			ref:           "main",
+			pyroscopeYAML: pythonPyroscopeYAML,
+		},
+		{
+			name: "java/no-mappings",
+			fileSpec: config.FileSpec{
+				FunctionName: "org/example/MyClass.myMethod",
+				Path:         "",
+			},
+			ref: "main",
+			pyroscopeYAML: `---
+source_code:
+  mappings:
+    - function_name:
+        - prefix: org/example
+      language: java
+      source:
+        local:
+          path: src/main/java
+`,
+		},
+		{
+			name: "go/dependency-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "github.com/parquet-go/parquet-go.(*bufferPool).newBuffer",
+				Path:         "/Users/christian/.golang/packages/pkg/mod/github.com/parquet-go/parquet-go@v0.23.0/buffer.go",
+			},
+			ref: "main",
+		},
+		{
+			name: "javascript/no-mappings",
+			fileSpec: config.FileSpec{
+				FunctionName: "./app.js:handler:10",
+				Path:         "/usr/src/app/app.js",
+			},
+			ref: "main",
+		},
+		{
+			name: "javascript/mappings-file-not-found",
+			fileSpec: config.FileSpec{
+				FunctionName: "./missing.js:handler:10",
+				Path:         "/usr/src/app/missing.js",
+			},
+			ref:           "main",
+			pyroscopeYAML: javascriptPyroscopeYAML,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			// Setup mock VCS client with no files (everything returns ErrNotFound)
+			mockClient := newMockVCSClient()
+
+			// Add pyroscope.yaml if provided (but no actual source files)
+			if tt.pyroscopeYAML != "" {
+				mockClient.addFiles(mockFileResponse{
+					request: client.FileRequest{
+						Ref:  tt.ref,
+						Path: filepath.Join(tt.rootPath, ".pyroscope.yaml"),
+					},
+					content: tt.pyroscopeYAML,
+				})
+			}
+
+			// Setup repository URL
+			repoURL, err := giturl.NewGitURL("https://github.com/grafana/pyroscope")
+			require.NoError(t, err)
+
+			// Create FileFinder
+			finder := NewFileFinder(
+				mockClient,
+				repoURL,
+				tt.fileSpec,
+				tt.rootPath,
+				defaultRef(tt.ref),
+				&http.Client{},
+				log.NewNopLogger(),
+			)
+
+			// Execute the Find method
+			response, err := finder.Find(ctx)
+
+			// Assertions
+			require.Error(t, err, "Find should return an error when file is not found")
+
+			// Check if error is a connect error with CodeNotFound
+			var connectErr *connect.Error
+			if errors.As(err, &connectErr) {
+				require.Equal(t, connect.CodeNotFound, connectErr.Code(), "Connect error should have CodeNotFound")
+			} else {
+				// Fallback check for client.ErrNotFound
+				require.ErrorIs(t, err, client.ErrNotFound, "Error should be client.ErrNotFound")
+			}
+			require.Nil(t, response, "Response should be nil when file is not found")
 		})
 	}
 }

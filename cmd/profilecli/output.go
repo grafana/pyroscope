@@ -41,7 +41,7 @@ func outputSeries(result []*typesv1.Labels) error {
 	return nil
 }
 
-func outputMergeProfile(ctx context.Context, outputFlag string, profile *googlev1.Profile) error {
+func outputMergeProfile(ctx context.Context, outputFlag string, force bool, profile *googlev1.Profile) error {
 	mypp := pp.New()
 	mypp.SetColoringEnabled(isatty.IsTerminal(os.Stdout.Fd()))
 	mypp.SetExportedOnly(true)
@@ -77,8 +77,14 @@ func outputMergeProfile(ctx context.Context, outputFlag string, profile *googlev
 			return errors.Wrap(err, "failed to marshal protobuf")
 		}
 
-		// open new file, fail when the file already exists
-		f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
+		// open new file, fail when the file already exists unless force is set
+		flags := os.O_RDWR | os.O_CREATE
+		if force {
+			flags |= os.O_TRUNC
+		} else {
+			flags |= os.O_EXCL
+		}
+		f, err := os.OpenFile(filePath, flags, 0644)
 		if err != nil {
 			return errors.Wrap(err, "failed to create pprof file")
 		}

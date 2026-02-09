@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/timeseries"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
@@ -154,10 +155,31 @@ func (r *Router) SelectSeries(
 			}
 		},
 		func(a, b *querierv1.SelectSeriesResponse) (*querierv1.SelectSeriesResponse, error) {
-			m := phlaremodel.NewTimeSeriesMerger(true)
+			m := timeseries.NewMerger(true)
 			m.MergeTimeSeries(a.Series)
 			m.MergeTimeSeries(b.Series)
 			return &querierv1.SelectSeriesResponse{Series: m.Top(limit)}, nil
+		})
+}
+
+func (r *Router) SelectHeatmap(
+	ctx context.Context,
+	c *connect.Request[querierv1.SelectHeatmapRequest],
+) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
+	return Query[querierv1.SelectHeatmapRequest, querierv1.SelectHeatmapResponse](ctx, r, c,
+		func(_, _ *querierv1.SelectHeatmapRequest) {},
+		func(a, b *querierv1.SelectHeatmapResponse) (*querierv1.SelectHeatmapResponse, error) {
+			// Merge the series from both responses
+			var allSeries []*typesv1.HeatmapSeries
+			if a != nil {
+				allSeries = append(allSeries, a.Series...)
+			}
+			if b != nil {
+				allSeries = append(allSeries, b.Series...)
+			}
+			return &querierv1.SelectHeatmapResponse{
+				Series: allSeries,
+			}, nil
 		})
 }
 

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func TestDebuginfodClient(t *testing.T) {
@@ -37,15 +41,22 @@ func TestDebuginfodClient(t *testing.T) {
 	}))
 	defer server.Close()
 
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		l := validation.MockDefaultLimits()
+		l.Symbolizer.MaxSymbolSizeBytes = 4
+		tenantLimits["tenant-limited"] = l
+	})
+
 	// Create a client with the test server URL
 	metrics := newMetrics(prometheus.NewRegistry())
-	client, err := NewDebuginfodClient(log.NewNopLogger(), server.URL, metrics)
+	client, err := NewDebuginfodClient(log.NewNopLogger(), server.URL, metrics, limits)
 	require.NoError(t, err)
 
 	// Test cases
 	tests := []struct {
 		name          string
 		buildID       string
+		tenantID      string
 		expectedError bool
 		expectedData  string
 		errorCheck    func(error) bool
@@ -93,12 +104,26 @@ func TestDebuginfodClient(t *testing.T) {
 				return isInvalidBuildIDError(err)
 			},
 		},
+		{
+			name:          "size limit",
+			buildID:       "valid-build-id",
+			tenantID:      "tenant-limited",
+			expectedError: true,
+			errorCheck: func(err error) bool {
+				return err != nil && strings.Contains(err.Error(), "symbol size exceeds maximum allowed size of 4 bytes")
+			},
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Fetch debug info
-			reader, err := client.FetchDebuginfo(context.Background(), tc.buildID)
+			tenantID := "tenant"
+			if tc.tenantID != "" {
+				tenantID = tc.tenantID
+			}
+			ctx := tenant.InjectTenantID(context.Background(), tenantID)
+			reader, err := client.FetchDebuginfo(ctx, tc.buildID)
 
 			// Check error
 			if tc.expectedError {
@@ -134,12 +159,12 @@ func TestDebuginfodClientSingleflight(t *testing.T) {
 
 	// Create a client with the test server URL
 	metrics := newMetrics(prometheus.NewRegistry())
-	client, err := NewDebuginfodClient(log.NewNopLogger(), server.URL, metrics)
+	client, err := NewDebuginfodClient(log.NewNopLogger(), server.URL, metrics, validation.MockDefaultOverrides())
 	require.NoError(t, err)
 
 	// Make concurrent requests with the same build ID
 	buildID := "singleflight-test-id"
-	ctx := context.Background()
+	ctx := tenant.InjectTenantID(context.Background(), "tenant")
 
 	// Channel to synchronize goroutines
 	done := make(chan struct{})
@@ -322,10 +347,10 @@ func TestDebuginfodClientNotFoundCache(t *testing.T) {
 		BaseURL:               server.URL,
 		NotFoundCacheMaxItems: 100,
 		NotFoundCacheTTL:      10 * time.Second,
-	}, newMetrics(nil))
+	}, newMetrics(nil), validation.MockDefaultOverrides())
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := tenant.InjectTenantID(context.Background(), "tenant")
 	buildID := "not-found-cached"
 
 	// First request should hit the server and get a 404

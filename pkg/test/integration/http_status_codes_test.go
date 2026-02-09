@@ -195,13 +195,6 @@ func TestStatusCodes(t *testing.T) {
 			},
 			http.StatusBadRequest: {
 				{
-					Name:   "no_time_range",
-					Method: http.MethodGet,
-					Params: url.Values{
-						"query": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
-					},
-				},
-				{
 					Name:   "all_zero_time_range",
 					Method: http.MethodGet,
 					Params: url.Values{
@@ -261,14 +254,6 @@ func TestStatusCodes(t *testing.T) {
 						"query": []string{`invalid_format{service_name="test"}`},
 						"from":  []string{"now-15m"},
 						"until": []string{"now"},
-					},
-				},
-				{
-					Name:   "format_dot_no_time_range",
-					Method: http.MethodGet,
-					Params: url.Values{
-						"query":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
-						"format": []string{"dot"},
 					},
 				},
 				{
@@ -394,50 +379,6 @@ func TestStatusCodes(t *testing.T) {
 						"leftUntil":  []string{"now-15m"},
 						"rightFrom":  []string{"now-15m"},
 						"rightUntil": []string{"now"},
-					},
-				},
-				{
-					Name:   "missing_left_from",
-					Method: http.MethodGet,
-					Params: url.Values{
-						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
-						"leftUntil":  []string{"now-15m"},
-						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
-						"rightFrom":  []string{"now-15m"},
-						"rightUntil": []string{"now"},
-					},
-				},
-				{
-					Name:   "missing_left_until",
-					Method: http.MethodGet,
-					Params: url.Values{
-						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
-						"leftFrom":   []string{"now-30m"},
-						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
-						"rightFrom":  []string{"now-15m"},
-						"rightUntil": []string{"now"},
-					},
-				},
-				{
-					Name:   "missing_right_from",
-					Method: http.MethodGet,
-					Params: url.Values{
-						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
-						"leftFrom":   []string{"now-30m"},
-						"leftUntil":  []string{"now-15m"},
-						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
-						"rightUntil": []string{"now"},
-					},
-				},
-				{
-					Name:   "missing_right_until",
-					Method: http.MethodGet,
-					Params: url.Values{
-						"leftQuery":  []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
-						"leftFrom":   []string{"now-30m"},
-						"leftUntil":  []string{"now-15m"},
-						"rightQuery": []string{createRenderQuery(profileTypeProcessCPU, "pyroscope")},
-						"rightFrom":  []string{"now-15m"},
 					},
 				},
 				{
@@ -676,14 +617,6 @@ func TestStatusCodes(t *testing.T) {
 						"start": time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":   time.Now().UnixMilli(),
 					}),
-				},
-				{
-					Name:   "no_time_range",
-					Method: http.MethodPost,
-					Header: http.Header{
-						"Content-Type": []string{"application/json"},
-					},
-					Body: toJSON(map[string]any{}),
 				},
 				{
 					Name:   "zero_time_range",

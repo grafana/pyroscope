@@ -80,21 +80,34 @@ func (m *memoryBuffer) Bytes() []byte {
 	return m.data
 }
 
+func readAllWithLimit(r io.Reader, typ string, maxBytes int64) ([]byte, error) {
+	// maxBytes == 0 means unlimited body size
+	if maxBytes > 0 {
+		r = io.LimitReader(r, maxBytes+1) // +1 to detect if limit is exceeded
+	}
+
+	decompressed, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("decompress %s data: %w", typ, err)
+	}
+
+	// Check if we hit the size limit
+	if maxBytes > 0 && int64(len(decompressed)) > maxBytes {
+		return nil, &ErrSymbolSizeBytesExceedsLimit{Limit: maxBytes}
+	}
+
+	return decompressed, nil
+}
+
 // detectCompression checks if data is compressed and decompresses it if needed
-func detectCompression(data []byte) ([]byte, error) {
+func detectCompression(data []byte, maxBytes int64) ([]byte, error) {
 	if len(data) >= 2 && data[0] == 0x1f && data[1] == 0x8b {
 		r, err := gzip.NewReader(bytes.NewReader(data))
 		if err != nil {
 			return nil, fmt.Errorf("create gzip reader: %w", err)
 		}
 		defer r.Close()
-
-		decompressed, err := io.ReadAll(r)
-		if err != nil {
-			return nil, fmt.Errorf("decompress gzip data: %w", err)
-		}
-
-		return decompressed, nil
+		return readAllWithLimit(r, "gzip", maxBytes)
 	}
 
 	// Check for zstd (magic bytes: 0x28, 0xb5, 0x2f, 0xfd)
@@ -104,13 +117,7 @@ func detectCompression(data []byte) ([]byte, error) {
 			return nil, fmt.Errorf("create zstd reader: %w", err)
 		}
 		defer r.Close()
-
-		decompressed, err := io.ReadAll(r)
-		if err != nil {
-			return nil, fmt.Errorf("decompress zstd data: %w", err)
-		}
-
-		return decompressed, nil
+		return readAllWithLimit(r, "zstd", maxBytes)
 	}
 
 	return data, nil

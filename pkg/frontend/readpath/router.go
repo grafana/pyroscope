@@ -159,6 +159,8 @@ func query[Req, Resp any](
 		resp, err = svc.SelectMergeProfile(ctx, r)
 	case *connect.Request[querierv1.SelectSeriesRequest]:
 		resp, err = svc.SelectSeries(ctx, r)
+	case *connect.Request[querierv1.SelectHeatmapRequest]:
+		resp, err = svc.SelectHeatmap(ctx, r)
 	case *connect.Request[querierv1.DiffRequest]:
 		resp, err = svc.Diff(ctx, r)
 

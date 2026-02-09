@@ -421,6 +421,8 @@ Usage of ./pyroscope:
     	Set to false to disable tracing. (default true)
   -usage-stats.enabled
     	Enable anonymous usage statistics collection. For more details about usage statistics, refer to https://grafana.com/docs/pyroscope/latest/configure-server/anonymous-usage-statistics-reporting/ (default true)
+  -validation.disable-label-sanitization
+    	Disable label name sanitization (converting dots to underscores). When disabled, labels with dots are accepted as-is using UTF-8 validation.
   -validation.enforce-labels-order
     	Enforce labels order optimization.
   -validation.max-label-names-per-series int

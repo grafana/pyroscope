@@ -32,7 +32,7 @@ func at[T any](arr []T, i int32) (T, error) {
 // ConvertOtelToGoogle converts an OpenTelemetry profile to a Google profile.
 func ConvertOtelToGoogle(src *otelProfile.Profile, dictionary *otelProfile.ProfilesDictionary) (map[string]convertedProfile, error) {
 	svc2Profile := make(map[string]*profileBuilder)
-	for _, sample := range src.Sample {
+	for _, sample := range src.Samples {
 		svc, err := serviceNameFromSample(sample, dictionary)
 		if err != nil {
 			return make(map[string]convertedProfile), nil
@@ -250,10 +250,10 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location, dictionar
 	gl := &googleProfile.Location{
 		MappingId: mappingId,
 		Address:   ol.Address,
-		Line:      make([]*googleProfile.Line, len(ol.Line)),
+		Line:      make([]*googleProfile.Line, len(ol.Lines)),
 	}
 
-	for i, line := range ol.Line {
+	for i, line := range ol.Lines {
 		gl.Line[i], err = p.convertLineBack(line, dictionary)
 		if err != nil {
 			return 0, fmt.Errorf("could not process line at index %d: %w", i, err)
@@ -443,7 +443,7 @@ func (p *profileBuilder) convertMappingBack(ols []*otelProfile.Location, om *ote
 	*/
 	for _, ol := range ols {
 		// If at least one location belonging to mapping does not have lines, we must flag whole mapping as not having symbol info.
-		if len(ol.Line) == 0 {
+		if len(ol.Lines) == 0 {
 			hasLines = false
 			hasFunctions = false
 			hasInlineFrames = false
@@ -455,7 +455,7 @@ func (p *profileBuilder) convertMappingBack(ols []*otelProfile.Location, om *ote
 			break
 		}
 
-		for i, line := range ol.Line {
+		for i, line := range ol.Lines {
 			hasFunctions = hasFunctions && line.FunctionIndex > 0
 			hasLines = hasLines && line.Line > 0
 			hasInlineFrames = hasInlineFrames && i >= 1
