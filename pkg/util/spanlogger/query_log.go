@@ -101,7 +101,7 @@ func (l LogSpanParametersWrapper) SelectMergeStacktraces(ctx context.Context, c 
 		"profile_type", c.Msg.ProfileTypeID,
 		"format", c.Msg.Format,
 		"max_nodes", c.Msg.GetMaxNodes(),
-		"profile_id_selector", c.Msg.ProfileIdSelector,
+		"profile_id_selector", lazyJoin(c.Msg.ProfileIdSelector),
 	)
 	defer sp.Finish()
 
@@ -138,7 +138,7 @@ func (l LogSpanParametersWrapper) SelectMergeProfile(ctx context.Context, c *con
 		"max_nodes", c.Msg.GetMaxNodes(),
 		"profile_type", c.Msg.ProfileTypeID,
 		"stacktrace_selector", c.Msg.StackTraceSelector,
-		"profile_id_selector", c.Msg.ProfileIdSelector,
+		"profile_id_selector", lazyJoin(c.Msg.ProfileIdSelector),
 	)
 	defer sp.Finish()
 
