@@ -40,7 +40,7 @@ import (
 
 type Config struct {
 	Enabled           bool          `yaml:"-"`
-	MaxUploadSize     int64         `yaml:"-"`
+	MaxUploadSize     int64         `yaml:"-"` //todo this is not used
 	MaxUploadDuration time.Duration `yaml:"-"`
 }
 
