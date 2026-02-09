@@ -81,6 +81,204 @@ func TestValidateExemplarType(t *testing.T) {
 	}
 }
 
+func newTestCompactAggregator(startTime, endTime int64) (*timeSeriesCompactAggregator, *queryv1.TimeSeriesQuery) {
+	query := &queryv1.TimeSeriesQuery{
+		GroupBy: []string{"service_name"},
+		Step:    1.0,
+	}
+	req := &queryv1.InvokeRequest{
+		StartTime: startTime,
+		EndTime:   endTime,
+		Query: []*queryv1.Query{{
+			TimeSeriesCompact: query,
+		}},
+	}
+	return newTimeSeriesCompactAggregator(req).(*timeSeriesCompactAggregator), query
+}
+
+func makeCompactReport(query *queryv1.TimeSeriesQuery, table *queryv1.AttributeTable, series []*queryv1.Series) *queryv1.Report {
+	return &queryv1.Report{
+		TimeSeriesCompact: &queryv1.TimeSeriesCompactReport{
+			Query:          query,
+			TimeSeries:     series,
+			AttributeTable: table,
+		},
+	}
+}
+
+func resolveRefs(refs []int64, table *queryv1.AttributeTable) []string {
+	result := make([]string, len(refs))
+	for i, ref := range refs {
+		result[i] = table.Keys[ref] + "=" + table.Values[ref]
+	}
+	return result
+}
+
+func TestTimeSeriesCompactAggregator(t *testing.T) {
+	agg, query := newTestCompactAggregator(1000, 2000)
+
+	// Report 1: exemplar with 3 attributes (pod, version, region) at timestamp 1000
+	report1 := makeCompactReport(query, &queryv1.AttributeTable{
+		Keys:   []string{"service_name", "pod", "version", "region"},
+		Values: []string{"api", "a", "1.0", "us-east-1"},
+	}, []*queryv1.Series{{
+		AttributeRefs: []int64{0},
+		Points: []*queryv1.Point{{
+			Timestamp: 1000,
+			Value:     100,
+			Exemplars: []*queryv1.Exemplar{{
+				ProfileId:     "prof-1",
+				Value:         100,
+				Timestamp:     1000,
+				AttributeRefs: []int64{1, 2, 3},
+			}},
+		}},
+	}})
+
+	// Report 2: exemplar with 2 attributes at timestamp 2000
+	report2 := makeCompactReport(query, &queryv1.AttributeTable{
+		Keys:   []string{"service_name", "pod", "version"},
+		Values: []string{"api", "b", "1.0"},
+	}, []*queryv1.Series{{
+		AttributeRefs: []int64{0},
+		Points: []*queryv1.Point{{
+			Timestamp: 2000,
+			Value:     200,
+			Exemplars: []*queryv1.Exemplar{{
+				ProfileId:     "prof-2",
+				Value:         200,
+				Timestamp:     2000,
+				AttributeRefs: []int64{1, 2},
+			}},
+		}},
+	}})
+
+	// Report 3: same timestamp as report1, lower value exemplar (tests highest-value selection)
+	report3 := makeCompactReport(query, &queryv1.AttributeTable{
+		Keys:   []string{"service_name", "pod", "version", "region"},
+		Values: []string{"api", "a", "1.0", "us-east-1"},
+	}, []*queryv1.Series{{
+		AttributeRefs: []int64{0},
+		Points: []*queryv1.Point{{
+			Timestamp: 1000,
+			Value:     50,
+			Exemplars: []*queryv1.Exemplar{{
+				ProfileId:     "prof-3",
+				Value:         50,
+				Timestamp:     1000,
+				AttributeRefs: []int64{1, 2, 3},
+			}},
+		}},
+	}})
+
+	require.NoError(t, agg.aggregate(report1))
+	require.NoError(t, agg.aggregate(report2))
+	require.NoError(t, agg.aggregate(report3))
+
+	result := agg.build()
+	require.NotNil(t, result.TimeSeriesCompact)
+	require.NotNil(t, result.TimeSeriesCompact.AttributeTable)
+	require.Len(t, result.TimeSeriesCompact.TimeSeries, 1)
+
+	series := result.TimeSeriesCompact.TimeSeries[0]
+	attrTable := result.TimeSeriesCompact.AttributeTable
+	require.Len(t, series.Points, 2, "Should have 2 points (different timestamps)")
+
+	// Point 1: timestamp 1000 - should keep prof-1 (value=100) not prof-3 (value=50)
+	point1 := series.Points[0]
+	require.Equal(t, int64(1000), point1.Timestamp)
+	require.Len(t, point1.Exemplars, 1)
+	assert.Equal(t, "prof-1", point1.Exemplars[0].ProfileId)
+	assert.Equal(t, int64(100), point1.Exemplars[0].Value)
+	assert.ElementsMatch(t, []string{"pod=a", "version=1.0", "region=us-east-1"},
+		resolveRefs(point1.Exemplars[0].AttributeRefs, attrTable))
+
+	// Point 2: timestamp 2000 - should have prof-2
+	point2 := series.Points[1]
+	require.Equal(t, int64(2000), point2.Timestamp)
+	require.Len(t, point2.Exemplars, 1)
+	assert.Equal(t, "prof-2", point2.Exemplars[0].ProfileId)
+	assert.ElementsMatch(t, []string{"pod=b", "version=1.0"},
+		resolveRefs(point2.Exemplars[0].AttributeRefs, attrTable))
+
+	// Verify attribute table has deduplicated entries
+	assert.Len(t, attrTable.Keys, 5)
+}
+
+func TestTimeSeriesCompactAnnotations(t *testing.T) {
+	t.Run("same_timestamp_merges_annotations", func(t *testing.T) {
+		agg, query := newTestCompactAggregator(1000, 2000)
+
+		// Report 1: annotations error=true, host=server-1
+		report1 := makeCompactReport(query, &queryv1.AttributeTable{
+			Keys:   []string{"service_name", "error", "host"},
+			Values: []string{"api", "true", "server-1"},
+		}, []*queryv1.Series{{
+			AttributeRefs: []int64{0},
+			Points: []*queryv1.Point{{
+				Timestamp:      1000,
+				Value:          100,
+				AnnotationRefs: []int64{1, 2},
+			}},
+		}})
+
+		// Report 2: annotation error=false at same timestamp
+		report2 := makeCompactReport(query, &queryv1.AttributeTable{
+			Keys:   []string{"service_name", "error"},
+			Values: []string{"api", "false"},
+		}, []*queryv1.Series{{
+			AttributeRefs: []int64{0},
+			Points: []*queryv1.Point{{
+				Timestamp:      1000,
+				Value:          50,
+				AnnotationRefs: []int64{1},
+			}},
+		}})
+
+		require.NoError(t, agg.aggregate(report1))
+		require.NoError(t, agg.aggregate(report2))
+
+		result := agg.build()
+		series := result.TimeSeriesCompact.TimeSeries[0]
+		require.Len(t, series.Points, 1)
+
+		point := series.Points[0]
+		assert.Equal(t, int64(1000), point.Timestamp)
+		assert.Equal(t, 150.0, point.Value) // 100 + 50
+		assert.ElementsMatch(t, []string{"error=true", "host=server-1", "error=false"},
+			resolveRefs(point.AnnotationRefs, result.TimeSeriesCompact.AttributeTable))
+	})
+
+	t.Run("different_timestamps_no_corruption", func(t *testing.T) {
+		// annotations at different timestamps should not be corrupted by later points.
+		agg, query := newTestCompactAggregator(1000, 3000)
+
+		report := makeCompactReport(query, &queryv1.AttributeTable{
+			Keys:   []string{"service_name", "error", "host", "region"},
+			Values: []string{"api", "true", "server-1", "us-east"},
+		}, []*queryv1.Series{{
+			AttributeRefs: []int64{0},
+			Points: []*queryv1.Point{
+				{Timestamp: 1000, Value: 100, AnnotationRefs: []int64{1}},
+				{Timestamp: 2000, Value: 200, AnnotationRefs: []int64{2}},
+				{Timestamp: 3000, Value: 300, AnnotationRefs: []int64{3}},
+			},
+		}})
+
+		require.NoError(t, agg.aggregate(report))
+
+		result := agg.build()
+		series := result.TimeSeriesCompact.TimeSeries[0]
+		attrTable := result.TimeSeriesCompact.AttributeTable
+		require.Len(t, series.Points, 3)
+
+		// Each point should have its own annotations, not corrupted by later points
+		assert.ElementsMatch(t, []string{"error=true"}, resolveRefs(series.Points[0].AnnotationRefs, attrTable))
+		assert.ElementsMatch(t, []string{"host=server-1"}, resolveRefs(series.Points[1].AnnotationRefs, attrTable))
+		assert.ElementsMatch(t, []string{"region=us-east"}, resolveRefs(series.Points[2].AnnotationRefs, attrTable))
+	})
+}
+
 type benchmarkFixture struct {
 	ctx       context.Context
 	reader    *BlockReader
@@ -89,7 +287,6 @@ type benchmarkFixture struct {
 	startTime time.Time
 }
 
-// setupBenchmarkFixture creates a benchmark fixture with real block data.
 func setupBenchmarkFixture(b *testing.B) *benchmarkFixture {
 	b.Helper()
 
@@ -134,25 +331,22 @@ func setupBenchmarkFixture(b *testing.B) *benchmarkFixture {
 		}
 	}
 
-	// Extract start time from blocks
 	var minTime int64 = -1
 	for _, block := range blocks {
 		if minTime == -1 || block.MinTime < minTime {
 			minTime = block.MinTime
 		}
 	}
-	startTime := time.UnixMilli(minTime)
 
 	return &benchmarkFixture{
 		ctx:       context.Background(),
 		reader:    reader,
 		plan:      plan,
 		tenant:    tenant,
-		startTime: startTime,
+		startTime: time.UnixMilli(minTime),
 	}
 }
 
-// sanitizeMetadata removes duplicate datasets (logic from testSuite.sanitizeMetadata)
 func sanitizeMetadata(meta []*metastorev1.BlockMeta) {
 	for _, m := range meta {
 		for _, d := range m.Datasets {
@@ -166,7 +360,6 @@ func sanitizeMetadata(meta []*metastorev1.BlockMeta) {
 	}
 }
 
-// runTimeSeriesQuery executes a timeseries query with the given parameters.
 func (f *benchmarkFixture) runTimeSeriesQuery(b *testing.B, req *queryv1.InvokeRequest) {
 	b.Helper()
 	resp, err := f.reader.Invoke(f.ctx, req)
@@ -188,7 +381,6 @@ func (f *benchmarkFixture) runTimeSeriesQuery(b *testing.B, req *queryv1.InvokeR
 	panic("no data found")
 }
 
-// makeTimeSeriesRequest creates a timeseries query request with the given parameters.
 func (f *benchmarkFixture) makeTimeSeriesRequest(
 	startTime, endTime time.Time,
 	labelSelector string,
@@ -203,7 +395,7 @@ func (f *benchmarkFixture) makeTimeSeriesRequest(
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
 			TimeSeries: &queryv1.TimeSeriesQuery{
-				Step:         60.0, // 1 minute resolution
+				Step:         60.0,
 				GroupBy:      groupBy,
 				ExemplarType: exemplarType,
 			},
@@ -212,11 +404,6 @@ func (f *benchmarkFixture) makeTimeSeriesRequest(
 	}
 }
 
-// BenchmarkTimeSeriesQuery measures the performance impact of exemplar collection.
-//
-//	go test -bench=BenchmarkTimeSeriesQuery$ -benchmem ./pkg/querybackend/
-//
-// Expected results: Exemplar overhead should be < 30% for typical queries.
 func BenchmarkTimeSeriesQuery(b *testing.B) {
 	fixture := setupBenchmarkFixture(b)
 
@@ -245,14 +432,6 @@ func BenchmarkTimeSeriesQuery(b *testing.B) {
 	}
 }
 
-// BenchmarkTimeSeriesQuery_TimeRange measures how performance scales with time range.
-//
-// This tests whether exemplar overhead grows linearly or non-linearly with data size.
-// Run with:
-//
-//	go test -bench=BenchmarkTimeSeriesQuery_TimeRange -benchmem ./pkg/querybackend/
-//
-// Expected results: Overhead ratio should remain constant across time ranges.
 func BenchmarkTimeSeriesQuery_TimeRange(b *testing.B) {
 	fixture := setupBenchmarkFixture(b)
 

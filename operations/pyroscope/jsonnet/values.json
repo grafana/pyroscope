@@ -380,6 +380,7 @@
     "extraArgs": {
       "log.level": "debug"
     },
+    "extraContainers": [],
     "extraCustomEnvVars": {},
     "extraEnvFrom": [],
     "extraEnvVars": {},
@@ -418,6 +419,7 @@
         "subPath": ".metastore"
       },
       "shared": {
+        "enabled": true,
         "subPath": ".shared"
       },
       "size": "10Gi"

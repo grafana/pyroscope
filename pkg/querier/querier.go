@@ -36,6 +36,7 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/timeseries"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -281,7 +282,7 @@ func filterLabelNames(labelNames []string) []string {
 	filtered := make([]string, 0, len(labelNames))
 	// Filter out label names not passing legacy validation if utf8 label names not enabled
 	for _, labelName := range labelNames {
-		if _, _, ok := validation.SanitizeLegacyLabelName(labelName); !ok {
+		if !model.LegacyValidation.IsValidLabelName(labelName) {
 			continue
 		}
 		filtered = append(filtered, labelName)
@@ -409,7 +410,7 @@ func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (block
 	return results.blockPlan(ctx), nil
 }
 
-// filterLabelNames filters out non-legacy (see validation.SanitizeLegacyLabelName)
+// filterLabelNames filters out non-legacy (see model.LegacyValidation.IsValidLabelName)
 // label names by default. If no label names are passed in the req, all label names
 // are fetched and then filtered. Otherwise, the label names in the req are filtered.
 // If the `AllowUtf8LabelNames` client capability is enabled, this function is a no-op.
@@ -437,7 +438,7 @@ func (q *Querier) filterLabelNames(
 	// Filter out label names in request if not passing legacy validation
 	filtered := make([]string, 0, len(req.Msg.LabelNames))
 	for _, name := range req.Msg.LabelNames {
-		if _, _, ok := validation.SanitizeLegacyLabelName(name); !ok {
+		if !model.LegacyValidation.IsValidLabelName(name) {
 			level.Debug(q.logger).Log("msg", "filtering out label", "label_name", name)
 			continue
 		}
@@ -1049,7 +1050,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	result := phlaremodel.RangeSeries(it, req.Msg.Start, req.Msg.End, stepMs, req.Msg.Aggregation)
+	result := timeseries.RangeSeries(it, req.Msg.Start, req.Msg.End, stepMs, req.Msg.Aggregation)
 	if it.Err() != nil {
 		return nil, connect.NewError(connect.CodeInternal, it.Err())
 	}

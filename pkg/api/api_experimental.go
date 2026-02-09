@@ -6,6 +6,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	metastoreadmin "github.com/grafana/pyroscope/pkg/metastore/admin"
+	"github.com/grafana/pyroscope/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/pkg/querybackend"
 	"github.com/grafana/pyroscope/pkg/segmentwriter"
 )
@@ -34,5 +35,22 @@ func (a *API) RegisterMetastoreAdmin(adm *metastoreadmin.Admin) {
 	a.indexPage.AddLinks(defaultWeight, "Metastore", []IndexPageLink{
 		{Desc: "Nodes", Path: "/metastore-nodes"},
 		{Desc: "Client Test", Path: "/metastore-client-test"},
+	})
+}
+
+func (a *API) RegisterQueryDiagnosticsAdmin(adm *querydiagnostics.Admin) {
+	a.RegisterRoute("/query-diagnostics", adm.DiagnosticsHandler(), a.registerOptionsRingPage()...)
+	a.RegisterRoute("/query-diagnostics/list", adm.DiagnosticsListHandler(), a.registerOptionsRingPage()...)
+
+	// JSON API endpoints for React frontend
+	a.RegisterRoute("/query-diagnostics/api/tenants", adm.TenantsAPIHandler(), a.registerOptionsRingPage()...)
+	a.RegisterRoute("/query-diagnostics/api/diagnostics", adm.DiagnosticsListAPIHandler(), a.registerOptionsRingPage()...)
+	a.RegisterRoute("/query-diagnostics/api/diagnostics/", adm.DiagnosticsGetAPIHandler(), WithGzipMiddleware(), WithMethod("GET"), WithPrefix())
+	a.RegisterRoute("/query-diagnostics/api/export/", adm.DiagnosticsExportAPIHandler(), WithMethod("GET"), WithPrefix())
+	a.RegisterRoute("/query-diagnostics/api/import", adm.DiagnosticsImportAPIHandler(), WithMethod("POST"))
+
+	a.indexPage.AddLinks(defaultWeight, "Query Diagnostics", []IndexPageLink{
+		{Desc: "Collect Diagnostics", Path: "/query-diagnostics"},
+		{Desc: "View Stored Diagnostics", Path: "/query-diagnostics/list"},
 	})
 }

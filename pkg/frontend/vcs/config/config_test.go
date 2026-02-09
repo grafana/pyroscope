@@ -97,6 +97,30 @@ func TestParsePyroscopeConfig(t *testing.T) {
 		assert.Equal(t, "spring-projects", mapping3.Source.GitHub.Owner)
 	})
 
+	t.Run("valid javascript config", func(t *testing.T) {
+		yaml := `source_code:
+  mappings:
+    - language: javascript
+      path:
+        - prefix: /usr/src/app
+      source:
+        local:
+          path: src/paymentservice
+`
+		config, err := ParsePyroscopeConfig([]byte(yaml))
+		require.NoError(t, err)
+		require.NotNil(t, config)
+
+		require.Len(t, config.SourceCode.Mappings, 1)
+
+		mapping := config.SourceCode.Mappings[0]
+		assert.Equal(t, "javascript", mapping.Language)
+		require.Len(t, mapping.Path, 1)
+		assert.Equal(t, "/usr/src/app", mapping.Path[0].Prefix)
+		require.NotNil(t, mapping.Source.Local)
+		assert.Equal(t, "src/paymentservice", mapping.Source.Local.Path)
+	})
+
 	t.Run("invalid - missing language", func(t *testing.T) {
 		yaml := `source_code:
   mappings:

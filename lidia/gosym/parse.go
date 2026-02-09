@@ -42,24 +42,25 @@ var errGoPCLNTabNotFound = errors.New(".gopclntab not found")
 var errGoTooOld = errors.New("go too old")
 
 func GoFunctions(f *elf.File) ([]Func, error) {
-	obj := f
+	const headerSize = 64
 	var err error
-	text := obj.Section(".text")
+	text := f.Section(".text")
 	if text == nil {
 		return nil, errEmptyText
 	}
-	pclntab := obj.Section(".gopclntab")
+	pclntab := f.Section(".gopclntab")
 	if pclntab == nil {
-		return nil, errGoPCLNTabNotFound
+		return nil, nil // not a go binary - return no functions, no error
 	}
 	pclntabData, err := pclntab.Data()
 	if err != nil {
 		return nil, err
 	}
-	if len(pclntabData) < 64 {
+
+	if len(pclntabData) < headerSize {
 		return nil, fmt.Errorf("invalid .gopclntab header")
 	}
-	pclntabHeader := pclntabData[:64]
+	pclntabHeader := pclntabData[:headerSize]
 
 	textStart := ParseRuntimeTextFromPclntab18(pclntabHeader)
 
@@ -69,12 +70,12 @@ func GoFunctions(f *elf.File) ([]Func, error) {
 		textStart = text.Addr
 	}
 	if textStart < text.Addr || textStart >= text.Addr+text.Size {
-		return nil, fmt.Errorf(" runtime.text out of .text bounds %d %d %d", textStart, text.Addr, text.Size)
+		return nil, fmt.Errorf("runtime.text out of .text bounds %d %d %d", textStart, text.Addr, text.Size)
 	}
 	pcln := NewLineTable(pclntabData, textStart)
 
 	if !pcln.IsGo12() {
-		return nil, errGoTooOld
+		return nil, nil // too old - return no functions, no error
 	}
 	return pcln.Go12Funcs(), nil
 }

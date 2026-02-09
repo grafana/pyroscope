@@ -4,6 +4,7 @@ import (
 	"connectrpc.com/connect"
 
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
+	querydiagnostics "github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/delayhandler"
@@ -56,4 +57,13 @@ func (a *API) connectOptionsDebugInfo() []connect.HandlerOption {
 
 func (a *API) connectOptionsAuthLogRecovery() []connect.HandlerOption {
 	return append(connectapi.DefaultHandlerOptions(), a.connectInterceptorAuth(), a.connectInterceptorLog(), connectInterceptorRecovery())
+}
+
+func (a *API) connectOptionsAuthLogDiagnosticsRecovery() []connect.HandlerOption {
+	return append(connectapi.DefaultHandlerOptions(),
+		a.connectInterceptorAuth(),
+		a.connectInterceptorLog(),
+		connect.WithInterceptors(querydiagnostics.Interceptor),
+		connectInterceptorRecovery(),
+	)
 }

@@ -211,7 +211,7 @@ spec:
               mountPath: /data-compactor
               subPath: compactor
             {{- end }}
-            {{- if $hasV2 }}
+            {{- if (and $hasV2 $values.persistence.shared.enabled) }}
             - name: data
               mountPath: /data-shared
               subPath: {{ $values.persistence.shared.subPath }}
@@ -230,6 +230,9 @@ spec:
             {{- else }}
             {{- toYaml $values.resources | nindent 12 }}
             {{- end }}
+        {{- with $values.extraContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       {{- with $values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -75,21 +75,24 @@ func (ff *FileFinder) Find(ctx context.Context) (*vcsv1.GetFileResponse, error) 
 		return ff.findJavaFile(ctx, mapping)
 	case config.LanguagePython:
 		return ff.findPythonFile(ctx, mapping)
-	// todo: add more languages support
+	case config.LanguageJavaScript:
+		return ff.findJavaScriptFile(ctx, mapping)
 	default:
 		return ff.findFallback(ctx)
 	}
 }
 
 func (ff FileFinder) findFallback(ctx context.Context) (*vcsv1.GetFileResponse, error) {
-	switch filepath.Ext(ff.file.Path) {
-	case ExtGo:
+	ext := filepath.Ext(ff.file.Path)
+	switch {
+	case ext == ExtGo:
 		return ff.findGoFile(ctx)
-	case ExtPython:
+	case ext == ExtPython:
 		return ff.findPythonFile(ctx)
-	case ExtAsm: // Note: When adding wider language support this needs to be revisited
+	case ext == ExtAsm: // Note: When adding wider language support this needs to be revisited
 		return ff.findGoFile(ctx)
-	// todo: add more languages support
+	case isJavaScriptExtension(ext):
+		return ff.findJavaScriptFile(ctx)
 	default:
 		// by default we return the file content at the given path without any processing.
 		return ff.fetchRepoFile(ctx, ff.file.Path, ff.ref)

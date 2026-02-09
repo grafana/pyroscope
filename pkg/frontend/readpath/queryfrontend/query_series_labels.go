@@ -6,11 +6,11 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
-
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/prometheus/common/model"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/featureflags"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -47,7 +47,7 @@ func (q *QueryFrontend) filterLabelNames(
 
 	filtered := make([]string, 0, len(labelNames))
 	for _, name := range toFilter {
-		if _, _, ok := validation.SanitizeLegacyLabelName(name); !ok {
+		if !model.LegacyValidation.IsValidLabelName(name) {
 			level.Debug(q.logger).Log("msg", "filtering out label", "label_name", name)
 			continue
 		}

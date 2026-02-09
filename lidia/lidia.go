@@ -200,7 +200,10 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 		}
 	}
 	if rc.opt.parseGoPclntab {
-		functions, _ := gosym.GoFunctions(elfFile)
+		functions, err := gosym.GoFunctions(elfFile)
+		if err != nil {
+			return err
+		}
 		for i := range functions {
 			f := &functions[i]
 			rc.VisitRange(&Range{

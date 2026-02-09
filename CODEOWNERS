@@ -11,18 +11,18 @@
 /docs/variables.mk                                              @jdbaldry
 
 # eBPF collector
-/ebpf/ @korniltsev
+/ebpf/ @korniltsev-grafanista
 
 # LIDIA debug symbols format
-/lidia/ @korniltsev @marcsanmi
+/lidia/ @korniltsev-grafanista @marcsanmi
 
 # area/read-path
 /pkg/querybackend/ @marcsanmi @aleks-p
-/pkg/symbolizer/ @marcsanmi @korniltsev
+/pkg/symbolizer/ @marcsanmi @korniltsev-grafanista
 /pkg/storegateway/ @aleks-p
-/pkg/scheduler/ @korniltsev @bryanhuhta
-/pkg/phlaredb/symdb/ @simonswine @korniltsev
-/pkg/phlaredb/tsdb/ @simonswine @korniltsev
+/pkg/scheduler/ @korniltsev-grafanista @bryanhuhta
+/pkg/phlaredb/symdb/ @simonswine @korniltsev-grafanista
+/pkg/phlaredb/tsdb/ @simonswine @korniltsev-grafanista
 /pkg/querier/ @marcsanmi
 /pkg/frontend/ @marcsanmi @bryanhuhta
 /pkg/block/ @simonswine @marcsanmi @alsoba13
@@ -30,16 +30,16 @@
 
 # area/write-path
 /pkg/distributor/ @aleks-p @alsoba13
-/pkg/segmentwriter/ @alsoba13 @korniltsev
-/pkg/og/convert/ @korniltsev @bryanhuhta
-/pkg/pprof/ @korniltsev @bryanhuhta
-/pkg/model/relabel/ @korniltsev @bryanhuhta
-/pkg/model/ @korniltsev @bryanhuhta
-/pkg/model/pprofsplit/ @korniltsev @bryanhuhta
+/pkg/segmentwriter/ @alsoba13 @korniltsev-grafanista
+/pkg/og/convert/ @korniltsev-grafanista @bryanhuhta
+/pkg/pprof/ @korniltsev-grafanista @bryanhuhta
+/pkg/model/relabel/ @korniltsev-grafanista @bryanhuhta
+/pkg/model/ @korniltsev-grafanista @bryanhuhta
+/pkg/model/pprofsplit/ @korniltsev-grafanista @bryanhuhta
 /pkg/validation/ @marcsanmi @aleks-p
-/pkg/ingester/otlp @marcsanmi @korniltsev
-/pkg/ingester/ @alsoba13 @korniltsev
-/pkg/phlaredb/shipper/ @korniltsev @bryanhuhta
+/pkg/ingester/otlp @marcsanmi @korniltsev-grafanista
+/pkg/ingester/ @alsoba13 @korniltsev-grafanista
+/pkg/phlaredb/shipper/ @korniltsev-grafanista @bryanhuhta
 
 # area/compactor
 /pkg/compactor/ @alsoba13

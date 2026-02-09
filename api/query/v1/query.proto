@@ -42,6 +42,7 @@ message InvokeOptions {
   // overrides, therefore all the necessary options should
   // be listed in the request explicitly.
   bool sanitize_on_merge = 1;
+  bool collect_diagnostics = 2;
 }
 
 message InvokeRequest {
@@ -86,6 +87,7 @@ message Query {
   TreeQuery tree = 6;
   PprofQuery pprof = 7;
   HeatmapQuery heatmap = 8;
+  TimeSeriesQuery time_series_compact = 9;
   // function_details
   // call_graph
   // top_table
@@ -101,6 +103,7 @@ enum QueryType {
   QUERY_TREE = 5;
   QUERY_PPROF = 6;
   QUERY_HEATMAP = 7;
+  QUERY_TIME_SERIES_COMPACT = 8;
 }
 
 message InvokeResponse {
@@ -111,6 +114,36 @@ message InvokeResponse {
 // Diagnostic messages, events, statistics, analytics, etc.
 message Diagnostics {
   QueryPlan query_plan = 1;
+  ExecutionNode execution_node = 2;
+}
+
+// ExecutionNode captures how a query plan node was actually executed.
+message ExecutionNode {
+  QueryNode.Type type = 1;
+  string executor = 2;
+  int64 start_time_ns = 3;
+  int64 end_time_ns = 4;
+  repeated ExecutionNode children = 5;
+  ExecutionStats stats = 6;
+  string error = 7;
+}
+
+// ExecutionStats captures statistics for READ node execution.
+message ExecutionStats {
+  int64 blocks_read = 1;
+  int64 datasets_processed = 2;
+  repeated BlockExecution block_executions = 3;
+}
+
+// BlockExecution captures execution details for a single block.
+message BlockExecution {
+  string block_id = 1;
+  int64 start_time_ns = 2;
+  int64 end_time_ns = 3;
+  int64 datasets_processed = 4;
+  uint64 size = 5;
+  uint32 shard = 6;
+  uint32 compaction_level = 7;
 }
 
 message Report {
@@ -124,6 +157,7 @@ message Report {
   TreeReport tree = 6;
   PprofReport pprof = 7;
   HeatmapReport heatmap = 8;
+  TimeSeriesCompactReport time_series_compact = 9;
 }
 
 enum ReportType {
@@ -135,6 +169,7 @@ enum ReportType {
   REPORT_TREE = 5;
   REPORT_PPROF = 6;
   REPORT_HEATMAP = 7;
+  REPORT_TIME_SERIES_COMPACT = 8;
 }
 
 message LabelNamesQuery {}
@@ -227,5 +262,38 @@ message HeatmapSeries {
 message HeatmapReport {
   HeatmapQuery query = 1;
   repeated HeatmapSeries heatmap_series = 2;
+  AttributeTable attribute_table = 3;
+}
+
+message Exemplar {
+  // Milliseconds unix timestamp
+  int64 timestamp = 1;
+  string profile_id = 2;
+  string span_id = 3;
+  int64 value = 4;
+  repeated int64 attribute_refs = 5;
+}
+
+message Point {
+  double value = 1;
+  // Milliseconds unix timestamp
+  int64 timestamp = 2;
+  // Annotations as references into AttributeTable
+  repeated int64 annotation_refs = 5;
+  // Exemplars are samples of individual profiles that contributed to this aggregated point
+  repeated Exemplar exemplars = 4;
+}
+
+// Series represents a time series with optimized label storage using attribute references.
+message Series {
+  // References to label key-value pairs in the AttributeTable that identify this series.
+  repeated int64 attribute_refs = 1;
+  // Time series data points. Each point may contain exemplars with their own attribute_refs.
+  repeated Point points = 2;
+}
+
+message TimeSeriesCompactReport {
+  TimeSeriesQuery query = 1;
+  repeated Series time_series = 2;
   AttributeTable attribute_table = 3;
 }

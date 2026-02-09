@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 1.18.0](https://img.shields.io/badge/Version-1.18.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.18.0](https://img.shields.io/badge/AppVersion-1.18.0-informational?style=flat-square)
+![Version: 1.18.1](https://img.shields.io/badge/Version-1.18.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.18.0](https://img.shields.io/badge/AppVersion-1.18.0-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -48,6 +48,7 @@
 | pyroscope.disableSelfProfile | bool | `true` | Enable or disable Self profile push, useful to test |
 | pyroscope.dnsPolicy | string | `"ClusterFirst"` |  |
 | pyroscope.extraArgs."log.level" | string | `"debug"` |  |
+| pyroscope.extraContainers | list | `[]` |  |
 | pyroscope.extraCustomEnvVars | object | `{}` |  |
 | pyroscope.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |
 | pyroscope.extraEnvVars | object | `{}` |  |
@@ -72,6 +73,7 @@
 | pyroscope.persistence.annotations | object | `{}` |  |
 | pyroscope.persistence.enabled | bool | `false` |  |
 | pyroscope.persistence.metastore.subPath | string | `".metastore"` |  |
+| pyroscope.persistence.shared.enabled | bool | `true` |  |
 | pyroscope.persistence.shared.subPath | string | `".shared"` |  |
 | pyroscope.persistence.size | string | `"10Gi"` |  |
 | pyroscope.podAnnotations."profiles.grafana.com/cpu.port_name" | string | `"http2"` |  |
