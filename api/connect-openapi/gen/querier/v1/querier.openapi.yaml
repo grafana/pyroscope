@@ -1682,11 +1682,8 @@ components:
             $ref: '#/components/schemas/types.v1.LabelPair'
           title: labels
           description: |-
-            Series labels that are NOT included in the group_by query parameter.
-             These labels complete the full series identity of this exemplar's profile.
-             For example, if group_by=["service"], this would contain labels like "pod",
-             "namespace", "region" that were omitted from grouping. This allows identifying
-             which specific series instance this profile sample came from.
+            Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
+             label overlaps with the series label, it is not included here.
       title: Exemplar
       additionalProperties: false
       description: |-

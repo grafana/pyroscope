@@ -473,6 +473,38 @@ components:
       title: ExecutionStats
       additionalProperties: false
       description: ExecutionStats captures statistics for READ node execution.
+    query.v1.Exemplar:
+      type: object
+      properties:
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: Milliseconds unix timestamp
+        profileId:
+          type: string
+          title: profile_id
+        spanId:
+          type: string
+          title: span_id
+        value:
+          type:
+            - integer
+            - string
+          title: value
+          format: int64
+        attributeRefs:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: attribute_refs
+      title: Exemplar
+      additionalProperties: false
     query.v1.HeatmapPoint:
       type: object
       properties:
@@ -678,6 +710,37 @@ components:
           title: label_values
       title: LabelValuesReport
       additionalProperties: false
+    query.v1.Point:
+      type: object
+      properties:
+        value:
+          type: number
+          title: value
+          format: double
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: Milliseconds unix timestamp
+        annotationRefs:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: annotation_refs
+          description: Annotations as references into AttributeTable
+        exemplars:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Exemplar'
+          title: exemplars
+          description: Exemplars are samples of individual profiles that contributed to this aggregated point
+      title: Point
+      additionalProperties: false
     query.v1.PprofQuery:
       type: object
       properties:
@@ -740,12 +803,15 @@ components:
           $ref: '#/components/schemas/query.v1.PprofQuery'
         heatmap:
           title: heatmap
+          $ref: '#/components/schemas/query.v1.HeatmapQuery'
+        timeSeriesCompact:
+          title: time_series_compact
           description: |-
             function_details
              call_graph
              top_table
              ...
-          $ref: '#/components/schemas/query.v1.HeatmapQuery'
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -834,6 +900,7 @@ components:
         - QUERY_TREE
         - QUERY_PPROF
         - QUERY_HEATMAP
+        - QUERY_TIME_SERIES_COMPACT
     query.v1.Report:
       type: object
       properties:
@@ -864,6 +931,9 @@ components:
         heatmap:
           title: heatmap
           $ref: '#/components/schemas/query.v1.HeatmapReport'
+        timeSeriesCompact:
+          title: time_series_compact
+          $ref: '#/components/schemas/query.v1.TimeSeriesCompactReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -878,6 +948,28 @@ components:
         - REPORT_TREE
         - REPORT_PPROF
         - REPORT_HEATMAP
+        - REPORT_TIME_SERIES_COMPACT
+    query.v1.Series:
+      type: object
+      properties:
+        attributeRefs:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: attribute_refs
+          description: References to label key-value pairs in the AttributeTable that identify this series.
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Point'
+          title: points
+          description: Time series data points. Each point may contain exemplars with their own attribute_refs.
+      title: Series
+      additionalProperties: false
+      description: Series represents a time series with optimized label storage using attribute references.
     query.v1.SeriesLabelsQuery:
       type: object
       properties:
@@ -900,6 +992,22 @@ components:
             $ref: '#/components/schemas/types.v1.Labels'
           title: series_labels
       title: SeriesLabelsReport
+      additionalProperties: false
+    query.v1.TimeSeriesCompactReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+        timeSeries:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Series'
+          title: time_series
+        attributeTable:
+          title: attribute_table
+          $ref: '#/components/schemas/query.v1.AttributeTable'
+      title: TimeSeriesCompactReport
       additionalProperties: false
     query.v1.TimeSeriesQuery:
       type: object
@@ -1013,11 +1121,8 @@ components:
             $ref: '#/components/schemas/types.v1.LabelPair'
           title: labels
           description: |-
-            Series labels that are NOT included in the group_by query parameter.
-             These labels complete the full series identity of this exemplar's profile.
-             For example, if group_by=["service"], this would contain labels like "pod",
-             "namespace", "region" that were omitted from grouping. This allows identifying
-             which specific series instance this profile sample came from.
+            Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
+             label overlaps with the series label, it is not included here.
       title: Exemplar
       additionalProperties: false
       description: |-

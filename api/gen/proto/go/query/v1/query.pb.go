@@ -28,14 +28,15 @@ const (
 type QueryType int32
 
 const (
-	QueryType_QUERY_UNSPECIFIED   QueryType = 0
-	QueryType_QUERY_LABEL_NAMES   QueryType = 1
-	QueryType_QUERY_LABEL_VALUES  QueryType = 2
-	QueryType_QUERY_SERIES_LABELS QueryType = 3
-	QueryType_QUERY_TIME_SERIES   QueryType = 4
-	QueryType_QUERY_TREE          QueryType = 5
-	QueryType_QUERY_PPROF         QueryType = 6
-	QueryType_QUERY_HEATMAP       QueryType = 7
+	QueryType_QUERY_UNSPECIFIED         QueryType = 0
+	QueryType_QUERY_LABEL_NAMES         QueryType = 1
+	QueryType_QUERY_LABEL_VALUES        QueryType = 2
+	QueryType_QUERY_SERIES_LABELS       QueryType = 3
+	QueryType_QUERY_TIME_SERIES         QueryType = 4
+	QueryType_QUERY_TREE                QueryType = 5
+	QueryType_QUERY_PPROF               QueryType = 6
+	QueryType_QUERY_HEATMAP             QueryType = 7
+	QueryType_QUERY_TIME_SERIES_COMPACT QueryType = 8
 )
 
 // Enum value maps for QueryType.
@@ -49,16 +50,18 @@ var (
 		5: "QUERY_TREE",
 		6: "QUERY_PPROF",
 		7: "QUERY_HEATMAP",
+		8: "QUERY_TIME_SERIES_COMPACT",
 	}
 	QueryType_value = map[string]int32{
-		"QUERY_UNSPECIFIED":   0,
-		"QUERY_LABEL_NAMES":   1,
-		"QUERY_LABEL_VALUES":  2,
-		"QUERY_SERIES_LABELS": 3,
-		"QUERY_TIME_SERIES":   4,
-		"QUERY_TREE":          5,
-		"QUERY_PPROF":         6,
-		"QUERY_HEATMAP":       7,
+		"QUERY_UNSPECIFIED":         0,
+		"QUERY_LABEL_NAMES":         1,
+		"QUERY_LABEL_VALUES":        2,
+		"QUERY_SERIES_LABELS":       3,
+		"QUERY_TIME_SERIES":         4,
+		"QUERY_TREE":                5,
+		"QUERY_PPROF":               6,
+		"QUERY_HEATMAP":             7,
+		"QUERY_TIME_SERIES_COMPACT": 8,
 	}
 )
 
@@ -92,14 +95,15 @@ func (QueryType) EnumDescriptor() ([]byte, []int) {
 type ReportType int32
 
 const (
-	ReportType_REPORT_UNSPECIFIED   ReportType = 0
-	ReportType_REPORT_LABEL_NAMES   ReportType = 1
-	ReportType_REPORT_LABEL_VALUES  ReportType = 2
-	ReportType_REPORT_SERIES_LABELS ReportType = 3
-	ReportType_REPORT_TIME_SERIES   ReportType = 4
-	ReportType_REPORT_TREE          ReportType = 5
-	ReportType_REPORT_PPROF         ReportType = 6
-	ReportType_REPORT_HEATMAP       ReportType = 7
+	ReportType_REPORT_UNSPECIFIED         ReportType = 0
+	ReportType_REPORT_LABEL_NAMES         ReportType = 1
+	ReportType_REPORT_LABEL_VALUES        ReportType = 2
+	ReportType_REPORT_SERIES_LABELS       ReportType = 3
+	ReportType_REPORT_TIME_SERIES         ReportType = 4
+	ReportType_REPORT_TREE                ReportType = 5
+	ReportType_REPORT_PPROF               ReportType = 6
+	ReportType_REPORT_HEATMAP             ReportType = 7
+	ReportType_REPORT_TIME_SERIES_COMPACT ReportType = 8
 )
 
 // Enum value maps for ReportType.
@@ -113,16 +117,18 @@ var (
 		5: "REPORT_TREE",
 		6: "REPORT_PPROF",
 		7: "REPORT_HEATMAP",
+		8: "REPORT_TIME_SERIES_COMPACT",
 	}
 	ReportType_value = map[string]int32{
-		"REPORT_UNSPECIFIED":   0,
-		"REPORT_LABEL_NAMES":   1,
-		"REPORT_LABEL_VALUES":  2,
-		"REPORT_SERIES_LABELS": 3,
-		"REPORT_TIME_SERIES":   4,
-		"REPORT_TREE":          5,
-		"REPORT_PPROF":         6,
-		"REPORT_HEATMAP":       7,
+		"REPORT_UNSPECIFIED":         0,
+		"REPORT_LABEL_NAMES":         1,
+		"REPORT_LABEL_VALUES":        2,
+		"REPORT_SERIES_LABELS":       3,
+		"REPORT_TIME_SERIES":         4,
+		"REPORT_TREE":                5,
+		"REPORT_PPROF":               6,
+		"REPORT_HEATMAP":             7,
+		"REPORT_TIME_SERIES_COMPACT": 8,
 	}
 )
 
@@ -575,15 +581,16 @@ type Query struct {
 	QueryType QueryType              `protobuf:"varint,1,opt,name=query_type,json=queryType,proto3,enum=query.v1.QueryType" json:"query_type,omitempty"`
 	// Exactly one of the following fields should be set,
 	// depending on the query type.
-	LabelNames    *LabelNamesQuery   `protobuf:"bytes,2,opt,name=label_names,json=labelNames,proto3" json:"label_names,omitempty"`
-	LabelValues   *LabelValuesQuery  `protobuf:"bytes,3,opt,name=label_values,json=labelValues,proto3" json:"label_values,omitempty"`
-	SeriesLabels  *SeriesLabelsQuery `protobuf:"bytes,4,opt,name=series_labels,json=seriesLabels,proto3" json:"series_labels,omitempty"`
-	TimeSeries    *TimeSeriesQuery   `protobuf:"bytes,5,opt,name=time_series,json=timeSeries,proto3" json:"time_series,omitempty"`
-	Tree          *TreeQuery         `protobuf:"bytes,6,opt,name=tree,proto3" json:"tree,omitempty"`
-	Pprof         *PprofQuery        `protobuf:"bytes,7,opt,name=pprof,proto3" json:"pprof,omitempty"`
-	Heatmap       *HeatmapQuery      `protobuf:"bytes,8,opt,name=heatmap,proto3" json:"heatmap,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	LabelNames        *LabelNamesQuery   `protobuf:"bytes,2,opt,name=label_names,json=labelNames,proto3" json:"label_names,omitempty"`
+	LabelValues       *LabelValuesQuery  `protobuf:"bytes,3,opt,name=label_values,json=labelValues,proto3" json:"label_values,omitempty"`
+	SeriesLabels      *SeriesLabelsQuery `protobuf:"bytes,4,opt,name=series_labels,json=seriesLabels,proto3" json:"series_labels,omitempty"`
+	TimeSeries        *TimeSeriesQuery   `protobuf:"bytes,5,opt,name=time_series,json=timeSeries,proto3" json:"time_series,omitempty"`
+	Tree              *TreeQuery         `protobuf:"bytes,6,opt,name=tree,proto3" json:"tree,omitempty"`
+	Pprof             *PprofQuery        `protobuf:"bytes,7,opt,name=pprof,proto3" json:"pprof,omitempty"`
+	Heatmap           *HeatmapQuery      `protobuf:"bytes,8,opt,name=heatmap,proto3" json:"heatmap,omitempty"`
+	TimeSeriesCompact *TimeSeriesQuery   `protobuf:"bytes,9,opt,name=time_series_compact,json=timeSeriesCompact,proto3" json:"time_series_compact,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Query) Reset() {
@@ -668,6 +675,13 @@ func (x *Query) GetPprof() *PprofQuery {
 func (x *Query) GetHeatmap() *HeatmapQuery {
 	if x != nil {
 		return x.Heatmap
+	}
+	return nil
+}
+
+func (x *Query) GetTimeSeriesCompact() *TimeSeriesQuery {
+	if x != nil {
+		return x.TimeSeriesCompact
 	}
 	return nil
 }
@@ -1029,15 +1043,16 @@ type Report struct {
 	ReportType ReportType             `protobuf:"varint,1,opt,name=report_type,json=reportType,proto3,enum=query.v1.ReportType" json:"report_type,omitempty"`
 	// Exactly one of the following fields should be set,
 	// depending on the report type.
-	LabelNames    *LabelNamesReport   `protobuf:"bytes,2,opt,name=label_names,json=labelNames,proto3" json:"label_names,omitempty"`
-	LabelValues   *LabelValuesReport  `protobuf:"bytes,3,opt,name=label_values,json=labelValues,proto3" json:"label_values,omitempty"`
-	SeriesLabels  *SeriesLabelsReport `protobuf:"bytes,4,opt,name=series_labels,json=seriesLabels,proto3" json:"series_labels,omitempty"`
-	TimeSeries    *TimeSeriesReport   `protobuf:"bytes,5,opt,name=time_series,json=timeSeries,proto3" json:"time_series,omitempty"`
-	Tree          *TreeReport         `protobuf:"bytes,6,opt,name=tree,proto3" json:"tree,omitempty"`
-	Pprof         *PprofReport        `protobuf:"bytes,7,opt,name=pprof,proto3" json:"pprof,omitempty"`
-	Heatmap       *HeatmapReport      `protobuf:"bytes,8,opt,name=heatmap,proto3" json:"heatmap,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	LabelNames        *LabelNamesReport        `protobuf:"bytes,2,opt,name=label_names,json=labelNames,proto3" json:"label_names,omitempty"`
+	LabelValues       *LabelValuesReport       `protobuf:"bytes,3,opt,name=label_values,json=labelValues,proto3" json:"label_values,omitempty"`
+	SeriesLabels      *SeriesLabelsReport      `protobuf:"bytes,4,opt,name=series_labels,json=seriesLabels,proto3" json:"series_labels,omitempty"`
+	TimeSeries        *TimeSeriesReport        `protobuf:"bytes,5,opt,name=time_series,json=timeSeries,proto3" json:"time_series,omitempty"`
+	Tree              *TreeReport              `protobuf:"bytes,6,opt,name=tree,proto3" json:"tree,omitempty"`
+	Pprof             *PprofReport             `protobuf:"bytes,7,opt,name=pprof,proto3" json:"pprof,omitempty"`
+	Heatmap           *HeatmapReport           `protobuf:"bytes,8,opt,name=heatmap,proto3" json:"heatmap,omitempty"`
+	TimeSeriesCompact *TimeSeriesCompactReport `protobuf:"bytes,9,opt,name=time_series_compact,json=timeSeriesCompact,proto3" json:"time_series_compact,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Report) Reset() {
@@ -1122,6 +1137,13 @@ func (x *Report) GetPprof() *PprofReport {
 func (x *Report) GetHeatmap() *HeatmapReport {
 	if x != nil {
 		return x.Heatmap
+	}
+	return nil
+}
+
+func (x *Report) GetTimeSeriesCompact() *TimeSeriesCompactReport {
+	if x != nil {
+		return x.TimeSeriesCompact
 	}
 	return nil
 }
@@ -2074,6 +2096,269 @@ func (x *HeatmapReport) GetAttributeTable() *AttributeTable {
 	return nil
 }
 
+type Exemplar struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Milliseconds unix timestamp
+	Timestamp     int64   `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	ProfileId     string  `protobuf:"bytes,2,opt,name=profile_id,json=profileId,proto3" json:"profile_id,omitempty"`
+	SpanId        string  `protobuf:"bytes,3,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
+	Value         int64   `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
+	AttributeRefs []int64 `protobuf:"varint,5,rep,packed,name=attribute_refs,json=attributeRefs,proto3" json:"attribute_refs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Exemplar) Reset() {
+	*x = Exemplar{}
+	mi := &file_query_v1_query_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Exemplar) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Exemplar) ProtoMessage() {}
+
+func (x *Exemplar) ProtoReflect() protoreflect.Message {
+	mi := &file_query_v1_query_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Exemplar.ProtoReflect.Descriptor instead.
+func (*Exemplar) Descriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *Exemplar) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *Exemplar) GetProfileId() string {
+	if x != nil {
+		return x.ProfileId
+	}
+	return ""
+}
+
+func (x *Exemplar) GetSpanId() string {
+	if x != nil {
+		return x.SpanId
+	}
+	return ""
+}
+
+func (x *Exemplar) GetValue() int64 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
+func (x *Exemplar) GetAttributeRefs() []int64 {
+	if x != nil {
+		return x.AttributeRefs
+	}
+	return nil
+}
+
+type Point struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Value float64                `protobuf:"fixed64,1,opt,name=value,proto3" json:"value,omitempty"`
+	// Milliseconds unix timestamp
+	Timestamp int64 `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	// Annotations as references into AttributeTable
+	AnnotationRefs []int64 `protobuf:"varint,5,rep,packed,name=annotation_refs,json=annotationRefs,proto3" json:"annotation_refs,omitempty"`
+	// Exemplars are samples of individual profiles that contributed to this aggregated point
+	Exemplars     []*Exemplar `protobuf:"bytes,4,rep,name=exemplars,proto3" json:"exemplars,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Point) Reset() {
+	*x = Point{}
+	mi := &file_query_v1_query_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Point) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Point) ProtoMessage() {}
+
+func (x *Point) ProtoReflect() protoreflect.Message {
+	mi := &file_query_v1_query_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Point.ProtoReflect.Descriptor instead.
+func (*Point) Descriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *Point) GetValue() float64 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
+func (x *Point) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *Point) GetAnnotationRefs() []int64 {
+	if x != nil {
+		return x.AnnotationRefs
+	}
+	return nil
+}
+
+func (x *Point) GetExemplars() []*Exemplar {
+	if x != nil {
+		return x.Exemplars
+	}
+	return nil
+}
+
+// Series represents a time series with optimized label storage using attribute references.
+type Series struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// References to label key-value pairs in the AttributeTable that identify this series.
+	AttributeRefs []int64 `protobuf:"varint,1,rep,packed,name=attribute_refs,json=attributeRefs,proto3" json:"attribute_refs,omitempty"`
+	// Time series data points. Each point may contain exemplars with their own attribute_refs.
+	Points        []*Point `protobuf:"bytes,2,rep,name=points,proto3" json:"points,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Series) Reset() {
+	*x = Series{}
+	mi := &file_query_v1_query_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Series) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Series) ProtoMessage() {}
+
+func (x *Series) ProtoReflect() protoreflect.Message {
+	mi := &file_query_v1_query_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Series.ProtoReflect.Descriptor instead.
+func (*Series) Descriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *Series) GetAttributeRefs() []int64 {
+	if x != nil {
+		return x.AttributeRefs
+	}
+	return nil
+}
+
+func (x *Series) GetPoints() []*Point {
+	if x != nil {
+		return x.Points
+	}
+	return nil
+}
+
+type TimeSeriesCompactReport struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Query          *TimeSeriesQuery       `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	TimeSeries     []*Series              `protobuf:"bytes,2,rep,name=time_series,json=timeSeries,proto3" json:"time_series,omitempty"`
+	AttributeTable *AttributeTable        `protobuf:"bytes,3,opt,name=attribute_table,json=attributeTable,proto3" json:"attribute_table,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *TimeSeriesCompactReport) Reset() {
+	*x = TimeSeriesCompactReport{}
+	mi := &file_query_v1_query_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TimeSeriesCompactReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TimeSeriesCompactReport) ProtoMessage() {}
+
+func (x *TimeSeriesCompactReport) ProtoReflect() protoreflect.Message {
+	mi := &file_query_v1_query_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TimeSeriesCompactReport.ProtoReflect.Descriptor instead.
+func (*TimeSeriesCompactReport) Descriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *TimeSeriesCompactReport) GetQuery() *TimeSeriesQuery {
+	if x != nil {
+		return x.Query
+	}
+	return nil
+}
+
+func (x *TimeSeriesCompactReport) GetTimeSeries() []*Series {
+	if x != nil {
+		return x.TimeSeries
+	}
+	return nil
+}
+
+func (x *TimeSeriesCompactReport) GetAttributeTable() *AttributeTable {
+	if x != nil {
+		return x.AttributeTable
+	}
+	return nil
+}
+
 var File_query_v1_query_proto protoreflect.FileDescriptor
 
 const file_query_v1_query_proto_rawDesc = "" +
@@ -2109,7 +2394,7 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x04Type\x12\v\n" +
 	"\aUNKNOWN\x10\x00\x12\t\n" +
 	"\x05MERGE\x10\x01\x12\b\n" +
-	"\x04READ\x10\x02\"\xbb\x03\n" +
+	"\x04READ\x10\x02\"\x86\x04\n" +
 	"\x05Query\x122\n" +
 	"\n" +
 	"query_type\x18\x01 \x01(\x0e2\x13.query.v1.QueryTypeR\tqueryType\x12:\n" +
@@ -2121,7 +2406,8 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"timeSeries\x12'\n" +
 	"\x04tree\x18\x06 \x01(\v2\x13.query.v1.TreeQueryR\x04tree\x12*\n" +
 	"\x05pprof\x18\a \x01(\v2\x14.query.v1.PprofQueryR\x05pprof\x120\n" +
-	"\aheatmap\x18\b \x01(\v2\x16.query.v1.HeatmapQueryR\aheatmap\"u\n" +
+	"\aheatmap\x18\b \x01(\v2\x16.query.v1.HeatmapQueryR\aheatmap\x12I\n" +
+	"\x13time_series_compact\x18\t \x01(\v2\x19.query.v1.TimeSeriesQueryR\x11timeSeriesCompact\"u\n" +
 	"\x0eInvokeResponse\x12*\n" +
 	"\areports\x18\x01 \x03(\v2\x10.query.v1.ReportR\areports\x127\n" +
 	"\vdiagnostics\x18\x02 \x01(\v2\x15.query.v1.DiagnosticsR\vdiagnostics\"\x81\x01\n" +
@@ -2149,7 +2435,7 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x12datasets_processed\x18\x04 \x01(\x03R\x11datasetsProcessed\x12\x12\n" +
 	"\x04size\x18\x05 \x01(\x04R\x04size\x12\x14\n" +
 	"\x05shard\x18\x06 \x01(\rR\x05shard\x12)\n" +
-	"\x10compaction_level\x18\a \x01(\rR\x0fcompactionLevel\"\xc6\x03\n" +
+	"\x10compaction_level\x18\a \x01(\rR\x0fcompactionLevel\"\x99\x04\n" +
 	"\x06Report\x125\n" +
 	"\vreport_type\x18\x01 \x01(\x0e2\x14.query.v1.ReportTypeR\n" +
 	"reportType\x12;\n" +
@@ -2161,7 +2447,8 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"timeSeries\x12(\n" +
 	"\x04tree\x18\x06 \x01(\v2\x14.query.v1.TreeReportR\x04tree\x12+\n" +
 	"\x05pprof\x18\a \x01(\v2\x15.query.v1.PprofReportR\x05pprof\x121\n" +
-	"\aheatmap\x18\b \x01(\v2\x17.query.v1.HeatmapReportR\aheatmap\"\x11\n" +
+	"\aheatmap\x18\b \x01(\v2\x17.query.v1.HeatmapReportR\aheatmap\x12Q\n" +
+	"\x13time_series_compact\x18\t \x01(\v2!.query.v1.TimeSeriesCompactReportR\x11timeSeriesCompact\"\x11\n" +
 	"\x0fLabelNamesQuery\"d\n" +
 	"\x10LabelNamesReport\x12/\n" +
 	"\x05query\x18\x01 \x01(\v2\x19.query.v1.LabelNamesQueryR\x05query\x12\x1f\n" +
@@ -2230,7 +2517,27 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\rHeatmapReport\x12,\n" +
 	"\x05query\x18\x01 \x01(\v2\x16.query.v1.HeatmapQueryR\x05query\x12>\n" +
 	"\x0eheatmap_series\x18\x02 \x03(\v2\x17.query.v1.HeatmapSeriesR\rheatmapSeries\x12A\n" +
-	"\x0fattribute_table\x18\x03 \x01(\v2\x18.query.v1.AttributeTableR\x0eattributeTable*\xb5\x01\n" +
+	"\x0fattribute_table\x18\x03 \x01(\v2\x18.query.v1.AttributeTableR\x0eattributeTable\"\x9d\x01\n" +
+	"\bExemplar\x12\x1c\n" +
+	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12\x1d\n" +
+	"\n" +
+	"profile_id\x18\x02 \x01(\tR\tprofileId\x12\x17\n" +
+	"\aspan_id\x18\x03 \x01(\tR\x06spanId\x12\x14\n" +
+	"\x05value\x18\x04 \x01(\x03R\x05value\x12%\n" +
+	"\x0eattribute_refs\x18\x05 \x03(\x03R\rattributeRefs\"\x96\x01\n" +
+	"\x05Point\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\x01R\x05value\x12\x1c\n" +
+	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12'\n" +
+	"\x0fannotation_refs\x18\x05 \x03(\x03R\x0eannotationRefs\x120\n" +
+	"\texemplars\x18\x04 \x03(\v2\x12.query.v1.ExemplarR\texemplars\"X\n" +
+	"\x06Series\x12%\n" +
+	"\x0eattribute_refs\x18\x01 \x03(\x03R\rattributeRefs\x12'\n" +
+	"\x06points\x18\x02 \x03(\v2\x0f.query.v1.PointR\x06points\"\xc0\x01\n" +
+	"\x17TimeSeriesCompactReport\x12/\n" +
+	"\x05query\x18\x01 \x01(\v2\x19.query.v1.TimeSeriesQueryR\x05query\x121\n" +
+	"\vtime_series\x18\x02 \x03(\v2\x10.query.v1.SeriesR\n" +
+	"timeSeries\x12A\n" +
+	"\x0fattribute_table\x18\x03 \x01(\v2\x18.query.v1.AttributeTableR\x0eattributeTable*\xd4\x01\n" +
 	"\tQueryType\x12\x15\n" +
 	"\x11QUERY_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11QUERY_LABEL_NAMES\x10\x01\x12\x16\n" +
@@ -2240,7 +2547,8 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\n" +
 	"QUERY_TREE\x10\x05\x12\x0f\n" +
 	"\vQUERY_PPROF\x10\x06\x12\x11\n" +
-	"\rQUERY_HEATMAP\x10\a*\xbe\x01\n" +
+	"\rQUERY_HEATMAP\x10\a\x12\x1d\n" +
+	"\x19QUERY_TIME_SERIES_COMPACT\x10\b*\xde\x01\n" +
 	"\n" +
 	"ReportType\x12\x16\n" +
 	"\x12REPORT_UNSPECIFIED\x10\x00\x12\x16\n" +
@@ -2250,7 +2558,8 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x12REPORT_TIME_SERIES\x10\x04\x12\x0f\n" +
 	"\vREPORT_TREE\x10\x05\x12\x10\n" +
 	"\fREPORT_PPROF\x10\x06\x12\x12\n" +
-	"\x0eREPORT_HEATMAP\x10\a2R\n" +
+	"\x0eREPORT_HEATMAP\x10\a\x12\x1e\n" +
+	"\x1aREPORT_TIME_SERIES_COMPACT\x10\b2R\n" +
 	"\x14QueryFrontendService\x12:\n" +
 	"\x05Query\x12\x16.query.v1.QueryRequest\x1a\x17.query.v1.QueryResponse\"\x002T\n" +
 	"\x13QueryBackendService\x12=\n" +
@@ -2271,47 +2580,51 @@ func file_query_v1_query_proto_rawDescGZIP() []byte {
 }
 
 var file_query_v1_query_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_query_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_query_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_query_v1_query_proto_goTypes = []any{
-	(QueryType)(0),                 // 0: query.v1.QueryType
-	(ReportType)(0),                // 1: query.v1.ReportType
-	(QueryNode_Type)(0),            // 2: query.v1.QueryNode.Type
-	(*QueryRequest)(nil),           // 3: query.v1.QueryRequest
-	(*QueryResponse)(nil),          // 4: query.v1.QueryResponse
-	(*InvokeOptions)(nil),          // 5: query.v1.InvokeOptions
-	(*InvokeRequest)(nil),          // 6: query.v1.InvokeRequest
-	(*QueryPlan)(nil),              // 7: query.v1.QueryPlan
-	(*QueryNode)(nil),              // 8: query.v1.QueryNode
-	(*Query)(nil),                  // 9: query.v1.Query
-	(*InvokeResponse)(nil),         // 10: query.v1.InvokeResponse
-	(*Diagnostics)(nil),            // 11: query.v1.Diagnostics
-	(*ExecutionNode)(nil),          // 12: query.v1.ExecutionNode
-	(*ExecutionStats)(nil),         // 13: query.v1.ExecutionStats
-	(*BlockExecution)(nil),         // 14: query.v1.BlockExecution
-	(*Report)(nil),                 // 15: query.v1.Report
-	(*LabelNamesQuery)(nil),        // 16: query.v1.LabelNamesQuery
-	(*LabelNamesReport)(nil),       // 17: query.v1.LabelNamesReport
-	(*LabelValuesQuery)(nil),       // 18: query.v1.LabelValuesQuery
-	(*LabelValuesReport)(nil),      // 19: query.v1.LabelValuesReport
-	(*SeriesLabelsQuery)(nil),      // 20: query.v1.SeriesLabelsQuery
-	(*SeriesLabelsReport)(nil),     // 21: query.v1.SeriesLabelsReport
-	(*TimeSeriesQuery)(nil),        // 22: query.v1.TimeSeriesQuery
-	(*TimeSeriesReport)(nil),       // 23: query.v1.TimeSeriesReport
-	(*TreeQuery)(nil),              // 24: query.v1.TreeQuery
-	(*TreeReport)(nil),             // 25: query.v1.TreeReport
-	(*PprofQuery)(nil),             // 26: query.v1.PprofQuery
-	(*PprofReport)(nil),            // 27: query.v1.PprofReport
-	(*HeatmapQuery)(nil),           // 28: query.v1.HeatmapQuery
-	(*AttributeTable)(nil),         // 29: query.v1.AttributeTable
-	(*HeatmapPoint)(nil),           // 30: query.v1.HeatmapPoint
-	(*HeatmapSeries)(nil),          // 31: query.v1.HeatmapSeries
-	(*HeatmapReport)(nil),          // 32: query.v1.HeatmapReport
-	(*v1.BlockMeta)(nil),           // 33: metastore.v1.BlockMeta
-	(*v11.Labels)(nil),             // 34: types.v1.Labels
-	(v11.ExemplarType)(0),          // 35: types.v1.ExemplarType
-	(*v11.Series)(nil),             // 36: types.v1.Series
-	(*v11.StackTraceSelector)(nil), // 37: types.v1.StackTraceSelector
-	(v12.HeatmapQueryType)(0),      // 38: querier.v1.HeatmapQueryType
+	(QueryType)(0),                  // 0: query.v1.QueryType
+	(ReportType)(0),                 // 1: query.v1.ReportType
+	(QueryNode_Type)(0),             // 2: query.v1.QueryNode.Type
+	(*QueryRequest)(nil),            // 3: query.v1.QueryRequest
+	(*QueryResponse)(nil),           // 4: query.v1.QueryResponse
+	(*InvokeOptions)(nil),           // 5: query.v1.InvokeOptions
+	(*InvokeRequest)(nil),           // 6: query.v1.InvokeRequest
+	(*QueryPlan)(nil),               // 7: query.v1.QueryPlan
+	(*QueryNode)(nil),               // 8: query.v1.QueryNode
+	(*Query)(nil),                   // 9: query.v1.Query
+	(*InvokeResponse)(nil),          // 10: query.v1.InvokeResponse
+	(*Diagnostics)(nil),             // 11: query.v1.Diagnostics
+	(*ExecutionNode)(nil),           // 12: query.v1.ExecutionNode
+	(*ExecutionStats)(nil),          // 13: query.v1.ExecutionStats
+	(*BlockExecution)(nil),          // 14: query.v1.BlockExecution
+	(*Report)(nil),                  // 15: query.v1.Report
+	(*LabelNamesQuery)(nil),         // 16: query.v1.LabelNamesQuery
+	(*LabelNamesReport)(nil),        // 17: query.v1.LabelNamesReport
+	(*LabelValuesQuery)(nil),        // 18: query.v1.LabelValuesQuery
+	(*LabelValuesReport)(nil),       // 19: query.v1.LabelValuesReport
+	(*SeriesLabelsQuery)(nil),       // 20: query.v1.SeriesLabelsQuery
+	(*SeriesLabelsReport)(nil),      // 21: query.v1.SeriesLabelsReport
+	(*TimeSeriesQuery)(nil),         // 22: query.v1.TimeSeriesQuery
+	(*TimeSeriesReport)(nil),        // 23: query.v1.TimeSeriesReport
+	(*TreeQuery)(nil),               // 24: query.v1.TreeQuery
+	(*TreeReport)(nil),              // 25: query.v1.TreeReport
+	(*PprofQuery)(nil),              // 26: query.v1.PprofQuery
+	(*PprofReport)(nil),             // 27: query.v1.PprofReport
+	(*HeatmapQuery)(nil),            // 28: query.v1.HeatmapQuery
+	(*AttributeTable)(nil),          // 29: query.v1.AttributeTable
+	(*HeatmapPoint)(nil),            // 30: query.v1.HeatmapPoint
+	(*HeatmapSeries)(nil),           // 31: query.v1.HeatmapSeries
+	(*HeatmapReport)(nil),           // 32: query.v1.HeatmapReport
+	(*Exemplar)(nil),                // 33: query.v1.Exemplar
+	(*Point)(nil),                   // 34: query.v1.Point
+	(*Series)(nil),                  // 35: query.v1.Series
+	(*TimeSeriesCompactReport)(nil), // 36: query.v1.TimeSeriesCompactReport
+	(*v1.BlockMeta)(nil),            // 37: metastore.v1.BlockMeta
+	(*v11.Labels)(nil),              // 38: types.v1.Labels
+	(v11.ExemplarType)(0),           // 39: types.v1.ExemplarType
+	(*v11.Series)(nil),              // 40: types.v1.Series
+	(*v11.StackTraceSelector)(nil),  // 41: types.v1.StackTraceSelector
+	(v12.HeatmapQueryType)(0),       // 42: querier.v1.HeatmapQueryType
 }
 var file_query_v1_query_proto_depIdxs = []int32{
 	9,  // 0: query.v1.QueryRequest.query:type_name -> query.v1.Query
@@ -2322,7 +2635,7 @@ var file_query_v1_query_proto_depIdxs = []int32{
 	8,  // 5: query.v1.QueryPlan.root:type_name -> query.v1.QueryNode
 	2,  // 6: query.v1.QueryNode.type:type_name -> query.v1.QueryNode.Type
 	8,  // 7: query.v1.QueryNode.children:type_name -> query.v1.QueryNode
-	33, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
+	37, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
 	0,  // 9: query.v1.Query.query_type:type_name -> query.v1.QueryType
 	16, // 10: query.v1.Query.label_names:type_name -> query.v1.LabelNamesQuery
 	18, // 11: query.v1.Query.label_values:type_name -> query.v1.LabelValuesQuery
@@ -2331,48 +2644,55 @@ var file_query_v1_query_proto_depIdxs = []int32{
 	24, // 14: query.v1.Query.tree:type_name -> query.v1.TreeQuery
 	26, // 15: query.v1.Query.pprof:type_name -> query.v1.PprofQuery
 	28, // 16: query.v1.Query.heatmap:type_name -> query.v1.HeatmapQuery
-	15, // 17: query.v1.InvokeResponse.reports:type_name -> query.v1.Report
-	11, // 18: query.v1.InvokeResponse.diagnostics:type_name -> query.v1.Diagnostics
-	7,  // 19: query.v1.Diagnostics.query_plan:type_name -> query.v1.QueryPlan
-	12, // 20: query.v1.Diagnostics.execution_node:type_name -> query.v1.ExecutionNode
-	2,  // 21: query.v1.ExecutionNode.type:type_name -> query.v1.QueryNode.Type
-	12, // 22: query.v1.ExecutionNode.children:type_name -> query.v1.ExecutionNode
-	13, // 23: query.v1.ExecutionNode.stats:type_name -> query.v1.ExecutionStats
-	14, // 24: query.v1.ExecutionStats.block_executions:type_name -> query.v1.BlockExecution
-	1,  // 25: query.v1.Report.report_type:type_name -> query.v1.ReportType
-	17, // 26: query.v1.Report.label_names:type_name -> query.v1.LabelNamesReport
-	19, // 27: query.v1.Report.label_values:type_name -> query.v1.LabelValuesReport
-	21, // 28: query.v1.Report.series_labels:type_name -> query.v1.SeriesLabelsReport
-	23, // 29: query.v1.Report.time_series:type_name -> query.v1.TimeSeriesReport
-	25, // 30: query.v1.Report.tree:type_name -> query.v1.TreeReport
-	27, // 31: query.v1.Report.pprof:type_name -> query.v1.PprofReport
-	32, // 32: query.v1.Report.heatmap:type_name -> query.v1.HeatmapReport
-	16, // 33: query.v1.LabelNamesReport.query:type_name -> query.v1.LabelNamesQuery
-	18, // 34: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
-	20, // 35: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
-	34, // 36: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
-	35, // 37: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
-	22, // 38: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
-	36, // 39: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
-	37, // 40: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	24, // 41: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
-	37, // 42: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	26, // 43: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
-	38, // 44: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
-	35, // 45: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
-	30, // 46: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
-	28, // 47: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
-	31, // 48: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
-	29, // 49: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
-	3,  // 50: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
-	6,  // 51: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
-	4,  // 52: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
-	10, // 53: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
-	52, // [52:54] is the sub-list for method output_type
-	50, // [50:52] is the sub-list for method input_type
-	50, // [50:50] is the sub-list for extension type_name
-	50, // [50:50] is the sub-list for extension extendee
-	0,  // [0:50] is the sub-list for field type_name
+	22, // 17: query.v1.Query.time_series_compact:type_name -> query.v1.TimeSeriesQuery
+	15, // 18: query.v1.InvokeResponse.reports:type_name -> query.v1.Report
+	11, // 19: query.v1.InvokeResponse.diagnostics:type_name -> query.v1.Diagnostics
+	7,  // 20: query.v1.Diagnostics.query_plan:type_name -> query.v1.QueryPlan
+	12, // 21: query.v1.Diagnostics.execution_node:type_name -> query.v1.ExecutionNode
+	2,  // 22: query.v1.ExecutionNode.type:type_name -> query.v1.QueryNode.Type
+	12, // 23: query.v1.ExecutionNode.children:type_name -> query.v1.ExecutionNode
+	13, // 24: query.v1.ExecutionNode.stats:type_name -> query.v1.ExecutionStats
+	14, // 25: query.v1.ExecutionStats.block_executions:type_name -> query.v1.BlockExecution
+	1,  // 26: query.v1.Report.report_type:type_name -> query.v1.ReportType
+	17, // 27: query.v1.Report.label_names:type_name -> query.v1.LabelNamesReport
+	19, // 28: query.v1.Report.label_values:type_name -> query.v1.LabelValuesReport
+	21, // 29: query.v1.Report.series_labels:type_name -> query.v1.SeriesLabelsReport
+	23, // 30: query.v1.Report.time_series:type_name -> query.v1.TimeSeriesReport
+	25, // 31: query.v1.Report.tree:type_name -> query.v1.TreeReport
+	27, // 32: query.v1.Report.pprof:type_name -> query.v1.PprofReport
+	32, // 33: query.v1.Report.heatmap:type_name -> query.v1.HeatmapReport
+	36, // 34: query.v1.Report.time_series_compact:type_name -> query.v1.TimeSeriesCompactReport
+	16, // 35: query.v1.LabelNamesReport.query:type_name -> query.v1.LabelNamesQuery
+	18, // 36: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
+	20, // 37: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
+	38, // 38: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
+	39, // 39: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	22, // 40: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
+	40, // 41: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
+	41, // 42: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	24, // 43: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
+	41, // 44: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	26, // 45: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
+	42, // 46: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
+	39, // 47: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	30, // 48: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
+	28, // 49: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
+	31, // 50: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
+	29, // 51: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
+	33, // 52: query.v1.Point.exemplars:type_name -> query.v1.Exemplar
+	34, // 53: query.v1.Series.points:type_name -> query.v1.Point
+	22, // 54: query.v1.TimeSeriesCompactReport.query:type_name -> query.v1.TimeSeriesQuery
+	35, // 55: query.v1.TimeSeriesCompactReport.time_series:type_name -> query.v1.Series
+	29, // 56: query.v1.TimeSeriesCompactReport.attribute_table:type_name -> query.v1.AttributeTable
+	3,  // 57: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
+	6,  // 58: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
+	4,  // 59: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
+	10, // 60: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
+	59, // [59:61] is the sub-list for method output_type
+	57, // [57:59] is the sub-list for method input_type
+	57, // [57:57] is the sub-list for extension type_name
+	57, // [57:57] is the sub-list for extension extendee
+	0,  // [0:57] is the sub-list for field type_name
 }
 
 func init() { file_query_v1_query_proto_init() }
@@ -2388,7 +2708,7 @@ func file_query_v1_query_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_query_v1_query_proto_rawDesc), len(file_query_v1_query_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   30,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

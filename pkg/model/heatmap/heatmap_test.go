@@ -37,7 +37,7 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod1"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "namespace", Value: "namespace1"}, {Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{{Name: "namespace", Value: "namespace1"}},
 							timestamp: 1001,
 							profileID: "profile1",
 							spanID:    0xa,
@@ -71,14 +71,14 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod1"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "namespace", Value: "namespace1"}, {Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{{Name: "namespace", Value: "namespace1"}},
 							timestamp: 1001,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     1,
 						},
 						{
-							labels:    model.Labels{{Name: "namespace", Value: "namespace1"}, {Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{{Name: "namespace", Value: "namespace1"}},
 							timestamp: 1002,
 							profileID: "profile2",
 							spanID:    0xb,
@@ -112,7 +112,7 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod1"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "namespace", Value: "namespace1"}, {Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{{Name: "namespace", Value: "namespace1"}},
 							timestamp: 1001,
 							profileID: "profile-1",
 							spanID:    0xa,
@@ -124,7 +124,7 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod2"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "namespace", Value: "namespace1"}, {Name: "pod", Value: "pod2"}},
+							labels:    model.Labels{{Name: "namespace", Value: "namespace1"}},
 							timestamp: 1002,
 							profileID: "profile-2",
 							spanID:    0xb,
@@ -165,21 +165,21 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod1"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 1000,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     100,
 						},
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 1500,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     150,
 						},
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 2000,
 							profileID: "profile1",
 							spanID:    0xa,
@@ -213,7 +213,7 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod1"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 1000,
 							profileID: "profile1",
 							spanID:    0xa,
@@ -247,7 +247,9 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "common", Value: "value"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "common", Value: "value"}},
+							// After filtering "common" (groupBy), labels are {label1:value1} and {label1:value2, random:stuff}.
+							// Intersection yields empty since label1 values differ and random is only in one.
+							labels:    model.Labels{},
 							timestamp: 1000,
 							profileID: "profile1",
 							spanID:    0xa,
@@ -281,14 +283,14 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod1"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 1000,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     100,
 						},
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 1000,
 							profileID: "profile2",
 							spanID:    0xa,
@@ -322,14 +324,14 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod1"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 1000,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     100,
 						},
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 1000,
 							profileID: "profile1",
 							spanID:    0xb,
@@ -384,35 +386,35 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod1"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 1000,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     100,
 						},
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 2000,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     200,
 						},
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 3000,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     300,
 						},
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 4000,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     400,
 						},
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 5000,
 							profileID: "profile1",
 							spanID:    0xa,
@@ -453,21 +455,21 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod1"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 1000,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     100,
 						},
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 2000,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     200,
 						},
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 3000,
 							profileID: "profile1",
 							spanID:    0xa,
@@ -494,7 +496,7 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod1"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 1000,
 							profileID: "profile1",
 							spanID:    0xa,
@@ -569,14 +571,14 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod1"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 1000,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     100,
 						},
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 2000,
 							profileID: "profile1",
 							spanID:    0xa,
@@ -588,14 +590,14 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod2"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod2"}},
+							labels:    model.Labels{},
 							timestamp: 1500,
 							profileID: "profile1",
 							spanID:    0xa,
 							value:     150,
 						},
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod2"}},
+							labels:    model.Labels{},
 							timestamp: 2500,
 							profileID: "profile1",
 							spanID:    0xa,
@@ -629,7 +631,7 @@ func TestHeatmapBuilder(t *testing.T) {
 					labels: model.Labels{{Name: "pod", Value: "pod1"}},
 					points: []testPoint{
 						{
-							labels:    model.Labels{{Name: "pod", Value: "pod1"}},
+							labels:    model.Labels{},
 							timestamp: 1001,
 							profileID: "profile1",
 							spanID:    0xa,
