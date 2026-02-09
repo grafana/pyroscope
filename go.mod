@@ -29,7 +29,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v81 v81.0.0
-	github.com/google/pprof v0.0.0-20250607225305-033d6d78b36a
+	github.com/google/pprof v0.0.0-20251007162407-5df77e3f7d1d
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy/syntax v0.1.0
@@ -203,7 +203,7 @@ require (
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.2 // indirect
-	github.com/grafana/jfr-parser v0.12.0
+	github.com/grafana/jfr-parser v0.13.0
 	github.com/grafana/otel-profiling-go v0.5.1 // indirect
 	github.com/hashicorp/consul/api v1.32.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
