@@ -49,12 +49,12 @@ func (cfg *Config) Validate() error {
 }
 
 type Symbolizer struct {
-	logger        log.Logger
-	client        DebuginfodClient
-	storageBucket objstore.Bucket
-	metrics       *metrics
-	cfg           Config
-	limits        Limits
+	logger  log.Logger
+	client  DebuginfodClient
+	bucket  objstore.Bucket
+	metrics *metrics
+	cfg     Config
+	limits  Limits
 }
 
 type ErrSymbolSizeBytesExceedsLimit struct {
@@ -81,12 +81,12 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, storageBucket
 	}
 
 	return &Symbolizer{
-		logger:        logger,
-		client:        client,
-		storageBucket: storageBucket,
-		metrics:       m,
-		cfg:           cfg,
-		limits:        limits,
+		logger:  logger,
+		client:  client,
+		bucket:  storageBucket,
+		metrics: m,
+		cfg:     cfg,
+		limits:  limits,
 	}, nil
 }
 
@@ -439,7 +439,7 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		return nil, err
 	}
 
-	if err := s.storageBucket.Upload(ctx, lidiaObjectPath(buildID), bytes.NewReader(lidiaBytes)); err != nil {
+	if err := s.bucket.Upload(ctx, lidiaObjectPath(buildID), bytes.NewReader(lidiaBytes)); err != nil {
 		level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", buildID, "err", err)
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "set", "error").Inc()
 	} else {
@@ -451,7 +451,7 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 
 // fetchLidiaFromObjectStore retrieves Lidia data from the object store
 func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID string) ([]byte, error) {
-	objstoreReader, err := s.storageBucket.Get(ctx, lidiaObjectPath(buildID))
+	objstoreReader, err := s.bucket.Get(ctx, lidiaObjectPath(buildID))
 	if err != nil {
 		return nil, err
 	}
@@ -518,7 +518,7 @@ func (s *Symbolizer) fetchFromParca(ctx context.Context, buildID string) (io.Rea
 	if err != nil {
 		return nil, err
 	}
-	return s.storageBucket.Get(ctx, debuginfo.ObjectPath(tenantID, validatedBuildID))
+	return s.bucket.Get(ctx, debuginfo.ObjectPath(tenantID, validatedBuildID))
 }
 
 func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (io.ReadCloser, error) {
