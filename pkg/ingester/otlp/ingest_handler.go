@@ -9,12 +9,12 @@ import (
 	"net/http"
 	"strings"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-
-	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
@@ -61,7 +61,7 @@ func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, limi
 		limits: limits,
 	}
 
-	grpcServer := httpgrpc.NewGrpcServer(cfg)
+	grpcServer := newGrpcServer(cfg)
 	pprofileotlp.RegisterProfilesServiceServer(grpcServer, h)
 
 	h.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +81,34 @@ func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, limi
 	})
 
 	return h
+}
+
+func newGrpcServer(cfg server.Config) *grpc.Server {
+	grpcKeepAliveOptions := keepalive.ServerParameters{
+		MaxConnectionIdle:     cfg.GRPCServerMaxConnectionIdle,
+		MaxConnectionAge:      cfg.GRPCServerMaxConnectionAge,
+		MaxConnectionAgeGrace: cfg.GRPCServerMaxConnectionAgeGrace,
+		Time:                  cfg.GRPCServerTime,
+		Timeout:               cfg.GRPCServerTimeout,
+	}
+
+	grpcKeepAliveEnforcementPolicy := keepalive.EnforcementPolicy{
+		MinTime:             cfg.GRPCServerMinTimeBetweenPings,
+		PermitWithoutStream: cfg.GRPCServerPingWithoutStreamAllowed,
+	}
+
+	grpcOptions := []grpc.ServerOption{
+		grpc.KeepaliveParams(grpcKeepAliveOptions),
+		grpc.KeepaliveEnforcementPolicy(grpcKeepAliveEnforcementPolicy),
+		grpc.MaxRecvMsgSize(cfg.GRPCServerMaxRecvMsgSize),
+		grpc.MaxSendMsgSize(cfg.GRPCServerMaxSendMsgSize),
+		grpc.MaxConcurrentStreams(uint32(cfg.GRPCServerMaxConcurrentStreams)),
+		grpc.NumStreamWorkers(uint32(cfg.GRPCServerNumWorkers)),
+	}
+
+	grpcOptions = append(grpcOptions, cfg.GRPCOptions...)
+
+	return grpc.NewServer(grpcOptions...)
 }
 
 func (h *ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

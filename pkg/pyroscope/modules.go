@@ -330,8 +330,6 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 	}
 	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server)
 
-	//s := httpgrpc.NewGrpcServer(f.Cfg.Server)
-
 	if store, err := debuginfo.NewStore(f.logger, f.storageBucket, f.Cfg.DebugInfo); err != nil {
 		return nil, err
 	} else {
