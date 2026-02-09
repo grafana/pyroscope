@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package debuginfo.v1;
+
+import "types/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+service DebuginfoService {
+  rpc Upload(stream UploadRequest) returns (stream UploadResponse) {
+
+  }
+}
+
+message File {
+  enum DebuginfoType {
+    DEBUGINFO_TYPE_EXECUTABLE_FULL = 0;
+    DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT = 1;
+    //  DEBUGINFO_TYPE_LIDIA = 1;
+    //  DEBUGINFO_TYPE_BLAZESYM = 2;
+  }
+
+  string GNU = 1;
+  string Golang = 2;
+  // optional libpf.FileID rom the otel profiler
+  string OpenTelemetry = 3;
+  string Name = 4;
+  DebuginfoType type = 5;
+}
+
+message UploadRequest {
+  oneof data {
+    ShouldInitiateUploadRequest init = 1;
+    UploadChunk chunk = 2;
+  }
+}
+
+message UploadResponse {
+  oneof data {
+    ShouldInitiateUploadResponse init = 1;
+  }
+}
+
+message UploadChunk {
+  bytes chunk = 1;
+}
+
+message ShouldInitiateUploadRequest {
+  File file = 1;
+  //  bool force = ;
+}
+
+message UploadStrategy {
+  oneof strategy {
+    GrpcStrategy grpc = 1;
+    //    SignedUpload signed_upload = 2;
+  }
+}
+message GrpcStrategy {
+
+}
+
+//message SignedUpload {
+//  string url = 1;
+//}
+
+message ShouldInitiateUploadResponse {
+  bool should_initiate_upload = 1;
+  string reason = 2;
+}
+
+
+
+
+message Metadata {
+  File file = 1;
+
+  enum State {
+    STATE_UPLOADING = 0;
+    STATE_UPLOADED = 1;
+  }
+
+  State state = 2;
+  google.protobuf.Timestamp started_at = 3;
+  google.protobuf.Timestamp finished_at = 4;
+}

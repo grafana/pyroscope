@@ -5,8 +5,6 @@ go 1.24.6
 toolchain go1.24.9
 
 require (
-	buf.build/gen/go/parca-dev/parca/grpc/go v1.5.1-20250212095114-4db6f2d46517.2
-	buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.6-20250212095114-4db6f2d46517.1
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/grpchealth v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.3

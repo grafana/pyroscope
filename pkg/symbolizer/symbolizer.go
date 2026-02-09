@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"time"
 
-	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
-
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
@@ -23,12 +21,11 @@ import (
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
+	"github.com/grafana/pyroscope/pkg/debuginfo"
 	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/parca/debuginfo"
 )
 
-const BucketPrefix = "symbolizer"
-const BucketPrefixParcaDebugInfo = "parca-debug-info"
+const bucketPrefix = "symbolizer"
 
 type DebuginfodClient interface {
 	FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error)
@@ -52,13 +49,12 @@ func (cfg *Config) Validate() error {
 }
 
 type Symbolizer struct {
-	logger  log.Logger
-	client  DebuginfodClient
-	parca   *debuginfo.Fetcher
-	bucket  objstore.Bucket
-	metrics *metrics
-	cfg     Config
-	limits  Limits
+	logger        log.Logger
+	client        DebuginfodClient
+	storageBucket objstore.Bucket
+	metrics       *metrics
+	cfg           Config
+	limits        Limits
 }
 
 type ErrSymbolSizeBytesExceedsLimit struct {
@@ -73,7 +69,7 @@ type Limits interface {
 	SymbolizerMaxSymbolSizeBytes(tenantID string) int
 }
 
-func New(logger log.Logger, cfg Config, reg prometheus.Registerer, lidiaBucket, parcaBucket objstore.Bucket, limits Limits) (*Symbolizer, error) {
+func New(logger log.Logger, cfg Config, reg prometheus.Registerer, storageBucket objstore.Bucket, limits Limits) (*Symbolizer, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -84,16 +80,13 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, lidiaBucket, 
 		return nil, err
 	}
 
-	parcaFetcher := debuginfo.NewFetcher(parcaBucket)
-
 	return &Symbolizer{
-		logger:  logger,
-		client:  client,
-		parca:   parcaFetcher,
-		bucket:  lidiaBucket,
-		metrics: m,
-		cfg:     cfg,
-		limits:  limits,
+		logger:        logger,
+		client:        client,
+		storageBucket: storageBucket,
+		metrics:       m,
+		cfg:           cfg,
+		limits:        limits,
 	}, nil
 }
 
@@ -446,7 +439,7 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		return nil, err
 	}
 
-	if err := s.bucket.Upload(ctx, lidiaObjectPath(buildID), bytes.NewReader(lidiaBytes)); err != nil {
+	if err := s.storageBucket.Upload(ctx, lidiaObjectPath(buildID), bytes.NewReader(lidiaBytes)); err != nil {
 		level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", buildID, "err", err)
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "set", "error").Inc()
 	} else {
@@ -458,7 +451,7 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 
 // fetchLidiaFromObjectStore retrieves Lidia data from the object store
 func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID string) ([]byte, error) {
-	objstoreReader, err := s.bucket.Get(ctx, lidiaObjectPath(buildID))
+	objstoreReader, err := s.storageBucket.Get(ctx, lidiaObjectPath(buildID))
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +468,7 @@ func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID stri
 func lidiaObjectPath(buildID string) string {
 	// this is to forget about old lidia files without gopclntab support
 	// TODO clean the old once
-	return fmt.Sprintf("v2_%s", buildID)
+	return filepath.Join(bucketPrefix, fmt.Sprintf("v2_%s", buildID))
 }
 
 // fetchLidiaFromDebuginfod fetches debug info from debuginfod and converts to Lidia format
@@ -517,10 +510,15 @@ func (s *Symbolizer) fetch(ctx context.Context, buildID string) (io.ReadCloser, 
 }
 
 func (s *Symbolizer) fetchFromParca(ctx context.Context, buildID string) (io.ReadCloser, error) {
-	return s.parca.FetchDebuginfo(ctx, &debuginfopb.Debuginfo{
-		Source:  debuginfopb.Debuginfo_SOURCE_UPLOAD,
-		BuildId: buildID,
-	})
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	validatedBuildID, err := debuginfo.ValidateGnuBuildID(buildID)
+	if err != nil {
+		return nil, err
+	}
+	return s.storageBucket.Get(ctx, debuginfo.ObjectPath(tenantID, validatedBuildID))
 }
 
 func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (io.ReadCloser, error) {

@@ -45,6 +45,15 @@ func (a *API) connectOptionsAuthDelayRecovery(limits *validation.Overrides) []co
 	)
 }
 
+func (a *API) connectOptionsDebugInfo() []connect.HandlerOption {
+	messageLimit := 5 * 1024 * 1024 //todo
+	return append(connectapi.DefaultHandlerOptions(),
+		a.connectInterceptorAuth(),
+		connect.WithReadMaxBytes(messageLimit),
+		connectInterceptorRecovery(),
+	)
+}
+
 func (a *API) connectOptionsAuthLogRecovery() []connect.HandlerOption {
 	return append(connectapi.DefaultHandlerOptions(), a.connectInterceptorAuth(), a.connectInterceptorLog(), connectInterceptorRecovery())
 }

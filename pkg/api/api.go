@@ -18,8 +18,8 @@ import (
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"google.golang.org/grpc"
 
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1/debuginfov1connect"
 	"github.com/grafana/pyroscope/public"
 
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -190,20 +190,8 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 	})
 }
 
-func (a *API) RegisterDebugInfo(d *grpc.Server, limits *validation.Overrides) {
-	const (
-		DebuginfoService_Upload_FullMethodName               = "/parca.debuginfo.v1alpha1.DebuginfoService/Upload"
-		DebuginfoService_ShouldInitiateUpload_FullMethodName = "/parca.debuginfo.v1alpha1.DebuginfoService/ShouldInitiateUpload"
-		DebuginfoService_InitiateUpload_FullMethodName       = "/parca.debuginfo.v1alpha1.DebuginfoService/InitiateUpload"
-		DebuginfoService_MarkUploadFinished_FullMethodName   = "/parca.debuginfo.v1alpha1.DebuginfoService/MarkUploadFinished"
-	)
-	debugInfoGRPCOptions := []RegisterOption{
-		a.WithAuthMiddleware(),
-	}
-	a.RegisterRoute(DebuginfoService_Upload_FullMethodName, d, debugInfoGRPCOptions...)
-	a.RegisterRoute(DebuginfoService_ShouldInitiateUpload_FullMethodName, d, debugInfoGRPCOptions...)
-	a.RegisterRoute(DebuginfoService_InitiateUpload_FullMethodName, d, debugInfoGRPCOptions...)
-	a.RegisterRoute(DebuginfoService_MarkUploadFinished_FullMethodName, d, debugInfoGRPCOptions...)
+func (a *API) RegisterDebugInfo(svc debuginfov1connect.DebuginfoServiceHandler) {
+	debuginfov1connect.RegisterDebuginfoServiceHandler(a.server.HTTP, svc, a.connectOptionsDebugInfo()...)
 }
 
 // RegisterDistributor registers the endpoints associated with the distributor.

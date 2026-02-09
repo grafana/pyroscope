@@ -12,6 +12,9 @@
       "name": "FeatureFlagsService"
     },
     {
+      "name": "DebuginfoService"
+    },
+    {
       "name": "PusherService"
     },
     {
@@ -160,6 +163,15 @@
     }
   },
   "definitions": {
+    "FileDebuginfoType": {
+      "type": "string",
+      "enum": [
+        "DEBUGINFO_TYPE_EXECUTABLE_FULL",
+        "DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT"
+      ],
+      "default": "DEBUGINFO_TYPE_EXECUTABLE_FULL",
+      "title": "- DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT: DEBUGINFO_TYPE_LIDIA = 1;\n  DEBUGINFO_TYPE_BLAZESYM = 2;"
+    },
     "apiHttpBody": {
       "type": "object",
       "properties": {
@@ -1083,6 +1095,27 @@
         }
       },
       "description": "FeatureParameters contains the per feature flag parameters."
+    },
+    "v1File": {
+      "type": "object",
+      "properties": {
+        "GNU": {
+          "type": "string"
+        },
+        "Golang": {
+          "type": "string"
+        },
+        "OpenTelemetry": {
+          "type": "string",
+          "title": "optional libpf.FileID rom the otel profiler"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/FileDebuginfoType"
+        }
+      }
     },
     "v1FlameGraph": {
       "type": "object",
@@ -2566,6 +2599,26 @@
         }
       }
     },
+    "v1ShouldInitiateUploadRequest": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "$ref": "#/definitions/v1File",
+          "title": "bool force = ;"
+        }
+      }
+    },
+    "v1ShouldInitiateUploadResponse": {
+      "type": "object",
+      "properties": {
+        "shouldInitiateUpload": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
     "v1StackTraceSelector": {
       "type": "object",
       "properties": {
@@ -2737,6 +2790,23 @@
         "tree": {
           "type": "string",
           "format": "byte"
+        }
+      }
+    },
+    "v1UploadChunk": {
+      "type": "object",
+      "properties": {
+        "chunk": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "v1UploadResponse": {
+      "type": "object",
+      "properties": {
+        "init": {
+          "$ref": "#/definitions/v1ShouldInitiateUploadResponse"
         }
       }
     },

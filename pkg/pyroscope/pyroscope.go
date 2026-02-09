@@ -41,13 +41,12 @@ import (
 	"github.com/samber/lo"
 	"google.golang.org/grpc/health"
 
-	"github.com/grafana/pyroscope/pkg/debuginfo"
-
 	"github.com/grafana/pyroscope/pkg/api"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/compactionworker"
 	"github.com/grafana/pyroscope/pkg/compactor"
+	"github.com/grafana/pyroscope/pkg/debuginfo"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/frontend"
