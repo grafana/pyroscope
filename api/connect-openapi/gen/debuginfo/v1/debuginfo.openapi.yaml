@@ -8,6 +8,10 @@ tags:
   - name: scope/internal
     description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
   - name: debuginfo.v1.DebuginfoService
+    description: |-
+      This service is inspired by parca debug info upload rpc
+       It is however different, specifically original ShouldInitiateUpload,InitiateUpload,InitiateUpload are merged into Upload
+       Some structs were renamed. Some features removed (signed upload, force upload)
 paths:
   /debuginfo.v1.DebuginfoService/Upload: {}
 components:
@@ -81,7 +85,7 @@ components:
           description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
       additionalProperties: true
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
-    debuginfo.v1.File:
+    debuginfo.v1.FileMetadata:
       type: object
       properties:
         GNU:
@@ -99,10 +103,10 @@ components:
           title: Name
         type:
           title: type
-          $ref: '#/components/schemas/debuginfo.v1.File.DebuginfoType'
-      title: File
+          $ref: '#/components/schemas/debuginfo.v1.FileMetadata.DebuginfoType'
+      title: FileMetadata
       additionalProperties: false
-    debuginfo.v1.File.DebuginfoType:
+    debuginfo.v1.FileMetadata.DebuginfoType:
       type: string
       title: DebuginfoType
       enum:
@@ -114,7 +118,7 @@ components:
         file:
           title: file
           description: bool force = ;
-          $ref: '#/components/schemas/debuginfo.v1.File'
+          $ref: '#/components/schemas/debuginfo.v1.FileMetadata'
       title: ShouldInitiateUploadRequest
       additionalProperties: false
     debuginfo.v1.ShouldInitiateUploadResponse:

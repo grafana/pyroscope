@@ -83,7 +83,7 @@ const (
 )
 
 func (s *Store) shouldInitiateUpload(
-	md *debuginfov1.Metadata,
+	md *debuginfov1.ObjectMetadata,
 ) (
 	*debuginfov1.ShouldInitiateUploadResponse,
 	error,
@@ -97,7 +97,7 @@ func (s *Store) shouldInitiateUpload(
 	}
 
 	switch md.State {
-	case debuginfov1.Metadata_STATE_UPLOADING:
+	case debuginfov1.ObjectMetadata_STATE_UPLOADING:
 		if s.uploadIsStale(md) {
 			return &debuginfov1.ShouldInitiateUploadResponse{
 				ShouldInitiateUpload: true,
@@ -109,7 +109,7 @@ func (s *Store) shouldInitiateUpload(
 			ShouldInitiateUpload: false,
 			Reason:               ReasonUploadInProgress,
 		}, nil
-	case debuginfov1.Metadata_STATE_UPLOADED:
+	case debuginfov1.ObjectMetadata_STATE_UPLOADED:
 		return &debuginfov1.ShouldInitiateUploadResponse{
 			ShouldInitiateUpload: false,
 			Reason:               ReasonDebuginfoAlreadyExists,
@@ -169,9 +169,9 @@ func (s *Store) Upload(ctx context.Context, stream *connect.BidiStream[debuginfo
 	if !initResponse.ShouldInitiateUpload {
 		return nil
 	}
-	md = &debuginfov1.Metadata{
+	md = &debuginfov1.ObjectMetadata{
 		File:       init.File,
-		State:      debuginfov1.Metadata_STATE_UPLOADING,
+		State:      debuginfov1.ObjectMetadata_STATE_UPLOADING,
 		StartedAt:  timestamppb.New(time.Now()),
 		FinishedAt: nil,
 	}
@@ -220,20 +220,20 @@ func validateInit(init *debuginfov1.ShouldInitiateUploadRequest) (*ValidGnuBuild
 		return nil, fmt.Errorf("init.FileData == nil")
 	}
 	switch init.File.Type {
-	case debuginfov1.File_DEBUGINFO_TYPE_EXECUTABLE_FULL:
+	case debuginfov1.FileMetadata_DEBUGINFO_TYPE_EXECUTABLE_FULL:
 		return ValidateGnuBuildID(init.File.GNU)
-	case debuginfov1.File_DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT:
+	case debuginfov1.FileMetadata_DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT:
 		return ValidateGnuBuildID(init.File.GNU)
 	default:
 		return nil, fmt.Errorf("init.FileData.Type(%d) is not valid", init.File.Type)
 	}
 }
 
-func (s *Store) uploadIsStale(upload *debuginfov1.Metadata) bool {
+func (s *Store) uploadIsStale(upload *debuginfov1.ObjectMetadata) bool {
 	return upload.StartedAt.AsTime().Add(s.cfg.MaxUploadDuration + 2*time.Minute).Before(time.Now())
 }
 
-func (s *Store) fetchMetadata(ctx context.Context, tenantID string, id *ValidGnuBuildID) (*debuginfov1.Metadata, error) {
+func (s *Store) fetchMetadata(ctx context.Context, tenantID string, id *ValidGnuBuildID) (*debuginfov1.ObjectMetadata, error) {
 	r, err := s.bucket.Get(ctx, MetadataObjectPath(tenantID, id))
 	if err != nil {
 		if s.bucket.IsObjNotFoundErr(err) {
@@ -248,14 +248,14 @@ func (s *Store) fetchMetadata(ctx context.Context, tenantID string, id *ValidGnu
 		return nil, fmt.Errorf("read debuginfo metadata from object storage: %w", err)
 	}
 
-	dbginfo := &debuginfov1.Metadata{}
+	dbginfo := &debuginfov1.ObjectMetadata{}
 	if err := protojson.Unmarshal(content, dbginfo); err != nil {
 		return nil, fmt.Errorf("unmarshal debuginfo metadata: %w", err)
 	}
 	return dbginfo, nil
 }
 
-func (s *Store) writeMetadata(ctx context.Context, tenantID string, id *ValidGnuBuildID, md *debuginfov1.Metadata) error {
+func (s *Store) writeMetadata(ctx context.Context, tenantID string, id *ValidGnuBuildID, md *debuginfov1.ObjectMetadata) error {
 	bs, err := protojson.Marshal(md)
 	if err != nil {
 		return fmt.Errorf("marshal debuginfo metadata: %w", err)
@@ -278,10 +278,10 @@ func ValidateGnuBuildID(gnuBuildID string) (*ValidGnuBuildID, error) {
 	return &ValidGnuBuildID{gnuBuildID}, nil
 }
 
-const bucketPrefix = "parca-debug-info"
+const bucketPrefix = "debug-info"
 
 func ObjectPath(tenantID string, id *ValidGnuBuildID) string {
-	return path.Join(bucketPrefix, tenantID, id.gnuBuildID, "executable")
+	return path.Join(bucketPrefix, tenantID, id.gnuBuildID, "exe")
 }
 
 func MetadataObjectPath(tenantID string, id *ValidGnuBuildID) string {

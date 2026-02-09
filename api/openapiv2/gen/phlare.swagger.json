@@ -163,7 +163,7 @@
     }
   },
   "definitions": {
-    "FileDebuginfoType": {
+    "FileMetadataDebuginfoType": {
       "type": "string",
       "enum": [
         "DEBUGINFO_TYPE_EXECUTABLE_FULL",
@@ -1096,7 +1096,7 @@
       },
       "description": "FeatureParameters contains the per feature flag parameters."
     },
-    "v1File": {
+    "v1FileMetadata": {
       "type": "object",
       "properties": {
         "GNU": {
@@ -1113,7 +1113,7 @@
           "type": "string"
         },
         "type": {
-          "$ref": "#/definitions/FileDebuginfoType"
+          "$ref": "#/definitions/FileMetadataDebuginfoType"
         }
       }
     },
@@ -2603,7 +2603,7 @@
       "type": "object",
       "properties": {
         "file": {
-          "$ref": "#/definitions/v1File",
+          "$ref": "#/definitions/v1FileMetadata",
           "title": "bool force = ;"
         }
       }

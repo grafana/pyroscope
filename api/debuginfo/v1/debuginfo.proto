@@ -5,13 +5,21 @@ package debuginfo.v1;
 import "types/v1/types.proto";
 import "google/protobuf/timestamp.proto";
 
+
+
+// This service is inspired by parca debug info upload rpc
+// It is however different, specifically original ShouldInitiateUpload,InitiateUpload,InitiateUpload are merged into Upload
+// Some structs were renamed. Some features removed (signed upload, force upload)
 service DebuginfoService {
+
+  // clients are expected to send ShouldInitiateUploadRequest, receive ShouldInitiateUploadResponse and then
+  // if should_initiate_upload is true send a bunch of UploadChunk until EOF
   rpc Upload(stream UploadRequest) returns (stream UploadResponse) {
 
   }
 }
 
-message File {
+message FileMetadata {
   enum DebuginfoType {
     DEBUGINFO_TYPE_EXECUTABLE_FULL = 0;
     DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT = 1;
@@ -45,7 +53,7 @@ message UploadChunk {
 }
 
 message ShouldInitiateUploadRequest {
-  File file = 1;
+  FileMetadata file = 1;
   //  bool force = ;
 }
 
@@ -68,11 +76,10 @@ message ShouldInitiateUploadResponse {
   string reason = 2;
 }
 
-
-
-
-message Metadata {
-  File file = 1;
+// This is stored in buckets at "debug-info/$tenant/$gnu_build_id/metadata"
+// Along with the actual uploaded file at "debug-info/$tenant/$gnu_build_id/exe"
+message ObjectMetadata {
+  FileMetadata file = 1;
 
   enum State {
     STATE_UPLOADING = 0;

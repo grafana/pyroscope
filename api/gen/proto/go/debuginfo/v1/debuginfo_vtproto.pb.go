@@ -25,11 +25,11 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-func (m *File) CloneVT() *File {
+func (m *FileMetadata) CloneVT() *FileMetadata {
 	if m == nil {
-		return (*File)(nil)
+		return (*FileMetadata)(nil)
 	}
-	r := new(File)
+	r := new(FileMetadata)
 	r.GNU = m.GNU
 	r.Golang = m.Golang
 	r.OpenTelemetry = m.OpenTelemetry
@@ -42,7 +42,7 @@ func (m *File) CloneVT() *File {
 	return r
 }
 
-func (m *File) CloneMessageVT() proto.Message {
+func (m *FileMetadata) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -213,11 +213,11 @@ func (m *ShouldInitiateUploadResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *Metadata) CloneVT() *Metadata {
+func (m *ObjectMetadata) CloneVT() *ObjectMetadata {
 	if m == nil {
-		return (*Metadata)(nil)
+		return (*ObjectMetadata)(nil)
 	}
-	r := new(Metadata)
+	r := new(ObjectMetadata)
 	r.File = m.File.CloneVT()
 	r.State = m.State
 	r.StartedAt = (*timestamppb.Timestamp)((*timestamppb1.Timestamp)(m.StartedAt).CloneVT())
@@ -229,11 +229,11 @@ func (m *Metadata) CloneVT() *Metadata {
 	return r
 }
 
-func (m *Metadata) CloneMessageVT() proto.Message {
+func (m *ObjectMetadata) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (this *File) EqualVT(that *File) bool {
+func (this *FileMetadata) EqualVT(that *FileMetadata) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -257,8 +257,8 @@ func (this *File) EqualVT(that *File) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *File) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*File)
+func (this *FileMetadata) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*FileMetadata)
 	if !ok {
 		return false
 	}
@@ -524,7 +524,7 @@ func (this *ShouldInitiateUploadResponse) EqualMessageVT(thatMsg proto.Message) 
 	}
 	return this.EqualVT(that)
 }
-func (this *Metadata) EqualVT(that *Metadata) bool {
+func (this *ObjectMetadata) EqualVT(that *ObjectMetadata) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -545,8 +545,8 @@ func (this *Metadata) EqualVT(that *Metadata) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *Metadata) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*Metadata)
+func (this *ObjectMetadata) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ObjectMetadata)
 	if !ok {
 		return false
 	}
@@ -676,7 +676,7 @@ var DebuginfoService_ServiceDesc = grpc.ServiceDesc{
 	Metadata: "debuginfo/v1/debuginfo.proto",
 }
 
-func (m *File) MarshalVT() (dAtA []byte, err error) {
+func (m *FileMetadata) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -689,12 +689,12 @@ func (m *File) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *File) MarshalToVT(dAtA []byte) (int, error) {
+func (m *FileMetadata) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *File) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *FileMetadata) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1110,7 +1110,7 @@ func (m *ShouldInitiateUploadResponse) MarshalToSizedBufferVT(dAtA []byte) (int,
 	return len(dAtA) - i, nil
 }
 
-func (m *Metadata) MarshalVT() (dAtA []byte, err error) {
+func (m *ObjectMetadata) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1123,12 +1123,12 @@ func (m *Metadata) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Metadata) MarshalToVT(dAtA []byte) (int, error) {
+func (m *ObjectMetadata) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *Metadata) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *ObjectMetadata) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1178,7 +1178,7 @@ func (m *Metadata) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *File) SizeVT() (n int) {
+func (m *FileMetadata) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1349,7 +1349,7 @@ func (m *ShouldInitiateUploadResponse) SizeVT() (n int) {
 	return n
 }
 
-func (m *Metadata) SizeVT() (n int) {
+func (m *ObjectMetadata) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1374,7 +1374,7 @@ func (m *Metadata) SizeVT() (n int) {
 	return n
 }
 
-func (m *File) UnmarshalVT(dAtA []byte) error {
+func (m *FileMetadata) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1397,10 +1397,10 @@ func (m *File) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: File: wiretype end group for non-group")
+			return fmt.Errorf("proto: FileMetadata: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: File: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: FileMetadata: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1545,7 +1545,7 @@ func (m *File) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Type |= File_DebuginfoType(b&0x7F) << shift
+				m.Type |= FileMetadata_DebuginfoType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1941,7 +1941,7 @@ func (m *ShouldInitiateUploadRequest) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.File == nil {
-				m.File = &File{}
+				m.File = &FileMetadata{}
 			}
 			if err := m.File.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2215,7 +2215,7 @@ func (m *ShouldInitiateUploadResponse) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Metadata) UnmarshalVT(dAtA []byte) error {
+func (m *ObjectMetadata) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2238,10 +2238,10 @@ func (m *Metadata) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Metadata: wiretype end group for non-group")
+			return fmt.Errorf("proto: ObjectMetadata: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Metadata: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: ObjectMetadata: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2274,7 +2274,7 @@ func (m *Metadata) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.File == nil {
-				m.File = &File{}
+				m.File = &FileMetadata{}
 			}
 			if err := m.File.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2294,7 +2294,7 @@ func (m *Metadata) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.State |= Metadata_State(b&0x7F) << shift
+				m.State |= ObjectMetadata_State(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
