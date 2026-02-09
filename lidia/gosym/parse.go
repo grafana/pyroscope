@@ -38,8 +38,6 @@ func ParseRuntimeTextFromPclntab18(pclntab []byte) uint64 {
 }
 
 var errEmptyText = errors.New("empty text")
-var errGoPCLNTabNotFound = errors.New(".gopclntab not found")
-var errGoTooOld = errors.New("go too old")
 
 func GoFunctions(f *elf.File) ([]Func, error) {
 	const headerSize = 64
