@@ -1583,3 +1583,7 @@ func (p *Profile) DebugString() string {
 	}
 	return gp.String()
 }
+
+func (p *Profile) Stats() string {
+	return p.stats.pretty()
+}
