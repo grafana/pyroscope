@@ -47,7 +47,7 @@ type recordingRule struct {
 }
 
 func listRecordingRules(ctx context.Context, params *recordingRulesCmdParams) error {
-	client := params.phlareClient.recordingRulesClient()
+	client := params.recordingRulesClient()
 	req := settingsv1.ListRecordingRulesRequest{}
 	resp, err := client.ListRecordingRules(ctx, connect.NewRequest(&req))
 	if err != nil {
@@ -83,7 +83,7 @@ func listRecordingRules(ctx context.Context, params *recordingRulesCmdParams) er
 }
 
 func createRecordingRule(ctx context.Context, rule *string, params *recordingRulesCmdParams) error {
-	client := params.phlareClient.recordingRulesClient()
+	client := params.recordingRulesClient()
 	var newRule recordingRule
 	err := json.Unmarshal([]byte(*rule), &newRule)
 	if err != nil {
@@ -110,7 +110,7 @@ func createRecordingRule(ctx context.Context, rule *string, params *recordingRul
 }
 
 func deleteRecordingRule(ctx context.Context, id *string, params *recordingRulesCmdParams) error {
-	client := params.phlareClient.recordingRulesClient()
+	client := params.recordingRulesClient()
 	req := settingsv1.DeleteRecordingRuleRequest{
 		Id: *id,
 	}
