@@ -124,11 +124,11 @@ func main() {
 	kubeProxyParams := addKubeProxyParams(kubeProxyCmd)
 
 	recordingRulesCmd := app.Command("recording-rules", "Operations on recording rules. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:read\" and/or \"profiles-config:write\" scopes.")
-	recordingRulesListCmd := recordingRulesCmd.Command("list", "List recording rules. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:read\"")
-	recordingRulesCreateCmd := recordingRulesCmd.Command("create", "Create a recording rule. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:write\"\n"+createRuleExampleMsg)
+	recordingRulesListCmd := recordingRulesCmd.Command("list", "List recording rules. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:read\" scope.")
+	recordingRulesCreateCmd := recordingRulesCmd.Command("create", "Create a recording rule. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:write\" scope.\n"+createRuleExampleMsg)
 	recordingRulesCreateArg := recordingRulesCreateCmd.Arg("rule", "Recording rule to create").Required().String()
 
-	recordingRulesDeleteCmd := recordingRulesCmd.Command("delete", "Delete a recording rule. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:write\"")
+	recordingRulesDeleteCmd := recordingRulesCmd.Command("delete", "Delete a recording rule. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:write\" scope.")
 	recordingRulesDeleteId := recordingRulesDeleteCmd.Arg("rule_id", "Recording rule Id to delete").Required().String()
 	recordingRulesParams := addRecordingRulesListParams(recordingRulesCmd)
 
