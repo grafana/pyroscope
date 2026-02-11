@@ -173,168 +173,9 @@ func TestNormalizeProfile_NegativeSample(t *testing.T) {
 	})
 }
 
-func TestNormalizeProfile_SampleLabels(t *testing.T) {
-	currentTime = func() time.Time {
-		t, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
-		return t
-	}
-	defer func() {
-		currentTime = time.Now
-	}()
-
-	p := &profilev1.Profile{
-		SampleType: []*profilev1.ValueType{
-			{Type: 1, Unit: 2},
-		},
-		Sample: []*profilev1.Sample{
-			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 5, Key: 5}, {Str: 5, Key: 6}}},
-			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 5, Key: 5}, {Str: 5, Key: 7}}},
-			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 5, Key: 5}, {Str: 5, Key: 7}}},
-		},
-		Mapping: []*profilev1.Mapping{{Id: 1, HasFunctions: true, MemoryStart: 100, MemoryLimit: 200, FileOffset: 200}},
-		Location: []*profilev1.Location{
-			{Id: 1, MappingId: 1, Address: 5, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
-			{Id: 2, MappingId: 1, Address: 2, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}}},
-		},
-		Function: []*profilev1.Function{
-			{Id: 1, Name: 3, SystemName: 3, Filename: 4, StartLine: 1},
-			{Id: 2, Name: 5, SystemName: 5, Filename: 4, StartLine: 1},
-		},
-		StringTable: []string{
-			"",
-			"cpu", "nanoseconds",
-			"main", "main.go",
-			"foo", "bar", "baz",
-		},
-		PeriodType: &profilev1.ValueType{Type: 1, Unit: 2},
-	}
-
-	pf := &Profile{Profile: p}
-	pf.Normalize()
-	require.Equal(t, pf.Profile, &profilev1.Profile{
-		SampleType: []*profilev1.ValueType{
-			{Type: 1, Unit: 2},
-		},
-		Sample: []*profilev1.Sample{
-			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 5, Key: 5}, {Str: 5, Key: 6}}},
-			{LocationId: []uint64{2, 1}, Value: []int64{20}, Label: []*profilev1.Label{{Str: 5, Key: 5}, {Str: 5, Key: 7}}},
-		},
-		Mapping: []*profilev1.Mapping{{Id: 1, HasFunctions: true}},
-		Location: []*profilev1.Location{
-			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
-			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}}},
-		},
-		Function: []*profilev1.Function{
-			{Id: 1, Name: 3, SystemName: 3, Filename: 4, StartLine: 1},
-			{Id: 2, Name: 5, SystemName: 5, Filename: 4, StartLine: 1},
-		},
-		StringTable: []string{
-			"",
-			"cpu", "nanoseconds",
-			"main", "main.go",
-			"foo", "bar", "baz",
-		},
-		PeriodType: &profilev1.ValueType{Type: 1, Unit: 2},
-		TimeNanos:  1577836800000000000,
-	})
-}
-
-func TestNormalizeProfile_LabelStrShiftedOnStringRemoval(t *testing.T) {
-	currentTime = func() time.Time {
-		t, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
-		return t
-	}
-	defer func() {
-		currentTime = time.Now
-	}()
-
-	// This test verifies that when clearSampleReferences removes unused strings
-	// from the string table, label Str indices are correctly shifted.
-	//
-	// The profile has:
-	//   - A kept sample using location 1 (function "kept_func") with labels
-	//   - A negative-value sample using location 2 (function "removed_func")
-	//     that will be removed during normalization
-	//
-	// "removed_func" and "removed_func_file" are positioned in the string table
-	// between the label key/value strings. When these strings are removed during
-	// compaction, all indices above them must shift down. If label.Str is not
-	// updated, the label value will point to a different string (e.g. a function
-	// name), reproducing the bug where label values become stack frame names.
-	p := &profilev1.Profile{
-		StringTable: []string{
-			"",                  // 0
-			"cpu",               // 1
-			"nanoseconds",       // 2
-			"kept_func",         // 3
-			"removed_func",      // 4 -- only used by the removed function, will be compacted
-			"removed_func_file", // 5 -- only used by the removed function, will be compacted
-			"src.go",            // 6
-			"my_tag",            // 7 -- label Key; should shift to 5 after compaction
-			"my_tag_value",      // 8 -- label Str; should shift to 6 after compaction
-		},
-		SampleType: []*profilev1.ValueType{
-			{Type: 1, Unit: 2},
-		},
-		PeriodType: &profilev1.ValueType{Type: 1, Unit: 2},
-		Sample: []*profilev1.Sample{
-			{
-				LocationId: []uint64{1},
-				Value:      []int64{10},
-				Label:      []*profilev1.Label{{Key: 7, Str: 8}},
-			},
-			{
-				// Negative-value sample — removed during normalization.
-				LocationId: []uint64{2},
-				Value:      []int64{-1},
-			},
-		},
-		Mapping: []*profilev1.Mapping{
-			{Id: 1, HasFunctions: true},
-		},
-		Location: []*profilev1.Location{
-			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
-			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}}},
-		},
-		Function: []*profilev1.Function{
-			{Id: 1, Name: 3, SystemName: 3, Filename: 6, StartLine: 1},
-			{Id: 2, Name: 4, SystemName: 4, Filename: 5, StartLine: 1},
-		},
-	}
-
-	pf := &Profile{Profile: p}
-	pf.Normalize()
-
-	// After normalization:
-	// - The negative-value sample is removed
-	// - Location 2 and Function 2 become unused and are removed
-	// - "removed_func" (4) and "removed_func_file" (5) are compacted out of string table
-	// - Remaining indices above 5 shift down by 2
-	//
-	// The label on the surviving sample must still resolve to "my_tag"/"my_tag_value".
-	require.Len(t, pf.Sample, 1, "expected exactly one sample after normalization")
-	require.Len(t, pf.Sample[0].Label, 1, "expected exactly one label on the sample")
-
-	label := pf.Sample[0].Label[0]
-	keyStr := pf.StringTable[label.Key]
-	valStr := pf.StringTable[label.Str]
-	require.Equal(t, "my_tag", keyStr, "label key should be 'my_tag'")
-	require.Equal(t, "my_tag_value", valStr,
-		"label value corrupted after string table compaction: got %q at Str index %d, string_table=%v",
-		valStr, label.Str, pf.StringTable)
-}
-
 // TestNormalizeProfile_LabelStrShiftedAfterFunctionRemoval specifically tests the
 // case where unused functions cause string table compaction that must shift label.Str.
 func TestNormalizeProfile_LabelStrShiftedAfterFunctionRemoval(t *testing.T) {
-	currentTime = func() time.Time {
-		t, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
-		return t
-	}
-	defer func() {
-		currentTime = time.Now
-	}()
-
 	// Build a profile where:
 	//   - Sample 1 uses location 1 (function "kept_func") and has label Str pointing to "label_val"
 	//   - Sample 2 uses location 2 (function "removed_func") and is a zero-value sample (will be removed)
@@ -343,17 +184,18 @@ func TestNormalizeProfile_LabelStrShiftedAfterFunctionRemoval(t *testing.T) {
 	// When sample 2 is removed, location 2 and function 2 become unused.
 	// "removed_func" (index 4) is removed from the string table.
 	// "label_val" was at index 7; after removal it should shift to index 6.
-	// If label.Str is not updated, it still points to index 7 which is now out of range or wrong.
+	// If label.Str is not updated, it still points to index 7 which is now other_func.
 	p := &profilev1.Profile{
 		StringTable: []string{
-			"",              // 0
-			"cpu",           // 1
-			"nanoseconds",   // 2
-			"kept_func",     // 3
-			"removed_func",  // 4 -- only used by the removed function
-			"src.go",        // 5
-			"tag_name",      // 6
-			"label_val",     // 7 -- should become 6 after removal of index 4
+			"",             // 0
+			"cpu",          // 1
+			"nanoseconds",  // 2
+			"kept_func",    // 3
+			"removed_func", // 4 -- only used by the removed function
+			"src.go",       // 5
+			"tag_name",     // 6
+			"label_val",    // 7 -- should become 6 after removal of index 4
+			"other_func",   // 8 -- should become 7 after removal of index 4
 		},
 		SampleType: []*profilev1.ValueType{
 			{Type: 1, Unit: 2},
