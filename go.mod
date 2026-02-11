@@ -37,7 +37,7 @@ require (
 	github.com/grafana/pyroscope-go v1.2.7
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.9
 	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3
-	github.com/grafana/pyroscope/api v0.4.0
+	github.com/grafana/pyroscope/api v1.3.0
 	github.com/grafana/pyroscope/lidia v0.0.0-20250416154336-a5c33510d5ff
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -106,6 +106,7 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
+	github.com/google/gnostic v0.7.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 )
 
@@ -197,7 +198,6 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/btree v1.1.3 // indirect
-	github.com/google/gnostic v0.7.1 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
@@ -336,8 +336,6 @@ require (
 )
 
 replace (
-	github.com/grafana/pyroscope/api => ./api
-
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
 	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91
