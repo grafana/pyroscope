@@ -12,6 +12,9 @@ var diagnosticsPageHtml string
 //go:embed diagnostics_list.gohtml
 var diagnosticsListPageHtml string
 
+//go:embed import_blocks.gohtml
+var importBlocksPageHtml string
+
 type pageContent struct {
 	Now time.Time
 }
@@ -19,6 +22,7 @@ type pageContent struct {
 type templates struct {
 	diagnosticsTemplate     *template.Template
 	diagnosticsListTemplate *template.Template
+	importBlocksTemplate    *template.Template
 }
 
 var pageTemplates = initTemplates()
@@ -30,8 +34,12 @@ func initTemplates() *templates {
 	diagnosticsListTemplate := template.New("diagnostics-list")
 	template.Must(diagnosticsListTemplate.Parse(diagnosticsListPageHtml))
 
+	importBlocksTemplate := template.New("import-blocks")
+	template.Must(importBlocksTemplate.Parse(importBlocksPageHtml))
+
 	return &templates{
 		diagnosticsTemplate:     diagnosticsTemplate,
 		diagnosticsListTemplate: diagnosticsListTemplate,
+		importBlocksTemplate:    importBlocksTemplate,
 	}
 }
