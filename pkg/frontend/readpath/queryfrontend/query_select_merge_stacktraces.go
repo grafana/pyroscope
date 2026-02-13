@@ -25,7 +25,7 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
 		resp.Tree = b
 	default:
-		t, err := phlaremodel.UnmarshalTree(b)
+		t, err := phlaremodel.UnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](b)
 		if err != nil {
 			return nil, err
 		}
