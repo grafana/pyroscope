@@ -1,0 +1,47 @@
+# ProfileCLI Benchmark Configuration
+
+# ProfileCLI settings (optional - will use defaults if not specified)
+profilecli:
+  path: "../../profilecli"  # Default: "profilecli"
+  timeout: "5m"              # Default: "30m"
+
+# Google Sheets settings
+google_sheets:
+  enabled: true
+  spreadsheet_id: ""  # Set this to your spreadsheet ID
+  credentials: ""     # Set this to your credentials file path
+  sheet_name: "ProfileCLI Benchmark Results"
+
+# Query configuration
+queries:
+  - name: "service-a-cpu"
+    tenant_id: "test-tenant-1234"
+    query: '{service_name="service-a"}'
+    from: "2026-02-11T13:50:00.398Z"
+    to: "2026-02-11T14:50:00.000Z"
+    url: "http://localhost:4040"
+    profile_type: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+
+# Test matrix configuration
+tests:
+  iterations: 3
+
+  # Max nodes values to test
+  max_nodes:
+    - 0      # No limit
+    - 32     # Small limit
+    - 8192   # 8k
+    - 16384  # 16k
+
+  # Flag configurations to test
+  flags:
+    - name: "baseline"
+      description: "Baseline configuration with no special flags"
+
+    - name: "function-names-only"
+      description: "Using function-names-only flag"
+      args: ["--feature-flags pprof-tree"]
+
+  # Optional: custom arguments to append to all queries
+  # custom_args:
+  #   - "--verbose"
