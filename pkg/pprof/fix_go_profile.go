@@ -1,7 +1,6 @@
 package pprof
 
 import (
-	"regexp"
 	"strings"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -60,20 +59,51 @@ func DropGoTypeParameters(p *profilev1.Profile) *profilev1.Profile {
 	return m.Profile()
 }
 
-var goStructTypeParameterRegex = regexp.MustCompile(`\[go\.shape\..*\]`)
+const goShapePrefix = "[go.shape."
 
 func dropGoTypeParameters(input string) string {
-	matchesIndices := goStructTypeParameterRegex.FindAllStringIndex(input, -1)
-	if len(matchesIndices) == 0 {
+	if !strings.Contains(input, goShapePrefix) {
 		return input
 	}
-	var modified strings.Builder
-	prevEnd := 0
-	for _, indices := range matchesIndices {
-		start, end := indices[0], indices[1]
-		modified.WriteString(input[prevEnd:start])
-		prevEnd = end
+
+	var result strings.Builder
+	i := 0
+
+	for i < len(input) {
+		// Find next type parameter section
+		start := strings.Index(input[i:], goShapePrefix)
+		if start < 0 {
+			// No more type parameters, write the rest
+			result.WriteString(input[i:])
+			break
+		}
+
+		// Write everything before this type parameter
+		result.WriteString(input[i : i+start])
+
+		// Find matching closing bracket by tracking depth
+		depth := 0
+		j := i + start
+		for j < len(input) {
+			if input[j] == '[' {
+				depth++
+			} else if input[j] == ']' {
+				depth--
+				if depth == 0 {
+					// Found matching closing bracket, skip to after it
+					i = j + 1
+					break
+				}
+			}
+			j++
+		}
+
+		if depth != 0 {
+			// No matching bracket found, keep rest as-is
+			result.WriteString(input[i:])
+			break
+		}
 	}
-	modified.WriteString(input[prevEnd:])
-	return modified.String()
+
+	return result.String()
 }
