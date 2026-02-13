@@ -157,11 +157,11 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expected: errBucketLookupConfigConflict,
 		},
-		"should pass with AWSSDKAuth true": {
+		"should pass with NativeAWSAuthEnabled true": {
 			setup: func() *Config {
 				cfg := &Config{}
 				flagext.DefaultValues(cfg)
-				cfg.AWSSDKAuth = true
+				cfg.NativeAWSAuthEnabled = true
 				return cfg
 			},
 		},

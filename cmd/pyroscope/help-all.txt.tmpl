@@ -1013,6 +1013,8 @@ Usage of ./pyroscope:
     	Maximum number of idle (keep-alive) connections across all hosts. 0 means no limit.
   -storage.s3.max-idle-connections-per-host int
     	Maximum number of idle (keep-alive) connections to keep per-host. If 0, a built-in default value is used. (default 100)
+  -storage.s3.native-aws-auth-enabled
+    	[experimental] If enabled, it will use the default authentication methods of the AWS SDK for go based on known environment variables and known AWS config files.
   -storage.s3.region string
     	S3 region. If unset, the client will issue a S3 GetBucketLocation API call to autodetect it.
   -storage.s3.secret-access-key string
