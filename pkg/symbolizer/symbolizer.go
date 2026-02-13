@@ -15,13 +15,17 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
+	"github.com/grafana/pyroscope/pkg/debuginfo"
 	"github.com/grafana/pyroscope/pkg/objstore"
 )
+
+const bucketPrefix = "symbolizer"
 
 type DebuginfodClient interface {
 	FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error)
@@ -65,14 +69,13 @@ type Limits interface {
 	SymbolizerMaxSymbolSizeBytes(tenantID string) int
 }
 
-func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket, limits Limits) (*Symbolizer, error) {
+func New(logger log.Logger, cfg Config, reg prometheus.Registerer, storageBucket objstore.Bucket, limits Limits) (*Symbolizer, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
+	m := newMetrics(reg)
 
-	metrics := newMetrics(reg)
-
-	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics, limits)
+	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, m, limits)
 	if err != nil {
 		return nil, err
 	}
@@ -80,8 +83,8 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objsto
 	return &Symbolizer{
 		logger:  logger,
 		client:  client,
-		bucket:  bucket,
-		metrics: metrics,
+		bucket:  storageBucket,
+		metrics: m,
 		cfg:     cfg,
 		limits:  limits,
 	}, nil
@@ -409,7 +412,7 @@ func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
 			loc.lines = s.createFallbackSymbol(req.binaryName, loc)
 			continue
 		}
-
+		//todo demangle symbols
 		loc.lines = frames
 	}
 }
@@ -436,7 +439,7 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		return nil, err
 	}
 
-	if err := s.bucket.Upload(ctx, buildID, bytes.NewReader(lidiaBytes)); err != nil {
+	if err := s.bucket.Upload(ctx, lidiaObjectPath(buildID), bytes.NewReader(lidiaBytes)); err != nil {
 		level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", buildID, "err", err)
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "set", "error").Inc()
 	} else {
@@ -448,7 +451,7 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 
 // fetchLidiaFromObjectStore retrieves Lidia data from the object store
 func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID string) ([]byte, error) {
-	objstoreReader, err := s.bucket.Get(ctx, buildID)
+	objstoreReader, err := s.bucket.Get(ctx, lidiaObjectPath(buildID))
 	if err != nil {
 		return nil, err
 	}
@@ -462,9 +465,15 @@ func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID stri
 	return data, nil
 }
 
+func lidiaObjectPath(buildID string) string {
+	// this is to forget about old lidia files without gopclntab support
+	// TODO clean the old once
+	return filepath.Join(bucketPrefix, fmt.Sprintf("v2_%s", buildID))
+}
+
 // fetchLidiaFromDebuginfod fetches debug info from debuginfod and converts to Lidia format
 func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID string) ([]byte, error) {
-	debugReader, err := s.fetchFromDebuginfod(ctx, buildID)
+	debugReader, err := s.fetch(ctx, buildID)
 	if err != nil {
 		var bnfErr buildIDNotFoundError
 		if errors.As(err, &bnfErr) {
@@ -484,12 +493,32 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 		return nil, err
 	}
 
-	lidiaData, err := s.processELFData(elfData, int64(s.limits.SymbolizerMaxSymbolSizeBytes(tenantID)))
+	lidiaData, errMetric, err := ProcessELFData(elfData, int64(s.limits.SymbolizerMaxSymbolSizeBytes(tenantID)))
 	if err != nil {
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues(errMetric).Inc()
 		return nil, err
 	}
 
 	return lidiaData, nil
+}
+
+func (s *Symbolizer) fetch(ctx context.Context, buildID string) (io.ReadCloser, error) {
+	if r, err := s.fetchFromParca(ctx, buildID); err == nil {
+		return r, nil
+	}
+	return s.fetchFromDebuginfod(ctx, buildID)
+}
+
+func (s *Symbolizer) fetchFromParca(ctx context.Context, buildID string) (io.ReadCloser, error) {
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	validatedBuildID, err := debuginfo.ValidateGnuBuildID(buildID)
+	if err != nil {
+		return nil, err
+	}
+	return s.bucket.Get(ctx, debuginfo.ObjectPath(tenantID, validatedBuildID))
 }
 
 func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (io.ReadCloser, error) {
@@ -508,19 +537,17 @@ func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (i
 	return debugReader, nil
 }
 
-func (s *Symbolizer) processELFData(data []byte, maxSize int64) (lidiaData []byte, err error) {
+func ProcessELFData(data []byte, maxSize int64) (lidiaData []byte, errMetric string, err error) {
 	decompressedData, err := detectCompression(data, maxSize)
 	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("compression_error").Inc()
-		return nil, fmt.Errorf("detect compression: %w", err)
+		return nil, "compression", fmt.Errorf("detect compression: %w", err)
 	}
 
 	reader := bytes.NewReader(decompressedData)
 
 	elfFile, err := elf.NewFile(reader)
 	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("elf_parsing_error").Inc()
-		return nil, fmt.Errorf("parse ELF file: %w", err)
+		return nil, "elf_parsing", fmt.Errorf("parse ELF file: %w", err)
 	}
 	defer elfFile.Close()
 
@@ -529,10 +556,10 @@ func (s *Symbolizer) processELFData(data []byte, maxSize int64) (lidiaData []byt
 
 	err = lidia.CreateLidiaFromELF(elfFile, memBuffer, lidia.WithCRC(), lidia.WithFiles(), lidia.WithLines())
 	if err != nil {
-		return nil, fmt.Errorf("create lidia file: %w", err)
+		return nil, "lidia_conversion", fmt.Errorf("create lidia file: %w", err)
 	}
 
-	return memBuffer.Bytes(), nil
+	return memBuffer.Bytes(), "", nil
 }
 
 func (s *Symbolizer) createFallbackSymbol(binaryName string, loc *location) []lidia.SourceInfoFrame {
