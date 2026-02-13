@@ -1,0 +1,55 @@
+# Advanced ProfileCLI Benchmark Configuration
+# This example shows more complex testing scenarios
+
+# ProfileCLI configuration (optional - defaults shown below)
+# profilecli:
+#   path: "profilecli"     # Uses PATH. Can also be relative/absolute path like "../../profilecli"
+#   timeout: "30m"         # Default timeout
+
+google_sheets:
+  enabled: true
+  spreadsheet_id: "1XgI2aUV7fe0j37I4m9cuT1SvtfkMu9NikKfuQtHHZI8"
+  credentials: "~/Downloads/grafanalabs-dev-d1e982dd36d7.json"
+  sheet_name: "Generic Pprof Tree"
+
+queries:
+  - name: "service-a-cpu-1h"
+    description: "Service A (large profiles, millions of samples)"
+    tenant_id: "test-tenant-1234"
+    query: '{service_name="service-a"}'
+    from: "2026-02-11T13:50:00.398Z"
+    to: "2026-02-11T14:50:00.000Z"
+    url: "http://localhost:4100"
+    profile_type: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+  - name: "service-b-cpu-12h"
+    description: "Service B (smaller profiles, queried over longer time ranges)"
+    tenant_id: "test-tenant-1234"
+    query: '{service_name="service-b"}'
+    from: "2026-02-10T02:00:00.000Z"
+    to: "2026-02-10T14:00:00.000Z"
+    url: "http://localhost:4100"
+    profile_type: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+
+tests:
+  iterations: 3  # More iterations for better statistics
+
+  # Extended max_nodes testing
+  max_nodes:
+    - 0       # No limit
+    - 32      # Small
+    - 8192    # 8k
+    - 16384   # 16k
+    - 32768   # 32k
+
+  # Multiple flag configurations
+  flags:
+    - name: "Reference"
+      description: "Baseline with no special flags"
+
+    - name: "feature-flag-pprof-tree"
+      description: "Use the tree based pprof path"
+      args: ["--feature-flags", "pprof-tree"]
+
+  custom_args:
+    - "--collect-diagnostics"
+

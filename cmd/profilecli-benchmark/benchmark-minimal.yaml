@@ -1,0 +1,32 @@
+# Minimal ProfileCLI Benchmark Configuration
+# Perfect for quick testing
+
+# profilecli section is optional - defaults will be used
+# profilecli:
+#   path: "profilecli"     # Default
+#   timeout: "30m"         # Default
+
+google_sheets:
+  enabled: false  # Disable Google Sheets for quick local testing
+
+queries:
+  - name: "quick-test"
+    tenant_id: "test-tenant-1234"
+    query: '{service_name="service-a"}'
+    from: "2026-02-11T13:50:00.398Z"
+    to: "2026-02-11T14:50:00.000Z"
+    url: "http://localhost:4040"
+
+tests:
+  iterations: 1  # Just one iteration for quick testing
+
+  max_nodes:
+    - 0
+    - 32
+
+  flags:
+    - name: "baseline"
+      args: []
+    - name: "function-names-only"
+      args:
+        - "--function-names-only"
