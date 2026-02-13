@@ -204,7 +204,11 @@ func (t *Tree[N, I]) WriteCollapsed(dst io.Writer) {
 }
 
 func (t *Tree[N, I]) IterateStacks(cb func(name N, self int64, stack []N)) {
-	nodes := make([]*node[N], len(t.root), 1024)
+	s := 1024
+	if s < len(t.root) {
+		s += len(t.root)
+	}
+	nodes := make([]*node[N], len(t.root), s)
 	stack := make([]N, 0, 64)
 	copy(nodes, t.root)
 	for len(nodes) > 0 {
