@@ -1,19 +1,88 @@
-import React, { useState } from 'react';
-import type { PlanTreeNode as PlanTreeNodeType } from '../types';
+import React, { useCallback, useMemo, useState } from 'react';
+import type {
+  PlanTreeNode as PlanTreeNodeType,
+  RawQueryPlan,
+} from '../types';
 import { PlanTreeNode } from './PlanTreeNode';
+import { exportBlocks } from '../services/api';
+
+function countL3Blocks(plan: RawQueryPlan | null): number {
+  if (!plan || !plan.root) {
+    return 0;
+  }
+  const seen = new Set<string>();
+  countL3BlocksFromNode(plan.root, seen);
+  return seen.size;
+}
+
+function countL3BlocksFromNode(
+  node: { type: number | string; children?: unknown[]; blocks?: { id: string; compaction_level: number }[] },
+  seen: Set<string>
+): void {
+  if (!node) {
+    return;
+  }
+  // READ node type = 2
+  if ((node.type === 2 || node.type === 'READ') && node.blocks) {
+    for (const b of node.blocks) {
+      if (b.compaction_level === 3) {
+        seen.add(b.id);
+      }
+    }
+  }
+  for (const child of (node.children || []) as typeof node[]) {
+    countL3BlocksFromNode(child, seen);
+  }
+}
 
 interface QueryPlanViewerProps {
   planTree: PlanTreeNodeType | null;
   planJson: string | null;
+  planRaw: RawQueryPlan | null;
   metadataStats: string | null;
+  tenantId?: string;
+  diagnosticsId?: string | null;
 }
 
 export function QueryPlanViewer({
   planTree,
   planJson,
+  planRaw,
   metadataStats,
+  tenantId,
+  diagnosticsId,
 }: QueryPlanViewerProps) {
   const [activeTab, setActiveTab] = useState<'visual' | 'json'>('visual');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const l3BlockCount = useMemo(() => countL3Blocks(planRaw), [planRaw]);
+
+  const handleExportBlocks = useCallback(async () => {
+    if (!diagnosticsId || !tenantId) {
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const blob = await exportBlocks(tenantId, diagnosticsId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `blocks-${tenantId}-${diagnosticsId}.tar.gz`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export blocks:', err);
+      alert(
+        'Failed to export blocks: ' +
+          (err instanceof Error ? err.message : String(err))
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }, [diagnosticsId, tenantId]);
 
   if (!planTree && !metadataStats) {
     return (
@@ -32,6 +101,19 @@ export function QueryPlanViewer({
     <div className="card">
       <div className="card-header d-flex justify-content-between align-items-center">
         <h5 className="mb-0">Query Plan</h5>
+        {diagnosticsId && tenantId && l3BlockCount > 0 && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            onClick={handleExportBlocks}
+            disabled={isExporting}
+            title="Export anonymized L3 blocks as tar.gz"
+          >
+            {isExporting
+              ? 'Exporting...'
+              : `Export L3 Blocks (${l3BlockCount})`}
+          </button>
+        )}
       </div>
       <div className="card-body">
         {metadataStats && (

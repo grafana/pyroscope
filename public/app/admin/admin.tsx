@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryDiagnosticsPage } from './pages/QueryDiagnosticsPage';
 import { DiagnosticsListPage } from './pages/DiagnosticsListPage';
+import { ImportBlocksPage } from './pages/ImportBlocksPage';
 import './styles.css';
 
 function AdminApp() {
@@ -9,6 +10,10 @@ function AdminApp() {
 
   if (path.endsWith('/query-diagnostics/list')) {
     return <DiagnosticsListPage />;
+  }
+
+  if (path.endsWith('/query-diagnostics/import-blocks')) {
+    return <ImportBlocksPage />;
   }
 
   return <QueryDiagnosticsPage />;

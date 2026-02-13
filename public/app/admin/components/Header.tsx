@@ -7,6 +7,7 @@ interface HeaderProps {
   subtitle: string;
   showNewQueryLink?: boolean;
   showStoredDiagnosticsLink?: boolean;
+  showImportBlocksLink?: boolean;
 }
 
 export function Header({
@@ -14,6 +15,7 @@ export function Header({
   subtitle,
   showNewQueryLink = true,
   showStoredDiagnosticsLink = true,
+  showImportBlocksLink = true,
 }: HeaderProps) {
   const basePath = getBasePath();
 
@@ -36,6 +38,17 @@ export function Header({
               <span className="ms-2">|</span>
               <a href={`${basePath}/query-diagnostics/list`} className="ms-2">
                 View Stored Diagnostics
+              </a>
+            </>
+          )}
+          {showImportBlocksLink && (
+            <>
+              <span className="ms-2">|</span>
+              <a
+                href={`${basePath}/query-diagnostics/import-blocks`}
+                className="ms-2"
+              >
+                Import Blocks
               </a>
             </>
           )}
