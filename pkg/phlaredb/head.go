@@ -115,7 +115,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 	}
 
 	// create profile store
-	h.profiles = newProfileStore(phlarectx)
+	h.profiles = newProfileStore(phlarectx, cfg)
 	h.delta = newDeltaProfiles()
 	h.tables = []Table{
 		h.profiles,
@@ -135,6 +135,8 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 		symdbConfig.Dir = filepath.Join(h.headPath, symdb.DefaultDirName)
 		symdbConfig.Parquet = symdb.ParquetConfig{
 			MaxBufferRowCount: h.parquetConfig.MaxBufferRowCount,
+			CompressionAlgo:   cfg.CompressionAlgo,
+			CompressionLevel:  cfg.CompressionLevel,
 		}
 	}
 
