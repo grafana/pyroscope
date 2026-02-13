@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"sort"
 	"sync"
 
 	"github.com/prometheus/common/model"
@@ -48,7 +47,9 @@ func NewBlockAnonymizer(bucket objstore.Bucket) *BlockAnonymizer {
 // are appended with sequential IDs matching their original positions.
 func (a *BlockAnonymizer) AnonymizeBlock(ctx context.Context, meta *metastorev1.BlockMeta) ([]byte, error) {
 	obj := block.NewObject(a.bucket, meta)
-	defer obj.Close()
+	defer func() {
+		_ = obj.Close()
+	}()
 	if err := obj.Open(ctx); err != nil {
 		return nil, fmt.Errorf("opening block: %w", err)
 	}
@@ -114,6 +115,7 @@ func (a *BlockAnonymizer) AnonymizeBlock(ctx context.Context, meta *metastorev1.
 
 		ds := block.NewDataset(dsMeta, obj)
 		if err := ds.Open(ctx, block.SectionSymbols); err != nil {
+			_ = ds.Close()
 			return nil, fmt.Errorf("opening dataset %s: %w", ds.Name(), err)
 		}
 
@@ -121,15 +123,13 @@ func (a *BlockAnonymizer) AnonymizeBlock(ctx context.Context, meta *metastorev1.
 		positionMap[uint32(i)] = newPosition
 
 		anonDS, err := a.anonymizeDataset(ctx, w, ds, obj, oldStrings, stringTable)
-		ds.Close()
+		_ = ds.Close()
 		if err != nil {
 			return nil, fmt.Errorf("anonymizing dataset %s: %w", ds.Name(), err)
 		}
 		newMeta.Datasets = append(newMeta.Datasets, anonDS)
 	}
 
-	// Rebuild the dataset index with remapped positions, appending it
-	// after all Format0 datasets (matching the normal compaction layout).
 	if datasetIndexMeta != nil {
 		anonDS, err := a.rebuildDatasetIndex(ctx, w, datasetIndexMeta, obj, positionMap, oldStrings, stringTable)
 		if err != nil {
@@ -205,8 +205,7 @@ func (a *BlockAnonymizer) anonymizeDataset(
 
 // rebuildDatasetIndex reads the original dataset index, remaps the dataset
 // position references to match the new metadata layout, and writes a new
-// index. This is necessary because anonymization may drop datasets,
-// changing their positions in the metadata.
+// index. This is necessary because we may drop datasets, changing their positions in the metadata.
 func (a *BlockAnonymizer) rebuildDatasetIndex(
 	ctx context.Context,
 	w *writerWithOffset,
@@ -231,83 +230,14 @@ func (a *BlockAnonymizer) rebuildDatasetIndex(
 	if err != nil {
 		return nil, fmt.Errorf("opening dataset index reader: %w", err)
 	}
-	defer reader.Close()
+	defer func() {
+		_ = reader.Close()
+	}()
 
-	// Iterate all series and collect the ones whose dataset was kept.
-	type seriesEntry struct {
-		labels      phlaremodel.Labels
-		fingerprint model.Fingerprint
-		newIndex    uint32
-	}
-
-	k, v := index.AllPostingsKey()
-	postings, err := reader.Postings(k, nil, v)
+	newIndexData, err := buildRemappedIndex(ctx, reader, positionMap)
 	if err != nil {
-		return nil, fmt.Errorf("reading dataset index postings: %w", err)
+		return nil, err
 	}
-
-	symbols := make(map[string]struct{})
-	var entries []seriesEntry
-	var lbls phlaremodel.Labels
-	var chunks []index.ChunkMeta
-
-	for postings.Next() {
-		fp, err := reader.Series(postings.At(), &lbls, &chunks)
-		if err != nil {
-			return nil, fmt.Errorf("reading dataset index series: %w", err)
-		}
-		if len(chunks) == 0 {
-			continue
-		}
-		oldPos := chunks[0].SeriesIndex
-		newPos, ok := positionMap[oldPos]
-		if !ok {
-			continue
-		}
-		cloned := make(phlaremodel.Labels, len(lbls))
-		copy(cloned, lbls)
-		for _, l := range cloned {
-			symbols[l.Name] = struct{}{}
-			symbols[l.Value] = struct{}{}
-		}
-		entries = append(entries, seriesEntry{
-			labels:      cloned,
-			fingerprint: model.Fingerprint(fp),
-			newIndex:    newPos,
-		})
-	}
-	if err := postings.Err(); err != nil {
-		return nil, fmt.Errorf("iterating dataset index postings: %w", err)
-	}
-
-	// Write the new dataset index.
-	iw, err := memindex.NewWriter(ctx, 1<<20)
-	if err != nil {
-		return nil, fmt.Errorf("creating dataset index writer: %w", err)
-	}
-
-	sortedSymbols := make([]string, 0, len(symbols))
-	for s := range symbols {
-		sortedSymbols = append(sortedSymbols, s)
-	}
-	sort.Strings(sortedSymbols)
-	for _, s := range sortedSymbols {
-		if err := iw.AddSymbol(s); err != nil {
-			return nil, fmt.Errorf("adding symbol: %w", err)
-		}
-	}
-
-	for i, e := range entries {
-		chunk := index.ChunkMeta{SeriesIndex: e.newIndex}
-		if err := iw.AddSeries(storage.SeriesRef(i), e.labels, e.fingerprint, chunk); err != nil {
-			return nil, fmt.Errorf("adding series: %w", err)
-		}
-	}
-
-	if err := iw.Close(); err != nil {
-		return nil, fmt.Errorf("closing dataset index writer: %w", err)
-	}
-	newIndexData := iw.ReleaseIndex()
 
 	startOffset := w.offset
 	newSectionOff := w.offset
@@ -332,6 +262,74 @@ func (a *BlockAnonymizer) rebuildDatasetIndex(
 		Size:            w.offset - startOffset,
 		Labels:          labels,
 	}, nil
+}
+
+// buildRemappedIndex writes a new TSDB index with dataset position references
+// remapped according to positionMap. Series whose old position is not in the
+// map are dropped.
+func buildRemappedIndex(
+	ctx context.Context,
+	reader *index.Reader,
+	positionMap map[uint32]uint32,
+) (_ []byte, err error) {
+	iw, err := memindex.NewWriter(ctx, 1<<20)
+	if err != nil {
+		return nil, fmt.Errorf("creating dataset index writer: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = iw.Close()
+		}
+	}()
+
+	syms := reader.Symbols()
+	for syms.Next() {
+		if err = iw.AddSymbol(syms.At()); err != nil {
+			return nil, fmt.Errorf("adding symbol: %w", err)
+		}
+	}
+	if err = syms.Err(); err != nil {
+		return nil, fmt.Errorf("iterating symbols: %w", err)
+	}
+
+	k, v := index.AllPostingsKey()
+	postings, err := reader.Postings(k, nil, v)
+	if err != nil {
+		return nil, fmt.Errorf("reading dataset index postings: %w", err)
+	}
+
+	var (
+		lbls      phlaremodel.Labels
+		chunks    []index.ChunkMeta
+		seriesRef int
+	)
+	for postings.Next() {
+		var fp uint64
+		fp, err = reader.Series(postings.At(), &lbls, &chunks)
+		if err != nil {
+			return nil, fmt.Errorf("reading dataset index series: %w", err)
+		}
+		if len(chunks) == 0 {
+			continue
+		}
+		newPos, ok := positionMap[chunks[0].SeriesIndex]
+		if !ok {
+			continue
+		}
+		chunk := index.ChunkMeta{SeriesIndex: newPos}
+		if err = iw.AddSeries(storage.SeriesRef(seriesRef), lbls, model.Fingerprint(fp), chunk); err != nil {
+			return nil, fmt.Errorf("adding series: %w", err)
+		}
+		seriesRef++
+	}
+	if err = postings.Err(); err != nil {
+		return nil, fmt.Errorf("iterating dataset index postings: %w", err)
+	}
+
+	if err = iw.Close(); err != nil {
+		return nil, fmt.Errorf("closing dataset index writer: %w", err)
+	}
+	return iw.ReleaseIndex(), nil
 }
 
 // reindexLabels translates dataset label references from the old string table
@@ -359,7 +357,9 @@ func (a *BlockAnonymizer) readRange(ctx context.Context, path string, offset, si
 	if err != nil {
 		return nil, err
 	}
-	defer rc.Close()
+	defer func() {
+		_ = rc.Close()
+	}()
 	return io.ReadAll(rc)
 }
 
