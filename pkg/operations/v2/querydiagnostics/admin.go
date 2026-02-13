@@ -390,7 +390,7 @@ func (a *Admin) exportBlocksBuffered(
 	w.Header().Set("Content-Type", "application/gzip")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"blocks-%s-%s.tar.gz\"", tenant, id))
 	w.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
-	w.Write(buf.Bytes())
+	_, _ = w.Write(buf.Bytes())
 }
 
 func writeTarEntry(tw *tar.Writer, blockMeta *metastorev1.BlockMeta, data []byte) error {

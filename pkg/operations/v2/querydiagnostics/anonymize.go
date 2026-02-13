@@ -368,12 +368,8 @@ func (a *BlockAnonymizer) anonymizeAndWriteSymbols(
 	w io.Writer,
 	ds *block.Dataset,
 ) error {
-	symbols := ds.Symbols()
-	if symbols == nil {
-		return nil
-	}
-	reader, ok := symbols.(*symdb.Reader)
-	if !ok {
+	reader, ok := ds.Symbols().(*symdb.Reader)
+	if !ok || reader == nil {
 		return fmt.Errorf("unsupported symbols reader type for string rewriting")
 	}
 	return reader.RewriteStrings(ctx, a.anonymizeString, w)
@@ -438,4 +434,3 @@ func (w *writerWithOffset) Write(p []byte) (n int, err error) {
 	w.offset += uint64(n)
 	return n, err
 }
-

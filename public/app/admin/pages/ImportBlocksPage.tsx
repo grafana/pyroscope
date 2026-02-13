@@ -58,7 +58,9 @@ async function decompressGzip(file: File): Promise<ArrayBuffer> {
 
   while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
+    if (done) {
+      break;
+    }
     chunks.push(value);
     totalSize += value.length;
   }
@@ -88,9 +90,7 @@ export function ImportBlocksPage() {
         const tenantList = await fetchTenants();
         setTenants(tenantList);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to load tenants'
-        );
+        setError(err instanceof Error ? err.message : 'Failed to load tenants');
       }
     }
     loadTenants();
@@ -103,7 +103,9 @@ export function ImportBlocksPage() {
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (!file) return;
+      if (!file) {
+        return;
+      }
 
       setSelectedFile(file);
       setEntries([]);
@@ -131,7 +133,9 @@ export function ImportBlocksPage() {
   );
 
   const handleImport = useCallback(async () => {
-    if (!tenant || entries.length === 0) return;
+    if (!tenant || entries.length === 0) {
+      return;
+    }
 
     setIsImporting(true);
     setError(null);
@@ -288,8 +292,7 @@ export function ImportBlocksPage() {
                 <div className="card-header d-flex justify-content-between align-items-center">
                   <h6 className="mb-0">
                     Archive Contents ({entries.length} block
-                    {entries.length !== 1 ? 's' : ''},{' '}
-                    {formatBytes(totalSize)})
+                    {entries.length !== 1 ? 's' : ''}, {formatBytes(totalSize)})
                   </h6>
                   {isImporting && (
                     <span className="badge bg-primary">

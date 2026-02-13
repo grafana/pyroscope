@@ -1,8 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import type {
-  PlanTreeNode as PlanTreeNodeType,
-  RawQueryPlan,
-} from '../types';
+import type { PlanTreeNode as PlanTreeNodeType, RawQueryPlan } from '../types';
 import { PlanTreeNode } from './PlanTreeNode';
 import { exportBlocks } from '../services/api';
 
@@ -16,7 +13,11 @@ function countL3Blocks(plan: RawQueryPlan | null): number {
 }
 
 function countL3BlocksFromNode(
-  node: { type: number | string; children?: unknown[]; blocks?: { id: string; compaction_level: number }[] },
+  node: {
+    type: number | string;
+    children?: unknown[];
+    blocks?: Array<{ id: string; compaction_level: number }>;
+  },
   seen: Set<string>
 ): void {
   if (!node) {
@@ -30,7 +31,7 @@ function countL3BlocksFromNode(
       }
     }
   }
-  for (const child of (node.children || []) as typeof node[]) {
+  for (const child of (node.children || []) as Array<typeof node>) {
     countL3BlocksFromNode(child, seen);
   }
 }

@@ -303,10 +303,7 @@ export async function exportDiagnostic(
   return response.blob();
 }
 
-export async function exportBlocks(
-  tenant: string,
-  id: string
-): Promise<Blob> {
+export async function exportBlocks(tenant: string, id: string): Promise<Blob> {
   const basePath = getBasePath();
   const response = await fetch(
     `${basePath}/query-diagnostics/api/export-blocks/${encodeURIComponent(
