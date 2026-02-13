@@ -239,6 +239,81 @@ func TestNormalizeProfile_SampleLabels(t *testing.T) {
 	})
 }
 
+// TestNormalizeProfile_LabelStrShiftedAfterFunctionRemoval specifically tests the
+// case where unused functions cause string table compaction that must shift label.Str.
+func TestNormalizeProfile_LabelStrShiftedAfterFunctionRemoval(t *testing.T) {
+	// Build a profile where:
+	//   - Sample 1 uses location 1 (function "kept_func") and has label Str pointing to "label_val"
+	//   - Sample 2 uses location 2 (function "removed_func") and is a zero-value sample (will be removed)
+	//   - "removed_func" string is between "kept_func" and "label_val" in the string table
+	//
+	// When sample 2 is removed, location 2 and function 2 become unused.
+	// "removed_func" (index 4) is removed from the string table.
+	// "label_val" was at index 7; after removal it should shift to index 6.
+	// If label.Str is not updated, it still points to index 7 which is now other_func.
+	p := &profilev1.Profile{
+		StringTable: []string{
+			"",             // 0
+			"cpu",          // 1
+			"nanoseconds",  // 2
+			"kept_func",    // 3
+			"removed_func", // 4 -- only used by the removed function
+			"src.go",       // 5
+			"tag_name",     // 6
+			"label_val",    // 7 -- should become 6 after removal of index 4
+			"other_func",   // 8 -- should become 7 after removal of index 4
+		},
+		SampleType: []*profilev1.ValueType{
+			{Type: 1, Unit: 2},
+		},
+		PeriodType: &profilev1.ValueType{Type: 1, Unit: 2},
+		Sample: []*profilev1.Sample{
+			{
+				LocationId: []uint64{1},
+				Value:      []int64{100},
+				Label:      []*profilev1.Label{{Key: 6, Str: 7}},
+			},
+			{
+				// Zero-value sample — will be removed during normalization.
+				LocationId: []uint64{2},
+				Value:      []int64{0},
+			},
+		},
+		Mapping: []*profilev1.Mapping{
+			{Id: 1, HasFunctions: true},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
+			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}}},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 3, SystemName: 3, Filename: 5, StartLine: 1},
+			{Id: 2, Name: 4, SystemName: 4, Filename: 5, StartLine: 1},
+		},
+	}
+
+	pf := &Profile{Profile: p}
+	pf.Normalize()
+
+	// After normalization:
+	// - Sample 2 (zero value) is removed
+	// - Location 2 and Function 2 are removed (unused)
+	// - "removed_func" (was at index 4) is removed from string table
+	// - All string indices > 4 should be shifted down by 1
+	//
+	// The surviving sample's label must still correctly point to "label_val".
+	require.Len(t, pf.Sample, 1, "expected exactly one sample after normalization")
+	require.Len(t, pf.Sample[0].Label, 1, "expected exactly one label on the sample")
+
+	label := pf.Sample[0].Label[0]
+	keyStr := pf.StringTable[label.Key]
+	valStr := pf.StringTable[label.Str]
+	require.Equal(t, "tag_name", keyStr, "label key should be 'tag_name'")
+	require.Equal(t, "label_val", valStr,
+		"label value corrupted after string table compaction: got %q at Str index %d, string_table=%v",
+		valStr, label.Str, pf.StringTable)
+}
+
 func Test_sanitizeReferences(t *testing.T) {
 	type testCase struct {
 		name     string
