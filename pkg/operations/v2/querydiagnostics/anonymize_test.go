@@ -71,6 +71,10 @@ func TestAnonymizeBlock(t *testing.T) {
 	t.Run("QueryPprof", func(t *testing.T) {
 		testQueryPprof(t, ctx, bucket, &origMeta, &anonMeta)
 	})
+
+	t.Run("QueryTreeViaIndex", func(t *testing.T) {
+		testQueryTreeViaIndex(t, ctx, bucket, &origMeta, &anonMeta)
+	})
 }
 
 // testBlockStructure verifies the anonymized block has the same
@@ -200,6 +204,38 @@ func testQueryPprof(
 	}
 }
 
+// testQueryTreeViaIndex runs a tree query using the dataset index path
+// on both blocks and compares results with the direct query.
+func testQueryTreeViaIndex(
+	t *testing.T,
+	ctx context.Context,
+	bucket *memory.InMemBucket,
+	origMeta, anonMeta *metastorev1.BlockMeta,
+) {
+	t.Helper()
+
+	origTree := queryTreeViaIndex(t, ctx, bucket, origMeta)
+	anonTree := queryTreeViaIndex(t, ctx, bucket, anonMeta)
+
+	require.NotNil(t, origTree)
+	require.NotNil(t, anonTree)
+
+	require.Equal(t, origTree.Total(), anonTree.Total(),
+		"tree total value should be preserved via index")
+
+	origNodes := countTreeNodes(origTree)
+	anonNodes := countTreeNodes(anonTree)
+	require.Equal(t, origNodes, anonNodes,
+		"tree should have same number of nodes via index")
+
+	// Results should match the direct (Format0) query.
+	directTree := queryTree(t, ctx, bucket, origMeta)
+	require.Equal(t, directTree.Total(), origTree.Total(),
+		"index query should produce same total as direct query")
+	require.Equal(t, countTreeNodes(directTree), origNodes,
+		"index query should produce same node count as direct query")
+}
+
 // --- helpers ---
 
 func countDatasetFormats(meta *metastorev1.BlockMeta) (f0, f1 int) {
@@ -263,26 +299,18 @@ func invokeQuery(
 	bucket *memory.InMemBucket,
 	meta *metastorev1.BlockMeta,
 	queries []*queryv1.Query,
-	selector string,
 ) *queryv1.InvokeResponse {
 	t.Helper()
 	logger := test.NewTestingLogger(t)
 	wrapped := objstore.NewBucket(bucket)
 	reader := querybackend.NewBlockReader(logger, wrapped, nil)
 
-	// Build query plan from the block's Format0 datasets only
-	// (mimicking what the query frontend sends for filtered queries).
-	planMeta := meta.CloneVT()
-	planMeta.Datasets = slices.DeleteFunc(planMeta.Datasets, func(ds *metastorev1.Dataset) bool {
-		return block.DatasetFormat(ds.Format) == block.DatasetFormat1
-	})
-
-	plan := queryplan.Build([]*metastorev1.BlockMeta{planMeta}, 4, 20)
+	plan := queryplan.Build([]*metastorev1.BlockMeta{meta}, 4, 20)
 
 	resp, err := reader.Invoke(ctx, &queryv1.InvokeRequest{
 		StartTime:     meta.MinTime,
 		EndTime:       meta.MaxTime,
-		LabelSelector: selector,
+		LabelSelector: "{service_name=\"pyroscope\"}",
 		QueryPlan:     plan,
 		Query:         queries,
 		Tenant:        []string{"anonymous"},
@@ -300,12 +328,19 @@ func queryTree(
 	meta *metastorev1.BlockMeta,
 ) *phlaremodel.Tree {
 	t.Helper()
-	resp := invokeQuery(t, ctx, bucket, meta,
+
+	// Build query plan from the block's Format0 datasets only
+	// (mimicking what the query frontend sends for filtered queries).
+	planMeta := meta.CloneVT()
+	planMeta.Datasets = slices.DeleteFunc(planMeta.Datasets, func(ds *metastorev1.Dataset) bool {
+		return block.DatasetFormat(ds.Format) == block.DatasetFormat1
+	})
+
+	resp := invokeQuery(t, ctx, bucket, planMeta,
 		[]*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TREE,
 			Tree:      &queryv1.TreeQuery{MaxNodes: 16384},
 		}},
-		"{}",
 	)
 	tree, err := phlaremodel.UnmarshalTree(resp.Reports[0].Tree.Tree)
 	require.NoError(t, err)
@@ -319,12 +354,19 @@ func queryPprof(
 	meta *metastorev1.BlockMeta,
 ) *profilev1.Profile {
 	t.Helper()
-	resp := invokeQuery(t, ctx, bucket, meta,
+
+	// Build query plan from the block's Format0 datasets only
+	// (mimicking what the query frontend sends for filtered queries).
+	planMeta := meta.CloneVT()
+	planMeta.Datasets = slices.DeleteFunc(planMeta.Datasets, func(ds *metastorev1.Dataset) bool {
+		return block.DatasetFormat(ds.Format) == block.DatasetFormat1
+	})
+
+	resp := invokeQuery(t, ctx, bucket, planMeta,
 		[]*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_PPROF,
 			Pprof:     &queryv1.PprofQuery{},
 		}},
-		"{}",
 	)
 	var p profilev1.Profile
 	require.NoError(t, pprof.Unmarshal(resp.Reports[0].Pprof.Pprof, &p))
@@ -345,4 +387,29 @@ func countTreeNodes(tree *phlaremodel.Tree) int {
 		n++
 	})
 	return n
+}
+
+func queryTreeViaIndex(
+	t *testing.T,
+	ctx context.Context,
+	bucket *memory.InMemBucket,
+	meta *metastorev1.BlockMeta,
+) *phlaremodel.Tree {
+	t.Helper()
+
+	// Keep only Format1 datasets, triggering the dataset index code path.
+	planMeta := meta.CloneVT()
+	planMeta.Datasets = slices.DeleteFunc(planMeta.Datasets, func(ds *metastorev1.Dataset) bool {
+		return block.DatasetFormat(ds.Format) == block.DatasetFormat0
+	})
+
+	resp := invokeQuery(t, ctx, bucket, planMeta,
+		[]*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree:      &queryv1.TreeQuery{MaxNodes: 16384},
+		}},
+	)
+	tree, err := phlaremodel.UnmarshalTree(resp.Reports[0].Tree.Tree)
+	require.NoError(t, err)
+	return tree
 }
