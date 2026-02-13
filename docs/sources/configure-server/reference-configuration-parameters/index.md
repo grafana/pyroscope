@@ -2433,9 +2433,10 @@ The s3_backend block configures the connection to Amazon S3 object storage backe
 # CLI flag: -storage.s3.bucket-lookup-type
 [bucket_lookup_type: <string> | default = "auto"]
 
-# Use the AWS SDK for authentication. Mutually exclusive with access_key_id.
-# CLI flag: -storage.s3.aws-sdk-auth
-[aws_sdk_auth: <boolean> | default = false]
+# If enabled, it will use the default authentication methods of the AWS SDK for
+# go based on known environment variables and known AWS config files.
+# CLI flag: -storage.s3.native-aws-auth-enabled
+[native_aws_auth_enabled: <boolean> | default = false]
 
 sse:
   # Enable AWS Server Side Encryption. Supported values: SSE-KMS, SSE-S3.

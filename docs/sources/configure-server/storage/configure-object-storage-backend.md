@@ -66,7 +66,7 @@ storage:
 
 ### Using AWS SDK auth
 
-Set `aws_sdk_auth: true` to use the [AWS SDK default credential chain](https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html).
+Set `native_aws_auth_enabled: true` to use the [AWS SDK default credential chain](https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html).
 
 ```yaml
 storage:
@@ -75,7 +75,7 @@ storage:
     bucket_name: your-bucket
     region: eu-west-2
     endpoint: s3.eu-west-2.amazonaws.com
-    aws_sdk_auth: true
+    native_aws_auth_enabled: true
 ```
 
 ## Google Cloud Storage
