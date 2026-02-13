@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"math"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -391,6 +392,30 @@ func stackToTree(stack stacktraces) *Tree {
 	}
 	t.root = []*node{current}
 	return t
+}
+
+func Test_IterateStacks_LargeRootCount(t *testing.T) {
+	// Test for bug fix: when tree has more than 1024 root nodes,
+	// the initial capacity should be adjusted to avoid reallocation
+	tree := emptyTree()
+
+	// Create a tree with 1500 root nodes (more than default capacity of 1024)
+	rootCount := 1500
+	for i := 0; i < rootCount; i++ {
+		tree.InsertStack(1, "root"+strconv.Itoa(i))
+	}
+
+	require.Equal(t, rootCount, len(tree.root), "should have %d root nodes", rootCount)
+
+	// IterateStacks should handle this without issues
+	visitedCount := 0
+	tree.IterateStacks(func(name string, self int64, stack []string) {
+		visitedCount++
+		require.Equal(t, int64(1), self, "each node should have self=1")
+		require.Equal(t, 1, len(stack), "each stack should have length 1")
+	})
+
+	require.Equal(t, rootCount, visitedCount, "should visit all %d root nodes", rootCount)
 }
 
 func Test_TreeFromBackendProfileSampleType(t *testing.T) {
