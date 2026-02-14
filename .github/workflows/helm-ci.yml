@@ -20,13 +20,13 @@ jobs:
           fi
 
   call-lint-test-pyroscope:
-    uses: grafana/helm-charts/.github/workflows/lint-test.yaml@37c5e126b0a28eefd6c18331b88f8036233853d6
+    uses: grafana/helm-charts/.github/workflows/lint-test.yaml@b3e2e048e3841b251edf67f4ef497535d303f0af
     with:
       ct_configfile: operations/pyroscope/helm/ct.yaml
       ct_check_version_increment: false
       helm_version: v3.14.3
   call-lint-test-pyroscope-monitoring:
-    uses: grafana/helm-charts/.github/workflows/lint-test.yaml@37c5e126b0a28eefd6c18331b88f8036233853d6
+    uses: grafana/helm-charts/.github/workflows/lint-test.yaml@b3e2e048e3841b251edf67f4ef497535d303f0af
     with:
       ct_configfile: operations/monitoring/helm/ct.yaml
       ct_check_version_increment: false
