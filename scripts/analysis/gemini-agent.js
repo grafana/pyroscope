@@ -61,8 +61,8 @@ async function runAnalysis(codeContent, filePath, apiKey) {
         // --- DEEP THINK REPAIR LOGIC ---
         // A real agent would look for the 'REPAIRED CODE BLOCK' and attempt to 
         // write it back to the file system or comment on the PR using the GitHub Token.
-        const repairNeeded = analysisText.includes('REPAIRED CODE BLOCK') || analysisText.includes('NO REPAIR NEEDED');
-        if (repairNeeded) {
+        const analysisComplete = analysisText.includes('REPAIRED CODE BLOCK') || analysisText.includes('NO REPAIR NEEDED');
+        if (analysisComplete) {
              console.log("Analysis Complete. Check output for repair instructions.");
         }
 

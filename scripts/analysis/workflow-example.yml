@@ -37,10 +37,3 @@ jobs:
         run: |
           # Example: Analyze a specific file
           node scripts/analysis/gemini-agent.js ${{ github.event.inputs.file_path || 'README.md' }} --api-key=$GEMINI_API_KEY
-      
-      - name: Upload analysis results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gemini-analysis
-          path: analysis-results.txt

@@ -56,5 +56,6 @@ tools/k6/.env
 .env
 .env.local
 *.key
-*api-key*
+.api-key
+api-key.txt
 

@@ -13,7 +13,7 @@ The Gemini Agent is a Node.js-based code analysis tool that uses Google's Gemini
 
 ## Prerequisites
 
-1. Node.js installed (version 14 or higher)
+1. Node.js installed (version 18 or higher for native fetch support)
 2. Google Gemini API Key (obtain from [Google AI Studio](https://aistudio.google.com/))
 3. Dependencies installed (run `yarn install` or `npm install`)
 
