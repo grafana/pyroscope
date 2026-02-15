@@ -1,0 +1,66 @@
+name: Gemini Code Analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_path:
+        description: 'Path to the file to analyze'
+        required: true
+        type: string
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Run Gemini Analysis (Manual)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "Warning: GEMINI_API_KEY secret is not set. Skipping analysis."
+            exit 0
+          fi
+          node scripts/gemini_agent.js "${{ github.event.inputs.file_path }}" --api-key="$GEMINI_API_KEY"
+
+      - name: Run Gemini Analysis (PR)
+        if: github.event_name == 'pull_request'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "Warning: GEMINI_API_KEY secret is not set. Skipping analysis."
+            exit 0
+          fi
+          
+          # Get list of changed files in the PR
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.(go|js|ts|sol)$' || true)
+          
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No relevant files changed in this PR."
+            exit 0
+          fi
+          
+          # Analyze each changed file
+          echo "$CHANGED_FILES" | while read -r file; do
+            if [ -f "$file" ]; then
+              echo "Analyzing $file..."
+              node scripts/gemini_agent.js "$file" --api-key="$GEMINI_API_KEY" || true
+            fi
+          done
