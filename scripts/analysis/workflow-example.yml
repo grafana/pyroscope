@@ -1,0 +1,46 @@
+# Example GitHub Actions Workflow for Gemini Code Analysis
+# This is an example workflow that demonstrates how to integrate the Gemini Agent
+# into your CI/CD pipeline.
+
+name: Gemini Code Analysis (Example)
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      file_path:
+        description: 'Path to the file to analyze'
+        required: true
+        type: string
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Run Gemini Analysis
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          # Example: Analyze a specific file
+          node scripts/analysis/gemini-agent.js ${{ github.event.inputs.file_path || 'README.md' }} --api-key=$GEMINI_API_KEY
+      
+      - name: Upload analysis results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gemini-analysis
+          path: analysis-results.txt
