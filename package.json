@@ -14,7 +14,8 @@
     "lint:fix": "yarn lint --fix",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
-    "prepare:manually": "husky install"
+    "prepare:manually": "husky install",
+    "analyze:gemini": "node scripts/analysis/gemini-agent.js"
   },
   "lint-staged": {
     "*.{ts,tsx,scss}": "yarn format:fix"
@@ -69,6 +70,7 @@
     "husky": "^8.0.3",
     "lint-staged": "^15.0.2",
     "mini-css-extract-plugin": "^2.7.5",
+    "node-fetch": "^2.7.0",
     "optimize-css-assets-webpack-plugin": "^6.0.1",
     "prettier": "2.8.8",
     "react-svg-loader": "^3.0.3",

@@ -51,3 +51,11 @@ yarn-error.log
 
 /.tmp
 tools/k6/.env
+
+# API Keys and Secrets
+.env
+.env.local
+*.key
+.api-key
+api-key.txt
+
