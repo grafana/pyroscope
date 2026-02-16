@@ -125,6 +125,9 @@ func main() {
 
 	recordingRulesCmd := app.Command("recording-rules", "Operations on recording rules. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:read\" and/or \"profiles-config:write\" scopes.")
 	recordingRulesListCmd := recordingRulesCmd.Command("list", "List recording rules. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:read\" scope.")
+	recordingRulesGetCmd := recordingRulesCmd.Command("get", "Get a specific recording rule. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:read\" scope.")
+	recordingRulesGetId := recordingRulesGetCmd.Arg("rule_id", "Recording rule Id to retrieve").Required().String()
+	recordingRulesGetOutput := recordingRulesGetCmd.Flag("output", "Write rule to file instead of stdout").Short('o').String()
 	recordingRulesCreateCmd := recordingRulesCmd.Command("create", "Create a recording rule. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:write\" scope.\n"+createRuleExampleMsg)
 	recordingRulesCreateFile := recordingRulesCreateCmd.Flag("file", "Path to YAML or JSON file containing the recording rule definition").Short('f').Required().String()
 
@@ -233,6 +236,10 @@ func main() {
 		}
 	case recordingRulesListCmd.FullCommand():
 		if err := listRecordingRules(ctx, recordingRulesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case recordingRulesGetCmd.FullCommand():
+		if err := getRecordingRule(ctx, recordingRulesGetId, recordingRulesGetOutput, recordingRulesParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case recordingRulesCreateCmd.FullCommand():

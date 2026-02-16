@@ -46,6 +46,44 @@ type recordingRule struct {
 	FunctionName   string          `yaml:"function_name,omitempty" json:"function_name,omitempty"`
 }
 
+// convertToRecordingRule converts a protobuf RecordingRule to the local recordingRule struct
+func convertToRecordingRule(r *settingsv1.RecordingRule) recordingRule {
+	rule := recordingRule{
+		Matchers:       make([]string, 0),
+		MetricName:     r.MetricName,
+		GroupBy:        r.GroupBy,
+		ExternalLabels: r.ExternalLabels,
+	}
+	for _, m := range r.Matchers {
+		if m != "{}" {
+			rule.Matchers = append(rule.Matchers, m)
+		}
+	}
+	if r.StacktraceFilter != nil && r.StacktraceFilter.FunctionName != nil {
+		rule.FunctionName = r.StacktraceFilter.FunctionName.FunctionName
+	}
+	return rule
+}
+
+// formatAndPrintRecordingRule converts a protobuf RecordingRule to YAML and prints it
+func formatAndPrintRecordingRule(r *settingsv1.RecordingRule) error {
+	rule := convertToRecordingRule(r)
+
+	fmt.Printf("Rule with Id %s", r.Id)
+	if r.Provisioned {
+		fmt.Print(" (backend provisioned - read only)")
+	}
+	fmt.Println()
+
+	data, err := yaml.Marshal(rule)
+	if err != nil {
+		return fmt.Errorf("failed to marshal rule to YAML: %w", err)
+	}
+
+	fmt.Println(string(data))
+	return nil
+}
+
 func listRecordingRules(ctx context.Context, params *recordingRulesCmdParams) error {
 	client := params.recordingRulesClient()
 	req := settingsv1.ListRecordingRulesRequest{}
@@ -54,34 +92,44 @@ func listRecordingRules(ctx context.Context, params *recordingRulesCmdParams) er
 		return err
 	}
 	for _, r := range resp.Msg.Rules {
-		rule := recordingRule{
-			Matchers:       make([]string, 0),
-			MetricName:     r.MetricName,
-			GroupBy:        r.GroupBy,
-			ExternalLabels: r.ExternalLabels,
+		if err := formatAndPrintRecordingRule(r); err != nil {
+			return err
 		}
-		for _, m := range r.Matchers {
-			if m != "{}" {
-				rule.Matchers = append(rule.Matchers, m)
-			}
-		}
-		if r.StacktraceFilter != nil && r.StacktraceFilter.FunctionName != nil {
-			rule.FunctionName = r.StacktraceFilter.FunctionName.FunctionName
-		}
-		fmt.Printf("Rule with Id %s", r.Id)
-		if r.Provisioned {
-			fmt.Print(" (backend provisioned - read only)")
-		}
-		fmt.Println()
+	}
+	return nil
+}
 
+func getRecordingRule(ctx context.Context, id *string, outputFile *string, params *recordingRulesCmdParams) error {
+	client := params.recordingRulesClient()
+	req := settingsv1.GetRecordingRuleRequest{
+		Id: *id,
+	}
+	resp, err := client.GetRecordingRule(ctx, connect.NewRequest(&req))
+	if err != nil {
+		return err
+	}
+
+	r := resp.Msg.Rule
+
+	// If output file is specified, write to file
+	if outputFile != nil && *outputFile != "" {
+		rule := convertToRecordingRule(r)
 		data, err := yaml.Marshal(rule)
 		if err != nil {
 			return fmt.Errorf("failed to marshal rule to YAML: %w", err)
 		}
 
-		fmt.Println(string(data))
+		err = os.WriteFile(*outputFile, data, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write to file: %w", err)
+		}
+
+		fmt.Printf("Rule with Id %s written to %s\n", r.Id, *outputFile)
+		return nil
 	}
-	return nil
+
+	// Otherwise, print to stdout
+	return formatAndPrintRecordingRule(r)
 }
 
 func createRecordingRule(ctx context.Context, filePath *string, params *recordingRulesCmdParams) error {
