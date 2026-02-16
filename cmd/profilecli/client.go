@@ -133,6 +133,5 @@ func addPhlareClient(cmd commander) *phlareClient {
 	cmd.Flag("password", "The password to be used for basic auth.").Default("").Envar(envPrefix + "PASSWORD").StringVar(&client.BasicAuth.Password)
 	cmd.Flag("protocol", "The protocol to be used for communicating with the server.").Default(protocolTypeConnect).EnumVar(&client.protocol,
 		protocolTypeConnect, protocolTypeGRPC, protocolTypeGRPCWeb)
-	cmd.Flag("collect-diagnostics", "Request query diagnostics collection. The server will return a diagnostics ID in a response header.").Default("false").Envar(envPrefix + "COLLECT_DIAGNOSTICS").BoolVar(&client.CollectDiagnostics)
 	return client
 }

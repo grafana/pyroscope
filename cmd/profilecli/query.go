@@ -89,6 +89,8 @@ func addQueryParams(queryCmd commander) *queryParams {
 	params := new(queryParams)
 	params.phlareClient = addPhlareClient(queryCmd)
 
+	queryCmd.Flag("collect-diagnostics", "Request query diagnostics collection. The server will return a diagnostics ID in a response header.").Default("false").Envar(envPrefix + "COLLECT_DIAGNOSTICS").BoolVar(&params.phlareClient.CollectDiagnostics)
+
 	queryCmd.Flag("from", "Beginning of the query.").Default("now-1h").StringVar(&params.From)
 	queryCmd.Flag("to", "End of the query.").Default("now").StringVar(&params.To)
 	queryCmd.Flag("query", "Label selector to query.").Default("{}").StringVar(&params.Query)
