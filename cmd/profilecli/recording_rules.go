@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
 	"connectrpc.com/connect"
+	"gopkg.in/yaml.v3"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
@@ -17,19 +17,15 @@ import (
 const createRuleExampleMsg = `
 		Example:
 			# Create a rule that records the total CPU usage of the garbage collector function for every service in the "emea" region:
-			profilecli recording-rules create -f rule.json
+			profilecli recording-rules create -f rule.yaml
 
-			# rule.json:
-			{
-				"matchers": [
-					"{ __profile_type__=\"process_cpu:cpu:nanoseconds:cpu:nanoseconds\", region=\"emea\"}"
-				],
-				"metric_name": "profiles_recorded_cpu_usage_function_total_gc_nanoseconds",
-				"group_by": [
-					"service_name"
-				],
-				"function_name": "runtime.gcBgMarkWorker"
-			}`
+			# rule.yaml:
+			matchers:
+			  - '{ __profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds", region="emea"}'
+			metric_name: profiles_recorded_cpu_usage_function_total_gc_nanoseconds
+			group_by:
+			  - service_name
+			function_name: runtime.gcBgMarkWorker`
 
 func (c *phlareClient) recordingRulesClient() settingsv1connect.RecordingRulesServiceClient {
 	return settingsv1connect.NewRecordingRulesServiceClient(
@@ -43,11 +39,11 @@ func (c *phlareClient) recordingRulesClient() settingsv1connect.RecordingRulesSe
 }
 
 type recordingRule struct {
-	Matchers       []string        `json:"matchers,omitempty"`
-	MetricName     string          `json:"metric_name,omitempty"`
-	GroupBy        []string        `json:"group_by,omitempty"`
-	ExternalLabels []*v1.LabelPair `json:"external_labels,omitempty"`
-	FunctionName   string          `json:"function_name,omitempty"`
+	Matchers       []string        `yaml:"matchers,omitempty" json:"matchers,omitempty"`
+	MetricName     string          `yaml:"metric_name,omitempty" json:"metric_name,omitempty"`
+	GroupBy        []string        `yaml:"group_by,omitempty" json:"group_by,omitempty"`
+	ExternalLabels []*v1.LabelPair `yaml:"external_labels,omitempty" json:"external_labels,omitempty"`
+	FunctionName   string          `yaml:"function_name,omitempty" json:"function_name,omitempty"`
 }
 
 func listRecordingRules(ctx context.Context, params *recordingRulesCmdParams) error {
@@ -78,10 +74,12 @@ func listRecordingRules(ctx context.Context, params *recordingRulesCmdParams) er
 		}
 		fmt.Println()
 
-		data, _ := json.MarshalIndent(rule, "", "  ")
+		data, err := yaml.Marshal(rule)
+		if err != nil {
+			return fmt.Errorf("failed to marshal rule to YAML: %w", err)
+		}
 
 		fmt.Println(string(data))
-		fmt.Println()
 	}
 	return nil
 }
@@ -96,9 +94,9 @@ func createRecordingRule(ctx context.Context, filePath *string, params *recordin
 	}
 
 	var newRule recordingRule
-	err = json.Unmarshal(data, &newRule)
+	err = yaml.Unmarshal(data, &newRule)
 	if err != nil {
-		return fmt.Errorf("failed to parse JSON: %w", err)
+		return fmt.Errorf("failed to parse file: %w", err)
 	}
 	req := settingsv1.UpsertRecordingRuleRequest{
 		MetricName:     newRule.MetricName,
