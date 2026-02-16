@@ -277,6 +277,9 @@ func validateUpsert(req *settingsv1.UpsertRecordingRuleRequest) error {
 		}
 		for _, matcher := range matchers {
 			if matcher.Name == model.LabelNameProfileType {
+				if matcher.Type != labels.MatchEqual {
+					errs = append(errs, fmt.Errorf("matcher %q must have type %q", matcher.Name, labels.MatchEqual))
+				}
 				profileTypeMatcher += 1
 			}
 		}

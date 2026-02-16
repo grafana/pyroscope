@@ -188,6 +188,26 @@ func Test_validateUpsert(t *testing.T) {
 			WantErr: `matchers must contain a "__profile_type__" matcher`,
 		},
 		{
+			Name: "multiple __profile_type__ matcher",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName:     "profiles_recorded_my_metric",
+				Matchers:       []string{`{ __profile_type__ = "any-type" }`, `{ __profile_type__ = "any-type-2" }`},
+				GroupBy:        []string{},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: `matchers must contain a "__profile_type__" matcher`,
+		},
+		{
+			Name: "non-equality __profile_type__ matcher",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName:     "profiles_recorded_my_metric",
+				Matchers:       []string{`{ __profile_type__ =~ "any-type.*" }`},
+				GroupBy:        []string{},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: `matcher "__profile_type__" must have type "="`,
+		},
+		{
 			Name: "non-unique __profile_type__ matcher",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "profiles_recorded_my_metric",
