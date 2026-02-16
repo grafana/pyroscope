@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"connectrpc.com/connect"
 
@@ -14,9 +15,12 @@ import (
 )
 
 const createRuleExampleMsg = `
-		Example: 
+		Example:
 			# Create a rule that records the total CPU usage of the garbage collector function for every service in the "emea" region:
-			profilecli recording-rules create '{
+			profilecli recording-rules create -f rule.json
+
+			# rule.json:
+			{
 				"matchers": [
 					"{ __profile_type__=\"process_cpu:cpu:nanoseconds:cpu:nanoseconds\", region=\"emea\"}"
 				],
@@ -25,7 +29,7 @@ const createRuleExampleMsg = `
 					"service_name"
 				],
 				"function_name": "runtime.gcBgMarkWorker"
-			}'`
+			}`
 
 func (c *phlareClient) recordingRulesClient() settingsv1connect.RecordingRulesServiceClient {
 	return settingsv1connect.NewRecordingRulesServiceClient(
@@ -82,12 +86,19 @@ func listRecordingRules(ctx context.Context, params *recordingRulesCmdParams) er
 	return nil
 }
 
-func createRecordingRule(ctx context.Context, rule *string, params *recordingRulesCmdParams) error {
+func createRecordingRule(ctx context.Context, filePath *string, params *recordingRulesCmdParams) error {
 	client := params.recordingRulesClient()
-	var newRule recordingRule
-	err := json.Unmarshal([]byte(*rule), &newRule)
+
+	// Read the rule from file
+	data, err := os.ReadFile(*filePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	var newRule recordingRule
+	err = json.Unmarshal(data, &newRule)
+	if err != nil {
+		return fmt.Errorf("failed to parse JSON: %w", err)
 	}
 	req := settingsv1.UpsertRecordingRuleRequest{
 		MetricName:     newRule.MetricName,
