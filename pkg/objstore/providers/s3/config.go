@@ -81,15 +81,15 @@ func (cfg *HTTPConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 
 // Config holds the config options for an S3 backend
 type Config struct {
-	Endpoint         string         `yaml:"endpoint"`
-	Region           string         `yaml:"region"`
-	BucketName       string         `yaml:"bucket_name"`
-	SecretAccessKey  flagext.Secret `yaml:"secret_access_key"`
-	AccessKeyID      string         `yaml:"access_key_id"`
-	Insecure         bool           `yaml:"insecure" category:"advanced"`
-	SignatureVersion string         `yaml:"signature_version" category:"advanced"`
-	ForcePathStyle   bool           `yaml:"force_path_style" category:"advanced"`
-	BucketLookupType string         `yaml:"bucket_lookup_type" category:"advanced"`
+	Endpoint             string         `yaml:"endpoint"`
+	Region               string         `yaml:"region"`
+	BucketName           string         `yaml:"bucket_name"`
+	SecretAccessKey      flagext.Secret `yaml:"secret_access_key"`
+	AccessKeyID          string         `yaml:"access_key_id"`
+	Insecure             bool           `yaml:"insecure" category:"advanced"`
+	SignatureVersion     string         `yaml:"signature_version" category:"advanced"`
+	ForcePathStyle       bool           `yaml:"force_path_style" category:"advanced"`
+	BucketLookupType     string         `yaml:"bucket_lookup_type" category:"advanced"`
 	NativeAWSAuthEnabled bool           `yaml:"native_aws_auth_enabled" category:"experimental"`
 
 	SSE  SSEConfig  `yaml:"sse"`
