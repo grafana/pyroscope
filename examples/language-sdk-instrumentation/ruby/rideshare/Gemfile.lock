@@ -74,7 +74,7 @@ GEM
     pyroscope-otel (0.1.4)
       opentelemetry-api (~> 1.1)
       pyroscope (>= 0.5.1, < 1.0)
-    rack (3.2.4)
+    rack (3.2.5)
     rack-protection (4.2.0)
       base64 (>= 0.1.0)
       logger (>= 1.6.0)
