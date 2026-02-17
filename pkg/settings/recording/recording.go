@@ -269,11 +269,24 @@ func validateUpsert(req *settingsv1.UpsertRecordingRuleRequest) error {
 		errs = append(errs, fmt.Errorf("metric_name %q is invalid: %v", req.MetricName, err))
 	}
 
+	profileTypeMatcher := 0
 	for _, m := range req.Matchers {
-		_, err := parser.ParseMetricSelector(m)
+		matchers, err := parser.ParseMetricSelector(m)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("matcher %q is invalid: %v", m, err))
 		}
+		for _, matcher := range matchers {
+			if matcher.Name == model.LabelNameProfileType {
+				if matcher.Type != labels.MatchEqual {
+					errs = append(errs, fmt.Errorf("matcher %q must have type %q", matcher.Name, labels.MatchEqual))
+				}
+				profileTypeMatcher += 1
+			}
+		}
+	}
+
+	if profileTypeMatcher != 1 {
+		errs = append(errs, fmt.Errorf("matchers must contain a %q matcher", model.LabelNameProfileType))
 	}
 
 	for _, l := range req.GroupBy {

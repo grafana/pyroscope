@@ -123,6 +123,18 @@ func main() {
 	kubeProxyCmd := adminCmd.Command("kube-proxy", "Start a reverse proxy unifying all the micro services in a single endpoint.")
 	kubeProxyParams := addKubeProxyParams(kubeProxyCmd)
 
+	recordingRulesCmd := app.Command("recording-rules", "Operations on recording rules. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:read\" and/or \"profiles-config:write\" scopes.")
+	recordingRulesListCmd := recordingRulesCmd.Command("list", "List recording rules. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:read\" scope.")
+	recordingRulesGetCmd := recordingRulesCmd.Command("get", "Get a specific recording rule. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:read\" scope.")
+	recordingRulesGetId := recordingRulesGetCmd.Arg("rule_id", "Recording rule Id to retrieve").Required().String()
+	recordingRulesGetOutput := recordingRulesGetCmd.Flag("output", "Write rule to file instead of stdout").Short('o').String()
+	recordingRulesCreateCmd := recordingRulesCmd.Command("create", "Create a recording rule. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:write\" scope.\n"+createRuleExampleMsg)
+	recordingRulesCreateFile := recordingRulesCreateCmd.Flag("file", "Path to YAML or JSON file containing the recording rule definition").Short('f').Required().String()
+
+	recordingRulesDeleteCmd := recordingRulesCmd.Command("delete", "Delete a recording rule. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:write\" scope.")
+	recordingRulesDeleteId := recordingRulesDeleteCmd.Arg("rule_id", "Recording rule Id to delete").Required().String()
+	recordingRulesParams := addRecordingRulesListParams(recordingRulesCmd)
+
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -220,6 +232,22 @@ func main() {
 		}
 	case kubeProxyCmd.FullCommand():
 		if err := kubeProxyCommand(ctx, kubeProxyParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case recordingRulesListCmd.FullCommand():
+		if err := listRecordingRules(ctx, recordingRulesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case recordingRulesGetCmd.FullCommand():
+		if err := getRecordingRule(ctx, recordingRulesGetId, recordingRulesGetOutput, recordingRulesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case recordingRulesCreateCmd.FullCommand():
+		if err := createRecordingRule(ctx, recordingRulesCreateFile, recordingRulesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case recordingRulesDeleteCmd.FullCommand():
+		if err := deleteRecordingRule(ctx, recordingRulesDeleteId, recordingRulesParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:
