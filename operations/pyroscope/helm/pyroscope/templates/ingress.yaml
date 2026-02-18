@@ -1,4 +1,5 @@
 {{- if .Values.ingress.enabled }}
+{{- $components := (fromYaml (include "pyroscope.components" .)) }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -28,7 +29,7 @@ spec:
       paths:
       - backend:
           service:
-            {{- if gt (len $.Values.pyroscope.components) 1}}
+            {{- if gt (len $components) 1}}
             name: {{ include "pyroscope.fullname" $ }}-query-frontend
             {{- else }}
             name: {{ include "pyroscope.fullname" $ }}
@@ -39,7 +40,7 @@ spec:
         pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
-            {{- if gt (len $.Values.pyroscope.components) 1}}
+            {{- if gt (len $components) 1}}
             name: {{ include "pyroscope.fullname" $ }}-query-frontend
             {{- else }}
             name: {{ include "pyroscope.fullname" $ }}
@@ -50,7 +51,7 @@ spec:
         pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
-            {{- if gt (len $.Values.pyroscope.components) 1}}
+            {{- if gt (len $components) 1}}
             name: {{ include "pyroscope.fullname" $ }}-query-frontend
             {{- else }}
             name: {{ include "pyroscope.fullname" $ }}
@@ -61,7 +62,7 @@ spec:
         pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
-            {{- if gt (len $.Values.pyroscope.components) 1}}
+            {{- if gt (len $components) 1}}
             name: {{ include "pyroscope.fullname" $ }}-query-frontend
             {{- else }}
             name: {{ include "pyroscope.fullname" $ }}
@@ -72,7 +73,7 @@ spec:
         pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
-            {{- if gt (len $.Values.pyroscope.components) 1}}
+            {{- if gt (len $components) 1}}
             name: {{ include "pyroscope.fullname" $ }}-distributor
             {{- else }}
             name: {{ include "pyroscope.fullname" $ }}
@@ -83,7 +84,7 @@ spec:
         pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
-            {{- if gt (len $.Values.pyroscope.components) 1}}
+            {{- if gt (len $components) 1}}
             name: {{ include "pyroscope.fullname" $ }}-distributor
             {{- else }}
             name: {{ include "pyroscope.fullname" $ }}
@@ -94,7 +95,7 @@ spec:
         pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
-            {{- if gt (len $.Values.pyroscope.components) 1}}
+            {{- if gt (len $components) 1}}
             name: {{ include "pyroscope.fullname" $ }}-tenant-settings
             {{- else }}
             name: {{ include "pyroscope.fullname" $ }}
@@ -105,7 +106,7 @@ spec:
         pathType: {{ $.Values.ingress.pathType }}
       - backend:
           service:
-            {{- if gt (len $.Values.pyroscope.components) 1}}
+            {{- if gt (len $components) 1}}
             name: {{ include "pyroscope.fullname" $ }}-ad-hoc-profiles
             {{- else }}
             name: {{ include "pyroscope.fullname" $ }}
