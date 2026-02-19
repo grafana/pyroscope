@@ -29,11 +29,11 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v81 v81.0.0
-	github.com/google/pprof cb029daf43ef
+	github.com/google/pprof v0.0.0-20260202012954-cb029daf43ef
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/dskit 6352488fe08f
+	github.com/grafana/dskit v0.0.0-20260218151138-6352488fe08f
 	github.com/grafana/pyroscope-go v1.2.7
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.9
 	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3
@@ -340,7 +340,7 @@ replace (
 
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
-	github.com/hashicorp/memberlist => github.com/grafana/memberlist 6f9f62ab6f86
+	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20251126142931-6f9f62ab6f86
 
 	// gopkg.in/yaml.v3
 	// + https://github.com/go-yaml/yaml/pull/691
