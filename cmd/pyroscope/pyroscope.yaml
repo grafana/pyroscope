@@ -1,2 +1,156 @@
+# Pyroscope Server Configuration Example
+#
+# This file documents the most commonly used configuration options for
+# Pyroscope in single-binary (monolithic) mode.
+#
+# Configuration can be supplied via:
+#   - This YAML file (pass with -config.file=<path>)
+#   - Environment variables (e.g. PYROSCOPE_SERVER_HTTP_LISTEN_PORT=4040)
+#   - Command-line flags (e.g. -server.http-listen-port=4040)
+#
+# Environment variable values override file values.
+# Command-line flag values override both file and environment variable values.
+#
+# For the full list of available flags and their defaults, run:
+#   pyroscope -help-all
+#
+# For the full configuration reference, see:
+#   https://grafana.com/docs/pyroscope/latest/configure-server/reference-configuration-parameters/
+
+# target specifies which Pyroscope components to run.
+# In single-binary (monolithic) mode, use "all".
+# For microservices mode, separate components can be targeted individually.
+# Supported values: all, distributor, ingester, querier, query-frontend,
+#                   query-scheduler, store-gateway, compactor
+# (default: all)
+# target: all
+
+# ============================================================
+# Server
+# ============================================================
 server:
+  # HTTP server listen address and port (default: 0.0.0.0:4040)
   http_listen_port: 4040
+  # http_listen_address: 0.0.0.0
+
+  # gRPC server listen port (default: 9095)
+  # grpc_listen_port: 9095
+
+  # Log level for the server. Supported values: debug, info, warn, error.
+  # log_level: info
+
+  # Log format. Supported values: logfmt, json.
+  # log_format: logfmt
+
+# ============================================================
+# Multi-tenancy
+# ============================================================
+# When enabled, the X-Scope-OrgId HTTP header is required on all requests
+# to identify the tenant. When disabled, all data is stored under the
+# "anonymous" tenant.
+# (default: false)
+# multitenancy_enabled: false
+
+# ============================================================
+# Local Storage (pyroscopedb)
+# ============================================================
+# Used when storage backend is "filesystem" (the default).
+# Profiles and blocks are stored on the local disk.
+pyroscopedb:
+  # Directory where Pyroscope stores profiling data on disk.
+  # (default: ./data)
+  # data_path: ./data
+
+  # Maximum duration of a block before it is flushed to storage.
+  # Shorter durations mean smaller blocks but more frequent flushes.
+  # (default: 3h)
+  # max_block_duration: 3h
+
+# ============================================================
+# Object Storage
+# ============================================================
+# Configure an object storage backend (S3, GCS, Azure, or filesystem).
+# Required when running Pyroscope in microservices mode.
+# Defaults to filesystem storage at ./data.
+#
+# Example: Amazon S3
+# storage:
+#   backend: s3
+#   s3:
+#     bucket_name: my-pyroscope-bucket
+#     region: us-east-1
+#     # access_key_id and secret_access_key can be set here or via
+#     # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY environment variables,
+#     # or using an IAM instance role.
+#     # access_key_id: <key>
+#     # secret_access_key: <secret>
+#
+# Example: Google Cloud Storage
+# storage:
+#   backend: gcs
+#   gcs:
+#     bucket_name: my-pyroscope-bucket
+#
+# Example: Local filesystem (default)
+# storage:
+#   backend: filesystem
+#   filesystem:
+#     dir: ./data
+
+# ============================================================
+# Ingestion limits (per-tenant)
+# ============================================================
+# These defaults apply to all tenants unless overridden via runtime_config.
+# limits:
+#   # Maximum ingestion rate in MB/s per tenant.
+#   # (default: 4)
+#   ingestion_rate_mb: 4
+#
+#   # Maximum burst size in MB above the ingestion rate.
+#   # (default: 6)
+#   ingestion_burst_size_mb: 6
+#
+#   # Maximum number of unique time series per tenant (0 = unlimited).
+#   # max_global_series_per_tenant: 0
+#
+#   # Maximum lookback period for queries (0 = unlimited).
+#   # max_query_lookback: 0
+
+# ============================================================
+# Runtime configuration
+# ============================================================
+# Allows changing certain configuration values (e.g. per-tenant limits)
+# at runtime without restarting Pyroscope.
+# runtime_config:
+#   file: /etc/pyroscope/runtime.yaml
+#   # How often to reload the runtime config file.
+#   # period: 10s
+
+# ============================================================
+# Memberlist (cluster discovery for microservices mode)
+# ============================================================
+# Used for ring-based distributed coordination when running multiple
+# Pyroscope instances.
+# memberlist:
+#   # Comma-separated list of cluster peers to join on startup.
+#   join_members:
+#     - pyroscope-0.pyroscope.svc.cluster.local.:7946
+#     - pyroscope-1.pyroscope.svc.cluster.local.:7946
+
+# ============================================================
+# Tracing
+# ============================================================
+# Pyroscope supports distributed tracing via OpenTelemetry / Jaeger.
+# Configure tracing with environment variables (JAEGER_AGENT_HOST, etc.)
+# or a Grafana Tempo/Jaeger endpoint.
+# tracing:
+#   # Set to false to disable tracing entirely.
+#   enabled: true
+
+# ============================================================
+# Analytics / Usage reporting
+# ============================================================
+# Pyroscope reports anonymised usage statistics to Grafana Labs by default.
+# Disable this if your environment does not allow outbound connections.
+# analytics:
+#   reporting_enabled: false
