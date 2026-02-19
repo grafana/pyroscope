@@ -9,6 +9,42 @@ tags:
     description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
   - name: adhocprofiles.v1.AdHocProfileService
 paths:
+  /adhocprofiles.v1.AdHocProfileService/Diff:
+    post:
+      tags:
+        - adhocprofiles.v1.AdHocProfileService
+      summary: Computes a diff flamegraph from two previously uploaded profiles.
+      description: Computes a diff flamegraph from two previously uploaded profiles.
+      operationId: adhocprofiles.v1.AdHocProfileService.Diff
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/adhocprofiles.v1.AdHocProfilesDiffRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/adhocprofiles.v1.AdHocProfilesDiffResponse'
   /adhocprofiles.v1.AdHocProfileService/Get:
     post:
       tags:
@@ -123,6 +159,41 @@ paths:
                 $ref: '#/components/schemas/adhocprofiles.v1.AdHocProfilesGetResponse'
 components:
   schemas:
+    adhocprofiles.v1.AdHocProfilesDiffRequest:
+      type: object
+      properties:
+        leftId:
+          type: string
+          title: left_id
+        rightId:
+          type: string
+          title: right_id
+        profileType:
+          type: string
+          title: profile_type
+          nullable: true
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+          nullable: true
+      title: AdHocProfilesDiffRequest
+      additionalProperties: false
+    adhocprofiles.v1.AdHocProfilesDiffResponse:
+      type: object
+      properties:
+        profileTypes:
+          type: array
+          items:
+            type: string
+          title: profile_types
+        flamebearerProfile:
+          type: string
+          title: flamebearer_profile
+      title: AdHocProfilesDiffResponse
+      additionalProperties: false
     adhocprofiles.v1.AdHocProfilesGetRequest:
       type: object
       properties:
