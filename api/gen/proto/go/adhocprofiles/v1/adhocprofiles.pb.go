@@ -376,6 +376,126 @@ func (x *AdHocProfilesProfileMetadata) GetUploadedAt() int64 {
 	return 0
 }
 
+type AdHocProfilesDiffRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LeftId        string                 `protobuf:"bytes,1,opt,name=left_id,json=leftId,proto3" json:"left_id,omitempty"`
+	RightId       string                 `protobuf:"bytes,2,opt,name=right_id,json=rightId,proto3" json:"right_id,omitempty"`
+	ProfileType   *string                `protobuf:"bytes,3,opt,name=profile_type,json=profileType,proto3,oneof" json:"profile_type,omitempty"`
+	MaxNodes      *int64                 `protobuf:"varint,4,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdHocProfilesDiffRequest) Reset() {
+	*x = AdHocProfilesDiffRequest{}
+	mi := &file_adhocprofiles_v1_adhocprofiles_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdHocProfilesDiffRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdHocProfilesDiffRequest) ProtoMessage() {}
+
+func (x *AdHocProfilesDiffRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_adhocprofiles_v1_adhocprofiles_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdHocProfilesDiffRequest.ProtoReflect.Descriptor instead.
+func (*AdHocProfilesDiffRequest) Descriptor() ([]byte, []int) {
+	return file_adhocprofiles_v1_adhocprofiles_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AdHocProfilesDiffRequest) GetLeftId() string {
+	if x != nil {
+		return x.LeftId
+	}
+	return ""
+}
+
+func (x *AdHocProfilesDiffRequest) GetRightId() string {
+	if x != nil {
+		return x.RightId
+	}
+	return ""
+}
+
+func (x *AdHocProfilesDiffRequest) GetProfileType() string {
+	if x != nil && x.ProfileType != nil {
+		return *x.ProfileType
+	}
+	return ""
+}
+
+func (x *AdHocProfilesDiffRequest) GetMaxNodes() int64 {
+	if x != nil && x.MaxNodes != nil {
+		return *x.MaxNodes
+	}
+	return 0
+}
+
+type AdHocProfilesDiffResponse struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	ProfileTypes       []string               `protobuf:"bytes,1,rep,name=profile_types,json=profileTypes,proto3" json:"profile_types,omitempty"`
+	FlamebearerProfile string                 `protobuf:"bytes,2,opt,name=flamebearer_profile,json=flamebearerProfile,proto3" json:"flamebearer_profile,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *AdHocProfilesDiffResponse) Reset() {
+	*x = AdHocProfilesDiffResponse{}
+	mi := &file_adhocprofiles_v1_adhocprofiles_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdHocProfilesDiffResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdHocProfilesDiffResponse) ProtoMessage() {}
+
+func (x *AdHocProfilesDiffResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_adhocprofiles_v1_adhocprofiles_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdHocProfilesDiffResponse.ProtoReflect.Descriptor instead.
+func (*AdHocProfilesDiffResponse) Descriptor() ([]byte, []int) {
+	return file_adhocprofiles_v1_adhocprofiles_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AdHocProfilesDiffResponse) GetProfileTypes() []string {
+	if x != nil {
+		return x.ProfileTypes
+	}
+	return nil
+}
+
+func (x *AdHocProfilesDiffResponse) GetFlamebearerProfile() string {
+	if x != nil {
+		return x.FlamebearerProfile
+	}
+	return ""
+}
+
 var File_adhocprofiles_v1_adhocprofiles_proto protoreflect.FileDescriptor
 
 const file_adhocprofiles_v1_adhocprofiles_proto_rawDesc = "" +
@@ -409,11 +529,23 @@ const file_adhocprofiles_v1_adhocprofiles_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1f\n" +
 	"\vuploaded_at\x18\x03 \x01(\x03R\n" +
-	"uploadedAt2\xbe\x02\n" +
+	"uploadedAt\"\xb7\x01\n" +
+	"\x18AdHocProfilesDiffRequest\x12\x17\n" +
+	"\aleft_id\x18\x01 \x01(\tR\x06leftId\x12\x19\n" +
+	"\bright_id\x18\x02 \x01(\tR\arightId\x12&\n" +
+	"\fprofile_type\x18\x03 \x01(\tH\x00R\vprofileType\x88\x01\x01\x12 \n" +
+	"\tmax_nodes\x18\x04 \x01(\x03H\x01R\bmaxNodes\x88\x01\x01B\x0f\n" +
+	"\r_profile_typeB\f\n" +
+	"\n" +
+	"_max_nodes\"q\n" +
+	"\x19AdHocProfilesDiffResponse\x12#\n" +
+	"\rprofile_types\x18\x01 \x03(\tR\fprofileTypes\x12/\n" +
+	"\x13flamebearer_profile\x18\x02 \x01(\tR\x12flamebearerProfile2\xa1\x03\n" +
 	"\x13AdHocProfileService\x12d\n" +
 	"\x06Upload\x12,.adhocprofiles.v1.AdHocProfilesUploadRequest\x1a*.adhocprofiles.v1.AdHocProfilesGetResponse\"\x00\x12^\n" +
 	"\x03Get\x12).adhocprofiles.v1.AdHocProfilesGetRequest\x1a*.adhocprofiles.v1.AdHocProfilesGetResponse\"\x00\x12a\n" +
-	"\x04List\x12*.adhocprofiles.v1.AdHocProfilesListRequest\x1a+.adhocprofiles.v1.AdHocProfilesListResponse\"\x00B\xdb\x01\n" +
+	"\x04List\x12*.adhocprofiles.v1.AdHocProfilesListRequest\x1a+.adhocprofiles.v1.AdHocProfilesListResponse\"\x00\x12a\n" +
+	"\x04Diff\x12*.adhocprofiles.v1.AdHocProfilesDiffRequest\x1a+.adhocprofiles.v1.AdHocProfilesDiffResponse\"\x00B\xdb\x01\n" +
 	"\x14com.adhocprofiles.v1B\x12AdhocprofilesProtoP\x01ZNgithub.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1;adhocprofilesv1\xa2\x02\x03AXX\xaa\x02\x10Adhocprofiles.V1\xca\x02\x10Adhocprofiles\\V1\xe2\x02\x1cAdhocprofiles\\V1\\GPBMetadata\xea\x02\x11Adhocprofiles::V1b\x06proto3"
 
 var (
@@ -428,7 +560,7 @@ func file_adhocprofiles_v1_adhocprofiles_proto_rawDescGZIP() []byte {
 	return file_adhocprofiles_v1_adhocprofiles_proto_rawDescData
 }
 
-var file_adhocprofiles_v1_adhocprofiles_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_adhocprofiles_v1_adhocprofiles_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_adhocprofiles_v1_adhocprofiles_proto_goTypes = []any{
 	(*AdHocProfilesUploadRequest)(nil),   // 0: adhocprofiles.v1.AdHocProfilesUploadRequest
 	(*AdHocProfilesGetRequest)(nil),      // 1: adhocprofiles.v1.AdHocProfilesGetRequest
@@ -436,17 +568,21 @@ var file_adhocprofiles_v1_adhocprofiles_proto_goTypes = []any{
 	(*AdHocProfilesListRequest)(nil),     // 3: adhocprofiles.v1.AdHocProfilesListRequest
 	(*AdHocProfilesListResponse)(nil),    // 4: adhocprofiles.v1.AdHocProfilesListResponse
 	(*AdHocProfilesProfileMetadata)(nil), // 5: adhocprofiles.v1.AdHocProfilesProfileMetadata
+	(*AdHocProfilesDiffRequest)(nil),     // 6: adhocprofiles.v1.AdHocProfilesDiffRequest
+	(*AdHocProfilesDiffResponse)(nil),    // 7: adhocprofiles.v1.AdHocProfilesDiffResponse
 }
 var file_adhocprofiles_v1_adhocprofiles_proto_depIdxs = []int32{
 	5, // 0: adhocprofiles.v1.AdHocProfilesListResponse.profiles:type_name -> adhocprofiles.v1.AdHocProfilesProfileMetadata
 	0, // 1: adhocprofiles.v1.AdHocProfileService.Upload:input_type -> adhocprofiles.v1.AdHocProfilesUploadRequest
 	1, // 2: adhocprofiles.v1.AdHocProfileService.Get:input_type -> adhocprofiles.v1.AdHocProfilesGetRequest
 	3, // 3: adhocprofiles.v1.AdHocProfileService.List:input_type -> adhocprofiles.v1.AdHocProfilesListRequest
-	2, // 4: adhocprofiles.v1.AdHocProfileService.Upload:output_type -> adhocprofiles.v1.AdHocProfilesGetResponse
-	2, // 5: adhocprofiles.v1.AdHocProfileService.Get:output_type -> adhocprofiles.v1.AdHocProfilesGetResponse
-	4, // 6: adhocprofiles.v1.AdHocProfileService.List:output_type -> adhocprofiles.v1.AdHocProfilesListResponse
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
+	6, // 4: adhocprofiles.v1.AdHocProfileService.Diff:input_type -> adhocprofiles.v1.AdHocProfilesDiffRequest
+	2, // 5: adhocprofiles.v1.AdHocProfileService.Upload:output_type -> adhocprofiles.v1.AdHocProfilesGetResponse
+	2, // 6: adhocprofiles.v1.AdHocProfileService.Get:output_type -> adhocprofiles.v1.AdHocProfilesGetResponse
+	4, // 7: adhocprofiles.v1.AdHocProfileService.List:output_type -> adhocprofiles.v1.AdHocProfilesListResponse
+	7, // 8: adhocprofiles.v1.AdHocProfileService.Diff:output_type -> adhocprofiles.v1.AdHocProfilesDiffResponse
+	5, // [5:9] is the sub-list for method output_type
+	1, // [1:5] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -459,13 +595,14 @@ func file_adhocprofiles_v1_adhocprofiles_proto_init() {
 	}
 	file_adhocprofiles_v1_adhocprofiles_proto_msgTypes[0].OneofWrappers = []any{}
 	file_adhocprofiles_v1_adhocprofiles_proto_msgTypes[1].OneofWrappers = []any{}
+	file_adhocprofiles_v1_adhocprofiles_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_adhocprofiles_v1_adhocprofiles_proto_rawDesc), len(file_adhocprofiles_v1_adhocprofiles_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -116,6 +116,89 @@ func TestAdHocProfiles_List(t *testing.T) {
 	require.Equal(t, connect.NewResponse(&v1.AdHocProfilesListResponse{Profiles: expected}), response)
 }
 
+func TestAdHocProfiles_Diff(t *testing.T) {
+	bucket := phlareobjstore.NewBucket(thanosobjstore.NewInMemBucket())
+	rawProfile, err := os.ReadFile("testdata/cpu.pprof")
+	require.NoError(t, err)
+	encodedProfile := base64.StdEncoding.EncodeToString(rawProfile)
+
+	leftProfile := &AdHocProfile{Name: "left.pprof", Data: encodedProfile}
+	rightProfile := &AdHocProfile{Name: "right.pprof", Data: encodedProfile}
+	leftJSON, _ := json.Marshal(leftProfile)
+	rightJSON, _ := json.Marshal(rightProfile)
+	_ = bucket.Upload(context.Background(), "tenant/adhoc/left-profile", bytes.NewReader(leftJSON))
+	_ = bucket.Upload(context.Background(), "tenant/adhoc/right-profile", bytes.NewReader(rightJSON))
+
+	ctx := tenant.InjectTenantID(context.Background(), "tenant")
+	a := &AdHocProfiles{
+		logger: util.Logger,
+		limits: validation.MockLimits{MaxFlameGraphNodesDefaultValue: 8192},
+		bucket: bucket,
+	}
+
+	t.Run("reject requests with missing tenant id", func(t *testing.T) {
+		_, err := a.Diff(context.Background(), connect.NewRequest(&v1.AdHocProfilesDiffRequest{
+			LeftId:  "left-profile",
+			RightId: "right-profile",
+		}))
+		require.Error(t, err)
+	})
+
+	t.Run("return error for invalid left id", func(t *testing.T) {
+		_, err := a.Diff(ctx, connect.NewRequest(&v1.AdHocProfilesDiffRequest{
+			LeftId:  "../../etc/passwd",
+			RightId: "right-profile",
+		}))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid")
+	})
+
+	t.Run("return error for non-existing profile", func(t *testing.T) {
+		_, err := a.Diff(ctx, connect.NewRequest(&v1.AdHocProfilesDiffRequest{
+			LeftId:  "non-existing-id",
+			RightId: "right-profile",
+		}))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to fetch profiles")
+	})
+
+	t.Run("return diff for valid profiles", func(t *testing.T) {
+		resp, err := a.Diff(ctx, connect.NewRequest(&v1.AdHocProfilesDiffRequest{
+			LeftId:  "left-profile",
+			RightId: "right-profile",
+		}))
+		require.NoError(t, err)
+		require.NotEmpty(t, resp.Msg.ProfileTypes)
+		require.NotEmpty(t, resp.Msg.FlamebearerProfile)
+
+		var fb map[string]interface{}
+		require.NoError(t, json.Unmarshal([]byte(resp.Msg.FlamebearerProfile), &fb))
+		metadata := fb["metadata"].(map[string]interface{})
+		require.Equal(t, "double", metadata["format"])
+	})
+
+	t.Run("return diff with explicit profile type", func(t *testing.T) {
+		// First, find available profile types.
+		getResp, err := a.Get(ctx, connect.NewRequest(&v1.AdHocProfilesGetRequest{Id: "left-profile"}))
+		require.NoError(t, err)
+		require.NotEmpty(t, getResp.Msg.ProfileTypes)
+
+		pt := getResp.Msg.ProfileTypes[0]
+		resp, err := a.Diff(ctx, connect.NewRequest(&v1.AdHocProfilesDiffRequest{
+			LeftId:      "left-profile",
+			RightId:     "right-profile",
+			ProfileType: &pt,
+		}))
+		require.NoError(t, err)
+		require.NotEmpty(t, resp.Msg.FlamebearerProfile)
+
+		var fb map[string]interface{}
+		require.NoError(t, json.Unmarshal([]byte(resp.Msg.FlamebearerProfile), &fb))
+		metadata := fb["metadata"].(map[string]interface{})
+		require.Equal(t, "double", metadata["format"])
+	})
+}
+
 func TestAdHocProfiles_Upload(t *testing.T) {
 	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 		defaults.MaxFlameGraphNodesDefault = 8192

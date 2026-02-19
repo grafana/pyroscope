@@ -41,6 +41,9 @@ const (
 	// AdHocProfileServiceListProcedure is the fully-qualified name of the AdHocProfileService's List
 	// RPC.
 	AdHocProfileServiceListProcedure = "/adhocprofiles.v1.AdHocProfileService/List"
+	// AdHocProfileServiceDiffProcedure is the fully-qualified name of the AdHocProfileService's Diff
+	// RPC.
+	AdHocProfileServiceDiffProcedure = "/adhocprofiles.v1.AdHocProfileService/Diff"
 )
 
 // AdHocProfileServiceClient is a client for the adhocprofiles.v1.AdHocProfileService service.
@@ -53,6 +56,8 @@ type AdHocProfileServiceClient interface {
 	Get(context.Context, *connect.Request[v1.AdHocProfilesGetRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error)
 	// Retrieves a list of profiles found in the underlying store.
 	List(context.Context, *connect.Request[v1.AdHocProfilesListRequest]) (*connect.Response[v1.AdHocProfilesListResponse], error)
+	// Computes a diff flamegraph from two previously uploaded profiles.
+	Diff(context.Context, *connect.Request[v1.AdHocProfilesDiffRequest]) (*connect.Response[v1.AdHocProfilesDiffResponse], error)
 }
 
 // NewAdHocProfileServiceClient constructs a client for the adhocprofiles.v1.AdHocProfileService
@@ -84,6 +89,12 @@ func NewAdHocProfileServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(adHocProfileServiceMethods.ByName("List")),
 			connect.WithClientOptions(opts...),
 		),
+		diff: connect.NewClient[v1.AdHocProfilesDiffRequest, v1.AdHocProfilesDiffResponse](
+			httpClient,
+			baseURL+AdHocProfileServiceDiffProcedure,
+			connect.WithSchema(adHocProfileServiceMethods.ByName("Diff")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -92,6 +103,7 @@ type adHocProfileServiceClient struct {
 	upload *connect.Client[v1.AdHocProfilesUploadRequest, v1.AdHocProfilesGetResponse]
 	get    *connect.Client[v1.AdHocProfilesGetRequest, v1.AdHocProfilesGetResponse]
 	list   *connect.Client[v1.AdHocProfilesListRequest, v1.AdHocProfilesListResponse]
+	diff   *connect.Client[v1.AdHocProfilesDiffRequest, v1.AdHocProfilesDiffResponse]
 }
 
 // Upload calls adhocprofiles.v1.AdHocProfileService.Upload.
@@ -109,6 +121,11 @@ func (c *adHocProfileServiceClient) List(ctx context.Context, req *connect.Reque
 	return c.list.CallUnary(ctx, req)
 }
 
+// Diff calls adhocprofiles.v1.AdHocProfileService.Diff.
+func (c *adHocProfileServiceClient) Diff(ctx context.Context, req *connect.Request[v1.AdHocProfilesDiffRequest]) (*connect.Response[v1.AdHocProfilesDiffResponse], error) {
+	return c.diff.CallUnary(ctx, req)
+}
+
 // AdHocProfileServiceHandler is an implementation of the adhocprofiles.v1.AdHocProfileService
 // service.
 type AdHocProfileServiceHandler interface {
@@ -120,6 +137,8 @@ type AdHocProfileServiceHandler interface {
 	Get(context.Context, *connect.Request[v1.AdHocProfilesGetRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error)
 	// Retrieves a list of profiles found in the underlying store.
 	List(context.Context, *connect.Request[v1.AdHocProfilesListRequest]) (*connect.Response[v1.AdHocProfilesListResponse], error)
+	// Computes a diff flamegraph from two previously uploaded profiles.
+	Diff(context.Context, *connect.Request[v1.AdHocProfilesDiffRequest]) (*connect.Response[v1.AdHocProfilesDiffResponse], error)
 }
 
 // NewAdHocProfileServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -147,6 +166,12 @@ func NewAdHocProfileServiceHandler(svc AdHocProfileServiceHandler, opts ...conne
 		connect.WithSchema(adHocProfileServiceMethods.ByName("List")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adHocProfileServiceDiffHandler := connect.NewUnaryHandler(
+		AdHocProfileServiceDiffProcedure,
+		svc.Diff,
+		connect.WithSchema(adHocProfileServiceMethods.ByName("Diff")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/adhocprofiles.v1.AdHocProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdHocProfileServiceUploadProcedure:
@@ -155,6 +180,8 @@ func NewAdHocProfileServiceHandler(svc AdHocProfileServiceHandler, opts ...conne
 			adHocProfileServiceGetHandler.ServeHTTP(w, r)
 		case AdHocProfileServiceListProcedure:
 			adHocProfileServiceListHandler.ServeHTTP(w, r)
+		case AdHocProfileServiceDiffProcedure:
+			adHocProfileServiceDiffHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -174,4 +201,8 @@ func (UnimplementedAdHocProfileServiceHandler) Get(context.Context, *connect.Req
 
 func (UnimplementedAdHocProfileServiceHandler) List(context.Context, *connect.Request[v1.AdHocProfilesListRequest]) (*connect.Response[v1.AdHocProfilesListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("adhocprofiles.v1.AdHocProfileService.List is not implemented"))
+}
+
+func (UnimplementedAdHocProfileServiceHandler) Diff(context.Context, *connect.Request[v1.AdHocProfilesDiffRequest]) (*connect.Response[v1.AdHocProfilesDiffResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("adhocprofiles.v1.AdHocProfileService.Diff is not implemented"))
 }
