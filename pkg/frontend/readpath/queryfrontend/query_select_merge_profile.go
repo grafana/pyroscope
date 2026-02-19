@@ -62,15 +62,18 @@ func (q *QueryFrontend) SelectMergeProfile(
 	}
 
 	// TODO: Remove this path and answer all queries using the tree
-	// Use the pprof querybackend path,
-	usePprofTree := false
-	for _, v := range c.Header().Values("X-Pyroscope-Feature-Flag") {
-		if v == "pprof-tree" {
-			usePprofTree = true
+	// PGO queries always use the pprof path, as query tree doesn't support the truncation
+	useQueryTree := false
+	if c.Msg.StackTraceSelector.GetGoPgo() == nil {
+		for _, tenantID := range tenantIDs {
+			if q.limits.QueryTreeEnabled(tenantID) {
+				useQueryTree = true
+				break
+			}
 		}
 	}
 
-	if !usePprofTree {
+	if !useQueryTree {
 		level.Info(q.logger).Log("msg", "use pprof query-backend based query")
 		shouldSymbolize := false
 		report, err := q.querySingle(ctx,
