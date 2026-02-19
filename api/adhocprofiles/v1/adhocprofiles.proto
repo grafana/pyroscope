@@ -15,6 +15,9 @@ service AdHocProfileService {
 
   // Retrieves a list of profiles found in the underlying store.
   rpc List(AdHocProfilesListRequest) returns (AdHocProfilesListResponse) {}
+
+  // Computes a diff flamegraph from two previously uploaded profiles.
+  rpc Diff(AdHocProfilesDiffRequest) returns (AdHocProfilesDiffResponse) {}
 }
 
 message AdHocProfilesUploadRequest {
@@ -58,4 +61,16 @@ message AdHocProfilesProfileMetadata {
   string name = 2;
   // timestamp in milliseconds
   int64 uploaded_at = 3;
+}
+
+message AdHocProfilesDiffRequest {
+  string left_id = 1;
+  string right_id = 2;
+  optional string profile_type = 3;
+  optional int64 max_nodes = 4;
+}
+
+message AdHocProfilesDiffResponse {
+  repeated string profile_types = 1;
+  string flamebearer_profile = 2;
 }
