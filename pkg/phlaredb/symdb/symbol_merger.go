@@ -145,20 +145,20 @@ func (h *hashedSlice[A]) grow(size int) {
 }
 
 func (h *hashedSlice[A]) add(hash uint64, v A) int32 {
-	idx, found := h.m[hash]
-	if !found {
-		idx = len(h.sl)
-		h.m[hash] = idx
-		h.sl = append(h.sl, v)
-		h.hashes = append(h.hashes, hash)
-		return int32(idx)
+	for probeHash := hash; ; probeHash++ {
+		idx, found := h.m[probeHash]
+		if !found {
+			idx = len(h.sl)
+			h.m[probeHash] = idx
+			h.sl = append(h.sl, v)
+			h.hashes = append(h.hashes, hash) // store original hash, not probe offset
+			return int32(idx)
+		}
+		if h.equal(h.sl[idx], v) {
+			return int32(idx)
+		}
+		// hash collision: probe next slot
 	}
-
-	if !h.equal(h.sl[idx], v) {
-		// TODO: Handle me
-		panic("hash conflict")
-	}
-	return int32(idx)
 }
 
 type SymbolMerger struct {

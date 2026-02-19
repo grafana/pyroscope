@@ -166,6 +166,35 @@ func TestSymbolMerger(t *testing.T) {
 	require.JSONEq(t, expectedTreeSymbols, string(b))
 }
 
+func TestSymbolMerger_HashCollision(t *testing.T) {
+	sm := NewSymbolMerger()
+
+	const sameHash = uint64(0xdeadbeefcafebabe)
+
+	// Add "foo" – placed at index 1 (index 0 is the sentinel empty string).
+	idxFoo := sm.strings.add(sameHash, "foo")
+	// Add "bar" with the same hash – linear probing must resolve the collision.
+	idxBar := sm.strings.add(sameHash, "bar")
+
+	// Both values must get distinct indices.
+	require.NotEqual(t, idxFoo, idxBar)
+	require.Equal(t, int32(1), idxFoo)
+	require.Equal(t, int32(2), idxBar)
+
+	// Slice contains sentinel + the two colliding values.
+	require.Equal(t, []string{"", "foo", "bar"}, sm.strings.sl)
+
+	// The original hash (not the probe offset) is stored for both entries.
+	require.Equal(t, sameHash, sm.strings.hashes[idxFoo])
+	require.Equal(t, sameHash, sm.strings.hashes[idxBar])
+
+	// Re-adding "foo" or "bar" with the same hash must return the original index (deduplication).
+	idxFooAgain := sm.strings.add(sameHash, "foo")
+	require.Equal(t, idxFoo, idxFooAgain)
+	idxBarAgain := sm.strings.add(sameHash, "bar")
+	require.Equal(t, idxBar, idxBarAgain)
+}
+
 func BenchmarkSymbolMerger(b *testing.B) {
 	s := newMemSuite(b, [][]string{{"testdata/big-profile.pb.gz"}})
 
