@@ -351,6 +351,11 @@ func (a *AdHocProfiles) Diff(ctx context.Context, c *connect.Request[v1.AdHocPro
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no common profile types between left (%v) and right (%v)", leftTypes, rightTypes))
 	}
 
+	// Ensure both profiles have the same selected type to avoid comparing mismatched profile types.
+	if leftFB.Metadata.Name != rightFB.Metadata.Name {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("profile type mismatch: left profile uses '%s', right profile uses '%s'; please specify a profile type from the common types: %v", leftFB.Metadata.Name, rightFB.Metadata.Name, commonTypes))
+	}
+
 	leftTree, err := flamebearerToModelTree(leftFB)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert left profile to tree")
