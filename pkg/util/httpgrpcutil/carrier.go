@@ -6,9 +6,10 @@
 package httpgrpcutil
 
 import (
-	"errors"
+	"context"
+	"strings"
 
-	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
 
 	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 )
@@ -16,6 +17,7 @@ import (
 // Used to transfer trace information from/to HTTP request.
 type HttpgrpcHeadersCarrier httpgrpc.HTTPRequest
 
+// Set implements propagation.TextMapCarrier for OTel.
 func (c *HttpgrpcHeadersCarrier) Set(key, val string) {
 	c.Headers = append(c.Headers, &httpgrpc.Header{
 		Key:    key,
@@ -23,6 +25,7 @@ func (c *HttpgrpcHeadersCarrier) Set(key, val string) {
 	})
 }
 
+// ForeachKey conforms to the opentracing.TextMapReader interface (kept for backward compatibility).
 func (c *HttpgrpcHeadersCarrier) ForeachKey(handler func(key, val string) error) error {
 	for _, h := range c.Headers {
 		for _, v := range h.Values {
@@ -34,15 +37,28 @@ func (c *HttpgrpcHeadersCarrier) ForeachKey(handler func(key, val string) error)
 	return nil
 }
 
-func GetParentSpanForRequest(tracer opentracing.Tracer, req *httpgrpc.HTTPRequest) (opentracing.SpanContext, error) {
-	if tracer == nil {
-		return nil, nil
+// Get implements propagation.TextMapCarrier for OTel.
+func (c *HttpgrpcHeadersCarrier) Get(key string) string {
+	for _, h := range c.Headers {
+		if strings.EqualFold(h.Key, key) {
+			return h.Values[0]
+		}
 	}
-
-	carrier := (*HttpgrpcHeadersCarrier)(req)
-	extracted, err := tracer.Extract(opentracing.HTTPHeaders, carrier)
-	if errors.Is(err, opentracing.ErrSpanContextNotFound) {
-		err = nil
-	}
-	return extracted, err
+	return ""
 }
+
+// Keys implements propagation.TextMapCarrier for OTel.
+func (c *HttpgrpcHeadersCarrier) Keys() []string {
+	keys := make([]string, len(c.Headers))
+	for i, h := range c.Headers {
+		keys[i] = h.Key
+	}
+	return keys
+}
+
+// GetParentContextForRequest extracts parent trace context from HTTP request headers using OTel propagation.
+func GetParentContextForRequest(req *httpgrpc.HTTPRequest) context.Context {
+	carrier := (*HttpgrpcHeadersCarrier)(req)
+	return otel.GetTextMapPropagator().Extract(context.Background(), carrier)
+}
+

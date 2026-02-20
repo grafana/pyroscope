@@ -22,11 +22,11 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
+	"github.com/grafana/dskit/tracing"
 	"github.com/grafana/dskit/user"
-	otgrpc "github.com/opentracing-contrib/go-grpc"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -194,18 +194,11 @@ func (sp *schedulerProcessor) querierLoop(parentCtx context.Context, schedulerCl
 		go func() {
 			defer inflightQuery.Store(false)
 
+			ctx := httpgrpcutil.GetParentContextForRequest(request.HttpRequest)
 			// We need to inject user into context for sending response back.
-			ctx := user.InjectOrgID(c.Context(), request.UserID)
-
-			tracer := opentracing.GlobalTracer()
-			// Ignore errors here. If we cannot get parent span, we just don't create new one.
-			parentSpanContext, _ := httpgrpcutil.GetParentSpanForRequest(tracer, request.HttpRequest)
-			if parentSpanContext != nil {
-				queueSpan, spanCtx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, "querier_processor_runRequest", opentracing.ChildOf(parentSpanContext))
-				defer queueSpan.Finish()
-
-				ctx = spanCtx
-			}
+			ctx = user.InjectOrgID(ctx, request.UserID)
+			queueSpan, ctx := tracing.StartSpanFromContext(ctx, "querier_processor_runRequest")
+			defer queueSpan.Finish()
 			logger := util_log.LoggerWithContext(ctx, sp.log)
 
 			sp.runRequest(ctx, logger, request.QueryID, request.FrontendAddress, request.StatsEnabled, request.HttpRequest)
@@ -294,11 +287,15 @@ func (f *frontendClientFactory) FromInstance(inst ring.InstanceDesc) (client.Poo
 
 func (sp *schedulerProcessor) frontendClientFactory() client.PoolFactory {
 	return newFrontendClientFactory(func() ([]grpc.DialOption, error) {
-		return sp.grpcConfig.DialOption([]grpc.UnaryClientInterceptor{
-			otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer()),
+		opts, err := sp.grpcConfig.DialOption([]grpc.UnaryClientInterceptor{
 			middleware.ClientUserHeaderInterceptor,
 			middleware.UnaryClientInstrumentInterceptor(sp.frontendClientRequestDuration),
 		}, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, grpc.WithStatsHandler(otelgrpc.NewClientHandler()))
+		return opts, nil
 	})
 }
 
