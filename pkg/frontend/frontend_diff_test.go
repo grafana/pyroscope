@@ -13,49 +13,10 @@ import (
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/test/mocks/mockfrontend"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 )
-
-type mockLimits struct{}
-
-func (m *mockLimits) QuerySplitDuration(_ string) time.Duration {
-	return time.Hour
-}
-
-func (m *mockLimits) QuerySanitizeOnMerge(_ string) bool {
-	return true
-}
-
-func (m *mockLimits) MaxQueryParallelism(_ string) int {
-	return 100
-}
-
-func (m *mockLimits) MaxQueryLength(_ string) time.Duration {
-	return time.Hour
-}
-
-func (m *mockLimits) MaxQueryLookback(_ string) time.Duration {
-	return time.Hour * 24
-}
-
-func (m *mockLimits) QueryAnalysisEnabled(_ string) bool {
-	return true
-}
-
-func (m *mockLimits) MaxFlameGraphNodesDefault(_ string) int {
-	return 10_000
-}
-
-func (m *mockLimits) MaxFlameGraphNodesMax(_ string) int {
-	return 100_000
-}
-
-func (m *mockLimits) MaxFlameGraphNodesOnSelectMergeProfile(_ string) bool {
-	return true
-}
-
-func (m *mockLimits) SymbolizerEnabled(s string) bool { return true }
 
 type mockRoundTripper struct {
 	callback func(ctx context.Context, req *httpgrpc.HTTPRequest) (*httpgrpc.HTTPResponse, error)
@@ -69,8 +30,16 @@ func (m *mockRoundTripper) RoundTripGRPC(ctx context.Context, req *httpgrpc.HTTP
 }
 
 func Test_Frontend_Diff(t *testing.T) {
+	limits := mockfrontend.NewMockLimits(t)
+	limits.On("MaxFlameGraphNodesDefault", "test").Return(10_000).Maybe()
+	limits.On("MaxFlameGraphNodesMax", "test").Return(100_000).Maybe()
+	limits.On("MaxQueryLookback", "test").Return(time.Hour * 24).Maybe()
+	limits.On("MaxQueryLength", "test").Return(time.Hour).Maybe()
+	limits.On("MaxQueryParallelism", "test").Return(100).Maybe()
+	limits.On("QuerySplitDuration", "test").Return(time.Hour).Maybe()
+
 	frontend := Frontend{
-		limits: &mockLimits{},
+		limits: limits,
 	}
 
 	ctx := user.InjectOrgID(context.Background(), "test")
