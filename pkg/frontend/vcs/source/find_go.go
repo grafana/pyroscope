@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log/level"
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 
@@ -27,7 +27,7 @@ const (
 
 // findGoFile finds a go file in a vcs repository.
 func (ff FileFinder) findGoFile(ctx context.Context, mappings ...*config.MappingConfig) (*vcsv1.GetFileResponse, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "findGoFile")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "findGoFile")
 	defer sp.Finish()
 	sp.SetTag("file.path", ff.file.Path)
 	sp.SetTag("file.function_name", ff.file.FunctionName)
@@ -77,7 +77,7 @@ func (ff FileFinder) findGoFile(ctx context.Context, mappings ...*config.Mapping
 }
 
 func (ff FileFinder) fetchGoStdlib(ctx context.Context, path string, version string) (*vcsv1.GetFileResponse, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "fetchGoStdlib")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "fetchGoStdlib")
 	defer sp.Finish()
 
 	// if there is no version detected, use the one from .pyroscope.yaml
@@ -107,7 +107,7 @@ func (ff FileFinder) fetchGoStdlib(ctx context.Context, path string, version str
 }
 
 func (ff FileFinder) fetchGoMod(ctx context.Context) (*modfile.File, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "fetchGoMod")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "fetchGoMod")
 	defer sp.Finish()
 	sp.SetTag("owner", ff.repo.GetOwnerName())
 	sp.SetTag("repo", ff.repo.GetRepoName())
@@ -126,7 +126,7 @@ func (ff FileFinder) fetchGoMod(ctx context.Context) (*modfile.File, error) {
 }
 
 func (ff FileFinder) fetchGoDependencyFile(ctx context.Context, module golang.Module) (*vcsv1.GetFileResponse, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "fetchGoDependencyFile")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "fetchGoDependencyFile")
 	defer sp.Finish()
 	sp.SetTag("module_path", module.Path)
 
@@ -140,7 +140,7 @@ func (ff FileFinder) fetchGoDependencyFile(ctx context.Context, module golang.Mo
 }
 
 func (ff FileFinder) fetchGithubModuleFile(ctx context.Context, mod golang.Module) (*vcsv1.GetFileResponse, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "fetchGithubModuleFile")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "fetchGithubModuleFile")
 	defer sp.Finish()
 	sp.SetTag("module_path", mod.Path)
 
@@ -168,7 +168,7 @@ func (ff FileFinder) fetchGithubModuleFile(ctx context.Context, mod golang.Modul
 }
 
 func (ff FileFinder) fetchGoogleSourceDependencyFile(ctx context.Context, mod golang.Module) (*vcsv1.GetFileResponse, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "fetchGoogleSourceDependencyFile")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "fetchGoogleSourceDependencyFile")
 	defer sp.Finish()
 	sp.SetTag("module_path", mod.Path)
 

@@ -6,7 +6,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
-	"github.com/opentracing/opentracing-go/ext"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -56,7 +55,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	span.SetTag("raft_log_term", cmd.Term)
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()
@@ -163,7 +162,7 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	span.SetTag("request_term", req.Term)
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()

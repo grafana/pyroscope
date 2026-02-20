@@ -13,7 +13,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 	"go.etcd.io/bbolt/errors"
@@ -282,7 +281,7 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		panic(fmt.Sprint("failed to begin write transaction:", err))
 	}
 
-	txSpan, ctx := opentracing.StartSpanFromContext(ctx, "boltdb.transaction")
+	txSpan, ctx := tracing.StartSpanFromContext(ctx, "boltdb.transaction")
 	txSpan.SetTag("writable", rawTx.Writable())
 	tx := newTracingTx(rawTx, txSpan, ctx)
 

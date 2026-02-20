@@ -7,7 +7,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
-	"github.com/opentracing/opentracing-go/ext"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 
@@ -68,7 +67,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 	span.SetTag("raft_log_term", cmd.Term)
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()
@@ -85,7 +84,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 			level.Warn(m.logger).Log("msg", "block already added", "block", e.ID)
 			return new(metastorev1.AddBlockResponse), nil
 		}
-		ext.LogError(insertSpan, err)
+		insertSpan.LogError(err)
 		insertSpan.Finish()
 		level.Error(m.logger).Log("msg", "failed to add block to index", "block", e.ID, "err", err)
 		return nil, err
@@ -96,7 +95,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 	defer compactSpan.Finish()
 	if err = m.compactor.Compact(tx, e); err != nil {
 		level.Error(m.logger).Log("msg", "failed to add block to compaction", "block", e.ID, "err", err)
-		ext.LogError(compactSpan, err)
+		compactSpan.LogError(err)
 		return nil, err
 	}
 	return new(metastorev1.AddBlockResponse), nil
@@ -110,7 +109,7 @@ func (m *IndexCommandHandler) TruncateIndex(ctx context.Context, tx *bbolt.Tx, c
 	span.SetTag("request_term", req.Term)
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()

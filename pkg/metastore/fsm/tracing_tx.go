@@ -3,7 +3,7 @@ package fsm
 import (
 	"context"
 
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 	"go.etcd.io/bbolt"
 )
 
@@ -15,13 +15,13 @@ import (
 // is committed or rolled back.
 type tracingTx struct {
 	*bbolt.Tx
-	span    opentracing.Span
+	span    *tracing.Span
 	spanCtx context.Context // Context with the span, for child operations
 }
 
 // newTracingTx creates a tracing transaction wrapper.
 // The span parameter can be nil if no tracing is desired (e.g., on follower nodes).
-func newTracingTx(tx *bbolt.Tx, span opentracing.Span, spanCtx context.Context) *tracingTx {
+func newTracingTx(tx *bbolt.Tx, span *tracing.Span, spanCtx context.Context) *tracingTx {
 	return &tracingTx{
 		Tx:      tx,
 		span:    span,
@@ -33,7 +33,7 @@ func newTracingTx(tx *bbolt.Tx, span opentracing.Span, spanCtx context.Context) 
 func (t *tracingTx) Commit() error {
 	if t.span != nil {
 		defer t.span.Finish()
-		t.span.LogKV("operation", "commit")
+		t.span.SetTag("operation", "commit")
 	}
 	return t.Tx.Commit()
 }
@@ -42,7 +42,7 @@ func (t *tracingTx) Commit() error {
 func (t *tracingTx) Rollback() error {
 	if t.span != nil {
 		defer t.span.Finish()
-		t.span.LogKV("operation", "rollback")
+		t.span.SetTag("operation", "rollback")
 	}
 	return t.Tx.Rollback()
 }

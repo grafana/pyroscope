@@ -4,8 +4,7 @@ import (
 	"context"
 
 	"github.com/go-kit/log"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
+	"github.com/grafana/dskit/tracing"
 	"go.etcd.io/bbolt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -43,10 +42,10 @@ func (svc *TenantService) GetTenants(
 	ctx context.Context,
 	_ *metastorev1.GetTenantsRequest,
 ) (resp *metastorev1.GetTenantsResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "TenantService.GetTenants")
+	span, ctx := tracing.StartSpanFromContext(ctx, "TenantService.GetTenants")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()
@@ -65,10 +64,10 @@ func (svc *TenantService) GetTenant(
 	ctx context.Context,
 	req *metastorev1.GetTenantRequest,
 ) (resp *metastorev1.GetTenantResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "TenantService.GetTenant")
+	span, ctx := tracing.StartSpanFromContext(ctx, "TenantService.GetTenant")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()

@@ -6,8 +6,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
+	"github.com/grafana/dskit/tracing"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -39,10 +38,10 @@ func (svc *CompactionService) PollCompactionJobs(
 	ctx context.Context,
 	req *metastorev1.PollCompactionJobsRequest,
 ) (resp *metastorev1.PollCompactionJobsResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "CompactionService.PollCompactionJobs")
+	span, ctx := tracing.StartSpanFromContext(ctx, "CompactionService.PollCompactionJobs")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()
