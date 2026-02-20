@@ -9,7 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
@@ -27,7 +27,7 @@ var (
 )
 
 func (ff FileFinder) fetchPythonStdlib(ctx context.Context, path string, version string) (*vcsv1.GetFileResponse, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "fetchPythonStdlib")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "fetchPythonStdlib")
 	defer sp.Finish()
 
 	// use main branch as fallback
@@ -72,7 +72,7 @@ func isPythonStdlibPath(path string) (string, string, bool) {
 // findPythonFile finds a python file in a vcs repository.
 // Currently only supports Python stdlib
 func (ff FileFinder) findPythonFile(ctx context.Context, mappings ...*config.MappingConfig) (*vcsv1.GetFileResponse, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "findPythonFile")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "findPythonFile")
 	defer sp.Finish()
 	sp.SetTag("file.function_name", ff.file.FunctionName)
 	sp.SetTag("file.path", ff.file.Path)

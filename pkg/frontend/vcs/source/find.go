@@ -12,8 +12,8 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/tracing"
 	giturl "github.com/kubescape/go-git-url"
-	"github.com/opentracing/opentracing-go"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
@@ -101,7 +101,7 @@ func (ff FileFinder) findFallback(ctx context.Context) (*vcsv1.GetFileResponse, 
 
 // loadConfig attempts to load .pyroscope.yaml from the repository root
 func (ff *FileFinder) loadConfig(ctx context.Context) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "FileFinder.loadConfig")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "FileFinder.loadConfig")
 	defer sp.Finish()
 
 	configPath := config.PyroscopeConfigPath

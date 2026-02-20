@@ -7,7 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
@@ -49,7 +49,7 @@ func convertJavaFunctionNameToPath(functionName string) string {
 
 // findJavaFile finds a java file in a vcs repository.
 func (ff FileFinder) findJavaFile(ctx context.Context, mappings ...*config.MappingConfig) (*vcsv1.GetFileResponse, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "findJavaFile")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "findJavaFile")
 	defer sp.Finish()
 	sp.SetTag("file.function_name", ff.file.FunctionName)
 	sp.SetTag("file.path", ff.file.Path)

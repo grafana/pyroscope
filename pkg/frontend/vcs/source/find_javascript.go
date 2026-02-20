@@ -7,7 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
@@ -36,7 +36,7 @@ func isJavaScriptExtension(ext string) bool {
 // findJavaScriptFile finds a JavaScript/TypeScript file in a VCS repository.
 // It supports path mappings from .pyroscope.yaml to map runtime paths to source paths.
 func (ff FileFinder) findJavaScriptFile(ctx context.Context, mappings ...*config.MappingConfig) (*vcsv1.GetFileResponse, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "findJavaScriptFile")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "findJavaScriptFile")
 	defer sp.Finish()
 	sp.SetTag("file.function_name", ff.file.FunctionName)
 	sp.SetTag("file.path", ff.file.Path)

@@ -7,9 +7,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
 	"go.etcd.io/bbolt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -49,10 +47,10 @@ func (svc *QueryService) QueryMetadata(
 	ctx context.Context,
 	req *metastorev1.QueryMetadataRequest,
 ) (resp *metastorev1.QueryMetadataResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryService.QueryMetadata")
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryService.QueryMetadata")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()
@@ -61,7 +59,7 @@ func (svc *QueryService) QueryMetadata(
 	span.SetTag("end_time", req.GetEndTime())
 	span.SetTag("labels", len(req.GetLabels()))
 	if q := req.GetQuery(); q != "" {
-		span.LogFields(otlog.String("query", q))
+		span.SetTag("query", q)
 	}
 
 	read := func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
@@ -78,10 +76,10 @@ func (svc *QueryService) queryMetadata(
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataRequest,
 ) (resp *metastorev1.QueryMetadataResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryService.indexQueryMetadata")
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryService.indexQueryMetadata")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()
@@ -109,10 +107,10 @@ func (svc *QueryService) QueryMetadataLabels(
 	ctx context.Context,
 	req *metastorev1.QueryMetadataLabelsRequest,
 ) (resp *metastorev1.QueryMetadataLabelsResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryService.QueryMetadataLabels")
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryService.QueryMetadataLabels")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()
@@ -122,7 +120,7 @@ func (svc *QueryService) QueryMetadataLabels(
 	span.SetTag("end_time", req.GetEndTime())
 	span.SetTag("labels", len(req.GetLabels()))
 	if q := req.GetQuery(); q != "" {
-		span.LogFields(otlog.String("query", q))
+		span.SetTag("query", q)
 	}
 
 	read := func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
@@ -139,10 +137,10 @@ func (svc *QueryService) queryMetadataLabels(
 	tx *bbolt.Tx,
 	req *metastorev1.QueryMetadataLabelsRequest,
 ) (resp *metastorev1.QueryMetadataLabelsResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryService.indexQueryMetadataLabels")
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryService.indexQueryMetadataLabels")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()
