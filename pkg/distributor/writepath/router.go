@@ -11,14 +11,13 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/pkg/util/delayhandler"
@@ -88,7 +87,7 @@ func (m *Router) running(ctx context.Context) error {
 }
 
 func (m *Router) Send(ctx context.Context, req *distributormodel.ProfileSeries, config Config) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Router.Send")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "Router.Send")
 	defer sp.Finish()
 	if config.AsyncIngest {
 		delayhandler.CancelDelay(ctx)
@@ -206,11 +205,7 @@ type route struct {
 // that has a timeout and tenant ID injected so it can be used for asynchronous requests.
 func (m *Router) detachedClient(ctx context.Context, req *distributormodel.ProfileSeries, client IngesterClient, config *Config) IngesterFunc {
 	return func(context.Context, *distributormodel.ProfileSeries) (*connect.Response[pushv1.PushResponse], error) {
-		localCtx, cancel := context.WithTimeout(context.Background(), config.SegmentWriterTimeout)
-		localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
-		if sp := opentracing.SpanFromContext(ctx); sp != nil {
-			localCtx = opentracing.ContextWithSpan(localCtx, sp)
-		}
+		localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), config.SegmentWriterTimeout)
 		defer cancel()
 		return client.Push(localCtx, req)
 	}
