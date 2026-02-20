@@ -345,7 +345,7 @@ make docker-image/pyroscope/build  # Build Docker image
 - **parquet-go**: Parquet file format implementation
 - **go-kit/log**: Structured logging
 - **prometheus/client_golang**: Metrics instrumentation
-- **opentracing-go**: Distributed tracing
+- **opentelemetry**: Distributed tracing
 
 ## When Working on Features
 
