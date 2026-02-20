@@ -10,6 +10,7 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -100,17 +101,27 @@ func (q *QueryFrontend) SelectMergeProfile(
 	}
 
 	// From now on answer using the more experimental tree based approach
+	return q.selectMergeProfileTree(ctx, c.Msg, labelSelector, maxNodes, profileType)
+}
+
+func (q *QueryFrontend) selectMergeProfileTree(
+	ctx context.Context,
+	req *querierv1.SelectMergeProfileRequest,
+	labelSelector string,
+	maxNodes int64,
+	profileType *typesv1.ProfileType,
+) (*connect.Response[profilev1.Profile], error) {
 	level.Info(q.logger).Log("msg", "use tree query-backend based query")
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
-		StartTime:     c.Msg.Start,
-		EndTime:       c.Msg.End,
+		StartTime:     req.Start,
+		EndTime:       req.End,
 		LabelSelector: labelSelector,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TREE,
 			Tree: &queryv1.TreeQuery{
 				MaxNodes:           maxNodes,
-				StackTraceSelector: c.Msg.StackTraceSelector,
-				ProfileIdSelector:  c.Msg.ProfileIdSelector,
+				StackTraceSelector: req.StackTraceSelector,
+				ProfileIdSelector:  req.ProfileIdSelector,
 				FullSymbols:        true,
 			},
 		}},
@@ -157,7 +168,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// TODO: Back this up with better data
+	// TODO(simonswine): Back this up with better data
 	p.Sample = make([]*profilev1.Sample, 0, len(report.Tree.Tree)/16)
 
 	t.IterateStacks(func(_ phlaremodel.LocationRefName, self int64, stack []phlaremodel.LocationRefName) {
@@ -198,7 +209,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 	p.StringTable = append(p.StringTable, profileType.PeriodType)
 	p.PeriodType.Unit = int64(len(p.StringTable))
 	p.StringTable = append(p.StringTable, profileType.PeriodUnit)
-	p.TimeNanos = c.Msg.End * 1e6
+	p.TimeNanos = req.End * 1e6
 
 	// TODO: Set more fields on profile
 
