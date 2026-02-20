@@ -15,9 +15,8 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
+	"github.com/grafana/dskit/tracing"
 	"github.com/oklog/ulid/v2"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
@@ -119,10 +118,11 @@ func CompactWithSplitting(ctx context.Context, opts CompactWithSplittingOpts) (
 			}
 		}
 		var metas []block.Meta
-		sp, ctx := opentracing.StartSpanFromContext(ctx, "compact.Stage", opentracing.Tag{Key: "stage", Value: stage})
+		sp, ctx := tracing.StartSpanFromContext(ctx, "compact.Stage")
+		sp.SetTag("stage", stage)
 		if metas, err = compact(ctx, writers, opts.Src, opts.SplitBy, opts.SplitCount); err != nil {
+			sp.LogError(err)
 			sp.Finish()
-			ext.LogError(sp, err)
 			return nil, err
 		}
 		sp.Finish()
@@ -187,7 +187,7 @@ func compact(ctx context.Context, writers []*blockWriter, readers []BlockReader,
 	if err = rowsIt.Err(); err != nil {
 		return nil, err
 	}
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "compact.Close")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "compact.Close")
 	defer sp.Finish()
 
 	// Close all blocks

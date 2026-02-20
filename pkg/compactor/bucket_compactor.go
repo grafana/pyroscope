@@ -20,13 +20,14 @@ import (
 	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
+	"github.com/grafana/dskit/tracing"
 	"github.com/oklog/ulid/v2"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/prometheus/model/labels"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
@@ -102,7 +103,7 @@ func NewMetaSyncer(logger log.Logger, reg prometheus.Registerer, bkt objstore.Bu
 
 // SyncMetas synchronizes local state of block metas with what we have in the bucket.
 func (s *Syncer) SyncMetas(ctx context.Context) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SyncMetas")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SyncMetas")
 	defer sp.Finish()
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
@@ -129,7 +130,7 @@ func (s *Syncer) Metas() map[ulid.ULID]*block.Meta {
 // block with a higher compaction level.
 // Call to SyncMetas function is required to populate duplicateIDs in duplicateBlocksFilter.
 func (s *Syncer) GarbageCollect(ctx context.Context) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "GarbageCollect")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "GarbageCollect")
 	defer sp.Finish()
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
@@ -352,7 +353,8 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 	}()
 
 	err = func() error {
-		sp, ctx := opentracing.StartSpanFromContext(ctx, "OpenBlocks", opentracing.Tag{Key: "concurrency", Value: c.blockOpenConcurrency})
+		sp, ctx := tracing.StartSpanFromContext(ctx, "OpenBlocks")
+		sp.SetTag("concurrency", c.blockOpenConcurrency)
 		defer sp.Finish()
 		// Open all blocks
 		return concurrency.ForEachJob(ctx, len(readers), c.blockOpenConcurrency, func(ctx context.Context, idx int) error {
@@ -380,9 +382,7 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 		}
 	}
 	currentLevel++
-	if sp := opentracing.SpanFromContext(ctx); sp != nil {
-		sp.SetTag("compaction_level", currentLevel)
-	}
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int("compaction_level", currentLevel))
 	start := time.Now()
 	defer func() {
 		c.metrics.Duration.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(time.Since(start).Seconds())
@@ -463,18 +463,17 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 
 	level.Info(jobLogger).Log("msg", "compaction available and planned; downloading blocks", "blocks", len(toCompact), "plan", fmt.Sprintf("%v", toCompact))
 
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "CompactJob",
-		opentracing.Tag{Key: "GroupKey", Value: job.Key()},
-		opentracing.Tag{Key: "Job", Value: job.String()},
-		opentracing.Tag{Key: "Labels", Value: job.Labels().String()},
-		opentracing.Tag{Key: "MinCompactionLevel", Value: job.MinCompactionLevel()},
-		opentracing.Tag{Key: "Resolution", Value: job.Resolution()},
-		opentracing.Tag{Key: "ShardKey", Value: job.ShardingKey()},
-		opentracing.Tag{Key: "SplitStageSize", Value: job.SplitStageSize()},
-		opentracing.Tag{Key: "UseSplitting", Value: job.UseSplitting()},
-		opentracing.Tag{Key: "SplittingShards", Value: job.SplittingShards()},
-		opentracing.Tag{Key: "BlockCount", Value: len(toCompact)},
-	)
+	sp, ctx := tracing.StartSpanFromContext(ctx, "CompactJob")
+	sp.SetTag("GroupKey", job.Key())
+	sp.SetTag("Job", job.String())
+	sp.SetTag("Labels", job.Labels().String())
+	sp.SetTag("MinCompactionLevel", job.MinCompactionLevel())
+	sp.SetTag("Resolution", job.Resolution())
+	sp.SetTag("ShardKey", job.ShardingKey())
+	sp.SetTag("SplitStageSize", job.SplitStageSize())
+	sp.SetTag("UseSplitting", job.UseSplitting())
+	sp.SetTag("SplittingShards", job.SplittingShards())
+	sp.SetTag("BlockCount", len(toCompact))
 	defer sp.Finish()
 
 	blocksToCompactDirs := make([]string, len(toCompact))
@@ -482,7 +481,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	downloadBegin := time.Now()
 
 	err = func() error {
-		sp, ctx := opentracing.StartSpanFromContext(ctx, "DownloadBlocks")
+		sp, ctx := tracing.StartSpanFromContext(ctx, "DownloadBlocks")
 		defer func() {
 			elapsed := time.Since(downloadBegin)
 			level.Info(jobLogger).Log("msg", "downloaded and verified blocks; compacting blocks", "blocks", len(blocksToCompactDirs), "plan", fmt.Sprintf("%v", blocksToCompactDirs), "duration", elapsed, "duration_ms", elapsed.Milliseconds())
@@ -508,12 +507,12 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 		return nil
 	}()
 	if err != nil {
-		ext.LogError(sp, err)
+		sp.LogError(err)
 		return false, nil, err
 	}
 
 	err = func() error {
-		sp, ctx := opentracing.StartSpanFromContext(ctx, "CompactBlocks")
+		sp, ctx := tracing.StartSpanFromContext(ctx, "CompactBlocks")
 		compactionBegin := time.Now()
 		defer func() {
 			sp.Finish()
@@ -534,7 +533,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 		return err
 	}()
 	if err != nil {
-		ext.LogError(sp, err)
+		sp.LogError(err)
 		return false, nil, errors.Wrapf(err, "compact blocks %v", blocksToCompactDirs)
 	}
 
@@ -545,12 +544,12 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	}
 
 	// Spawn a new context so we always finish uploading and marking a block for deletion in full on shutdown.
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
-	ctx = opentracing.ContextWithSpan(ctx, sp)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 20*time.Minute)
 	defer cancel()
 
 	err = func() error {
-		sp, ctx := opentracing.StartSpanFromContext(ctx, "Uploading blocks", opentracing.Tag{Key: "count", Value: len(compIDs)})
+		sp, ctx := tracing.StartSpanFromContext(ctx, "Uploading blocks")
+		sp.SetTag("count", len(compIDs))
 		uploadBegin := time.Now()
 		uploadedBlocks := atomic.NewInt64(0)
 		defer func() {
@@ -587,11 +586,12 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	}()
 
 	if err != nil {
-		ext.LogError(sp, err)
+		sp.LogError(err)
 		return false, nil, err
 	}
 
-	sp, ctx = opentracing.StartSpanFromContext(ctx, "Deleting blocks", opentracing.Tag{Key: "count", Value: len(compIDs)})
+	sp, ctx = tracing.StartSpanFromContext(ctx, "Deleting blocks")
+	sp.SetTag("count", len(compIDs))
 	defer sp.Finish()
 	// Mark for deletion the blocks we just compacted from the job and bucket so they do not get included
 	// into the next planning cycle.
@@ -773,10 +773,8 @@ func NewBucketCompactor(
 // Compact runs compaction over bucket.
 // If maxCompactionTime is positive then after this time no more new compactions are started.
 func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Duration) (rerr error) {
-	sp := opentracing.SpanFromContext(ctx)
-	if sp == nil {
-		sp, ctx = opentracing.StartSpanFromContext(ctx, "Compact")
-	}
+	sp, ctx := tracing.StartSpanFromContext(ctx, "Compact")
+	defer sp.Finish()
 	sp.SetTag("max_compaction_time", maxCompactionTime)
 	sp.SetTag("concurrency", c.concurrency)
 	defer func() {
@@ -854,7 +852,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 
 		level.Info(c.logger).Log("msg", "start sync of metas")
 		if err := c.sy.SyncMetas(ctx); err != nil {
-			ext.LogError(sp, err)
+			sp.LogError(err)
 			return errors.Wrap(err, "sync")
 		}
 
@@ -862,16 +860,16 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 		// Blocks that were compacted are garbage collected after each Compaction.
 		// However if compactor crashes we need to resolve those on startup.
 		if err := c.sy.GarbageCollect(ctx); err != nil {
-			ext.LogError(sp, err)
+			sp.LogError(err)
 			return errors.Wrap(err, "blocks garbage collect")
 		}
 
 		jobs, err := c.grouper.Groups(c.sy.Metas())
 		if err != nil {
-			ext.LogError(sp, err)
+			sp.LogError(err)
 			return errors.Wrap(err, "build compaction jobs")
 		}
-		sp.LogKV("discovered_jobs", len(jobs))
+		sp.SetTag("discovered_jobs", len(jobs))
 
 		// There is another check just before we start processing the job, but we can avoid sending it
 		// to the goroutine in the first place.
@@ -879,7 +877,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 		if err != nil {
 			return err
 		}
-		sp.LogKV("own_jobs", len(jobs))
+		sp.SetTag("own_jobs", len(jobs))
 
 		// Record the difference between now and the max time for a block being compacted. This
 		// is used to detect compactors not being able to keep up with the rate of blocks being
@@ -891,7 +889,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 
 		// Skip jobs for which the wait period hasn't been honored yet.
 		jobs = c.filterJobsByWaitPeriod(ctx, jobs)
-		sp.LogKV("filtered_jobs", len(jobs))
+		sp.SetTag("filtered_jobs", len(jobs))
 
 		// Sort jobs based on the configured ordering algorithm.
 		jobs = c.sortJobs(jobs)
@@ -916,14 +914,14 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 		for _, g := range jobs {
 			select {
 			case jobErr := <-errChan:
-				ext.LogError(sp, jobErr)
+				sp.LogError(jobErr)
 				jobErrs.Add(jobErr)
 				break jobLoop
 			case jobChan <- g:
 			case <-maxCompactionTimeChan:
 				maxCompactionTimeReached = true
 				level.Info(c.logger).Log("msg", "max compaction time reached, no more compactions will be started")
-				sp.LogKV("msg", "max compaction time reached, no more compactions will be started")
+				sp.SetTag("msg", "max compaction time reached, no more compactions will be started")
 				break jobLoop
 			}
 		}
