@@ -28,15 +28,15 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/tracing"
 	"github.com/grafana/dskit/user"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/http2"
 	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/pyroscope/pkg/tenant"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
-	"github.com/grafana/pyroscope/pkg/util/nethttp"
 )
 
 var defaultTransport http.RoundTripper = &http2.Transport{
@@ -82,11 +82,7 @@ func InstrumentedHTTPClient(client *http.Client, instruments ...RoundTripperInst
 // one.
 func WithTracingTransport() RoundTripperInstrumentFunc {
 	return func(next http.RoundTripper) http.RoundTripper {
-		next = &nethttp.Transport{RoundTripper: next}
-		return RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
-			req = nethttp.TraceRequest(opentracing.GlobalTracer(), req)
-			return next.RoundTrip(req)
-		})
+		return otelhttp.NewTransport(next)
 	}
 }
 
@@ -221,14 +217,14 @@ type reqBody struct {
 	start    time.Time
 	duration time.Duration
 
-	sp opentracing.Span
+	sp trace.Span
 }
 
 func (w *reqBody) Read(p []byte) (int, error) {
 	if w.start.IsZero() {
 		w.start = timeNow()
 		if w.sp != nil {
-			w.sp.LogFields(otlog.String("msg", "start reading body from request"))
+			w.sp.AddEvent("start reading body from request")
 		}
 	}
 	n, err := w.b.Read(p)
@@ -238,9 +234,9 @@ func (w *reqBody) Read(p []byte) (int, error) {
 	if err == io.EOF {
 		w.duration = timeNow().Sub(w.start)
 		if w.sp != nil {
-			w.sp.LogFields(otlog.String("msg", "read body from request"))
+			w.sp.AddEvent("read body from request")
 			if w.read > 0 {
-				w.sp.SetTag("request_body_size", w.read)
+				w.sp.SetAttributes(attribute.String("request_body_size", w.read.String()))
 			}
 		}
 	}
@@ -316,7 +312,7 @@ func (l *Log) Wrap(next http.Handler) http.Handler {
 
 		rBody := &reqBody{
 			b:  origBody,
-			sp: opentracing.SpanFromContext(r.Context()),
+			sp: trace.SpanFromContext(r.Context()),
 		}
 		r.Body = rBody
 

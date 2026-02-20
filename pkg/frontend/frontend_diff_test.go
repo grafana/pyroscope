@@ -7,7 +7,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/user"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
@@ -74,7 +73,6 @@ func Test_Frontend_Diff(t *testing.T) {
 	}
 
 	ctx := user.InjectOrgID(context.Background(), "test")
-	_, ctx = opentracing.StartSpanFromContext(ctx, "test")
 	now := time.Now().UnixMilli()
 
 	profileType := "memory:inuse_space:bytes:space:byte"

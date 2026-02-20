@@ -23,11 +23,14 @@ import (
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/test"
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/client_golang/prometheus"
 	promtest "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
-	"github.com/uber/jaeger-client-go/config"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
@@ -278,9 +281,10 @@ func TestTracingContext(t *testing.T) {
 
 	frontendLoop := initFrontendLoop(t, frontendClient, "frontend-12345")
 
-	closer, err := config.Configuration{}.InitGlobalTracer("test")
-	require.NoError(t, err)
-	defer closer.Close()
+	tp := sdktrace.NewTracerProvider()
+	defer func() { _ = tp.Shutdown(context.Background()) }()
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	req := &schedulerpb.FrontendToScheduler{
 		Type:            schedulerpb.FrontendToSchedulerType_ENQUEUE,
@@ -290,8 +294,10 @@ func TestTracingContext(t *testing.T) {
 		FrontendAddress: "frontend-12345",
 	}
 
-	sp, _ := opentracing.StartSpanFromContext(context.Background(), "client")
-	_ = opentracing.GlobalTracer().Inject(sp.Context(), opentracing.HTTPHeaders, (*httpgrpcutil.HttpgrpcHeadersCarrier)(req.HttpRequest))
+	sp, ctx := tracing.StartSpanFromContext(context.Background(), "test")
+	defer sp.Finish()
+	carrier := (*httpgrpcutil.HttpgrpcHeadersCarrier)(req.HttpRequest)
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
 
 	frontendToScheduler(t, frontendLoop, req)
 
@@ -300,7 +306,7 @@ func TestTracingContext(t *testing.T) {
 	require.Equal(t, 1, len(scheduler.pendingRequests))
 
 	for _, r := range scheduler.pendingRequests {
-		require.NotNil(t, r.parentSpanContext)
+		require.True(t, trace.SpanFromContext(r.parentCtx).SpanContext().IsValid())
 	}
 }
 
