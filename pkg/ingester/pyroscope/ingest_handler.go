@@ -124,7 +124,7 @@ func (h ingestHandler) parseInputMetadataFromRequest(_ context.Context, r *http.
 	}
 
 	if sr := q.Get("sampleRate"); sr != "" {
-		sampleRate, err := strconv.Atoi(sr)
+		sampleRate, err := strconv.ParseUint(sr, 10, 32)
 		if err != nil {
 			_ = h.log.Log(
 				"err", err,
