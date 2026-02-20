@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
@@ -233,6 +231,7 @@ func (f *Pyroscope) initSegmentWriterClient() (_ services.Service, err error) {
 		logger, f.reg,
 		f.segmentWriterRing,
 		placement,
+		grpc.WithStatsHandler(util.GrpcClientStatsHandler(f.reg)),
 	)
 	if err != nil {
 		return nil, err
@@ -321,6 +320,7 @@ func (f *Pyroscope) initMetastoreClient() (services.Service, error) {
 		f.logger,
 		f.Cfg.Metastore.GRPCClientConfig,
 		disc,
+		grpc.WithStatsHandler(util.GrpcClientStatsHandler(f.reg)),
 	)
 	return f.metastoreClient.Service(), nil
 }
@@ -382,6 +382,7 @@ func (f *Pyroscope) initQueryBackendClient() (services.Service, error) {
 		f.Cfg.QueryBackend.Address,
 		f.Cfg.QueryBackend.GRPCClientConfig,
 		f.Cfg.QueryBackend.ClientTimeout,
+		grpc.WithStatsHandler(util.GrpcClientStatsHandler(f.reg)),
 	)
 	if err != nil {
 		return nil, err
@@ -485,19 +486,7 @@ func (f *Pyroscope) initHealthServer() (services.Service, error) {
 }
 
 func (f *Pyroscope) grpcClientInterceptors() []grpc.UnaryClientInterceptor {
-	requestDuration := util.RegisterOrGet(f.reg, prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace:                       "pyroscope",
-		Subsystem:                       "grpc_client",
-		Name:                            "request_duration_seconds",
-		Help:                            "Time (in seconds) spent waiting for gRPC response.",
-		Buckets:                         prometheus.DefBuckets,
-		NativeHistogramBucketFactor:     1.1,
-		NativeHistogramMaxBucketNumber:  50,
-		NativeHistogramMinResetDuration: time.Hour,
-	}, []string{"method", "status_code"}))
-
 	return []grpc.UnaryClientInterceptor{
-		middleware.UnaryClientInstrumentInterceptor(requestDuration, middleware.ReportGRPCStatusOption),
 		otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer()),
 	}
 }
