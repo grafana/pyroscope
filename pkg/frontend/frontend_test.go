@@ -26,8 +26,8 @@ import (
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/test"
+	"github.com/grafana/dskit/tracing"
 	"github.com/grafana/dskit/user"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -239,7 +239,7 @@ func TestFrontendFullRoundtrip(t *testing.T) {
 	mux.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := user.InjectOrgID(r.Context(), tenant)
-			_, ctx = opentracing.StartSpanFromContext(ctx, "test")
+			_, ctx = tracing.StartSpanFromContext(ctx, "test")
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
