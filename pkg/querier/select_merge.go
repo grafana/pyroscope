@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/multierror"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
 	"github.com/samber/lo"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -249,7 +250,7 @@ func (s *mergeIterator[R, Req, Res]) Close() error {
 
 // skipDuplicates iterates through the iterator and skip duplicates.
 func skipDuplicates(ctx context.Context, its []MergeIterator) error {
-	span, _ := opentracing.StartSpanFromContext(ctx, "skipDuplicates")
+	span, _ := tracing.StartSpanFromContext(ctx, "skipDuplicates")
 	defer span.Finish()
 	var errors multierror.MultiError
 	tree := loser.New(its,
@@ -289,8 +290,8 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 		}
 		duplicates++
 	}
-	span.LogFields(otlog.Int("duplicates", duplicates))
-	span.LogFields(otlog.Int("total", total))
+	span.SetTag("duplicates", duplicates)
+	span.SetTag("total", total)
 	if err := tree.Err(); err != nil {
 		errors.Add(err)
 	}
@@ -337,7 +338,7 @@ func (p *timestampedFingerprints) fingerprintSeen(fingerprint uint64) (seen bool
 // selectMergeTree selects the  profile from each ingester by deduping them and
 // returns merge of stacktrace samples represented as a tree.
 func selectMergeTree(ctx context.Context, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesStacktraces]) (*phlaremodel.Tree, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "selectMergeTree")
+	span, ctx := tracing.StartSpanFromContext(ctx, "selectMergeTree")
 	defer span.Finish()
 
 	mergeResults := make([]MergeResult[*ingestv1.MergeProfilesStacktracesResult], len(responses))
@@ -363,7 +364,7 @@ func selectMergeTree(ctx context.Context, responses []ResponseFromReplica[client
 	}
 
 	// Collects the results in parallel.
-	span.LogFields(otlog.String("msg", "collecting merge results"))
+	span.SetTag("msg", "collecting merge results")
 	g, _ := errgroup.WithContext(ctx)
 	m := phlaremodel.NewTreeMerger()
 	sm := phlaremodel.NewStackTraceMerger()
@@ -396,7 +397,7 @@ func selectMergeTree(ctx context.Context, responses []ResponseFromReplica[client
 		}
 	}
 
-	span.LogFields(otlog.String("msg", "building tree"))
+	span.SetTag("msg", "building tree")
 	return m.Tree(), nil
 }
 
@@ -424,7 +425,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 		return nil, err
 	}
 
-	span := opentracing.SpanFromContext(ctx)
+	otelSpan := trace.SpanFromContext(ctx)
 	var pprofMerge pprof.ProfileMerge
 	g, _ := errgroup.WithContext(ctx)
 	for _, iter := range mergeResults {
@@ -435,12 +436,10 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 			if err != nil || result == nil {
 				return err
 			}
-			if span != nil {
-				span.LogFields(
-					otlog.Int("profile_size", len(result)),
-					otlog.Int64("took_ms", time.Since(start).Milliseconds()),
-				)
-			}
+			otelSpan.SetAttributes(
+				attribute.Int("profile_size", len(result)),
+				attribute.Int64("took_ms", time.Since(start).Milliseconds()),
+			)
 			var p googlev1.Profile
 			if err = pprof.Unmarshal(result, &p); err != nil {
 				return err
@@ -516,7 +515,7 @@ func selectMergeSeries(ctx context.Context, aggregation *typesv1.TimeSeriesAggre
 // selectMergeSpanProfile selects the  profile from each ingester by deduping them and
 // returns merge of stacktrace samples represented as a tree.
 func selectMergeSpanProfile(ctx context.Context, responses []ResponseFromReplica[clientpool.BidiClientMergeSpanProfile]) (*phlaremodel.Tree, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "selectMergeSpanProfile")
+	span, ctx := tracing.StartSpanFromContext(ctx, "selectMergeSpanProfile")
 	defer span.Finish()
 
 	mergeResults := make([]MergeResult[*ingestv1.MergeSpanProfileResult], len(responses))
@@ -542,7 +541,7 @@ func selectMergeSpanProfile(ctx context.Context, responses []ResponseFromReplica
 	}
 
 	// Collects the results in parallel.
-	span.LogFields(otlog.String("msg", "collecting merge results"))
+	span.SetTag("msg", "collecting merge results")
 	g, _ := errgroup.WithContext(ctx)
 	m := phlaremodel.NewTreeMerger()
 	for _, iter := range mergeResults {
@@ -559,6 +558,6 @@ func selectMergeSpanProfile(ctx context.Context, responses []ResponseFromReplica
 		return nil, err
 	}
 
-	span.LogFields(otlog.String("msg", "building tree"))
+	span.SetTag("msg", "building tree")
 	return m.Tree(), nil
 }

@@ -6,8 +6,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
 
@@ -85,7 +84,7 @@ func forAllPlannedIngesters[T any](ctx context.Context, ingesterQuerier *Ingeste
 }
 
 func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan blockPlan) (*phlaremodel.Tree, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectTree Ingesters")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectTree Ingesters")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
 	if err != nil {
@@ -142,7 +141,7 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 }
 
 func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1.SelectMergeProfileRequest, plan blockPlan) (*googlev1.Profile, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SelectProfile Ingesters")
+	span, ctx := tracing.StartSpanFromContext(ctx, "SelectProfile Ingesters")
 	defer span.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
 	if err != nil {
@@ -196,12 +195,12 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 	}
 
 	// merge all profiles
-	span.LogFields(otlog.String("msg", "selectMergePprofProfile"))
+	span.SetTag("msg", "selectMergePprofProfile")
 	return selectMergePprofProfile(ctx, profileType, responses)
 }
 
 func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest, plan map[string]*blockPlanEntry) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSeries Ingesters")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectSeries Ingesters")
 	defer sp.Finish()
 	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]
 	var err error
@@ -239,7 +238,7 @@ func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1
 }
 
 func (q *Querier) labelValuesFromIngesters(ctx context.Context, req *typesv1.LabelValuesRequest) ([]ResponseFromReplica[[]string], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues Ingesters")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "LabelValues Ingesters")
 	defer sp.Finish()
 
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
@@ -256,7 +255,7 @@ func (q *Querier) labelValuesFromIngesters(ctx context.Context, req *typesv1.Lab
 }
 
 func (q *Querier) labelNamesFromIngesters(ctx context.Context, req *typesv1.LabelNamesRequest) ([]ResponseFromReplica[[]string], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames Ingesters")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "LabelNames Ingesters")
 	defer sp.Finish()
 
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
@@ -273,7 +272,7 @@ func (q *Querier) labelNamesFromIngesters(ctx context.Context, req *typesv1.Labe
 }
 
 func (q *Querier) seriesFromIngesters(ctx context.Context, req *ingesterv1.SeriesRequest) ([]ResponseFromReplica[[]*typesv1.Labels], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series Ingesters")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "Series Ingesters")
 	defer sp.Finish()
 
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.Labels, error) {
@@ -295,7 +294,7 @@ func (q *Querier) seriesFromIngesters(ctx context.Context, req *ingesterv1.Serie
 }
 
 func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest, plan map[string]*blockPlanEntry) (*phlaremodel.Tree, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeSpanProfile Ingesters")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectMergeSpanProfile Ingesters")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
 	if err != nil {
@@ -353,7 +352,7 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 }
 
 func (q *Querier) blockSelectFromIngesters(ctx context.Context, req *ingesterv1.BlockMetadataRequest) ([]ResponseFromReplica[[]*typesv1.BlockInfo], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "blockSelectFromIngesters")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "blockSelectFromIngesters")
 	defer sp.Finish()
 
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.BlockInfo, error) {

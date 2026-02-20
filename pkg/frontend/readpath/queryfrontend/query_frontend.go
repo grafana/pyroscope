@@ -10,11 +10,11 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
+	"go.opentelemetry.io/otel/attribute"
+	otelTrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -87,7 +87,7 @@ func (q *QueryFrontend) Query(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (*queryv1.QueryResponse, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.QueryWithDiagnostics")
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryFrontend.QueryWithDiagnostics")
 	defer span.Finish()
 	span.SetTag("start_time", req.StartTime)
 	span.SetTag("end_time", req.EndTime)
@@ -182,10 +182,10 @@ func (q *QueryFrontend) QueryMetadata(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (blocks []*metastorev1.BlockMeta, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.QueryMetadata")
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryFrontend.QueryMetadata")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()
@@ -251,10 +251,8 @@ func (q *QueryFrontend) hasUnsymbolizedProfiles(block *metastorev1.BlockMeta) bo
 
 // shouldSymbolize determines if we should symbolize profiles based on tenant settings
 func (q *QueryFrontend) shouldSymbolize(ctx context.Context, tenants []string, blocks []*metastorev1.BlockMeta) bool {
-	span := opentracing.SpanFromContext(ctx)
-	if span != nil {
-		span.LogFields(otlog.String("event", "shouldSymbolize"))
-	}
+	otelSpan := otelTrace.SpanFromContext(ctx)
+	otelSpan.SetAttributes(attribute.String("event", "shouldSymbolize"))
 
 	if q.symbolizer == nil {
 		return false
@@ -273,12 +271,10 @@ func (q *QueryFrontend) shouldSymbolize(ctx context.Context, tenants []string, b
 		}
 	}
 
-	if span != nil {
-		span.LogFields(
-			otlog.Int("blocks_with_unsymbolized", blocksWithUnsymbolized),
-			otlog.Int("total_blocks", len(blocks)),
-		)
-	}
+	otelSpan.SetAttributes(
+		attribute.Int("blocks_with_unsymbolized", blocksWithUnsymbolized),
+		attribute.Int("total_blocks", len(blocks)),
+	)
 
 	return blocksWithUnsymbolized > 0
 }
@@ -289,10 +285,10 @@ func (q *QueryFrontend) processAndSymbolizeProfiles(
 	resp *queryv1.InvokeResponse,
 	originalQueries []*queryv1.Query,
 ) (err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.processAndSymbolizeProfiles")
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryFrontend.processAndSymbolizeProfiles")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()

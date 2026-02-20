@@ -6,7 +6,8 @@ import (
 	"sync"
 
 	"github.com/grafana/dskit/runutil"
-	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -140,9 +141,11 @@ func queryHeatmap(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err
 		return nil, fmt.Errorf("unknown exemplar type: %v", query.Heatmap.ExemplarType)
 	}
 
-	span := opentracing.SpanFromContext(q.ctx)
-	span.SetTag("exemplars.enabled", includeExemplars)
-	span.SetTag("exemplars.type", query.Heatmap.ExemplarType.String())
+	otelSpan := trace.SpanFromContext(q.ctx)
+	otelSpan.SetAttributes(
+		attribute.Bool("exemplars.enabled", includeExemplars),
+		attribute.String("exemplars.type", query.Heatmap.ExemplarType.String()),
+	)
 
 	b := heatmap.NewBuilder(query.Heatmap.GroupBy)
 

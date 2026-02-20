@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -174,7 +174,7 @@ func GetShuffleShardingSubring(ring ring.ReadRing, userID string, limits StoreGa
 }
 
 func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan map[string]*blockPlanEntry) (*model.Tree, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectTree StoreGateway")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectTree StoreGateway")
 	defer sp.Finish()
 	profileType, err := model.ParseProfileTypeSelector(req.ProfileTypeID)
 	if err != nil {
@@ -234,7 +234,7 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 }
 
 func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeProfileRequest, plan map[string]*blockPlanEntry) (*googlev1.Profile, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectProfile StoreGateway")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectProfile StoreGateway")
 	defer sp.Finish()
 	profileType, err := model.ParseProfileTypeSelector(req.ProfileTypeID)
 	if err != nil {
@@ -295,7 +295,7 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 }
 
 func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest, plan map[string]*blockPlanEntry) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSeries StoreGateway")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectSeries StoreGateway")
 	defer sp.Finish()
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
@@ -336,7 +336,7 @@ func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingeste
 }
 
 func (q *Querier) labelValuesFromStoreGateway(ctx context.Context, req *typesv1.LabelValuesRequest) ([]ResponseFromReplica[[]string], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues StoreGateway")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "LabelValues StoreGateway")
 	defer sp.Finish()
 
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
@@ -358,7 +358,7 @@ func (q *Querier) labelValuesFromStoreGateway(ctx context.Context, req *typesv1.
 }
 
 func (q *Querier) labelNamesFromStoreGateway(ctx context.Context, req *typesv1.LabelNamesRequest) ([]ResponseFromReplica[[]string], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames StoreGateway")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "LabelNames StoreGateway")
 	defer sp.Finish()
 
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
@@ -380,7 +380,7 @@ func (q *Querier) labelNamesFromStoreGateway(ctx context.Context, req *typesv1.L
 }
 
 func (q *Querier) seriesFromStoreGateway(ctx context.Context, req *ingesterv1.SeriesRequest) ([]ResponseFromReplica[[]*typesv1.Labels], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series StoreGateway")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "Series StoreGateway")
 	defer sp.Finish()
 
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
@@ -402,7 +402,7 @@ func (q *Querier) seriesFromStoreGateway(ctx context.Context, req *ingesterv1.Se
 }
 
 func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest, plan map[string]*blockPlanEntry) (*model.Tree, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSpanProfile StoreGateway")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectSpanProfile StoreGateway")
 	defer sp.Finish()
 	profileType, err := model.ParseProfileTypeSelector(req.ProfileTypeID)
 	if err != nil {
@@ -463,7 +463,7 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 }
 
 func (q *Querier) blockSelectFromStoreGateway(ctx context.Context, req *ingesterv1.BlockMetadataRequest) ([]ResponseFromReplica[[]*typesv1.BlockInfo], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "blockSelect StoreGateway")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "blockSelect StoreGateway")
 	defer sp.Finish()
 
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
