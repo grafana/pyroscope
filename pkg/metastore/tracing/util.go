@@ -3,16 +3,11 @@ package tracing
 import (
 	"context"
 
-	"github.com/opentracing/opentracing-go"
+	dskittracing "github.com/grafana/dskit/tracing"
 )
 
-var noopTracer = opentracing.NoopTracer{}
-
-// StartSpanFromContext starts a span only if there's a parent span in the context.
-// Otherwise, it returns a noop span. To be used in places where we might not have access to the original context.
-func StartSpanFromContext(ctx context.Context, operationName string) (opentracing.Span, context.Context) {
-	if opentracing.SpanFromContext(ctx) != nil {
-		return opentracing.StartSpanFromContext(ctx, operationName)
-	}
-	return noopTracer.StartSpan(operationName), ctx
+// StartSpanFromContext starts a new span from context. If no tracer is
+// registered, a noop span is returned.
+func StartSpanFromContext(ctx context.Context, operationName string) (*dskittracing.Span, context.Context) {
+	return dskittracing.StartSpanFromContext(ctx, operationName)
 }

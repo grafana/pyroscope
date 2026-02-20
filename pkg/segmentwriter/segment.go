@@ -18,8 +18,8 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/dskit/tracing"
 	"github.com/oklog/ulid/v2"
-	"github.com/opentracing/opentracing-go"
 	"github.com/thanos-io/objstore"
 	"golang.org/x/exp/maps"
 	"golang.org/x/time/rate"
@@ -214,11 +214,10 @@ func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *seg
 }
 
 func (s *segment) flush(ctx context.Context) (err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "segment.flush", opentracing.Tags{
-		"block_id": s.ulid.String(),
-		"datasets": len(s.datasets),
-		"shard":    s.shard,
-	})
+	span, ctx := tracing.StartSpanFromContext(ctx, "segment.flush")
+	span.SetTag("block_id", s.ulid.String())
+	span.SetTag("datasets", len(s.datasets))
+	span.SetTag("shard", s.shard)
 	defer span.Finish()
 
 	t1 := time.Now()
