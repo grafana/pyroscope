@@ -136,6 +136,14 @@ pyroscopedb:
   # CLI flag: -pyroscopedb.retention-policy-disable
   [disable_enforcement: <boolean> | default = false]
 
+  # Compression algorithm for saving to disk, default no compression. Available algorithms: gzip,zstd,lz4,snappy.
+  # CLI flag: -pyroscopedb.compression-algo
+  [compression_algo: <string> | default = ""]
+
+  # Compression level, default 0 (0 means default level). See https://github.com/klauspost/compress for the level number.
+  # CLI flag: -pyroscopedb.compression-level
+  [compression_level: <int> | default = 0]
+
 tracing:
   # Set to false to disable tracing.
   # CLI flag: -tracing.enabled
