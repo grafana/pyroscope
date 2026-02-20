@@ -1,0 +1,22 @@
+graph LR
+    Distributor==>SegmentWriter
+    PlacementAgent-.-PlacementRules
+    SegmentWriter-->|metadata|PlacementManager
+    SegmentWriter==>|data|Segments
+    PlacementManager-.->PlacementRules
+
+    subgraph Distributor["distributor"]
+        PlacementAgent
+    end
+
+    subgraph Metastore["metastore"]
+        PlacementManager
+    end
+
+    subgraph ObjectStore["object store"]
+        PlacementRules(placement rules)
+        Segments(segments)
+    end
+
+    subgraph SegmentWriter["segment-writer"]
+    end

@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant C as Cleaner
+    participant M as Metastore
+    participant R as Raft
+    participant I as Index
+
+    C->>M: TruncateIndex(policy)
+    M->>I: List partitions
+    I-->>M: Partition list
+    M->>M: Apply retention policy
+    M->>R: Propose TRUNCATE_INDEX
+    R->>I: Delete partitions
+    R->>I: Add tombstones
+    R-->>M: Committed
+    M-->>C: Success
