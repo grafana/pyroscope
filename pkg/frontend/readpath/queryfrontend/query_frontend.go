@@ -133,7 +133,7 @@ func (q *QueryFrontend) Query(
 		modifiedQueries[i] = originalQuery.CloneVT()
 
 		// If we need symbolization and this is a TREE query, convert it to PPROF
-		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE && originalQuery.Tree.FullSymbols == false {
+		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE && !originalQuery.Tree.FullSymbols {
 			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
 			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
 				MaxNodes: originalQuery.Tree.GetMaxNodes(),
