@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/grafana/dskit/runutil"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"github.com/prometheus/prometheus/model/labels"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -34,7 +34,7 @@ func init() {
 }
 
 func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
-	span := opentracing.SpanFromContext(q.ctx)
+	otelSpan := trace.SpanFromContext(q.ctx)
 
 	var profileOpts []profileIteratorOption
 	if len(query.Pprof.ProfileIdSelector) > 0 {
@@ -43,9 +43,9 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 			return nil, err
 		}
 		profileOpts = append(profileOpts, opt)
-		span.SetTag("profile_id_selector.count", len(query.Pprof.ProfileIdSelector))
+		otelSpan.SetAttributes(attribute.Int("profile_id_selector.count", len(query.Pprof.ProfileIdSelector)))
 		if len(query.Pprof.ProfileIdSelector) <= maxProfileIDsToLog {
-			span.LogFields(otlog.String("profile_ids", strings.Join(query.Pprof.ProfileIdSelector, ",")))
+			otelSpan.SetAttributes(attribute.String("profile_ids", strings.Join(query.Pprof.ProfileIdSelector, ",")))
 		}
 	}
 

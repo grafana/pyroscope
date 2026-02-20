@@ -10,8 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
@@ -348,7 +347,7 @@ func (p blockPlan) String() string {
 }
 
 func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*blockPlanEntry {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "blockPlan")
+	sp, _ := tracing.StartSpanFromContext(ctx, "blockPlan")
 	defer sp.Finish()
 
 	var (
@@ -466,12 +465,10 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*blockPla
 		}
 	}
 
-	sp.LogFields(
-		otlog.Bool("deduplicate", deduplicate),
-		otlog.Int32("smallest_compaction_level", smallestCompactionLevel),
-		otlog.Int("planned_blocks_ingesters", plannedIngesterBlocks),
-		otlog.Int("planned_blocks_store_gateways", plannedStoreGatewayBlocks),
-	)
+	sp.SetTag("deduplicate", deduplicate)
+	sp.SetTag("smallest_compaction_level", smallestCompactionLevel)
+	sp.SetTag("planned_blocks_ingesters", plannedIngesterBlocks)
+	sp.SetTag("planned_blocks_store_gateways", plannedStoreGatewayBlocks)
 
 	level.Debug(spanlogger.FromContext(ctx, r.logger)).Log(
 		"msg", "block plan created",

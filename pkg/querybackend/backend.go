@@ -11,7 +11,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
@@ -84,7 +84,7 @@ func (q *QueryBackend) Invoke(
 	ctx context.Context,
 	req *queryv1.InvokeRequest,
 ) (*queryv1.InvokeResponse, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryBackend.Invoke")
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryBackend.Invoke")
 	defer span.Finish()
 
 	collectDiag := req.Options != nil && req.Options.CollectDiagnostics
