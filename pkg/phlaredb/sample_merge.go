@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/grafana/dskit/runutil"
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 	"github.com/parquet-go/parquet-go"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -19,7 +19,7 @@ import (
 )
 
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*phlaremodel.Tree, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 
@@ -39,7 +39,7 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 }
 
 func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64, sts *typesv1.StackTraceSelector) (*profilev1.Profile, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof - Block")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "MergePprof - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 
@@ -61,7 +61,7 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 }
 
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], sts *typesv1.StackTraceSelector, by ...string) ([]*typesv1.Series, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 
@@ -86,7 +86,7 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 }
 
 func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
+	sp, _ := tracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 
@@ -112,7 +112,7 @@ type Source interface {
 
 func mergeByStacktraces[T interface{ StacktracePartition() uint64 }](ctx context.Context, profileSource Source, rows iter.Iterator[T], r *symdb.Resolver,
 ) (err error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeByStacktraces")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "mergeByStacktraces")
 	defer sp.Finish()
 	var columns v1.SampleColumns
 	if err = columns.Resolve(profileSource.Schema()); err != nil {
@@ -131,7 +131,7 @@ func mergeByStacktraces[T interface{ StacktracePartition() uint64 }](ctx context
 }
 
 func mergeBySpans[T interface{ StacktracePartition() uint64 }](ctx context.Context, profileSource Source, rows iter.Iterator[T], r *symdb.Resolver, spanSelector phlaremodel.SpanSelector) (err error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeBySpans")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "mergeBySpans")
 	defer sp.Finish()
 	var columns v1.SampleColumns
 	if err = columns.Resolve(profileSource.Schema()); err != nil {

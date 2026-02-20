@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
@@ -27,7 +27,7 @@ import (
 type Resolver struct {
 	ctx    context.Context
 	cancel context.CancelFunc
-	span   opentracing.Span
+	span   *tracing.Span
 
 	s SymbolsReader
 	g *errgroup.Group
@@ -106,7 +106,7 @@ func NewResolver(ctx context.Context, s SymbolsReader, opts ...ResolverOption) *
 	for _, opt := range opts {
 		opt(&r)
 	}
-	r.span, r.ctx = opentracing.StartSpanFromContext(ctx, "NewResolver")
+	r.span, r.ctx = tracing.StartSpanFromContext(ctx, "NewResolver")
 	r.ctx, r.cancel = context.WithCancel(r.ctx)
 	r.g, r.ctx = errgroup.WithContext(r.ctx)
 	return &r
@@ -237,7 +237,7 @@ func (r *Resolver) partition(partition uint64) *lazyPartition {
 }
 
 func (r *Resolver) Tree() (*model.Tree, error) {
-	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Tree")
+	span, ctx := tracing.StartSpanFromContext(r.ctx, "Resolver.Tree")
 	defer span.Finish()
 	var lock sync.Mutex
 	tree := new(model.Tree)
@@ -255,7 +255,7 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 }
 
 func (r *Resolver) Pprof() (*googlev1.Profile, error) {
-	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
+	span, ctx := tracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
 	defer span.Finish()
 
 	if r.canSkipProfileMerge() {
