@@ -8,9 +8,10 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/tracing"
 	"github.com/iancoleman/strcase"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"go.opentelemetry.io/otel/attribute"
+	otelTrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -95,8 +96,8 @@ type blockContext struct {
 func (b *blockContext) execute() error {
 	startTime := time.Now()
 
-	var span opentracing.Span
-	span, b.ctx = opentracing.StartSpanFromContext(b.ctx, "blockContext.execute")
+	var span *tracing.Span
+	span, b.ctx = tracing.StartSpanFromContext(b.ctx, "blockContext.execute")
 	defer span.Finish()
 
 	if idx := b.datasetIndex(); idx != nil {
@@ -155,7 +156,7 @@ func (b *blockContext) datasetIndex() *metastorev1.Dataset {
 	s := (&queryContext{blockContext: b}).sections()
 	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
 	if indexOnly {
-		opentracing.SpanFromContext(b.ctx).SetTag("dataset_index_query_index_only", indexOnly)
+		otelTrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query_index_only", indexOnly))
 		return nil
 	}
 
@@ -163,7 +164,7 @@ func (b *blockContext) datasetIndex() *metastorev1.Dataset {
 }
 
 func (b *blockContext) lookupDatasets(ds *metastorev1.Dataset) error {
-	opentracing.SpanFromContext(b.ctx).SetTag("dataset_index_query", true)
+	otelTrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query", true))
 
 	// As query execution has not started yet,
 	// we can safely open datasets.
@@ -200,8 +201,7 @@ func (b *blockContext) lookupDatasets(ds *metastorev1.Dataset) error {
 	md.Datasets = md.Datasets[:j]
 	b.obj.SetMetadata(md)
 
-	opentracing.SpanFromContext(b.ctx).
-		LogFields(otlog.String("msg", "dataset tsdb index lookup complete"))
+	otelTrace.SpanFromContext(b.ctx).SetAttributes(attribute.String("msg", "dataset tsdb index lookup complete"))
 
 	return nil
 }
@@ -220,8 +220,8 @@ type queryContext struct {
 }
 
 func (q *queryContext) execute(query *queryv1.Query) error {
-	var span opentracing.Span
-	span, q.ctx = opentracing.StartSpanFromContext(q.ctx, "executeQuery."+strcase.ToCamel(query.QueryType.String()))
+	var span *tracing.Span
+	span, q.ctx = tracing.StartSpanFromContext(q.ctx, "executeQuery."+strcase.ToCamel(query.QueryType.String()))
 	defer span.Finish()
 	handle, err := getQueryHandler(query.QueryType)
 	if err != nil {

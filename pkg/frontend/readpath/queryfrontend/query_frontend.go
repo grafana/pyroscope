@@ -9,8 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
+	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
@@ -97,7 +96,7 @@ func (q *QueryFrontend) doQuery(
 	req *queryv1.QueryRequest,
 	backendC backendWrapper,
 ) (*queryv1.QueryResponse, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.doQuery")
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryFrontend.doQuery")
 	defer span.Finish()
 	span.SetTag("start_time", req.StartTime)
 	span.SetTag("end_time", req.EndTime)
@@ -171,10 +170,10 @@ func (q *QueryFrontend) QueryMetadata(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (blocks []*metastorev1.BlockMeta, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.QueryMetadata")
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryFrontend.QueryMetadata")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()
