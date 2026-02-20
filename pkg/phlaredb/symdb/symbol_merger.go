@@ -274,6 +274,11 @@ func (rm *remapper) resolveLocationIDs(
 	// go through functions collect strings used
 	functionIDs := rm.functionIDs()
 	for _, funcID := range functionIDs {
+		// TODO(simonswine): Investigate why we don't use the IDs consistently here, likely a test case issue, but worth double checking.
+		// pprof IDs are conventionally 1-based (0 = unset).
+		if int(funcID) >= len(functions) {
+			continue
+		}
 		rm.discoverFunction(&functions[funcID])
 	}
 }
@@ -355,6 +360,11 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 	sm.functions.grow(len(functionIDs))
 	buf := make([]byte, 8)
 	for _, fID := range functionIDs {
+		// TODO(simonswine): Investigate why we don't use the IDs consistently here, likely a test case issue, but worth double checking.
+		// pprof IDs are conventionally 1-based (0 = unset).
+		if int(fID) >= len(symbols.Functions) {
+			continue // index out of range (e.g. sentinel on an empty Functions slice)
+		}
 		h.Reset()
 		f = symbols.Functions[fID]
 		rm.updateFunction(&f)

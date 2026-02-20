@@ -166,6 +166,133 @@ func TestSymbolMerger(t *testing.T) {
 	require.JSONEq(t, expectedTreeSymbols, string(b))
 }
 
+func createUnsymbolizedTestSymbols() *Symbols {
+	return &Symbols{
+		Locations: []schemav1.InMemoryLocation{
+			{MappingId: 0, Address: 0x1500},
+			{MappingId: 0, Address: 0x3c5a},
+		},
+		Mappings: []schemav1.InMemoryMapping{
+			{
+				MemoryStart:  0x1000,
+				MemoryLimit:  0x5000,
+				FileOffset:   0,
+				Filename:     1,
+				BuildId:      2,
+				HasFunctions: false,
+			},
+		},
+		Functions: []schemav1.InMemoryFunction{},
+		Strings:   []string{"", "libfoo.so", "2fa2055ef20fabc972d5751147e093275514b142"},
+	}
+}
+
+// TestSymbolMerger_UnsymbolizedProfile is a regression test for a panic that occurs
+// when merging profiles where symbols.Functions is empty (HasFunctions=false).
+// resolveLocationIDs unconditionally adds functions[0] = 0 as a sentinel and then
+// calls discoverFunction(&functions[0]), which panics with an index-out-of-bounds.
+// The same panic occurs in addSymbols when it indexes symbols.Functions[fID] for fID=0.
+func TestSymbolMerger_UnsymbolizedProfile(t *testing.T) {
+	merger := NewSymbolMerger()
+	ts := createUnsymbolizedTestSymbols()
+	locIDs := []int32{0, 1}
+
+	adder, err := merger.addSymbols(ts, locIDs)
+	require.NoError(t, err) // panics before fix
+
+	// adder renumbers 0-based input indices → 1-based merged indices
+	for _, locID := range locIDs {
+		require.Equal(t, model.LocationRefName(locID+1), adder(model.LocationRefName(locID)))
+	}
+
+	builder := merger.ResultBuilder()
+	for _, locID := range locIDs {
+		builder.KeepSymbol(adder(model.LocationRefName(locID)))
+	}
+
+	result := &queryv1.TreeSymbols{}
+	builder.Build(result)
+
+	require.Len(t, result.Functions, 1) // sentinel only — no function data
+	require.Len(t, result.Locations, 3) // sentinel + 2 unsymbolized locations
+	require.Len(t, result.Mappings, 2)  // sentinel + 1 mapping
+	require.Len(t, result.Strings, 3)   // "", "libfoo.so", build-id
+
+	// Verify locations carry the right addresses.
+	require.Equal(t, uint64(0x1500), result.Locations[1].Address)
+	require.Equal(t, uint64(0x3c5a), result.Locations[2].Address)
+	// Both locations reference the single mapping.
+	require.Equal(t, uint64(1), result.Locations[1].MappingId)
+	require.Equal(t, uint64(1), result.Locations[2].MappingId)
+}
+
+// TestSymbolMerger_UnsymbolizedProfile_RoundTrip verifies that the result of
+// addSymbols+Build can be fed back into Add+Build and produce identical output.
+func TestSymbolMerger_UnsymbolizedProfile_RoundTrip(t *testing.T) {
+	ts := createUnsymbolizedTestSymbols()
+	locIDs := []int32{0, 1}
+
+	// First pass: addSymbols → Build → result1
+	merger1 := NewSymbolMerger()
+	adder, err := merger1.addSymbols(ts, locIDs)
+	require.NoError(t, err)
+
+	builder1 := merger1.ResultBuilder()
+	for _, locID := range locIDs {
+		builder1.KeepSymbol(adder(model.LocationRefName(locID)))
+	}
+	result1 := &queryv1.TreeSymbols{}
+	builder1.Build(result1)
+
+	// Second pass: Add(result1) → Build → result2
+	merger2 := NewSymbolMerger()
+	adder2, err := merger2.Add(result1)
+	require.NoError(t, err)
+
+	builder2 := merger2.ResultBuilder()
+	// Skip index 0 (sentinel); keep the real locations.
+	for i := int32(1); i < int32(len(result1.Locations)); i++ {
+		builder2.KeepSymbol(adder2(model.LocationRefName(i)))
+	}
+	result2 := &queryv1.TreeSymbols{}
+	builder2.Build(result2)
+
+	b1, err := protojson.Marshal(result1)
+	require.NoError(t, err)
+	b2, err := protojson.Marshal(result2)
+	require.NoError(t, err)
+	require.JSONEq(t, string(b1), string(b2))
+}
+
+// TestSymbolMerger_UnsymbolizedProfile_Deduplication verifies that merging the same
+// unsymbolized symbols twice produces no duplicate entries in the result.
+func TestSymbolMerger_UnsymbolizedProfile_Deduplication(t *testing.T) {
+	ts := createUnsymbolizedTestSymbols()
+	locIDs := []int32{0, 1}
+
+	merger := NewSymbolMerger()
+
+	adder1, err := merger.addSymbols(ts, locIDs)
+	require.NoError(t, err)
+	adder2, err := merger.addSymbols(ts, locIDs)
+	require.NoError(t, err)
+
+	builder := merger.ResultBuilder()
+	for _, locID := range locIDs {
+		builder.KeepSymbol(adder1(model.LocationRefName(locID)))
+		builder.KeepSymbol(adder2(model.LocationRefName(locID)))
+	}
+
+	result := &queryv1.TreeSymbols{}
+	builder.Build(result)
+
+	// Same counts as a single add — the merger must deduplicate.
+	require.Len(t, result.Functions, 1) // sentinel only
+	require.Len(t, result.Locations, 3) // sentinel + 2 unique locations
+	require.Len(t, result.Mappings, 2)  // sentinel + 1 unique mapping
+	require.Len(t, result.Strings, 3)   // "", "libfoo.so", build-id
+}
+
 func TestSymbolMerger_HashCollision(t *testing.T) {
 	sm := NewSymbolMerger()
 
