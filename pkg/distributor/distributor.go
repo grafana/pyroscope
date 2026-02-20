@@ -27,8 +27,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
+	"github.com/grafana/dskit/tracing"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -254,7 +253,7 @@ func isKnownValidationError(err error) bool {
 }
 
 func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (_ *connect.Response[pushv1.PushResponse], err error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Distributor.Push")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "Distributor.Push")
 	defer sp.Finish()
 
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
@@ -268,7 +267,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 		}
 
 		// log error
-		ext.LogError(sp, err)
+		sp.LogError(err)
 		level.Debug(util.LoggerWithContext(ctx, d.logger)).Log("msg", "failed to validate profile", "err", err)
 
 		// wrap the errors with InvalidArgument code for profile validation errors, so they return 400
@@ -345,7 +344,7 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries)
 }
 
 func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushRequest) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Distributor.PushBatch")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "Distributor.PushBatch")
 	defer sp.Finish()
 
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
@@ -563,18 +562,18 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	// Normalisation is quite an expensive operation,
 	// therefore it should be done after the rate limit check.
 	if req.Language == "go" {
-		sp, _ := opentracing.StartSpanFromContext(ctx, "pprof.FixGoProfile")
+		sp, _ := tracing.StartSpanFromContext(ctx, "pprof.FixGoProfile")
 		req.Profile.Profile = pprof.FixGoProfile(req.Profile.Profile)
 		sp.Finish()
 	}
 	{
-		sp, _ := opentracing.StartSpanFromContext(ctx, "sampletype.Relabel")
+		sp, _ := tracing.StartSpanFromContext(ctx, "sampletype.Relabel")
 		sampleTypeRules := d.limits.SampleTypeRelabelingRules(req.TenantID)
 		sampletype.Relabel(validated, sampleTypeRules, req.Labels)
 		sp.Finish()
 	}
 	{
-		sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
+		sp, _ := tracing.StartSpanFromContext(ctx, "Profile.Normalize")
 		req.Profile.Normalize()
 		sp.Finish()
 		finalLog.addFields("normalization_stats", req.Profile.Stats())
@@ -670,12 +669,8 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 	go func() {
 		defer d.asyncRequests.Done()
 		sendErr := util.RecoverPanic(func() error {
-			localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.PushTimeout)
+			localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), d.cfg.PushTimeout)
 			defer cancel()
-			localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
-			if sp := opentracing.SpanFromContext(ctx); sp != nil {
-				localCtx = opentracing.ContextWithSpan(localCtx, sp)
-			}
 			// Obtain the aggregated profile.
 			p, handleErr := handler()
 			if handleErr != nil {
@@ -762,12 +757,8 @@ func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distribut
 	for ingester, samples := range samplesByIngester {
 		go func(ingester ring.InstanceDesc, samples []*profileTracker) {
 			// Use a background context to make sure all ingesters get samples even if we return early
-			localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.PushTimeout)
+			localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), d.cfg.PushTimeout)
 			defer cancel()
-			localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
-			if sp := opentracing.SpanFromContext(ctx); sp != nil {
-				localCtx = opentracing.ContextWithSpan(localCtx, sp)
-			}
 			d.sendProfiles(localCtx, ingester, samples, &tracker)
 		}(ingesterDescs[ingester], samples)
 	}

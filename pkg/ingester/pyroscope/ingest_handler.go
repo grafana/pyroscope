@@ -11,8 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/pyroscope/pkg/tenant"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
@@ -50,7 +51,7 @@ func NewIngestHandler(l log.Logger, p ingestion.Ingester) http.Handler {
 
 func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "ingestHandler.ServeHTTP")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "ingestHandler.ServeHTTP")
 	defer sp.Finish()
 
 	tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
@@ -58,7 +59,8 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	input, err := h.parseInputMetadataFromRequest(ctx, r)
 	if err != nil {
 		msg := "failed to parse request metadata"
-		sp.LogFields(otlog.Error(err), otlog.String("msg", msg))
+		sp.LogError(err)
+		sp.SetTag("msg", msg)
 		_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
 		httputil.ErrorWithStatus(w, err, http.StatusBadRequest)
 		return
@@ -78,7 +80,8 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		msg := "failed to read request body"
-		sp.LogFields(otlog.Error(err), otlog.String("msg", msg))
+		sp.LogError(err)
+		sp.SetTag("msg", msg)
 		_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
 		httputil.ErrorWithStatus(w, err, status)
 		return
@@ -88,12 +91,14 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if ingestion.IsIngestionError(err) {
 			msg := "failed to convert profile"
-			sp.LogFields(otlog.Error(err), otlog.String("msg", msg))
+			sp.LogError(err)
+			sp.SetTag("msg", msg)
 			_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
 			httputil.Error(w, err)
 		} else {
 			msg := "failed to ingest profile"
-			sp.LogFields(otlog.Error(err), otlog.String("msg", msg))
+			sp.LogError(err)
+			sp.SetTag("msg", msg)
 			httputil.ErrorWithStatus(w, err, http.StatusUnprocessableEntity)
 		}
 	}
@@ -164,14 +169,14 @@ func (h ingestHandler) parseInputMetadataFromRequest(_ context.Context, r *http.
 
 func readInputRawDataFromRequest(ctx context.Context, r *http.Request, input *ingestion.IngestInput) error {
 	var (
-		sp          = opentracing.SpanFromContext(ctx)
+		otelSpan    = trace.SpanFromContext(ctx)
 		format      = r.URL.Query().Get("format")
 		contentType = r.Header.Get("Content-Type")
 	)
-	if sp != nil {
-		sp.SetTag("format", format)
-		sp.SetTag("content_type", contentType)
-	}
+	otelSpan.SetAttributes(
+		attribute.String("format", format),
+		attribute.String("content_type", contentType),
+	)
 
 	buf := bytes.NewBuffer(make([]byte, 0, 64<<10))
 	n, err := io.Copy(buf, r.Body)
@@ -179,9 +184,7 @@ func readInputRawDataFromRequest(ctx context.Context, r *http.Request, input *in
 		return fmt.Errorf("error reading request body bytes_read %d: %w", n, err)
 	}
 
-	if sp != nil {
-		sp.SetTag("content_length", n)
-	}
+	otelSpan.SetAttributes(attribute.Int64("content_length", n))
 	b := buf.Bytes()
 
 	switch {
