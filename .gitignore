@@ -19,6 +19,7 @@ data-compactor/
 data-metastore/
 .DS_Store
 **/dist
+**/.env
 
 # IDE
 .idea
