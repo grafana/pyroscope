@@ -1,0 +1,31 @@
+services:
+  tempo:
+    image: grafana/tempo:2.6.1
+    volumes:
+      - ./tempo.yml:/etc/tempo/config.yml
+    command:
+      - -config.file=/etc/tempo/config.yml
+    ports:
+      - "3200:3200"   # Tempo query API
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "14268:14268" # Jaeger thrift HTTP
+      - "6831:6831/udp" # Jaeger thrift compact (UDP)
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3200/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+    depends_on:
+      tempo:
+        condition: service_healthy
