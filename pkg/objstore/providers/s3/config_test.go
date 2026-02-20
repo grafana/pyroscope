@@ -157,6 +157,14 @@ func TestConfig_Validate(t *testing.T) {
 			},
 			expected: errBucketLookupConfigConflict,
 		},
+		"should pass with NativeAWSAuthEnabled true": {
+			setup: func() *Config {
+				cfg := &Config{}
+				flagext.DefaultValues(cfg)
+				cfg.NativeAWSAuthEnabled = true
+				return cfg
+			},
+		},
 	}
 
 	for testName, testData := range tests {

@@ -64,6 +64,20 @@ storage:
 
 [MinIO]: https://min.io/docs/minio/container/index.html
 
+### Using AWS SDK auth
+
+Set `native_aws_auth_enabled: true` to use the [AWS SDK default credential chain](https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html).
+
+```yaml
+storage:
+  backend: s3
+  s3:
+    bucket_name: your-bucket
+    region: eu-west-2
+    endpoint: s3.eu-west-2.amazonaws.com
+    native_aws_auth_enabled: true
+```
+
 ## Google Cloud Storage
 
 To use a Google Cloud Storage (GCS) bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][gcs_ref].

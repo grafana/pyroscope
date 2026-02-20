@@ -59,6 +59,7 @@ func newS3Config(cfg Config) (s3.Config, error) {
 		Insecure:         cfg.Insecure,
 		SSEConfig:        sseCfg,
 		BucketLookupType: bucketLookupType,
+		AWSSDKAuth:       cfg.NativeAWSAuthEnabled,
 		HTTPConfig: s3.HTTPConfig{
 			IdleConnTimeout:       model.Duration(cfg.HTTP.IdleConnTimeout),
 			ResponseHeaderTimeout: model.Duration(cfg.HTTP.ResponseHeaderTimeout),
