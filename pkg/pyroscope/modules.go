@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"slices"
 	"strings"
@@ -27,12 +26,10 @@ import (
 	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/services"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
-	objstoretracing "github.com/thanos-io/objstore/tracing/opentracing"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -444,16 +441,6 @@ func (f *Pyroscope) initStoreGateway() (serv services.Service, err error) {
 	return svc, nil
 }
 
-var objstoreTracerMiddleware = middleware.Func(func(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		if tracer := opentracing.GlobalTracer(); tracer != nil {
-			ctx = objstoretracing.ContextWithTracer(ctx, opentracing.GlobalTracer())
-		}
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-})
-
 func (f *Pyroscope) initServer() (services.Service, error) {
 	f.reg.MustRegister(version.NewCollector("pyroscope"))
 	f.reg.Unregister(collectors.NewGoCollector())
@@ -526,7 +513,6 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 			LogRequestExcludeHeaders: strings.Split(f.Cfg.Server.LogRequestExcludeHeadersList, ","),
 		},
 		httpMetric,
-		objstoreTracerMiddleware,
 		httputil.K6Middleware(),
 		featureflags.ClientCapabilitiesHttpMiddleware(),
 	}

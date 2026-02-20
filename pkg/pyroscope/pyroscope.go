@@ -31,11 +31,8 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/signals"
 	"github.com/grafana/dskit/spanlogger"
-	"github.com/grafana/dskit/spanprofiler"
-	wwtracing "github.com/grafana/dskit/tracing"
 	"github.com/grafana/pyroscope-go"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
@@ -411,17 +408,13 @@ func New(cfg Config) (*Pyroscope, error) {
 	runtime.SetBlockProfileRate(cfg.SelfProfiling.BlockProfileRate)
 
 	if cfg.Tracing.Enabled {
-		// Setting the environment variable JAEGER_AGENT_HOST enables tracing
 		name := os.Getenv("JAEGER_SERVICE_NAME")
 		if name == "" {
 			name = fmt.Sprintf("pyroscope-%s", cfg.Target)
 		}
-		trace, err := wwtracing.NewFromEnv(name)
+		trace, err := initTracing(name, logger, cfg.Tracing.ProfilingEnabled)
 		if err != nil {
 			level.Error(logger).Log("msg", "error in initializing tracing. tracing will not be enabled", "err", err)
-		}
-		if cfg.Tracing.ProfilingEnabled {
-			opentracing.SetGlobalTracer(spanprofiler.NewTracer(opentracing.GlobalTracer()))
 		}
 		phlare.tracer = trace
 	}
