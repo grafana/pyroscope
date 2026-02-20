@@ -36,6 +36,8 @@ message Point {
   // Milliseconds unix timestamp
   int64 timestamp = 2;
   repeated ProfileAnnotation annotations = 3;
+  // Exemplars are samples of individual profiles that contributed to this aggregated point
+  repeated Exemplar exemplars = 4;
 }
 
 // Annotations provide additional metadata for a profile.
@@ -100,6 +102,13 @@ enum TimeSeriesAggregationType {
   TIME_SERIES_AGGREGATION_TYPE_AVERAGE = 1;
 }
 
+enum ExemplarType {
+  EXEMPLAR_TYPE_UNSPECIFIED = 0;
+  EXEMPLAR_TYPE_NONE = 1;
+  EXEMPLAR_TYPE_INDIVIDUAL = 2;
+  EXEMPLAR_TYPE_SPAN = 3;
+}
+
 // StackTraceSelector is used for filtering stack traces by locations.
 message StackTraceSelector {
   // Stack trace of the call site. Root at call_site[0].
@@ -132,4 +141,41 @@ message GetProfileStatsResponse {
   int64 oldest_profile_time = 2;
   // Milliseconds since epoch.
   int64 newest_profile_time = 3;
+}
+
+// Exemplar represents metadata for an individual profile sample.
+// Exemplars allow users to drill down from aggregated timeline views
+// to specific profile instances.
+message Exemplar {
+  // Milliseconds since epoch when the profile was captured.
+  int64 timestamp = 1 [(gnostic.openapi.v3.property).example = {yaml: "1730000023000"}];
+
+  // Unique identifier for the profile (UUID).
+  string profile_id = 2 [(gnostic.openapi.v3.property).example = {yaml: "7c9e6679-7425-40de-944b-e07fc1f90ae7"}];
+
+  // Span ID if this profile was split by span during ingestion.
+  string span_id = 3 [(gnostic.openapi.v3.property).example = {yaml: "00f067aa0ba902b7"}];
+
+  // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
+  int64 value = 4 [(gnostic.openapi.v3.property).example = {yaml: "2450000000"}];
+
+  // Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
+  // label overlaps with the series label, it is not included here.
+  repeated LabelPair labels = 5;
+}
+
+message HeatmapSeries {
+  repeated LabelPair labels = 1;
+  repeated HeatmapSlot slots = 2;
+}
+
+message HeatmapSlot {
+  // Milliseconds unix timestamp
+  int64 timestamp = 1;
+  // Minimum y value
+  repeated double y_min = 2;
+  // How many matches
+  repeated int32 counts = 3;
+  // Provide exemplars
+  repeated Exemplar exemplars = 4;
 }

@@ -45,9 +45,9 @@ func (f *Frontend) SelectMergeProfile(
 	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
 	intervals := NewTimeIntervalIterator(time.UnixMilli(int64(validated.Start)), time.UnixMilli(int64(validated.End)), interval)
 
-	// NOTE: Max nodes limit is not set by default:
-	//   the method is used for pprof export and
-	//   truncation is not applicable for that.
+	// NOTE: Max nodes limit is off by default. SelectMergeProfile is primarily
+	// used for pprof export where truncation would result in incomplete profiles.
+	// This can be overridden per-tenant to enable enforcement if needed.
 	maxNodesEnabled := false
 	for _, tenantID := range tenantIDs {
 		if f.limits.MaxFlameGraphNodesOnSelectMergeProfile(tenantID) {

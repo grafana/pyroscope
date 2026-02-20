@@ -1,0 +1,37 @@
+package querydiagnostics
+
+import (
+	_ "embed"
+	"html/template"
+	"time"
+)
+
+//go:embed query_diagnostics.gohtml
+var diagnosticsPageHtml string
+
+//go:embed diagnostics_list.gohtml
+var diagnosticsListPageHtml string
+
+type pageContent struct {
+	Now time.Time
+}
+
+type templates struct {
+	diagnosticsTemplate     *template.Template
+	diagnosticsListTemplate *template.Template
+}
+
+var pageTemplates = initTemplates()
+
+func initTemplates() *templates {
+	diagnosticsTemplate := template.New("diagnostics")
+	template.Must(diagnosticsTemplate.Parse(diagnosticsPageHtml))
+
+	diagnosticsListTemplate := template.New("diagnostics-list")
+	template.Must(diagnosticsListTemplate.Parse(diagnosticsListPageHtml))
+
+	return &templates{
+		diagnosticsTemplate:     diagnosticsTemplate,
+		diagnosticsListTemplate: diagnosticsListTemplate,
+	}
+}

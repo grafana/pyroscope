@@ -36,6 +36,7 @@ import (
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/timeseries"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -215,6 +216,10 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 		otlog.Int64("end", req.Msg.End),
 	)
 
+	if req.Msg.Name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+
 	if q.storeGatewayQuerier == nil || !hasTimeRange {
 		responses, err := q.labelValuesFromIngesters(ctx, req.Msg)
 		if err != nil {
@@ -277,7 +282,7 @@ func filterLabelNames(labelNames []string) []string {
 	filtered := make([]string, 0, len(labelNames))
 	// Filter out label names not passing legacy validation if utf8 label names not enabled
 	for _, labelName := range labelNames {
-		if _, _, ok := validation.SanitizeLegacyLabelName(labelName); !ok {
+		if !model.LegacyValidation.IsValidLabelName(labelName) {
 			continue
 		}
 		filtered = append(filtered, labelName)
@@ -405,7 +410,7 @@ func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (block
 	return results.blockPlan(ctx), nil
 }
 
-// filterLabelNames filters out non-legacy (see validation.SanitizeLegacyLabelName)
+// filterLabelNames filters out non-legacy (see model.LegacyValidation.IsValidLabelName)
 // label names by default. If no label names are passed in the req, all label names
 // are fetched and then filtered. Otherwise, the label names in the req are filtered.
 // If the `AllowUtf8LabelNames` client capability is enabled, this function is a no-op.
@@ -433,7 +438,7 @@ func (q *Querier) filterLabelNames(
 	// Filter out label names in request if not passing legacy validation
 	filtered := make([]string, 0, len(req.Msg.LabelNames))
 	for _, name := range req.Msg.LabelNames {
-		if _, _, ok := validation.SanitizeLegacyLabelName(name); !ok {
+		if !model.LegacyValidation.IsValidLabelName(name) {
 			level.Debug(q.logger).Log("msg", "filtering out label", "label_name", name)
 			continue
 		}
@@ -662,6 +667,10 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if req.Msg.MaxNodes == nil || *req.Msg.MaxNodes == 0 {
 		mn := maxNodesDefault
 		req.Msg.MaxNodes = &mn
+	}
+
+	if len(req.Msg.ProfileIdSelector) > 0 {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("profile_id_selector is only supported with the v2 query backend"))
 	}
 
 	t, err := q.selectTree(ctx, req.Msg)
@@ -1009,6 +1018,12 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be non-zero"))
 	}
 
+	// SelectSeries (v1 API) does not support exemplars
+	if req.Msg.ExemplarType == typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL ||
+		req.Msg.ExemplarType == typesv1.ExemplarType_EXEMPLAR_TYPE_SPAN {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("exemplars are not supported in SelectSeries API, use the v2 query API instead"))
+	}
+
 	stepMs := time.Duration(req.Msg.Step * float64(time.Second)).Milliseconds()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -1035,7 +1050,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	result := phlaremodel.RangeSeries(it, req.Msg.Start, req.Msg.End, stepMs, req.Msg.Aggregation)
+	result := timeseries.RangeSeries(it, req.Msg.Start, req.Msg.End, stepMs, req.Msg.Aggregation)
 	if it.Err() != nil {
 		return nil, connect.NewError(connect.CodeInternal, it.Err())
 	}
@@ -1043,6 +1058,10 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	return connect.NewResponse(&querierv1.SelectSeriesResponse{
 		Series: result,
 	}), nil
+}
+
+func (q *Querier) SelectHeatmap(ctx context.Context, req *connect.Request[querierv1.SelectHeatmapRequest]) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("SelectHeatmap not implemented in old querier"))
 }
 
 func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest], plan map[string]*blockPlanEntry) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {

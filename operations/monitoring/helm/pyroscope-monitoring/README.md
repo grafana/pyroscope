@@ -1,6 +1,6 @@
 # pyroscope-monitoring
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.0.0](https://img.shields.io/badge/AppVersion-0.0.0-informational?style=flat-square)
+![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.0.0](https://img.shields.io/badge/AppVersion-0.0.0-informational?style=flat-square)
 
 A Helm chart for monitoring Grafana Pyroscope. This helm chart uses otel-lgtm to monitor the health of the Grafana Pyroscope backend.
 
@@ -19,7 +19,7 @@ This chart provisions the following Grafana dashboards under the "Pyroscope" fol
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://grafana.github.io/helm-charts | monitoring(k8s-monitoring) | 3.5.3 |
+| https://grafana.github.io/helm-charts | monitoring(k8s-monitoring) | 3.7.2 |
 
 ## Values
 

@@ -57,3 +57,84 @@ func Test_DropGoTypeParameters(t *testing.T) {
 	require.NoError(t, expected.Err())
 	require.False(t, expected.Scan())
 }
+
+func Test_dropGoTypeParameters(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "no type parameters",
+			input:    "github.com/grafana/pyroscope/pkg/distributor.(*Distributor).Push",
+			expected: "github.com/grafana/pyroscope/pkg/distributor.(*Distributor).Push",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "simple type parameter",
+			input:    "pkg.Func[go.shape.int]",
+			expected: "pkg.Func",
+		},
+		{
+			name:     "type parameter with suffix",
+			input:    "pkg.(*T[go.shape.int]).Method",
+			expected: "pkg.(*T).Method",
+		},
+		{
+			name:     "multiple type parameters",
+			input:    "pkg.Func[go.shape.int,go.shape.string]",
+			expected: "pkg.Func",
+		},
+		{
+			name:     "nested brackets in type parameter",
+			input:    "pkg.(*T[go.shape.struct { F []uint8 }]).Method",
+			expected: "pkg.(*T).Method",
+		},
+		{
+			name:     "bracket without go.shape prefix",
+			input:    "pkg.Func[int]",
+			expected: "pkg.Func[int]",
+		},
+		{
+			name:     "go.shape prefix without opening bracket",
+			input:    "go.shape.int",
+			expected: "go.shape.int",
+		},
+		{
+			name:     "multiple separate type parameter sections",
+			input:    "pkg.Func[go.shape.int].Method[go.shape.string]",
+			expected: "pkg.Func.Method",
+		},
+		{
+			name:     "multiple type parameter sections with nested brackets",
+			input:    "pkg.Func[go.shape.struct { F []uint8 }].Method[go.shape.int]",
+			expected: "pkg.Func.Method",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, dropGoTypeParameters(tt.input))
+		})
+	}
+}
+
+func Benchmark_dropGoTypeParameters(b *testing.B) {
+	withParams := `github.com/bufbuild/connect-go.(*Client[go.shape.struct { github.com/grafana/pyroscope/api/gen/proto/go/push/v1.state google.golang.org/protobuf/internal/impl.MessageState; github.com/grafana/pyroscope/api/gen/proto/go/push/v1.sizeCache int32; github.com/grafana/pyroscope/api/gen/proto/go/push/v1.unknownFields []uint8; Series []*github.com/grafana/pyroscope/api/gen/proto/go/push/v1.RawProfileSeries "protobuf:\"bytes,1,rep,name=series,proto3\" json:\"series,omitempty\"" },go.shape.struct { github.com/grafana/pyroscope/api/gen/proto/go/push/v1.state google.golang.org/protobuf/internal/impl.MessageState; github.com/grafana/pyroscope/api/gen/proto/go/push/v1.sizeCache int32; github.com/grafana/pyroscope/api/gen/proto/go/push/v1.unknownFields []uint8 }]).CallUnary`
+	withoutParams := "github.com/grafana/pyroscope/pkg/distributor.(*Distributor).Push"
+
+	b.Run("with_type_params", func(b *testing.B) {
+		for b.Loop() {
+			dropGoTypeParameters(withParams)
+		}
+	})
+	b.Run("without_type_params", func(b *testing.B) {
+		for b.Loop() {
+			dropGoTypeParameters(withoutParams)
+		}
+	})
+}

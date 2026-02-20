@@ -25,6 +25,14 @@ func (f *Frontend) Diff(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	if c.Msg.Left == nil {
+		c.Msg.Left = &querierv1.SelectMergeStacktracesRequest{}
+	}
+
+	if c.Msg.Right == nil {
+		c.Msg.Right = &querierv1.SelectMergeStacktracesRequest{}
+	}
+
 	maxNodes := c.Msg.Left.GetMaxNodes()
 	if n := c.Msg.Right.GetMaxNodes(); n > maxNodes {
 		maxNodes = n

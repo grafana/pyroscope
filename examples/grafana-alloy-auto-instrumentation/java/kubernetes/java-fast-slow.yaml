@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: java-fast-slow
-          image: openjdk:21-jdk-slim
+          image: sapmachine:21-jdk-headless
           imagePullPolicy: IfNotPresent
           command: [ "java" ]
           args: [ "-jar", "/app/FastSlow.jar" ]

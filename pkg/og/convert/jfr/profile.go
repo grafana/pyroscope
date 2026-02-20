@@ -9,8 +9,10 @@ import (
 	"mime/multipart"
 	"strings"
 
+	"github.com/grafana/dskit/tenant"
 	jfrPprof "github.com/grafana/jfr-parser/pprof"
 	jfrPprofPyroscope "github.com/grafana/jfr-parser/pprof/pyroscope"
+
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 
@@ -26,19 +28,24 @@ type RawProfile struct {
 
 func (p *RawProfile) Bytes() ([]byte, error) { return p.RawData, nil }
 
-func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (*distributormodel.PushRequest, error) {
+func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata, limits ingestion.Limits) (*distributormodel.PushRequest, error) {
 	input := jfrPprof.ParseInput{
 		StartTime:  md.StartTime,
 		EndTime:    md.EndTime,
 		SampleRate: int64(md.SampleRate),
 	}
 
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	maxBytes := limits.MaxProfileSizeBytes(tenantID)
+
 	labels := new(jfrPprof.LabelsSnapshot)
 	rawSize := len(p.RawData)
 	var r = p.RawData
-	var err error
 	if strings.Contains(p.FormDataContentType, "multipart/form-data") {
-		if r, labels, err = loadJFRFromForm(r, p.FormDataContentType); err != nil {
+		if r, labels, err = loadJFRFromForm(r, p.FormDataContentType, maxBytes); err != nil {
 			return nil, err
 		}
 	}
@@ -77,7 +84,7 @@ func (p *RawProfile) ContentType() string {
 	return p.FormDataContentType
 }
 
-func loadJFRFromForm(r []byte, contentType string) ([]byte, *jfrPprof.LabelsSnapshot, error) {
+func loadJFRFromForm(r []byte, contentType string, maxBytes int) ([]byte, *jfrPprof.LabelsSnapshot, error) {
 	boundary, err := form.ParseBoundary(contentType)
 	if err != nil {
 		return nil, nil, err
@@ -98,7 +105,7 @@ func loadJFRFromForm(r []byte, contentType string) ([]byte, *jfrPprof.LabelsSnap
 	if jfrField == nil {
 		return nil, nil, fmt.Errorf("jfr field is required")
 	}
-	jfrField, err = decompress(jfrField)
+	jfrField, err = decompress(jfrField, maxBytes)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loadJFRFromForm failed to decompress jfr: %w", err)
 	}
@@ -110,7 +117,7 @@ func loadJFRFromForm(r []byte, contentType string) ([]byte, *jfrPprof.LabelsSnap
 
 	var labels = new(jfrPprof.LabelsSnapshot)
 	if len(labelsField) > 0 {
-		labelsField, err = decompress(labelsField)
+		labelsField, err = decompress(labelsField, maxBytes)
 		if err != nil {
 			return nil, nil, fmt.Errorf("loadJFRFromForm failed to decompress labels: %w", err)
 		}
@@ -122,7 +129,7 @@ func loadJFRFromForm(r []byte, contentType string) ([]byte, *jfrPprof.LabelsSnap
 	return jfrField, labels, nil
 }
 
-func decompress(bs []byte) ([]byte, error) {
+func decompress(bs []byte, maxBytes int) ([]byte, error) {
 	var err error
 	if len(bs) < 2 {
 		return nil, fmt.Errorf("failed to read magic")
@@ -133,9 +140,14 @@ func decompress(bs []byte) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to read gzip header: %w", err)
 		}
+		// Use maxBytes+1 to detect if limit is exceeded
+		limitReader := io.LimitReader(gzipr, int64(maxBytes+1))
 		buf := bytes.NewBuffer(nil)
-		if _, err = io.Copy(buf, gzipr); err != nil {
+		if _, err = io.Copy(buf, limitReader); err != nil {
 			return nil, fmt.Errorf("failed to decompress jfr: %w", err)
+		}
+		if buf.Len() > maxBytes {
+			return nil, fmt.Errorf("decompressed size exceeds maximum allowed size of %d bytes", maxBytes)
 		}
 		return buf.Bytes(), nil
 	} else {

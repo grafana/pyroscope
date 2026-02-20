@@ -19,11 +19,11 @@ jobs:
       id-token: write
     runs-on: ubuntu-x64-small
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: grafana/writers-toolkit/publish-technical-documentation-release@9387a2a634137ff88feb4f68ddfd72a04564278d
+      - uses: grafana/writers-toolkit/publish-technical-documentation-release@9cd40a7f81073bfcad984f1e93dc89eae8a9b464
         with:
           release_tag_regexp: "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
           release_branch_regexp: "^release/v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"

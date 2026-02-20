@@ -16,11 +16,11 @@ func (c shellCmd) MarshalJSON() ([]byte, error) {
 }
 
 type exampleCurl struct {
-	sc *openapi3.Schema
+	ctx *schemaContext
 }
 
-func newExampleCurl(sc *openapi3.Schema) *exampleCurl {
-	return &exampleCurl{sc: sc}
+func newExampleCurl(ctx *schemaContext) *exampleCurl {
+	return &exampleCurl{ctx: ctx}
 }
 
 func (e *exampleCurl) name() string {
@@ -29,8 +29,10 @@ func (e *exampleCurl) name() string {
 
 func (e *exampleCurl) render(sb io.Writer, params *exampleParams) {
 	body := map[string]any{}
-	collectParameters(e.sc, "", func(prefix string, name string, schema *openapi3.Schema) {
-		exStr, exValue := getExample(schema)
+	collectParameters(e.ctx.Schema, "", func(prefix string, name string, schemaRef *openapi3.SchemaRef) {
+		schema := schemaRef.Value
+		exStr, exValue := e.ctx.getExample(name, schema)
+
 		if exStr == "" {
 			return
 		}

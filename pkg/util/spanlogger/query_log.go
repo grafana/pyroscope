@@ -101,6 +101,7 @@ func (l LogSpanParametersWrapper) SelectMergeStacktraces(ctx context.Context, c 
 		"profile_type", c.Msg.ProfileTypeID,
 		"format", c.Msg.Format,
 		"max_nodes", c.Msg.GetMaxNodes(),
+		"profile_id_selector", lazyJoin(c.Msg.ProfileIdSelector),
 	)
 	defer sp.Finish()
 
@@ -137,6 +138,7 @@ func (l LogSpanParametersWrapper) SelectMergeProfile(ctx context.Context, c *con
 		"max_nodes", c.Msg.GetMaxNodes(),
 		"profile_type", c.Msg.ProfileTypeID,
 		"stacktrace_selector", c.Msg.StackTraceSelector,
+		"profile_id_selector", lazyJoin(c.Msg.ProfileIdSelector),
 	)
 	defer sp.Finish()
 
@@ -158,31 +160,64 @@ func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.R
 		"by", lazyJoin(c.Msg.GroupBy),
 		"aggregation", c.Msg.Aggregation,
 		"limit", c.Msg.Limit,
+		"exemplar_type", c.Msg.ExemplarType,
 	)
 	defer sp.Finish()
 
 	return l.client.SelectSeries(ctx, c)
 }
 
-func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
-	spanName := "Diff"
+func (l LogSpanParametersWrapper) SelectHeatmap(ctx context.Context, c *connect.Request[querierv1.SelectHeatmapRequest]) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
+	spanName := "SelectHeatmap"
 	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
 	level.Info(FromContext(ctx, l.logger)).Log(
 		"method", spanName,
-		"left_start", model.Time(c.Msg.Left.Start).Time().String(),
-		"left_end", model.Time(c.Msg.Left.End).Time().String(),
-		"left_query_window", model.Time(c.Msg.Left.End).Sub(model.Time(c.Msg.Left.Start)).String(),
-		"left_selector", c.Msg.Left.LabelSelector,
-		"left_profile_type", c.Msg.Left.ProfileTypeID,
-		"left_format", c.Msg.Left.Format,
-		"left_max_nodes", c.Msg.Left.GetMaxNodes(),
-		"right_start", model.Time(c.Msg.Right.Start).Time().String(),
-		"right_end", model.Time(c.Msg.Right.End).Time().String(),
-		"right_query_window", model.Time(c.Msg.Right.End).Sub(model.Time(c.Msg.Right.Start)).String(),
-		"right_selector", c.Msg.Right.LabelSelector,
-		"right_profile_type", c.Msg.Right.ProfileTypeID,
-		"right_format", c.Msg.Right.Format,
-		"right_max_nodes", c.Msg.Right.GetMaxNodes(),
+		"start", model.Time(c.Msg.Start).Time().String(),
+		"end", model.Time(c.Msg.End).Time().String(),
+		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
+		"selector", c.Msg.LabelSelector,
+		"profile_type", c.Msg.ProfileTypeID,
+		"step", c.Msg.Step,
+		"by", lazyJoin(c.Msg.GroupBy),
+		"query_type", c.Msg.QueryType,
+		"exemplar_type", c.Msg.ExemplarType,
+		"limit", c.Msg.Limit,
+	)
+	defer sp.Finish()
+
+	return l.client.SelectHeatmap(ctx, c)
+}
+
+func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
+	spanName := "Diff"
+	sp, ctx := opentracing.StartSpanFromContext(ctx, spanName)
+
+	left := &querierv1.SelectMergeStacktracesRequest{}
+	if c.Msg.Left != nil {
+		left = c.Msg.Left
+	}
+
+	right := &querierv1.SelectMergeStacktracesRequest{}
+	if c.Msg.Right != nil {
+		right = c.Msg.Right
+	}
+
+	level.Info(FromContext(ctx, l.logger)).Log(
+		"method", spanName,
+		"left_start", model.Time(left.Start).Time().String(),
+		"left_end", model.Time(left.End).Time().String(),
+		"left_query_window", model.Time(left.End).Sub(model.Time(left.Start)).String(),
+		"left_selector", left.LabelSelector,
+		"left_profile_type", left.ProfileTypeID,
+		"left_format", left.Format,
+		"left_max_nodes", left.GetMaxNodes(),
+		"right_start", model.Time(right.Start).Time().String(),
+		"right_end", model.Time(right.End).Time().String(),
+		"right_query_window", model.Time(right.End).Sub(model.Time(right.Start)).String(),
+		"right_selector", right.LabelSelector,
+		"right_profile_type", right.ProfileTypeID,
+		"right_format", right.Format,
+		"right_max_nodes", right.GetMaxNodes(),
 	)
 	defer sp.Finish()
 

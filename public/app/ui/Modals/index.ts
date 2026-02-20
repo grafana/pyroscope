@@ -48,19 +48,27 @@ const ShowModal = async ({
   validationMessage,
   inputValidator,
 }: ShowModalParams) => {
-  const { isConfirmed, value } = await Swal.fire({
+  const baseOptions = {
     title,
     html,
     confirmButtonText,
-    input,
-    inputLabel,
-    inputPlaceholder,
-    inputValue,
-    validationMessage,
-    inputValidator,
     confirmButtonColor: getButtonStyleFromType(type),
     ...defaultParams,
-  });
+  };
+
+  const options = input
+    ? {
+        ...baseOptions,
+        input,
+        inputLabel,
+        inputPlaceholder,
+        inputValue,
+        validationMessage,
+        inputValidator,
+      }
+    : baseOptions;
+
+  const { isConfirmed, value } = await Swal.fire(options as SweetAlertOptions);
 
   if (isConfirmed) {
     onConfirm(value);

@@ -73,9 +73,12 @@ func main() {
 	queryCmd := app.Command("query", "Query profile store.")
 	queryProfileCmd := queryCmd.Command("profile", "Request merged profile.").Alias("merge")
 	queryProfileOutput := queryProfileCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
+	queryProfileForce := queryProfileCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").Bool()
+	queryProfileFunctionNamesOnly := queryProfileCmd.Flag("function-names-only", "Faster call, without details about mappings, line number, and inlining").Default("false").Bool()
 	queryProfileParams := addQueryProfileParams(queryProfileCmd)
 	queryGoPGOCmd := queryCmd.Command("go-pgo", "Request profile for Go PGO.")
 	queryGoPGOOutput := queryGoPGOCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("pprof=./default.pgo").String()
+	queryGoPGOForce := queryGoPGOCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").Bool()
 	queryGoPGOParams := addQueryGoPGOParams(queryGoPGOCmd)
 	querySeriesCmd := queryCmd.Command("series", "Request series labels.")
 	querySeriesParams := addQuerySeriesParams(querySeriesCmd)
@@ -105,6 +108,10 @@ func main() {
 	readyCmd := app.Command("ready", "Check Pyroscope health.")
 	readyParams := addReadyParams(readyCmd)
 
+	sourceCodeCmd := app.Command("source-code", "Operations on source code mappings and configurations.")
+	sourceCodeCoverageCmd := sourceCodeCmd.Command("coverage", "Measure the coverage of .pyroscope.yaml source code mappings for translating function names/paths from a pprof profile to VCS source files.")
+	sourceCodeCoverageParams := addSourceCodeCoverageParams(sourceCodeCoverageCmd)
+
 	raftCmd := adminCmd.Command("raft", "Operate on Raft cluster.")
 	raftInfoCmd := raftCmd.Command("info", "Print info about a Raft node.")
 	raftInfoParams := addRaftInfoParams(raftInfoCmd)
@@ -112,6 +119,21 @@ func main() {
 	v2MigrationCmd := adminCmd.Command("v2-migration", "Operation to aid the v1 to v2 storage migration.")
 	v2MigrationBucketCleanupCmd := v2MigrationCmd.Command("bucket-cleanup", "Clean up v1 artificats from data bucket.")
 	v2MigrationBucketCleanupParams := addV2MigrationBackupCleanupParam(v2MigrationBucketCleanupCmd)
+
+	kubeProxyCmd := adminCmd.Command("kube-proxy", "Start a reverse proxy unifying all the micro services in a single endpoint.")
+	kubeProxyParams := addKubeProxyParams(kubeProxyCmd)
+
+	recordingRulesCmd := app.Command("recording-rules", "Operations on recording rules. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:read\" and/or \"profiles-config:write\" scopes.")
+	recordingRulesListCmd := recordingRulesCmd.Command("list", "List recording rules. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:read\" scope.")
+	recordingRulesGetCmd := recordingRulesCmd.Command("get", "Get a specific recording rule. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:read\" scope.")
+	recordingRulesGetId := recordingRulesGetCmd.Arg("rule_id", "Recording rule Id to retrieve").Required().String()
+	recordingRulesGetOutput := recordingRulesGetCmd.Flag("output", "Write rule to file instead of stdout").Short('o').String()
+	recordingRulesCreateCmd := recordingRulesCmd.Command("create", "Create a recording rule. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:write\" scope.\n"+createRuleExampleMsg)
+	recordingRulesCreateFile := recordingRulesCreateCmd.Flag("file", "Path to YAML or JSON file containing the recording rule definition").Short('f').Required().String()
+
+	recordingRulesDeleteCmd := recordingRulesCmd.Command("delete", "Delete a recording rule. When accessing a Grafana Cloud datasource, requires a token with the \"profiles-config:write\" scope.")
+	recordingRulesDeleteId := recordingRulesDeleteCmd.Arg("rule_id", "Recording rule Id to delete").Required().String()
+	recordingRulesParams := addRecordingRulesListParams(recordingRulesCmd)
 
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
@@ -137,11 +159,11 @@ func main() {
 			}
 		}
 	case queryProfileCmd.FullCommand():
-		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput); err != nil {
+		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput, *queryProfileForce, *queryProfileFunctionNamesOnly); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryGoPGOCmd.FullCommand():
-		if err := queryGoPGO(ctx, queryGoPGOParams, *queryGoPGOOutput); err != nil {
+		if err := queryGoPGO(ctx, queryGoPGOParams, *queryGoPGOOutput, *queryGoPGOForce); err != nil {
 			os.Exit(checkError(err))
 		}
 	case querySeriesCmd.FullCommand():
@@ -196,12 +218,36 @@ func main() {
 		if err := ready(ctx, readyParams); err != nil {
 			os.Exit(checkError(err))
 		}
+	case sourceCodeCoverageCmd.FullCommand():
+		if err := sourceCodeCoverage(ctx, sourceCodeCoverageParams); err != nil {
+			os.Exit(checkError(err))
+		}
 	case raftInfoCmd.FullCommand():
 		if err := raftInfo(ctx, raftInfoParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case v2MigrationBucketCleanupCmd.FullCommand():
 		if err := v2MigrationBucketCleanup(ctx, v2MigrationBucketCleanupParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case kubeProxyCmd.FullCommand():
+		if err := kubeProxyCommand(ctx, kubeProxyParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case recordingRulesListCmd.FullCommand():
+		if err := listRecordingRules(ctx, recordingRulesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case recordingRulesGetCmd.FullCommand():
+		if err := getRecordingRule(ctx, recordingRulesGetId, recordingRulesGetOutput, recordingRulesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case recordingRulesCreateCmd.FullCommand():
+		if err := createRecordingRule(ctx, recordingRulesCreateFile, recordingRulesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case recordingRulesDeleteCmd.FullCommand():
+		if err := deleteRecordingRule(ctx, recordingRulesDeleteId, recordingRulesParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:

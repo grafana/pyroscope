@@ -4,6 +4,7 @@ services:
     ports:
     - 4040:4040
   us-east:
+    platform: linux/amd64
     ports:
     - 5000
     environment:
@@ -14,6 +15,7 @@ services:
     build:
       context: .
   eu-north:
+    platform: linux/amd64
     ports:
     - 5000
     environment:
@@ -23,9 +25,8 @@ services:
     - RIDESHARE_LISTEN_PORT=5000
     build:
       context: .
-      args:
-        SDK_VERSION: "6.0"
   ap-south:
+    platform: linux/amd64
     ports:
     - 5000
     environment:
@@ -36,6 +37,7 @@ services:
     build:
       context: .
   ap-south-alpine:
+    platform: linux/amd64
     ports:
     - 5000
     environment:

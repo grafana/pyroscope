@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"sort"
@@ -22,6 +23,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -85,6 +87,21 @@ func RawFromProto(pbp *profilev1.Profile) *Profile {
 }
 
 func RawFromBytes(input []byte) (_ *Profile, err error) {
+	return RawFromBytesWithLimit(input, 0)
+}
+
+type ErrDecompressedSizeExceedsLimit struct {
+	Limit int64
+}
+
+func (e *ErrDecompressedSizeExceedsLimit) Error() string {
+	return fmt.Sprintf("decompressed size exceeds maximum allowed size of %d bytes", e.Limit)
+}
+
+// RawFromBytesWithLimit reads a profile from bytes with an optional size limit.
+// maxSize limits the decompressed size in bytes. Use 0 for no limit.
+// This prevents zip bomb attacks where small compressed data expands to huge sizes.
+func RawFromBytesWithLimit(input []byte, maxSize int64) (_ *Profile, err error) {
 	gzipReader := gzipReaderPool.Get().(*gzipReader)
 	buf := bufPool.Get().(*bytes.Buffer)
 	defer func() {
@@ -98,8 +115,19 @@ func RawFromBytes(input []byte) (_ *Profile, err error) {
 		return nil, err
 	}
 
+	// Apply size limit if specified (maxSize >= 0)
+	// maxSize == 0 means no limit (unlimited decompression)
+	if maxSize > 0 {
+		r = io.LimitReader(r, maxSize+1) // +1 to detect if limit is exceeded
+	}
+
 	if _, err = io.Copy(buf, r); err != nil {
 		return nil, errors.Wrap(err, "copy to buffer")
+	}
+
+	// Check if we hit the size limit
+	if maxSize > 0 && int64(buf.Len()) > maxSize {
+		return nil, &ErrDecompressedSizeExceedsLimit{Limit: maxSize}
 	}
 
 	rawSize := buf.Len()
@@ -115,7 +143,14 @@ func RawFromBytes(input []byte) (_ *Profile, err error) {
 }
 
 func FromBytes(input []byte, fn func(*profilev1.Profile, int) error) error {
-	p, err := RawFromBytes(input)
+	return FromBytesWithLimit(input, 0, fn)
+}
+
+// FromBytesWithLimit reads a profile from bytes with an optional size limit and calls fn with the result.
+// maxSize limits the decompressed size in bytes. Use 0 for no limit.
+// This prevents zip bomb attacks where small compressed data expands to huge sizes.
+func FromBytesWithLimit(input []byte, maxSize int64, fn func(*profilev1.Profile, int) error) error {
+	p, err := RawFromBytesWithLimit(input, maxSize)
 	if err != nil {
 		return err
 	}
@@ -264,6 +299,99 @@ func FromProfile(p *profile.Profile) (*profilev1.Profile, error) {
 	return &r, nil
 }
 
+type pprofFromTreeBuilder struct {
+	locations map[string]uint64
+	functions map[string]uint64
+	strings   map[string]int64
+	mappingId uint64
+	profile   *profilev1.Profile
+}
+
+func (b *pprofFromTreeBuilder) newString(value string) int64 {
+	id, ok := b.strings[value]
+	if !ok {
+		id = int64(len(b.profile.StringTable))
+		b.profile.StringTable = append(b.profile.StringTable, value)
+		b.strings[value] = id
+	}
+	return id
+}
+
+func (b *pprofFromTreeBuilder) newFunction(function string) uint64 {
+	id, ok := b.functions[function]
+	if !ok {
+		id = uint64(len(b.profile.Function) + 1)
+		name := b.newString(function)
+		newFn := &profilev1.Function{
+			Id:         id,
+			Name:       name,
+			SystemName: name,
+		}
+		b.functions[function] = id
+		b.profile.Function = append(b.profile.Function, newFn)
+	}
+	return id
+}
+
+func (b *pprofFromTreeBuilder) newLocation(location string) uint64 {
+	id, ok := b.locations[location]
+	if !ok {
+		id = uint64(len(b.profile.Location) + 1)
+		newLoc := &profilev1.Location{
+			Id:        id,
+			Line:      []*profilev1.Line{{FunctionId: b.newFunction(location)}},
+			MappingId: b.mappingId,
+		}
+		b.profile.Location = append(b.profile.Location, newLoc)
+		b.locations[location] = newLoc.Id
+	}
+	return id
+}
+
+func FromTree(t *model.Tree, ty *typesv1.ProfileType, timeNanos int64) *profilev1.Profile {
+	const fakeMappingID = 1
+	b := &pprofFromTreeBuilder{
+		locations: make(map[string]uint64),
+		functions: make(map[string]uint64),
+		strings:   make(map[string]int64),
+		mappingId: fakeMappingID,
+		profile: &profilev1.Profile{
+			StringTable: []string{""},
+			Mapping:     []*profilev1.Mapping{{Id: fakeMappingID}},
+			TimeNanos:   timeNanos,
+		},
+	}
+
+	// Add strings beforehand so SetProfileMetadata can find them
+	b.newString(ty.SampleType)
+	b.newString(ty.SampleUnit)
+	b.newString(ty.PeriodType)
+	b.newString(ty.PeriodUnit)
+
+	SetProfileMetadata(b.profile, ty, timeNanos, 0)
+
+	t.IterateStacks(func(name string, self int64, stack []string) {
+		if self <= 0 {
+			return
+		}
+		locationIds := make([]uint64, 0, len(stack))
+		for _, locName := range stack {
+			if locName == "" {
+				continue
+			}
+			locationIds = append(locationIds, b.newLocation(locName))
+		}
+
+		sample := &profilev1.Sample{
+			LocationId: locationIds,
+			Value:      []int64{self},
+		}
+		b.profile.Sample = append(b.profile.Sample, sample)
+	})
+
+	return b.profile
+}
+
 func addString(strings map[string]int, s string) int64 {
 	i, ok := strings[s]
 	if !ok {
@@ -287,6 +415,11 @@ type Profile struct {
 	hasher  SampleHasher
 	stats   sanitizeStats
 	rawSize int
+}
+
+// RawSize of the profile
+func (p *Profile) RawSize() int {
+	return p.rawSize
 }
 
 // WriteTo writes the profile to the given writer.
@@ -538,7 +671,7 @@ func (p *Profile) visitAllNameReferences(fn func(*int64)) {
 	for _, s := range p.Sample {
 		for _, l := range s.Label {
 			fn(&l.Key)
-			fn(&l.Num)
+			fn(&l.Str)
 			fn(&l.NumUnit)
 		}
 	}
@@ -1180,6 +1313,13 @@ func MustMarshal(p *profilev1.Profile, compress bool) []byte {
 }
 
 func Unmarshal(data []byte, p *profilev1.Profile) error {
+	return UnmarshalWithLimit(data, p, 0)
+}
+
+// UnmarshalWithLimit unmarshals a profile from bytes with an optional size limit.
+// maxSize limits the decompressed size in bytes. Use 0 for no limit.
+// This prevents zip bomb attacks where small compressed data expands to huge sizes.
+func UnmarshalWithLimit(data []byte, p *profilev1.Profile, maxSize int64) error {
 	gr := gzipReaderPool.Get().(*gzipReader)
 	defer gzipReaderPool.Put(gr)
 	r, err := gr.openBytes(data)
@@ -1192,9 +1332,22 @@ func Unmarshal(data []byte, p *profilev1.Profile) error {
 		bufPool.Put(buf)
 	}()
 	buf.Grow(len(data) * 2)
+
+	// Apply size limit if specified (maxSize >= 0)
+	// maxSize == 0 means no limit (unlimited decompression)
+	if maxSize > 0 {
+		r = io.LimitReader(r, maxSize+1) // +1 to detect if limit is exceeded
+	}
+
 	if _, err = io.Copy(buf, r); err != nil {
 		return err
 	}
+
+	// Check if we hit the size limit
+	if maxSize > 0 && int64(buf.Len()) > maxSize {
+		return &ErrDecompressedSizeExceedsLimit{Limit: maxSize}
+	}
+
 	return p.UnmarshalVT(buf.Bytes())
 }
 
@@ -1429,4 +1582,8 @@ func (p *Profile) DebugString() string {
 		return "<nil>"
 	}
 	return gp.String()
+}
+
+func (p *Profile) Stats() string {
+	return p.stats.pretty()
 }

@@ -5,6 +5,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
+	"github.com/pkg/errors"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -25,6 +26,10 @@ func (q *QueryFrontend) LabelValues(
 	}
 	if empty {
 		return connect.NewResponse(&typesv1.LabelValuesResponse{}), nil
+	}
+
+	if c.Msg.Name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
 
 	labelSelector, err := buildLabelSelectorFromMatchers(c.Msg.Matchers)

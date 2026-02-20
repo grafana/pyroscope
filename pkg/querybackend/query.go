@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -21,6 +22,11 @@ import (
 // TODO(kolesnikovae): We have a procedural definition of our queries,
 //  thus we have handlers. Instead, in order to enable pipelining and
 //  reduce the boilerplate, we should define query execution plans.
+
+const (
+	// maxProfileIDsToLog is the maximum number of profile IDs to log in trace spans.
+	maxProfileIDsToLog = 10
+)
 
 var (
 	handlerMutex  = new(sync.RWMutex)
@@ -67,24 +73,28 @@ func registerQueryType(
 	rt queryv1.ReportType,
 	q queryHandler,
 	a aggregatorProvider,
+	alwaysAggregate bool, // this option will always call the aggregate method for this report type, so it will also run when there is only one report
 	deps ...block.Section,
 ) {
 	registerQueryReportType(qt, rt)
 	registerQueryHandler(qt, q)
 	registerQueryDependencies(qt, deps...)
-	registerAggregator(rt, a)
+	registerAggregator(rt, a, alwaysAggregate)
 }
 
 type blockContext struct {
-	ctx context.Context
-	log log.Logger
-	req *request
-	agg *reportAggregator
-	obj *block.Object
-	grp *errgroup.Group
+	ctx           context.Context
+	log           log.Logger
+	req           *request
+	agg           *reportAggregator
+	obj           *block.Object
+	grp           *errgroup.Group
+	execCollector *blockExecutionCollector
 }
 
 func (b *blockContext) execute() error {
+	startTime := time.Now()
+
 	var span opentracing.Span
 	span, b.ctx = opentracing.StartSpanFromContext(b.ctx, "blockContext.execute")
 	defer span.Finish()
@@ -99,7 +109,8 @@ func (b *blockContext) execute() error {
 		}
 	}
 
-	for _, ds := range b.obj.Metadata().Datasets {
+	md := b.obj.Metadata()
+	for _, ds := range md.Datasets {
 		q := b.newQueryContext(ds)
 		for _, query := range b.req.src.Query {
 			q.grp.Go(util.RecoverPanic(func() error {
@@ -109,6 +120,18 @@ func (b *blockContext) execute() error {
 		if err := q.grp.Wait(); err != nil {
 			return err
 		}
+	}
+
+	if b.execCollector != nil {
+		b.execCollector.record(&queryv1.BlockExecution{
+			BlockId:           md.Id,
+			StartTimeNs:       startTime.UnixNano(),
+			EndTimeNs:         time.Now().UnixNano(),
+			DatasetsProcessed: int64(len(md.Datasets)),
+			Size:              md.Size,
+			Shard:             md.Shard,
+			CompactionLevel:   md.CompactionLevel,
+		})
 	}
 
 	return nil

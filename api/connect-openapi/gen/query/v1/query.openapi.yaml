@@ -342,15 +342,272 @@ components:
              denormalized relationships is not a concern.
       title: Dataset
       additionalProperties: false
+    querier.v1.HeatmapQueryType:
+      type: string
+      title: HeatmapQueryType
+      enum:
+        - HEATMAP_QUERY_TYPE_UNSPECIFIED
+        - HEATMAP_QUERY_TYPE_INDIVIDUAL
+        - HEATMAP_QUERY_TYPE_SPAN
+    query.v1.AttributeTable:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: string
+          title: keys
+        values:
+          type: array
+          items:
+            type: string
+          title: values
+      title: AttributeTable
+      additionalProperties: false
+    query.v1.BlockExecution:
+      type: object
+      properties:
+        blockId:
+          type: string
+          title: block_id
+        startTimeNs:
+          type:
+            - integer
+            - string
+          title: start_time_ns
+          format: int64
+        endTimeNs:
+          type:
+            - integer
+            - string
+          title: end_time_ns
+          format: int64
+        datasetsProcessed:
+          type:
+            - integer
+            - string
+          title: datasets_processed
+          format: int64
+        size:
+          type:
+            - integer
+            - string
+          title: size
+          format: int64
+        shard:
+          type: integer
+          title: shard
+        compactionLevel:
+          type: integer
+          title: compaction_level
+      title: BlockExecution
+      additionalProperties: false
+      description: BlockExecution captures execution details for a single block.
     query.v1.Diagnostics:
       type: object
       properties:
         queryPlan:
           title: query_plan
           $ref: '#/components/schemas/query.v1.QueryPlan'
+        executionNode:
+          title: execution_node
+          $ref: '#/components/schemas/query.v1.ExecutionNode'
       title: Diagnostics
       additionalProperties: false
       description: Diagnostic messages, events, statistics, analytics, etc.
+    query.v1.ExecutionNode:
+      type: object
+      properties:
+        type:
+          title: type
+          $ref: '#/components/schemas/query.v1.QueryNode.Type'
+        executor:
+          type: string
+          title: executor
+        startTimeNs:
+          type:
+            - integer
+            - string
+          title: start_time_ns
+          format: int64
+        endTimeNs:
+          type:
+            - integer
+            - string
+          title: end_time_ns
+          format: int64
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.ExecutionNode'
+          title: children
+        stats:
+          title: stats
+          $ref: '#/components/schemas/query.v1.ExecutionStats'
+        error:
+          type: string
+          title: error
+      title: ExecutionNode
+      additionalProperties: false
+      description: ExecutionNode captures how a query plan node was actually executed.
+    query.v1.ExecutionStats:
+      type: object
+      properties:
+        blocksRead:
+          type:
+            - integer
+            - string
+          title: blocks_read
+          format: int64
+        datasetsProcessed:
+          type:
+            - integer
+            - string
+          title: datasets_processed
+          format: int64
+        blockExecutions:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.BlockExecution'
+          title: block_executions
+      title: ExecutionStats
+      additionalProperties: false
+      description: ExecutionStats captures statistics for READ node execution.
+    query.v1.Exemplar:
+      type: object
+      properties:
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: Milliseconds unix timestamp
+        profileId:
+          type: string
+          title: profile_id
+        spanId:
+          type: string
+          title: span_id
+        value:
+          type:
+            - integer
+            - string
+          title: value
+          format: int64
+        attributeRefs:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: attribute_refs
+      title: Exemplar
+      additionalProperties: false
+    query.v1.HeatmapPoint:
+      type: object
+      properties:
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: Milliseconds since epoch when the profile was captured.
+        profileId:
+          type:
+            - integer
+            - string
+          title: profile_id
+          format: int64
+          description: Unique identifier for the profile (UUID), reference into AttributeTable with only value set
+        spanId:
+          type:
+            - integer
+            - string
+          title: span_id
+          format: int64
+          description: Span ID if this profile was split by span during ingestion
+        value:
+          type:
+            - integer
+            - string
+          title: value
+          format: int64
+          description: Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
+        attributeRefs:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: attribute_refs
+          description: labels as references into AttributeTable
+      title: HeatmapPoint
+      additionalProperties: false
+    query.v1.HeatmapQuery:
+      type: object
+      properties:
+        step:
+          type: number
+          title: step
+          format: double
+        groupBy:
+          type: array
+          items:
+            type: string
+          title: group_by
+        queryType:
+          title: query_type
+          $ref: '#/components/schemas/querier.v1.HeatmapQueryType'
+        limit:
+          type:
+            - integer
+            - string
+          title: limit
+          format: int64
+        exemplarType:
+          title: exemplar_type
+          $ref: '#/components/schemas/types.v1.ExemplarType'
+      title: HeatmapQuery
+      additionalProperties: false
+    query.v1.HeatmapReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.HeatmapQuery'
+        heatmapSeries:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.HeatmapSeries'
+          title: heatmap_series
+        attributeTable:
+          title: attribute_table
+          $ref: '#/components/schemas/query.v1.AttributeTable'
+      title: HeatmapReport
+      additionalProperties: false
+    query.v1.HeatmapSeries:
+      type: object
+      properties:
+        attributeRefs:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: attribute_refs
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.HeatmapPoint'
+          title: points
+          description: Points are timestamp, then span_id, then porfile_id ordered
+      title: HeatmapSeries
+      additionalProperties: false
     query.v1.InvokeOptions:
       type: object
       properties:
@@ -361,6 +618,9 @@ components:
             Query workers might not have access to the tenant
              overrides, therefore all the necessary options should
              be listed in the request explicitly.
+        collectDiagnostics:
+          type: boolean
+          title: collect_diagnostics
       title: InvokeOptions
       additionalProperties: false
     query.v1.InvokeRequest:
@@ -450,6 +710,37 @@ components:
           title: label_values
       title: LabelValuesReport
       additionalProperties: false
+    query.v1.Point:
+      type: object
+      properties:
+        value:
+          type: number
+          title: value
+          format: double
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: Milliseconds unix timestamp
+        annotationRefs:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: annotation_refs
+          description: Annotations as references into AttributeTable
+        exemplars:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Exemplar'
+          title: exemplars
+          description: Exemplars are samples of individual profiles that contributed to this aggregated point
+      title: Point
+      additionalProperties: false
     query.v1.PprofQuery:
       type: object
       properties:
@@ -461,9 +752,14 @@ components:
           format: int64
         stackTraceSelector:
           title: stack_trace_selector
-          description: 'TODO(kolesnikovae): Go PGO options.'
           nullable: true
           $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        profileIdSelector:
+          type: array
+          items:
+            type: string
+          title: profile_id_selector
+          description: 'TODO(kolesnikovae): Go PGO options.'
       title: PprofQuery
       additionalProperties: false
     query.v1.PprofReport:
@@ -504,12 +800,18 @@ components:
           $ref: '#/components/schemas/query.v1.TreeQuery'
         pprof:
           title: pprof
+          $ref: '#/components/schemas/query.v1.PprofQuery'
+        heatmap:
+          title: heatmap
+          $ref: '#/components/schemas/query.v1.HeatmapQuery'
+        timeSeriesCompact:
+          title: time_series_compact
           description: |-
             function_details
              call_graph
              top_table
              ...
-          $ref: '#/components/schemas/query.v1.PprofQuery'
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -597,6 +899,8 @@ components:
         - QUERY_TIME_SERIES
         - QUERY_TREE
         - QUERY_PPROF
+        - QUERY_HEATMAP
+        - QUERY_TIME_SERIES_COMPACT
     query.v1.Report:
       type: object
       properties:
@@ -624,6 +928,12 @@ components:
         pprof:
           title: pprof
           $ref: '#/components/schemas/query.v1.PprofReport'
+        heatmap:
+          title: heatmap
+          $ref: '#/components/schemas/query.v1.HeatmapReport'
+        timeSeriesCompact:
+          title: time_series_compact
+          $ref: '#/components/schemas/query.v1.TimeSeriesCompactReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -637,6 +947,29 @@ components:
         - REPORT_TIME_SERIES
         - REPORT_TREE
         - REPORT_PPROF
+        - REPORT_HEATMAP
+        - REPORT_TIME_SERIES_COMPACT
+    query.v1.Series:
+      type: object
+      properties:
+        attributeRefs:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: attribute_refs
+          description: References to label key-value pairs in the AttributeTable that identify this series.
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Point'
+          title: points
+          description: Time series data points. Each point may contain exemplars with their own attribute_refs.
+      title: Series
+      additionalProperties: false
+      description: Series represents a time series with optimized label storage using attribute references.
     query.v1.SeriesLabelsQuery:
       type: object
       properties:
@@ -660,6 +993,22 @@ components:
           title: series_labels
       title: SeriesLabelsReport
       additionalProperties: false
+    query.v1.TimeSeriesCompactReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+        timeSeries:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Series'
+          title: time_series
+        attributeTable:
+          title: attribute_table
+          $ref: '#/components/schemas/query.v1.AttributeTable'
+      title: TimeSeriesCompactReport
+      additionalProperties: false
     query.v1.TimeSeriesQuery:
       type: object
       properties:
@@ -678,6 +1027,9 @@ components:
             - string
           title: limit
           format: int64
+        exemplarType:
+          title: exemplar_type
+          $ref: '#/components/schemas/types.v1.ExemplarType'
       title: TimeSeriesQuery
       additionalProperties: false
     query.v1.TimeSeriesReport:
@@ -711,6 +1063,11 @@ components:
           title: stack_trace_selector
           nullable: true
           $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        profileIdSelector:
+          type: array
+          items:
+            type: string
+          title: profile_id_selector
       title: TreeQuery
       additionalProperties: false
     query.v1.TreeReport:
@@ -725,6 +1082,61 @@ components:
           format: byte
       title: TreeReport
       additionalProperties: false
+    types.v1.Exemplar:
+      type: object
+      properties:
+        timestamp:
+          type:
+            - integer
+            - string
+          examples:
+            - "1730000023000"
+          title: timestamp
+          format: int64
+          description: Milliseconds since epoch when the profile was captured.
+        profileId:
+          type: string
+          examples:
+            - 7c9e6679-7425-40de-944b-e07fc1f90ae7
+          title: profile_id
+          description: Unique identifier for the profile (UUID).
+        spanId:
+          type: string
+          examples:
+            - 00f067aa0ba902b7
+          title: span_id
+          description: Span ID if this profile was split by span during ingestion.
+        value:
+          type:
+            - integer
+            - string
+          examples:
+            - "2450000000"
+          title: value
+          format: int64
+          description: Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+          description: |-
+            Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
+             label overlaps with the series label, it is not included here.
+      title: Exemplar
+      additionalProperties: false
+      description: |-
+        Exemplar represents metadata for an individual profile sample.
+         Exemplars allow users to drill down from aggregated timeline views
+         to specific profile instances.
+    types.v1.ExemplarType:
+      type: string
+      title: ExemplarType
+      enum:
+        - EXEMPLAR_TYPE_UNSPECIFIED
+        - EXEMPLAR_TYPE_NONE
+        - EXEMPLAR_TYPE_INDIVIDUAL
+        - EXEMPLAR_TYPE_SPAN
     types.v1.GoPGO:
       type: object
       properties:
@@ -795,6 +1207,12 @@ components:
           items:
             $ref: '#/components/schemas/types.v1.ProfileAnnotation'
           title: annotations
+        exemplars:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Exemplar'
+          title: exemplars
+          description: Exemplars are samples of individual profiles that contributed to this aggregated point
       title: Point
       additionalProperties: false
     types.v1.ProfileAnnotation:

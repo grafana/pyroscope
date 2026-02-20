@@ -1,6 +1,10 @@
 package cos
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/grafana/dskit/flagext"
+)
 
 func TestConfig_Validate(t *testing.T) {
 	type fields struct {
@@ -8,7 +12,7 @@ func TestConfig_Validate(t *testing.T) {
 		Region    string
 		AppID     string
 		Endpoint  string
-		SecretKey string
+		SecretKey flagext.Secret
 		SecretID  string
 		HTTP      HTTPConfig
 	}
@@ -22,7 +26,7 @@ func TestConfig_Validate(t *testing.T) {
 			fields: fields{
 				Endpoint:  "http://bucket-123.cos.ap-beijing.myqcloud.com",
 				SecretID:  "sid",
-				SecretKey: "skey",
+				SecretKey: flagext.SecretWithValue("skey"),
 			},
 			wantErr: false,
 		},
@@ -33,7 +37,7 @@ func TestConfig_Validate(t *testing.T) {
 				AppID:     "123",
 				Region:    "ap-beijing",
 				SecretID:  "sid",
-				SecretKey: "skey",
+				SecretKey: flagext.SecretWithValue("skey"),
 			},
 			wantErr: false,
 		},
@@ -52,7 +56,7 @@ func TestConfig_Validate(t *testing.T) {
 				AppID:     "123",
 				Region:    "ap-beijing",
 				SecretID:  "sid",
-				SecretKey: "skey",
+				SecretKey: flagext.SecretWithValue("skey"),
 			},
 			wantErr: true,
 		},

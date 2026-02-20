@@ -4,36 +4,74 @@
   "timezone": "UTC",
   "schedule": ["before 4am on monday"],
   "prConcurrentLimit": 10,
+  "prCreation": "not-pending",
+  "internalChecksFilter": "strict",
   "ignoreDeps": [],
   "separateMajorMinor": true,
   "separateMultipleMajor": true,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^Makefile$/"],
+      "matchStrings": [
+        "\\$\\(GO\\) install\\s+(?:.*\\s)?(?<depName>[\\w.\\/-]+)@(?<currentValue>v[\\d.]+)"
+      ],
+      "datasourceTemplate": "go"
+    },
+    {
+      "customType": "regex",
+      "description": "Update embedded Grafana version",
+      "managerFilePatterns": ["^pkg/embedded/grafana/grafana\\.go$"],
+      "matchStrings": [
+        "https://dl\\.grafana\\.com/oss/release/grafana-(?<currentValue>[0-9.]+)\\."
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "grafana/grafana",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Update grafana-pyroscope-app plugin version",
+      "managerFilePatterns": ["^pkg/embedded/grafana/grafana\\.go$"],
+      "matchStrings": [
+        "https://github\\.com/grafana/profiles-drilldown/releases/download/v(?<currentValue>[0-9.]+)/grafana-pyroscope-app-[0-9.]+\\.zip"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "grafana/profiles-drilldown",
+      "versioningTemplate": "semver"
+    }
+  ],
   "packageRules": [
     {
       "description": "Group all Go module updates (main project)",
       "matchManagers": ["gomod"],
       "matchFileNames": ["go.mod", "api/go.mod", "lidia/go.mod"],
       "groupName": "gomod",
-      "schedule": ["before 4am on monday"]
+      "schedule": ["before 4am on monday"],
+      "minimumReleaseAge": "3 days"
     },
     {
       "description": "Group all npm updates",
       "matchManagers": ["npm"],
       "matchFileNames": ["package.json"],
       "groupName": "npm",
-      "schedule": ["before 4am on monday"]
+      "schedule": ["before 4am on monday"],
+      "minimumReleaseAge": "3 days"
     },
     {
       "description": "Group all Docker updates",
       "matchManagers": ["dockerfile"],
       "matchFileNames": ["cmd/pyroscope/**"],
       "groupName": "docker",
-      "schedule": ["before 4am on the first day of the month"]
+      "schedule": ["before 4am on the first day of the month"],
+      "minimumReleaseAge": "3 days"
     },
     {
       "description": "Group all GitHub Actions updates",
       "matchManagers": ["github-actions"],
       "groupName": "github-actions",
-      "schedule": ["before 4am on monday"]
+      "schedule": ["before 4am on monday"],
+      "minimumReleaseAge": "3 days"
     },
     {
       "description": "Go modules examples - only pyroscope-go package",
@@ -49,7 +87,8 @@
       "allowedVersions": "/.*/",
       "matchPackageNames": ["github.com/grafana/pyroscope-go"],
       "groupName": "examples-gomod",
-      "schedule": ["before 4am on monday"]
+      "schedule": ["before 4am on monday"],
+      "minimumReleaseAge": "3 days"
     },
     {
       "description": "Automatically merge patch updates",
@@ -58,6 +97,23 @@
       "automergeType": "pr",
       "automergeStrategy": "squash",
       "platformAutomerge": true
+    },
+    {
+      "description": "Group all Makefile tool updates",
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["Makefile"],
+      "groupName": "makefile-tools",
+      "schedule": ["before 4am on monday"]
+    },
+    {
+      "description": "Group embedded Grafana updates with post-upgrade tasks",
+      "matchPackageNames": ["grafana/grafana", "grafana/profiles-drilldown"],
+      "groupName": "embedded-grafana",
+      "postUpgradeTasks": {
+        "commands": ["go run tools/update-embedded-checksums/main.go"],
+        "fileFilters": ["pkg/embedded/grafana/grafana.go"],
+        "executionMode": "update"
+      }
     }
   ]
 }

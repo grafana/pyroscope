@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
@@ -21,10 +22,10 @@ import (
 	"github.com/pkg/errors"
 
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1"
-	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer/convert"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -32,8 +33,13 @@ type AdHocProfiles struct {
 	services.Service
 
 	logger log.Logger
-	limits frontend.Limits
+	limits Limits
 	bucket objstore.Bucket
+}
+
+type Limits interface {
+	validation.FlameGraphLimits
+	MaxProfileSizeBytes(tenantID string) int
 }
 
 type AdHocProfile struct {
@@ -69,7 +75,7 @@ func replaceInvalidRunes(id string) string {
 	}, id)
 }
 
-func NewAdHocProfiles(bucket objstore.Bucket, logger log.Logger, limits frontend.Limits) *AdHocProfiles {
+func NewAdHocProfiles(bucket objstore.Bucket, logger log.Logger, limits Limits) *AdHocProfiles {
 	a := &AdHocProfiles{
 		logger: logger,
 		bucket: bucket,
@@ -99,15 +105,22 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 	// replace runes outside of [a-zA-Z0-9_-.] with underscores
 	adHocProfile.Name = replaceInvalidRunes(adHocProfile.Name)
 
-	// TODO: Add per-tenant upload limits (number of files, total size, etc.)
-
-	maxNodes, err := validation.ValidateMaxNodes(a.limits, []string{tenantID}, c.Msg.GetMaxNodes())
+	limits, err := a.newConvertLimits(tenantID, c.Msg.GetMaxNodes())
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not determine max nodes")
+		return nil, err
 	}
 
-	profile, profileTypes, err := parse(&adHocProfile, nil, maxNodes)
+	// TODO: Add more per-tenant upload limits (number of files, total size, etc.)
+	if limits.MaxProfileSizeBytes > 0 && len(adHocProfile.Data) > limits.MaxProfileSizeBytes {
+		return nil, connect.NewError(connect.CodeInvalidArgument, validation.NewErrorf(validation.ProfileSizeLimit, "profile payload size exceeds limit of %s", humanize.Bytes(uint64(limits.MaxProfileSizeBytes))))
+	}
+
+	profile, profileTypes, err := parse(&adHocProfile, nil, limits)
 	if err != nil {
+		dsErr := new(pprof.ErrDecompressedSizeExceedsLimit)
+		if errors.As(err, &dsErr) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, validation.NewErrorf(validation.ProfileSizeLimit, "uncompressed profile payload size exceeds limit of %s", humanize.Bytes(uint64(dsErr.Limit))))
+		}
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
 
@@ -139,6 +152,18 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 		ProfileType:        profile.Metadata.Name,
 		ProfileTypes:       profileTypes,
 	}), nil
+}
+
+func (a *AdHocProfiles) newConvertLimits(tenantID string, msgMaxNodes int64) (convert.Limits, error) {
+	maxNodes, err := validation.ValidateMaxNodes(a.limits, []string{tenantID}, msgMaxNodes)
+	if err != nil {
+		return convert.Limits{}, errors.Wrapf(err, "could not determine max nodes")
+	}
+
+	return convert.Limits{
+		MaxNodes:            int(maxNodes),
+		MaxProfileSizeBytes: a.limits.MaxProfileSizeBytes(tenantID),
+	}, nil
 }
 
 func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProfilesGetRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error) {
@@ -173,12 +198,12 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 		return nil, err
 	}
 
-	maxNodes, err := validation.ValidateMaxNodes(a.limits, []string{tenantID}, c.Msg.GetMaxNodes())
+	limits, err := a.newConvertLimits(tenantID, c.Msg.GetMaxNodes())
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not determine max nodes")
+		return nil, err
 	}
 
-	profile, profileTypes, err := parse(&adHocProfile, c.Msg.ProfileType, maxNodes)
+	profile, profileTypes, err := parse(&adHocProfile, c.Msg.ProfileType, limits)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
@@ -253,7 +278,7 @@ func (a *AdHocProfiles) getBucket(tenantID string) objstore.Bucket {
 	return objstore.NewPrefixedBucket(a.bucket, tenantID+"/adhoc")
 }
 
-func parse(p *AdHocProfile, profileType *string, maxNodes int64) (fg *flamebearer.FlamebearerProfile, profileTypes []string, err error) {
+func parse(p *AdHocProfile, profileType *string, limits convert.Limits) (fg *flamebearer.FlamebearerProfile, profileTypes []string, err error) {
 	base64decoded, err := base64.StdEncoding.DecodeString(p.Data)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to upload profile")
@@ -265,7 +290,7 @@ func parse(p *AdHocProfile, profileType *string, maxNodes int64) (fg *flamebeare
 		Data:     base64decoded,
 	}
 
-	profiles, err := convert.FlamebearerFromFile(f, int(maxNodes))
+	profiles, err := convert.FlamebearerFromFile(f, limits)
 	if err != nil {
 		return nil, nil, err
 	}

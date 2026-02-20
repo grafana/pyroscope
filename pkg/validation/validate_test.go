@@ -137,7 +137,7 @@ func TestValidateLabels(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateLabels(MockLimits{
+			_, err := ValidateLabels(MockLimits{
 				MaxLabelNamesPerSeriesValue: 4,
 				MaxLabelNameLengthValue:     12,
 				MaxLabelValueLengthValue:    10,
@@ -153,367 +153,144 @@ func TestValidateLabels(t *testing.T) {
 	}
 }
 
-func Test_ValidateRangeRequest(t *testing.T) {
-	now := model.Now()
+func TestValidateLabels_SanitizedLabelsReturned(t *testing.T) {
 	for _, tt := range []struct {
-		name        string
-		in          model.Interval
-		expectedErr error
-		expected    ValidatedRangeRequest
+		name           string
+		inputLabels    []*typesv1.LabelPair
+		expectedLabels []*typesv1.LabelPair
 	}{
 		{
-			name: "valid",
-			in: model.Interval{
-				Start: now.Add(-24 * time.Hour),
-				End:   now,
+			name: "single dotted label is sanitized",
+			inputLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "service_name", Value: "my-svc"},
+				{Name: "label.dot", Value: "val"},
 			},
-			expected: ValidatedRangeRequest{
-				Interval: model.Interval{
-					Start: now.Add(-24 * time.Hour),
-					End:   now,
-				},
-			},
-		},
-		{
-			name: "empty outside of the lookback",
-			in: model.Interval{
-				Start: now.Add(-75 * time.Hour),
-				End:   now.Add(-73 * time.Hour),
-			},
-			expected: ValidatedRangeRequest{
-				IsEmpty: true,
-				Interval: model.Interval{
-					Start: now.Add(-75 * time.Hour),
-					End:   now.Add(-73 * time.Hour),
-				},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "label_dot", Value: "val"},
+				{Name: "service_name", Value: "my-svc"},
 			},
 		},
 		{
-			name: "too large range",
-			in: model.Interval{
-				Start: now.Add(-150 * time.Hour),
-				End:   now.Add(time.Hour),
+			name: "dotted label merged with existing underscore label",
+			inputLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "service.name", Value: "my-svc"},
+				{Name: "service_name", Value: "my-svc"},
 			},
-			expected:    ValidatedRangeRequest{},
-			expectedErr: NewErrorf(QueryLimit, QueryTooLongErrorMsg, "73h0m0s", "2d"),
-		},
-		{
-			name: "reduced range to the lookback",
-			in: model.Interval{
-				Start: now.Add(-75 * time.Hour),
-				End:   now.Add(-68 * time.Hour),
-			},
-			expected: ValidatedRangeRequest{
-				Interval: model.Interval{
-					Start: now.Add(-72 * time.Hour),
-					End:   now.Add(-68 * time.Hour),
-				},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "service_name", Value: "my-svc"},
 			},
 		},
 		{
-			name: "empty start",
-			in: model.Interval{
-				Start: 0,
-				End:   now,
+			name: "multiple dotted labels sanitized",
+			inputLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "foo.bar", Value: "val1"},
+				{Name: "label.dot", Value: "val2"},
+				{Name: "service_name", Value: "my-svc"},
 			},
-			expectedErr: NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg),
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "foo_bar", Value: "val1"},
+				{Name: "label_dot", Value: "val2"},
+				{Name: "service_name", Value: "my-svc"},
+			},
 		},
 		{
-			name: "empty end",
-			in: model.Interval{
-				Start: now,
-				End:   0,
+			name: "labels without dots unchanged",
+			inputLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "service_name", Value: "my-svc"},
 			},
-			expectedErr: NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg),
-		},
-		{
-			name: "empty start and end",
-			in: model.Interval{
-				Start: 0,
-				End:   0,
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "cpu"},
+				{Name: "service_name", Value: "my-svc"},
 			},
-			expectedErr: NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg),
-		},
-		{
-			name: "start after end",
-			in: model.Interval{
-				Start: 1000,
-				End:   500,
-			},
-			expectedErr: NewErrorf(QueryInvalidTimeRange, QueryStartAfterEndErrorMsg),
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			actual, err := ValidateRangeRequest(MockLimits{
-				MaxQueryLengthValue:   48 * time.Hour,
-				MaxQueryLookbackValue: 72 * time.Hour,
-			}, []string{"foo"}, tt.in, now)
-			require.Equal(t, tt.expectedErr, err)
-			require.Equal(t, tt.expected, actual)
-		})
-	}
-}
+			result, err := ValidateLabels(MockLimits{
+				MaxLabelNamesPerSeriesValue: 10,
+				MaxLabelNameLengthValue:     50,
+				MaxLabelValueLengthValue:    50,
+			}, "test-tenant", tt.inputLabels, log.NewNopLogger())
 
-func TestValidateProfile(t *testing.T) {
-	now := model.TimeFromUnixNano(1_676_635_994_000_000_000)
+			require.NoError(t, err)
+			require.Equal(t, len(tt.expectedLabels), len(result), "unexpected number of labels")
 
-	for _, tc := range []struct {
-		name        string
-		profile     *googlev1.Profile
-		size        int
-		limits      ProfileValidationLimits
-		expectedErr error
-		assert      func(t *testing.T, profile *googlev1.Profile)
-	}{
-		{
-			"nil profile",
-			nil,
-			0,
-			MockLimits{},
-			NewErrorf(MalformedProfile, "nil profile"),
-			nil,
-		},
-		{
-			"nil profile",
-			&googlev1.Profile{},
-			0,
-			MockLimits{},
-			NewErrorf(MalformedProfile, "empty profile"),
-			nil,
-		},
-		{
-			"empty string table",
-			&googlev1.Profile{
-				SampleType: []*googlev1.ValueType{{}},
-			},
-			3,
-			MockLimits{
-				MaxProfileSizeBytesValue: 100,
-			},
-			NewErrorf(MalformedProfile, "string 0 should be empty string"),
-			nil,
-		},
-		{
-			"too big",
-			&googlev1.Profile{
-				SampleType: []*googlev1.ValueType{{}},
-			},
-			3,
-			MockLimits{
-				MaxProfileSizeBytesValue: 1,
-			},
-			NewErrorf(ProfileSizeLimit, ProfileTooBigErrorMsg, `{foo="bar"}`, 3, 1),
-			nil,
-		},
-		{
-			"too many samples",
-			&googlev1.Profile{
-				SampleType: []*googlev1.ValueType{{}},
-				Sample:     make([]*googlev1.Sample, 3),
-			},
-			0,
-			MockLimits{
-				MaxProfileStacktraceSamplesValue: 2,
-			},
-			NewErrorf(SamplesLimit, ProfileTooManySamplesErrorMsg, `{foo="bar"}`, 3, 2),
-			nil,
-		},
-		{
-			"nil sample",
-			&googlev1.Profile{
-				SampleType: []*googlev1.ValueType{{}},
-				Sample:     make([]*googlev1.Sample, 3),
-			},
-			0,
-			MockLimits{
-				MaxProfileStacktraceSamplesValue: 100,
-			},
-			NewErrorf(MalformedProfile, "nil sample"),
-			nil,
-		},
-		{
-			"sample value mismatch",
-			&googlev1.Profile{
-				SampleType: []*googlev1.ValueType{{}},
-				Sample:     []*googlev1.Sample{{Value: []int64{1, 2}}},
-			},
-			0,
-			MockLimits{
-				MaxProfileStacktraceSamplesValue: 100,
-			},
-			NewErrorf(MalformedProfile, "sample value length mismatch"),
-			nil,
-		},
-		{
-			"too many labels",
-			&googlev1.Profile{
-				SampleType: []*googlev1.ValueType{{}},
-				Sample: []*googlev1.Sample{
-					{
-						Label: make([]*googlev1.Label, 3),
-						Value: []int64{239},
-					},
-				},
-			},
-			0,
-			MockLimits{
-				MaxProfileStacktraceSampleLabelsValue: 2,
-			},
-			NewErrorf(SampleLabelsLimit, ProfileTooManySampleLabelsErrorMsg, `{foo="bar"}`, 3, 2),
-			nil,
-		},
-		{
-			"truncate labels and stacktrace",
-			&googlev1.Profile{
-				SampleType:  []*googlev1.ValueType{{}},
-				StringTable: []string{"", "foo", "/foo/bar"},
-				Sample: []*googlev1.Sample{
-					{
-						LocationId: []uint64{0, 1, 2, 3, 4, 5},
-						Value:      []int64{239},
-					},
-				},
-			},
-			0,
-			MockLimits{
-				MaxProfileStacktraceDepthValue:   2,
-				MaxProfileSymbolValueLengthValue: 3,
-			},
-			nil,
-			func(t *testing.T, profile *googlev1.Profile) {
-				t.Helper()
-				require.Equal(t, []string{"", "foo", "bar"}, profile.StringTable)
-				require.Equal(t, []uint64{4, 5}, profile.Sample[0].LocationId)
-			},
-		},
-		{
-			name: "newer than ingestion window",
-			profile: &googlev1.Profile{
-				SampleType: []*googlev1.ValueType{{}},
-				TimeNanos:  now.Add(1 * time.Hour).UnixNano(),
-			},
-			limits: MockLimits{
-				RejectNewerThanValue: 10 * time.Minute,
-			},
-			expectedErr: &Error{
-				Reason: NotInIngestionWindow,
-				msg:    "profile with labels '{foo=\"bar\"}' is outside of ingestion window (profile timestamp: 2023-02-17 13:13:14 +0000 UTC, the ingestion window ends at 2023-02-17 12:23:14 +0000 UTC)",
-			},
-		},
-		{
-			name: "older than ingestion window",
-			profile: &googlev1.Profile{
-				SampleType: []*googlev1.ValueType{{}},
-				TimeNanos:  now.Add(-61 * time.Minute).UnixNano(),
-			},
-			limits: MockLimits{
-				RejectOlderThanValue: time.Hour,
-			},
-			expectedErr: &Error{
-				Reason: NotInIngestionWindow,
-				msg:    "profile with labels '{foo=\"bar\"}' is outside of ingestion window (profile timestamp: 2023-02-17 11:12:14 +0000 UTC, the ingestion window starts at 2023-02-17 11:13:14 +0000 UTC)",
-			},
-		},
-		{
-			name: "just in the ingestion window",
-			profile: &googlev1.Profile{
-				SampleType:  []*googlev1.ValueType{{}},
-				TimeNanos:   now.Add(-1 * time.Minute).UnixNano(),
-				StringTable: []string{""},
-			},
-			limits: MockLimits{
-				RejectOlderThanValue: time.Hour,
-				RejectNewerThanValue: 10 * time.Minute,
-			},
-		},
-		{
-			name: "without timestamp",
-			profile: &googlev1.Profile{
-				SampleType:  []*googlev1.ValueType{{}},
-				StringTable: []string{""},
-			},
-			limits: MockLimits{
-				RejectOlderThanValue: time.Hour,
-				RejectNewerThanValue: 10 * time.Minute,
-			},
-		},
-	} {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			_, err := ValidateProfile(tc.limits, "foo", pprof.RawFromProto(tc.profile), tc.size, phlaremodel.LabelsFromStrings("foo", "bar"), now)
-			if tc.expectedErr != nil {
-				require.Error(t, err)
-				require.Equal(t, tc.expectedErr, err)
-			} else {
-				require.NoError(t, err)
-			}
-
-			if tc.assert != nil {
-				tc.assert(t, tc.profile)
+			for i, expected := range tt.expectedLabels {
+				require.Equal(t, expected.Name, result[i].Name, "label name mismatch at index %d", i)
+				require.Equal(t, expected.Value, result[i].Value, "label value mismatch at index %d", i)
 			}
 		})
 	}
 }
 
-func TestValidateFlamegraphMaxNodes(t *testing.T) {
-	type testCase struct {
-		name      string
-		maxNodes  int64
-		validated int64
-		limits    FlameGraphLimits
-		err       error
-	}
+func TestValidateLabels_DisableSanitization(t *testing.T) {
+	t.Run("dotted labels accepted when sanitization disabled", func(t *testing.T) {
+		inputLabels := []*typesv1.LabelPair{
+			{Name: model.MetricNameLabel, Value: "cpu"},
+			{Name: phlaremodel.LabelNameServiceName, Value: "my-svc"}, // service_name is required
+			{Name: "label.with.dots", Value: "val"},
+		}
 
-	testCases := []testCase{
-		{
-			name:      "default limit",
-			maxNodes:  0,
-			validated: 10,
-			limits: MockLimits{
-				MaxFlameGraphNodesDefaultValue: 10,
-			},
-		},
-		{
-			name:      "within limit",
-			maxNodes:  10,
-			validated: 10,
-			limits: MockLimits{
-				MaxFlameGraphNodesMaxValue: 10,
-			},
-		},
-		{
-			name:     "limit exceeded",
-			maxNodes: 10,
-			limits: MockLimits{
-				MaxFlameGraphNodesMaxValue: 5,
-			},
-			err: &Error{Reason: "flamegraph_limit", msg: "max flamegraph nodes limit 10 is greater than allowed 5"},
-		},
-		{
-			name:      "limit disabled",
-			maxNodes:  -1,
-			validated: -1,
-			limits:    MockLimits{},
-		},
-		{
-			name:     "limit disabled with max set",
-			maxNodes: -1,
-			limits: MockLimits{
-				MaxFlameGraphNodesMaxValue: 5,
-			},
-			err: &Error{Reason: "flamegraph_limit", msg: "max flamegraph nodes limit must be set (max allowed 5)"},
-		},
-	}
+		result, err := ValidateLabels(MockLimits{
+			MaxLabelNamesPerSeriesValue:   10,
+			MaxLabelNameLengthValue:       50,
+			MaxLabelValueLengthValue:      50,
+			DisableLabelSanitizationValue: true,
+		}, "test-tenant", inputLabels, log.NewNopLogger())
 
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			v, err := ValidateMaxNodes(tc.limits, []string{"tenant"}, tc.maxNodes)
-			require.Equal(t, tc.err, err)
-			require.Equal(t, tc.validated, v)
-		})
-	}
+		require.NoError(t, err)
+		// Labels should not be sanitized - dots remain
+		require.Equal(t, 3, len(result))
+		require.Equal(t, model.MetricNameLabel, result[0].Name)
+		require.Equal(t, "label.with.dots", result[1].Name) // sorted after __name__
+		require.Equal(t, phlaremodel.LabelNameServiceName, result[2].Name)
+	})
+
+	t.Run("invalid UTF-8 rejected when sanitization disabled", func(t *testing.T) {
+		inputLabels := []*typesv1.LabelPair{
+			{Name: model.MetricNameLabel, Value: "cpu"},
+			{Name: "service_name", Value: "my-svc"},
+			{Name: "\xc5", Value: "val"},
+		}
+
+		_, err := ValidateLabels(MockLimits{
+			MaxLabelNamesPerSeriesValue:   10,
+			MaxLabelNameLengthValue:       50,
+			MaxLabelValueLengthValue:      50,
+			DisableLabelSanitizationValue: true,
+		}, "test-tenant", inputLabels, log.NewNopLogger())
+
+		require.Error(t, err)
+		require.Equal(t, InvalidLabels, ReasonOf(err))
+	})
+
+	t.Run("dotted labels sanitized when sanitization enabled (default)", func(t *testing.T) {
+		inputLabels := []*typesv1.LabelPair{
+			{Name: model.MetricNameLabel, Value: "cpu"},
+			{Name: phlaremodel.LabelNameServiceName, Value: "my-svc"}, // service_name is required
+			{Name: "custom.label", Value: "val"},
+		}
+
+		result, err := ValidateLabels(MockLimits{
+			MaxLabelNamesPerSeriesValue:   10,
+			MaxLabelNameLengthValue:       50,
+			MaxLabelValueLengthValue:      50,
+			DisableLabelSanitizationValue: false, // explicitly false (default)
+		}, "test-tenant", inputLabels, log.NewNopLogger())
+
+		require.NoError(t, err)
+		// custom.label should be sanitized to custom_label
+		require.Equal(t, 3, len(result))
+		require.Equal(t, model.MetricNameLabel, result[0].Name)
+		require.Equal(t, "custom_label", result[1].Name)
+		require.Equal(t, phlaremodel.LabelNameServiceName, result[2].Name)
+	})
 }
 
 func Test_SanitizeLegacyLabelName(t *testing.T) {
@@ -751,6 +528,369 @@ func Test_SanitizeLegacyLabelName(t *testing.T) {
 			require.Equal(t, tt.WantOld, gotOld)
 			require.Equal(t, tt.WantSanitized, gotSanitized)
 			require.Equal(t, tt.WantOk, gotOk)
+		})
+	}
+}
+
+func Test_ValidateRangeRequest(t *testing.T) {
+	now := model.Now()
+	for _, tt := range []struct {
+		name        string
+		in          model.Interval
+		expectedErr error
+		expected    ValidatedRangeRequest
+	}{
+		{
+			name: "valid",
+			in: model.Interval{
+				Start: now.Add(-24 * time.Hour),
+				End:   now,
+			},
+			expected: ValidatedRangeRequest{
+				Interval: model.Interval{
+					Start: now.Add(-24 * time.Hour),
+					End:   now,
+				},
+			},
+		},
+		{
+			name: "empty outside of the lookback",
+			in: model.Interval{
+				Start: now.Add(-75 * time.Hour),
+				End:   now.Add(-73 * time.Hour),
+			},
+			expected: ValidatedRangeRequest{
+				IsEmpty: true,
+				Interval: model.Interval{
+					Start: now.Add(-75 * time.Hour),
+					End:   now.Add(-73 * time.Hour),
+				},
+			},
+		},
+		{
+			name: "too large range",
+			in: model.Interval{
+				Start: now.Add(-150 * time.Hour),
+				End:   now.Add(time.Hour),
+			},
+			expected:    ValidatedRangeRequest{},
+			expectedErr: NewErrorf(QueryLimit, QueryTooLongErrorMsg, "73h0m0s", "2d"),
+		},
+		{
+			name: "reduced range to the lookback",
+			in: model.Interval{
+				Start: now.Add(-75 * time.Hour),
+				End:   now.Add(-68 * time.Hour),
+			},
+			expected: ValidatedRangeRequest{
+				Interval: model.Interval{
+					Start: now.Add(-72 * time.Hour),
+					End:   now.Add(-68 * time.Hour),
+				},
+			},
+		},
+		{
+			name: "empty start",
+			in: model.Interval{
+				Start: 0,
+				End:   now,
+			},
+			expectedErr: NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg),
+		},
+		{
+			name: "empty end",
+			in: model.Interval{
+				Start: now,
+				End:   0,
+			},
+			expectedErr: NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg),
+		},
+		{
+			name: "empty start and end",
+			in: model.Interval{
+				Start: 0,
+				End:   0,
+			},
+			expectedErr: NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg),
+		},
+		{
+			name: "start after end",
+			in: model.Interval{
+				Start: 1000,
+				End:   500,
+			},
+			expectedErr: NewErrorf(QueryInvalidTimeRange, QueryStartAfterEndErrorMsg),
+		},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := ValidateRangeRequest(MockLimits{
+				MaxQueryLengthValue:   48 * time.Hour,
+				MaxQueryLookbackValue: 72 * time.Hour,
+			}, []string{"foo"}, tt.in, now)
+			require.Equal(t, tt.expectedErr, err)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestValidateProfile(t *testing.T) {
+	now := model.TimeFromUnixNano(1_676_635_994_000_000_000)
+
+	for _, tc := range []struct {
+		name        string
+		profile     *googlev1.Profile
+		size        int
+		limits      ProfileValidationLimits
+		expectedErr error
+		assert      func(t *testing.T, profile *googlev1.Profile)
+	}{
+		{
+			"nil profile",
+			nil,
+			0,
+			MockLimits{},
+			NewErrorf(MalformedProfile, "nil profile"),
+			nil,
+		},
+		{
+			"empty profile",
+			&googlev1.Profile{},
+			0,
+			MockLimits{},
+			NewErrorf(MalformedProfile, "empty profile"),
+			nil,
+		},
+		{
+			"empty string table",
+			&googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+			},
+			3,
+			MockLimits{
+				MaxProfileSizeBytesValue: 100,
+			},
+			NewErrorf(MalformedProfile, "string 0 should be empty string"),
+			nil,
+		},
+		{
+			"too big",
+			&googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+			},
+			3,
+			MockLimits{
+				MaxProfileSizeBytesValue: 1,
+			},
+			NewErrorf(ProfileSizeLimit, ProfileTooBigErrorMsg, `{foo="bar"}`, 3, 1),
+			nil,
+		},
+		{
+			"too many samples",
+			&googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+				Sample:     make([]*googlev1.Sample, 3),
+			},
+			0,
+			MockLimits{
+				MaxProfileStacktraceSamplesValue: 2,
+			},
+			NewErrorf(SamplesLimit, ProfileTooManySamplesErrorMsg, `{foo="bar"}`, 3, 2),
+			nil,
+		},
+		{
+			"nil sample",
+			&googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+				Sample:     make([]*googlev1.Sample, 3),
+			},
+			0,
+			MockLimits{
+				MaxProfileStacktraceSamplesValue: 100,
+			},
+			NewErrorf(MalformedProfile, "nil sample"),
+			nil,
+		},
+		{
+			"sample value mismatch",
+			&googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+				Sample:     []*googlev1.Sample{{Value: []int64{1, 2}}},
+			},
+			0,
+			MockLimits{
+				MaxProfileStacktraceSamplesValue: 100,
+			},
+			NewErrorf(MalformedProfile, "sample value length mismatch"),
+			nil,
+		},
+		{
+			"too many labels",
+			&googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+				Sample: []*googlev1.Sample{
+					{
+						Label: make([]*googlev1.Label, 3),
+						Value: []int64{239},
+					},
+				},
+			},
+			0,
+			MockLimits{
+				MaxProfileStacktraceSampleLabelsValue: 2,
+			},
+			NewErrorf(SampleLabelsLimit, ProfileTooManySampleLabelsErrorMsg, `{foo="bar"}`, 3, 2),
+			nil,
+		},
+		{
+			"truncate labels and stacktrace",
+			&googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{{}},
+				StringTable: []string{"", "foo", "/foo/bar"},
+				Sample: []*googlev1.Sample{
+					{
+						LocationId: []uint64{0, 1, 2, 3, 4, 5},
+						Value:      []int64{239},
+					},
+				},
+			},
+			0,
+			MockLimits{
+				MaxProfileStacktraceDepthValue:   2,
+				MaxProfileSymbolValueLengthValue: 3,
+			},
+			nil,
+			func(t *testing.T, profile *googlev1.Profile) {
+				t.Helper()
+				require.Equal(t, []string{"", "foo", "bar"}, profile.StringTable)
+				require.Equal(t, []uint64{4, 5}, profile.Sample[0].LocationId)
+			},
+		},
+		{
+			name: "newer than ingestion window",
+			profile: &googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+				TimeNanos:  now.Add(1 * time.Hour).UnixNano(),
+			},
+			limits: MockLimits{
+				RejectNewerThanValue: 10 * time.Minute,
+			},
+			expectedErr: &Error{
+				Reason: NotInIngestionWindow,
+				msg:    "profile with labels '{foo=\"bar\"}' is outside of ingestion window (profile timestamp: 2023-02-17 13:13:14 +0000 UTC, the ingestion window ends at 2023-02-17 12:23:14 +0000 UTC)",
+			},
+		},
+		{
+			name: "older than ingestion window",
+			profile: &googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+				TimeNanos:  now.Add(-61 * time.Minute).UnixNano(),
+			},
+			limits: MockLimits{
+				RejectOlderThanValue: time.Hour,
+			},
+			expectedErr: &Error{
+				Reason: NotInIngestionWindow,
+				msg:    "profile with labels '{foo=\"bar\"}' is outside of ingestion window (profile timestamp: 2023-02-17 11:12:14 +0000 UTC, the ingestion window starts at 2023-02-17 11:13:14 +0000 UTC)",
+			},
+		},
+		{
+			name: "just in the ingestion window",
+			profile: &googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{{}},
+				TimeNanos:   now.Add(-1 * time.Minute).UnixNano(),
+				StringTable: []string{""},
+			},
+			limits: MockLimits{
+				RejectOlderThanValue: time.Hour,
+				RejectNewerThanValue: 10 * time.Minute,
+			},
+		},
+		{
+			name: "without timestamp",
+			profile: &googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{{}},
+				StringTable: []string{""},
+			},
+			limits: MockLimits{
+				RejectOlderThanValue: time.Hour,
+				RejectNewerThanValue: 10 * time.Minute,
+			},
+		},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := ValidateProfile(tc.limits, "foo", pprof.RawFromProto(tc.profile), tc.size, phlaremodel.LabelsFromStrings("foo", "bar"), now)
+			if tc.expectedErr != nil {
+				require.Error(t, err)
+				require.Equal(t, tc.expectedErr, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			if tc.assert != nil {
+				tc.assert(t, tc.profile)
+			}
+		})
+	}
+}
+
+func TestValidateFlamegraphMaxNodes(t *testing.T) {
+	type testCase struct {
+		name      string
+		maxNodes  int64
+		validated int64
+		limits    FlameGraphLimits
+		err       error
+	}
+
+	testCases := []testCase{
+		{
+			name:      "default limit",
+			maxNodes:  0,
+			validated: 10,
+			limits: MockLimits{
+				MaxFlameGraphNodesDefaultValue: 10,
+			},
+		},
+		{
+			name:      "within limit",
+			maxNodes:  10,
+			validated: 10,
+			limits: MockLimits{
+				MaxFlameGraphNodesMaxValue: 10,
+			},
+		},
+		{
+			name:     "limit exceeded",
+			maxNodes: 10,
+			limits: MockLimits{
+				MaxFlameGraphNodesMaxValue: 5,
+			},
+			err: &Error{Reason: "flamegraph_limit", msg: "max flamegraph nodes limit 10 is greater than allowed 5"},
+		},
+		{
+			name:      "limit disabled",
+			maxNodes:  -1,
+			validated: -1,
+			limits:    MockLimits{},
+		},
+		{
+			name:     "limit disabled with max set",
+			maxNodes: -1,
+			limits: MockLimits{
+				MaxFlameGraphNodesMaxValue: 5,
+			},
+			err: &Error{Reason: "flamegraph_limit", msg: "max flamegraph nodes limit must be set (max allowed 5)"},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			v, err := ValidateMaxNodes(tc.limits, []string{"tenant"}, tc.maxNodes)
+			require.Equal(t, tc.err, err)
+			require.Equal(t, tc.validated, v)
 		})
 	}
 }

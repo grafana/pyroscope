@@ -1,17 +1,24 @@
 package otlp
 
 import (
+	"bytes"
 	"context"
 	"flag"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/grafana/dskit/server"
+	"github.com/grafana/dskit/user"
+	"github.com/klauspost/compress/gzip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+
 	v1experimental2 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 	v1experimental "go.opentelemetry.io/proto/otlp/profiles/v1development"
@@ -20,8 +27,11 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/test"
 	"github.com/grafana/pyroscope/pkg/test/mocks/mockotlp"
+	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func TestGetServiceNameFromAttributes(t *testing.T) {
@@ -36,7 +46,7 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 			expected: phlaremodel.AttrServiceNameFallback,
 		},
 		{
-			name: "empty attributes",
+			name: "use executable name",
 			attrs: []*v1.KeyValue{
 				{
 					Key: "process.executable.name",
@@ -218,11 +228,11 @@ func TestConversion(t *testing.T) {
 				b.dictionary.LocationTable = []*v1experimental.Location{{
 					MappingIndex: 0,
 					Address:      0x1e0,
-					Line:         nil,
+					Lines:        nil,
 				}, {
 					MappingIndex: 0,
 					Address:      0x2f0,
-					Line:         nil,
+					Lines:        nil,
 				}}
 				b.dictionary.StackTable = []*v1experimental.Stack{{
 					LocationIndices: []int32{0, 1},
@@ -231,7 +241,7 @@ func TestConversion(t *testing.T) {
 					TypeStrindex: b.addstr("samples"),
 					UnitStrindex: b.addstr("ms"),
 				}
-				b.profile.Sample = []*v1experimental.Sample{{
+				b.profile.Samples = []*v1experimental.Sample{{
 					StackIndex: 0,
 					Values:     []int64{0xef},
 				}}
@@ -267,7 +277,7 @@ func TestConversion(t *testing.T) {
 				}, {
 					LocationIndices: []int32{2},
 				}}
-				b.profile.Sample = []*v1experimental.Sample{{
+				b.profile.Samples = []*v1experimental.Sample{{
 					StackIndex: 0,
 					Values:     []int64{0xef},
 				}, {
@@ -307,12 +317,11 @@ func TestConversion(t *testing.T) {
 					LocationIndices: []int32{2},
 				}}
 				b.profile.PeriodType = &v1experimental.ValueType{
-					TypeStrindex:           b.addstr("period_type"),
-					UnitStrindex:           b.addstr("period_unit"),
-					AggregationTemporality: 0,
+					TypeStrindex: b.addstr("period_type"),
+					UnitStrindex: b.addstr("period_unit"),
 				}
 				b.profile.Period = 100
-				b.profile.Sample = []*v1experimental.Sample{{
+				b.profile.Samples = []*v1experimental.Sample{{
 					StackIndex: 0,
 					Values:     []int64{0xef},
 				}, {
@@ -344,8 +353,8 @@ func TestConversion(t *testing.T) {
 						}}}}},
 				Dictionary: &b.dictionary}
 			logger := test.NewTestingLogger(t)
-			h := NewOTLPIngestHandler(testConfig(), svc, logger, false)
-			_, err := h.Export(context.Background(), req)
+			h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+			_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
 
 			if td.expectedError == "" {
 				require.NoError(t, err)
@@ -406,7 +415,7 @@ func TestSampleAttributes(t *testing.T) {
 	}, {
 		LocationIndices: []int32{2, 3},
 	}}
-	otlpb.profile.Sample = []*v1experimental.Sample{{
+	otlpb.profile.Samples = []*v1experimental.Sample{{
 		StackIndex:       0,
 		Values:           []int64{0xef},
 		AttributeIndices: []int32{0},
@@ -443,8 +452,8 @@ func TestSampleAttributes(t *testing.T) {
 				}}}}},
 		Dictionary: &otlpb.dictionary}
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger, false)
-	_, err := h.Export(context.Background(), req)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(profiles))
 	require.Equal(t, 1, len(profiles[0].Series))
@@ -496,35 +505,35 @@ func TestDifferentServiceNames(t *testing.T) {
 	otlpb.dictionary.LocationTable = []*v1experimental.Location{{
 		MappingIndex: 0, // service-a.so
 		Address:      0x1100,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 0,
 			Line:          10,
 		}},
 	}, {
 		MappingIndex: 0, // service-a.so
 		Address:      0x1200,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 1,
 			Line:          20,
 		}},
 	}, {
 		MappingIndex: 1, // service-b.so
 		Address:      0x2100,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 2,
 			Line:          30,
 		}},
 	}, {
 		MappingIndex: 1, // service-b.so
 		Address:      0x2200,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 3,
 			Line:          40,
 		}},
 	}, {
 		MappingIndex: 2, // service-c.so
 		Address:      0xef0,
-		Line: []*v1experimental.Line{{
+		Lines: []*v1experimental.Line{{
 			FunctionIndex: 4,
 			Line:          50,
 		}},
@@ -560,7 +569,7 @@ func TestDifferentServiceNames(t *testing.T) {
 		LocationIndices: []int32{4, 4},
 	}}
 
-	otlpb.profile.Sample = []*v1experimental.Sample{{
+	otlpb.profile.Samples = []*v1experimental.Sample{{
 		StackIndex:       0,
 		Values:           []int64{100},
 		AttributeIndices: []int32{0},
@@ -609,8 +618,8 @@ func TestDifferentServiceNames(t *testing.T) {
 		Dictionary: &otlpb.dictionary}
 
 	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger, false)
-	_, err := h.Export(context.Background(), req)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
 	require.NoError(t, err)
 
 	require.Equal(t, 1, len(profiles))
@@ -671,4 +680,172 @@ func testConfig() server.Config {
 	fs := flag.NewFlagSet("test", flag.PanicOnError)
 	cfg.RegisterFlags(fs)
 	return cfg
+}
+
+func defaultLimits() validation.MockLimits {
+	return validation.MockLimits{
+		IngestionBodyLimitBytesValue: 1024 * 1024 * 1024, // 1GB
+	}
+}
+
+// createValidOTLPRequest creates a minimal valid OTLP profile export request for testing
+func createValidOTLPRequest() *v1experimental2.ExportProfilesServiceRequest {
+	b := new(otlpbuilder)
+	b.dictionary.MappingTable = []*v1experimental.Mapping{{
+		MemoryStart:      0x1000,
+		MemoryLimit:      0x2000,
+		FilenameStrindex: b.addstr("test.so"),
+	}}
+	b.dictionary.LocationTable = []*v1experimental.Location{{
+		MappingIndex: 0,
+		Address:      0x1100,
+	}}
+	b.dictionary.StackTable = []*v1experimental.Stack{{
+		LocationIndices: []int32{0},
+	}}
+	b.profile.SampleType = &v1experimental.ValueType{
+		TypeStrindex: b.addstr("samples"),
+		UnitStrindex: b.addstr("count"),
+	}
+	b.profile.Samples = []*v1experimental.Sample{{
+		StackIndex: 0,
+		Values:     []int64{100},
+	}}
+	b.profile.TimeUnixNano = 1234567890
+
+	return &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.Profile{&b.profile},
+			}},
+		}},
+		Dictionary: &b.dictionary,
+	}
+}
+
+func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	var capturedTenantID string
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		ctx := args.Get(0).(context.Context)
+		tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+		require.NoError(t, err)
+		capturedTenantID = tenantID
+	}).Return(nil, nil)
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+	jsonRequest := `{
+		"resourceProfiles": [{
+			"scopeProfiles": [{
+				"profiles": [{
+					"sampleType": {"typeStrindex": 0, "unitStrindex": 1},
+					"samples": [{"stackIndex": 0, "values": [100]}],
+					"timeUnixNano": "1234567890"
+				}]
+			}]
+		}],
+		"dictionary": {
+			"stringTable": ["samples", "count", "test.so"],
+			"mappingTable": [{"memoryStart": "4096", "memoryLimit": "8192", "filenameStrindex": 2}],
+			"locationTable": [{"mappingIndex": 0, "address": "4352"}],
+			"stackTable": [{"locationIndices": [0]}]
+		}
+	}`
+
+	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader([]byte(jsonRequest)))
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set(user.OrgIDHeaderName, "json-tenant")
+
+	w := httptest.NewRecorder()
+	util.AuthenticateUser(true).Wrap(h).ServeHTTP(w, httpReq)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "json-tenant", capturedTenantID)
+}
+
+func TestHTTPRequestWithGzipCompression(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	var capturedTenantID string
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		ctx := args.Get(0).(context.Context)
+		tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+		require.NoError(t, err)
+		capturedTenantID = tenantID
+	}).Return(nil, nil)
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+	req := createValidOTLPRequest()
+	reqBytes, err := proto.Marshal(req)
+	require.NoError(t, err)
+
+	var gzipBuf bytes.Buffer
+	gzipWriter := gzip.NewWriter(&gzipBuf)
+	_, err = gzipWriter.Write(reqBytes)
+	require.NoError(t, err)
+	err = gzipWriter.Close()
+	require.NoError(t, err)
+
+	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader(gzipBuf.Bytes()))
+	httpReq.Header.Set("Content-Type", "application/x-protobuf")
+	httpReq.Header.Set("Content-Encoding", "gzip")
+
+	w := httptest.NewRecorder()
+	util.AuthenticateUser(false).Wrap(h).ServeHTTP(w, httpReq)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, tenant.DefaultTenantID, capturedTenantID)
+}
+
+func TestHTTPRequestWithGzipCompressionAndJSON(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	var capturedTenantID string
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		ctx := args.Get(0).(context.Context)
+		tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+		require.NoError(t, err)
+		capturedTenantID = tenantID
+	}).Return(nil, nil)
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+	jsonRequest := `{
+		"resourceProfiles": [{
+			"scopeProfiles": [{
+				"profiles": [{
+					"sampleType": {"typeStrindex": 0, "unitStrindex": 1},
+					"samples": [{"stackIndex": 0, "values": [100]}],
+					"timeUnixNano": "1234567890"
+				}]
+			}]
+		}],
+		"dictionary": {
+			"stringTable": ["samples", "count", "test.so"],
+			"mappingTable": [{"memoryStart": "4096", "memoryLimit": "8192", "filenameStrindex": 2}],
+			"locationTable": [{"mappingIndex": 0, "address": "4352"}],
+			"stackTable": [{"locationIndices": [0]}]
+		}
+	}`
+
+	var gzipBuf bytes.Buffer
+	gzipWriter := gzip.NewWriter(&gzipBuf)
+	_, err := gzipWriter.Write([]byte(jsonRequest))
+	require.NoError(t, err)
+	err = gzipWriter.Close()
+	require.NoError(t, err)
+
+	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader(gzipBuf.Bytes()))
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Content-Encoding", "gzip")
+	httpReq.Header.Set(user.OrgIDHeaderName, "gzip-json-tenant")
+
+	w := httptest.NewRecorder()
+	util.AuthenticateUser(true).Wrap(h).ServeHTTP(w, httpReq)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "gzip-json-tenant", capturedTenantID)
 }

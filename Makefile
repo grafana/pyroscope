@@ -19,7 +19,7 @@ GOPRIVATE=github.com/grafana/frostdb
 
 # Boiler plate for building Docker containers.
 # All this must go at top of file I'm afraid.
-IMAGE_PREFIX ?= grafana/
+IMAGE_PREFIX ?= docker.io/grafana/
 
 IMAGE_TAG ?= $(shell ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
@@ -306,7 +306,7 @@ docker-image/pyroscope/dlv:
 	# dlv is not intended for local use and is to be installed in the
 	# platform-specific docker image together with the main Pyroscope binary.
 	@mkdir -p $(@D)
-	GOPATH=$(CURDIR)/.tmp GOAMD64=v2 CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.23.0
+	GOPATH=$(CURDIR)/.tmp GOAMD64=v2 CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.25.2
 	mv $(CURDIR)/.tmp/bin/$(GOOS)_$(GOARCH)/dlv $(CURDIR)/.tmp/bin/dlv
 
 .PHONY: clean
@@ -330,7 +330,7 @@ $(BIN)/golangci-lint: Makefile
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
+	GOBIN=$(abspath $(@D)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
 
 $(BIN)/protoc-gen-connect-go: Makefile go.mod
 	@mkdir -p $(@D)
@@ -346,11 +346,11 @@ $(BIN)/protoc-gen-go-vtproto: Makefile go.mod
 
 $(BIN)/protoc-gen-openapiv2: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.27.3
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.27.5
 
 $(BIN)/protoc-gen-grpc-gateway: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.27.3
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.27.5
 
 $(BIN)/protoc-gen-connect-openapi: Makefile go.mod
 	@mkdir -p $(@D)
@@ -374,7 +374,7 @@ $(BIN)/jb: Makefile go.mod
 
 $(BIN)/helm: Makefile go.mod
 	@mkdir -p $(@D)
-	CGO_ENABLED=0 GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.14.3
+	CGO_ENABLED=0 GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.19.2
 
 $(BIN)/kubeconform: Makefile go.mod
 	@mkdir -p $(@D)
@@ -391,7 +391,7 @@ $(BIN)/mockery: Makefile go.mod
 # Note: When updating the goreleaser version also update .github/workflow/release.yml and .git/workflow/weekly-release.yaml
 $(BIN)/goreleaser: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.7.0
+	GOTOOLCHAIN=go1.25.5 GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.13.2
 
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
@@ -425,6 +425,8 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm repo add --force-update grafana https://grafana.github.io/helm-charts
 	$(BIN)/helm dependency update ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
+	$(BIN)/helm dependency update ./operations/monitoring/helm/pyroscope-monitoring/
+	$(BIN)/helm dependency build ./operations/monitoring/helm/pyroscope-monitoring/
 	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
 	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V1) \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \

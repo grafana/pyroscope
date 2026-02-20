@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM openjdk:17-slim-bullseye as builder
+FROM --platform=$BUILDPLATFORM sapmachine:21-jdk-headless AS builder
 
 WORKDIR /opt/app
 
@@ -17,7 +17,7 @@ COPY src src
 RUN ./gradlew assemble --no-daemon
 
 
-FROM  openjdk:17-slim-bullseye
+FROM sapmachine:21-jdk-headless
 
 RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates
 

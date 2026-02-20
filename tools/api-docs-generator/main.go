@@ -14,6 +14,7 @@ import (
 	"text/template"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"gopkg.in/yaml.v3"
 )
 
 func main() {
@@ -71,9 +72,11 @@ func generateDocs(inputDir, templateFile, outputFile string) error {
 		return fmt.Errorf("creating output directory: %w", err)
 	}
 
-	// Parse all specs
+	// Parse all specs and extract inline metadata
 	loader := openapi3.NewLoader()
 	specs := make(map[string]*openapi3.T)
+	inlineMetadata := make(map[string]map[string]map[string]*inlinePropertyMetadata) // file -> schema -> property -> metadata
+
 	for _, file := range yamlFiles {
 		spec, err := loader.LoadFromFile(file)
 		if err != nil {
@@ -81,13 +84,20 @@ func generateDocs(inputDir, templateFile, outputFile string) error {
 			continue
 		}
 
+		// Extract inline metadata from raw YAML
+		meta, err := extractInlineMetadata(file)
+		if err != nil {
+			log.Printf("Warning: failed to extract inline metadata from %s: %v", file, err)
+		}
+
 		// Use relative path as key
 		relPath, _ := filepath.Rel(inputDir, file)
 		specs[relPath] = spec
+		inlineMetadata[relPath] = meta
 	}
 
 	// Generate single unified documentation file
-	return generateUnifiedDoc(specs, templateFile, outputFile)
+	return generateUnifiedDoc(specs, inlineMetadata, templateFile, outputFile)
 }
 
 func findYAMLFiles(dir string) ([]string, error) {
@@ -107,7 +117,92 @@ func findYAMLFiles(dir string) ([]string, error) {
 	return files, err
 }
 
-func generateUnifiedDoc(specs map[string]*openapi3.T, templateFile string, outputFile string) error {
+// inlinePropertyMetadata holds metadata that is lost when $ref is resolved
+type inlinePropertyMetadata struct {
+	Description string
+	Example     string
+}
+
+// extractInlineMetadata parses raw YAML to get descriptions and examples that are
+// siblings to $ref (which get lost during OpenAPI library parsing)
+func extractInlineMetadata(yamlFile string) (map[string]map[string]*inlinePropertyMetadata, error) {
+	data, err := os.ReadFile(yamlFile)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw map[string]any
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return nil, err
+	}
+
+	metadata := make(map[string]map[string]*inlinePropertyMetadata)
+
+	// Navigate to components.schemas
+	components, ok := raw["components"].(map[string]any)
+	if !ok {
+		return metadata, nil
+	}
+
+	schemas, ok := components["schemas"].(map[string]any)
+	if !ok {
+		return metadata, nil
+	}
+
+	// For each schema, extract property descriptions and examples
+	for schemaName, schemaValue := range schemas {
+		schemaMap, ok := schemaValue.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		properties, ok := schemaMap["properties"].(map[string]any)
+		if !ok {
+			continue
+		}
+
+		propMeta := make(map[string]*inlinePropertyMetadata)
+		for propName, propValue := range properties {
+			propMap, ok := propValue.(map[string]any)
+			if !ok {
+				continue
+			}
+
+			// Check if this property has $ref (meaning it will lose inline metadata)
+			if _, hasRef := propMap["$ref"].(string); hasRef {
+				meta := &inlinePropertyMetadata{}
+
+				// Extract description
+				if desc, hasDesc := propMap["description"].(string); hasDesc {
+					meta.Description = desc
+				}
+
+				// Extract first example value
+				if examples, hasExamples := propMap["examples"].([]any); hasExamples && len(examples) > 0 {
+					// Convert example to string
+					switch v := examples[0].(type) {
+					case string:
+						meta.Example = v
+					case int, int64, float64:
+						meta.Example = fmt.Sprintf("%v", v)
+					}
+				}
+
+				if meta.Description != "" || meta.Example != "" {
+					propMeta[propName] = meta
+				}
+			}
+		}
+
+		if len(propMeta) > 0 {
+			metadata[schemaName] = propMeta
+		}
+	}
+
+	return metadata, nil
+}
+
+func generateUnifiedDoc(specs map[string]*openapi3.T, inlineMetadata map[string]map[string]map[string]*inlinePropertyMetadata, templateFile string, outputFile string) error {
 
 	tmpl, err := template.ParseFiles(templateFile)
 	if err != nil {
@@ -121,7 +216,8 @@ func generateUnifiedDoc(specs map[string]*openapi3.T, templateFile string, outpu
 	defer f.Close()
 
 	err = tmpl.ExecuteTemplate(f, filepath.Base(templateFile), &templateSpecs{
-		Specs: specs,
+		Specs:          specs,
+		InlineMetadata: inlineMetadata,
 	})
 	if err != nil {
 		return err
@@ -131,7 +227,79 @@ func generateUnifiedDoc(specs map[string]*openapi3.T, templateFile string, outpu
 }
 
 type templateSpecs struct {
-	Specs map[string]*openapi3.T
+	Specs          map[string]*openapi3.T
+	InlineMetadata map[string]map[string]map[string]*inlinePropertyMetadata
+}
+
+// schemaContext holds schema and its associated inline metadata
+type schemaContext struct {
+	Schema     *openapi3.Schema
+	InlineMeta map[string]*inlinePropertyMetadata
+}
+
+// getExample returns the example value for a property, checking inline metadata first,
+// then falling back to the schema's extensions
+func (ctx *schemaContext) getExample(propertyName string, schema *openapi3.Schema) (string, any) {
+	// First check inline metadata (from properties with $ref that had sibling examples)
+	if ctx.InlineMeta != nil {
+		if meta, ok := ctx.InlineMeta[propertyName]; ok && meta.Example != "" {
+			return meta.Example, meta.Example
+		}
+	}
+
+	// Fall back to schema extensions
+	if schema.Extensions != nil {
+		examples := schema.Extensions["examples"].([]any)
+		if len(examples) > 0 {
+			switch examples[0].(type) {
+			case string:
+				return examples[0].(string), examples[0]
+			case []any:
+				res, err := json.Marshal(examples[0])
+				if err != nil {
+					panic(err)
+				}
+				return string(res), examples[0]
+			default:
+				panic(fmt.Sprintf("unknown example type: %T", examples[0]))
+			}
+		}
+	}
+	return "", nil
+}
+
+// getSchemaContext extracts schema and inline metadata for a request body
+func (s *templateSpecs) getSchemaContext(op *openapi3.Operation) *schemaContext {
+	if op.RequestBody == nil {
+		return nil
+	}
+
+	requestSchemaRef := op.RequestBody.Value.Content["application/json"].Schema
+	requestSchema := requestSchemaRef.Value
+
+	// Extract schema name from $ref
+	schemaName := ""
+	if requestSchemaRef.Ref != "" {
+		// Extract schema name from ref like "#/components/schemas/querier.v1.SelectHeatmapRequest"
+		parts := strings.Split(requestSchemaRef.Ref, "/")
+		if len(parts) > 0 {
+			schemaName = parts[len(parts)-1]
+		}
+	}
+
+	// Find inline metadata for this schema
+	var inlineMeta map[string]*inlinePropertyMetadata
+	for _, fileMeta := range s.InlineMetadata {
+		if meta, ok := fileMeta[schemaName]; ok {
+			inlineMeta = meta
+			break
+		}
+	}
+
+	return &schemaContext{
+		Schema:     requestSchema,
+		InlineMeta: inlineMeta,
+	}
 }
 
 func (s *templateSpecs) RenderAPIGroup(path string) string {
@@ -194,18 +362,17 @@ func (s *templateSpecs) RenderAPIGroup(path string) string {
 }
 
 func (s *templateSpecs) writeParameters(sb io.Writer, op *openapi3.Operation) {
-	if op.RequestBody == nil {
+	ctx := s.getSchemaContext(op)
+	if ctx == nil {
 		panic("no request body")
 	}
-
-	requestSchema := requestBodySchemaFrom(op)
 
 	fmt.Fprintln(sb, "A request body with the following fields is required:")
 	fmt.Fprintln(sb, "")
 	fmt.Fprintln(sb, "|Field | Description | Example |")
 	fmt.Fprintln(sb, "|:-----|:------------|:--------|")
 
-	writeSchema(sb, requestSchema)
+	writeSchema(sb, ctx)
 	fmt.Fprintln(sb, "")
 }
 
@@ -216,28 +383,7 @@ func cleanTableField(s string) (string, bool) {
 	return strings.ReplaceAll(s, "\n", " "), true
 }
 
-func getExample(schema *openapi3.Schema) (string, any) {
-	if schema.Extensions != nil {
-		examples := schema.Extensions["examples"].([]any)
-		if len(examples) > 0 {
-			switch examples[0].(type) {
-			case string:
-				return examples[0].(string), examples[0]
-			case []any:
-				res, err := json.Marshal(examples[0])
-				if err != nil {
-					panic(err)
-				}
-				return string(res), examples[0]
-			default:
-				panic(fmt.Sprintf("unknown example type: %T", examples[0]))
-			}
-		}
-	}
-	return "", nil
-}
-
-func collectParameters(schema *openapi3.Schema, prefix string, fn func(prefix string, name string, schema *openapi3.Schema)) {
+func collectParameters(schema *openapi3.Schema, prefix string, fn func(prefix string, name string, schemaRef *openapi3.SchemaRef)) {
 	fnames := make([]string, 0, len(schema.Properties))
 
 	for f := range schema.Properties {
@@ -259,7 +405,8 @@ func collectParameters(schema *openapi3.Schema, prefix string, fn func(prefix st
 	})
 
 	for _, f := range fnames {
-		fSchema := schema.Properties[f].Value
+		fSchemaRef := schema.Properties[f]
+		fSchema := fSchemaRef.Value
 		if fSchema.Type.Is(openapi3.TypeObject) {
 			collectParameters(fSchema, prefix+f+".", fn)
 			continue
@@ -268,26 +415,49 @@ func collectParameters(schema *openapi3.Schema, prefix string, fn func(prefix st
 			collectParameters(fSchema.Items.Value, prefix+f+"[].", fn)
 			continue
 		}
-		fn(prefix, f, fSchema)
+		fn(prefix, f, fSchemaRef)
 	}
 }
 
-func writeSchema(sb io.Writer, schema *openapi3.Schema) {
-	collectParameters(schema, "", func(prefix string, name string, schema *openapi3.Schema) {
-		description, keep := cleanTableField(schema.Description)
+func writeSchema(sb io.Writer, ctx *schemaContext) {
+	collectParameters(ctx.Schema, "", func(prefix string, name string, schemaRef *openapi3.SchemaRef) {
+		resolvedSchema := schemaRef.Value
+
+		// Get description and example using context
+		description := resolvedSchema.Description
+		example, _ := ctx.getExample(name, resolvedSchema)
+
+		// Check if we have inline metadata for description
+		if ctx.InlineMeta != nil {
+			if meta, ok := ctx.InlineMeta[name]; ok && meta.Description != "" {
+				description = meta.Description
+			}
+		}
+
+		description, keep := cleanTableField(description)
 		if !keep {
 			return
 		}
-		example, _ := getExample(schema)
+
+		// Add enum values to description if present
+		if len(resolvedSchema.Enum) > 0 {
+			enumValues := make([]string, 0, len(resolvedSchema.Enum))
+			for _, v := range resolvedSchema.Enum {
+				enumValues = append(enumValues, fmt.Sprintf("`%v`", v))
+			}
+			enumStr := strings.Join(enumValues, ", ")
+			if description != "" {
+				description = description + ". Possible values: " + enumStr
+			} else {
+				description = "Possible values: " + enumStr
+			}
+		}
+
 		if example != "" {
 			example = fmt.Sprintf("`%s`", example)
 		}
 		fmt.Fprintf(sb, "|`%s%s` | %s | %s |\n", prefix, name, description, example)
 	})
-}
-
-func requestBodySchemaFrom(op *openapi3.Operation) *openapi3.Schema {
-	return op.RequestBody.Value.Content["application/json"].Schema.Value
 }
 
 type exampleValues struct {
@@ -322,15 +492,20 @@ type exampler interface {
 }
 
 func (s *templateSpecs) writeExamples(sb io.Writer, path string, op *openapi3.Operation) {
+	ctx := s.getSchemaContext(op)
+	if ctx == nil {
+		return
+	}
+
 	params := &exampleParams{
 		url: "http://localhost:4040" + path,
 	}
 
-	fmt.Fprintln(sb, "{{% code %}}")
+	fmt.Fprintln(sb, "{{< code >}}")
 
 	for _, ex := range []exampler{
-		newExampleCurl(requestBodySchemaFrom(op)),
-		newExamplePython(requestBodySchemaFrom(op)),
+		newExampleCurl(ctx),
+		newExamplePython(ctx),
 	} {
 		fmt.Fprintf(sb, "```%s\n", ex.name())
 		ex.render(sb, params)
@@ -338,7 +513,7 @@ func (s *templateSpecs) writeExamples(sb io.Writer, path string, op *openapi3.Op
 		fmt.Fprintln(sb, "")
 	}
 
-	fmt.Fprintln(sb, "{{% /code %}}")
+	fmt.Fprintln(sb, "{{< /code >}}")
 }
 
 func setBody(body map[string]any, prefix string, name string, value any) {

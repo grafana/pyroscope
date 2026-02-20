@@ -1,0 +1,140 @@
+---
+description: Go testing standards and patterns for Pyroscope
+globs:
+  - "**/*_test.go"
+---
+
+# Go Testing Standards
+
+## Test File Naming
+
+- Test files: `*_test.go`
+- Test function naming: `TestFunctionName` or `TestComponentName_Method`
+
+## Test Structure
+
+Use table-driven tests for multiple cases:
+
+```go
+func TestDistributor_Push(t *testing.T) {
+    t.Parallel()
+
+    tests := []struct {
+        name    string
+        input   *pushv1.PushRequest
+        wantErr bool
+    }{
+        {name: "valid request", input: validRequest(), wantErr: false},
+        {name: "invalid tenant", input: invalidRequest(), wantErr: true},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            d := setupDistributor(t)
+            err := d.Push(context.Background(), tt.input)
+            if tt.wantErr {
+                require.Error(t, err)
+            } else {
+                require.NoError(t, err)
+            }
+        })
+    }
+}
+```
+
+## Assertions
+
+- Use `require` for fatal assertions (test stops on failure)
+- Use `assert` for non-fatal assertions (test continues)
+
+```go
+import (
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
+)
+
+// Fatal - stops test immediately
+require.NoError(t, err)
+require.NotNil(t, result)
+
+// Non-fatal - continues test
+assert.Equal(t, expected, actual)
+```
+
+## Test Organization
+
+1. **Subtests**: Use `t.Run()` for grouping related cases
+2. **Parallel Tests**: Use `t.Parallel()` when tests are independent
+3. **Cleanup**: Always use `t.Cleanup()` for resource cleanup
+
+```go
+func TestComponent(t *testing.T) {
+    t.Parallel()
+
+    resource := createResource(t)
+    t.Cleanup(func() {
+        resource.Close()
+    })
+
+    t.Run("subtest", func(t *testing.T) {
+        // test logic
+    })
+}
+```
+
+## Test Data
+
+- Store test data in `testdata/` directories
+- Use relative paths from the test file
+
+## Integration Tests
+
+Use build tags for integration tests:
+
+```go
+//go:build integration
+
+package mypackage_test
+
+func TestIntegration(t *testing.T) {
+    // ...
+}
+```
+
+## Mocking
+
+- Use `mockery` for generating mocks from interfaces
+- Place mocks in appropriate locations based on scope
+
+## Multi-tenancy Testing
+
+**Always test with multiple tenants** to catch isolation issues:
+
+```go
+func TestMultiTenant(t *testing.T) {
+    tenants := []string{"tenant-a", "tenant-b"}
+
+    for _, tenant := range tenants {
+        t.Run(tenant, func(t *testing.T) {
+            ctx := tenant.InjectTenantID(context.Background(), tenant)
+            // verify tenant isolation
+        })
+    }
+}
+```
+
+## Running Tests
+
+```bash
+# Run all tests
+make go/test
+
+# Run specific package tests
+go test ./pkg/distributor/...
+
+# Run with race detector
+go test -race ./...
+
+# Run benchmarks
+go test -bench=. ./pkg/...
+```

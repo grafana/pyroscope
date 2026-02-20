@@ -50,7 +50,7 @@ func mockAggregatorProvider(req *queryv1.InvokeRequest) aggregator {
 
 func TestReportAggregator_SingleReport(t *testing.T) {
 	reportType := queryv1.ReportType(999) // use a high number that won't conflict with other registrations
-	registerAggregator(reportType, mockAggregatorProvider)
+	registerAggregator(reportType, mockAggregatorProvider, false)
 	defer func() {
 		aggregatorMutex.Lock()
 		delete(aggregators, reportType)
@@ -70,15 +70,14 @@ func TestReportAggregator_SingleReport(t *testing.T) {
 	assert.Equal(t, report, ra.staged[reportType])
 
 	// the response should contain the single report
-	resp, err := ra.response()
-	require.NoError(t, err)
+	resp := ra.response()
 	require.Len(t, resp.Reports, 1)
 	assert.Equal(t, report, resp.Reports[0])
 }
 
 func TestReportAggregator_TwoReports(t *testing.T) {
 	reportType := queryv1.ReportType(999)
-	registerAggregator(reportType, mockAggregatorProvider)
+	registerAggregator(reportType, mockAggregatorProvider, false)
 	defer func() {
 		aggregatorMutex.Lock()
 		delete(aggregators, reportType)
@@ -105,8 +104,7 @@ func TestReportAggregator_TwoReports(t *testing.T) {
 	assert.Equal(t, 2, agg.getReportCount())
 
 	// the response should contain the aggregated result
-	resp, err := ra.response()
-	require.NoError(t, err)
+	resp := ra.response()
 	require.Len(t, resp.Reports, 1)
 	assert.Equal(t, reportType, resp.Reports[0].ReportType)
 }
@@ -115,8 +113,8 @@ func TestReportAggregator_MultipleTypes(t *testing.T) {
 	type1 := queryv1.ReportType(999)
 	type2 := queryv1.ReportType(998)
 
-	registerAggregator(type1, mockAggregatorProvider)
-	registerAggregator(type2, mockAggregatorProvider)
+	registerAggregator(type1, mockAggregatorProvider, false)
+	registerAggregator(type2, mockAggregatorProvider, false)
 	defer func() {
 		aggregatorMutex.Lock()
 		delete(aggregators, type1)
@@ -143,8 +141,7 @@ func TestReportAggregator_MultipleTypes(t *testing.T) {
 	assert.Nil(t, ra.staged[type1])
 	assert.Len(t, ra.aggregators, 1)
 
-	resp, err := ra.response()
-	require.NoError(t, err)
+	resp := ra.response()
 	require.Len(t, resp.Reports, 2)
 
 	reportTypes := make(map[queryv1.ReportType]bool)
@@ -167,7 +164,7 @@ func TestReportAggregator_NilReport(t *testing.T) {
 
 func TestReportAggregator_AggregateResponse(t *testing.T) {
 	reportType := queryv1.ReportType(999)
-	registerAggregator(reportType, mockAggregatorProvider)
+	registerAggregator(reportType, mockAggregatorProvider, false)
 	defer func() {
 		aggregatorMutex.Lock()
 		delete(aggregators, reportType)
@@ -194,7 +191,7 @@ func TestReportAggregator_AggregateResponse(t *testing.T) {
 
 func TestReportAggregator_ConcurrentAccess(t *testing.T) {
 	reportType := queryv1.ReportType(999)
-	registerAggregator(reportType, mockAggregatorProvider)
+	registerAggregator(reportType, mockAggregatorProvider, false)
 	defer func() {
 		aggregatorMutex.Lock()
 		delete(aggregators, reportType)
@@ -223,14 +220,13 @@ func TestReportAggregator_ConcurrentAccess(t *testing.T) {
 
 	wg.Wait()
 
-	resp, err := ra.response()
-	require.NoError(t, err)
+	resp := ra.response()
 	assert.Len(t, resp.Reports, 1)
 }
 
 func TestGetAggregator(t *testing.T) {
 	reportType := queryv1.ReportType(999)
-	registerAggregator(reportType, mockAggregatorProvider)
+	registerAggregator(reportType, mockAggregatorProvider, false)
 	defer func() {
 		aggregatorMutex.Lock()
 		delete(aggregators, reportType)
@@ -256,9 +252,9 @@ func TestGetAggregator_UnknownReportType(t *testing.T) {
 func TestRegisterAggregator_Duplicate(t *testing.T) {
 	reportType := queryv1.ReportType(999)
 
-	registerAggregator(reportType, mockAggregatorProvider)
+	registerAggregator(reportType, mockAggregatorProvider, false)
 	assert.Panics(t, func() {
-		registerAggregator(reportType, mockAggregatorProvider)
+		registerAggregator(reportType, mockAggregatorProvider, false)
 	})
 
 	aggregatorMutex.Lock()
