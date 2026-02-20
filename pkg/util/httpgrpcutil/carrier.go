@@ -25,7 +25,7 @@ func (c *HttpgrpcHeadersCarrier) Set(key, val string) {
 	})
 }
 
-// ForeachKey conforms to the opentracing.TextMapReader interface (kept for backward compatibility).
+// ForeachKey conforms to the TextMapReader interface.
 func (c *HttpgrpcHeadersCarrier) ForeachKey(handler func(key, val string) error) error {
 	for _, h := range c.Headers {
 		for _, v := range h.Values {
