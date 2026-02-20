@@ -113,18 +113,16 @@ func (sm *SymbolMerger) hashLocation(h *xxhash.Digest, loc *schemav1.InMemoryLoc
 	return nil
 }
 
-func newHashedSlice[A any](merger *SymbolMerger, equal equalityFn[A]) *hashedSlice[A] {
+func newHashedSlice[A any](equal equalityFn[A]) *hashedSlice[A] {
 	return &hashedSlice[A]{
-		merger: merger,
-		m:      make(map[uint64]int),
-		equal:  equal,
+		m:     make(map[uint64]int),
+		equal: equal,
 	}
 }
 
 type equalityFn[A any] func(A, A) bool
 
 type hashedSlice[A any] struct {
-	merger *SymbolMerger
 	m      map[uint64]int
 	sl     []A
 	hashes []uint64
@@ -138,10 +136,6 @@ func (h *hashedSlice[A]) len() int {
 func (h *hashedSlice[A]) grow(size int) {
 	h.sl = slices.Grow(h.sl, size)
 	h.hashes = slices.Grow(h.hashes, size)
-	// grow map if still empty
-	if len(h.m) == 0 {
-		h.m = make(map[uint64]int, size)
-	}
 }
 
 func (h *hashedSlice[A]) add(hash uint64, v A) int32 {
@@ -172,8 +166,8 @@ type SymbolMerger struct {
 
 func NewSymbolMerger() *SymbolMerger {
 	m := &SymbolMerger{}
-	m.strings = newHashedSlice(m, func(a, b string) bool { return a == b })
-	m.mappings = newHashedSlice(m, func(a, b schemav1.InMemoryMapping) bool {
+	m.strings = newHashedSlice(func(a, b string) bool { return a == b })
+	m.mappings = newHashedSlice(func(a, b schemav1.InMemoryMapping) bool {
 		return a.MemoryStart == b.MemoryStart &&
 			a.MemoryLimit == b.MemoryLimit &&
 			a.FileOffset == b.FileOffset &&
@@ -184,13 +178,13 @@ func NewSymbolMerger() *SymbolMerger {
 			a.HasLineNumbers == b.HasLineNumbers &&
 			a.HasInlineFrames == b.HasInlineFrames
 	})
-	m.functions = newHashedSlice(m, func(a, b schemav1.InMemoryFunction) bool {
+	m.functions = newHashedSlice(func(a, b schemav1.InMemoryFunction) bool {
 		return a.Name == b.Name &&
 			a.SystemName == b.SystemName &&
 			a.Filename == b.Filename &&
 			a.StartLine == b.StartLine
 	})
-	m.locations = newHashedSlice(m, func(a, b schemav1.InMemoryLocation) bool {
+	m.locations = newHashedSlice(func(a, b schemav1.InMemoryLocation) bool {
 		if a.Address != b.Address ||
 			a.MappingId != b.MappingId ||
 			a.IsFolded != b.IsFolded ||
