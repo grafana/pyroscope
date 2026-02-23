@@ -24,7 +24,7 @@ module.exports = [
       'og/**',
       'examples/**',
       'public/app/util/**',
-      '**.spec.ts*',
+      '**/*.spec.ts*',
       'svg-transform.js',
       'setupAfterEnv.ts',
       'globalSetup.js',
