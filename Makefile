@@ -306,7 +306,7 @@ docker-image/pyroscope/dlv:
 	# dlv is not intended for local use and is to be installed in the
 	# platform-specific docker image together with the main Pyroscope binary.
 	@mkdir -p $(@D)
-	GOPATH=$(CURDIR)/.tmp GOAMD64=v2 CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.25.2
+	GOPATH=$(CURDIR)/.tmp GOAMD64=v2 CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.26.0
 	mv $(CURDIR)/.tmp/bin/$(GOOS)_$(GOARCH)/dlv $(CURDIR)/.tmp/bin/dlv
 
 .PHONY: clean
@@ -322,11 +322,11 @@ reference-help: go/bin
 
 $(BIN)/buf: Makefile
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/buf/cmd/buf@v1.31.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/buf/cmd/buf@v1.65.0
 
 $(BIN)/golangci-lint: Makefile
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.2.2
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.10.1
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)
@@ -346,56 +346,56 @@ $(BIN)/protoc-gen-go-vtproto: Makefile go.mod
 
 $(BIN)/protoc-gen-openapiv2: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.27.5
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.28.0
 
 $(BIN)/protoc-gen-grpc-gateway: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.27.5
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.28.0
 
 $(BIN)/protoc-gen-connect-openapi: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/sudorandom/protoc-gen-connect-openapi@v0.21.2
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/sudorandom/protoc-gen-connect-openapi@v0.25.3
 
 $(BIN)/gomodifytags: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/fatih/gomodifytags@v1.16.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/fatih/gomodifytags@v1.17.0
 
 $(BIN)/kind: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install sigs.k8s.io/kind@v0.25.0
+	GOBIN=$(abspath $(@D)) $(GO) install sigs.k8s.io/kind@v0.31.0
 
 $(BIN)/tk: Makefile go.mod $(BIN)/jb
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/tanka/cmd/tk@v0.24.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/tanka/cmd/tk@v0.36.3
 
 $(BIN)/jb: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.5.1
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 
 $(BIN)/helm: Makefile go.mod
 	@mkdir -p $(@D)
-	CGO_ENABLED=0 GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.19.2
+	CGO_ENABLED=0 GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.20.0
 
 $(BIN)/kubeconform: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/yannh/kubeconform/cmd/kubeconform@v0.6.4
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/yannh/kubeconform/cmd/kubeconform@v0.7.0
 
 $(BIN)/mage: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/magefile/mage@v1.13.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/magefile/mage@v1.15.0
 
 $(BIN)/mockery: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/vektra/mockery/v2@v2.53.4
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/vektra/mockery/v2@v2.53.5
 
 # Note: When updating the goreleaser version also update .github/workflow/release.yml and .git/workflow/weekly-release.yaml
 $(BIN)/goreleaser: Makefile go.mod
 	@mkdir -p $(@D)
-	GOTOOLCHAIN=go1.25.5 GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.13.2
+	GOTOOLCHAIN=go1.25.5 GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser/v2@v2.13.3
 
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.12.3
+	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.13.0
 
 $(BIN)/helm-docs: Makefile go.mod
 	@mkdir -p $(@D)
