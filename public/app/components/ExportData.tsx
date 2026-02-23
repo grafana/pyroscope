@@ -21,8 +21,6 @@ import { Tooltip } from '@pyroscope/ui/Tooltip';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import 'compression-streams-polyfill';
 
-/* eslint-disable react/destructuring-assignment */
-
 // These are modeled individually since each condition may have different values
 // For example, a exportPprof: true may accept a custom export function
 // For cases like grafana

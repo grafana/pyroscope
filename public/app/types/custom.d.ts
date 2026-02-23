@@ -1,5 +1,3 @@
-/* eslint-disable max-classes-per-file */
-
 // Got from https://github.com/rodrigowirth/react-flot/blob/master/src/ReactFlot.d.ts
 declare module 'react-flot' {
   interface ReactFlotProps {

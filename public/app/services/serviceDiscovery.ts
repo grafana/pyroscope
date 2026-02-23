@@ -4,7 +4,6 @@ import type { ZodError } from 'zod';
 import { request, parseResponse } from '@pyroscope/services/base';
 import type { RequestError } from '@pyroscope/services/base';
 
-/* eslint-disable import/prefer-default-export */
 export async function fetchTargets(): Promise<
   Result<Target[], RequestError | ZodError>
 > {

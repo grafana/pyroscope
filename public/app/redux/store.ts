@@ -9,7 +9,6 @@ import {
   REGISTER,
 } from 'redux-persist';
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Until we rewrite FlamegraphRenderer in typescript this will do
 import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
 

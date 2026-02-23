@@ -19,7 +19,6 @@ function Tooltip(props: AvailableProps) {
     },
   };
 
-  /* eslint-disable-next-line react/jsx-props-no-spreading */
   return <MuiTooltip {...defaultProps} {...props} />;
 }
 
