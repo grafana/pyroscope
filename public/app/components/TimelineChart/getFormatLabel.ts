@@ -25,7 +25,7 @@ function getFormatLabel({
     const hours = Math.abs(xaxis.max - xaxis.min) / 60 / 60 / 1000;
 
     return getTimelineFormatDate(d, hours);
-  } catch (e) {
+  } catch {
     return '???';
   }
 }

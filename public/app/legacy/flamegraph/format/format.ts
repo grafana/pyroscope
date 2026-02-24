@@ -1,4 +1,3 @@
-/* eslint-disable max-classes-per-file */
 import { Units } from '@pyroscope/legacy/models/units';
 
 export function numberWithCommas(x: number): string {
@@ -75,7 +74,7 @@ export class DurationFormatter {
       maxDur *= 1e6; // Converting seconds to μs
     }
     this.units = units || '';
-    // eslint-disable-next-line no-plusplus
+
     for (let i = 0; i < this.durations.length; i++) {
       const level = this.durations[i];
       if (!level) {
@@ -86,7 +85,7 @@ export class DurationFormatter {
       if (maxDur >= level[0]) {
         this.divider *= level[0];
         maxDur /= level[0];
-        // eslint-disable-next-line prefer-destructuring
+
         this.suffix = level[1];
       } else {
         break;
@@ -149,7 +148,7 @@ export class NanosecondsFormatter {
 
   constructor(maxDur: number) {
     maxDur /= 1000000000;
-    // eslint-disable-next-line no-plusplus
+
     for (let i = 0; i < this.durations.length; i++) {
       const level = this.durations[i];
       if (!level) {
@@ -160,7 +159,7 @@ export class NanosecondsFormatter {
       if (maxDur >= level[0]) {
         this.divider *= level[0];
         maxDur /= level[0];
-        // eslint-disable-next-line prefer-destructuring
+
         this.suffix = level[1];
       } else {
         break;
@@ -202,7 +201,6 @@ export class ObjectsFormatter {
   ];
 
   constructor(maxObjects: number) {
-    // eslint-disable-next-line no-plusplus
     for (let i = 0; i < this.objects.length; i++) {
       const level = this.objects[i];
       if (!level) {
@@ -213,7 +211,7 @@ export class ObjectsFormatter {
       if (maxObjects >= level[0]) {
         this.divider *= level[0];
         maxObjects /= level[0];
-        // eslint-disable-next-line prefer-destructuring
+
         this.suffix = level[1];
       } else {
         break;
@@ -256,7 +254,6 @@ export class BytesFormatter {
   ];
 
   constructor(maxBytes: number) {
-    // eslint-disable-next-line no-plusplus
     for (let i = 0; i < this.bytes.length; i++) {
       const level = this.bytes[i];
       if (!level) {
@@ -268,7 +265,6 @@ export class BytesFormatter {
         this.divider *= level[0];
         maxBytes /= level[0];
 
-        // eslint-disable-next-line prefer-destructuring
         const suffix = level[1];
         if (!suffix) {
           console.warn('Could not calculate suffix');

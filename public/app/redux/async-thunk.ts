@@ -1,10 +1,8 @@
-/* eslint-disable import/prefer-default-export */
 import {
   createAsyncThunk as libCreateAsyncThunk,
   SerializedError,
 } from '@reduxjs/toolkit';
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 export const createAsyncThunk: typeof libCreateAsyncThunk = (
   ...args: Parameters<typeof libCreateAsyncThunk>

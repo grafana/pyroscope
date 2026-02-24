@@ -34,12 +34,12 @@ const ProcessSchema = z.object({
   tags: z.array(TagsSchema),
 });
 
-const TraceSchema = z.object({
+const _TraceSchema = z.object({
   traceID: z.string(),
   spans: z.array(TraceSpanSchema),
   processes: z.record(ProcessSchema),
   warnings: z.any(),
 });
 
-export type Trace = z.infer<typeof TraceSchema>;
+export type Trace = z.infer<typeof _TraceSchema>;
 export type TraceSpan = z.infer<typeof TraceSpanSchema>;
