@@ -159,7 +159,7 @@ func TestAdHocProfiles_Diff(t *testing.T) {
 			RightId: "right-profile",
 		}))
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to fetch profiles")
+		require.Contains(t, err.Error(), "not found")
 	})
 
 	t.Run("return diff for valid profiles", func(t *testing.T) {
