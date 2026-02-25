@@ -8,15 +8,8 @@ services:
     ports:
     - "5000"
     environment: &env
-      OTLP_URL: tempo:4318
-      OTLP_INSECURE: 1
-      OTEL_TRACES_EXPORTER: otlp
       OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
-      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: rideshare.java.push.app
-      OTEL_METRICS_EXPORTER: none
-      OTEL_TRACES_SAMPLER: always_on
-      OTEL_PROPAGATORS: tracecontext
       REGION: us-east
       PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
     build:
