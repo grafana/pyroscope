@@ -1,7 +1,7 @@
 package org.example.rideshare;
 
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.exporter.otlp.grpc.OtlpGrpcSpanExporter;
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;

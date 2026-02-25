@@ -12,6 +12,9 @@ services:
       OTEL_SERVICE_NAME: rideshare.java.push.app
       REGION: us-east
       PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
+    depends_on:
+    - tempo
+    - pyroscope
     build:
       context: .
   eu-north:
@@ -20,6 +23,9 @@ services:
     environment:
       <<: *env
       REGION: eu-north
+    depends_on:
+    - tempo
+    - pyroscope
     build:
       context: .
   ap-south:
@@ -28,6 +34,9 @@ services:
     environment:
       <<: *env
       REGION: ap-south
+    depends_on:
+    - tempo
+    - pyroscope
     build:
       context: .
 
