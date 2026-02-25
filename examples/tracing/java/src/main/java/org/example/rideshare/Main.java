@@ -7,10 +7,12 @@ import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.semconv.ServiceAttributes;
+import io.otel.pyroscope.OtelProfilerSdkBridge;
 import io.otel.pyroscope.PyroscopeOtelConfiguration;
 import io.otel.pyroscope.PyroscopeOtelSpanProcessor;
 import io.pyroscope.http.Format;
 import io.pyroscope.javaagent.EventType;
+import io.pyroscope.javaagent.ProfilerSdk;
 import io.pyroscope.javaagent.PyroscopeAgent;
 import io.pyroscope.javaagent.config.Config;
 import io.pyroscope.labels.v2.Pyroscope;
@@ -18,6 +20,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
+import java.lang.reflect.Method;
 import java.util.Map;
 
 @SpringBootApplication
@@ -62,7 +65,7 @@ public class Main {
                 .setResource(resource)
                 .addSpanProcessor(BatchSpanProcessor.builder(exporter).build())
                 .addSpanProcessor(new PyroscopeOtelSpanProcessor(
-                        new PyroscopeOtelConfiguration.Builder().build(), null))
+                        new PyroscopeOtelConfiguration.Builder().build(), loadProfilerSdk()))
                 .addSpanProcessor(new RootSpanPrinterProcessor())
                 .build();
 
@@ -70,4 +73,17 @@ public class Main {
                 .setTracerProvider(tracerProvider)
                 .buildAndRegisterGlobal();
     }
+
+
+    private static OtelProfilerSdkBridge loadProfilerSdk() {
+        try {
+            Object sdk = new ProfilerSdk();
+            Class<?> labelsWrapperClass = Pyroscope.LabelsWrapper.class;
+            Method registerConstant = labelsWrapperClass.getDeclaredMethod("registerConstant", String.class);
+            return new OtelProfilerSdkBridge(sdk, registerConstant);
+        } catch (Exception e) {
+            throw new RuntimeException("Error loading the profiler SDK", e);
+        }
+    }
 }
+
