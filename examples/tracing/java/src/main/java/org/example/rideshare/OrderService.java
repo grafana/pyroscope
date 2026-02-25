@@ -1,7 +1,7 @@
 package org.example.rideshare;
 
-import io.pyroscope.labels.v2.LabelsSet;
-import io.pyroscope.labels.v2.Pyroscope;
+import io.otel.pyroscope.shadow.labels.v2.LabelsSet;
+import io.otel.pyroscope.shadow.labels.v2.Pyroscope;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
