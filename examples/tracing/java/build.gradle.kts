@@ -12,6 +12,8 @@ repositories {
 }
 
 dependencies {
+    // Pyroscope profiler SDK + OTel integration
+    implementation("io.pyroscope:agent:2.1.2")
     implementation("io.pyroscope:otel:1.0.5")
 
     // Spring Boot
