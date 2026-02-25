@@ -20,8 +20,11 @@ import (
 	"github.com/grafana/dskit/tenant"
 	"github.com/oklog/ulid/v2"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer/convert"
@@ -57,6 +60,9 @@ func validRunes(r rune) bool {
 
 // check if the id is valid
 func validID(id string) bool {
+	if len(id) == 0 {
+		return false
+	}
 	for _, r := range id {
 		if !validRunes(r) {
 			return false
@@ -179,23 +185,12 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("id '%s' is invalid: can only contain [a-zA-Z0-9_-.]", id))
 	}
 
-	reader, err := bucket.Get(ctx, id)
+	adHocProfile, err := fetchProfile(ctx, bucket, id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get profile")
-	}
-	defer func() {
-		_ = reader.Close()
-	}()
-
-	adHocProfileBytes, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-
-	var adHocProfile AdHocProfile
-	err = json.Unmarshal(adHocProfileBytes, &adHocProfile)
-	if err != nil {
-		return nil, err
+		if objstore.IsNotExist(bucket, err) {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("profile %s not found", id))
+		}
+		return nil, connect.NewError(connect.CodeInternal, errors.Wrapf(err, "failed to get profile"))
 	}
 
 	limits, err := a.newConvertLimits(tenantID, c.Msg.GetMaxNodes())
@@ -203,7 +198,7 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 		return nil, err
 	}
 
-	profile, profileTypes, err := parse(&adHocProfile, c.Msg.ProfileType, limits)
+	profile, profileTypes, err := parse(adHocProfile, c.Msg.ProfileType, limits)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
@@ -276,6 +271,164 @@ func (a *AdHocProfiles) getBucketFromContext(ctx context.Context) (objstore.Buck
 
 func (a *AdHocProfiles) getBucket(tenantID string) objstore.Bucket {
 	return objstore.NewPrefixedBucket(a.bucket, tenantID+"/adhoc")
+}
+
+func (a *AdHocProfiles) Diff(ctx context.Context, c *connect.Request[v1.AdHocProfilesDiffRequest]) (*connect.Response[v1.AdHocProfilesDiffResponse], error) {
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	bucket := a.getBucket(tenantID)
+
+	leftID := c.Msg.GetLeftId()
+	rightID := c.Msg.GetRightId()
+	for _, id := range []string{leftID, rightID} {
+		if !validID(id) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("id '%s' is invalid: can only contain [a-zA-Z0-9_-.]", id))
+		}
+	}
+
+	limits, err := a.newConvertLimits(tenantID, c.Msg.GetMaxNodes())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	var leftProfile, rightProfile AdHocProfile
+	var leftFetchErr, rightFetchErr error
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		p, err := fetchProfile(gctx, bucket, leftID)
+		if err != nil {
+			leftFetchErr = err
+			return err
+		}
+		leftProfile = *p
+		return nil
+	})
+	g.Go(func() error {
+		p, err := fetchProfile(gctx, bucket, rightID)
+		if err != nil {
+			rightFetchErr = err
+			return err
+		}
+		rightProfile = *p
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		if leftFetchErr != nil {
+			if objstore.IsNotExist(bucket, leftFetchErr) {
+				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("left profile %s not found", leftID))
+			}
+			return nil, connect.NewError(connect.CodeInternal, errors.Wrap(leftFetchErr, "failed to fetch left profile"))
+		}
+		if rightFetchErr != nil {
+			if objstore.IsNotExist(bucket, rightFetchErr) {
+				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("right profile %s not found", rightID))
+			}
+			return nil, connect.NewError(connect.CodeInternal, errors.Wrap(rightFetchErr, "failed to fetch right profile"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, errors.Wrap(err, "failed to fetch profiles"))
+	}
+
+	leftFB, leftTypes, err := parse(&leftProfile, c.Msg.ProfileType, limits)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.Wrap(err, "failed to parse left profile"))
+	}
+	rightFB, rightTypes, err := parse(&rightProfile, c.Msg.ProfileType, limits)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.Wrap(err, "failed to parse right profile"))
+	}
+
+	// Compute intersection of profile types.
+	rightSet := make(map[string]struct{}, len(rightTypes))
+	for _, pt := range rightTypes {
+		rightSet[pt] = struct{}{}
+	}
+	var commonTypes []string
+	for _, pt := range leftTypes {
+		if _, ok := rightSet[pt]; ok {
+			commonTypes = append(commonTypes, pt)
+		}
+	}
+	if len(commonTypes) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no common profile types between left (%v) and right (%v)", leftTypes, rightTypes))
+	}
+
+	// Ensure both profiles have the same selected type to avoid comparing mismatched profile types.
+	if leftFB.Metadata.Name != rightFB.Metadata.Name {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("profile type mismatch: left profile uses '%s', right profile uses '%s'; please specify a profile type from the common types: %v", leftFB.Metadata.Name, rightFB.Metadata.Name, commonTypes))
+	}
+
+	leftTree, err := flamebearerToModelTree(leftFB)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.Wrap(err, "failed to convert left profile to tree"))
+	}
+	rightTree, err := flamebearerToModelTree(rightFB)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.Wrap(err, "failed to convert right profile to tree"))
+	}
+
+	diff, err := model.NewFlamegraphDiff(leftTree, rightTree, int64(limits.MaxNodes))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.Wrap(err, "failed to compute diff"))
+	}
+
+	profileType := &typesv1.ProfileType{
+		Name:       leftFB.Metadata.Name,
+		SampleType: leftFB.Metadata.Name,
+		SampleUnit: string(leftFB.Metadata.Units),
+	}
+
+	diffFB := model.ExportDiffToFlamebearer(diff, profileType)
+	jsonProfile, err := json.Marshal(diffFB)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.Wrap(err, "failed to marshal diff profile"))
+	}
+
+	return connect.NewResponse(&v1.AdHocProfilesDiffResponse{
+		ProfileTypes:       commonTypes,
+		FlamebearerProfile: string(jsonProfile),
+	}), nil
+}
+
+func fetchProfile(ctx context.Context, bucket objstore.Bucket, id string) (*AdHocProfile, error) {
+	reader, err := bucket.Get(ctx, id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get profile %s", id)
+	}
+	defer func() {
+		_ = reader.Close()
+	}()
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	var p AdHocProfile
+	if err := json.Unmarshal(data, &p); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+// flamebearerToModelTree converts a FlamebearerProfile (format: "single") to a *model.Tree
+// suitable for use with model.NewFlamegraphDiff.
+func flamebearerToModelTree(fb *flamebearer.FlamebearerProfile) (*model.Tree, error) {
+	ogTree, err := flamebearer.ProfileToTree(*fb)
+	if err != nil {
+		return nil, err
+	}
+
+	t := new(model.Tree)
+	ogTree.IterateStacks(func(_ string, self uint64, stack []string) {
+		// IterateStacks yields stacks in leaf-to-root order;
+		// model.Tree.InsertStack expects root-to-leaf.
+		slices.Reverse(stack)
+		t.InsertStack(int64(self), stack...)
+	})
+	return t, nil
 }
 
 func parse(p *AdHocProfile, profileType *string, limits convert.Limits) (fg *flamebearer.FlamebearerProfile, profileTypes []string, err error) {

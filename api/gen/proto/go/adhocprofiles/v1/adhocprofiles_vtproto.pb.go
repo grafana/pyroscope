@@ -154,6 +154,54 @@ func (m *AdHocProfilesProfileMetadata) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *AdHocProfilesDiffRequest) CloneVT() *AdHocProfilesDiffRequest {
+	if m == nil {
+		return (*AdHocProfilesDiffRequest)(nil)
+	}
+	r := new(AdHocProfilesDiffRequest)
+	r.LeftId = m.LeftId
+	r.RightId = m.RightId
+	if rhs := m.ProfileType; rhs != nil {
+		tmpVal := *rhs
+		r.ProfileType = &tmpVal
+	}
+	if rhs := m.MaxNodes; rhs != nil {
+		tmpVal := *rhs
+		r.MaxNodes = &tmpVal
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *AdHocProfilesDiffRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *AdHocProfilesDiffResponse) CloneVT() *AdHocProfilesDiffResponse {
+	if m == nil {
+		return (*AdHocProfilesDiffResponse)(nil)
+	}
+	r := new(AdHocProfilesDiffResponse)
+	r.FlamebearerProfile = m.FlamebearerProfile
+	if rhs := m.ProfileTypes; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.ProfileTypes = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *AdHocProfilesDiffResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (this *AdHocProfilesUploadRequest) EqualVT(that *AdHocProfilesUploadRequest) bool {
 	if this == that {
 		return true
@@ -318,6 +366,62 @@ func (this *AdHocProfilesProfileMetadata) EqualMessageVT(thatMsg proto.Message) 
 	}
 	return this.EqualVT(that)
 }
+func (this *AdHocProfilesDiffRequest) EqualVT(that *AdHocProfilesDiffRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.LeftId != that.LeftId {
+		return false
+	}
+	if this.RightId != that.RightId {
+		return false
+	}
+	if p, q := this.ProfileType, that.ProfileType; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
+	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *AdHocProfilesDiffRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*AdHocProfilesDiffRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *AdHocProfilesDiffResponse) EqualVT(that *AdHocProfilesDiffResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.ProfileTypes) != len(that.ProfileTypes) {
+		return false
+	}
+	for i, vx := range this.ProfileTypes {
+		vy := that.ProfileTypes[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.FlamebearerProfile != that.FlamebearerProfile {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *AdHocProfilesDiffResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*AdHocProfilesDiffResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
@@ -336,6 +440,8 @@ type AdHocProfileServiceClient interface {
 	Get(ctx context.Context, in *AdHocProfilesGetRequest, opts ...grpc.CallOption) (*AdHocProfilesGetResponse, error)
 	// Retrieves a list of profiles found in the underlying store.
 	List(ctx context.Context, in *AdHocProfilesListRequest, opts ...grpc.CallOption) (*AdHocProfilesListResponse, error)
+	// Computes a diff flamegraph from two previously uploaded profiles.
+	Diff(ctx context.Context, in *AdHocProfilesDiffRequest, opts ...grpc.CallOption) (*AdHocProfilesDiffResponse, error)
 }
 
 type adHocProfileServiceClient struct {
@@ -373,6 +479,15 @@ func (c *adHocProfileServiceClient) List(ctx context.Context, in *AdHocProfilesL
 	return out, nil
 }
 
+func (c *adHocProfileServiceClient) Diff(ctx context.Context, in *AdHocProfilesDiffRequest, opts ...grpc.CallOption) (*AdHocProfilesDiffResponse, error) {
+	out := new(AdHocProfilesDiffResponse)
+	err := c.cc.Invoke(ctx, "/adhocprofiles.v1.AdHocProfileService/Diff", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdHocProfileServiceServer is the server API for AdHocProfileService service.
 // All implementations must embed UnimplementedAdHocProfileServiceServer
 // for forward compatibility
@@ -385,6 +500,8 @@ type AdHocProfileServiceServer interface {
 	Get(context.Context, *AdHocProfilesGetRequest) (*AdHocProfilesGetResponse, error)
 	// Retrieves a list of profiles found in the underlying store.
 	List(context.Context, *AdHocProfilesListRequest) (*AdHocProfilesListResponse, error)
+	// Computes a diff flamegraph from two previously uploaded profiles.
+	Diff(context.Context, *AdHocProfilesDiffRequest) (*AdHocProfilesDiffResponse, error)
 	mustEmbedUnimplementedAdHocProfileServiceServer()
 }
 
@@ -400,6 +517,9 @@ func (UnimplementedAdHocProfileServiceServer) Get(context.Context, *AdHocProfile
 }
 func (UnimplementedAdHocProfileServiceServer) List(context.Context, *AdHocProfilesListRequest) (*AdHocProfilesListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (UnimplementedAdHocProfileServiceServer) Diff(context.Context, *AdHocProfilesDiffRequest) (*AdHocProfilesDiffResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Diff not implemented")
 }
 func (UnimplementedAdHocProfileServiceServer) mustEmbedUnimplementedAdHocProfileServiceServer() {}
 
@@ -468,6 +588,24 @@ func _AdHocProfileService_List_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdHocProfileService_Diff_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdHocProfilesDiffRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdHocProfileServiceServer).Diff(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/adhocprofiles.v1.AdHocProfileService/Diff",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdHocProfileServiceServer).Diff(ctx, req.(*AdHocProfilesDiffRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AdHocProfileService_ServiceDesc is the grpc.ServiceDesc for AdHocProfileService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -486,6 +624,10 @@ var AdHocProfileService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "List",
 			Handler:    _AdHocProfileService_List_Handler,
+		},
+		{
+			MethodName: "Diff",
+			Handler:    _AdHocProfileService_Diff_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -801,6 +943,114 @@ func (m *AdHocProfilesProfileMetadata) MarshalToSizedBufferVT(dAtA []byte) (int,
 	return len(dAtA) - i, nil
 }
 
+func (m *AdHocProfilesDiffRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AdHocProfilesDiffRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *AdHocProfilesDiffRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.MaxNodes != nil {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.MaxNodes))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.ProfileType != nil {
+		i -= len(*m.ProfileType)
+		copy(dAtA[i:], *m.ProfileType)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(*m.ProfileType)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.RightId) > 0 {
+		i -= len(m.RightId)
+		copy(dAtA[i:], m.RightId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.RightId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.LeftId) > 0 {
+		i -= len(m.LeftId)
+		copy(dAtA[i:], m.LeftId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.LeftId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *AdHocProfilesDiffResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AdHocProfilesDiffResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *AdHocProfilesDiffResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.FlamebearerProfile) > 0 {
+		i -= len(m.FlamebearerProfile)
+		copy(dAtA[i:], m.FlamebearerProfile)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.FlamebearerProfile)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ProfileTypes) > 0 {
+		for iNdEx := len(m.ProfileTypes) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ProfileTypes[iNdEx])
+			copy(dAtA[i:], m.ProfileTypes[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileTypes[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *AdHocProfilesUploadRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -920,6 +1170,51 @@ func (m *AdHocProfilesProfileMetadata) SizeVT() (n int) {
 	}
 	if m.UploadedAt != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.UploadedAt))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *AdHocProfilesDiffRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.LeftId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.RightId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.ProfileType != nil {
+		l = len(*m.ProfileType)
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.MaxNodes != nil {
+		n += 1 + protohelpers.SizeOfVarint(uint64(*m.MaxNodes))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *AdHocProfilesDiffResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.ProfileTypes) > 0 {
+		for _, s := range m.ProfileTypes {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	l = len(m.FlamebearerProfile)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1674,6 +1969,289 @@ func (m *AdHocProfilesProfileMetadata) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AdHocProfilesDiffRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AdHocProfilesDiffRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AdHocProfilesDiffRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LeftId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.LeftId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RightId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RightId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileType", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			s := string(dAtA[iNdEx:postIndex])
+			m.ProfileType = &s
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxNodes", wireType)
+			}
+			var v int64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.MaxNodes = &v
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AdHocProfilesDiffResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AdHocProfilesDiffResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AdHocProfilesDiffResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileTypes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileTypes = append(m.ProfileTypes, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FlamebearerProfile", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.FlamebearerProfile = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
