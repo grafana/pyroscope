@@ -1,0 +1,41 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pyroscope.gatewayFullname" . }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "pyroscope.gatewayLabels" . | nindent 4 }}
+    {{- with .Values.pyroscope.serviceLabels }}
+    {{- toYaml . | nindent 4}}
+    {{- end }}
+    {{- with .Values.gateway.service.labels }}
+    {{- toYaml . | nindent 4}}
+    {{- end }}
+    prometheus.io/service-monitor: "false"
+  annotations:
+    {{- with .Values.pyroscope.serviceAnnotations }}
+    {{- toYaml . | nindent 4}}
+    {{- end }}
+    {{- with .Values.gateway.service.annotations }}
+    {{- toYaml . | nindent 4}}
+    {{- end }}
+spec:
+  type: {{ .Values.gateway.service.type }}
+  {{- with .Values.gateway.service.clusterIP }}
+  clusterIP: {{ . }}
+  {{- end }}
+  {{- if and (eq "LoadBalancer" .Values.gateway.service.type) .Values.gateway.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.gateway.service.loadBalancerIP }}
+  {{- end }}
+  ports:
+    - name: http-metrics
+      port: {{ .Values.gateway.service.port }}
+      targetPort: http-metrics
+      {{- if and (eq "NodePort" .Values.gateway.service.type) .Values.gateway.service.nodePort }}
+      nodePort: {{ .Values.gateway.service.nodePort }}
+      {{- end }}
+      protocol: TCP
+  selector:
+    {{- include "pyroscope.gatewaySelectorLabels" . | nindent 4 }}
+{{- end }}
