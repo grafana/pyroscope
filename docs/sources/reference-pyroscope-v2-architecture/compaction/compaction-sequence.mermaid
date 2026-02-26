@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant W as Compaction Worker
+    participant M as Metastore
+    participant S as Object Storage
+
+    loop Continuous
+        W->>M: Poll for jobs
+        M->>W: Assign job with source blocks
+        W->>S: Download source segments
+        W->>W: Merge segments into block
+        W->>S: Upload compacted block
+        W->>M: Report completion
+        M->>M: Update metadata index
+    end
