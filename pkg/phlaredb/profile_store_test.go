@@ -191,7 +191,7 @@ func readFullParquetFile[M any](t *testing.T, path string) ([]M, uint64) {
 func TestProfileStore_RowGroupSplitting(t *testing.T) {
 	var (
 		ctx   = testContext(t)
-		store = newProfileStore(ctx)
+		store = newProfileStore(ctx, Config{})
 	)
 
 	for _, tc := range []struct {
@@ -295,7 +295,7 @@ func threeProfileStreams(i int) *testProfile {
 func TestProfileStore_Ingestion_SeriesIndexes(t *testing.T) {
 	var (
 		ctx   = testContext(t)
-		store = newProfileStore(ctx)
+		store = newProfileStore(ctx, Config{})
 	)
 	path := t.TempDir()
 	require.NoError(t, store.Init(path, defaultParquetConfig, newHeadMetrics(prometheus.NewRegistry())))
@@ -339,7 +339,7 @@ func BenchmarkFlush(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 
 		path := b.TempDir()
-		store := newProfileStore(ctx)
+		store := newProfileStore(ctx, Config{})
 		require.NoError(b, store.Init(path, defaultParquetConfig, metrics))
 		for rg := 0; rg < 10; rg++ {
 			for i := 0; i < 10^6; i++ {
@@ -597,7 +597,7 @@ func TestProfileStore_Querying(t *testing.T) {
 }
 
 func TestRemoveFailedSegment(t *testing.T) {
-	store := newProfileStore(testContext(t))
+	store := newProfileStore(testContext(t), Config{})
 	dir := t.TempDir()
 	require.NoError(t, store.Init(dir, defaultParquetConfig, contextHeadMetrics(context.Background())))
 	// fake a failed segment

@@ -60,6 +60,8 @@ type Config struct {
 	MinDiskAvailablePercentage float64       `yaml:"min_disk_available_percentage"`
 	EnforcementInterval        time.Duration `yaml:"enforcement_interval"`
 	DisableEnforcement         bool          `yaml:"disable_enforcement"`
+	CompressionAlgo            string        `yaml:"compression_algo"`
+	CompressionLevel           int           `yaml:"compression_level"`
 }
 
 type ParquetConfig struct {
@@ -77,6 +79,8 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.Float64Var(&cfg.MinDiskAvailablePercentage, "pyroscopedb.retention-policy-min-disk-available-percentage", DefaultMinDiskAvailablePercentage, "Which percentage of free disk space to keep")
 	f.DurationVar(&cfg.EnforcementInterval, "pyroscopedb.retention-policy-enforcement-interval", DefaultRetentionPolicyEnforcementInterval, "How often to enforce disk retention")
 	f.BoolVar(&cfg.DisableEnforcement, "pyroscopedb.retention-policy-disable", false, "Disable retention policy enforcement")
+	f.StringVar(&cfg.CompressionAlgo, "pyroscopedb.compression-algo", "", "Compress algorithm for saving to disk")
+	f.IntVar(&cfg.CompressionLevel, "pyroscopedb.compression-level", 0, "Compress level")
 }
 
 type TenantLimiter interface {
