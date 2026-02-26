@@ -1,0 +1,22 @@
+---
+apiVersion: 1
+datasources:
+  - uid: local-pyroscope
+    type: grafana-pyroscope-datasource
+    name: Pyroscope
+    url: http://pyroscope:4040
+    jsonData:
+      keepCookies: [pyroscope_git_session]
+  - uid: local-prometheus
+    type: prometheus
+    name: Prometheus
+    access: proxy
+    url: http://host.docker.internal:9099
+    basicAuth: true
+    basicAuthUser: admin
+    jsonData:
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: 2.40.0
+    secureJsonData:
+      basicAuthPassword: admin
