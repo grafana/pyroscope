@@ -29,7 +29,7 @@ Select an option from the list below:
 - Configure Pyroscope: Begin sending profiling data to unlock the full potential of Span Profiles
 - Client-side packages: Easily link traces and profiles using available packages for Go, Java, Ruby, .NET, and Python
   - Go: [Span profiles with Traces to profiles (Go)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/go-span-profiles/)
-  - Java: [Span profiles with Traces to profiles (Java)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/java-span-profiles/) (supports CPU and wall profile types)
+  - Java: [Span profiles with Traces to profiles (Java)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/java-span-profiles/)
   - Ruby: [Span profiles with Traces to profiles (Ruby)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/ruby-span-profiles/)
   - .NET: [Span profiles with Traces to profiles (.NET)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/dotnet-span-profiles/)
   - Python: [Span profiles with Traces to profiles (Python)](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/python-span-profiles/)
