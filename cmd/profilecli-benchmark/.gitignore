@@ -1,0 +1,11 @@
+# Binary
+profilecli-benchmark
+
+# Google credentials
+credentials.json
+*.json
+
+# Go build artifacts
+*.exe
+*.test
+*.out
