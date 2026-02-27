@@ -1,0 +1,7 @@
+---
+apiVersion: 1
+apps:
+  - type: grafana-pyroscope-app
+    jsonData:
+      backendUrl: http://pyroscope:4040
+    secureJsonData:
