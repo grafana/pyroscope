@@ -137,6 +137,12 @@ type Limits struct {
 
 	// Symbolizer.
 	Symbolizer Symbolizer `yaml:"symbolizer" json:"symbolizer" category:"experimental" doc:"hidden"`
+
+	// ProfileIDDeterministic enables deterministic profile ID generation based on profile content hash.
+	// When enabled, profile IDs are generated from a hash of tenant ID, labels, raw profile bytes,
+	// and original TimeNanos (if present) or trace ID (if TimeNanos is 0). This ensures that retries
+	// of the same profile produce the same ID. If the client provides a profile ID, it will be used instead.
+	ProfileIDDeterministic bool `yaml:"profile_id_deterministic" json:"profile_id_deterministic" category:"experimental"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -217,6 +223,8 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&l.SampleTypeRelabelingRules, "distributor.sample-type-relabeling-rules", "List of sample type relabel configurations. Rules are applied to sample types with __type__ and __unit__ labels, along with all series labels.")
 
 	f.Var(&l.IngestionArtificialDelay, "distributor.ingestion-artificial-delay", "Target ingestion delay to apply to all tenants. If set to a non-zero value, the distributor will artificially delay ingestion time-frame by the specified duration by computing the difference between actual ingestion and the target. There is no delay on actual ingestion of samples, it is only the response back to the client.")
+
+	f.BoolVar(&l.ProfileIDDeterministic, "validation.profile-id-deterministic", false, "Generate deterministic profile IDs based on profile content hash instead of random UUIDs. If a client provides an ID, it will be used instead. When enabled, IDs are generated from tenant ID, labels, raw profile bytes, and original TimeNanos (if present) or trace ID (if TimeNanos is 0). Experimental.")
 
 }
 
@@ -438,6 +446,11 @@ func (o *Overrides) MaxFlameGraphNodesMax(tenantID string) int {
 // MaxFlameGraphNodesOnSelectMergeProfiles returns if the max flame graph nodes should be enforced for the SelectMergeProfile API.
 func (o *Overrides) MaxFlameGraphNodesOnSelectMergeProfile(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).MaxFlameGraphNodesOnSelectMergeProfile
+}
+
+// ProfileIDDeterministic returns whether deterministic profile ID generation is enabled for a tenant.
+func (o *Overrides) ProfileIDDeterministic(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).ProfileIDDeterministic
 }
 
 // StoreGatewayTenantShardSize returns the store-gateway shard size for a given user.

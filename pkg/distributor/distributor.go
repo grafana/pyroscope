@@ -27,6 +27,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
+	"github.com/grafana/dskit/tracing"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/pkg/errors"
@@ -48,6 +49,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/writepath"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/model/pprofsplit"
+	"github.com/grafana/pyroscope/pkg/model/profileid"
 	"github.com/grafana/pyroscope/pkg/model/relabel"
 	"github.com/grafana/pyroscope/pkg/model/sampletype"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -147,6 +149,7 @@ type Limits interface {
 	SampleTypeRelabelingRules(tenantID string) []*relabel.Config
 	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
 	WritePathOverrides(tenantID string) writepath.Config
+	ProfileIDDeterministic(tenantID string) bool
 	validation.ProfileValidationLimits
 	aggregator.Limits
 }
@@ -314,6 +317,21 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 				RawProfile: grpcSample.RawProfile,
 				ID:         grpcSample.ID,
 			}
+
+			// Generate deterministic ID if not provided by client
+			if series.ID == "" && d.limits.ProfileIDDeterministic(tenantID) {
+				// Extract trace ID from context
+				traceID, _ := tracing.ExtractTraceID(ctx)
+
+				series.ID = profileid.GenerateFromRequest(
+					tenantID,
+					grpcSeries.Labels,
+					grpcSample.RawProfile,
+					profile.Profile.TimeNanos, // Original TimeNanos before modification
+					traceID,
+				).String()
+			}
+
 			req.Series = append(req.Series, series)
 		}
 	}
@@ -729,7 +747,10 @@ func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distribut
 		if _, err = p.WriteTo(bw); err != nil {
 			return nil, err
 		}
-		series.ID = uuid.NewString()
+		// Only generate ID if not already set
+		if series.ID == "" {
+			series.ID = uuid.NewString()
+		}
 		series.RawProfile = bw.Bytes()
 		profiles = append(profiles, &profileTracker{profile: series})
 	}
@@ -815,10 +836,19 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 		if err != nil {
 			panic(fmt.Sprintf("failed to marshal profile: %v", err))
 		}
-		// Ideally, the ID should identify the whole request, and be
-		// deterministic (e.g, based on the request hash). In practice,
-		// the API allows batches, which makes it difficult to handle.
+
+		// Use existing ID if present, otherwise generate random UUID
 		profileID := uuid.New()
+		if s.ID != "" {
+			var parseErr error
+			profileID, parseErr = uuid.Parse(s.ID)
+			if parseErr != nil {
+				// Log warning but continue with random ID
+				level.Warn(d.logger).Log("msg", "invalid profile ID, using random", "id", s.ID, "err", parseErr)
+				profileID = uuid.New()
+			}
+		}
+
 		requests = append(requests, &segmentwriterv1.PushRequest{
 			TenantId:    req.TenantID,
 			Labels:      s.Labels,
