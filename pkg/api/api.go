@@ -12,7 +12,6 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/kv/memberlist"
@@ -20,6 +19,7 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1/debuginfov1connect"
 	"github.com/grafana/pyroscope/public"
 
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -190,6 +190,10 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 	})
 }
 
+func (a *API) RegisterDebugInfo(svc debuginfov1connect.DebuginfoServiceHandler) {
+	debuginfov1connect.RegisterDebuginfoServiceHandler(a.server.HTTP, svc, a.connectOptionsDebugInfo()...)
+}
+
 // RegisterDistributor registers the endpoints associated with the distributor.
 func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, cfg server.Config) {
 	writePathOpts := a.registerOptionsWritePath(limits)
@@ -206,6 +210,7 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation
 
 	a.RegisterRoute("/opentelemetry.proto.collector.profiles.v1development.ProfilesService/Export", otlpHandler, writePathOpts...)
 	a.RegisterRoute("/v1development/profiles", otlpHandler, writePathOpts...)
+
 }
 
 // RegisterMemberlistKV registers the endpoints associated with the memberlist KV store.

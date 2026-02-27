@@ -12,6 +12,9 @@
       "name": "FeatureFlagsService"
     },
     {
+      "name": "DebuginfoService"
+    },
+    {
       "name": "PusherService"
     },
     {
