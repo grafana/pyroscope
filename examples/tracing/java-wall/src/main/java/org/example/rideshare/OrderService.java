@@ -15,7 +15,7 @@ public class OrderService {
 
     public static final Duration OP_DURATION = Duration.of(200, ChronoUnit.MILLIS);
 
-    public synchronized void findNearestVehicle(int searchRadius, String vehicle) {
+    public void findNearestVehicle(int searchRadius, String vehicle) {
         Pyroscope.LabelsWrapper.run(new LabelsSet("vehicle", vehicle), () -> {
             AtomicLong i = new AtomicLong();
             Instant end = Instant.now()
