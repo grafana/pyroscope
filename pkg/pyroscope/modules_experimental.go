@@ -444,6 +444,8 @@ func (f *Pyroscope) initQueryDiagnosticsAdmin() (services.Service, error) {
 		log.With(f.logger, "component", "query-diagnostics-admin"),
 		f.metastoreClient,
 		f.queryDiagnosticsStore,
+		f.storageBucket,
+		f.metastoreClient,
 	)
 	f.API.RegisterQueryDiagnosticsAdmin(f.queryDiagnosticsAdmin)
 	return nil, nil

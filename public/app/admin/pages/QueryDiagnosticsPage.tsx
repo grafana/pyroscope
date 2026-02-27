@@ -16,6 +16,7 @@ import type {
   PlanTreeNode,
   QueryParams,
   RawDiagnostic,
+  RawQueryPlan,
 } from '../types';
 
 function parseTimeForStats(timeStr: string): Date {
@@ -244,6 +245,7 @@ export function QueryDiagnosticsPage() {
 
   const [planTree, setPlanTree] = useState<PlanTreeNode | null>(null);
   const [planJson, setPlanJson] = useState<string | null>(null);
+  const [planRaw, setPlanRaw] = useState<RawQueryPlan | null>(null);
   const [metadataStats, setMetadataStats] = useState<string | null>(null);
   const [executionTree, setExecutionTree] = useState<ExecutionTreeNode | null>(
     null
@@ -315,6 +317,7 @@ export function QueryDiagnosticsPage() {
       const tree = convertQueryPlanToTree(diagnostic.plan);
       setPlanTree(tree);
       setPlanJson(JSON.stringify(diagnostic.plan, null, 2));
+      setPlanRaw(diagnostic.plan);
 
       const blocks = extractBlocksFromPlan(diagnostic.plan);
       const startTime = parseTimeForStats(currentParams.startTime);
@@ -386,7 +389,10 @@ export function QueryDiagnosticsPage() {
             <QueryPlanViewer
               planTree={planTree}
               planJson={planJson}
+              planRaw={planRaw}
               metadataStats={metadataStats}
+              tenantId={params.tenantId}
+              diagnosticsId={diagnosticsId}
             />
           </div>
         </div>
