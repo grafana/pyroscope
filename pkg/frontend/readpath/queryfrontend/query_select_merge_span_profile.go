@@ -67,7 +67,7 @@ func (q *QueryFrontend) SelectMergeSpanProfile(
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
 		resp.Tree = report.Tree.Tree
 	default:
-		t, err := phlaremodel.UnmarshalTree(report.Tree.Tree)
+		t, err := phlaremodel.UnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](report.Tree.Tree)
 		if err != nil {
 			return nil, err
 		}

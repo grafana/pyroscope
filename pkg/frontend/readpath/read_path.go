@@ -10,6 +10,7 @@ import (
 type Config struct {
 	EnableQueryBackend     bool      `yaml:"enable_query_backend" json:"enable_query_backend" doc:"hidden"`
 	EnableQueryBackendFrom time.Time `yaml:"enable_query_backend_from" json:"enable_query_backend_from" doc:"hidden"`
+	QueryTreeEnabled       bool      `yaml:"query_tree_enabled" json:"query_tree_enabled" doc:"hidden"`
 }
 
 func (o *Config) RegisterFlags(f *flag.FlagSet) {
@@ -17,4 +18,6 @@ func (o *Config) RegisterFlags(f *flag.FlagSet) {
 		"This parameter specifies whether the new query backend is enabled.")
 	f.Var((*flagext.Time)(&o.EnableQueryBackendFrom), "enable-query-backend-from",
 		"This parameter specifies the point in time from which data is queried from the new query backend. The format if RFC3339 (2020-10-20T00:00:00Z)")
+	f.BoolVar(&o.QueryTreeEnabled, "querier.query-tree-enabled", false,
+		"Use the tree-based query path for SelectMergeProfile. Experimental.")
 }

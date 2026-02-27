@@ -71,20 +71,20 @@ func (r *Router) SelectMergeStacktraces(
 	resp, err := Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
 		func(_, _ *querierv1.SelectMergeStacktracesRequest) {},
 		func(a, b *querierv1.SelectMergeStacktracesResponse) (*querierv1.SelectMergeStacktracesResponse, error) {
-			m := phlaremodel.NewTreeMerger()
+			m := phlaremodel.NewTreeMerger[phlaremodel.FuntionName, phlaremodel.FuntionNameI]()
 			if err := m.MergeTreeBytes(a.Tree); err != nil {
 				return nil, err
 			}
 			if err := m.MergeTreeBytes(b.Tree); err != nil {
 				return nil, err
 			}
-			tree := m.Tree().Bytes(c.Msg.GetMaxNodes())
+			tree := m.Tree().Bytes(c.Msg.GetMaxNodes(), nil)
 			return &querierv1.SelectMergeStacktracesResponse{Tree: tree}, nil
 		},
 	)
 	if err == nil && f != c.Msg.Format {
 		resp.Msg.Flamegraph = phlaremodel.NewFlameGraph(
-			phlaremodel.MustUnmarshalTree(resp.Msg.Tree),
+			phlaremodel.MustUnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](resp.Msg.Tree),
 			c.Msg.GetMaxNodes())
 	}
 	return resp, err
@@ -101,20 +101,20 @@ func (r *Router) SelectMergeSpanProfile(
 	resp, err := Query[querierv1.SelectMergeSpanProfileRequest, querierv1.SelectMergeSpanProfileResponse](ctx, r, c,
 		func(_, _ *querierv1.SelectMergeSpanProfileRequest) {},
 		func(a, b *querierv1.SelectMergeSpanProfileResponse) (*querierv1.SelectMergeSpanProfileResponse, error) {
-			m := phlaremodel.NewTreeMerger()
+			m := phlaremodel.NewTreeMerger[phlaremodel.FuntionName, phlaremodel.FuntionNameI]()
 			if err := m.MergeTreeBytes(a.Tree); err != nil {
 				return nil, err
 			}
 			if err := m.MergeTreeBytes(b.Tree); err != nil {
 				return nil, err
 			}
-			tree := m.Tree().Bytes(c.Msg.GetMaxNodes())
+			tree := m.Tree().Bytes(c.Msg.GetMaxNodes(), nil)
 			return &querierv1.SelectMergeSpanProfileResponse{Tree: tree}, nil
 		},
 	)
 	if err == nil && f != c.Msg.Format {
 		resp.Msg.Flamegraph = phlaremodel.NewFlameGraph(
-			phlaremodel.MustUnmarshalTree(resp.Msg.Tree),
+			phlaremodel.MustUnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](resp.Msg.Tree),
 			c.Msg.GetMaxNodes())
 	}
 	return resp, err
@@ -188,13 +188,13 @@ func (r *Router) Diff(
 	c *connect.Request[querierv1.DiffRequest],
 ) (*connect.Response[querierv1.DiffResponse], error) {
 	g, ctx := errgroup.WithContext(ctx)
-	getTree := func(dst *phlaremodel.Tree, req *querierv1.SelectMergeStacktracesRequest) func() error {
+	getTree := func(dst *phlaremodel.FunctionNameTree, req *querierv1.SelectMergeStacktracesRequest) func() error {
 		return func() error {
 			resp, err := r.SelectMergeStacktraces(ctx, connect.NewRequest(req))
 			if err != nil {
 				return err
 			}
-			tree, err := phlaremodel.UnmarshalTree(resp.Msg.Tree)
+			tree, err := phlaremodel.UnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](resp.Msg.Tree)
 			if err != nil {
 				return err
 			}
@@ -203,7 +203,7 @@ func (r *Router) Diff(
 		}
 	}
 
-	var left, right phlaremodel.Tree
+	var left, right phlaremodel.FunctionNameTree
 	g.Go(getTree(&left, c.Msg.Left))
 	g.Go(getTree(&right, c.Msg.Right))
 	if err := g.Wait(); err != nil {

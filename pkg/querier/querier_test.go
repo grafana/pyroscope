@@ -1170,7 +1170,7 @@ func (f *fakeBidiClientStacktraces) Receive() (*ingestv1.MergeProfilesStacktrace
 func (f *fakeBidiClientStacktraces) CloseRequest() error  { return nil }
 func (f *fakeBidiClientStacktraces) CloseResponse() error { return nil }
 
-func requireFakeMergeProfilesStacktracesResultTree(t *testing.T, r *phlaremodel.Tree) {
+func requireFakeMergeProfilesStacktracesResultTree(t *testing.T, r *phlaremodel.FunctionNameTree) {
 	flame := phlaremodel.NewFlameGraph(r, -1)
 	sort.Strings(flame.Names)
 	require.Equal(t, []string{"bar", "buzz", "foo", "total"}, flame.Names)

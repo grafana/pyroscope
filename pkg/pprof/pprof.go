@@ -348,7 +348,7 @@ func (b *pprofFromTreeBuilder) newLocation(location string) uint64 {
 	return id
 }
 
-func FromTree(t *model.Tree, ty *typesv1.ProfileType, timeNanos int64) *profilev1.Profile {
+func FromTree(t *model.FunctionNameTree, ty *typesv1.ProfileType, timeNanos int64) *profilev1.Profile {
 	const fakeMappingID = 1
 	b := &pprofFromTreeBuilder{
 		locations: make(map[string]uint64),
@@ -370,7 +370,7 @@ func FromTree(t *model.Tree, ty *typesv1.ProfileType, timeNanos int64) *profilev
 
 	SetProfileMetadata(b.profile, ty, timeNanos, 0)
 
-	t.IterateStacks(func(name string, self int64, stack []string) {
+	t.IterateStacks(func(name model.FuntionName, self int64, stack []model.FuntionName) {
 		if self <= 0 {
 			return
 		}
@@ -379,7 +379,7 @@ func FromTree(t *model.Tree, ty *typesv1.ProfileType, timeNanos int64) *profilev
 			if locName == "" {
 				continue
 			}
-			locationIds = append(locationIds, b.newLocation(locName))
+			locationIds = append(locationIds, b.newLocation(string(locName)))
 		}
 
 		sample := &profilev1.Sample{

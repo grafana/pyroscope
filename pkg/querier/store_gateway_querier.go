@@ -173,7 +173,7 @@ func GetShuffleShardingSubring(ring ring.ReadRing, userID string, limits StoreGa
 	return ring.ShuffleShard(userID, shardSize)
 }
 
-func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan map[string]*blockPlanEntry) (*model.Tree, error) {
+func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan map[string]*blockPlanEntry) (*model.FunctionNameTree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectTree StoreGateway")
 	defer sp.Finish()
 	profileType, err := model.ParseProfileTypeSelector(req.ProfileTypeID)
@@ -401,7 +401,7 @@ func (q *Querier) seriesFromStoreGateway(ctx context.Context, req *ingesterv1.Se
 	return responses, nil
 }
 
-func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest, plan map[string]*blockPlanEntry) (*model.Tree, error) {
+func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest, plan map[string]*blockPlanEntry) (*model.FunctionNameTree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSpanProfile StoreGateway")
 	defer sp.Finish()
 	profileType, err := model.ParseProfileTypeSelector(req.ProfileTypeID)

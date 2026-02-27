@@ -285,7 +285,11 @@ func PprofToProfile(b []byte, name string, limits Limits) ([]*flamebearer.Flameb
 			return nil, err
 		}
 
-		fg := model.NewFlameGraph(t.Tree(int64(limits.MaxNodes), p.StringTable), int64(limits.MaxNodes))
+		names := make([]model.FuntionName, len(p.StringTable))
+		for i, s := range p.StringTable {
+			names[i] = model.FuntionName(s)
+		}
+		fg := model.NewFlameGraph(t.Tree(int64(limits.MaxNodes), names), int64(limits.MaxNodes))
 		fbs = append(fbs, model.ExportToFlamebearer(fg, tp))
 	}
 	if len(fbs) == 0 {

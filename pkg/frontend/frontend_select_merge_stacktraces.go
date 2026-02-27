@@ -30,7 +30,7 @@ func (f *Frontend) SelectMergeStacktraces(
 	default:
 		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-		resp.Tree = t.Bytes(c.Msg.GetMaxNodes())
+		resp.Tree = t.Bytes(c.Msg.GetMaxNodes(), nil)
 	}
 	return connect.NewResponse(&resp), nil
 }
@@ -38,7 +38,7 @@ func (f *Frontend) SelectMergeStacktraces(
 func (f *Frontend) selectMergeStacktracesTree(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
-) (*phlaremodel.Tree, error) {
+) (*phlaremodel.FunctionNameTree, error) {
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeStacktracesProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
@@ -50,7 +50,7 @@ func (f *Frontend) selectMergeStacktracesTree(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if validated.IsEmpty {
-		return new(phlaremodel.Tree), nil
+		return new(phlaremodel.FunctionNameTree), nil
 	}
 	maxNodes, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
 	if err != nil {

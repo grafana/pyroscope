@@ -122,6 +122,7 @@ func (c *Cluster) v2PrepareComponent(comp *Component, metastoreLeader *Component
 
 	comp.flags = append(comp.flags,
 		"-enable-query-backend=true",
+		"-querier.query-tree-enabled=true", // always enable the tree based SelectMergeProfiles
 		"-write-path=segment-writer",
 		"-metastore.min-ready-duration=0",
 		fmt.Sprintf("-metastore.address=%s:%d/%s", listenAddr, metastoreLeader.grpcPort, metastoreLeader.nodeName()),
