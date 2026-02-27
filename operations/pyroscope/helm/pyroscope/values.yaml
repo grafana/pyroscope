@@ -1,6 +1,9 @@
 # Default values for pyroscope.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+global:
+  # -- Overrides the Docker registry globally for all images
+  imageRegistry: null
 
 
 pyroscope:
@@ -13,6 +16,7 @@ pyroscope:
   cluster_domain: .cluster.local.
 
   image:
+    registry: docker.io
     repository: grafana/pyroscope
     pullPolicy: IfNotPresent
     # Allows to override the image tag, which defaults to the appVersion in the chart metadata
