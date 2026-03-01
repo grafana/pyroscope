@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
@@ -102,6 +103,7 @@ type queryProfileParams struct {
 	ProfileType        string
 	StacktraceSelector []string
 	MaxNodes           int64
+	ProfileIDs         []string
 }
 
 func addQueryProfileParams(queryCmd commander) *queryProfileParams {
@@ -110,6 +112,7 @@ func addQueryProfileParams(queryCmd commander) *queryProfileParams {
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
 	queryCmd.Flag("stacktrace-selector", "Only query locations with those symbols. Provide multiple times starting with the root").StringsVar(&params.StacktraceSelector)
 	queryCmd.Flag("max-nodes", "Maximum number of nodes to return in the profile").Int64Var(&params.MaxNodes)
+	queryCmd.Flag("profile-id", "List of Profile UUIDs to query. Can be specified multiple times.").StringsVar(&params.ProfileIDs)
 	return params
 }
 
@@ -163,6 +166,10 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 		}
 	}
 
+	if len(params.ProfileIDs) > 0 {
+		req.ProfileIdSelector = params.ProfileIDs
+	}
+
 	qc := params.phlareClient.queryClient()
 
 	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
@@ -192,6 +199,10 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 		req.StackTraceSelector = &typesv1.StackTraceSelector{
 			CallSite: locations,
 		}
+	}
+
+	if len(params.ProfileIDs) > 0 {
+		req.ProfileIdSelector = params.ProfileIDs
 	}
 
 	qc := params.phlareClient.queryClient()
@@ -365,6 +376,67 @@ func addQueryLabelValuesCardinalityParams(queryCmd commander) *queryLabelValuesC
 	params.queryParams = addQueryParams(queryCmd)
 	queryCmd.Flag("top-n", "Show the top N high cardinality label values").Default("20").Uint64Var(&params.TopN)
 	return params
+}
+
+type queryListProfileIDsParams struct {
+	*queryParams
+	ProfileType string
+}
+
+func addQueryListProfileIDsParams(queryCmd commander) *queryListProfileIDsParams {
+	params := new(queryListProfileIDsParams)
+	params.queryParams = addQueryParams(queryCmd)
+	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
+	return params
+}
+
+func queryListProfileIDs(ctx context.Context, params *queryListProfileIDsParams) error {
+	from, to, err := params.parseFromTo()
+	if err != nil {
+		return err
+	}
+
+	level.Info(logger).Log("msg", "listing profile IDs from profile store", "url", params.URL, "from", from, "to", to, "query", params.Query, "type", params.ProfileType)
+
+	qc := params.phlareClient.queryClient()
+	step := float64(to.UnixMilli()-from.UnixMilli()) / 1000.0
+	if step <= 0 {
+		step = 1
+	}
+	resp, err := qc.SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
+		ProfileTypeID: params.ProfileType,
+		LabelSelector: params.Query,
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
+		Step:          step,
+		ExemplarType:  typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL,
+	}))
+	if err != nil {
+		return errors.Wrap(err, "failed to query")
+	}
+
+	logDiagnostics(params.phlareClient, resp.Header())
+
+	seen := make(map[string]struct{})
+	enc := json.NewEncoder(output(ctx))
+	for _, series := range resp.Msg.Series {
+		for _, point := range series.Points {
+			for _, exemplar := range point.Exemplars {
+				if _, ok := seen[exemplar.ProfileId]; ok {
+					continue
+				}
+				seen[exemplar.ProfileId] = struct{}{}
+				if err := enc.Encode(map[string]interface{}{
+					"profile_id": exemplar.ProfileId,
+					"timestamp":  exemplar.Timestamp,
+					"value":      exemplar.Value,
+				}); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCardinalityParams) (err error) {
