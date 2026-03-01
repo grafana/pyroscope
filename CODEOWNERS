@@ -56,6 +56,9 @@
 /pkg/phlaredb/schemas/v1/ @simonswine @aleks-p
 /pkg/parquet/ @simonswine
 
+# cmd
+/cmd/ @simonswine @marcsanmi @aleks-p @alsoba13 @korniltsev-grafanista @bryanhuhta
+
 # api
 /api/ @simonswine @marcsanmi @aleks-p
 
