@@ -355,6 +355,69 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 	return err
 }
 
+type querySpanProfileParams struct {
+	*queryParams
+	ProfileType  string
+	SpanSelector []string
+	MaxNodes     int64
+}
+
+func addQuerySpanProfileParams(queryCmd commander) *querySpanProfileParams {
+	params := new(querySpanProfileParams)
+	params.queryParams = addQueryParams(queryCmd)
+	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
+	queryCmd.Flag("span-selector", "List of span IDs to filter by (16 hex chars each, e.g. 9a517183f26a089d). Provide multiple times to select multiple spans.").StringsVar(&params.SpanSelector)
+	queryCmd.Flag("max-nodes", "Maximum number of nodes to return in the profile").Int64Var(&params.MaxNodes)
+	return params
+}
+
+func querySpanProfile(ctx context.Context, params *querySpanProfileParams, outputFlag string, force bool) error {
+	from, to, err := params.parseFromTo()
+	if err != nil {
+		return err
+	}
+	level.Info(logger).Log(
+		"msg", "query span profile from profile store",
+		"url", params.URL,
+		"from", from,
+		"to", to,
+		"query", params.Query,
+		"type", params.ProfileType,
+		"spans", fmt.Sprintf("%v", params.SpanSelector),
+	)
+
+	req := &querierv1.SelectMergeSpanProfileRequest{
+		ProfileTypeID: params.ProfileType,
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
+		LabelSelector: params.Query,
+		SpanSelector:  params.SpanSelector,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+	}
+	if params.MaxNodes > 0 {
+		req.MaxNodes = &params.MaxNodes
+	}
+
+	qc := params.phlareClient.queryClient()
+	resp, err := qc.SelectMergeSpanProfile(ctx, connect.NewRequest(req))
+	if err != nil {
+		return errors.Wrap(err, "failed to query span profile")
+	}
+	logDiagnostics(params.phlareClient, resp.Header())
+
+	tree, err := model.UnmarshalTree(resp.Msg.Tree)
+	if err != nil {
+		return errors.Wrap(err, "failed to unmarshal tree")
+	}
+
+	ty, err := model.ParseProfileTypeSelector(params.ProfileType)
+	if err != nil {
+		return err
+	}
+
+	return outputMergeProfile(ctx, outputFlag, force, pprof.FromTree(tree, ty, req.End*1e6))
+}
+
 type queryLabelValuesCardinalityParams struct {
 	*queryParams
 	TopN uint64

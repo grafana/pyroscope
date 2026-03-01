@@ -84,6 +84,10 @@ func main() {
 	querySeriesParams := addQuerySeriesParams(querySeriesCmd)
 	queryLabelValuesCardinalityCmd := queryCmd.Command("label-values-cardinality", "Request label values cardinality.")
 	queryLabelValuesCardinalityParams := addQueryLabelValuesCardinalityParams(queryLabelValuesCardinalityCmd)
+	querySpanProfileCmd := queryCmd.Command("span-profile", "Request merged profile filtered by span IDs.")
+	querySpanProfileOutput := querySpanProfileCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
+	querySpanProfileForce := querySpanProfileCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").Bool()
+	querySpanProfileParams := addQuerySpanProfileParams(querySpanProfileCmd)
 
 	queryTracerCmd := app.Command("query-tracer", "Analyze query traces.")
 	queryTracerParams := addQueryTracerParams(queryTracerCmd)
@@ -182,6 +186,10 @@ func main() {
 
 	case queryLabelValuesCardinalityCmd.FullCommand():
 		if err := queryLabelValuesCardinality(ctx, queryLabelValuesCardinalityParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case querySpanProfileCmd.FullCommand():
+		if err := querySpanProfile(ctx, querySpanProfileParams, *querySpanProfileOutput, *querySpanProfileForce); err != nil {
 			os.Exit(checkError(err))
 		}
 
