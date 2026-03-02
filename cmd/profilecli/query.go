@@ -381,12 +381,14 @@ func addQueryLabelValuesCardinalityParams(queryCmd commander) *queryLabelValuesC
 type queryListProfileIDsParams struct {
 	*queryParams
 	ProfileType string
+	Step        time.Duration
 }
 
 func addQueryListProfileIDsParams(queryCmd commander) *queryListProfileIDsParams {
 	params := new(queryListProfileIDsParams)
 	params.queryParams = addQueryParams(queryCmd)
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
+	queryCmd.Flag("step", "Step size for the query. Defaults to the full time range as a single step.").DurationVar(&params.Step)
 	return params
 }
 
@@ -399,7 +401,13 @@ func queryListProfileIDs(ctx context.Context, params *queryListProfileIDsParams)
 	level.Info(logger).Log("msg", "listing profile IDs from profile store", "url", params.URL, "from", from, "to", to, "query", params.Query, "type", params.ProfileType)
 
 	qc := params.phlareClient.queryClient()
-	step := float64(to.UnixMilli()-from.UnixMilli()) / 1000.0
+	var step float64
+	if params.Step > 0 {
+		step = params.Step.Seconds()
+	} else {
+		// Default: single step covering the full range.
+		step = float64(to.UnixMilli()-from.UnixMilli()) / 1000.0
+	}
 	if step <= 0 {
 		step = 1
 	}
