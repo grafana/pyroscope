@@ -39,7 +39,6 @@ func Build(l log.Logger, k8sClient K8sClient, upd ResolveUpdates, target TargetI
 		freq:      defaultFreq,
 	}
 	go until(func() {
-		r.wg.Add(1)
 		err := r.watch()
 		if err != nil && err != io.EOF {
 			l.Log("msg", "watching ended with error, will reconnect again", "err", err)
@@ -93,6 +92,7 @@ func (k *KResolver) resolve() {
 }
 
 func (k *KResolver) watch() error {
+	k.wg.Add(1)
 	defer k.wg.Done()
 	// watch endpoints lists existing endpoints at start
 	sw, err := watchEndpoints(k.ctx, k.k8sClient, k.target.ServiceNamespace, k.target.ServiceName)
