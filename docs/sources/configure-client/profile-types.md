@@ -58,7 +58,7 @@ This table lists the available profile types based on auto instrumentation using
 | Lock Count     |           | Yes  |           |
 | Lock Duration  |           | Yes  |           |
 | Exceptions     |           |      |           |
-| Wall           |           |      |           |
+| Wall           |           | Yes  |           |
 | Heap           |           |      |           |
 
 ### Instrumentation with SDKs
@@ -84,7 +84,7 @@ This table lists the available profile types based on the language SDK.
 | Lock Count     |           | Yes  | Yes        |      |        |      |         |
 | Lock Duration  |           | Yes  | Yes        |      |        |      |         |
 | Exceptions     |           |      | Yes        |      |        |      |         |
-| Wall           |           |      | Yes        |      |        |      | Yes     |
+| Wall           |           | Yes  | Yes        |      |        |      | Yes     |
 | Heap           |           |      | Yes (7.0+) |      |        |      | Yes     |
 
 ## Profile types supported with span profiles
