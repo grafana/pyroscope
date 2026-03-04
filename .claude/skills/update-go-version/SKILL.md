@@ -63,10 +63,14 @@ This updates and commits:
 
 ### 4. Update `toolchain` directive in go.mod and go.work files
 
-Update the `toolchain` directive to `goX.Y.Z` in all go.mod files and the root `go.work`:
+Update the `toolchain` directive to `goX.Y.Z` in all go.mod files using `go mod edit`, and the root `go.work` using `go work edit`:
 
 ```bash
+# For go.mod files:
 go mod edit -toolchain=goX.Y.Z <file>
+
+# For go.work files (go mod edit does NOT work on .work files):
+go work edit -toolchain=goX.Y.Z <file>
 ```
 
 **go.mod files:**
@@ -80,7 +84,7 @@ go mod edit -toolchain=goX.Y.Z <file>
 - `examples/language-sdk-instrumentation/golang-push/rideshare-k6/go.mod`
 - `examples/language-sdk-instrumentation/golang-push/simple/go.mod`
 
-**go.work (root only):**
+**go.work (root only — use `go work edit`):**
 - `go.work`
 
 #### Optional: update `go` directive (minor bump only)
@@ -90,14 +94,19 @@ The `go` directive sets the **minimum compatible Go version**. Only update it wh
 - The codebase uses a Go language feature from the newer minor version
 - The user explicitly requests it
 
-If updating the `go` directive, the `go` and `toolchain` values MUST differ to prevent Go from dropping the `toolchain` line. Use two separate `go mod edit` calls:
+If updating the `go` directive, the `go` and `toolchain` values MUST differ to prevent Go from dropping the `toolchain` line. Use two separate calls:
 
 ```bash
+# For go.mod files:
 go mod edit -go=X.Y.0 <file>
 go mod edit -toolchain=goX.Y.Z <file>
+
+# For go.work files (go mod edit does NOT work on .work files):
+go work edit -go=X.Y.0 <file>
+go work edit -toolchain=goX.Y.Z <file>
 ```
 
-Also update the `go` directive in all go.work files:
+Also update the `go` directive in all go.work files (use `go work edit`):
 - `go.work`
 - `examples/golang-pgo/go.work`
 - `examples/tracing/golang-push/go.work`
@@ -124,14 +133,26 @@ make go/bin
 
 If the build fails, investigate and fix before proceeding.
 
-### 7. Summary
+### 7. Commit remaining changes
+
+The script already committed CI/Dockerfile/release changes. Now commit the go.mod/go.work/go.sum changes:
+
+```bash
+git add -u *.mod *.sum *.work api/ lidia/ examples/
+```
+
+Use a commit message that reflects what changed:
+- Toolchain only: `"Update Go toolchain to goX.Y.Z"`
+- Toolchain + go directive: `"Update Go to X.Y.Z (go directive + toolchain)"`
+
+### 8. Summary
 
 Show the user:
 - Number of files modified
 - Old -> New version for each category (go directive, toolchain, CI, Dockerfiles)
 - Whether it was a minor or patch bump
 - Build verification result
-- Remaining uncommitted changes (go.mod/go.work/go.sum) for the user to review and commit
+- Remind user to review commits and push when ready
 
 ## Version semantics reference
 
