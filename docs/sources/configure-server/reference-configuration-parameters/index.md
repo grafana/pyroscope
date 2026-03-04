@@ -2383,6 +2383,13 @@ distributor_usage_groups:
 # is enforced in the distributor. 0 to disable, defaults to 10m.
 # CLI flag: -validation.reject-newer-than
 [reject_newer_than: <duration> | default = 10m]
+
+# Generate deterministic profile IDs based on profile content hash instead of
+# random UUIDs. If a client provides an ID, it will be used instead. When
+# enabled, IDs are generated from tenant ID, labels, raw profile bytes, and
+# original TimeNanos (if present) or trace ID (if TimeNanos is 0). Experimental.
+# CLI flag: -validation.profile-id-deterministic
+[profile_id_deterministic: <boolean> | default = false]
 ```
 
 ### s3_storage_backend
