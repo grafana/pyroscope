@@ -413,8 +413,8 @@ github.com/grafana/alloy/syntax v0.1.0 h1:+1xQakvQPH6N0y9+q2Fu5QePyzrve6i1wMNuXd
 github.com/grafana/alloy/syntax v0.1.0/go.mod h1:8H9ToCc1M8F6A+je4rIH6saIe1MUCmjSk+Uje+LNLEo=
 github.com/grafana/dskit v0.0.0-20250723143816-ff33c5829b96 h1:Wsc21GtcFgqqVuP6SCKaQDoliVW5Agcrmb3PYBUwYS4=
 github.com/grafana/dskit v0.0.0-20250723143816-ff33c5829b96/go.mod h1:kImsvJ1xnmeT9Z6StK+RdEKLzlpzBsKwJbEQfmBJdFs=
-github.com/grafana/jfr-parser v0.14.0 h1:WK9t4xZMei4kLGmumJ3aOHSzVaT9ZgXzUpOVJhRyweQ=
-github.com/grafana/jfr-parser v0.14.0/go.mod h1:2vR91w+TYF6Jrw+WJMd/uyAiNxE2BUY5xOsvglXXe78=
+github.com/grafana/jfr-parser v0.15.0 h1:CS78x/oV72Z+q17spr2N6AUFkucAWMKPwHYvj1uemWA=
+github.com/grafana/jfr-parser v0.15.0/go.mod h1:2vR91w+TYF6Jrw+WJMd/uyAiNxE2BUY5xOsvglXXe78=
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91 h1:/NipyHnOmvRsVzj81j2qE0VxsvsqhOB0f4vJIhk2qCQ=
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91/go.mod h1:MS2lj3INKhZjWNqd3N0m3J+Jxf3DAOnAH9VT3Sh9MUE=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=
