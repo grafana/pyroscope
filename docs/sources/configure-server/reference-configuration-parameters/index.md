@@ -277,6 +277,11 @@ self_profiling:
   # CLI flag: -self-profiling.use-k6-middleware
   [use_k6_middleware: <boolean> | default = false]
 
+  # Tenant ID for self-profiling data. If empty, no tenant header is sent
+  # (anonymous).
+  # CLI flag: -self-profiling.tenant-id
+  [tenant_id: <string> | default = ""]
+
 # When set to true, incoming HTTP requests must specify tenant ID in HTTP
 # X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
 # CLI flag: -auth.multitenancy-enabled
