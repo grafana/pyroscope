@@ -101,6 +101,7 @@ type queryProfileParams struct {
 	*queryParams
 	ProfileType        string
 	StacktraceSelector []string
+	SpanSelector       []string
 	MaxNodes           int64
 }
 
@@ -109,6 +110,7 @@ func addQueryProfileParams(queryCmd commander) *queryProfileParams {
 	params.queryParams = addQueryParams(queryCmd)
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
 	queryCmd.Flag("stacktrace-selector", "Only query locations with those symbols. Provide multiple times starting with the root").StringsVar(&params.StacktraceSelector)
+	queryCmd.Flag("span-selector", "Only query profiles with the given span IDs. Provide multiple times for multiple spans.").StringsVar(&params.SpanSelector)
 	queryCmd.Flag("max-nodes", "Maximum number of nodes to return in the profile").Int64Var(&params.MaxNodes)
 	return params
 }
@@ -120,29 +122,73 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 	}
 	level.Info(logger).Log("msg", "query aggregated profile from profile store", "url", params.URL, "from", from, "to", to, "query", params.Query, "type", params.ProfileType)
 
-	var locations []*typesv1.Location
-	if len(params.StacktraceSelector) > 0 {
-		locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
-		for _, cs := range params.StacktraceSelector {
-			locations = append(locations, &typesv1.Location{
-				Name: cs,
-			})
-		}
-		level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
+	if len(params.SpanSelector) > 0 && len(params.StacktraceSelector) > 0 {
+		return errors.New("--span-selector and --stacktrace-selector cannot be used together")
 	}
 
 	var profile *googlev1.Profile
 
-	if profileTree {
-		profile, err = queryProfileTree(ctx, params, from, to, locations)
+	if len(params.SpanSelector) > 0 {
+		level.Info(logger).Log("msg", "selecting with span selector", "spans", fmt.Sprintf("%v", params.SpanSelector))
+		profile, err = querySpanProfile(ctx, params, from, to)
 	} else {
-		profile, err = queryProfilePprof(ctx, params, from, to, locations)
+		var locations []*typesv1.Location
+		if len(params.StacktraceSelector) > 0 {
+			locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+			for _, cs := range params.StacktraceSelector {
+				locations = append(locations, &typesv1.Location{
+					Name: cs,
+				})
+			}
+			level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
+		}
+
+		if profileTree {
+			profile, err = queryProfileTree(ctx, params, from, to, locations)
+		} else {
+			profile, err = queryProfilePprof(ctx, params, from, to, locations)
+		}
 	}
 	if err != nil {
 		return err
 	}
 
 	return outputMergeProfile(ctx, outputFlag, force, profile)
+}
+
+func querySpanProfile(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time) (*googlev1.Profile, error) {
+	req := &querierv1.SelectMergeSpanProfileRequest{
+		ProfileTypeID: params.ProfileType,
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
+		LabelSelector: params.Query,
+		SpanSelector:  params.SpanSelector,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+	}
+
+	if params.MaxNodes > 0 {
+		req.MaxNodes = &params.MaxNodes
+	}
+
+	qc := params.phlareClient.queryClient()
+	resp, err := qc.SelectMergeSpanProfile(ctx, connect.NewRequest(req))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to query span profile")
+	}
+
+	logDiagnostics(params.phlareClient, resp.Header())
+
+	tree, err := model.UnmarshalTree(resp.Msg.Tree)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal tree")
+	}
+
+	ty, err := model.ParseProfileTypeSelector(params.ProfileType)
+	if err != nil {
+		return nil, err
+	}
+
+	return pprof.FromTree(tree, ty, req.End*1e6), nil
 }
 
 func queryProfilePprof(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, locations []*typesv1.Location) (*googlev1.Profile, error) {
