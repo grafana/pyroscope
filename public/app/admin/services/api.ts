@@ -303,6 +303,66 @@ export async function exportDiagnostic(
   return response.blob();
 }
 
+export async function exportBlocks(tenant: string, id: string): Promise<Blob> {
+  const basePath = getBasePath();
+  const response = await fetch(
+    `${basePath}/query-diagnostics/api/export-blocks/${encodeURIComponent(
+      id
+    )}?tenant=${encodeURIComponent(tenant)}`
+  );
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Failed to export blocks: ${response.status}`);
+  }
+  return response.blob();
+}
+
+export async function importBlocks(
+  tenant: string,
+  file: File
+): Promise<{ blocks_imported: number }> {
+  const basePath = getBasePath();
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(
+    `${basePath}/query-diagnostics/api/import-blocks?tenant=${encodeURIComponent(
+      tenant
+    )}`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  );
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Failed to import blocks: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function importBlock(
+  tenant: string,
+  blockData: Uint8Array
+): Promise<{ block_id: string; path: string }> {
+  const basePath = getBasePath();
+  const response = await fetch(
+    `${basePath}/query-diagnostics/api/import-block?tenant=${encodeURIComponent(
+      tenant
+    )}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: blockData,
+    }
+  );
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Failed to import block: ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function importDiagnostic(
   tenant: string,
   file: File

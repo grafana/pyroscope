@@ -47,10 +47,14 @@ func (a *API) RegisterQueryDiagnosticsAdmin(adm *querydiagnostics.Admin) {
 	a.RegisterRoute("/query-diagnostics/api/diagnostics", adm.DiagnosticsListAPIHandler(), a.registerOptionsRingPage()...)
 	a.RegisterRoute("/query-diagnostics/api/diagnostics/", adm.DiagnosticsGetAPIHandler(), WithGzipMiddleware(), WithMethod("GET"), WithPrefix())
 	a.RegisterRoute("/query-diagnostics/api/export/", adm.DiagnosticsExportAPIHandler(), WithMethod("GET"), WithPrefix())
+	a.RegisterRoute("/query-diagnostics/api/export-blocks/", adm.ExportBlocksAPIHandler(), WithMethod("GET"), WithPrefix())
 	a.RegisterRoute("/query-diagnostics/api/import", adm.DiagnosticsImportAPIHandler(), WithMethod("POST"))
+	a.RegisterRoute("/query-diagnostics/import-blocks", adm.ImportBlocksHandler(), a.registerOptionsRingPage()...)
+	a.RegisterRoute("/query-diagnostics/api/import-block", adm.ImportBlockAPIHandler(), WithMethod("POST"))
 
 	a.indexPage.AddLinks(defaultWeight, "Query Diagnostics", []IndexPageLink{
 		{Desc: "Collect Diagnostics", Path: "/query-diagnostics"},
 		{Desc: "View Stored Diagnostics", Path: "/query-diagnostics/list"},
+		{Desc: "Import Blocks", Path: "/query-diagnostics/import-blocks"},
 	})
 }
