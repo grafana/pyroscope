@@ -139,10 +139,11 @@ func (c *StorageConfig) RegisterFlags(f *flag.FlagSet) {
 }
 
 type SelfProfilingConfig struct {
-	DisablePush          bool `yaml:"disable_push,omitempty"`
-	MutexProfileFraction int  `yaml:"mutex_profile_fraction,omitempty"`
-	BlockProfileRate     int  `yaml:"block_profile_rate,omitempty"`
-	UseK6Middleware      bool `yaml:"use_k6_middleware,omitempty"`
+	DisablePush          bool   `yaml:"disable_push,omitempty"`
+	MutexProfileFraction int    `yaml:"mutex_profile_fraction,omitempty"`
+	BlockProfileRate     int    `yaml:"block_profile_rate,omitempty"`
+	UseK6Middleware      bool   `yaml:"use_k6_middleware,omitempty"`
+	TenantID             string `yaml:"tenant_id,omitempty"`
 }
 
 func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
@@ -160,6 +161,12 @@ func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
 		"self-profiling.use-k6-middleware",
 		false,
 		"Read k6 labels from request headers and set them as dynamic profile tags.",
+	)
+	f.StringVar(
+		&c.TenantID,
+		"self-profiling.tenant-id",
+		"",
+		"Tenant ID for self-profiling data. If empty, no tenant header is sent (anonymous).",
 	)
 }
 
@@ -602,6 +609,7 @@ func (f *Pyroscope) Run() error {
 			_, err := pyroscope.Start(pyroscope.Config{
 				ApplicationName: "pyroscope",
 				ServerAddress:   fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort),
+				TenantID:        f.Cfg.SelfProfiling.TenantID,
 				Tags: map[string]string{
 					"hostname":           os.Getenv("HOSTNAME"),
 					"target":             "all",
