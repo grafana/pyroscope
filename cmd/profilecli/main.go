@@ -84,6 +84,8 @@ func main() {
 	querySeriesParams := addQuerySeriesParams(querySeriesCmd)
 	queryLabelValuesCardinalityCmd := queryCmd.Command("label-values-cardinality", "Request label values cardinality.")
 	queryLabelValuesCardinalityParams := addQueryLabelValuesCardinalityParams(queryLabelValuesCardinalityCmd)
+	queryListProfileIDsCmd := queryCmd.Command("list-profile-ids", "List profile IDs available in a time range.")
+	queryListProfileIDsParams := addQueryListProfileIDsParams(queryListProfileIDsCmd)
 
 	queryTracerCmd := app.Command("query-tracer", "Analyze query traces.")
 	queryTracerParams := addQueryTracerParams(queryTracerCmd)
@@ -182,6 +184,10 @@ func main() {
 
 	case queryLabelValuesCardinalityCmd.FullCommand():
 		if err := queryLabelValuesCardinality(ctx, queryLabelValuesCardinalityParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case queryListProfileIDsCmd.FullCommand():
+		if err := queryListProfileIDs(ctx, queryListProfileIDsParams); err != nil {
 			os.Exit(checkError(err))
 		}
 
