@@ -23,6 +23,11 @@ sed -E -i.bak 's/GO_VERSION=[0-9.]+/GO_VERSION='$1'/g' .pyroscope.yaml tools/upd
 DOCKER_FILES=$(git ls-files '**/Dockerfile*' | grep -v ebpf/symtab/elf/testdata/Dockerfile)
 sed -E -i.bak 's/golang:[0-9.]+/golang:'$1'/g' $DOCKER_FILES
 
+# update toolchain in go.mod files
+GO_MOD_FILES=$(git ls-files 'go.work' '**go.mod')
+sed -i 's/toolchain go[0-9\.]\+/toolchain go'$1'/g' $GO_MOD_FILES
+git add -u $GO_MOD_FILES
+
 # clean up backup files created by sed -i.bak
 find . -name '*.bak' -delete
 
