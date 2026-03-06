@@ -39,43 +39,41 @@ Report these to the user before making changes.
 
 ### 2. Determine bump type
 
-Compare the target version against the current `go` directive in `go.mod`:
+Compare the target version against the current `toolchain` directive in `go.mod`:
 
-- **Same minor** (e.g. current `go 1.25.0`, target `1.25.7`): this is a **patch bump**. Only the `toolchain` directive and build/CI files need updating. The `go` directive stays as-is.
-- **Different minor** (e.g. current `go 1.24.6`, target `1.25.7`): this is a **minor bump**. Both the `go` directive and `toolchain` directive need updating, plus build/CI files.
+- **Same minor** (e.g. current `toolchain go1.25.3`, target `1.25.7`): **patch bump**. Only the `toolchain` directive and build/CI files need updating.
+- **Different minor** (e.g. current `toolchain go1.24.9`, target `1.25.7`): **minor bump**. The `toolchain` directive and build/CI files need updating. Ask the user whether to also update the `go` directive (see step 4).
 
 Tell the user which type was detected before proceeding.
 
-### 3. Update go.mod and go.work files
+### 3. Run the upgrade script
 
-**Important:** Do NOT run `go mod tidy` or `go work sync` manually. Step 7 handles module synchronization correctly using `make go/mod`.
-
-#### For a minor bump
-
-The `go` directive sets the minimum compatible version, the `toolchain` directive sets the exact build version. They MUST be different to prevent Go from dropping the `toolchain` line.
-
-- Set `go` directive to `X.Y.0` (the base of the new minor)
-- Set `toolchain` directive to `goX.Y.Z` (the exact target patch version, which must be > X.Y.0)
-
-Use two separate `go mod edit` calls to ensure the toolchain line is preserved:
-```bash
-go mod edit -go=X.Y.0 <file>
-go mod edit -toolchain=goX.Y.Z <file>
-```
-
-If using a single `go mod edit -go=X.Y.0 -toolchain=goX.Y.Z` and both values are the same, Go will DROP the toolchain line. Always ensure they differ.
-
-#### For a patch bump
-
-Update only the `toolchain` directive to `goX.Y.Z` in all go.mod files and the root `go.work`. Do NOT change the `go` directive.
+The `tools/upgrade-go-version.sh` script handles CI, Dockerfile, and release config updates. It also creates a git commit with those changes:
 
 ```bash
-go mod edit -toolchain=goX.Y.Z <file>
+bash tools/upgrade-go-version.sh X.Y.Z
 ```
 
-#### Files to update
+This updates and commits:
+- `.github/workflows/*.yml` — `go-version:` values
+- `.goreleaser.yaml` — version check hook
+- `.pyroscope.yaml` — `ref:` for Go stdlib source linking and `GO_VERSION`
+- `tools/update_examples.Dockerfile` — `GO_VERSION` ARG
+- All Go Dockerfiles — `FROM golang:` base image tag (excluding ebpf testdata)
 
-**go.mod files (all need both `go` and `toolchain` for minor bumps, only `toolchain` for patch bumps):**
+### 4. Update `toolchain` directive in go.mod and go.work files
+
+Update the `toolchain` directive to `goX.Y.Z` in all go.mod files using `go mod edit`, and the root `go.work` using `go work edit`:
+
+```bash
+# For go.mod files:
+go mod edit -toolchain=goX.Y.Z <file>
+
+# For go.work files (go mod edit does NOT work on .work files):
+go work edit -toolchain=goX.Y.Z <file>
+```
+
+**go.mod files:**
 - `go.mod`
 - `api/go.mod`
 - `lidia/go.mod`
@@ -86,81 +84,48 @@ go mod edit -toolchain=goX.Y.Z <file>
 - `examples/language-sdk-instrumentation/golang-push/rideshare-k6/go.mod`
 - `examples/language-sdk-instrumentation/golang-push/simple/go.mod`
 
-**go.work files (edit directly with sed or text editing):**
-- `go.work` (has both `go` and `toolchain` lines)
-- `examples/golang-pgo/go.work` (only `go` line, no `toolchain`)
-- `examples/tracing/golang-push/go.work` (only `go` line)
-- `examples/language-sdk-instrumentation/golang-push/rideshare/go.work` (only `go` line)
-- `examples/language-sdk-instrumentation/golang-push/rideshare-alloy/go.work` (only `go` line)
-- `examples/language-sdk-instrumentation/golang-push/rideshare-k6/go.work` (only `go` line)
-- `examples/language-sdk-instrumentation/golang-push/simple/go.work` (only `go` line)
+**go.work (root only — use `go work edit`):**
+- `go.work`
 
-For go.work files:
-- **Minor bump**: update the `go` directive to `X.Y.0` in all go.work files, and update the `toolchain` directive to `goX.Y.Z` in the root `go.work`.
-- **Patch bump**: update only the `toolchain` directive to `goX.Y.Z` in the root `go.work`. Do not touch example go.work files (they have no `toolchain` line).
+#### Optional: update `go` directive (minor bump only)
 
-### 4. Update CI workflows
+The `go` directive sets the **minimum compatible Go version**. Only update it when:
+- A dependency requires a newer Go version
+- The codebase uses a Go language feature from the newer minor version
+- The user explicitly requests it
 
-Update `go-version:` in all GitHub Actions workflow files to the exact target version `X.Y.Z`. The version may be quoted or unquoted:
+If updating the `go` directive, the `go` and `toolchain` values MUST differ to prevent Go from dropping the `toolchain` line. Use two separate calls:
 
-Files to update (check each one):
-- `.github/workflows/ci.yml` (6 occurrences)
-- `.github/workflows/fuzzer.yml`
-- `.github/workflows/release.yml`
-- `.github/workflows/test-examples.yml`
-- `.github/workflows/update-contributors.yml`
-- `.github/workflows/weekly-release.yml`
-
-### 5. Update Dockerfiles
-
-Update `FROM golang:` base images to the exact target version `X.Y.Z` in all Go example Dockerfiles.
-
-Find them with:
 ```bash
-git ls-files '**/Dockerfile*' | xargs grep -l 'golang:[0-9]' | grep -v ebpf/symtab/elf/testdata
+# For go.mod files:
+go mod edit -go=X.Y.0 <file>
+go mod edit -toolchain=goX.Y.Z <file>
+
+# For go.work files (go mod edit does NOT work on .work files):
+go work edit -go=X.Y.0 <file>
+go work edit -toolchain=goX.Y.Z <file>
 ```
 
-**Do NOT touch:**
-- Non-Go Dockerfiles (dotnet, java, python, nodejs — they don't use `golang:` images)
-- `examples/grafana-alloy-auto-instrumentation/ebpf-otel/Dockerfile.demo` (uses `golang:1.22-alpine`, intentionally pinned to an older version)
-- Any Dockerfile under `ebpf/symtab/elf/testdata/`
+Also update the `go` directive in all go.work files (use `go work edit`):
+- `go.work`
+- `examples/golang-pgo/go.work`
+- `examples/tracing/golang-push/go.work`
+- `examples/language-sdk-instrumentation/golang-push/rideshare/go.work`
+- `examples/language-sdk-instrumentation/golang-push/rideshare-alloy/go.work`
+- `examples/language-sdk-instrumentation/golang-push/rideshare-k6/go.work`
+- `examples/language-sdk-instrumentation/golang-push/simple/go.work`
 
-### 6. Update build and release configuration
-
-- **`.goreleaser.yaml`**: Update the version check hook string:
-  ```
-  go version | grep "go version goX.Y.Z "
-  ```
-
-- **`.pyroscope.yaml`**: Update the Go source code ref for symbol resolution:
-  ```yaml
-  ref: goX.Y.Z
-  ```
-
-- **`tools/update_examples.Dockerfile`**: Update the `GO_VERSION` ARG:
-  ```
-  ARG GO_VERSION=X.Y.Z
-  ```
-
-### 7. Synchronize Go modules
-
-Run the project's standard module sync target:
+### 5. Synchronize Go modules
 
 ```bash
 make go/mod
 ```
 
-This runs `go work sync` and `go mod tidy` across all modules in the correct order. It is **required** because:
-- CI runs `check/go/mod` which verifies modules are tidy — skipping this will fail CI
-- Bumping the `go` directive changes the `go.sum` checksum retention window
-- Minor version bumps may cause small, legitimate dependency adjustments (e.g. transitive minimum versions)
+This runs `go work sync` and `go mod tidy` across all modules. Required because CI runs `check/go/mod`.
 
-Review the resulting diff. Expected changes:
-- `go.sum` additions/removals (checksum window shift) — **normal**
-- Small indirect dependency version bumps in `go.mod` files — **normal for minor bumps**
-- Large unexpected dependency changes — **investigate before committing**
+Review the diff. Expected: `go.sum` changes, small indirect dependency bumps. Investigate anything unexpected.
 
-### 8. Verify the build
+### 6. Verify the build
 
 ```bash
 make go/bin
@@ -168,32 +133,32 @@ make go/bin
 
 If the build fails, investigate and fix before proceeding.
 
-### 9. Summary
+### 7. Commit remaining changes
 
-After all changes, show the user:
+The script already committed CI/Dockerfile/release changes. Now commit the go.mod/go.work/go.sum changes:
+
+```bash
+git add -u *.mod *.sum *.work api/ lidia/ examples/
+```
+
+Use a commit message that reflects what changed:
+- Toolchain only: `"Update Go toolchain to goX.Y.Z"`
+- Toolchain + go directive: `"Update Go to X.Y.Z (go directive + toolchain)"`
+
+### 8. Summary
+
+Show the user:
 - Number of files modified
-- Old version -> New version for each category (go directive, toolchain, CI, Dockerfiles)
+- Old -> New version for each category (go directive, toolchain, CI, Dockerfiles)
 - Whether it was a minor or patch bump
 - Build verification result
-- Summary of `make go/mod` changes (any dependency adjustments)
+- Remind user to review commits and push when ready
 
 ## Version semantics reference
 
 | Directive | Meaning | When to update |
 |-----------|---------|---------------|
-| `go X.Y.0` | Minimum Go version for compatibility | Minor bumps only |
+| `go X.Y.Z` | Minimum Go version for compatibility | Only when a dependency or language feature requires it |
 | `toolchain goX.Y.Z` | Exact build version (bug fixes, security) | Every bump (patch and minor) |
-| CI `go-version` | Exact version CI uses to build/test | Every bump |
-| Dockerfile `golang:X.Y.Z` | Exact version for container builds | Every bump |
-
-## Files Reference
-
-| Category | Files | What changes |
-|----------|-------|-------------|
-| Go modules | `go.mod`, `api/go.mod`, `lidia/go.mod`, `examples/**/go.mod` | `go` directive (minor bump) + `toolchain` directive (always) |
-| Go workspaces | `go.work`, `examples/**/go.work` | `go` directive (minor bump) + `toolchain` directive (root only) |
-| CI workflows | `.github/workflows/*.yml` | `go-version:` value |
-| Dockerfiles | `examples/**/Dockerfile*` (Go ones only) | `FROM golang:` base image tag |
-| Release | `.goreleaser.yaml` | Version check hook |
-| Profiling | `.pyroscope.yaml` | `ref:` for Go stdlib source linking |
-| Build tools | `tools/update_examples.Dockerfile` | `GO_VERSION` ARG |
+| CI `go-version` | Exact version CI uses to build/test | Every bump (via script) |
+| Dockerfile `golang:X.Y.Z` | Exact version for container builds | Every bump (via script) |

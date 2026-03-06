@@ -16,6 +16,6 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.24.13
+          go-version: 1.25.7
       - name: Run Fuzz_Merge_Single
         run: go test -fuzz=Fuzz_Merge_Single --fuzztime 1h -run '^$' -v ./pkg/pprof/
