@@ -26,6 +26,17 @@ func TestSchemaMatch(t *testing.T) {
 		"required group element",
 	)
 
+	// The Sample struct uses []byte for TraceID (produces "optional binary TraceID")
+	// while ProfilesSchema uses FixedLenByteArray(16) for storage efficiency.
+	// parquet-go cannot reconstruct optional FixedLenByteArray into fixed-size
+	// Go types ([16]byte) via reflection, so []byte is used in the struct.
+	profilesStructSchema = strings.Replace(
+		profilesStructSchema,
+		"optional binary TraceID;",
+		"optional fixed_len_byte_array(16) TraceID;",
+		1,
+	)
+
 	require.Equal(t, profilesStructSchema, ProfilesSchema.String())
 
 	stacktracesStructSchema := parquet.SchemaOf(&storedStacktrace{})

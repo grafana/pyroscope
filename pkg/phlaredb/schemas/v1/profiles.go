@@ -39,6 +39,7 @@ var (
 		phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("Labels", pprofLabels),
 		phlareparquet.NewGroupField("SpanID", parquet.Optional(parquet.Encoded(parquet.Uint(64), &parquet.RLEDictionary))),
+		phlareparquet.NewGroupField("TraceID", parquet.Optional(parquet.Leaf(parquet.FixedLenByteArrayType(16)))),
 	}
 	ProfilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
 		phlareparquet.NewGroupField("ID", parquet.UUID()),
@@ -79,6 +80,7 @@ var (
 	sampleStacktraceIDColumnPath = strings.Split("Samples.list.element.StacktraceID", ".")
 	SampleValueColumnPath        = strings.Split("Samples.list.element.Value", ".")
 	sampleSpanIDColumnPath       = strings.Split("Samples.list.element.SpanID", ".")
+	sampleTraceIDColumnPath      = strings.Split("Samples.list.element.TraceID", ".")
 
 	maxProfileRow               parquet.Row
 	seriesIndexColIndex         int
@@ -95,6 +97,8 @@ var (
 
 	downsampledValueColIndex           int
 	downsampledAnnotationValueColIndex int
+
+	emptyTraceID [16]byte
 
 	ErrColumnNotFound = fmt.Errorf("column path not found")
 )
@@ -162,6 +166,7 @@ type SampleColumns struct {
 	StacktraceID parquet.LeafColumn
 	Value        parquet.LeafColumn
 	SpanID       parquet.LeafColumn
+	TraceID      parquet.LeafColumn
 }
 
 func (c *SampleColumns) Resolve(schema *parquet.Schema) error {
@@ -174,11 +179,16 @@ func (c *SampleColumns) Resolve(schema *parquet.Schema) error {
 	}
 	// Optional.
 	c.SpanID, _ = ResolveColumnByPath(schema, sampleSpanIDColumnPath)
+	c.TraceID, _ = ResolveColumnByPath(schema, sampleTraceIDColumnPath)
 	return nil
 }
 
 func (c *SampleColumns) HasSpanID() bool {
 	return c.SpanID.Node != nil
+}
+
+func (c *SampleColumns) HasTraceID() bool {
+	return c.TraceID.Node != nil
 }
 
 func ResolveColumnByPath(schema *parquet.Schema, path []string) (parquet.LeafColumn, error) {
@@ -193,6 +203,7 @@ type Sample struct {
 	Value        int64              `parquet:",delta"`
 	Labels       []*profilev1.Label `parquet:",list"`
 	SpanID       uint64             `parquet:",optional"`
+	TraceID      []byte             `parquet:",optional"`
 }
 
 type Profile struct {
@@ -368,6 +379,9 @@ type Samples struct {
 	// Span associated with samples.
 	// Optional: Spans == nil, if not present.
 	Spans []uint64
+	// Trace associated with samples.
+	// Optional: TraceIDs == nil, if not present.
+	TraceIDs [][16]byte
 }
 
 func NewSamples(size int) Samples {
@@ -422,6 +436,9 @@ func (s Samples) Range(n, m int) Samples {
 	if len(s.Spans) > 0 {
 		x.Spans = s.Spans[n:m]
 	}
+	if len(s.TraceIDs) > 0 {
+		x.TraceIDs = s.TraceIDs[n:m]
+	}
 	return x
 }
 
@@ -452,6 +469,9 @@ func trimZeroAndNegativeSamples(samples Samples) Samples {
 			if len(samples.Spans) > 0 {
 				samples.Spans[n] = samples.Spans[j]
 			}
+			if len(samples.TraceIDs) > 0 {
+				samples.TraceIDs[n] = samples.TraceIDs[j]
+			}
 			n++
 		}
 	}
@@ -462,6 +482,9 @@ func trimZeroAndNegativeSamples(samples Samples) Samples {
 	if len(samples.Spans) > 0 {
 		s.Spans = samples.Spans[:n]
 	}
+	if len(samples.TraceIDs) > 0 {
+		s.TraceIDs = samples.TraceIDs[:n]
+	}
 	return s
 }
 
@@ -470,6 +493,7 @@ func cloneSamples(samples Samples) Samples {
 		StacktraceIDs: copySlice(samples.StacktraceIDs),
 		Values:        copySlice(samples.Values),
 		Spans:         copySlice(samples.Spans),
+		TraceIDs:      copySlice(samples.TraceIDs),
 	}
 }
 
@@ -482,6 +506,9 @@ func (s Samples) Swap(i, j int) {
 	s.Values[i], s.Values[j] = s.Values[j], s.Values[i]
 	if len(s.Spans) > 0 {
 		s.Spans[i], s.Spans[j] = s.Spans[j], s.Spans[i]
+	}
+	if len(s.TraceIDs) > 0 {
+		s.TraceIDs[i], s.TraceIDs[j] = s.TraceIDs[j], s.TraceIDs[i]
 	}
 }
 
@@ -500,6 +527,9 @@ func (s SamplesBySpanID) Swap(i, j int) {
 	s.Values[i], s.Values[j] = s.Values[j], s.Values[i]
 	if len(s.Spans) > 0 {
 		s.Spans[i], s.Spans[j] = s.Spans[j], s.Spans[i]
+	}
+	if len(s.TraceIDs) > 0 {
+		s.TraceIDs[i], s.TraceIDs[j] = s.TraceIDs[j], s.TraceIDs[i]
 	}
 }
 
@@ -630,6 +660,31 @@ func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row 
 		}
 	}
 
+	newCol()
+	repetition = -1
+	if len(imp.Samples.TraceIDs) == 0 {
+		if len(imp.Samples.Values) == 0 {
+			row = append(row, parquet.Value{}.Level(0, 0, col))
+		}
+		for range imp.Samples.Values {
+			if repetition < 1 {
+				repetition++
+			}
+			row = append(row, parquet.Value{}.Level(repetition, 1, col))
+		}
+	} else {
+		for i := range imp.Samples.TraceIDs {
+			if repetition < 1 {
+				repetition++
+			}
+			if imp.Samples.TraceIDs[i] == emptyTraceID {
+				row = append(row, parquet.Value{}.Level(repetition, 1, col))
+			} else {
+				row = append(row, parquet.FixedLenByteArrayValue(imp.Samples.TraceIDs[i][:]).Level(repetition, 2, col))
+			}
+		}
+	}
+
 	if imp.DropFrames == 0 {
 		row = append(row, parquet.Value{}.Level(0, 0, newCol()))
 	} else {
@@ -696,12 +751,12 @@ func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row 
 }
 
 func profileColumnCount(imp InMemoryProfile) int {
-	var totalCols = 10 + (7 * len(imp.Samples.StacktraceIDs)) + len(imp.Comments) + 2*len(imp.Annotations.Keys)
+	var totalCols = 10 + (8 * len(imp.Samples.StacktraceIDs)) + len(imp.Comments) + 2*len(imp.Annotations.Keys)
 	if len(imp.Comments) == 0 {
 		totalCols++
 	}
 	if len(imp.Samples.StacktraceIDs) == 0 {
-		totalCols += 7
+		totalCols += 8
 	}
 	if len(imp.Annotations.Keys) == 0 {
 		totalCols += 2

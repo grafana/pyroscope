@@ -570,7 +570,18 @@ func TestColumnCount(t *testing.T) {
 				Spans:         []uint64{1, 2, 3},
 			},
 			Comments: []int64{1, 2, 3},
-		}}
+		},
+		{
+			SeriesIndex: 1,
+			TimeNanos:   2,
+			Samples: Samples{
+				StacktraceIDs: []uint32{1, 2, 3},
+				Values:        []uint64{1, 2, 3},
+				Spans:         []uint64{1, 2, 3},
+				TraceIDs:      [][16]byte{{1}, {2}, {3}},
+			},
+		},
+	}
 	for _, profile := range profiles {
 		count := profileColumnCount(profile)
 
@@ -578,5 +589,37 @@ func TestColumnCount(t *testing.T) {
 		assert.Equal(t, len(row), count)
 		assert.Equal(t, cap(row), count)
 	}
+}
 
+func TestSampleColumnsHasTraceID(t *testing.T) {
+	t.Run("new schema has TraceID", func(t *testing.T) {
+		var columns SampleColumns
+		err := columns.Resolve(ProfilesSchema)
+		require.NoError(t, err)
+		assert.True(t, columns.HasSpanID())
+		assert.True(t, columns.HasTraceID())
+	})
+
+	t.Run("old schema without TraceID", func(t *testing.T) {
+		// Simulate an old schema that doesn't have TraceID
+		oldSampleField := phlareparquet.Group{
+			phlareparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+			phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
+			phlareparquet.NewGroupField("Labels", pprofLabels),
+			phlareparquet.NewGroupField("SpanID", parquet.Optional(parquet.Encoded(parquet.Uint(64), &parquet.RLEDictionary))),
+		}
+		oldSchema := parquet.NewSchema("Profile", phlareparquet.Group{
+			phlareparquet.NewGroupField("ID", parquet.UUID()),
+			phlareparquet.NewGroupField(SeriesIndexColumnName, parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
+			phlareparquet.NewGroupField(StacktracePartitionColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+			phlareparquet.NewGroupField(TotalValueColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+			phlareparquet.NewGroupField(SamplesColumnName, parquet.List(oldSampleField)),
+			phlareparquet.NewGroupField(TimeNanosColumnName, parquet.Timestamp(parquet.Nanosecond)),
+		})
+		var columns SampleColumns
+		err := columns.Resolve(oldSchema)
+		require.NoError(t, err)
+		assert.True(t, columns.HasSpanID())
+		assert.False(t, columns.HasTraceID())
+	})
 }
