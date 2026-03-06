@@ -23,7 +23,7 @@ import (
 //	i+4 = total   , right tree
 //	i+5 = self    , right tree
 //	i+6 = index in the names array
-func NewFlamegraphDiff(left, right *Tree, maxNodes int64) (*querierv1.FlameGraphDiff, error) {
+func NewFlamegraphDiff(left, right *FunctionNameTree, maxNodes int64) (*querierv1.FlameGraphDiff, error) {
 	// The algorithm doesn't work properly with negative nodes
 	// Although it's possible to silently drop these nodes
 	// Let's fail early and analyze properly with real data when the issue happens
@@ -65,15 +65,16 @@ func NewFlamegraphDiff(left, right *Tree, maxNodes int64) (*querierv1.FlameGraph
 
 		name := left.name
 		if left.total >= minVal || rght.total >= minVal || name == "other" {
-			i, ok := nameLocationCache[name]
+			nameStr := string(name)
+			i, ok := nameLocationCache[nameStr]
 			if !ok {
 				i = len(res.Names)
-				nameLocationCache[name] = i
+				nameLocationCache[nameStr] = i
 				if i == 0 {
-					name = "total"
+					nameStr = "total"
 				}
 
-				res.Names = append(res.Names, name)
+				res.Names = append(res.Names, nameStr)
 			}
 
 			if level == len(res.Levels) {
@@ -120,7 +121,7 @@ func NewFlamegraphDiff(left, right *Tree, maxNodes int64) (*querierv1.FlameGraph
 			if otherLeftTotal != 0 || otherRghtTotal != 0 {
 				levels = prependInt(levels, level+1)
 				{
-					leftNode := &node{
+					leftNode := &node[FuntionName]{
 						name:  "other",
 						total: otherLeftTotal,
 						self:  otherLeftTotal,
@@ -129,7 +130,7 @@ func NewFlamegraphDiff(left, right *Tree, maxNodes int64) (*querierv1.FlameGraph
 					leftNodes = prependTreeNode(leftNodes, leftNode)
 				}
 				{
-					rghtNode := &node{
+					rghtNode := &node[FuntionName]{
 						name:  "other",
 						total: otherRghtTotal,
 						self:  otherRghtTotal,
@@ -153,11 +154,11 @@ func NewFlamegraphDiff(left, right *Tree, maxNodes int64) (*querierv1.FlameGraph
 }
 
 func NewFlamegraphDiffFromBytes(left, right []byte, maxNodes int64) (*querierv1.FlameGraphDiff, error) {
-	l, err := UnmarshalTree(left)
+	l, err := UnmarshalTree[FuntionName, FuntionNameI](left)
 	if err != nil {
 		return nil, err
 	}
-	r, err := UnmarshalTree(right)
+	r, err := UnmarshalTree[FuntionName, FuntionNameI](right)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +168,7 @@ func NewFlamegraphDiffFromBytes(left, right []byte, maxNodes int64) (*querierv1.
 // combineTree aligns 2 trees by making them having the same structure with the
 // same number of nodes
 // It also makes the tree have a single root
-func combineTree(leftTree, rightTree *Tree) (*Tree, *Tree) {
+func combineTree(leftTree, rightTree *FunctionNameTree) (*FunctionNameTree, *FunctionNameTree) {
 	leftTotal := int64(0)
 	for _, l := range leftTree.root {
 		leftTotal = leftTotal + l.total
@@ -180,16 +181,16 @@ func combineTree(leftTree, rightTree *Tree) (*Tree, *Tree) {
 
 	// differently from pyroscope, there could be multiple roots
 	// so we add a fake root as expected
-	leftTree = &Tree{
-		root: []*node{{
+	leftTree = &FunctionNameTree{
+		root: []*node[FuntionName]{{
 			children: leftTree.root,
 			total:    leftTotal,
 			self:     0,
 		}},
 	}
 
-	rightTree = &Tree{
-		root: []*node{{
+	rightTree = &FunctionNameTree{
+		root: []*node[FuntionName]{{
 			children: rightTree.root,
 			total:    rightTotal,
 			self:     0,
@@ -216,10 +217,10 @@ func combineTree(leftTree, rightTree *Tree) (*Tree, *Tree) {
 // combineNodes makes 2 slices of nodes equal
 // by filling with non existing nodes
 // and sorting lexicographically
-func combineNodes(leftNodes, rghtNodes []*node) ([]*node, []*node) {
+func combineNodes(leftNodes, rghtNodes []*node[FuntionName]) ([]*node[FuntionName], []*node[FuntionName]) {
 	size := nextPow2(max(len(leftNodes), len(rghtNodes)))
-	leftResult := make([]*node, 0, size)
-	rghtResult := make([]*node, 0, size)
+	leftResult := make([]*node[FuntionName], 0, size)
+	rghtResult := make([]*node[FuntionName], 0, size)
 
 	for len(leftNodes) != 0 && len(rghtNodes) != 0 {
 		left, rght := leftNodes[0], rghtNodes[0]
@@ -230,11 +231,11 @@ func combineNodes(leftNodes, rghtNodes []*node) ([]*node, []*node) {
 			leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
 		case -1:
 			leftResult = append(leftResult, left)
-			rghtResult = append(rghtResult, &node{name: left.name})
+			rghtResult = append(rghtResult, &node[FuntionName]{name: left.name})
 
 			leftNodes = leftNodes[1:]
 		case 1:
-			leftResult = append(leftResult, &node{name: rght.name})
+			leftResult = append(leftResult, &node[FuntionName]{name: rght.name})
 			rghtResult = append(rghtResult, rght)
 			rghtNodes = rghtNodes[1:]
 		}
@@ -242,10 +243,10 @@ func combineNodes(leftNodes, rghtNodes []*node) ([]*node, []*node) {
 	leftResult = append(leftResult, leftNodes...)
 	rghtResult = append(rghtResult, rghtNodes...)
 	for _, left := range leftNodes {
-		rghtResult = append(rghtResult, &node{name: left.name})
+		rghtResult = append(rghtResult, &node[FuntionName]{name: left.name})
 	}
 	for _, rght := range rghtNodes {
-		leftResult = append(leftResult, &node{name: rght.name})
+		leftResult = append(leftResult, &node[FuntionName]{name: rght.name})
 	}
 	return leftResult, rghtResult
 }
@@ -261,11 +262,11 @@ func nextPow2(a int) int {
 	return a
 }
 
-func combineMinValues(leftTree, rightTree *Tree, maxNodes int) uint64 {
+func combineMinValues(leftTree, rightTree *FunctionNameTree, maxNodes int) uint64 {
 	if maxNodes < 1 {
 		return 0
 	}
-	treeSize := leftTree.size(make([]*node, 0, defaultDFSSize))
+	treeSize := leftTree.size(make([]*node[FuntionName], 0, defaultDFSSize))
 	if treeSize <= int64(maxNodes) {
 		return 0
 	}
@@ -291,7 +292,7 @@ func combineMinValues(leftTree, rightTree *Tree, maxNodes int) uint64 {
 }
 
 // iterate both trees, both trees must be returned from combineTree
-func combineIterateWithTotal(leftTree, rightTree *Tree, cb func(uint64, uint64) bool) {
+func combineIterateWithTotal(leftTree, rightTree *FunctionNameTree, cb func(uint64, uint64) bool) {
 	leftNodes, rghtNodes := leftTree.root, rightTree.root
 	i := 0
 	for len(leftNodes) > 0 {
@@ -308,8 +309,8 @@ func combineIterateWithTotal(leftTree, rightTree *Tree, cb func(uint64, uint64) 
 }
 
 // isPositiveTree returns whether a tree only contain positive values
-func isPositiveTree(t *Tree) bool {
-	stack := Stack[*node]{}
+func isPositiveTree(t *FunctionNameTree) bool {
+	stack := Stack[*node[FuntionName]]{}
 	for _, node := range t.root {
 		stack.Push(node)
 	}
@@ -332,7 +333,7 @@ func isPositiveTree(t *Tree) bool {
 	return true
 }
 
-func assertPositiveTrees(left *Tree, right *Tree) error {
+func assertPositiveTrees(left *FunctionNameTree, right *FunctionNameTree) error {
 	leftRes := isPositiveTree(left)
 	rightRes := isPositiveTree(right)
 
@@ -375,7 +376,7 @@ func prependInt64(s []int64, x int64) []int64 {
 	return s
 }
 
-func prependTreeNode(s []*node, x *node) []*node {
+func prependTreeNode(s []*node[FuntionName], x *node[FuntionName]) []*node[FuntionName] {
 	s = append(s, nil)
 	copy(s[1:], s)
 	s[0] = x

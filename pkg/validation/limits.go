@@ -574,6 +574,10 @@ func (o *Overrides) ReadPathOverrides(tenantID string) readpath.Config {
 	return o.getOverridesForTenant(tenantID).ReadPathOverrides
 }
 
+func (o *Overrides) QueryTreeEnabled(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).ReadPathOverrides.QueryTreeEnabled
+}
+
 func (o *Overrides) PlacementLimits(tenantID string) placement.PlacementLimits {
 	// Both limits aimed at the same thing: limit the number of shards tenant's
 	// data is distributed to. The IngestionTenantShardSize specifies the number
