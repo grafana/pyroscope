@@ -61,6 +61,9 @@ func Deserialize(r io.Reader) (*Dict, error) {
 		parents = parents[1:]
 
 		nameLen, err := varint.Read(br)
+		if err != nil {
+			return nil, err
+		}
 		nameBuf := make([]byte, nameLen) // TODO: maybe there are better ways to do this?
 		_, err = io.ReadAtLeast(br, nameBuf, int(nameLen))
 		if err != nil {
