@@ -71,7 +71,7 @@ spec:
         - name: {{ if eq $component "all" }}"pyroscope"{{ else }}"{{ $component }}"{{ end }}
           securityContext:
             {{- toYaml $values.securityContext | nindent 12 }}
-          image: "{{ $values.image.repository }}:{{ $values.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.global.imageRegistry | default $values.image.registry }}/{{ $values.image.repository }}:{{ $values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $values.image.pullPolicy }}
           args:
             - "-target={{ $component }}"
