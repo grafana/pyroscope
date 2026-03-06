@@ -26,6 +26,17 @@ func TestSchemaMatch(t *testing.T) {
 		"required group element",
 	)
 
+	// parquet-go maps FixedLenByteArray to []byte in Go structs (same as Tempo).
+	// The struct produces "optional binary TraceID" while ProfilesSchema uses
+	// "optional fixed_len_byte_array(16) TraceID" — functionally equivalent,
+	// just a schema string mismatch that we normalize here.
+	profilesStructSchema = strings.Replace(
+		profilesStructSchema,
+		"optional binary TraceID;",
+		"optional fixed_len_byte_array(16) TraceID;",
+		1,
+	)
+
 	require.Equal(t, profilesStructSchema, ProfilesSchema.String())
 
 	stacktracesStructSchema := parquet.SchemaOf(&storedStacktrace{})

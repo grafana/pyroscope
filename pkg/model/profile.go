@@ -51,6 +51,23 @@ func SelectorFromProfileType(profileType *typesv1.ProfileType) *labels.Matcher {
 	}
 }
 
+type TraceID [16]byte
+
+func DecodeTraceID(s string) (TraceID, error) {
+	var t TraceID
+	if len(s) != 32 {
+		return t, fmt.Errorf("invalid trace id length: %q", s)
+	}
+	if _, err := hex.Decode(t[:], []byte(s)); err != nil {
+		return t, err
+	}
+	return t, nil
+}
+
+func (t TraceID) String() string {
+	return hex.EncodeToString(t[:])
+}
+
 type SpanSelector map[uint64]struct{}
 
 func NewSpanSelector(spans []string) (SpanSelector, error) {
