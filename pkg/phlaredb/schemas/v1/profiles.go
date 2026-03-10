@@ -452,12 +452,19 @@ func trimDuplicateSamples(samples Samples) Samples {
 			n++
 			samples.StacktraceIDs[n] = samples.StacktraceIDs[j]
 			samples.Values[n] = samples.Values[j]
+			if len(samples.TraceIDs) > 0 {
+				samples.TraceIDs[n] = samples.TraceIDs[j]
+			}
 		}
 	}
-	return Samples{
+	s := Samples{
 		StacktraceIDs: samples.StacktraceIDs[:n+1],
 		Values:        samples.Values[:n+1],
 	}
+	if len(samples.TraceIDs) > 0 {
+		s.TraceIDs = samples.TraceIDs[:n+1]
+	}
+	return s
 }
 
 func trimZeroAndNegativeSamples(samples Samples) Samples {

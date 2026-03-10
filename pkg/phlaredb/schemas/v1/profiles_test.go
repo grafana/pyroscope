@@ -134,6 +134,16 @@ func TestCompactSamples(t *testing.T) {
 	})
 
 	require.Equal(t, Samples{
+		StacktraceIDs: []uint32{2, 1},
+		Values:        []uint64{1, 1},
+		TraceIDs:      [][16]byte{{2}, {1}},
+	}.Compact(true), Samples{
+		StacktraceIDs: []uint32{1, 2},
+		Values:        []uint64{1, 1},
+		TraceIDs:      [][16]byte{{1}, {2}},
+	})
+
+	require.Equal(t, Samples{
 		StacktraceIDs: []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9},
 		Values:        []uint64{1, 0, 1, 1, 1, 0, 1, 1, 0},
 	}.Compact(false), Samples{
