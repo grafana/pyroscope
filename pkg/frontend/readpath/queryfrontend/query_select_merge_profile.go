@@ -91,6 +91,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 					},
 				}},
 			},
+			// capture if this pprof needs symbolization
 			func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend {
 				shouldSymbolize = q.shouldSymbolize(ctx, tenantIDs, blocks)
 				return upstream
@@ -115,7 +116,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 	}
 
 	// From now on answer using the more experimental tree based approach
-	return q.selectMergeProfileTree(ctx, c.Msg, labelSelector, maxNodes, profileType)
+	return q.selectMergeProfileTree(ctx, c.Msg, labelSelector, maxNodes, profileType, tenantIDs)
 }
 
 func (q *QueryFrontend) selectMergeProfileTree(
@@ -124,22 +125,31 @@ func (q *QueryFrontend) selectMergeProfileTree(
 	labelSelector string,
 	maxNodes int64,
 	profileType *typesv1.ProfileType,
+	tenantIDs []string,
 ) (*connect.Response[profilev1.Profile], error) {
 	level.Info(q.logger).Log("msg", "use tree query-backend based query")
-	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
-		StartTime:     req.Start,
-		EndTime:       req.End,
-		LabelSelector: labelSelector,
-		Query: []*queryv1.Query{{
-			QueryType: queryv1.QueryType_QUERY_TREE,
-			Tree: &queryv1.TreeQuery{
-				MaxNodes:           maxNodes,
-				StackTraceSelector: req.StackTraceSelector,
-				ProfileIdSelector:  req.ProfileIdSelector,
-				FullSymbols:        true,
-			},
-		}},
-	})
+	shouldSymbolize := false
+	report, err := q.querySingle(ctx,
+		&queryv1.QueryRequest{
+			StartTime:     req.Start,
+			EndTime:       req.End,
+			LabelSelector: labelSelector,
+			Query: []*queryv1.Query{{
+				QueryType: queryv1.QueryType_QUERY_TREE,
+				Tree: &queryv1.TreeQuery{
+					MaxNodes:           maxNodes,
+					StackTraceSelector: req.StackTraceSelector,
+					ProfileIdSelector:  req.ProfileIdSelector,
+					FullSymbols:        true,
+				},
+			}},
+		},
+		// capture if this pprof needs symbolization
+		func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend {
+			shouldSymbolize = q.shouldSymbolize(ctx, tenantIDs, blocks)
+			return upstream
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -212,20 +222,13 @@ func (q *QueryFrontend) selectMergeProfileTree(
 		})
 	})
 
-	p.SampleType = []*profilev1.ValueType{{}}
-	p.PeriodType = &profilev1.ValueType{}
+	pprof.SetProfileMetadata(&p, profileType, req.End*1e6, 0)
 
-	p.SampleType[0].Type = int64(len(p.StringTable))
-	p.StringTable = append(p.StringTable, profileType.SampleType)
-	p.SampleType[0].Unit = int64(len(p.StringTable))
-	p.StringTable = append(p.StringTable, profileType.SampleUnit)
-	p.PeriodType.Type = int64(len(p.StringTable))
-	p.StringTable = append(p.StringTable, profileType.PeriodType)
-	p.PeriodType.Unit = int64(len(p.StringTable))
-	p.StringTable = append(p.StringTable, profileType.PeriodUnit)
-	p.TimeNanos = req.End * 1e6
-
-	// TODO: Set more fields on profile
+	if shouldSymbolize {
+		if err := q.symbolizer.SymbolizePprof(ctx, &p); err != nil {
+			return nil, fmt.Errorf("failed to symbolize profile: %w", err)
+		}
+	}
 
 	return connect.NewResponse(&p), nil
 }
