@@ -1,0 +1,54 @@
+receivers:
+  profiling:
+    samples_per_second: 97
+
+processors:
+  resource/metadata:
+    attributes:
+      - action: upsert
+        key: k8s.cluster.name
+        value: demo
+
+  k8sattributes/profiles:    
+    auth_type: serviceAccount
+    passthrough: false
+# TODO: Investigate why this breaks it
+#    filter:
+#      node_from_env_var: KUBERNETES_NODE_NAME
+    extract:
+      metadata:
+      - k8s.pod.name
+      - k8s.pod.uid
+      - k8s.namespace.name
+      - k8s.deployment.name
+      - k8s.node.name
+      - k8s.cluster.uid
+      - k8s.container.name
+      - container.image.name
+      - container.image.tag
+      - service.name
+      - service.namespace
+      - service.instance.id
+      otel_annotations: true
+    pod_association:
+    - sources:
+      - from: resource_attribute
+        name: container.id
+
+exporters:
+  otlp_grpc:
+    endpoint: pyroscope:4040
+    tls:
+      insecure: true
+
+service:
+  telemetry:
+    logs:
+      level: "debug"
+  pipelines:
+    profiles:
+      receivers: [profiling]
+      exporters: [otlp_grpc]
+      processors:
+        - k8sattributes/profiles
+        - resource/metadata

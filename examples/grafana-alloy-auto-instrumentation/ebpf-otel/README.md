@@ -1,65 +1,84 @@
-# OpenTelemetry eBPF profiler examples
+# OpenTelemetry eBPF Profiler with Pyroscope
 
-**⚠️ Important: Linux-only Support**
-This example can only be run on Linux systems (amd64/arm64) as it relies on eBPF technology which is specific to the Linux kernel. The profiler requires privileged access to system resources.
-For more details refer to the OpenTelemetry ebpf profiler [docs](https://github.com/open-telemetry/opentelemetry-ebpf-profiler).
+This example demonstrates system-wide continuous profiling using the [OpenTelemetry eBPF profiler](https://github.com/open-telemetry/opentelemetry-ebpf-profiler), with profiles exported to [Pyroscope](https://github.com/grafana/pyroscope) and visualized in Grafana.
 
-These examples demonstrate:
-1. OpenTelemetry eBPF profiler collecting system-wide profiles
-2. OpenTelemetry Collector receiving and processing the data from the profiler
-3. Pyroscope receiving and visualizing the profiles via Grafana
+**Linux only (amd64/arm64).** The eBPF profiler requires the Linux kernel and privileged access to system resources (`/proc`, `/sys/kernel`, cgroups).
 
-## Docker example
+## Architecture
 
-**Note for ARM64 users**: If running on ARM64 Linux, update the Dockerfile:
-```dockerfile
-# Line 3: Change amd64 to arm64
-RUN wget https://go.dev/dl/go1.22.10.linux-arm64.tar.gz
-RUN tar -C /usr/local -xzf go1.22.10.linux-arm64.tar.gz
+```mermaid
+flowchart LR
+    A["OTel eBPF Profiler<br/><i>collects CPU profiles<br/>system-wide via eBPF</i>"] -- "OTLP gRPC" --> B["Pyroscope<br/><i>stores & aggregates<br/>profiling data</i>"]
+    B -- query --> C["Grafana<br/><i>visualize as<br/>flamegraphs</i>"]
 ```
 
-1. Start the environment:
+The profiler runs with host PID namespace access and collects CPU profiles at 97 samples/second from all processes on the host. Profiles are sent to Pyroscope via OTLP gRPC, where `process.executable.name` is relabeled to `service_name`.
+
+## Docker Compose
+
+### Prerequisites
+
+- Docker with Compose v2
+- Linux host (amd64 or arm64)
+
+### Run
 
 ```bash
-# Start all services
-docker compose up --build
+cd docker
+docker compose up
+```
 
-# To clean up
+Services:
+- **Grafana**: http://localhost:3000 (anonymous auth, no login required)
+- **Pyroscope**: http://localhost:4040
+
+To stop:
+```bash
 docker compose down
 ```
-2. Access the UI:
+
+## Kubernetes
+
+### Prerequisites
+
+- A Kubernetes cluster (e.g., minikube, kind)
+- `kubectl` with kustomize support
+
+### Deploy
+
 ```bash
-# Access Grafana
-http://localhost:3000
+kubectl apply -k kubernetes/
 ```
 
-## Kubernetes example
+This deploys:
+- **otel-ebpf-profiler** DaemonSet -- runs the profiler on every node (privileged, hostPID)
+- **pyroscope** Deployment + Service -- stores profiling data
+- **grafana** Deployment + Service -- visualizes profiles (pre-configured with Pyroscope datasource)
+- **cpu-stress** Deployment -- sample workload to generate visible profiles
+- RBAC resources for the profiler's Kubernetes metadata enrichment
 
-1. Build and prepare the profiler image:
+### Access
 
 ```bash
-# Build the image with the binary
-docker build -t test-ebpf-profiler:latest .
-
-# Make the image available if necessary. e.g in Minikube
-minikube image load test-ebpf-profiler:latest
+kubectl port-forward svc/grafana 3000:3000
 ```
-2. Deploy to Kubernetes:
+
+Then open http://localhost:3000.
+
+### Clean up
+
 ```bash
-# Apply the manifests
-kubectl apply -f .
-
-# Clean up
-kubectl delete -f .
-```
-3. Access the UI:
-```bash
-# Port forward Grafana
-kubectl port-forward svc/grafana-service 3000:3000
-
-# Access Grafana
-http://localhost:3000
+kubectl delete -k kubernetes/
 ```
 
-## Example output:
-![Image](https://github.com/user-attachments/assets/15ff58d4-218a-43dd-9835-df12e13ced3f)
+## Configuration
+
+| File | Description |
+|------|-------------|
+| `docker/config/ebpf-profiler-config.yaml` | OTel Collector config for Docker (profiling receiver, OTLP exporter) |
+| `docker/config/pyroscope.yaml` | Pyroscope config with `process.executable.name` -> `service_name` relabeling |
+| `kubernetes/config/ebpf-profiler-config.yaml` | OTel Collector config for Kubernetes (adds k8sattributes processor for pod metadata) |
+
+## Example output
+
+![Profiles in Grafana](https://github.com/user-attachments/assets/15ff58d4-218a-43dd-9835-df12e13ced3f)

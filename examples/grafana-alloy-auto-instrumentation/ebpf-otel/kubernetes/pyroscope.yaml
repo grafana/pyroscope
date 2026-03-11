@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: pyroscope
-          image: grafana/pyroscope:weekly-f125-16eebf27b
+          image: grafana/pyroscope:1.18.1
           # fixed versions for pyroscope, otel-collector, otel-profiler due to protocol changes
           args:
             - "-self-profiling.disable-push=true"
@@ -24,7 +24,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: pyroscope-service
+  name: pyroscope
 spec:
   selector:
     app: pyroscope
