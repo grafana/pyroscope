@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh issue:*)",
+      "Bash(go doc:*)",
+      "Bash(grafana-assistant prompt:*)",
+      "Bash(grafana-assistant:*)"
+    ]
+  }
+}

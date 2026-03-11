@@ -49,15 +49,13 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/frontend"
-	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend"
-	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/ingester"
+	pyroscopemcp "github.com/grafana/pyroscope/pkg/mcp"
 	"github.com/grafana/pyroscope/pkg/metastore"
 	metastoreadmin "github.com/grafana/pyroscope/pkg/metastore/admin"
 	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
-	"github.com/grafana/pyroscope/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
@@ -110,6 +108,8 @@ type Config struct {
 	ShutdownDelay       time.Duration     `yaml:"shutdown_delay,omitempty"`
 
 	EmbeddedGrafana grafana.Config `yaml:"embedded_grafana,omitempty"`
+
+	MCP pyroscopemcp.Config `yaml:"mcp,omitempty"`
 
 	ConfigFile      string `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
@@ -203,6 +203,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.API.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
+	c.MCP.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.
@@ -313,6 +314,10 @@ func (c *Config) Validate() error {
 		return err
 	}
 
+	if err := c.MCP.Validate(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -367,27 +372,25 @@ type Pyroscope struct {
 
 	grpcGatewayMux *grpcgw.ServeMux
 
-	auth     connect.Option
-	ingester *ingester.Ingester
-	frontend *frontend.Frontend
+	auth      connect.Option
+	ingester  *ingester.Ingester
+	frontend  *frontend.Frontend
+	mcpServer *pyroscopemcp.Server
 
 	// Experimental modules.
-	segmentWriter         *segmentwriter.SegmentWriterService
-	segmentWriterClient   *segmentwriterclient.Client
-	segmentWriterRing     *ring.Ring
-	placementAgent        *placement.Agent
-	placementManager      *placement.Manager
-	metastore             *metastore.Metastore
-	metastoreClient       *metastoreclient.Client
-	metastoreAdmin        *metastoreadmin.Admin
-	queryFrontend         *queryfrontend.QueryFrontend
-	queryBackendClient    *querybackendclient.Client
-	compactionWorker      *compactionworker.Worker
-	healthServer          *health.Server
-	recordingRulesClient  *recordingrulesclient.Client
-	symbolizer            *symbolizer.Symbolizer
-	queryDiagnosticsStore *diagnostics.Store
-	queryDiagnosticsAdmin *querydiagnostics.Admin
+	segmentWriter        *segmentwriter.SegmentWriterService
+	segmentWriterClient  *segmentwriterclient.Client
+	segmentWriterRing    *ring.Ring
+	placementAgent       *placement.Agent
+	placementManager     *placement.Manager
+	metastore            *metastore.Metastore
+	metastoreClient      *metastoreclient.Client
+	metastoreAdmin       *metastoreadmin.Admin
+	queryBackendClient   *querybackendclient.Client
+	compactionWorker     *compactionworker.Worker
+	healthServer         *health.Server
+	recordingRulesClient *recordingrulesclient.Client
+	symbolizer           *symbolizer.Symbolizer
 }
 
 func New(cfg Config) (*Pyroscope, error) {
@@ -460,6 +463,7 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(AdHocProfiles, f.initAdHocProfiles)
 	mm.RegisterModule(EmbeddedGrafana, f.initEmbeddedGrafana)
 	mm.RegisterModule(FeatureFlags, f.initFeatureFlags)
+	mm.RegisterModule(MCP, f.initMCP)
 
 	// Add dependencies
 	deps := map[string][]string{
@@ -497,32 +501,36 @@ func (f *Pyroscope) setupModuleManager() error {
 		AdHocProfiles:     {API, Overrides, Storage},
 		EmbeddedGrafana:   {API},
 		FeatureFlags:      {API},
+		MCP:               {Server, Querier},
+	}
+
+	// Add MCP to All dependencies if enabled
+	if f.Cfg.MCP.Enabled {
+		deps[All] = append(deps[All], MCP)
 	}
 
 	if f.Cfg.V2 {
 		v2Modules := map[string][]string{
-			SegmentWriter:         {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
-			Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},
-			MetastoreAdmin:        {API, MetastoreClient},
-			CompactionWorker:      {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
-			QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
-			SegmentWriterRing:     {Overrides, API, MemberlistKV},
-			SegmentWriterClient:   {Overrides, API, SegmentWriterRing, PlacementAgent},
-			PlacementAgent:        {Overrides, API, Storage},
-			PlacementManager:      {Overrides, API, Storage},
-			Symbolizer:            {Overrides, Storage},
-			QueryDiagnosticsStore: {Storage},
-			QueryDiagnosticsAdmin: {QueryDiagnosticsStore, API, MetastoreClient},
+			SegmentWriter:       {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
+			Metastore:           {Overrides, API, MetastoreClient, Storage, PlacementManager},
+			MetastoreAdmin:      {API, MetastoreClient},
+			CompactionWorker:    {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
+			QueryBackend:        {Overrides, API, Storage, QueryBackendClient},
+			SegmentWriterRing:   {Overrides, API, MemberlistKV},
+			SegmentWriterClient: {Overrides, API, SegmentWriterRing, PlacementAgent},
+			PlacementAgent:      {Overrides, API, Storage},
+			PlacementManager:    {Overrides, API, Storage},
+			Symbolizer:          {Overrides, Storage},
 		}
 		for k, v := range v2Modules {
 			deps[k] = v
 		}
 
 		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend)
-		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore)
+		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient, Symbolizer)
 		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
 		deps[Server] = append(deps[Server], HealthServer)
-		deps[Admin] = append(deps[Admin], MetastoreAdmin, QueryDiagnosticsAdmin)
+		deps[Admin] = append(deps[Admin], MetastoreAdmin)
 
 		mm.RegisterModule(SegmentWriter, f.initSegmentWriter)
 		mm.RegisterModule(Metastore, f.initMetastore)
@@ -539,8 +547,6 @@ func (f *Pyroscope) setupModuleManager() error {
 		mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)
 		mm.RegisterModule(HealthServer, f.initHealthServer, modules.UserInvisibleModule)
 		mm.RegisterModule(RecordingRulesClient, f.initRecordingRulesClient, modules.UserInvisibleModule)
-		mm.RegisterModule(QueryDiagnosticsStore, f.initQueryDiagnosticsStore, modules.UserInvisibleModule)
-		mm.RegisterModule(QueryDiagnosticsAdmin, f.initQueryDiagnosticsAdmin, modules.UserInvisibleModule)
 	}
 
 	for mod, targets := range deps {

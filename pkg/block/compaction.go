@@ -570,6 +570,7 @@ func newSymbolsRewriter(observer SampleObserver) *symbolsRewriter {
 			Writer:  &nopWriteCloser{buf},
 		}),
 		observer: observer,
+		stacktraces: make([]uint32, 0, 64), // Pre-allocate with reasonable capacity
 	}
 }
 
@@ -581,9 +582,13 @@ func (s *symbolsRewriter) rewriteRow(e ProfileEntry) (err error) {
 	rw := s.rewriterFor(e.Dataset)
 	e.Row.ForStacktraceIDsValues(func(values []parquet.Value) {
 		s.loadStacktraceIDs(values)
-		if err = rw.Rewrite(e.Row.StacktracePartitionID(), s.stacktraces); err != nil {
+		partitionID := e.Row.StacktracePartitionID()
+		
+		// Rewrite stacktrace IDs - must happen immediately as we need rewritten IDs for values
+		if err = rw.Rewrite(partitionID, s.stacktraces); err != nil {
 			return
 		}
+		
 		s.samples += uint64(len(values))
 		for i, v := range values {
 			values[i] = parquet.Int64Value(int64(s.stacktraces[i])).Level(v.RepetitionLevel(), v.DefinitionLevel(), v.Column())
@@ -602,13 +607,20 @@ func (s *symbolsRewriter) rewriterFor(x *Dataset) *symdb.Rewriter {
 }
 
 func (s *symbolsRewriter) loadStacktraceIDs(values []parquet.Value) {
-	s.stacktraces = slices.Grow(s.stacktraces[0:], len(values))[:len(values)]
+	// Reuse slice capacity instead of growing every time
+	if cap(s.stacktraces) < len(values) {
+		s.stacktraces = make([]uint32, len(values))
+	} else {
+		s.stacktraces = s.stacktraces[:len(values)]
+	}
 	for i := range values {
 		s.stacktraces[i] = values[i].Uint32()
 	}
 }
 
-func (s *symbolsRewriter) Flush() error { return s.w.Flush() }
+func (s *symbolsRewriter) Flush() error {
+	return s.w.Flush()
+}
 
 // datasetIndexWriter is identical with indexRewriter,
 // except it writes dataset ID instead of series ID.

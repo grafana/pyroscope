@@ -36,14 +36,17 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/pkg/adhocprofiles"
+	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/featureflags"
 	"github.com/grafana/pyroscope/pkg/ingester"
+	pyroscopemcp "github.com/grafana/pyroscope/pkg/mcp"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/operations"
@@ -88,25 +91,24 @@ const (
 	AdHocProfiles     string = "ad-hoc-profiles"
 	EmbeddedGrafana   string = "embedded-grafana"
 	FeatureFlags      string = "feature-flags"
+	MCP               string = "mcp"
 
 	// V2 modules.
 
-	Metastore             string = "metastore"
-	MetastoreClient       string = "metastore-client"
-	MetastoreAdmin        string = "metastore-admin"
-	SegmentWriter         string = "segment-writer"
-	SegmentWriterRing     string = "segment-writer-ring"
-	SegmentWriterClient   string = "segment-writer-client"
-	QueryBackend          string = "query-backend"
-	QueryBackendClient    string = "query-backend-client"
-	CompactionWorker      string = "compaction-worker"
-	PlacementAgent        string = "placement-agent"
-	PlacementManager      string = "placement-manager"
-	HealthServer          string = "health-server"
-	RecordingRulesClient  string = "recording-rules-client"
-	Symbolizer            string = "symbolizer"
-	QueryDiagnosticsStore string = "query-diagnostics-store"
-	QueryDiagnosticsAdmin string = "query-diagnostics-admin"
+	Metastore            string = "metastore"
+	MetastoreClient      string = "metastore-client"
+	MetastoreAdmin       string = "metastore-admin"
+	SegmentWriter        string = "segment-writer"
+	SegmentWriterRing    string = "segment-writer-ring"
+	SegmentWriterClient  string = "segment-writer-client"
+	QueryBackend         string = "query-backend"
+	QueryBackendClient   string = "query-backend-client"
+	CompactionWorker     string = "compaction-worker"
+	PlacementAgent       string = "placement-agent"
+	PlacementManager     string = "placement-manager"
+	HealthServer         string = "health-server"
+	RecordingRulesClient string = "recording-rules-client"
+	Symbolizer           string = "symbolizer"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
@@ -609,6 +611,38 @@ func (f *Pyroscope) initAdmin() (services.Service, error) {
 
 func (f *Pyroscope) initEmbeddedGrafana() (services.Service, error) {
 	return grafana.New(f.Cfg.EmbeddedGrafana, f.logger)
+}
+
+func (f *Pyroscope) initMCP() (services.Service, error) {
+	if !f.Cfg.MCP.Enabled {
+		level.Info(f.logger).Log("msg", "MCP server is disabled")
+		return nil, nil
+	}
+
+	// Create a querier client that connects to the local querier
+	// For SSE mode, use the local HTTP address; for stdio, use localhost
+	querierURL := fmt.Sprintf("http://localhost:%d", f.Cfg.Server.HTTPListenPort)
+	httpClient := &http.Client{}
+	querierClient := querierv1connect.NewQuerierServiceClient(
+		httpClient,
+		querierURL,
+		connectapi.DefaultClientOptions()...,
+	)
+
+	mcpServer, err := pyroscopemcp.NewServer(f.Cfg.MCP, log.With(f.logger, "component", "mcp"), querierClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create MCP server")
+	}
+
+	// For SSE mode, register the HTTP handler
+	if f.Cfg.MCP.Transport == pyroscopemcp.TransportSSE {
+		f.Server.HTTP.Handle(f.Cfg.MCP.SSEPath, mcpServer.Handler())
+		f.Server.HTTP.Handle(f.Cfg.MCP.SSEPath+"/", mcpServer.Handler())
+		level.Info(f.logger).Log("msg", "MCP SSE endpoint registered", "path", f.Cfg.MCP.SSEPath)
+	}
+
+	f.mcpServer = mcpServer
+	return mcpServer, nil
 }
 
 type statusService struct {
