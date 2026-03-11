@@ -413,20 +413,24 @@ func fetchProfile(ctx context.Context, bucket objstore.Bucket, id string) (*AdHo
 	return &p, nil
 }
 
-// flamebearerToModelTree converts a FlamebearerProfile (format: "single") to a *model.Tree
+// flamebearerToModelTree converts a FlamebearerProfile (format: "single") to a *model.FunctionNameTree
 // suitable for use with model.NewFlamegraphDiff.
-func flamebearerToModelTree(fb *flamebearer.FlamebearerProfile) (*model.Tree, error) {
+func flamebearerToModelTree(fb *flamebearer.FlamebearerProfile) (*model.FunctionNameTree, error) {
 	ogTree, err := flamebearer.ProfileToTree(*fb)
 	if err != nil {
 		return nil, err
 	}
 
-	t := new(model.Tree)
+	t := new(model.FunctionNameTree)
 	ogTree.IterateStacks(func(_ string, self uint64, stack []string) {
 		// IterateStacks yields stacks in leaf-to-root order;
 		// model.Tree.InsertStack expects root-to-leaf.
 		slices.Reverse(stack)
-		t.InsertStack(int64(self), stack...)
+		names := make([]model.FuntionName, len(stack))
+		for i, s := range stack {
+			names[i] = model.FuntionName(s)
+		}
+		t.InsertStack(int64(self), names...)
 	})
 	return t, nil
 }
