@@ -9,9 +9,11 @@ import (
 )
 
 type metrics struct {
-	apply prometheus.Histogram
-	read  prometheus.Histogram
-	state *prometheus.GaugeVec
+	apply           prometheus.Histogram
+	read            prometheus.Histogram
+	state           *prometheus.GaugeVec
+	logStoreWrite   prometheus.Histogram
+	logStoreTimeout prometheus.Counter
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -45,12 +47,30 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			},
 			[]string{"state"},
 		),
+
+		logStoreWrite: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:                            "raft_log_store_write_duration_seconds",
+			Help:                            "Duration of log store write operations",
+			Buckets:                         prometheus.DefBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramZeroThreshold:    0,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
+			NativeHistogramMaxZeroThreshold: 0,
+		}),
+
+		logStoreTimeout: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "raft_log_store_write_timeouts_total",
+			Help: "Number of log store write operations that timed out",
+		}),
 	}
 
 	if reg != nil {
 		util.RegisterOrGet(reg, m.apply)
 		util.RegisterOrGet(reg, m.read)
 		util.RegisterOrGet(reg, m.state)
+		util.RegisterOrGet(reg, m.logStoreWrite)
+		util.RegisterOrGet(reg, m.logStoreTimeout)
 	}
 
 	return m
