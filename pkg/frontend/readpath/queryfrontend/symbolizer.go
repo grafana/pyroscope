@@ -29,7 +29,7 @@ type backendTreeSymbolizer struct {
 }
 
 func (b *backendTreeSymbolizer) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (resp *queryv1.InvokeResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.processAndSymbolizeProfiles")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "backendTreeSymbolizer.Invoke")
 	defer func() {
 		if err != nil {
 			ext.LogError(span, err)
@@ -46,7 +46,12 @@ func (b *backendTreeSymbolizer) Invoke(ctx context.Context, req *queryv1.InvokeR
 		if q.QueryType == queryv1.QueryType_QUERY_TREE {
 			q.QueryType = queryv1.QueryType_QUERY_PPROF
 			q.Pprof = &queryv1.PprofQuery{
-				MaxNodes: q.Tree.GetMaxNodes(),
+				MaxNodes:           q.Tree.GetMaxNodes(),
+				ProfileIdSelector:  q.Tree.GetProfileIdSelector(),
+				StackTraceSelector: q.Tree.GetStackTraceSelector(),
+				// SpanSelector is not forwarded: PprofQuery has no span_selector field.
+				// To support span-filtered symbolization, span_selector must be added to
+				// the PprofQuery proto and the backend must handle it.
 			}
 			q.Tree = nil
 		}
@@ -91,7 +96,6 @@ func (b *backendTreeSymbolizer) Invoke(ctx context.Context, req *queryv1.InvokeR
 	}
 
 	return resp, nil
-
 }
 
 // hasUnsymbolizedProfiles checks if a block has unsymbolized profiles
