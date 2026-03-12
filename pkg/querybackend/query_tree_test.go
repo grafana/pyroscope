@@ -80,7 +80,7 @@ func (s *testSuite) Test_QueryTree_FullSymbols_TotalsMatchNonFullSymbols() {
 
 	lrTree, err := phlaremodel.UnmarshalTree[phlaremodel.LocationRefName, phlaremodel.LocationRefNameI](invoke(true).Tree)
 	s.Require().NoError(err)
-	fnTree, err := phlaremodel.UnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](invoke(false).Tree)
+	fnTree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](invoke(false).Tree)
 	s.Require().NoError(err)
 
 	s.Assert().Equal(fnTree.Total(), lrTree.Total())

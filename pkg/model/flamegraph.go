@@ -32,7 +32,7 @@ func NewFlameGraph(t *FunctionNameTree, maxNodes int64) *querierv1.FlameGraph {
 	stack := stackNodePool.Get().(*Stack[stackNode])
 	defer stackNodePool.Put(stack)
 	stack.Reset()
-	stack.Push(stackNode{xOffset: 0, level: 0, node: &node[FuntionName]{children: t.root, total: total}})
+	stack.Push(stackNode{xOffset: 0, level: 0, node: &node[FunctionName]{children: t.root, total: total}})
 
 	for {
 		current, hasMoreNodes := stack.Pop()
@@ -82,7 +82,7 @@ func NewFlameGraph(t *FunctionNameTree, maxNodes int64) *querierv1.FlameGraph {
 			}
 		}
 		if otherTotal != 0 {
-			child := &node[FuntionName]{
+			child := &node[FunctionName]{
 				name:   "other",
 				parent: current.node,
 				self:   otherTotal,
@@ -193,7 +193,7 @@ func (m *FlameGraphMerger) MergeFlameGraph(src *querierv1.FlameGraph) {
 	defer m.mu.Unlock()
 	deltaDecoding(src.Levels, 0, 4)
 	dst := make([]string, 0, len(src.Levels))
-	stack := make([]FuntionName, 0, len(src.Levels))
+	stack := make([]FunctionName, 0, len(src.Levels))
 	for i, l := range src.Levels {
 		if i == 0 {
 			// Skip the root node ("total").
@@ -206,7 +206,7 @@ func (m *FlameGraphMerger) MergeFlameGraph(src *querierv1.FlameGraph) {
 				// Convert []string to []FuntionName
 				stack = stack[:0]
 				for _, s := range dst {
-					stack = append(stack, FuntionName(s))
+					stack = append(stack, FunctionName(s))
 				}
 				m.t.InsertStack(self, stack...)
 			}
@@ -215,7 +215,7 @@ func (m *FlameGraphMerger) MergeFlameGraph(src *querierv1.FlameGraph) {
 }
 
 func (m *FlameGraphMerger) MergeTreeBytes(src []byte) error {
-	t, err := UnmarshalTree[FuntionName, FuntionNameI](src)
+	t, err := UnmarshalTree[FunctionName, FunctionNameI](src)
 	if err != nil {
 		return err
 	}

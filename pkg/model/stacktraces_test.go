@@ -140,7 +140,7 @@ func TestStackTraceMerger(t *testing.T) {
 				m.MergeStackTraces(x.Stacktraces, x.FunctionNames)
 			}
 			yn := m.TreeBytes(tc.maxNodes)
-			actual, err := UnmarshalTree[FuntionName, FuntionNameI](yn)
+			actual, err := UnmarshalTree[FunctionName, FunctionNameI](yn)
 			require.NoError(t, err)
 			require.Equal(t, tc.expected.String(), actual.String())
 		})

@@ -121,7 +121,7 @@ func NewFlamegraphDiff(left, right *FunctionNameTree, maxNodes int64) (*querierv
 			if otherLeftTotal != 0 || otherRghtTotal != 0 {
 				levels = prependInt(levels, level+1)
 				{
-					leftNode := &node[FuntionName]{
+					leftNode := &node[FunctionName]{
 						name:  "other",
 						total: otherLeftTotal,
 						self:  otherLeftTotal,
@@ -130,7 +130,7 @@ func NewFlamegraphDiff(left, right *FunctionNameTree, maxNodes int64) (*querierv
 					leftNodes = prependTreeNode(leftNodes, leftNode)
 				}
 				{
-					rghtNode := &node[FuntionName]{
+					rghtNode := &node[FunctionName]{
 						name:  "other",
 						total: otherRghtTotal,
 						self:  otherRghtTotal,
@@ -154,11 +154,11 @@ func NewFlamegraphDiff(left, right *FunctionNameTree, maxNodes int64) (*querierv
 }
 
 func NewFlamegraphDiffFromBytes(left, right []byte, maxNodes int64) (*querierv1.FlameGraphDiff, error) {
-	l, err := UnmarshalTree[FuntionName, FuntionNameI](left)
+	l, err := UnmarshalTree[FunctionName, FunctionNameI](left)
 	if err != nil {
 		return nil, err
 	}
-	r, err := UnmarshalTree[FuntionName, FuntionNameI](right)
+	r, err := UnmarshalTree[FunctionName, FunctionNameI](right)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func combineTree(leftTree, rightTree *FunctionNameTree) (*FunctionNameTree, *Fun
 	// differently from pyroscope, there could be multiple roots
 	// so we add a fake root as expected
 	leftTree = &FunctionNameTree{
-		root: []*node[FuntionName]{{
+		root: []*node[FunctionName]{{
 			children: leftTree.root,
 			total:    leftTotal,
 			self:     0,
@@ -190,7 +190,7 @@ func combineTree(leftTree, rightTree *FunctionNameTree) (*FunctionNameTree, *Fun
 	}
 
 	rightTree = &FunctionNameTree{
-		root: []*node[FuntionName]{{
+		root: []*node[FunctionName]{{
 			children: rightTree.root,
 			total:    rightTotal,
 			self:     0,
@@ -217,10 +217,10 @@ func combineTree(leftTree, rightTree *FunctionNameTree) (*FunctionNameTree, *Fun
 // combineNodes makes 2 slices of nodes equal
 // by filling with non existing nodes
 // and sorting lexicographically
-func combineNodes(leftNodes, rghtNodes []*node[FuntionName]) ([]*node[FuntionName], []*node[FuntionName]) {
+func combineNodes(leftNodes, rghtNodes []*node[FunctionName]) ([]*node[FunctionName], []*node[FunctionName]) {
 	size := nextPow2(max(len(leftNodes), len(rghtNodes)))
-	leftResult := make([]*node[FuntionName], 0, size)
-	rghtResult := make([]*node[FuntionName], 0, size)
+	leftResult := make([]*node[FunctionName], 0, size)
+	rghtResult := make([]*node[FunctionName], 0, size)
 
 	for len(leftNodes) != 0 && len(rghtNodes) != 0 {
 		left, rght := leftNodes[0], rghtNodes[0]
@@ -231,11 +231,11 @@ func combineNodes(leftNodes, rghtNodes []*node[FuntionName]) ([]*node[FuntionNam
 			leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
 		case -1:
 			leftResult = append(leftResult, left)
-			rghtResult = append(rghtResult, &node[FuntionName]{name: left.name})
+			rghtResult = append(rghtResult, &node[FunctionName]{name: left.name})
 
 			leftNodes = leftNodes[1:]
 		case 1:
-			leftResult = append(leftResult, &node[FuntionName]{name: rght.name})
+			leftResult = append(leftResult, &node[FunctionName]{name: rght.name})
 			rghtResult = append(rghtResult, rght)
 			rghtNodes = rghtNodes[1:]
 		}
@@ -243,10 +243,10 @@ func combineNodes(leftNodes, rghtNodes []*node[FuntionName]) ([]*node[FuntionNam
 	leftResult = append(leftResult, leftNodes...)
 	rghtResult = append(rghtResult, rghtNodes...)
 	for _, left := range leftNodes {
-		rghtResult = append(rghtResult, &node[FuntionName]{name: left.name})
+		rghtResult = append(rghtResult, &node[FunctionName]{name: left.name})
 	}
 	for _, rght := range rghtNodes {
-		leftResult = append(leftResult, &node[FuntionName]{name: rght.name})
+		leftResult = append(leftResult, &node[FunctionName]{name: rght.name})
 	}
 	return leftResult, rghtResult
 }
@@ -266,7 +266,7 @@ func combineMinValues(leftTree, rightTree *FunctionNameTree, maxNodes int) uint6
 	if maxNodes < 1 {
 		return 0
 	}
-	treeSize := leftTree.size(make([]*node[FuntionName], 0, defaultDFSSize))
+	treeSize := leftTree.size(make([]*node[FunctionName], 0, defaultDFSSize))
 	if treeSize <= int64(maxNodes) {
 		return 0
 	}
@@ -310,7 +310,7 @@ func combineIterateWithTotal(leftTree, rightTree *FunctionNameTree, cb func(uint
 
 // isPositiveTree returns whether a tree only contain positive values
 func isPositiveTree(t *FunctionNameTree) bool {
-	stack := Stack[*node[FuntionName]]{}
+	stack := Stack[*node[FunctionName]]{}
 	for _, node := range t.root {
 		stack.Push(node)
 	}
@@ -376,7 +376,7 @@ func prependInt64(s []int64, x int64) []int64 {
 	return s
 }
 
-func prependTreeNode(s []*node[FuntionName], x *node[FuntionName]) []*node[FuntionName] {
+func prependTreeNode(s []*node[FunctionName], x *node[FunctionName]) []*node[FunctionName] {
 	s = append(s, nil)
 	copy(s[1:], s)
 	s[0] = x

@@ -231,7 +231,7 @@ func Test_Tree_MarshalUnmarshal(t *testing.T) {
 		expected := new(FunctionNameTree)
 		var buf bytes.Buffer
 		require.NoError(t, expected.MarshalTruncate(&buf, -1, nil))
-		actual, err := UnmarshalTree[FuntionName, FuntionNameI](buf.Bytes())
+		actual, err := UnmarshalTree[FunctionName, FunctionNameI](buf.Bytes())
 		require.NoError(t, err)
 		require.Equal(t, expected.String(), actual.String())
 	})
@@ -251,7 +251,7 @@ func Test_Tree_MarshalUnmarshal(t *testing.T) {
 
 		var buf bytes.Buffer
 		require.NoError(t, expected.MarshalTruncate(&buf, -1, nil))
-		actual, err := UnmarshalTree[FuntionName, FuntionNameI](buf.Bytes())
+		actual, err := UnmarshalTree[FunctionName, FunctionNameI](buf.Bytes())
 		require.NoError(t, err)
 		require.Equal(t, expected.String(), actual.String())
 	})
@@ -272,7 +272,7 @@ func Test_Tree_MarshalUnmarshal(t *testing.T) {
 		var buf bytes.Buffer
 		require.NoError(t, fullTree.MarshalTruncate(&buf, 3, nil))
 
-		actual, err := UnmarshalTree[FuntionName, FuntionNameI](buf.Bytes())
+		actual, err := UnmarshalTree[FunctionName, FunctionNameI](buf.Bytes())
 		require.NoError(t, err)
 
 		expected := newTree([]stacktraces{
@@ -293,11 +293,11 @@ func Test_FormatNames(t *testing.T) {
 		{locations: []string{"e1", "c1", "a1"}, value: 4},
 		{locations: []string{"e2", "c1", "a2"}, value: 4},
 	})
-	x.FormatNodeNames(func(n FuntionName) FuntionName {
+	x.FormatNodeNames(func(n FunctionName) FunctionName {
 		s := string(n)
 		if len(s) > 0 {
 			s = s[:1]
-			n = FuntionName(s)
+			n = FunctionName(s)
 		}
 		return n
 	})
@@ -335,9 +335,9 @@ type stacktraces struct {
 	value     int64
 }
 
-func addNodeToTree(t *FunctionNameTree, name string, self, total int64) *node[FuntionName] {
-	new := &node[FuntionName]{
-		name:  FuntionName(name),
+func addNodeToTree(t *FunctionNameTree, name string, self, total int64) *node[FunctionName] {
+	new := &node[FunctionName]{
+		name:  FunctionName(name),
 		self:  self,
 		total: total,
 	}
@@ -345,10 +345,10 @@ func addNodeToTree(t *FunctionNameTree, name string, self, total int64) *node[Fu
 	return new
 }
 
-func addNodeToNode(n *node[FuntionName], name string, self, total int64) *node[FuntionName] {
-	new := &node[FuntionName]{
+func addNodeToNode(n *node[FunctionName], name string, self, total int64) *node[FunctionName] {
+	new := &node[FunctionName]{
 		parent: n,
-		name:   FuntionName(name),
+		name:   FunctionName(name),
 		self:   self,
 		total:  total,
 	}
@@ -361,10 +361,10 @@ func stackToTree(stack stacktraces) *FunctionNameTree {
 	if len(stack.locations) == 0 {
 		return t
 	}
-	current := &node[FuntionName]{
+	current := &node[FunctionName]{
 		self:  stack.value,
 		total: stack.value,
-		name:  FuntionName(stack.locations[0]),
+		name:  FunctionName(stack.locations[0]),
 	}
 	if len(stack.locations) == 1 {
 		t.root = append(t.root, current)
@@ -387,15 +387,15 @@ func stackToTree(stack stacktraces) *FunctionNameTree {
 		// 	break
 		// }
 
-		parent := &node[FuntionName]{
-			children: []*node[FuntionName]{current},
+		parent := &node[FunctionName]{
+			children: []*node[FunctionName]{current},
 			total:    current.total,
-			name:     FuntionName(name),
+			name:     FunctionName(name),
 		}
 		current.parent = parent
 		current = parent
 	}
-	t.root = []*node[FuntionName]{current}
+	t.root = []*node[FunctionName]{current}
 	return t
 }
 
@@ -407,14 +407,14 @@ func Test_IterateStacks_LargeRootCount(t *testing.T) {
 	// Create a tree with 1500 root nodes (more than default capacity of 1024)
 	rootCount := 1500
 	for i := 0; i < rootCount; i++ {
-		tree.InsertStack(1, FuntionName("root"+strconv.Itoa(i)))
+		tree.InsertStack(1, FunctionName("root"+strconv.Itoa(i)))
 	}
 
 	require.Equal(t, rootCount, len(tree.root), "should have %d root nodes", rootCount)
 
 	// IterateStacks should handle this without issues
 	visitedCount := 0
-	tree.IterateStacks(func(name FuntionName, self int64, stack []FuntionName) {
+	tree.IterateStacks(func(name FunctionName, self int64, stack []FunctionName) {
 		visitedCount++
 		require.Equal(t, int64(1), self, "each node should have self=1")
 		require.Equal(t, 1, len(stack), "each stack should have length 1")
@@ -464,14 +464,14 @@ func Test_TreeFromBackendProfileSampleType(t *testing.T) {
 	t.Run("using first sample type (index 0)", func(t *testing.T) {
 		treeBytes, err := TreeFromBackendProfileSampleType(profile, -1, 0)
 		require.NoError(t, err)
-		tree := MustUnmarshalTree[FuntionName, FuntionNameI](treeBytes)
+		tree := MustUnmarshalTree[FunctionName, FunctionNameI](treeBytes)
 		assert.Equal(t, int64(40), tree.Total())
 	})
 
 	t.Run("using second sample type (index 1)", func(t *testing.T) {
 		treeBytes, err := TreeFromBackendProfileSampleType(profile, -1, 1)
 		require.NoError(t, err)
-		tree := MustUnmarshalTree[FuntionName, FuntionNameI](treeBytes)
+		tree := MustUnmarshalTree[FunctionName, FunctionNameI](treeBytes)
 		assert.Equal(t, int64(80), tree.Total())
 	})
 
@@ -490,7 +490,7 @@ func Test_TreeFromBackendProfileSampleType(t *testing.T) {
 		}
 		treeBytes, err := TreeFromBackendProfileSampleType(emptyProfile, -1, 0)
 		require.NoError(t, err)
-		tree := MustUnmarshalTree[FuntionName, FuntionNameI](treeBytes)
+		tree := MustUnmarshalTree[FunctionName, FunctionNameI](treeBytes)
 		assert.Equal(t, int64(0), tree.Total())
 	})
 
@@ -535,7 +535,7 @@ func Test_TreeFromBackendProfileSampleType(t *testing.T) {
 		treeBytes, err := TreeFromBackendProfileSampleType(addressProfile, -1, 0)
 		require.NoError(t, err)
 
-		tree := MustUnmarshalTree[FuntionName, FuntionNameI](treeBytes)
+		tree := MustUnmarshalTree[FunctionName, FunctionNameI](treeBytes)
 		assert.Equal(t, int64(100), tree.Total())
 
 		assert.Greater(t, len(addressProfile.StringTable), originalLen)

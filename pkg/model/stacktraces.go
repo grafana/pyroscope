@@ -313,11 +313,11 @@ func unsafeStringBytes(s string) []byte {
 	return unsafe.Slice(unsafe.StringData(s), len(s))
 }
 
-func (t *StacktraceTree) Tree(maxNodes int64, names []FuntionName) *FunctionNameTree {
-	lookup := func(i int32) FuntionName {
+func (t *StacktraceTree) Tree(maxNodes int64, names []FunctionName) *FunctionNameTree {
+	lookup := func(i int32) FunctionName {
 		return names[i]
 	}
-	return TreeFromStacktraceTree[FuntionName, FuntionNameI](t, maxNodes, lookup)
+	return TreeFromStacktraceTree[FunctionName, FunctionNameI](t, maxNodes, lookup)
 }
 
 func TreeFromStacktraceTree[N NodeName, I NodeNameI[N]](t *StacktraceTree, maxNodes int64, lookup func(int32) N) *Tree[N, I] {

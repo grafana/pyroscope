@@ -284,8 +284,8 @@ func (r *Resolver) Tree() (*model.FunctionNameTree, error) {
 
 	tree := new(model.FunctionNameTree)
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
-		lookup := func(i int32) model.FuntionName {
-			return model.FuntionName(symbols.Strings[i])
+		lookup := func(i int32) model.FunctionName {
+			return model.FunctionName(symbols.Strings[i])
 		}
 		resolved, err := symbols.Tree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts), lookup)
 		if err != nil {
@@ -382,9 +382,9 @@ func (r *Symbols) Tree(
 	appender *SampleAppender,
 	maxNodes int64,
 	selection *SelectedStackTraces,
-	lookup func(int32) model.FuntionName,
+	lookup func(int32) model.FunctionName,
 ) (*model.FunctionNameTree, error) {
-	return buildTree[model.FuntionName, model.FuntionNameI](ctx, r, appender, maxNodes, selection, lookup)
+	return buildTree[model.FunctionName, model.FunctionNameI](ctx, r, appender, maxNodes, selection, lookup)
 }
 
 func (r *Symbols) LocationRefNameTree(

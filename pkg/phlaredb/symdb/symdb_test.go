@@ -140,7 +140,7 @@ func pprofFingerprint(p *googlev1.Profile, typ int) [][2]uint64 {
 func treeFingerprint(t *phlaremodel.FunctionNameTree) [][2]uint64 {
 	m := make([][2]uint64, 0, 1<<10)
 	h := xxhash.New()
-	t.IterateStacks(func(_ phlaremodel.FuntionName, self int64, stack []phlaremodel.FuntionName) {
+	t.IterateStacks(func(_ phlaremodel.FunctionName, self int64, stack []phlaremodel.FunctionName) {
 		h.Reset()
 		for _, loc := range stack {
 			_, _ = h.WriteString(string(loc))

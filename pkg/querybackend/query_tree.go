@@ -140,7 +140,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 type treeAggregator struct {
 	init  sync.Once
 	query *queryv1.TreeQuery
-	tree  *model.TreeMerger[model.FuntionName, model.FuntionNameI]
+	tree  *model.TreeMerger[model.FunctionName, model.FunctionNameI]
 
 	lrTree       *model.TreeMerger[model.LocationRefName, model.LocationRefNameI]
 	symbolLock   sync.Mutex
@@ -167,7 +167,7 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 	}
 
 	a.init.Do(func() {
-		a.tree = model.NewTreeMerger[model.FuntionName, model.FuntionNameI]()
+		a.tree = model.NewTreeMerger[model.FunctionName, model.FunctionNameI]()
 		a.query = r.Query.CloneVT()
 	})
 	return a.tree.MergeTreeBytes(r.Tree)

@@ -18,22 +18,22 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/minheap"
 )
 
-const OtherFunctionName = FuntionName(truncatedNodeName)
+const OtherFunctionName = FunctionName(truncatedNodeName)
 
-type FuntionName string
+type FunctionName string
 
-type FuntionNameI struct {
+type FunctionNameI struct {
 }
 
-func (FuntionNameI) IsLocationTree() bool {
+func (FunctionNameI) IsLocationTree() bool {
 	return false
 }
 
-func (FuntionNameI) newOther() FuntionName { //nolint:unused
+func (FunctionNameI) newOther() FunctionName { //nolint:unused
 	return OtherFunctionName
 }
 
-func (FuntionNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[FuntionName], _ func(FuntionName) FuntionName) error { //nolint:unused
+func (FunctionNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[FunctionName], _ func(FunctionName) FunctionName) error { //nolint:unused
 	if _, err := vw.Write(w, uint64(len(n.name))); err != nil {
 		return err
 	}
@@ -44,14 +44,14 @@ func (FuntionNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[FuntionNa
 	return err
 }
 
-func (FuntionNameI) unmarshalNode(b []byte, offset int) (FuntionName, int64, int, error) { //nolint:unused
+func (FunctionNameI) unmarshalNode(b []byte, offset int) (FunctionName, int64, int, error) { //nolint:unused
 	nameLen, o := dvarint.Uvarint(b[offset:])
 	if o < 0 {
 		return "", 0, 0, errMalformedTreeBytes
 	}
 	offset += o
 	// Note that we allocate a string, instead of referencing b's capacity.
-	name := FuntionName(b[offset : offset+int(nameLen)])
+	name := FunctionName(b[offset : offset+int(nameLen)])
 	offset += int(nameLen)
 	value, o := dvarint.Uvarint(b[offset:])
 	if o < 0 {
@@ -113,7 +113,7 @@ type NodeNameI[N ~string | ~int] interface {
 
 type LocationRefNameTree = Tree[LocationRefName, LocationRefNameI]
 
-type FunctionNameTree = Tree[FuntionName, FuntionNameI]
+type FunctionNameTree = Tree[FunctionName, FunctionNameI]
 
 type Tree[N NodeName, I NodeNameI[N]] struct {
 	root []*node[N]

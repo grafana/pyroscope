@@ -71,7 +71,7 @@ func (r *Router) SelectMergeStacktraces(
 	resp, err := Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
 		func(_, _ *querierv1.SelectMergeStacktracesRequest) {},
 		func(a, b *querierv1.SelectMergeStacktracesResponse) (*querierv1.SelectMergeStacktracesResponse, error) {
-			m := phlaremodel.NewTreeMerger[phlaremodel.FuntionName, phlaremodel.FuntionNameI]()
+			m := phlaremodel.NewTreeMerger[phlaremodel.FunctionName, phlaremodel.FunctionNameI]()
 			if err := m.MergeTreeBytes(a.Tree); err != nil {
 				return nil, err
 			}
@@ -84,7 +84,7 @@ func (r *Router) SelectMergeStacktraces(
 	)
 	if err == nil && f != c.Msg.Format {
 		resp.Msg.Flamegraph = phlaremodel.NewFlameGraph(
-			phlaremodel.MustUnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](resp.Msg.Tree),
+			phlaremodel.MustUnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](resp.Msg.Tree),
 			c.Msg.GetMaxNodes())
 	}
 	return resp, err
@@ -101,7 +101,7 @@ func (r *Router) SelectMergeSpanProfile(
 	resp, err := Query[querierv1.SelectMergeSpanProfileRequest, querierv1.SelectMergeSpanProfileResponse](ctx, r, c,
 		func(_, _ *querierv1.SelectMergeSpanProfileRequest) {},
 		func(a, b *querierv1.SelectMergeSpanProfileResponse) (*querierv1.SelectMergeSpanProfileResponse, error) {
-			m := phlaremodel.NewTreeMerger[phlaremodel.FuntionName, phlaremodel.FuntionNameI]()
+			m := phlaremodel.NewTreeMerger[phlaremodel.FunctionName, phlaremodel.FunctionNameI]()
 			if err := m.MergeTreeBytes(a.Tree); err != nil {
 				return nil, err
 			}
@@ -114,7 +114,7 @@ func (r *Router) SelectMergeSpanProfile(
 	)
 	if err == nil && f != c.Msg.Format {
 		resp.Msg.Flamegraph = phlaremodel.NewFlameGraph(
-			phlaremodel.MustUnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](resp.Msg.Tree),
+			phlaremodel.MustUnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](resp.Msg.Tree),
 			c.Msg.GetMaxNodes())
 	}
 	return resp, err
@@ -194,7 +194,7 @@ func (r *Router) Diff(
 			if err != nil {
 				return err
 			}
-			tree, err := phlaremodel.UnmarshalTree[phlaremodel.FuntionName, phlaremodel.FuntionNameI](resp.Msg.Tree)
+			tree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](resp.Msg.Tree)
 			if err != nil {
 				return err
 			}

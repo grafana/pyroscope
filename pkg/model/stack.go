@@ -17,7 +17,7 @@ var stackNodePool = sync.Pool{
 type stackNode struct {
 	xOffset int
 	level   int
-	node    *node[FuntionName]
+	node    *node[FunctionName]
 }
 
 // Stack is a stack of values. Pushing and popping values is O(1).

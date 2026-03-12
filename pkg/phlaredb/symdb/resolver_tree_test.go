@@ -88,7 +88,7 @@ func Test_memory_Resolver_ResolveTree(t *testing.T) {
 			stacktraceCount := 0
 			total := 0
 
-			resolved.IterateStacks(func(name phlaremodel.FuntionName, self int64, stack []phlaremodel.FuntionName) {
+			resolved.IterateStacks(func(name phlaremodel.FunctionName, self int64, stack []phlaremodel.FunctionName) {
 				stacktraceCount++
 				total += int(self)
 
@@ -156,7 +156,7 @@ func Test_memory_Resolver_ResolveTree_copied_nodes(t *testing.T) {
 		r.AddSamples(0, samples)
 		resolved, err := r.Tree()
 		require.NoError(t, err)
-		resolved.FormatNodeNames(func(s phlaremodel.FuntionName) phlaremodel.FuntionName {
+		resolved.FormatNodeNames(func(s phlaremodel.FunctionName) phlaremodel.FunctionName {
 			nodes++
 			return s
 		})
@@ -304,10 +304,10 @@ func Test_buildTreeFromParentPointerTrees(t *testing.T) {
 			appender := NewSampleAppender()
 			appender.AppendMany(expectedSamples.StacktraceIDs, expectedSamples.Values)
 			ranges := iterator.SplitStacktraceIDRanges(appender)
-			lookup := func(i int32) phlaremodel.FuntionName {
-				return phlaremodel.FuntionName(symbols.Strings[i])
+			lookup := func(i int32) phlaremodel.FunctionName {
+				return phlaremodel.FunctionName(symbols.Strings[i])
 			}
-			resolved, err := buildTreeFromParentPointerTrees[phlaremodel.FuntionName, phlaremodel.FuntionNameI](context.Background(), ranges, symbols, maxNodes, SelectStackTraces(symbols, tc.selector), lookup)
+			resolved, err := buildTreeFromParentPointerTrees[phlaremodel.FunctionName, phlaremodel.FunctionNameI](context.Background(), ranges, symbols, maxNodes, SelectStackTraces(symbols, tc.selector), lookup)
 			require.NoError(t, err)
 
 			require.Equal(t, tc.expected, resolved.String())

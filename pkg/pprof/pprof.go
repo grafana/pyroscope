@@ -370,7 +370,7 @@ func FromTree(t *model.FunctionNameTree, ty *typesv1.ProfileType, timeNanos int6
 
 	SetProfileMetadata(b.profile, ty, timeNanos, 0)
 
-	t.IterateStacks(func(name model.FuntionName, self int64, stack []model.FuntionName) {
+	t.IterateStacks(func(name model.FunctionName, self int64, stack []model.FunctionName) {
 		if self <= 0 {
 			return
 		}

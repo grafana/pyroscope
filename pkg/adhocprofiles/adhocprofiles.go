@@ -426,9 +426,9 @@ func flamebearerToModelTree(fb *flamebearer.FlamebearerProfile) (*model.Function
 		// IterateStacks yields stacks in leaf-to-root order;
 		// model.Tree.InsertStack expects root-to-leaf.
 		slices.Reverse(stack)
-		names := make([]model.FuntionName, len(stack))
+		names := make([]model.FunctionName, len(stack))
 		for i, s := range stack {
-			names[i] = model.FuntionName(s)
+			names[i] = model.FunctionName(s)
 		}
 		t.InsertStack(int64(self), names...)
 	})
