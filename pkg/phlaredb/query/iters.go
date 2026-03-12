@@ -465,49 +465,18 @@ func (bj *BinaryJoinIterator) makeResult() {
 }
 
 func (bj *BinaryJoinIterator) Next() bool {
-	var r *IteratorResult
-	for {
-		if r != nil {
-			iteratorResultPoolPut(r)
-		}
-		r = bj.left.At()
-		if !bj.left.Next() {
-			bj.err = bj.left.Err()
-			return false
-		}
-
-		// now seek the right iterator to the left position
-		if !bj.nextOrSeek(RowNumberWithDefinitionLevel{bj.left.At().RowNumber, bj.definitionLevel}, bj.right) {
-			bj.err = bj.right.Err()
-			return false
-		}
-
-		if cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber); cmp == 0 {
-			// we have a found an element
-			bj.makeResult()
-			return true
-		} else if cmp < 0 {
-			// left is smaller, so we need to seek the left iterator to the right position
-			if !bj.nextOrSeek(RowNumberWithDefinitionLevel{bj.right.At().RowNumber, bj.definitionLevel}, bj.left) {
-				bj.err = bj.left.Err()
-				return false
-			}
-
-			if cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber); cmp == 0 {
-				bj.makeResult()
-				return true
-			}
-
-		} else {
-			panic(fmt.Sprintf(
-				"bug in iterator during join: the right iterator cannot be smaller than the left one, as it just has been Seeked beyond left=%v %T right=%v %T",
-				bj.left.At().RowNumber[0],
-				bj.left,
-				bj.right.At().RowNumber[0],
-				bj.right,
-			))
-		}
+	if !bj.left.Next() {
+		bj.err = bj.left.Err()
+		return false
 	}
+
+	// now seek the right iterator to the left position
+	if !bj.nextOrSeek(RowNumberWithDefinitionLevel{bj.left.At().RowNumber, bj.definitionLevel}, bj.right) {
+		bj.err = bj.right.Err()
+		return false
+	}
+
+	return bj.converge()
 }
 
 func (bj *BinaryJoinIterator) At() *IteratorResult {
@@ -524,14 +493,33 @@ func (bj *BinaryJoinIterator) Seek(to RowNumberWithDefinitionLevel) bool {
 		return false
 	}
 
-	// if there is a match right away return true
-	if cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber); cmp == 0 {
-		bj.makeResult()
-		return true
-	}
+	return bj.converge()
+}
 
-	// if not look for the next match
-	return bj.Next()
+// converge alternates seeking left and right forward until they align
+// on the same row. Always terminates since both iterators only advance.
+// Uses Seek directly instead of nextOrSeek because the left iterator may
+// be a nested BinaryJoinIterator that reuses its result object — the
+// deferred pool-put in nextOrSeek would corrupt a still-live result.
+func (bj *BinaryJoinIterator) converge() bool {
+	for {
+		cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber)
+		if cmp == 0 {
+			bj.makeResult()
+			return true
+		}
+		if cmp < 0 {
+			if !bj.left.Seek(RowNumberWithDefinitionLevel{bj.right.At().RowNumber, bj.definitionLevel}) {
+				bj.err = bj.left.Err()
+				return false
+			}
+		} else {
+			if !bj.right.Seek(RowNumberWithDefinitionLevel{bj.left.At().RowNumber, bj.definitionLevel}) {
+				bj.err = bj.right.Err()
+				return false
+			}
+		}
+	}
 }
 
 func (bj *BinaryJoinIterator) Close() error {
