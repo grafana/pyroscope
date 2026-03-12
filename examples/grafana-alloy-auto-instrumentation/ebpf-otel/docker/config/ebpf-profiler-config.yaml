@@ -9,13 +9,6 @@ processors:
         key: k8s.cluster.name
         value: demo
 
-  transform/set_service_name:
-    profile_statements:
-    # Note: This isn't supported today, therefore we do relabeling on the Pyroscope side
-    - set(profile.attributes["service_name"], profile.attributes["process.executable.name"])
-      where profile.attributes["service_name"] == nil and profile.attributes["process.executable.name"]
-      != nil
-
 exporters:
   otlp_grpc:
     endpoint: pyroscope:4040
@@ -29,4 +22,3 @@ service:
       exporters: [otlp_grpc]
       processors:
         - resource/metadata
-        - transform/set_service_name
