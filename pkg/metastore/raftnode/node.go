@@ -56,6 +56,9 @@ type Config struct {
 	SnapshotThreshold     uint64        `yaml:"snapshot_threshold" doc:"hidden"`
 	TransportConnPoolSize uint64        `yaml:"transport_conn_pool_size" doc:"hidden"`
 	TransportTimeout      time.Duration `yaml:"transport_timeout" doc:"hidden"`
+
+	// If set, wraps the log store after construction. Used only for testing.
+	LogStoreMiddleware func(raft.LogStore) raft.LogStore `yaml:"-"`
 }
 
 const (
@@ -232,6 +235,11 @@ func (n *Node) openStore() (err error) {
 	}
 	n.logStore = n.wal
 	n.logStore, _ = raft.NewLogCache(int(n.config.WALCacheEntries), n.logStore)
+
+	// For testing purposes only.
+	if n.config.LogStoreMiddleware != nil {
+		n.logStore = n.config.LogStoreMiddleware(n.logStore)
+	}
 	n.stableStore = n.wal
 	n.snapshotStore = n.snapshots
 	return nil
