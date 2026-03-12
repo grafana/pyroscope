@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
@@ -158,7 +159,8 @@ func blocksQuerySeries(ctx context.Context, params *blocksQuerySeriesParams) err
 		return err
 	}
 
-	return outputSeries(response.Msg.LabelsSet)
+	return outputSeries(ctx, response.Msg.LabelsSet, "json",
+		time.UnixMilli(from), time.UnixMilli(to))
 }
 
 func getBucket(ctx context.Context, params *blocksQueryParams) (objstore.Bucket, error) {

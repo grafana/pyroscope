@@ -336,6 +336,7 @@ type querySeriesParams struct {
 	*queryParams
 	LabelNames []string
 	APIType    string
+	Output     string
 }
 
 func addQuerySeriesParams(queryCmd commander) *querySeriesParams {
@@ -343,6 +344,7 @@ func addQuerySeriesParams(queryCmd commander) *querySeriesParams {
 	params.queryParams = addQueryParams(queryCmd)
 	queryCmd.Flag("label-names", "Filter returned labels to the supplied label names. Without any filter all labels are returned.").StringsVar(&params.LabelNames)
 	queryCmd.Flag("api-type", "Which API type to query (querier, ingester or store-gateway).").Default("querier").StringVar(&params.APIType)
+	queryCmd.Flag("output", "Output format, one of: table, json.").Default("table").StringVar(&params.Output)
 	return params
 }
 
@@ -397,8 +399,7 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 		return errors.Errorf("unknown api type %s", params.APIType)
 	}
 
-	err = outputSeries(result)
-	return err
+	return outputSeries(ctx, result, params.Output, from, to)
 }
 
 type queryLabelValuesCardinalityParams struct {
