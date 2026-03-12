@@ -158,9 +158,16 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 		return nil, err
 	}
 
+	// When filtering by profile ID, skip the time predicate. The profile ID
+	// is globally unique, and the exemplar's timestamp may fall outside the
+	// query range because SelectSeries widens start by one step.
+	var timePredicate parquetquery.Predicate
+	if len(opts.profileIDSelector) == 0 {
+		timePredicate = parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime)
+	}
 	columns := queryColumns{
 		{schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(series), 10},
-		{schemav1.TimeNanosColumnName, parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime), 15},
+		{schemav1.TimeNanosColumnName, timePredicate, 15},
 	}
 	processor := []func([][]parquet.Value, *ProfileEntry){}
 
