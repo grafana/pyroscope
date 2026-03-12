@@ -25,7 +25,7 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: OTEL_RESOURCE_ATTRIBUTES
-              value: "host.name=$(NODE_NAME)"
+              value: "host.name=$(KUBERNETES_NODE_NAME)"
           resources:
             requests:
               cpu: 200m
