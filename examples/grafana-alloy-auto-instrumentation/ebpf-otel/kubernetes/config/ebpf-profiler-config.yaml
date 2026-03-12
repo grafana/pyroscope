@@ -42,9 +42,6 @@ exporters:
       insecure: true
 
 service:
-  telemetry:
-    logs:
-      level: "debug"
   pipelines:
     profiles:
       receivers: [profiling]
