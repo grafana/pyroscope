@@ -158,16 +158,9 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 		return nil, err
 	}
 
-	// When filtering by profile ID, skip the time predicate. The profile ID
-	// is globally unique, and the exemplar's timestamp may fall outside the
-	// query range because SelectSeries widens start by one step.
-	var timePredicate parquetquery.Predicate
-	if len(opts.profileIDSelector) == 0 {
-		timePredicate = parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime)
-	}
 	columns := queryColumns{
 		{schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(series), 10},
-		{schemav1.TimeNanosColumnName, timePredicate, 15},
+		{schemav1.TimeNanosColumnName, parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime), 15},
 	}
 	processor := []func([][]parquet.Value, *ProfileEntry){}
 
@@ -182,20 +175,15 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 			e.Partition = buf[offset][0].Uint64()
 		})
 	}
-	// fetch profile id if requested or part of the predicate
+	// When profileIDSelector is set, fetch the ID column without a predicate
+	// and filter post-join. Pushing a selective predicate into the column
+	// iterator creates a sparse left side in nested BinaryJoinIterators,
+	// which triggers an alignment bug. Filtering here avoids that.
 	if opts.fetchProfileIDs || len(opts.profileIDSelector) > 0 {
-		var (
-			predicate parquetquery.Predicate
-			priority  = 20
-		)
-		if len(opts.profileIDSelector) > 0 {
-			predicate = parquetquery.NewStringInPredicate(opts.profileIDSelector)
-			priority = 5
-		}
 		offset := len(columns)
 		columns = append(
 			columns,
-			queryColumn{schemav1.IDColumnName, predicate, priority},
+			queryColumn{schemav1.IDColumnName, nil, 20},
 		)
 		var u uuid.UUID
 		processor = append(processor, func(buf [][]parquet.Value, e *ProfileEntry) {
@@ -229,7 +217,34 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 		},
 		func([]ProfileEntry) {},
 	)
+
+	if len(opts.profileIDSelector) > 0 {
+		allowed := make(map[string]struct{}, len(opts.profileIDSelector))
+		for _, id := range opts.profileIDSelector {
+			var u uuid.UUID
+			copy(u[:], id)
+			allowed[u.String()] = struct{}{}
+		}
+		return &profileIDFilterIterator{
+			Iterator: entries,
+			allowed:  allowed,
+		}, nil
+	}
 	return entries, nil
+}
+
+type profileIDFilterIterator struct {
+	iter.Iterator[ProfileEntry]
+	allowed map[string]struct{}
+}
+
+func (f *profileIDFilterIterator) Next() bool {
+	for f.Iterator.Next() {
+		if _, ok := f.allowed[f.Iterator.At().ID]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 type series struct {

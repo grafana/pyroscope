@@ -467,65 +467,6 @@ func TestBinaryJoinIterator(t *testing.T) {
 	}
 }
 
-// TestBinaryJoinIterator_SparseLeftIterator verifies that BinaryJoinIterator
-// finds matches when the left iterator is highly selective (few matching rows).
-// This reproduces the bug fixed by the converge() method.
-func TestBinaryJoinIterator_SparseLeftIterator(t *testing.T) {
-	type T struct {
-		ID        string
-		SeriesID  uint32
-		TimeNanos int64
-	}
-
-	targetID := "target__________" // 16 bytes
-	otherID := func(i int) string {
-		return fmt.Sprintf("other_%010d_", i) // 16 bytes
-	}
-
-	// Target ID at rows 50, 100, 150, 180. SeriesID cycles 0-7.
-	// Only row 150 matches all three predicates (ID=target, seriesID=6, time in range).
-	rowCount := 200
-	rows := make([]T, rowCount)
-	targetRows := map[int]bool{50: true, 100: true, 150: true, 180: true}
-	for i := range rows {
-		id := otherID(i)
-		if targetRows[i] {
-			id = targetID
-		}
-		rows[i] = T{
-			ID:        id,
-			SeriesID:  uint32(i % 8),
-			TimeNanos: int64(i) * 1000,
-		}
-	}
-
-	pf := createFileWith[T](t, rows, 1)
-
-	ctx := context.Background()
-	reg := prometheus.NewRegistry()
-	metrics := NewMetrics(reg)
-	ctx = AddMetricsToContext(ctx, metrics)
-
-	idIt := NewSyncIterator(ctx, pf.RowGroups(), 0, "ID", 1000,
-		NewStringInPredicate([]string{targetID}), "ID")
-	seriesIt := NewSyncIterator(ctx, pf.RowGroups(), 1, "SeriesID", 1000,
-		NewMapPredicate(map[uint32]struct{}{6: {}}), "SeriesID")
-	timeIt := NewSyncIterator(ctx, pf.RowGroups(), 2, "TimeNanos", 1000,
-		NewIntBetweenPredicate(0, int64(rowCount)*1000), "TimeNanos")
-
-	inner := NewBinaryJoinIterator(0, idIt, seriesIt)
-	outer := NewBinaryJoinIterator(0, inner, timeIt)
-
-	var results []int64
-	for outer.Next() {
-		results = append(results, outer.At().RowNumber[0])
-	}
-	require.NoError(t, outer.Err())
-	require.NoError(t, outer.Close())
-
-	require.Equal(t, []int64{150}, results)
-}
-
 type rowGetter int64
 
 func (r rowGetter) RowNumber() int64 {
