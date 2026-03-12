@@ -34,6 +34,7 @@ func TestMetastoreDiskFailure_ClusterRecovery(t *testing.T) {
 
 	cfg := new(metastore.Config)
 	flagext.DefaultValues(cfg)
+	cfg.Raft.LogStoreTimeout = 2 * time.Second
 
 	// Wire each node's log store through its fault injector.
 	// NewMetastoreSet creates nodes 0..n-1 in order, each calling
