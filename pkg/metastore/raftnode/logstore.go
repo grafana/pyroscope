@@ -67,6 +67,14 @@ func (s *timeoutLogStore) withTimeout(fn func() error) error {
 		s.writeLatency.Observe(time.Since(start).Seconds())
 		return err
 	case <-time.After(s.timeout):
+		// Check if the operation completed concurrently with the timeout.
+		// Go's select picks randomly when multiple cases are ready.
+		select {
+		case err := <-done:
+			s.writeLatency.Observe(time.Since(start).Seconds())
+			return err
+		default:
+		}
 		s.writeLatency.Observe(time.Since(start).Seconds())
 		s.timeouts.Inc()
 		return fmt.Errorf("log store write timed out after %s", s.timeout)
