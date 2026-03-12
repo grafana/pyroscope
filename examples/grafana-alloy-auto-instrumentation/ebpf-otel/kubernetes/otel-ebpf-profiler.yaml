@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: otel-ebpf-profiler
+spec:
+  selector:
+    matchLabels:
+      app: otel-ebpf-profiler
+  template:
+    metadata:
+      labels:
+        app: otel-ebpf-profiler
+    spec:
+      hostPID: true
+      serviceAccountName: otel-ebpf-profiler
+      containers:
+        - name: profiler
+          image: otel/opentelemetry-collector-ebpf-profiler:0.147.0
+          args:
+            - "--config=/etc/otel/config.yaml"
+            - "--feature-gates=+service.profilesSupport"
+          env:
+            - name: KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "host.name=$(KUBERNETES_NODE_NAME)"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otel/config.yaml
+              subPath: config.yaml
+            - name: sys-kernel
+              mountPath: /sys/kernel
+              readOnly: true
+            - name: tracefs
+              mountPath: /sys/kernel/tracing
+              readOnly: true
+            - name: lib-modules
+              mountPath: /lib/modules
+              readOnly: true
+            - name: proc
+              mountPath: /proc
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: otel-ebpf-profiler-config
+        - name: sys-kernel
+          hostPath:
+            path: /sys/kernel
+        - name: tracefs
+          hostPath:
+            path: /sys/kernel/tracing
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+        - name: proc
+          hostPath:
+            path: /proc
+      tolerations:
+        - operator: Exists
