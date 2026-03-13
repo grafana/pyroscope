@@ -55,7 +55,18 @@ For help writing release notes, refer to the [Writers' Toolkit](https://grafana.
 
 ### Helm Chart Update
 
-Merge a PR that bumps the chart version in the main branch (no tagging required), the CI will automatically publish the chart to the [helm repository](https://grafana.github.io/helm-charts). 
+Merge a PR that bumps the chart version and updates the appVersion to the latest release Pyroscope in the main branch (no tagging required), the CI will automatically publish the chart to the [helm repository](https://grafana.github.io/helm-charts).
+
+#### Helm Chart Versioning
+
+The Helm chart version and Pyroscope application version are **separate and won't always match**. The `Chart.yaml` file contains two distinct version fields:
+- `version`: The Helm chart version
+- `appVersion`: The Pyroscope application version
+
+**Versioning Strategy:**
+- We aim for a **best effort match** between chart version and Pyroscope version when releasing new Pyroscope versions
+- Changes that **only affect the Helm chart** (templates, values, chart configuration) should be released as **patch releases of the chart only**, without requiring a new Pyroscope release
+- Example: If the current chart is `v1.10.2` (with `appVersion: v1.10.2`), a chart-only fix would bump to `v1.10.3` while keeping `appVersion: v1.10.2` 
 
 ## Backport
 

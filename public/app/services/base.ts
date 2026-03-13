@@ -1,5 +1,3 @@
-/* eslint-disable max-classes-per-file */
-/* eslint-disable import/prefer-default-export */
 import type { ZodError } from 'zod';
 import { modelToResult } from '@pyroscope/models/utils';
 import { CustomError } from 'ts-custom-error';
@@ -101,7 +99,7 @@ async function connectRequest(
 
     // We could parse the response
     return Result.ok(data);
-  } catch (e) {
+  } catch {
     // We couldn't parse, but there's definitely some data
     return Result.err(
       new ResponseOkNotInJSONFormat(response.value.status, textBody)
@@ -184,7 +182,7 @@ async function fetchAndHandleErrors(
         )}`
       )
     );
-  } catch (e) {
+  } catch {
     // We couldn't parse, but there's definitely some data
     // We must handle this case since the go server sometimes responds with plain text
 

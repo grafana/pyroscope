@@ -4,7 +4,7 @@ import { Result } from '@pyroscope/util/fp';
 /**
  * modelToResult converts a (most likely) zod model into a Result
  */
-// eslint-disable-next-line import/prefer-default-export
+
 export function modelToResult<T>(
   s: ZodType<T>,
   data: unknown

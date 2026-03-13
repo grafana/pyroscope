@@ -1,4 +1,3 @@
-/* eslint-disable import/first */
 import 'react-dom';
 import React from 'react';
 

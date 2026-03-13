@@ -1,6 +1,3 @@
-/* eslint-disable react/no-access-state-in-setstate */
-/* eslint-disable react/no-did-update-set-state */
-/* eslint-disable react/destructuring-assignment */
 import React, { ReactNode } from 'react';
 import Color from 'color';
 import type { Group } from '@pyroscope/legacy/models';
@@ -92,7 +89,6 @@ class TimelineChartWrapper extends React.Component<
   // TODO add type
   ShamefulAny
 > {
-  // eslint-disable-next-line react/static-property-placement
   static defaultProps = {
     format: 'bars',
     mode: 'singles',

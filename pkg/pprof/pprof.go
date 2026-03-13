@@ -671,7 +671,7 @@ func (p *Profile) visitAllNameReferences(fn func(*int64)) {
 	for _, s := range p.Sample {
 		for _, l := range s.Label {
 			fn(&l.Key)
-			fn(&l.Num)
+			fn(&l.Str)
 			fn(&l.NumUnit)
 		}
 	}
@@ -1582,4 +1582,8 @@ func (p *Profile) DebugString() string {
 		return "<nil>"
 	}
 	return gp.String()
+}
+
+func (p *Profile) Stats() string {
+	return p.stats.pretty()
 }

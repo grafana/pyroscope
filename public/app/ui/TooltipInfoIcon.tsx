@@ -10,7 +10,7 @@ export const TooltipInfoIcon = React.forwardRef(function TooltipInfoIcon(
   return (
     <Button
       // needed for tooltip
-      // eslint-disable-next-line react/jsx-props-no-spreading
+
       {...props}
       ref={ref}
       className={styles.noHover}

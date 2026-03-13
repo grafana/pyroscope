@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -64,19 +65,31 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
-		StartTime:     c.Msg.Start,
-		EndTime:       c.Msg.End,
-		LabelSelector: labelSelector,
-		Query: []*queryv1.Query{{
-			QueryType: queryv1.QueryType_QUERY_TREE,
-			Tree: &queryv1.TreeQuery{
-				MaxNodes:           maxNodes,
-				StackTraceSelector: c.Msg.StackTraceSelector,
-				ProfileIdSelector:  c.Msg.ProfileIdSelector,
-			},
-		}},
-	})
+	report, err := q.querySingle(ctx,
+		&queryv1.QueryRequest{
+			StartTime:     c.Msg.Start,
+			EndTime:       c.Msg.End,
+			LabelSelector: labelSelector,
+			Query: []*queryv1.Query{{
+				QueryType: queryv1.QueryType_QUERY_TREE,
+				Tree: &queryv1.TreeQuery{
+					MaxNodes:           maxNodes,
+					StackTraceSelector: c.Msg.StackTraceSelector,
+					ProfileIdSelector:  c.Msg.ProfileIdSelector,
+				},
+			}},
+		},
+		func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend {
+			shouldSymbolize := q.shouldSymbolize(ctx, tenantIDs, blocks)
+			if !shouldSymbolize {
+				return upstream
+			}
+			return &backendTreeSymbolizer{
+				upstream:   upstream,
+				symbolizer: q.symbolizer,
+			}
+		},
+	)
 	if err != nil {
 		return nil, err
 	}

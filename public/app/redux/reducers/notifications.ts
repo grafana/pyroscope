@@ -1,4 +1,3 @@
-/* eslint-disable import/prefer-default-export */
 import { store } from '@pyroscope/ui/Notifications';
 import type { NotificationOptions } from '@pyroscope/ui/Notifications';
 import { createAsyncThunk } from '../async-thunk';

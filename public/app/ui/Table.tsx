@@ -122,14 +122,12 @@ function TableComponent({
             {table.headRow.map(
               ({ sortable, label, name, ...rest }, idx: number) =>
                 !sortable || table.type === 'not-filled' || !hasSort ? (
-                  // eslint-disable-next-line react/no-array-index-key
                   <th key={idx} {...rest}>
                     {label}
                   </th>
                 ) : (
                   <th
                     {...rest}
-                    // eslint-disable-next-line react/no-array-index-key
                     key={idx}
                     className={styles.sortable}
                     onClick={() => updateSortParams(name)}
@@ -170,7 +168,6 @@ function TableComponent({
                     {cells &&
                       cells.map(
                         ({ style, value, ...rest }: Cell, index: number) => (
-                          // eslint-disable-next-line react/no-array-index-key
                           <td key={renderID + index} style={style} {...rest}>
                             {value}
                           </td>

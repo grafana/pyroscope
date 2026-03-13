@@ -13,7 +13,6 @@ function deltaDiffWrapper(
     start: number,
     step: number
   ) {
-    // eslint-disable-next-line no-restricted-syntax
     for (const level of lvls) {
       let prev = 0;
       for (let i = start; i < level.length; i += step) {
@@ -33,10 +32,9 @@ function deltaDiffWrapper(
   return mutableLevels;
 }
 
-// eslint-disable-next-line import/prefer-default-export
 export function decodeFlamebearer(fb: Profile): Profile {
   // TODO: make this immutable
-  // eslint-disable-next-line no-param-reassign
+
   fb.flamebearer.levels = deltaDiffWrapper(
     fb.metadata.format,
     fb.flamebearer.levels

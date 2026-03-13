@@ -42,7 +42,7 @@ func (q *QueryFrontend) LabelNames(
 			QueryType:  queryv1.QueryType_QUERY_LABEL_NAMES,
 			LabelNames: &queryv1.LabelNamesQuery{},
 		}},
-	})
+	}, nil)
 	if err != nil {
 		return nil, err
 	}

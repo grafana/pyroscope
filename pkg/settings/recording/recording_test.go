@@ -75,6 +75,7 @@ func Test_validateUpsert(t *testing.T) {
 				Matchers: []string{
 					`{ label_a = "A" }`,
 					`{ label_b =~ "B" }`,
+					`{ __profile_type__ = "any-type" }`,
 				},
 				GroupBy: []string{
 					"label_c",
@@ -92,7 +93,7 @@ func Test_validateUpsert(t *testing.T) {
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				Id:             "",
 				MetricName:     "profiles_recorded_my_metric",
-				Matchers:       []string{},
+				Matchers:       []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
 			},
@@ -101,9 +102,10 @@ func Test_validateUpsert(t *testing.T) {
 		{
 			Name: "valid_with_formatted_fields",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
-				Id:             "abcdef",
-				MetricName:     "  profiles_recorded_my_metric	",
-				Matchers:       []string{},
+				Id:         "abcdef",
+				MetricName: "  profiles_recorded_my_metric	",
+				Matchers: []string{
+					`  {   __profile_type__   ="any-type"}`},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
 			},
@@ -114,7 +116,7 @@ func Test_validateUpsert(t *testing.T) {
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				Id:             "",
 				MetricName:     "profiles_recorded_my_metric",
-				Matchers:       []string{},
+				Matchers:       []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
 			},
@@ -125,7 +127,7 @@ func Test_validateUpsert(t *testing.T) {
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				Id:             "  ",
 				MetricName:     "profiles_recorded_my_metric",
-				Matchers:       []string{},
+				Matchers:       []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
 			},
@@ -136,7 +138,7 @@ func Test_validateUpsert(t *testing.T) {
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				Id:             "?",
 				MetricName:     "profiles_recorded_my_metric",
-				Matchers:       []string{},
+				Matchers:       []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
 			},
@@ -146,7 +148,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "empty_metric_name",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName:     "",
-				Matchers:       []string{},
+				Matchers:       []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
 			},
@@ -156,7 +158,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "invalid_metric_name",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName:     string([]byte{0xC0, 0xAF}), // invalid utf-8
-				Matchers:       []string{},
+				Matchers:       []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
 			},
@@ -168,6 +170,7 @@ func Test_validateUpsert(t *testing.T) {
 				MetricName: "profiles_recorded_my_metric",
 				Matchers: []string{
 					"",
+					`{ __profile_type__ = "any-type" }`,
 				},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
@@ -175,10 +178,53 @@ func Test_validateUpsert(t *testing.T) {
 			WantErr: `matcher "" is invalid: unknown position: parse error: unexpected end of input`,
 		},
 		{
+			Name: "missing __profile_type__ matcher",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName:     "profiles_recorded_my_metric",
+				Matchers:       []string{},
+				GroupBy:        []string{},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: `matchers must contain a "__profile_type__" matcher`,
+		},
+		{
+			Name: "multiple __profile_type__ matcher",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName:     "profiles_recorded_my_metric",
+				Matchers:       []string{`{ __profile_type__ = "any-type" }`, `{ __profile_type__ = "any-type-2" }`},
+				GroupBy:        []string{},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: `matchers must contain a "__profile_type__" matcher`,
+		},
+		{
+			Name: "non-equality __profile_type__ matcher",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName:     "profiles_recorded_my_metric",
+				Matchers:       []string{`{ __profile_type__ =~ "any-type.*" }`},
+				GroupBy:        []string{},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: `matcher "__profile_type__" must have type "="`,
+		},
+		{
+			Name: "non-unique __profile_type__ matcher",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName: "profiles_recorded_my_metric",
+				Matchers: []string{
+					`{ __profile_type__ = "any-type" }`,
+					`{ __profile_type__ = "another-type" }`,
+				},
+				GroupBy:        []string{},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: `matchers must contain a "__profile_type__" matcher`,
+		},
+		{
 			Name: "invalid_group_by_empty",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "profiles_recorded_my_metric",
-				Matchers:   []string{},
+				Matchers:   []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy: []string{
 					"",
 				},
@@ -190,7 +236,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "invalid_group_by_with_dot",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "profiles_recorded_my_metric",
-				Matchers:   []string{},
+				Matchers:   []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy: []string{
 					"service.name",
 				},
@@ -202,7 +248,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "invalid_group_by_with_utf8",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "profiles_recorded_my_metric",
-				Matchers:   []string{},
+				Matchers:   []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy: []string{
 					"世界",
 				},
@@ -214,7 +260,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "invalid_group_by_starts_with_number",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "profiles_recorded_my_metric",
-				Matchers:   []string{},
+				Matchers:   []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy: []string{
 					"123invalid",
 				},
@@ -226,7 +272,7 @@ func Test_validateUpsert(t *testing.T) {
 			Name: "invalid_external_label_utf8",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "profiles_recorded_my_metric",
-				Matchers:   []string{},
+				Matchers:   []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy:    []string{},
 				ExternalLabels: []*typesv1.LabelPair{
 					{
@@ -242,7 +288,7 @@ external_labels value "\xc0\xaf" must be a valid utf-8 string`,
 			Name: "invalid_external_label_with_dot",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "profiles_recorded_my_metric",
-				Matchers:   []string{},
+				Matchers:   []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy:    []string{},
 				ExternalLabels: []*typesv1.LabelPair{
 					{Name: "service.name", Value: "foo"},
@@ -254,7 +300,7 @@ external_labels value "\xc0\xaf" must be a valid utf-8 string`,
 			Name: "invalid_external_label_with_utf8_name",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "profiles_recorded_my_metric",
-				Matchers:   []string{},
+				Matchers:   []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy:    []string{},
 				ExternalLabels: []*typesv1.LabelPair{
 					{Name: "世界", Value: "value"},
@@ -266,7 +312,7 @@ external_labels value "\xc0\xaf" must be a valid utf-8 string`,
 			Name: "invalid_external_label_starts_with_number",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName: "profiles_recorded_my_metric",
-				Matchers:   []string{},
+				Matchers:   []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy:    []string{},
 				ExternalLabels: []*typesv1.LabelPair{
 					{Name: "123invalid", Value: "value"},
@@ -279,7 +325,7 @@ external_labels value "\xc0\xaf" must be a valid utf-8 string`,
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				Id:             "abcdef",
 				MetricName:     "profiles_recorded_my_metric",
-				Matchers:       []string{},
+				Matchers:       []string{`{ __profile_type__ = "any-type" }`},
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
 				Generation:     -1,
@@ -296,7 +342,7 @@ external_labels value "\xc0\xaf" must be a valid utf-8 string`,
 				GroupBy:        []string{},
 				ExternalLabels: []*typesv1.LabelPair{},
 			},
-			WantErr: "metric_name is required\nmatcher \"\" is invalid: unknown position: parse error: unexpected end of input",
+			WantErr: "metric_name is required\nmatcher \"\" is invalid: unknown position: parse error: unexpected end of input\nmatchers must contain a \"__profile_type__\" matcher",
 		},
 	}
 

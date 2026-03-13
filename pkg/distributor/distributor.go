@@ -577,6 +577,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		sp, _ := opentracing.StartSpanFromContext(ctx, "Profile.Normalize")
 		req.Profile.Normalize()
 		sp.Finish()
+		finalLog.addFields("normalization_stats", req.Profile.Stats())
 		d.metrics.observeProfileSize(tenantID, StageNormalized, calculateRequestSize(req))
 	}
 

@@ -1,4 +1,3 @@
-/* eslint-disable import/prefer-default-export */
 import { Result } from '@pyroscope/util/fp';
 import type { ZodError } from 'zod';
 import { Profile } from '@pyroscope/legacy/models';

@@ -35,13 +35,11 @@ spec:
             items:
               - key: datasources
                 path: datasources/datasources.yaml
-              - key: plugins
-                path: plugins/plugins.yaml
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: grafana-service
+  name: grafana
 spec:
   selector:
     app: grafana
@@ -61,14 +59,6 @@ data:
       - uid: local-pyroscope
         type: grafana-pyroscope-datasource
         name: Pyroscope
-        url: http://pyroscope-service:4040
+        url: http://pyroscope:4040
         jsonData:
           keepCookies: [pyroscope_git_session]
-
-  "plugins": |
-    apiVersion: 1
-    apps:
-      - type: grafana-pyroscope-app
-        jsonData:
-          backendUrl: http://pyroscope-service:4040
-        secureJsonData:

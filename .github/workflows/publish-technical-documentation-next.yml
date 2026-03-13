@@ -20,6 +20,6 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-      - uses: grafana/writers-toolkit/publish-technical-documentation@9cd40a7f81073bfcad984f1e93dc89eae8a9b464
+      - uses: grafana/writers-toolkit/publish-technical-documentation@53f56c6ad8d9870aff26be10a1db9d0f4652b63a
         with:
           website_directory: content/docs/pyroscope/next

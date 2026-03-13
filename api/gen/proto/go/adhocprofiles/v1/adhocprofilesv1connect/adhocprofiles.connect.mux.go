@@ -34,4 +34,9 @@ func RegisterAdHocProfileServiceHandler(mux *mux.Router, svc AdHocProfileService
 		svc.List,
 		opts...,
 	))
+	mux.Handle("/adhocprofiles.v1.AdHocProfileService/Diff", connect.NewUnaryHandler(
+		"/adhocprofiles.v1.AdHocProfileService/Diff",
+		svc.Diff,
+		opts...,
+	))
 }

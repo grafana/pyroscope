@@ -1,4 +1,3 @@
-/* eslint-disable react/jsx-props-no-spreading */
 import React, { Ref, ReactNode } from 'react';
 import ModalUnstyled from '@mui/base/ModalUnstyled';
 import Button from '@pyroscope/ui/Button';

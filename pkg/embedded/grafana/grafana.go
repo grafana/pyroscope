@@ -30,40 +30,40 @@ func mustHexDecode(s string) []byte {
 
 var exploreProfileReleases = releaseArtifacts{
 	{
-		URL:          "https://github.com/grafana/profiles-drilldown/releases/download/v1.5.0/grafana-pyroscope-app-v1.5.0.zip",
-		Sha256Sum:    mustHexDecode("0b74db5c96b5edc8849af9ca830ff98ba6eaff96f30deda225e6cd68514cc574"),
+		URL:          "https://github.com/grafana/profiles-drilldown/releases/download/v1.10.0/grafana-pyroscope-app-1.10.0.zip",
+		Sha256Sum:    mustHexDecode("d1e33d22a68db7e7b9611361a25415e645516560f48c3aa4ee938f4c264e0e69"),
 		CompressType: CompressTypeZip,
 	},
 }
 
 var grafanaReleases = releaseArtifacts{
 	{
-		URL:             "https://dl.grafana.com/oss/release/grafana-12.0.2.linux-amd64.tar.gz",
-		Sha256Sum:       mustHexDecode("c1755b4da918edfd298d5c8d5f1ffce35982ad10e1640ec356570cfb8c34b3e8"),
+		URL:             "https://dl.grafana.com/oss/release/grafana-12.3.2.linux-amd64.tar.gz",
+		Sha256Sum:       mustHexDecode("f8675fc07f43f38268bb9132bf4014a26a4f4956f93a697047046ba9268f9d9b"),
 		OS:              "linux",
 		Arch:            "amd64",
 		CompressType:    CompressTypeGzip,
 		StripComponents: 1,
 	},
 	{
-		URL:             "https://dl.grafana.com/oss/release/grafana-12.0.2.linux-arm64.tar.gz",
-		Sha256Sum:       mustHexDecode("bc0b186458cc91e2f96a06ecff2b3b4033b1a6ffd2449817e2a430a0b4ae4f12"),
+		URL:             "https://dl.grafana.com/oss/release/grafana-12.3.2.linux-arm64.tar.gz",
+		Sha256Sum:       mustHexDecode("af0d8288b0818c3a1d5b4b2fc9b4c567bf55fcb8e28035d49a8dd54661cc880b"),
 		OS:              "linux",
 		Arch:            "arm64",
 		CompressType:    CompressTypeGzip,
 		StripComponents: 1,
 	},
 	{
-		URL:             "https://dl.grafana.com/oss/release/grafana-12.0.2.darwin-amd64.tar.gz",
-		Sha256Sum:       mustHexDecode("ca2e97682149e482813c343f6b6d93e2f67dea33eae9a808513c7c62457c66e9"),
+		URL:             "https://dl.grafana.com/oss/release/grafana-12.3.2.darwin-amd64.tar.gz",
+		Sha256Sum:       mustHexDecode("7daa6d40893e91a1f8e2d426580e8402616ffb4fb1ff09af9a1bdd81598dcf06"),
 		OS:              "darwin",
 		Arch:            "amd64",
 		CompressType:    CompressTypeGzip,
 		StripComponents: 1,
 	},
 	{
-		URL:             "https://dl.grafana.com/oss/release/grafana-12.0.2.darwin-arm64.tar.gz",
-		Sha256Sum:       mustHexDecode("3f162ba5dc3bbd0133055ecd40f4f1f791b287bee8e0487449f001b6e1c11a4f"),
+		URL:             "https://dl.grafana.com/oss/release/grafana-12.3.2.darwin-arm64.tar.gz",
+		Sha256Sum:       mustHexDecode("221b878196b68221fc4540ddef4bc9c4c43e05cd81662b15f4c6200f45b1d2a5"),
 		OS:              "darwin",
 		Arch:            "arm64",
 		CompressType:    CompressTypeGzip,

@@ -60,7 +60,7 @@ const Button = React.forwardRef(function Button(
   return (
     <button
       // needed for tooltip
-      // eslint-disable-next-line react/jsx-props-no-spreading
+
       {...props}
       id={id}
       ref={ref}
@@ -69,7 +69,7 @@ const Button = React.forwardRef(function Button(
       disabled={disabled}
       onClick={onClick}
       form={form}
-      autoFocus={autoFocus} // eslint-disable-line
+      autoFocus={autoFocus}
       aria-label={props['aria-label']}
       className={cx(
         styles.button,

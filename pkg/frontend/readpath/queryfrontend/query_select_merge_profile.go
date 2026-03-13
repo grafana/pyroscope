@@ -2,11 +2,13 @@ package queryfrontend
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -57,19 +59,26 @@ func (q *QueryFrontend) SelectMergeProfile(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
-		StartTime:     c.Msg.Start,
-		EndTime:       c.Msg.End,
-		LabelSelector: labelSelector,
-		Query: []*queryv1.Query{{
-			QueryType: queryv1.QueryType_QUERY_PPROF,
-			Pprof: &queryv1.PprofQuery{
-				MaxNodes:           maxNodes,
-				StackTraceSelector: c.Msg.StackTraceSelector,
-				ProfileIdSelector:  c.Msg.ProfileIdSelector,
-			},
-		}},
-	})
+	shouldSymbolize := false
+	report, err := q.querySingle(ctx,
+		&queryv1.QueryRequest{
+			StartTime:     c.Msg.Start,
+			EndTime:       c.Msg.End,
+			LabelSelector: labelSelector,
+			Query: []*queryv1.Query{{
+				QueryType: queryv1.QueryType_QUERY_PPROF,
+				Pprof: &queryv1.PprofQuery{
+					MaxNodes:           maxNodes,
+					StackTraceSelector: c.Msg.StackTraceSelector,
+					ProfileIdSelector:  c.Msg.ProfileIdSelector,
+				},
+			}},
+		},
+		func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend {
+			shouldSymbolize = q.shouldSymbolize(ctx, tenantIDs, blocks)
+			return upstream
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +88,12 @@ func (q *QueryFrontend) SelectMergeProfile(
 	var p profilev1.Profile
 	if err = pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {
 		return nil, err
+	}
+
+	if shouldSymbolize {
+		if err := q.symbolizer.SymbolizePprof(ctx, &p); err != nil {
+			return nil, fmt.Errorf("failed to symbolize profile: %w", err)
+		}
 	}
 
 	return connect.NewResponse(&p), nil
