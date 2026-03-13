@@ -19,7 +19,7 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1/debuginfov1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/grafana/pyroscope/public"
 
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -190,8 +190,8 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 	})
 }
 
-func (a *API) RegisterDebugInfo(svc debuginfov1connect.DebuginfoServiceHandler) {
-	debuginfov1connect.RegisterDebuginfoServiceHandler(a.server.HTTP, svc, a.connectOptionsDebugInfo()...)
+func (a *API) RegisterDebugInfo(svc debuginfov1alpha1connect.DebuginfoServiceHandler) {
+	debuginfov1alpha1connect.RegisterDebuginfoServiceHandler(a.server.HTTP, svc, a.connectOptionsDebugInfo()...)
 }
 
 // RegisterDistributor registers the endpoints associated with the distributor.

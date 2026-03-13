@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package debuginfo.v1;
+package debuginfo.v1alpha1;
 
 import "types/v1/types.proto";
 import "google/protobuf/timestamp.proto";

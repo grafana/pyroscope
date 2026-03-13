@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        (unknown)
-// source: debuginfo/v1/debuginfo.proto
+// source: debuginfo/v1alpha1/debuginfo.proto
 
-package debuginfov1
+package debuginfov1alpha1
 
 import (
 	_ "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -53,11 +53,11 @@ func (x FileMetadata_DebuginfoType) String() string {
 }
 
 func (FileMetadata_DebuginfoType) Descriptor() protoreflect.EnumDescriptor {
-	return file_debuginfo_v1_debuginfo_proto_enumTypes[0].Descriptor()
+	return file_debuginfo_v1alpha1_debuginfo_proto_enumTypes[0].Descriptor()
 }
 
 func (FileMetadata_DebuginfoType) Type() protoreflect.EnumType {
-	return &file_debuginfo_v1_debuginfo_proto_enumTypes[0]
+	return &file_debuginfo_v1alpha1_debuginfo_proto_enumTypes[0]
 }
 
 func (x FileMetadata_DebuginfoType) Number() protoreflect.EnumNumber {
@@ -66,7 +66,7 @@ func (x FileMetadata_DebuginfoType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FileMetadata_DebuginfoType.Descriptor instead.
 func (FileMetadata_DebuginfoType) EnumDescriptor() ([]byte, []int) {
-	return file_debuginfo_v1_debuginfo_proto_rawDescGZIP(), []int{0, 0}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{0, 0}
 }
 
 type ObjectMetadata_State int32
@@ -99,11 +99,11 @@ func (x ObjectMetadata_State) String() string {
 }
 
 func (ObjectMetadata_State) Descriptor() protoreflect.EnumDescriptor {
-	return file_debuginfo_v1_debuginfo_proto_enumTypes[1].Descriptor()
+	return file_debuginfo_v1alpha1_debuginfo_proto_enumTypes[1].Descriptor()
 }
 
 func (ObjectMetadata_State) Type() protoreflect.EnumType {
-	return &file_debuginfo_v1_debuginfo_proto_enumTypes[1]
+	return &file_debuginfo_v1alpha1_debuginfo_proto_enumTypes[1]
 }
 
 func (x ObjectMetadata_State) Number() protoreflect.EnumNumber {
@@ -112,7 +112,7 @@ func (x ObjectMetadata_State) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ObjectMetadata_State.Descriptor instead.
 func (ObjectMetadata_State) EnumDescriptor() ([]byte, []int) {
-	return file_debuginfo_v1_debuginfo_proto_rawDescGZIP(), []int{8, 0}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{8, 0}
 }
 
 type FileMetadata struct {
@@ -122,14 +122,14 @@ type FileMetadata struct {
 	// optional libpf.FileID rom the otel profiler
 	OpenTelemetry string                     `protobuf:"bytes,3,opt,name=OpenTelemetry,proto3" json:"OpenTelemetry,omitempty"`
 	Name          string                     `protobuf:"bytes,4,opt,name=Name,proto3" json:"Name,omitempty"`
-	Type          FileMetadata_DebuginfoType `protobuf:"varint,5,opt,name=type,proto3,enum=debuginfo.v1.FileMetadata_DebuginfoType" json:"type,omitempty"`
+	Type          FileMetadata_DebuginfoType `protobuf:"varint,5,opt,name=type,proto3,enum=debuginfo.v1alpha1.FileMetadata_DebuginfoType" json:"type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *FileMetadata) Reset() {
 	*x = FileMetadata{}
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[0]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -141,7 +141,7 @@ func (x *FileMetadata) String() string {
 func (*FileMetadata) ProtoMessage() {}
 
 func (x *FileMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[0]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -154,7 +154,7 @@ func (x *FileMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileMetadata.ProtoReflect.Descriptor instead.
 func (*FileMetadata) Descriptor() ([]byte, []int) {
-	return file_debuginfo_v1_debuginfo_proto_rawDescGZIP(), []int{0}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *FileMetadata) GetGNU() string {
@@ -205,7 +205,7 @@ type UploadRequest struct {
 
 func (x *UploadRequest) Reset() {
 	*x = UploadRequest{}
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[1]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -217,7 +217,7 @@ func (x *UploadRequest) String() string {
 func (*UploadRequest) ProtoMessage() {}
 
 func (x *UploadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[1]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -230,7 +230,7 @@ func (x *UploadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadRequest.ProtoReflect.Descriptor instead.
 func (*UploadRequest) Descriptor() ([]byte, []int) {
-	return file_debuginfo_v1_debuginfo_proto_rawDescGZIP(), []int{1}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *UploadRequest) GetData() isUploadRequest_Data {
@@ -286,7 +286,7 @@ type UploadResponse struct {
 
 func (x *UploadResponse) Reset() {
 	*x = UploadResponse{}
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[2]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -298,7 +298,7 @@ func (x *UploadResponse) String() string {
 func (*UploadResponse) ProtoMessage() {}
 
 func (x *UploadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[2]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -311,7 +311,7 @@ func (x *UploadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadResponse.ProtoReflect.Descriptor instead.
 func (*UploadResponse) Descriptor() ([]byte, []int) {
-	return file_debuginfo_v1_debuginfo_proto_rawDescGZIP(), []int{2}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *UploadResponse) GetData() isUploadResponse_Data {
@@ -349,7 +349,7 @@ type UploadChunk struct {
 
 func (x *UploadChunk) Reset() {
 	*x = UploadChunk{}
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[3]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -361,7 +361,7 @@ func (x *UploadChunk) String() string {
 func (*UploadChunk) ProtoMessage() {}
 
 func (x *UploadChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[3]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -374,7 +374,7 @@ func (x *UploadChunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadChunk.ProtoReflect.Descriptor instead.
 func (*UploadChunk) Descriptor() ([]byte, []int) {
-	return file_debuginfo_v1_debuginfo_proto_rawDescGZIP(), []int{3}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *UploadChunk) GetChunk() []byte {
@@ -393,7 +393,7 @@ type ShouldInitiateUploadRequest struct {
 
 func (x *ShouldInitiateUploadRequest) Reset() {
 	*x = ShouldInitiateUploadRequest{}
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[4]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -405,7 +405,7 @@ func (x *ShouldInitiateUploadRequest) String() string {
 func (*ShouldInitiateUploadRequest) ProtoMessage() {}
 
 func (x *ShouldInitiateUploadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[4]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -418,7 +418,7 @@ func (x *ShouldInitiateUploadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShouldInitiateUploadRequest.ProtoReflect.Descriptor instead.
 func (*ShouldInitiateUploadRequest) Descriptor() ([]byte, []int) {
-	return file_debuginfo_v1_debuginfo_proto_rawDescGZIP(), []int{4}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ShouldInitiateUploadRequest) GetFile() *FileMetadata {
@@ -440,7 +440,7 @@ type UploadStrategy struct {
 
 func (x *UploadStrategy) Reset() {
 	*x = UploadStrategy{}
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[5]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -452,7 +452,7 @@ func (x *UploadStrategy) String() string {
 func (*UploadStrategy) ProtoMessage() {}
 
 func (x *UploadStrategy) ProtoReflect() protoreflect.Message {
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[5]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -465,7 +465,7 @@ func (x *UploadStrategy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadStrategy.ProtoReflect.Descriptor instead.
 func (*UploadStrategy) Descriptor() ([]byte, []int) {
-	return file_debuginfo_v1_debuginfo_proto_rawDescGZIP(), []int{5}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *UploadStrategy) GetStrategy() isUploadStrategy_Strategy {
@@ -502,7 +502,7 @@ type GrpcStrategy struct {
 
 func (x *GrpcStrategy) Reset() {
 	*x = GrpcStrategy{}
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[6]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -514,7 +514,7 @@ func (x *GrpcStrategy) String() string {
 func (*GrpcStrategy) ProtoMessage() {}
 
 func (x *GrpcStrategy) ProtoReflect() protoreflect.Message {
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[6]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -527,7 +527,7 @@ func (x *GrpcStrategy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStrategy.ProtoReflect.Descriptor instead.
 func (*GrpcStrategy) Descriptor() ([]byte, []int) {
-	return file_debuginfo_v1_debuginfo_proto_rawDescGZIP(), []int{6}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{6}
 }
 
 type ShouldInitiateUploadResponse struct {
@@ -540,7 +540,7 @@ type ShouldInitiateUploadResponse struct {
 
 func (x *ShouldInitiateUploadResponse) Reset() {
 	*x = ShouldInitiateUploadResponse{}
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[7]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -552,7 +552,7 @@ func (x *ShouldInitiateUploadResponse) String() string {
 func (*ShouldInitiateUploadResponse) ProtoMessage() {}
 
 func (x *ShouldInitiateUploadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[7]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -565,7 +565,7 @@ func (x *ShouldInitiateUploadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShouldInitiateUploadResponse.ProtoReflect.Descriptor instead.
 func (*ShouldInitiateUploadResponse) Descriptor() ([]byte, []int) {
-	return file_debuginfo_v1_debuginfo_proto_rawDescGZIP(), []int{7}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ShouldInitiateUploadResponse) GetShouldInitiateUpload() bool {
@@ -587,7 +587,7 @@ func (x *ShouldInitiateUploadResponse) GetReason() string {
 type ObjectMetadata struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	File          *FileMetadata          `protobuf:"bytes,1,opt,name=file,proto3" json:"file,omitempty"`
-	State         ObjectMetadata_State   `protobuf:"varint,2,opt,name=state,proto3,enum=debuginfo.v1.ObjectMetadata_State" json:"state,omitempty"`
+	State         ObjectMetadata_State   `protobuf:"varint,2,opt,name=state,proto3,enum=debuginfo.v1alpha1.ObjectMetadata_State" json:"state,omitempty"`
 	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
 	FinishedAt    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -596,7 +596,7 @@ type ObjectMetadata struct {
 
 func (x *ObjectMetadata) Reset() {
 	*x = ObjectMetadata{}
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[8]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -608,7 +608,7 @@ func (x *ObjectMetadata) String() string {
 func (*ObjectMetadata) ProtoMessage() {}
 
 func (x *ObjectMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_debuginfo_v1_debuginfo_proto_msgTypes[8]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -621,7 +621,7 @@ func (x *ObjectMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ObjectMetadata.ProtoReflect.Descriptor instead.
 func (*ObjectMetadata) Descriptor() ([]byte, []int) {
-	return file_debuginfo_v1_debuginfo_proto_rawDescGZIP(), []int{8}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ObjectMetadata) GetFile() *FileMetadata {
@@ -652,94 +652,94 @@ func (x *ObjectMetadata) GetFinishedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-var File_debuginfo_v1_debuginfo_proto protoreflect.FileDescriptor
+var File_debuginfo_v1alpha1_debuginfo_proto protoreflect.FileDescriptor
 
-const file_debuginfo_v1_debuginfo_proto_rawDesc = "" +
+const file_debuginfo_v1alpha1_debuginfo_proto_rawDesc = "" +
 	"\n" +
-	"\x1cdebuginfo/v1/debuginfo.proto\x12\fdebuginfo.v1\x1a\x14types/v1/types.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8c\x02\n" +
+	"\"debuginfo/v1alpha1/debuginfo.proto\x12\x12debuginfo.v1alpha1\x1a\x14types/v1/types.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x92\x02\n" +
 	"\fFileMetadata\x12\x10\n" +
 	"\x03GNU\x18\x01 \x01(\tR\x03GNU\x12\x16\n" +
 	"\x06Golang\x18\x02 \x01(\tR\x06Golang\x12$\n" +
 	"\rOpenTelemetry\x18\x03 \x01(\tR\rOpenTelemetry\x12\x12\n" +
-	"\x04Name\x18\x04 \x01(\tR\x04Name\x12<\n" +
-	"\x04type\x18\x05 \x01(\x0e2(.debuginfo.v1.FileMetadata.DebuginfoTypeR\x04type\"Z\n" +
+	"\x04Name\x18\x04 \x01(\tR\x04Name\x12B\n" +
+	"\x04type\x18\x05 \x01(\x0e2..debuginfo.v1alpha1.FileMetadata.DebuginfoTypeR\x04type\"Z\n" +
 	"\rDebuginfoType\x12\"\n" +
 	"\x1eDEBUGINFO_TYPE_EXECUTABLE_FULL\x10\x00\x12%\n" +
-	"!DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT\x10\x01\"\x8b\x01\n" +
-	"\rUploadRequest\x12?\n" +
-	"\x04init\x18\x01 \x01(\v2).debuginfo.v1.ShouldInitiateUploadRequestH\x00R\x04init\x121\n" +
-	"\x05chunk\x18\x02 \x01(\v2\x19.debuginfo.v1.UploadChunkH\x00R\x05chunkB\x06\n" +
-	"\x04data\"Z\n" +
-	"\x0eUploadResponse\x12@\n" +
-	"\x04init\x18\x01 \x01(\v2*.debuginfo.v1.ShouldInitiateUploadResponseH\x00R\x04initB\x06\n" +
+	"!DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT\x10\x01\"\x97\x01\n" +
+	"\rUploadRequest\x12E\n" +
+	"\x04init\x18\x01 \x01(\v2/.debuginfo.v1alpha1.ShouldInitiateUploadRequestH\x00R\x04init\x127\n" +
+	"\x05chunk\x18\x02 \x01(\v2\x1f.debuginfo.v1alpha1.UploadChunkH\x00R\x05chunkB\x06\n" +
+	"\x04data\"`\n" +
+	"\x0eUploadResponse\x12F\n" +
+	"\x04init\x18\x01 \x01(\v20.debuginfo.v1alpha1.ShouldInitiateUploadResponseH\x00R\x04initB\x06\n" +
 	"\x04data\"#\n" +
 	"\vUploadChunk\x12\x14\n" +
-	"\x05chunk\x18\x01 \x01(\fR\x05chunk\"M\n" +
-	"\x1bShouldInitiateUploadRequest\x12.\n" +
-	"\x04file\x18\x01 \x01(\v2\x1a.debuginfo.v1.FileMetadataR\x04file\"N\n" +
-	"\x0eUploadStrategy\x120\n" +
-	"\x04grpc\x18\x01 \x01(\v2\x1a.debuginfo.v1.GrpcStrategyH\x00R\x04grpcB\n" +
+	"\x05chunk\x18\x01 \x01(\fR\x05chunk\"S\n" +
+	"\x1bShouldInitiateUploadRequest\x124\n" +
+	"\x04file\x18\x01 \x01(\v2 .debuginfo.v1alpha1.FileMetadataR\x04file\"T\n" +
+	"\x0eUploadStrategy\x126\n" +
+	"\x04grpc\x18\x01 \x01(\v2 .debuginfo.v1alpha1.GrpcStrategyH\x00R\x04grpcB\n" +
 	"\n" +
 	"\bstrategy\"\x0e\n" +
 	"\fGrpcStrategy\"l\n" +
 	"\x1cShouldInitiateUploadResponse\x124\n" +
 	"\x16should_initiate_upload\x18\x01 \x01(\bR\x14shouldInitiateUpload\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\"\xa4\x02\n" +
-	"\x0eObjectMetadata\x12.\n" +
-	"\x04file\x18\x01 \x01(\v2\x1a.debuginfo.v1.FileMetadataR\x04file\x128\n" +
-	"\x05state\x18\x02 \x01(\x0e2\".debuginfo.v1.ObjectMetadata.StateR\x05state\x129\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\xb0\x02\n" +
+	"\x0eObjectMetadata\x124\n" +
+	"\x04file\x18\x01 \x01(\v2 .debuginfo.v1alpha1.FileMetadataR\x04file\x12>\n" +
+	"\x05state\x18\x02 \x01(\x0e2(.debuginfo.v1alpha1.ObjectMetadata.StateR\x05state\x129\n" +
 	"\n" +
 	"started_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12;\n" +
 	"\vfinished_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"finishedAt\"0\n" +
 	"\x05State\x12\x13\n" +
 	"\x0fSTATE_UPLOADING\x10\x00\x12\x12\n" +
-	"\x0eSTATE_UPLOADED\x10\x012]\n" +
-	"\x10DebuginfoService\x12I\n" +
-	"\x06Upload\x12\x1b.debuginfo.v1.UploadRequest\x1a\x1c.debuginfo.v1.UploadResponse\"\x00(\x010\x01B\xbb\x01\n" +
-	"\x10com.debuginfo.v1B\x0eDebuginfoProtoP\x01ZFgithub.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1;debuginfov1\xa2\x02\x03DXX\xaa\x02\fDebuginfo.V1\xca\x02\fDebuginfo\\V1\xe2\x02\x18Debuginfo\\V1\\GPBMetadata\xea\x02\rDebuginfo::V1b\x06proto3"
+	"\x0eSTATE_UPLOADED\x10\x012i\n" +
+	"\x10DebuginfoService\x12U\n" +
+	"\x06Upload\x12!.debuginfo.v1alpha1.UploadRequest\x1a\".debuginfo.v1alpha1.UploadResponse\"\x00(\x010\x01B\xe5\x01\n" +
+	"\x16com.debuginfo.v1alpha1B\x0eDebuginfoProtoP\x01ZRgithub.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1;debuginfov1alpha1\xa2\x02\x03DXX\xaa\x02\x12Debuginfo.V1alpha1\xca\x02\x12Debuginfo\\V1alpha1\xe2\x02\x1eDebuginfo\\V1alpha1\\GPBMetadata\xea\x02\x13Debuginfo::V1alpha1b\x06proto3"
 
 var (
-	file_debuginfo_v1_debuginfo_proto_rawDescOnce sync.Once
-	file_debuginfo_v1_debuginfo_proto_rawDescData []byte
+	file_debuginfo_v1alpha1_debuginfo_proto_rawDescOnce sync.Once
+	file_debuginfo_v1alpha1_debuginfo_proto_rawDescData []byte
 )
 
-func file_debuginfo_v1_debuginfo_proto_rawDescGZIP() []byte {
-	file_debuginfo_v1_debuginfo_proto_rawDescOnce.Do(func() {
-		file_debuginfo_v1_debuginfo_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_debuginfo_v1_debuginfo_proto_rawDesc), len(file_debuginfo_v1_debuginfo_proto_rawDesc)))
+func file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP() []byte {
+	file_debuginfo_v1alpha1_debuginfo_proto_rawDescOnce.Do(func() {
+		file_debuginfo_v1alpha1_debuginfo_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_debuginfo_v1alpha1_debuginfo_proto_rawDesc), len(file_debuginfo_v1alpha1_debuginfo_proto_rawDesc)))
 	})
-	return file_debuginfo_v1_debuginfo_proto_rawDescData
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescData
 }
 
-var file_debuginfo_v1_debuginfo_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_debuginfo_v1_debuginfo_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
-var file_debuginfo_v1_debuginfo_proto_goTypes = []any{
-	(FileMetadata_DebuginfoType)(0),      // 0: debuginfo.v1.FileMetadata.DebuginfoType
-	(ObjectMetadata_State)(0),            // 1: debuginfo.v1.ObjectMetadata.State
-	(*FileMetadata)(nil),                 // 2: debuginfo.v1.FileMetadata
-	(*UploadRequest)(nil),                // 3: debuginfo.v1.UploadRequest
-	(*UploadResponse)(nil),               // 4: debuginfo.v1.UploadResponse
-	(*UploadChunk)(nil),                  // 5: debuginfo.v1.UploadChunk
-	(*ShouldInitiateUploadRequest)(nil),  // 6: debuginfo.v1.ShouldInitiateUploadRequest
-	(*UploadStrategy)(nil),               // 7: debuginfo.v1.UploadStrategy
-	(*GrpcStrategy)(nil),                 // 8: debuginfo.v1.GrpcStrategy
-	(*ShouldInitiateUploadResponse)(nil), // 9: debuginfo.v1.ShouldInitiateUploadResponse
-	(*ObjectMetadata)(nil),               // 10: debuginfo.v1.ObjectMetadata
+var file_debuginfo_v1alpha1_debuginfo_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_debuginfo_v1alpha1_debuginfo_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_debuginfo_v1alpha1_debuginfo_proto_goTypes = []any{
+	(FileMetadata_DebuginfoType)(0),      // 0: debuginfo.v1alpha1.FileMetadata.DebuginfoType
+	(ObjectMetadata_State)(0),            // 1: debuginfo.v1alpha1.ObjectMetadata.State
+	(*FileMetadata)(nil),                 // 2: debuginfo.v1alpha1.FileMetadata
+	(*UploadRequest)(nil),                // 3: debuginfo.v1alpha1.UploadRequest
+	(*UploadResponse)(nil),               // 4: debuginfo.v1alpha1.UploadResponse
+	(*UploadChunk)(nil),                  // 5: debuginfo.v1alpha1.UploadChunk
+	(*ShouldInitiateUploadRequest)(nil),  // 6: debuginfo.v1alpha1.ShouldInitiateUploadRequest
+	(*UploadStrategy)(nil),               // 7: debuginfo.v1alpha1.UploadStrategy
+	(*GrpcStrategy)(nil),                 // 8: debuginfo.v1alpha1.GrpcStrategy
+	(*ShouldInitiateUploadResponse)(nil), // 9: debuginfo.v1alpha1.ShouldInitiateUploadResponse
+	(*ObjectMetadata)(nil),               // 10: debuginfo.v1alpha1.ObjectMetadata
 	(*timestamppb.Timestamp)(nil),        // 11: google.protobuf.Timestamp
 }
-var file_debuginfo_v1_debuginfo_proto_depIdxs = []int32{
-	0,  // 0: debuginfo.v1.FileMetadata.type:type_name -> debuginfo.v1.FileMetadata.DebuginfoType
-	6,  // 1: debuginfo.v1.UploadRequest.init:type_name -> debuginfo.v1.ShouldInitiateUploadRequest
-	5,  // 2: debuginfo.v1.UploadRequest.chunk:type_name -> debuginfo.v1.UploadChunk
-	9,  // 3: debuginfo.v1.UploadResponse.init:type_name -> debuginfo.v1.ShouldInitiateUploadResponse
-	2,  // 4: debuginfo.v1.ShouldInitiateUploadRequest.file:type_name -> debuginfo.v1.FileMetadata
-	8,  // 5: debuginfo.v1.UploadStrategy.grpc:type_name -> debuginfo.v1.GrpcStrategy
-	2,  // 6: debuginfo.v1.ObjectMetadata.file:type_name -> debuginfo.v1.FileMetadata
-	1,  // 7: debuginfo.v1.ObjectMetadata.state:type_name -> debuginfo.v1.ObjectMetadata.State
-	11, // 8: debuginfo.v1.ObjectMetadata.started_at:type_name -> google.protobuf.Timestamp
-	11, // 9: debuginfo.v1.ObjectMetadata.finished_at:type_name -> google.protobuf.Timestamp
-	3,  // 10: debuginfo.v1.DebuginfoService.Upload:input_type -> debuginfo.v1.UploadRequest
-	4,  // 11: debuginfo.v1.DebuginfoService.Upload:output_type -> debuginfo.v1.UploadResponse
+var file_debuginfo_v1alpha1_debuginfo_proto_depIdxs = []int32{
+	0,  // 0: debuginfo.v1alpha1.FileMetadata.type:type_name -> debuginfo.v1alpha1.FileMetadata.DebuginfoType
+	6,  // 1: debuginfo.v1alpha1.UploadRequest.init:type_name -> debuginfo.v1alpha1.ShouldInitiateUploadRequest
+	5,  // 2: debuginfo.v1alpha1.UploadRequest.chunk:type_name -> debuginfo.v1alpha1.UploadChunk
+	9,  // 3: debuginfo.v1alpha1.UploadResponse.init:type_name -> debuginfo.v1alpha1.ShouldInitiateUploadResponse
+	2,  // 4: debuginfo.v1alpha1.ShouldInitiateUploadRequest.file:type_name -> debuginfo.v1alpha1.FileMetadata
+	8,  // 5: debuginfo.v1alpha1.UploadStrategy.grpc:type_name -> debuginfo.v1alpha1.GrpcStrategy
+	2,  // 6: debuginfo.v1alpha1.ObjectMetadata.file:type_name -> debuginfo.v1alpha1.FileMetadata
+	1,  // 7: debuginfo.v1alpha1.ObjectMetadata.state:type_name -> debuginfo.v1alpha1.ObjectMetadata.State
+	11, // 8: debuginfo.v1alpha1.ObjectMetadata.started_at:type_name -> google.protobuf.Timestamp
+	11, // 9: debuginfo.v1alpha1.ObjectMetadata.finished_at:type_name -> google.protobuf.Timestamp
+	3,  // 10: debuginfo.v1alpha1.DebuginfoService.Upload:input_type -> debuginfo.v1alpha1.UploadRequest
+	4,  // 11: debuginfo.v1alpha1.DebuginfoService.Upload:output_type -> debuginfo.v1alpha1.UploadResponse
 	11, // [11:12] is the sub-list for method output_type
 	10, // [10:11] is the sub-list for method input_type
 	10, // [10:10] is the sub-list for extension type_name
@@ -747,37 +747,37 @@ var file_debuginfo_v1_debuginfo_proto_depIdxs = []int32{
 	0,  // [0:10] is the sub-list for field type_name
 }
 
-func init() { file_debuginfo_v1_debuginfo_proto_init() }
-func file_debuginfo_v1_debuginfo_proto_init() {
-	if File_debuginfo_v1_debuginfo_proto != nil {
+func init() { file_debuginfo_v1alpha1_debuginfo_proto_init() }
+func file_debuginfo_v1alpha1_debuginfo_proto_init() {
+	if File_debuginfo_v1alpha1_debuginfo_proto != nil {
 		return
 	}
-	file_debuginfo_v1_debuginfo_proto_msgTypes[1].OneofWrappers = []any{
+	file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[1].OneofWrappers = []any{
 		(*UploadRequest_Init)(nil),
 		(*UploadRequest_Chunk)(nil),
 	}
-	file_debuginfo_v1_debuginfo_proto_msgTypes[2].OneofWrappers = []any{
+	file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[2].OneofWrappers = []any{
 		(*UploadResponse_Init)(nil),
 	}
-	file_debuginfo_v1_debuginfo_proto_msgTypes[5].OneofWrappers = []any{
+	file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[5].OneofWrappers = []any{
 		(*UploadStrategy_Grpc)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_debuginfo_v1_debuginfo_proto_rawDesc), len(file_debuginfo_v1_debuginfo_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_debuginfo_v1alpha1_debuginfo_proto_rawDesc), len(file_debuginfo_v1alpha1_debuginfo_proto_rawDesc)),
 			NumEnums:      2,
 			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_debuginfo_v1_debuginfo_proto_goTypes,
-		DependencyIndexes: file_debuginfo_v1_debuginfo_proto_depIdxs,
-		EnumInfos:         file_debuginfo_v1_debuginfo_proto_enumTypes,
-		MessageInfos:      file_debuginfo_v1_debuginfo_proto_msgTypes,
+		GoTypes:           file_debuginfo_v1alpha1_debuginfo_proto_goTypes,
+		DependencyIndexes: file_debuginfo_v1alpha1_debuginfo_proto_depIdxs,
+		EnumInfos:         file_debuginfo_v1alpha1_debuginfo_proto_enumTypes,
+		MessageInfos:      file_debuginfo_v1alpha1_debuginfo_proto_msgTypes,
 	}.Build()
-	File_debuginfo_v1_debuginfo_proto = out.File
-	file_debuginfo_v1_debuginfo_proto_goTypes = nil
-	file_debuginfo_v1_debuginfo_proto_depIdxs = nil
+	File_debuginfo_v1alpha1_debuginfo_proto = out.File
+	file_debuginfo_v1alpha1_debuginfo_proto_goTypes = nil
+	file_debuginfo_v1alpha1_debuginfo_proto_depIdxs = nil
 }
