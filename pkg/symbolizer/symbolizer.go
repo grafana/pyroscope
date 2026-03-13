@@ -412,7 +412,6 @@ func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
 			loc.lines = s.createFallbackSymbol(req.binaryName, loc)
 			continue
 		}
-		//todo demangle symbols
 		loc.lines = frames
 	}
 }
@@ -466,9 +465,7 @@ func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID stri
 }
 
 func lidiaObjectPath(buildID string) string {
-	// this is to forget about old lidia files without gopclntab support
-	// TODO clean the old once
-	return filepath.Join(bucketPrefix, fmt.Sprintf("v2_%s", buildID))
+	return filepath.Join(bucketPrefix, buildID)
 }
 
 // fetchLidiaFromDebuginfod fetches debug info from debuginfod and converts to Lidia format
