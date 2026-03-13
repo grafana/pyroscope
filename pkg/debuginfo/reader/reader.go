@@ -7,10 +7,11 @@ import (
 	"io"
 )
 
-func New(ctx context.Context, f func() ([]byte, error)) *UploadReader {
+func New(ctx context.Context, f func() ([]byte, error), maxSize int64) *UploadReader {
 	return &UploadReader{
 		context:  ctx,
 		nextFunc: f,
+		maxSize:  maxSize,
 	}
 }
 
@@ -19,6 +20,7 @@ type UploadReader struct {
 	nextFunc func() ([]byte, error)
 	cur      io.Reader
 	size     uint64
+	maxSize  int64
 }
 
 func (r *UploadReader) Read(p []byte) (int, error) {
@@ -51,6 +53,9 @@ func (r *UploadReader) Read(p []byte) (int, error) {
 	}
 
 	r.size += uint64(i)
+	if r.maxSize > 0 && r.size > uint64(r.maxSize) {
+		return 0, fmt.Errorf("upload size %d exceeds maximum allowed size of %d bytes", r.size, r.maxSize)
+	}
 	return i, nil
 }
 

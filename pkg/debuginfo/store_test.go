@@ -93,7 +93,7 @@ func TestValidateInit(t *testing.T) {
 			name:       "nil file",
 			init:       &debuginfov1alpha1.ShouldInitiateUploadRequest{File: nil},
 			wantErr:    true,
-			errContain: "init.FileData == nil",
+			errContain: "init.File == nil",
 		},
 		{
 			name: "valid executable full",

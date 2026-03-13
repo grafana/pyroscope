@@ -25,7 +25,7 @@ import (
 
 type Config struct {
 	Enabled           bool          `yaml:"-"`
-	MaxUploadSize     int64         `yaml:"-"` //todo this is not used
+	MaxUploadSize     int64         `yaml:"-"`
 	MaxUploadDuration time.Duration `yaml:"-"`
 }
 
@@ -164,7 +164,7 @@ func (s *Store) Upload(ctx context.Context, stream *connect.BidiStream[debuginfo
 		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to write uploading metadata: %w", err))
 	}
 
-	r := debuginforeader.New(ctx, readChunksFromStream(stream))
+	r := debuginforeader.New(ctx, readChunksFromStream(stream), s.cfg.MaxUploadSize)
 	if err := s.bucket.Upload(ctx, ObjectPath(tenantID, id), r); err != nil {
 		return connect.NewError(connect.CodeInternal, fmt.Errorf("upload debuginfo: %w", err))
 	}
@@ -203,7 +203,7 @@ func validateInit(init *debuginfov1alpha1.ShouldInitiateUploadRequest) (*ValidGn
 		return nil, fmt.Errorf("first message expected to be init")
 	}
 	if init.File == nil {
-		return nil, fmt.Errorf("init.FileData == nil")
+		return nil, fmt.Errorf("init.File == nil")
 	}
 	switch init.File.Type {
 	case debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL:
@@ -211,7 +211,7 @@ func validateInit(init *debuginfov1alpha1.ShouldInitiateUploadRequest) (*ValidGn
 	case debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_NO_TEXT:
 		return ValidateGnuBuildID(init.File.GnuBuildId)
 	default:
-		return nil, fmt.Errorf("init.FileData.Type(%d) is not valid", init.File.Type)
+		return nil, fmt.Errorf("init.File.Type(%d) is not valid", init.File.Type)
 	}
 }
 

@@ -27,7 +27,7 @@ func TestUploadReader_Read(t *testing.T) {
 
 	t.Run("single chunk", func(t *testing.T) {
 		t.Parallel()
-		r := New(context.Background(), chunksFunc([][]byte{[]byte("hello")}))
+		r := New(context.Background(), chunksFunc([][]byte{[]byte("hello")}), 0)
 		data, err := io.ReadAll(r)
 		require.NoError(t, err)
 		assert.Equal(t, "hello", string(data))
@@ -39,7 +39,7 @@ func TestUploadReader_Read(t *testing.T) {
 			[]byte("abc"),
 			[]byte("def"),
 			[]byte("ghi"),
-		}))
+		}), 0)
 		data, err := io.ReadAll(r)
 		require.NoError(t, err)
 		assert.Equal(t, "abcdefghi", string(data))
@@ -47,7 +47,7 @@ func TestUploadReader_Read(t *testing.T) {
 
 	t.Run("empty stream", func(t *testing.T) {
 		t.Parallel()
-		r := New(context.Background(), chunksFunc(nil))
+		r := New(context.Background(), chunksFunc(nil), 0)
 		data, err := io.ReadAll(r)
 		require.NoError(t, err)
 		assert.Empty(t, data)
@@ -55,7 +55,7 @@ func TestUploadReader_Read(t *testing.T) {
 
 	t.Run("small buffer", func(t *testing.T) {
 		t.Parallel()
-		r := New(context.Background(), chunksFunc([][]byte{[]byte("hello world")}))
+		r := New(context.Background(), chunksFunc([][]byte{[]byte("hello world")}), 0)
 		buf := make([]byte, 3)
 		var result []byte
 		for {
@@ -73,7 +73,7 @@ func TestUploadReader_Read(t *testing.T) {
 		t.Parallel()
 		r := New(context.Background(), func() ([]byte, error) {
 			return nil, fmt.Errorf("network error")
-		})
+		}, 0)
 		buf := make([]byte, 1024)
 		_, err := r.Read(buf)
 		require.Error(t, err)
@@ -89,7 +89,7 @@ func TestUploadReader_Read(t *testing.T) {
 				return []byte("abc"), nil
 			}
 			return nil, fmt.Errorf("broken")
-		})
+		}, 0)
 
 		// First read should succeed with data from the first chunk.
 		buf := make([]byte, 1024)
@@ -109,7 +109,7 @@ func TestUploadReader_Size(t *testing.T) {
 
 	t.Run("no data", func(t *testing.T) {
 		t.Parallel()
-		r := New(context.Background(), chunksFunc(nil))
+		r := New(context.Background(), chunksFunc(nil), 0)
 		_, _ = io.ReadAll(r)
 		assert.Equal(t, uint64(0), r.Size())
 	})
@@ -119,7 +119,7 @@ func TestUploadReader_Size(t *testing.T) {
 		r := New(context.Background(), chunksFunc([][]byte{
 			[]byte("hello"),
 			[]byte("world"),
-		}))
+		}), 0)
 		_, err := io.ReadAll(r)
 		require.NoError(t, err)
 		assert.Equal(t, uint64(10), r.Size())
@@ -130,7 +130,7 @@ func TestUploadReader_Size(t *testing.T) {
 		r := New(context.Background(), chunksFunc([][]byte{
 			[]byte("aaa"),
 			[]byte("bbb"),
-		}))
+		}), 0)
 
 		assert.Equal(t, uint64(0), r.Size())
 
@@ -139,6 +139,44 @@ func TestUploadReader_Size(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 3, n)
 		assert.Equal(t, uint64(3), r.Size())
+	})
+}
+
+func TestUploadReader_MaxSize(t *testing.T) {
+	t.Parallel()
+
+	t.Run("within limit", func(t *testing.T) {
+		t.Parallel()
+		r := New(context.Background(), chunksFunc([][]byte{
+			[]byte("abc"),
+			[]byte("def"),
+		}), 10)
+		data, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, "abcdef", string(data))
+	})
+
+	t.Run("exceeds limit", func(t *testing.T) {
+		t.Parallel()
+		r := New(context.Background(), chunksFunc([][]byte{
+			[]byte("abc"),
+			[]byte("def"),
+			[]byte("ghi"),
+		}), 5)
+		_, err := io.ReadAll(r)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "exceeds maximum allowed size")
+	})
+
+	t.Run("zero means unlimited", func(t *testing.T) {
+		t.Parallel()
+		r := New(context.Background(), chunksFunc([][]byte{
+			[]byte("abc"),
+			[]byte("def"),
+		}), 0)
+		data, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, "abcdef", string(data))
 	})
 }
 
@@ -153,7 +191,7 @@ func TestUploadReader_ContextCancellation(t *testing.T) {
 		r := New(ctx, func() ([]byte, error) {
 			t.Fatal("nextFunc should not be called when context is cancelled")
 			return nil, nil
-		})
+		}, 0)
 
 		buf := make([]byte, 1024)
 		_, err := r.Read(buf)
@@ -173,7 +211,7 @@ func TestUploadReader_ContextCancellation(t *testing.T) {
 			// Cancel context before returning the second chunk.
 			cancel()
 			return []byte("second"), nil
-		})
+		}, 0)
 
 		// Read the first chunk.
 		buf := make([]byte, 1024)
@@ -204,7 +242,7 @@ func TestUploadReader_ReadAll(t *testing.T) {
 		[]byte("The quick "),
 		[]byte("brown fox "),
 		[]byte("jumps over the lazy dog"),
-	}))
+	}), 0)
 
 	data, err := io.ReadAll(r)
 	require.NoError(t, err)
