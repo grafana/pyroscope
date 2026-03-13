@@ -554,9 +554,10 @@ func TestUploadE2E(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		// Close the send side to signal EOF.
+		// Close the send side to signal EOF and wait for the server to finish.
 		require.NoError(t, stream.CloseRequest())
-		// Drain the response side.
+		_, err = stream.Receive()
+		require.Error(t, err, "expected EOF after server completes")
 		require.NoError(t, stream.CloseResponse())
 
 		// Verify the debug info was stored in the bucket.
