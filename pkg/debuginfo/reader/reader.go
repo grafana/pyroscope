@@ -24,39 +24,39 @@ type UploadReader struct {
 }
 
 func (r *UploadReader) Read(p []byte) (int, error) {
-	if r.cur == nil {
-		var err error
-		r.cur, err = r.next()
-		if err == io.EOF {
-			return 0, io.EOF
+	for {
+		if r.cur == nil {
+			var err error
+			r.cur, err = r.next()
+			if err == io.EOF {
+				return 0, io.EOF
+			}
+			if err != nil {
+				return 0, fmt.Errorf("get upload chunk (%d bytes read so far): %w", r.size, err)
+			}
 		}
-		if err != nil {
-			return 0, fmt.Errorf("get first upload chunk: %w", err)
-		}
-	}
-	i, err := r.cur.Read(p)
-	if err != nil && err != io.EOF {
-		return 0, fmt.Errorf("read upload chunk (%d bytes read so far): %w", r.size, err)
-	}
-	if err == io.EOF {
-		r.cur, err = r.next()
-		if err == io.EOF {
-			return 0, io.EOF
-		}
-		if err != nil {
-			return 0, fmt.Errorf("get next upload chunk (%d bytes read so far): %w", r.size, err)
-		}
-		i, err = r.cur.Read(p)
-		if err != nil {
-			return 0, fmt.Errorf("read next upload chunk (%d bytes read so far): %w", r.size, err)
-		}
-	}
 
-	r.size += uint64(i)
-	if r.maxSize > 0 && r.size > uint64(r.maxSize) {
-		return 0, fmt.Errorf("upload size %d exceeds maximum allowed size of %d bytes", r.size, r.maxSize)
+		i, err := r.cur.Read(p)
+		if i > 0 {
+			r.size += uint64(i)
+			if r.maxSize > 0 && r.size > uint64(r.maxSize) {
+				return 0, fmt.Errorf("upload size %d exceeds maximum allowed size of %d bytes", r.size, r.maxSize)
+			}
+			if err == io.EOF {
+				r.cur = nil
+			}
+			return i, nil
+		}
+
+		if err == io.EOF {
+			r.cur = nil
+			continue
+		}
+		if err != nil {
+			return 0, fmt.Errorf("read upload chunk (%d bytes read so far): %w", r.size, err)
+		}
+		return 0, nil
 	}
-	return i, nil
 }
 
 func (r *UploadReader) next() (io.Reader, error) {

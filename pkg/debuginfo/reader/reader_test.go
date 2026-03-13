@@ -22,6 +22,20 @@ func chunksFunc(chunks [][]byte) func() ([]byte, error) {
 	}
 }
 
+type eofAfterDataReader struct {
+	data []byte
+	read bool
+}
+
+func (r *eofAfterDataReader) Read(p []byte) (int, error) {
+	if r.read {
+		return 0, io.EOF
+	}
+	r.read = true
+	n := copy(p, r.data)
+	return n, io.EOF
+}
+
 func TestUploadReader_Read(t *testing.T) {
 	t.Parallel()
 
@@ -101,6 +115,28 @@ func TestUploadReader_Read(t *testing.T) {
 		_, err = r.Read(buf)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "broken")
+	})
+
+	t.Run("reader returning data with EOF keeps bytes", func(t *testing.T) {
+		t.Parallel()
+
+		r := New(context.Background(), chunksFunc(nil), 0)
+		r.cur = &eofAfterDataReader{data: []byte("abc")}
+
+		data, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, "abc", string(data))
+	})
+
+	t.Run("reader returning data with EOF does not overwrite buffer", func(t *testing.T) {
+		t.Parallel()
+
+		r := New(context.Background(), chunksFunc([][]byte{[]byte("def")}), 0)
+		r.cur = &eofAfterDataReader{data: []byte("abc")}
+
+		data, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, "abcdef", string(data))
 	})
 }
 

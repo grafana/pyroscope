@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -417,6 +418,15 @@ func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
 }
 
 func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte, error) {
+	if client, ok := s.client.(*DebuginfodHTTPClient); ok {
+		if sanitizedBuildID, err := sanitizeBuildID(buildID); err == nil {
+			if found, _ := client.notFoundCache.Get(sanitizedBuildID); found {
+				s.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Inc()
+				return nil, buildIDNotFoundError{buildID: buildID}
+			}
+		}
+	}
+
 	tenantID, err := tenant.TenantID(ctx)
 	if err != nil {
 		return nil, err
@@ -461,7 +471,7 @@ func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, tenantID, bu
 }
 
 func lidiaObjectPath(tenantID, buildID string) string {
-	return filepath.Join(bucketPrefix, tenantID, buildID)
+	return path.Join(bucketPrefix, tenantID, buildID)
 }
 
 // fetchLidiaFromDebuginfod fetches debug info from debuginfod and converts to Lidia format
