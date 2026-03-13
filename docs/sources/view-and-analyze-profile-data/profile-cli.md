@@ -244,10 +244,12 @@ This command is most helpful when you are exploring an unfamiliar environment an
 
 #### Query series steps
 
-1. Optional: Specify a query and a time range.
+1. Optional: Specify a query, time range, and output format.
 
    - You can provide a label selector using the `--query` flag, for example: `--query='{service_name="my_application_name"}'`.
    - You can provide a custom time range using the `--from` and `--to` flags, for example, `--from="now-3h" --to="now"`.
+   - You can filter which label names appear in the output using the `--label-names` flag, for example, `--label-names=__profile_type__,service_name`.
+   - You can control the output format using `--output=table` (default) or `--output=json`. The table view renders one row per series with label names as sorted column headers. The JSON format emits a structured envelope containing `from`, `to`, and a `series` array, which is useful for scripting and pipeline integrations.
 
 1. Construct and execute the Query Series command.
 
@@ -269,19 +271,52 @@ This command is most helpful when you are exploring an unfamiliar environment an
      profilecli query series --query='{service_name="my_application_name"}'
      ```
 
-   - Example output:
+   - Example command with label filtering and default table output:
+     ```bash
+     profilecli query series \
+         --query='{service_name="my_application_name"}' \
+         --label-names=__profile_type__ \
+         --label-names=service_name
+     ```
+
+   - Example table output (default):
+     ```
+     +---------------------------------------------+---------------------+
+     |                PROFILE TYPE                 |    SERVICE NAME     |
+     +---------------------------------------------+---------------------+
+     | memory:inuse_objects:count:space:bytes      | my_application_name |
+     | process_cpu:cpu:nanoseconds:cpu:nanoseconds | my_application_name |
+     +---------------------------------------------+---------------------+
+     ```
+
+     Columns are sorted alphabetically by their raw label name. Column headers are derived from label names with underscores replaced by spaces and converted to uppercase (for example, `__profile_type__` becomes `PROFILE TYPE`).
+
+   - Example command using `--output=json`:
+     ```bash
+     profilecli query series \
+         --query='{service_name="my_application_name"}' \
+         --output=json
+     ```
+
+   - Example JSON output:
      ```json
      {
-         "__name__":"memory",
-         "__period_type__":"space",
-         "__period_unit__":"bytes",
-         "__profile_type__":"memory:inuse_objects:count:space:bytes",
-         "__service_name__":"my_application_name",
-         "__type__":"inuse_objects",
-         "__unit__":"count",
-         "cluster":"eu-west-1",
-         "service_name":"my_application_name"
-      }
+       "from": "2026-03-12T08:54:07.667114Z",
+       "to": "2026-03-12T09:54:07.667114Z",
+       "series": [
+         {
+           "__name__": "memory",
+           "__period_type__": "space",
+           "__period_unit__": "bytes",
+           "__profile_type__": "memory:inuse_objects:count:space:bytes",
+           "__service_name__": "my_application_name",
+           "__type__": "inuse_objects",
+           "__unit__": "count",
+           "cluster": "eu-west-1",
+           "service_name": "my_application_name"
+         }
+       ]
+     }
      ```
 
 ### Read a raw profile from a Pyroscope server
