@@ -7,13 +7,16 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
+	"time"
 
 	gprofile "github.com/google/pprof/profile"
 	"github.com/grafana/dskit/runutil"
 	"github.com/k0kubun/pp/v3"
 	"github.com/klauspost/compress/gzip"
 	"github.com/mattn/go-isatty"
+	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -26,18 +29,70 @@ const (
 	outputPprof   = "pprof="
 )
 
-func outputSeries(result []*typesv1.Labels) error {
-	enc := json.NewEncoder(os.Stdout)
-	m := make(map[string]interface{})
-	for _, s := range result {
-		clear(m)
+func outputSeries(ctx context.Context, result []*typesv1.Labels, format string, from, to time.Time) error {
+	switch format {
+	case "json":
+		return outputSeriesJSON(ctx, result, from, to)
+	default:
+		return outputSeriesTable(ctx, result)
+	}
+}
+
+func outputSeriesJSON(ctx context.Context, result []*typesv1.Labels, from, to time.Time) error {
+	type jsonOutput struct {
+		From   time.Time           `json:"from"`
+		To     time.Time           `json:"to"`
+		Series []map[string]string `json:"series"`
+	}
+	out := jsonOutput{
+		From:   from,
+		To:     to,
+		Series: make([]map[string]string, len(result)),
+	}
+	for i, s := range result {
+		m := make(map[string]string, len(s.Labels))
 		for _, l := range s.Labels {
 			m[l.Name] = l.Value
 		}
-		if err := enc.Encode(m); err != nil {
-			return err
+		out.Series[i] = m
+	}
+	enc := json.NewEncoder(output(ctx))
+	enc.SetIndent("", "  ")
+	return enc.Encode(out)
+}
+
+func outputSeriesTable(ctx context.Context, result []*typesv1.Labels) error {
+	if len(result) == 0 {
+		return nil
+	}
+
+	// Collect all unique label names in a stable order.
+	seen := make(map[string]struct{})
+	var colNames []string
+	for _, s := range result {
+		for _, l := range s.Labels {
+			if _, ok := seen[l.Name]; !ok {
+				seen[l.Name] = struct{}{}
+				colNames = append(colNames, l.Name)
+			}
 		}
 	}
+	sort.Strings(colNames)
+
+	table := tablewriter.NewWriter(output(ctx))
+	table.SetHeader(colNames)
+	for _, s := range result {
+		vals := make(map[string]string, len(s.Labels))
+		for _, l := range s.Labels {
+			vals[l.Name] = l.Value
+		}
+		row := make([]string, len(colNames))
+		for i, name := range colNames {
+			row[i] = vals[name]
+		}
+		table.Append(row)
+	}
+	table.Render()
 	return nil
 }
 
