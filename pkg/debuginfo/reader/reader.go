@@ -94,7 +94,7 @@ func (r *MaxSizeReader) Read(p []byte) (int, error) {
 	n, err := r.r.Read(p)
 	r.n += int64(n)
 	if r.maxSize > 0 && r.n > r.maxSize {
-		return 0, fmt.Errorf("upload size %d exceeds maximum allowed size of %d bytes", r.n, r.maxSize)
+		return n, fmt.Errorf("upload size %d exceeds maximum allowed size of %d bytes", r.n, r.maxSize)
 	}
 	return n, err
 }

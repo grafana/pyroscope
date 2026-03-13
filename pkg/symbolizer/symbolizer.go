@@ -423,15 +423,6 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		return nil, err
 	}
 
-	// Check not-found cache with tenant-scoped key to avoid repeated object storage lookups
-	// for build IDs that are known to be unavailable for this tenant.
-	notFoundCacheKey := tenantID + "/" + buildID
-	if httpClient, ok := s.client.(*DebuginfodHTTPClient); ok {
-		if found, _ := httpClient.notFoundCache.Get(notFoundCacheKey); found {
-			return nil, buildIDNotFoundError{buildID: buildID}
-		}
-	}
-
 	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, tenantID, buildID)
 	if err == nil {
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", statusSuccess).Inc()
@@ -441,13 +432,6 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 
 	lidiaBytes, err = s.fetchLidiaFromDebuginfod(ctx, buildID)
 	if err != nil {
-		// Cache not-found errors with tenant-scoped key to avoid repeated lookups.
-		var bnfErr buildIDNotFoundError
-		if errors.As(err, &bnfErr) {
-			if httpClient, ok := s.client.(*DebuginfodHTTPClient); ok {
-				httpClient.notFoundCache.SetWithTTL(notFoundCacheKey, true, 1, httpClient.cfg.NotFoundCacheTTL)
-			}
-		}
 		return nil, err
 	}
 
@@ -514,6 +498,8 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 func (s *Symbolizer) fetch(ctx context.Context, buildID string) (io.ReadCloser, error) {
 	if r, err := s.fetchFromUploadedDebugInfo(ctx, buildID); err == nil {
 		return r, nil
+	} else {
+		level.Debug(s.logger).Log("msg", "failed to fetch uploaded debug info, falling back to debuginfod", "buildID", buildID, "err", err)
 	}
 	return s.fetchFromDebuginfod(ctx, buildID)
 }

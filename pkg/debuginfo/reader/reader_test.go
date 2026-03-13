@@ -170,6 +170,21 @@ func TestMaxSizeReader(t *testing.T) {
 		assert.Contains(t, err.Error(), "exceeds maximum allowed size")
 	})
 
+	t.Run("returns already-read bytes when limit exceeded", func(t *testing.T) {
+		t.Parallel()
+		r := New(context.Background(), chunksFunc([][]byte{
+			[]byte("abcdef"),
+		}))
+		lr := NewMaxSizeReader(r, 5)
+
+		buf := make([]byte, 16)
+		n, err := lr.Read(buf)
+		require.Error(t, err)
+		assert.Equal(t, 6, n)
+		assert.Equal(t, "abcdef", string(buf[:n]))
+		assert.Contains(t, err.Error(), "exceeds maximum allowed size")
+	})
+
 	t.Run("zero means unlimited", func(t *testing.T) {
 		t.Parallel()
 		r := New(context.Background(), chunksFunc([][]byte{
