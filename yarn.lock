@@ -8973,8 +8973,9 @@ react-custom-scrollbars-2@4.5.0:
     prop-types "^15.5.10"
     raf "^3.1.0"
 
-"react-data-grid@github:grafana/react-data-grid#a922856b5ede21d55db3fdffb6d38dc76bdc7c58":
+react-data-grid@grafana/react-data-grid#a922856b5ede21d55db3fdffb6d38dc76bdc7c58:
   version "7.0.0-beta.56"
+  uid a922856b5ede21d55db3fdffb6d38dc76bdc7c58
   resolved "https://codeload.github.com/grafana/react-data-grid/tar.gz/a922856b5ede21d55db3fdffb6d38dc76bdc7c58"
   dependencies:
     clsx "^2.0.0"
@@ -10998,9 +10999,9 @@ undici-types@~7.16.0:
   integrity sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==
 
 undici@^7.19.0:
-  version "7.22.0"
-  resolved "https://registry.yarnpkg.com/undici/-/undici-7.22.0.tgz#7a82590a5908e504a47d85c60b0f89ca14240e60"
-  integrity sha512-RqslV2Us5BrllB+JeiZnK4peryVTndy9Dnqq62S3yYRRTj0tFQCwEniUy2167skdGOy3vqRzEvl1Dm4sV2ReDg==
+  version "7.24.1"
+  resolved "https://registry.yarnpkg.com/undici/-/undici-7.24.1.tgz#3fd0fe40e67388860810ad3275f9a23b322de650"
+  integrity sha512-5xoBibbmnjlcR3jdqtY2Lnx7WbrD/tHlT01TmvqZUFVc9Q1w4+j5hbnapTqbcXITMH1ovjq/W7BkqBilHiVAaA==
 
 universalify@^0.1.0:
   version "0.1.2"
