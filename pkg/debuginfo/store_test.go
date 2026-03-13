@@ -94,8 +94,8 @@ func TestValidateInit(t *testing.T) {
 			name: "valid executable full",
 			init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
 				File: &debuginfov1alpha1.FileMetadata{
-					GnuBuildId:  "aabbccdd",
-					Type: debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+					GnuBuildId: "aabbccdd",
+					Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
 				},
 			},
 			wantErr: false,
@@ -104,8 +104,8 @@ func TestValidateInit(t *testing.T) {
 			name: "valid executable no text",
 			init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
 				File: &debuginfov1alpha1.FileMetadata{
-					GnuBuildId:  "aabbccdd",
-					Type: debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_NO_TEXT,
+					GnuBuildId: "aabbccdd",
+					Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_NO_TEXT,
 				},
 			},
 			wantErr: false,
@@ -114,8 +114,8 @@ func TestValidateInit(t *testing.T) {
 			name: "invalid type",
 			init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
 				File: &debuginfov1alpha1.FileMetadata{
-					GnuBuildId:  "aabbccdd",
-					Type: debuginfov1alpha1.FileMetadata_Type(99),
+					GnuBuildId: "aabbccdd",
+					Type:       debuginfov1alpha1.FileMetadata_Type(99),
 				},
 			},
 			wantErr:    true,
@@ -125,8 +125,8 @@ func TestValidateInit(t *testing.T) {
 			name: "valid type invalid build id",
 			init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
 				File: &debuginfov1alpha1.FileMetadata{
-					GnuBuildId:  "xyz",
-					Type: debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+					GnuBuildId: "xyz",
+					Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
 				},
 			},
 			wantErr:    true,
@@ -136,8 +136,8 @@ func TestValidateInit(t *testing.T) {
 			name: "valid type empty build id",
 			init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
 				File: &debuginfov1alpha1.FileMetadata{
-					GnuBuildId:  "",
-					Type: debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+					GnuBuildId: "",
+					Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
 				},
 			},
 			wantErr:    true,
@@ -390,9 +390,9 @@ func TestFetchMetadata(t *testing.T) {
 
 		original := &debuginfov1alpha1.ObjectMetadata{
 			File: &debuginfov1alpha1.FileMetadata{
-				GnuBuildId:  buildID,
-				Name: "test-binary",
-				Type: debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+				GnuBuildId: buildID,
+				Name:       "test-binary",
+				Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
 			},
 			State:     debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED,
 			StartedAt: timestamppb.New(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
@@ -436,9 +436,9 @@ func TestWriteMetadata(t *testing.T) {
 
 		md := &debuginfov1alpha1.ObjectMetadata{
 			File: &debuginfov1alpha1.FileMetadata{
-				GnuBuildId:  buildID,
-				Name: "my-binary",
-				Type: debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+				GnuBuildId: buildID,
+				Name:       "my-binary",
+				Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
 			},
 			State:     debuginfov1alpha1.ObjectMetadata_STATE_UPLOADING,
 			StartedAt: timestamppb.New(time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)),
@@ -464,9 +464,9 @@ func TestWriteMetadata(t *testing.T) {
 
 		original := &debuginfov1alpha1.ObjectMetadata{
 			File: &debuginfov1alpha1.FileMetadata{
-				GnuBuildId:  buildID,
-				Name: "roundtrip-binary",
-				Type: debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_NO_TEXT,
+				GnuBuildId: buildID,
+				Name:       "roundtrip-binary",
+				Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_NO_TEXT,
 			},
 			State:      debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED,
 			StartedAt:  timestamppb.New(time.Date(2025, 3, 1, 10, 0, 0, 0, time.UTC)),
