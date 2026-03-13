@@ -385,7 +385,7 @@ By default, it looks for samples within the last hour, though this can be contro
       # By default, the profile is saved to the current directory as `default.pgo`
       ```
 
-## Other useful customer-facing commands
+## Other useful commands
 
 The following commands are also useful in day-to-day operations.
 
