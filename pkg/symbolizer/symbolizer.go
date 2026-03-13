@@ -493,9 +493,8 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 		return nil, err
 	}
 
-	lidiaData, errMetric, err := ProcessELFData(elfData, int64(s.limits.SymbolizerMaxSymbolSizeBytes(tenantID)))
+	lidiaData, err := s.processELFData(elfData, int64(s.limits.SymbolizerMaxSymbolSizeBytes(tenantID)))
 	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues(errMetric).Inc()
 		return nil, err
 	}
 
@@ -503,13 +502,13 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 }
 
 func (s *Symbolizer) fetch(ctx context.Context, buildID string) (io.ReadCloser, error) {
-	if r, err := s.fetchFromParca(ctx, buildID); err == nil {
+	if r, err := s.fetchFromUploadedDebugInfo(ctx, buildID); err == nil {
 		return r, nil
 	}
 	return s.fetchFromDebuginfod(ctx, buildID)
 }
 
-func (s *Symbolizer) fetchFromParca(ctx context.Context, buildID string) (io.ReadCloser, error) {
+func (s *Symbolizer) fetchFromUploadedDebugInfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
 	tenantID, err := tenant.TenantID(ctx)
 	if err != nil {
 		return nil, err
@@ -537,17 +536,19 @@ func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (i
 	return debugReader, nil
 }
 
-func ProcessELFData(data []byte, maxSize int64) (lidiaData []byte, errMetric string, err error) {
+func (s *Symbolizer) processELFData(data []byte, maxSize int64) (lidiaData []byte, err error) {
 	decompressedData, err := detectCompression(data, maxSize)
 	if err != nil {
-		return nil, "compression", fmt.Errorf("detect compression: %w", err)
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("compression_error").Inc()
+		return nil, fmt.Errorf("detect compression: %w", err)
 	}
 
 	reader := bytes.NewReader(decompressedData)
 
 	elfFile, err := elf.NewFile(reader)
 	if err != nil {
-		return nil, "elf_parsing", fmt.Errorf("parse ELF file: %w", err)
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("elf_parsing_error").Inc()
+		return nil, fmt.Errorf("parse ELF file: %w", err)
 	}
 	defer elfFile.Close()
 
@@ -556,10 +557,10 @@ func ProcessELFData(data []byte, maxSize int64) (lidiaData []byte, errMetric str
 
 	err = lidia.CreateLidiaFromELF(elfFile, memBuffer, lidia.WithCRC(), lidia.WithFiles(), lidia.WithLines())
 	if err != nil {
-		return nil, "lidia_conversion", fmt.Errorf("create lidia file: %w", err)
+		return nil, fmt.Errorf("create lidia file: %w", err)
 	}
 
-	return memBuffer.Bytes(), "", nil
+	return memBuffer.Bytes(), nil
 }
 
 func (s *Symbolizer) createFallbackSymbol(binaryName string, loc *location) []lidia.SourceInfoFrame {

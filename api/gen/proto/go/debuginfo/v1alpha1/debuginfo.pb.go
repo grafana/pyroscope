@@ -23,49 +23,52 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type FileMetadata_DebuginfoType int32
+type FileMetadata_Type int32
 
 const (
-	FileMetadata_DEBUGINFO_TYPE_EXECUTABLE_FULL    FileMetadata_DebuginfoType = 0
-	FileMetadata_DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT FileMetadata_DebuginfoType = 1
+	FileMetadata_TYPE_UNSPECIFIED        FileMetadata_Type = 0
+	FileMetadata_TYPE_EXECUTABLE_FULL    FileMetadata_Type = 1
+	FileMetadata_TYPE_EXECUTABLE_NO_TEXT FileMetadata_Type = 2
 )
 
-// Enum value maps for FileMetadata_DebuginfoType.
+// Enum value maps for FileMetadata_Type.
 var (
-	FileMetadata_DebuginfoType_name = map[int32]string{
-		0: "DEBUGINFO_TYPE_EXECUTABLE_FULL",
-		1: "DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT",
+	FileMetadata_Type_name = map[int32]string{
+		0: "TYPE_UNSPECIFIED",
+		1: "TYPE_EXECUTABLE_FULL",
+		2: "TYPE_EXECUTABLE_NO_TEXT",
 	}
-	FileMetadata_DebuginfoType_value = map[string]int32{
-		"DEBUGINFO_TYPE_EXECUTABLE_FULL":    0,
-		"DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT": 1,
+	FileMetadata_Type_value = map[string]int32{
+		"TYPE_UNSPECIFIED":        0,
+		"TYPE_EXECUTABLE_FULL":    1,
+		"TYPE_EXECUTABLE_NO_TEXT": 2,
 	}
 )
 
-func (x FileMetadata_DebuginfoType) Enum() *FileMetadata_DebuginfoType {
-	p := new(FileMetadata_DebuginfoType)
+func (x FileMetadata_Type) Enum() *FileMetadata_Type {
+	p := new(FileMetadata_Type)
 	*p = x
 	return p
 }
 
-func (x FileMetadata_DebuginfoType) String() string {
+func (x FileMetadata_Type) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (FileMetadata_DebuginfoType) Descriptor() protoreflect.EnumDescriptor {
+func (FileMetadata_Type) Descriptor() protoreflect.EnumDescriptor {
 	return file_debuginfo_v1alpha1_debuginfo_proto_enumTypes[0].Descriptor()
 }
 
-func (FileMetadata_DebuginfoType) Type() protoreflect.EnumType {
+func (FileMetadata_Type) Type() protoreflect.EnumType {
 	return &file_debuginfo_v1alpha1_debuginfo_proto_enumTypes[0]
 }
 
-func (x FileMetadata_DebuginfoType) Number() protoreflect.EnumNumber {
+func (x FileMetadata_Type) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use FileMetadata_DebuginfoType.Descriptor instead.
-func (FileMetadata_DebuginfoType) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use FileMetadata_Type.Descriptor instead.
+func (FileMetadata_Type) EnumDescriptor() ([]byte, []int) {
 	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{0, 0}
 }
 
@@ -116,13 +119,17 @@ func (ObjectMetadata_State) EnumDescriptor() ([]byte, []int) {
 }
 
 type FileMetadata struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	GNU    string                 `protobuf:"bytes,1,opt,name=GNU,proto3" json:"GNU,omitempty"`
-	Golang string                 `protobuf:"bytes,2,opt,name=Golang,proto3" json:"Golang,omitempty"`
-	// optional libpf.FileID rom the otel profiler
-	OpenTelemetry string                     `protobuf:"bytes,3,opt,name=OpenTelemetry,proto3" json:"OpenTelemetry,omitempty"`
-	Name          string                     `protobuf:"bytes,4,opt,name=Name,proto3" json:"Name,omitempty"`
-	Type          FileMetadata_DebuginfoType `protobuf:"varint,5,opt,name=type,proto3,enum=debuginfo.v1alpha1.FileMetadata_DebuginfoType" json:"type,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// GNU build ID of the executable.
+	GnuBuildId string `protobuf:"bytes,1,opt,name=gnu_build_id,json=gnuBuildId,proto3" json:"gnu_build_id,omitempty"`
+	// Go build ID of the executable.
+	GoBuildId string `protobuf:"bytes,2,opt,name=go_build_id,json=goBuildId,proto3" json:"go_build_id,omitempty"`
+	// Optional libpf.FileID from the otel profiler.
+	OtelFileId string `protobuf:"bytes,3,opt,name=otel_file_id,json=otelFileId,proto3" json:"otel_file_id,omitempty"`
+	// Original file name of the executable.
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	// Type of the debug info.
+	Type          FileMetadata_Type `protobuf:"varint,5,opt,name=type,proto3,enum=debuginfo.v1alpha1.FileMetadata_Type" json:"type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -157,23 +164,23 @@ func (*FileMetadata) Descriptor() ([]byte, []int) {
 	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *FileMetadata) GetGNU() string {
+func (x *FileMetadata) GetGnuBuildId() string {
 	if x != nil {
-		return x.GNU
+		return x.GnuBuildId
 	}
 	return ""
 }
 
-func (x *FileMetadata) GetGolang() string {
+func (x *FileMetadata) GetGoBuildId() string {
 	if x != nil {
-		return x.Golang
+		return x.GoBuildId
 	}
 	return ""
 }
 
-func (x *FileMetadata) GetOpenTelemetry() string {
+func (x *FileMetadata) GetOtelFileId() string {
 	if x != nil {
-		return x.OpenTelemetry
+		return x.OtelFileId
 	}
 	return ""
 }
@@ -185,11 +192,11 @@ func (x *FileMetadata) GetName() string {
 	return ""
 }
 
-func (x *FileMetadata) GetType() FileMetadata_DebuginfoType {
+func (x *FileMetadata) GetType() FileMetadata_Type {
 	if x != nil {
 		return x.Type
 	}
-	return FileMetadata_DEBUGINFO_TYPE_EXECUTABLE_FULL
+	return FileMetadata_TYPE_UNSPECIFIED
 }
 
 type UploadRequest struct {
@@ -656,16 +663,19 @@ var File_debuginfo_v1alpha1_debuginfo_proto protoreflect.FileDescriptor
 
 const file_debuginfo_v1alpha1_debuginfo_proto_rawDesc = "" +
 	"\n" +
-	"\"debuginfo/v1alpha1/debuginfo.proto\x12\x12debuginfo.v1alpha1\x1a\x14types/v1/types.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x92\x02\n" +
-	"\fFileMetadata\x12\x10\n" +
-	"\x03GNU\x18\x01 \x01(\tR\x03GNU\x12\x16\n" +
-	"\x06Golang\x18\x02 \x01(\tR\x06Golang\x12$\n" +
-	"\rOpenTelemetry\x18\x03 \x01(\tR\rOpenTelemetry\x12\x12\n" +
-	"\x04Name\x18\x04 \x01(\tR\x04Name\x12B\n" +
-	"\x04type\x18\x05 \x01(\x0e2..debuginfo.v1alpha1.FileMetadata.DebuginfoTypeR\x04type\"Z\n" +
-	"\rDebuginfoType\x12\"\n" +
-	"\x1eDEBUGINFO_TYPE_EXECUTABLE_FULL\x10\x00\x12%\n" +
-	"!DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT\x10\x01\"\x97\x01\n" +
+	"\"debuginfo/v1alpha1/debuginfo.proto\x12\x12debuginfo.v1alpha1\x1a\x14types/v1/types.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x96\x02\n" +
+	"\fFileMetadata\x12 \n" +
+	"\fgnu_build_id\x18\x01 \x01(\tR\n" +
+	"gnuBuildId\x12\x1e\n" +
+	"\vgo_build_id\x18\x02 \x01(\tR\tgoBuildId\x12 \n" +
+	"\fotel_file_id\x18\x03 \x01(\tR\n" +
+	"otelFileId\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x129\n" +
+	"\x04type\x18\x05 \x01(\x0e2%.debuginfo.v1alpha1.FileMetadata.TypeR\x04type\"S\n" +
+	"\x04Type\x12\x14\n" +
+	"\x10TYPE_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14TYPE_EXECUTABLE_FULL\x10\x01\x12\x1b\n" +
+	"\x17TYPE_EXECUTABLE_NO_TEXT\x10\x02\"\x97\x01\n" +
 	"\rUploadRequest\x12E\n" +
 	"\x04init\x18\x01 \x01(\v2/.debuginfo.v1alpha1.ShouldInitiateUploadRequestH\x00R\x04init\x127\n" +
 	"\x05chunk\x18\x02 \x01(\v2\x1f.debuginfo.v1alpha1.UploadChunkH\x00R\x05chunkB\x06\n" +
@@ -714,7 +724,7 @@ func file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP() []byte {
 var file_debuginfo_v1alpha1_debuginfo_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_debuginfo_v1alpha1_debuginfo_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_debuginfo_v1alpha1_debuginfo_proto_goTypes = []any{
-	(FileMetadata_DebuginfoType)(0),      // 0: debuginfo.v1alpha1.FileMetadata.DebuginfoType
+	(FileMetadata_Type)(0),               // 0: debuginfo.v1alpha1.FileMetadata.Type
 	(ObjectMetadata_State)(0),            // 1: debuginfo.v1alpha1.ObjectMetadata.State
 	(*FileMetadata)(nil),                 // 2: debuginfo.v1alpha1.FileMetadata
 	(*UploadRequest)(nil),                // 3: debuginfo.v1alpha1.UploadRequest
@@ -728,7 +738,7 @@ var file_debuginfo_v1alpha1_debuginfo_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil),        // 11: google.protobuf.Timestamp
 }
 var file_debuginfo_v1alpha1_debuginfo_proto_depIdxs = []int32{
-	0,  // 0: debuginfo.v1alpha1.FileMetadata.type:type_name -> debuginfo.v1alpha1.FileMetadata.DebuginfoType
+	0,  // 0: debuginfo.v1alpha1.FileMetadata.type:type_name -> debuginfo.v1alpha1.FileMetadata.Type
 	6,  // 1: debuginfo.v1alpha1.UploadRequest.init:type_name -> debuginfo.v1alpha1.ShouldInitiateUploadRequest
 	5,  // 2: debuginfo.v1alpha1.UploadRequest.chunk:type_name -> debuginfo.v1alpha1.UploadChunk
 	9,  // 3: debuginfo.v1alpha1.UploadResponse.init:type_name -> debuginfo.v1alpha1.ShouldInitiateUploadResponse

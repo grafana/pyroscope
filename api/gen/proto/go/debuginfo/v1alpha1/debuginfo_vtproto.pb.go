@@ -30,9 +30,9 @@ func (m *FileMetadata) CloneVT() *FileMetadata {
 		return (*FileMetadata)(nil)
 	}
 	r := new(FileMetadata)
-	r.GNU = m.GNU
-	r.Golang = m.Golang
-	r.OpenTelemetry = m.OpenTelemetry
+	r.GnuBuildId = m.GnuBuildId
+	r.GoBuildId = m.GoBuildId
+	r.OtelFileId = m.OtelFileId
 	r.Name = m.Name
 	r.Type = m.Type
 	if len(m.unknownFields) > 0 {
@@ -239,13 +239,13 @@ func (this *FileMetadata) EqualVT(that *FileMetadata) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if this.GNU != that.GNU {
+	if this.GnuBuildId != that.GnuBuildId {
 		return false
 	}
-	if this.Golang != that.Golang {
+	if this.GoBuildId != that.GoBuildId {
 		return false
 	}
-	if this.OpenTelemetry != that.OpenTelemetry {
+	if this.OtelFileId != that.OtelFileId {
 		return false
 	}
 	if this.Name != that.Name {
@@ -722,24 +722,24 @@ func (m *FileMetadata) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x22
 	}
-	if len(m.OpenTelemetry) > 0 {
-		i -= len(m.OpenTelemetry)
-		copy(dAtA[i:], m.OpenTelemetry)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.OpenTelemetry)))
+	if len(m.OtelFileId) > 0 {
+		i -= len(m.OtelFileId)
+		copy(dAtA[i:], m.OtelFileId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.OtelFileId)))
 		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.Golang) > 0 {
-		i -= len(m.Golang)
-		copy(dAtA[i:], m.Golang)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Golang)))
+	if len(m.GoBuildId) > 0 {
+		i -= len(m.GoBuildId)
+		copy(dAtA[i:], m.GoBuildId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.GoBuildId)))
 		i--
 		dAtA[i] = 0x12
 	}
-	if len(m.GNU) > 0 {
-		i -= len(m.GNU)
-		copy(dAtA[i:], m.GNU)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.GNU)))
+	if len(m.GnuBuildId) > 0 {
+		i -= len(m.GnuBuildId)
+		copy(dAtA[i:], m.GnuBuildId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.GnuBuildId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -1188,15 +1188,15 @@ func (m *FileMetadata) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.GNU)
+	l = len(m.GnuBuildId)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	l = len(m.Golang)
+	l = len(m.GoBuildId)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	l = len(m.OpenTelemetry)
+	l = len(m.OtelFileId)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
@@ -1409,7 +1409,7 @@ func (m *FileMetadata) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field GNU", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field GnuBuildId", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1437,11 +1437,11 @@ func (m *FileMetadata) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.GNU = string(dAtA[iNdEx:postIndex])
+			m.GnuBuildId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Golang", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field GoBuildId", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1469,11 +1469,11 @@ func (m *FileMetadata) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Golang = string(dAtA[iNdEx:postIndex])
+			m.GoBuildId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field OpenTelemetry", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field OtelFileId", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1501,7 +1501,7 @@ func (m *FileMetadata) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.OpenTelemetry = string(dAtA[iNdEx:postIndex])
+			m.OtelFileId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -1549,7 +1549,7 @@ func (m *FileMetadata) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Type |= FileMetadata_DebuginfoType(b&0x7F) << shift
+				m.Type |= FileMetadata_Type(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

@@ -88,30 +88,35 @@ components:
     debuginfo.v1alpha1.FileMetadata:
       type: object
       properties:
-        GNU:
+        gnuBuildId:
           type: string
-          title: GNU
-        Golang:
+          title: gnu_build_id
+          description: GNU build ID of the executable.
+        goBuildId:
           type: string
-          title: Golang
-        OpenTelemetry:
+          title: go_build_id
+          description: Go build ID of the executable.
+        otelFileId:
           type: string
-          title: OpenTelemetry
-          description: optional libpf.FileID rom the otel profiler
-        Name:
+          title: otel_file_id
+          description: Optional libpf.FileID from the otel profiler.
+        name:
           type: string
-          title: Name
+          title: name
+          description: Original file name of the executable.
         type:
           title: type
-          $ref: '#/components/schemas/debuginfo.v1alpha1.FileMetadata.DebuginfoType'
+          description: Type of the debug info.
+          $ref: '#/components/schemas/debuginfo.v1alpha1.FileMetadata.Type'
       title: FileMetadata
       additionalProperties: false
-    debuginfo.v1alpha1.FileMetadata.DebuginfoType:
+    debuginfo.v1alpha1.FileMetadata.Type:
       type: string
-      title: DebuginfoType
+      title: Type
       enum:
-        - DEBUGINFO_TYPE_EXECUTABLE_FULL
-        - DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT
+        - TYPE_UNSPECIFIED
+        - TYPE_EXECUTABLE_FULL
+        - TYPE_EXECUTABLE_NO_TEXT
     debuginfo.v1alpha1.ShouldInitiateUploadRequest:
       type: object
       properties:

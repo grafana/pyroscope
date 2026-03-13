@@ -15,8 +15,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/thanos-io/objstore"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -121,7 +119,7 @@ func (s *Store) Upload(ctx context.Context, stream *connect.BidiStream[debuginfo
 		return connect.NewError(connect.CodeInternal, fmt.Errorf("invalid init request: %w", err))
 	}
 
-	l := log.With(s.logger, "gnu_build_id", init.File.GNU)
+	l := log.With(s.logger, "gnu_build_id", init.File.GnuBuildId)
 
 	if !s.cfg.Enabled { // move this to 	shouldInitiateUpload func
 
@@ -168,8 +166,9 @@ func (s *Store) Upload(ctx context.Context, stream *connect.BidiStream[debuginfo
 
 	r := debuginforeader.New(ctx, readChunksFromStream(stream))
 	if err := s.bucket.Upload(ctx, ObjectPath(tenantID, id), r); err != nil {
-		return status.Error(codes.Internal, fmt.Errorf("upload debuginfo: %w", err).Error())
+		return connect.NewError(connect.CodeInternal, fmt.Errorf("upload debuginfo: %w", err))
 	}
+	md.State = debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED
 	md.FinishedAt = timestamppb.New(time.Now())
 	if err := s.writeMetadata(ctx, tenantID, id, md); err != nil {
 		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to write uploaded metadata: %w", err))
@@ -207,10 +206,10 @@ func validateInit(init *debuginfov1alpha1.ShouldInitiateUploadRequest) (*ValidGn
 		return nil, fmt.Errorf("init.FileData == nil")
 	}
 	switch init.File.Type {
-	case debuginfov1alpha1.FileMetadata_DEBUGINFO_TYPE_EXECUTABLE_FULL:
-		return ValidateGnuBuildID(init.File.GNU)
-	case debuginfov1alpha1.FileMetadata_DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT:
-		return ValidateGnuBuildID(init.File.GNU)
+	case debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL:
+		return ValidateGnuBuildID(init.File.GnuBuildId)
+	case debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_NO_TEXT:
+		return ValidateGnuBuildID(init.File.GnuBuildId)
 	default:
 		return nil, fmt.Errorf("init.FileData.Type(%d) is not valid", init.File.Type)
 	}

@@ -30,7 +30,6 @@ type symbolizerInputs struct {
 	Limits   Limits
 }
 
-// todo consider uising testify Suite
 func newSymbolizerTest(t *testing.T, inp *symbolizerInputs) (*Symbolizer, *mocksymbolizer.MockDebuginfodClient, *mockobjstore.MockBucket) {
 	t.Helper()
 	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
@@ -521,10 +520,7 @@ func TestSymbolizerMetrics(t *testing.T) {
 					logger:  log.NewNopLogger(),
 					metrics: newMetrics(nil),
 				}
-				lidiaData, errMetric, err := ProcessELFData(elfData, 0) // 0 means unlimited
-				if err != nil {
-					preProcessor.metrics.debugSymbolResolutionErrors.WithLabelValues(errMetric).Inc()
-				}
+				lidiaData, err := preProcessor.processELFData(elfData, 0) // 0 means unlimited
 				require.NoError(t, err)
 				require.NotEmpty(t, lidiaData)
 

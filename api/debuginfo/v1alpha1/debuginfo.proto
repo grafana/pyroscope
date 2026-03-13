@@ -20,19 +20,24 @@ service DebuginfoService {
 }
 
 message FileMetadata {
-  enum DebuginfoType {
-    DEBUGINFO_TYPE_EXECUTABLE_FULL = 0;
-    DEBUGINFO_TYPE_EXECUTABLE_NO_TEXT = 1;
-    //  DEBUGINFO_TYPE_LIDIA = 1;
-    //  DEBUGINFO_TYPE_BLAZESYM = 2;
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    TYPE_EXECUTABLE_FULL = 1;
+    TYPE_EXECUTABLE_NO_TEXT = 2;
+    //  TYPE_LIDIA = 3;
+    //  TYPE_BLAZESYM = 4;
   }
 
-  string GNU = 1;
-  string Golang = 2;
-  // optional libpf.FileID rom the otel profiler
-  string OpenTelemetry = 3;
-  string Name = 4;
-  DebuginfoType type = 5;
+  // GNU build ID of the executable.
+  string gnu_build_id = 1;
+  // Go build ID of the executable.
+  string go_build_id = 2;
+  // Optional libpf.FileID from the otel profiler.
+  string otel_file_id = 3;
+  // Original file name of the executable.
+  string name = 4;
+  // Type of the debug info.
+  Type type = 5;
 }
 
 message UploadRequest {
