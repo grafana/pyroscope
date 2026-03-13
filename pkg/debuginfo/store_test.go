@@ -657,4 +657,83 @@ func TestUploadE2E(t *testing.T) {
 		require.NoError(t, stream.CloseRequest())
 		require.NoError(t, stream.CloseResponse())
 	})
+
+	t.Run("oversized upload is rejected and upload state is cleaned up", func(t *testing.T) {
+		t.Parallel()
+		store, bucket := newTestStore(t, Config{
+			Enabled:           true,
+			MaxUploadDuration: time.Minute,
+			MaxUploadSize:     8,
+		})
+		client := startTestServer(t, store)
+
+		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+		stream := client.Upload(ctx)
+
+		err := stream.Send(&debuginfov1alpha1.UploadRequest{
+			Data: &debuginfov1alpha1.UploadRequest_Init{
+				Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
+					File: &debuginfov1alpha1.FileMetadata{
+						GnuBuildId: "aabbccdd",
+						Name:       "my-binary",
+						Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		resp, err := stream.Receive()
+		require.NoError(t, err)
+		initResp := resp.GetInit()
+		require.NotNil(t, initResp)
+		assert.True(t, initResp.ShouldInitiateUpload)
+		assert.Equal(t, ReasonFirstTimeSeen, initResp.Reason)
+
+		for _, chunk := range [][]byte{[]byte("12345"), []byte("67890")} {
+			err = stream.Send(&debuginfov1alpha1.UploadRequest{
+				Data: &debuginfov1alpha1.UploadRequest_Chunk{
+					Chunk: &debuginfov1alpha1.UploadChunk{Chunk: chunk},
+				},
+			})
+			require.NoError(t, err)
+		}
+
+		require.NoError(t, stream.CloseRequest())
+		_, err = stream.Receive()
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		assert.Contains(t, err.Error(), "exceeds maximum allowed size")
+		require.NoError(t, stream.CloseResponse())
+
+		id := mustValidateGnuBuildID(t, "aabbccdd")
+		objects := bucket.Objects()
+		_, objectExists := objects[ObjectPath("test-tenant", id)]
+		_, metadataExists := objects[MetadataObjectPath("test-tenant", id)]
+		assert.False(t, objectExists)
+		assert.False(t, metadataExists)
+
+		retryStream := client.Upload(ctx)
+		err = retryStream.Send(&debuginfov1alpha1.UploadRequest{
+			Data: &debuginfov1alpha1.UploadRequest_Init{
+				Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
+					File: &debuginfov1alpha1.FileMetadata{
+						GnuBuildId: "aabbccdd",
+						Name:       "my-binary",
+						Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		retryResp, err := retryStream.Receive()
+		require.NoError(t, err)
+		retryInitResp := retryResp.GetInit()
+		require.NotNil(t, retryInitResp)
+		assert.True(t, retryInitResp.ShouldInitiateUpload)
+		assert.Equal(t, ReasonFirstTimeSeen, retryInitResp.Reason)
+		require.NoError(t, retryStream.CloseRequest())
+		require.NoError(t, retryStream.CloseResponse())
+	})
 }
