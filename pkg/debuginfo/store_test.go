@@ -2,7 +2,6 @@ package debuginfo
 
 import (
 	"context"
-	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
