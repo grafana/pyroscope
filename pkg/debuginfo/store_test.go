@@ -12,8 +12,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -502,9 +500,9 @@ func startTestServer(t *testing.T, store *Store) debuginfov1alpha1connect.Debugi
 		router, store,
 		connect.WithInterceptors(tenant.NewAuthInterceptor(true)),
 	)
-	srv := httptest.NewUnstartedServer(h2c.NewHandler(router, &http2.Server{}))
+	srv := httptest.NewUnstartedServer(router)
 	srv.EnableHTTP2 = true
-	srv.Start()
+	srv.StartTLS()
 	t.Cleanup(srv.Close)
 	return debuginfov1alpha1connect.NewDebuginfoServiceClient(
 		srv.Client(),
