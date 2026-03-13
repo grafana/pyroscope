@@ -1,39 +1,29 @@
 services:
-  otel-collector:
-    # fixed versions for pyroscope, otel-collector, otel-profiler due to protocol changes
-    image: otel/opentelemetry-collector-contrib:0.141.0
-    command: ["--config=/etc/otel-collector-config.yaml", "--feature-gates=service.profilesSupport"]
-    volumes:
-      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml
-    ports:
-      - "4317:4317"
-      - "4318:4318"
-    networks:
-      - otel-net
-    depends_on:
-      - pyroscope
-
   otel-ebpf-profiler:
-    build: ..
-    command: ["-collection-agent", "otel-collector:4317", "-no-kernel-version-check", "-disable-tls"]
+    image: otel/opentelemetry-collector-ebpf-profiler:0.147.0
+    command:
+     - --config=/etc/ebpf-profiler-config.yaml
+     - --feature-gates=service.profilesSupport
     hostname: ebpf-profiler
     privileged: true
     pid: "host"
     volumes:
-      - /sys/kernel/debug:/sys/kernel/debug
-      - /sys/fs/cgroup:/sys/fs/cgroup
-      - /proc:/proc
+      - ./config/ebpf-profiler-config.yaml:/etc/ebpf-profiler-config.yaml:ro
+      - /sys/kernel/debug:/sys/kernel/debug:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /proc:/proc:ro
     networks:
       - otel-net
-    depends_on:
-      - otel-collector
 
   pyroscope:
-    # fixed versions for pyroscope, otel-collector, otel-profiler due to protocol changes
-    image: grafana/pyroscope:weekly-f147-b3e95303c
-    command: ["-self-profiling.disable-push=true"]
+    image: grafana/pyroscope:1.18.1
+    command: 
+      - -self-profiling.disable-push=true
+      - -config.file=/etc/pyroscope.yaml
     ports:
       - "4040:4040"
+    volumes:
+      - ./config/pyroscope.yaml:/etc/pyroscope.yaml:ro
     networks:
       - otel-net
 

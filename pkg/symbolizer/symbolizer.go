@@ -9,19 +9,24 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"path/filepath"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
+	"github.com/grafana/pyroscope/pkg/debuginfo"
 	"github.com/grafana/pyroscope/pkg/objstore"
 )
+
+const bucketPrefix = "symbolizer"
 
 type DebuginfodClient interface {
 	FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error)
@@ -65,14 +70,13 @@ type Limits interface {
 	SymbolizerMaxSymbolSizeBytes(tenantID string) int
 }
 
-func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objstore.Bucket, limits Limits) (*Symbolizer, error) {
+func New(logger log.Logger, cfg Config, reg prometheus.Registerer, storageBucket objstore.Bucket, limits Limits) (*Symbolizer, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
+	m := newMetrics(reg)
 
-	metrics := newMetrics(reg)
-
-	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, metrics, limits)
+	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, m, limits)
 	if err != nil {
 		return nil, err
 	}
@@ -80,8 +84,8 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, bucket objsto
 	return &Symbolizer{
 		logger:  logger,
 		client:  client,
-		bucket:  bucket,
-		metrics: metrics,
+		bucket:  storageBucket,
+		metrics: m,
 		cfg:     cfg,
 		limits:  limits,
 	}, nil
@@ -409,22 +413,17 @@ func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
 			loc.lines = s.createFallbackSymbol(req.binaryName, loc)
 			continue
 		}
-
 		loc.lines = frames
 	}
 }
 
 func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte, error) {
-	if client, ok := s.client.(*DebuginfodHTTPClient); ok {
-		if sanitizedBuildID, err := sanitizeBuildID(buildID); err == nil {
-			if found, _ := client.notFoundCache.Get(sanitizedBuildID); found {
-				s.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Inc()
-				return nil, buildIDNotFoundError{buildID: buildID}
-			}
-		}
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, buildID)
+	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, tenantID, buildID)
 	if err == nil {
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", statusSuccess).Inc()
 		return lidiaBytes, nil
@@ -436,7 +435,7 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		return nil, err
 	}
 
-	if err := s.bucket.Upload(ctx, buildID, bytes.NewReader(lidiaBytes)); err != nil {
+	if err := s.bucket.Upload(ctx, lidiaObjectPath(tenantID, buildID), bytes.NewReader(lidiaBytes)); err != nil {
 		level.Warn(s.logger).Log("msg", "Failed to store debug info in objstore", "buildID", buildID, "err", err)
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "set", "error").Inc()
 	} else {
@@ -447,8 +446,8 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 }
 
 // fetchLidiaFromObjectStore retrieves Lidia data from the object store
-func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID string) ([]byte, error) {
-	objstoreReader, err := s.bucket.Get(ctx, buildID)
+func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, tenantID, buildID string) ([]byte, error) {
+	objstoreReader, err := s.bucket.Get(ctx, lidiaObjectPath(tenantID, buildID))
 	if err != nil {
 		return nil, err
 	}
@@ -462,9 +461,18 @@ func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, buildID stri
 	return data, nil
 }
 
+func lidiaObjectPath(tenantID, buildID string) string {
+	return path.Join(bucketPrefix, tenantID, buildID)
+}
+
 // fetchLidiaFromDebuginfod fetches debug info from debuginfod and converts to Lidia format
 func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID string) ([]byte, error) {
-	debugReader, err := s.fetchFromDebuginfod(ctx, buildID)
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	debugReader, err := s.fetch(ctx, buildID)
 	if err != nil {
 		var bnfErr buildIDNotFoundError
 		if errors.As(err, &bnfErr) {
@@ -474,22 +482,37 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 	}
 	defer debugReader.Close()
 
-	elfData, err := io.ReadAll(debugReader)
+	maxSize := int64(s.limits.SymbolizerMaxSymbolSizeBytes(tenantID))
+	elfData, err := readAllWithLimit(debugReader, "debuginfo", maxSize)
 	if err != nil {
-		return nil, fmt.Errorf("read debuginfod data: %w", err)
+		return nil, fmt.Errorf("read debuginfo data: %w", err)
 	}
 
-	tenantID, err := tenant.TenantID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	lidiaData, err := s.processELFData(elfData, int64(s.limits.SymbolizerMaxSymbolSizeBytes(tenantID)))
+	lidiaData, err := s.processELFData(elfData, maxSize)
 	if err != nil {
 		return nil, err
 	}
 
 	return lidiaData, nil
+}
+
+func (s *Symbolizer) fetch(ctx context.Context, buildID string) (io.ReadCloser, error) {
+	if r, err := s.fetchFromUploadedDebugInfo(ctx, buildID); err == nil {
+		return r, nil
+	}
+	return s.fetchFromDebuginfod(ctx, buildID)
+}
+
+func (s *Symbolizer) fetchFromUploadedDebugInfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	validatedBuildID, err := debuginfo.ValidateGnuBuildID(buildID)
+	if err != nil {
+		return nil, err
+	}
+	return s.bucket.Get(ctx, debuginfo.ObjectPath(tenantID, validatedBuildID))
 }
 
 func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (io.ReadCloser, error) {
