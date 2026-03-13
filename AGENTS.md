@@ -136,6 +136,14 @@ Commit the generated files with your changes.
 go run ./cmd/pyroscope --target all,embedded-grafana
 # Pyroscope: http://localhost:4040
 # Grafana: http://localhost:4041
+
+# Run with V2 architecture (segment writers, query backend, symbolizer)
+PYROSCOPE_V2_EXPERIMENT=1 go run ./cmd/pyroscope \
+  -target=all \
+  -storage.backend=filesystem \
+  -write-path=segment-writer \
+  -enable-query-backend=true \
+  -symbolizer.enabled=true
 ```
 
 ## Code Style & Conventions
