@@ -354,6 +354,7 @@ func (f *Pyroscope) initMemberlistKV() (services.Service, error) {
 	)
 	dnsProvider := dns.NewProvider(f.logger, dnsProviderReg, dns.GolangResolverType)
 
+	f.Cfg.MemberlistKV.MetricsNamespace = "pyroscope"
 	f.MemberlistKV = memberlist.NewKVInitService(&f.Cfg.MemberlistKV, f.logger, dnsProvider, f.reg)
 
 	f.Cfg.Distributor.DistributorRing.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
