@@ -136,6 +136,10 @@ func blocksQuerySeries(ctx context.Context, params *blocksQuerySeriesParams) err
 
 	blockQuerier := phlaredb.NewBlockQuerier(ctx, bucket)
 
+	if len(params.BlockIds) == 0 {
+		return errors.New("specify at least one --block to query")
+	}
+
 	var from, to int64
 	from, to = math.MaxInt64, math.MinInt64
 	var targetBlockQueriers phlaredb.Queriers
