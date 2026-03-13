@@ -165,9 +165,13 @@ func (s *Store) Upload(ctx context.Context, stream *connect.BidiStream[debuginfo
 	}
 
 	r := debuginforeader.New(ctx, readChunksFromStream(stream))
-	lr := debuginforeader.NewMaxSizeReader(r, s.cfg.MaxUploadSize)
-	if err := s.bucket.Upload(ctx, ObjectPath(tenantID, id), lr); err != nil {
+	if err := s.bucket.Upload(ctx, ObjectPath(tenantID, id), r); err != nil {
 		return connect.NewError(connect.CodeInternal, fmt.Errorf("upload debuginfo: %w", err))
+	}
+	if s.cfg.MaxUploadSize > 0 && r.Size() > uint64(s.cfg.MaxUploadSize) {
+		_ = s.bucket.Delete(ctx, ObjectPath(tenantID, id))
+		return connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("upload size %d exceeds maximum allowed size of %d bytes", r.Size(), s.cfg.MaxUploadSize))
 	}
 	md.State = debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED
 	md.FinishedAt = timestamppb.New(time.Now())

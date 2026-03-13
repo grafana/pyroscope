@@ -75,26 +75,3 @@ func (r *UploadReader) next() (io.Reader, error) {
 func (r *UploadReader) Size() uint64 {
 	return r.size
 }
-
-// MaxSizeReader wraps an io.Reader and returns an error if more than maxSize
-// bytes are read.
-type MaxSizeReader struct {
-	r       io.Reader
-	n       int64
-	maxSize int64
-}
-
-// NewMaxSizeReader returns a reader that returns an error after reading more
-// than maxSize bytes. If maxSize <= 0 the limit is disabled.
-func NewMaxSizeReader(r io.Reader, maxSize int64) *MaxSizeReader {
-	return &MaxSizeReader{r: r, maxSize: maxSize}
-}
-
-func (r *MaxSizeReader) Read(p []byte) (int, error) {
-	n, err := r.r.Read(p)
-	r.n += int64(n)
-	if r.maxSize > 0 && r.n > r.maxSize {
-		return 0, fmt.Errorf("upload size %d exceeds maximum allowed size of %d bytes", r.n, r.maxSize)
-	}
-	return n, err
-}

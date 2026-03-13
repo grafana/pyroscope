@@ -142,47 +142,6 @@ func TestUploadReader_Size(t *testing.T) {
 	})
 }
 
-func TestMaxSizeReader(t *testing.T) {
-	t.Parallel()
-
-	t.Run("within limit", func(t *testing.T) {
-		t.Parallel()
-		r := New(context.Background(), chunksFunc([][]byte{
-			[]byte("abc"),
-			[]byte("def"),
-		}))
-		lr := NewMaxSizeReader(r, 10)
-		data, err := io.ReadAll(lr)
-		require.NoError(t, err)
-		assert.Equal(t, "abcdef", string(data))
-	})
-
-	t.Run("exceeds limit", func(t *testing.T) {
-		t.Parallel()
-		r := New(context.Background(), chunksFunc([][]byte{
-			[]byte("abc"),
-			[]byte("def"),
-			[]byte("ghi"),
-		}))
-		lr := NewMaxSizeReader(r, 5)
-		_, err := io.ReadAll(lr)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "exceeds maximum allowed size")
-	})
-
-	t.Run("zero means unlimited", func(t *testing.T) {
-		t.Parallel()
-		r := New(context.Background(), chunksFunc([][]byte{
-			[]byte("abc"),
-			[]byte("def"),
-		}))
-		lr := NewMaxSizeReader(r, 0)
-		data, err := io.ReadAll(lr)
-		require.NoError(t, err)
-		assert.Equal(t, "abcdef", string(data))
-	})
-}
-
 func TestUploadReader_ContextCancellation(t *testing.T) {
 	t.Parallel()
 

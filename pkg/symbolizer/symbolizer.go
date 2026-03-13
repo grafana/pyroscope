@@ -423,15 +423,6 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		return nil, err
 	}
 
-	// Check not-found cache with tenant-scoped key to avoid repeated object storage lookups
-	// for build IDs that are known to be unavailable for this tenant.
-	notFoundCacheKey := tenantID + "/" + buildID
-	if httpClient, ok := s.client.(*DebuginfodHTTPClient); ok {
-		if found, _ := httpClient.notFoundCache.Get(notFoundCacheKey); found {
-			return nil, buildIDNotFoundError{buildID: buildID}
-		}
-	}
-
 	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, tenantID, buildID)
 	if err == nil {
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", statusSuccess).Inc()
@@ -441,13 +432,6 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 
 	lidiaBytes, err = s.fetchLidiaFromDebuginfod(ctx, buildID)
 	if err != nil {
-		// Cache not-found errors with tenant-scoped key to avoid repeated lookups.
-		var bnfErr buildIDNotFoundError
-		if errors.As(err, &bnfErr) {
-			if httpClient, ok := s.client.(*DebuginfodHTTPClient); ok {
-				httpClient.notFoundCache.SetWithTTL(notFoundCacheKey, true, 1, httpClient.cfg.NotFoundCacheTTL)
-			}
-		}
 		return nil, err
 	}
 
@@ -483,6 +467,11 @@ func lidiaObjectPath(tenantID, buildID string) string {
 
 // fetchLidiaFromDebuginfod fetches debug info from debuginfod and converts to Lidia format
 func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID string) ([]byte, error) {
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	debugReader, err := s.fetch(ctx, buildID)
 	if err != nil {
 		var bnfErr buildIDNotFoundError
@@ -493,17 +482,13 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 	}
 	defer debugReader.Close()
 
-	elfData, err := io.ReadAll(debugReader)
+	maxSize := int64(s.limits.SymbolizerMaxSymbolSizeBytes(tenantID))
+	elfData, err := readAllWithLimit(debugReader, "debuginfo", maxSize)
 	if err != nil {
-		return nil, fmt.Errorf("read debuginfod data: %w", err)
+		return nil, fmt.Errorf("read debuginfo data: %w", err)
 	}
 
-	tenantID, err := tenant.TenantID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	lidiaData, err := s.processELFData(elfData, int64(s.limits.SymbolizerMaxSymbolSizeBytes(tenantID)))
+	lidiaData, err := s.processELFData(elfData, maxSize)
 	if err != nil {
 		return nil, err
 	}
