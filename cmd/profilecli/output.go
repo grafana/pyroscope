@@ -62,6 +62,10 @@ func outputSeriesJSON(ctx context.Context, result []*typesv1.Labels, from, to ti
 }
 
 func outputSeriesTable(ctx context.Context, result []*typesv1.Labels) error {
+	if len(result) == 0 {
+		return nil
+	}
+
 	// Collect all unique label names in a stable order.
 	seen := make(map[string]struct{})
 	var colNames []string
