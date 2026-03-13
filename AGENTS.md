@@ -138,7 +138,7 @@ go run ./cmd/pyroscope --target all,embedded-grafana
 # Grafana: http://localhost:4041
 
 # Run with V2 architecture (segment writers, query backend, symbolizer)
-PYROSCOPE_V2_EXPERIMENT=1 go run ./cmd/pyroscope \
+PYROSCOPE_V2=1 go run ./cmd/pyroscope \
   -target=all \
   -storage.backend=filesystem \
   -write-path=segment-writer \
