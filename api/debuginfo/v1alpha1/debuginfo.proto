@@ -2,21 +2,16 @@ syntax = "proto3";
 
 package debuginfo.v1alpha1;
 
-import "types/v1/types.proto";
 import "google/protobuf/timestamp.proto";
-
-
+import "types/v1/types.proto";
 
 // This service is inspired by parca debug info upload rpc
 // It is however different, specifically original ShouldInitiateUpload,InitiateUpload,InitiateUpload are merged into Upload
 // Some structs were renamed. Some features removed (signed upload, force upload)
 service DebuginfoService {
-
   // clients are expected to send ShouldInitiateUploadRequest, receive ShouldInitiateUploadResponse and then
   // if should_initiate_upload is true send a bunch of UploadChunk until EOF
-  rpc Upload(stream UploadRequest) returns (stream UploadResponse) {
-
-  }
+  rpc Upload(stream UploadRequest) returns (stream UploadResponse) {}
 }
 
 message FileMetadata {
@@ -68,9 +63,7 @@ message UploadStrategy {
     //    SignedUpload signed_upload = 2;
   }
 }
-message GrpcStrategy {
-
-}
+message GrpcStrategy {}
 
 //message SignedUpload {
 //  string url = 1;

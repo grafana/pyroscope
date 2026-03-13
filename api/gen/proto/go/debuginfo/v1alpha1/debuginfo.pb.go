@@ -663,7 +663,7 @@ var File_debuginfo_v1alpha1_debuginfo_proto protoreflect.FileDescriptor
 
 const file_debuginfo_v1alpha1_debuginfo_proto_rawDesc = "" +
 	"\n" +
-	"\"debuginfo/v1alpha1/debuginfo.proto\x12\x12debuginfo.v1alpha1\x1a\x14types/v1/types.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x96\x02\n" +
+	"\"debuginfo/v1alpha1/debuginfo.proto\x12\x12debuginfo.v1alpha1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x14types/v1/types.proto\"\x96\x02\n" +
 	"\fFileMetadata\x12 \n" +
 	"\fgnu_build_id\x18\x01 \x01(\tR\n" +
 	"gnuBuildId\x12\x1e\n" +
