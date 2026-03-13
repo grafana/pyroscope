@@ -2,18 +2,26 @@ package debuginfo
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 func newTestStore(t *testing.T, cfg Config) (*Store, *memory.InMemBucket) {
@@ -485,5 +493,170 @@ func TestWriteMetadata(t *testing.T) {
 		assert.Equal(t, original.File.Type, fetched.File.Type)
 		assert.Equal(t, original.StartedAt.AsTime(), fetched.StartedAt.AsTime())
 		assert.Equal(t, original.FinishedAt.AsTime(), fetched.FinishedAt.AsTime())
+	})
+}
+
+func startTestServer(t *testing.T, store *Store) debuginfov1alpha1connect.DebuginfoServiceClient {
+	t.Helper()
+	router := mux.NewRouter()
+	debuginfov1alpha1connect.RegisterDebuginfoServiceHandler(
+		router, store,
+		connect.WithInterceptors(tenant.NewAuthInterceptor(true)),
+	)
+	srv := httptest.NewUnstartedServer(h2c.NewHandler(router, &http2.Server{}))
+	srv.EnableHTTP2 = true
+	srv.Start()
+	t.Cleanup(srv.Close)
+	return debuginfov1alpha1connect.NewDebuginfoServiceClient(
+		srv.Client(),
+		srv.URL,
+		connect.WithInterceptors(tenant.NewAuthInterceptor(true)),
+	)
+}
+
+func TestUploadE2E(t *testing.T) {
+	t.Parallel()
+
+	t.Run("full upload flow", func(t *testing.T) {
+		t.Parallel()
+		store, bucket := newTestStore(t, Config{Enabled: true, MaxUploadDuration: time.Minute})
+		client := startTestServer(t, store)
+
+		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+		stream := client.Upload(ctx)
+
+		// Send init request.
+		err := stream.Send(&debuginfov1alpha1.UploadRequest{
+			Data: &debuginfov1alpha1.UploadRequest_Init{
+				Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
+					File: &debuginfov1alpha1.FileMetadata{
+						GnuBuildId: "aabbccdd",
+						Name:       "my-binary",
+						Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		// Receive init response: first time seen, should upload.
+		resp, err := stream.Receive()
+		require.NoError(t, err)
+		initResp := resp.GetInit()
+		require.NotNil(t, initResp)
+		assert.True(t, initResp.ShouldInitiateUpload)
+		assert.Equal(t, ReasonFirstTimeSeen, initResp.Reason)
+
+		// Send upload chunks.
+		for _, chunk := range [][]byte{[]byte("chunk-1-"), []byte("chunk-2-"), []byte("chunk-3")} {
+			err = stream.Send(&debuginfov1alpha1.UploadRequest{
+				Data: &debuginfov1alpha1.UploadRequest_Chunk{
+					Chunk: &debuginfov1alpha1.UploadChunk{Chunk: chunk},
+				},
+			})
+			require.NoError(t, err)
+		}
+
+		// Close the send side to signal EOF.
+		require.NoError(t, stream.CloseRequest())
+		// Drain the response side.
+		require.NoError(t, stream.CloseResponse())
+
+		// Verify the debug info was stored in the bucket.
+		id := mustValidateGnuBuildID(t, "aabbccdd")
+		objects := bucket.Objects()
+		data, ok := objects[ObjectPath("test-tenant", id)]
+		require.True(t, ok, "debug info object should exist")
+		assert.Equal(t, "chunk-1-chunk-2-chunk-3", string(data))
+
+		// Verify metadata was written as STATE_UPLOADED.
+		mdRaw, ok := objects[MetadataObjectPath("test-tenant", id)]
+		require.True(t, ok, "metadata should exist")
+		var md debuginfov1alpha1.ObjectMetadata
+		require.NoError(t, protojson.Unmarshal(mdRaw, &md))
+		assert.Equal(t, debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED, md.State)
+		assert.NotNil(t, md.StartedAt)
+		assert.NotNil(t, md.FinishedAt)
+	})
+
+	t.Run("already uploaded returns should not initiate", func(t *testing.T) {
+		t.Parallel()
+		store, bucket := newTestStore(t, Config{Enabled: true, MaxUploadDuration: time.Minute})
+		client := startTestServer(t, store)
+
+		// Pre-populate metadata as already uploaded.
+		id := mustValidateGnuBuildID(t, "aabbccdd")
+		md := &debuginfov1alpha1.ObjectMetadata{
+			File: &debuginfov1alpha1.FileMetadata{
+				GnuBuildId: "aabbccdd",
+				Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+			},
+			State:      debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED,
+			StartedAt:  timestamppb.New(time.Now().Add(-time.Hour)),
+			FinishedAt: timestamppb.New(time.Now().Add(-time.Hour + time.Minute)),
+		}
+		mdBytes, err := protojson.Marshal(md)
+		require.NoError(t, err)
+		bucket.Set(MetadataObjectPath("test-tenant", id), mdBytes)
+
+		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+		stream := client.Upload(ctx)
+
+		// Send init request.
+		err = stream.Send(&debuginfov1alpha1.UploadRequest{
+			Data: &debuginfov1alpha1.UploadRequest_Init{
+				Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
+					File: &debuginfov1alpha1.FileMetadata{
+						GnuBuildId: "aabbccdd",
+						Name:       "my-binary",
+						Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		// Should not initiate upload.
+		resp, err := stream.Receive()
+		require.NoError(t, err)
+		initResp := resp.GetInit()
+		require.NotNil(t, initResp)
+		assert.False(t, initResp.ShouldInitiateUpload)
+		assert.Equal(t, ReasonDebuginfoAlreadyExists, initResp.Reason)
+
+		require.NoError(t, stream.CloseRequest())
+		require.NoError(t, stream.CloseResponse())
+	})
+
+	t.Run("disabled service returns should not initiate", func(t *testing.T) {
+		t.Parallel()
+		store, _ := newTestStore(t, Config{Enabled: false, MaxUploadDuration: time.Minute})
+		client := startTestServer(t, store)
+
+		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+		stream := client.Upload(ctx)
+
+		err := stream.Send(&debuginfov1alpha1.UploadRequest{
+			Data: &debuginfov1alpha1.UploadRequest_Init{
+				Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
+					File: &debuginfov1alpha1.FileMetadata{
+						GnuBuildId: "aabbccdd",
+						Name:       "my-binary",
+						Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		resp, err := stream.Receive()
+		require.NoError(t, err)
+		initResp := resp.GetInit()
+		require.NotNil(t, initResp)
+		assert.False(t, initResp.ShouldInitiateUpload)
+		assert.Equal(t, ReasonDisabled, initResp.Reason)
+
+		require.NoError(t, stream.CloseRequest())
+		require.NoError(t, stream.CloseResponse())
 	})
 }
