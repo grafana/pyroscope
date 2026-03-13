@@ -39,6 +39,7 @@ type blocksQueryProfileParams struct {
 type blocksQuerySeriesParams struct {
 	*blocksQueryParams
 	LabelNames []string
+	Output     string
 }
 
 func addBlocksQueryParams(queryCmd commander) *blocksQueryParams {
@@ -65,6 +66,7 @@ func addBlocksQuerySeriesParams(queryCmd commander) *blocksQuerySeriesParams {
 	params := new(blocksQuerySeriesParams)
 	params.blocksQueryParams = addBlocksQueryParams(queryCmd)
 	queryCmd.Flag("label-names", "Filter returned labels to the supplied label names. Without any filter all labels are returned.").StringsVar(&params.LabelNames)
+	queryCmd.Flag("output", "Output format, one of: table, json.").Default("table").StringVar(&params.Output)
 	return params
 }
 
@@ -159,7 +161,7 @@ func blocksQuerySeries(ctx context.Context, params *blocksQuerySeriesParams) err
 		return err
 	}
 
-	return outputSeries(ctx, response.Msg.LabelsSet, "json",
+	return outputSeries(ctx, response.Msg.LabelsSet, params.Output,
 		time.UnixMilli(from), time.UnixMilli(to))
 }
 
