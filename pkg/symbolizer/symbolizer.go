@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -422,6 +423,15 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		return nil, err
 	}
 
+	// Check not-found cache with tenant-scoped key to avoid repeated object storage lookups
+	// for build IDs that are known to be unavailable for this tenant.
+	notFoundCacheKey := tenantID + "/" + buildID
+	if httpClient, ok := s.client.(*DebuginfodHTTPClient); ok {
+		if found, _ := httpClient.notFoundCache.Get(notFoundCacheKey); found {
+			return nil, buildIDNotFoundError{buildID: buildID}
+		}
+	}
+
 	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, tenantID, buildID)
 	if err == nil {
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", statusSuccess).Inc()
@@ -431,6 +441,13 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 
 	lidiaBytes, err = s.fetchLidiaFromDebuginfod(ctx, buildID)
 	if err != nil {
+		// Cache not-found errors with tenant-scoped key to avoid repeated lookups.
+		var bnfErr buildIDNotFoundError
+		if errors.As(err, &bnfErr) {
+			if httpClient, ok := s.client.(*DebuginfodHTTPClient); ok {
+				httpClient.notFoundCache.SetWithTTL(notFoundCacheKey, true, 1, httpClient.cfg.NotFoundCacheTTL)
+			}
+		}
 		return nil, err
 	}
 
@@ -461,7 +478,7 @@ func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, tenantID, bu
 }
 
 func lidiaObjectPath(tenantID, buildID string) string {
-	return filepath.Join(bucketPrefix, tenantID, buildID)
+	return path.Join(bucketPrefix, tenantID, buildID)
 }
 
 // fetchLidiaFromDebuginfod fetches debug info from debuginfod and converts to Lidia format

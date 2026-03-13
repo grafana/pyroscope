@@ -164,8 +164,9 @@ func (s *Store) Upload(ctx context.Context, stream *connect.BidiStream[debuginfo
 		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to write uploading metadata: %w", err))
 	}
 
-	r := debuginforeader.New(ctx, readChunksFromStream(stream), s.cfg.MaxUploadSize)
-	if err := s.bucket.Upload(ctx, ObjectPath(tenantID, id), r); err != nil {
+	r := debuginforeader.New(ctx, readChunksFromStream(stream))
+	lr := debuginforeader.NewMaxSizeReader(r, s.cfg.MaxUploadSize)
+	if err := s.bucket.Upload(ctx, ObjectPath(tenantID, id), lr); err != nil {
 		return connect.NewError(connect.CodeInternal, fmt.Errorf("upload debuginfo: %w", err))
 	}
 	md.State = debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED
