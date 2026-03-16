@@ -159,6 +159,13 @@ func (q *QueryFrontend) selectMergeProfileTree(
 
 	var p profilev1.Profile
 
+	if report.Tree.Symbols == nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("symbols not present in tree response"))
+	}
+	if len(report.Tree.Symbols.Mappings) < 1 || len(report.Tree.Symbols.Locations) < 1 || len(report.Tree.Symbols.Functions) < 1 {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("incomplete symbols in tree response"))
+	}
+
 	p.StringTable = report.Tree.Symbols.Strings
 	p.Mapping = report.Tree.Symbols.Mappings[1:]
 	p.Location = report.Tree.Symbols.Locations[1:]

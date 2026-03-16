@@ -314,6 +314,9 @@ func unsafeStringBytes(s string) []byte {
 }
 
 func (t *StacktraceTree) Tree(maxNodes int64, names []FunctionName) *FunctionNameTree {
+	if len(names) == 0 {
+		return new(FunctionNameTree)
+	}
 	lookup := func(i int32) FunctionName {
 		return names[i]
 	}
