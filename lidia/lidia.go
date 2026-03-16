@@ -7,6 +7,7 @@ package lidia
 
 import (
 	"debug/elf"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -175,7 +176,9 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 		if symErr != nil {
 			symbols, dynSymErr = elfFile.DynamicSymbols()
 			if dynSymErr != nil {
-				return fmt.Errorf("failed to read symbols from ELF file: %w, %w", symErr, dynSymErr)
+				if !errors.Is(symErr, elf.ErrNoSymbols) || !errors.Is(dynSymErr, elf.ErrNoSymbols) {
+					return fmt.Errorf("failed to read symbols from ELF file: %w, %w", symErr, dynSymErr)
+				}
 			}
 		}
 
