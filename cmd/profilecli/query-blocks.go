@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
@@ -38,6 +39,7 @@ type blocksQueryProfileParams struct {
 type blocksQuerySeriesParams struct {
 	*blocksQueryParams
 	LabelNames []string
+	Output     string
 }
 
 func addBlocksQueryParams(queryCmd commander) *blocksQueryParams {
@@ -64,6 +66,7 @@ func addBlocksQuerySeriesParams(queryCmd commander) *blocksQuerySeriesParams {
 	params := new(blocksQuerySeriesParams)
 	params.blocksQueryParams = addBlocksQueryParams(queryCmd)
 	queryCmd.Flag("label-names", "Filter returned labels to the supplied label names. Without any filter all labels are returned.").StringsVar(&params.LabelNames)
+	queryCmd.Flag("output", "Output format, one of: table, json.").Default("table").StringVar(&params.Output)
 	return params
 }
 
@@ -133,6 +136,10 @@ func blocksQuerySeries(ctx context.Context, params *blocksQuerySeriesParams) err
 
 	blockQuerier := phlaredb.NewBlockQuerier(ctx, bucket)
 
+	if len(params.BlockIds) == 0 {
+		return errors.New("specify at least one --block to query")
+	}
+
 	var from, to int64
 	from, to = math.MaxInt64, math.MinInt64
 	var targetBlockQueriers phlaredb.Queriers
@@ -158,7 +165,8 @@ func blocksQuerySeries(ctx context.Context, params *blocksQuerySeriesParams) err
 		return err
 	}
 
-	return outputSeries(response.Msg.LabelsSet)
+	return outputSeries(ctx, response.Msg.LabelsSet, params.Output,
+		time.UnixMilli(from), time.UnixMilli(to))
 }
 
 func getBucket(ctx context.Context, params *blocksQueryParams) (objstore.Bucket, error) {

@@ -84,6 +84,8 @@ func main() {
 	querySeriesParams := addQuerySeriesParams(querySeriesCmd)
 	queryLabelValuesCardinalityCmd := queryCmd.Command("label-values-cardinality", "Request label values cardinality.")
 	queryLabelValuesCardinalityParams := addQueryLabelValuesCardinalityParams(queryLabelValuesCardinalityCmd)
+	queryTopCmd := queryCmd.Command("top", "List top N label values by total value for a time window.")
+	queryTopParams := addQueryTopParams(queryTopCmd)
 
 	queryTracerCmd := app.Command("query-tracer", "Analyze query traces.")
 	queryTracerParams := addQueryTracerParams(queryTracerCmd)
@@ -182,6 +184,10 @@ func main() {
 
 	case queryLabelValuesCardinalityCmd.FullCommand():
 		if err := queryLabelValuesCardinality(ctx, queryLabelValuesCardinalityParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case queryTopCmd.FullCommand():
+		if err := queryTop(ctx, queryTopParams); err != nil {
 			os.Exit(checkError(err))
 		}
 

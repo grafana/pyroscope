@@ -97,7 +97,7 @@ func (q *QueryFrontend) Series(
 				LabelNames: labelNames,
 			},
 		}},
-	})
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
