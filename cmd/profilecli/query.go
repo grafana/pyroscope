@@ -178,7 +178,7 @@ func querySpanProfile(ctx context.Context, params *queryProfileParams, from time
 
 	logDiagnostics(params.phlareClient, resp.Header())
 
-	tree, err := model.UnmarshalTree(resp.Msg.Tree)
+	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Msg.Tree)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal tree")
 	}
@@ -248,7 +248,7 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 
 	logDiagnostics(params.phlareClient, resp.Header())
 
-	tree, err := model.UnmarshalTree(resp.Msg.Tree)
+	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Msg.Tree)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal tree")
 	}

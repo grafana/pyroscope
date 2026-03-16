@@ -84,7 +84,7 @@ func forAllPlannedIngesters[T any](ctx context.Context, ingesterQuerier *Ingeste
 	}, replicationSet, f)
 }
 
-func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan blockPlan) (*phlaremodel.Tree, error) {
+func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan blockPlan) (*phlaremodel.FunctionNameTree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectTree Ingesters")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
@@ -294,7 +294,7 @@ func (q *Querier) seriesFromIngesters(ctx context.Context, req *ingesterv1.Serie
 	return responses, nil
 }
 
-func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest, plan map[string]*blockPlanEntry) (*phlaremodel.Tree, error) {
+func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest, plan map[string]*blockPlanEntry) (*phlaremodel.FunctionNameTree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeSpanProfile Ingesters")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)

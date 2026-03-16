@@ -12,6 +12,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -545,4 +546,70 @@ func (b *RequestBuilder) OtelPushHTTPJSON(profile *profilesv1.ExportProfilesServ
 	require.NoError(b.t, err)
 	req.Header.Set("Content-Type", "application/json")
 	return req
+}
+
+// normalizePprof returns a copy of p with functions, locations, and samples
+// renumbered in a canonical order determined by the string table. Functions
+// are sorted by their Name string-table index; locations by their first
+// function ID; samples by their location-ID sequence. This makes profiles
+// with identical logical content but different internal ID assignments
+// directly comparable.
+func normalizePprof(p *profilev1.Profile) *profilev1.Profile {
+	out := proto.Clone(p).(*profilev1.Profile)
+
+	// Sort functions by their actual name string (not the string table index,
+	// which is insertion-order dependent) and reassign IDs.
+	sort.Slice(out.Function, func(i, j int) bool {
+		ni := out.StringTable[out.Function[i].Name]
+		nj := out.StringTable[out.Function[j].Name]
+		return ni < nj
+	})
+	funcIDMap := make(map[uint64]uint64, len(out.Function))
+	for i, fn := range out.Function {
+		newID := uint64(i + 1)
+		funcIDMap[fn.Id] = newID
+		fn.Id = newID
+	}
+
+	// Update FunctionId references in all location lines.
+	for _, loc := range out.Location {
+		for _, line := range loc.Line {
+			line.FunctionId = funcIDMap[line.FunctionId]
+		}
+	}
+
+	// Sort locations by their first line's FunctionId and reassign IDs.
+	sort.Slice(out.Location, func(i, j int) bool {
+		li, lj := out.Location[i].Line, out.Location[j].Line
+		for k := 0; k < len(li) && k < len(lj); k++ {
+			if li[k].FunctionId != lj[k].FunctionId {
+				return li[k].FunctionId < lj[k].FunctionId
+			}
+		}
+		return len(li) < len(lj)
+	})
+	locIDMap := make(map[uint64]uint64, len(out.Location))
+	for i, loc := range out.Location {
+		newID := uint64(i + 1)
+		locIDMap[loc.Id] = newID
+		loc.Id = newID
+	}
+
+	// Update LocationId references in samples and sort samples.
+	for _, sample := range out.Sample {
+		for k, id := range sample.LocationId {
+			sample.LocationId[k] = locIDMap[id]
+		}
+	}
+	sort.Slice(out.Sample, func(i, j int) bool {
+		si, sj := out.Sample[i].LocationId, out.Sample[j].LocationId
+		for k := 0; k < len(si) && k < len(sj); k++ {
+			if si[k] != sj[k] {
+				return si[k] < sj[k]
+			}
+		}
+		return len(si) < len(sj)
+	})
+
+	return out
 }
