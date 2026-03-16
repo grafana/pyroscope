@@ -1,0 +1,5 @@
+limits:
+    ingestion_relabeling_rules:
+        - action: labelmap
+          regex: '^process\.executable\.name$'
+          replacement: service_name

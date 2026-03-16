@@ -2,7 +2,6 @@ package queryfrontend
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"slices"
 	"sync"
@@ -12,7 +11,6 @@ import (
 	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
@@ -26,7 +24,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/querybackend/queryplan"
 )
 
@@ -83,11 +80,24 @@ func NewQueryFrontend(
 var xrand = rand.New(rand.NewSource(4349676827832284783))
 var xrandMutex = sync.Mutex{} // todo fix the race properly
 
+// backendCreator allows to modify behavior of a query after more about the dataset is learned from the QueryMetadata call.
+// We currently use this mainly to change backend query, for symbolizing unsymbolized blocks.
+// TODO: Once symbolization moves to the query-backend, the query-backend plan should incorporate the symbolize step
+type backendWrapper = func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend
+
 func (q *QueryFrontend) Query(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (*queryv1.QueryResponse, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.QueryWithDiagnostics")
+	return q.doQuery(ctx, req, nil)
+}
+
+func (q *QueryFrontend) doQuery(
+	ctx context.Context,
+	req *queryv1.QueryRequest,
+	backendC backendWrapper,
+) (*queryv1.QueryResponse, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.doQuery")
 	defer span.Finish()
 	span.SetTag("start_time", req.StartTime)
 	span.SetTag("end_time", req.EndTime)
@@ -124,25 +134,11 @@ func (q *QueryFrontend) Query(
 	// TODO(kolesnikovae): Should be dynamic.
 	p := queryplan.Build(blocks, 4, 20)
 
-	// Only check for symbolization if all tenants have it enabled
-	shouldSymbolize := q.shouldSymbolize(ctx, tenants, blocks)
-	span.SetTag("should_symbolize", shouldSymbolize)
-
-	modifiedQueries := make([]*queryv1.Query, len(req.Query))
-	for i, originalQuery := range req.Query {
-		modifiedQueries[i] = originalQuery.CloneVT()
-
-		// If we need symbolization and this is a TREE query, convert it to PPROF
-		if shouldSymbolize && originalQuery.QueryType == queryv1.QueryType_QUERY_TREE {
-			modifiedQueries[i].QueryType = queryv1.QueryType_QUERY_PPROF
-			modifiedQueries[i].Pprof = &queryv1.PprofQuery{
-				MaxNodes: originalQuery.Tree.GetMaxNodes(),
-			}
-			modifiedQueries[i].Tree = nil
-		}
+	backend := q.querybackend
+	if backendC != nil {
+		backend = backendC(ctx, backend, blocks)
 	}
-
-	resp, err := q.querybackend.Invoke(ctx, &queryv1.InvokeRequest{
+	resp, err := backend.Invoke(ctx, &queryv1.InvokeRequest{
 		Tenant:        tenants,
 		StartTime:     req.StartTime,
 		EndTime:       req.EndTime,
@@ -152,17 +148,10 @@ func (q *QueryFrontend) Query(
 			CollectDiagnostics: collectDiagnostics,
 		},
 		QueryPlan: p,
-		Query:     modifiedQueries,
+		Query:     req.Query,
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	if shouldSymbolize {
-		err = q.processAndSymbolizeProfiles(ctx, resp, req.Query)
-		if err != nil {
-			return nil, status.Error(codes.Internal, fmt.Sprintf("symbolizing profiles: %v", err))
-		}
 	}
 
 	if resp.Diagnostics == nil {
@@ -237,104 +226,4 @@ func (q *QueryFrontend) QueryMetadata(
 	span.SetTag("blocks_count", len(md.Blocks))
 
 	return md.Blocks, nil
-}
-
-// hasUnsymbolizedProfiles checks if a block has unsymbolized profiles
-func (q *QueryFrontend) hasUnsymbolizedProfiles(block *metastorev1.BlockMeta) bool {
-	matcher, err := labels.NewMatcher(labels.MatchEqual, metadata.LabelNameUnsymbolized, "true")
-	if err != nil {
-		return false
-	}
-
-	return len(slices.Collect(metadata.FindDatasets(block, matcher))) > 0
-}
-
-// shouldSymbolize determines if we should symbolize profiles based on tenant settings
-func (q *QueryFrontend) shouldSymbolize(ctx context.Context, tenants []string, blocks []*metastorev1.BlockMeta) bool {
-	span := opentracing.SpanFromContext(ctx)
-	if span != nil {
-		span.LogFields(otlog.String("event", "shouldSymbolize"))
-	}
-
-	if q.symbolizer == nil {
-		return false
-	}
-
-	for _, t := range tenants {
-		if !q.limits.SymbolizerEnabled(t) {
-			return false
-		}
-	}
-
-	blocksWithUnsymbolized := 0
-	for _, block := range blocks {
-		if q.hasUnsymbolizedProfiles(block) {
-			blocksWithUnsymbolized++
-		}
-	}
-
-	if span != nil {
-		span.LogFields(
-			otlog.Int("blocks_with_unsymbolized", blocksWithUnsymbolized),
-			otlog.Int("total_blocks", len(blocks)),
-		)
-	}
-
-	return blocksWithUnsymbolized > 0
-}
-
-// processAndSymbolizeProfiles handles the symbolization of profiles from the response
-func (q *QueryFrontend) processAndSymbolizeProfiles(
-	ctx context.Context,
-	resp *queryv1.InvokeResponse,
-	originalQueries []*queryv1.Query,
-) (err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "QueryFrontend.processAndSymbolizeProfiles")
-	defer func() {
-		if err != nil {
-			ext.LogError(span, err)
-		}
-		span.Finish()
-	}()
-	span.SetTag("query_count", len(originalQueries))
-	span.SetTag("report_count", len(resp.Reports))
-
-	if len(originalQueries) != len(resp.Reports) {
-		return fmt.Errorf("query/report count mismatch: %d queries but %d reports",
-			len(originalQueries), len(resp.Reports))
-	}
-
-	for i, r := range resp.Reports {
-		if r.Pprof == nil || r.Pprof.Pprof == nil {
-			continue
-		}
-
-		var prof googlev1.Profile
-		if err := pprof.Unmarshal(r.Pprof.Pprof, &prof); err != nil {
-			return fmt.Errorf("failed to unmarshal profile: %w", err)
-		}
-
-		if err := q.symbolizer.SymbolizePprof(ctx, &prof); err != nil {
-			return fmt.Errorf("failed to symbolize profile: %w", err)
-		}
-
-		// Convert back to tree if originally a tree
-		if i < len(originalQueries) && originalQueries[i].QueryType == queryv1.QueryType_QUERY_TREE {
-			treeBytes, err := model.TreeFromBackendProfile(&prof, originalQueries[i].Tree.GetMaxNodes())
-			if err != nil {
-				return fmt.Errorf("failed to build tree: %w", err)
-			}
-			r.Tree = &queryv1.TreeReport{Tree: treeBytes}
-			r.ReportType = queryv1.ReportType_REPORT_TREE
-			r.Pprof = nil
-		} else {
-			symbolizedBytes, err := pprof.Marshal(&prof, true)
-			if err != nil {
-				return fmt.Errorf("failed to marshal symbolized profile: %w", err)
-			}
-			r.Pprof.Pprof = symbolizedBytes
-		}
-	}
-
-	return nil
 }

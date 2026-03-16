@@ -1,0 +1,24 @@
+receivers:
+  profiling:
+    samples_per_second: 97
+
+processors:
+  resource/metadata:
+    attributes:
+      - action: upsert
+        key: k8s.cluster.name
+        value: demo
+
+exporters:
+  otlp_grpc:
+    endpoint: pyroscope:4040
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    profiles:
+      receivers: [profiling]
+      exporters: [otlp_grpc]
+      processors:
+        - resource/metadata

@@ -29,7 +29,6 @@ import (
 	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/metrics"
-	"github.com/grafana/pyroscope/pkg/objstore"
 	blocksv2 "github.com/grafana/pyroscope/pkg/operations/v2/blocks"
 	"github.com/grafana/pyroscope/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/pkg/querybackend"
@@ -407,13 +406,12 @@ func (f *Pyroscope) initRecordingRulesClient() (services.Service, error) {
 }
 
 func (f *Pyroscope) initSymbolizer() (services.Service, error) {
-	prefixedBucket := objstore.NewPrefixedBucket(f.storageBucket, "symbolizer")
 
 	sym, err := symbolizer.New(
 		f.logger,
 		f.Cfg.Symbolizer,
 		f.reg,
-		prefixedBucket,
+		f.storageBucket,
 		f.Overrides,
 	)
 	if err != nil {

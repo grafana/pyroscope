@@ -1,4 +1,4 @@
-FROM openjdk:17-jdk-slim
+FROM sapmachine:17-jdk-headless
 
 ADD ./FastSlow.java /FastSlow.java
 RUN javac FastSlow.java
