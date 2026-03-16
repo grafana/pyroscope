@@ -2,6 +2,7 @@ package raftnode
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -21,6 +22,9 @@ type timeoutLogStore struct {
 	timeout      time.Duration
 	writeLatency prometheus.Histogram
 	timeouts     prometheus.Counter
+
+	mu       sync.Mutex
+	inflight <-chan struct{} // closed when timed-out operation completes; nil if none
 }
 
 func newTimeoutLogStore(store raft.LogStore, timeout time.Duration, writeLatency prometheus.Histogram, timeouts prometheus.Counter) raft.LogStore {
@@ -41,7 +45,20 @@ func (s *timeoutLogStore) GetLog(index uint64, log *raft.Log) error {
 	return s.store.GetLog(index, log)
 }
 func (s *timeoutLogStore) DeleteRange(min, max uint64) error {
+	s.waitForInflight()
 	return s.store.DeleteRange(min, max)
+}
+
+// waitForInflight blocks until any timed-out operation completes.
+// This prevents a race where a leaked goroutine from a timed-out write
+// could complete after subsequent operations, corrupting the log.
+func (s *timeoutLogStore) waitForInflight() {
+	s.mu.Lock()
+	wait := s.inflight
+	s.mu.Unlock()
+	if wait != nil {
+		<-wait
+	}
 }
 
 func (s *timeoutLogStore) StoreLog(log *raft.Log) error {
@@ -57,10 +74,13 @@ func (s *timeoutLogStore) StoreLogs(logs []*raft.Log) error {
 }
 
 func (s *timeoutLogStore) withTimeout(fn func() error) error {
+	s.waitForInflight()
 	start := time.Now()
 	done := make(chan error, 1)
+	finished := make(chan struct{})
 	go func() {
 		done <- fn()
+		close(finished)
 	}()
 	select {
 	case err := <-done:
@@ -75,6 +95,11 @@ func (s *timeoutLogStore) withTimeout(fn func() error) error {
 			return err
 		default:
 		}
+		// Record that we have an in-flight operation so subsequent
+		// operations wait for it to complete before proceeding.
+		s.mu.Lock()
+		s.inflight = finished
+		s.mu.Unlock()
 		s.writeLatency.Observe(time.Since(start).Seconds())
 		s.timeouts.Inc()
 		return fmt.Errorf("log store write timed out after %s", s.timeout)
