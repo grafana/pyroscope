@@ -65,6 +65,20 @@ Unlike the v1 ingester which required local disk storage, the segment-writer is 
 1. **Registration**: Segment metadata is registered in the metastore.
 1. **Compaction**: Small segments are later merged into larger blocks by [compaction-workers](../compaction-worker/).
 
+## Failure handling
+
+The segment writer relies on at-least-once delivery semantics. If a write fails after the segment has been uploaded to object storage but before the metastore acknowledges the metadata, the client retries the request. This can result in the same profile appearing in multiple segments, which is resolved during compaction.
+
+### Dead letter queue
+
+If the segment writer cannot register metadata with the metastore (for example, during metastore unavailability), the metadata is written to a dead letter queue (DLQ) directory in object storage. The metastore recovers these entries in the background, ensuring that data is eventually made visible to queries.
+
+## Deployment
+
+- The segment writer runs as a StatefulSet without persistent volumes.
+- It participates in a hash ring used by the [distributor](../distributor/) to route profiles.
+- Multiple segment writers can write to the same shard during topology changes (for example, scaling events or rollouts). This is expected and handled by compaction.
+
 ## Configuration
 
 The segment-writer flush behavior can be configured to balance between:
