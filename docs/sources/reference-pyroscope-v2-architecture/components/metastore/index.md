@@ -22,6 +22,7 @@ The metastore service is responsible for:
 - **Compaction coordination**: Scheduling and coordinating compaction jobs for [compaction-workers](../compaction-worker/)
 - **Query planning**: Providing metadata to [query-frontend](../query-frontend/) for locating data objects
 - **Data placement**: Managing placement rules for the data distribution algorithm
+- **Retention enforcement**: Applying time-based retention policies and generating tombstones for expired data
 
 ## Raft consensus
 
@@ -70,6 +71,14 @@ The compaction service uses a lease-based ownership model with fencing tokens to
 
 For detailed information about the compaction process, refer to [Compaction](../../compaction/).
 
+## Dead letter queue
+
+If the metastore is temporarily unavailable, [segment writers](../segment-writer/) fall back to writing metadata to a dead letter queue (DLQ) directory in object storage. The metastore recovers these entries in the background once it becomes available again.
+
+## Retention
+
+The metastore enforces time-based retention policies on a per-tenant basis. Retention operates at the partition level: entire partitions are removed when they exceed the configured retention period, rather than evaluating individual blocks. When partitions are deleted, tombstones are created for the underlying data objects, which are eventually cleaned up by compaction workers.
+
 ## Query support
 
 The metastore provides linearizable reads for query operations, ensuring that:
@@ -86,5 +95,6 @@ One metastore instance is elected as the leader through Raft consensus. The lead
 - Coordinating compaction scheduling
 - Enforcing retention policies
 - Running cleanup operations
+- Recovering metadata entries from the dead letter queue
 
 Follower replicas can serve read requests, distributing the query load across the cluster.
