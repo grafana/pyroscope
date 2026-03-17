@@ -89,13 +89,6 @@ Pyroscope uses [Jump consistent hash](https://arxiv.org/pdf/1406.2294) to select
 
 This minimizes data re-balancing when the cluster size changes.
 
-## Availability zone awareness
-
-Distributors are aware of availability zones and route profiles to segment-writers in the same zone. This avoids:
-
-- Cross-AZ traffic charges from cloud providers
-- High-latency connections between data centers
-
 ## Hot spot mitigation
 
 To prevent hot spots where many datasets end up on the same node, shards are mapped to instances through a separate mapping table. This mapping:

@@ -29,7 +29,7 @@ The distributor uses a three-step process to determine where to place a profile:
 1. **Dataset shards**: Narrow down to locations suitable for the `service_name` label.
 1. **Final placement**: Select the exact shard using consistent hashing or adaptive load balancing.
 
-This algorithm balances data locality with even distribution across the cluster. Distributors are aware of availability zones and route profiles to segment-writers in the same zone to avoid cross-AZ traffic penalties.
+This algorithm balances data locality with even distribution across the cluster.
 
 For detailed information about the distribution algorithm, refer to [Data distribution](../../data-distribution/).
 
