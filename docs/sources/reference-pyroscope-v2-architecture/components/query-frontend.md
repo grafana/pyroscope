@@ -17,38 +17,19 @@ The query-frontend is a stateless component that serves as the entry point for t
 
 The query-frontend is responsible for:
 
-- **Query reception**: Receiving queries through the Query API
-- **Metadata lookup**: Finding relevant data blocks via the [metastore](../metastore/)
-- **Query planning**: Creating an execution plan for the query
-- **Request routing**: Dispatching query execution to query-backend instances
-- **Result handling**: Collecting and returning results to clients
+- **Receiving and validating queries** through the Query API
+- **Executing queries** by using the [metastore](../metastore/) for block discovery and delegating execution to [query-backend](../query-backend/) instances
 
 ## Query flow
 
-1. **Query received**: A query arrives at the query-frontend.
-1. **Metadata query**: The frontend queries the metastore to locate relevant blocks.
-1. **Plan creation**: A query execution plan is created based on block locations.
-1. **Backend invocation**: The plan is sent to query-backend instances for execution.
-1. **Result return**: Results are collected and returned to the client.
+When a query arrives, the query frontend:
 
-## Block discovery
+1. Validates the query request.
+1. Queries the [metastore](../metastore/) to find all blocks matching the query criteria (time range, tenant, and optionally service name).
+1. Builds a physical query plan as a tree: leaf nodes are read operations targeting specific blocks and datasets, while intermediate nodes are merge operations that combine results from their children.
+1. Sends the plan root to a [query backend](../query-backend/) instance, which distributes subtrees to other query backend instances for parallel execution and merging. For more details, refer to [Query backend](../query-backend/).
 
-The query-frontend uses the metastore's metadata index to find blocks containing data for a query. The index provides:
-
-- Block identifiers matching the query's time range
-- Tenant and shard information
-- Dataset labels for filtering
-
-This allows the frontend to identify exactly which blocks need to be read, minimizing unnecessary object storage access.
-
-## Supported query types
-
-The query-frontend supports various query types:
-
-- **Flame graph queries**: Profile data for visualization
-- **Label queries**: Label names and values for filtering
-- **Time series queries**: Profile data over time
-- **Series label queries**: Prometheus-style series labels
+Because the metastore serves block metadata from memory with linearizable reads, query planning is fast and does not require the query frontend to maintain any local state about blocks.
 
 ## Stateless design
 
