@@ -10,7 +10,7 @@ aliases:
 # Pyroscope Block format
 
 {{< admonition type="note" >}}
-This page describes the v1 block format. For the v2 block format, refer to [Pyroscope v2 block format]({{< relref "../reference-pyroscope-v2-architecture/block-format" >}}).
+This page describes the v1 block format. For the v2 block format, refer to [Pyroscope v2 block format]({{< relref "../../reference-pyroscope-v2-architecture/block-format" >}}).
 {{< /admonition >}}
 
 This document describes how Pyroscope stores the data in its blocks. Each
