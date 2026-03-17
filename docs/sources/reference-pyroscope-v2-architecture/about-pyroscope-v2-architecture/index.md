@@ -13,15 +13,17 @@ keywords:
 # About the Pyroscope v2 architecture
 
 {{< admonition type="note" >}}
-Pyroscope v2 architecture is production-ready and powers Grafana Cloud Profiles exclusively. However, until it's released by default Pyroscope v2.0, there are no API stability guarantees.
+The Pyroscope v2 architecture is production-ready and powers Grafana Cloud Profiles exclusively. However, until it's released by default as part of Pyroscope v2.0, there are no API stability guarantees.
 {{< /admonition >}}
 
 Pyroscope v2 is a complete architectural redesign focused on improving scalability, performance, and cost-efficiency. The architecture is built around the following goals:
 
-- Delivers high write throughput
-- Provides cost-effective storage
-- Enables scalable query performance
-- Reduces operational overhead
+- Deliver high write throughput
+- Provide cost-effective storage
+- Enable scalable query performance
+- Reduce operational overhead
+
+For background on the v1 limitations that motivated this redesign, refer to [Design motivation](../design-motivation/).
 
 ## Key design changes
 
