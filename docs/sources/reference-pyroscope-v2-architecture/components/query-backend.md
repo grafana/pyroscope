@@ -16,26 +16,14 @@ The query-backend is a stateless component that executes queries with high paral
 
 ## How it works
 
-1. **Plan reception**: The query-backend receives an execution plan from the query-frontend.
-1. **Block reading**: Required blocks are read from object storage.
-1. **Parallel processing**: Query execution is parallelized across multiple blocks.
-1. **Result aggregation**: Results from sub-queries are combined.
-1. **Response**: The final result is returned to the query-frontend.
+The [query frontend](../query-frontend/) builds a physical query plan as a tree structure:
 
-## Graph-based query execution
+- **Read nodes** (leaves) fetch and process data from specific blocks in object storage.
+- **Merge nodes** (intermediate) combine results from their child nodes.
 
-Query execution is represented as a graph where:
+The query frontend sends the plan root to a query backend instance. That instance distributes subtrees to other query backend instances for parallel execution, collects their results, and merges them. The final merged result is returned to the query frontend, which forwards it to the client.
 
-- Nodes represent operations (read, merge, aggregate)
-- Edges represent data flow between operations
-- Sub-queries can execute in parallel
-- Results are combined and optimized at merge points
-
-This approach:
-- Minimizes network overhead
-- Enables horizontal scalability
-- Reduces memory requirements through streaming
-- Optimizes data transfer between components
+This tree-based execution allows queries to fan out across many query backend instances in parallel, with merging happening at each level of the tree rather than in a single aggregation point.
 
 ## Direct object storage access
 
@@ -45,16 +33,6 @@ Unlike v1 where queries may need to access ingesters for recent data, the v2 que
 - Simplified query execution
 - Better isolation between read and write paths
 - Easier horizontal scaling
-
-## Supported operations
-
-The query-backend supports various query operations:
-
-- **Profile queries**: Reading and merging profile data
-- **Label queries**: Extracting label names and values
-- **Time series queries**: Aggregating data over time
-- **Tree queries**: Building flame graph trees
-- **pprof queries**: Generating pprof-format output
 
 ## Stateless design
 
@@ -77,6 +55,5 @@ The query-backend enables horizontal scaling of the read path:
 ## Performance characteristics
 
 - **High parallelism**: Multiple blocks processed concurrently
-- **Streaming execution**: Results streamed as they're computed
-- **Memory efficient**: Graph-based execution minimizes memory requirements
+- **Memory efficient**: Tree-based execution minimizes memory requirements
 - **Network optimized**: Results combined close to the data source
