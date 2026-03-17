@@ -80,4 +80,8 @@ If a compaction worker fails:
 
 Jobs that repeatedly fail are deprioritized to prevent blocking the compaction queue.
 
+## Garbage collection
+
+After compaction completes, the original source blocks are not immediately deleted. Instead, tombstones are created in the metastore. The actual deletion happens after a configurable delay, giving queries time to discover the new compacted blocks and stop accessing the original ones. Eventually, tombstones are included in compaction jobs, and the worker removes the source objects from object storage.
+
 For detailed information about the compaction process, refer to [Compaction](../../compaction/).
