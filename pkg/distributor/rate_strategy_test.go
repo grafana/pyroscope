@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/time/rate"
 
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -31,13 +30,6 @@ func TestIngestionRateStrategy(t *testing.T) {
 		strategy := newGlobalRateStrategy(newIngestionRateStrategy(overrides), mockRing)
 		assert.Equal(t, strategy.Limit("test"), float64(1000*1024*1024/2))
 		assert.Equal(t, strategy.Burst("test"), 10000*1024*1024)
-	})
-
-	t.Run("infinite rate limiter should return unlimited settings", func(t *testing.T) {
-		strategy := newInfiniteRateStrategy()
-
-		assert.Equal(t, strategy.Limit("test"), float64(rate.Inf))
-		assert.Equal(t, strategy.Burst("test"), 0)
 	})
 }
 
