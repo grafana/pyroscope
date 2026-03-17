@@ -9,6 +9,10 @@ aliases:
 
 # Pyroscope Block format
 
+{{< admonition type="note" >}}
+This page describes the v1 block format. For the v2 block format, refer to [Pyroscope v2 block format]({{< relref "../reference-pyroscope-v2-architecture/block-format" >}}).
+{{< /admonition >}}
+
 This document describes how Pyroscope stores the data in its blocks. Each
 block belongs to a single tenant and is identified by a unique [ULID]. Within
 the block there are multiple files:
