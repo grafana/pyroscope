@@ -89,8 +89,6 @@ func addQueryParams(queryCmd commander) *queryParams {
 	params := new(queryParams)
 	params.phlareClient = addPhlareClient(queryCmd)
 
-	queryCmd.Flag("collect-diagnostics", "Request query diagnostics collection. The server will return a diagnostics ID in a response header.").Default("false").Envar(envPrefix + "COLLECT_DIAGNOSTICS").BoolVar(&params.phlareClient.CollectDiagnostics)
-
 	queryCmd.Flag("from", "Beginning of the query.").Default("now-1h").StringVar(&params.From)
 	queryCmd.Flag("to", "End of the query.").Default("now").StringVar(&params.To)
 	queryCmd.Flag("query", "Label selector to query.").Default("{}").StringVar(&params.Query)
@@ -178,7 +176,7 @@ func querySpanProfile(ctx context.Context, params *queryProfileParams, from time
 
 	logDiagnostics(params.phlareClient, resp.Header())
 
-	tree, err := model.UnmarshalTree(resp.Msg.Tree)
+	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Msg.Tree)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal tree")
 	}
@@ -248,7 +246,7 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 
 	logDiagnostics(params.phlareClient, resp.Header())
 
-	tree, err := model.UnmarshalTree(resp.Msg.Tree)
+	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Msg.Tree)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal tree")
 	}

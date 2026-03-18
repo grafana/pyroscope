@@ -5,12 +5,14 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -32,7 +34,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 		return connect.NewResponse(&profilev1.Profile{}), nil
 	}
 
-	_, err = phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
+	profileType, err := phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -59,21 +61,90 @@ func (q *QueryFrontend) SelectMergeProfile(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+
+	// TODO: Remove this path and answer all queries using the tree
+	// PGO queries always use the pprof path, as query tree doesn't support the truncation
+	useQueryTree := false
+	if c.Msg.StackTraceSelector.GetGoPgo() == nil {
+		for _, tenantID := range tenantIDs {
+			if q.limits.QueryTreeEnabled(tenantID) {
+				useQueryTree = true
+				break
+			}
+		}
+	}
+
+	if !useQueryTree {
+		level.Info(q.logger).Log("msg", "use pprof query-backend based query")
+		shouldSymbolize := false
+		report, err := q.querySingle(ctx,
+			&queryv1.QueryRequest{
+				StartTime:     c.Msg.Start,
+				EndTime:       c.Msg.End,
+				LabelSelector: labelSelector,
+				Query: []*queryv1.Query{{
+					QueryType: queryv1.QueryType_QUERY_PPROF,
+					Pprof: &queryv1.PprofQuery{
+						MaxNodes:           maxNodes,
+						StackTraceSelector: c.Msg.StackTraceSelector,
+						ProfileIdSelector:  c.Msg.ProfileIdSelector,
+					},
+				}},
+			},
+			// capture if this pprof needs symbolization
+			func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend {
+				shouldSymbolize = q.shouldSymbolize(ctx, tenantIDs, blocks)
+				return upstream
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+		if report == nil {
+			return connect.NewResponse(&profilev1.Profile{}), nil
+		}
+		var p profilev1.Profile
+		if err = pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {
+			return nil, err
+		}
+		if shouldSymbolize {
+			if err := q.symbolizer.SymbolizePprof(ctx, &p); err != nil {
+				return nil, fmt.Errorf("failed to symbolize profile: %w", err)
+			}
+		}
+		return connect.NewResponse(&p), nil
+	}
+
+	// From now on answer using the more experimental tree based approach
+	return q.selectMergeProfileTree(ctx, c.Msg, labelSelector, maxNodes, profileType, tenantIDs)
+}
+
+func (q *QueryFrontend) selectMergeProfileTree(
+	ctx context.Context,
+	req *querierv1.SelectMergeProfileRequest,
+	labelSelector string,
+	maxNodes int64,
+	profileType *typesv1.ProfileType,
+	tenantIDs []string,
+) (*connect.Response[profilev1.Profile], error) {
+	level.Info(q.logger).Log("msg", "use tree query-backend based query")
 	shouldSymbolize := false
 	report, err := q.querySingle(ctx,
 		&queryv1.QueryRequest{
-			StartTime:     c.Msg.Start,
-			EndTime:       c.Msg.End,
+			StartTime:     req.Start,
+			EndTime:       req.End,
 			LabelSelector: labelSelector,
 			Query: []*queryv1.Query{{
-				QueryType: queryv1.QueryType_QUERY_PPROF,
-				Pprof: &queryv1.PprofQuery{
+				QueryType: queryv1.QueryType_QUERY_TREE,
+				Tree: &queryv1.TreeQuery{
 					MaxNodes:           maxNodes,
-					StackTraceSelector: c.Msg.StackTraceSelector,
-					ProfileIdSelector:  c.Msg.ProfileIdSelector,
+					StackTraceSelector: req.StackTraceSelector,
+					ProfileIdSelector:  req.ProfileIdSelector,
+					FullSymbols:        true,
 				},
 			}},
 		},
+		// capture if this pprof needs symbolization
 		func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend {
 			shouldSymbolize = q.shouldSymbolize(ctx, tenantIDs, blocks)
 			return upstream
@@ -85,10 +156,80 @@ func (q *QueryFrontend) SelectMergeProfile(
 	if report == nil {
 		return connect.NewResponse(&profilev1.Profile{}), nil
 	}
+
 	var p profilev1.Profile
-	if err = pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {
-		return nil, err
+
+	if report.Tree.Symbols == nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("symbols not present in tree response"))
 	}
+	if len(report.Tree.Symbols.Mappings) < 1 || len(report.Tree.Symbols.Locations) < 1 || len(report.Tree.Symbols.Functions) < 1 {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("incomplete symbols in tree response"))
+	}
+
+	p.StringTable = report.Tree.Symbols.Strings
+	p.Mapping = report.Tree.Symbols.Mappings[1:]
+	p.Location = report.Tree.Symbols.Locations[1:]
+	p.Function = report.Tree.Symbols.Functions[1:]
+
+	otherLocationID := uint64(0)
+	otherLocation := func() uint64 {
+		if otherLocationID != 0 {
+			return otherLocationID
+		}
+		stringRef := int64(len(p.StringTable))
+		p.StringTable = append(p.StringTable, "other")
+		funcRef := uint64(len(p.Function) + 1)
+		p.Function = append(p.Function, &profilev1.Function{
+			Id:         funcRef,
+			Name:       stringRef,
+			SystemName: stringRef,
+		})
+		otherLocationID = uint64(len(p.Location) + 1)
+		p.Location = append(p.Location, &profilev1.Location{
+			Id: otherLocationID,
+			Line: []*profilev1.Line{{
+				FunctionId: funcRef,
+			}},
+		})
+		return otherLocationID
+	}
+
+	t, err := phlaremodel.UnmarshalTree[phlaremodel.LocationRefName, phlaremodel.LocationRefNameI](report.Tree.Tree)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	// TODO(simonswine): Back this up with better data
+	p.Sample = make([]*profilev1.Sample, 0, len(report.Tree.Tree)/16)
+
+	t.IterateStacks(func(_ phlaremodel.LocationRefName, self int64, stack []phlaremodel.LocationRefName) {
+		if self <= 0 {
+			return
+		}
+		locationIDs := make([]uint64, 0, len(stack))
+		for idx, locID := range stack {
+			// when we hit an other, we need to reset the stack
+			if locID == phlaremodel.OtherLocationRef {
+				locationIDs = append(locationIDs, otherLocation())
+				continue
+			}
+			// handle the sentinel location, when it is the root
+			if locID == phlaremodel.LocationRefName(0) {
+				if idx == len(stack)-1 {
+					break
+				}
+				panic("unexpected sentinel location")
+			}
+			locationIDs = append(locationIDs, uint64(locID))
+		}
+
+		p.Sample = append(p.Sample, &profilev1.Sample{
+			LocationId: locationIDs,
+			Value:      []int64{self},
+		})
+	})
+
+	pprof.SetProfileMetadata(&p, profileType, req.End*1e6, 0)
 
 	if shouldSymbolize {
 		if err := q.symbolizer.SymbolizePprof(ctx, &p); err != nil {

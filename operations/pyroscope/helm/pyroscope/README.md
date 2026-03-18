@@ -35,6 +35,7 @@
 | architecture.storage.migration.segmentWriterWeight | float | `1` | Specifies the fraction [0:1] that should be send to the v2 write path / segment-writer in combined mode. 0 means no traffics is sent to segment-writer. 1 means 100% of requests are sent to segment-writer. |
 | architecture.storage.v1 | bool | `true` | Enable v1 storage layer. |
 | architecture.storage.v2 | bool | `false` | Enable v2 storage layer. |
+| global.imageRegistry | string | `nil` | Overrides the Docker registry globally for all images |
 | ingress.annotations | object | `{}` |  |
 | ingress.className | string | `""` |  |
 | ingress.enabled | bool | `false` |  |
@@ -59,6 +60,7 @@
 | pyroscope.grpc.port | int | `9095` |  |
 | pyroscope.grpc.port_name | string | `"grpc"` |  |
 | pyroscope.image.pullPolicy | string | `"IfNotPresent"` |  |
+| pyroscope.image.registry | string | `""` |  |
 | pyroscope.image.repository | string | `"grafana/pyroscope"` |  |
 | pyroscope.image.tag | string | `""` |  |
 | pyroscope.imagePullSecrets | list | `[]` |  |
