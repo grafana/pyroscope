@@ -2,9 +2,10 @@ package v1
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"io"
-	"math/rand"
+	mathrand "math/rand"
 	"sort"
 	"testing"
 
@@ -105,7 +106,7 @@ func TestRoundtripProfile(t *testing.T) {
 		profiles := generateProfiles(1)
 		for _, p := range profiles {
 			for _, x := range p.Samples {
-				x.SpanID = rand.Uint64()
+				x.SpanID = mathrand.Uint64()
 			}
 		}
 		inMemoryProfiles := generateMemoryProfiles(1)
@@ -127,7 +128,8 @@ func TestRoundtripProfile(t *testing.T) {
 		for _, p := range profiles {
 			for _, x := range p.Samples {
 				x.TraceID = make([]byte, 16)
-				rand.Read(x.TraceID)
+				_, err := rand.Read(x.TraceID)
+				require.NoError(t, err)
 			}
 		}
 		inMemoryProfiles := generateMemoryProfiles(1)
@@ -331,7 +333,7 @@ func Benchmark_SpanID_Encoding(b *testing.B) {
 		inMemoryProfiles := generateMemoryProfiles(profilesN)
 		for j := range inMemoryProfiles {
 			for i := range randomSpanIDs {
-				randomSpanIDs[i] = rand.Uint64()
+				randomSpanIDs[i] = mathrand.Uint64()
 			}
 			spans := make([]uint64, len(inMemoryProfiles[j].Samples.Values))
 			for o := range spans {
