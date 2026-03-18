@@ -39,6 +39,8 @@ type MockLimits struct {
 	QueryTreeEnabledValue  bool
 
 	IngestionBodyLimitBytesValue int64
+
+	ProfileIDDeterministicValue bool
 }
 
 func (m MockLimits) QuerySplitDuration(string) time.Duration        { return m.QuerySplitDurationValue }
@@ -105,4 +107,8 @@ func (m MockLimits) QueryTreeEnabled(s string) bool  { return m.QueryTreeEnabled
 
 func (m MockLimits) IngestionBodyLimitBytes(tenantID string) int64 {
 	return m.IngestionBodyLimitBytesValue
+}
+
+func (m MockLimits) ProfileIDDeterministic(tenantID string) bool {
+	return m.ProfileIDDeterministicValue
 }
