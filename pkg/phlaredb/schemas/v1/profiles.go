@@ -528,8 +528,8 @@ const profileSize = uint64(unsafe.Sizeof(InMemoryProfile{}))
 
 func (p InMemoryProfile) Size() uint64 {
 	size := profileSize + uint64(cap(p.Comments)*8)
-	// 4 bytes for stacktrace id and 8 bytes for each stacktrace value
-	return size + uint64(cap(p.Samples.StacktraceIDs)*(4+8))
+	// 4 bytes for stacktrace id, 8 bytes for each stacktrace value and 16 bytes for each trace ID.
+	return size + uint64(cap(p.Samples.StacktraceIDs)*(4+8)) + uint64(cap(p.Samples.TraceIDs)*16)
 }
 
 func (p InMemoryProfile) Timestamp() model.Time {
