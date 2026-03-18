@@ -1,6 +1,6 @@
 ---
 title: "Pyroscope v2 architecture"
-menuTitle: "Reference: Pyroscope v2 Architecture"
+menuTitle: "Reference: v2 Architecture"
 description: "Learn about the Pyroscope v2 architecture components and services."
 weight: 601
 ---

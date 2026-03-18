@@ -1,14 +1,18 @@
 ---
-title: "About the Pyroscope architecture"
+title: "About the Pyroscope v1 architecture"
 menuTitle: "About the architecture"
-description: "Learn about the Pyroscope architecture."
+description: "Learn about the Pyroscope v1 architecture."
 weight: 10
 aliases:
   - /docs/phlare/latest/operators-guide/architecture/about-grafana-phlare-architecture/
   - /docs/phlare/latest/reference-phlare-architecture/about-grafana-phlare-architecture/
 ---
 
-# About the Pyroscope architecture
+# About the Pyroscope v1 architecture
+
+{{< admonition type="note" >}}
+The Pyroscope v1 architecture is no longer in active development. New deployments should use the [v2 architecture]({{< relref "../reference-pyroscope-v2-architecture/about-pyroscope-v2-architecture" >}}). The v1 architecture will be formally deprecated with the release of Pyroscope v2.0, with the plan to be removed in a future Pyroscope v3.0 release.
+{{< /admonition >}}
 
 Pyroscope has a microservices-based architecture.
 The system has multiple horizontally scalable microservices that can run separately and in parallel.
