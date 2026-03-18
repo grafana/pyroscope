@@ -1,8 +1,6 @@
 package queryplan
 
 import (
-	"fmt"
-	"io"
 	"math"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -70,29 +68,5 @@ func Build(
 
 	return &queryv1.QueryPlan{
 		Root: leafNodes[0],
-	}
-}
-
-func printPlan(w io.Writer, pad string, n *queryv1.QueryNode, debug bool) {
-	if debug {
-		_, _ = fmt.Fprintf(w, pad+"%s {children: %d, blocks: %d}\n",
-			n.Type, len(n.Children), len(n.Blocks))
-	} else {
-		_, _ = fmt.Fprintf(w, pad+"%s (%d)\n", n.Type, len(n.Children))
-	}
-
-	switch n.Type {
-	case queryv1.QueryNode_MERGE:
-		for _, child := range n.Children {
-			printPlan(w, pad+"\t", child, debug)
-		}
-
-	case queryv1.QueryNode_READ:
-		for _, md := range n.Blocks {
-			_, _ = fmt.Fprintf(w, pad+"\t"+"id:\"%s\"\n", md.Id)
-		}
-
-	default:
-		panic("unknown type")
 	}
 }
