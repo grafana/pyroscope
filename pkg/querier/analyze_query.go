@@ -26,6 +26,9 @@ func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	defer sp.Finish()
 
 	plan, err := q.blockSelect(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
+	if err != nil {
+		return nil, err
+	}
 	ingesterQueryScope, storeGatewayQueryScope, deduplicationNeeded := getDataFromPlan(plan)
 
 	blockStatsFromReplicas, err := q.getBlockStatsFromIngesters(ctx, plan, ingesterQueryScope.blockIds)
@@ -107,7 +110,7 @@ func (q *Querier) getBlockStatsFromStoreGateways(ctx context.Context, plan block
 		}
 		return stats.Msg, err
 	})
-	return blockStatsFromReplicas, nil
+	return blockStatsFromReplicas, err
 }
 
 func addBlockStatsToQueryScope(blockStatsFromReplicas []ResponseFromReplica[*ingestv1.GetBlockStatsResponse], queryScope *queryScope) {
