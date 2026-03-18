@@ -23,10 +23,8 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Help:                            "Duration of applying a command to the Raft log",
 			Buckets:                         prometheus.DefBuckets,
 			NativeHistogramBucketFactor:     1.1,
-			NativeHistogramZeroThreshold:    0,
 			NativeHistogramMaxBucketNumber:  50,
 			NativeHistogramMinResetDuration: time.Hour,
-			NativeHistogramMaxZeroThreshold: 0,
 		}),
 
 		read: prometheus.NewHistogram(prometheus.HistogramOpts{
@@ -34,10 +32,8 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Help:                            "Duration of the Raft log read index wait",
 			Buckets:                         prometheus.DefBuckets,
 			NativeHistogramBucketFactor:     1.1,
-			NativeHistogramZeroThreshold:    0,
 			NativeHistogramMaxBucketNumber:  50,
 			NativeHistogramMinResetDuration: time.Hour,
-			NativeHistogramMaxZeroThreshold: 0,
 		}),
 
 		state: prometheus.NewGaugeVec(
@@ -53,10 +49,8 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Help:                            "Duration of log store write operations",
 			Buckets:                         prometheus.DefBuckets,
 			NativeHistogramBucketFactor:     1.1,
-			NativeHistogramZeroThreshold:    0,
 			NativeHistogramMaxBucketNumber:  50,
 			NativeHistogramMinResetDuration: time.Hour,
-			NativeHistogramMaxZeroThreshold: 0,
 		}),
 
 		logStoreTimeout: prometheus.NewCounter(prometheus.CounterOpts{
