@@ -39,7 +39,7 @@ var (
 		phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("Labels", pprofLabels),
 		phlareparquet.NewGroupField("SpanID", parquet.Optional(parquet.Encoded(parquet.Uint(64), &parquet.RLEDictionary))),
-		phlareparquet.NewGroupField("TraceID", parquet.Optional(parquet.Leaf(parquet.FixedLenByteArrayType(16)))),
+		phlareparquet.NewGroupField("TraceID", parquet.Optional(parquet.Encoded(parquet.Leaf(parquet.FixedLenByteArrayType(16)), &parquet.RLEDictionary))),
 	}
 	ProfilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
 		phlareparquet.NewGroupField("ID", parquet.UUID()),
@@ -410,13 +410,10 @@ func NewSamplesFromMap(m map[uint32]uint64) Samples {
 	return s
 }
 
-// Compact zero samples and optionally duplicates.
-func (s Samples) Compact(dedupe bool) Samples {
+// Compact removes zero and negative samples.
+func (s Samples) Compact() Samples {
 	if len(s.StacktraceIDs) == 0 {
 		return s
-	}
-	if dedupe {
-		s = trimDuplicateSamples(s)
 	}
 	return trimZeroAndNegativeSamples(s)
 }
@@ -440,24 +437,6 @@ func (s Samples) Range(n, m int) Samples {
 		x.TraceIDs = s.TraceIDs[n:m]
 	}
 	return x
-}
-
-func trimDuplicateSamples(samples Samples) Samples {
-	sort.Sort(samples)
-	n := 0
-	for j := 1; j < len(samples.StacktraceIDs); j++ {
-		if samples.StacktraceIDs[n] == samples.StacktraceIDs[j] {
-			samples.Values[n] += samples.Values[j]
-		} else {
-			n++
-			samples.StacktraceIDs[n] = samples.StacktraceIDs[j]
-			samples.Values[n] = samples.Values[j]
-		}
-	}
-	return Samples{
-		StacktraceIDs: samples.StacktraceIDs[:n+1],
-		Values:        samples.Values[:n+1],
-	}
 }
 
 func trimZeroAndNegativeSamples(samples Samples) Samples {

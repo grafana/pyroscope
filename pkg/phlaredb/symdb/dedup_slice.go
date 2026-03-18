@@ -153,7 +153,7 @@ func (p *PartitionWriter) convertSamples(r *rewriter, in []*profilev1.Sample, sp
 		for i := range samples.StacktraceIDs {
 			samples.StacktraceIDs[i] = stacktracesIds[i]
 		}
-		samples = samples.Compact(false)
+		samples = samples.Compact()
 		sort.Sort(samples)
 		samplesByType[idxType] = samples
 	}

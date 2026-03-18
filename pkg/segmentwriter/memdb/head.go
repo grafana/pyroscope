@@ -81,7 +81,7 @@ func (h *Head) Ingest(p *profilev1.Profile, id uuid.UUID, externalLabels []*type
 		profile := &memProfiles[idxType]
 		profile.ID = id
 		profile.SeriesFingerprint = seriesFingerprints[idxType]
-		profile.Samples = profile.Samples.Compact(false)
+		profile.Samples = profile.Samples.Compact()
 
 		profile.TotalValue = profile.Samples.Sum()
 

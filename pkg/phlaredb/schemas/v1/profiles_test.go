@@ -122,21 +122,35 @@ func TestRoundtripProfile(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
+	t.Run("SampleTraceID", func(t *testing.T) {
+		profiles := generateProfiles(1)
+		for _, p := range profiles {
+			for _, x := range p.Samples {
+				x.TraceID = make([]byte, 16)
+				rand.Read(x.TraceID)
+			}
+		}
+		inMemoryProfiles := generateMemoryProfiles(1)
+		for i := range inMemoryProfiles {
+			traceIDs := make([][16]byte, len(inMemoryProfiles[i].Samples.Values))
+			for j := range traceIDs {
+				copy(traceIDs[j][:], profiles[i].Samples[j].TraceID)
+			}
+			inMemoryProfiles[i].Samples.TraceIDs = traceIDs
+		}
+		expected, err := phlareparquet.ReadAll(NewProfilesRowReader(profiles))
+		require.NoError(t, err)
+		actual, err := phlareparquet.ReadAll(NewInMemoryProfilesRowReader(inMemoryProfiles))
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
 }
 
 func TestCompactSamples(t *testing.T) {
 	require.Equal(t, Samples{
-		StacktraceIDs: []uint32{1, 2, 3, 2, 5, 1, 7, 7, 1},
-		Values:        []uint64{1, 1, 1, 1, 1, 3, 1, 0, 1},
-	}.Compact(true), Samples{
-		StacktraceIDs: []uint32{1, 2, 3, 5, 7},
-		Values:        []uint64{5, 2, 1, 1, 1},
-	})
-
-	require.Equal(t, Samples{
 		StacktraceIDs: []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9},
 		Values:        []uint64{1, 0, 1, 1, 1, 0, 1, 1, 0},
-	}.Compact(false), Samples{
+	}.Compact(), Samples{
 		StacktraceIDs: []uint32{1, 3, 4, 5, 7, 8},
 		Values:        []uint64{1, 1, 1, 1, 1, 1},
 	})
@@ -144,7 +158,7 @@ func TestCompactSamples(t *testing.T) {
 	require.Equal(t, Samples{
 		StacktraceIDs: []uint32{1, 2, 3},
 		Values:        []uint64{1, 2, 3},
-	}.Compact(false), Samples{
+	}.Compact(), Samples{
 		StacktraceIDs: []uint32{1, 2, 3},
 		Values:        []uint64{1, 2, 3},
 	})

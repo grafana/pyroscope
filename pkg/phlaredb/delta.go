@@ -57,7 +57,7 @@ func (d *deltaProfiles) computeDelta(ps schemav1.InMemoryProfile) schemav1.Sampl
 	// samples are sorted by stacktrace id.
 	// we need to compute the delta for each stacktrace.
 	if len(lastSamples) == 0 {
-		return ps.Samples.Compact(false)
+		return ps.Samples.Compact()
 	}
 
 	reset := deltaSamples(lastSamples, ps.Samples)
@@ -68,7 +68,7 @@ func (d *deltaProfiles) computeDelta(ps schemav1.InMemoryProfile) schemav1.Sampl
 		return schemav1.Samples{}
 	}
 
-	return ps.Samples.Compact(false).Clone()
+	return ps.Samples.Compact().Clone()
 }
 
 func isDeltaSupported(lbs phlaremodel.Labels) bool {
