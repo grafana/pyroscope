@@ -170,7 +170,7 @@
     "uplot": "^1.6.31",
     "prismjs": "^1.30.0",
     "micromatch": "^4.0.8",
-    "minimatch": "^10.2.1",
+    "minimatch": "^10.2.3",
     "@babel/helpers": "^7.26.10",
     "esbuild": "^0.27.0",
     "js-yaml": "^3.14.2",
