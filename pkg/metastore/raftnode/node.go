@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/raft"
 	raftwal "github.com/hashicorp/raft-wal"
 	"github.com/prometheus/client_golang/prometheus"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 
@@ -325,6 +326,7 @@ func (n *Node) TransferLeadership() (err error) {
 // The function returns an error if node is not the leader.
 func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Message) (resp proto.Message, err error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "node.Propose")
+	otelSpan := oteltrace.SpanFromContext(ctx)
 	defer func() {
 		if err != nil {
 			span.LogError(err)
@@ -335,32 +337,32 @@ func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Mess
 	ctxID := uuid.New().String()
 	n.contextRegistry.Store(ctxID, ctx)
 
-	span.SetTag("msg", "marshalling log entry")
+	otelSpan.AddEvent("marshalling log entry")
 
 	raw, err := fsm.MarshalEntry(t, m)
 	if err != nil {
 		return nil, err
 	}
 
-	span.SetTag("msg", "log entry marshalled")
+	otelSpan.AddEvent("log entry marshalled")
 	timer := prometheus.NewTimer(n.metrics.apply)
 	defer timer.ObserveDuration()
 
-	span.SetTag("msg", "applying log entry")
+	otelSpan.AddEvent("applying log entry")
 
 	future := n.raft.ApplyLog(raft.Log{
 		Data:       raw,
 		Extensions: []byte(ctxID),
 	}, n.config.ApplyTimeout)
 
-	span.SetTag("msg", "waiting for apply result")
+	otelSpan.AddEvent("waiting for apply result")
 
 	if err = future.Error(); err != nil {
 		return nil, WithRaftLeaderStatusDetails(err, n.raft)
 	}
 	r := future.Response().(fsm.Response)
 
-	span.SetTag("msg", "apply result received")
+	otelSpan.AddEvent("apply result received")
 	if r.Data != nil {
 		resp = r.Data
 	}

@@ -27,6 +27,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
@@ -339,7 +340,13 @@ func (s *Scheduler) enqueueRequest(frontendContext context.Context, frontendAddr
 	now := time.Now()
 
 	req.parentCtx = reqCtx
-	req.queueSpan, req.ctx = tracing.StartSpanFromContext(ctx, "queued")
+	// Start the "queued" span as a child of the trace extracted from the
+	// HTTP request headers, so it appears in the correct distributed trace.
+	// Use trace.ContextWithSpanContext to graft the remote span context
+	// onto the cancellation-bearing frontend context.
+	spanCtx := oteltrace.SpanContextFromContext(reqCtx)
+	tracedCtx := oteltrace.ContextWithRemoteSpanContext(ctx, spanCtx)
+	req.queueSpan, req.ctx = tracing.StartSpanFromContext(tracedCtx, "queued")
 	req.enqueueTime = now
 	req.ctxCancel = cancel
 

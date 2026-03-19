@@ -27,6 +27,7 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/samber/lo"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
@@ -840,7 +841,7 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 	// depending on if new need deduplication or not there are two different code paths.
 	if !deduplicationNeeded {
 		// signal the end of the profile streaming by sending an empty response.
-		sp.SetTag("msg", "no profile streaming as no deduplication needed")
+		oteltrace.SpanFromContext(ctx).AddEvent("no profile streaming as no deduplication needed")
 		if err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{}); err != nil {
 			return err
 		}
@@ -899,7 +900,7 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 
 		// Signals the end of the profile streaming by sending an empty response.
 		// This allows the client to not block other streaming ingesters.
-		sp.SetTag("msg", "signaling the end of the profile streaming")
+		oteltrace.SpanFromContext(ctx).AddEvent("signaling the end of the profile streaming")
 		if err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{}); err != nil {
 			return err
 		}
@@ -911,7 +912,7 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 
 	// sends the final result to the client.
 	treeBytes := t.Bytes(r.GetMaxNodes(), nil)
-	sp.SetTag("msg", "sending the final result to the client")
+	oteltrace.SpanFromContext(ctx).AddEvent("sending the final result to the client")
 	sp.SetTag("tree_bytes", len(treeBytes))
 	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
 		Result: &ingestv1.MergeProfilesStacktracesResult{
@@ -973,7 +974,7 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 	// depending on if new need deduplication or not there are two different code paths.
 	if !deduplicationNeeded {
 		// signal the end of the profile streaming by sending an empty response.
-		sp.SetTag("msg", "no profile streaming as no deduplication needed")
+		oteltrace.SpanFromContext(ctx).AddEvent("no profile streaming as no deduplication needed")
 		if err = stream.Send(&ingestv1.MergeSpanProfileResponse{}); err != nil {
 			return err
 		}
@@ -1038,7 +1039,7 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 
 		// Signals the end of the profile streaming by sending an empty response.
 		// This allows the client to not block other streaming ingesters.
-		sp.SetTag("msg", "signaling the end of the profile streaming")
+		oteltrace.SpanFromContext(ctx).AddEvent("signaling the end of the profile streaming")
 		if err = stream.Send(&ingestv1.MergeSpanProfileResponse{}); err != nil {
 			return err
 		}
@@ -1050,7 +1051,7 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 
 	// sends the final result to the client.
 	treeBytes := t.Bytes(r.GetMaxNodes(), nil)
-	sp.SetTag("msg", "sending the final result to the client")
+	oteltrace.SpanFromContext(ctx).AddEvent("sending the final result to the client")
 	sp.SetTag("tree_bytes", len(treeBytes))
 	err = stream.Send(&ingestv1.MergeSpanProfileResponse{
 		Result: &ingestv1.MergeSpanProfileResult{
@@ -1106,7 +1107,7 @@ func MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv
 
 	if !deduplicationNeeded {
 		// signal the end of the profile streaming by sending an empty response.
-		sp.SetTag("msg", "no profile streaming as no deduplication needed")
+		oteltrace.SpanFromContext(ctx).AddEvent("no profile streaming as no deduplication needed")
 		if err = stream.Send(&ingestv1.MergeProfilesLabelsResponse{}); err != nil {
 			return err
 		}
@@ -1227,7 +1228,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	// depending on if new need deduplication or not there are two different code paths.
 	if !deduplicationNeeded {
 		// signal the end of the profile streaming by sending an empty response.
-		sp.SetTag("msg", "no profile streaming as no deduplication needed")
+		oteltrace.SpanFromContext(ctx).AddEvent("no profile streaming as no deduplication needed")
 		if err = stream.Send(&ingestv1.MergeProfilesPprofResponse{}); err != nil {
 			return err
 		}
@@ -1280,7 +1281,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 
 		// Signals the end of the profile streaming by sending an empty response.
 		// This allows the client to not block other streaming ingesters.
-		sp.SetTag("msg", "signaling the end of the profile streaming")
+		oteltrace.SpanFromContext(ctx).AddEvent("signaling the end of the profile streaming")
 		if err = stream.Send(&ingestv1.MergeProfilesPprofResponse{}); err != nil {
 			return err
 		}
@@ -1290,7 +1291,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 		return err
 	}
 
-	sp.SetTag("msg", "building pprof bytes")
+	oteltrace.SpanFromContext(ctx).AddEvent("building pprof bytes")
 	mergedProfile := result.Profile()
 	pprof.SetProfileMetadata(mergedProfile, request.Type, model.Time(r.Request.End).UnixNano(), 0)
 
@@ -1300,7 +1301,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 		return err
 	}
 	// sends the final result to the client.
-	sp.SetTag("msg", "sending the final result to the client")
+	oteltrace.SpanFromContext(ctx).AddEvent("sending the final result to the client")
 	sp.SetTag("tree_bytes", len(pprofBytes))
 	err = stream.Send(&ingestv1.MergeProfilesPprofResponse{Result: pprofBytes})
 	if err != nil {

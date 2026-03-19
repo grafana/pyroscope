@@ -3,12 +3,13 @@ package pyroscope
 import (
 	"context"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	otelpyroscope "github.com/grafana/otel-profiling-go"
 	wwtracing "github.com/grafana/dskit/tracing"
+	otelpyroscope "github.com/grafana/otel-profiling-go"
 	"go.opentelemetry.io/contrib/exporters/autoexport"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -32,7 +33,13 @@ func initTracing(serviceName string, logger log.Logger, profilingEnabled bool) (
 	if err == nil {
 		return closer, nil
 	}
-	level.Warn(logger).Log("msg", "dskit tracing init failed, falling back to direct init", "err", err)
+	// Only fall back for known schema URL conflicts between the OTel SDK's
+	// bundled semconv and dskit's imported semconv version. All other errors
+	// (e.g. misconfigured env vars) are propagated to the caller.
+	if !strings.Contains(err.Error(), "cannot merge resource") {
+		return nil, err
+	}
+	level.Warn(logger).Log("msg", "dskit tracing init failed due to schema URL conflict, falling back to direct init", "err", err)
 	return initTracingDirect(serviceName, logger, profilingEnabled)
 }
 

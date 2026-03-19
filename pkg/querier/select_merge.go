@@ -364,7 +364,7 @@ func selectMergeTree(ctx context.Context, responses []ResponseFromReplica[client
 	}
 
 	// Collects the results in parallel.
-	span.SetTag("msg", "collecting merge results")
+	trace.SpanFromContext(ctx).AddEvent("collecting merge results")
 	g, _ := errgroup.WithContext(ctx)
 	m := phlaremodel.NewTreeMerger[phlaremodel.FunctionName, phlaremodel.FunctionNameI]()
 	sm := phlaremodel.NewStackTraceMerger()
@@ -397,7 +397,7 @@ func selectMergeTree(ctx context.Context, responses []ResponseFromReplica[client
 		}
 	}
 
-	span.SetTag("msg", "building tree")
+	trace.SpanFromContext(ctx).AddEvent("building tree")
 	return m.Tree(), nil
 }
 
@@ -541,7 +541,7 @@ func selectMergeSpanProfile(ctx context.Context, responses []ResponseFromReplica
 	}
 
 	// Collects the results in parallel.
-	span.SetTag("msg", "collecting merge results")
+	trace.SpanFromContext(ctx).AddEvent("collecting merge results")
 	g, _ := errgroup.WithContext(ctx)
 	m := phlaremodel.NewTreeMerger[phlaremodel.FunctionName, phlaremodel.FunctionNameI]()
 	for _, iter := range mergeResults {
@@ -558,6 +558,6 @@ func selectMergeSpanProfile(ctx context.Context, responses []ResponseFromReplica
 		return nil, err
 	}
 
-	span.SetTag("msg", "building tree")
+	trace.SpanFromContext(ctx).AddEvent("building tree")
 	return m.Tree(), nil
 }

@@ -500,4 +500,3 @@ func (f *Pyroscope) grpcClientInterceptors() []grpc.UnaryClientInterceptor {
 		middleware.UnaryClientInstrumentInterceptor(requestDuration, middleware.ReportGRPCStatusOption),
 	}
 }
-
