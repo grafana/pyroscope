@@ -21,6 +21,12 @@ type Overrides interface {
 	ReadPathOverrides(tenantID string) Config
 }
 
+// SplitTimeResolver resolves the split time for a tenant in "auto" mode.
+// It returns the oldest profile time known for the tenant in the v2 storage.
+type SplitTimeResolver interface {
+	OldestProfileTime(ctx context.Context, tenantID string) (time.Time, error)
+}
+
 // Router is a proxy that routes queries to the query frontend.
 //
 // If the query backend is enabled, it routes queries to the new
@@ -33,6 +39,7 @@ type Overrides interface {
 type Router struct {
 	logger    log.Logger
 	overrides Overrides
+	resolver  SplitTimeResolver
 
 	oldFrontend querierv1connect.QuerierServiceClient
 	newFrontend querierv1connect.QuerierServiceClient
@@ -41,12 +48,14 @@ type Router struct {
 func NewRouter(
 	logger log.Logger,
 	overrides Overrides,
+	resolver SplitTimeResolver,
 	oldFrontend querierv1connect.QuerierServiceClient,
 	newFrontend querierv1connect.QuerierServiceClient,
 ) *Router {
 	return &Router{
 		logger:      logger,
 		overrides:   overrides,
+		resolver:    resolver,
 		oldFrontend: oldFrontend,
 		newFrontend: newFrontend,
 	}
@@ -79,9 +88,19 @@ func Query[Req, Resp any](
 		sanitize(req.Msg, nil)
 		return query[Req, Resp](ctx, router.oldFrontend, req)
 	}
+
+	splitTime, err := overrides.EnableQueryBackendFrom.SplitTime(func() (time.Time, error) {
+		return router.resolver.OldestProfileTime(ctx, tenantID)
+	})
+	if err != nil {
+		level.Warn(router.logger).Log("msg", "failed to resolve split time, falling back to old frontend", "err", err)
+		sanitize(req.Msg, nil)
+		return query[Req, Resp](ctx, router.oldFrontend, req)
+	}
+
 	// Note: the old read path includes both start and end: [start, end].
 	// The new read path does not include end: [start, end).
-	split := model.TimeFromUnixNano(overrides.EnableQueryBackendFrom.UnixNano())
+	split := model.TimeFromUnixNano(splitTime.UnixNano())
 	queryRange := phlaremodel.GetSafeTimeRange(time.Now(), req.Msg)
 	if split.After(queryRange.End) {
 		sanitize(req.Msg, nil)

@@ -68,6 +68,9 @@ func (f *Pyroscope) initQueryFrontend() (services.Service, error) {
 	case c.EnableQueryBackend && c.EnableQueryBackendFrom.IsZero():
 		return f.initQueryFrontendV2()
 	case c.EnableQueryBackend && !c.EnableQueryBackendFrom.IsZero():
+		// Both fixed timestamps and "auto" mode use the hybrid frontend:
+		// fixed timestamps are resolved immediately, while "auto" queries
+		// the metastore at request time.
 		return f.initQueryFrontendV12()
 	default:
 		return nil, fmt.Errorf("invalid query backend configuration: %v", c)
@@ -145,9 +148,12 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 		nil,
 	)
 
+	resolver := readpath.NewMetastoreSplitTimeResolver(f.metastoreClient, time.Minute)
+
 	handler := readpath.NewRouter(
 		log.With(f.logger, "component", "read-path-router"),
 		f.Overrides,
+		resolver,
 		f.frontend,
 		f.queryFrontend,
 	)
