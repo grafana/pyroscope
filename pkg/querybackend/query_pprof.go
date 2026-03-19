@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	"github.com/grafana/dskit/runutil"
+	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-	"github.com/prometheus/prometheus/model/labels"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/pkg/block"

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/prometheus/model/labels"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -29,10 +29,10 @@ type backendTreeSymbolizer struct {
 }
 
 func (b *backendTreeSymbolizer) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (resp *queryv1.InvokeResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "backendTreeSymbolizer.Invoke")
+	span, ctx := tracing.StartSpanFromContext(ctx, "backendTreeSymbolizer.Invoke")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
 		}
 		span.Finish()
 	}()
@@ -117,10 +117,7 @@ func (q *QueryFrontend) hasUnsymbolizedProfiles(block *metastorev1.BlockMeta) bo
 // symbolization will be silently skipped for such queries even when unsymbolized
 // profiles exist.
 func (q *QueryFrontend) shouldSymbolize(ctx context.Context, tenants []string, blocks []*metastorev1.BlockMeta) bool {
-	span := opentracing.SpanFromContext(ctx)
-	if span != nil {
-		span.LogFields(otlog.String("event", "shouldSymbolize"))
-	}
+	otelSpan := oteltrace.SpanFromContext(ctx)
 
 	if q.symbolizer == nil {
 		return false
@@ -139,12 +136,10 @@ func (q *QueryFrontend) shouldSymbolize(ctx context.Context, tenants []string, b
 		}
 	}
 
-	if span != nil {
-		span.LogFields(
-			otlog.Int("blocks_with_unsymbolized", blocksWithUnsymbolized),
-			otlog.Int("total_blocks", len(blocks)),
-		)
-	}
+	otelSpan.SetAttributes(
+		attribute.Int("blocks_with_unsymbolized", blocksWithUnsymbolized),
+		attribute.Int("total_blocks", len(blocks)),
+	)
 
 	return blocksWithUnsymbolized > 0
 }

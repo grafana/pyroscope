@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/dskit/tracing"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
+	oteltrace "go.opentelemetry.io/otel/trace"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -61,7 +62,8 @@ func rewriteEOFError(err error) error {
 func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterRequest](
 	ctx context.Context, profiles []iter.Iterator[Profile], batchProfileSize int, stream B,
 ) ([][]Profile, error) {
-	sp, _ := tracing.StartSpanFromContext(ctx, "filterProfiles")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "filterProfiles")
+	otelSpan := oteltrace.SpanFromContext(ctx)
 	defer sp.Finish()
 	selection := make([][]Profile, len(profiles))
 	selectProfileResult := &ingestv1.ProfileSets{
@@ -103,7 +105,7 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 			})
 		}
 
-		sp.SetTag("msg", "sending batch to client")
+		otelSpan.AddEvent("sending batch to client")
 		var err error
 		switch s := BidiServerMerge[Res, Req](stream).(type) {
 		case BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest]:
@@ -128,9 +130,9 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 		if err != nil {
 			return rewriteEOFError(err)
 		}
-		sp.SetTag("msg", "batch sent to client")
+		otelSpan.AddEvent("batch sent to client")
 
-		sp.SetTag("msg", "reading selection from client")
+		otelSpan.AddEvent("reading selection from client")
 
 		// handle response for the batch.
 		var selected []bool
@@ -160,7 +162,7 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 			}
 			selected = selectionResponse.Profiles
 		}
-		sp.SetTag("msg", "selection received")
+		otelSpan.AddEvent("selection received")
 		for i, k := range selected {
 			if k {
 				selection[batch[i].Index] = append(selection[batch[i].Index], batch[i].Profile)

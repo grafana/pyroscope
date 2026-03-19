@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 )
 
-// Used to transfer trace information from/to HTTP request.
+// HttpgrpcHeadersCarrier implements propagation.TextMapCarrier for OTel trace context propagation over httpgrpc requests.
 type HttpgrpcHeadersCarrier httpgrpc.HTTPRequest
 
 // Set implements propagation.TextMapCarrier for OTel.
@@ -25,22 +25,10 @@ func (c *HttpgrpcHeadersCarrier) Set(key, val string) {
 	})
 }
 
-// ForeachKey conforms to the TextMapReader interface.
-func (c *HttpgrpcHeadersCarrier) ForeachKey(handler func(key, val string) error) error {
-	for _, h := range c.Headers {
-		for _, v := range h.Values {
-			if err := handler(h.Key, v); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 // Get implements propagation.TextMapCarrier for OTel.
 func (c *HttpgrpcHeadersCarrier) Get(key string) string {
 	for _, h := range c.Headers {
-		if strings.EqualFold(h.Key, key) {
+		if strings.EqualFold(h.Key, key) && len(h.Values) > 0 {
 			return h.Values[0]
 		}
 	}
@@ -61,4 +49,3 @@ func GetParentContextForRequest(req *httpgrpc.HTTPRequest) context.Context {
 	carrier := (*HttpgrpcHeadersCarrier)(req)
 	return otel.GetTextMapPropagator().Extract(context.Background(), carrier)
 }
-
