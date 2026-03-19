@@ -47,7 +47,7 @@ Before starting the migration, make sure you have:
           secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
   ```
 
-  For other backends (GCS, Azure, Swift), refer to [Configure object storage backend]({{< relref "../../configure-server/storage/configure-object-storage-backend" >}}).
+  For other backends (GCS, Azure, Swift), refer to [Configure object storage backend](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/storage/configure-object-storage-backend/).
 
 - **`kubectl` and `helm` CLI access** to your cluster.
 
