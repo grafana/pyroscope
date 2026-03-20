@@ -3,11 +3,44 @@ receivers:
     samples_per_second: 97
 
 processors:
-  resource/metadata:
+  # This is abusing the k8s_attributes processor for getting access to docker metadata using a docker shim
+  k8s_attributes/docker-shim:
+    auth_type: kubeConfig
+    extract:
+      metadata:
+        - container.id
+        - container.image.name
+        - container.image.tag
+        - k8s.pod.name  # This is actually the container name
+        - k8s.pod.ip # This is actually the container ip
+      labels:
+        - tag_name: docker.compose.project
+          key: com.docker.compose.project
+          from: pod
+        - tag_name: docker.compose.service
+          key: com.docker.compose.service
+          from: pod
+    # Associate by container ID for multi-container pods
+    pod_association:
+      - sources:
+          - from: resource_attribute
+            name: container.id
+  resource/docker-shim:
     attributes:
-      - action: upsert
-        key: k8s.cluster.name
-        value: demo
+      - key: container.ip
+        from_attribute: k8s.pod.ip
+        action: insert
+      - key: k8s.pod.ip
+        action: delete
+      - key: container.name
+        from_attribute: k8s.pod.name
+        action: insert
+      - key: service.name
+        from_attribute: k8s.pod.name
+        action: insert
+      - key: k8s.pod.name
+        action: delete
+
 
 exporters:
   otlp_grpc:
@@ -21,4 +54,5 @@ service:
       receivers: [profiling]
       exporters: [otlp_grpc]
       processors:
-        - resource/metadata
+        - k8s_attributes/docker-shim
+        - resource/docker-shim
