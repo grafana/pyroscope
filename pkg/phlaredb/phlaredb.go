@@ -352,11 +352,18 @@ func (f *PhlareDB) Close() error {
 	close(f.stopCh)
 	f.wg.Wait()
 	errs := multierror.New()
+	var flushed []*Head
 	for _, h := range f.heads {
 		if err := h.Flush(f.phlarectx); err != nil {
 			errs.Add(err)
 			continue
 		}
+		flushed = append(flushed, h)
+	}
+	// Move() is not thread-safe: hold headLock to prevent concurrent
+	// query access while head state is being mutated.
+	f.headLock.Lock()
+	for _, h := range flushed {
 		// Flush of an empty head removes the head directory;
 		// only attempt the move if the directory still exists.
 		if _, err := os.Stat(h.headPath); err == nil {
@@ -365,6 +372,7 @@ func (f *PhlareDB) Close() error {
 			}
 		}
 	}
+	f.headLock.Unlock()
 	close(f.evictCh)
 	if err := f.blockQuerier.Close(); err != nil {
 		errs.Add(err)
