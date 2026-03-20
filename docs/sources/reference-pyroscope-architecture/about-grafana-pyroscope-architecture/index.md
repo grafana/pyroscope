@@ -1,14 +1,18 @@
 ---
-title: "About the Pyroscope architecture"
+title: "About the Pyroscope v1 architecture"
 menuTitle: "About the architecture"
-description: "Learn about the Pyroscope architecture."
+description: "Learn about the Pyroscope v1 architecture."
 weight: 10
 aliases:
   - /docs/phlare/latest/operators-guide/architecture/about-grafana-phlare-architecture/
   - /docs/phlare/latest/reference-phlare-architecture/about-grafana-phlare-architecture/
 ---
 
-# About the Pyroscope architecture
+# About the Pyroscope v1 architecture
+
+{{< admonition type="note" >}}
+The Pyroscope v1 architecture is no longer in active development. New deployments should use the [v2 architecture]({{< relref "../reference-pyroscope-v2-architecture/about-pyroscope-v2-architecture" >}}). The v1 architecture will be formally deprecated with the release of Pyroscope v2.0, with the plan to be removed in a future Pyroscope v3.0 release.
+{{< /admonition >}}
 
 Pyroscope has a microservices-based architecture.
 The system has multiple horizontally scalable microservices that can run separately and in parallel.
@@ -24,12 +28,15 @@ Most components are stateless and do not require any data persisted between proc
 
 ### The write path
 
-[//]: # "To edit open with https://mermaid.live/edit#pako{...}"
-
-<p align="center">
-  <img alt="Architecture of Pyroscope's write path" width="200px" src="https://mermaid.ink/svg/pako:eNqNkT1PwzAQhv9K5C6t1DY0hrT1wIBgZgCJoeng2OfE4MSRfaFUVf47dkoLI9vd896H7_WJCCuBMKKMPYiaO0xeH4o2SXoPbrp7cxrB72fJYnGfSO3R6bJH62LFn3SUdVuBRxi1SzwK1kckbNNxcSk-M-vH5Cqd2XT3XL6DwMQHBPtZpB6PBsZHJUobwyZqq-Zhv_0ANqGU_sSLg5ZYs6z7-m0KS_7bQuakAddwLYMjpziiIFhDAwVhIZSgeG-wIEU7hFIeTn85toIwdD3MSd9JjvCoeeV4Q5jixl_pk9ThmCs0lksI6YngsYv2V8HMMFLYVukq8t6ZgGvEzrM0jfKy0lj35TK4lXot41_Vn9s8zbN8wzMK-ZryO0qlKFfbjcpuV0qub1YZJ8MwfAN3mqSC" />
-  </a>
-</p>
+{{< mermaid >}}
+flowchart TD
+    A["Writes"]:::highlight --> B["Distributor"]
+    B --> C["Ingester"]
+    C --> D[("Object storage")]:::highlight
+    D --> E["Compactor"]
+    E --> D
+    classDef highlight fill:#c084fc,color:#000,stroke:#a855f7
+{{< /mermaid >}}
 
 Ingesters receive incoming profiles from the distributors.
 Each push request belongs to a tenant, and the ingester appends the received profiles to the specific per-tenant Pyroscope database that is stored on the local disk.
@@ -47,12 +54,16 @@ By default, each profile series is replicated to three ingesters, and each inges
 
 ### The read path
 
-[//]: # "To edit open with https://mermaid.live/edit#pako{...}"
-
-<p align="center">
-  <img alt="Architecture of Pyroscope's read path" width="400px" src="https://mermaid.ink/svg/pako:eNqNkT1PwzAQhv9K5C6t1DQ0gX54YEAwIwFb08G1z4nBiYN9pkRV_jt2gQJi6XZ-7rmTXt-BcCOAUCK12fOaWUyebso2SbwDO948ABNuO0nS9Dp59WD7VFrTIrQiOn_JL8nxGoTXYL8tBfactmorcPifOzQW0ooh7Fl_JMZFx7jx5n73DBw_le0kUoe9hmOARCqt6Uiu5dShNS9AR0VRfNXpXgmsad69_wwZd_YImZIGbMOUCL93iCtKgjU0UBIaSgGSeY0lKdshqMyjeexbTihaD1PiOxHS3CpWWdYQKpl2J3onVAhzgtowAeF5INh38VSVchhWctNKVUXurQ64RuwczbLYnlUKa7-bcdNkTol41_ptvcgW-WLF8gIWy4JdFYXgu_l6JfPLuRTLi3nOyDAMHzzctK0" />
-  </a>
-</p>
+{{< mermaid >}}
+flowchart TD
+    A["Reads"]:::highlight --> B["Query frontend"]
+    B --> C["Query scheduler"]
+    D["Querier"] --> C
+    D --> E["Ingester"]
+    D --> F["Store-gateway"]
+    F --> G[("Object storage")]:::highlight
+    classDef highlight fill:#c084fc,color:#000,stroke:#a855f7
+{{< /mermaid >}}
 
 Queries coming into Pyroscope arrive at [query-frontend](../components/query-frontend/) component which is responsible for accelerating queries and dispatching them to the [query-scheduler](../components/query-scheduler/).
 
@@ -65,7 +76,7 @@ Depending on the time window selected, the querier involves [ingesters](../compo
 
 ## Long-term storage
 
-The Pyroscope storage format is described in detail in on the [block format page](../block-format/).
+The Pyroscope storage format is described in detail on the [block format page](../block-format/).
 The Pyroscope storage format stores each tenant's profiles into their own on-disk block. Each on-disk block directory contains an index file, a file containing metadata, and the Parquet tables.
 
 Pyroscope requires any of the following object stores for the block files:

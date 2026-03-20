@@ -7,6 +7,10 @@ weight: 55
 
 # Pyroscope Store-gateway
 
+{{< admonition type="note" >}}
+The store-gateway is a v1 architecture component. In v2, its responsibilities are handled by the [metastore]({{< relref "../../reference-pyroscope-v2-architecture/components/metastore" >}}) (for metadata) and [query backend]({{< relref "../../reference-pyroscope-v2-architecture/components/query-backend" >}}) (for data access).
+{{< /admonition >}}
+
 The store-gateways in Pyroscope are responsible for looking up profiling data in the [long-term storage](../../about-grafana-pyroscope-architecture/#long-term-storage) bucket. A single store-gateway is responsible for a subset of the blocks in the long-term storage and will be involved by a [querier].
 
 ## Store-gateway configuration
