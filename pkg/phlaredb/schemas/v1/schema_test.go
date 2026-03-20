@@ -25,6 +25,15 @@ func TestSchemaMatch(t *testing.T) {
 		"optional group element",
 		"required group element",
 	)
+	// []byte produces "optional binary TraceID" but our schema uses
+	// fixed_len_byte_array(16). We use []byte because parquet-go panics
+	// with [16]byte on null optional FixedLenByteArray values.
+	profilesStructSchema = strings.Replace(
+		profilesStructSchema,
+		"optional binary TraceID;",
+		"optional fixed_len_byte_array(16) TraceID;",
+		1,
+	)
 
 	require.Equal(t, profilesStructSchema, ProfilesSchema.String())
 

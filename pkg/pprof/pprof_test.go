@@ -1881,3 +1881,43 @@ func TestUnmarshalWithLimit(t *testing.T) {
 		require.Equal(t, 1, len(result.Sample))
 	})
 }
+
+func TestProfileTraceIDs(t *testing.T) {
+	t.Run("no trace_id label", func(t *testing.T) {
+		p := &profilev1.Profile{
+			StringTable: []string{"", SpanIDLabelName, "abc123"},
+			Sample: []*profilev1.Sample{
+				{Label: []*profilev1.Label{{Key: 1, Str: 2}}},
+			},
+		}
+		assert.Nil(t, ProfileTraceIDs(p))
+	})
+
+	t.Run("with trace_id labels", func(t *testing.T) {
+		p := &profilev1.Profile{
+			StringTable: []string{"", TraceIDLabelName, "0123456789abcdef0123456789abcdef", "fedcba9876543210fedcba9876543210"},
+			Sample: []*profilev1.Sample{
+				{Label: []*profilev1.Label{{Key: 1, Str: 2}}},
+				{Label: []*profilev1.Label{{Key: 1, Str: 3}}},
+				{Label: []*profilev1.Label{}},
+			},
+		}
+		traceIDs := ProfileTraceIDs(p)
+		require.Len(t, traceIDs, 3)
+		assert.Equal(t, [16]byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef}, traceIDs[0])
+		assert.Equal(t, [16]byte{0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10}, traceIDs[1])
+		assert.Equal(t, [16]byte{}, traceIDs[2])
+	})
+
+	t.Run("invalid trace_id ignored", func(t *testing.T) {
+		p := &profilev1.Profile{
+			StringTable: []string{"", TraceIDLabelName, "tooshort"},
+			Sample: []*profilev1.Sample{
+				{Label: []*profilev1.Label{{Key: 1, Str: 2}}},
+			},
+		}
+		traceIDs := ProfileTraceIDs(p)
+		require.Len(t, traceIDs, 1)
+		assert.Equal(t, [16]byte{}, traceIDs[0])
+	})
+}

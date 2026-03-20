@@ -7,8 +7,8 @@
     "compaction_level": 1,
     "min_time": 1721060010831,
     "max_time": 1721060035611,
-    "metadata_offset": 160536,
-    "size": 160863,
+    "metadata_offset": 161205,
+    "size": 161532,
     "datasets": [
       {
         "tenant": 1,
@@ -17,10 +17,10 @@
         "max_time": 1721060033248,
         "table_of_contents": [
           0,
-          5080,
-          8509
+          5282,
+          8711
         ],
-        "size": 35448
+        "size": 35650
       },
       {
         "tenant": 1,
@@ -28,11 +28,11 @@
         "min_time": 1721060015603,
         "max_time": 1721060033802,
         "table_of_contents": [
-          35448,
-          43476,
-          50407
+          35650,
+          43940,
+          50871
         ],
-        "size": 77283
+        "size": 77545
       },
       {
         "tenant": 1,
@@ -40,11 +40,11 @@
         "min_time": 1721060013534,
         "max_time": 1721060035611,
         "table_of_contents": [
-          112731,
-          118223,
-          122685
+          113195,
+          118892,
+          123354
         ],
-        "size": 38494
+        "size": 38699
       },
       {
         "format": 1,
@@ -52,7 +52,7 @@
         "min_time": 1721060010831,
         "max_time": 1721060035611,
         "table_of_contents": [
-          151225
+          151894
         ],
         "size": 9311,
         "labels": [
