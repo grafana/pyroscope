@@ -30,7 +30,7 @@ processors:
       - key: container.ip
         from_attribute: k8s.pod.ip
         action: insert
-      - key: k8s.pod.pi
+      - key: k8s.pod.ip
         action: delete
       - key: container.name
         from_attribute: k8s.pod.name
