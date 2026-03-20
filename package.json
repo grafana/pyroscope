@@ -178,6 +178,7 @@
     "qs": "^6.14.1",
     "@remix-run/router": "^1.23.2",
     "immutable": ">=4.3.8 <5.0.0 || >=5.1.5",
-    "postcss-svgo/**/svgo": "2.8.1"
+    "postcss-svgo/**/svgo": "2.8.1",
+    "undici": "^7.24.0"
   }
 }
