@@ -18,6 +18,7 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/pkg/util/delayhandler"
@@ -206,6 +207,7 @@ type route struct {
 func (m *Router) detachedClient(ctx context.Context, req *distributormodel.ProfileSeries, client IngesterClient, config *Config) IngesterFunc {
 	return func(context.Context, *distributormodel.ProfileSeries) (*connect.Response[pushv1.PushResponse], error) {
 		localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), config.SegmentWriterTimeout)
+		localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
 		defer cancel()
 		return client.Push(localCtx, req)
 	}
