@@ -119,6 +119,7 @@ func (q *QueryFrontend) hasUnsymbolizedProfiles(block *metastorev1.BlockMeta) bo
 // profiles exist.
 func (q *QueryFrontend) shouldSymbolize(ctx context.Context, tenants []string, blocks []*metastorev1.BlockMeta) bool {
 	otelSpan := oteltrace.SpanFromContext(ctx)
+	otelSpan.AddEvent("shouldSymbolize")
 
 	if q.symbolizer == nil {
 		return false
