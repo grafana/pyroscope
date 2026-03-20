@@ -2,6 +2,8 @@ package queryplan
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"os"
 	"testing"
 
@@ -9,7 +11,36 @@ import (
 	"github.com/stretchr/testify/require"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 )
+
+func testingPlan(w io.Writer, pad string, n *queryv1.QueryNode, debug bool) error {
+	if debug {
+		_, _ = fmt.Fprintf(w, pad+"%s {children: %d, blocks: %d}\n",
+			n.Type, len(n.Children), len(n.Blocks))
+	} else {
+		_, _ = fmt.Fprintf(w, pad+"%s (%d)\n", n.Type, len(n.Children))
+	}
+
+	switch n.Type {
+	case queryv1.QueryNode_MERGE:
+		for _, child := range n.Children {
+			err := testingPlan(w, pad+"\t", child, debug)
+			if err != nil {
+				return err
+			}
+		}
+
+	case queryv1.QueryNode_READ:
+		for _, md := range n.Blocks {
+			_, _ = fmt.Fprintf(w, pad+"\t"+"id:\"%s\"\n", md.Id)
+		}
+
+	default:
+		return fmt.Errorf("unknown type: %T", n.Type)
+	}
+	return nil
+}
 
 func Test_Plan(t *testing.T) {
 	blocks := []*metastorev1.BlockMeta{
@@ -30,7 +61,9 @@ func Test_Plan(t *testing.T) {
 
 	p := Build(blocks, 2, 3)
 	var buf bytes.Buffer
-	printPlan(&buf, "", p.Root, true)
+	err := testingPlan(&buf, "", p.Root, true)
+	require.NoError(t, err)
+
 	// Ensure that the plan has not been modified
 	// during traversal performed by printPlan.
 	assert.Equal(t, Build(blocks, 2, 3), p)
