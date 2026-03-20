@@ -42,6 +42,7 @@ func (svc *CompactionService) PollCompactionJobs(
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()

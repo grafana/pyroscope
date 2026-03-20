@@ -508,6 +508,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	}()
 	if err != nil {
 		sp.LogError(err)
+		sp.SetError()
 		return false, nil, err
 	}
 
@@ -534,6 +535,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	}()
 	if err != nil {
 		sp.LogError(err)
+		sp.SetError()
 		return false, nil, errors.Wrapf(err, "compact blocks %v", blocksToCompactDirs)
 	}
 
@@ -587,6 +589,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 
 	if err != nil {
 		sp.LogError(err)
+		sp.SetError()
 		return false, nil, err
 	}
 
@@ -853,6 +856,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 		level.Info(c.logger).Log("msg", "start sync of metas")
 		if err := c.sy.SyncMetas(ctx); err != nil {
 			sp.LogError(err)
+			sp.SetError()
 			return errors.Wrap(err, "sync")
 		}
 
@@ -861,12 +865,14 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 		// However if compactor crashes we need to resolve those on startup.
 		if err := c.sy.GarbageCollect(ctx); err != nil {
 			sp.LogError(err)
+			sp.SetError()
 			return errors.Wrap(err, "blocks garbage collect")
 		}
 
 		jobs, err := c.grouper.Groups(c.sy.Metas())
 		if err != nil {
 			sp.LogError(err)
+			sp.SetError()
 			return errors.Wrap(err, "build compaction jobs")
 		}
 		sp.SetTag("discovered_jobs", len(jobs))
@@ -915,6 +921,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 			select {
 			case jobErr := <-errChan:
 				sp.LogError(jobErr)
+				sp.SetError()
 				jobErrs.Add(jobErr)
 				break jobLoop
 			case jobChan <- g:

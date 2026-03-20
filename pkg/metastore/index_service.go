@@ -76,6 +76,7 @@ func (svc *IndexService) AddBlock(
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -103,6 +104,7 @@ func (svc *IndexService) AddRecoveredBlock(
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -146,6 +148,7 @@ func (svc *IndexService) GetBlockMetadata(
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -209,6 +212,7 @@ func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy)
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()

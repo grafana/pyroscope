@@ -699,6 +699,7 @@ func (c *MultitenantCompactor) compactUserWithRetries(ctx context.Context, userI
 			return nil
 		}
 		sp.LogError(lastErr)
+		sp.SetError()
 		sp.Finish()
 		retries.Wait()
 	}

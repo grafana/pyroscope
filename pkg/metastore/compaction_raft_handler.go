@@ -56,6 +56,7 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -163,6 +164,7 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()

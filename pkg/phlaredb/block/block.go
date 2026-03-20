@@ -151,6 +151,7 @@ func Upload(ctx context.Context, logger log.Logger, bkt objstore.Bucket, bdir st
 	defer sp.Finish()
 	if err := upload(ctx, logger, bkt, bdir); err != nil {
 		sp.LogError(err)
+		sp.SetError()
 		return err
 	}
 	return nil

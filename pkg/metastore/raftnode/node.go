@@ -330,6 +330,7 @@ func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Mess
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()

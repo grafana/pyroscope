@@ -3,7 +3,6 @@ package pyroscope
 import (
 	"context"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -21,9 +20,10 @@ import (
 
 // initTracing initializes the OTel TracerProvider.
 //
-// It delegates to dskit's NewOTelOrJaegerFromEnv, but if that fails
-// due to a resource schema URL conflict (OTel SDK version mismatch
-// with dskit's bundled semconv), it falls back to a direct init.
+// It delegates to dskit's NewOTelOrJaegerFromEnv, which also handles
+// legacy JAEGER_* env vars. If dskit init fails (e.g. due to a
+// resource schema URL conflict between OTel SDK versions), it falls
+// back to a direct OTel SDK initialization.
 func initTracing(serviceName string, logger log.Logger, profilingEnabled bool) (io.Closer, error) {
 	var opts []wwtracing.OTelOption
 	if !profilingEnabled {
@@ -33,14 +33,13 @@ func initTracing(serviceName string, logger log.Logger, profilingEnabled bool) (
 	if err == nil {
 		return closer, nil
 	}
-	// Only fall back for known schema URL conflicts between the OTel SDK's
-	// bundled semconv and dskit's imported semconv version. All other errors
-	// (e.g. misconfigured env vars) are propagated to the caller.
-	if !strings.Contains(err.Error(), "cannot merge resource") {
+	level.Warn(logger).Log("msg", "dskit tracing init failed, falling back to direct OTel SDK init", "err", err)
+	closer, fallbackErr := initTracingDirect(serviceName, logger, profilingEnabled)
+	if fallbackErr != nil {
+		// Return the original error as it is likely more informative.
 		return nil, err
 	}
-	level.Warn(logger).Log("msg", "dskit tracing init failed due to schema URL conflict, falling back to direct init", "err", err)
-	return initTracingDirect(serviceName, logger, profilingEnabled)
+	return closer, nil
 }
 
 // initTracingDirect creates the OTel TracerProvider directly, bypassing

@@ -51,6 +51,7 @@ func (svc *QueryService) QueryMetadata(
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -80,6 +81,7 @@ func (svc *QueryService) queryMetadata(
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -111,6 +113,7 @@ func (svc *QueryService) QueryMetadataLabels(
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -141,6 +144,7 @@ func (svc *QueryService) queryMetadataLabels(
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
