@@ -928,7 +928,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 			case <-maxCompactionTimeChan:
 				maxCompactionTimeReached = true
 				level.Info(c.logger).Log("msg", "max compaction time reached, no more compactions will be started")
-				sp.SetTag("msg", "max compaction time reached, no more compactions will be started")
+				trace.SpanFromContext(ctx).AddEvent("max compaction time reached, no more compactions will be started")
 				break jobLoop
 			}
 		}
