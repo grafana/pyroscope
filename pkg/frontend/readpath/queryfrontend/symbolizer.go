@@ -33,6 +33,7 @@ func (b *backendTreeSymbolizer) Invoke(ctx context.Context, req *queryv1.InvokeR
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()

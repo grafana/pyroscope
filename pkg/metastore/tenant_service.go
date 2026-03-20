@@ -46,6 +46,7 @@ func (svc *TenantService) GetTenants(
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -68,6 +69,7 @@ func (svc *TenantService) GetTenant(
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()

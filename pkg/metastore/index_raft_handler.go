@@ -68,6 +68,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -85,6 +86,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 			return new(metastorev1.AddBlockResponse), nil
 		}
 		insertSpan.LogError(err)
+		insertSpan.SetError()
 		insertSpan.Finish()
 		level.Error(m.logger).Log("msg", "failed to add block to index", "block", e.ID, "err", err)
 		return nil, err
@@ -96,6 +98,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 	if err = m.compactor.Compact(tx, e); err != nil {
 		level.Error(m.logger).Log("msg", "failed to add block to compaction", "block", e.ID, "err", err)
 		compactSpan.LogError(err)
+		compactSpan.SetError()
 		return nil, err
 	}
 	return new(metastorev1.AddBlockResponse), nil
@@ -110,6 +113,7 @@ func (m *IndexCommandHandler) TruncateIndex(ctx context.Context, tx *bbolt.Tx, c
 	defer func() {
 		if err != nil {
 			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()

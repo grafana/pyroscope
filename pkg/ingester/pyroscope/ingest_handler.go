@@ -60,6 +60,7 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		msg := "failed to parse request metadata"
 		sp.LogError(err)
+		sp.SetError()
 		sp.SetTag("msg", msg)
 		_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
 		httputil.ErrorWithStatus(w, err, http.StatusBadRequest)
@@ -81,6 +82,7 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		msg := "failed to read request body"
 		sp.LogError(err)
+		sp.SetError()
 		sp.SetTag("msg", msg)
 		_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
 		httputil.ErrorWithStatus(w, err, status)
@@ -92,12 +94,14 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if ingestion.IsIngestionError(err) {
 			msg := "failed to convert profile"
 			sp.LogError(err)
+			sp.SetError()
 			sp.SetTag("msg", msg)
 			_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
 			httputil.Error(w, err)
 		} else {
 			msg := "failed to ingest profile"
 			sp.LogError(err)
+			sp.SetError()
 			sp.SetTag("msg", msg)
 			httputil.ErrorWithStatus(w, err, http.StatusUnprocessableEntity)
 		}

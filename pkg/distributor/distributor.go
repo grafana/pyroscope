@@ -268,6 +268,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 
 		// log error
 		sp.LogError(err)
+		sp.SetError()
 		level.Debug(util.LoggerWithContext(ctx, d.logger)).Log("msg", "failed to validate profile", "err", err)
 
 		// wrap the errors with InvalidArgument code for profile validation errors, so they return 400

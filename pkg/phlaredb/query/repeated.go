@@ -12,6 +12,8 @@ import (
 	"github.com/grafana/dskit/tracing"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 )
@@ -314,6 +316,7 @@ func (x *repeatedRowColumnIterator) readPage(rn int64) bool {
 	if x.page, x.err = x.pages.ReadPage(); x.err != nil {
 		if x.err != io.EOF {
 			x.span.LogError(x.err)
+			x.span.SetError()
 			return false
 		}
 		x.err = nil
@@ -334,12 +337,13 @@ func (x *repeatedRowColumnIterator) readPage(rn int64) bool {
 	x.maxPageRowNum = rn + pageNumRows
 	x.rowsFetched += pageNumRows
 	x.vit.reset(x.page, x.readSize)
-	x.span.SetTag("msg", "Page read")
-	x.span.SetTag("min_rg_row", x.minRGRowNum)
-	x.span.SetTag("max_rg_row", x.maxRGRowNum)
-	x.span.SetTag("seek_row", x.minRGRowNum+rn)
-	x.span.SetTag("page_read_ms", pageReadDurationMs)
-	x.span.SetTag("page_num_rows", pageNumRows)
+	oteltrace.SpanFromContext(x.ctx).AddEvent("Page read", oteltrace.WithAttributes(
+		attribute.Int64("min_rg_row", x.minRGRowNum),
+		attribute.Int64("max_rg_row", x.maxRGRowNum),
+		attribute.Int64("seek_row", x.minRGRowNum+rn),
+		attribute.Int64("page_read_ms", pageReadDurationMs),
+		attribute.Int64("page_num_rows", pageNumRows),
+	))
 	return true
 }
 

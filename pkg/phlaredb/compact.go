@@ -122,6 +122,7 @@ func CompactWithSplitting(ctx context.Context, opts CompactWithSplittingOpts) (
 		sp.SetTag("stage", stage)
 		if metas, err = compact(ctx, writers, opts.Src, opts.SplitBy, opts.SplitCount); err != nil {
 			sp.LogError(err)
+			sp.SetError()
 			sp.Finish()
 			return nil, err
 		}
