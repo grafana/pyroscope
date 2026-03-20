@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/dskit/tracing"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
+	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -82,8 +83,10 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 		Profile: maxBlockProfile,
 		Index:   0,
 	}, true, its...), batchProfileSize, func(ctx context.Context, batch []ProfileWithIndex) error {
-		sp.SetTag("batch_len", len(batch))
-		sp.SetTag("batch_requested_size", batchProfileSize)
+		otelSpan.AddEvent("processing batch", oteltrace.WithAttributes(
+			attribute.Int("batch_len", len(batch)),
+			attribute.Int("batch_requested_size", batchProfileSize),
+		))
 
 		seriesByFP := map[model.Fingerprint]int{}
 		selectProfileResult.Profiles = selectProfileResult.Profiles[:0]
