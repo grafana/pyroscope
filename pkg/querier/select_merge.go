@@ -436,9 +436,11 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 			if err != nil || result == nil {
 				return err
 			}
-			otelSpan.SetAttributes(
-				attribute.Int("profile_size", len(result)),
-				attribute.Int64("took_ms", time.Since(start).Milliseconds()),
+			otelSpan.AddEvent("profile merged",
+				trace.WithAttributes(
+					attribute.Int("profile_size", len(result)),
+					attribute.Int64("took_ms", time.Since(start).Milliseconds()),
+				),
 			)
 			var p googlev1.Profile
 			if err = pprof.Unmarshal(result, &p); err != nil {

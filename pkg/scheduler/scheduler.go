@@ -342,7 +342,7 @@ func (s *Scheduler) enqueueRequest(frontendContext context.Context, frontendAddr
 	req.parentCtx = reqCtx
 	// Start the "queued" span as a child of the trace extracted from the
 	// HTTP request headers, so it appears in the correct distributed trace.
-	// Use trace.ContextWithSpanContext to graft the remote span context
+	// Use ContextWithRemoteSpanContext to graft the remote span context
 	// onto the cancellation-bearing frontend context.
 	spanCtx := oteltrace.SpanContextFromContext(reqCtx)
 	tracedCtx := oteltrace.ContextWithRemoteSpanContext(ctx, spanCtx)

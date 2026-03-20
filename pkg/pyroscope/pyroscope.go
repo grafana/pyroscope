@@ -418,7 +418,10 @@ func New(cfg Config) (*Pyroscope, error) {
 	runtime.SetBlockProfileRate(cfg.SelfProfiling.BlockProfileRate)
 
 	if cfg.Tracing.Enabled {
-		name := os.Getenv("JAEGER_SERVICE_NAME")
+		name := os.Getenv("OTEL_SERVICE_NAME")
+		if name == "" {
+			name = os.Getenv("JAEGER_SERVICE_NAME")
+		}
 		if name == "" {
 			name = fmt.Sprintf("pyroscope-%s", cfg.Target)
 		}
