@@ -54,6 +54,7 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sp, ctx := tracing.StartSpanFromContext(ctx, "ingestHandler.ServeHTTP")
 	defer sp.Finish()
 
+	otelSpan := trace.SpanFromContext(ctx)
 	tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
 	sp.SetTag("tenant_id", tenantID)
 	input, err := h.parseInputMetadataFromRequest(ctx, r)
@@ -61,7 +62,7 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		msg := "failed to parse request metadata"
 		sp.LogError(err)
 		sp.SetError()
-		sp.SetTag("msg", msg)
+		otelSpan.AddEvent(msg)
 		_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
 		httputil.ErrorWithStatus(w, err, http.StatusBadRequest)
 		return
@@ -83,7 +84,7 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		msg := "failed to read request body"
 		sp.LogError(err)
 		sp.SetError()
-		sp.SetTag("msg", msg)
+		otelSpan.AddEvent(msg)
 		_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
 		httputil.ErrorWithStatus(w, err, status)
 		return
@@ -95,14 +96,14 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			msg := "failed to convert profile"
 			sp.LogError(err)
 			sp.SetError()
-			sp.SetTag("msg", msg)
+			otelSpan.AddEvent(msg)
 			_ = h.log.Log("msg", msg, "err", err, "orgID", tenantID)
 			httputil.Error(w, err)
 		} else {
 			msg := "failed to ingest profile"
 			sp.LogError(err)
 			sp.SetError()
-			sp.SetTag("msg", msg)
+			otelSpan.AddEvent(msg)
 			httputil.ErrorWithStatus(w, err, http.StatusUnprocessableEntity)
 		}
 	}
