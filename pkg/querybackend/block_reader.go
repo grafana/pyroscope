@@ -12,7 +12,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/tracing"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -75,7 +74,7 @@ func (b *BlockReader) Invoke(
 	ctx context.Context,
 	req *queryv1.InvokeRequest,
 ) (*queryv1.InvokeResponse, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "BlockReader.Invoke")
+	span, ctx := tracing.StartSpanFromContext(ctx, "BlockReader.Invoke")
 	defer span.Finish()
 
 	collectDiag := req.Options != nil && req.Options.CollectDiagnostics
@@ -158,7 +157,7 @@ type request struct {
 	endTime   int64 // Unix nano.
 }
 
-func (r *request) setTraceTags(span opentracing.Span) {
+func (r *request) setTraceTags(span *tracing.Span) {
 	if r.src == nil {
 		return
 	}

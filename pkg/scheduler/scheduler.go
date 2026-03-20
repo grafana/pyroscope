@@ -21,12 +21,13 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
+	"github.com/grafana/dskit/tracing"
 	"github.com/grafana/dskit/user"
-	otgrpc "github.com/opentracing-contrib/go-grpc"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
@@ -204,10 +205,10 @@ type schedulerRequest struct {
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
-	queueSpan opentracing.Span
+	queueSpan *tracing.Span
 
 	// This is only used for testing.
-	parentSpanContext opentracing.SpanContext
+	parentCtx context.Context
 }
 
 // FrontendLoop handles connection from frontend.
@@ -324,11 +325,7 @@ func (s *Scheduler) enqueueRequest(frontendContext context.Context, frontendAddr
 
 	// Extract tracing information from headers in HTTP request. FrontendContext doesn't have the correct tracing
 	// information, since that is a long-running request.
-	tracer := opentracing.GlobalTracer()
-	parentSpanContext, err := httpgrpcutil.GetParentSpanForRequest(tracer, msg.HttpRequest)
-	if err != nil {
-		return err
-	}
+	reqCtx := httpgrpcutil.GetParentContextForRequest(msg.HttpRequest)
 
 	userID := msg.GetUserID()
 
@@ -342,8 +339,14 @@ func (s *Scheduler) enqueueRequest(frontendContext context.Context, frontendAddr
 
 	now := time.Now()
 
-	req.parentSpanContext = parentSpanContext
-	req.queueSpan, req.ctx = opentracing.StartSpanFromContextWithTracer(ctx, tracer, "queued", opentracing.ChildOf(parentSpanContext))
+	req.parentCtx = reqCtx
+	// Start the "queued" span as a child of the trace extracted from the
+	// HTTP request headers, so it appears in the correct distributed trace.
+	// Use ContextWithRemoteSpanContext to graft the remote span context
+	// onto the cancellation-bearing frontend context.
+	spanCtx := oteltrace.SpanContextFromContext(reqCtx)
+	tracedCtx := oteltrace.ContextWithRemoteSpanContext(ctx, spanCtx)
+	req.queueSpan, req.ctx = tracing.StartSpanFromContext(tracedCtx, "queued")
 	req.enqueueTime = now
 	req.ctxCancel = cancel
 
@@ -531,7 +534,6 @@ func (s *Scheduler) forwardRequestToQuerier(querier *BidiStreamCloser[schedulerp
 
 func (s *Scheduler) forwardErrorToFrontend(ctx context.Context, req *schedulerRequest, requestErr error) {
 	opts, err := s.cfg.GRPCClientConfig.DialOption([]grpc.UnaryClientInterceptor{
-		otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer()),
 		middleware.ClientUserHeaderInterceptor,
 	},
 		nil, nil)
@@ -540,6 +542,7 @@ func (s *Scheduler) forwardErrorToFrontend(ctx context.Context, req *schedulerRe
 		return
 	}
 
+	opts = append(opts, grpc.WithStatsHandler(otelgrpc.NewClientHandler()))
 	opts = append(opts, s.cfg.DialOpts...)
 	conn, err := grpc.DialContext(ctx, req.frontendAddress, opts...)
 	if err != nil {

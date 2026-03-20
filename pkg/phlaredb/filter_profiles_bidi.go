@@ -5,10 +5,11 @@ import (
 	"io"
 
 	"connectrpc.com/connect"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -62,7 +63,8 @@ func rewriteEOFError(err error) error {
 func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterRequest](
 	ctx context.Context, profiles []iter.Iterator[Profile], batchProfileSize int, stream B,
 ) ([][]Profile, error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "filterProfiles")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "filterProfiles")
+	otelSpan := oteltrace.SpanFromContext(ctx)
 	defer sp.Finish()
 	selection := make([][]Profile, len(profiles))
 	selectProfileResult := &ingestv1.ProfileSets{
@@ -81,10 +83,10 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 		Profile: maxBlockProfile,
 		Index:   0,
 	}, true, its...), batchProfileSize, func(ctx context.Context, batch []ProfileWithIndex) error {
-		sp.LogFields(
-			otlog.Int("batch_len", len(batch)),
-			otlog.Int("batch_requested_size", batchProfileSize),
-		)
+		otelSpan.AddEvent("processing batch", oteltrace.WithAttributes(
+			attribute.Int("batch_len", len(batch)),
+			attribute.Int("batch_requested_size", batchProfileSize),
+		))
 
 		seriesByFP := map[model.Fingerprint]int{}
 		selectProfileResult.Profiles = selectProfileResult.Profiles[:0]
@@ -106,7 +108,7 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 			})
 		}
 
-		sp.LogFields(otlog.String("msg", "sending batch to client"))
+		otelSpan.AddEvent("sending batch to client")
 		var err error
 		switch s := BidiServerMerge[Res, Req](stream).(type) {
 		case BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest]:
@@ -131,9 +133,9 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 		if err != nil {
 			return rewriteEOFError(err)
 		}
-		sp.LogFields(otlog.String("msg", "batch sent to client"))
+		otelSpan.AddEvent("batch sent to client")
 
-		sp.LogFields(otlog.String("msg", "reading selection from client"))
+		otelSpan.AddEvent("reading selection from client")
 
 		// handle response for the batch.
 		var selected []bool
@@ -163,7 +165,7 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 			}
 			selected = selectionResponse.Profiles
 		}
-		sp.LogFields(otlog.String("msg", "selection received"))
+		otelSpan.AddEvent("selection received")
 		for i, k := range selected {
 			if k {
 				selection[batch[i].Index] = append(selection[batch[i].Index], batch[i].Profile)

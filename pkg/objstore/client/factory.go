@@ -4,7 +4,8 @@ import (
 	"context"
 
 	"github.com/thanos-io/objstore"
-	objtracing "github.com/thanos-io/objstore/tracing/opentracing"
+	objstoreotel "github.com/thanos-io/objstore/tracing/opentelemetry"
+	"go.opentelemetry.io/otel"
 
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/azure"
@@ -46,7 +47,7 @@ func NewBucket(ctx context.Context, cfg Config, name string) (phlareobj.Bucket, 
 				return objstore.WrapWithMetrics(b, reg, name), nil
 			},
 			func(b objstore.Bucket) (objstore.Bucket, error) {
-				return objtracing.WrapWithTraces(b), nil
+				return objstoreotel.WrapWithTraces(b, otel.Tracer("objstore")), nil
 			},
 		}
 		fs, err := filesystem.NewBucket(cfg.Filesystem.Directory, append(middlewares, cfg.Middlewares...)...)
@@ -72,7 +73,7 @@ func NewBucket(ctx context.Context, cfg Config, name string) (phlareobj.Bucket, 
 			return nil, err
 		}
 	}
-	bkt := phlareobj.NewBucket(objtracing.WrapWithTraces(objstore.WrapWithMetrics(backendClient, reg, name)))
+	bkt := phlareobj.NewBucket(objstoreotel.WrapWithTraces(objstore.WrapWithMetrics(backendClient, reg, name), otel.Tracer("objstore")))
 
 	if prefixPath != "" {
 		bkt = phlareobj.NewPrefixedBucket(bkt, prefixPath)

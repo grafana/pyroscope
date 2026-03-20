@@ -10,9 +10,10 @@ import (
 	"sync"
 
 	"github.com/grafana/dskit/multierror"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
 	"github.com/parquet-go/parquet-go"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 )
@@ -844,7 +845,7 @@ type SyncIterator struct {
 	// Status
 	ctx             context.Context
 	cancel          func()
-	span            opentracing.Span
+	span            *tracing.Span
 	metrics         *Metrics
 	curr            RowNumber
 	currRowGroup    parquet.RowGroup
@@ -900,10 +901,9 @@ func NewSyncIterator(ctx context.Context, rgs []parquet.RowGroup, column int, co
 		rn.Skip(rg.NumRows())
 	}
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "syncIterator", opentracing.Tags{
-		"columnIndex": column,
-		"column":      columnName,
-	})
+	span, ctx := tracing.StartSpanFromContext(ctx, "syncIterator")
+	span.SetTag("columnIndex", column)
+	span.SetTag("column", columnName)
 
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -1084,11 +1084,10 @@ func (c *SyncIterator) seekPages(seekTo RowNumber, definitionLevel int) (done bo
 				return true, err
 			}
 			c.metrics.pageReadsTotal.WithLabelValues(c.table, c.columnName).Add(1)
-			c.span.LogFields(
-				log.String("msg", "reading page (seekPages)"),
-				log.Int64("page_num_values", pg.NumValues()),
-				log.Int64("page_size", pg.Size()),
-			)
+			oteltrace.SpanFromContext(c.ctx).AddEvent("reading page (seekPages)", oteltrace.WithAttributes(
+				attribute.Int64("page_num_values", pg.NumValues()),
+				attribute.Int64("page_size", pg.Size()),
+			))
 
 			// Skip based on row number?
 			newRN := c.curr
@@ -1156,11 +1155,10 @@ func (c *SyncIterator) next() (RowNumber, *parquet.Value, error) {
 				return EmptyRowNumber(), nil, err
 			}
 			c.metrics.pageReadsTotal.WithLabelValues(c.table, c.columnName).Add(1)
-			c.span.LogFields(
-				log.String("msg", "reading page (next)"),
-				log.Int64("page_num_values", pg.NumValues()),
-				log.Int64("page_size", pg.Size()),
-			)
+			oteltrace.SpanFromContext(c.ctx).AddEvent("reading page (next)", oteltrace.WithAttributes(
+				attribute.Int64("page_num_values", pg.NumValues()),
+				attribute.Int64("page_size", pg.Size()),
+			))
 
 			if c.filter != nil && !c.filter.KeepPage(pg) {
 				// This page filtered out

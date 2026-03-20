@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 )
 
 func wrapResponseWriter(w http.ResponseWriter, end time.Time) (http.ResponseWriter, *delayedResponseWriter) {
@@ -81,8 +81,8 @@ func NewHTTP(limits Limits) func(h http.Handler) http.Handler {
 				w, delayRw = wrapResponseWriter(w, start.Add(delay))
 
 				// only add a span when delay is active
-				var sp opentracing.Span
-				sp, ctx = opentracing.StartSpanFromContext(ctx, "delayhandler.Handler")
+				var sp *tracing.Span
+				sp, ctx = tracing.StartSpanFromContext(ctx, "delayhandler.Handler")
 				defer sp.Finish()
 			}
 
@@ -116,7 +116,7 @@ func NewHTTP(limits Limits) func(h http.Handler) http.Handler {
 			}
 
 			// create a separate span to make the artificial delay clear
-			sp, _ := opentracing.StartSpanFromContext(ctx, "delayhandler.Delay")
+			sp, _ := tracing.StartSpanFromContext(ctx, "delayhandler.Delay")
 			sp.SetTag("delayed_by", delayLeft.String())
 			defer sp.Finish()
 

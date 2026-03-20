@@ -8,9 +8,10 @@ import (
 	"io"
 
 	"github.com/grafana/dskit/multierror"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
 	"github.com/parquet-go/parquet-go"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
@@ -41,10 +42,9 @@ const (
 )
 
 func (t *parquetTable[M, P]) fetch(ctx context.Context) (err error) {
-	span, _ := opentracing.StartSpanFromContext(ctx, "parquetTable.fetch", opentracing.Tags{
-		"table_name": t.persister.Name(),
-		"row_groups": len(t.headers),
-	})
+	span, ctx := tracing.StartSpanFromContext(ctx, "parquetTable.fetch")
+	span.SetTag("table_name", t.persister.Name())
+	span.SetTag("row_groups", len(t.headers))
 	defer span.Finish()
 	return t.r.Inc(func() error {
 		var s uint32
@@ -57,11 +57,11 @@ func (t *parquetTable[M, P]) fetch(ctx context.Context) (err error) {
 		// TODO(kolesnikovae): Row groups could be fetched in parallel.
 		rgs := t.file.RowGroups()
 		for _, h := range t.headers {
-			span.LogFields(
-				otlog.Uint32("row_group", h.RowGroup),
-				otlog.Uint32("index_row", h.Index),
-				otlog.Uint32("rows", h.Rows),
-			)
+			oteltrace.SpanFromContext(ctx).AddEvent("fetch row group", oteltrace.WithAttributes(
+				attribute.Int("row_group", int(h.RowGroup)),
+				attribute.Int("index_row", int(h.Index)),
+				attribute.Int("rows", int(h.Rows)),
+			))
 			rg := rgs[h.RowGroup]
 			rows := rg.Rows()
 			if err := rows.SeekToRow(int64(h.Index)); err != nil {

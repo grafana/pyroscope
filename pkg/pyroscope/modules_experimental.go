@@ -12,9 +12,8 @@ import (
 	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	otgrpc "github.com/opentracing-contrib/go-grpc"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
 
@@ -232,6 +231,7 @@ func (f *Pyroscope) initSegmentWriterClient() (_ services.Service, err error) {
 		logger, f.reg,
 		f.segmentWriterRing,
 		placement,
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {
 		return nil, err
@@ -320,6 +320,7 @@ func (f *Pyroscope) initMetastoreClient() (services.Service, error) {
 		f.logger,
 		f.Cfg.Metastore.GRPCClientConfig,
 		disc,
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	return f.metastoreClient.Service(), nil
 }
@@ -381,6 +382,7 @@ func (f *Pyroscope) initQueryBackendClient() (services.Service, error) {
 		f.Cfg.QueryBackend.Address,
 		f.Cfg.QueryBackend.GRPCClientConfig,
 		f.Cfg.QueryBackend.ClientTimeout,
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {
 		return nil, err
@@ -496,6 +498,5 @@ func (f *Pyroscope) grpcClientInterceptors() []grpc.UnaryClientInterceptor {
 
 	return []grpc.UnaryClientInterceptor{
 		middleware.UnaryClientInstrumentInterceptor(requestDuration, middleware.ReportGRPCStatusOption),
-		otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer()),
 	}
 }

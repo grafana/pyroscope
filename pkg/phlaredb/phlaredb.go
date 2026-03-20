@@ -19,8 +19,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/services"
+	"github.com/grafana/dskit/tracing"
 	"github.com/oklog/ulid/v2"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
@@ -387,7 +387,7 @@ const (
 
 // LabelValues returns the possible label values for a given label name.
 func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (resp *connect.Response[typesv1.LabelValuesResponse], err error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB LabelValues")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "PhlareDB LabelValues")
 	defer sp.Finish()
 
 	f.headLock.RLock()
@@ -402,7 +402,7 @@ func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1
 
 // LabelNames returns the possible label names.
 func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB LabelNames")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "PhlareDB LabelNames")
 	defer sp.Finish()
 
 	f.headLock.RLock()
@@ -417,7 +417,7 @@ func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.
 
 // ProfileTypes returns the possible profile types.
 func (f *PhlareDB) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (resp *connect.Response[ingestv1.ProfileTypesResponse], err error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB ProfileTypes")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "PhlareDB ProfileTypes")
 	defer sp.Finish()
 
 	f.headLock.RLock()
@@ -432,7 +432,7 @@ func (f *PhlareDB) ProfileTypes(ctx context.Context, req *connect.Request[ingest
 
 // Series returns labels series for the given set of matchers.
 func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB Series")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "PhlareDB Series")
 	defer sp.Finish()
 
 	f.headLock.RLock()
@@ -535,7 +535,7 @@ func (f *PhlareDB) BlockMetadata(ctx context.Context, req *connect.Request[inges
 }
 
 func (f *PhlareDB) GetProfileStats(ctx context.Context, req *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "PhlareDB GetProfileStats")
+	sp, _ := tracing.StartSpanFromContext(ctx, "PhlareDB GetProfileStats")
 	defer sp.Finish()
 
 	minTimes := make([]model.Time, 0)
@@ -589,7 +589,7 @@ func getProfileStatsFromBounds(minTimes, maxTimes []model.Time) (*typesv1.GetPro
 }
 
 func (f *PhlareDB) GetBlockStats(ctx context.Context, req *connect.Request[ingestv1.GetBlockStatsRequest]) (*connect.Response[ingestv1.GetBlockStatsResponse], error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "PhlareDB GetBlockStats")
+	sp, _ := tracing.StartSpanFromContext(ctx, "PhlareDB GetBlockStats")
 	defer sp.Finish()
 
 	res := &ingestv1.GetBlockStatsResponse{}
