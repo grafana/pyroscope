@@ -1433,6 +1433,8 @@ spec:
             - "-metastore.raft.advertise-address=$(POD_NAME).$(PYROSCOPE_METASTORE_SERVICE)"
             - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.$(PYROSCOPE_METASTORE_SERVICE)"
             - "-write-path=segment-writer"
+            - "-all.enable-v1-write-path=false"
+            - "-all.enable-v1-read-path=false"
             - "-enable-query-backend=true"
           env:
             - name: POD_NAME
