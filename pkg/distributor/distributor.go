@@ -672,6 +672,7 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 		sendErr := util.RecoverPanic(func() error {
 			localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), d.cfg.PushTimeout)
 			defer cancel()
+			localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
 			// Obtain the aggregated profile.
 			p, handleErr := handler()
 			if handleErr != nil {
@@ -760,6 +761,7 @@ func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distribut
 			// Use a background context to make sure all ingesters get samples even if we return early
 			localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), d.cfg.PushTimeout)
 			defer cancel()
+			localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
 			d.sendProfiles(localCtx, ingester, samples, &tracker)
 		}(ingesterDescs[ingester], samples)
 	}
