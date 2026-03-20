@@ -357,8 +357,12 @@ func (f *PhlareDB) Close() error {
 			errs.Add(err)
 			continue
 		}
-		if err := h.Move(); err != nil {
-			errs.Add(err)
+		// Flush of an empty head removes the head directory;
+		// only attempt the move if the directory still exists.
+		if _, err := os.Stat(h.headPath); err == nil {
+			if err := h.Move(); err != nil {
+				errs.Add(err)
+			}
 		}
 	}
 	close(f.evictCh)
