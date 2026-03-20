@@ -875,7 +875,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 			sp.SetError()
 			return errors.Wrap(err, "build compaction jobs")
 		}
-		sp.SetTag("discovered_jobs", len(jobs))
+		discoveredJobs := len(jobs)
 
 		// There is another check just before we start processing the job, but we can avoid sending it
 		// to the goroutine in the first place.
@@ -883,7 +883,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 		if err != nil {
 			return err
 		}
-		sp.SetTag("own_jobs", len(jobs))
+		ownJobs := len(jobs)
 
 		// Record the difference between now and the max time for a block being compacted. This
 		// is used to detect compactors not being able to keep up with the rate of blocks being
@@ -895,7 +895,16 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 
 		// Skip jobs for which the wait period hasn't been honored yet.
 		jobs = c.filterJobsByWaitPeriod(ctx, jobs)
-		sp.SetTag("filtered_jobs", len(jobs))
+		filteredJobs := len(jobs)
+
+		// Use AddEvent instead of SetTag to preserve per-iteration data as separate
+		// timestamped log entries, rather than overwriting previous iteration values.
+		trace.SpanFromContext(ctx).AddEvent("compaction iteration jobs",
+			trace.WithAttributes(
+				attribute.Int("discovered_jobs", discoveredJobs),
+				attribute.Int("own_jobs", ownJobs),
+				attribute.Int("filtered_jobs", filteredJobs),
+			))
 
 		// Sort jobs based on the configured ordering algorithm.
 		jobs = c.sortJobs(jobs)
