@@ -51,7 +51,7 @@ for i in $(seq 1 30); do
 done
 
 log "=== Stage 3: Start Pyroscope ==="
-JAEGER_SERVICE_NAME=pyroscope-test \
+OTEL_SERVICE_NAME=pyroscope-test \
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 \
 OTEL_EXPORTER_OTLP_PROTOCOL=grpc \
 OTEL_TRACES_EXPORTER=otlp \
