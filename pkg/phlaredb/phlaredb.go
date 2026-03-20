@@ -22,6 +22,7 @@ import (
 	"github.com/oklog/ulid/v2"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/tsdb/fileutil"
 	"github.com/samber/lo"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -130,6 +131,9 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlare
 		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
 	}
 
+	// Recover orphaned head blocks from a previous run before starting.
+	f.cleanupOrphanedHeadBlocks()
+
 	// ensure head metrics are registered early so they are reused for the new head
 	phlarectx = contextWithHeadMetrics(phlarectx, f.metrics)
 	f.phlarectx = phlarectx
@@ -148,6 +152,58 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlare
 
 func (f *PhlareDB) LocalDataPath() string {
 	return filepath.Join(f.cfg.DataPath, PathLocal)
+}
+
+func (f *PhlareDB) headDataPath() string {
+	return filepath.Join(f.cfg.DataPath, pathHead)
+}
+
+// cleanupOrphanedHeadBlocks recovers or removes head blocks left behind by a
+// previous run (e.g. after a crash or ungraceful shutdown). Blocks with a valid
+// meta.json are moved to the local directory so they enter the normal retention
+// pipeline. Blocks without a valid meta.json are deleted as they represent
+// incomplete flushes.
+func (f *PhlareDB) cleanupOrphanedHeadBlocks() {
+	headDir := f.headDataPath()
+	entries, err := os.ReadDir(headDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return
+		}
+		level.Error(f.logger).Log("msg", "failed to read head directory", "path", headDir, "err", err)
+		return
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		blockPath := filepath.Join(headDir, entry.Name())
+		_, ok := block.IsBlockDir(blockPath)
+		if !ok {
+			continue
+		}
+
+		_, metaErr := block.ReadMetaFromDir(blockPath)
+		if metaErr == nil {
+			// Block has a valid meta.json: flush completed before the move.
+			// Move it to local so it enters the normal shipper/retention pipeline.
+			localPath := filepath.Join(f.cfg.DataPath, PathLocal, entry.Name())
+			if err := fileutil.Rename(blockPath, localPath); err != nil {
+				level.Error(f.logger).Log("msg", "failed to move orphaned head block to local", "block", blockPath, "err", err)
+				continue
+			}
+			level.Info(f.logger).Log("msg", "recovered orphaned head block", "block", localPath)
+		} else {
+			// No valid meta.json: incomplete flush, data is unusable.
+			if err := os.RemoveAll(blockPath); err != nil {
+				level.Error(f.logger).Log("msg", "failed to remove incomplete orphaned head block", "block", blockPath, "err", err)
+				continue
+			}
+			level.Info(f.logger).Log("msg", "removed incomplete orphaned head block", "block", blockPath)
+		}
+	}
 }
 
 func (f *PhlareDB) BlockMetas(ctx context.Context) ([]*block.Meta, error) {
@@ -296,9 +352,27 @@ func (f *PhlareDB) Close() error {
 	close(f.stopCh)
 	f.wg.Wait()
 	errs := multierror.New()
+	var flushed []*Head
 	for _, h := range f.heads {
-		errs.Add(h.Flush(f.phlarectx))
+		if err := h.Flush(f.phlarectx); err != nil {
+			errs.Add(err)
+			continue
+		}
+		flushed = append(flushed, h)
 	}
+	// Move() is not thread-safe: hold headLock to prevent concurrent
+	// query access while head state is being mutated.
+	f.headLock.Lock()
+	for _, h := range flushed {
+		// Flush of an empty head removes the head directory;
+		// only attempt the move if the directory still exists.
+		if _, err := os.Stat(h.headPath); err == nil {
+			if err := h.Move(); err != nil {
+				errs.Add(err)
+			}
+		}
+	}
+	f.headLock.Unlock()
 	close(f.evictCh)
 	if err := f.blockQuerier.Close(); err != nil {
 		errs.Add(err)

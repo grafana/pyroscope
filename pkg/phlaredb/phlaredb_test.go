@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
@@ -663,4 +665,116 @@ func Test_getProfileStatsFromMetas(t *testing.T) {
 			assert.Equalf(t, tt.want, response, "getProfileStatsFromBounds(%v, %v)", tt.minTimes, tt.maxTimes)
 		})
 	}
+}
+
+func Test_CleanupOrphanedHeadBlocks_MovesCompleteBlocks(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	ctx := testContext(t)
+	dataPath := contextDataDir(ctx)
+
+	// Simulate an orphaned head block with a valid meta.json (completed flush
+	// that was never moved to local).
+	meta := block.NewMeta()
+	headBlockDir := filepath.Join(dataPath, pathHead, meta.ULID.String())
+	require.NoError(t, os.MkdirAll(headBlockDir, 0o755))
+	_, err := meta.WriteToFile(nil, headBlockDir)
+	require.NoError(t, err)
+
+	db, err := New(ctx, Config{
+		DataPath:         dataPath,
+		MaxBlockDuration: time.Duration(100000) * time.Minute,
+	}, NoLimit, ctx.localBucketClient)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+
+	// The orphaned head block should have been moved to local.
+	localBlockDir := filepath.Join(dataPath, PathLocal, meta.ULID.String())
+	_, err = os.Stat(localBlockDir)
+	require.NoError(t, err, "orphaned head block should have been moved to local")
+
+	// The head directory entry should be gone.
+	_, err = os.Stat(headBlockDir)
+	require.True(t, os.IsNotExist(err), "orphaned head block should no longer exist in head dir")
+}
+
+func Test_CleanupOrphanedHeadBlocks_RemovesIncompleteBlocks(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	ctx := testContext(t)
+	dataPath := contextDataDir(ctx)
+
+	// Simulate an orphaned head block without meta.json (incomplete flush).
+	meta := block.NewMeta()
+	headBlockDir := filepath.Join(dataPath, pathHead, meta.ULID.String())
+	require.NoError(t, os.MkdirAll(headBlockDir, 0o755))
+	// Write a dummy file to simulate partial data.
+	require.NoError(t, os.WriteFile(filepath.Join(headBlockDir, "profiles.parquet"), []byte("partial"), 0o644))
+
+	db, err := New(ctx, Config{
+		DataPath:         dataPath,
+		MaxBlockDuration: time.Duration(100000) * time.Minute,
+	}, NoLimit, ctx.localBucketClient)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+
+	// The incomplete orphaned head block should have been deleted.
+	_, err = os.Stat(headBlockDir)
+	require.True(t, os.IsNotExist(err), "incomplete orphaned head block should have been deleted")
+
+	// Nothing should have appeared in local.
+	localBlockDir := filepath.Join(dataPath, PathLocal, meta.ULID.String())
+	_, err = os.Stat(localBlockDir)
+	require.True(t, os.IsNotExist(err), "incomplete block should not have been moved to local")
+}
+
+func Test_Close_MovesHeadBlocksToLocal(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	ctx := testContext(t)
+	dataPath := contextDataDir(ctx)
+
+	db, err := New(ctx, Config{
+		DataPath:         dataPath,
+		MaxBlockDuration: time.Duration(100000) * time.Minute,
+	}, NoLimit, ctx.localBucketClient)
+	require.NoError(t, err)
+
+	end := time.Unix(0, int64(time.Hour))
+	start := end.Add(-time.Minute)
+	step := 15 * time.Second
+
+	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
+		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
+	)
+
+	require.NoError(t, db.Close())
+
+	// After close, no blocks should remain in the head directory.
+	headDir := filepath.Join(dataPath, pathHead)
+	entries, err := os.ReadDir(headDir)
+	if err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				t.Errorf("head block %s was not moved to local on close", e.Name())
+			}
+		}
+	}
+
+	// Blocks should exist in the local directory.
+	localDir := filepath.Join(dataPath, PathLocal)
+	entries, err = os.ReadDir(localDir)
+	require.NoError(t, err)
+	blockCount := 0
+	for _, e := range entries {
+		if e.IsDir() {
+			blockCount++
+		}
+	}
+	require.Greater(t, blockCount, 0, "at least one block should exist in local after close")
 }
