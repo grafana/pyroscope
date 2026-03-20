@@ -38,6 +38,9 @@ processors:
       - key: service.name
         from_attribute: k8s.pod.name
         action: insert
+      - key: service.name
+        from_attribute: process.executable.name
+        action: insert
       - key: k8s.pod.name
         action: delete
 
