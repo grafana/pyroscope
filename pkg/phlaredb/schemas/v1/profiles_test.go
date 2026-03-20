@@ -127,8 +127,7 @@ func TestRoundtripProfile(t *testing.T) {
 		profiles := generateProfiles(1)
 		for _, p := range profiles {
 			for _, x := range p.Samples {
-				x.TraceID = make([]byte, 16)
-				_, err := rand.Read(x.TraceID)
+				_, err := rand.Read(x.TraceID[:])
 				require.NoError(t, err)
 			}
 		}
@@ -136,7 +135,7 @@ func TestRoundtripProfile(t *testing.T) {
 		for i := range inMemoryProfiles {
 			traceIDs := make([][16]byte, len(inMemoryProfiles[i].Samples.Values))
 			for j := range traceIDs {
-				copy(traceIDs[j][:], profiles[i].Samples[j].TraceID)
+				traceIDs[j] = profiles[i].Samples[j].TraceID
 			}
 			inMemoryProfiles[i].Samples.TraceIDs = traceIDs
 		}

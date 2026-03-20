@@ -203,7 +203,7 @@ type Sample struct {
 	Value        int64              `parquet:",delta"`
 	Labels       []*profilev1.Label `parquet:",list"`
 	SpanID       uint64             `parquet:",optional"`
-	TraceID      []byte             `parquet:",optional"`
+	TraceID      [16]byte           `parquet:",optional"`
 }
 
 type Profile struct {
