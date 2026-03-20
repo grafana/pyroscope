@@ -128,6 +128,15 @@ spec:
           {{- end }}
           {{- end }}
           {{- end }}
+          {{- /* single-binary v2: disable v1 components when v1 storage is off */}}
+          {{- if and (eq $component "all") $hasV2 (not $hasV1) }}
+          {{-   if not (hasKey $extraArgs "all.enable-v1-write-path") }}
+            - "-all.enable-v1-write-path=false"
+          {{-   end }}
+          {{-   if not (hasKey $extraArgs "all.enable-v1-read-path") }}
+            - "-all.enable-v1-read-path=false"
+          {{-   end }}
+          {{- end }}
           {{- /* query-frontend specific v1/v2 migration config */}}
           {{- if or (eq $component "all") (eq $component "query-frontend") }}
           {{-   if and $hasV2 (not (hasKey $extraArgs "enable-query-backend"))  }}
