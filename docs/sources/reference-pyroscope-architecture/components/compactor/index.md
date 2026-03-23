@@ -9,6 +9,10 @@ weight: 10
 
 # Grafana Pyroscope compactor
 
+{{< admonition type="note" >}}
+The compactor is a v1 architecture component. For the v2 equivalent, refer to [compaction worker]({{< relref "../../reference-pyroscope-v2-architecture/components/compaction-worker" >}}).
+{{< /admonition >}}
+
 The compactor increases query performance and reduces long-term storage usage by combining blocks.
 
 The compactor is the component responsible for:
