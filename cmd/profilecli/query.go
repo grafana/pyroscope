@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
+	"github.com/google/uuid"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -100,6 +101,7 @@ type queryProfileParams struct {
 	ProfileType        string
 	StacktraceSelector []string
 	SpanSelector       []string
+	ProfileID          string
 	MaxNodes           int64
 }
 
@@ -109,8 +111,33 @@ func addQueryProfileParams(queryCmd commander) *queryProfileParams {
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
 	queryCmd.Flag("stacktrace-selector", "Only query locations with those symbols. Provide multiple times starting with the root").StringsVar(&params.StacktraceSelector)
 	queryCmd.Flag("span-selector", "Only query profiles with the given span IDs. Provide multiple times for multiple spans.").StringsVar(&params.SpanSelector)
+	queryCmd.Flag("profile-id", "Profile ID (UUID) to query a specific profile. Use 'query exemplars' to find IDs.").StringVar(&params.ProfileID)
 	queryCmd.Flag("max-nodes", "Maximum number of nodes to return in the profile").Int64Var(&params.MaxNodes)
 	return params
+}
+
+// validateQueryProfileParams checks for mutual exclusion between flags and
+// validates the --profile-id format when provided.
+func validateQueryProfileParams(params *queryProfileParams) error {
+	if len(params.SpanSelector) > 0 && len(params.StacktraceSelector) > 0 {
+		return errors.New("--span-selector and --stacktrace-selector cannot be used together")
+	}
+
+	// --profile-id and --span-selector serve different purposes and cannot be combined.
+	// ProfileIdSelector uses profile_id (UUID) for drilling down from exemplars.
+	// SpanSelector uses span_id for span-filtered queries. See PR #4872.
+	if params.ProfileID != "" && len(params.SpanSelector) > 0 {
+		return errors.New("--profile-id and --span-selector cannot be used together. --profile-id selects a specific profile by UUID (from exemplar queries). --span-selector filters by trace span ID.")
+	}
+
+	// Validate --profile-id is a valid UUID if provided.
+	if params.ProfileID != "" {
+		if _, err := uuid.Parse(params.ProfileID); err != nil {
+			return errors.New("--profile-id must be a valid UUID (e.g. 550e8400-e29b-41d4-a716-446655440000). Did you mean --span-selector for span IDs?")
+		}
+	}
+
+	return nil
 }
 
 func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool, profileTree bool) (err error) {
@@ -120,8 +147,8 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 	}
 	level.Info(logger).Log("msg", "query aggregated profile from profile store", "url", params.URL, "from", from, "to", to, "query", params.Query, "type", params.ProfileType)
 
-	if len(params.SpanSelector) > 0 && len(params.StacktraceSelector) > 0 {
-		return errors.New("--span-selector and --stacktrace-selector cannot be used together")
+	if err := validateQueryProfileParams(params); err != nil {
+		return err
 	}
 
 	var profile *googlev1.Profile
@@ -207,6 +234,11 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 		}
 	}
 
+	// ProfileIdSelector uses profile_id (UUID), NOT span_id. See PR #4872.
+	if params.ProfileID != "" {
+		req.ProfileIdSelector = []string{params.ProfileID}
+	}
+
 	qc := params.phlareClient.queryClient()
 
 	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
@@ -236,6 +268,11 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 		req.StackTraceSelector = &typesv1.StackTraceSelector{
 			CallSite: locations,
 		}
+	}
+
+	// ProfileIdSelector uses profile_id (UUID), NOT span_id. See PR #4872.
+	if params.ProfileID != "" {
+		req.ProfileIdSelector = []string{params.ProfileID}
 	}
 
 	qc := params.phlareClient.queryClient()
