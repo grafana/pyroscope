@@ -137,7 +137,7 @@ func (l LogSpanParametersWrapper) SelectMergeProfile(ctx context.Context, c *con
 		"selector", c.Msg.LabelSelector,
 		"max_nodes", c.Msg.GetMaxNodes(),
 		"profile_type", c.Msg.ProfileTypeID,
-		"stacktrace_selector", c.Msg.StackTraceSelector,
+		"stacktrace_selector", c.Msg.GetStackTraceSelector(),
 		"profile_id_selector", lazyJoin(c.Msg.ProfileIdSelector),
 	)
 	defer sp.Finish()
@@ -155,10 +155,10 @@ func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.R
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"selector", c.Msg.LabelSelector,
 		"profile_type", c.Msg.ProfileTypeID,
-		"stacktrace_selector", c.Msg.StackTraceSelector,
+		"stacktrace_selector", c.Msg.GetStackTraceSelector(),
 		"step", c.Msg.Step,
 		"by", lazyJoin(c.Msg.GroupBy),
-		"aggregation", c.Msg.Aggregation,
+		"aggregation", c.Msg.GetAggregation().String(),
 		"limit", c.Msg.Limit,
 		"exemplar_type", c.Msg.ExemplarType,
 	)

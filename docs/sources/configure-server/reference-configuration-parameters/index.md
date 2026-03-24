@@ -524,6 +524,16 @@ grpc_tls_config:
 # CLI flag: -server.grpc.recv-buffer-pools-enabled
 [grpc_server_recv_buffer_pools_enabled: <boolean> | default = false]
 
+# Size of the read buffer for each gRPC connection (bytes). A smaller buffer may
+# reduce memory usage but may lead to more system calls.
+# CLI flag: -server.grpc.read-buffer-size-bytes
+[grpc_server_read_buffer_size: <int> | default = 32768]
+
+# Size of the write buffer for each gRPC connection (bytes). A smaller buffer
+# may reduce memory usage but may lead to more system calls.
+# CLI flag: -server.grpc.write-buffer-size-bytes
+[grpc_server_write_buffer_size: <int> | default = 32768]
+
 # Output log messages in the given format. Valid formats: [logfmt, json]
 # CLI flag: -log.format
 [log_format: <string> | default = "logfmt"]
@@ -574,7 +584,7 @@ grpc_tls_config:
 
 # Comma separated list of headers to exclude from tracing spans. Only used if
 # server.trace-request-headers is true. The following headers are always
-# excluded: Authorization, Cookie, X-Csrf-Token.
+# excluded: Authorization, Cookie, X-Access-Token, X-Csrf-Token, X-Grafana-Id.
 # CLI flag: -server.trace-request-headers-exclude-list
 [trace_request_exclude_headers_list: <string> | default = ""]
 
@@ -583,9 +593,14 @@ grpc_tls_config:
 [http_path_prefix: <string> | default = ""]
 
 cluster_validation:
-  # Optionally define the cluster validation label.
+  # Primary cluster validation label.
   # CLI flag: -server.cluster-validation.label
   [label: <string> | default = ""]
+
+  # Comma-separated list of additional cluster validation labels that the server
+  # will accept from incoming requests.
+  # CLI flag: -server.cluster-validation.additional-labels
+  [additional_labels: <string> | default = ""]
 
   grpc:
     # When enabled, cluster label validation is executed: configured cluster
@@ -620,6 +635,12 @@ cluster_validation:
     # validation check.
     # CLI flag: -server.cluster-validation.http.excluded-user-agents
     [excluded_user_agents: <string> | default = ""]
+
+# Creates new traces for each call rather than continuing the existing trace. A
+# span link is used to allow navigation to the parent trace. Only works when
+# using Open-Telemetry tracing.
+# CLI flag: -server.create-new-traces
+[create_new_traces: <boolean> | default = false]
 ```
 
 ### distributor
@@ -783,11 +804,11 @@ ring:
       # CLI flag: -distributor.ring.multi.secondary
       [secondary: <string> | default = ""]
 
-      # Mirror writes to secondary store.
+      # Mirror writes to the secondary store.
       # CLI flag: -distributor.ring.multi.mirror-enabled
       [mirror_enabled: <boolean> | default = false]
 
-      # Timeout for storing value to secondary store.
+      # Timeout for storing a value to the secondary store.
       # CLI flag: -distributor.ring.multi.mirror-timeout
       [mirror_timeout: <duration> | default = 2s]
 
@@ -966,16 +987,15 @@ lifecycler:
         # CLI flag: -multi.secondary
         [secondary: <string> | default = ""]
 
-        # Mirror writes to secondary store.
+        # Mirror writes to the secondary store.
         # CLI flag: -multi.mirror-enabled
         [mirror_enabled: <boolean> | default = false]
 
-        # Timeout for storing value to secondary store.
+        # Timeout for storing a value to the secondary store.
         # CLI flag: -multi.mirror-timeout
         [mirror_timeout: <duration> | default = 2s]
 
     # The heartbeat timeout after which ingesters are skipped for reads/writes.
-    # 0 = never (timeout disabled).
     # CLI flag: -ring.heartbeat-timeout
     [heartbeat_timeout: <duration> | default = 1m]
 
@@ -997,12 +1017,11 @@ lifecycler:
   # CLI flag: -ingester.num-tokens
   [num_tokens: <int> | default = 128]
 
-  # Period at which to heartbeat to consul. 0 = disabled.
+  # Period at which to heartbeat to consul.
   # CLI flag: -ingester.heartbeat-period
   [heartbeat_period: <duration> | default = 5s]
 
-  # Heartbeat timeout after which instance is assumed to be unhealthy. 0 =
-  # disabled.
+  # Heartbeat timeout after which instance is assumed to be unhealthy.
   # CLI flag: -ingester.heartbeat-timeout
   [heartbeat_timeout: <duration> | default = 1m]
 
@@ -1332,11 +1351,11 @@ sharding_ring:
       # CLI flag: -store-gateway.sharding-ring.multi.secondary
       [secondary: <string> | default = ""]
 
-      # Mirror writes to secondary store.
+      # Mirror writes to the secondary store.
       # CLI flag: -store-gateway.sharding-ring.multi.mirror-enabled
       [mirror_enabled: <boolean> | default = false]
 
-      # Timeout for storing value to secondary store.
+      # Timeout for storing a value to the secondary store.
       # CLI flag: -store-gateway.sharding-ring.multi.mirror-timeout
       [mirror_timeout: <duration> | default = 2s]
 
@@ -1681,11 +1700,11 @@ sharding_ring:
       # CLI flag: -compactor.ring.multi.secondary
       [secondary: <string> | default = ""]
 
-      # Mirror writes to secondary store.
+      # Mirror writes to the secondary store.
       # CLI flag: -compactor.ring.multi.mirror-enabled
       [mirror_enabled: <boolean> | default = false]
 
-      # Timeout for storing value to secondary store.
+      # Timeout for storing a value to the secondary store.
       # CLI flag: -compactor.ring.multi.mirror-timeout
       [mirror_timeout: <duration> | default = 2s]
 
@@ -1888,7 +1907,7 @@ backoff_config:
 [connect_backoff_max_delay: <duration> | default = 5s]
 
 cluster_validation:
-  # Optionally define the cluster validation label.
+  # Primary cluster validation label.
   # CLI flag: -<prefix>.cluster-validation.label
   [label: <string> | default = ""]
 ```
@@ -1970,10 +1989,11 @@ The `memberlist` block configures the Gossip memberlist.
 # CLI flag: -memberlist.cluster-label-verification-disabled
 [cluster_label_verification_disabled: <boolean> | default = false]
 
-# Other cluster members to join. Can be specified multiple times. It can be an
-# IP, hostname or an entry specified in the DNS Service Discovery format.
+# Other cluster members to join. Can be specified multiple times or as a
+# comma-separated list. It can be an IP, hostname or an entry specified in the
+# DNS Service Discovery format.
 # CLI flag: -memberlist.join
-[join_members: <list of strings> | default = []]
+[join_members: <list of strings> | default = ]
 
 # Min backoff duration to join other cluster members.
 # CLI flag: -memberlist.min-join-backoff
@@ -1993,6 +2013,12 @@ The `memberlist` block configures the Gossip memberlist.
 # CLI flag: -memberlist.abort-if-fast-join-fails
 [abort_if_cluster_fast_join_fails: <boolean> | default = false]
 
+# Minimum number of seed nodes that must be successfully joined during fast-join
+# for it to succeed. Only applies when -memberlist.abort-if-fast-join-fails is
+# enabled.
+# CLI flag: -memberlist.abort-if-fast-join-fails-min-nodes
+[abort_if_cluster_fast_join_fails_min_nodes: <int> | default = 1]
+
 # Abort if this node fails to join memberlist cluster at startup. When enabled,
 # it's not guaranteed that other services are started only after the cluster
 # state has been successfully updated; use 'abort-if-fast-join-fails' instead.
@@ -2007,6 +2033,13 @@ The `memberlist` block configures the Gossip memberlist.
 # is not needed.
 # CLI flag: -memberlist.rejoin-interval
 [rejoin_interval: <duration> | default = 0s]
+
+# Seed nodes to use for periodic rejoin. Takes precedence over -memberlist.join
+# for rejoining. If not specified, -memberlist.join is used. Can be specified
+# multiple times or as a comma-separated list. Supports IP, hostname, or DNS
+# Service Discovery format.
+# CLI flag: -memberlist.rejoin-seed-nodes
+[rejoin_seed_nodes: <list of strings> | default = ]
 
 # How long to keep LEFT ingesters in the ring.
 # CLI flag: -memberlist.left-ingesters-timeout
@@ -2127,6 +2160,37 @@ The `memberlist` block configures the Gossip memberlist.
 # VersionTLS11, VersionTLS12, VersionTLS13
 # CLI flag: -memberlist.tls-min-version
 [tls_min_version: <string> | default = ""]
+
+zone_aware_routing:
+  # Enable zone-aware routing for memberlist gossip.
+  # CLI flag: -memberlist.zone-aware-routing.enabled
+  [enabled: <boolean> | default = false]
+
+  # Availability zone where this node is running.
+  # CLI flag: -memberlist.zone-aware-routing.instance-availability-zone
+  [instance_availability_zone: <string> | default = ""]
+
+  # Role of this node in the cluster. Valid values: member, bridge.
+  # CLI flag: -memberlist.zone-aware-routing.role
+  [role: <string> | default = "member"]
+
+propagation_delay_tracker:
+  # Enable the propagation delay tracker to measure gossip propagation delay.
+  # CLI flag: -memberlist.propagation-delay-tracker.enabled
+  [enabled: <boolean> | default = false]
+
+  # How often to publish beacons for propagation tracking.
+  # CLI flag: -memberlist.propagation-delay-tracker.beacon-interval
+  [beacon_interval: <duration> | default = 1m]
+
+  # How long a beacon lives before being garbage collected.
+  # CLI flag: -memberlist.propagation-delay-tracker.beacon-lifetime
+  [beacon_lifetime: <duration> | default = 10m]
+
+  # Log warning when beacon propagation delay exceeds this threshold. 0 disables
+  # logging.
+  # CLI flag: -memberlist.propagation-delay-tracker.log-beacons-latency-longer-than
+  [log_beacons_latency_longer_than: <duration> | default = 0s]
 ```
 
 ### limits
