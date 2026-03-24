@@ -36,7 +36,7 @@ func TestOutputExemplarsTable(t *testing.T) {
 	var buf bytes.Buffer
 	ctx := withOutput(context.Background(), &buf)
 
-	err := outputExemplarsTable(ctx, entries, "nanoseconds")
+	err := outputExemplarsTable(ctx, entries, "nanoseconds", []string{"service_name"})
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -47,7 +47,29 @@ func TestOutputExemplarsTable(t *testing.T) {
 	assert.Contains(t, out, "backend")
 	assert.Contains(t, out, "PROFILE ID")
 	assert.Contains(t, out, "SERVICE NAME")
-	assert.NotContains(t, out, "RANK")
+}
+
+func TestOutputExemplarsTable_NoGroupBy(t *testing.T) {
+	t.Parallel()
+
+	entries := []exemplarEntry{
+		{
+			ProfileID: "550e8400-e29b-41d4-a716-446655440000",
+			Timestamp: time.Date(2024, 3, 20, 10, 0, 0, 0, time.UTC),
+			Value:     42000000000,
+			Labels:    map[string]string{"service_name": "frontend"},
+		},
+	}
+
+	var buf bytes.Buffer
+	ctx := withOutput(context.Background(), &buf)
+
+	err := outputExemplarsTable(ctx, entries, "nanoseconds", nil)
+	require.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "PROFILE ID")
+	assert.NotContains(t, out, "SERVICE NAME")
 }
 
 func TestOutputExemplarsJSON(t *testing.T) {
@@ -62,7 +84,12 @@ func TestOutputExemplarsJSON(t *testing.T) {
 			Timestamp: time.Date(2024, 3, 20, 9, 30, 0, 0, time.UTC),
 			Value:     42000,
 			SpanID:    "abc123",
-			Labels:    map[string]string{"service_name": "frontend"},
+			Labels: map[string]string{
+				"service_name":     "frontend",
+				"__name__":         "process_cpu",
+				"__period_type__":  "cpu",
+				"__profile_type__": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			},
 		},
 	}
 
@@ -95,6 +122,10 @@ func TestOutputExemplarsJSON(t *testing.T) {
 	assert.Equal(t, int64(42000), result.Exemplars[0].Value)
 	assert.Equal(t, "abc123", result.Exemplars[0].SpanID)
 	assert.Equal(t, "frontend", result.Exemplars[0].Labels["service_name"])
+	// Internal labels should be filtered out.
+	assert.NotContains(t, result.Exemplars[0].Labels, "__name__")
+	assert.NotContains(t, result.Exemplars[0].Labels, "__period_type__")
+	assert.NotContains(t, result.Exemplars[0].Labels, "__profile_type__")
 }
 
 func TestOutputExemplarsTable_Empty(t *testing.T) {
@@ -103,9 +134,72 @@ func TestOutputExemplarsTable_Empty(t *testing.T) {
 	var buf bytes.Buffer
 	ctx := withOutput(context.Background(), &buf)
 
-	err := outputExemplarsTable(ctx, nil, "nanoseconds")
+	err := outputExemplarsTable(ctx, nil, "nanoseconds", nil)
 	require.NoError(t, err)
 	// Empty entries should still render a table (with only headers)
+}
+
+func TestTopCardinalityLabels(t *testing.T) {
+	t.Parallel()
+
+	entries := []exemplarEntry{
+		{Labels: map[string]string{
+			"__name__":     "process_cpu",
+			"service_name": "frontend",
+			"namespace":    "prod",
+			"pod":          "frontend-abc",
+			"region":       "us-east-1",
+		}},
+		{Labels: map[string]string{
+			"__name__":     "process_cpu",
+			"service_name": "backend",
+			"namespace":    "prod",
+			"pod":          "backend-xyz",
+			"region":       "eu-west-1",
+		}},
+		{Labels: map[string]string{
+			"__name__":     "process_cpu",
+			"service_name": "frontend",
+			"namespace":    "staging",
+			"pod":          "frontend-def",
+			"region":       "us-east-1",
+		}},
+	}
+
+	result := topCardinalityLabels(entries, 3)
+
+	// pod has 3 distinct values, service_name/namespace/region have 2 each.
+	// __name__ has 1 (skipped). namespace=prod appears twice but staging once = 2 distinct.
+	require.Len(t, result, 3)
+	assert.Equal(t, "pod", result[0]) // 3 distinct values
+	// The remaining 3 labels all have cardinality 2, sorted alphabetically.
+	assert.Equal(t, "namespace", result[1])
+	assert.Equal(t, "region", result[2])
+}
+
+func TestTopCardinalityLabels_FiltersInternalShowsConstant(t *testing.T) {
+	t.Parallel()
+
+	entries := []exemplarEntry{
+		{Labels: map[string]string{
+			"__name__":     "process_cpu",
+			"service_name": "frontend",
+			"constant":     "same",
+		}},
+		{Labels: map[string]string{
+			"__name__":     "process_cpu",
+			"service_name": "frontend",
+			"constant":     "same",
+		}},
+	}
+
+	result := topCardinalityLabels(entries, 3)
+
+	// __name__ is internal (filtered). service_name and constant have cardinality 1
+	// but are still shown (alphabetically) since they're the only non-internal labels.
+	require.Len(t, result, 2)
+	assert.Equal(t, "constant", result[0])
+	assert.Equal(t, "service_name", result[1])
 }
 
 func TestExemplarEntry_FromProtoExemplar(t *testing.T) {

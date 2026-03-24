@@ -7,6 +7,10 @@ weight: 120
 
 # Pyroscope query-scheduler
 
+{{< admonition type="note" >}}
+The query-scheduler is a v1 architecture component. In v2, the [query frontend]({{< relref "../../reference-pyroscope-v2-architecture/components/query-frontend" >}}) communicates directly with [query backends]({{< relref "../../reference-pyroscope-v2-architecture/components/query-backend" >}}) without an intermediary scheduler.
+{{< /admonition >}}
+
 The query-scheduler is a stateless component that retains a queue of queries to execute, and distributes the workload to available [queriers](../querier/).
 
 The query-scheduler is a required component when using the [query-frontend](../query-frontend/).

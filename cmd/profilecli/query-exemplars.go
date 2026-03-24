@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -19,19 +20,19 @@ import (
 
 type queryExemplarsParams struct {
 	*queryParams
-	ProfileType string
-	LabelNames  []string
-	Output      string
-	TopN        uint64
+	ProfileType     string
+	Output          string
+	TopN            uint64
+	MaxLabelColumns int
 }
 
 func addQueryExemplarsParams(queryCmd commander) *queryExemplarsParams {
 	params := new(queryExemplarsParams)
 	params.queryParams = addQueryParams(queryCmd)
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
-	queryCmd.Flag("label-names", "Label name(s) to group by. Can be specified multiple times.").StringsVar(&params.LabelNames)
 	queryCmd.Flag("output", "Output format, one of: table, json.").Default("table").StringVar(&params.Output)
 	queryCmd.Flag("top-n", "Maximum number of exemplars to show.").Default("100").Uint64Var(&params.TopN)
+	queryCmd.Flag("max-label-columns", "Maximum number of label columns to show in table output. Set to 0 to hide labels.").Default("3").IntVar(&params.MaxLabelColumns)
 	return params
 }
 
@@ -76,7 +77,6 @@ func queryExemplars(ctx context.Context, params *queryExemplarsParams) error {
 		Start:         from.UnixMilli(),
 		End:           to.UnixMilli(),
 		Step:          stepSeconds,
-		GroupBy:       params.LabelNames,
 		ExemplarType:  typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL,
 	}))
 	if err != nil {
@@ -86,7 +86,14 @@ func queryExemplars(ctx context.Context, params *queryExemplarsParams) error {
 	logDiagnostics(params.phlareClient, resp.Header())
 
 	// Extract exemplars from all series points into a flat slice.
-	var entries []exemplarEntry
+	// Pre-count to avoid repeated slice growth.
+	var totalExemplars int
+	for _, s := range resp.Msg.Series {
+		for _, p := range s.Points {
+			totalExemplars += len(p.Exemplars)
+		}
+	}
+	entries := make([]exemplarEntry, 0, totalExemplars)
 	for _, s := range resp.Msg.Series {
 		// Build series-level labels map for context.
 		seriesLabels := make(map[string]string, len(s.Labels))
@@ -132,12 +139,84 @@ func queryExemplars(ctx context.Context, params *queryExemplarsParams) error {
 		return errors.Wrap(err, "failed to parse profile type")
 	}
 
+	// Auto-detect the highest-cardinality labels for table columns
+	// (most distinct values = most differentiating, capped by --max-label-columns).
+	tableLabels := topCardinalityLabels(entries, params.MaxLabelColumns)
+
 	switch params.Output {
 	case outputJSON:
 		return outputExemplarsJSON(ctx, entries, from, to, params.ProfileType)
 	default:
-		return outputExemplarsTable(ctx, entries, profileType.SampleUnit)
+		return outputExemplarsTable(ctx, entries, profileType.SampleUnit, tableLabels)
 	}
+}
+
+// topCardinalityLabels returns up to N label names to show as table columns,
+// excluding internal labels. It prefers labels with higher cardinality (more
+// distinct values = more differentiating). If no high-cardinality labels exist
+// (e.g. single-service data), it falls back to the first N labels alphabetically.
+func topCardinalityLabels(entries []exemplarEntry, n int) []string {
+	if len(entries) == 0 || n <= 0 {
+		return nil
+	}
+
+	// Count distinct values per label name.
+	distinctValues := make(map[string]map[string]struct{})
+	for _, e := range entries {
+		for k, v := range e.Labels {
+			if isInternalLabel(k) {
+				continue
+			}
+			if distinctValues[k] == nil {
+				distinctValues[k] = make(map[string]struct{})
+			}
+			distinctValues[k][v] = struct{}{}
+		}
+	}
+
+	type labelCardinality struct {
+		name        string
+		cardinality int
+	}
+	var candidates []labelCardinality
+	for name, vals := range distinctValues {
+		candidates = append(candidates, labelCardinality{name, len(vals)})
+	}
+
+	// Sort by cardinality descending, then alphabetically for ties.
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].cardinality != candidates[j].cardinality {
+			return candidates[i].cardinality > candidates[j].cardinality
+		}
+		return candidates[i].name < candidates[j].name
+	})
+
+	if len(candidates) > n {
+		candidates = candidates[:n]
+	}
+
+	result := make([]string, len(candidates))
+	for i, c := range candidates {
+		result[i] = c.name
+	}
+	return result
+}
+
+// isInternalLabel returns true for labels that are internal metadata
+// (e.g. __name__, __period_type__) and should be hidden from user output.
+func isInternalLabel(name string) bool {
+	return strings.HasPrefix(name, "__") && strings.HasSuffix(name, "__")
+}
+
+// filterLabels returns a copy of labels with internal labels removed.
+func filterLabels(labels map[string]string) map[string]string {
+	filtered := make(map[string]string, len(labels))
+	for k, v := range labels {
+		if !isInternalLabel(k) {
+			filtered[k] = v
+		}
+	}
+	return filtered
 }
 
 func outputExemplarsJSON(ctx context.Context, entries []exemplarEntry, from, to time.Time, profileType string) error {
@@ -162,7 +241,13 @@ func outputExemplarsJSON(ctx context.Context, entries []exemplarEntry, from, to 
 		Exemplars:   make([]jsonExemplar, len(entries)),
 	}
 	for i, e := range entries {
-		out.Exemplars[i] = jsonExemplar(e)
+		out.Exemplars[i] = jsonExemplar{
+			ProfileID: e.ProfileID,
+			Timestamp: e.Timestamp,
+			Value:     e.Value,
+			SpanID:    e.SpanID,
+			Labels:    filterLabels(e.Labels),
+		}
 	}
 
 	enc := json.NewEncoder(output(ctx))
@@ -170,7 +255,7 @@ func outputExemplarsJSON(ctx context.Context, entries []exemplarEntry, from, to 
 	return enc.Encode(out)
 }
 
-func outputExemplarsTable(ctx context.Context, entries []exemplarEntry, sampleUnit string) error {
+func outputExemplarsTable(ctx context.Context, entries []exemplarEntry, sampleUnit string, labelColumns []string) error {
 	headers := []string{"Profile ID", "Timestamp", fmt.Sprintf("Value (%s)", sampleUnit)}
 	aligns := []int{
 		tablewriter.ALIGN_LEFT,
@@ -191,16 +276,9 @@ func outputExemplarsTable(ctx context.Context, entries []exemplarEntry, sampleUn
 		aligns = append(aligns, tablewriter.ALIGN_LEFT)
 	}
 
-	// Only show service_name if there are multiple distinct values.
-	serviceNames := make(map[string]struct{})
-	for _, e := range entries {
-		if sn := e.Labels[model.LabelNameServiceName]; sn != "" {
-			serviceNames[sn] = struct{}{}
-		}
-	}
-	showServiceName := len(serviceNames) > 1
-	if showServiceName {
-		headers = append(headers, "Service Name")
+	// Show auto-detected label columns.
+	for _, name := range labelColumns {
+		headers = append(headers, name)
 		aligns = append(aligns, tablewriter.ALIGN_LEFT)
 	}
 
@@ -217,8 +295,8 @@ func outputExemplarsTable(ctx context.Context, entries []exemplarEntry, sampleUn
 		if hasSpanID {
 			row = append(row, e.SpanID)
 		}
-		if showServiceName {
-			row = append(row, e.Labels[model.LabelNameServiceName])
+		for _, name := range labelColumns {
+			row = append(row, e.Labels[name])
 		}
 		table.Append(row)
 	}
