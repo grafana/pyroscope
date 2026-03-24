@@ -156,7 +156,7 @@ func queryExemplars(ctx context.Context, params *queryExemplarsParams) error {
 // distinct values = more differentiating). If no high-cardinality labels exist
 // (e.g. single-service data), it falls back to the first N labels alphabetically.
 func topCardinalityLabels(entries []exemplarEntry, n int) []string {
-	if len(entries) == 0 {
+	if len(entries) == 0 || n <= 0 {
 		return nil
 	}
 

@@ -86,9 +86,8 @@ func main() {
 	queryLabelValuesCardinalityParams := addQueryLabelValuesCardinalityParams(queryLabelValuesCardinalityCmd)
 	queryTopCmd := queryCmd.Command("top", "List top N label values by total value for a time window.")
 	queryTopParams := addQueryTopParams(queryTopCmd)
-	queryExemplarsCmd := queryCmd.Command("exemplars", "Query exemplars from profile data. V2 only.")
-	queryExemplarsIndividualCmd := queryExemplarsCmd.Command("individual", "List individual profile exemplars for a time window.")
-	queryExemplarsParams := addQueryExemplarsParams(queryExemplarsIndividualCmd)
+	queryExemplarsCmd := queryCmd.Command("exemplars", "List individual profile exemplars for a time window. V2 only.")
+	queryExemplarsParams := addQueryExemplarsParams(queryExemplarsCmd)
 
 	queryTracerCmd := app.Command("query-tracer", "Analyze query traces.")
 	queryTracerParams := addQueryTracerParams(queryTracerCmd)
@@ -193,7 +192,7 @@ func main() {
 		if err := queryTop(ctx, queryTopParams); err != nil {
 			os.Exit(checkError(err))
 		}
-	case queryExemplarsIndividualCmd.FullCommand():
+	case queryExemplarsCmd.FullCommand():
 		if err := queryExemplars(ctx, queryExemplarsParams); err != nil {
 			os.Exit(checkError(err))
 		}

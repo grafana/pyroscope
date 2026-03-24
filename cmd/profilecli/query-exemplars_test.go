@@ -202,6 +202,20 @@ func TestTopCardinalityLabels_FiltersInternalShowsConstant(t *testing.T) {
 	assert.Equal(t, "service_name", result[1])
 }
 
+func TestTopCardinalityLabels_NonPositiveMaxColumns(t *testing.T) {
+	t.Parallel()
+
+	entries := []exemplarEntry{
+		{Labels: map[string]string{
+			"service_name": "frontend",
+			"namespace":    "prod",
+		}},
+	}
+
+	assert.Nil(t, topCardinalityLabels(entries, 0))
+	assert.Nil(t, topCardinalityLabels(entries, -1))
+}
+
 func TestExemplarEntry_FromProtoExemplar(t *testing.T) {
 	t.Parallel()
 
