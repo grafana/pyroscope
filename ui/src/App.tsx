@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import './theme.css';
-import { Icon } from './components/Icon';
+import { Icon } from './components/core/Icon';
+import { DropdownItem, DropdownSection } from './components/core/Dropdown';
+import { FlameGraph } from './components/FlameGraph';
+import { QueryBar } from './components/QueryBar';
+import { useClickOutside } from './hooks/useClickOutside';
 import {
   usePyroscopeQuery,
   type ProfileType,
-  type Frame,
   type Service,
 } from './hooks/usePyroscopeQuery';
 
@@ -30,33 +33,8 @@ const TIME_PRESETS = [
   { label: 'Last 30d', value: 'now-30d' },
 ];
 
-function djb2(s: string) {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++)
-    h = ((h * 33) ^ s.charCodeAt(i)) & 0x7fffffff;
-  return h;
-}
-
-function frameColor(name: string): string {
-  const h = djb2(name);
-  if (/gc|GC|grey|malloc/.test(name))
-    return `hsl(${2 + (h % 8)},  65%, ${32 + (h % 10)}%)`;
-  if (name.startsWith('runtime.'))
-    return `hsl(${20 + (h % 12)}, 68%, ${34 + (h % 10)}%)`;
-  return `hsl(${28 + (h % 22)}, 72%, ${36 + (h % 10)}%)`;
-}
-
-function buildQuery(
-  service: string,
-  pt: ProfileType,
-  filters: Record<string, string>,
-): string {
-  const parts = [
-    `service_name="${service}"`,
-    `profile_type="${pt}"`,
-    ...Object.entries(filters).map(([k, v]) => `${k}="${v}"`),
-  ];
-  return `{${parts.join(', ')}}`;
+function buildQuery(service: string, pt: ProfileType): string {
+  return `{service_name="${service}", profile_type="${pt}"}`;
 }
 
 
@@ -71,25 +49,6 @@ function useTheme() {
   };
   return { theme, toggle };
 }
-
-function useClickOutside(
-  ref: React.RefObject<HTMLElement | null>,
-  cb: () => void,
-) {
-  const cbRef = useRef(cb);
-  useEffect(() => {
-    cbRef.current = cb;
-  });
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node))
-        cbRef.current();
-    };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [ref]);
-}
-
 
 function NavButton({
   children,
@@ -135,63 +94,6 @@ function NavButton({
 }
 
 
-function DropdownItem({
-  children,
-  onClick,
-  selected,
-  mono,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  selected?: boolean;
-  mono?: boolean;
-}) {
-  const [hov, setHov] = useState(false);
-  return (
-    <div
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 'var(--space-1-5) var(--space-3)',
-        fontSize: 'var(--text-md)',
-        fontFamily: mono ? 'var(--font-mono)' : undefined,
-        color: selected ? 'var(--color-primary-text)' : 'var(--text-primary)',
-        background: selected
-          ? 'var(--action-selected)'
-          : hov
-            ? 'var(--action-hover)'
-            : 'transparent',
-        cursor: 'pointer',
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-
-function DropdownSection({ label }: { label: string }) {
-  return (
-    <div
-      style={{
-        padding: 'var(--space-1-5) var(--space-3) var(--space-1)',
-        fontSize: 'var(--text-xs)',
-        color: 'var(--text-secondary)',
-        letterSpacing: 'var(--tracking-caps)',
-        textTransform: 'uppercase' as const,
-        borderBottom: '1px solid var(--border-weak)',
-      }}
-    >
-      {label}
-    </div>
-  );
-}
-
-
 function AppSelector({
   services,
   service,
@@ -217,11 +119,7 @@ function AppSelector({
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <NavButton onClick={handleOpen} active={open}>
-        <span style={{ color: 'var(--text-primary)' }}>{service}</span>
-        <span style={{ color: 'var(--text-disabled)' }}>·</span>
-        <span style={{ color: 'var(--color-primary-text)' }}>
-          {PROFILE_LABEL[profileType]}
-        </span>
+        {service} · {PROFILE_LABEL[profileType]}
         <Icon name="chevron-down" size={11} />
       </NavButton>
 
@@ -403,7 +301,6 @@ function Navbar({
   theme,
   onAppSelect,
   onTimeChange,
-  onRefresh,
   onThemeToggle,
 }: {
   services: Service[];
@@ -413,7 +310,6 @@ function Navbar({
   theme: 'dark' | 'light';
   onAppSelect: (s: string, pt: ProfileType) => void;
   onTimeChange: (v: string) => void;
-  onRefresh: () => void;
   onThemeToggle: () => void;
 }) {
   return (
@@ -469,9 +365,6 @@ function Navbar({
         onSelect={onAppSelect}
       />
       <TimeRangePicker value={timeRange} onChange={onTimeChange} />
-      <NavButton onClick={onRefresh} title="Refresh">
-        <Icon name="refresh" size={14} />
-      </NavButton>
 
       <div style={{ flex: 1 }} />
 
@@ -486,321 +379,6 @@ function Navbar({
         )}
       </NavButton>
     </nav>
-  );
-}
-
-
-function FilterChip({
-  label,
-  value,
-  onRemove,
-}: {
-  label: string;
-  value: string;
-  onRemove: () => void;
-}) {
-  const [hov, setHov] = useState(false);
-  return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        height: 26,
-        border: '1px solid var(--border-medium)',
-        borderRadius: 'var(--radius-sm)',
-        overflow: 'hidden',
-        fontSize: 'var(--text-sm)',
-        fontFamily: 'var(--font-mono)',
-        flexShrink: 0,
-      }}
-    >
-      <span
-        style={{
-          padding: '0 var(--space-2)',
-          color: 'var(--text-secondary)',
-          background: 'var(--bg-secondary)',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          padding: '0 var(--space-1)',
-          color: 'var(--text-disabled)',
-          background: 'var(--bg-secondary)',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-        }}
-      >
-        =
-      </span>
-      <span
-        style={{
-          padding: '0 var(--space-2)',
-          color: 'var(--color-primary-text)',
-          background: 'var(--color-primary-subtle)',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-        }}
-      >
-        {value}
-      </span>
-      <button
-        onClick={onRemove}
-        onMouseEnter={() => setHov(true)}
-        onMouseLeave={() => setHov(false)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 24,
-          height: '100%',
-          background: hov ? 'var(--color-error-subtle)' : 'var(--bg-secondary)',
-          color: hov ? 'var(--color-error-text)' : 'var(--text-disabled)',
-          border: 'none',
-          borderLeft: '1px solid var(--border-weak)',
-          cursor: 'pointer',
-          padding: 0,
-          transition:
-            'background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out)',
-        }}
-      >
-        <Icon name="x" size={9} />
-      </button>
-    </div>
-  );
-}
-
-
-function LabelFilter({
-  labels,
-  activeFilters,
-  onAdd,
-}: {
-  labels: Record<string, string[]>;
-  activeFilters: Record<string, string>;
-  onAdd: (label: string, value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<'labels' | string>('labels');
-  const ref = useRef<HTMLDivElement>(null);
-  useClickOutside(ref, () => {
-    setOpen(false);
-    setStep('labels');
-  });
-
-  const available = Object.keys(labels).filter((k) => !(k in activeFilters));
-  const disabled = available.length === 0;
-
-  const close = () => {
-    setOpen(false);
-    setStep('labels');
-  };
-  const [btnHov, setBtnHov] = useState(false);
-
-  return (
-    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
-      <button
-        onClick={() => {
-          if (!disabled) {
-            setOpen((o) => !o);
-            setStep('labels');
-          }
-        }}
-        onMouseEnter={() => setBtnHov(true)}
-        onMouseLeave={() => setBtnHov(false)}
-        disabled={disabled}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 'var(--space-1)',
-          height: 26,
-          padding: '0 var(--space-2)',
-          background: open
-            ? 'var(--action-selected)'
-            : btnHov
-              ? 'var(--action-hover)'
-              : 'transparent',
-          color: open ? 'var(--color-primary-text)' : 'var(--text-secondary)',
-          border: `1px solid ${open ? 'var(--color-primary-border)' : 'var(--border-medium)'}`,
-          borderRadius: 'var(--radius-sm)',
-          fontSize: 'var(--text-sm)',
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          opacity: disabled ? 0.4 : 1,
-          transition: 'background var(--duration-fast) var(--ease-out)',
-        }}
-      >
-        <Icon name="plus" size={11} />
-        Filter
-      </button>
-
-      {open && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            left: 0,
-            zIndex: 1000,
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border-medium)',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: 'var(--shadow-md)',
-            minWidth: 200,
-            overflow: 'hidden',
-          }}
-        >
-          {step === 'labels' ? (
-            <>
-              <DropdownSection label="Label" />
-              {available.map((lbl) => (
-                <DropdownItem key={lbl} mono onClick={() => setStep(lbl)}>
-                  <span>{lbl}</span>
-                  <Icon name="chevron-right" size={10} />
-                </DropdownItem>
-              ))}
-            </>
-          ) : (
-            <>
-              <div
-                onClick={() => setStep('labels')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-2)',
-                  padding: 'var(--space-1-5) var(--space-3)',
-                  borderBottom: '1px solid var(--border-weak)',
-                  cursor: 'pointer',
-                  color: 'var(--text-secondary)',
-                  fontSize: 'var(--text-xs)',
-                  letterSpacing: 'var(--tracking-caps)',
-                  textTransform: 'uppercase' as const,
-                }}
-              >
-                <Icon name="chevron-left" size={10} />
-                {step}
-              </div>
-              {(labels[step] ?? []).map((val) => (
-                <DropdownItem
-                  key={val}
-                  mono
-                  onClick={() => {
-                    onAdd(step, val);
-                    close();
-                  }}
-                >
-                  {val}
-                </DropdownItem>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-function TagsBar({
-  labels,
-  filters,
-  query,
-  onAddFilter,
-  onRemoveFilter,
-  onQueryChange,
-  onRun,
-}: {
-  labels: Record<string, string[]>;
-  filters: Record<string, string>;
-  query: string;
-  onAddFilter: (label: string, value: string) => void;
-  onRemoveFilter: (label: string) => void;
-  onQueryChange: (q: string) => void;
-  onRun: () => void;
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        height: 44,
-        padding: '0 var(--space-3)',
-        background: 'var(--bg-primary)',
-        borderBottom: '1px solid var(--border-weak)',
-        gap: 'var(--space-2)',
-        flexShrink: 0,
-      }}
-    >
-      <LabelFilter
-        labels={labels}
-        activeFilters={filters}
-        onAdd={onAddFilter}
-      />
-
-      {Object.entries(filters).map(([k, v]) => (
-        <FilterChip
-          key={k}
-          label={k}
-          value={v}
-          onRemove={() => onRemoveFilter(k)}
-        />
-      ))}
-
-      <input
-        value={query}
-        onChange={(e) => onQueryChange(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && onRun()}
-        onFocus={(e) => {
-          e.currentTarget.style.borderColor = 'var(--color-primary-border)';
-          e.currentTarget.style.boxShadow = '0 0 0 2px var(--action-focus)';
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.borderColor = 'var(--border-medium)';
-          e.currentTarget.style.boxShadow = 'none';
-        }}
-        style={{
-          flex: 1,
-          height: 28,
-          background: 'var(--bg-secondary)',
-          color: 'var(--text-primary)',
-          border: '1px solid var(--border-medium)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '0 var(--space-3)',
-          fontSize: 'var(--text-sm)',
-          fontFamily: 'var(--font-mono)',
-          outline: 'none',
-          minWidth: 0,
-          transition:
-            'border-color var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out)',
-        }}
-      />
-
-      <button
-        onClick={onRun}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 'var(--space-1-5)',
-          height: 28,
-          padding: '0 var(--space-3)',
-          background: 'var(--color-primary)',
-          color: 'var(--color-primary-foreground)',
-          border: '1px solid transparent',
-          borderRadius: 'var(--radius-sm)',
-          fontSize: 'var(--text-sm)',
-          fontWeight: 'var(--weight-medium)',
-          cursor: 'pointer',
-          flexShrink: 0,
-        }}
-      >
-        <Icon name="play" size={10} />
-        Run
-      </button>
-    </div>
   );
 }
 
@@ -849,114 +427,6 @@ function TimelineChart({ data }: { data: number[] }) {
         vectorEffect="non-scaling-stroke"
       />
     </svg>
-  );
-}
-
-
-function FlameGraph({ levels }: { levels: Frame[][] }) {
-  const [hovered, setHovered] = useState<{ name: string; pct: number } | null>(
-    null,
-  );
-  const FRAME_H = 22;
-
-  return (
-    <div>
-      {levels.map((level, li) => (
-        <div
-          key={li}
-          style={{ position: 'relative', height: FRAME_H, marginBottom: 1 }}
-        >
-          {level.map((frame) => {
-            const isHov = hovered?.name === frame.name;
-            return (
-              <div
-                key={`${li}-${frame.name}`}
-                onMouseEnter={() =>
-                  setHovered({ name: frame.name, pct: frame.width })
-                }
-                onMouseLeave={() => setHovered(null)}
-                style={{
-                  position: 'absolute',
-                  left: `${frame.start}%`,
-                  width: `calc(${frame.width}% - 1px)`,
-                  height: '100%',
-                  background: frameColor(frame.name),
-                  filter: isHov ? 'brightness(1.25)' : undefined,
-                  cursor: 'pointer',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  paddingLeft: 4,
-                  borderRadius: 1,
-                }}
-              >
-                {frame.width > 2.5 && (
-                  <span
-                    style={{
-                      fontSize: 'var(--text-xs)',
-                      color: 'rgba(255,255,255,0.88)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      pointerEvents: 'none',
-                      userSelect: 'none' as const,
-                      lineHeight: 1,
-                    }}
-                  >
-                    {frame.name}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ))}
-
-      {/* Status bar */}
-      <div
-        style={{
-          marginTop: 'var(--space-2)',
-          paddingTop: 'var(--space-2)',
-          borderTop: '1px solid var(--border-weak)',
-          minHeight: 20,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-3)',
-        }}
-      >
-        {hovered ? (
-          <>
-            <span
-              style={{
-                fontSize: 'var(--text-xs)',
-                fontFamily: 'var(--font-mono)',
-                color: 'var(--text-primary)',
-              }}
-            >
-              {hovered.name}
-            </span>
-            <span
-              style={{
-                fontSize: 'var(--text-xs)',
-                fontFamily: 'var(--font-mono)',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              {hovered.pct}%
-            </span>
-          </>
-        ) : (
-          <span
-            style={{
-              fontSize: 'var(--text-xs)',
-              color: 'var(--text-disabled)',
-            }}
-          >
-            Hover a frame to inspect
-          </span>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -1022,33 +492,19 @@ export default function App() {
   const [service, setService] = useState('api-server');
   const [profileType, setProfileType] = useState<ProfileType>('cpu');
   const [timeRange, setTimeRange] = useState('now-1h');
-  const [filters, setFilters] = useState<Record<string, string>>({});
   const [queryInput, setQueryInput] = useState(() =>
-    buildQuery('api-server', 'cpu', {}),
+    buildQuery('api-server', 'cpu'),
   );
 
-  const query = usePyroscopeQuery({ service, profileType, timeRange, filters });
+  const query = usePyroscopeQuery({ service, profileType, timeRange });
 
   useEffect(() => {
-    setQueryInput(buildQuery(service, profileType, filters));
-  }, [service, profileType, filters]);
+    setQueryInput(buildQuery(service, profileType));
+  }, [service, profileType]);
 
   const handleAppSelect = (s: string, pt: ProfileType) => {
     setService(s);
     setProfileType(pt);
-    setFilters({});
-  };
-
-  const handleAddFilter = (label: string, value: string) => {
-    setFilters((f) => ({ ...f, [label]: value }));
-  };
-
-  const handleRemoveFilter = (label: string) => {
-    setFilters((f) => {
-      const n = { ...f };
-      delete n[label];
-      return n;
-    });
   };
 
   return (
@@ -1068,18 +524,14 @@ export default function App() {
         theme={theme}
         onAppSelect={handleAppSelect}
         onTimeChange={setTimeRange}
-        onRefresh={query.run}
         onThemeToggle={toggle}
       />
-      <TagsBar
-        labels={query.labels}
-        filters={filters}
+      <QueryBar
         query={queryInput}
-        onAddFilter={handleAddFilter}
-        onRemoveFilter={handleRemoveFilter}
         onQueryChange={setQueryInput}
         onRun={query.run}
       />
+
       <div
         style={{
           flex: 1,

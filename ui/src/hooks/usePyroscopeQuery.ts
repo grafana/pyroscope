@@ -13,12 +13,10 @@ export interface QueryParams {
   service: string;
   profileType: ProfileType;
   timeRange: string;
-  filters: Record<string, string>;
 }
 
 export interface QueryResult {
   services: Service[];
-  labels: Record<string, string[]>;
   flamegraph: Frame[][];
   timeline: number[];
   run: () => void;
@@ -36,30 +34,6 @@ const MOCK_SERVICES: Service[] = [
   { name: 'database', profileTypes: ['cpu', 'memory', 'goroutine', 'mutex'] },
   { name: 'cache', profileTypes: ['cpu', 'memory'] },
 ];
-
-const MOCK_LABELS: Record<string, Record<string, string[]>> = {
-  'api-server': {
-    env: ['production', 'staging', 'dev'],
-    region: ['us-east-1', 'eu-west-1', 'ap-southeast-1'],
-    version: ['v2.1.4', 'v2.1.3', 'v2.0.0'],
-  },
-  frontend: {
-    env: ['production', 'staging'],
-    host: ['web-01', 'web-02', 'web-03'],
-  },
-  worker: {
-    env: ['production', 'staging'],
-    queue: ['default', 'high-priority', 'batch'],
-  },
-  database: {
-    env: ['production', 'staging'],
-    role: ['primary', 'replica-1', 'replica-2'],
-  },
-  cache: {
-    env: ['production', 'staging'],
-    node: ['cache-0', 'cache-1', 'cache-2'],
-  },
-};
 
 const MOCK_FLAMEGRAPH: Frame[][] = [
   [{ name: 'all', start: 0, width: 100 }],
@@ -136,7 +110,6 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
 
   return {
     services: MOCK_SERVICES,
-    labels: MOCK_LABELS[params.service] ?? {},
     flamegraph: MOCK_FLAMEGRAPH,
     timeline,
     run,
