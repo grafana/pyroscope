@@ -1,0 +1,6 @@
+.claude/
+.prettierrc
+.yarnrc.yml
+index.html
+package.json
+tsconfig*.json

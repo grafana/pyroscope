@@ -38,6 +38,7 @@ yarn preview   # Preview production build
 The entire design system lives in `src/theme.css`. Read `DESIGN.md` for the full reference — it is the authoritative guide.
 
 **Two token tiers:**
+
 - **Primitives** (`--blue-500`, `--space-4`) — palette/scale values, defined in `:root`
 - **Semantic tokens** (`--color-primary`, `--bg-primary`) — role-based aliases
 
@@ -62,7 +63,14 @@ src/
   theme.css   # All CSS custom properties (single source of truth)
 ```
 
+## Code style
+
+Banner comments are not allowed. Do not use decorative section dividers such as:
+
+```ts
+// ─── Section name ────────────────────────
+```
+
 ## Components
 
 Components should be hand built and purpose driven. It is okay to make them generic and extensible, but only when necessary. For example, if a button is needed, make a "Button" component, but don't add size variants until a size variant is required.
-
