@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Frame } from '../hooks/usePyroscopeQuery';
+import type { Frame } from '@hooks/usePyroscopeQuery';
 
 const FRAME_H = 22;
 

@@ -1,4 +1,5 @@
 export type IconType =
+  | 'check'
   | 'chevron-down'
   | 'chevron-left'
   | 'chevron-right'

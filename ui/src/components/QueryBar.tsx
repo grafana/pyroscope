@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Icon } from './core/Icon';
+import { Icon } from '@components/core/Icon';
 
 export function QueryBar({
   query,
