@@ -125,7 +125,6 @@ func queryExemplars(ctx context.Context, params *queryExemplarsParams) error {
 
 	if len(entries) == 0 {
 		level.Info(logger).Log("msg", "no exemplars found")
-		return nil
 	}
 
 	profileType, err := model.ParseProfileTypeSelector(params.ProfileType)
