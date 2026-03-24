@@ -579,7 +579,7 @@ func TestRelabel(t *testing.T) {
 			if cfg.Replacement == "" {
 				cfg.Replacement = relabel.DefaultRelabelConfig.Replacement
 			}
-			require.NoError(t, cfg.Validate())
+			require.NoError(t, cfg.Validate(model.UTF8Validation))
 		}
 
 		res, keep := Process(test.input, test.relabel...)

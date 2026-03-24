@@ -327,7 +327,7 @@ func parseQuery(fieldName string, req *http.Request) (string, *typesv1.ProfileTy
 	sel := make([]*labels.Matcher, 0, len(parsedSelector))
 	var nameLabel *labels.Matcher
 	for _, matcher := range parsedSelector {
-		if matcher.Name == labels.MetricName {
+		if matcher.Name == string(model.MetricNameLabel) {
 			nameLabel = matcher
 		} else {
 			sel = append(sel, matcher)

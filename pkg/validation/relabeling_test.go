@@ -195,8 +195,9 @@ func Test_defaultRelabelRules(t *testing.T) {
 			kept: true,
 		},
 	} {
-		result, kept := relabel.Process(tc.input, defaultRelabelRules...)
-		require.Equal(t, tc.expected, result)
+		lb := labels.NewBuilder(tc.input)
+		kept := relabel.ProcessBuilder(lb, defaultRelabelRules...)
+		require.Equal(t, tc.expected, lb.Labels())
 		require.Equal(t, tc.kept, kept)
 	}
 
