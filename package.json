@@ -170,12 +170,15 @@
     "uplot": "^1.6.31",
     "prismjs": "^1.30.0",
     "micromatch": "^4.0.8",
-    "minimatch": "^10.2.1",
+    "minimatch": "^10.2.3",
     "@babel/helpers": "^7.26.10",
     "esbuild": "^0.27.0",
     "js-yaml": "^3.14.2",
     "brace-expansion": "^1.1.12",
     "qs": "^6.14.1",
-    "@remix-run/router": "^1.23.2"
+    "@remix-run/router": "^1.23.2",
+    "immutable": ">=4.3.8 <5.0.0 || >=5.1.5",
+    "postcss-svgo/**/svgo": "2.8.1",
+    "undici": "^7.24.0"
   }
 }

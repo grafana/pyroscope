@@ -44,6 +44,18 @@ func (s *timeoutLogStore) DeleteRange(min, max uint64) error {
 	return s.store.DeleteRange(min, max)
 }
 
+// IsMonotonic implements raft.MonotonicLogStore by delegating to the
+// underlying store. Without this, raft uses compactLogs (which retains
+// TrailingLogs) instead of removeOldLogs after snapshot install on a
+// follower — leaving stale WAL entries that cause non-monotonic index
+// errors when the leader resumes replication.
+func (s *timeoutLogStore) IsMonotonic() bool {
+	if m, ok := s.store.(raft.MonotonicLogStore); ok {
+		return m.IsMonotonic()
+	}
+	return false
+}
+
 func (s *timeoutLogStore) StoreLog(log *raft.Log) error {
 	return s.withTimeout(func() error {
 		return s.store.StoreLog(log)
