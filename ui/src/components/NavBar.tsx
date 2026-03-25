@@ -50,6 +50,9 @@ export function NavBar({
   onTimeChange,
   onThemeChange,
   onReset,
+  isMultiTenant,
+  tenantID,
+  onChangeTenant,
 }: {
   services: Service[];
   servicesLoading: boolean;
@@ -63,6 +66,9 @@ export function NavBar({
   onTimeChange: (v: string) => void;
   onThemeChange: (t: 'dark' | 'light') => void;
   onReset: () => void;
+  isMultiTenant?: boolean;
+  tenantID?: string;
+  onChangeTenant?: () => void;
 }) {
   return (
     <nav className="navbar">
@@ -117,6 +123,12 @@ export function NavBar({
       )}
 
       <div className="navbar-spacer" />
+
+      {isMultiTenant && (
+        <button className="navbar-tenant" onClick={onChangeTenant}>
+          {tenantID}
+        </button>
+      )}
 
       <Select
         value={theme}

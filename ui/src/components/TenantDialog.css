@@ -1,0 +1,70 @@
+.tenant-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.tenant-dialog {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-8);
+  width: 380px;
+  max-width: calc(100vw - var(--space-8));
+}
+
+.tenant-dialog-title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.tenant-dialog-body {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-md);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.tenant-dialog-hint {
+  margin: 0 0 var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.tenant-dialog-hint code {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.tenant-dialog-form {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.tenant-dialog-input {
+  flex: 1;
+  height: 32px;
+  padding: 0 var(--space-3);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  font-size: var(--text-md);
+  outline: none;
+}
+
+.tenant-dialog-input:focus {
+  border-color: var(--border-strong);
+}
+
+.tenant-dialog-input::placeholder {
+  color: var(--text-disabled);
+}

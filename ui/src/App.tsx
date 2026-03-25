@@ -6,7 +6,9 @@ import { FlameGraph } from '@components/FlameGraph';
 import { QueryBar } from '@components/QueryBar';
 import { TimeSeries } from '@components/TimeSeries';
 import { Panel } from '@components/Panel';
+import { TenantDialog } from '@components/TenantDialog';
 import { usePyroscopeQuery, type ProfileType } from '@hooks/usePyroscopeQuery';
+import { useTenant } from '@hooks/useTenant';
 import {
   profileTypeLabel,
   profileTypeRateLabel,
@@ -39,13 +41,17 @@ function parseQuery(
 
 export default function App() {
   const { theme, setTheme } = useTheme();
+  const tenant = useTenant();
   const [service, setService] = useState('');
   const [profileType, setProfileType] = useState<ProfileType>('');
   const [timeRange, setTimeRange] = useState('now-1h');
-  const [absoluteRange, setAbsoluteRange] = useState<{
-    start: number;
-    end: number;
-  } | undefined>(undefined);
+  const [absoluteRange, setAbsoluteRange] = useState<
+    | {
+        start: number;
+        end: number;
+      }
+    | undefined
+  >(undefined);
   const [queryUserInput, setQueryUserInput] = useState<string | null>(null);
   const queryInput =
     queryUserInput ??
@@ -81,8 +87,22 @@ export default function App() {
     !!service && queryInput !== buildQuery(service, profileType);
   const handleReset = () => setQueryUserInput(null);
 
+  if (tenant.status === 'loading') return null;
+
+  if (tenant.status === 'needs_tenant_id') {
+    return <TenantDialog onSaved={tenant.setTenantID} />;
+  }
+
+  const isMultiTenant = tenant.status === 'multi_tenant';
+
   return (
     <div className="app">
+      {tenant.wantsToChange && (
+        <TenantDialog
+          currentTenantID={tenant.tenantID}
+          onSaved={tenant.setTenantID}
+        />
+      )}
       <NavBar
         services={query.services}
         servicesLoading={query.servicesLoading}
@@ -99,6 +119,9 @@ export default function App() {
         }}
         onThemeChange={setTheme}
         onReset={handleReset}
+        isMultiTenant={isMultiTenant}
+        tenantID={tenant.tenantID}
+        onChangeTenant={() => tenant.setWantsToChange(true)}
       />
       <QueryBar
         query={queryInput}

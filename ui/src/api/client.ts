@@ -10,15 +10,59 @@ export interface FlamegraphData {
   levels: { values: string[] }[];
 }
 
-const ORG_ID = 'anonymous';
+// Reads the <base href> injected by the Go server. Returns a path prefix like
+// "/uscentral" (no trailing slash), or "" when running at the root or in dev.
+function getBasePath(): string {
+  const base = document.querySelector('base') as HTMLBaseElement | null;
+  if (!base) return '';
+  const href = base.getAttribute('href') ?? '';
+  // When the Go template hasn't been rendered (dev mode) the literal string
+  // "{{ .BaseURL }}" appears; treat it as no prefix.
+  if (href.includes('{{')) return '';
+  return href === '/' ? '' : href.replace(/\/$/, '');
+}
+
+let orgID = '';
+
+export function setOrgID(id: string) {
+  orgID = id;
+}
+
+export function getOrgID(): string {
+  return orgID;
+}
+
+export async function checkMultitenancy(): Promise<
+  'single_tenant' | 'multi_tenant' | 'error'
+> {
+  try {
+    const res = await fetch(
+      `${getBasePath()}/querier.v1.QuerierService/LabelNames`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Scope-OrgID': '',
+        },
+        body: JSON.stringify({ matchers: [] }),
+      },
+    );
+    if (res.ok) return 'single_tenant';
+    if (res.status === 401) return 'multi_tenant';
+    return 'error';
+  } catch {
+    return 'error';
+  }
+}
 
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(path, {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (orgID) headers['X-Scope-OrgID'] = orgID;
+  const res = await fetch(getBasePath() + path, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Scope-OrgID': ORG_ID,
-    },
+    headers,
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`${path} ${res.status} ${res.statusText}`);
