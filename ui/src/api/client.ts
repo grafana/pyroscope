@@ -114,3 +114,7 @@ export async function fetchTimeline(params: {
 export function profileTypeLabel(id: string): string {
   return (registry as Record<string, { type: string }>)[id]?.type ?? id;
 }
+
+export function profileTypeUnit(id: string): string {
+  return (registry as Record<string, { unit: string }>)[id]?.unit ?? 'count';
+}

@@ -3,8 +3,17 @@ import { FlameGraph as GrafanaFlameGraph } from '@grafana/flamegraph';
 import { createTheme, FieldType } from '@grafana/data';
 import type { DataFrame } from '@grafana/data';
 import type { FlamegraphData } from '@api/client';
+import { profileTypeUnit } from '@api/client';
 import { Empty } from '@components/core/Empty';
 import './FlameGraph.css';
+
+function toGrafanaUnit(unit: string): string {
+  switch (unit) {
+    case 'nanoseconds': return 'ns';
+    case 'bytes': return 'bytes';
+    default: return 'short';
+  }
+}
 
 interface ParsedNode {
   name: string;
@@ -15,7 +24,7 @@ interface ParsedNode {
   children: ParsedNode[];
 }
 
-function toDataFrame(data: FlamegraphData): DataFrame | undefined {
+function toDataFrame(data: FlamegraphData, unit: string): DataFrame | undefined {
   const { names, levels } = data;
   if (!levels.length) return undefined;
 
@@ -68,16 +77,17 @@ function toDataFrame(data: FlamegraphData): DataFrame | undefined {
     refId: 'A',
     fields: [
       { name: 'level', values: levelVals, type: FieldType.number, config: {} },
-      { name: 'value', values: valueVals, type: FieldType.number, config: {} },
-      { name: 'self', values: selfVals, type: FieldType.number, config: {} },
+      { name: 'value', values: valueVals, type: FieldType.number, config: { unit } },
+      { name: 'self', values: selfVals, type: FieldType.number, config: { unit } },
       { name: 'label', values: labelVals, type: FieldType.string, config: {} },
     ],
     length: labelVals.length,
   } as unknown as DataFrame;
 }
 
-export function FlameGraph({ data, theme }: { data: FlamegraphData; theme: 'dark' | 'light' }) {
-  const dataFrame = useMemo(() => toDataFrame(data), [data]);
+export function FlameGraph({ data, theme, profileTypeId }: { data: FlamegraphData; theme: 'dark' | 'light'; profileTypeId: string }) {
+  const unit = toGrafanaUnit(profileTypeUnit(profileTypeId));
+  const dataFrame = useMemo(() => toDataFrame(data, unit), [data, unit]);
   const getTheme = useMemo(() => () => createTheme({ colors: { mode: theme } }), [theme]);
 
   if (!dataFrame) {
