@@ -2,9 +2,10 @@ package v1
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"io"
-	"math/rand"
+	mathrand "math/rand"
 	"sort"
 	"testing"
 
@@ -105,7 +106,7 @@ func TestRoundtripProfile(t *testing.T) {
 		profiles := generateProfiles(1)
 		for _, p := range profiles {
 			for _, x := range p.Samples {
-				x.SpanID = rand.Uint64()
+				x.SpanID = mathrand.Uint64()
 			}
 		}
 		inMemoryProfiles := generateMemoryProfiles(1)
@@ -122,21 +123,36 @@ func TestRoundtripProfile(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
+	t.Run("SampleTraceID", func(t *testing.T) {
+		profiles := generateProfiles(1)
+		for _, p := range profiles {
+			for _, x := range p.Samples {
+				x.TraceID = make([]byte, 16)
+				_, err := rand.Read(x.TraceID)
+				require.NoError(t, err)
+			}
+		}
+		inMemoryProfiles := generateMemoryProfiles(1)
+		for i := range inMemoryProfiles {
+			traceIDs := make([][16]byte, len(inMemoryProfiles[i].Samples.Values))
+			for j := range traceIDs {
+				copy(traceIDs[j][:], profiles[i].Samples[j].TraceID)
+			}
+			inMemoryProfiles[i].Samples.TraceIDs = traceIDs
+		}
+		expected, err := phlareparquet.ReadAll(NewProfilesRowReader(profiles))
+		require.NoError(t, err)
+		actual, err := phlareparquet.ReadAll(NewInMemoryProfilesRowReader(inMemoryProfiles))
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
 }
 
 func TestCompactSamples(t *testing.T) {
 	require.Equal(t, Samples{
-		StacktraceIDs: []uint32{1, 2, 3, 2, 5, 1, 7, 7, 1},
-		Values:        []uint64{1, 1, 1, 1, 1, 3, 1, 0, 1},
-	}.Compact(true), Samples{
-		StacktraceIDs: []uint32{1, 2, 3, 5, 7},
-		Values:        []uint64{5, 2, 1, 1, 1},
-	})
-
-	require.Equal(t, Samples{
 		StacktraceIDs: []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9},
 		Values:        []uint64{1, 0, 1, 1, 1, 0, 1, 1, 0},
-	}.Compact(false), Samples{
+	}.Compact(), Samples{
 		StacktraceIDs: []uint32{1, 3, 4, 5, 7, 8},
 		Values:        []uint64{1, 1, 1, 1, 1, 1},
 	})
@@ -144,7 +160,7 @@ func TestCompactSamples(t *testing.T) {
 	require.Equal(t, Samples{
 		StacktraceIDs: []uint32{1, 2, 3},
 		Values:        []uint64{1, 2, 3},
-	}.Compact(false), Samples{
+	}.Compact(), Samples{
 		StacktraceIDs: []uint32{1, 2, 3},
 		Values:        []uint64{1, 2, 3},
 	})
@@ -317,7 +333,7 @@ func Benchmark_SpanID_Encoding(b *testing.B) {
 		inMemoryProfiles := generateMemoryProfiles(profilesN)
 		for j := range inMemoryProfiles {
 			for i := range randomSpanIDs {
-				randomSpanIDs[i] = rand.Uint64()
+				randomSpanIDs[i] = mathrand.Uint64()
 			}
 			spans := make([]uint64, len(inMemoryProfiles[j].Samples.Values))
 			for o := range spans {
@@ -570,7 +586,18 @@ func TestColumnCount(t *testing.T) {
 				Spans:         []uint64{1, 2, 3},
 			},
 			Comments: []int64{1, 2, 3},
-		}}
+		},
+		{
+			SeriesIndex: 1,
+			TimeNanos:   2,
+			Samples: Samples{
+				StacktraceIDs: []uint32{1, 2, 3},
+				Values:        []uint64{1, 2, 3},
+				Spans:         []uint64{1, 2, 3},
+				TraceIDs:      [][16]byte{{1}, {2}, {3}},
+			},
+		},
+	}
 	for _, profile := range profiles {
 		count := profileColumnCount(profile)
 
@@ -578,5 +605,37 @@ func TestColumnCount(t *testing.T) {
 		assert.Equal(t, len(row), count)
 		assert.Equal(t, cap(row), count)
 	}
+}
 
+func TestSampleColumnsHasTraceID(t *testing.T) {
+	t.Run("new schema has TraceID", func(t *testing.T) {
+		var columns SampleColumns
+		err := columns.Resolve(ProfilesSchema)
+		require.NoError(t, err)
+		assert.True(t, columns.HasSpanID())
+		assert.True(t, columns.HasTraceID())
+	})
+
+	t.Run("old schema without TraceID", func(t *testing.T) {
+		// Simulate an old schema that doesn't have TraceID
+		oldSampleField := phlareparquet.Group{
+			phlareparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+			phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
+			phlareparquet.NewGroupField("Labels", pprofLabels),
+			phlareparquet.NewGroupField("SpanID", parquet.Optional(parquet.Encoded(parquet.Uint(64), &parquet.RLEDictionary))),
+		}
+		oldSchema := parquet.NewSchema("Profile", phlareparquet.Group{
+			phlareparquet.NewGroupField("ID", parquet.UUID()),
+			phlareparquet.NewGroupField(SeriesIndexColumnName, parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
+			phlareparquet.NewGroupField(StacktracePartitionColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+			phlareparquet.NewGroupField(TotalValueColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+			phlareparquet.NewGroupField(SamplesColumnName, parquet.List(oldSampleField)),
+			phlareparquet.NewGroupField(TimeNanosColumnName, parquet.Timestamp(parquet.Nanosecond)),
+		})
+		var columns SampleColumns
+		err := columns.Resolve(oldSchema)
+		require.NoError(t, err)
+		assert.True(t, columns.HasSpanID())
+		assert.False(t, columns.HasTraceID())
+	})
 }

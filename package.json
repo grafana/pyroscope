@@ -179,6 +179,12 @@
     "@remix-run/router": "^1.23.2",
     "immutable": ">=4.3.8 <5.0.0 || >=5.1.5",
     "postcss-svgo/**/svgo": "2.8.1",
-    "undici": "^7.24.0"
+    "undici": "^7.24.0",
+    "dompurify": "^3.3.2",
+    "flatted": "^3.4.0",
+    "serialize-javascript": "^7.0.3",
+    "@eslint/eslintrc/ajv": "^6.14.0",
+    "eslint/ajv": "^6.14.0",
+    "ajv-formats/ajv": "^8.18.0"
   }
 }
