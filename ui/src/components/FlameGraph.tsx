@@ -3,6 +3,7 @@ import { FlameGraph as GrafanaFlameGraph } from '@grafana/flamegraph';
 import { createTheme, FieldType } from '@grafana/data';
 import type { DataFrame } from '@grafana/data';
 import type { FlamegraphData } from '@api/client';
+import './FlameGraph.css';
 
 interface ParsedNode {
   name: string;
@@ -79,7 +80,7 @@ export function FlameGraph({ data, theme }: { data: FlamegraphData; theme: 'dark
   const getTheme = useMemo(() => () => createTheme({ colors: { mode: theme } }), [theme]);
 
   return (
-    <div style={{ width: '100%' }}>
+    <div className="flamegraph-wrapper">
       <GrafanaFlameGraph data={dataFrame} getTheme={getTheme} />
     </div>
   );

@@ -3,6 +3,7 @@ import { Button } from '@components/core/Button';
 import { DropdownItem, DropdownSection } from '@components/core/Dropdown';
 import { Icon } from '@components/core/Icon';
 import { useClickOutside } from '@hooks/useClickOutside';
+import './CascadeSelect.css';
 
 type CascadeItem = { label: string; value: string };
 type CascadeGroup = { label: string; value: string; items: CascadeItem[] };
@@ -47,19 +48,11 @@ export function CascadeSelect({
 
   const buttonContent = loading ? (
     <>
-      <style>{`@keyframes cs-spin{to{transform:rotate(360deg)}}`}</style>
-      <span style={{
-        width: 12, height: 12, flexShrink: 0,
-        border: '1.5px solid var(--border-medium)',
-        borderTopColor: 'var(--text-secondary)',
-        borderRadius: '50%',
-        animation: 'cs-spin 0.7s linear infinite',
-        display: 'inline-block',
-      }} />
+      <span className="cascade-spinner" />
       Loading
     </>
   ) : noData ? (
-    <span style={{ color: 'var(--text-disabled)' }}>No data</span>
+    <span className="cascade-no-data">No data</span>
   ) : (
     <>
       {selectedGroupLabel} · {selectedItemLabel}
@@ -68,34 +61,14 @@ export function CascadeSelect({
   );
 
   return (
-    <div ref={ref} style={{ position: 'relative', opacity: disabled ? 0.6 : 1 }}>
+    <div ref={ref} className="cascade-select" data-disabled={disabled}>
       <Button onClick={handleOpen} active={open}>
         {buttonContent}
       </Button>
 
       {open && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            left: 0,
-            zIndex: 1000,
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border-medium)',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: 'var(--shadow-md)',
-            display: 'flex',
-            minWidth: 340,
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              width: 160,
-              borderRight: '1px solid var(--border-weak)',
-              flexShrink: 0,
-            }}
-          >
+        <div className="cascade-menu">
+          <div className="cascade-groups">
             <DropdownSection label={groupLabel} />
             {groups.map((g) => {
               const active = g.value === hovGroup;
@@ -103,19 +76,8 @@ export function CascadeSelect({
                 <div
                   key={g.value}
                   onMouseEnter={() => setHovGroup(g.value)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: 'var(--space-1-5) var(--space-3)',
-                    fontSize: 'var(--text-md)',
-                    color: active
-                      ? 'var(--color-primary-text)'
-                      : 'var(--text-primary)',
-                    background: active ? 'var(--action-selected)' : 'transparent',
-                    cursor: 'pointer',
-                    borderLeft: `2px solid ${active ? 'var(--color-primary)' : 'transparent'}`,
-                  }}
+                  data-active={active}
+                  className="cascade-group-row"
                 >
                   {g.label}
                   {active && <Icon name="angle-right" size={10} />}
@@ -124,7 +86,7 @@ export function CascadeSelect({
             })}
           </div>
 
-          <div style={{ flex: 1 }}>
+          <div className="cascade-items">
             <DropdownSection label={itemLabel} />
             {hovItems.map((item) => {
               const sel = hovGroup === value.group && item.value === value.item;

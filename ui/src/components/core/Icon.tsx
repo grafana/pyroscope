@@ -1,3 +1,5 @@
+import './Icon.css';
+
 export type IconType =
   | 'angle-down'
   | 'angle-left'
@@ -14,20 +16,12 @@ export type IconType =
 export function Icon({ name, size = 16 }: { name: IconType; size?: number }) {
   return (
     <span
+      className="icon"
       style={{
-        display: 'inline-block',
         width: size,
         height: size,
-        flexShrink: 0,
-        backgroundColor: 'currentColor',
         maskImage: `url(/icons/${name}.svg)`,
-        maskSize: 'contain',
-        maskRepeat: 'no-repeat',
-        maskPosition: 'center',
         WebkitMaskImage: `url(/icons/${name}.svg)`,
-        WebkitMaskSize: 'contain',
-        WebkitMaskRepeat: 'no-repeat',
-        WebkitMaskPosition: 'center',
       }}
     />
   );

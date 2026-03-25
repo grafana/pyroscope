@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './theme.css';
+import './App.css';
 import { NavBar } from '@components/NavBar';
 import { FlameGraph } from '@components/FlameGraph';
 import { QueryBar } from '@components/QueryBar';
@@ -53,14 +54,7 @@ export default function App() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100dvh',
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'var(--bg-canvas)',
-      }}
-    >
+    <div className="app">
       <NavBar
         services={query.services}
         servicesLoading={query.servicesLoading}
@@ -79,34 +73,13 @@ export default function App() {
       />
 
       {query.error && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-2)',
-            padding: 'var(--space-2) var(--space-4)',
-            background: 'var(--color-error-subtle)',
-            borderBottom: '1px solid var(--color-error-border)',
-            fontSize: 'var(--text-sm)',
-            color: 'var(--color-error-text)',
-          }}
-        >
+        <div className="app-error">
           <span>Unable to reach Pyroscope backend.</span>
-          <span style={{ color: 'var(--text-disabled)', fontFamily: 'var(--font-mono)' }}>
-            {query.error}
-          </span>
+          <span className="app-error-detail">{query.error}</span>
         </div>
       )}
 
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--space-3)',
-          padding: 'var(--space-3)',
-        }}
-      >
+      <div className="app-content">
         <Panel title="Rate · samples / sec">
           <TimeSeries data={query.timeline} timeRange={timeRange} />
         </Panel>

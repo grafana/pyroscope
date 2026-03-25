@@ -3,6 +3,7 @@ import { Icon } from '@components/core/Icon';
 import { CascadeSelect } from '@components/core/CascadeSelect';
 import { type ProfileType, type Service } from '@hooks/usePyroscopeQuery';
 import { profileTypeLabel } from '@api/client';
+import './NavBar.css';
 
 const TIME_PRESETS = [
   { label: 'Last 5m', value: 'now-5m' },
@@ -44,51 +45,14 @@ export function NavBar({
   onTimeChange: (v: string) => void;
   onThemeChange: (t: 'dark' | 'light') => void;
 }) {
-
   return (
-    <nav
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        height: 46,
-        padding: '0 var(--space-3)',
-        background: 'var(--bg-canvas)',
-        borderBottom: '1px solid var(--border-weak)',
-        gap: 'var(--space-1)',
-        flexShrink: 0,
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-2)',
-          color: 'var(--color-primary)',
-          padding: '0 var(--space-2)',
-          marginRight: 'var(--space-1)',
-        }}
-      >
+    <nav className="navbar">
+      <div className="navbar-brand">
         <Icon name="logo" size={18} />
-        <span
-          style={{
-            fontSize: 'var(--text-lg)',
-            fontWeight: 'var(--weight-medium)',
-            color: 'var(--text-primary)',
-            letterSpacing: 'var(--tracking-tight)',
-          }}
-        >
-          Pyroscope
-        </span>
+        <span className="navbar-brand-name">Pyroscope</span>
       </div>
 
-      <div
-        style={{
-          width: 1,
-          height: 20,
-          background: 'var(--border-medium)',
-          margin: '0 var(--space-1)',
-        }}
-      />
+      <div className="navbar-divider" />
 
       <CascadeSelect
         groups={services.map((s) => ({
@@ -104,7 +68,7 @@ export function NavBar({
       />
       <Select value={timeRange} options={TIME_PRESETS} onChange={onTimeChange} />
 
-      <div style={{ flex: 1 }} />
+      <div className="navbar-spacer" />
 
       <Select
         value={theme}

@@ -1,3 +1,5 @@
+import './TimeSeries.css';
+
 const TICK_INTERVALS_MS = [
   60_000,
   5 * 60_000,
@@ -41,7 +43,7 @@ export function TimeSeries({ data, timeRange }: { data: number[]; timeRange: str
 
   if (n === 0) {
     return (
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: 'block' }} />
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} className="timeseries-svg" />
     );
   }
 
@@ -77,33 +79,21 @@ export function TimeSeries({ data, timeRange }: { data: number[]; timeRange: str
   }));
 
   return (
-    <div style={{ display: 'flex' }}>
-      <div style={{ width: 32, position: 'relative', flexShrink: 0 }}>
+    <div className="timeseries">
+      <div className="timeseries-y-axis">
         {yTicks.map(({ y, label }) => (
-          <span
-            key={label}
-            style={{
-              position: 'absolute',
-              right: 6,
-              top: y,
-              transform: 'translateY(-50%)',
-              fontSize: 'var(--text-xs)',
-              fontFamily: 'var(--font-mono)',
-              color: 'var(--text-disabled)',
-              lineHeight: 1,
-            }}
-          >
+          <span key={label} className="timeseries-y-label" style={{ top: y }}>
             {label}
           </span>
         ))}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="timeseries-chart">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
           width="100%"
           height={H}
-          style={{ display: 'block' }}
+          className="timeseries-svg"
         >
           <defs>
             <linearGradient id="tl-fill" x1="0" y1="0" x2="0" y2="1">
@@ -152,21 +142,17 @@ export function TimeSeries({ data, timeRange }: { data: number[]; timeRange: str
             vectorEffect="non-scaling-stroke"
           />
         </svg>
-        <div style={{ position: 'relative', height: 18, marginTop: 2 }}>
+        <div className="timeseries-x-axis">
           {ticks.map(({ x, label }) => (
             <span
               key={x}
+              className="timeseries-x-label"
               style={{
-                position: 'absolute',
                 left: `${(x / W) * 100}%`,
                 transform:
                   x === 0 ? 'none'
                   : x === W ? 'translateX(-100%)'
                   : 'translateX(-50%)',
-                fontSize: 'var(--text-xs)',
-                fontFamily: 'var(--font-mono)',
-                color: 'var(--text-disabled)',
-                whiteSpace: 'nowrap',
               }}
             >
               {label}

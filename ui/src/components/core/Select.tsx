@@ -3,6 +3,7 @@ import { Button } from '@components/core/Button';
 import { DropdownItem } from '@components/core/Dropdown';
 import { Icon } from '@components/core/Icon';
 import { useClickOutside } from '@hooks/useClickOutside';
+import './Select.css';
 
 export type SelectOption = {
   label: string;
@@ -36,7 +37,7 @@ export function Select({
   };
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div ref={ref} className="select">
       <Button onClick={handleOpen} active={open}>
         {label}
         <Icon name="angle-down" size={11} />
@@ -44,31 +45,12 @@ export function Select({
 
       {open && (
         <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            ...(menuAlign === 'left' ? { left: 0 } : { right: 0 }),
-            zIndex: 1000,
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border-medium)',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: 'var(--shadow-md)',
-            minWidth: 160,
-            overflow: 'hidden',
-            padding: 'var(--space-1) 0',
-          }}
+          className="select-menu"
+          style={menuAlign === 'left' ? { left: 0 } : { right: 0 }}
         >
           {options.map((opt) => (
             <div key={opt.value}>
-              {opt.divider && (
-                <div
-                  style={{
-                    height: 1,
-                    background: 'var(--border-weak)',
-                    margin: 'var(--space-1) 0',
-                  }}
-                />
-              )}
+              {opt.divider && <div className="select-divider" />}
               <DropdownItem
                 selected={opt.value === value}
                 onClick={() => {
