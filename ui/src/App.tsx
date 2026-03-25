@@ -26,9 +26,6 @@ function buildQuery(service: string, pt: ProfileType): string {
   return `{service_name="${service}", profile_type="${pt}"}`;
 }
 
-
-
-
 export default function App() {
   const { theme, setTheme } = useTheme();
   const [service, setService] = useState('');
