@@ -13,7 +13,8 @@ function formatAbsoluteRange(start: number, end: number): string {
   const time = (d: Date) =>
     `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   if (s.toDateString() === e.toDateString()) return `${time(s)} – ${time(e)}`;
-  const date = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const date = (d: Date) =>
+    d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   return `${date(s)} ${time(s)} – ${date(e)} ${time(e)}`;
 }
 
@@ -77,7 +78,9 @@ export function NavBar({
           label: s.name,
           value: s.name,
           items: sortProfileTypes(s.profileTypes).map((pt) =>
-            typeof pt === 'string' ? { label: profileTypeLabel(pt), value: pt } : pt
+            typeof pt === 'string'
+              ? { label: profileTypeLabel(pt), value: pt }
+              : pt,
           ),
         }))}
         groupLabel="Service"
@@ -91,13 +94,21 @@ export function NavBar({
         options={
           absoluteRange
             ? [
-                { label: formatAbsoluteRange(absoluteRange.start, absoluteRange.end), value: ABS_VALUE },
+                {
+                  label: formatAbsoluteRange(
+                    absoluteRange.start,
+                    absoluteRange.end,
+                  ),
+                  value: ABS_VALUE,
+                },
                 { ...TIME_PRESETS[0], divider: true },
                 ...TIME_PRESETS.slice(1),
               ]
             : TIME_PRESETS
         }
-        onChange={(v) => { if (v !== ABS_VALUE) onTimeChange(v); }}
+        onChange={(v) => {
+          if (v !== ABS_VALUE) onTimeChange(v);
+        }}
       />
       {queryDirty && (
         <button className="navbar-reset" onClick={onReset}>

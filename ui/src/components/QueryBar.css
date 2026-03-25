@@ -21,7 +21,8 @@
   font-family: var(--font-mono);
   outline: none;
   min-width: 0;
-  transition: border-color var(--duration-base) var(--ease-out),
+  transition:
+    border-color var(--duration-base) var(--ease-out),
     box-shadow var(--duration-base) var(--ease-out);
 }
 

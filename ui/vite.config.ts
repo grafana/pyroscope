@@ -15,8 +15,12 @@ function grafanaPublicPathPlugin(): Plugin {
   };
   return {
     name: 'grafana-public-path-rewrite',
-    configureServer(server) { server.middlewares.use(rewrite); },
-    configurePreviewServer(server) { server.middlewares.use(rewrite); },
+    configureServer(server) {
+      server.middlewares.use(rewrite);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(rewrite);
+    },
   };
 }
 
@@ -24,7 +28,9 @@ export default defineConfig({
   plugins: [react(), grafanaPublicPathPlugin()],
   resolve: {
     alias: {
-      '@components': fileURLToPath(new URL('./src/components', import.meta.url)),
+      '@components': fileURLToPath(
+        new URL('./src/components', import.meta.url),
+      ),
       '@hooks': fileURLToPath(new URL('./src/hooks', import.meta.url)),
       '@api': fileURLToPath(new URL('./src/api', import.meta.url)),
     },

@@ -63,6 +63,20 @@ src/
   theme.css   # All CSS custom properties (single source of truth)
 ```
 
+## Linting
+
+Run `yarn lint` and fix all errors before considering work complete. The default response to a lint error is to fix the code, not suppress the rule.
+
+**Before adding any `eslint-disable` comment, ask the user for clarification.** Do not apply an ignore unilaterally.
+
+Suppressing a rule is only acceptable in these scenarios:
+
+- **Async initialization from external data** — a `useEffect` that sets state once in response to async data arriving (e.g. selecting a default service after the services list loads), where restructuring would require changing unrelated API boundaries.
+- **Set-loading-true before a fetch** — calling `setLoading(true)` synchronously at the start of a fetch effect, where the loading flag must flip before the async work begins and there is no cleaner structural alternative.
+- **Intentionally impure render values** — calling an impure function like `Date.now()` during render where the impurity is the entire point (e.g. "show the current time as the end of a relative range"), and using a state/ref workaround would add complexity with no real benefit.
+
+In all other cases, restructure the code to satisfy the rule.
+
 ## Code style
 
 Banner comments are not allowed. Do not use decorative section dividers such as:

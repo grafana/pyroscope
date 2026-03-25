@@ -6,11 +6,12 @@ import { FlameGraph } from '@components/FlameGraph';
 import { QueryBar } from '@components/QueryBar';
 import { TimeSeries } from '@components/TimeSeries';
 import { Panel } from '@components/Panel';
+import { usePyroscopeQuery, type ProfileType } from '@hooks/usePyroscopeQuery';
 import {
-  usePyroscopeQuery,
-  type ProfileType,
-} from '@hooks/usePyroscopeQuery';
-import { profileTypeLabel, profileTypeRateLabel, sortProfileTypes } from '@api/client';
+  profileTypeLabel,
+  profileTypeRateLabel,
+  sortProfileTypes,
+} from '@api/client';
 
 function useTheme() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -27,7 +28,9 @@ function buildQuery(service: string, pt: ProfileType): string {
   return `{service_name="${service}", profile_type="${pt}"}`;
 }
 
-function parseQuery(q: string): { service: string; profileType: string } | null {
+function parseQuery(
+  q: string,
+): { service: string; profileType: string } | null {
   const service = q.match(/service_name\s*=\s*"([^"]+)"/)?.[1];
   const profileType = q.match(/profile_type\s*=\s*"([^"]+)"/)?.[1];
   if (!service || !profileType) return null;
@@ -39,30 +42,44 @@ export default function App() {
   const [service, setService] = useState('');
   const [profileType, setProfileType] = useState<ProfileType>('');
   const [timeRange, setTimeRange] = useState('now-1h');
-  const [absoluteRange, setAbsoluteRange] = useState<{ start: number; end: number } | null>(null);
-  const [queryInput, setQueryInput] = useState('');
+  const [absoluteRange, setAbsoluteRange] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
+  const [queryUserInput, setQueryUserInput] = useState<string | null>(null);
+  const queryInput =
+    queryUserInput ??
+    (service || profileType ? buildQuery(service, profileType) : '');
 
-  const query = usePyroscopeQuery({ service, profileType, timeRange, absoluteRange });
-
-  useEffect(() => {
-    if (service || profileType) setQueryInput(buildQuery(service, profileType));
-  }, [service, profileType]);
+  const query = usePyroscopeQuery({
+    service,
+    profileType,
+    timeRange,
+    absoluteRange,
+  });
 
   useEffect(() => {
     if (query.servicesLoading || service) return;
     const first = query.services[0];
     if (!first) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setService(first.name);
-    setProfileType(sortProfileTypes(first.profileTypes).find((pt): pt is string => typeof pt === 'string') ?? '');
+    setProfileType(
+      sortProfileTypes(first.profileTypes).find(
+        (pt): pt is string => typeof pt === 'string',
+      ) ?? '',
+    );
   }, [query.services, query.servicesLoading, service]);
 
   const handleAppSelect = (s: string, pt: ProfileType) => {
     setService(s);
     setProfileType(pt);
+    setQueryUserInput(null);
   };
 
-  const queryDirty = !!service && queryInput !== buildQuery(service, profileType);
-  const handleReset = () => setQueryInput(buildQuery(service, profileType));
+  const queryDirty =
+    !!service && queryInput !== buildQuery(service, profileType);
+  const handleReset = () => setQueryUserInput(null);
 
   return (
     <div className="app">
@@ -76,13 +93,16 @@ export default function App() {
         queryDirty={queryDirty}
         onAppSelect={handleAppSelect}
         absoluteRange={absoluteRange}
-        onTimeChange={(v) => { setAbsoluteRange(null); setTimeRange(v); }}
+        onTimeChange={(v) => {
+          setAbsoluteRange(null);
+          setTimeRange(v);
+        }}
         onThemeChange={setTheme}
         onReset={handleReset}
       />
       <QueryBar
         query={queryInput}
-        onQueryChange={setQueryInput}
+        onQueryChange={setQueryUserInput}
         onRun={(q) => {
           const parsed = parseQuery(q);
           if (parsed) {
@@ -114,7 +134,11 @@ export default function App() {
           title="Flamegraph"
           meta={`${service} · ${profileTypeLabel(profileType)} · ${timeRange}`}
         >
-          <FlameGraph data={query.flamegraph} theme={theme} profileTypeId={profileType} />
+          <FlameGraph
+            data={query.flamegraph}
+            theme={theme}
+            profileTypeId={profileType}
+          />
         </Panel>
       </div>
     </div>

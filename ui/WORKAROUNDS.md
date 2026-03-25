@@ -31,6 +31,7 @@ crash inside the flamegraph header's custom scrollbar.
 ### Fix
 
 The patch adds:
+
 - `lib/index.mjs` — a native ESM re-export that handles both possible wrapping
   outcomes from `__toESM` defensively.
 - `exports` and `module` fields to `package.json` — directs ESM-aware bundlers

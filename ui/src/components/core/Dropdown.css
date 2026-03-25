@@ -34,7 +34,8 @@
   margin-top: var(--space-2);
 }
 
-.dropdown-section:not([data-subsection]) + .dropdown-section[data-subsection='true'] {
+.dropdown-section:not([data-subsection])
+  + .dropdown-section[data-subsection='true'] {
   margin-top: 0;
 }
 

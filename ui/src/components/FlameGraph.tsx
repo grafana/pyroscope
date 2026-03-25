@@ -9,9 +9,12 @@ import './FlameGraph.css';
 
 function toGrafanaUnit(unit: string): string {
   switch (unit) {
-    case 'nanoseconds': return 'ns';
-    case 'bytes': return 'bytes';
-    default: return 'short';
+    case 'nanoseconds':
+      return 'ns';
+    case 'bytes':
+      return 'bytes';
+    default:
+      return 'short';
   }
 }
 
@@ -24,7 +27,10 @@ interface ParsedNode {
   children: ParsedNode[];
 }
 
-function toDataFrame(data: FlamegraphData, unit: string): DataFrame | undefined {
+function toDataFrame(
+  data: FlamegraphData,
+  unit: string,
+): DataFrame | undefined {
   const { names, levels } = data;
   if (!levels.length) return undefined;
 
@@ -39,7 +45,14 @@ function toDataFrame(data: FlamegraphData, unit: string): DataFrame | undefined 
       const nameIdx = parseInt(values[i + 3], 10);
       pos += offset;
       if (total > 0) {
-        nodes.push({ name: names[nameIdx] ?? '', start: pos, end: pos + total, self, level: li, children: [] });
+        nodes.push({
+          name: names[nameIdx] ?? '',
+          start: pos,
+          end: pos + total,
+          self,
+          level: li,
+          children: [],
+        });
       }
       pos += total;
     }
@@ -51,7 +64,11 @@ function toDataFrame(data: FlamegraphData, unit: string): DataFrame | undefined 
     let pi = 0;
     for (const node of nodesByLevel[li]) {
       while (pi < parents.length - 1 && parents[pi].end <= node.start) pi++;
-      if (pi < parents.length && parents[pi].start <= node.start && node.end <= parents[pi].end) {
+      if (
+        pi < parents.length &&
+        parents[pi].start <= node.start &&
+        node.end <= parents[pi].end
+      ) {
         parents[pi].children.push(node);
       }
     }
@@ -79,18 +96,39 @@ function toDataFrame(data: FlamegraphData, unit: string): DataFrame | undefined 
     refId: 'A',
     fields: [
       { name: 'level', values: levelVals, type: FieldType.number, config: {} },
-      { name: 'value', values: valueVals, type: FieldType.number, config: { unit } },
-      { name: 'self', values: selfVals, type: FieldType.number, config: { unit } },
+      {
+        name: 'value',
+        values: valueVals,
+        type: FieldType.number,
+        config: { unit },
+      },
+      {
+        name: 'self',
+        values: selfVals,
+        type: FieldType.number,
+        config: { unit },
+      },
       { name: 'label', values: labelVals, type: FieldType.string, config: {} },
     ],
     length: labelVals.length,
   } as unknown as DataFrame;
 }
 
-export function FlameGraph({ data, theme, profileTypeId }: { data: FlamegraphData; theme: 'dark' | 'light'; profileTypeId: string }) {
+export function FlameGraph({
+  data,
+  theme,
+  profileTypeId,
+}: {
+  data: FlamegraphData;
+  theme: 'dark' | 'light';
+  profileTypeId: string;
+}) {
   const unit = toGrafanaUnit(profileTypeUnit(profileTypeId));
   const dataFrame = useMemo(() => toDataFrame(data, unit), [data, unit]);
-  const getTheme = useMemo(() => () => createTheme({ colors: { mode: theme } }), [theme]);
+  const getTheme = useMemo(
+    () => () => createTheme({ colors: { mode: theme } }),
+    [theme],
+  );
 
   if (!dataFrame) {
     return <Empty />;

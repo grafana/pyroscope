@@ -33,7 +33,10 @@ interface SeriesResponse {
   labelsSet: LabelSet[];
 }
 
-export async function fetchServices(from: number, until: number): Promise<Service[]> {
+export async function fetchServices(
+  from: number,
+  until: number,
+): Promise<Service[]> {
   const data = await post<SeriesResponse>('/querier.v1.QuerierService/Series', {
     matchers: [],
     labelNames: ['service_name', '__profile_type__'],
@@ -108,11 +111,17 @@ export async function fetchTimeline(params: {
   return points.map((p) => p.value);
 }
 
-function parseProfileTypeId(id: string): { group: string; type: string; unit: string } | null {
+function parseProfileTypeId(
+  id: string,
+): { group: string; type: string; unit: string } | null {
   const parts = id.split(':');
   // format: <name>:<type>:<unit>:<period_type>:<period_unit>
   if (parts.length !== 5) return null;
-  return { group: parts[0] ?? id, type: parts[1] ?? id, unit: parts[2] ?? 'count' };
+  return {
+    group: parts[0] ?? id,
+    type: parts[1] ?? id,
+    unit: parts[2] ?? 'count',
+  };
 }
 
 export function profileTypeLabel(id: string): string {
@@ -132,10 +141,14 @@ export function profileTypeUnit(id: string): string {
 
 export function profileTypeRateLabel(id: string): string {
   switch (profileTypeUnit(id)) {
-    case 'nanoseconds': return 'cpu cores';
-    case 'bytes': return 'bytes / sec';
-    case 'seconds': return 'sec / sec';
-    default: return 'samples / sec';
+    case 'nanoseconds':
+      return 'cpu cores';
+    case 'bytes':
+      return 'bytes / sec';
+    case 'seconds':
+      return 'sec / sec';
+    default:
+      return 'samples / sec';
   }
 }
 
@@ -144,7 +157,9 @@ const PINNED_GROUPS = ['process_cpu', 'memory'];
 // Returns profile type IDs interleaved with section headers for each group.
 // Groups are ordered: pinned groups first, then alphabetical.
 // Profile types within each group are sorted alphabetically by type label.
-export function sortProfileTypes(ids: string[]): Array<string | { section: string }> {
+export function sortProfileTypes(
+  ids: string[],
+): Array<string | { section: string }> {
   const byGroup = new Map<string, string[]>();
   for (const id of ids) {
     const group = profileTypeGroup(id);
@@ -153,7 +168,8 @@ export function sortProfileTypes(ids: string[]): Array<string | { section: strin
   }
 
   const groupNames = Array.from(byGroup.keys()).sort((a, b) => {
-    const ai = PINNED_GROUPS.indexOf(a), bi = PINNED_GROUPS.indexOf(b);
+    const ai = PINNED_GROUPS.indexOf(a),
+      bi = PINNED_GROUPS.indexOf(b);
     if (ai !== -1 && bi !== -1) return ai - bi;
     if (ai !== -1) return -1;
     if (bi !== -1) return 1;
@@ -162,9 +178,9 @@ export function sortProfileTypes(ids: string[]): Array<string | { section: strin
 
   const result: Array<string | { section: string }> = [];
   for (const group of groupNames) {
-    const members = byGroup.get(group)!.sort((a, b) =>
-      profileTypeLabel(a).localeCompare(profileTypeLabel(b))
-    );
+    const members = byGroup
+      .get(group)!
+      .sort((a, b) => profileTypeLabel(a).localeCompare(profileTypeLabel(b)));
     result.push({ section: group });
     result.push(...members);
   }

@@ -32,7 +32,9 @@ export function Select({
   const handleOpen = () => {
     if (!open && ref.current) {
       const rect = ref.current.getBoundingClientRect();
-      setMenuAlign(rect.left + MENU_MIN_WIDTH > window.innerWidth ? 'right' : 'left');
+      setMenuAlign(
+        rect.left + MENU_MIN_WIDTH > window.innerWidth ? 'right' : 'left',
+      );
     }
     setOpen((o) => !o);
   };

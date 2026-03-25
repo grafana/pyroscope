@@ -23,8 +23,18 @@ export function DropdownItem({
   );
 }
 
-export function DropdownSection({ label, subsection }: { label: string; subsection?: boolean }) {
-  return <div className="dropdown-section" data-subsection={subsection}>{label}</div>;
+export function DropdownSection({
+  label,
+  subsection,
+}: {
+  label: string;
+  subsection?: boolean;
+}) {
+  return (
+    <div className="dropdown-section" data-subsection={subsection}>
+      {label}
+    </div>
+  );
 }
 
 export function DropdownDivider() {
