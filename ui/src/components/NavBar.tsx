@@ -2,14 +2,7 @@ import { Select } from '@components/core/Select';
 import { Icon } from '@components/core/Icon';
 import { CascadeSelect } from '@components/core/CascadeSelect';
 import { type ProfileType, type Service } from '@hooks/usePyroscopeQuery';
-
-const PROFILE_LABEL: Record<ProfileType, string> = {
-  cpu: 'cpu',
-  memory: 'memory',
-  goroutine: 'goroutine',
-  mutex: 'mutex',
-  block: 'block',
-};
+import { profileTypeLabel } from '@api/client';
 
 const TIME_PRESETS = [
   { label: 'Last 5m', value: 'now-5m' },
@@ -32,6 +25,7 @@ const THEME_OPTIONS = [
 
 export function NavBar({
   services,
+  servicesLoading,
   service,
   profileType,
   timeRange,
@@ -41,6 +35,7 @@ export function NavBar({
   onThemeChange,
 }: {
   services: Service[];
+  servicesLoading: boolean;
   service: string;
   profileType: ProfileType;
   timeRange: string;
@@ -99,12 +94,13 @@ export function NavBar({
         groups={services.map((s) => ({
           label: s.name,
           value: s.name,
-          items: s.profileTypes.map((pt) => ({ label: PROFILE_LABEL[pt], value: pt })),
+          items: s.profileTypes.map((pt) => ({ label: profileTypeLabel(pt), value: pt })),
         }))}
         groupLabel="Service"
         itemLabel="Profile Type"
         value={{ group: service, item: profileType }}
         onChange={(g, i) => onAppSelect(g, i as ProfileType)}
+        loading={servicesLoading}
       />
       <Select value={timeRange} options={TIME_PRESETS} onChange={onTimeChange} />
 

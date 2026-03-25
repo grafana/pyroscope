@@ -1,0 +1,82 @@
+{
+  "process_cpu:cpu:nanoseconds:cpu:nanoseconds": {
+    "id": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+    "description": "CPU time spent executing code",
+    "type": "cpu",
+    "group": "process_cpu",
+    "unit": "nanoseconds",
+    "aggregationType": "sum"
+  },
+  "memory:alloc_objects:count:space:bytes": {
+    "id": "memory:alloc_objects:count:space:bytes",
+    "description": "Number of objects allocated",
+    "type": "alloc_objects",
+    "group": "memory",
+    "unit": "count",
+    "aggregationType": "sum"
+  },
+  "memory:alloc_space:bytes:space:bytes": {
+    "id": "memory:alloc_space:bytes:space:bytes",
+    "description": "Bytes allocated",
+    "type": "alloc_space",
+    "group": "memory",
+    "unit": "bytes",
+    "aggregationType": "sum"
+  },
+  "memory:inuse_objects:count:space:bytes": {
+    "id": "memory:inuse_objects:count:space:bytes",
+    "description": "Number of objects currently in use",
+    "type": "inuse_objects",
+    "group": "memory",
+    "unit": "count",
+    "aggregationType": "average"
+  },
+  "memory:inuse_space:bytes:space:bytes": {
+    "id": "memory:inuse_space:bytes:space:bytes",
+    "description": "Bytes currently in use",
+    "type": "inuse_space",
+    "group": "memory",
+    "unit": "bytes",
+    "aggregationType": "average"
+  },
+  "goroutine:goroutine:count:goroutine:count": {
+    "id": "goroutine:goroutine:count:goroutine:count",
+    "description": "Number of goroutines",
+    "type": "goroutine",
+    "group": "goroutine",
+    "unit": "count",
+    "aggregationType": "average"
+  },
+  "mutex:contentions:count:contentions:count": {
+    "id": "mutex:contentions:count:contentions:count",
+    "description": "Number of mutex contention events",
+    "type": "contentions",
+    "group": "mutex",
+    "unit": "count",
+    "aggregationType": "sum"
+  },
+  "mutex:delay:nanoseconds:contentions:count": {
+    "id": "mutex:delay:nanoseconds:contentions:count",
+    "description": "Time spent waiting on mutexes",
+    "type": "delay",
+    "group": "mutex",
+    "unit": "nanoseconds",
+    "aggregationType": "sum"
+  },
+  "block:contentions:count:contentions:count": {
+    "id": "block:contentions:count:contentions:count",
+    "description": "Number of block contention events",
+    "type": "contentions",
+    "group": "block",
+    "unit": "count",
+    "aggregationType": "sum"
+  },
+  "block:delay:nanoseconds:contentions:count": {
+    "id": "block:delay:nanoseconds:contentions:count",
+    "description": "Time spent blocked on synchronization",
+    "type": "delay",
+    "group": "block",
+    "unit": "nanoseconds",
+    "aggregationType": "sum"
+  }
+}

@@ -7,14 +7,7 @@ import {
   usePyroscopeQuery,
   type ProfileType,
 } from '@hooks/usePyroscopeQuery';
-
-const PROFILE_LABEL: Record<ProfileType, string> = {
-  cpu: 'cpu',
-  memory: 'memory',
-  goroutine: 'goroutine',
-  mutex: 'mutex',
-  block: 'block',
-};
+import { profileTypeLabel } from '@api/client';
 
 function useTheme() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -75,8 +68,14 @@ function TimelineChart({ data, timeRange }: { data: number[]; timeRange: string 
     H = 56;
   const n = data.length;
 
+  if (n === 0) {
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: 'block' }} />
+    );
+  }
+
   const pts = data.map(
-    (v, i) => [(i / (n - 1)) * W, H - 4 - v * (H - 10)] as [number, number],
+    (v, i) => [(i / Math.max(n - 1, 1)) * W, H - 4 - v * (H - 10)] as [number, number],
   );
 
   const area =
@@ -267,18 +266,24 @@ function Panel({
 
 export default function App() {
   const { theme, setTheme } = useTheme();
-  const [service, setService] = useState('api-server');
-  const [profileType, setProfileType] = useState<ProfileType>('cpu');
+  const [service, setService] = useState('');
+  const [profileType, setProfileType] = useState<ProfileType>('');
   const [timeRange, setTimeRange] = useState('now-1h');
-  const [queryInput, setQueryInput] = useState(() =>
-    buildQuery('api-server', 'cpu'),
-  );
+  const [queryInput, setQueryInput] = useState('');
 
   const query = usePyroscopeQuery({ service, profileType, timeRange });
 
   useEffect(() => {
-    setQueryInput(buildQuery(service, profileType));
+    if (service || profileType) setQueryInput(buildQuery(service, profileType));
   }, [service, profileType]);
+
+  useEffect(() => {
+    if (query.servicesLoading || service) return;
+    const first = query.services[0];
+    if (!first) return;
+    setService(first.name);
+    setProfileType(first.profileTypes[0] ?? '');
+  }, [query.services, query.servicesLoading, service]);
 
   const handleAppSelect = (s: string, pt: ProfileType) => {
     setService(s);
@@ -296,6 +301,7 @@ export default function App() {
     >
       <NavBar
         services={query.services}
+        servicesLoading={query.servicesLoading}
         service={service}
         profileType={profileType}
         timeRange={timeRange}
@@ -309,6 +315,26 @@ export default function App() {
         onQueryChange={setQueryInput}
         onRun={query.run}
       />
+
+      {query.error && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+            padding: 'var(--space-2) var(--space-4)',
+            background: 'var(--color-error-subtle)',
+            borderBottom: '1px solid var(--color-error-border)',
+            fontSize: 'var(--text-sm)',
+            color: 'var(--color-error-text)',
+          }}
+        >
+          <span>Unable to reach Pyroscope backend.</span>
+          <span style={{ color: 'var(--text-disabled)', fontFamily: 'var(--font-mono)' }}>
+            {query.error}
+          </span>
+        </div>
+      )}
 
       <div
         style={{
@@ -325,7 +351,7 @@ export default function App() {
 
         <Panel
           title="Flamegraph"
-          meta={`${service} · ${PROFILE_LABEL[profileType]} · ${timeRange}`}
+          meta={`${service} · ${profileTypeLabel(profileType)} · ${timeRange}`}
         >
           <FlameGraph levels={query.flamegraph} />
         </Panel>

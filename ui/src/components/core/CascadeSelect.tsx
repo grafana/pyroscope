@@ -13,19 +13,25 @@ export function CascadeSelect({
   itemLabel,
   value,
   onChange,
+  loading = false,
 }: {
   groups: CascadeGroup[];
   groupLabel: string;
   itemLabel: string;
   value: { group: string; item: string };
   onChange: (group: string, item: string) => void;
+  loading?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [hovGroup, setHovGroup] = useState(value.group);
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setOpen(false));
 
+  const noData = !loading && groups.length === 0;
+  const disabled = loading || noData;
+
   const handleOpen = () => {
+    if (disabled) return;
     setHovGroup(value.group);
     setOpen((o) => !o);
   };
@@ -39,11 +45,32 @@ export function CascadeSelect({
 
   const hovItems = groups.find((g) => g.value === hovGroup)?.items ?? [];
 
+  const buttonContent = loading ? (
+    <>
+      <style>{`@keyframes cs-spin{to{transform:rotate(360deg)}}`}</style>
+      <span style={{
+        width: 12, height: 12, flexShrink: 0,
+        border: '1.5px solid var(--border-medium)',
+        borderTopColor: 'var(--text-secondary)',
+        borderRadius: '50%',
+        animation: 'cs-spin 0.7s linear infinite',
+        display: 'inline-block',
+      }} />
+      Loading
+    </>
+  ) : noData ? (
+    <span style={{ color: 'var(--text-disabled)' }}>No data</span>
+  ) : (
+    <>
+      {selectedGroupLabel} · {selectedItemLabel}
+      <Icon name="chevron-down" size={11} />
+    </>
+  );
+
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div ref={ref} style={{ position: 'relative', opacity: disabled ? 0.6 : 1 }}>
       <Button onClick={handleOpen} active={open}>
-        {selectedGroupLabel} · {selectedItemLabel}
-        <Icon name="chevron-down" size={11} />
+        {buttonContent}
       </Button>
 
       {open && (
