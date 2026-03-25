@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@components/core/Button';
 import { DropdownItem, DropdownSection } from '@components/core/Dropdown';
 import { Icon } from '@components/core/Icon';
@@ -25,8 +25,13 @@ export function CascadeSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [hovGroup, setHovGroup] = useState(value.group);
+  const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
-  useClickOutside(ref, () => setOpen(false));
+  const searchRef = useRef<HTMLInputElement>(null);
+  useClickOutside(ref, () => {
+    setOpen(false);
+    setSearch('');
+  });
 
   const noData = !loading && groups.length === 0;
   const disabled = loading || noData;
@@ -34,8 +39,27 @@ export function CascadeSelect({
   const handleOpen = () => {
     if (disabled) return;
     setHovGroup(value.group);
+    setSearch('');
     setOpen((o) => !o);
   };
+
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => searchRef.current?.focus(), 0);
+    }
+  }, [open]);
+
+  const visibleGroups = search
+    ? groups.filter((g) => g.label.toLowerCase().includes(search.toLowerCase()))
+    : groups;
+
+  const effectiveHovGroup =
+    visibleGroups.find((g) => g.value === hovGroup)?.value ??
+    visibleGroups[0]?.value ??
+    hovGroup;
+
+  const hovItems =
+    groups.find((g) => g.value === effectiveHovGroup)?.items ?? [];
 
   const selectedGroupLabel =
     groups.find((g) => g.value === value.group)?.label ?? value.group;
@@ -46,8 +70,6 @@ export function CascadeSelect({
         (i): i is { label: string; value: string } =>
           !('section' in i) && i.value === value.item,
       )?.label ?? value.item;
-
-  const hovItems = groups.find((g) => g.value === hovGroup)?.items ?? [];
 
   const buttonContent = loading ? (
     <>
@@ -72,21 +94,34 @@ export function CascadeSelect({
       {open && (
         <div className="cascade-menu">
           <div className="cascade-groups">
+            <input
+              ref={searchRef}
+              className="cascade-search"
+              placeholder={`Search ${groupLabel.toLowerCase()}…`}
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+              }}
+            />
             <DropdownSection label={groupLabel} />
-            {groups.map((g) => {
-              const active = g.value === hovGroup;
-              return (
-                <div
-                  key={g.value}
-                  onMouseEnter={() => setHovGroup(g.value)}
-                  data-active={active}
-                  className="cascade-group-row"
-                >
-                  {g.label}
-                  {active && <Icon name="angle-right" size={10} />}
-                </div>
-              );
-            })}
+            {visibleGroups.length === 0 ? (
+              <div className="cascade-no-matches">No matches</div>
+            ) : (
+              visibleGroups.map((g) => {
+                const active = g.value === effectiveHovGroup;
+                return (
+                  <div
+                    key={g.value}
+                    onMouseEnter={() => setHovGroup(g.value)}
+                    data-active={active}
+                    className="cascade-group-row"
+                  >
+                    {g.label}
+                    {active && <Icon name="angle-right" size={10} />}
+                  </div>
+                );
+              })
+            )}
           </div>
 
           <div className="cascade-items">
@@ -100,14 +135,16 @@ export function CascadeSelect({
                     subsection
                   />
                 );
-              const sel = hovGroup === value.group && item.value === value.item;
+              const sel =
+                effectiveHovGroup === value.group && item.value === value.item;
               return (
                 <DropdownItem
                   key={item.value}
                   selected={sel}
                   onClick={() => {
-                    onChange(hovGroup, item.value);
+                    onChange(effectiveHovGroup, item.value);
                     setOpen(false);
+                    setSearch('');
                   }}
                 >
                   <span>{item.label}</span>
