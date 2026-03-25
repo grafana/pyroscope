@@ -101,7 +101,7 @@ type queryProfileParams struct {
 	ProfileType        string
 	StacktraceSelector []string
 	SpanSelector       []string
-	ProfileID          string
+	ProfileIDs         []string
 	MaxNodes           int64
 }
 
@@ -111,7 +111,6 @@ func addQueryProfileParams(queryCmd commander) *queryProfileParams {
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
 	queryCmd.Flag("stacktrace-selector", "Only query locations with those symbols. Provide multiple times starting with the root").StringsVar(&params.StacktraceSelector)
 	queryCmd.Flag("span-selector", "Only query profiles with the given span IDs. Provide multiple times for multiple spans.").StringsVar(&params.SpanSelector)
-	queryCmd.Flag("profile-id", "Profile ID (UUID) to query a specific profile. Use 'query exemplars' to find IDs.").StringVar(&params.ProfileID)
 	queryCmd.Flag("max-nodes", "Maximum number of nodes to return in the profile").Int64Var(&params.MaxNodes)
 	return params
 }
@@ -126,13 +125,13 @@ func validateQueryProfileParams(params *queryProfileParams) error {
 	// --profile-id and --span-selector serve different purposes and cannot be combined.
 	// ProfileIdSelector uses profile_id (UUID) for drilling down from exemplars.
 	// SpanSelector uses span_id for span-filtered queries. See PR #4872.
-	if params.ProfileID != "" && len(params.SpanSelector) > 0 {
+	if len(params.ProfileIDs) > 0 && len(params.SpanSelector) > 0 {
 		return errors.New("--profile-id and --span-selector cannot be used together. --profile-id selects a specific profile by UUID (from exemplar queries). --span-selector filters by trace span ID.")
 	}
 
-	// Validate --profile-id is a valid UUID if provided.
-	if params.ProfileID != "" {
-		if _, err := uuid.Parse(params.ProfileID); err != nil {
+	// Validate each --profile-id is a valid UUID if provided.
+	for _, id := range params.ProfileIDs {
+		if _, err := uuid.Parse(id); err != nil {
 			return errors.New("--profile-id must be a valid UUID (e.g. 550e8400-e29b-41d4-a716-446655440000). Did you mean --span-selector for span IDs?")
 		}
 	}
@@ -235,8 +234,8 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 	}
 
 	// ProfileIdSelector uses profile_id (UUID), NOT span_id. See PR #4872.
-	if params.ProfileID != "" {
-		req.ProfileIdSelector = []string{params.ProfileID}
+	if len(params.ProfileIDs) > 0 {
+		req.ProfileIdSelector = params.ProfileIDs
 	}
 
 	qc := params.phlareClient.queryClient()
@@ -271,8 +270,8 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 	}
 
 	// ProfileIdSelector uses profile_id (UUID), NOT span_id. See PR #4872.
-	if params.ProfileID != "" {
-		req.ProfileIdSelector = []string{params.ProfileID}
+	if len(params.ProfileIDs) > 0 {
+		req.ProfileIdSelector = params.ProfileIDs
 	}
 
 	qc := params.phlareClient.queryClient()

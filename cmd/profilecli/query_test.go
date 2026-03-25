@@ -12,41 +12,51 @@ func TestQueryProfileParams_ProfileIDValidation(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name      string
-		profileID string
-		wantErr   bool
+		name       string
+		profileIDs []string
+		wantErr    bool
 	}{
 		{
-			name:      "valid UUID",
-			profileID: "550e8400-e29b-41d4-a716-446655440000",
-			wantErr:   false,
+			name:       "valid UUID",
+			profileIDs: []string{"550e8400-e29b-41d4-a716-446655440000"},
+			wantErr:    false,
 		},
 		{
-			name:      "valid UUID v4",
-			profileID: uuid.New().String(),
-			wantErr:   false,
+			name:       "valid UUID v4",
+			profileIDs: []string{uuid.New().String()},
+			wantErr:    false,
 		},
 		{
-			name:      "invalid UUID - span ID",
-			profileID: "deadbeef12345678",
-			wantErr:   true,
+			name:       "multiple valid UUIDs",
+			profileIDs: []string{"550e8400-e29b-41d4-a716-446655440000", uuid.New().String()},
+			wantErr:    false,
 		},
 		{
-			name:      "invalid UUID - random string",
-			profileID: "not-a-uuid",
-			wantErr:   true,
+			name:       "invalid UUID - span ID",
+			profileIDs: []string{"deadbeef12345678"},
+			wantErr:    true,
 		},
 		{
-			name:      "empty string is valid (not provided)",
-			profileID: "",
-			wantErr:   false,
+			name:       "invalid UUID - random string",
+			profileIDs: []string{"not-a-uuid"},
+			wantErr:    true,
+		},
+		{
+			name:       "one valid one invalid",
+			profileIDs: []string{"550e8400-e29b-41d4-a716-446655440000", "not-a-uuid"},
+			wantErr:    true,
+		},
+		{
+			name:       "empty slice is valid (not provided)",
+			profileIDs: nil,
+			wantErr:    false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			params := &queryProfileParams{ProfileID: tt.profileID}
+			params := &queryProfileParams{ProfileIDs: tt.profileIDs}
 			err := validateQueryProfileParams(params)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -63,7 +73,7 @@ func TestQueryProfileParams_MutualExclusion(t *testing.T) {
 
 	// --profile-id and --span-selector cannot be used together.
 	err := validateQueryProfileParams(&queryProfileParams{
-		ProfileID:    "550e8400-e29b-41d4-a716-446655440000",
+		ProfileIDs:   []string{"550e8400-e29b-41d4-a716-446655440000"},
 		SpanSelector: []string{"deadbeef12345678"},
 	})
 	require.Error(t, err)
@@ -71,7 +81,7 @@ func TestQueryProfileParams_MutualExclusion(t *testing.T) {
 
 	// No conflict when only profile-id is set.
 	err = validateQueryProfileParams(&queryProfileParams{
-		ProfileID: "550e8400-e29b-41d4-a716-446655440000",
+		ProfileIDs: []string{"550e8400-e29b-41d4-a716-446655440000"},
 	})
 	require.NoError(t, err)
 
