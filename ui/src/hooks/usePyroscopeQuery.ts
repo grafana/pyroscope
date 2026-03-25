@@ -18,6 +18,7 @@ export interface QueryResult {
   loading: boolean;
   error: string | null;
   run: () => void;
+  execute: (service: string, profileType: string, timeRange: string) => void;
 }
 
 function parseTimeRange(range: string): { start: number; end: number } {
@@ -72,5 +73,5 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
     execute(service, profileType, timeRange);
   }, [service, profileType, timeRange, execute]);
 
-  return { services, servicesLoading, flamegraph, timeline, loading, error, run };
+  return { services, servicesLoading, flamegraph, timeline, loading, error, run, execute };
 }

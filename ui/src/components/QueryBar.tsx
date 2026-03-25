@@ -9,14 +9,14 @@ export function QueryBar({
 }: {
   query: string;
   onQueryChange: (q: string) => void;
-  onRun: () => void;
+  onRun: (query: string) => void;
 }) {
   const [lastRun, setLastRun] = useState<string | null>(null);
   const dirty = lastRun === null || lastRun !== query;
 
   const handleRun = () => {
     setLastRun(query);
-    onRun();
+    onRun(query);
   };
 
   return (

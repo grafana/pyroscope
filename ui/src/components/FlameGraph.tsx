@@ -72,6 +72,8 @@ function toDataFrame(data: FlamegraphData, unit: string): DataFrame | undefined 
 
   for (const root of nodesByLevel[0]) dfs(root);
 
+  if (labelVals.length === 0) return undefined;
+
   return {
     name: 'flamegraph',
     refId: 'A',

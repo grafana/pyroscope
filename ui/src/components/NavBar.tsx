@@ -31,9 +31,11 @@ export function NavBar({
   profileType,
   timeRange,
   theme,
+  queryDirty,
   onAppSelect,
   onTimeChange,
   onThemeChange,
+  onReset,
 }: {
   services: Service[];
   servicesLoading: boolean;
@@ -41,9 +43,11 @@ export function NavBar({
   profileType: ProfileType;
   timeRange: string;
   theme: 'dark' | 'light';
+  queryDirty: boolean;
   onAppSelect: (s: string, pt: ProfileType) => void;
   onTimeChange: (v: string) => void;
   onThemeChange: (t: 'dark' | 'light') => void;
+  onReset: () => void;
 }) {
   return (
     <nav className="navbar">
@@ -69,6 +73,11 @@ export function NavBar({
         loading={servicesLoading}
       />
       <Select value={timeRange} options={TIME_PRESETS} onChange={onTimeChange} />
+      {queryDirty && (
+        <button className="navbar-reset" onClick={onReset}>
+          Reset query
+        </button>
+      )}
 
       <div className="navbar-spacer" />
 

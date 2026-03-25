@@ -35,3 +35,19 @@
 .navbar-spacer {
   flex: 1;
 }
+
+.navbar-reset {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.navbar-reset:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}

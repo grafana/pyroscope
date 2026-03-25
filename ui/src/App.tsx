@@ -27,6 +27,13 @@ function buildQuery(service: string, pt: ProfileType): string {
   return `{service_name="${service}", profile_type="${pt}"}`;
 }
 
+function parseQuery(q: string): { service: string; profileType: string } | null {
+  const service = q.match(/service_name\s*=\s*"([^"]+)"/)?.[1];
+  const profileType = q.match(/profile_type\s*=\s*"([^"]+)"/)?.[1];
+  if (!service || !profileType) return null;
+  return { service, profileType };
+}
+
 export default function App() {
   const { theme, setTheme } = useTheme();
   const [service, setService] = useState('');
@@ -53,6 +60,9 @@ export default function App() {
     setProfileType(pt);
   };
 
+  const queryDirty = !!service && queryInput !== buildQuery(service, profileType);
+  const handleReset = () => setQueryInput(buildQuery(service, profileType));
+
   return (
     <div className="app">
       <NavBar
@@ -62,14 +72,21 @@ export default function App() {
         profileType={profileType}
         timeRange={timeRange}
         theme={theme}
+        queryDirty={queryDirty}
         onAppSelect={handleAppSelect}
         onTimeChange={setTimeRange}
         onThemeChange={setTheme}
+        onReset={handleReset}
       />
       <QueryBar
         query={queryInput}
         onQueryChange={setQueryInput}
-        onRun={query.run}
+        onRun={(q) => {
+          const parsed = parseQuery(q);
+          if (parsed) {
+            query.execute(parsed.service, parsed.profileType, timeRange);
+          }
+        }}
       />
 
       {query.error && (
