@@ -525,7 +525,7 @@ func (*ReadWriter[T, P]) ReadParquetFile(file io.ReaderAt) ([]T, error) {
 	defer reader.Close()
 
 	rows := make([]parquet.Row, reader.NumRows())
-	if _, err := reader.ReadRows(rows); err != nil && err != io.EOF {
+	if _, err := reader.ReadRows(rows); err != nil {
 		return nil, err
 	}
 

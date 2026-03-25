@@ -1,7 +1,6 @@
 package downsample
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -266,7 +265,7 @@ func readDownsampledRows(t *testing.T, path string, expectedRowCount int) []parq
 	reader := parquet.NewReader(pf, schemav1.DownsampledProfilesSchema)
 	downsampledRows := make([]parquet.Row, reader.NumRows())
 	rowCount, err := reader.ReadRows(downsampledRows)
-	require.ErrorIs(t, err, io.EOF)
+	require.NoError(t, err)
 
 	require.Equal(t, expectedRowCount, rowCount)
 	return downsampledRows

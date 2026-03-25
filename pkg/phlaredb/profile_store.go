@@ -538,7 +538,7 @@ var colIdxSeriesIndex = func() int {
 
 func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
 	n, err := r.Rows.ReadRows(rows)
-	if err != nil && err != io.EOF {
+	if err != nil {
 		return n, err
 	}
 	// sh for next call of getSeriesIndex
@@ -551,7 +551,7 @@ func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
 	r.searchHint = sh
 	r.pos += int64(n)
 
-	return n, err
+	return n, nil
 }
 
 func copySlice[T any](in []T) []T {
