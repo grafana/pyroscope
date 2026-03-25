@@ -20,8 +20,8 @@ export function Icon({ name, size = 16 }: { name: IconType; size?: number }) {
       style={{
         width: size,
         height: size,
-        maskImage: `url(/icons/${name}.svg)`,
-        WebkitMaskImage: `url(/icons/${name}.svg)`,
+        maskImage: `url(icons/${name}.svg)`,
+        WebkitMaskImage: `url(icons/${name}.svg)`,
       }}
     />
   );
