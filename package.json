@@ -182,6 +182,9 @@
     "undici": "^7.24.0",
     "dompurify": "^3.3.2",
     "flatted": "^3.4.0",
-    "serialize-javascript": "^7.0.3"
+    "serialize-javascript": "^7.0.3",
+    "@eslint/eslintrc/ajv": "^6.12.6",
+    "eslint/ajv": "^6.12.6",
+    "ajv-formats/ajv": "^8.17.1"
   }
 }
