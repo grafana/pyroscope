@@ -352,19 +352,24 @@ func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string
 		"keep-locations", params.KeepLocations,
 		"aggregate-callees", params.AggregateCallees,
 	)
-	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force,
-		&querierv1.SelectMergeProfileRequest{
-			ProfileTypeID: params.ProfileType,
-			Start:         from.UnixMilli(),
-			End:           to.UnixMilli(),
-			LabelSelector: params.Query,
-			StackTraceSelector: &typesv1.StackTraceSelector{
-				GoPgo: &typesv1.GoPGO{
-					KeepLocations:    params.KeepLocations,
-					AggregateCallees: params.AggregateCallees,
-				},
+	req := &querierv1.SelectMergeProfileRequest{
+		ProfileTypeID: params.ProfileType,
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
+		LabelSelector: params.Query,
+		StackTraceSelector: &typesv1.StackTraceSelector{
+			GoPgo: &typesv1.GoPGO{
+				KeepLocations:    params.KeepLocations,
+				AggregateCallees: params.AggregateCallees,
 			},
-		})
+		},
+	}
+
+	if params.ProfileID != "" {
+		req.ProfileIdSelector = []string{params.ProfileID}
+	}
+
+	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force, req)
 }
 
 type querySeriesParams struct {
