@@ -56,7 +56,7 @@ export function NavBar({
   service: string;
   profileType: ProfileType;
   timeRange: string;
-  absoluteRange: { start: number; end: number } | null;
+  absoluteRange: { start: number; end: number } | undefined;
   theme: 'dark' | 'light';
   queryDirty: boolean;
   onAppSelect: (s: string, pt: ProfileType) => void;

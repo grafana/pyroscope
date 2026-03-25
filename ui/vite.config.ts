@@ -35,6 +35,10 @@ export default defineConfig({
       '@api': fileURLToPath(new URL('./src/api', import.meta.url)),
     },
   },
+  build: {
+    outDir: '../public/build',
+    emptyOutDir: true,
+  },
   server: {
     proxy: {
       '/querier.v1.QuerierService': 'http://localhost:4040',

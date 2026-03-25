@@ -45,7 +45,7 @@ export default function App() {
   const [absoluteRange, setAbsoluteRange] = useState<{
     start: number;
     end: number;
-  } | null>(null);
+  } | undefined>(undefined);
   const [queryUserInput, setQueryUserInput] = useState<string | null>(null);
   const queryInput =
     queryUserInput ??
@@ -94,7 +94,7 @@ export default function App() {
         onAppSelect={handleAppSelect}
         absoluteRange={absoluteRange}
         onTimeChange={(v) => {
-          setAbsoluteRange(null);
+          setAbsoluteRange(undefined);
           setTimeRange(v);
         }}
         onThemeChange={setTheme}

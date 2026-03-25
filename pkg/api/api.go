@@ -122,7 +122,11 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 	// The UI used to be at /ui, but now it's at /.
 	a.RegisterRoute("/ui", http.RedirectHandler("/", http.StatusFound), a.registerOptionsPrefixPublicAccess()...)
 	// All assets are served as static files
-	a.RegisterRoute("/assets/", http.FileServer(uiAssets), a.registerOptionsPrefixPublicAccess()...)
+	uiFileServer := http.FileServer(uiAssets)
+	a.RegisterRoute("/assets/", uiFileServer, a.registerOptionsPrefixPublicAccess()...)
+	a.RegisterRoute("/icons/", uiFileServer, a.registerOptionsPrefixPublicAccess()...)
+	// @grafana/flamegraph hardcodes /public/ prefix; strip it to resolve to build/
+	a.RegisterRoute("/public/", http.StripPrefix("/public", uiFileServer), a.registerOptionsPrefixPublicAccess()...)
 
 	// register status service providing config and buildinfo at grpc gateway
 	if err := statusv1.RegisterStatusServiceHandlerServer(context.Background(), a.grpcGatewayMux, statusService); err != nil {
