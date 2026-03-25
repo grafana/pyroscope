@@ -180,6 +180,7 @@
     "immutable": ">=4.3.8 <5.0.0 || >=5.1.5",
     "postcss-svgo/**/svgo": "2.8.1",
     "undici": "^7.24.0",
-    "dompurify": "^3.3.2"
+    "dompurify": "^3.3.2",
+    "flatted": "^3.4.0"
   }
 }
