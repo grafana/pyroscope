@@ -78,5 +78,21 @@
     "group": "block",
     "unit": "nanoseconds",
     "aggregationType": "sum"
+  },
+  "goroutines:goroutine:count:goroutine:count": {
+    "id": "goroutines:goroutine:count:goroutine:count",
+    "description": "Number of goroutines",
+    "type": "goroutine",
+    "group": "goroutines",
+    "unit": "count",
+    "aggregationType": "average"
+  },
+  "process_cpu:samples:count:cpu:nanoseconds": {
+    "id": "process_cpu:samples:count:cpu:nanoseconds",
+    "description": "CPU samples",
+    "type": "samples",
+    "group": "process_cpu",
+    "unit": "count",
+    "aggregationType": "sum"
   }
 }
