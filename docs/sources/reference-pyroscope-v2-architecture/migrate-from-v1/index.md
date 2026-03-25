@@ -194,19 +194,7 @@ helm upgrade pyroscope grafana/pyroscope \
   --set architecture.storage.v2=true
 ```
 
-**Microservices mode:** If you defined v1 components in `pyroscope.components` in your values file (for example, using the `values-micro-services.yaml` template), those definitions persist via `--reuse-values` and the chart deploys them regardless of the `v1` flag. Scale them to zero to remove them:
-
-```bash
-helm upgrade pyroscope grafana/pyroscope \
-  --reuse-values \
-  --set architecture.storage.v1=false \
-  --set architecture.storage.v2=true \
-  --set pyroscope.components.ingester.replicaCount=0 \
-  --set pyroscope.components.compactor.replicaCount=0 \
-  --set pyroscope.components.store-gateway.replicaCount=0 \
-  --set pyroscope.components.querier.replicaCount=0 \
-  --set pyroscope.components.query-scheduler.replicaCount=0
-```
+This command works the same way in both single-binary and microservices mode. The Helm chart automatically removes v1-only components (ingester, compactor, store-gateway, querier, query-scheduler) when `architecture.storage.v1` is set to `false`, even if your values file or `--reuse-values` state still contains overrides for those components.
 
 ### Verify Phase 3
 
@@ -255,7 +243,7 @@ helm upgrade pyroscope grafana/pyroscope \
   --set architecture.storage.v2=true
 ```
 
-This returns you to dual-ingest mode (Phase 1). If you scaled v1 components to zero in Phase 3 (microservices mode), restore their replica counts as well. Note that any data ingested between Phase 3 and the rollback was only written to v2 and won't be visible through the v1 read path.
+This returns you to dual-ingest mode (Phase 1). Note that any data ingested between Phase 3 and the rollback was only written to v2 and won't be visible through the v1 read path.
 
 ## Helm values reference
 
