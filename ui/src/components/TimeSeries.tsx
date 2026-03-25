@@ -1,5 +1,35 @@
 import { Empty } from '@components/core/Empty';
+import { profileTypeUnit } from '@api/client';
 import './TimeSeries.css';
+
+function toDisplayValue(raw: number, unit: string): number {
+  if (unit === 'nanoseconds') return raw / 1e9;
+  return raw;
+}
+
+function niceMax(value: number): number {
+  if (value <= 0) return 1;
+  const exp = Math.floor(Math.log10(value));
+  const mag = Math.pow(10, exp);
+  const norm = value / mag;
+  if (norm <= 1) return mag;
+  if (norm <= 2) return 2 * mag;
+  if (norm <= 5) return 5 * mag;
+  return 10 * mag;
+}
+
+function yAxisFormatter(displayMax: number): (v: number) => string {
+  let divisor = 1, suffix = '';
+  if (displayMax >= 1e9)      { divisor = 1e9;  suffix = 'G'; }
+  else if (displayMax >= 1e6) { divisor = 1e6;  suffix = 'M'; }
+  else if (displayMax >= 1e3) { divisor = 1e3;  suffix = 'k'; }
+  else if (displayMax < 1e-3 && displayMax > 0) { divisor = 1e-6; suffix = 'µ'; }
+  else if (displayMax < 1    && displayMax > 0) { divisor = 1e-3; suffix = 'm'; }
+  return (v: number) => {
+    if (v === 0) return '0';
+    return `${parseFloat((v / divisor).toPrecision(3))}${suffix}`;
+  };
+}
 
 const TICK_INTERVALS_MS = [
   60_000,
@@ -37,7 +67,15 @@ function formatTickLabel(msFromNow: number): string {
   return `-${abs / 60_000}m`;
 }
 
-export function TimeSeries({ data, timeRange }: { data: number[]; timeRange: string }) {
+export function TimeSeries({
+  data,
+  timeRange,
+  profileTypeId,
+}: {
+  data: number[];
+  timeRange: string;
+  profileTypeId: string;
+}) {
   const W = 800,
     H = 100;
   const n = data.length;
@@ -46,7 +84,10 @@ export function TimeSeries({ data, timeRange }: { data: number[]; timeRange: str
     return <Empty />;
   }
 
-  const pts = data.map(
+  const max = Math.max(...data);
+  const norm = max === 0 ? data.map(() => 0) : data.map((v) => v / max);
+
+  const pts = norm.map(
     (v, i) => [(i / Math.max(n - 1, 1)) * W, H - 4 - v * (H - 10)] as [number, number],
   );
 
@@ -72,9 +113,12 @@ export function TimeSeries({ data, timeRange }: { data: number[]; timeRange: str
     ticks.push({ x: W, label: 'now' });
   }
 
+  const unit = profileTypeUnit(profileTypeId);
+  const displayMax = niceMax(toDisplayValue(max, unit));
+  const fmt = yAxisFormatter(displayMax);
   const yTicks = [0, 0.5, 1].map((v) => ({
     y: H - 4 - v * (H - 10),
-    label: v === 0 ? '0%' : v === 1 ? '100%' : '50%',
+    label: fmt(v * displayMax),
   }));
 
   return (

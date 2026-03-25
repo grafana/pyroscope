@@ -105,10 +105,7 @@ export async function fetchTimeline(params: {
   const points = data.series?.[0]?.points ?? [];
   if (!points.length) return [];
 
-  const values = points.map((p) => p.value);
-  const max = Math.max(...values);
-  if (max === 0) return values.map(() => 0);
-  return values.map((v) => v / max);
+  return points.map((p) => p.value);
 }
 
 function parseProfileTypeId(id: string): { group: string; type: string; unit: string } | null {
@@ -131,6 +128,15 @@ export function profileTypeGroup(id: string): string {
 export function profileTypeUnit(id: string): string {
   const entry = (registry as Record<string, { unit: string }>)[id];
   return entry?.unit ?? parseProfileTypeId(id)?.unit ?? 'count';
+}
+
+export function profileTypeRateLabel(id: string): string {
+  switch (profileTypeUnit(id)) {
+    case 'nanoseconds': return 'cpu cores';
+    case 'bytes': return 'bytes / sec';
+    case 'seconds': return 'sec / sec';
+    default: return 'samples / sec';
+  }
 }
 
 const PINNED_GROUPS = ['process_cpu', 'memory'];

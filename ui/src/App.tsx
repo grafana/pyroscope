@@ -10,7 +10,7 @@ import {
   usePyroscopeQuery,
   type ProfileType,
 } from '@hooks/usePyroscopeQuery';
-import { profileTypeLabel, sortProfileTypes } from '@api/client';
+import { profileTypeLabel, profileTypeRateLabel, sortProfileTypes } from '@api/client';
 
 function useTheme() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -97,8 +97,8 @@ export default function App() {
       )}
 
       <div className="app-content">
-        <Panel title="Rate · samples / sec">
-          <TimeSeries data={query.timeline} timeRange={timeRange} />
+        <Panel title={`${profileTypeRateLabel(profileType)}`}>
+          <TimeSeries data={query.timeline} timeRange={timeRange} profileTypeId={profileType} />
         </Panel>
 
         <Panel
