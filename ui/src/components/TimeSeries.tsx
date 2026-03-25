@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Empty } from '@components/core/Empty';
 import { profileTypeUnit } from '@api/client';
 import './TimeSeries.css';
@@ -53,7 +54,7 @@ function tickStepMs(durationMs: number): number {
 function formatTickTime(ts: number, stepMs: number): string {
   const d = new Date(ts);
   if (stepMs >= 86_400_000) {
-    return `${d.getMonth() + 1}/${d.getDate()}`;
+    return d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
   }
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
@@ -62,18 +63,69 @@ export function TimeSeries({
   data,
   timeRange,
   profileTypeId,
+  startMs,
+  endMs,
+  onRangeSelect,
 }: {
   data: number[];
   timeRange: string;
   profileTypeId: string;
+  startMs?: number;
+  endMs?: number;
+  onRangeSelect: (start: number, end: number) => void;
 }) {
   const W = 800,
     H = 100;
   const n = data.length;
 
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [drag, setDrag] = useState<{ startFrac: number; currentFrac: number } | null>(null);
+  const timeRef = useRef({ rangeStart: 0, durationMs: 0, onRangeSelect });
+
+  const isDragging = drag !== null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!drag) return;
+    const startFrac = drag.startFrac; // stable for this drag session
+    const getX = (e: MouseEvent) => {
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (!rect) return 0;
+      return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    };
+    const onMove = (e: MouseEvent) => {
+      setDrag((prev) => prev ? { ...prev, currentFrac: getX(e) } : null);
+    };
+    const onUp = (e: MouseEvent) => {
+      const frac = getX(e);
+      const { rangeStart, durationMs, onRangeSelect } = timeRef.current;
+      const lo = Math.min(startFrac, frac);
+      const hi = Math.max(startFrac, frac);
+      if (hi - lo > 0.005) {
+        onRangeSelect(
+          Math.round(rangeStart + lo * durationMs),
+          Math.round(rangeStart + hi * durationMs),
+        );
+      }
+      setDrag(null);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [isDragging]); // intentionally omit `drag` — startFrac is stable per session
+
   if (n === 0) {
     return <Empty />;
   }
+
+  const rangeEnd = endMs ?? Date.now();
+  const durationMs = startMs != null && endMs != null
+    ? endMs - startMs
+    : parseRangeMs(timeRange);
+  const rangeStart = rangeEnd - durationMs;
+  timeRef.current = { rangeStart, durationMs, onRangeSelect };
 
   const max = Math.max(...data);
   const norm = max === 0 ? data.map(() => 0) : data.map((v) => v / max);
@@ -94,15 +146,26 @@ export function TimeSeries({
       .map(([x, y]) => `L ${x.toFixed(1)},${y.toFixed(1)}`)
       .join(' ');
 
-  const durationMs = parseRangeMs(timeRange);
-  const now = Date.now();
-  const start = now - durationMs;
   const stepMs = tickStepMs(durationMs);
-  const firstTick = Math.ceil(start / stepMs) * stepMs;
-  const ticks: { x: number; label: string }[] = [];
-  for (let ts = firstTick; ts <= now; ts += stepMs) {
-    ticks.push({ x: ((ts - start) / durationMs) * W, label: formatTickTime(ts, stepMs) });
+
+  const tickMap = new Map<number, { x: number; label: string; midnight: boolean }>();
+
+  const firstTick = Math.ceil(rangeStart / stepMs) * stepMs;
+  for (let ts = firstTick; ts <= rangeEnd; ts += stepMs) {
+    tickMap.set(ts, { x: ((ts - rangeStart) / durationMs) * W, label: formatTickTime(ts, stepMs), midnight: false });
   }
+
+  const firstMidnight = new Date(rangeStart);
+  firstMidnight.setHours(0, 0, 0, 0);
+  if (firstMidnight.getTime() <= rangeStart) firstMidnight.setDate(firstMidnight.getDate() + 1);
+  for (const d = new Date(firstMidnight); d.getTime() <= rangeEnd; d.setDate(d.getDate() + 1)) {
+    const ts = d.getTime();
+    const x = ((ts - rangeStart) / durationMs) * W;
+    const label = d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
+    tickMap.set(ts, { x, label, midnight: true });
+  }
+
+  const ticks = Array.from(tickMap.values()).sort((a, b) => a.x - b.x);
 
   const unit = profileTypeUnit(profileTypeId);
   const displayMax = niceMax(toDisplayValue(max, unit));
@@ -123,11 +186,20 @@ export function TimeSeries({
       </div>
       <div className="timeseries-chart">
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
           width="100%"
           height={H}
           className="timeseries-svg"
+          style={{ cursor: durationMs < 5 * 60_000 ? 'default' : 'crosshair' }}
+          onMouseDown={(e) => {
+            if (e.button !== 0 || durationMs < 5 * 60_000) return;
+            e.preventDefault();
+            const rect = e.currentTarget.getBoundingClientRect();
+            const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            setDrag({ startFrac: frac, currentFrac: frac });
+          }}
         >
           <defs>
             <linearGradient id="tl-fill" x1="0" y1="0" x2="0" y2="1">
@@ -145,12 +217,12 @@ export function TimeSeries({
               vectorEffect="non-scaling-stroke"
             />
           ))}
-          {ticks.map(({ x }) => (
+          {ticks.map(({ x, midnight }) => (
             <line
               key={x}
               x1={x.toFixed(1)} y1={0}
               x2={x.toFixed(1)} y2={H}
-              stroke="var(--border-medium)"
+              stroke={midnight ? 'var(--border-strong)' : 'var(--border-medium)'}
               strokeWidth="1"
               vectorEffect="non-scaling-stroke"
             />
@@ -175,9 +247,22 @@ export function TimeSeries({
             strokeWidth="1.5"
             vectorEffect="non-scaling-stroke"
           />
+          {drag && (() => {
+            const x1 = Math.min(drag.startFrac, drag.currentFrac) * W;
+            const x2 = Math.max(drag.startFrac, drag.currentFrac) * W;
+            return (
+              <rect
+                x={x1} y={0}
+                width={x2 - x1} height={H}
+                fill="var(--color-primary)"
+                opacity={0.2}
+                style={{ pointerEvents: 'none' }}
+              />
+            );
+          })()}
         </svg>
         <div className="timeseries-x-axis">
-          {ticks.map(({ x, label }) => (
+          {ticks.map(({ x, label, midnight }) => (
             <span
               key={x}
               className="timeseries-x-label"
@@ -187,6 +272,7 @@ export function TimeSeries({
                   x <= 0 ? 'none'
                   : x >= W ? 'translateX(-100%)'
                   : 'translateX(-50%)',
+                color: midnight ? 'var(--text-primary)' : undefined,
               }}
             >
               {label}

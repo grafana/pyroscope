@@ -39,9 +39,10 @@ export default function App() {
   const [service, setService] = useState('');
   const [profileType, setProfileType] = useState<ProfileType>('');
   const [timeRange, setTimeRange] = useState('now-1h');
+  const [absoluteRange, setAbsoluteRange] = useState<{ start: number; end: number } | null>(null);
   const [queryInput, setQueryInput] = useState('');
 
-  const query = usePyroscopeQuery({ service, profileType, timeRange });
+  const query = usePyroscopeQuery({ service, profileType, timeRange, absoluteRange });
 
   useEffect(() => {
     if (service || profileType) setQueryInput(buildQuery(service, profileType));
@@ -74,7 +75,8 @@ export default function App() {
         theme={theme}
         queryDirty={queryDirty}
         onAppSelect={handleAppSelect}
-        onTimeChange={setTimeRange}
+        absoluteRange={absoluteRange}
+        onTimeChange={(v) => { setAbsoluteRange(null); setTimeRange(v); }}
         onThemeChange={setTheme}
         onReset={handleReset}
       />
@@ -98,7 +100,14 @@ export default function App() {
 
       <div className="app-content">
         <Panel title={`${profileTypeRateLabel(profileType)}`}>
-          <TimeSeries data={query.timeline} timeRange={timeRange} profileTypeId={profileType} />
+          <TimeSeries
+            data={query.timeline}
+            timeRange={timeRange}
+            profileTypeId={profileType}
+            startMs={absoluteRange?.start}
+            endMs={absoluteRange?.end}
+            onRangeSelect={(start, end) => setAbsoluteRange({ start, end })}
+          />
         </Panel>
 
         <Panel

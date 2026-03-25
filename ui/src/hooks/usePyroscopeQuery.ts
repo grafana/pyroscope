@@ -8,6 +8,7 @@ export interface QueryParams {
   service: string;
   profileType: ProfileType;
   timeRange: string;
+  absoluteRange?: { start: number; end: number };
 }
 
 export interface QueryResult {
@@ -38,16 +39,16 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
   const [servicesLoading, setServicesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { service, profileType, timeRange } = params;
+  const { service, profileType, timeRange, absoluteRange } = params;
 
   useEffect(() => {
     setServicesLoading(true);
-    const { start, end } = parseTimeRange(timeRange);
+    const { start, end } = absoluteRange ?? parseTimeRange(timeRange);
     fetchServices(start, end)
       .then((s) => { setServices(s); setError(null); })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setServicesLoading(false));
-  }, [timeRange]);
+  }, [timeRange, absoluteRange]);
 
   const execute = useCallback((svc: string, pt: string, tr: string) => {
     if (!svc || !pt) return;
@@ -66,8 +67,20 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
   }, []);
 
   useEffect(() => {
-    execute(service, profileType, timeRange);
-  }, [service, profileType, timeRange, execute]);
+    if (!service || !profileType) return;
+    const { start, end } = absoluteRange ?? parseTimeRange(timeRange);
+    const labelSelector = `{service_name="${service}"}`;
+    const rangeSeconds = (end - start) / 1000;
+    const step = Math.max(15, Math.ceil(rangeSeconds / 100));
+    setLoading(true);
+    Promise.all([
+      fetchFlamegraph({ profileTypeID: profileType, labelSelector, start, end }),
+      fetchTimeline({ profileTypeID: profileType, labelSelector, start, end, step }),
+    ])
+      .then(([fg, tl]) => { setFlamegraph(fg); setTimeline(tl); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [service, profileType, timeRange, absoluteRange]);
 
   const run = useCallback(() => {
     execute(service, profileType, timeRange);

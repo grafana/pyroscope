@@ -5,6 +5,18 @@ import { type ProfileType, type Service } from '@hooks/usePyroscopeQuery';
 import { profileTypeLabel, sortProfileTypes } from '@api/client';
 import './NavBar.css';
 
+const ABS_VALUE = '__abs__';
+
+function formatAbsoluteRange(start: number, end: number): string {
+  const s = new Date(start);
+  const e = new Date(end);
+  const time = (d: Date) =>
+    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (s.toDateString() === e.toDateString()) return `${time(s)} – ${time(e)}`;
+  const date = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return `${date(s)} ${time(s)} – ${date(e)} ${time(e)}`;
+}
+
 const TIME_PRESETS = [
   { label: 'Last 5m', value: 'now-5m' },
   { label: 'Last 15m', value: 'now-15m' },
@@ -30,6 +42,7 @@ export function NavBar({
   service,
   profileType,
   timeRange,
+  absoluteRange,
   theme,
   queryDirty,
   onAppSelect,
@@ -42,6 +55,7 @@ export function NavBar({
   service: string;
   profileType: ProfileType;
   timeRange: string;
+  absoluteRange: { start: number; end: number } | null;
   theme: 'dark' | 'light';
   queryDirty: boolean;
   onAppSelect: (s: string, pt: ProfileType) => void;
@@ -72,7 +86,19 @@ export function NavBar({
         onChange={(g, i) => onAppSelect(g, i as ProfileType)}
         loading={servicesLoading}
       />
-      <Select value={timeRange} options={TIME_PRESETS} onChange={onTimeChange} />
+      <Select
+        value={absoluteRange ? ABS_VALUE : timeRange}
+        options={
+          absoluteRange
+            ? [
+                { label: formatAbsoluteRange(absoluteRange.start, absoluteRange.end), value: ABS_VALUE },
+                { ...TIME_PRESETS[0], divider: true },
+                ...TIME_PRESETS.slice(1),
+              ]
+            : TIME_PRESETS
+        }
+        onChange={(v) => { if (v !== ABS_VALUE) onTimeChange(v); }}
+      />
       {queryDirty && (
         <button className="navbar-reset" onClick={onReset}>
           Reset query
