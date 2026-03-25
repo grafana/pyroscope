@@ -31,22 +31,6 @@ function yAxisFormatter(displayMax: number): (v: number) => string {
   };
 }
 
-const TICK_INTERVALS_MS = [
-  60_000,
-  5 * 60_000,
-  10 * 60_000,
-  15 * 60_000,
-  30 * 60_000,
-  3_600_000,
-  2 * 3_600_000,
-  4 * 3_600_000,
-  6 * 3_600_000,
-  12 * 3_600_000,
-  86_400_000,
-  2 * 86_400_000,
-  7 * 86_400_000,
-];
-
 function parseRangeMs(range: string): number {
   const m = range.match(/^now-(\d+)([mhd])$/);
   if (!m) return 3_600_000;
@@ -54,17 +38,24 @@ function parseRangeMs(range: string): number {
   return parseInt(m[1]) * (mult[m[2]] ?? 60_000);
 }
 
-function niceTickInterval(durationMs: number): number {
-  const target = durationMs / 5;
-  return TICK_INTERVALS_MS.find((i) => i >= target) ?? TICK_INTERVALS_MS[TICK_INTERVALS_MS.length - 1];
+function tickStepMs(durationMs: number): number {
+  const m = 60_000, h = 3_600_000, d = 86_400_000;
+  if (durationMs <=  15 * m) return m;
+  if (durationMs <=   2 * h) return  5 * m;
+  if (durationMs <=   4 * h) return 15 * m;
+  if (durationMs <=   8 * h) return 30 * m;
+  if (durationMs <=  12 * h) return  h;
+  if (durationMs <=       d) return  2 * h;
+  if (durationMs <=   7 * d) return 12 * h;
+  return d;
 }
 
-function formatTickLabel(msFromNow: number): string {
-  if (msFromNow === 0) return 'now';
-  const abs = Math.abs(msFromNow);
-  if (abs >= 86_400_000 && abs % 86_400_000 === 0) return `-${abs / 86_400_000}d`;
-  if (abs >= 3_600_000 && abs % 3_600_000 === 0) return `-${abs / 3_600_000}h`;
-  return `-${abs / 60_000}m`;
+function formatTickTime(ts: number, stepMs: number): string {
+  const d = new Date(ts);
+  if (stepMs >= 86_400_000) {
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  }
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 export function TimeSeries({
@@ -104,13 +95,13 @@ export function TimeSeries({
       .join(' ');
 
   const durationMs = parseRangeMs(timeRange);
-  const tickInterval = niceTickInterval(durationMs);
+  const now = Date.now();
+  const start = now - durationMs;
+  const stepMs = tickStepMs(durationMs);
+  const firstTick = Math.ceil(start / stepMs) * stepMs;
   const ticks: { x: number; label: string }[] = [];
-  for (let t = 0; t <= durationMs; t += tickInterval) {
-    ticks.push({ x: (t / durationMs) * W, label: formatTickLabel(t - durationMs) });
-  }
-  if (ticks[ticks.length - 1].x < W) {
-    ticks.push({ x: W, label: 'now' });
+  for (let ts = firstTick; ts <= now; ts += stepMs) {
+    ticks.push({ x: ((ts - start) / durationMs) * W, label: formatTickTime(ts, stepMs) });
   }
 
   const unit = profileTypeUnit(profileTypeId);
@@ -193,8 +184,8 @@ export function TimeSeries({
               style={{
                 left: `${(x / W) * 100}%`,
                 transform:
-                  x === 0 ? 'none'
-                  : x === W ? 'translateX(-100%)'
+                  x <= 0 ? 'none'
+                  : x >= W ? 'translateX(-100%)'
                   : 'translateX(-50%)',
               }}
             >
