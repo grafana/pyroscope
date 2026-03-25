@@ -38,7 +38,7 @@ function formatTickLabel(msFromNow: number): string {
 
 export function TimeSeries({ data, timeRange }: { data: number[]; timeRange: string }) {
   const W = 800,
-    H = 56;
+    H = 100;
   const n = data.length;
 
   if (n === 0) {
