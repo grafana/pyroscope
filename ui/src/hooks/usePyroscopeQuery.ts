@@ -37,7 +37,7 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
   const [servicesLoading, setServicesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { timeRange } = params;
+  const { service, profileType, timeRange } = params;
 
   useEffect(() => {
     setServicesLoading(true);
@@ -48,27 +48,29 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
       .finally(() => setServicesLoading(false));
   }, [timeRange]);
 
-  const run = useCallback(() => {
-    const { service, profileType, timeRange: tr } = params;
-    if (!service || !profileType) return;
-
+  const execute = useCallback((svc: string, pt: string, tr: string) => {
+    if (!svc || !pt) return;
     const { start, end } = parseTimeRange(tr);
-    const labelSelector = `{service_name="${service}"}`;
+    const labelSelector = `{service_name="${svc}"}`;
     const rangeSeconds = (end - start) / 1000;
     const step = Math.max(15, Math.ceil(rangeSeconds / 100));
-
     setLoading(true);
     Promise.all([
-      fetchFlamegraph({ profileTypeID: profileType, labelSelector, start, end }),
-      fetchTimeline({ profileTypeID: profileType, labelSelector, start, end, step }),
+      fetchFlamegraph({ profileTypeID: pt, labelSelector, start, end }),
+      fetchTimeline({ profileTypeID: pt, labelSelector, start, end, step }),
     ])
-      .then(([fg, tl]) => {
-        setFlamegraph(fg);
-        setTimeline(tl);
-      })
+      .then(([fg, tl]) => { setFlamegraph(fg); setTimeline(tl); })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [params]);
+  }, []);
+
+  useEffect(() => {
+    execute(service, profileType, timeRange);
+  }, [service, profileType, timeRange, execute]);
+
+  const run = useCallback(() => {
+    execute(service, profileType, timeRange);
+  }, [service, profileType, timeRange, execute]);
 
   return { services, servicesLoading, flamegraph, timeline, loading, error, run };
 }
