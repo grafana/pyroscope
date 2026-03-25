@@ -8,20 +8,29 @@ if [ $# -ne 1 ]; then
 fi
 
 # update ci/cd versions
-git ls-files .github/workflows | xargs sed -i 's/go-version:\([ \["]\+\)\([0-9\.\=<>]\+\)/go-version:\1'$1'/g' 
+git ls-files .github/workflows | xargs sed -E -i.bak 's/go-version:([[:space:]"[]+)[0-9][0-9.=<>]*/go-version:\1'$1'/g'
 
 # update goreleaser check
-sed -i 's/go version go[0-9\.]\+/go version go'$1'/g' .goreleaser.yaml
+sed -E -i.bak 's/go version go[0-9.]+/go version go'$1'/g' .goreleaser.yaml
 
 # update .pyroscope.yaml
-sed -i 's/ref: go[0-9\.]\+/ref: go'$1'/g' .pyroscope.yaml
+sed -E -i.bak 's/ref: go[0-9.]+/ref: go'$1'/g' .pyroscope.yaml
 
 # update update-examples image
-sed -i 's/GO_VERSION=[0-9\.]\+/GO_VERSION='$1'/g' .pyroscope.yaml tools/update_examples.Dockerfile
+sed -E -i.bak 's/GO_VERSION=[0-9.]+/GO_VERSION='$1'/g' .pyroscope.yaml tools/update_examples.Dockerfile
 
 # update all dockerfile versions, skips the elf tests from ebpf
 DOCKER_FILES=$(git ls-files '**/Dockerfile*' | grep -v ebpf/symtab/elf/testdata/Dockerfile)
-sed -i 's/golang:[0-9\.]\+/golang:'$1'/g' $DOCKER_FILES
+sed -E -i.bak 's/golang:[0-9.]+/golang:'$1'/g' $DOCKER_FILES
+
+# update toolchain in go.mod files
+GO_MOD_FILES=$(git ls-files 'go.work' '**go.mod')
+sed -i 's/toolchain go[0-9\.]\+/toolchain go'$1'/g' $GO_MOD_FILES
+git add -u $GO_MOD_FILES
+
+# clean up backup files created by sed -i.bak
+find . -name '*.bak' -delete
+
 git add -u $DOCKER_FILES
 
 # add changes
