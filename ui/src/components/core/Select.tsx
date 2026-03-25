@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react';
 import { Button } from '@components/core/Button';
 import { DropdownItem } from '@components/core/Dropdown';
-import { Icon } from '@components/core/Icon';
+import { Icon, type IconType } from '@components/core/Icon';
 import { useClickOutside } from '@hooks/useClickOutside';
 import './Select.css';
 
 export type SelectOption = {
   label: string;
   value: string;
+  icon?: IconType;
   divider?: boolean;
 };
 
@@ -58,7 +59,10 @@ export function Select({
                   setOpen(false);
                 }}
               >
-                <span>{opt.label}</span>
+                <span className="select-option-label">
+                  {opt.icon && <Icon name={opt.icon} size={13} />}
+                  {opt.label}
+                </span>
                 {opt.value === value && <Icon name="check" size={12} />}
               </DropdownItem>
             </div>

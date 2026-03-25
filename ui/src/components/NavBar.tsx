@@ -20,8 +20,8 @@ const TIME_PRESETS = [
 ];
 
 const THEME_OPTIONS = [
-  { label: 'Dark', value: 'dark' },
-  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark', icon: 'moon' as const },
+  { label: 'Light', value: 'light', icon: 'sun' as const },
 ];
 
 export function NavBar({
