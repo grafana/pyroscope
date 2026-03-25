@@ -1,3 +1,4 @@
+import { Empty } from '@components/core/Empty';
 import './TimeSeries.css';
 
 const TICK_INTERVALS_MS = [
@@ -42,9 +43,7 @@ export function TimeSeries({ data, timeRange }: { data: number[]; timeRange: str
   const n = data.length;
 
   if (n === 0) {
-    return (
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} className="timeseries-svg" />
-    );
+    return <Empty />;
   }
 
   const pts = data.map(
