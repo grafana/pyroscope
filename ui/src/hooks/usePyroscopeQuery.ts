@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { fetchServices, fetchFlamegraph, fetchTimeline, type Service, type Frame } from '@api/client';
-export type { Service, Frame } from '@api/client';
+import { fetchServices, fetchFlamegraph, fetchTimeline, type Service, type FlamegraphData } from '@api/client';
+export type { Service, FlamegraphData } from '@api/client';
 
 export type ProfileType = string;
 
@@ -13,7 +13,7 @@ export interface QueryParams {
 export interface QueryResult {
   services: Service[];
   servicesLoading: boolean;
-  flamegraph: Frame[][];
+  flamegraph: FlamegraphData;
   timeline: number[];
   loading: boolean;
   error: string | null;
@@ -31,7 +31,7 @@ function parseTimeRange(range: string): { start: number; end: number } {
 
 export function usePyroscopeQuery(params: QueryParams): QueryResult {
   const [services, setServices] = useState<Service[]>([]);
-  const [flamegraph, setFlamegraph] = useState<Frame[][]>([]);
+  const [flamegraph, setFlamegraph] = useState<FlamegraphData>({ names: [], levels: [] });
   const [timeline, setTimeline] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [servicesLoading, setServicesLoading] = useState(true);

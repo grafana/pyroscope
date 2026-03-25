@@ -1,0 +1,24 @@
+diff --git a/dist/esm/FlameGraphHeader.mjs b/dist/esm/FlameGraphHeader.mjs
+index d690fd90d2862fe4b42d7fedbb6cf129236cfb8a..b1e308cdb110ba00c9eaf949a48d1a28e5a7342b 100644
+--- a/dist/esm/FlameGraphHeader.mjs
++++ b/dist/esm/FlameGraphHeader.mjs
+@@ -2,7 +2,18 @@ import { jsx, jsxs } from 'react/jsx-runtime';
+ import { css, cx } from '@emotion/css';
+ import { useState, useEffect } from 'react';
+ import { usePrevious, useDebounce } from 'react-use';
+-import { OpenAssistantButton } from '@grafana/assistant';
++/**
++ * WORKAROUND (yarn patch): @grafana/assistant is an optional Grafana Labs
++ * internal package that provides AI assistant integration. It is not available
++ * outside the Grafana platform and has no public npm release that works
++ * standalone. Rather than shipping a stub or adding a phantom dependency, we
++ * inline a no-op here so the flamegraph builds without it.
++ *
++ * If @grafana/assistant ever becomes publicly available, remove this inline
++ * definition and restore the original import:
++ *   import { OpenAssistantButton } from '@grafana/assistant';
++ */
++const OpenAssistantButton = () => null;
+ import { useStyles2, Button, Input, ButtonGroup, RadioButtonGroup, Menu, Dropdown } from '@grafana/ui';
+ import { diffColorBlindGradient, diffDefaultGradient, byPackageGradient, byValueGradient } from './FlameGraph/colors.mjs';
+ import { MIN_WIDTH_TO_SHOW_BOTH_TOPTABLE_AND_FLAMEGRAPH } from './constants.mjs';

@@ -5,7 +5,10 @@ export interface Service {
   profileTypes: string[];
 }
 
-export type Frame = { name: string; start: number; width: number };
+export interface FlamegraphData {
+  names: string[];
+  levels: { values: string[] }[];
+}
 
 const ORG_ID = 'anonymous';
 
@@ -57,14 +60,10 @@ export async function fetchServices(from: number, until: number): Promise<Servic
   }));
 }
 
-interface FlamegraphLevel {
-  values: string[];
-}
-
 interface FlamegraphResponse {
   flamegraph: {
     names: string[];
-    levels: FlamegraphLevel[];
+    levels: { values: string[] }[];
   };
 }
 
@@ -73,35 +72,13 @@ export async function fetchFlamegraph(params: {
   labelSelector: string;
   start: number;
   end: number;
-}): Promise<Frame[][]> {
+}): Promise<FlamegraphData> {
   const data = await post<FlamegraphResponse>(
     '/querier.v1.QuerierService/SelectMergeStacktraces',
     params,
   );
-
   const { names, levels } = data.flamegraph ?? { names: [], levels: [] };
-  if (!levels.length) return [];
-
-  const rootTotal = parseInt(levels[0]?.values[1] ?? '1', 10) || 1;
-
-  return levels.map(({ values }) => {
-    const frames: Frame[] = [];
-    let x = 0;
-    for (let i = 0; i + 3 < values.length; i += 4) {
-      x += parseInt(values[i], 10);
-      const total = parseInt(values[i + 1], 10);
-      const nameIdx = parseInt(values[i + 3], 10);
-      if (total > 0) {
-        frames.push({
-          name: names[nameIdx] ?? '',
-          start: (x / rootTotal) * 100,
-          width: (total / rootTotal) * 100,
-        });
-      }
-      x += total;
-    }
-    return frames;
-  });
+  return { names, levels };
 }
 
 interface Point {

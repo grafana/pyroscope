@@ -39,7 +39,7 @@ export function Select({
     <div ref={ref} style={{ position: 'relative' }}>
       <Button onClick={handleOpen} active={open}>
         {label}
-        <Icon name="chevron-down" size={11} />
+        <Icon name="angle-down" size={11} />
       </Button>
 
       {open && (

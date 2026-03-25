@@ -63,7 +63,7 @@ export function CascadeSelect({
   ) : (
     <>
       {selectedGroupLabel} · {selectedItemLabel}
-      <Icon name="chevron-down" size={11} />
+      <Icon name="angle-down" size={11} />
     </>
   );
 
@@ -118,7 +118,7 @@ export function CascadeSelect({
                   }}
                 >
                   {g.label}
-                  {active && <Icon name="chevron-right" size={10} />}
+                  {active && <Icon name="angle-right" size={10} />}
                 </div>
               );
             })}

@@ -71,6 +71,10 @@ Banner comments are not allowed. Do not use decorative section dividers such as:
 // ─── Section name ────────────────────────
 ```
 
+## Dependency workarounds
+
+Several packages are patched via `yarn patch` due to incompatibilities with our stack. Before debugging a dependency issue, read `WORKAROUNDS.md` — it documents each patch, why it exists, and when it can be removed. Patch files live in `.yarn/patches/`.
+
 ## Components
 
 Components should be hand built and purpose driven. It is okay to make them generic and extensible, but only when necessary. For example, if a button is needed, make a "Button" component, but don't add size variants until a size variant is required.

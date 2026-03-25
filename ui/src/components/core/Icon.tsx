@@ -1,15 +1,15 @@
 export type IconType =
+  | 'angle-down'
+  | 'angle-left'
+  | 'angle-right'
   | 'check'
-  | 'chevron-down'
-  | 'chevron-left'
-  | 'chevron-right'
   | 'logo'
   | 'moon'
   | 'play'
   | 'plus'
   | 'refresh'
   | 'sun'
-  | 'x';
+  | 'times';
 
 export function Icon({ name, size = 16 }: { name: IconType; size?: number }) {
   return (
