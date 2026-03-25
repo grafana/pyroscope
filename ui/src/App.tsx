@@ -10,7 +10,7 @@ import {
   usePyroscopeQuery,
   type ProfileType,
 } from '@hooks/usePyroscopeQuery';
-import { profileTypeLabel } from '@api/client';
+import { profileTypeLabel, sortProfileTypes } from '@api/client';
 
 function useTheme() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -45,7 +45,7 @@ export default function App() {
     const first = query.services[0];
     if (!first) return;
     setService(first.name);
-    setProfileType(first.profileTypes[0] ?? '');
+    setProfileType(sortProfileTypes(first.profileTypes).find((pt): pt is string => typeof pt === 'string') ?? '');
   }, [query.services, query.servicesLoading, service]);
 
   const handleAppSelect = (s: string, pt: ProfileType) => {

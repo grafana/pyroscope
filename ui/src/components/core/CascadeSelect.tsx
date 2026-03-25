@@ -5,7 +5,7 @@ import { Icon } from '@components/core/Icon';
 import { useClickOutside } from '@hooks/useClickOutside';
 import './CascadeSelect.css';
 
-type CascadeItem = { label: string; value: string };
+type CascadeItem = { label: string; value: string } | { section: string };
 type CascadeGroup = { label: string; value: string; items: CascadeItem[] };
 
 export function CascadeSelect({
@@ -42,7 +42,8 @@ export function CascadeSelect({
   const selectedItemLabel =
     groups
       .find((g) => g.value === value.group)
-      ?.items.find((i) => i.value === value.item)?.label ?? value.item;
+      ?.items.find((i): i is { label: string; value: string } => !('section' in i) && i.value === value.item)
+      ?.label ?? value.item;
 
   const hovItems = groups.find((g) => g.value === hovGroup)?.items ?? [];
 
@@ -88,7 +89,8 @@ export function CascadeSelect({
 
           <div className="cascade-items">
             <DropdownSection label={itemLabel} />
-            {hovItems.map((item) => {
+            {hovItems.map((item, idx) => {
+              if ('section' in item) return <DropdownSection key={`section-${idx}`} label={item.section} subsection />;
               const sel = hovGroup === value.group && item.value === value.item;
               return (
                 <DropdownItem

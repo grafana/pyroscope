@@ -22,6 +22,22 @@
   font-family: var(--font-mono);
 }
 
+.dropdown-divider {
+  height: 1px;
+  background: var(--border-weak);
+  margin: var(--space-1) 0;
+}
+
+.dropdown-section[data-subsection='true'] {
+  text-transform: lowercase;
+  border-bottom: none;
+  margin-top: var(--space-2);
+}
+
+.dropdown-section:not([data-subsection]) + .dropdown-section[data-subsection='true'] {
+  margin-top: 0;
+}
+
 .dropdown-section {
   padding: var(--space-1-5) var(--space-3) var(--space-1);
   font-size: var(--text-xs);

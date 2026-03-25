@@ -132,3 +132,35 @@ export function profileTypeUnit(id: string): string {
   const entry = (registry as Record<string, { unit: string }>)[id];
   return entry?.unit ?? parseProfileTypeId(id)?.unit ?? 'count';
 }
+
+const PINNED_GROUPS = ['process_cpu', 'memory'];
+
+// Returns profile type IDs interleaved with section headers for each group.
+// Groups are ordered: pinned groups first, then alphabetical.
+// Profile types within each group are sorted alphabetically by type label.
+export function sortProfileTypes(ids: string[]): Array<string | { section: string }> {
+  const byGroup = new Map<string, string[]>();
+  for (const id of ids) {
+    const group = profileTypeGroup(id);
+    if (!byGroup.has(group)) byGroup.set(group, []);
+    byGroup.get(group)!.push(id);
+  }
+
+  const groupNames = Array.from(byGroup.keys()).sort((a, b) => {
+    const ai = PINNED_GROUPS.indexOf(a), bi = PINNED_GROUPS.indexOf(b);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  const result: Array<string | { section: string }> = [];
+  for (const group of groupNames) {
+    const members = byGroup.get(group)!.sort((a, b) =>
+      profileTypeLabel(a).localeCompare(profileTypeLabel(b))
+    );
+    result.push({ section: group });
+    result.push(...members);
+  }
+  return result;
+}

@@ -2,7 +2,7 @@ import { Select } from '@components/core/Select';
 import { Icon } from '@components/core/Icon';
 import { CascadeSelect } from '@components/core/CascadeSelect';
 import { type ProfileType, type Service } from '@hooks/usePyroscopeQuery';
-import { profileTypeLabel } from '@api/client';
+import { profileTypeLabel, sortProfileTypes } from '@api/client';
 import './NavBar.css';
 
 const TIME_PRESETS = [
@@ -58,7 +58,9 @@ export function NavBar({
         groups={services.map((s) => ({
           label: s.name,
           value: s.name,
-          items: s.profileTypes.map((pt) => ({ label: profileTypeLabel(pt), value: pt })),
+          items: sortProfileTypes(s.profileTypes).map((pt) =>
+            typeof pt === 'string' ? { label: profileTypeLabel(pt), value: pt } : pt
+          ),
         }))}
         groupLabel="Service"
         itemLabel="Profile Type"
