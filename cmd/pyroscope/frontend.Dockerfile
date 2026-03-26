@@ -9,8 +9,8 @@ COPY ui/tsconfig*.json ./
 COPY ui/src ./src
 COPY ui/public ./public
 RUN yarn build
-# Output lands at /pyroscope/public/build/ (set by build.outDir in vite.config.ts)
+# Output lands at /pyroscope/ui/dist/ (set by build.outDir in vite.config.ts)
 
-# Usage: docker build -f cmd/pyroscope/frontend.Dockerfile --output=public/build .
+# Usage: docker build -f cmd/pyroscope/frontend.Dockerfile --output=ui/dist .
 FROM scratch
-COPY --from=builder /pyroscope/public/build /
+COPY --from=builder /pyroscope/ui/dist /

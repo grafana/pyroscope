@@ -1,7 +1,7 @@
 //go:build embedassets
 // +build embedassets
 
-package public
+package ui
 
 import (
 	"embed"
@@ -13,11 +13,11 @@ import (
 
 var AssetsEmbedded = true
 
-//go:embed build
+//go:embed dist
 var assets embed.FS
 
 func Assets() (http.FileSystem, error) {
-	fsys, err := fs.Sub(assets, "build")
+	fsys, err := fs.Sub(assets, "dist")
 
 	if err != nil {
 		return nil, err
@@ -26,10 +26,10 @@ func Assets() (http.FileSystem, error) {
 	return http.FS(fsys), nil
 }
 
-// NewIndexHandler parses and executes the webpack-built index.html
+// NewIndexHandler parses and executes the vite-built index.html
 // Then returns a handler that serves that templated file
 func NewIndexHandler(basePath string) (http.HandlerFunc, error) {
-	indexPath := filepath.Join("build", "index.html")
+	indexPath := filepath.Join("dist", "index.html")
 	p, err := assets.ReadFile(indexPath)
 	if err != nil {
 		return nil, err

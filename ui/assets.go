@@ -1,7 +1,7 @@
 //go:build !embedassets
 // +build !embedassets
 
-package public
+package ui
 
 import (
 	"net/http"
@@ -12,7 +12,7 @@ import (
 var AssetsEmbedded = false
 
 func Assets() (http.FileSystem, error) {
-	return http.Dir("./public/build"), nil
+	return http.Dir("./ui/dist"), nil
 }
 
 func NewIndexHandler(_ string) (http.HandlerFunc, error) {

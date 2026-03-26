@@ -20,7 +20,7 @@ import (
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
-	"github.com/grafana/pyroscope/public"
+	"github.com/grafana/pyroscope/ui"
 
 	"github.com/grafana/pyroscope/pkg/validation"
 
@@ -114,7 +114,7 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 	// register static assets
 	a.RegisterRoute("/static/", http.FileServer(http.FS(staticFiles)), a.registerOptionsPrefixPublicAccess()...)
 	// register ui
-	uiAssets, err := public.Assets()
+	uiAssets, err := ui.Assets()
 	if err != nil {
 		return fmt.Errorf("unable to initialize the ui: %w", err)
 	}
@@ -148,7 +148,7 @@ func (a *API) RegisterRedirectToAdmin() {
 }
 
 func (a *API) RegisterCatchAll() error {
-	uiIndexHandler, err := public.NewIndexHandler(a.cfg.BaseURL)
+	uiIndexHandler, err := ui.NewIndexHandler(a.cfg.BaseURL)
 	if err != nil {
 		return fmt.Errorf("unable to initialize the ui: %w", err)
 	}

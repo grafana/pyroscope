@@ -1,4 +1,4 @@
-package public_test
+package ui_test
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/pyroscope/public"
+	"github.com/grafana/pyroscope/ui"
 )
 
 func TestInjectingBaseURL(t *testing.T) {
@@ -33,7 +33,7 @@ func TestInjectingBaseURL(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(fmt.Sprintf("'%s' -> '%s'", tc.basePath, tc.expected), func(t *testing.T) {
-			data, err := public.ExecuteTemplate(bin, public.Params{BasePath: tc.basePath})
+			data, err := ui.ExecuteTemplate(bin, ui.Params{BasePath: tc.basePath})
 			assert.NoError(t, err)
 			assert.Equal(t, fmt.Sprintf(`<base href="%s" />`, tc.expected), strings.TrimSpace(string(data)))
 		})
