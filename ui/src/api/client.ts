@@ -181,12 +181,10 @@ export function profileTypeUnit(id: string): string {
 
 export function profileTypeRateLabel(id: string): string {
   switch (profileTypeUnit(id)) {
-    case 'nanoseconds':
+    case 'ns':
       return 'cpu cores';
     case 'bytes':
       return 'bytes / sec';
-    case 'seconds':
-      return 'sec / sec';
     default:
       return 'samples / sec';
   }

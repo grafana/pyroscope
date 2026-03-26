@@ -9,7 +9,7 @@ import './FlameGraph.css';
 
 function toGrafanaUnit(unit: string): string {
   switch (unit) {
-    case 'nanoseconds':
+    case 'ns':
       return 'ns';
     case 'bytes':
       return 'bytes';

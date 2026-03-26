@@ -4,7 +4,7 @@ import { profileTypeUnit } from '@api/client';
 import './TimeSeries.css';
 
 function toDisplayValue(raw: number, unit: string): number {
-  if (unit === 'nanoseconds') return raw / 1e9;
+  if (unit === 'ns') return raw / 1e9;
   return raw;
 }
 
