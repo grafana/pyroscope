@@ -35,6 +35,7 @@ export default defineConfig({
       '@api': fileURLToPath(new URL('./src/api', import.meta.url)),
     },
   },
+  base: './',
   build: {
     outDir: 'dist',
     emptyOutDir: true,
