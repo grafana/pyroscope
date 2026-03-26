@@ -25,11 +25,13 @@ export function CascadeSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [hovGroup, setHovGroup] = useState(value.group);
+  const [hovActive, setHovActive] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   useClickOutside(ref, () => {
     setOpen(false);
+    setHovActive(false);
     setSearch('');
   });
 
@@ -39,6 +41,7 @@ export function CascadeSelect({
   const handleOpen = () => {
     if (disabled) return;
     setHovGroup(value.group);
+    setHovActive(false);
     setSearch('');
     setOpen((o) => !o);
   };
@@ -94,39 +97,47 @@ export function CascadeSelect({
       {open && (
         <div className="cascade-menu">
           <div className="cascade-groups">
-            <input
-              ref={searchRef}
-              className="cascade-search"
-              placeholder={`Search ${groupLabel.toLowerCase()}…`}
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-              }}
-            />
-            <DropdownSection label={groupLabel} />
-            {visibleGroups.length === 0 ? (
-              <div className="cascade-no-matches">No matches</div>
-            ) : (
-              visibleGroups.map((g) => {
-                const active = g.value === effectiveHovGroup;
-                return (
-                  <div
-                    key={g.value}
-                    onMouseEnter={() => setHovGroup(g.value)}
-                    data-active={active}
-                    className="cascade-group-row"
-                  >
-                    {g.label}
-                    {active && <Icon name="angle-right" size={10} />}
-                  </div>
-                );
-              })
-            )}
+            <div className="cascade-groups-header">
+              <input
+                ref={searchRef}
+                className="cascade-search"
+                placeholder={`Search ${groupLabel.toLowerCase()}…`}
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                }}
+              />
+              <DropdownSection label={groupLabel} />
+            </div>
+            <div className="cascade-groups-list">
+              {visibleGroups.length === 0 ? (
+                <div className="cascade-no-matches">No matches</div>
+              ) : (
+                visibleGroups.map((g) => {
+                  const active = g.value === effectiveHovGroup;
+                  return (
+                    <div
+                      key={g.value}
+                      onMouseEnter={() => {
+                        setHovGroup(g.value);
+                        setHovActive(true);
+                      }}
+                      data-active={active}
+                      className="cascade-group-row"
+                    >
+                      {g.label}
+                      {active && <Icon name="angle-right" size={10} />}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
 
-          <div className="cascade-items">
-            <DropdownSection label={itemLabel} />
-            {hovItems.map((item, idx) => {
+          {hovActive && (
+            <div className="cascade-items">
+              <DropdownSection label={itemLabel} />
+              {hovItems.map((item, idx) => {
               if ('section' in item)
                 return (
                   <DropdownSection
@@ -152,7 +163,8 @@ export function CascadeSelect({
                 </DropdownItem>
               );
             })}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>

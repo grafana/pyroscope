@@ -27,13 +27,20 @@
   display: flex;
   flex-direction: column;
   max-height: 320px;
+}
+
+.cascade-groups-header {
+  flex-shrink: 0;
+}
+
+.cascade-groups-list {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: auto;
 }
 
 .cascade-search {
-  position: sticky;
-  top: 0;
-  z-index: 1;
   width: 100%;
   box-sizing: border-box;
   background: var(--bg-elevated);
