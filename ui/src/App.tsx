@@ -62,6 +62,7 @@ export default function App() {
     profileType,
     timeRange,
     absoluteRange,
+    tenantID: tenant.tenantID,
   });
 
   useEffect(() => {

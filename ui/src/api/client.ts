@@ -28,10 +28,6 @@ export function setOrgID(id: string) {
   orgID = id;
 }
 
-export function getOrgID(): string {
-  return orgID;
-}
-
 export async function checkMultitenancy(): Promise<
   'single_tenant' | 'multi_tenant' | 'error'
 > {

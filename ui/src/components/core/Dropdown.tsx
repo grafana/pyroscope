@@ -36,7 +36,3 @@ export function DropdownSection({
     </div>
   );
 }
-
-export function DropdownDivider() {
-  return <div className="dropdown-divider" />;
-}
