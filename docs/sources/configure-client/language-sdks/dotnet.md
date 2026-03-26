@@ -40,7 +40,7 @@ The Pyroscope server can be a local server for development or a remote server fo
 
 ## Configure the .NET client
 
-1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/pyroscope-io/pyroscope-dotnet/releases/):
+1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/grafana/pyroscope-dotnet/releases/):
 
 ```bash
 curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.14.2-pyroscope/pyroscope.0.14.2-glibc-x86_64.tar.gz  | tar xvz -C .
