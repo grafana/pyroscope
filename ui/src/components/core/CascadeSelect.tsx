@@ -138,31 +138,32 @@ export function CascadeSelect({
             <div className="cascade-items">
               <DropdownSection label={itemLabel} />
               {hovItems.map((item, idx) => {
-              if ('section' in item)
+                if ('section' in item)
+                  return (
+                    <DropdownSection
+                      key={`section-${idx}`}
+                      label={item.section}
+                      subsection
+                    />
+                  );
+                const sel =
+                  effectiveHovGroup === value.group &&
+                  item.value === value.item;
                 return (
-                  <DropdownSection
-                    key={`section-${idx}`}
-                    label={item.section}
-                    subsection
-                  />
+                  <DropdownItem
+                    key={item.value}
+                    selected={sel}
+                    onClick={() => {
+                      onChange(effectiveHovGroup, item.value);
+                      setOpen(false);
+                      setSearch('');
+                    }}
+                  >
+                    <span>{item.label}</span>
+                    {sel && <Icon name="check" size={12} />}
+                  </DropdownItem>
                 );
-              const sel =
-                effectiveHovGroup === value.group && item.value === value.item;
-              return (
-                <DropdownItem
-                  key={item.value}
-                  selected={sel}
-                  onClick={() => {
-                    onChange(effectiveHovGroup, item.value);
-                    setOpen(false);
-                    setSearch('');
-                  }}
-                >
-                  <span>{item.label}</span>
-                  {sel && <Icon name="check" size={12} />}
-                </DropdownItem>
-              );
-            })}
+              })}
             </div>
           )}
         </div>
