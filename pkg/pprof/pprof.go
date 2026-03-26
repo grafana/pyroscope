@@ -1098,6 +1098,7 @@ var uint32SlicePool zeropool.Pool[[]uint32]
 const (
 	ProfileIDLabelName = "profile_id" // For compatibility with the existing clients.
 	SpanIDLabelName    = "span_id"    // Will be supported in the future.
+	TraceIDLabelName   = "trace_id"
 )
 
 func LabelID(p *profilev1.Profile, name string) int64 {
@@ -1143,6 +1144,37 @@ func decodeSpanID(tmp []byte, s string) bool {
 	}
 	_, err := hex.Decode(tmp, util.YoloBuf(s))
 	return err == nil
+}
+
+func ProfileTraceIDs(p *profilev1.Profile) [][16]byte {
+	if i := LabelID(p, TraceIDLabelName); i > 0 {
+		return TraceIDs(p, i)
+	}
+	return nil
+}
+
+func TraceIDs(p *profilev1.Profile, traceIDLabelIdx int64) [][16]byte {
+	s := make([][16]byte, len(p.Sample))
+	for i, sample := range p.Sample {
+		s[i] = traceIDFromLabels(traceIDLabelIdx, p.StringTable, sample.Label)
+	}
+	return s
+}
+
+func traceIDFromLabels(labelIdx int64, stringTable []string, labels []*profilev1.Label) [16]byte {
+	var id [16]byte
+	for _, x := range labels {
+		if x.Key != labelIdx {
+			continue
+		}
+		s := stringTable[x.Str]
+		if len(s) == 32 {
+			if _, err := hex.Decode(id[:], util.YoloBuf(s)); err == nil {
+				return id
+			}
+		}
+	}
+	return id
 }
 
 func RenameLabel(p *profilev1.Profile, oldName, newName string) {

@@ -100,6 +100,36 @@ func Test_symbolsPartitionKeyForProfile(t *testing.T) {
 	}
 }
 
+func TestDecodeTraceID(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{name: "valid", input: "0123456789abcdef0123456789abcdef"},
+		{name: "too short", input: "0123456789abcdef", wantErr: true},
+		{name: "too long", input: "0123456789abcdef0123456789abcdef00", wantErr: true},
+		{name: "invalid hex", input: "0123456789abcdef0123456789abcdeg", wantErr: true},
+		{name: "empty", input: "", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tid, err := DecodeTraceID(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				// Round-trip: hex string → TraceID → hex string
+				assert.Equal(t, tt.input, tid.String())
+				// Verify raw bytes are correct
+				assert.Equal(t,
+					[16]byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+					[16]byte(tid))
+			}
+		})
+	}
+}
+
 func Test_ParseProfileTypeSelector(t *testing.T) {
 	tests := []struct {
 		Name    string
