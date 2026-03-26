@@ -18,18 +18,18 @@ Before starting the migration, make sure you have:
 - **Helm chart version 1.15.1 or later** (the first version with v1/v2 storage support). Verify with:
 
   ```bash
-  helm list -f pyroscope
+  helm list -n pyroscope -f pyroscope
   ```
 
-  Check the `CHART` column shows `pyroscope-1.15.1` or higher. If your chart is older, upgrade it first.
+  Check that the `CHART` column shows `pyroscope-1.15.1` or higher. If your chart is older, upgrade it first.
 
 - **Pyroscope running on v1 storage via Helm.** Verify with:
 
   ```bash
-  helm get values pyroscope -o yaml | grep -A2 'storage:'
+  helm get values -n pyroscope pyroscope -o yaml | grep -A2 'storage:'
   ```
 
-  You should see `v1: true` and `v2: false` (or `v2` absent, since v1 is the default). If you already see `v2: true`, your installation is already using v2 or is mid-migration.
+  You should see `v1: true` and `v2: false` (or `v2` absent, since v1 is the default). If you see `v2: true`, your installation is already using v2 or is mid-migration.
 
 - **Persistence enabled** (`pyroscope.persistence.enabled=true`).
 
@@ -51,113 +51,95 @@ Before starting the migration, make sure you have:
 
 - **`kubectl` and `helm` CLI access** to your cluster.
 
+{{< admonition type="note" >}}
+The examples in this guide assume Pyroscope is installed in the `pyroscope` namespace with the release name `pyroscope`. Adjust the `-n` namespace flag and release name in `helm` and `kubectl` commands if your installation differs.
+{{< /admonition >}}
+
 ## Migration overview
 
 The migration has three phases:
 
 | Phase | What happens | Reversible? |
-|-------|-------------|-------------|
-| 1. Dual ingest | v2 components deploy alongside v1. Writes go to both storage backends. | Yes, trivially |
-| 2. Validate | Run both backends for at least 24 hours. Verify v2 data and compaction. | Yes, trivially |
-| 3. Remove v1 | Remove v1 components. Only v2 serves reads and writes. | Partial (see [Rollback](#rollback)) |
+|---|---|---|
+| 1.&nbsp;Dual&nbsp;ingest | v2 components deploy alongside v1. Writes go to both storage backends. | Yes |
+| 2.&nbsp;Validate | Run both backends for at least 24 hours. Verify v2 data and compaction. | Yes |
+| 3.&nbsp;Remove&nbsp;v1 | Remove v1 components. Only v2 serves reads and writes. | Partial |
 
-## Phase 1: Deploy v2 components alongside v1
+The steps below are specific to your deployment mode. Follow the section that matches your installation.
 
-In this phase, you deploy the v2 components (segment-writer, metastore, compaction-worker, query-backend) alongside your existing v1 installation. The distributor starts writing to both storage backends simultaneously.
+## Single-binary mode
 
-The Helm chart automatically configures:
-- `write-path=combined` — the distributor sends data to both ingesters (v1) and segment-writers (v2)
-- `enable-query-backend=true` — the query frontend can route reads to the v2 backend
+### Phase 1: Enable dual ingest
 
-You must also set `queryBackendFrom` to an RFC 3339 timestamp that tells the query frontend from when to start reading from the v2 backend. Set it to a time slightly in the future (a few minutes) to give the v2 components time to start up:
+In this phase, the single-binary process enables the v2 storage modules alongside v1. Writes go to both storage backends simultaneously, and the read path serves data from both v1 and v2.
 
 ```bash
-helm upgrade pyroscope grafana/pyroscope \
+helm upgrade -n pyroscope pyroscope grafana/pyroscope \
   --reuse-values \
   --set architecture.storage.v1=true \
-  --set architecture.storage.v2=true \
-  --set architecture.storage.migration.queryBackendFrom=$(python3 -c "import datetime; print((datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=10)).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+  --set architecture.storage.v2=true
 ```
 
-{{< admonition type="note" >}}
-The `queryBackendFrom` timestamp tells the query frontend to use the v2 read path for data ingested after that time. Queries for older data continue to be served by the v1 read path.
-{{< /admonition >}}
+The `--reuse-values` flag preserves your existing configuration. Alternatively, you can pass your values file with `-f values.yaml` instead of `--reuse-values`.
 
-**Microservices mode:** If you deployed Pyroscope using the `values-micro-services.yaml` file (with individual components defined in `pyroscope.components`), you must also enable `architecture.microservices.enabled` so that the chart automatically adds the v2 components (segment-writer, metastore, compaction-worker, query-backend):
+#### Verify Phase 1
+
+After the upgrade completes, check that the pod has restarted and is running:
 
 ```bash
-helm upgrade pyroscope grafana/pyroscope \
-  --reuse-values \
-  --set architecture.storage.v1=true \
-  --set architecture.storage.v2=true \
-  --set architecture.microservices.enabled=true \
-  --set architecture.storage.migration.queryBackendFrom=$(python3 -c "import datetime; print((datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=10)).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+kubectl get pods -n pyroscope -l app.kubernetes.io/instance=pyroscope
 ```
 
-Your existing component overrides in `pyroscope.components` are preserved — the chart merges them on top of the default v1 and v2 component definitions.
-
-The `--reuse-values` flag preserves your existing configuration.
-
-### Verify Phase 1
-
-After the upgrade completes, check that the new components are running:
+Check the Helm release notes for migration status:
 
 ```bash
-# All pods should be Running
-kubectl get pods -l app.kubernetes.io/instance=pyroscope
-
-# Check the Helm notes for migration status
-helm get notes pyroscope
+helm get notes -n pyroscope pyroscope
 ```
 
-You should see output confirming dual-write mode is active, with 100% of traffic going to both v1 and v2 write paths.
+You should see output similar to:
+
+```
+# Pyroscope v2 Migration is active
+
+Write traffic will be written to:
+- 100% v1: ingester
+- 100% v2: segment-writer
+
+Read traffic is served from v2 read path from as soon as data was first ingested to v2.
+```
 
 Also verify:
 
-- The **metastore** raft cluster has elected a leader. Check the metastore pod logs for a message like `entering leader state`:
+- The **metastore** raft has initialized. Check the pod logs for a message like `entering leader state`:
 
   ```bash
-  kubectl logs -l app.kubernetes.io/component=metastore --tail=500 | grep -i "entering leader state"
+  kubectl logs -n pyroscope -l app.kubernetes.io/instance=pyroscope --tail=500 | grep -i "entering leader state"
   ```
 
-  In single-binary mode, check the main pod logs instead:
+- The **segment-writer** ring is healthy:
 
   ```bash
-  kubectl logs -l app.kubernetes.io/instance=pyroscope --tail=500 | grep -i "entering leader state"
-  ```
-
-- The **segment-writer** ring is healthy. Check this from the distributor, which uses the ring to route writes to segment-writers. All instances should show as `ACTIVE`:
-
-  ```bash
-  # Single-binary
-  kubectl port-forward svc/pyroscope 4040:4040 &
-
-  # Microservices
-  kubectl port-forward svc/pyroscope-distributor 4040:4040 &
-
+  kubectl port-forward -n pyroscope svc/pyroscope 4040:4040 &
   curl -s http://localhost:4040/ring-segment-writer | grep -o 'ACTIVE' | wc -l
+  kill %1  # Stop the port-forward
   ```
 
-  The count should match the number of segment-writer instances.
+  In single-binary mode, the count should be 1.
 
-## Phase 2: Validate v2 is working
+### Phase 2: Validate v2 is working
 
 Run both storage backends simultaneously for at least 24 hours before proceeding. During this time, verify:
 
-### Data is being written to v2
+#### Data is being written to v2
 
-Query recent profiling data through the Pyroscope UI or API. Data ingested after Phase 1 should be served by the v2 read path. You can use `profilecli` or the Pyroscope UI to query profiles from the last hour and confirm results are returned.
+Query recent profiling data through the Pyroscope UI or API. The v2 read path should serve data ingested after Phase 1. You can use `profilecli` or the Pyroscope UI to query profiles from the last hour and confirm results are returned.
 
-### Compaction is running
+#### Compaction is running
 
 The compaction-worker compacts segments through the L0 &rarr; L1 &rarr; L2 levels. Verify that compaction jobs are completing:
 
 ```bash
-# Single-binary: logs are on the main pyroscope pod
-kubectl logs -l app.kubernetes.io/instance=pyroscope --tail=500 | grep "compaction finished successfully"
-
-# Microservices: logs are on the compaction-worker pods
-kubectl logs -l app.kubernetes.io/component=compaction-worker --tail=500 | grep "compaction finished successfully"
+kubectl logs -n pyroscope -l app.kubernetes.io/instance=pyroscope --tail=500 | grep "compaction finished successfully"
 ```
 
 You should see log lines like:
@@ -166,9 +148,136 @@ You should see log lines like:
 msg="compaction finished successfully" input_blocks=20 output_blocks=1
 ```
 
-Compaction typically starts within minutes of ingestion — a block is created once enough segments accumulate for a shard.
+Compaction typically starts within minutes of ingestion, the first block is created once enough segments accumulate for a shard.
 
-### Error rates are stable
+#### Error rates are stable
+
+Check that write and read error rates haven't increased since enabling v2. If you have Prometheus metrics configured:
+
+```promql
+sum(rate(pyroscope_request_duration_seconds_count{status_code=~"5.."}[5m]))
+```
+
+Error rates should be zero or negligible. Compare against pre-migration baselines to confirm no regression.
+
+### Phase 3: Switch to v2 storage
+
+Once you're confident that v2 is working correctly and you no longer need to query data ingested before Phase 1, you can disable the v1 storage.
+
+{{< admonition type="warning" >}}
+After this step, data ingested before Phase 1 is no longer queryable through Pyroscope. The data still exists in object storage, but the v1 storage modules that serve it will be disabled. Make sure you don't need to query historical data from before the migration started.
+{{< /admonition >}}
+
+```bash
+helm upgrade -n pyroscope pyroscope grafana/pyroscope \
+  --reuse-values \
+  --set architecture.storage.v1=false \
+  --set architecture.storage.v2=true
+```
+
+#### Verify Phase 3
+
+Verify that the Pyroscope pod has restarted:
+
+```bash
+kubectl get pods -n pyroscope -l app.kubernetes.io/instance=pyroscope
+```
+
+Verify that queries still return data:
+
+```bash
+kubectl port-forward -n pyroscope svc/pyroscope 4040:4040 &
+```
+
+Then open the Pyroscope UI at `http://localhost:4040` and verify that you can query recent profiles. An empty or errored UI indicates a problem — see [Rollback](#rollback).
+
+## Microservices mode
+
+If you deployed Pyroscope using the `values-micro-services.yaml` file as described in [Deploy on Kubernetes](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/deploy-kubernetes/helm/), follow the steps below.
+
+### Phase 1: Deploy v2 components alongside v1
+
+In this phase, you deploy the v2 components (segment-writer, metastore, compaction-worker, query-backend) alongside your existing v1 installation. The distributor starts writing to both storage backends simultaneously. The read path serves data from both v1 and v2.
+
+```bash
+helm upgrade -n pyroscope pyroscope grafana/pyroscope \
+  --reuse-values \
+  --set architecture.microservices.enabled=true \
+  --set architecture.storage.v1=true \
+  --set architecture.storage.v2=true
+```
+
+The `--reuse-values` flag preserves your existing configuration. Alternatively, you can pass your values file with `-f values.yaml` instead of `--reuse-values`.
+
+#### Verify Phase 1
+
+After the upgrade completes, check that the new components are running:
+
+```bash
+kubectl get pods -n pyroscope -l app.kubernetes.io/instance=pyroscope
+```
+
+Check the Helm release notes for migration status:
+
+```bash
+helm get notes -n pyroscope pyroscope
+```
+
+You should see output similar to:
+
+```
+# Pyroscope v2 Migration is active
+
+Write traffic will be written to:
+- 100% v1: ingester
+- 100% v2: segment-writer
+
+Read traffic is served from v2 read path from as soon as data was first ingested to v2.
+```
+
+Also verify:
+
+- The **metastore** raft cluster has elected a leader:
+
+  ```bash
+  kubectl logs -n pyroscope -l app.kubernetes.io/component=metastore --tail=500 | grep -i "entering leader state"
+  ```
+
+- The **segment-writer** ring is healthy. All instances should show as `ACTIVE`:
+
+  ```bash
+  kubectl port-forward -n pyroscope svc/pyroscope-distributor 4040:4040 &
+  curl -s http://localhost:4040/ring-segment-writer | grep -o 'ACTIVE' | wc -l
+  kill %1  # Stop the port-forward
+  ```
+
+  The count should match the number of segment-writer instances.
+
+### Phase 2: Validate v2 is working
+
+Run both storage backends simultaneously for at least 24 hours before proceeding. During this time, verify:
+
+#### Data is being written to v2
+
+Query recent profiling data through the Pyroscope UI or API. The v2 read path should serve data ingested after Phase 1. You can use `profilecli` or the Pyroscope UI to query profiles from the last hour and confirm results are returned.
+
+#### Compaction is running
+
+The compaction-worker compacts segments through the L0 &rarr; L1 &rarr; L2 levels. Verify that compaction jobs are completing:
+
+```bash
+kubectl logs -n pyroscope -l app.kubernetes.io/component=compaction-worker --tail=500 | grep "compaction finished successfully"
+```
+
+You should see log lines like:
+
+```
+msg="compaction finished successfully" input_blocks=20 output_blocks=1
+```
+
+Compaction typically starts within minutes of ingestion, the first block is created once enough segments accumulate for a shard.
+
+#### Error rates are stable
 
 Check that write and read error rates haven't increased since enabling v2. If you have Prometheus metrics configured, query error rates per component:
 
@@ -179,7 +288,7 @@ sum by (component) (rate(pyroscope_request_duration_seconds_count{status_code=~"
 
 All components should show zero or negligible error rates. Compare against pre-migration baselines to confirm no regression.
 
-## Phase 3: Remove v1 components
+### Phase 3: Remove v1 components
 
 Once you're confident that v2 is working correctly and you no longer need to query data ingested before Phase 1, you can remove the v1 components.
 
@@ -188,31 +297,27 @@ After this step, data ingested before Phase 1 is no longer queryable through Pyr
 {{< /admonition >}}
 
 ```bash
-helm upgrade pyroscope grafana/pyroscope \
+helm upgrade -n pyroscope pyroscope grafana/pyroscope \
   --reuse-values \
   --set architecture.storage.v1=false \
   --set architecture.storage.v2=true
 ```
 
-This command works the same way in both single-binary and microservices mode. The Helm chart automatically removes v1-only components (ingester, compactor, store-gateway, querier, query-scheduler) when `architecture.storage.v1` is set to `false`, even if your values file or `--reuse-values` state still contains overrides for those components.
+The Helm chart automatically removes v1-only components (ingester, compactor, store-gateway, querier, query-scheduler) when `architecture.storage.v1` is set to `false`, even if your values file or `--reuse-values` state still contains overrides for those components.
 
-### Verify Phase 3
+#### Verify Phase 3
 
 Check that v1 components have been removed and v2 is serving all traffic:
 
 ```bash
-# v1 components (ingester, store-gateway, querier, compactor) should be gone
-kubectl get pods -l app.kubernetes.io/instance=pyroscope
+# v1 components (ingester, store-gateway, querier, compactor, query-scheduler) should be gone
+kubectl get pods -n pyroscope -l app.kubernetes.io/instance=pyroscope
 ```
 
-Verify that queries still return data. Port-forward to the Pyroscope query endpoint and check that profile types are returned:
+Verify that queries still return data:
 
 ```bash
-# Single-binary
-kubectl port-forward svc/pyroscope 4040:4040 &
-
-# Microservices
-kubectl port-forward svc/pyroscope-query-frontend 4040:4040 &
+kubectl port-forward -n pyroscope svc/pyroscope-query-frontend 4040:4040 &
 ```
 
 Then open the Pyroscope UI at `http://localhost:4040` and verify that you can query recent profiles. An empty or errored UI indicates a problem — see [Rollback](#rollback).
@@ -224,7 +329,7 @@ Then open the Pyroscope UI at `http://localhost:4040` and verify that you can qu
 Rolling back is straightforward — set `architecture.storage.v2=false` to remove the v2 components and return to v1-only:
 
 ```bash
-helm upgrade pyroscope grafana/pyroscope \
+helm upgrade -n pyroscope pyroscope grafana/pyroscope \
   --reuse-values \
   --set architecture.storage.v1=true \
   --set architecture.storage.v2=false
@@ -237,7 +342,7 @@ Data written to v2 during the dual-ingest period is orphaned but doesn't affect 
 If you removed v1 components (Phase 3), rolling back requires redeploying them:
 
 ```bash
-helm upgrade pyroscope grafana/pyroscope \
+helm upgrade -n pyroscope pyroscope grafana/pyroscope \
   --reuse-values \
   --set architecture.storage.v1=true \
   --set architecture.storage.v2=true
@@ -251,18 +356,18 @@ The following Helm values control the v1/v2 storage configuration and migration 
 
 ### Storage layer toggles
 
-| Value | Type | Default | Description |
-|---|---|---|---|
-| `architecture.storage.v1` | bool | `true` | Enable v1 storage and its components (ingester, store-gateway, querier, compactor). |
+| Value                     | Type | Default | Description                                                                                         |
+|---------------------------|------|---------|-----------------------------------------------------------------------------------------------------|
+| `architecture.storage.v1` | bool | `true`  | Enable v1 storage and its components (ingester, store-gateway, querier, compactor).                 |
 | `architecture.storage.v2` | bool | `false` | Enable v2 storage and its components (segment-writer, metastore, compaction-worker, query-backend). |
 
 ### Migration tuning
 
-These values only apply when both `v1` and `v2` are enabled (dual-ingest mode).
+These values only apply when both `v1` and `v2` are enabled (dual-ingest mode). All values are under `architecture.storage.migration`.
 
-| Value | Type | Default | Description |
-|---|---|---|---|
-| `architecture.storage.migration.ingesterWeight` | float | `1.0` | Fraction `[0, 1]` of write traffic sent to v1 ingesters. |
-| `architecture.storage.migration.segmentWriterWeight` | float | `1.0` | Fraction `[0, 1]` of write traffic sent to v2 segment-writers. |
-| `architecture.storage.migration.queryBackend` | bool | `true` | Enable the v2 query backend for reads. |
-| `architecture.storage.migration.queryBackendFrom` | string | `"auto"` | RFC 3339 timestamp from which the v2 read path serves traffic. Must be set to a valid timestamp (for example, `2025-01-01T00:00:00Z`). |
+| Value                          | Type   | Default  | Description                                                       |
+|--------------------------------|--------|----------|-------------------------------------------------------------------|
+| `<prefix>.ingesterWeight`      | float  | `1.0`    | Fraction `[0, 1]` of write traffic sent to v1 ingesters.          |
+| `<prefix>.segmentWriterWeight` | float  | `1.0`    | Fraction `[0, 1]` of write traffic sent to v2 segment-writers.    |
+| `<prefix>.queryBackend`        | bool   | `true`   | Enable the v2 query backend for reads.                            |
+| `<prefix>.queryBackendFrom`    | string | `"auto"` | RFC 3339 timestamp (e.g. `2025-01-01T00:00:00Z`) from which the v2 read path serves traffic. When set to `auto`, the query frontend consults the metastore per tenant to determine when v2 data first appeared. If no v2 data exists for a tenant, queries fall back to v1. |
