@@ -1,4 +1,4 @@
-FROM node:22@sha256:cd7bcd2e7a1e6f72052feb023c7f6b722205d3fcab7bbcbd2d1bfdab10b1e935 AS builder
+FROM node:24@sha256:bb20cf73b3ad7212834ec48e2174cdcb5775f6550510a5336b842ae32741ce6c AS builder
 
 WORKDIR /pyroscope/ui
 COPY ui/package.json ui/yarn.lock ui/.yarnrc.yml ./
