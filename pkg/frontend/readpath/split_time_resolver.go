@@ -33,6 +33,7 @@ type MetastoreSplitTimeResolver struct {
 type cachedSplitTime struct {
 	time      time.Time
 	expiresAt time.Time
+	noData    bool
 }
 
 func NewMetastoreSplitTimeResolver(client TenantServiceClient, ttl time.Duration) *MetastoreSplitTimeResolver {
@@ -48,6 +49,9 @@ func (r *MetastoreSplitTimeResolver) OldestProfileTime(ctx context.Context, tena
 	r.mu.RLock()
 	if cached, ok := r.cache[tenantID]; ok && now.Before(cached.expiresAt) {
 		r.mu.RUnlock()
+		if cached.noData {
+			return time.Time{}, ErrNoV2Data
+		}
 		return cached.time, nil
 	}
 	r.mu.RUnlock()
@@ -58,6 +62,12 @@ func (r *MetastoreSplitTimeResolver) OldestProfileTime(ctx context.Context, tena
 	}
 	stats := resp.GetStats()
 	if stats == nil || !stats.DataIngested {
+		r.mu.Lock()
+		r.cache[tenantID] = cachedSplitTime{
+			expiresAt: now.Add(r.ttl),
+			noData:    true,
+		}
+		r.mu.Unlock()
 		return time.Time{}, ErrNoV2Data
 	}
 
