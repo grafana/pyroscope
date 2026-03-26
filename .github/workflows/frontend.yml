@@ -35,7 +35,7 @@ jobs:
           path: ${{ steps.yarn-cache.outputs.dir }}
           key: yarn-${{ hashFiles('ui/yarn.lock') }}
           restore-keys: yarn-
-      - run: yarn --frozen-lockfile
+      - run: yarn install --immutable
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: node_modules
