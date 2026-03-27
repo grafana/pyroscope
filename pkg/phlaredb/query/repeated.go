@@ -13,6 +13,7 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -194,7 +195,7 @@ var ErrSeekOutOfRange = fmt.Errorf("bug: south row is out of range")
 
 type repeatedRowColumnIterator struct {
 	ctx  context.Context
-	span *tracing.Span
+	span oteltrace.Span
 
 	rows     iter.Iterator[int64]
 	rgs      []parquet.RowGroup
@@ -237,9 +238,12 @@ func NewRepeatedRowColumnIterator(ctx context.Context, rows iter.Iterator[int64]
 	tableName := strings.ToLower(s.Name()) + "s"
 	columnName := strings.Join(s.Columns()[column], ".")
 	r.initMetrics(getMetricsFromContext(ctx), tableName, columnName)
-	r.span, r.ctx = tracing.StartSpanFromContext(ctx, "RepeatedRowColumnIterator")
-	r.span.SetTag("table", tableName)
-	r.span.SetTag("column", columnName)
+	_, r.ctx = tracing.StartSpanFromContext(ctx, "RepeatedRowColumnIterator")
+	r.span = oteltrace.SpanFromContext(r.ctx)
+	r.span.SetAttributes(
+		attribute.String("table", tableName),
+		attribute.String("column", columnName),
+	)
 	return &r
 }
 
@@ -315,8 +319,8 @@ func (x *repeatedRowColumnIterator) readPage(rn int64) bool {
 	readPageStart := time.Now()
 	if x.page, x.err = x.pages.ReadPage(); x.err != nil {
 		if x.err != io.EOF {
-			x.span.LogError(x.err)
-			x.span.SetError()
+			x.span.RecordError(x.err)
+			x.span.SetStatus(codes.Error, x.err.Error())
 			return false
 		}
 		x.err = nil
@@ -337,13 +341,15 @@ func (x *repeatedRowColumnIterator) readPage(rn int64) bool {
 	x.maxPageRowNum = rn + pageNumRows
 	x.rowsFetched += pageNumRows
 	x.vit.reset(x.page, x.readSize)
-	oteltrace.SpanFromContext(x.ctx).AddEvent("Page read", oteltrace.WithAttributes(
-		attribute.Int64("min_rg_row", x.minRGRowNum),
-		attribute.Int64("max_rg_row", x.maxRGRowNum),
-		attribute.Int64("seek_row", x.minRGRowNum+rn),
-		attribute.Int64("page_read_ms", pageReadDurationMs),
-		attribute.Int64("page_num_rows", pageNumRows),
-	))
+	if x.span.IsRecording() {
+		x.span.AddEvent("Page read", oteltrace.WithAttributes(
+			attribute.Int64("min_rg_row", x.minRGRowNum),
+			attribute.Int64("max_rg_row", x.maxRGRowNum),
+			attribute.Int64("seek_row", x.minRGRowNum+rn),
+			attribute.Int64("page_read_ms", pageReadDurationMs),
+			attribute.Int64("page_num_rows", pageNumRows),
+		))
+	}
 	return true
 }
 
@@ -354,10 +360,12 @@ func (x *repeatedRowColumnIterator) Close() (err error) {
 	if x.pages != nil {
 		err = x.pages.Close()
 	}
-	x.span.SetTag("page_bytes", x.pageBytes)
-	x.span.SetTag("rows_fetched", x.rowsFetched)
-	x.span.SetTag("rows_read", x.rowsRead)
-	x.span.Finish()
+	x.span.SetAttributes(
+		attribute.Int64("page_bytes", x.pageBytes),
+		attribute.Int64("rows_fetched", x.rowsFetched),
+		attribute.Int64("rows_read", x.rowsRead),
+	)
+	x.span.End()
 	return err
 }
 

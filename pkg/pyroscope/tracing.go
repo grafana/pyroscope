@@ -36,6 +36,7 @@ func initTracing(serviceName string, logger log.Logger, profilingEnabled bool) (
 	level.Warn(logger).Log("msg", "dskit tracing init failed, falling back to direct OTel SDK init", "err", err)
 	closer, fallbackErr := initTracingDirect(serviceName, logger, profilingEnabled)
 	if fallbackErr != nil {
+		level.Warn(logger).Log("msg", "direct OTel SDK init also failed", "fallback_err", fallbackErr)
 		// Return the original error as it is likely more informative.
 		return nil, err
 	}

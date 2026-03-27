@@ -56,8 +56,9 @@ func (t *parquetTable[M, P]) fetch(ctx context.Context) (err error) {
 		var offset int
 		// TODO(kolesnikovae): Row groups could be fetched in parallel.
 		rgs := t.file.RowGroups()
+		otelSpan := oteltrace.SpanFromContext(ctx)
 		for _, h := range t.headers {
-			oteltrace.SpanFromContext(ctx).AddEvent("fetch row group", oteltrace.WithAttributes(
+			otelSpan.AddEvent("fetch row group", oteltrace.WithAttributes(
 				attribute.Int("row_group", int(h.RowGroup)),
 				attribute.Int("index_row", int(h.Index)),
 				attribute.Int("rows", int(h.Rows)),

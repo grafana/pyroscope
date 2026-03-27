@@ -27,7 +27,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -198,9 +197,7 @@ func (sp *schedulerProcessor) querierLoop(parentCtx context.Context, schedulerCl
 			// Extract trace context from HTTP headers and graft it onto the
 			// stream context so that cancellation is propagated when the
 			// stream closes.
-			reqCtx := httpgrpcutil.GetParentContextForRequest(request.HttpRequest)
-			spanCtx := oteltrace.SpanContextFromContext(reqCtx)
-			ctx := oteltrace.ContextWithRemoteSpanContext(c.Context(), spanCtx)
+			ctx := httpgrpcutil.GetParentContextForRequest(c.Context(), request.HttpRequest)
 			// We need to inject user into context for sending response back.
 			ctx = user.InjectOrgID(ctx, request.UserID)
 			queueSpan, ctx := tracing.StartSpanFromContext(ctx, "querier_processor_runRequest")

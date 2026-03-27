@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/dskit/tracing"
 	"github.com/iancoleman/strcase"
 	"go.opentelemetry.io/otel/attribute"
-	otelTrace "go.opentelemetry.io/otel/trace"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -156,7 +156,7 @@ func (b *blockContext) datasetIndex() *metastorev1.Dataset {
 	s := (&queryContext{blockContext: b}).sections()
 	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
 	if indexOnly {
-		otelTrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query_index_only", indexOnly))
+		oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query_index_only", indexOnly))
 		return nil
 	}
 
@@ -164,7 +164,7 @@ func (b *blockContext) datasetIndex() *metastorev1.Dataset {
 }
 
 func (b *blockContext) lookupDatasets(ds *metastorev1.Dataset) error {
-	otelTrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query", true))
+	oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query", true))
 
 	// As query execution has not started yet,
 	// we can safely open datasets.
@@ -201,7 +201,7 @@ func (b *blockContext) lookupDatasets(ds *metastorev1.Dataset) error {
 	md.Datasets = md.Datasets[:j]
 	b.obj.SetMetadata(md)
 
-	otelTrace.SpanFromContext(b.ctx).SetAttributes(attribute.String("msg", "dataset tsdb index lookup complete"))
+	oteltrace.SpanFromContext(b.ctx).AddEvent("dataset tsdb index lookup complete")
 
 	return nil
 }

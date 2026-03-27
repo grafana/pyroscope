@@ -44,8 +44,9 @@ func (c *HttpgrpcHeadersCarrier) Keys() []string {
 	return keys
 }
 
-// GetParentContextForRequest extracts parent trace context from HTTP request headers using OTel propagation.
-func GetParentContextForRequest(req *httpgrpc.HTTPRequest) context.Context {
+// GetParentContextForRequest extracts parent trace context from HTTP request
+// headers and attaches it to the provided context using OTel propagation.
+func GetParentContextForRequest(ctx context.Context, req *httpgrpc.HTTPRequest) context.Context {
 	carrier := (*HttpgrpcHeadersCarrier)(req)
-	return otel.GetTextMapPropagator().Extract(context.Background(), carrier)
+	return otel.GetTextMapPropagator().Extract(ctx, carrier)
 }

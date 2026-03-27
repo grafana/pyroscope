@@ -845,7 +845,7 @@ type SyncIterator struct {
 	// Status
 	ctx             context.Context
 	cancel          func()
-	span            *tracing.Span
+	span            oteltrace.Span
 	metrics         *Metrics
 	curr            RowNumber
 	currRowGroup    parquet.RowGroup
@@ -901,9 +901,12 @@ func NewSyncIterator(ctx context.Context, rgs []parquet.RowGroup, column int, co
 		rn.Skip(rg.NumRows())
 	}
 
-	span, ctx := tracing.StartSpanFromContext(ctx, "syncIterator")
-	span.SetTag("columnIndex", column)
-	span.SetTag("column", columnName)
+	_, ctx = tracing.StartSpanFromContext(ctx, "syncIterator")
+	span := oteltrace.SpanFromContext(ctx)
+	span.SetAttributes(
+		attribute.Int("columnIndex", column),
+		attribute.String("column", columnName),
+	)
 
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -1084,10 +1087,12 @@ func (c *SyncIterator) seekPages(seekTo RowNumber, definitionLevel int) (done bo
 				return true, err
 			}
 			c.metrics.pageReadsTotal.WithLabelValues(c.table, c.columnName).Add(1)
-			oteltrace.SpanFromContext(c.ctx).AddEvent("reading page (seekPages)", oteltrace.WithAttributes(
-				attribute.Int64("page_num_values", pg.NumValues()),
-				attribute.Int64("page_size", pg.Size()),
-			))
+			if c.span.IsRecording() {
+				c.span.AddEvent("reading page (seekPages)", oteltrace.WithAttributes(
+					attribute.Int64("page_num_values", pg.NumValues()),
+					attribute.Int64("page_size", pg.Size()),
+				))
+			}
 
 			// Skip based on row number?
 			newRN := c.curr
@@ -1155,10 +1160,12 @@ func (c *SyncIterator) next() (RowNumber, *parquet.Value, error) {
 				return EmptyRowNumber(), nil, err
 			}
 			c.metrics.pageReadsTotal.WithLabelValues(c.table, c.columnName).Add(1)
-			oteltrace.SpanFromContext(c.ctx).AddEvent("reading page (next)", oteltrace.WithAttributes(
-				attribute.Int64("page_num_values", pg.NumValues()),
-				attribute.Int64("page_size", pg.Size()),
-			))
+			if c.span.IsRecording() {
+				c.span.AddEvent("reading page (next)", oteltrace.WithAttributes(
+					attribute.Int64("page_num_values", pg.NumValues()),
+					attribute.Int64("page_size", pg.Size()),
+				))
+			}
 
 			if c.filter != nil && !c.filter.KeepPage(pg) {
 				// This page filtered out
@@ -1276,12 +1283,14 @@ func (c *SyncIterator) Close() error {
 	c.cancel()
 	c.closeCurrRowGroup()
 
-	c.span.SetTag("inspectedColumnChunks", c.filter.InspectedColumnChunks.Load())
-	c.span.SetTag("inspectedPages", c.filter.InspectedPages.Load())
-	c.span.SetTag("inspectedValues", c.filter.InspectedValues.Load())
-	c.span.SetTag("keptColumnChunks", c.filter.KeptColumnChunks.Load())
-	c.span.SetTag("keptPages", c.filter.KeptPages.Load())
-	c.span.SetTag("keptValues", c.filter.KeptValues.Load())
-	c.span.Finish()
+	c.span.SetAttributes(
+		attribute.Int64("inspectedColumnChunks", c.filter.InspectedColumnChunks.Load()),
+		attribute.Int64("inspectedPages", c.filter.InspectedPages.Load()),
+		attribute.Int64("inspectedValues", c.filter.InspectedValues.Load()),
+		attribute.Int64("keptColumnChunks", c.filter.KeptColumnChunks.Load()),
+		attribute.Int64("keptPages", c.filter.KeptPages.Load()),
+		attribute.Int64("keptValues", c.filter.KeptValues.Load()),
+	)
+	c.span.End()
 	return nil
 }

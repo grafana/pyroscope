@@ -236,7 +236,7 @@ func (w *reqBody) Read(p []byte) (int, error) {
 		if w.sp != nil {
 			w.sp.AddEvent("read body from request")
 			if w.read > 0 {
-				w.sp.SetAttributes(attribute.String("request_body_size", w.read.String()))
+				w.sp.SetAttributes(attribute.Int64("request_body_size", int64(w.read)))
 			}
 		}
 	}
