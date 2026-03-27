@@ -445,68 +445,61 @@ func NewBinaryJoinIterator(definitionLevel int, left, right Iterator) *BinaryJoi
 	}
 }
 
-// nextOrSeek will use next if the iterator is exactly one row aways
-func (bj *BinaryJoinIterator) nextOrSeek(to RowNumberWithDefinitionLevel, it Iterator) bool {
-	oldResult := it.At()
-	defer iteratorResultPoolPut(oldResult)
-	// Seek when definition level is higher then 0, there is not previous iteration or when the difference between current position and to is not 1
-	if to.DefinitionLevel != 0 || oldResult == nil || to.RowNumber[0] != (oldResult.RowNumber[0]-1) {
-		return it.Seek(to)
+// nextOrSeek advances it toward the target's position.
+// If to is nil (not yet positioned), or to is at/behind it, it calls Next.
+// If to is exactly one row ahead, it calls Next as an optimization.
+// Otherwise, it calls Seek.
+func (bj *BinaryJoinIterator) nextOrSeek(it Iterator, to *IteratorResult) bool {
+	from := it.At()
+
+	var ok bool
+	switch {
+	// If to points nowhere, we can't seek, hence we need to next().
+	case to == nil:
+		ok = it.Next()
+	// If from points nowhere, we directly seek towards to.
+	case from == nil:
+		ok = it.Seek(RowNumberWithDefinitionLevel{to.RowNumber, bj.definitionLevel})
+	// Optimized to do next if we are just 1 position behind it (only for definitionLevels of 0).
+	case bj.definitionLevel == 0 && to.RowNumber[0] == from.RowNumber[0]+1:
+		ok = it.Next()
+	default:
+		ok = it.Seek(RowNumberWithDefinitionLevel{to.RowNumber, bj.definitionLevel})
 	}
-	return it.Next()
+
+	// Return the old result to the pool if the iterator replaced it with a new one.
+	if from != nil && from != it.At() {
+		iteratorResultPoolPut(from)
+	}
+	return ok
+}
+
+func (bj *BinaryJoinIterator) rowsMatch() bool {
+	l, r := bj.left.At(), bj.right.At()
+	return l != nil && r != nil && CompareRowNumbers(bj.definitionLevel, l.RowNumber, r.RowNumber) == 0
 }
 
 func (bj *BinaryJoinIterator) makeResult() {
+	l, r := bj.left.At(), bj.right.At()
 	bj.res.Reset()
 	bj.res.RowNumber = EmptyRowNumber()
-	bj.res.RowNumber[0] = bj.left.At().RowNumber[0]
-	bj.res.Append(bj.left.At())
-	bj.res.Append(bj.right.At())
+	bj.res.RowNumber[0] = l.RowNumber[0]
+	bj.res.Append(l)
+	bj.res.Append(r)
 }
 
 func (bj *BinaryJoinIterator) Next() bool {
-	var r *IteratorResult
+	cur, other := bj.left, bj.right
 	for {
-		if r != nil {
-			iteratorResultPoolPut(r)
-		}
-		r = bj.left.At()
-		if !bj.left.Next() {
-			bj.err = bj.left.Err()
+		if !bj.nextOrSeek(cur, other.At()) {
+			bj.err = cur.Err()
 			return false
 		}
-
-		// now seek the right iterator to the left position
-		if !bj.nextOrSeek(RowNumberWithDefinitionLevel{bj.left.At().RowNumber, bj.definitionLevel}, bj.right) {
-			bj.err = bj.right.Err()
-			return false
-		}
-
-		if cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber); cmp == 0 {
-			// we have a found an element
+		if bj.rowsMatch() {
 			bj.makeResult()
 			return true
-		} else if cmp < 0 {
-			// left is smaller, so we need to seek the left iterator to the right position
-			if !bj.nextOrSeek(RowNumberWithDefinitionLevel{bj.right.At().RowNumber, bj.definitionLevel}, bj.left) {
-				bj.err = bj.left.Err()
-				return false
-			}
-
-			if cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber); cmp == 0 {
-				bj.makeResult()
-				return true
-			}
-
-		} else {
-			panic(fmt.Sprintf(
-				"bug in iterator during join: the right iterator cannot be smaller than the left one, as it just has been Seeked beyond left=%v %T right=%v %T",
-				bj.left.At().RowNumber[0],
-				bj.left,
-				bj.right.At().RowNumber[0],
-				bj.right,
-			))
 		}
+		cur, other = other, cur
 	}
 }
 
@@ -519,18 +512,18 @@ func (bj *BinaryJoinIterator) Seek(to RowNumberWithDefinitionLevel) bool {
 		bj.err = bj.left.Err()
 		return false
 	}
+	// move right at least until left is currently
+	to.RowNumber = bj.left.At().RowNumber
 	if !bj.right.Seek(to) {
 		bj.err = bj.right.Err()
 		return false
 	}
-
 	// if there is a match right away return true
 	if cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber); cmp == 0 {
 		bj.makeResult()
 		return true
 	}
-
-	// if not look for the next match
+	// if not solution yet, start next loop
 	return bj.Next()
 }
 
