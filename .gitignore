@@ -18,7 +18,6 @@ data-shared/
 data-compactor/
 data-metastore/
 .DS_Store
-**/dist
 
 # IDE
 .idea
@@ -27,22 +26,6 @@ data-metastore/
 pyroscope.sln
 .cursor/*
 !.cursor/rules/
-
-# Frontend
-public/build
-cypress/screenshots
-.eslintcache
-node_modules
-/grafana/flamegraph/coverage/
-# Yarn
-**/.yarn/*
-!**/.yarn/patches
-!**/.yarn/releases
-!**/.yarn/plugins
-!**/.yarn/sdks
-!**/.yarn/versions
-.pnp.*
-yarn-error.log
 
 # Contains the docker image digest for pyroscope
 /.docker-image-digest-pyroscope

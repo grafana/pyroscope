@@ -1,0 +1,28 @@
+.select {
+  position: relative;
+}
+
+.select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  z-index: 1000;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  min-width: 160px;
+  overflow: hidden;
+  padding: var(--space-1) 0;
+}
+
+.select-option-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.select-divider {
+  height: 1px;
+  background: var(--border-weak);
+  margin: var(--space-1) 0;
+}

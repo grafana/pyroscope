@@ -89,7 +89,15 @@ Create a list of components that should be deployed.
 {{-     $components = mustMergeOverwrite (deepCopy $components) (.Values.architecture.microservices.v2 | default dict)}}
 {{-   end }}
 {{- end }}
-{{- $components = mustMergeOverwrite (deepCopy $components) (.Values.pyroscope.components | default dict)}}
+{{- if .Values.architecture.microservices.enabled }}
+{{-   range $k, $v := (.Values.pyroscope.components | default dict) }}
+{{-     if hasKey $components $k }}
+{{-       $_ := set $components $k (mustMergeOverwrite (deepCopy (index $components $k)) $v) }}
+{{-     end }}
+{{-   end }}
+{{- else }}
+{{-   $components = mustMergeOverwrite (deepCopy $components) (.Values.pyroscope.components | default dict)}}
+{{- end }}
 {{- range $k, $v := $components }}
 {{- $v :=  set $v "name" (printf "%s-%s" $full_name $k) }}
 {{$k}}: {{ $v | toJson }}

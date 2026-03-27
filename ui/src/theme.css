@@ -1,0 +1,418 @@
+/* =============================================================================
+   PYROSCOPE UI — Design System
+   theme.css
+
+   Structure:
+     §1  Font import
+     §2  Primitive tokens    (color palette, spacing, radius, type, z-index, motion)
+     §3  Semantic tokens     dark mode default
+     §4  Semantic overrides  [data-theme="light"]
+     §5  Base styles         minimal reset + global defaults
+
+   Usage:
+     Import once at the app entry point:
+       import './theme.css'
+
+     Toggle themes by setting the attribute on <html>:
+       document.documentElement.setAttribute('data-theme', 'light')
+       document.documentElement.removeAttribute('data-theme')   // → dark
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   §1  Font Import
+
+   For best performance, replace this @import with <link> tags in index.html:
+
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+----------------------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap');
+
+/* -----------------------------------------------------------------------------
+   §2  Primitive Tokens
+
+   Raw values — no semantic meaning. Use these only to derive semantic tokens,
+   not directly in components.
+----------------------------------------------------------------------------- */
+:root {
+  /* ── Neutral (blue-tinted cool slate) ──────────────────────────────────── */
+  --neutral-0: #ffffff;
+  --neutral-50: #f3f5fb;
+  --neutral-100: #e4e8f4;
+  --neutral-200: #c5ccde;
+  --neutral-300: #9aa3c0;
+  --neutral-400: #6e7899;
+  --neutral-500: #515a7a;
+  --neutral-600: #3b4468;
+  --neutral-700: #2d3557;
+  --neutral-800: #242c4a;
+  --neutral-850: #1e263f;
+  --neutral-900: #1a2236;
+  --neutral-950: #141a2c;
+  --neutral-1000: #000000;
+
+  /* ── Blue ───────────────────────────────────────────────────────────────── */
+  --blue-100: #d6e4ff;
+  --blue-200: #adc8ff;
+  --blue-300: #6e9fff;
+  --blue-400: #5a86de;
+  --blue-500: #3d71d9;
+  --blue-600: #2e5bbf;
+  --blue-700: #1e449e;
+
+  /* ── Green ──────────────────────────────────────────────────────────────── */
+  --green-100: #d4f0e2;
+  --green-200: #9fdfc0;
+  --green-300: #6ccf8e;
+  --green-400: #3c9266;
+  --green-500: #1a7f4b;
+  --green-600: #126638;
+  --green-700: #0b4a28;
+
+  /* ── Red ────────────────────────────────────────────────────────────────── */
+  --red-100: #ffd6e3;
+  --red-200: #ff9cbf;
+  --red-300: #ff5286;
+  --red-400: #d73274;
+  --red-500: #d10e5c;
+  --red-600: #a80949;
+  --red-700: #7c0636;
+
+  /* ── Orange ─────────────────────────────────────────────────────────────── */
+  --orange-100: #fff0cc;
+  --orange-200: #ffd47a;
+  --orange-300: #fbad37;
+  --orange-400: #ffa826;
+  --orange-500: #ff9900;
+  --orange-600: #cc7a00;
+  --orange-700: #995c00;
+
+  /* ── Spacing (4 px base, rem units) ────────────────────────────────────── */
+  /* 4 px base in rem is the industry standard (Material, Radix, Tailwind).  */
+  /* rem scales with the user's browser font-size setting (accessibility).    */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 0.125rem; /*  2 px */
+  --space-1: 0.25rem; /*  4 px */
+  --space-1-5: 0.375rem; /*  6 px */
+  --space-2: 0.5rem; /*  8 px */
+  --space-3: 0.75rem; /* 12 px */
+  --space-4: 1rem; /* 16 px */
+  --space-5: 1.25rem; /* 20 px */
+  --space-6: 1.5rem; /* 24 px */
+  --space-8: 2rem; /* 32 px */
+  --space-10: 2.5rem; /* 40 px */
+  --space-12: 3rem; /* 48 px */
+  --space-16: 4rem; /* 64 px */
+  --space-20: 5rem; /* 80 px */
+  --space-24: 6rem; /* 96 px */
+
+  /* ── Border radius ──────────────────────────────────────────────────────── */
+  --radius-sm: 3px; /* chips, badges, small inputs                    */
+  --radius-md: 5px; /* buttons, inputs, standard elements             */
+  --radius-lg: 8px; /* cards, panels, dropdowns                       */
+  --radius-xl: 12px; /* dialogs, modals, large containers              */
+  --radius-full: 9999px; /* pills, avatar circles                          */
+
+  /* ── Typography ─────────────────────────────────────────────────────────── */
+  --font-sans:
+    'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  --font-mono:
+    'Roboto Mono', 'Fira Code', 'Cascadia Code', 'Menlo', 'Consolas', monospace;
+
+  /* Size scale — anchored at 14 px as the base UI font size */
+  --text-2xs: 0.625rem; /* 10 px */
+  --text-xs: 0.6875rem; /* 11 px */
+  --text-sm: 0.75rem; /* 12 px */
+  --text-md: 0.875rem; /* 14 px  ← body / base */
+  --text-lg: 1rem; /* 16 px */
+  --text-xl: 1.125rem; /* 18 px */
+  --text-2xl: 1.25rem; /* 20 px */
+  --text-3xl: 1.5rem; /* 24 px */
+  --text-4xl: 2rem; /* 32 px */
+
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-base: 1.5;
+  --leading-relaxed: 1.7;
+
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.02em;
+  --tracking-wider: 0.05em;
+  --tracking-caps: 0.08em;
+
+  /* ── Z-index ────────────────────────────────────────────────────────────── */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-overlay: 1200;
+  --z-modal: 1300;
+  --z-popover: 1400;
+  --z-toast: 1500;
+  --z-tooltip: 1600;
+
+  /* ── Motion ─────────────────────────────────────────────────────────────── */
+  --duration-instant: 50ms;
+  --duration-fast: 100ms;
+  --duration-base: 150ms;
+  --duration-slow: 200ms;
+  --duration-slower: 300ms;
+  --duration-slowest: 500ms;
+
+  --ease-linear: linear;
+  --ease-out: ease-out;
+  --ease-in-out: ease-in-out;
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* -----------------------------------------------------------------------------
+   §3  Semantic Tokens — Dark mode (default)
+
+   Components reference these. They change between themes.
+
+   Background depth model (furthest back → foremost):
+     canvas → primary → secondary → elevated
+----------------------------------------------------------------------------- */
+:root {
+  color-scheme: dark;
+
+  /* ── Backgrounds ────────────────────────────────────────────────────────── */
+  --bg-canvas: #1a2236; /* page fill, outermost backdrop                 */
+  --bg-primary: #212a44; /* panels, cards, main content surfaces          */
+  --bg-secondary: #28324f; /* sidebars, nested surfaces, form inputs        */
+  --bg-elevated: #303c5e; /* dropdowns, popovers, tooltips, dialogs        */
+
+  /* ── Borders ────────────────────────────────────────────────────────────── */
+  --border-weak: rgba(170, 185, 230, 0.08); /* hairlines, dividers       */
+  --border-medium: rgba(170, 185, 230, 0.16); /* standard element borders  */
+  --border-strong: rgba(170, 185, 230, 0.28); /* focused / prominent rings */
+
+  /* ── Text ───────────────────────────────────────────────────────────────── */
+  --text-primary: #d0d4e8; /* main body text                     */
+  --text-secondary: #8892b2; /* labels, hints, descriptions        */
+  --text-disabled: #515b7c; /* non-interactive / disabled text    */
+  --text-link: var(--blue-300); /* #6e9fff                            */
+  --text-link-hover: var(--blue-200); /* #adc8ff                            */
+  --text-max-contrast: #eef0ff; /* text on colored / inverted bg      */
+
+  /* ── Action states ──────────────────────────────────────────────────────── */
+  --action-hover: rgba(170, 185, 230, 0.07); /* hover overlay on items  */
+  --action-selected: rgba(61, 113, 217, 0.2); /* selected item overlay   */
+  --action-focus: rgba(61, 113, 217, 0.5); /* focus ring color        */
+
+  /* ── Shadows ────────────────────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.65);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.7);
+
+  /* ── Primary (blue #3d71d9) ─────────────────────────────────────────────── */
+  --color-primary: var(--blue-500); /* #3d71d9            */
+  --color-primary-hover: var(--blue-400); /* #5a86de            */
+  --color-primary-subtle: rgba(61, 113, 217, 0.18); /* tinted bg         */
+  --color-primary-border: var(--blue-300); /* #6e9fff            */
+  --color-primary-text: var(--blue-300); /* on-theme label     */
+  --color-primary-foreground: #ffffff; /* text on primary bg */
+
+  /* ── Secondary (low-contrast ghost surface) ─────────────────────────────── */
+  --color-secondary: rgba(204, 204, 220, 0.1);
+  --color-secondary-hover: rgba(204, 204, 220, 0.16);
+  --color-secondary-border: rgba(204, 204, 220, 0.28);
+  --color-secondary-foreground: var(--text-primary);
+
+  /* ── Success (green #1a7f4b) ────────────────────────────────────────────── */
+  --color-success: var(--green-500);
+  --color-success-hover: var(--green-400);
+  --color-success-subtle: rgba(26, 127, 75, 0.18);
+  --color-success-border: var(--green-300);
+  --color-success-text: var(--green-300);
+  --color-success-foreground: #ffffff;
+
+  /* ── Error (red #d10e5c) ────────────────────────────────────────────────── */
+  --color-error: var(--red-500);
+  --color-error-hover: var(--red-400);
+  --color-error-subtle: rgba(209, 14, 92, 0.18);
+  --color-error-border: var(--red-300);
+  --color-error-text: var(--red-300);
+  --color-error-foreground: #ffffff;
+
+  /* ── Warning (orange #ff9900) ───────────────────────────────────────────── */
+  --color-warning: var(--orange-500);
+  --color-warning-hover: var(--orange-400);
+  --color-warning-subtle: rgba(255, 153, 0, 0.16);
+  --color-warning-border: var(--orange-300);
+  --color-warning-text: var(--orange-300);
+  --color-warning-foreground: #000000; /* black on orange    */
+}
+
+/* -----------------------------------------------------------------------------
+   §4  Semantic Overrides — Light mode  [data-theme="light"]
+
+   Only tokens that change between themes are redeclared here.
+   Primitives and theme-invariant values inherit from :root.
+----------------------------------------------------------------------------- */
+[data-theme='light'] {
+  color-scheme: light;
+
+  /* ── Backgrounds ────────────────────────────────────────────────────────── */
+  --bg-canvas: #edf0f7; /* soft cool gray — avoids harsh pure white      */
+  --bg-primary: #ffffff; /* panels pop against canvas                     */
+  --bg-secondary: #f3f5fb; /* inputs, nested areas, sidebars               */
+  --bg-elevated: #ffffff; /* elevated surfaces distinguished by shadow     */
+
+  /* ── Borders ────────────────────────────────────────────────────────────── */
+  --border-weak: rgba(25, 35, 80, 0.07);
+  --border-medium: rgba(25, 35, 80, 0.14);
+  --border-strong: rgba(25, 35, 80, 0.25);
+
+  /* ── Text ───────────────────────────────────────────────────────────────── */
+  --text-primary: #1c2038;
+  --text-secondary: #4d557a;
+  --text-disabled: #9aa0bf;
+  --text-link: var(--blue-500); /* #3d71d9 — readable on white      */
+  --text-link-hover: var(--blue-600); /* #2e5bbf                          */
+  --text-max-contrast: #000000;
+
+  /* ── Action states ──────────────────────────────────────────────────────── */
+  --action-hover: rgba(25, 35, 80, 0.06);
+  --action-selected: rgba(61, 113, 217, 0.12);
+  --action-focus: rgba(61, 113, 217, 0.4);
+
+  /* ── Shadows (softer in light mode) ────────────────────────────────────── */
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.07);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.09);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.11);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.13);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.15);
+
+  /* ── Color adjustments for light-mode readability ───────────────────────── */
+  /* "text" variants use darker shades so they're readable on white surfaces  */
+  --color-primary-text: var(--blue-500);
+  --color-primary-subtle: rgba(61, 113, 217, 0.1);
+
+  --color-success-text: var(--green-500);
+  --color-success-subtle: rgba(26, 127, 75, 0.1);
+
+  --color-error-text: var(--red-500);
+  --color-error-subtle: rgba(209, 14, 92, 0.1);
+
+  --color-warning-text: var(--orange-600); /* deeper on white    */
+  --color-warning-subtle: rgba(255, 153, 0, 0.09);
+
+  --color-secondary: rgba(25, 35, 80, 0.07);
+  --color-secondary-hover: rgba(25, 35, 80, 0.12);
+  --color-secondary-border: rgba(25, 35, 80, 0.2);
+}
+
+/* -----------------------------------------------------------------------------
+   §5  Base Styles
+
+   Minimal reset and global defaults using only semantic tokens.
+   Components should not need to override these fundamentals.
+----------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px; /* 1rem = 16px */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-md); /* 14px */
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-base);
+  min-height: 100dvh;
+}
+
+a {
+  color: var(--text-link);
+  text-decoration: none;
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+a:hover {
+  color: var(--text-link-hover);
+}
+
+/* Outline only for keyboard navigation — not mouse/touch */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--action-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+/* Form elements inherit the document font by default */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+/* Scrollbar — Chromium only, degrades gracefully in other browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* Text selection */
+::selection {
+  background: var(--color-primary-subtle);
+  color: var(--text-max-contrast);
+}

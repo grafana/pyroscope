@@ -1,0 +1,30 @@
+.app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-canvas);
+}
+
+.app-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-error-subtle);
+  border-bottom: 1px solid var(--color-error-border);
+  font-size: var(--text-sm);
+  color: var(--color-error-text);
+}
+
+.app-error-detail {
+  color: var(--text-disabled);
+  font-family: var(--font-mono);
+}
+
+.app-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}

@@ -27,11 +27,12 @@ const (
 	outputConsole = "console"
 	outputRaw     = "raw"
 	outputPprof   = "pprof="
+	outputJSON    = "json"
 )
 
 func outputSeries(ctx context.Context, result []*typesv1.Labels, format string, from, to time.Time) error {
 	switch format {
-	case "json":
+	case outputJSON:
 		return outputSeriesJSON(ctx, result, from, to)
 	default:
 		return outputSeriesTable(ctx, result)

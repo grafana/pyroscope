@@ -106,7 +106,7 @@ func queryTop(ctx context.Context, params *queryTopParams) error {
 	}
 
 	switch params.Output {
-	case "json":
+	case outputJSON:
 		type jsonSeries struct {
 			Labels map[string]string `json:"labels"`
 			Total  float64           `json:"total"`

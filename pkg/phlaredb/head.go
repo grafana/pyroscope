@@ -224,7 +224,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, a
 		if delta && isDeltaSupported(lbls[idxType]) {
 			profile.Samples = h.delta.computeDelta(profile)
 		} else {
-			profile.Samples = profile.Samples.Compact(false)
+			profile.Samples = profile.Samples.Compact()
 		}
 
 		profile.TotalValue = profile.Samples.Sum()
