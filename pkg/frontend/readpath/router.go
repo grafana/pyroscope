@@ -97,6 +97,7 @@ func Query[Req, Resp any](
 		sanitize(req.Msg, nil)
 		return query[Req, Resp](ctx, router.oldFrontend, req)
 	}
+	level.Debug(router.logger).Log("msg", "resolved split time for query backend routing", "split_time", splitTime.UTC().Format(time.RFC3339))
 
 	// Note: the old read path includes both start and end: [start, end].
 	// The new read path does not include end: [start, end).
