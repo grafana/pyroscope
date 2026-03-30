@@ -513,7 +513,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 1
           }
@@ -525,7 +525,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 2
           }
@@ -537,7 +537,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 3
           }
@@ -549,7 +549,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 4
           }
@@ -561,7 +561,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 5
           }
@@ -573,7 +573,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 6
           }
@@ -585,7 +585,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 7
           }
@@ -597,7 +597,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 8
           }
@@ -609,7 +609,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 9
           }
@@ -621,7 +621,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 10
           }
@@ -633,7 +633,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 11
           }
@@ -645,7 +645,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 12
           }
@@ -657,7 +657,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 6
           }
@@ -669,7 +669,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 13
           }
@@ -681,7 +681,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 14
           }
@@ -693,7 +693,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 15
           }
@@ -705,7 +705,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 16
           }
@@ -717,7 +717,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 17
           }
@@ -729,7 +729,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 18
           }
@@ -741,7 +741,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 19
           }
@@ -753,7 +753,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 20
           }
@@ -765,7 +765,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 21
           }
@@ -777,7 +777,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 22
           }
@@ -789,7 +789,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 3
           }
@@ -801,7 +801,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 23
           }
@@ -813,7 +813,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 24
           }
@@ -825,7 +825,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 24
           }
@@ -837,7 +837,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 25
           }
@@ -849,7 +849,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 26
           }
@@ -861,7 +861,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 27
           }
@@ -873,7 +873,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 28
           }
@@ -885,7 +885,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 29
           }
@@ -897,7 +897,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 30
           }
@@ -909,7 +909,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 31
           }
@@ -921,7 +921,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 32
           }
@@ -933,7 +933,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 33
           }
@@ -945,7 +945,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 34
           }
@@ -957,7 +957,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 35
           }
@@ -969,7 +969,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 36
           }
@@ -981,7 +981,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 37
           }
@@ -993,7 +993,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 38
           }
@@ -1005,7 +1005,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 39
           }
@@ -1017,7 +1017,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 13
           }
@@ -1029,7 +1029,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 40
           }
@@ -1041,7 +1041,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 41
           }
@@ -1053,7 +1053,7 @@
         "attributeIndices": [
           3
         ],
-        "line": [
+        "lines": [
           {
             "functionIndex": 15
           }
@@ -1412,7 +1412,7 @@
             {
               "durationNano": "4501247572",
               "periodType": {},
-              "sample": [
+              "samples": [
                 {
                   "attributeIndices": [
                     4,
