@@ -38,6 +38,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
+	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb/frontendpbconnect"
 	"github.com/grafana/pyroscope/pkg/ingester"
@@ -195,9 +196,9 @@ func (a *API) RegisterDebugInfo(svc debuginfov1alpha1connect.DebuginfoServiceHan
 }
 
 // RegisterDistributor registers the endpoints associated with the distributor.
-func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, cfg server.Config) {
+func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, cfg server.Config, bucket objstore.Bucket) {
 	writePathOpts := a.registerOptionsWritePath(limits)
-	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, limits, a.logger)
+	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, limits, a.logger, bucket)
 	otlpHandler := otlp.NewOTLPIngestHandler(cfg, d, a.logger, limits)
 
 	a.RegisterRoute("/ingest", pyroscopeHandler, writePathOpts...)

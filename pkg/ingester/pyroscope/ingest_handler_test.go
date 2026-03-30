@@ -152,7 +152,7 @@ func TestCorruptedJFR422(t *testing.T) {
 	jfr[0] = 0 // corrupt jfr
 
 	svc := &MockPushService{Keep: true, T: t}
-	h := NewPyroscopeIngestHandler(svc, validation.MockLimits{}, l)
+	h := NewPyroscopeIngestHandler(svc, validation.MockLimits{}, l, nil)
 
 	res := httptest.NewRecorder()
 	body, ct := createJFRRequestBody(t, jfr, nil)
@@ -195,7 +195,7 @@ func BenchmarkIngestJFR(b *testing.B) {
 		"cortex-dev-01__kafka-0__cpu_lock_alloc__3.jfr.gz",
 	}
 	l := log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr))
-	h := NewPyroscopeIngestHandler(&MockPushService{}, validation.MockLimits{}, l)
+	h := NewPyroscopeIngestHandler(&MockPushService{}, validation.MockLimits{}, l, nil)
 
 	for _, jfr := range jfrs {
 		b.Run(jfr, func(b *testing.B) {
@@ -339,7 +339,7 @@ func TestIngestPPROFFixtures(t *testing.T) {
 			bs, ct := createPProfRequest(t, profile, prevProfile, sampleTypeConfig)
 
 			svc := &MockPushService{Keep: true, T: t}
-			h := NewPyroscopeIngestHandler(svc, validation.MockLimits{}, log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr)))
+			h := NewPyroscopeIngestHandler(svc, validation.MockLimits{}, log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr)), nil)
 
 			res := httptest.NewRecorder()
 			spyName := "foo239"
@@ -460,7 +460,7 @@ func TestBodySizeLimit(t *testing.T) {
 		IngestionBodyLimitBytesValue: sizeLimit,
 	})
 
-	h := bodySizeLimiter(NewPyroscopeIngestHandler(svc, validation.MockLimits{}, l))
+	h := bodySizeLimiter(NewPyroscopeIngestHandler(svc, validation.MockLimits{}, l, nil))
 
 	// Create a body larger than the 64 MiB limit
 	largeBody := make([]byte, sizeLimit+1) // 1 byte over the limit
@@ -495,7 +495,7 @@ func TestBodySizeWithinLimit(t *testing.T) {
 		IngestionBodyLimitBytesValue: sizeLimit,
 	})
 
-	h := bodySizeLimiter(NewPyroscopeIngestHandler(svc, validation.MockLimits{}, l))
+	h := bodySizeLimiter(NewPyroscopeIngestHandler(svc, validation.MockLimits{}, l, nil))
 
 	// Use a valid small pprof profile for the test
 	profile, err := os.ReadFile(repoRoot + "pkg/og/convert/testdata/cpu.pprof")

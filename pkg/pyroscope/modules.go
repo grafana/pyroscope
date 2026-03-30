@@ -328,7 +328,7 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server)
+	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server, f.storageBucket)
 
 	if store, err := debuginfo.NewStore(f.logger, f.storageBucket, f.Cfg.DebugInfo); err != nil {
 		return nil, err

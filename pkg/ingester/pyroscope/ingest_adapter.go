@@ -1,6 +1,7 @@
 package pyroscope
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -22,6 +23,8 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/og/convert/jfr"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
@@ -36,10 +39,10 @@ type Limits interface {
 	MaxProfileSizeBytes(tenantID string) int
 }
 
-func NewPyroscopeIngestHandler(svc PushService, limits Limits, logger log.Logger) http.Handler {
+func NewPyroscopeIngestHandler(svc PushService, limits Limits, logger log.Logger, bucket objstore.Bucket) http.Handler {
 	return NewIngestHandler(
 		logger,
-		&pyroscopeIngesterAdapter{svc: svc, limits: limits, log: logger},
+		&pyroscopeIngesterAdapter{svc: svc, limits: limits, log: logger, bucket: bucket},
 	)
 }
 
@@ -47,6 +50,7 @@ type pyroscopeIngesterAdapter struct {
 	svc    PushService
 	limits Limits
 	log    log.Logger
+	bucket objstore.Bucket
 }
 
 func (p *pyroscopeIngesterAdapter) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
@@ -187,6 +191,9 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(
 ) error {
 	plainReq, err := pprofable.ParseToPprof(ctx, in.Metadata, p.limits)
 	if err != nil {
+		if jfrProfile, ok := pprofable.(*jfr.RawProfile); ok && p.bucket != nil {
+			p.uploadFailedJFR(ctx, jfrProfile.RawData, err)
+		}
 		return fmt.Errorf("parsing IngestInput-pprof failed %w", err)
 	}
 	if len(plainReq.Series) == 0 {
@@ -201,6 +208,16 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(
 		return fmt.Errorf("pushing IngestInput-pprof failed %w", err)
 	}
 	return nil
+}
+
+func (p *pyroscopeIngesterAdapter) uploadFailedJFR(ctx context.Context, data []byte, parseErr error) {
+	tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
+	key := fmt.Sprintf("failed-jfr-ingest/%s/%d-%s.jfr", tenantID, time.Now().UnixNano(), uuid.New().String())
+	if err := p.bucket.Upload(ctx, key, bytes.NewReader(data)); err != nil {
+		_ = level.Warn(p.log).Log("msg", "failed to upload failed JFR body", "key", key, "err", err)
+	} else {
+		_ = level.Info(p.log).Log("msg", "uploaded failed JFR body for debugging", "key", key, "parse_err", parseErr)
+	}
 }
 
 func convertMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app string, err error) {
