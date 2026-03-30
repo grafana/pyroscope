@@ -36,3 +36,4 @@ pyroscope.sln
 
 /.tmp
 tools/k6/.env
+.claude/worktrees/
