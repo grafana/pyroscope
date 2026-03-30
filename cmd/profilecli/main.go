@@ -90,6 +90,8 @@ func main() {
 	queryExemplarsCmd := queryCmd.Command("exemplars", "Query exemplars from profile data. V2 only.")
 	queryExemplarsProfileCmd := queryExemplarsCmd.Command("profile", "List profile exemplars for a time window.")
 	queryExemplarsParams := addQueryExemplarsParams(queryExemplarsProfileCmd)
+	queryExemplarsSpanCmd := queryExemplarsCmd.Command("span", "List span exemplars for a time window. Requires span-aware SDK instrumentation. V2 only.")
+	queryExemplarsSpanParams := addQueryExemplarsParams(queryExemplarsSpanCmd)
 
 	queryTracerCmd := app.Command("query-tracer", "Analyze query traces.")
 	queryTracerParams := addQueryTracerParams(queryTracerCmd)
@@ -196,6 +198,10 @@ func main() {
 		}
 	case queryExemplarsProfileCmd.FullCommand():
 		if err := queryExemplars(ctx, queryExemplarsParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case queryExemplarsSpanCmd.FullCommand():
+		if err := querySpanExemplars(ctx, queryExemplarsSpanParams); err != nil {
 			os.Exit(checkError(err))
 		}
 
