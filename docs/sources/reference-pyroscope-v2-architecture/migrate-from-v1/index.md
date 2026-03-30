@@ -15,13 +15,13 @@ For an overview of what changed in v2 and why, refer to [About the v2 architectu
 
 Before starting the migration, make sure you have:
 
-- **Helm chart version 1.15.1 or later** (the first version with v1/v2 storage support). Verify with:
+- **Helm chart version 1.19.2 or later**. Verify with:
 
   ```bash
   helm list -n pyroscope -f pyroscope
   ```
 
-  Check that the `CHART` column shows `pyroscope-1.15.1` or higher. If your chart is older, upgrade it first.
+  Check that the `CHART` column shows `pyroscope-1.19.2` or higher. If your chart is older, upgrade it first.
 
 - **Pyroscope running on v1 storage via Helm.** Verify with:
 
@@ -59,11 +59,11 @@ The examples in this guide assume Pyroscope is installed in the `pyroscope` name
 
 The migration has three phases:
 
-| Phase | What happens | Reversible? |
-|---|---|---|
-| 1.&nbsp;Dual&nbsp;ingest | v2 components deploy alongside v1. Writes go to both storage backends. | Yes |
-| 2.&nbsp;Validate | Run both backends for at least 24 hours. Verify v2 data and compaction. | Yes |
-| 3.&nbsp;Remove&nbsp;v1 | Remove v1 components. Only v2 serves reads and writes. | Partial |
+| Phase                    | What happens                                                            | Reversible? |
+|--------------------------|-------------------------------------------------------------------------|-------------|
+| 1.&nbsp;Dual&nbsp;ingest | v2 components deploy alongside v1. Writes go to both storage backends.  | Yes         |
+| 2.&nbsp;Validate         | Run both backends for at least 24 hours. Verify v2 data and compaction. | Yes         |
+| 3.&nbsp;Remove&nbsp;v1   | Remove v1 components. Only v2 serves reads and writes.                  | Partial     |
 
 The steps below are specific to your deployment mode. Follow the section that matches your installation.
 
@@ -80,7 +80,7 @@ helm upgrade -n pyroscope pyroscope grafana/pyroscope \
   --set architecture.storage.v2=true
 ```
 
-The `--reuse-values` flag preserves your existing configuration. Alternatively, you can pass your values file with `-f values.yaml` instead of `--reuse-values`.
+The `--reuse-values` flag preserves your existing configuration. Alternatively, you can pass your values file with `-f values.yaml`.
 
 #### Verify Phase 1
 
@@ -128,13 +128,21 @@ Also verify:
 
 ### Phase 2: Validate v2 is working
 
-Run both storage backends simultaneously for at least 24 hours before proceeding. During this time, verify:
+Run both storage backends simultaneously for at least 24 hours before proceeding. During this time, you should be able to query data ingested to v2.
 
-#### Data is being written to v2
+#### Verify data is being written to v2
 
-Query recent profiling data through the Pyroscope UI or API. The v2 read path should serve data ingested after Phase 1. You can use `profilecli` or the Pyroscope UI to query profiles from the last hour and confirm results are returned.
+Query recent profiling data. The v2 read path should serve data ingested after Phase 1. You can use `profilecli`, the Pyroscope UI, or the API to query profiles from the last hour and confirm results are returned:
 
-#### Compaction is running
+```bash
+kubectl port-forward -n pyroscope svc/pyroscope 4040:4040 &
+profilecli query series --url http://localhost:4040 --from "now-1h" --to "now"
+kill %1  # Stop the port-forward
+```
+
+You should see series labels for the profiling data being ingested. If no results are returned, check the distributor and segment-writer logs for errors.
+
+#### Verify v2 compaction is running
 
 The compaction-worker compacts segments through the L0 &rarr; L1 &rarr; L2 levels. Verify that compaction jobs are completing:
 
@@ -150,7 +158,7 @@ msg="compaction finished successfully" input_blocks=20 output_blocks=1
 
 Compaction typically starts within minutes of ingestion, the first block is created once enough segments accumulate for a shard.
 
-#### Error rates are stable
+#### Verify error rates are stable
 
 Check that write and read error rates haven't increased since enabling v2. If you have Prometheus metrics configured:
 
@@ -187,9 +195,11 @@ Verify that queries still return data:
 
 ```bash
 kubectl port-forward -n pyroscope svc/pyroscope 4040:4040 &
+profilecli query series --url http://localhost:4040 --from "now-1h" --to "now"
+kill %1  # Stop the port-forward
 ```
 
-Then open the Pyroscope UI at `http://localhost:4040` and verify that you can query recent profiles. An empty or errored UI indicates a problem — see [Rollback](#rollback).
+You should see series labels for recent profiling data. You can also open the Pyroscope UI at `http://localhost:4040` and verify that you can query recent profiles. An empty or errored UI indicates a problem — see [Rollback](#rollback).
 
 ## Microservices mode
 
@@ -207,7 +217,7 @@ helm upgrade -n pyroscope pyroscope grafana/pyroscope \
   --set architecture.storage.v2=true
 ```
 
-The `--reuse-values` flag preserves your existing configuration. Alternatively, you can pass your values file with `-f values.yaml` instead of `--reuse-values`.
+The `--reuse-values` flag preserves your existing configuration. Alternatively, you can pass your values file with `-f values.yaml`.
 
 #### Verify Phase 1
 
@@ -255,13 +265,21 @@ Also verify:
 
 ### Phase 2: Validate v2 is working
 
-Run both storage backends simultaneously for at least 24 hours before proceeding. During this time, verify:
+Run both storage backends simultaneously for at least 24 hours before proceeding. During this time, you should be able to query data ingested to v2.
 
-#### Data is being written to v2
+#### Verify data is being written to v2
 
-Query recent profiling data through the Pyroscope UI or API. The v2 read path should serve data ingested after Phase 1. You can use `profilecli` or the Pyroscope UI to query profiles from the last hour and confirm results are returned.
+Query recent profiling data. The v2 read path should serve data ingested after Phase 1. You can use `profilecli`, the Pyroscope UI, or the API to query profiles from the last hour and confirm results are returned:
 
-#### Compaction is running
+```bash
+kubectl port-forward -n pyroscope svc/pyroscope-query-frontend 4040:4040 &
+profilecli query series --url http://localhost:4040 --from "now-1h" --to "now"
+kill %1  # Stop the port-forward
+```
+
+You should see series labels for the profiling data being ingested. If no results are returned, check the distributor and segment-writer logs for errors.
+
+#### Verify v2 compaction is running
 
 The compaction-worker compacts segments through the L0 &rarr; L1 &rarr; L2 levels. Verify that compaction jobs are completing:
 
@@ -277,7 +295,7 @@ msg="compaction finished successfully" input_blocks=20 output_blocks=1
 
 Compaction typically starts within minutes of ingestion, the first block is created once enough segments accumulate for a shard.
 
-#### Error rates are stable
+#### Verify error rates are stable
 
 Check that write and read error rates haven't increased since enabling v2. If you have Prometheus metrics configured, query error rates per component:
 
@@ -318,9 +336,11 @@ Verify that queries still return data:
 
 ```bash
 kubectl port-forward -n pyroscope svc/pyroscope-query-frontend 4040:4040 &
+profilecli query series --url http://localhost:4040 --from "now-1h" --to "now"
+kill %1  # Stop the port-forward
 ```
 
-Then open the Pyroscope UI at `http://localhost:4040` and verify that you can query recent profiles. An empty or errored UI indicates a problem — see [Rollback](#rollback).
+You should see series labels for recent profiling data. You can also open the Pyroscope UI at `http://localhost:4040` and verify that you can query recent profiles. An empty or errored UI indicates a problem — see [Rollback](#rollback).
 
 ## Rollback
 
@@ -365,9 +385,9 @@ The following Helm values control the v1/v2 storage configuration and migration 
 
 These values only apply when both `v1` and `v2` are enabled (dual-ingest mode). All values are under `architecture.storage.migration`.
 
-| Value                          | Type   | Default  | Description                                                       |
-|--------------------------------|--------|----------|-------------------------------------------------------------------|
-| `<prefix>.ingesterWeight`      | float  | `1.0`    | Fraction `[0, 1]` of write traffic sent to v1 ingesters.          |
-| `<prefix>.segmentWriterWeight` | float  | `1.0`    | Fraction `[0, 1]` of write traffic sent to v2 segment-writers.    |
-| `<prefix>.queryBackend`        | bool   | `true`   | Enable the v2 query backend for reads.                            |
+| Value                          | Type   | Default  | Description                                                                                                                                                                                                                                                                 |
+|--------------------------------|--------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `<prefix>.ingesterWeight`      | float  | `1.0`    | Fraction `[0, 1]` of write traffic sent to v1 ingesters.                                                                                                                                                                                                                    |
+| `<prefix>.segmentWriterWeight` | float  | `1.0`    | Fraction `[0, 1]` of write traffic sent to v2 segment-writers.                                                                                                                                                                                                              |
+| `<prefix>.queryBackend`        | bool   | `true`   | Enable the v2 query backend for reads.                                                                                                                                                                                                                                      |
 | `<prefix>.queryBackendFrom`    | string | `"auto"` | RFC 3339 timestamp (e.g. `2025-01-01T00:00:00Z`) from which the v2 read path serves traffic. When set to `auto`, the query frontend consults the metastore per tenant to determine when v2 data first appeared. If no v2 data exists for a tenant, queries fall back to v1. |
