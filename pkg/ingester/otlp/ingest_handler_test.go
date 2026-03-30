@@ -254,7 +254,7 @@ func TestConversion(t *testing.T) {
 			profile: func() *otlpbuilder {
 				b := new(otlpbuilder)
 				b.profile.SampleType = &v1experimental.ValueType{
-					TypeStrindex: b.addstr("events"),
+					TypeStrindex: b.addstr("off_cpu"),
 					UnitStrindex: b.addstr("nanoseconds"),
 				}
 				b.dictionary.MappingTable = []*v1experimental.Mapping{{
