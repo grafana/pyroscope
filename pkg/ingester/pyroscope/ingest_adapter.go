@@ -17,11 +17,13 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/prometheus/model/labels"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/model/profileid"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
@@ -34,6 +36,7 @@ type PushService interface {
 
 type Limits interface {
 	MaxProfileSizeBytes(tenantID string) int
+	ProfileIDDeterministic(tenantID string) bool
 }
 
 func NewPyroscopeIngestHandler(svc PushService, limits Limits, logger log.Logger) http.Handler {
@@ -196,6 +199,31 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(
 			"orgID", tenantID)
 		return nil
 	}
+
+	// Generate IDs for series before calling PushBatch
+	tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
+	if p.limits.ProfileIDDeterministic(tenantID) {
+		traceID, _ := tracing.ExtractTraceID(ctx)
+		for _, series := range plainReq.Series {
+			if series.ID == "" && series.RawProfile != nil {
+				series.ID = profileid.GenerateFromRequest(
+					tenantID,
+					series.Labels,
+					series.RawProfile,
+					series.Profile.Profile.TimeNanos,
+					traceID,
+				).String()
+			}
+		}
+	}
+
+	// Ensure all series have IDs (fallback to random)
+	for _, series := range plainReq.Series {
+		if series.ID == "" {
+			series.ID = uuid.NewString()
+		}
+	}
+
 	err = p.svc.PushBatch(ctx, plainReq)
 	if err != nil {
 		return fmt.Errorf("pushing IngestInput-pprof failed %w", err)
