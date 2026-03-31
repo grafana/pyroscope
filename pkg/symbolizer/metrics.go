@@ -1,9 +1,11 @@
 package symbolizer
 
 import (
-	"github.com/grafana/pyroscope/pkg/util"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 const (
@@ -52,16 +54,22 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	m := &metrics{
 		registerer: reg,
 		debuginfodRequestDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "pyroscope_symbolizer_debuginfod_request_duration_seconds",
-			Help:    "Time spent performing debuginfod requests by status",
-			Buckets: []float64{0.1, 0.5, 1, 5, 10, 30, 60, 120, 300},
+			Name:                            "pyroscope_symbolizer_debuginfod_request_duration_seconds",
+			Help:                            "Time spent performing debuginfod requests by status",
+			Buckets:                         []float64{0.1, 0.5, 1, 5, 10, 30, 60, 120, 300},
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"status"}),
 		debuginfodFileSize: prometheus.NewHistogram(
 			prometheus.HistogramOpts{
 				Name: "pyroscope_symbolizer_debuginfo_file_size_bytes",
 				Help: "Size of debug info files fetched from debuginfod",
 				// 1MB to 4GB
-				Buckets: prometheus.ExponentialBuckets(1024*1024, 2, 12),
+				Buckets:                         prometheus.ExponentialBuckets(1024*1024, 2, 12),
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  50,
+				NativeHistogramMinResetDuration: time.Hour,
 			},
 		),
 		// cache metrics
@@ -78,15 +86,21 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		}, []string{"cache_type"}),
 		// profile symbolization metrics
 		profileSymbolization: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "pyroscope_profile_symbolization_duration_seconds",
-			Help:    "Time spent performing profile symbolization by status",
-			Buckets: []float64{.01, .05, .1, .5, 1, 5, 10, 30},
+			Name:                            "pyroscope_profile_symbolization_duration_seconds",
+			Help:                            "Time spent performing profile symbolization by status",
+			Buckets:                         []float64{.01, .05, .1, .5, 1, 5, 10, 30},
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"status"}),
 		// debug symbol resolution metrics
 		debugSymbolResolution: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "pyroscope_debug_symbol_resolution_duration_seconds",
-			Help:    "Time spent resolving debug symbols from ELF files by status",
-			Buckets: []float64{.001, .005, .01, .05, .1, .5, 1, 5, 10},
+			Name:                            "pyroscope_debug_symbol_resolution_duration_seconds",
+			Help:                            "Time spent resolving debug symbols from ELF files by status",
+			Buckets:                         []float64{.001, .005, .01, .05, .1, .5, 1, 5, 10},
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"status"}),
 		debugSymbolResolutionErrors: prometheus.NewCounterVec(
 			prometheus.CounterOpts{

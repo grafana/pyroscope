@@ -121,11 +121,14 @@ type clientMetrics struct {
 func newMetrics(reg prometheus.Registerer, remoteUrl string) *clientMetrics {
 	m := &clientMetrics{
 		requestDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Subsystem: "metrics_exporter",
-			Name:      "client_request_duration_seconds",
-			Help:      "Time (in seconds) spent on remote_write",
-			Buckets:   instrument.DefBuckets,
+			Namespace:                       "pyroscope",
+			Subsystem:                       "metrics_exporter",
+			Name:                            "client_request_duration_seconds",
+			Help:                            "Time (in seconds) spent on remote_write",
+			Buckets:                         instrument.DefBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"route", "status_code", "tenant"}),
 		requestBodySize: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "pyroscope",

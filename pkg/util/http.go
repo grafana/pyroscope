@@ -386,10 +386,13 @@ func captureResponseBody(data []byte, bodyBytesLeft int, buf *bytes.Buffer) int 
 func NewHTTPMetricMiddleware(mux *mux.Router, namespace string, reg prometheus.Registerer) (middleware.Interface, error) {
 	// Prometheus histograms for requests.
 	requestDuration := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "request_duration_seconds",
-		Help:      "Time (in seconds) spent serving HTTP requests.",
-		Buckets:   instrument.DefBuckets,
+		Namespace:                       namespace,
+		Name:                            "request_duration_seconds",
+		Help:                            "Time (in seconds) spent serving HTTP requests.",
+		Buckets:                         instrument.DefBuckets,
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	}, []string{"method", "route", "status_code", "ws"})
 	err := reg.Register(requestDuration)
 	if err != nil {
@@ -402,10 +405,13 @@ func NewHTTPMetricMiddleware(mux *mux.Router, namespace string, reg prometheus.R
 	}
 
 	receivedMessageSize := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "request_message_bytes",
-		Help:      "Size (in bytes) of messages received in the request.",
-		Buckets:   middleware.BodySizeBuckets,
+		Namespace:                       namespace,
+		Name:                            "request_message_bytes",
+		Help:                            "Size (in bytes) of messages received in the request.",
+		Buckets:                         middleware.BodySizeBuckets,
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	}, []string{"method", "route"})
 	err = reg.Register(receivedMessageSize)
 	if err != nil {
@@ -418,10 +424,13 @@ func NewHTTPMetricMiddleware(mux *mux.Router, namespace string, reg prometheus.R
 	}
 
 	sentMessageSize := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "response_message_bytes",
-		Help:      "Size (in bytes) of messages sent in response.",
-		Buckets:   middleware.BodySizeBuckets,
+		Namespace:                       namespace,
+		Name:                            "response_message_bytes",
+		Help:                            "Size (in bytes) of messages sent in response.",
+		Buckets:                         middleware.BodySizeBuckets,
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	}, []string{"method", "route"})
 
 	err = reg.Register(sentMessageSize)

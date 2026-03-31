@@ -144,9 +144,12 @@ func NewScheduler(cfg Config, limits Limits, log log.Logger, registerer promethe
 	s.requestQueue = queue.NewRequestQueue(cfg.MaxOutstandingPerTenant, cfg.QuerierForgetDelay, s.queueLength, s.discardedRequests)
 
 	s.queueDuration = promauto.With(registerer).NewHistogram(prometheus.HistogramOpts{
-		Name:    "pyroscope_query_scheduler_queue_duration_seconds",
-		Help:    "Time spend by requests in queue before getting picked up by a querier.",
-		Buckets: prometheus.DefBuckets,
+		Name:                            "pyroscope_query_scheduler_queue_duration_seconds",
+		Help:                            "Time spend by requests in queue before getting picked up by a querier.",
+		Buckets:                         prometheus.DefBuckets,
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	})
 	s.connectedQuerierClients = promauto.With(registerer).NewGaugeFunc(prometheus.GaugeOpts{
 		Name: "pyroscope_query_scheduler_connected_querier_clients",

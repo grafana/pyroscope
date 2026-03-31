@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/dolthub/swiss"
 	"github.com/go-kit/log"
@@ -69,15 +70,21 @@ var (
 	configs               = initConfigs()
 	inputSamplesHistogram = promauto.NewHistogram(
 		prometheus.HistogramOpts{
-			Name:    "pyroscope_downsampler_input_profile_samples",
-			Help:    "The number of samples per profile before downsampling",
-			Buckets: prometheus.ExponentialBuckets(32, 2, 15),
+			Name:                            "pyroscope_downsampler_input_profile_samples",
+			Help:                            "The number of samples per profile before downsampling",
+			Buckets:                         prometheus.ExponentialBuckets(32, 2, 15),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		})
 	outputSamplesHistogram = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "pyroscope_downsampler_output_profile_samples",
-			Help:    "The number of samples per profile after downsampling",
-			Buckets: prometheus.ExponentialBuckets(32, 2, 15),
+			Name:                            "pyroscope_downsampler_output_profile_samples",
+			Help:                            "The number of samples per profile after downsampling",
+			Buckets:                         prometheus.ExponentialBuckets(32, 2, 15),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"interval"})
 )
 

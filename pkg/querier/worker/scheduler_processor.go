@@ -58,9 +58,12 @@ func newSchedulerProcessor(cfg Config, handler RequestHandler, log log.Logger, r
 		},
 
 		frontendClientRequestDuration: promauto.With(reg).NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "pyroscope_querier_query_frontend_request_duration_seconds",
-			Help:    "Time spend doing requests to frontend.",
-			Buckets: prometheus.ExponentialBuckets(0.001, 4, 6),
+			Name:                            "pyroscope_querier_query_frontend_request_duration_seconds",
+			Help:                            "Time spend doing requests to frontend.",
+			Buckets:                         prometheus.ExponentialBuckets(0.001, 4, 6),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"operation", "status_code"}),
 	}
 

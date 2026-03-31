@@ -74,9 +74,12 @@ func newSyncerMetrics(reg prometheus.Registerer, blocksMarkedForDeletion prometh
 		Help: "Total number of failed garbage collection operations.",
 	})
 	m.garbageCollectionDuration = promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
-		Name:    "thanos_compact_garbage_collection_duration_seconds",
-		Help:    "Time it took to perform garbage collection iteration.",
-		Buckets: []float64{0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120, 240, 360, 720},
+		Name:                            "thanos_compact_garbage_collection_duration_seconds",
+		Help:                            "Time it took to perform garbage collection iteration.",
+		Buckets:                         []float64{0.01, 0.1, 0.3, 0.6, 1, 3, 6, 9, 20, 30, 60, 90, 120, 240, 360, 720},
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	})
 
 	m.blocksMarkedForDeletion = blocksMarkedForDeletion
@@ -283,29 +286,44 @@ func newCompactorMetrics(r prometheus.Registerer) *CompactorMetrics {
 		Help: "Total number of compactions done on overlapping blocks.",
 	})
 	m.Duration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "pyroscope_compaction_duration_seconds",
-		Help:    "Duration of compaction runs",
-		Buckets: prometheus.ExponentialBuckets(1, 2, 14),
+		Name:                            "pyroscope_compaction_duration_seconds",
+		Help:                            "Duration of compaction runs",
+		Buckets:                         prometheus.ExponentialBuckets(1, 2, 14),
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	}, []string{"level"})
 	m.Size = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "pyroscope_compaction_size_bytes",
-		Help:    "Final block size after compaction by level",
-		Buckets: prometheus.ExponentialBuckets(32, 1.5, 12),
+		Name:                            "pyroscope_compaction_size_bytes",
+		Help:                            "Final block size after compaction by level",
+		Buckets:                         prometheus.ExponentialBuckets(32, 1.5, 12),
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	}, []string{"level"})
 	m.Samples = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "pyroscope_compaction_samples",
-		Help:    "Final number of samples after compaction by level",
-		Buckets: prometheus.ExponentialBuckets(4, 1.5, 12),
+		Name:                            "pyroscope_compaction_samples",
+		Help:                            "Final number of samples after compaction by level",
+		Buckets:                         prometheus.ExponentialBuckets(4, 1.5, 12),
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	}, []string{"level"})
 	m.Range = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "pyroscope_compaction_range_seconds",
-		Help:    "Final time range after compaction by level.",
-		Buckets: prometheus.ExponentialBuckets(100, 4, 10),
+		Name:                            "pyroscope_compaction_range_seconds",
+		Help:                            "Final time range after compaction by level.",
+		Buckets:                         prometheus.ExponentialBuckets(100, 4, 10),
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	}, []string{"level"})
 	m.Split = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "pyroscope_compaction_splits",
-		Help:    "Compaction split factor by level.",
-		Buckets: []float64{1, 2, 4, 8, 16, 32, 64},
+		Name:                            "pyroscope_compaction_splits",
+		Help:                            "Compaction split factor by level.",
+		Buckets:                         []float64{1, 2, 4, 8, 16, 32, 64},
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	}, []string{"level"})
 
 	if r != nil {
@@ -703,9 +721,12 @@ func NewBucketCompactorMetrics(blocksMarkedForDeletion prometheus.Counter, reg p
 			ConstLabels: prometheus.Labels{"reason": block.OutOfOrderChunksNoCompactReason},
 		}),
 		blocksMaxTimeDelta: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
-			Name:    "pyroscope_compactor_block_max_time_delta_seconds",
-			Help:    "Difference between now and the max time of a block being compacted in seconds.",
-			Buckets: prometheus.LinearBuckets(86400, 43200, 8), // 1 to 5 days, in 12 hour intervals
+			Name:                            "pyroscope_compactor_block_max_time_delta_seconds",
+			Help:                            "Difference between now and the max time of a block being compacted in seconds.",
+			Buckets:                         prometheus.LinearBuckets(86400, 43200, 8), // 1 to 5 days, in 12 hour intervals
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}),
 	}
 }
