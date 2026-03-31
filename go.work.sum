@@ -475,6 +475,8 @@ github.com/grafana/gomemcache v0.0.0-20250318131618-74242eea118d h1:oXRJlb9UjVsl
 github.com/grafana/gomemcache v0.0.0-20250318131618-74242eea118d/go.mod h1:j/s0jkda4UXTemDs7Pgw/vMT06alWc42CHisvYac0qw=
 github.com/grafana/jfr-parser v0.14.0 h1:WK9t4xZMei4kLGmumJ3aOHSzVaT9ZgXzUpOVJhRyweQ=
 github.com/grafana/jfr-parser v0.14.0/go.mod h1:2vR91w+TYF6Jrw+WJMd/uyAiNxE2BUY5xOsvglXXe78=
+github.com/grafana/jfr-parser v0.16.0 h1:3VOgI9yzAJmMd6SRK4MwzrhAhWkvMWb/fUZDsnbNPQk=
+github.com/grafana/jfr-parser v0.16.0/go.mod h1:2vR91w+TYF6Jrw+WJMd/uyAiNxE2BUY5xOsvglXXe78=
 github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 h1:+ngKgrYPPJrOjhax5N+uePQ0Fh1Z7PheYoUI/0nzkPA=
 github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79/go.mod h1:FecbI9+v66THATjSRHfNgh1IVFe/9kFxbXtjV0ctIMA=
 github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 h1:Ovs26xHkKqVztRpIrF/92BcuyuQ/YW4NSIpoGtfXNho=
