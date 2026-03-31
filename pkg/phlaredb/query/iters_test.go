@@ -474,7 +474,6 @@ func TestBinaryJoinIteratorMultiplePredicates(t *testing.T) {
 	t.Run("Double predicate, all possible pairs", func(t *testing.T) {
 		for _, pair := range pairs {
 			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 
 			seriesPredicate := NewMapPredicate(map[int64]struct{}{int64(pair.SeriesID): {}})
 			timePredicate := NewIntBetweenPredicate(pair.TimeNanos, pair.TimeNanos)
@@ -496,6 +495,7 @@ func TestBinaryJoinIteratorMultiplePredicates(t *testing.T) {
 			require.NoError(t, it.Close())
 
 			require.Equal(t, 1, results, "pair=%v can't be found", pair)
+			cancel()
 		}
 	})
 }

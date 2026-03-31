@@ -512,7 +512,7 @@ func (bj *BinaryJoinIterator) Seek(to RowNumberWithDefinitionLevel) bool {
 		bj.err = bj.left.Err()
 		return false
 	}
-	// move right at least until left is currently
+	// move right to at least the row left is currently on
 	to.RowNumber = bj.left.At().RowNumber
 	if !bj.right.Seek(to) {
 		bj.err = bj.right.Err()
@@ -523,7 +523,7 @@ func (bj *BinaryJoinIterator) Seek(to RowNumberWithDefinitionLevel) bool {
 		bj.makeResult()
 		return true
 	}
-	// if not solution yet, start next loop
+	// if not look for the next match
 	return bj.Next()
 }
 
