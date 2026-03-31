@@ -5,6 +5,7 @@ import (
 	"flag"
 	"testing"
 
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
@@ -96,12 +97,13 @@ overrides:
   `)))
 	require.ErrorContains(t, err, "unknown relabel action \"refund\"")
 
+	// Empty relabel config is valid with UTF8 validation (defaults to replace action with no-op).
 	_, err = LoadRuntimeConfig(bytes.NewReader([]byte(`
 overrides:
   empty-rule:
     ingestion_relabeling_rules: [{}]
   `)))
-	require.ErrorContains(t, err, "relabel configuration for replace action requires 'target_label'")
+	require.NoError(t, err)
 
 }
 
@@ -157,6 +159,9 @@ func Test_SampleTypeRelabelRules_Set(t *testing.T) {
 }
 
 func Test_defaultRelabelRules(t *testing.T) {
+	for _, rule := range defaultRelabelRules {
+		require.NoError(t, rule.Validate(model.UTF8Validation))
+	}
 	for _, tc := range []struct {
 		name     string
 		input    labels.Labels
@@ -195,8 +200,9 @@ func Test_defaultRelabelRules(t *testing.T) {
 			kept: true,
 		},
 	} {
-		result, kept := relabel.Process(tc.input, defaultRelabelRules...)
-		require.Equal(t, tc.expected, result)
+		lb := labels.NewBuilder(tc.input)
+		kept := relabel.ProcessBuilder(lb, defaultRelabelRules...)
+		require.Equal(t, tc.expected, lb.Labels())
 		require.Equal(t, tc.kept, kept)
 	}
 

@@ -147,7 +147,7 @@ func labelsString(b *bytes.Buffer, ls []*typesv1.LabelPair) {
 	// metrics name is used in the store for computing shards.
 	// see chunk/schema_util.go for more details. `labelsString()`
 	for _, l := range ls {
-		if l.Name == labels.MetricName {
+		if l.Name == string(model.MetricNameLabel) {
 			b.WriteString(l.Value)
 			break
 		}
@@ -155,7 +155,7 @@ func labelsString(b *bytes.Buffer, ls []*typesv1.LabelPair) {
 	b.WriteByte('{')
 	i := 0
 	for _, l := range ls {
-		if l.Name == labels.MetricName {
+		if l.Name == string(model.MetricNameLabel) {
 			continue
 		}
 		if i > 0 {
