@@ -171,6 +171,7 @@ func newCanaryExporter(params *canaryExporterParams) *canaryExporter {
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-select-merge-stacktraces", ce.testSelectMergeStacktraces})
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-select-merge-span-profile", ce.testSelectMergeSpanProfile})
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-get-profile-stats", ce.testGetProfileStats})
+		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-exemplars", ce.testQueryExemplars})
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"render", ce.testRender})
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"render-diff", ce.testRenderDiff})
 	}
