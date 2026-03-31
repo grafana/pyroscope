@@ -145,7 +145,7 @@ func newProfileBuilder(src *otelProfile.Profile, dictionary *otelProfile.Profile
 				}
 			}
 			res.sampleProcessingTypes[i] = sampleConversionTypeSamplesToNanos
-		} else if profileType == "events:nanoseconds::" && len(res.dst.SampleType) == 1 { // Identify off-CPU profiles
+		} else if (profileType == "off_cpu:nanoseconds::") && len(res.dst.SampleType) == 1 { // Identify off-CPU profiles
 
 			res.sampleProcessingTypes[i] = sampleConversionTypeSumEvents
 			res.name = &typesv1.LabelPair{

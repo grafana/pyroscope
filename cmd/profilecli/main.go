@@ -76,7 +76,7 @@ func main() {
 	queryProfileForce := queryProfileCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").Bool()
 	queryProfileFunctionNamesOnly := queryProfileCmd.Flag("function-names-only", "Faster call, without details about mappings, line number, and inlining").Default("false").Bool()
 	queryProfileParams := addQueryProfileParams(queryProfileCmd)
-	queryProfileCmd.Flag("profile-id", "Profile ID (UUID) to query a specific profile. Repeatable for multiple IDs. Use 'query exemplars individual' to find IDs.").StringsVar(&queryProfileParams.ProfileIDs)
+	queryProfileCmd.Flag("profile-id", "Profile ID (UUID) to query a specific profile. Repeatable for multiple IDs. Use 'query exemplars profile' to find IDs.").StringsVar(&queryProfileParams.ProfileIDs)
 	queryGoPGOCmd := queryCmd.Command("go-pgo", "Request profile for Go PGO.")
 	queryGoPGOOutput := queryGoPGOCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("pprof=./default.pgo").String()
 	queryGoPGOForce := queryGoPGOCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").Bool()
@@ -88,8 +88,8 @@ func main() {
 	queryTopCmd := queryCmd.Command("top", "List top N label values by total value for a time window.")
 	queryTopParams := addQueryTopParams(queryTopCmd)
 	queryExemplarsCmd := queryCmd.Command("exemplars", "Query exemplars from profile data. V2 only.")
-	queryExemplarsIndividualCmd := queryExemplarsCmd.Command("individual", "List individual profile exemplars for a time window.")
-	queryExemplarsParams := addQueryExemplarsParams(queryExemplarsIndividualCmd)
+	queryExemplarsProfileCmd := queryExemplarsCmd.Command("profile", "List profile exemplars for a time window.")
+	queryExemplarsParams := addQueryExemplarsParams(queryExemplarsProfileCmd)
 	queryExemplarsSpanCmd := queryExemplarsCmd.Command("span", "List span exemplars for a time window. Requires span-aware SDK instrumentation. V2 only.")
 	queryExemplarsSpanParams := addQueryExemplarsParams(queryExemplarsSpanCmd)
 
@@ -196,7 +196,7 @@ func main() {
 		if err := queryTop(ctx, queryTopParams); err != nil {
 			os.Exit(checkError(err))
 		}
-	case queryExemplarsIndividualCmd.FullCommand():
+	case queryExemplarsProfileCmd.FullCommand():
 		if err := queryExemplars(ctx, queryExemplarsParams); err != nil {
 			os.Exit(checkError(err))
 		}
