@@ -366,6 +366,11 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		// compressed bytes per profile type. Instead we count compressed bytes per profile.
 		profName := req.RawProfileType // use "jfr" as profile name
 		d.metrics.receivedCompressedBytes.WithLabelValues(string(profName), tenantID).Observe(float64(req.ReceivedCompressedProfileSize))
+		level.Debug(d.logger).Log("msg", "non-pprof request body received",
+			"profile_type", profName,
+			"compressed_size", req.ReceivedCompressedProfileSize,
+			"decompressed_size", req.ReceivedDecompressedProfileSize,
+		)
 	}
 
 	res := multierror.New()

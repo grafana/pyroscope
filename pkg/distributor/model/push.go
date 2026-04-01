@@ -18,8 +18,9 @@ const RawProfileTypeOTEL = RawProfileType("otel")
 type PushRequest struct {
 	Series []*ProfileSeries
 
-	ReceivedCompressedProfileSize int
-	RawProfileType                RawProfileType
+	ReceivedCompressedProfileSize   int
+	ReceivedDecompressedProfileSize int
+	RawProfileType                  RawProfileType
 }
 
 // todo better name
