@@ -2,12 +2,16 @@ package queryfrontend
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/prometheus/model/labels"
@@ -19,6 +23,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/pkg/block"
 	"github.com/grafana/pyroscope/pkg/block/metadata"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
@@ -124,6 +129,44 @@ func (q *QueryFrontend) doQuery(
 	if len(blocks) == 0 {
 		return new(queryv1.QueryResponse), nil
 	}
+
+	var weight block.DatasetWeight
+	var datasetsCount int
+	blocksByLevel := make(map[uint32]int)
+	for _, b := range blocks {
+		datasetsCount += len(b.Datasets)
+		blocksByLevel[b.CompactionLevel]++
+		for _, ds := range b.Datasets {
+			weight.Add(block.WeightOf(ds))
+		}
+	}
+	span.SetTag("total_block_bytes", weight.Total())
+	span.SetTag("datasets_count", datasetsCount)
+	startTime := time.UnixMilli(req.StartTime)
+	endTime := time.UnixMilli(req.EndTime)
+	queryWindow := endTime.Sub(startTime).Round(time.Second)
+	traceID, _ := tracing.ExtractTraceID(ctx)
+	logArgs := []interface{}{
+		"msg", "query weight",
+		"trace_id", traceID,
+		"tenant", strings.Join(tenants, ","),
+		"blocks", len(blocks),
+		"total_block_bytes", humanize.Bytes(weight.Total()),
+		"profiles_bytes", humanize.Bytes(weight.ProfilesBytes),
+		"tsdb_bytes", humanize.Bytes(weight.TSDBBytes),
+		"symbols_bytes", humanize.Bytes(weight.SymbolsBytes),
+		"datasets", datasetsCount,
+		"index_lookup_blocks", weight.IndexLookupCount,
+		"start_time", startTime.UTC().Format(time.RFC3339),
+		"end_time", endTime.UTC().Format(time.RFC3339),
+		"query_window", queryWindow,
+		"label_selector", req.LabelSelector,
+	}
+	for lvl, count := range blocksByLevel {
+		logArgs = append(logArgs, fmt.Sprintf("blocks_level_%d", lvl), count)
+	}
+	level.Info(q.logger).Log(logArgs...)
+
 	// Randomize the order of blocks to avoid hotspots.
 	xrandMutex.Lock()
 	xrand.Shuffle(len(blocks), func(i, j int) {

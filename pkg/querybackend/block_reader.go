@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/multierror"
@@ -99,6 +100,8 @@ func (b *BlockReader) Invoke(
 		blockExecCollector = &blockExecutionCollector{}
 	}
 
+	weightCollector := &queryWeightCollector{}
+
 	var blocksCount, datasetsCount int64
 	for _, md := range req.QueryPlan.Root.Blocks {
 		md.Datasets, err = filterNotOwnedDatasets(md, tenantMap)
@@ -114,18 +117,34 @@ func (b *BlockReader) Invoke(
 		datasetsCount += int64(len(md.Datasets))
 		obj := block.NewObject(b.storage, md)
 		g.Go(util.RecoverPanic((&blockContext{
-			ctx:           ctx,
-			log:           b.log,
-			req:           r,
-			agg:           agg,
-			obj:           obj,
-			grp:           g,
-			execCollector: blockExecCollector,
+			ctx:             ctx,
+			log:             b.log,
+			req:             r,
+			agg:             agg,
+			obj:             obj,
+			grp:             g,
+			execCollector:   blockExecCollector,
+			weightCollector: weightCollector,
 		}).execute))
 	}
 
 	if err = g.Wait(); err != nil {
 		return nil, err
+	}
+
+	if weightCollector.datasetsCount > 0 {
+		traceID, _ := tracing.ExtractTraceID(ctx)
+		level.Info(b.log).Log(
+			"msg", "query weight (index lookup resolved)",
+			"trace_id", traceID,
+			"tenant", strings.Join(req.Tenant, ","),
+			"blocks", blocksCount,
+			"datasets", weightCollector.datasetsCount,
+			"profiles_bytes", humanize.Bytes(weightCollector.weight.ProfilesBytes),
+			"tsdb_bytes", humanize.Bytes(weightCollector.weight.TSDBBytes),
+			"symbols_bytes", humanize.Bytes(weightCollector.weight.SymbolsBytes),
+			"total_bytes", humanize.Bytes(weightCollector.weight.Total()),
+		)
 	}
 
 	resp := agg.response()
@@ -212,6 +231,25 @@ func filterNotOwnedDatasets(b *metastorev1.BlockMeta, tenantMap map[string]struc
 		}
 	}
 	return datasets, errs.Err()
+}
+
+// queryWeightCollector accumulates dataset section sizes across all blocks in a query,
+// including Format1 blocks whose datasets are resolved at runtime.
+type queryWeightCollector struct {
+	mu            sync.Mutex
+	weight        block.DatasetWeight
+	datasetsCount int64
+}
+
+func (c *queryWeightCollector) addDatasets(datasets []*metastorev1.Dataset) {
+	var w block.DatasetWeight
+	for _, ds := range datasets {
+		w.Add(block.WeightOf(ds))
+	}
+	c.mu.Lock()
+	c.weight.Add(w)
+	c.datasetsCount += int64(len(datasets))
+	c.mu.Unlock()
 }
 
 // blockExecutionCollector collects per-block execution stats in a thread-safe manner.

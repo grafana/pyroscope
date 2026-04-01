@@ -84,13 +84,14 @@ func registerQueryType(
 }
 
 type blockContext struct {
-	ctx           context.Context
-	log           log.Logger
-	req           *request
-	agg           *reportAggregator
-	obj           *block.Object
-	grp           *errgroup.Group
-	execCollector *blockExecutionCollector
+	ctx             context.Context
+	log             log.Logger
+	req             *request
+	agg             *reportAggregator
+	obj             *block.Object
+	grp             *errgroup.Group
+	execCollector   *blockExecutionCollector
+	weightCollector *queryWeightCollector
 }
 
 func (b *blockContext) execute() error {
@@ -108,6 +109,9 @@ func (b *blockContext) execute() error {
 			}
 			return fmt.Errorf("failed to lookup datasets: %w", err)
 		}
+		// Only accumulate datasets resolved from the index lookup; Format0
+		// datasets were already counted by the query frontend at planning time.
+		b.weightCollector.addDatasets(b.obj.Metadata().Datasets)
 	}
 
 	md := b.obj.Metadata()
