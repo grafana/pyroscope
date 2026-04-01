@@ -474,6 +474,214 @@ func TestSampleAttributes(t *testing.T) {
 
 }
 
+func TestSampleAttributesWithSliceValues(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	var profiles []*model.PushRequest
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		c := (args.Get(1)).(*model.PushRequest)
+		profiles = append(profiles, c)
+	}).Return(nil, nil)
+
+	otlpb := new(otlpbuilder)
+	otlpb.dictionary.MappingTable = []*v1experimental.Mapping{{
+		MemoryStart:      0x1000,
+		MemoryLimit:      0x1000,
+		FilenameStrindex: otlpb.addstr("firefox.so"),
+	}, {
+		MemoryStart:      0x1000,
+		MemoryLimit:      0x1000,
+		FilenameStrindex: otlpb.addstr("chrome.so"),
+	}}
+
+	otlpb.dictionary.LocationTable = []*v1experimental.Location{{
+		MappingIndex: 0,
+		Address:      0x1e,
+	}, {
+		MappingIndex: 0,
+		Address:      0x2e,
+	}, {
+		MappingIndex: 1,
+		Address:      0x3e,
+	}, {
+		MappingIndex: 1,
+		Address:      0x4e,
+	}}
+	otlpb.dictionary.StackTable = []*v1experimental.Stack{{
+		LocationIndices: []int32{0, 1},
+	}, {
+		LocationIndices: []int32{2, 3},
+	}}
+	otlpb.profile.Samples = []*v1experimental.Sample{{
+		StackIndex:       0,
+		Values:           []int64{0xef},
+		AttributeIndices: []int32{0},
+	}, {
+		StackIndex:       1,
+		Values:           []int64{0xefef},
+		AttributeIndices: []int32{1},
+	}}
+	otlpb.dictionary.AttributeTable = []*v1experimental.KeyValueAndUnit{{
+		KeyStrindex: otlpb.addstr("process"),
+		Value: &v1.AnyValue{
+			Value: &v1.AnyValue_ArrayValue{
+				ArrayValue: &v1.ArrayValue{
+					Values: []*v1.AnyValue{{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "firefox",
+						},
+					}},
+				},
+			},
+		},
+	}, {
+		KeyStrindex: otlpb.addstr("process"),
+		Value: &v1.AnyValue{
+			Value: &v1.AnyValue_ArrayValue{
+				ArrayValue: &v1.ArrayValue{
+					Values: []*v1.AnyValue{{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "chrome",
+						},
+					}},
+				},
+			},
+		},
+	}}
+	otlpb.profile.SampleType = &v1experimental.ValueType{
+		TypeStrindex: otlpb.addstr("samples"),
+		UnitStrindex: otlpb.addstr("ms"),
+	}
+	otlpb.profile.TimeUnixNano = 239
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.Profile{
+					&otlpb.profile,
+				}}}}},
+		Dictionary: &otlpb.dictionary}
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	assert.NoError(t, err)
+	require.Equal(t, 1, len(profiles))
+	require.Equal(t, 1, len(profiles[0].Series))
+
+	seriesLabelsMap := make(map[string]string)
+	for _, label := range profiles[0].Series[0].Labels {
+		seriesLabelsMap[label.Name] = label.Value
+	}
+	assert.Equal(t, "", seriesLabelsMap["process"])
+	assert.NotContains(t, seriesLabelsMap, "service.name")
+
+	gp := profiles[0].Series[0].Profile.Profile
+
+	jsonStr, err := strprofile.Stringify(gp, strprofile.Options{})
+	assert.NoError(t, err)
+	expectedJSON := readJSONFile(t, "testdata/TestSampleAttributes.json")
+	assert.Equal(t, expectedJSON, jsonStr)
+}
+
+func TestStringValueFromAnyValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    *v1.AnyValue
+		expected string
+	}{
+		{
+			name:     "nil value",
+			value:    nil,
+			expected: "",
+		},
+		{
+			name: "scalar string",
+			value: &v1.AnyValue{
+				Value: &v1.AnyValue_StringValue{StringValue: "hello"},
+			},
+			expected: "hello",
+		},
+		{
+			name: "single-element string slice",
+			value: &v1.AnyValue{
+				Value: &v1.AnyValue_ArrayValue{
+					ArrayValue: &v1.ArrayValue{
+						Values: []*v1.AnyValue{{
+							Value: &v1.AnyValue_StringValue{StringValue: "hello"},
+						}},
+					},
+				},
+			},
+			expected: "hello",
+		},
+		{
+			name: "multi-element slice returns empty",
+			value: &v1.AnyValue{
+				Value: &v1.AnyValue_ArrayValue{
+					ArrayValue: &v1.ArrayValue{
+						Values: []*v1.AnyValue{
+							{Value: &v1.AnyValue_StringValue{StringValue: "a"}},
+							{Value: &v1.AnyValue_StringValue{StringValue: "b"}},
+						},
+					},
+				},
+			},
+			expected: "",
+		},
+		{
+			name: "empty slice returns empty",
+			value: &v1.AnyValue{
+				Value: &v1.AnyValue_ArrayValue{
+					ArrayValue: &v1.ArrayValue{
+						Values: []*v1.AnyValue{},
+					},
+				},
+			},
+			expected: "",
+		},
+		{
+			name: "int value returns empty",
+			value: &v1.AnyValue{
+				Value: &v1.AnyValue_IntValue{IntValue: 42},
+			},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := stringValueFromAnyValue(tt.value)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestAppendAttributesUniqueWithSliceValues(t *testing.T) {
+	existingAttrs := []*typesv1.LabelPair{
+		{Name: "existing", Value: "value"},
+	}
+	newAttrs := []*v1.KeyValue{
+		{
+			Key: "slice_attr",
+			Value: &v1.AnyValue{
+				Value: &v1.AnyValue_ArrayValue{
+					ArrayValue: &v1.ArrayValue{
+						Values: []*v1.AnyValue{{
+							Value: &v1.AnyValue_StringValue{
+								StringValue: "unwrapped",
+							},
+						}},
+					},
+				},
+			},
+		},
+	}
+	processedKeys := map[string]bool{"existing": true}
+	result := appendAttributesUnique(existingAttrs, newAttrs, processedKeys)
+	assert.Equal(t, []*typesv1.LabelPair{
+		{Name: "existing", Value: "value"},
+		{Name: "slice_attr", Value: "unwrapped"},
+	}, result)
+}
+
 func TestDifferentServiceNames(t *testing.T) {
 	// Create a profile with two samples having different service.name attributes
 	// Expect them to be pushed as separate profiles

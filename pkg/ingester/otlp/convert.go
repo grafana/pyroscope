@@ -401,14 +401,14 @@ func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sam
 		if keyStr, err := at(dictionary.StringTable, attribute.KeyStrindex); err == nil && keyStr == serviceNameKey {
 			continue
 		}
-		if attribute.Value.GetStringValue() != "" {
+		if sv := stringValueFromAnyValue(attribute.Value); sv != "" {
 			keyStr, err := at(dictionary.StringTable, attribute.KeyStrindex)
 			if err != nil {
 				return fmt.Errorf("could not access attribute key: %w", err)
 			}
 			gs.Label = append(gs.Label, &googleProfile.Label{
 				Key: p.addstr(keyStr),
-				Str: p.addstr(attribute.Value.GetStringValue()),
+				Str: p.addstr(sv),
 			})
 		}
 	}
@@ -510,7 +510,7 @@ func getAttributeValueByKeyOrEmpty(attributeIndices []int32, dictionary *otelPro
 			return "", fmt.Errorf("attribute key string not found %d: %w", i, err)
 		}
 		if keyStr == key {
-			return attr.Value.GetStringValue(), nil
+			return stringValueFromAnyValue(attr.Value), nil
 		}
 	}
 	return "", nil
