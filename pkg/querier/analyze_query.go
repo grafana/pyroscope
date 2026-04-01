@@ -5,7 +5,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -22,7 +22,7 @@ type queryScope struct {
 }
 
 func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "AnalyzeQuery")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "AnalyzeQuery")
 	defer sp.Finish()
 
 	plan, err := q.blockSelect(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))

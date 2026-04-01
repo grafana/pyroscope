@@ -103,7 +103,7 @@ build-dev: ## Do a dev build (without requiring the frontend)
 
 .PHONY: frontend/build
 frontend/build:
-	docker build -f cmd/pyroscope/frontend.Dockerfile --output=public/build .
+	docker build -f cmd/pyroscope/frontend.Dockerfile --output=ui/dist .
 
 .PHONY: frontend/shell
 frontend/shell:

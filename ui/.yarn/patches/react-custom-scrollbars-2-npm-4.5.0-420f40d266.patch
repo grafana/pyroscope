@@ -1,0 +1,55 @@
+diff --git a/lib/index.mjs b/lib/index.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..70ea9908d06eadceb925eed7762a867d91856c19
+--- /dev/null
++++ b/lib/index.mjs
+@@ -0,0 +1,31 @@
++/**
++ * ESM entry point for react-custom-scrollbars-2.
++ *
++ * WHY THIS FILE EXISTS (yarn patch workaround):
++ *
++ * Rolldown (used by Vite 8) wraps CJS modules via __toESM. When combined with
++ * Vite's optimizeDeps pre-bundling, this package ends up with TWO levels of
++ * nesting: the pre-bundled output's default export IS the CJS exports object
++ * (not the Scrollbars class itself), so consumers see:
++ *
++ *   import Scrollbars from 'react-custom-scrollbars-2';
++ *   // Scrollbars = { default: <class>, Scrollbars: <class> }   ← wrong!
++ *
++ * Providing a native ESM entry (this file) causes bundlers to skip the CJS
++ * pre-bundling path entirely. We still import the CJS module, but we handle
++ * both possible wrapping outcomes defensively.
++ *
++ * If this package ever ships its own ESM build this file should be removed.
++ */
++import cjsDefault from './index.js';
++
++// After __toESM processing, cjsDefault is EITHER:
++//   (a) the Scrollbars class directly (if __esModule:true is respected), OR
++//   (b) the full exports object { default: Scrollbars, Scrollbars: Scrollbars }
++const Scrollbars =
++  typeof cjsDefault === 'function'
++    ? cjsDefault
++    : (cjsDefault.default ?? cjsDefault.Scrollbars ?? cjsDefault);
++
++export default Scrollbars;
++export { Scrollbars };
+diff --git a/package.json b/package.json
+index b68a914013a647ba19e085e37a97e64ced2c4f45..cbff755d5dbc31d96cabec048f795b1b79fbf11c 100644
+--- a/package.json
++++ b/package.json
+@@ -3,6 +3,13 @@
+   "version": "4.5.0",
+   "description": "React scrollbars component",
+   "main": "lib/index.js",
++  "module": "lib/index.mjs",
++  "exports": {
++    ".": {
++      "import": "./lib/index.mjs",
++      "require": "./lib/index.js"
++    }
++  },
+   "typings": "./index.d.ts",
+   "scripts": {
+     "clean": "rimraf lib dist",

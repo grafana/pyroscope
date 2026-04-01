@@ -34,6 +34,7 @@ func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []sche
 	rewrites := &rewriter{}
 
 	spans := pprof.ProfileSpans(profile)
+	traceIDs := pprof.ProfileTraceIDs(profile)
 	pprof.ZeroLabelStrings(profile)
 
 	p.strings.ingest(profile.StringTable, rewrites)
@@ -85,7 +86,7 @@ func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []sche
 	}
 
 	p.locations.ingest(locs, rewrites)
-	samplesPerType := p.convertSamples(rewrites, profile.Sample, spans)
+	samplesPerType := p.convertSamples(rewrites, profile.Sample, spans, traceIDs)
 
 	profiles := make([]schemav1.InMemoryProfile, len(samplesPerType))
 	for idxType := range samplesPerType {
@@ -104,7 +105,7 @@ func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []sche
 	return profiles
 }
 
-func (p *PartitionWriter) convertSamples(r *rewriter, in []*profilev1.Sample, spans []uint64) []schemav1.Samples {
+func (p *PartitionWriter) convertSamples(r *rewriter, in []*profilev1.Sample, spans []uint64, traceIDs [][16]byte) []schemav1.Samples {
 	if len(in) == 0 {
 		return nil
 	}
@@ -123,6 +124,10 @@ func (p *PartitionWriter) convertSamples(r *rewriter, in []*profilev1.Sample, sp
 		if len(spans) > 0 {
 			s.Spans = make([]uint64, len(spans))
 			copy(s.Spans, spans)
+		}
+		if len(traceIDs) > 0 {
+			s.TraceIDs = make([][16]byte, len(traceIDs))
+			copy(s.TraceIDs, traceIDs)
 		}
 		samplesByType[i] = s
 	}
@@ -148,7 +153,7 @@ func (p *PartitionWriter) convertSamples(r *rewriter, in []*profilev1.Sample, sp
 		for i := range samples.StacktraceIDs {
 			samples.StacktraceIDs[i] = stacktracesIds[i]
 		}
-		samples = samples.Compact(false)
+		samples = samples.Compact()
 		sort.Sort(samples)
 		samplesByType[idxType] = samples
 	}

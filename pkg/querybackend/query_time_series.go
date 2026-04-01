@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/runutil"
-	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -59,9 +60,11 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 		return nil, err
 	}
 
-	span := opentracing.SpanFromContext(q.ctx)
-	span.SetTag("exemplars.enabled", includeExemplars)
-	span.SetTag("exemplars.type", exemplarType.String())
+	otelSpan := trace.SpanFromContext(q.ctx)
+	otelSpan.SetAttributes(
+		attribute.Bool("exemplars.enabled", includeExemplars),
+		attribute.String("exemplars.type", exemplarType.String()),
+	)
 
 	opts := []profileIteratorOption{withFetchPartition(false)}
 	if includeExemplars {
@@ -129,8 +132,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 	}
 
 	if result.exemplarCount > 0 {
-		span := opentracing.SpanFromContext(q.ctx)
-		span.SetTag("exemplars.raw_count", result.exemplarCount)
+		trace.SpanFromContext(q.ctx).SetAttributes(attribute.Int("exemplars.raw_count", result.exemplarCount))
 	}
 
 	return &queryv1.Report{
@@ -148,8 +150,7 @@ func queryTimeSeriesCompact(q *queryContext, query *queryv1.Query) (r *queryv1.R
 	}
 
 	if result.exemplarCount > 0 {
-		span := opentracing.SpanFromContext(q.ctx)
-		span.SetTag("exemplars.raw_count", result.exemplarCount)
+		trace.SpanFromContext(q.ctx).SetAttributes(attribute.Int("exemplars.raw_count", result.exemplarCount))
 	}
 
 	at := attributetable.New()

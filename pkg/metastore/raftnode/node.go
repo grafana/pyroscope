@@ -15,12 +15,11 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/dskit/tracing"
 	"github.com/hashicorp/raft"
 	raftwal "github.com/hashicorp/raft-wal"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/client_golang/prometheus"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 
@@ -326,10 +325,12 @@ func (n *Node) TransferLeadership() (err error) {
 // Propose makes an attempt to apply the given command to the FSM.
 // The function returns an error if node is not the leader.
 func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Message) (resp proto.Message, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "node.Propose")
+	span, ctx := tracing.StartSpanFromContext(ctx, "node.Propose")
+	otelSpan := oteltrace.SpanFromContext(ctx)
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -337,32 +338,32 @@ func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Mess
 	ctxID := uuid.New().String()
 	n.contextRegistry.Store(ctxID, ctx)
 
-	span.LogFields(otlog.String("msg", "marshalling log entry"))
+	otelSpan.AddEvent("marshalling log entry")
 
 	raw, err := fsm.MarshalEntry(t, m)
 	if err != nil {
 		return nil, err
 	}
 
-	span.LogFields(otlog.String("msg", "log entry marshalled"))
+	otelSpan.AddEvent("log entry marshalled")
 	timer := prometheus.NewTimer(n.metrics.apply)
 	defer timer.ObserveDuration()
 
-	span.LogFields(otlog.String("msg", "applying log entry"))
+	otelSpan.AddEvent("applying log entry")
 
 	future := n.raft.ApplyLog(raft.Log{
 		Data:       raw,
 		Extensions: []byte(ctxID),
 	}, n.config.ApplyTimeout)
 
-	span.LogFields(otlog.String("msg", "waiting for apply result"))
+	otelSpan.AddEvent("waiting for apply result")
 
 	if err = future.Error(); err != nil {
 		return nil, WithRaftLeaderStatusDetails(err, n.raft)
 	}
 	r := future.Response().(fsm.Response)
 
-	span.LogFields(otlog.String("msg", "apply result received"))
+	otelSpan.AddEvent("apply result received")
 	if r.Data != nil {
 		resp = r.Data
 	}

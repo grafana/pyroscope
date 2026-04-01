@@ -1,0 +1,42 @@
+.timeseries {
+  display: flex;
+}
+
+.timeseries-y-axis {
+  width: 32px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.timeseries-y-label {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--text-disabled);
+  line-height: 1;
+}
+
+.timeseries-chart {
+  flex: 1;
+  min-width: 0;
+}
+
+.timeseries-svg {
+  display: block;
+}
+
+.timeseries-x-axis {
+  position: relative;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.timeseries-x-label {
+  position: absolute;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--text-disabled);
+  white-space: nowrap;
+}

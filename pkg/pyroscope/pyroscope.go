@@ -31,11 +31,8 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/signals"
 	"github.com/grafana/dskit/spanlogger"
-	"github.com/grafana/dskit/spanprofiler"
-	wwtracing "github.com/grafana/dskit/tracing"
 	"github.com/grafana/pyroscope-go"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
@@ -116,6 +113,8 @@ type Config struct {
 	ConfigExpandEnv bool   `yaml:"-"`
 
 	V2                bool                    `yaml:"-" doc:"hidden"`
+	EnableV1WritePath bool                    `yaml:"enable_v1_write_path" doc:"hidden"`
+	EnableV1ReadPath  bool                    `yaml:"enable_v1_read_path"  doc:"hidden"`
 	SegmentWriter     segmentwriter.Config    `yaml:"segment_writer"     doc:"hidden"`
 	Metastore         metastore.Config        `yaml:"metastore"          doc:"hidden"`
 	QueryBackend      querybackend.Config     `yaml:"query_backend"      doc:"hidden"`
@@ -236,6 +235,11 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	}
 
 	if c.V2 {
+		c.EnableV1WritePath = true
+		c.EnableV1ReadPath = true
+		fs.BoolVar(&c.EnableV1WritePath, "all.enable-v1-write-path", true, "When using target=all with V2 enabled, also start V1 write path components (ingester, compactor). Set to false after fully migrating to V2.")
+		fs.BoolVar(&c.EnableV1ReadPath, "all.enable-v1-read-path", true, "When using target=all with V2 enabled, also start V1 read path components (querier, query-scheduler, store-gateway). Set to false after fully migrating to V2.")
+
 		for k, v := range map[string]string{
 			"server.grpc-max-recv-msg-size-bytes":                    "104857600",
 			"server.grpc-max-send-msg-size-bytes":                    "104857600",
@@ -421,17 +425,16 @@ func New(cfg Config) (*Pyroscope, error) {
 	runtime.SetBlockProfileRate(cfg.SelfProfiling.BlockProfileRate)
 
 	if cfg.Tracing.Enabled {
-		// Setting the environment variable JAEGER_AGENT_HOST enables tracing
-		name := os.Getenv("JAEGER_SERVICE_NAME")
+		name := os.Getenv("OTEL_SERVICE_NAME")
+		if name == "" {
+			name = os.Getenv("JAEGER_SERVICE_NAME")
+		}
 		if name == "" {
 			name = fmt.Sprintf("pyroscope-%s", cfg.Target)
 		}
-		trace, err := wwtracing.NewFromEnv(name)
+		trace, err := initTracing(name, logger, cfg.Tracing.ProfilingEnabled)
 		if err != nil {
 			level.Error(logger).Log("msg", "error in initializing tracing. tracing will not be enabled", "err", err)
-		}
-		if cfg.Tracing.ProfilingEnabled {
-			opentracing.SetGlobalTracer(spanprofiler.NewTracer(opentracing.GlobalTracer()))
 		}
 		phlare.tracer = trace
 	}
@@ -529,6 +532,20 @@ func (f *Pyroscope) setupModuleManager() error {
 		}
 
 		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend)
+
+		// When fully migrated to V2, operators can disable V1 components.
+		v1WritePath := []string{Ingester, Compactor}
+		v1ReadPath := []string{Querier, QueryScheduler, StoreGateway}
+		if !f.Cfg.EnableV1WritePath {
+			deps[All] = slices.DeleteFunc(deps[All], func(s string) bool {
+				return slices.Contains(v1WritePath, s)
+			})
+		}
+		if !f.Cfg.EnableV1ReadPath {
+			deps[All] = slices.DeleteFunc(deps[All], func(s string) bool {
+				return slices.Contains(v1ReadPath, s)
+			})
+		}
 		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore)
 		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
 		deps[Server] = append(deps[Server], HealthServer)

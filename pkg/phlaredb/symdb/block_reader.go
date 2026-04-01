@@ -12,8 +12,7 @@ import (
 	"sync"
 
 	"github.com/grafana/dskit/multierror"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -551,12 +550,10 @@ type stacktraceBlock struct {
 }
 
 func (c *stacktraceBlock) fetch(ctx context.Context) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "stacktraceBlock.fetch")
-	span.LogFields(
-		otlog.Int64("size", c.header.Size),
-		otlog.Uint32("nodes", c.header.StacktraceNodes),
-		otlog.Uint32("stacks", c.header.Stacktraces),
-	)
+	span, ctx := tracing.StartSpanFromContext(ctx, "stacktraceBlock.fetch")
+	span.SetTag("size", c.header.Size)
+	span.SetTag("nodes", c.header.StacktraceNodes)
+	span.SetTag("stacks", c.header.Stacktraces)
 	defer span.Finish()
 	return c.r.Inc(func() error {
 		path, err := c.stacktracesFile()
@@ -625,11 +622,9 @@ type rawTable[T any] struct {
 }
 
 func (t *rawTable[T]) fetch(ctx context.Context) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "symbolsTable.fetch")
-	span.LogFields(
-		otlog.Uint32("size", t.header.Size),
-		otlog.Uint32("length", t.header.Length),
-	)
+	span, ctx := tracing.StartSpanFromContext(ctx, "symbolsTable.fetch")
+	span.SetTag("size", t.header.Size)
+	span.SetTag("length", t.header.Length)
 	defer span.Finish()
 	return t.r.Inc(func() error {
 		rc, err := t.reader.bucket.GetRange(ctx,

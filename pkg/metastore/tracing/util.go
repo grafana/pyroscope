@@ -3,16 +3,16 @@ package tracing
 import (
 	"context"
 
-	"github.com/opentracing/opentracing-go"
+	dskittracing "github.com/grafana/dskit/tracing"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-var noopTracer = opentracing.NoopTracer{}
-
-// StartSpanFromContext starts a span only if there's a parent span in the context.
-// Otherwise, it returns a noop span. To be used in places where we might not have access to the original context.
-func StartSpanFromContext(ctx context.Context, operationName string) (opentracing.Span, context.Context) {
-	if opentracing.SpanFromContext(ctx) != nil {
-		return opentracing.StartSpanFromContext(ctx, operationName)
+// StartSpanFromContext starts a new span from context only if the context
+// already carries a parent span. This avoids creating orphaned root spans
+// in places like metastore followers where no trace context is available.
+func StartSpanFromContext(ctx context.Context, operationName string) (*dskittracing.Span, context.Context) {
+	if !oteltrace.SpanFromContext(ctx).SpanContext().IsValid() {
+		return &dskittracing.Span{}, ctx
 	}
-	return noopTracer.StartSpan(operationName), ctx
+	return dskittracing.StartSpanFromContext(ctx, operationName)
 }

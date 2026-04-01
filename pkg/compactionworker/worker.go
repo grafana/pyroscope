@@ -18,8 +18,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
+	"github.com/grafana/dskit/tracing"
 	"github.com/oklog/ulid/v2"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
@@ -371,14 +371,13 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	}()
 
 	w.metrics.jobsInProgress.WithLabelValues(metricLabels...).Inc()
-	sp, ctx := opentracing.StartSpanFromContext(job.ctx, "runCompaction",
-		opentracing.Tag{Key: "Job", Value: job.String()},
-		opentracing.Tag{Key: "Tenant", Value: job.Tenant},
-		opentracing.Tag{Key: "Shard", Value: job.Shard},
-		opentracing.Tag{Key: "CompactionLevel", Value: job.CompactionLevel},
-		opentracing.Tag{Key: "SourceBlocks", Value: len(job.SourceBlocks)},
-		opentracing.Tag{Key: "Tombstones", Value: len(job.Tombstones)},
-	)
+	sp, ctx := tracing.StartSpanFromContext(job.ctx, "runCompaction")
+	sp.SetTag("Job", job.String())
+	sp.SetTag("Tenant", job.Tenant)
+	sp.SetTag("Shard", job.Shard)
+	sp.SetTag("CompactionLevel", job.CompactionLevel)
+	sp.SetTag("SourceBlocks", len(job.SourceBlocks))
+	sp.SetTag("Tombstones", len(job.Tombstones))
 	defer sp.Finish()
 
 	logger := log.With(w.logger, "job", job.Name)

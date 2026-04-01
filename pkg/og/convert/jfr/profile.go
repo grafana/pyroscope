@@ -2,7 +2,7 @@ package jfr
 
 import (
 	"bytes"
-	"compress/gzip"
+	"github.com/klauspost/compress/gzip"
 	"context"
 	"fmt"
 	"io"

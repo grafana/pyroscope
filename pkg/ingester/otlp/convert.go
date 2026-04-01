@@ -145,7 +145,7 @@ func newProfileBuilder(src *otelProfile.Profile, dictionary *otelProfile.Profile
 				}
 			}
 			res.sampleProcessingTypes[i] = sampleConversionTypeSamplesToNanos
-		} else if profileType == "events:nanoseconds::" && len(res.dst.SampleType) == 1 { // Identify off-CPU profiles
+		} else if (profileType == "off_cpu:nanoseconds::") && len(res.dst.SampleType) == 1 { // Identify off-CPU profiles
 
 			res.sampleProcessingTypes[i] = sampleConversionTypeSumEvents
 			res.name = &typesv1.LabelPair{
@@ -422,6 +422,12 @@ func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sam
 			Key: p.addstr(pprof.SpanIDLabelName),
 			Str: p.addstr(hex.EncodeToString(link.GetSpanId())),
 		})
+		if traceID := link.GetTraceId(); len(traceID) == 16 {
+			gs.Label = append(gs.Label, &googleProfile.Label{
+				Key: p.addstr(pprof.TraceIDLabelName),
+				Str: p.addstr(hex.EncodeToString(traceID)),
+			})
+		}
 	}
 
 	return nil

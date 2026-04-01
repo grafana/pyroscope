@@ -1,0 +1,11 @@
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) 0;
+}
+
+.empty-message {
+  font-size: var(--text-sm);
+  color: var(--text-disabled);
+}

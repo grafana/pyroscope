@@ -110,10 +110,6 @@ jobs:
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version: 1.25.8
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 20
-          cache: yarn
       - name: Build image Pyroscope
         run: make docker-image/pyroscope/build-multiarch "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
