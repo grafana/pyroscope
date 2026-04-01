@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"encoding/binary"
+	"fmt"
 	"slices"
 	"sync"
 
@@ -255,7 +256,12 @@ func (rm *remapper) resolveLocationIDs(
 	mappings []schemav1.InMemoryMapping,
 	functions []schemav1.InMemoryFunction,
 ) {
-	// always keep empty elements
+	// Seed index 0 as sentinels. In pprof, ID 0 means "unset" (e.g. a
+	// location with no mapping, or a line with no function). We pre-populate
+	// the remapper so that these zero-IDs survive the remap unchanged.
+	// When the source Mappings or Functions slice is empty (no-mapping or
+	// unsymbolized profiles), the sentinel references an index beyond the
+	// slice bounds — the bounds checks below allow ID 0 to skip safely.
 	rm.strings[0] = 0
 	rm.mappings[0] = 0
 	rm.functions[0] = 0
@@ -268,16 +274,25 @@ func (rm *remapper) resolveLocationIDs(
 	// go through mappings collect strings used
 	mappingIDs := rm.mappingIDs()
 	for _, mapID := range mappingIDs {
+		if int(mapID) >= len(mappings) {
+			// ID 0 is the "unset" sentinel — safe to skip when there are no mappings.
+			if mapID == 0 {
+				continue
+			}
+			panic(fmt.Sprintf("mapping ID %d out of range (len=%d)", mapID, len(mappings)))
+		}
 		rm.discoverMapping(&mappings[mapID])
 	}
 
 	// go through functions collect strings used
 	functionIDs := rm.functionIDs()
 	for _, funcID := range functionIDs {
-		// TODO(simonswine): Investigate why we don't use the IDs consistently here, likely a test case issue, but worth double checking.
-		// pprof IDs are conventionally 1-based (0 = unset).
 		if int(funcID) >= len(functions) {
-			continue
+			// ID 0 is the "unset" sentinel — safe to skip when there are no functions.
+			if funcID == 0 {
+				continue
+			}
+			panic(fmt.Sprintf("function ID %d out of range (len=%d)", funcID, len(functions)))
 		}
 		rm.discoverFunction(&functions[funcID])
 	}
@@ -360,10 +375,13 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 	sm.functions.grow(len(functionIDs))
 	buf := make([]byte, 8)
 	for _, fID := range functionIDs {
-		// TODO(simonswine): Investigate why we don't use the IDs consistently here, likely a test case issue, but worth double checking.
-		// pprof IDs are conventionally 1-based (0 = unset).
 		if int(fID) >= len(symbols.Functions) {
-			continue // index out of range (e.g. sentinel on an empty Functions slice)
+			// ID 0 is the "unset" sentinel — remap to 0 and skip when there are no functions.
+			if fID == 0 {
+				rm.functions[fID] = 0
+				continue
+			}
+			panic(fmt.Sprintf("function ID %d out of range (len=%d)", fID, len(symbols.Functions)))
 		}
 		h.Reset()
 		f = symbols.Functions[fID]
@@ -379,6 +397,14 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 	mappingIDs := rm.mappingIDs()
 	sm.mappings.grow(len(mappingIDs))
 	for _, mID := range mappingIDs {
+		if int(mID) >= len(symbols.Mappings) {
+			// ID 0 is the "unset" sentinel — remap to 0 and skip when there are no mappings.
+			if mID == 0 {
+				rm.mappings[mID] = 0
+				continue
+			}
+			panic(fmt.Sprintf("mapping ID %d out of range (len=%d)", mID, len(symbols.Mappings)))
+		}
 		h.Reset()
 		mp = symbols.Mappings[mID]
 		rm.updateMapping(&mp)

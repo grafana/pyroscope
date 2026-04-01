@@ -293,6 +293,65 @@ func TestSymbolMerger_UnsymbolizedProfile_Deduplication(t *testing.T) {
 	require.Len(t, result.Strings, 3)   // "", "libfoo.so", build-id
 }
 
+func createNoMappingsTestSymbols() *Symbols {
+	return &Symbols{
+		Locations: []schemav1.InMemoryLocation{
+			{MappingId: 0, Address: 0, Line: []schemav1.InMemoryLine{{FunctionId: 0, Line: 0}}},
+			{MappingId: 0, Address: 0, Line: []schemav1.InMemoryLine{{FunctionId: 1, Line: 0}}},
+		},
+		Mappings: []schemav1.InMemoryMapping{},
+		Functions: []schemav1.InMemoryFunction{
+			{Name: 3, SystemName: 3, Filename: 0, StartLine: 0},
+			{Name: 4, SystemName: 4, Filename: 0, StartLine: 0},
+		},
+		Strings: []string{"", "cpu", "nanoseconds", "main", "foo"},
+	}
+}
+
+// TestSymbolMerger_NoMappings is a regression test for a panic that occurs
+// when merging profiles where symbols.Mappings is empty (locations carry
+// MappingId 0 meaning "unset"). resolveLocationIDs unconditionally adds
+// mappings[0] = 0 as a sentinel and then calls discoverMapping(&mappings[0]),
+// which panics with an index-out-of-bounds when the slice is empty.
+// The same panic occurs in addSymbols when it indexes symbols.Mappings[mID].
+func TestSymbolMerger_NoMappings(t *testing.T) {
+	merger := NewSymbolMerger()
+	ts := createNoMappingsTestSymbols()
+	locIDs := []int32{0, 1}
+
+	adder, err := merger.addSymbols(ts, locIDs)
+	require.NoError(t, err) // panics before fix
+
+	// adder renumbers 0-based input indices → 1-based merged indices
+	for _, locID := range locIDs {
+		require.Equal(t, model.LocationRefName(locID+1), adder(model.LocationRefName(locID)))
+	}
+
+	builder := merger.ResultBuilder()
+	for _, locID := range locIDs {
+		builder.KeepSymbol(adder(model.LocationRefName(locID)))
+	}
+
+	result := &queryv1.TreeSymbols{}
+	builder.Build(result)
+
+	require.Len(t, result.Mappings, 1)  // sentinel only — no mapping data
+	require.Len(t, result.Locations, 3) // sentinel + 2 locations
+	require.Len(t, result.Functions, 3) // sentinel + 2 functions (main, foo)
+
+	// Verify locations carry no mapping reference.
+	require.Equal(t, uint64(0), result.Locations[1].MappingId)
+	require.Equal(t, uint64(0), result.Locations[2].MappingId)
+
+	// Verify function names are preserved.
+	funcNames := make([]string, len(result.Functions))
+	for i, f := range result.Functions {
+		funcNames[i] = result.Strings[f.Name]
+	}
+	require.Contains(t, funcNames, "main")
+	require.Contains(t, funcNames, "foo")
+}
+
 func TestSymbolMerger_HashCollision(t *testing.T) {
 	sm := NewSymbolMerger()
 
