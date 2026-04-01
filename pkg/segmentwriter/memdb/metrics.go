@@ -1,6 +1,8 @@
 package memdb
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -78,43 +80,64 @@ func NewHeadMetricsWithPrefix(reg prometheus.Registerer, prefix string) *HeadMet
 			Name: prefix + "_head_flushed_table_size_bytes",
 			Help: "Size of a flushed table in bytes.",
 			//  [2MB, 4MB, 8MB, 16MB, 32MB, 64MB, 128MB, 256MB, 512MB, 1GB, 2GB]
-			Buckets: prometheus.ExponentialBuckets(2*1024*1024, 2, 11),
+			Buckets:                         prometheus.ExponentialBuckets(2*1024*1024, 2, 11),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"name"}),
 		flushedBlockSizeBytes: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: prefix + "_head_flushed_block_size_bytes",
 			Help: "Size of a flushed block in bytes.",
 			// [50MB, 75MB, 112.5MB, 168.75MB, 253.125MB, 379.688MB, 569.532MB, 854.298MB, 1.281MB, 1.922MB, 2.883MB]
-			Buckets: prometheus.ExponentialBuckets(50*1024*1024, 1.5, 11),
+			Buckets:                         prometheus.ExponentialBuckets(50*1024*1024, 1.5, 11),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}),
 		flushedBlockDurationSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: prefix + "_head_flushed_block_duration_seconds",
 			Help: "Time to flushed a block in seconds.",
 			// [5s, 7.5s, 11.25s, 16.875s, 25.3125s, 37.96875s, 56.953125s, 85.4296875s, 128.14453125s, 192.216796875s]
-			Buckets: prometheus.ExponentialBuckets(5, 1.5, 10),
+			Buckets:                         prometheus.ExponentialBuckets(5, 1.5, 10),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}),
 		flushedBlockSeries: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: prefix + "_head_flushed_block_series",
 			Help: "Number of series in a flushed block.",
 			// [1k, 3k, 5k, 7k, 9k, 11k, 13k, 15k, 17k, 19k]
-			Buckets: prometheus.LinearBuckets(1000, 2000, 10),
+			Buckets:                         prometheus.LinearBuckets(1000, 2000, 10),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}),
 		flushedBlockSamples: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: prefix + "_head_flushed_block_samples",
 			Help: "Number of samples in a flushed block.",
 			// [200k, 400k, 800k, 1.6M, 3.2M, 6.4M, 12.8M, 25.6M, 51.2M, 102.4M, 204.8M, 409.6M, 819.2M, 1.6384G, 3.2768G]
-			Buckets: prometheus.ExponentialBuckets(200_000, 2, 15),
+			Buckets:                         prometheus.ExponentialBuckets(200_000, 2, 15),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}),
 		flusehdBlockProfiles: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: prefix + "_head_flushed_block_profiles",
 			Help: "Number of profiles in a flushed block.",
 			// [20k, 40k, 80k, 160k, 320k, 640k, 1.28M, 2.56M, 5.12M, 10.24M]
-			Buckets: prometheus.ExponentialBuckets(20_000, 2, 10),
+			Buckets:                         prometheus.ExponentialBuckets(20_000, 2, 10),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}),
 		blockDurationSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: prefix + "_head_block_duration_seconds",
 			Help: "Duration of a block in seconds (the range it covers).",
 			// [20m, 40m, 1h, 1h20, 1h40, 2h, 2h20, 2h40, 3h, 3h20, 3h40, 4h, 4h20, 4h40, 5h, 5h20, 5h40, 6h, 6h20, 6h40, 7h, 7h20, 7h40, 8h]
-			Buckets: prometheus.LinearBuckets(1200, 1200, 24),
+			Buckets:                         prometheus.LinearBuckets(1200, 1200, 24),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}),
 		flushedBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: prefix + "_head_flushed_blocks_total",
@@ -136,7 +159,10 @@ func NewHeadMetricsWithPrefix(reg prometheus.Registerer, prefix string) *HeadMet
 			Name: prefix + "_head_written_profile_segments_size_bytes",
 			Help: "Size of a flushed table in bytes.",
 			//  [512KB, 1MB, 2MB, 4MB, 8MB, 16MB, 32MB, 64MB, 128MB, 256MB, 512MB]
-			Buckets: prometheus.ExponentialBuckets(512*1024, 2, 11),
+			Buckets:                         prometheus.ExponentialBuckets(512*1024, 2, 11),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}),
 		//samples: prometheus.NewGauge(prometheus.GaugeOpts{
 		//	Name: prefix + "_head_samples",

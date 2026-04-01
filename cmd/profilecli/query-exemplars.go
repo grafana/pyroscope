@@ -255,6 +255,161 @@ func outputExemplarsJSON(ctx context.Context, entries []exemplarEntry, from, to 
 	return enc.Encode(out)
 }
 
+// querySpanExemplars lists span exemplars by calling SelectHeatmap with
+// HEATMAP_QUERY_TYPE_SPAN, which is already fully implemented in the backend.
+// The heatmap slots each carry at most one exemplar (the highest-value span in
+// that time×value bucket), so iterating all slots gives a representative sample
+// of the most expensive spans in the requested window.
+func querySpanExemplars(ctx context.Context, params *queryExemplarsParams) error {
+	from, to, err := params.parseFromTo()
+	if err != nil {
+		return err
+	}
+
+	level.Info(logger).Log(
+		"msg", "querying span exemplars",
+		"url", params.URL,
+		"from", from,
+		"to", to,
+		"query", params.Query,
+		"type", params.ProfileType,
+		"top_n", params.TopN,
+	)
+
+	rangeSeconds := to.Sub(from).Seconds()
+	stepSeconds := rangeSeconds / float64(params.TopN)
+	if stepSeconds < 1 {
+		stepSeconds = 1
+	}
+
+	limit := int64(params.TopN)
+	qc := params.queryClient()
+	resp, err := qc.SelectHeatmap(ctx, connect.NewRequest(&querierv1.SelectHeatmapRequest{
+		ProfileTypeID: params.ProfileType,
+		LabelSelector: params.Query,
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
+		Step:          stepSeconds,
+		QueryType:     querierv1.HeatmapQueryType_HEATMAP_QUERY_TYPE_SPAN,
+		ExemplarType:  typesv1.ExemplarType_EXEMPLAR_TYPE_SPAN,
+		Limit:         &limit,
+	}))
+	if err != nil {
+		return errors.Wrap(err, "failed to query span exemplars")
+	}
+
+	logDiagnostics(params.phlareClient, resp.Header())
+
+	var entries []exemplarEntry
+	for _, series := range resp.Msg.Series {
+		seriesLabels := make(map[string]string, len(series.Labels))
+		for _, lp := range series.Labels {
+			seriesLabels[lp.Name] = lp.Value
+		}
+		for _, slot := range series.Slots {
+			for _, ex := range slot.Exemplars {
+				if ex.SpanId == "" {
+					continue
+				}
+				lbls := make(map[string]string, len(seriesLabels)+len(ex.Labels))
+				for k, v := range seriesLabels {
+					lbls[k] = v
+				}
+				for _, lp := range ex.Labels {
+					lbls[lp.Name] = lp.Value
+				}
+				entries = append(entries, exemplarEntry{
+					SpanID:    ex.SpanId,
+					Timestamp: time.UnixMilli(ex.Timestamp),
+					Value:     ex.Value,
+					Labels:    lbls,
+				})
+			}
+		}
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Value > entries[j].Value
+	})
+	if uint64(len(entries)) > params.TopN {
+		entries = entries[:params.TopN]
+	}
+
+	if len(entries) == 0 {
+		level.Info(logger).Log("msg", "no span exemplars found")
+	}
+
+	profileType, err := model.ParseProfileTypeSelector(params.ProfileType)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse profile type")
+	}
+
+	tableLabels := topCardinalityLabels(entries, params.MaxLabelColumns)
+
+	switch params.Output {
+	case outputJSON:
+		return outputSpanExemplarsJSON(ctx, entries, from, to, params.ProfileType)
+	default:
+		return outputSpanExemplarsTable(ctx, entries, profileType.SampleUnit, tableLabels)
+	}
+}
+
+func outputSpanExemplarsJSON(ctx context.Context, entries []exemplarEntry, from, to time.Time, profileType string) error {
+	type jsonExemplar struct {
+		SpanID    string            `json:"span_id"`
+		Timestamp time.Time         `json:"timestamp"`
+		Value     int64             `json:"value"`
+		Labels    map[string]string `json:"labels,omitempty"`
+	}
+	type jsonOutput struct {
+		From        time.Time      `json:"from"`
+		To          time.Time      `json:"to"`
+		ProfileType string         `json:"profile_type"`
+		Exemplars   []jsonExemplar `json:"exemplars"`
+	}
+
+	out := jsonOutput{
+		From:        from,
+		To:          to,
+		ProfileType: profileType,
+		Exemplars:   make([]jsonExemplar, len(entries)),
+	}
+	for i, e := range entries {
+		out.Exemplars[i] = jsonExemplar{
+			SpanID:    e.SpanID,
+			Timestamp: e.Timestamp,
+			Value:     e.Value,
+			Labels:    filterLabels(e.Labels),
+		}
+	}
+	enc := json.NewEncoder(output(ctx))
+	enc.SetIndent("", "  ")
+	return enc.Encode(out)
+}
+
+func outputSpanExemplarsTable(ctx context.Context, entries []exemplarEntry, sampleUnit string, labelColumns []string) error {
+	headers := []string{"Span ID", "Timestamp", fmt.Sprintf("Value (%s)", sampleUnit)}
+	aligns := []int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_RIGHT}
+	for _, name := range labelColumns {
+		headers = append(headers, name)
+		aligns = append(aligns, tablewriter.ALIGN_LEFT)
+	}
+
+	table := tablewriter.NewWriter(output(ctx))
+	table.SetHeader(headers)
+	table.SetColumnAlignment(aligns)
+
+	for _, e := range entries {
+		row := []string{e.SpanID, e.Timestamp.Format(time.RFC3339), formatUnit(float64(e.Value), sampleUnit)}
+		for _, name := range labelColumns {
+			row = append(row, e.Labels[name])
+		}
+		table.Append(row)
+	}
+	table.Render()
+	return nil
+}
+
 func outputExemplarsTable(ctx context.Context, entries []exemplarEntry, sampleUnit string, labelColumns []string) error {
 	headers := []string{"Profile ID", "Timestamp", fmt.Sprintf("Value (%s)", sampleUnit)}
 	aligns := []int{

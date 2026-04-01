@@ -9,9 +9,9 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/tracing"
 	giturl "github.com/kubescape/go-git-url"
 	"github.com/kubescape/go-git-url/apis"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 
@@ -39,7 +39,7 @@ func New(logger log.Logger, reg prometheus.Registerer) *Service {
 }
 
 func (q *Service) GithubApp(ctx context.Context, req *connect.Request[vcsv1.GithubAppRequest]) (*connect.Response[vcsv1.GithubAppResponse], error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "GithubApp")
+	sp, _ := tracing.StartSpanFromContext(ctx, "GithubApp")
 	defer sp.Finish()
 
 	err := isGitHubIntegrationConfigured()
@@ -55,7 +55,7 @@ func (q *Service) GithubApp(ctx context.Context, req *connect.Request[vcsv1.Gith
 }
 
 func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.GithubLoginRequest]) (*connect.Response[vcsv1.GithubLoginResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "GithubLogin")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "GithubLogin")
 	defer sp.Finish()
 
 	cfg, err := githubOAuthConfig()
@@ -98,7 +98,7 @@ func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.Gi
 }
 
 func (q *Service) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.GithubRefreshRequest]) (*connect.Response[vcsv1.GithubRefreshResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "GithubRefresh")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "GithubRefresh")
 	defer sp.Finish()
 
 	token, err := tokenFromRequest(ctx, req)
@@ -149,7 +149,7 @@ func (q *Service) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.
 }
 
 func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFileRequest]) (*connect.Response[vcsv1.GetFileResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "GetFile")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "GetFile")
 	defer sp.Finish()
 	sp.SetTag("repository_url", req.Msg.RepositoryURL)
 	sp.SetTag("local_path", req.Msg.LocalPath)
@@ -206,7 +206,7 @@ func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 }
 
 func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetCommitRequest]) (*connect.Response[vcsv1.GetCommitResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "GetCommit")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "GetCommit")
 	defer sp.Finish()
 	sp.SetTag("repository_url", req.Msg.RepositoryURL)
 	sp.SetTag("ref", req.Msg.Ref)
@@ -255,7 +255,7 @@ func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetC
 }
 
 func (q *Service) GetCommits(ctx context.Context, req *connect.Request[vcsv1.GetCommitsRequest]) (*connect.Response[vcsv1.GetCommitsResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "GetCommits")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "GetCommits")
 	defer sp.Finish()
 
 	token, err := tokenFromRequest(ctx, req)

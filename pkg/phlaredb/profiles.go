@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/gogo/status"
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -216,7 +216,7 @@ func (pi *profilesIndex) Add(ps *schemav1.InMemoryProfile, lbs phlaremodel.Label
 }
 
 func (pi *profilesIndex) selectMatchingFPs(ctx context.Context, params *ingestv1.SelectProfilesRequest) ([]model.Fingerprint, error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "selectMatchingFPs - Index")
+	sp, _ := tracing.StartSpanFromContext(ctx, "selectMatchingFPs - Index")
 	defer sp.Finish()
 	selectors, err := parser.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
@@ -267,7 +267,7 @@ func (pi *profilesIndex) selectMatchingRowRanges(ctx context.Context, params *in
 	map[model.Fingerprint]phlaremodel.Labels,
 	error,
 ) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "selectMatchingRowRanges - Index")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "selectMatchingRowRanges - Index")
 	defer sp.Finish()
 
 	ids, err := pi.selectMatchingFPs(ctx, params)

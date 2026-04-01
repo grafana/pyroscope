@@ -305,14 +305,12 @@ func getServiceNameFromAttributes(attrs []*v1.KeyValue) string {
 	fallback := model.AttrServiceNameFallback
 	for _, attr := range attrs {
 		if attr.Key == string(model.AttrServiceName) {
-			val := attr.GetValue()
-			if sv := val.GetStringValue(); sv != "" {
+			if sv := stringValueFromAnyValue(attr.GetValue()); sv != "" {
 				return sv
 			}
 		}
 		if attr.Key == string(model.AttrProcessExecutableName) {
-			val := attr.GetValue()
-			if sv := val.GetStringValue(); sv != "" {
+			if sv := stringValueFromAnyValue(attr.GetValue()); sv != "" {
 				fallback += ":" + sv
 			}
 		}
@@ -342,8 +340,7 @@ func appendAttributesUnique(labels []*typesv1.LabelPair, attrs []*v1.KeyValue, p
 			continue
 		}
 
-		val := attr.GetValue()
-		if sv := val.GetStringValue(); sv != "" {
+		if sv := stringValueFromAnyValue(attr.GetValue()); sv != "" {
 			labels = append(labels, &typesv1.LabelPair{
 				Name:  attr.Key,
 				Value: sv,
@@ -352,4 +349,20 @@ func appendAttributesUnique(labels []*typesv1.LabelPair, attrs []*v1.KeyValue, p
 		}
 	}
 	return labels
+}
+
+func stringValueFromAnyValue(v *v1.AnyValue) string {
+	if v == nil {
+		return ""
+	}
+	if sv := v.GetStringValue(); sv != "" {
+		return sv
+	}
+	if av := v.GetArrayValue(); av != nil {
+		values := av.GetValues()
+		if len(values) == 1 {
+			return values[0].GetStringValue()
+		}
+	}
+	return ""
 }

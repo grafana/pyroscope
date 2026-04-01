@@ -1,4 +1,5 @@
 services:
+
   otel-ebpf-profiler:
     image: otel/opentelemetry-collector-ebpf-profiler:0.147.0
     command:
@@ -9,9 +10,17 @@ services:
     pid: "host"
     volumes:
       - ./config/ebpf-profiler-config.yaml:/etc/ebpf-profiler-config.yaml:ro
+      - ./config/kubeconfig.yaml:/root/.kube/config:ro
       - /sys/kernel/debug:/sys/kernel/debug:ro
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
-      - /proc:/proc:ro
+    networks:
+      - otel-net
+
+  # The otel-ebpf-profiler doesnt support adding docker metadata, this shim translates it into kubernetes API and makes it available
+  docker-k8sattributesprocessor-shim:
+    image: ghcr.io/simonswine/docker-k8sattributesprocessor-shim:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - otel-net
 
@@ -19,11 +28,8 @@ services:
     image: grafana/pyroscope:1.18.1
     command: 
       - -self-profiling.disable-push=true
-      - -config.file=/etc/pyroscope.yaml
     ports:
       - "4040:4040"
-    volumes:
-      - ./config/pyroscope.yaml:/etc/pyroscope.yaml:ro
     networks:
       - otel-net
 

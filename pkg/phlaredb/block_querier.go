@@ -19,15 +19,15 @@ import (
 	"github.com/gogo/status"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
+	"github.com/grafana/dskit/tracing"
 	"github.com/oklog/ulid/v2"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/samber/lo"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
@@ -364,7 +364,7 @@ func (b *singleBlockQuerier) Meta() block.Meta {
 }
 
 func (b *singleBlockQuerier) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "ProfileTypes Block")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "ProfileTypes Block")
 	defer sp.Finish()
 
 	if err := b.Open(ctx); err != nil {
@@ -394,7 +394,7 @@ func (b *singleBlockQuerier) ProfileTypes(ctx context.Context, req *connect.Requ
 }
 
 func (b *singleBlockQuerier) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues Block")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "LabelValues Block")
 	defer sp.Finish()
 
 	params := req.Msg
@@ -462,7 +462,7 @@ func (b *singleBlockQuerier) LabelValues(ctx context.Context, req *connect.Reque
 }
 
 func (b *singleBlockQuerier) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames Block")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "LabelNames Block")
 	defer sp.Finish()
 
 	params := req.Msg
@@ -803,7 +803,7 @@ func SelectMatchingProfiles(ctx context.Context, request *ingestv1.SelectProfile
 }
 
 func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse], blockGetter BlockGetter) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeProfilesStacktraces")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "MergeProfilesStacktraces")
 	defer sp.Finish()
 
 	r, err := stream.Receive()
@@ -818,13 +818,11 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("missing initial select request"))
 	}
 	request := r.Request
-	sp.LogFields(
-		otlog.String("start", model.Time(request.Start).Time().String()),
-		otlog.String("end", model.Time(request.End).Time().String()),
-		otlog.String("selector", request.LabelSelector),
-		otlog.String("profile_id", request.Type.ID),
-		otlog.Object("hints", request.Hints),
-	)
+	sp.SetTag("start", model.Time(request.Start).Time().String())
+	sp.SetTag("end", model.Time(request.End).Time().String())
+	sp.SetTag("selector", request.LabelSelector)
+	sp.SetTag("profile_id", request.Type.ID)
+	sp.SetTag("hints", request.Hints)
 
 	queriers, err := blockGetter(ctx, model.Time(request.Start), model.Time(request.End), request.Hints)
 	if err != nil {
@@ -843,7 +841,7 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 	// depending on if new need deduplication or not there are two different code paths.
 	if !deduplicationNeeded {
 		// signal the end of the profile streaming by sending an empty response.
-		sp.LogFields(otlog.String("msg", "no profile streaming as no deduplication needed"))
+		oteltrace.SpanFromContext(ctx).AddEvent("no profile streaming as no deduplication needed")
 		if err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{}); err != nil {
 			return err
 		}
@@ -902,7 +900,7 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 
 		// Signals the end of the profile streaming by sending an empty response.
 		// This allows the client to not block other streaming ingesters.
-		sp.LogFields(otlog.String("msg", "signaling the end of the profile streaming"))
+		oteltrace.SpanFromContext(ctx).AddEvent("signaling the end of the profile streaming")
 		if err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{}); err != nil {
 			return err
 		}
@@ -914,10 +912,8 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 
 	// sends the final result to the client.
 	treeBytes := t.Bytes(r.GetMaxNodes(), nil)
-	sp.LogFields(
-		otlog.String("msg", "sending the final result to the client"),
-		otlog.Int("tree_bytes", len(treeBytes)),
-	)
+	oteltrace.SpanFromContext(ctx).AddEvent("sending the final result to the client")
+	sp.SetTag("tree_bytes", len(treeBytes))
 	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
 		Result: &ingestv1.MergeProfilesStacktracesResult{
 			Format:    ingestv1.StacktracesMergeFormat_MERGE_FORMAT_TREE,
@@ -935,7 +931,7 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 }
 
 func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse], blockGetter BlockGetter) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeSpanProfile")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "MergeSpanProfile")
 	defer sp.Finish()
 
 	r, err := stream.Receive()
@@ -950,13 +946,11 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("missing initial select request"))
 	}
 	request := r.Request
-	sp.LogFields(
-		otlog.String("start", model.Time(request.Start).Time().String()),
-		otlog.String("end", model.Time(request.End).Time().String()),
-		otlog.String("selector", request.LabelSelector),
-		otlog.String("profile_type_id", request.Type.ID),
-		otlog.Object("hints", request.Hints),
-	)
+	sp.SetTag("start", model.Time(request.Start).Time().String())
+	sp.SetTag("end", model.Time(request.End).Time().String())
+	sp.SetTag("selector", request.LabelSelector)
+	sp.SetTag("profile_type_id", request.Type.ID)
+	sp.SetTag("hints", request.Hints)
 
 	spanSelector, err := phlaremodel.NewSpanSelector(request.SpanSelector)
 	if err != nil {
@@ -980,7 +974,7 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 	// depending on if new need deduplication or not there are two different code paths.
 	if !deduplicationNeeded {
 		// signal the end of the profile streaming by sending an empty response.
-		sp.LogFields(otlog.String("msg", "no profile streaming as no deduplication needed"))
+		oteltrace.SpanFromContext(ctx).AddEvent("no profile streaming as no deduplication needed")
 		if err = stream.Send(&ingestv1.MergeSpanProfileResponse{}); err != nil {
 			return err
 		}
@@ -1045,7 +1039,7 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 
 		// Signals the end of the profile streaming by sending an empty response.
 		// This allows the client to not block other streaming ingesters.
-		sp.LogFields(otlog.String("msg", "signaling the end of the profile streaming"))
+		oteltrace.SpanFromContext(ctx).AddEvent("signaling the end of the profile streaming")
 		if err = stream.Send(&ingestv1.MergeSpanProfileResponse{}); err != nil {
 			return err
 		}
@@ -1057,10 +1051,8 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 
 	// sends the final result to the client.
 	treeBytes := t.Bytes(r.GetMaxNodes(), nil)
-	sp.LogFields(
-		otlog.String("msg", "sending the final result to the client"),
-		otlog.Int("tree_bytes", len(treeBytes)),
-	)
+	oteltrace.SpanFromContext(ctx).AddEvent("sending the final result to the client")
+	sp.SetTag("tree_bytes", len(treeBytes))
 	err = stream.Send(&ingestv1.MergeSpanProfileResponse{
 		Result: &ingestv1.MergeSpanProfileResult{
 			TreeBytes: treeBytes,
@@ -1077,7 +1069,7 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 }
 
 func MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse], blockGetter BlockGetter) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeProfilesLabels")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "MergeProfilesLabels")
 	defer sp.Finish()
 
 	r, err := stream.Receive()
@@ -1094,13 +1086,11 @@ func MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv
 	request := r.Request
 	by := r.By
 	sort.Strings(by)
-	sp.LogFields(
-		otlog.String("start", model.Time(request.Start).Time().String()),
-		otlog.String("end", model.Time(request.End).Time().String()),
-		otlog.String("selector", request.LabelSelector),
-		otlog.String("profile_id", request.Type.ID),
-		otlog.String("by", strings.Join(by, ",")),
-	)
+	sp.SetTag("start", model.Time(request.Start).Time().String())
+	sp.SetTag("end", model.Time(request.End).Time().String())
+	sp.SetTag("selector", request.LabelSelector)
+	sp.SetTag("profile_id", request.Type.ID)
+	sp.SetTag("by", strings.Join(by, ","))
 
 	queriers, err := blockGetter(ctx, model.Time(request.Start), model.Time(request.End), request.Hints)
 	if err != nil {
@@ -1117,7 +1107,7 @@ func MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv
 
 	if !deduplicationNeeded {
 		// signal the end of the profile streaming by sending an empty response.
-		sp.LogFields(otlog.String("msg", "no profile streaming as no deduplication needed"))
+		oteltrace.SpanFromContext(ctx).AddEvent("no profile streaming as no deduplication needed")
 		if err = stream.Send(&ingestv1.MergeProfilesLabelsResponse{}); err != nil {
 			return err
 		}
@@ -1199,7 +1189,7 @@ func MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv
 }
 
 func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse], blockGetter BlockGetter) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeProfilesPprof")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "MergeProfilesPprof")
 	defer sp.Finish()
 
 	r, err := stream.Receive()
@@ -1215,12 +1205,12 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	}
 
 	request := r.Request
-	sp.SetTag("start", model.Time(request.Start).Time().String()).
-		SetTag("end", model.Time(request.End).Time().String()).
-		SetTag("selector", request.LabelSelector).
-		SetTag("profile_type", request.Type.ID).
-		SetTag("max_nodes", r.GetMaxNodes())
-	sp.LogFields(otlog.Object("hints", request.Hints))
+	sp.SetTag("start", model.Time(request.Start).Time().String())
+	sp.SetTag("end", model.Time(request.End).Time().String())
+	sp.SetTag("selector", request.LabelSelector)
+	sp.SetTag("profile_type", request.Type.ID)
+	sp.SetTag("max_nodes", r.GetMaxNodes())
+	sp.SetTag("hints", request.Hints)
 
 	queriers, err := blockGetter(ctx, model.Time(request.Start), model.Time(request.End), request.Hints)
 	if err != nil {
@@ -1238,7 +1228,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	// depending on if new need deduplication or not there are two different code paths.
 	if !deduplicationNeeded {
 		// signal the end of the profile streaming by sending an empty response.
-		sp.LogFields(otlog.String("msg", "no profile streaming as no deduplication needed"))
+		oteltrace.SpanFromContext(ctx).AddEvent("no profile streaming as no deduplication needed")
 		if err = stream.Send(&ingestv1.MergeProfilesPprofResponse{}); err != nil {
 			return err
 		}
@@ -1291,7 +1281,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 
 		// Signals the end of the profile streaming by sending an empty response.
 		// This allows the client to not block other streaming ingesters.
-		sp.LogFields(otlog.String("msg", "signaling the end of the profile streaming"))
+		oteltrace.SpanFromContext(ctx).AddEvent("signaling the end of the profile streaming")
 		if err = stream.Send(&ingestv1.MergeProfilesPprofResponse{}); err != nil {
 			return err
 		}
@@ -1301,7 +1291,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 		return err
 	}
 
-	sp.LogFields(otlog.String("msg", "building pprof bytes"))
+	oteltrace.SpanFromContext(ctx).AddEvent("building pprof bytes")
 	mergedProfile := result.Profile()
 	pprof.SetProfileMetadata(mergedProfile, request.Type, model.Time(r.Request.End).UnixNano(), 0)
 
@@ -1311,10 +1301,8 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 		return err
 	}
 	// sends the final result to the client.
-	sp.LogFields(
-		otlog.String("msg", "sending the final result to the client"),
-		otlog.Int("tree_bytes", len(pprofBytes)),
-	)
+	oteltrace.SpanFromContext(ctx).AddEvent("sending the final result to the client")
+	sp.SetTag("tree_bytes", len(pprofBytes))
 	err = stream.Send(&ingestv1.MergeProfilesPprofResponse{Result: pprofBytes})
 	if err != nil {
 		if errors.Is(err, io.EOF) {
@@ -1526,7 +1514,7 @@ type labelsInfo struct {
 }
 
 func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Block")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 
@@ -1632,7 +1620,7 @@ func (b *singleBlockQuerier) SelectMergeByLabels(
 	sts *typesv1.StackTraceSelector,
 	by ...string,
 ) ([]*typesv1.Series, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByLabels - Block")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectMergeByLabels - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
@@ -1712,7 +1700,7 @@ func (b *singleBlockQuerier) SelectMergeByLabels(
 }
 
 func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (tree *phlaremodel.FunctionNameTree, err error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByStacktraces - Block")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectMergeByStacktraces - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
@@ -1781,7 +1769,7 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 }
 
 func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.FunctionNameTree, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeBySpans - Block")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectMergeBySpans - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
@@ -1849,7 +1837,7 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 }
 
 func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64, sts *typesv1.StackTraceSelector) (*profilev1.Profile, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergePprof - Block")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectMergePprof - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
@@ -1924,7 +1912,7 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 // Note: It will select ALL the labels in the block, not necessarily just the
 // subset in the time range SeriesRequest.Start to SeriesRequest.End.
 func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series Block")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "Series Block")
 	defer sp.Finish()
 
 	if err := b.Open(ctx); err != nil {
@@ -2097,12 +2085,10 @@ func (q *singleBlockQuerier) Open(ctx context.Context) error {
 // openFiles opens the parquet and tsdb files so they are ready for usage.
 func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 	start := time.Now()
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "BlockQuerier - open")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "BlockQuerier - open")
 	defer func() {
 		q.metrics.blockOpeningLatency.Observe(time.Since(start).Seconds())
-		sp.LogFields(
-			otlog.String("block_ulid", q.meta.ULID.String()),
-		)
+		sp.SetTag("block_ulid", q.meta.ULID.String())
 		sp.Finish()
 	}()
 

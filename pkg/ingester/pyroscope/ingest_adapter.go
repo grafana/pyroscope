@@ -17,7 +17,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
-	"github.com/prometheus/prometheus/model/labels"
+	prommodel "github.com/prometheus/common/model"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -116,7 +116,7 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 		Labels: make([]*typesv1.LabelPair, 0, 3+len(pi.LabelSet.Labels())),
 	}
 	series.Labels = append(series.Labels, &typesv1.LabelPair{
-		Name:  labels.MetricName,
+		Name:  string(prommodel.MetricNameLabel),
 		Value: metric,
 	}, &typesv1.LabelPair{
 		Name:  phlaremodel.LabelNameDelta,
