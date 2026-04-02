@@ -141,7 +141,11 @@ func (q *QueryFrontend) doQuery(
 		}
 	}
 	span.SetTag("total_block_bytes", weight.Total())
+	span.SetTag("profiles_bytes", weight.ProfilesBytes)
+	span.SetTag("tsdb_bytes", weight.TSDBBytes)
+	span.SetTag("symbols_bytes", weight.SymbolsBytes)
 	span.SetTag("datasets_count", datasetsCount)
+	span.SetTag("index_lookup_blocks", weight.IndexLookupCount)
 	startTime := time.UnixMilli(req.StartTime)
 	endTime := time.UnixMilli(req.EndTime)
 	queryWindow := endTime.Sub(startTime).Round(time.Second)

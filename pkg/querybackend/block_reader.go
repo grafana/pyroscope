@@ -145,6 +145,12 @@ func (b *BlockReader) Invoke(
 			"symbols_bytes", humanize.Bytes(weightCollector.weight.SymbolsBytes),
 			"total_bytes", humanize.Bytes(weightCollector.weight.Total()),
 		)
+		span.SetTag("index_lookup_resolved", true)
+		span.SetTag("resolved_profiles_bytes", weightCollector.weight.ProfilesBytes)
+		span.SetTag("resolved_tsdb_bytes", weightCollector.weight.TSDBBytes)
+		span.SetTag("resolved_symbols_bytes", weightCollector.weight.SymbolsBytes)
+		span.SetTag("resolved_total_bytes", weightCollector.weight.Total())
+		span.SetTag("resolved_datasets_count", weightCollector.datasetsCount)
 	}
 
 	resp := agg.response()
