@@ -44,7 +44,7 @@ func addCanaryExporterParams(ceCmd commander) *canaryExporterParams {
 	ceCmd.Flag("listen-address", "Listen address for the canary exporter.").Default(":4101").StringVar(&params.ListenAddress)
 	ceCmd.Flag("test-frequency", "How often the specified Pyroscope cell should be tested.").Default("15s").DurationVar(&params.TestFrequency)
 	ceCmd.Flag("test-delay", "The delay between ingest and query requests.").Default("2s").DurationVar(&params.TestDelay)
-	ceCmd.Flag("query-probe-set", "Which set of probes to use for query requests. Available sets are \"default\" and \"all\".").Default("default").EnumVar(&params.QueryProbeSet, "default", "all")
+	ceCmd.Flag("query-probe-set", "Which set of probes to use for query requests. Available sets are \"default\", \"extended\", and \"all\" (extended + v2 only tests).").Default("default").EnumVar(&params.QueryProbeSet, "default", "extended", "all")
 	params.phlareClient = addPhlareClient(ceCmd)
 
 	return params
@@ -162,7 +162,7 @@ func newCanaryExporter(params *canaryExporterParams) *canaryExporter {
 	ce.queryProbes = append(ce.queryProbes, &queryProbe{name: "query-select-merge-profile", f: ce.testSelectMergeProfile})
 	ce.queryProbes = append(ce.queryProbes, &queryProbe{name: "query-select-merge-otlp-profile", f: ce.testSelectMergeOTLPProfile})
 
-	if params.QueryProbeSet == "all" {
+	if params.QueryProbeSet == "extended" || params.QueryProbeSet == "all" {
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-profile-types", ce.testProfileTypes})
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-series", ce.testSeries})
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-label-names", ce.testLabelNames})
@@ -173,6 +173,11 @@ func newCanaryExporter(params *canaryExporterParams) *canaryExporter {
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-get-profile-stats", ce.testGetProfileStats})
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"render", ce.testRender})
 		ce.queryProbes = append(ce.queryProbes, &queryProbe{"render-diff", ce.testRenderDiff})
+	}
+
+	if params.QueryProbeSet == "all" {
+		// for v2 only
+		ce.queryProbes = append(ce.queryProbes, &queryProbe{"query-exemplars", ce.testQueryExemplars})
 	}
 
 	metricsPath := "/metrics"

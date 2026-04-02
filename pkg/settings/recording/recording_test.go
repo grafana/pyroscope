@@ -3,15 +3,14 @@ package recording
 import (
 	"context"
 	"fmt"
+	"math/rand/v2"
 	"os"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/user"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/rand"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -602,32 +601,28 @@ func TestRecordingRules_Get(t *testing.T) {
 
 }
 
-func init() {
-	rand.Seed(uint64(time.Now().UnixNano()))
-}
-
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func RandomString(n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+		b[i] = letters[rand.IntN(len(letters))]
 	}
 	return string(b)
 }
 
 func RandomRule() *settingsv1.RecordingRule {
 	profileType := RandomString(5)
-	matchers := make([]string, rand.Intn(3))
+	matchers := make([]string, rand.IntN(3))
 	for i := range matchers {
 		matchers[i] = fmt.Sprintf(`{ %s = "%s" }`, RandomString(5), RandomString(5))
 	}
 	matchers = append(matchers, fmt.Sprintf(`{ __profile_type__ = "%s" }`, profileType))
-	groupBy := make([]string, rand.Intn(2)+1)
+	groupBy := make([]string, rand.IntN(2)+1)
 	for i := range groupBy {
 		groupBy[i] = RandomString(5)
 	}
-	externalLabels := make([]*typesv1.LabelPair, rand.Intn(2)+1)
+	externalLabels := make([]*typesv1.LabelPair, rand.IntN(2)+1)
 	for i := range externalLabels {
 		externalLabels[i] = &typesv1.LabelPair{
 			Name:  RandomString(5),
@@ -635,7 +630,7 @@ func RandomRule() *settingsv1.RecordingRule {
 		}
 	}
 	var functionFilter *settingsv1.StacktraceFilter
-	if rand.Intn(2) == 1 {
+	if rand.IntN(2) == 1 {
 		functionFilter = &settingsv1.StacktraceFilter{
 			FunctionName: &settingsv1.StacktraceFilterFunctionName{
 				FunctionName: RandomString(5),

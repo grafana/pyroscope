@@ -8,6 +8,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/spanlogger"
 	"github.com/grafana/dskit/tenant"
+	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -23,7 +24,7 @@ type SpanLogger = spanlogger.SpanLogger
 
 // NewWithLogger is like New but allows to pass a logger.
 func NewWithLogger(ctx context.Context, logger log.Logger, method string, kvps ...interface{}) (*SpanLogger, context.Context) {
-	return spanlogger.New(ctx, logger, method, defaultTenantResolver, kvps...)
+	return spanlogger.NewOTel(ctx, logger, otel.Tracer("pyroscope"), method, defaultTenantResolver, kvps...)
 }
 
 // FromContext returns a SpanLogger using the current parent span.

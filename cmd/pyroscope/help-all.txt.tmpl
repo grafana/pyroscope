@@ -116,9 +116,9 @@ Usage of ./pyroscope:
   -compactor.ring.instance-port int
     	Port to advertise in the ring (defaults to -server.http-listen-port).
   -compactor.ring.multi.mirror-enabled
-    	Mirror writes to secondary store.
+    	Mirror writes to the secondary store.
   -compactor.ring.multi.mirror-timeout duration
-    	Timeout for storing value to secondary store. (default 2s)
+    	Timeout for storing a value to the secondary store. (default 2s)
   -compactor.ring.multi.primary string
     	Primary backend storage used by multi-client.
   -compactor.ring.multi.secondary string
@@ -244,9 +244,9 @@ Usage of ./pyroscope:
   -distributor.ring.instance-port int
     	Port to advertise in the ring (defaults to -server.http-listen-port).
   -distributor.ring.multi.mirror-enabled
-    	Mirror writes to secondary store.
+    	Mirror writes to the secondary store.
   -distributor.ring.multi.mirror-timeout duration
-    	Timeout for storing value to secondary store. (default 2s)
+    	Timeout for storing a value to the secondary store. (default 2s)
   -distributor.ring.multi.primary string
     	Primary backend storage used by multi-client.
   -distributor.ring.multi.secondary string
@@ -304,9 +304,9 @@ Usage of ./pyroscope:
   -ingester.final-sleep duration
     	Duration to sleep for before exiting, to ensure metrics are scraped.
   -ingester.heartbeat-period duration
-    	Period at which to heartbeat to consul. 0 = disabled. (default 5s)
+    	Period at which to heartbeat to consul. (default 5s)
   -ingester.heartbeat-timeout duration
-    	Heartbeat timeout after which instance is assumed to be unhealthy. 0 = disabled. (default 1m0s)
+    	Heartbeat timeout after which instance is assumed to be unhealthy. (default 1m0s)
   -ingester.join-after duration
     	Period to wait for a claim from another member; will join automatically after this.
   -ingester.lifecycler.ID string
@@ -339,6 +339,8 @@ Usage of ./pyroscope:
     	Only log messages with the given severity or above. Valid levels: [debug, info, warn, error] (default info)
   -memberlist.abort-if-fast-join-fails
     	Abort if this node fails the fast memberlist cluster joining procedure at startup. When enabled, it's guaranteed that other services, depending on memberlist, have an updated view over the cluster state when they're started.
+  -memberlist.abort-if-fast-join-fails-min-nodes int
+    	Minimum number of seed nodes that must be successfully joined during fast-join for it to succeed. Only applies when -memberlist.abort-if-fast-join-fails is enabled. (default 1)
   -memberlist.abort-if-join-fails
     	Abort if this node fails to join memberlist cluster at startup. When enabled, it's not guaranteed that other services are started only after the cluster state has been successfully updated; use 'abort-if-fast-join-fails' instead.
   -memberlist.acquire-writer-timeout duration
@@ -367,8 +369,8 @@ Usage of ./pyroscope:
     	How many nodes to gossip to. (default 3)
   -memberlist.gossip-to-dead-nodes-time duration
     	How long to keep gossiping to dead nodes, to give them chance to refute their death. (default 30s)
-  -memberlist.join string
-    	Other cluster members to join. Can be specified multiple times. It can be an IP, hostname or an entry specified in the DNS Service Discovery format.
+  -memberlist.join value
+    	Other cluster members to join. Can be specified multiple times or as a comma-separated list. It can be an IP, hostname or an entry specified in the DNS Service Discovery format.
   -memberlist.leave-timeout duration
     	Timeout for leaving memberlist cluster. (default 20s)
   -memberlist.left-ingesters-timeout duration
@@ -393,12 +395,22 @@ Usage of ./pyroscope:
     	Timeout used when connecting to other nodes to send packet. (default 2s)
   -memberlist.packet-write-timeout duration
     	Timeout for writing 'packet' data. (default 5s)
+  -memberlist.propagation-delay-tracker.beacon-interval duration
+    	[experimental] How often to publish beacons for propagation tracking. (default 1m0s)
+  -memberlist.propagation-delay-tracker.beacon-lifetime duration
+    	[experimental] How long a beacon lives before being garbage collected. (default 10m0s)
+  -memberlist.propagation-delay-tracker.enabled
+    	[experimental] Enable the propagation delay tracker to measure gossip propagation delay.
+  -memberlist.propagation-delay-tracker.log-beacons-latency-longer-than duration
+    	[experimental] Log warning when beacon propagation delay exceeds this threshold. 0 disables logging.
   -memberlist.pullpush-interval duration
     	How often to use pull/push sync. (default 30s)
   -memberlist.randomize-node-name
     	Add random suffix to the node name. (default true)
   -memberlist.rejoin-interval duration
     	If not 0, how often to rejoin the cluster. Occasional rejoin can help to fix the cluster split issue, and is harmless otherwise. For example when using only few components as a seed nodes (via -memberlist.join), then it's recommended to use rejoin. If -memberlist.join points to dynamic service that resolves to all gossiping nodes (eg. Kubernetes headless service), then rejoin is not needed.
+  -memberlist.rejoin-seed-nodes value
+    	[experimental] Seed nodes to use for periodic rejoin. Takes precedence over -memberlist.join for rejoining. If not specified, -memberlist.join is used. Can be specified multiple times or as a comma-separated list. Supports IP, hostname, or DNS Service Discovery format.
   -memberlist.retransmit-factor int
     	Multiplication factor used when sending out messages (factor * log(N+1)). (default 4)
   -memberlist.stream-timeout duration
@@ -423,12 +435,18 @@ Usage of ./pyroscope:
     	Log debug transport messages. Note: global log.level must be at debug level as well.
   -memberlist.watch-prefix-buffer-size int
     	Size of the buffered channel for the WatchPrefix function. (default 128)
+  -memberlist.zone-aware-routing.enabled
+    	[experimental] Enable zone-aware routing for memberlist gossip.
+  -memberlist.zone-aware-routing.instance-availability-zone string
+    	[experimental] Availability zone where this node is running.
+  -memberlist.zone-aware-routing.role string
+    	[experimental] Role of this node in the cluster. Valid values: member, bridge. (default "member")
   -modules
     	List available modules that can be used as target and exit.
   -multi.mirror-enabled
-    	Mirror writes to secondary store.
+    	Mirror writes to the secondary store.
   -multi.mirror-timeout duration
-    	Timeout for storing value to secondary store. (default 2s)
+    	Timeout for storing a value to the secondary store. (default 2s)
   -multi.primary string
     	Primary backend storage used by multi-client.
   -multi.secondary string
@@ -488,9 +506,9 @@ Usage of ./pyroscope:
   -overrides-exporter.ring.instance-port int
     	Port to advertise in the ring (defaults to -server.http-listen-port).
   -overrides-exporter.ring.multi.mirror-enabled
-    	Mirror writes to secondary store.
+    	Mirror writes to the secondary store.
   -overrides-exporter.ring.multi.mirror-timeout duration
-    	Timeout for storing value to secondary store. (default 2s)
+    	Timeout for storing a value to the secondary store. (default 2s)
   -overrides-exporter.ring.multi.primary string
     	Primary backend storage used by multi-client.
   -overrides-exporter.ring.multi.secondary string
@@ -530,7 +548,7 @@ Usage of ./pyroscope:
   -querier.frontend-client.backoff-retries int
     	Number of times to backoff and retry before failing. (default 10)
   -querier.frontend-client.cluster-validation.label string
-    	[experimental] Optionally define the cluster validation label.
+    	[experimental] Primary cluster validation label.
   -querier.frontend-client.connect-backoff-base-delay duration
     	Initial backoff delay after first connection failure. Only relevant if ConnectTimeout > 0. (default 1s)
   -querier.frontend-client.connect-backoff-max-delay duration
@@ -606,7 +624,7 @@ Usage of ./pyroscope:
   -query-frontend.grpc-client-config.backoff-retries int
     	Number of times to backoff and retry before failing. (default 10)
   -query-frontend.grpc-client-config.cluster-validation.label string
-    	[experimental] Optionally define the cluster validation label.
+    	[experimental] Primary cluster validation label.
   -query-frontend.grpc-client-config.connect-backoff-base-delay duration
     	Initial backoff delay after first connection failure. Only relevant if ConnectTimeout > 0. (default 1s)
   -query-frontend.grpc-client-config.connect-backoff-max-delay duration
@@ -662,7 +680,7 @@ Usage of ./pyroscope:
   -query-scheduler.grpc-client-config.backoff-retries int
     	Number of times to backoff and retry before failing. (default 10)
   -query-scheduler.grpc-client-config.cluster-validation.label string
-    	[experimental] Optionally define the cluster validation label.
+    	[experimental] Primary cluster validation label.
   -query-scheduler.grpc-client-config.connect-backoff-base-delay duration
     	Initial backoff delay after first connection failure. Only relevant if ConnectTimeout > 0. (default 1s)
   -query-scheduler.grpc-client-config.connect-backoff-max-delay duration
@@ -760,9 +778,9 @@ Usage of ./pyroscope:
   -query-scheduler.ring.instance-port int
     	Port to advertise in the ring (defaults to -server.http-listen-port).
   -query-scheduler.ring.multi.mirror-enabled
-    	Mirror writes to secondary store.
+    	Mirror writes to the secondary store.
   -query-scheduler.ring.multi.mirror-timeout duration
-    	Timeout for storing value to secondary store. (default 2s)
+    	Timeout for storing a value to the secondary store. (default 2s)
   -query-scheduler.ring.multi.primary string
     	Primary backend storage used by multi-client.
   -query-scheduler.ring.multi.secondary string
@@ -774,7 +792,7 @@ Usage of ./pyroscope:
   -query-scheduler.service-discovery-mode string
     	[experimental] Service discovery mode that query-frontends and queriers use to find query-scheduler instances. When query-scheduler ring-based service discovery is enabled, this option needs be set on query-schedulers, query-frontends and queriers. Supported values are: dns, ring. (default "ring")
   -ring.heartbeat-timeout duration
-    	The heartbeat timeout after which ingesters are skipped for reads/writes. 0 = never (timeout disabled). (default 1m0s)
+    	The heartbeat timeout after which ingesters are skipped for reads/writes. (default 1m0s)
   -ring.prefix string
     	The prefix for the keys in the store. Should end with a /. (default "collectors/")
   -ring.store string
@@ -793,6 +811,8 @@ Usage of ./pyroscope:
     	Tenant ID for self-profiling data. If empty, no tenant header is sent (anonymous).
   -self-profiling.use-k6-middleware
     	Read k6 labels from request headers and set them as dynamic profile tags.
+  -server.cluster-validation.additional-labels comma-separated-list-of-strings
+    	[experimental] Comma-separated list of additional cluster validation labels that the server will accept from incoming requests.
   -server.cluster-validation.grpc.enabled
     	[experimental] When enabled, cluster label validation is executed: configured cluster validation label is compared with the cluster validation label received through the requests.
   -server.cluster-validation.grpc.soft-validation
@@ -806,7 +826,9 @@ Usage of ./pyroscope:
   -server.cluster-validation.http.soft-validation
     	[experimental] When enabled, soft cluster label validation is executed. Can be enabled only together with server.cluster-validation.http.enabled
   -server.cluster-validation.label string
-    	[experimental] Optionally define the cluster validation label.
+    	[experimental] Primary cluster validation label.
+  -server.create-new-traces
+    	Creates new traces for each call rather than continuing the existing trace. A span link is used to allow navigation to the parent trace. Only works when using Open-Telemetry tracing.
   -server.graceful-shutdown-timeout duration
     	Timeout for graceful shutdowns (default 30s)
   -server.grpc-collect-max-streams-by-conn
@@ -849,10 +871,14 @@ Usage of ./pyroscope:
     	After having pinged for keepalive check, the duration after which an idle connection should be closed, Default: 20s (default 20s)
   -server.grpc.num-workers int
     	If non-zero, configures the amount of GRPC server workers used to serve the requests.
+  -server.grpc.read-buffer-size-bytes int
+    	Size of the read buffer for each gRPC connection (bytes). A smaller buffer may reduce memory usage but may lead to more system calls. (default 32768)
   -server.grpc.recv-buffer-pools-enabled
     	Deprecated option, has no effect and will be removed in a future version.
   -server.grpc.stats-tracking-enabled
     	If true, the request_message_bytes, response_message_bytes, and inflight_requests metrics will be tracked. Enabling this option prevents the use of memory pools for parsing gRPC request bodies and may lead to more memory allocations. (default true)
+  -server.grpc.write-buffer-size-bytes int
+    	Size of the write buffer for each gRPC connection (bytes). A smaller buffer may reduce memory usage but may lead to more system calls. (default 32768)
   -server.http-conn-limit int
     	Maximum number of simultaneous http connections, <=0 to disable
   -server.http-idle-timeout duration
@@ -912,7 +938,7 @@ Usage of ./pyroscope:
   -server.trace-request-headers
     	Optionally add request headers to tracing spans.
   -server.trace-request-headers-exclude-list string
-    	Comma separated list of headers to exclude from tracing spans. Only used if server.trace-request-headers is true. The following headers are always excluded: Authorization, Cookie, X-Csrf-Token.
+    	Comma separated list of headers to exclude from tracing spans. Only used if server.trace-request-headers is true. The following headers are always excluded: Authorization, Cookie, X-Access-Token, X-Csrf-Token, X-Grafana-Id.
   -shutdown-delay duration
     	Wait time before shutting down after a termination signal.
   -storage.azure.account-key string
@@ -1126,9 +1152,9 @@ Usage of ./pyroscope:
   -store-gateway.sharding-ring.instance-port int
     	Port to advertise in the ring (defaults to -server.http-listen-port).
   -store-gateway.sharding-ring.multi.mirror-enabled
-    	Mirror writes to secondary store.
+    	Mirror writes to the secondary store.
   -store-gateway.sharding-ring.multi.mirror-timeout duration
-    	Timeout for storing value to secondary store. (default 2s)
+    	Timeout for storing a value to the secondary store. (default 2s)
   -store-gateway.sharding-ring.multi.primary string
     	Primary backend storage used by multi-client.
   -store-gateway.sharding-ring.multi.secondary string

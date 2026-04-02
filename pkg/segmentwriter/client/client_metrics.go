@@ -1,6 +1,8 @@
 package segmentwriterclient
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -15,9 +17,12 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		// ideally; in practice, if the segment writer is not available, the
 		// shard may be relocated.
 		sentBytes: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "pyroscope_segment_writer_client_sent_bytes",
-			Buckets: prometheus.ExponentialBucketsRange(100, 100<<20, 30),
-			Help:    "Number of bytes sent by the segment writer client.",
+			Name:                            "pyroscope_segment_writer_client_sent_bytes",
+			Buckets:                         prometheus.ExponentialBucketsRange(100, 100<<20, 30),
+			Help:                            "Number of bytes sent by the segment writer client.",
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		}, []string{"shard", "tenant", "addr"}),
 	}
 	if reg != nil {

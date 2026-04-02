@@ -6,8 +6,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
+	"github.com/grafana/dskit/tracing"
 	"go.etcd.io/bbolt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -73,10 +72,11 @@ func (svc *IndexService) AddBlock(
 	ctx context.Context,
 	req *metastorev1.AddBlockRequest,
 ) (resp *metastorev1.AddBlockResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "IndexService.AddBlock")
+	span, ctx := tracing.StartSpanFromContext(ctx, "IndexService.AddBlock")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -100,10 +100,11 @@ func (svc *IndexService) AddRecoveredBlock(
 	ctx context.Context,
 	req *metastorev1.AddBlockRequest,
 ) (resp *metastorev1.AddBlockResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "IndexService.AddRecoveredBlock")
+	span, ctx := tracing.StartSpanFromContext(ctx, "IndexService.AddRecoveredBlock")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -143,10 +144,11 @@ func (svc *IndexService) GetBlockMetadata(
 	ctx context.Context,
 	req *metastorev1.GetBlockMetadataRequest,
 ) (resp *metastorev1.GetBlockMetadataResponse, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "IndexService.GetBlockMetadata")
+	span, ctx := tracing.StartSpanFromContext(ctx, "IndexService.GetBlockMetadata")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -206,10 +208,11 @@ func (s *sampleIterator) At() placement.Sample {
 }
 
 func (svc *IndexService) TruncateIndex(ctx context.Context, rp retention.Policy) (err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "IndexService.TruncateIndex")
+	span, ctx := tracing.StartSpanFromContext(ctx, "IndexService.TruncateIndex")
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()

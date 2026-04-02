@@ -121,6 +121,10 @@ func (r MockRing) WritableInstancesWithTokensInZoneCount(zone string) int {
 	return len(r.ingesters)
 }
 
+func (r MockRing) Zones() []string {
+	return nil
+}
+
 func (r MockRing) ZonesCount() int {
 	return 1
 }
