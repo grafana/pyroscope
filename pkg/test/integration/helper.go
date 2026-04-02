@@ -40,6 +40,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/cfg"
+	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/pyroscope"
@@ -158,7 +159,9 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 	p.config.LimitsConfig.RejectOlderThan = 0
 	_ = p.config.Server.LogLevel.Set("debug")
 
-	if v2 {
+	if !v2 {
+		p.config.Storage.Bucket.Backend = objstoreclient.None
+	} else {
 		p.config.Storage.Bucket.Filesystem.Directory = t.TempDir()
 		p.config.Storage.Bucket.Backend = "filesystem"
 		p.config.LimitsConfig.WritePathOverrides.WritePath = "segment-writer"
