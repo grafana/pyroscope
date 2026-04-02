@@ -62,7 +62,7 @@ type Config struct {
 }
 
 const (
-	defaultRaftDir      = "./data-metastore/raft"
+	defaultRaftDir      = "./data/v2/metastore/raft"
 	defaultSnapshotsDir = defaultRaftDir
 
 	defaultWALCacheEntries       = 512
