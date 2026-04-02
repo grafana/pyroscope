@@ -2775,7 +2775,7 @@ The `filesystem_storage_backend` block configures the usage of local file system
 ```yaml
 # Local filesystem storage directory.
 # CLI flag: -storage.filesystem.dir
-[dir: <string> | default = "./data-shared"]
+[dir: <string> | default = "./data/v2/shared"]
 ```
 
 ### analytics

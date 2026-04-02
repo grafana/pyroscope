@@ -139,7 +139,7 @@ func (cfg *Config) RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir string
 }
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "./data-shared", f)
+	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "./data/v2/shared", f)
 }
 
 // alphanumeric, hyphen, underscore, dot, and must not be . or ..
