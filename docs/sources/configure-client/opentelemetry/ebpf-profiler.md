@@ -108,7 +108,7 @@ service:
       exporters: [otlp_grpc]
 ```
 
-This requires a `ServiceAccount` with RBAC permissions to read pods, namespaces, nodes, and workload resources. See the [example RBAC manifest](https://github.com/grafana/pyroscope/tree/main/examples/grafana-alloy-auto-instrumentation/ebpf-otel/kubernetes/rbac.yaml).
+This requires a `ServiceAccount` with RBAC permissions to read pods, namespaces, nodes, and workload resources. See the [example RBAC manifest](https://github.com/grafana/pyroscope/tree/main/examples/otel-collector/ebpf/kubernetes/rbac.yaml).
 
 ## Deploy with Docker Compose
 
@@ -148,7 +148,7 @@ services:
       - "3000:3000"
 ```
 
-For a complete working example, see the [Docker example](https://github.com/grafana/pyroscope/tree/main/examples/grafana-alloy-auto-instrumentation/ebpf-otel/docker).
+For a complete working example, see the [Docker example](https://github.com/grafana/pyroscope/tree/main/examples/otel-collector/ebpf/docker).
 
 ## Deploy on Kubernetes
 
@@ -196,16 +196,16 @@ spec:
         - operator: Exists
 ```
 
-For a complete working example with kustomize, Pyroscope, Grafana, RBAC, and a sample workload, see the [Kubernetes example](https://github.com/grafana/pyroscope/tree/main/examples/grafana-alloy-auto-instrumentation/ebpf-otel/kubernetes).
+For a complete working example with kustomize, Pyroscope, Grafana, RBAC, and a sample workload, see the [Kubernetes example](https://github.com/grafana/pyroscope/tree/main/examples/otel-collector/ebpf/kubernetes).
 
 Deploy it with:
 
 ```bash
 git clone --depth 1 --filter=tree:0 --no-checkout https://github.com/grafana/pyroscope.git
 cd pyroscope
-git sparse-checkout set examples/grafana-alloy-auto-instrumentation/ebpf-otel
+git sparse-checkout set examples/otel-collector/ebpf
 git checkout
-kubectl apply -k examples/grafana-alloy-auto-instrumentation/ebpf-otel/kubernetes/
+kubectl apply -k examples/otel-collector/ebpf/kubernetes/
 ```
 
 ## Verify
