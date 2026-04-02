@@ -765,6 +765,24 @@ func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
 	assert.Equal(t, "json-tenant", capturedTenantID)
 }
 
+func TestExportSetsDecompressedSizeForOTLP(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	var capturedReq *model.PushRequest
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		capturedReq = args.Get(1).(*model.PushRequest)
+	}).Return(nil)
+
+	req := createValidOTLPRequest()
+	expectedSize := proto.Size(req.ResourceProfiles[0].ScopeProfiles[0].Profiles[0])
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+	require.NotNil(t, capturedReq)
+	assert.Equal(t, expectedSize, capturedReq.ReceivedDecompressedProfileSize)
+}
+
 func TestHTTPRequestWithGzipCompression(t *testing.T) {
 	svc := mockotlp.NewMockPushService(t)
 	var capturedTenantID string
