@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use chrono::prelude::*;
-use pyroscope::PyroscopeAgent;
-use pyroscope_pprofrs::{pprof_backend, PprofConfig};
+use pyroscope::backend::{pprof_backend, BackendConfig, PprofConfig};
+use pyroscope::pyroscope::PyroscopeAgentBuilder;
 use warp::Filter;
 
 // Vehicle enum
@@ -32,12 +32,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let auth_password = std::env::var("PYROSCOPE_BASIC_AUTH_PASSWORD")
         .unwrap_or_else(|_| "".to_string());
 
-    let agent = PyroscopeAgent::builder(server_address, app_name.to_owned())
-        .basic_auth(auth_user, auth_password)
-        .backend(pprof_backend(PprofConfig::new().sample_rate(100)))
-        .tags(vec![("region", &region)])
-        .build()
-        .unwrap();
+    let agent = PyroscopeAgentBuilder::new(
+        server_address,
+        app_name,
+        100,
+        "pyroscope-rs",
+        env!("CARGO_PKG_VERSION"),
+        pprof_backend(PprofConfig::default(), BackendConfig::default()),
+    )
+    .basic_auth(auth_user, auth_password)
+    .tags(vec![("region", &region)])
+    .build()
+    .unwrap();
 
     let agent_running = agent.start()?;
 
