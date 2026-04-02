@@ -164,7 +164,7 @@ storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.
   # CLI flag: -storage.backend
-  [backend: <string> | default = ""]
+  [backend: <string> | default = "filesystem"]
 
   # The s3_backend block configures the connection to Amazon S3 object storage
   # backend.
