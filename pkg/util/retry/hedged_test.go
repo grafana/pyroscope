@@ -3,6 +3,8 @@ package retry
 import (
 	"context"
 	"errors"
+	"io"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -134,4 +136,178 @@ func Test_Hedging(t *testing.T) {
 			})
 		})
 	}
+}
+
+// contextAwareRC is an io.ReadCloser that returns ctx.Err() on Read
+// if the context is already cancelled. This simulates how HTTP response
+// bodies behave when backed by a cancelled context (e.g. S3/GCS clients).
+type contextAwareRC struct {
+	ctx  context.Context
+	data []byte
+}
+
+func (r *contextAwareRC) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	n := copy(p, r.data)
+	r.data = r.data[n:]
+	return n, io.EOF
+}
+
+func (r *contextAwareRC) Close() error { return nil }
+
+func Test_Hedging_WinnerContextNotCancelled(t *testing.T) {
+	// Regression test: the winning attempt's io.ReadCloser must remain readable
+	// after Do returns. Previously, Hedged.Do cancelled attemptCtx (shared by
+	// all attempts) before returning, making the winning RC unreadable against
+	// real HTTP-backed object storage.
+	synctest.Test(t, func(t *testing.T) {
+		data := []byte("hello world")
+		const hedgeDelay = time.Second
+
+		a := Hedged[io.ReadCloser]{
+			Trigger:  time.After(hedgeDelay),
+			FailFast: true,
+			Cleanup:  func(rc io.ReadCloser) { rc.Close() },
+			Call: func(ctx context.Context, isRetry bool) (io.ReadCloser, error) {
+				if !isRetry {
+					// slow: block until cancelled by the winning hedge
+					<-ctx.Done()
+					return nil, ctx.Err()
+				}
+				// fast winner: return RC tied to this context
+				return &contextAwareRC{ctx: ctx, data: append([]byte(nil), data...)}, nil
+			},
+		}
+
+		done := make(chan struct{})
+		var rc io.ReadCloser
+		var doErr error
+		go func() {
+			defer close(done)
+			rc, doErr = a.Do(context.Background())
+		}()
+
+		synctest.Wait()
+		time.Sleep(hedgeDelay) // trigger hedge; second call wins
+		synctest.Wait()
+		<-done
+
+		if doErr != nil {
+			t.Fatalf("unexpected error from Do: %v", doErr)
+		}
+
+		// Read from the RC after Do has returned. This fails with the buggy
+		// implementation because attemptCtx is already cancelled at this point.
+		got, err := io.ReadAll(rc)
+		if err != nil {
+			t.Fatalf("reading from winning RC after Do returned: %v (context was cancelled prematurely)", err)
+		}
+		if string(got) != string(data) {
+			t.Fatalf("expected %q, got %q", data, got)
+		}
+	})
+}
+
+func Test_Hedging_Cleanup(t *testing.T) {
+	t.Run("cleanup called on loser when both succeed", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			var cleaned int64
+			// First call is slow; hedge fires and wins. First call then
+			// succeeds but loses — Cleanup must be called on its result.
+			const hedgeDelay = time.Second
+			a := Hedged[*int]{
+				Trigger:  time.After(hedgeDelay),
+				FailFast: true,
+				Cleanup:  func(v *int) { atomic.AddInt64(&cleaned, 1) },
+				Call: func(ctx context.Context, isRetry bool) (*int, error) {
+					if !isRetry {
+						// slow: block until cancelled by the winning hedge
+						<-ctx.Done()
+					}
+					v := 1
+					return &v, nil
+				},
+			}
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				_, err := a.Do(context.Background())
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			}()
+			synctest.Wait()
+			time.Sleep(hedgeDelay) // hedge fires and wins; slow call gets cancelled
+			synctest.Wait()
+			<-done
+			if atomic.LoadInt64(&cleaned) != 1 {
+				t.Fatal("expected Cleanup to be called exactly once on the loser")
+			}
+		})
+	})
+
+	t.Run("cleanup not called when only one attempt runs", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			var cleaned int64
+			a := Hedged[*int]{
+				Trigger:  time.After(time.Hour),
+				FailFast: true,
+				Cleanup:  func(v *int) { atomic.AddInt64(&cleaned, 1) },
+				Call: func(ctx context.Context, _ bool) (*int, error) {
+					v := 1
+					return &v, nil
+				},
+			}
+			_, err := a.Do(context.Background())
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if atomic.LoadInt64(&cleaned) != 0 {
+				t.Fatal("expected Cleanup not to be called")
+			}
+		})
+	})
+
+	t.Run("cleanup not called on loser that errored", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			var cleaned int64
+			e := errors.New("fail")
+			const hedgeDelay = time.Second
+			// Hedge fires; first call errors, second succeeds.
+			// Cleanup must NOT be called on the errored loser.
+			firstBlocked := make(chan struct{})
+			a := Hedged[*int]{
+				Trigger:  time.After(hedgeDelay),
+				FailFast: false,
+				Cleanup:  func(v *int) { atomic.AddInt64(&cleaned, 1) },
+				Call: func(ctx context.Context, isRetry bool) (*int, error) {
+					if !isRetry {
+						close(firstBlocked)
+						<-ctx.Done()
+						return nil, e
+					}
+					v := 1
+					return &v, nil
+				},
+			}
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				_, err := a.Do(context.Background())
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			}()
+			<-firstBlocked
+			synctest.Wait()
+			time.Sleep(hedgeDelay)
+			synctest.Wait()
+			<-done
+			if atomic.LoadInt64(&cleaned) != 0 {
+				t.Fatal("expected Cleanup not to be called on errored attempt")
+			}
+		})
+	})
 }

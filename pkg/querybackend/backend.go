@@ -21,14 +21,16 @@ import (
 )
 
 type Config struct {
-	Address          string            `yaml:"address"`
-	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
-	ClientTimeout    time.Duration     `yaml:"client_timeout"`
+	Address             string            `yaml:"address"`
+	GRPCClientConfig    grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
+	ClientTimeout       time.Duration     `yaml:"client_timeout"`
+	BlockReadHedgeAfter time.Duration     `yaml:"block_read_hedge_after" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.Address, "query-backend.address", "localhost:9095", "")
 	f.DurationVar(&cfg.ClientTimeout, "query-backend.client-timeout", 30*time.Second, "Timeout for query-backend client requests.")
+	f.DurationVar(&cfg.BlockReadHedgeAfter, "query-backend.block-read-hedge-after", 0, "If non-zero, issue a speculative second GetRange request for symbol tables after this duration. 0 disables hedging.")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-backend.grpc-client-config", f)
 }
 

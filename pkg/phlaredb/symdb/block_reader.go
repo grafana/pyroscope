@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/tracing"
@@ -21,6 +22,7 @@ import (
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/util/bufferpool"
 	"github.com/grafana/pyroscope/pkg/util/refctr"
+	"github.com/grafana/pyroscope/pkg/util/retry"
 )
 
 type Reader struct {
@@ -38,6 +40,7 @@ type Reader struct {
 	parquetFiles *parquetFiles
 
 	prefetchSize uint64
+	hedgeAfter   time.Duration
 }
 
 type Option func(*Reader)
@@ -45,6 +48,12 @@ type Option func(*Reader)
 func WithPrefetchSize(size uint64) Option {
 	return func(r *Reader) {
 		r.prefetchSize = size
+	}
+}
+
+func WithHedgeAfter(d time.Duration) Option {
+	return func(r *Reader) {
+		r.hedgeAfter = d
 	}
 }
 
@@ -560,7 +569,7 @@ func (c *stacktraceBlock) fetch(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		rc, err := c.reader.bucket.GetRange(ctx, path, c.header.Offset, c.header.Size)
+		rc, err := c.getRange(ctx, path)
 		if err != nil {
 			return err
 		}
@@ -573,15 +582,19 @@ func (c *stacktraceBlock) fetch(ctx context.Context) error {
 	})
 }
 
-func (c *stacktraceBlock) stacktracesFile() (string, error) {
-	f := c.reader.file
-	if c.reader.index.Header.Version < 3 {
-		var err error
-		if f, err = c.reader.lookupFile(StacktracesFileName); err != nil {
-			return "", err
-		}
+// getRange issues a GetRange call, hedging with a second call if hedgeAfter is set.
+func (c *stacktraceBlock) getRange(ctx context.Context, path string) (io.ReadCloser, error) {
+	if c.reader.hedgeAfter <= 0 {
+		return c.reader.bucket.GetRange(ctx, path, c.header.Offset, c.header.Size)
 	}
-	return f.RelPath, nil
+	return retry.Hedged[io.ReadCloser]{
+		Trigger:  time.After(c.reader.hedgeAfter),
+		FailFast: true,
+		Cleanup:  func(rc io.ReadCloser) { rc.Close() },
+		Call: func(ctx context.Context, _ bool) (io.ReadCloser, error) {
+			return c.reader.bucket.GetRange(ctx, path, c.header.Offset, c.header.Size)
+		},
+	}.Do(ctx)
 }
 
 func (c *stacktraceBlock) readFrom(r *bufio.Reader) error {
@@ -607,6 +620,17 @@ func (c *stacktraceBlock) readFrom(r *bufio.Reader) error {
 	return nil
 }
 
+func (c *stacktraceBlock) stacktracesFile() (string, error) {
+	f := c.reader.file
+	if c.reader.index.Header.Version < 3 {
+		var err error
+		if f, err = c.reader.lookupFile(StacktracesFileName); err != nil {
+			return "", err
+		}
+	}
+	return f.RelPath, nil
+}
+
 func (c *stacktraceBlock) release() {
 	c.r.Dec(func() {
 		c.t = nil
@@ -627,10 +651,7 @@ func (t *rawTable[T]) fetch(ctx context.Context) error {
 	span.SetTag("length", t.header.Length)
 	defer span.Finish()
 	return t.r.Inc(func() error {
-		rc, err := t.reader.bucket.GetRange(ctx,
-			t.reader.file.RelPath,
-			int64(t.header.Offset),
-			int64(t.header.Size))
+		rc, err := t.getRange(ctx)
 		if err != nil {
 			return err
 		}
@@ -641,6 +662,27 @@ func (t *rawTable[T]) fetch(ctx context.Context) error {
 		}()
 		return t.readFrom(r)
 	})
+}
+
+// getRange issues a GetRange call, hedging with a second call if hedgeAfter is set.
+func (t *rawTable[T]) getRange(ctx context.Context) (io.ReadCloser, error) {
+	if t.reader.hedgeAfter <= 0 {
+		return t.reader.bucket.GetRange(ctx,
+			t.reader.file.RelPath,
+			int64(t.header.Offset),
+			int64(t.header.Size))
+	}
+	return retry.Hedged[io.ReadCloser]{
+		Trigger:  time.After(t.reader.hedgeAfter),
+		FailFast: true,
+		Cleanup:  func(rc io.ReadCloser) { rc.Close() },
+		Call: func(ctx context.Context, _ bool) (io.ReadCloser, error) {
+			return t.reader.bucket.GetRange(ctx,
+				t.reader.file.RelPath,
+				int64(t.header.Offset),
+				int64(t.header.Size))
+		},
+	}.Do(ctx)
 }
 
 func (t *rawTable[T]) readFrom(r *bufio.Reader) error {

@@ -50,8 +50,9 @@ type BlockReader struct {
 	log     log.Logger
 	storage objstore.Bucket
 
-	metrics  *metrics
-	hostname string
+	metrics    *metrics
+	hostname   string
+	hedgeAfter time.Duration
 
 	// TODO:
 	//  - Use a worker pool instead of the errgroup.
@@ -61,13 +62,25 @@ type BlockReader struct {
 	//    Instead, they should share the processing pipeline, if possible.
 }
 
-func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.Registerer) *BlockReader {
+func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.Registerer, opts ...BlockReaderOption) *BlockReader {
 	hostname, _ := os.Hostname()
-	return &BlockReader{
+	br := &BlockReader{
 		log:      logger,
 		storage:  storage,
 		metrics:  newMetrics(reg),
 		hostname: hostname,
+	}
+	for _, opt := range opts {
+		opt(br)
+	}
+	return br
+}
+
+type BlockReaderOption func(*BlockReader)
+
+func WithBlockReaderHedgeAfter(d time.Duration) BlockReaderOption {
+	return func(br *BlockReader) {
+		br.hedgeAfter = d
 	}
 }
 
@@ -115,7 +128,7 @@ func (b *BlockReader) Invoke(
 		}
 		blocksCount++
 		datasetsCount += int64(len(md.Datasets))
-		obj := block.NewObject(b.storage, md)
+		obj := block.NewObject(b.storage, md, block.WithObjectHedgeAfter(b.hedgeAfter))
 		g.Go(util.RecoverPanic((&blockContext{
 			ctx:             ctx,
 			log:             b.log,
