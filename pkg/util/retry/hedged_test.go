@@ -4,18 +4,22 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
 func Test_Hedging(t *testing.T) {
-	delay := time.Millisecond * 100 // Might be flaky.
-	ctx := context.Background()
 	e1 := errors.New("e1")
 	e2 := errors.New("e2")
 
+	// hedgeDelay is the trigger delay. Attempts with returnAfter=0 return
+	// immediately (before the trigger fires). Attempts with
+	// returnAfter=2*hedgeDelay return after the trigger has fired.
+	const hedgeDelay = time.Second
+
 	type attempt struct {
-		duration time.Duration
-		err      error
+		returnAfter time.Duration // 0 = immediate
+		err         error
 	}
 
 	type testCase struct {
@@ -26,131 +30,108 @@ func Test_Hedging(t *testing.T) {
 		expectError error
 	}
 
-	createCall := func(c testCase) func(context.Context, bool) (bool, error) {
-		return func(ctx context.Context, isRetry bool) (bool, error) {
-			d := c.attempts[0].duration
-			e := c.attempts[0].err
-			if isRetry {
-				d = c.attempts[1].duration
-				e = c.attempts[1].err
-			}
-			select {
-			case <-time.After(d):
-			case <-ctx.Done():
-			}
-			return isRetry, e
-		}
-	}
-
 	testCases := []testCase{
 		{
 			description: "Attempt fails before retry and FailFast",
 			failFast:    true,
-			attempts: [2]attempt{
-				{delay / 2, e1},
-				{delay / 2, nil},
-			},
+			attempts:    [2]attempt{{err: e1}, {}},
 			expectRetry: false,
 			expectError: e1,
 		},
 		{
 			description: "Attempt fails before retry and not FailFast",
 			failFast:    false,
-			attempts: [2]attempt{
-				{delay / 2, e1},
-				{delay / 2, nil},
-			},
+			attempts:    [2]attempt{{err: e1}, {}},
 			expectRetry: true,
 			expectError: nil,
 		},
-
 		{
 			description: "Attempt fails before retry and retry fails and FailFast",
 			failFast:    true,
-			attempts: [2]attempt{
-				{delay / 2, e1},
-				{delay / 2, e2},
-			},
+			attempts:    [2]attempt{{err: e1}, {err: e2}},
 			expectRetry: false,
 			expectError: e1,
 		},
 		{
 			description: "Attempt fails before retry and retry fails and not FailFast",
 			failFast:    false,
-			attempts: [2]attempt{
-				{delay / 2, e1},
-				{delay / 2, e2},
-			},
+			attempts:    [2]attempt{{err: e1}, {err: e2}},
 			expectRetry: true,
 			expectError: e2,
 		},
-
 		{
 			description: "Attempt fails after retry and FailFast",
 			failFast:    true,
-			attempts: [2]attempt{
-				{delay * 2, e1},
-				{delay * 2, nil},
-			},
+			attempts:    [2]attempt{{returnAfter: hedgeDelay * 2, err: e1}, {returnAfter: hedgeDelay * 2}},
 			expectRetry: false,
 			expectError: e1,
 		},
 		{
 			description: "Attempt fails after retry and not FailFast",
 			failFast:    false,
-			attempts: [2]attempt{
-				{delay * 2, e1},
-				{delay * 2, nil},
-			},
+			attempts:    [2]attempt{{returnAfter: hedgeDelay * 2, err: e1}, {returnAfter: hedgeDelay * 2}},
 			expectRetry: true,
 			expectError: nil,
 		},
-
 		{
 			description: "Attempt fails after retry and retry fails and FailFast",
 			failFast:    true,
-			attempts: [2]attempt{
-				{delay * 2, e1},
-				{delay * 2, e2},
-			},
+			attempts:    [2]attempt{{returnAfter: hedgeDelay * 2, err: e1}, {returnAfter: hedgeDelay * 2, err: e2}},
 			expectRetry: false,
 			expectError: e1,
 		},
 		{
 			description: "Attempt fails after retry and retry fails and not FailFast",
 			failFast:    false,
-			attempts: [2]attempt{
-				{delay * 2, e1},
-				{delay * 2, e2},
-			},
+			attempts:    [2]attempt{{returnAfter: hedgeDelay * 2, err: e1}, {returnAfter: hedgeDelay * 2, err: e2}},
 			expectRetry: true,
 			expectError: e2,
 		},
 	}
 
 	for _, c := range testCases {
-		c := c
 		t.Run(c.description, func(t *testing.T) {
-			t.Parallel()
-			// With FailFast, it's expected the call returns
-			// immediately after the first response. Increasing
-			// the delay to make sure the test doesn't flake.
-			d := delay
-			if c.failFast {
-				d = time.Second * 10
-			}
-			a := Hedged[bool]{
-				Call:     createCall(c),
-				Trigger:  time.After(d),
-				FailFast: c.failFast,
-			}
-			r, err := a.Do(ctx)
-			if r != c.expectRetry {
-				t.Fatal("expected retry")
-			}
-			if !errors.Is(err, c.expectError) {
-				t.Fatal("expected error", c.expectError)
-			}
+			synctest.Test(t, func(t *testing.T) {
+				a := Hedged[bool]{
+					Trigger:  time.After(hedgeDelay),
+					FailFast: c.failFast,
+					Call: func(ctx context.Context, isRetry bool) (bool, error) {
+						spec := c.attempts[0]
+						if isRetry {
+							spec = c.attempts[1]
+						}
+						if spec.returnAfter > 0 {
+							select {
+							case <-time.After(spec.returnAfter):
+							case <-ctx.Done():
+							}
+						}
+						return isRetry, spec.err
+					},
+				}
+
+				done := make(chan struct{})
+				var gotResult bool
+				var gotErr error
+				go func() {
+					defer close(done)
+					gotResult, gotErr = a.Do(context.Background())
+				}()
+
+				synctest.Wait()
+				time.Sleep(hedgeDelay) // fire trigger
+				synctest.Wait()
+				time.Sleep(hedgeDelay * 2) // let slow attempts complete
+				synctest.Wait()
+				<-done
+
+				if gotResult != c.expectRetry {
+					t.Fatalf("expected isRetry=%v, got %v", c.expectRetry, gotResult)
+				}
+				if !errors.Is(gotErr, c.expectError) {
+					t.Fatalf("expected error %v, got %v", c.expectError, gotErr)
+				}
+			})
 		})
 	}
 }
