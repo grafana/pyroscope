@@ -1,11 +1,11 @@
 ---
-title: "Migrate from v1 to v2 storage"
-menuTitle: "Migrate from v1"
-description: "Step-by-step guide to migrate your Pyroscope installation from v1 to v2 storage architecture using Helm."
+title: "Migrate from v1 to v2 storage using Helm"
+menuTitle: "Migrate from v1 using Helm"
+description: "Step-by-step guide to migrate your Pyroscope Helm installation from v1 to v2 storage architecture."
 weight: 900
 ---
 
-# Migrate from v1 to v2 storage
+# Migrate from v1 to v2 storage using Helm
 
 This guide walks you through migrating a Pyroscope installation from v1 to v2 storage architecture using the Helm chart. The migration uses a phased approach that lets you run both storage backends simultaneously before fully cutting over to v2.
 
@@ -47,7 +47,7 @@ Before starting the migration, make sure you have:
           secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
   ```
 
-  For other backends (GCS, Azure, Swift), refer to [Configure object storage backend](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/storage/configure-object-storage-backend/).
+  For other backends (GCS, Azure, Swift), refer to [Configure object storage backend](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/storage/configure-object-storage-backend/). You can also use the `filesystem` backend, but in Kubernetes, this requires a `ReadWriteMany` volume that is shared across all pods.
 
 - **`kubectl` and `helm` CLI access** to your cluster.
 
@@ -120,8 +120,9 @@ Also verify:
 
   ```bash
   kubectl port-forward -n pyroscope svc/pyroscope 4040:4040 &
+  PF_PID=$!
   curl -s http://localhost:4040/ring-segment-writer | grep -o 'ACTIVE' | wc -l
-  kill %1  # Stop the port-forward
+  kill $PF_PID
   ```
 
   In single-binary mode, the count should be 1.
@@ -136,8 +137,9 @@ Query recent profiling data. The v2 read path should serve data ingested after P
 
 ```bash
 kubectl port-forward -n pyroscope svc/pyroscope 4040:4040 &
+PF_PID=$!
 profilecli query series --url http://localhost:4040 --from "now-1h" --to "now"
-kill %1  # Stop the port-forward
+kill $PF_PID
 ```
 
 You should see series labels for the profiling data being ingested. If no results are returned, check the distributor and segment-writer logs for errors.
@@ -195,8 +197,9 @@ Verify that queries still return data:
 
 ```bash
 kubectl port-forward -n pyroscope svc/pyroscope 4040:4040 &
+PF_PID=$!
 profilecli query series --url http://localhost:4040 --from "now-1h" --to "now"
-kill %1  # Stop the port-forward
+kill $PF_PID
 ```
 
 You should see series labels for recent profiling data. You can also open the Pyroscope UI at `http://localhost:4040` and verify that you can query recent profiles. An empty or errored UI indicates a problem — see [Rollback](#rollback).
@@ -257,8 +260,9 @@ Also verify:
 
   ```bash
   kubectl port-forward -n pyroscope svc/pyroscope-distributor 4040:4040 &
+  PF_PID=$!
   curl -s http://localhost:4040/ring-segment-writer | grep -o 'ACTIVE' | wc -l
-  kill %1  # Stop the port-forward
+  kill $PF_PID
   ```
 
   The count should match the number of segment-writer instances.
@@ -273,8 +277,9 @@ Query recent profiling data. The v2 read path should serve data ingested after P
 
 ```bash
 kubectl port-forward -n pyroscope svc/pyroscope-query-frontend 4040:4040 &
+PF_PID=$!
 profilecli query series --url http://localhost:4040 --from "now-1h" --to "now"
-kill %1  # Stop the port-forward
+kill $PF_PID
 ```
 
 You should see series labels for the profiling data being ingested. If no results are returned, check the distributor and segment-writer logs for errors.
@@ -336,8 +341,9 @@ Verify that queries still return data:
 
 ```bash
 kubectl port-forward -n pyroscope svc/pyroscope-query-frontend 4040:4040 &
+PF_PID=$!
 profilecli query series --url http://localhost:4040 --from "now-1h" --to "now"
-kill %1  # Stop the port-forward
+kill $PF_PID
 ```
 
 You should see series labels for recent profiling data. You can also open the Pyroscope UI at `http://localhost:4040` and verify that you can query recent profiles. An empty or errored UI indicates a problem — see [Rollback](#rollback).
