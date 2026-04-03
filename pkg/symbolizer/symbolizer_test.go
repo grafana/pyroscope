@@ -279,6 +279,36 @@ func TestSymbolizePprof(t *testing.T) {
 			},
 		},
 		{
+			name: "locations with MappingId 0 are skipped",
+			profile: &googlev1.Profile{
+				Mapping: []*googlev1.Mapping{{
+					BuildId:     1,
+					MemoryStart: 0x0,
+					MemoryLimit: 0x1000000,
+					FileOffset:  0x0,
+				}},
+				Location: []*googlev1.Location{
+					// MappingId 0: kernel/JIT frame with no mapping — must not cause an error
+					{Id: 1, MappingId: 0, Address: 0xffffffff},
+					// Normal location that should be symbolized
+					{Id: 2, MappingId: 1, Address: 0x1500},
+				},
+				StringTable: []string{"", "build-id"},
+			},
+			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
+				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
+				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Upload", mock.Anything, lidiaObjectPath("tenant", "build-id"), mock.Anything).Return(nil).Once()
+			},
+			validate: func(t *testing.T, p *googlev1.Profile) {
+				// Location with MappingId 0 should be untouched
+				require.Empty(t, p.Location[0].Line)
+				// Normal location should be symbolized
+				require.NotEmpty(t, p.Location[1].Line)
+				assertLocationHasFunction(t, p, p.Location[1], "main", "main")
+			},
+		},
+		{
 			name: "parca bucket provides debuginfo when debuginfod has no data",
 			profile: &googlev1.Profile{
 				Mapping: []*googlev1.Mapping{{

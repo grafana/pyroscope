@@ -224,7 +224,10 @@ func (s *Symbolizer) groupLocationsByMapping(profile *googlev1.Profile, mappings
 
 	for i, loc := range profile.Location {
 		if loc.MappingId == 0 {
-			return nil, fmt.Errorf("invalid profile: location at index %d has MappingId 0", i)
+			// MappingId 0 is valid per the pprof spec for locations without a
+			// known mapping (e.g. JIT-compiled or kernel frames). Skip them as
+			// there is no binary to look up symbols in.
+			continue
 		}
 
 		mappingIdx := loc.MappingId - 1
