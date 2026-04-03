@@ -542,8 +542,7 @@ httpRoute:
     sectionName: ""
   labels: {}
   annotations: {}
-  hostnames:
-  - ""
+  hostnames: []
   # timeouts:
   #   request: 0s
 
