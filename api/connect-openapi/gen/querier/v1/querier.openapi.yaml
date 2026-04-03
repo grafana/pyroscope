@@ -1764,7 +1764,9 @@ components:
             - string
           title: timestamp
           format: int64
-          description: Milliseconds unix timestamp
+          description: |-
+            Milliseconds unix timestamp of the right edge (x_max) of this slot.
+             The slot covers the half-open interval (timestamp - step, timestamp].
         yMin:
           type: array
           items:
