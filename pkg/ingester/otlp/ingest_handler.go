@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -352,17 +353,32 @@ func appendAttributesUnique(labels []*typesv1.LabelPair, attrs []*v1.KeyValue, p
 	return labels
 }
 
+func decodeSingleAnyValue(v *v1.AnyValue) string {
+	if v == nil {
+		return ""
+	}
+
+	switch value := v.Value.(type) {
+	case *v1.AnyValue_StringValue:
+		return value.StringValue
+	case *v1.AnyValue_IntValue:
+		return strconv.FormatInt(value.IntValue, 10)
+	default:
+		return ""
+	}
+}
+
 func stringValueFromAnyValue(v *v1.AnyValue) string {
 	if v == nil {
 		return ""
 	}
-	if sv := v.GetStringValue(); sv != "" {
-		return sv
+	if decoded := decodeSingleAnyValue(v); decoded != "" {
+		return decoded
 	}
 	if av := v.GetArrayValue(); av != nil {
 		values := av.GetValues()
 		if len(values) == 1 {
-			return values[0].GetStringValue()
+			return decodeSingleAnyValue(values[0])
 		}
 	}
 	return ""

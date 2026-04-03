@@ -418,11 +418,11 @@ func TestSampleAttributes(t *testing.T) {
 	otlpb.profile.Samples = []*v1experimental.Sample{{
 		StackIndex:       0,
 		Values:           []int64{0xef},
-		AttributeIndices: []int32{0},
+		AttributeIndices: []int32{0, 2},
 	}, {
 		StackIndex:       1,
 		Values:           []int64{0xefef},
-		AttributeIndices: []int32{1},
+		AttributeIndices: []int32{1, 3},
 	}}
 	otlpb.dictionary.AttributeTable = []*v1experimental.KeyValueAndUnit{{
 		KeyStrindex: otlpb.addstr("process"),
@@ -436,6 +436,20 @@ func TestSampleAttributes(t *testing.T) {
 		Value: &v1.AnyValue{
 			Value: &v1.AnyValue_StringValue{
 				StringValue: "chrome",
+			},
+		},
+	}, {
+		KeyStrindex: otlpb.addstr("cpu.logical_number"),
+		Value: &v1.AnyValue{
+			Value: &v1.AnyValue_IntValue{
+				IntValue: 0,
+			},
+		},
+	}, {
+		KeyStrindex: otlpb.addstr("cpu.logical_number"),
+		Value: &v1.AnyValue{
+			Value: &v1.AnyValue_IntValue{
+				IntValue: 7,
 			},
 		},
 	}}
@@ -514,11 +528,11 @@ func TestSampleAttributesWithSliceValues(t *testing.T) {
 	otlpb.profile.Samples = []*v1experimental.Sample{{
 		StackIndex:       0,
 		Values:           []int64{0xef},
-		AttributeIndices: []int32{0},
+		AttributeIndices: []int32{0, 2},
 	}, {
 		StackIndex:       1,
 		Values:           []int64{0xefef},
-		AttributeIndices: []int32{1},
+		AttributeIndices: []int32{1, 3},
 	}}
 	otlpb.dictionary.AttributeTable = []*v1experimental.KeyValueAndUnit{{
 		KeyStrindex: otlpb.addstr("process"),
@@ -541,6 +555,32 @@ func TestSampleAttributesWithSliceValues(t *testing.T) {
 					Values: []*v1.AnyValue{{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "chrome",
+						},
+					}},
+				},
+			},
+		},
+	}, {
+		KeyStrindex: otlpb.addstr("cpu.logical_number"),
+		Value: &v1.AnyValue{
+			Value: &v1.AnyValue_ArrayValue{
+				ArrayValue: &v1.ArrayValue{
+					Values: []*v1.AnyValue{{
+						Value: &v1.AnyValue_IntValue{
+							IntValue: 0,
+						},
+					}},
+				},
+			},
+		},
+	}, {
+		KeyStrindex: otlpb.addstr("cpu.logical_number"),
+		Value: &v1.AnyValue{
+			Value: &v1.AnyValue_ArrayValue{
+				ArrayValue: &v1.ArrayValue{
+					Values: []*v1.AnyValue{{
+						Value: &v1.AnyValue_IntValue{
+							IntValue: 7,
 						},
 					}},
 				},
@@ -638,11 +678,18 @@ func TestStringValueFromAnyValue(t *testing.T) {
 			expected: "",
 		},
 		{
-			name: "int value returns empty",
+			name: "int value returns string",
 			value: &v1.AnyValue{
 				Value: &v1.AnyValue_IntValue{IntValue: 42},
 			},
-			expected: "",
+			expected: "42",
+		},
+		{
+			name: "zero int value returns string zero",
+			value: &v1.AnyValue{
+				Value: &v1.AnyValue_IntValue{IntValue: 0},
+			},
+			expected: "0",
 		},
 	}
 
