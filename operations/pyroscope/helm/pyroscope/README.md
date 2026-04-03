@@ -41,6 +41,14 @@
 | ingress.enabled | bool | `false` |  |
 | ingress.labels | object | `{}` |  |
 | ingress.pathType | string | `"ImplementationSpecific"` |  |
+| httpRoute.annotations | object | `{}` |  |
+| httpRoute.enabled | bool | `false` |  |
+| httpRoute.gateway.name | string | `""` |  |
+| httpRoute.gateway.namespace | string | `""` |  |
+| httpRoute.gateway.sectionName | string | `""` |  |
+| httpRoute.hostnames | list | `[""]` |  |
+| httpRoute.timeouts | object | `{}` |  |
+| httpRoute.labels | object | `{}` |  |
 | minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
 | pyroscope.affinity | object | `{}` |  |
 | pyroscope.cluster_domain | string | `".cluster.local."` | Kubernetes cluster domain suffix for DNS discovery |
@@ -117,4 +125,3 @@
 | serviceMonitor.scrapeTimeout | string | `nil` | ServiceMonitor scrape timeout in Go duration format (e.g. 15s) |
 | serviceMonitor.targetLabels | list | `[]` | ServiceMonitor will add labels from the service to the Prometheus metric https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#servicemonitorspec |
 | serviceMonitor.tlsConfig | string | `nil` | ServiceMonitor will use these tlsConfig settings to make the health check requests |
-

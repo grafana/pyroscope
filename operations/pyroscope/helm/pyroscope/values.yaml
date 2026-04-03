@@ -534,6 +534,19 @@ ingress:
   # tls:
   #   - secretName: certificate
 
+httpRoute:
+  enabled: false
+  gateway:
+    name: ""
+    namespace: ""
+    sectionName: ""
+  labels: {}
+  annotations: {}
+  hostnames:
+  - ""
+  # timeouts:
+  #   request: 0s
+
 # ServiceMonitor configuration
 serviceMonitor:
   # -- If enabled, ServiceMonitor resources for Prometheus Operator are created

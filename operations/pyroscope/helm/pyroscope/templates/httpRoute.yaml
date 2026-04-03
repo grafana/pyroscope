@@ -1,0 +1,104 @@
+{{- if .Values.httpRoute.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "pyroscope.fullname" . }}-http-route
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+    {{- with .Values.httpRoute.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.httpRoute.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    - name: {{ .Values.httpRoute.gateway.name }}
+      namespace: {{ .Values.httpRoute.gateway.namespace }}
+      {{- with .Values.httpRoute.gateway.sectionName }}
+      sectionName: {{ . }}
+      {{- end }}
+  hostnames:
+    {{- range .Values.httpRoute.hostnames }}
+    - {{ . | quote }}
+    {{- end }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+        - path:
+            type: PathPrefix
+            value: /querier.v1.QuerierService/
+        - path:
+            type: PathPrefix
+            value: /render
+        - path:
+            type: PathPrefix
+            value: /render-diff
+      backendRefs:
+        {{- if gt (len $.Values.pyroscope.components) 1}}
+        - name: {{ include "pyroscope.fullname" $ }}-query-frontend
+          port: {{ .Values.pyroscope.service.port }}
+        {{- else }}
+        - name: {{ include "pyroscope.fullname" $ }}
+          port: {{ .Values.pyroscope.service.port }}
+        {{- end }}
+      {{- with .Values.httpRoute.timeouts }}
+      timeouts:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /push.v1.PusherService/
+        - path:
+            type: PathPrefix
+            value: /ingest
+      backendRefs:
+        {{- if gt (len $.Values.pyroscope.components) 1}}
+        - name: {{ include "pyroscope.fullname" $ }}-distributor
+          port: {{ .Values.pyroscope.service.port }}
+        {{- else }}
+        - name: {{ include "pyroscope.fullname" $ }}
+          port: {{ .Values.pyroscope.service.port }}
+        {{- end }}
+      {{- with .Values.httpRoute.timeouts }}
+      timeouts:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /settings.v1.SettingsService/
+      backendRefs:
+        {{- if gt (len $.Values.pyroscope.components) 1}}
+        - name: {{ include "pyroscope.fullname" $ }}-tenant-settings
+          port: {{ .Values.pyroscope.service.port }}
+        {{- else }}
+        - name: {{ include "pyroscope.fullname" $ }}
+          port: {{ .Values.pyroscope.service.port }}
+        {{- end }}
+      {{- with .Values.httpRoute.timeouts }}
+      timeouts:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /adhocprofiles.v1.AdHocProfileService/
+      backendRefs:
+        {{- if gt (len $.Values.pyroscope.components) 1}}
+        - name: {{ include "pyroscope.fullname" $ }}-ad-hoc-profiles
+          port: {{ .Values.pyroscope.service.port }}
+        {{- else }}
+        - name: {{ include "pyroscope.fullname" $ }}
+          port: {{ .Values.pyroscope.service.port }}
+        {{- end }}
+      {{- with .Values.httpRoute.timeouts }}
+      timeouts:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
