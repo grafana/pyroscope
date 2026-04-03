@@ -45,8 +45,8 @@ func TestOutputExemplarsTable(t *testing.T) {
 	assert.Contains(t, out, "abc123")
 	assert.Contains(t, out, "frontend")
 	assert.Contains(t, out, "backend")
-	assert.Contains(t, out, "PROFILE ID")
-	assert.Contains(t, out, "SERVICE NAME")
+	assert.Contains(t, out, "Profile ID")
+	assert.Contains(t, out, "service_name")
 }
 
 func TestOutputExemplarsTable_NoGroupBy(t *testing.T) {
@@ -68,8 +68,8 @@ func TestOutputExemplarsTable_NoGroupBy(t *testing.T) {
 	require.NoError(t, err)
 
 	out := buf.String()
-	assert.Contains(t, out, "PROFILE ID")
-	assert.NotContains(t, out, "SERVICE NAME")
+	assert.Contains(t, out, "Profile ID")
+	assert.NotContains(t, out, "service_name")
 }
 
 func TestOutputExemplarsJSON(t *testing.T) {

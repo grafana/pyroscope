@@ -37,6 +37,7 @@ func parquetInspect(ctx context.Context, path string) error {
 		fmt.Fprintln(out, "\t\t Row size:", humanize.Bytes(uint64(rg.TotalByteSize)))
 		fmt.Fprintln(out, "\t\t Columns:")
 		table := tablewriter.NewWriter(out)
+		table.SetAutoFormatHeaders(false)
 		table.SetHeader([]string{
 			"Col", "Type", "NumVal", "TotalCompressedSize", "TotalUncompressedSize", "Compression", "%", "PageCount", "PageSize",
 		})

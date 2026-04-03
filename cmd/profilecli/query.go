@@ -506,6 +506,7 @@ func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCa
 	})
 
 	table := tablewriter.NewWriter(output(ctx))
+	table.SetAutoFormatHeaders(false)
 	table.SetHeader([]string{"LabelName", "Value count"})
 	if len(result) > int(params.TopN) {
 		result = result[:params.TopN]

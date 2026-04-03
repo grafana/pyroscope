@@ -146,6 +146,7 @@ func queryTop(ctx context.Context, params *queryTopParams) error {
 		aligns[len(aligns)-1] = tablewriter.ALIGN_RIGHT
 
 		table := tablewriter.NewWriter(output(ctx))
+		table.SetAutoFormatHeaders(false)
 		table.SetHeader(headers)
 		table.SetColumnAlignment(aligns)
 		for i, t := range totals {

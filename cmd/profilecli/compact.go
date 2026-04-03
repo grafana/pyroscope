@@ -119,6 +119,7 @@ func compact(ctx context.Context, src, dst string, metas []*block.Meta, shards i
 
 func printMeta(ctx context.Context, metas []block.Meta) {
 	table := tablewriter.NewWriter(output(ctx))
+	table.SetAutoFormatHeaders(false)
 	table.SetHeader([]string{"Block ID", "MinTime", "MaxTime", "Duration", "Index", "Profiles", "Symbols", "Labels"})
 	for _, blockInfo := range metas {
 		table.Append([]string{

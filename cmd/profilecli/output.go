@@ -81,6 +81,7 @@ func outputSeriesTable(ctx context.Context, result []*typesv1.Labels) error {
 	sort.Strings(colNames)
 
 	table := tablewriter.NewWriter(output(ctx))
+	table.SetAutoFormatHeaders(false)
 	table.SetHeader(colNames)
 	for _, s := range result {
 		vals := make(map[string]string, len(s.Labels))
