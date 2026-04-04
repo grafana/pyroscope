@@ -36,19 +36,18 @@
 | architecture.storage.v1 | bool | `true` | Enable v1 storage layer. |
 | architecture.storage.v2 | bool | `false` | Enable v2 storage layer. |
 | global.imageRegistry | string | `nil` | Overrides the Docker registry globally for all images |
-| ingress.annotations | object | `{}` |  |
-| ingress.className | string | `""` |  |
-| ingress.enabled | bool | `false` |  |
-| ingress.labels | object | `{}` |  |
-| ingress.pathType | string | `"ImplementationSpecific"` |  |
 | httpRoute.annotations | object | `{}` |  |
 | httpRoute.enabled | bool | `false` |  |
 | httpRoute.gateway.name | string | `""` |  |
 | httpRoute.gateway.namespace | string | `""` |  |
 | httpRoute.gateway.sectionName | string | `""` |  |
-| httpRoute.hostnames | list | `[""]` |  |
-| httpRoute.timeouts | object | `{}` |  |
+| httpRoute.hostnames | list | `[]` |  |
 | httpRoute.labels | object | `{}` |  |
+| ingress.annotations | object | `{}` |  |
+| ingress.className | string | `""` |  |
+| ingress.enabled | bool | `false` |  |
+| ingress.labels | object | `{}` |  |
+| ingress.pathType | string | `"ImplementationSpecific"` |  |
 | minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
 | pyroscope.affinity | object | `{}` |  |
 | pyroscope.cluster_domain | string | `".cluster.local."` | Kubernetes cluster domain suffix for DNS discovery |

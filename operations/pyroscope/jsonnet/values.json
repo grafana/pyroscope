@@ -342,6 +342,17 @@
   "global": {
     "imageRegistry": null
   },
+  "httpRoute": {
+    "annotations": {},
+    "enabled": false,
+    "gateway": {
+      "name": "",
+      "namespace": "",
+      "sectionName": ""
+    },
+    "hostnames": [],
+    "labels": {}
+  },
   "ingress": {
     "annotations": {},
     "className": "",
