@@ -100,6 +100,7 @@ type Config struct {
 	DeletionDelay              time.Duration `yaml:"deletion_delay" category:"advanced"`
 	TenantCleanupDelay         time.Duration `yaml:"tenant_cleanup_delay" category:"advanced"`
 	MaxCompactionTime          time.Duration `yaml:"max_compaction_time" category:"advanced"`
+	ShutdownTimeout            time.Duration `yaml:"shutdown_timeout" category:"advanced"`
 	NoBlocksFileCleanupEnabled bool          `yaml:"no_blocks_file_cleanup_enabled" category:"experimental"`
 	DownsamplerEnabled         bool          `yaml:"downsampler_enabled" category:"advanced"`
 
@@ -142,6 +143,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.StringVar(&cfg.DataDir, "compactor.data-dir", "./data-compactor", "Directory to temporarily store blocks during compaction. This directory is not required to be persisted between restarts.")
 	f.DurationVar(&cfg.CompactionInterval, "compactor.compaction-interval", 30*time.Minute, "The frequency at which the compaction runs")
 	f.DurationVar(&cfg.MaxCompactionTime, "compactor.max-compaction-time", time.Hour, "Max time for starting compactions for a single tenant. After this time no new compactions for the tenant are started before next compaction cycle. This can help in multi-tenant environments to avoid single tenant using all compaction time, but also in single-tenant environments to force new discovery of blocks more often. 0 = disabled.")
+	f.DurationVar(&cfg.ShutdownTimeout, "compactor.shutdown-timeout", 0, "Maximum time to wait for in-flight cleanup and ring operations to finish during shutdown. If the timeout is reached, the compactor will forcefully stop. 0 = no timeout (wait indefinitely).")
 	f.IntVar(&cfg.CompactionRetries, "compactor.compaction-retries", 3, "How many times to retry a failed compaction within a single compaction run.")
 	f.IntVar(&cfg.CompactionConcurrency, "compactor.compaction-concurrency", 1, "Max number of concurrent compactions running.")
 	f.DurationVar(&cfg.CompactionWaitPeriod, "compactor.first-level-compaction-wait-period", 25*time.Minute, "How long the compactor waits before compacting first-level blocks that are uploaded by the ingesters. This configuration option allows for the reduction of cases where the compactor begins to compact blocks before all ingesters have uploaded their blocks to the storage.")
@@ -523,8 +525,15 @@ func newRingAndLifecycler(cfg RingConfig, logger log.Logger, reg prometheus.Regi
 
 func (c *MultitenantCompactor) stopping(_ error) error {
 	ctx := context.Background()
+	if c.compactorCfg.ShutdownTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.compactorCfg.ShutdownTimeout)
+		defer cancel()
+	}
 
-	services.StopAndAwaitTerminated(ctx, c.blocksCleaner) //nolint:errcheck
+	if err := services.StopAndAwaitTerminated(ctx, c.blocksCleaner); err != nil {
+		level.Warn(c.logger).Log("msg", "error stopping blocks cleaner", "err", err)
+	}
 	if c.ringSubservices != nil {
 		return services.StopManagerAndAwaitStopped(ctx, c.ringSubservices)
 	}
