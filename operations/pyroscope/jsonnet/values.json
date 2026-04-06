@@ -348,10 +348,11 @@
     "gateway": {
       "name": "",
       "namespace": "",
-      "sectionName": ""
+      "sectionName": null
     },
     "hostnames": [],
-    "labels": {}
+    "labels": {},
+    "timeouts": {}
   },
   "ingress": {
     "annotations": {},

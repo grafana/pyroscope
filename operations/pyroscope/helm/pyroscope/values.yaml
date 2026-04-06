@@ -539,12 +539,17 @@ httpRoute:
   gateway:
     name: ""
     namespace: ""
-    sectionName: ""
+    # -- Optional to specify listener's name.
+    sectionName: null
+  # -- Additional labels to add to HTTPRoute resource.
   labels: {}
+  # -- Additional annotations to add to HTTPRoute resource.
   annotations: {}
   hostnames: []
-  # timeouts:
-  #   request: 0s
+  # -- Timeout settings to add to each rule in HTTPRoute resource.
+  # https://gateway-api.sigs.k8s.io/reference/spec/#httproutetimeouts.
+  timeouts: {}
+   # request: 0s
 
 # ServiceMonitor configuration
 serviceMonitor:
