@@ -20,9 +20,11 @@ import (
 )
 
 const (
-	storagePrefix   = "async-queries/"
-	defaultTTL      = 30 * time.Minute
-	cleanupInterval = 5 * time.Minute
+	storagePrefix            = "async-queries/"
+	defaultTTL               = 30 * time.Minute
+	defaultHeartbeatInterval = 15 * time.Second
+	defaultHeartbeatTimeout  = 45 * time.Second
+	cleanupInterval          = 5 * time.Minute
 )
 
 type Status string
@@ -34,11 +36,12 @@ const (
 )
 
 type Metadata struct {
-	RequestID    string    `json:"request_id"`
-	TenantID     string    `json:"tenant_id"`
-	Status       Status    `json:"status"`
-	CreatedAt    time.Time `json:"created_at"`
-	ErrorMessage string    `json:"error_message,omitempty"`
+	RequestID     string    `json:"request_id"`
+	TenantID      string    `json:"tenant_id"`
+	Status        Status    `json:"status"`
+	CreatedAt     time.Time `json:"created_at"`
+	LastHeartbeat time.Time `json:"last_heartbeat,omitempty"`
+	ErrorMessage  string    `json:"error_message,omitempty"`
 }
 
 type Result struct {
@@ -48,9 +51,11 @@ type Result struct {
 
 type Store struct {
 	services.Service
-	logger log.Logger
-	bucket objstore.Bucket
-	ttl    time.Duration
+	logger            log.Logger
+	bucket            objstore.Bucket
+	ttl               time.Duration
+	heartbeatInterval time.Duration
+	heartbeatTimeout  time.Duration
 }
 
 type StoreOption func(*Store)
@@ -61,11 +66,25 @@ func WithTTL(ttl time.Duration) StoreOption {
 	}
 }
 
+func WithHeartbeatInterval(d time.Duration) StoreOption {
+	return func(s *Store) {
+		s.heartbeatInterval = d
+	}
+}
+
+func WithHeartbeatTimeout(d time.Duration) StoreOption {
+	return func(s *Store) {
+		s.heartbeatTimeout = d
+	}
+}
+
 func NewStore(logger log.Logger, bucket objstore.Bucket, opts ...StoreOption) *Store {
 	s := &Store{
-		logger: logger,
-		bucket: bucket,
-		ttl:    defaultTTL,
+		logger:            logger,
+		bucket:            bucket,
+		ttl:               defaultTTL,
+		heartbeatInterval: defaultHeartbeatInterval,
+		heartbeatTimeout:  defaultHeartbeatTimeout,
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -79,13 +98,29 @@ func (s *Store) basePath(tenantID, requestID string) string {
 }
 
 func (s *Store) Create(ctx context.Context, tenantID, requestID string) error {
+	now := time.Now().UTC()
 	meta := &Metadata{
-		RequestID: requestID,
-		TenantID:  tenantID,
-		Status:    StatusInProgress,
-		CreatedAt: time.Now().UTC(),
+		RequestID:     requestID,
+		TenantID:      tenantID,
+		Status:        StatusInProgress,
+		CreatedAt:     now,
+		LastHeartbeat: now,
 	}
 	return s.saveJSON(ctx, s.basePath(tenantID, requestID)+"metadata.json", meta)
+}
+
+func (s *Store) Heartbeat(ctx context.Context, tenantID, requestID string) error {
+	base := s.basePath(tenantID, requestID)
+	var meta Metadata
+	if err := s.readJSON(ctx, base+"metadata.json", &meta); err != nil {
+		return err
+	}
+	meta.LastHeartbeat = time.Now().UTC()
+	return s.saveJSON(ctx, base+"metadata.json", &meta)
+}
+
+func (s *Store) HeartbeatInterval() time.Duration {
+	return s.heartbeatInterval
 }
 
 func (s *Store) Complete(ctx context.Context, tenantID, requestID string, profile *profilev1.Profile) error {
@@ -137,6 +172,11 @@ func (s *Store) Get(ctx context.Context, tenantID, requestID string) (*Result, e
 	// Tenant isolation: the metadata must belong to the requesting tenant.
 	if meta.TenantID != tenantID {
 		return nil, nil
+	}
+
+	if meta.Status == StatusInProgress && !meta.LastHeartbeat.IsZero() && time.Since(meta.LastHeartbeat) > s.heartbeatTimeout {
+		meta.Status = StatusFailure
+		meta.ErrorMessage = "query appears to have been orphaned (heartbeat timed out)"
 	}
 
 	result := &Result{Metadata: meta}

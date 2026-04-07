@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -97,17 +98,38 @@ func (c *Coordinator) executeQuery(tenantID, requestID string, queryFn QueryFunc
 	// the query should complete even if the caller disconnects.
 	ctx := tenant.InjectTenantID(context.Background(), tenantID)
 
-	profile, err := queryFn(ctx)
-	if err != nil {
-		level.Error(c.logger).Log("msg", "async query failed", "tenant", tenantID, "request_id", requestID, "err", err)
-		if storeErr := c.store.Fail(ctx, tenantID, requestID, err); storeErr != nil {
-			level.Error(c.logger).Log("msg", "failed to store async query failure", "tenant", tenantID, "request_id", requestID, "err", storeErr)
-		}
-		return
+	type queryResult struct {
+		profile *profilev1.Profile
+		err     error
 	}
+	resultCh := make(chan queryResult, 1)
+	go func() {
+		profile, err := queryFn(ctx)
+		resultCh <- queryResult{profile, err}
+	}()
 
-	if err := c.store.Complete(ctx, tenantID, requestID, profile); err != nil {
-		level.Error(c.logger).Log("msg", "failed to store async query result", "tenant", tenantID, "request_id", requestID, "err", err)
+	ticker := time.NewTicker(c.store.HeartbeatInterval())
+	defer ticker.Stop()
+
+	for {
+		select {
+		case res := <-resultCh:
+			if res.err != nil {
+				level.Error(c.logger).Log("msg", "async query failed", "tenant", tenantID, "request_id", requestID, "err", res.err)
+				if storeErr := c.store.Fail(ctx, tenantID, requestID, res.err); storeErr != nil {
+					level.Error(c.logger).Log("msg", "failed to store async query failure", "tenant", tenantID, "request_id", requestID, "err", storeErr)
+				}
+				return
+			}
+			if err := c.store.Complete(ctx, tenantID, requestID, res.profile); err != nil {
+				level.Error(c.logger).Log("msg", "failed to store async query result", "tenant", tenantID, "request_id", requestID, "err", err)
+			}
+			return
+		case <-ticker.C:
+			if err := c.store.Heartbeat(ctx, tenantID, requestID); err != nil {
+				level.Warn(c.logger).Log("msg", "failed to update heartbeat", "tenant", tenantID, "request_id", requestID, "err", err)
+			}
+		}
 	}
 }
 
