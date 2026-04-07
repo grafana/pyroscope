@@ -529,10 +529,12 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 			t.Run(tenantID, func(t *testing.T) {
 				ctx := tenant.InjectTenantID(ctx, tenantID)
 				req := &querierv1.SelectMergeProfileAsyncRequest{
-					ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-					LabelSelector: "{}",
-					Start:         tc.now.Add(-time.Hour).UnixMilli(),
-					End:           tc.now.Add(time.Hour).UnixMilli(),
+					Request: &querierv1.SelectMergeProfileRequest{
+						ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+						LabelSelector: "{}",
+						Start:         tc.now.Add(-time.Hour).UnixMilli(),
+						End:           tc.now.Add(time.Hour).UnixMilli(),
+					},
 				}
 
 				// Start async query.
@@ -565,7 +567,7 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 				require.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS, resp.Msg.Status, "error: %s", resp.Msg.ErrorMessage)
 				require.NotNil(t, resp.Msg.Profile)
 
-				assert.Equal(t, req.End*1e6, resp.Msg.Profile.TimeNanos, "TimeNanos")
+				assert.Equal(t, req.Request.End*1e6, resp.Msg.Profile.TimeNanos, "TimeNanos")
 				assert.Equal(t,
 					[]*profilev1.ValueType{
 						{Type: 6, Unit: 5},

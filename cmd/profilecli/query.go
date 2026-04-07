@@ -265,7 +265,7 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 }
 
 func queryProfileAsync(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, outputFlag string, force bool) error {
-	req := &querierv1.SelectMergeProfileAsyncRequest{
+	profileReq := &querierv1.SelectMergeProfileRequest{
 		ProfileTypeID: params.ProfileType,
 		Start:         from.UnixMilli(),
 		End:           to.UnixMilli(),
@@ -273,7 +273,7 @@ func queryProfileAsync(ctx context.Context, params *queryProfileParams, from tim
 	}
 
 	if params.MaxNodes > 0 {
-		req.MaxNodes = &params.MaxNodes
+		profileReq.MaxNodes = &params.MaxNodes
 	}
 
 	if len(params.StacktraceSelector) > 0 {
@@ -281,12 +281,14 @@ func queryProfileAsync(ctx context.Context, params *queryProfileParams, from tim
 		for _, cs := range params.StacktraceSelector {
 			locations = append(locations, &typesv1.Location{Name: cs})
 		}
-		req.StackTraceSelector = &typesv1.StackTraceSelector{CallSite: locations}
+		profileReq.StackTraceSelector = &typesv1.StackTraceSelector{CallSite: locations}
 	}
 
 	if len(params.ProfileIDs) > 0 {
-		req.ProfileIdSelector = params.ProfileIDs
+		profileReq.ProfileIdSelector = params.ProfileIDs
 	}
+
+	req := &querierv1.SelectMergeProfileAsyncRequest{Request: profileReq}
 
 	ac := params.phlareClient.asyncQueryClient()
 

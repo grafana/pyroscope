@@ -7,8 +7,7 @@ package querierv1
 import (
 	context "context"
 	fmt "fmt"
-	v11 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	protohelpers "github.com/planetscale/vtprotobuf/protohelpers"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -30,27 +29,8 @@ func (m *SelectMergeProfileAsyncRequest) CloneVT() *SelectMergeProfileAsyncReque
 		return (*SelectMergeProfileAsyncRequest)(nil)
 	}
 	r := new(SelectMergeProfileAsyncRequest)
-	r.ProfileTypeID = m.ProfileTypeID
-	r.LabelSelector = m.LabelSelector
-	r.Start = m.Start
-	r.End = m.End
+	r.Request = m.Request.CloneVT()
 	r.RequestId = m.RequestId
-	if rhs := m.MaxNodes; rhs != nil {
-		tmpVal := *rhs
-		r.MaxNodes = &tmpVal
-	}
-	if rhs := m.StackTraceSelector; rhs != nil {
-		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.StackTraceSelector }); ok {
-			r.StackTraceSelector = vtpb.CloneVT()
-		} else {
-			r.StackTraceSelector = proto.Clone(rhs).(*v1.StackTraceSelector)
-		}
-	}
-	if rhs := m.ProfileIdSelector; rhs != nil {
-		tmpContainer := make([]string, len(rhs))
-		copy(tmpContainer, rhs)
-		r.ProfileIdSelector = tmpContainer
-	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -71,10 +51,10 @@ func (m *SelectMergeProfileAsyncResponse) CloneVT() *SelectMergeProfileAsyncResp
 	r.Status = m.Status
 	r.ErrorMessage = m.ErrorMessage
 	if rhs := m.Profile; rhs != nil {
-		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v11.Profile }); ok {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.Profile }); ok {
 			r.Profile = vtpb.CloneVT()
 		} else {
-			r.Profile = proto.Clone(rhs).(*v11.Profile)
+			r.Profile = proto.Clone(rhs).(*v1.Profile)
 		}
 	}
 	if len(m.unknownFields) > 0 {
@@ -94,38 +74,8 @@ func (this *SelectMergeProfileAsyncRequest) EqualVT(that *SelectMergeProfileAsyn
 	} else if this == nil || that == nil {
 		return false
 	}
-	if this.ProfileTypeID != that.ProfileTypeID {
+	if !this.Request.EqualVT(that.Request) {
 		return false
-	}
-	if this.LabelSelector != that.LabelSelector {
-		return false
-	}
-	if this.Start != that.Start {
-		return false
-	}
-	if this.End != that.End {
-		return false
-	}
-	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
-		return false
-	}
-	if equal, ok := interface{}(this.StackTraceSelector).(interface {
-		EqualVT(*v1.StackTraceSelector) bool
-	}); ok {
-		if !equal.EqualVT(that.StackTraceSelector) {
-			return false
-		}
-	} else if !proto.Equal(this.StackTraceSelector, that.StackTraceSelector) {
-		return false
-	}
-	if len(this.ProfileIdSelector) != len(that.ProfileIdSelector) {
-		return false
-	}
-	for i, vx := range this.ProfileIdSelector {
-		vy := that.ProfileIdSelector[i]
-		if vx != vy {
-			return false
-		}
 	}
 	if this.RequestId != that.RequestId {
 		return false
@@ -155,7 +105,7 @@ func (this *SelectMergeProfileAsyncResponse) EqualVT(that *SelectMergeProfileAsy
 	if this.ErrorMessage != that.ErrorMessage {
 		return false
 	}
-	if equal, ok := interface{}(this.Profile).(interface{ EqualVT(*v11.Profile) bool }); ok {
+	if equal, ok := interface{}(this.Profile).(interface{ EqualVT(*v1.Profile) bool }); ok {
 		if !equal.EqualVT(that.Profile) {
 			return false
 		}
@@ -305,65 +255,15 @@ func (m *SelectMergeProfileAsyncRequest) MarshalToSizedBufferVT(dAtA []byte) (in
 		copy(dAtA[i:], m.RequestId)
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.RequestId)))
 		i--
-		dAtA[i] = 0x42
-	}
-	if len(m.ProfileIdSelector) > 0 {
-		for iNdEx := len(m.ProfileIdSelector) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.ProfileIdSelector[iNdEx])
-			copy(dAtA[i:], m.ProfileIdSelector[iNdEx])
-			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileIdSelector[iNdEx])))
-			i--
-			dAtA[i] = 0x3a
-		}
-	}
-	if m.StackTraceSelector != nil {
-		if vtmsg, ok := interface{}(m.StackTraceSelector).(interface {
-			MarshalToSizedBufferVT([]byte) (int, error)
-		}); ok {
-			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		} else {
-			encoded, err := proto.Marshal(m.StackTraceSelector)
-			if err != nil {
-				return 0, err
-			}
-			i -= len(encoded)
-			copy(dAtA[i:], encoded)
-			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
-		}
-		i--
-		dAtA[i] = 0x32
-	}
-	if m.MaxNodes != nil {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.MaxNodes))
-		i--
-		dAtA[i] = 0x28
-	}
-	if m.End != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.End))
-		i--
-		dAtA[i] = 0x20
-	}
-	if m.Start != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Start))
-		i--
-		dAtA[i] = 0x18
-	}
-	if len(m.LabelSelector) > 0 {
-		i -= len(m.LabelSelector)
-		copy(dAtA[i:], m.LabelSelector)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.LabelSelector)))
-		i--
 		dAtA[i] = 0x12
 	}
-	if len(m.ProfileTypeID) > 0 {
-		i -= len(m.ProfileTypeID)
-		copy(dAtA[i:], m.ProfileTypeID)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileTypeID)))
+	if m.Request != nil {
+		size, err := m.Request.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -450,38 +350,9 @@ func (m *SelectMergeProfileAsyncRequest) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.ProfileTypeID)
-	if l > 0 {
+	if m.Request != nil {
+		l = m.Request.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	l = len(m.LabelSelector)
-	if l > 0 {
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	if m.Start != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.Start))
-	}
-	if m.End != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.End))
-	}
-	if m.MaxNodes != nil {
-		n += 1 + protohelpers.SizeOfVarint(uint64(*m.MaxNodes))
-	}
-	if m.StackTraceSelector != nil {
-		if size, ok := interface{}(m.StackTraceSelector).(interface {
-			SizeVT() int
-		}); ok {
-			l = size.SizeVT()
-		} else {
-			l = proto.Size(m.StackTraceSelector)
-		}
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	if len(m.ProfileIdSelector) > 0 {
-		for _, s := range m.ProfileIdSelector {
-			l = len(s)
-			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-		}
 	}
 	l = len(m.RequestId)
 	if l > 0 {
@@ -553,129 +424,7 @@ func (m *SelectMergeProfileAsyncRequest) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProfileTypeID", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ProfileTypeID = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LabelSelector", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.LabelSelector = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Start", wireType)
-			}
-			m.Start = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Start |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 4:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field End", wireType)
-			}
-			m.End = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.End |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 5:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MaxNodes", wireType)
-			}
-			var v int64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.MaxNodes = &v
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field StackTraceSelector", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Request", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -702,54 +451,14 @@ func (m *SelectMergeProfileAsyncRequest) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.StackTraceSelector == nil {
-				m.StackTraceSelector = &v1.StackTraceSelector{}
+			if m.Request == nil {
+				m.Request = &SelectMergeProfileRequest{}
 			}
-			if unmarshal, ok := interface{}(m.StackTraceSelector).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.StackTraceSelector); err != nil {
-					return err
-				}
+			if err := m.Request.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProfileIdSelector", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ProfileIdSelector = append(m.ProfileIdSelector, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 8:
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RequestId", wireType)
 			}
@@ -945,7 +654,7 @@ func (m *SelectMergeProfileAsyncResponse) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Profile == nil {
-				m.Profile = &v11.Profile{}
+				m.Profile = &v1.Profile{}
 			}
 			if unmarshal, ok := interface{}(m.Profile).(interface {
 				UnmarshalVT([]byte) error

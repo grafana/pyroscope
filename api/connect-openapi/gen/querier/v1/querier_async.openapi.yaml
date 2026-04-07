@@ -535,45 +535,13 @@ components:
     querier.v1.SelectMergeProfileAsyncRequest:
       type: object
       properties:
-        profileTypeID:
-          type: string
-          title: profile_typeID
-          description: Same fields as SelectMergeProfileRequest.
-        labelSelector:
-          type: string
-          title: label_selector
-        start:
-          type:
-            - integer
-            - string
-          title: start
-          format: int64
-        end:
-          type:
-            - integer
-            - string
-          title: end
-          format: int64
-        maxNodes:
-          type:
-            - integer
-            - string
-          title: max_nodes
-          format: int64
-          nullable: true
-        stackTraceSelector:
-          title: stack_trace_selector
-          nullable: true
-          $ref: '#/components/schemas/types.v1.StackTraceSelector'
-        profileIdSelector:
-          type: array
-          items:
-            type: string
-          title: profile_id_selector
+        request:
+          title: request
+          $ref: '#/components/schemas/querier.v1.SelectMergeProfileRequest'
         requestId:
           type: string
           title: request_id
-          description: If populated, the query fields above are ignored and this becomes a poll request.
+          description: If populated, request is ignored and this becomes a poll request.
       title: SelectMergeProfileAsyncRequest
       additionalProperties: false
     querier.v1.SelectMergeProfileAsyncResponse:
@@ -592,6 +560,68 @@ components:
           title: profile
           $ref: '#/components/schemas/google.v1.Profile'
       title: SelectMergeProfileAsyncResponse
+      additionalProperties: false
+    querier.v1.SelectMergeProfileRequest:
+      type: object
+      properties:
+        profileTypeID:
+          type: string
+          examples:
+            - process_cpu:cpu:nanoseconds:cpu:nanoseconds
+          title: profile_typeID
+          description: |-
+            Profile Type ID string in the form
+             <name>:<type>:<unit>:<period_type>:<period_unit>.
+        labelSelector:
+          type: string
+          examples:
+            - '{namespace="my-namespace"}'
+          title: label_selector
+          description: Label selector string
+        start:
+          type:
+            - integer
+            - string
+          examples:
+            - "1676282400000"
+          title: start
+          format: int64
+          description: Milliseconds since epoch.
+        end:
+          type:
+            - integer
+            - string
+          examples:
+            - "1676289600000"
+          title: end
+          format: int64
+          description: Milliseconds since epoch.
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+          description: |-
+            Limit the nodes returned to only show the node with the max_node's biggest
+             total
+          nullable: true
+        stackTraceSelector:
+          title: stack_trace_selector
+          description: Select stack traces that match the provided selector.
+          nullable: true
+          $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        profileIdSelector:
+          type: array
+          examples:
+            - - 7c9e6679-7425-40de-944b-e07fc1f90ae7
+          items:
+            type: string
+            examples:
+              - - 7c9e6679-7425-40de-944b-e07fc1f90ae7
+          title: profile_id_selector
+          description: List of Profile UUIDs to query
+      title: SelectMergeProfileRequest
       additionalProperties: false
     types.v1.GoPGO:
       type: object

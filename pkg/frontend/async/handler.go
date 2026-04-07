@@ -49,15 +49,7 @@ func (h *Handler) start(
 	// We copy the request headers so the downstream handler sees the tenant context.
 	headers := req.Header().Clone()
 	queryFn := func(ctx context.Context) (*profilev1.Profile, error) {
-		syncReq := connect.NewRequest(&querierv1.SelectMergeProfileRequest{
-			ProfileTypeID:      req.Msg.ProfileTypeID,
-			LabelSelector:      req.Msg.LabelSelector,
-			Start:              req.Msg.Start,
-			End:                req.Msg.End,
-			MaxNodes:           req.Msg.MaxNodes,
-			StackTraceSelector: req.Msg.StackTraceSelector,
-			ProfileIdSelector:  req.Msg.ProfileIdSelector,
-		})
+		syncReq := connect.NewRequest(req.Msg.Request)
 		for k, vals := range headers {
 			for _, v := range vals {
 				syncReq.Header().Add(k, v)

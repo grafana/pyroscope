@@ -7,8 +7,7 @@
 package querierv1
 
 import (
-	v11 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -76,17 +75,10 @@ func (AsyncQueryStatus) EnumDescriptor() ([]byte, []int) {
 }
 
 type SelectMergeProfileAsyncRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Same fields as SelectMergeProfileRequest.
-	ProfileTypeID      string                 `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
-	LabelSelector      string                 `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
-	Start              int64                  `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
-	End                int64                  `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
-	MaxNodes           *int64                 `protobuf:"varint,5,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
-	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,6,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
-	ProfileIdSelector  []string               `protobuf:"bytes,7,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
-	// If populated, the query fields above are ignored and this becomes a poll request.
-	RequestId     string `protobuf:"bytes,8,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	state   protoimpl.MessageState     `protogen:"open.v1"`
+	Request *SelectMergeProfileRequest `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
+	// If populated, request is ignored and this becomes a poll request.
+	RequestId     string `protobuf:"bytes,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -121,51 +113,9 @@ func (*SelectMergeProfileAsyncRequest) Descriptor() ([]byte, []int) {
 	return file_querier_v1_querier_async_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *SelectMergeProfileAsyncRequest) GetProfileTypeID() string {
+func (x *SelectMergeProfileAsyncRequest) GetRequest() *SelectMergeProfileRequest {
 	if x != nil {
-		return x.ProfileTypeID
-	}
-	return ""
-}
-
-func (x *SelectMergeProfileAsyncRequest) GetLabelSelector() string {
-	if x != nil {
-		return x.LabelSelector
-	}
-	return ""
-}
-
-func (x *SelectMergeProfileAsyncRequest) GetStart() int64 {
-	if x != nil {
-		return x.Start
-	}
-	return 0
-}
-
-func (x *SelectMergeProfileAsyncRequest) GetEnd() int64 {
-	if x != nil {
-		return x.End
-	}
-	return 0
-}
-
-func (x *SelectMergeProfileAsyncRequest) GetMaxNodes() int64 {
-	if x != nil && x.MaxNodes != nil {
-		return *x.MaxNodes
-	}
-	return 0
-}
-
-func (x *SelectMergeProfileAsyncRequest) GetStackTraceSelector() *v1.StackTraceSelector {
-	if x != nil {
-		return x.StackTraceSelector
-	}
-	return nil
-}
-
-func (x *SelectMergeProfileAsyncRequest) GetProfileIdSelector() []string {
-	if x != nil {
-		return x.ProfileIdSelector
+		return x.Request
 	}
 	return nil
 }
@@ -182,7 +132,7 @@ type SelectMergeProfileAsyncResponse struct {
 	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	Status        AsyncQueryStatus       `protobuf:"varint,2,opt,name=status,proto3,enum=querier.v1.AsyncQueryStatus" json:"status,omitempty"`
 	ErrorMessage  string                 `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	Profile       *v11.Profile           `protobuf:"bytes,4,opt,name=profile,proto3" json:"profile,omitempty"`
+	Profile       *v1.Profile            `protobuf:"bytes,4,opt,name=profile,proto3" json:"profile,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -238,7 +188,7 @@ func (x *SelectMergeProfileAsyncResponse) GetErrorMessage() string {
 	return ""
 }
 
-func (x *SelectMergeProfileAsyncResponse) GetProfile() *v11.Profile {
+func (x *SelectMergeProfileAsyncResponse) GetProfile() *v1.Profile {
 	if x != nil {
 		return x.Profile
 	}
@@ -250,20 +200,11 @@ var File_querier_v1_querier_async_proto protoreflect.FileDescriptor
 const file_querier_v1_querier_async_proto_rawDesc = "" +
 	"\n" +
 	"\x1equerier/v1/querier_async.proto\x12\n" +
-	"querier.v1\x1a\x17google/v1/profile.proto\x1a\x14types/v1/types.proto\"\x83\x03\n" +
-	"\x1eSelectMergeProfileAsyncRequest\x12%\n" +
-	"\x0eprofile_typeID\x18\x01 \x01(\tR\rprofileTypeID\x12%\n" +
-	"\x0elabel_selector\x18\x02 \x01(\tR\rlabelSelector\x12\x14\n" +
-	"\x05start\x18\x03 \x01(\x03R\x05start\x12\x10\n" +
-	"\x03end\x18\x04 \x01(\x03R\x03end\x12 \n" +
-	"\tmax_nodes\x18\x05 \x01(\x03H\x00R\bmaxNodes\x88\x01\x01\x12S\n" +
-	"\x14stack_trace_selector\x18\x06 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x01R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
-	"\x13profile_id_selector\x18\a \x03(\tR\x11profileIdSelector\x12\x1d\n" +
+	"querier.v1\x1a\x17google/v1/profile.proto\x1a\x18querier/v1/querier.proto\"\x80\x01\n" +
+	"\x1eSelectMergeProfileAsyncRequest\x12?\n" +
+	"\arequest\x18\x01 \x01(\v2%.querier.v1.SelectMergeProfileRequestR\arequest\x12\x1d\n" +
 	"\n" +
-	"request_id\x18\b \x01(\tR\trequestIdB\f\n" +
-	"\n" +
-	"_max_nodesB\x17\n" +
-	"\x15_stack_trace_selector\"\xc9\x01\n" +
+	"request_id\x18\x02 \x01(\tR\trequestId\"\xc9\x01\n" +
 	"\x1fSelectMergeProfileAsyncResponse\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x124\n" +
@@ -299,11 +240,11 @@ var file_querier_v1_querier_async_proto_goTypes = []any{
 	(AsyncQueryStatus)(0),                   // 0: querier.v1.AsyncQueryStatus
 	(*SelectMergeProfileAsyncRequest)(nil),  // 1: querier.v1.SelectMergeProfileAsyncRequest
 	(*SelectMergeProfileAsyncResponse)(nil), // 2: querier.v1.SelectMergeProfileAsyncResponse
-	(*v1.StackTraceSelector)(nil),           // 3: types.v1.StackTraceSelector
-	(*v11.Profile)(nil),                     // 4: google.v1.Profile
+	(*SelectMergeProfileRequest)(nil),       // 3: querier.v1.SelectMergeProfileRequest
+	(*v1.Profile)(nil),                      // 4: google.v1.Profile
 }
 var file_querier_v1_querier_async_proto_depIdxs = []int32{
-	3, // 0: querier.v1.SelectMergeProfileAsyncRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	3, // 0: querier.v1.SelectMergeProfileAsyncRequest.request:type_name -> querier.v1.SelectMergeProfileRequest
 	0, // 1: querier.v1.SelectMergeProfileAsyncResponse.status:type_name -> querier.v1.AsyncQueryStatus
 	4, // 2: querier.v1.SelectMergeProfileAsyncResponse.profile:type_name -> google.v1.Profile
 	1, // 3: querier.v1.AsyncQuerierService.SelectMergeProfileAsync:input_type -> querier.v1.SelectMergeProfileAsyncRequest
@@ -320,7 +261,7 @@ func file_querier_v1_querier_async_proto_init() {
 	if File_querier_v1_querier_async_proto != nil {
 		return
 	}
-	file_querier_v1_querier_async_proto_msgTypes[0].OneofWrappers = []any{}
+	file_querier_v1_querier_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

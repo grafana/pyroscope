@@ -3,7 +3,7 @@ syntax = "proto3";
 package querier.v1;
 
 import "google/v1/profile.proto";
-import "types/v1/types.proto";
+import "querier/v1/querier.proto";
 
 service AsyncQuerierService {
   // SelectMergeProfileAsync starts an async query or polls for results.
@@ -13,16 +13,9 @@ service AsyncQuerierService {
 }
 
 message SelectMergeProfileAsyncRequest {
-  // Same fields as SelectMergeProfileRequest.
-  string profile_typeID = 1;
-  string label_selector = 2;
-  int64 start = 3;
-  int64 end = 4;
-  optional int64 max_nodes = 5;
-  optional types.v1.StackTraceSelector stack_trace_selector = 6;
-  repeated string profile_id_selector = 7;
-  // If populated, the query fields above are ignored and this becomes a poll request.
-  string request_id = 8;
+  SelectMergeProfileRequest request = 1;
+  // If populated, request is ignored and this becomes a poll request.
+  string request_id = 2;
 }
 
 enum AsyncQueryStatus {
