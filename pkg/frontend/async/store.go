@@ -273,7 +273,7 @@ func (s *Store) readRaw(ctx context.Context, path string) ([]byte, error) {
 }
 
 func (s *Store) starting(context.Context) error { return nil }
-func (s *Store) stopping(error) error            { return nil }
+func (s *Store) stopping(error) error           { return nil }
 
 func (s *Store) running(ctx context.Context) error {
 	ticker := time.NewTicker(cleanupInterval)

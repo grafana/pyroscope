@@ -779,6 +779,8 @@ Usage of ./pyroscope:
     	Timeout for ingester client healthcheck RPCs. (default 5s)
   -querier.id string
     	Querier ID, sent to the query-frontend to identify requests from the same querier. Defaults to hostname.
+  -querier.max-async-query-concurrency int
+    	Maximum number of concurrent async queries per tenant. 0 to disable async queries. (default 5)
   -querier.max-concurrent int
     	The maximum number of concurrent queries allowed. (default 4)
   -querier.max-flamegraph-nodes-default int
