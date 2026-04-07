@@ -13,6 +13,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
 type Coordinator struct {
@@ -82,8 +83,10 @@ func (c *Coordinator) StartQuery(ctx context.Context, tenantID string, queryFn Q
 func (c *Coordinator) executeQuery(tenantID, requestID string, queryFn QueryFunc) {
 	defer c.decrement(tenantID)
 
-	// Use a background context: the query should complete even if the caller disconnects.
-	ctx := context.Background()
+	// Use a background context with the tenant injected so downstream
+	// handlers can extract it. The caller's context is not used because
+	// the query should complete even if the caller disconnects.
+	ctx := tenant.InjectTenantID(context.Background(), tenantID)
 
 	profile, err := queryFn(ctx)
 	if err != nil {

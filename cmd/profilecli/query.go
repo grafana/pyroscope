@@ -39,6 +39,17 @@ func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
 	)
 }
 
+func (c *phlareClient) asyncQueryClient() querierv1connect.AsyncQuerierServiceClient {
+	return querierv1connect.NewAsyncQuerierServiceClient(
+		c.httpClient(),
+		c.URL,
+		append(
+			connectapi.DefaultClientOptions(),
+			c.protocolOption(),
+		)...,
+	)
+}
+
 func (c *phlareClient) storeGatewayClient() storegatewayv1connect.StoreGatewayServiceClient {
 	return storegatewayv1connect.NewStoreGatewayServiceClient(
 		c.httpClient(),
@@ -138,7 +149,7 @@ func validateQueryProfileParams(params *queryProfileParams) error {
 	return nil
 }
 
-func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool, profileTree bool) (err error) {
+func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool, profileTree bool, async bool) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -147,6 +158,10 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 
 	if err := validateQueryProfileParams(params); err != nil {
 		return err
+	}
+
+	if async {
+		return queryProfileAsync(ctx, params, from, to, outputFlag, force)
 	}
 
 	var profile *googlev1.Profile
@@ -247,6 +262,79 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 	logDiagnostics(params.phlareClient, resp.Header())
 
 	return resp.Msg, err
+}
+
+func queryProfileAsync(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, outputFlag string, force bool) error {
+	req := &querierv1.SelectMergeProfileAsyncRequest{
+		ProfileTypeID: params.ProfileType,
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
+		LabelSelector: params.Query,
+	}
+
+	if params.MaxNodes > 0 {
+		req.MaxNodes = &params.MaxNodes
+	}
+
+	if len(params.StacktraceSelector) > 0 {
+		locations := make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+		for _, cs := range params.StacktraceSelector {
+			locations = append(locations, &typesv1.Location{Name: cs})
+		}
+		req.StackTraceSelector = &typesv1.StackTraceSelector{CallSite: locations}
+	}
+
+	if len(params.ProfileIDs) > 0 {
+		req.ProfileIdSelector = params.ProfileIDs
+	}
+
+	ac := params.phlareClient.asyncQueryClient()
+
+	// Start the async query.
+	resp, err := ac.SelectMergeProfileAsync(ctx, connect.NewRequest(req))
+	if err != nil {
+		if connectErr := new(connect.Error); errors.As(err, &connectErr) {
+			if connectErr.Code() == connect.CodeUnimplemented || connectErr.Code() == connect.CodeNotFound {
+				return fmt.Errorf("the server does not support async queries (SelectMergeProfileAsync); try without --async")
+			}
+		}
+		return errors.Wrap(err, "failed to start async query")
+	}
+
+	requestID := resp.Msg.RequestId
+	level.Info(logger).Log("msg", "async query started", "request_id", requestID)
+
+	// Poll until the query completes.
+	pollReq := &querierv1.SelectMergeProfileAsyncRequest{RequestId: requestID}
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	start := time.Now()
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
+
+		resp, err = ac.SelectMergeProfileAsync(ctx, connect.NewRequest(pollReq))
+		if err != nil {
+			return errors.Wrap(err, "failed to poll async query")
+		}
+
+		switch resp.Msg.Status {
+		case querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS:
+			level.Info(logger).Log("msg", "waiting for async query", "request_id", requestID, "elapsed", time.Since(start).Truncate(time.Second))
+			continue
+		case querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS:
+			level.Info(logger).Log("msg", "async query completed", "request_id", requestID, "elapsed", time.Since(start).Truncate(time.Second))
+			return outputMergeProfile(ctx, outputFlag, force, resp.Msg.Profile)
+		case querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_FAILURE:
+			return fmt.Errorf("async query failed: %s", resp.Msg.ErrorMessage)
+		default:
+			return fmt.Errorf("unexpected async query status: %v", resp.Msg.Status)
+		}
+	}
 }
 
 func queryProfileTree(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, locations []*typesv1.Location) (*googlev1.Profile, error) {
