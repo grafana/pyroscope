@@ -208,6 +208,7 @@ func TestMetastoreAutoJoin(t *testing.T) {
 func newTestCtx(x interface {
 	PushClient() pushv1connect.PusherServiceClient
 	QueryClient() querierv1connect.QuerierServiceClient
+	AsyncQueryClient() querierv1connect.AsyncQuerierServiceClient
 }) *testCtx {
 	return &testCtx{
 		now: time.Now().Truncate(time.Second),
@@ -222,8 +223,9 @@ func newTestCtx(x interface {
 			},
 			"tenant-not-existing": {},
 		},
-		querier: x.QueryClient(),
-		pusher:  x.PushClient(),
+		querier:      x.QueryClient(),
+		asyncQuerier: x.AsyncQueryClient(),
+		pusher:       x.PushClient(),
 	}
 }
 
@@ -237,6 +239,7 @@ type testCtx struct {
 
 	perTenantData map[string]tenantParams
 	querier       querierv1connect.QuerierServiceClient
+	asyncQuerier  querierv1connect.AsyncQuerierServiceClient
 	pusher        pushv1connect.PusherServiceClient
 }
 
@@ -513,6 +516,60 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 				assert.Equal(t,
 					&profilev1.ValueType{Type: 6, Unit: 5},
 					resp.Msg.PeriodType,
+				)
+			})
+		}
+	})
+
+	t.Run("QuerySelectMergeProfileAsync", func(t *testing.T) {
+		if !isV2 {
+			t.Skip("async queries require query-frontend which is not present in V1 microservices cluster")
+		}
+		for tenantID, params := range tc.perTenantData {
+			t.Run(tenantID, func(t *testing.T) {
+				ctx := tenant.InjectTenantID(ctx, tenantID)
+				req := &querierv1.SelectMergeProfileAsyncRequest{
+					ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+					LabelSelector: "{}",
+					Start:         tc.now.Add(-time.Hour).UnixMilli(),
+					End:           tc.now.Add(time.Hour).UnixMilli(),
+				}
+
+				// Start async query.
+				resp, err := tc.asyncQuerier.SelectMergeProfileAsync(ctx, connect.NewRequest(req))
+				require.NoError(t, err)
+				require.NotEmpty(t, resp.Msg.RequestId)
+				assert.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Status)
+
+				// Poll until done.
+				pollReq := &querierv1.SelectMergeProfileAsyncRequest{RequestId: resp.Msg.RequestId}
+				require.Eventually(t, func() bool {
+					pollResp, err := tc.asyncQuerier.SelectMergeProfileAsync(ctx, connect.NewRequest(pollReq))
+					if err != nil {
+						return false
+					}
+					if pollResp.Msg.Status == querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS {
+						return false
+					}
+					resp = pollResp
+					return true
+				}, 30*time.Second, 500*time.Millisecond)
+
+				// No services means no profile data.
+				if params.serviceCount == 0 {
+					// Could be success with empty profile or failure; just check it completed.
+					assert.NotEqual(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Status)
+					return
+				}
+
+				require.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS, resp.Msg.Status, "error: %s", resp.Msg.ErrorMessage)
+				require.NotNil(t, resp.Msg.Profile)
+
+				assert.Equal(t, req.End*1e6, resp.Msg.Profile.TimeNanos, "TimeNanos")
+				assert.Equal(t,
+					[]*profilev1.ValueType{
+						{Type: 6, Unit: 5},
+					}, resp.Msg.Profile.SampleType, "SampleType",
 				)
 			})
 		}

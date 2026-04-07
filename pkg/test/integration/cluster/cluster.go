@@ -347,6 +347,14 @@ func (c *Cluster) QueryClient() querierv1connect.QuerierServiceClient {
 	)
 }
 
+func (c *Cluster) AsyncQueryClient() querierv1connect.AsyncQuerierServiceClient {
+	return querierv1connect.NewAsyncQuerierServiceClient(
+		c.httpClient,
+		"http://querier",
+		connectapi.DefaultClientOptions()...,
+	)
+}
+
 func (c *Cluster) PushClient() pushv1connect.PusherServiceClient {
 	return pushv1connect.NewPusherServiceClient(
 		c.httpClient,
