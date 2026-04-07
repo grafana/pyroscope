@@ -73,39 +73,36 @@ services:
       - http://rideshare-python-eu-east:5000
 
   grafana:
+    # This service is generated from examples/templates/grafana/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/grafana:latest
     environment:
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-      - GF_AUTH_DISABLE_LOGIN_FORM=true
-      - GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app
-      - GF_FEATURE_TOGGLES_ENABLE=traceToProfiles tracesEmbeddedFlameGraph
+    - GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    - GF_FEATURE_TOGGLES_ENABLE=traceToProfiles tracesEmbeddedFlameGraph
     volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning
+    - ./grafana-provisioning:/etc/grafana/provisioning
     ports:
-      - '3000:3000'
-
+    - 3000:3000
   tempo:
+    # This service is generated from examples/templates/tempo/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/tempo:2.10.5
     command: [ "-config.file=/etc/tempo.yml" ]
     volumes:
       - ./tempo/tempo.yml:/etc/tempo.yml
     ports:
       - "14268:14268"  # jaeger ingest
-      - "3200:3200"   # tempo
-      - "9095:9095" # tempo grpc
-      - "4317:4317"  # otlp grpc
-      - "4318:4318"  # otlp http
-      - "9411:9411"   # zipkin
-
+      - "3200:3200"    # tempo
+      - "9095:9095"    # tempo grpc
+      - "4317:4317"    # otlp grpc
+      - "4318:4318"    # otlp http
+      - "9411:9411"    # zipkin
   pyroscope:
+    # This service is generated from examples/templates/pyroscope/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/pyroscope:latest
-    environment:
-      JAEGER_AGENT_HOST: tempo
-      JAEGER_SAMPLER_TYPE: const
-      JAEGER_SAMPLER_PARAM: 1
-    command: [ "-config.file=/etc/pyroscope.yml" ]
     ports:
-      - '4040:4040'
-    volumes:
-      - ./pyroscope/pyroscope.yml:/etc/pyroscope.yml
+    - 4040:4040

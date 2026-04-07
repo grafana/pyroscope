@@ -1,3 +1,7 @@
+# This file is generated from the template:
+# examples/templates/tempo/tempo/tempo.yml
+# Do not edit directly. To update, edit the template and run:
+#   make examples/sync-templates
 server:
   http_listen_port: 3200
 
@@ -24,13 +28,6 @@ distributor:
         grpc:
           endpoint: 0.0.0.0:4317
     opencensus:
-
-ingester:
-  max_block_duration: 5m               # cut the headblock when this much time passes. this is being set for demo purposes and should probably be left alone normally
-
-compactor:
-  compaction:
-    block_retention: 1h                # overall Tempo trace retention. set for demo purposes
 
 storage:
   trace:

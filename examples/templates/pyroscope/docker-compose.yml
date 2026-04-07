@@ -1,0 +1,7 @@
+services:
+  pyroscope:
+    # This service is generated from examples/templates/pyroscope/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
+    image: grafana/pyroscope:latest
+    ports:
+    - 4040:4040

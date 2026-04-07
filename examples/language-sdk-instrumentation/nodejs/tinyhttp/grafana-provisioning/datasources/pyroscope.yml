@@ -1,14 +1,18 @@
+# This file is generated from the template:
+# examples/templates/grafana/grafana-provisioning/datasources/pyroscope.yml
+# Do not edit directly. To update, edit the template and run:
+#   make examples/sync-templates
 ---
 apiVersion: 1
 datasources:
-  - uid: local-pyroscope
+  - uid: pyroscope
     type: grafana-pyroscope-datasource
     name: Pyroscope
     url: http://pyroscope:4040
     jsonData:
-      keepCookies: [GitSession]
-    # Uncomment these if using with Grafana Cloud
-    # basicAuth: true
-    # basicAuthUser: '123456'
-    # secureJsonData:
-      # basicAuthPassword: PASSWORD
+      keepCookies: [pyroscope_git_session]
+    ## Uncomment these if using with Grafana Cloud
+    #  basicAuth: true
+    #  basicAuthUser: '123456'
+    #  secureJsonData:
+    #    basicAuthPassword: PASSWORD

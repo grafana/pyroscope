@@ -1,16 +1,10 @@
 services:
   pyroscope:
-    image: grafana/pyroscope
-    command: [ "-config.file=/etc/pyroscope.yml" ]
-    environment:
-      JAEGER_SAMPLER_TYPE: const
-      JAEGER_SAMPLER_PARAM: "1"
-      JAEGER_ENDPOINT: http://tempo:14268/api/traces
-    volumes:
-      - ./pyroscope/pyroscope.yml:/etc/pyroscope.yml
+    # This service is generated from examples/templates/pyroscope/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
+    image: grafana/pyroscope:latest
     ports:
-    - "4040:4040"
-
+    - 4040:4040
   us-east:
     ports:
     - "5000"
@@ -52,6 +46,8 @@ services:
       - http://ap-south:5000
 
   grafana:
+    # This service is generated from examples/templates/grafana/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/grafana:latest
     environment:
     - GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app
@@ -62,17 +58,18 @@ services:
     volumes:
     - ./grafana-provisioning:/etc/grafana/provisioning
     ports:
-    - "3000:3000"
-
+    - 3000:3000
   tempo:
+    # This service is generated from examples/templates/tempo/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/tempo:2.10.5
     command: [ "-config.file=/etc/tempo.yml" ]
     volumes:
       - ./tempo/tempo.yml:/etc/tempo.yml
     ports:
       - "14268:14268"  # jaeger ingest
-      - "3200:3200"   # tempo
-      - "9095:9095" # tempo grpc
-      - "4317:4317"  # otlp grpc
-      - "4318:4318"  # otlp http
-      - "9411:9411"   # zipkin
+      - "3200:3200"    # tempo
+      - "9095:9095"    # tempo grpc
+      - "4317:4317"    # otlp grpc
+      - "4318:4318"    # otlp http
+      - "9411:9411"    # zipkin

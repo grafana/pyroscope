@@ -1,31 +1,18 @@
+# This file is generated from the template:
+# examples/templates/grafana/grafana-provisioning/datasources/pyroscope.yml
+# Do not edit directly. To update, edit the template and run:
+#   make examples/sync-templates
 ---
 apiVersion: 1
 datasources:
-  - name: Tempo
-    type: tempo
-    access: proxy
-    orgId: 1
-    url: http://tempo:3200
-    basicAuth: false
-    isDefault: true
-    version: 1
-    editable: false
-    apiVersion: 1
-    uid: tempo
-    jsonData:
-      httpMethod: GET
-      serviceMap:
-        datasourceUid: prometheus
-      tracesToProfiles:
-        customQuery: false
-        datasourceUid: "pyroscope"
-        profileTypeId: "wall:wall:nanoseconds:wall:nanoseconds"
-        tags:
-          - key: "service.name"
-            value: "service_name"
   - uid: pyroscope
     type: grafana-pyroscope-datasource
     name: Pyroscope
     url: http://pyroscope:4040
     jsonData:
       keepCookies: [pyroscope_git_session]
+    ## Uncomment these if using with Grafana Cloud
+    #  basicAuth: true
+    #  basicAuthUser: '123456'
+    #  secureJsonData:
+    #    basicAuthPassword: PASSWORD
