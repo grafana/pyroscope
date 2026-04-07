@@ -24,7 +24,7 @@ func NewHandler(coordinator *Coordinator, upstream querierv1connect.QuerierServi
 	}
 }
 
-func (h *Handler) SelectMergeProfileAsync(
+func (h *Handler) SelectMergeProfile(
 	ctx context.Context,
 	req *connect.Request[querierv1.SelectMergeProfileAsyncRequest],
 ) (*connect.Response[querierv1.SelectMergeProfileAsyncResponse], error) {

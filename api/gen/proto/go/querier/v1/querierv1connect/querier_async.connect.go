@@ -33,17 +33,17 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AsyncQuerierServiceSelectMergeProfileAsyncProcedure is the fully-qualified name of the
-	// AsyncQuerierService's SelectMergeProfileAsync RPC.
-	AsyncQuerierServiceSelectMergeProfileAsyncProcedure = "/querier.v1.AsyncQuerierService/SelectMergeProfileAsync"
+	// AsyncQuerierServiceSelectMergeProfileProcedure is the fully-qualified name of the
+	// AsyncQuerierService's SelectMergeProfile RPC.
+	AsyncQuerierServiceSelectMergeProfileProcedure = "/querier.v1.AsyncQuerierService/SelectMergeProfile"
 )
 
 // AsyncQuerierServiceClient is a client for the querier.v1.AsyncQuerierService service.
 type AsyncQuerierServiceClient interface {
-	// SelectMergeProfileAsync starts an async query or polls for results.
+	// SelectMergeProfile starts an async query or polls for results.
 	// If request_id is empty, starts a new async query and returns the request_id.
 	// If request_id is populated, polls for the result of the async query.
-	SelectMergeProfileAsync(context.Context, *connect.Request[v1.SelectMergeProfileAsyncRequest]) (*connect.Response[v1.SelectMergeProfileAsyncResponse], error)
+	SelectMergeProfile(context.Context, *connect.Request[v1.SelectMergeProfileAsyncRequest]) (*connect.Response[v1.SelectMergeProfileAsyncResponse], error)
 }
 
 // NewAsyncQuerierServiceClient constructs a client for the querier.v1.AsyncQuerierService service.
@@ -57,10 +57,10 @@ func NewAsyncQuerierServiceClient(httpClient connect.HTTPClient, baseURL string,
 	baseURL = strings.TrimRight(baseURL, "/")
 	asyncQuerierServiceMethods := v1.File_querier_v1_querier_async_proto.Services().ByName("AsyncQuerierService").Methods()
 	return &asyncQuerierServiceClient{
-		selectMergeProfileAsync: connect.NewClient[v1.SelectMergeProfileAsyncRequest, v1.SelectMergeProfileAsyncResponse](
+		selectMergeProfile: connect.NewClient[v1.SelectMergeProfileAsyncRequest, v1.SelectMergeProfileAsyncResponse](
 			httpClient,
-			baseURL+AsyncQuerierServiceSelectMergeProfileAsyncProcedure,
-			connect.WithSchema(asyncQuerierServiceMethods.ByName("SelectMergeProfileAsync")),
+			baseURL+AsyncQuerierServiceSelectMergeProfileProcedure,
+			connect.WithSchema(asyncQuerierServiceMethods.ByName("SelectMergeProfile")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -68,20 +68,20 @@ func NewAsyncQuerierServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // asyncQuerierServiceClient implements AsyncQuerierServiceClient.
 type asyncQuerierServiceClient struct {
-	selectMergeProfileAsync *connect.Client[v1.SelectMergeProfileAsyncRequest, v1.SelectMergeProfileAsyncResponse]
+	selectMergeProfile *connect.Client[v1.SelectMergeProfileAsyncRequest, v1.SelectMergeProfileAsyncResponse]
 }
 
-// SelectMergeProfileAsync calls querier.v1.AsyncQuerierService.SelectMergeProfileAsync.
-func (c *asyncQuerierServiceClient) SelectMergeProfileAsync(ctx context.Context, req *connect.Request[v1.SelectMergeProfileAsyncRequest]) (*connect.Response[v1.SelectMergeProfileAsyncResponse], error) {
-	return c.selectMergeProfileAsync.CallUnary(ctx, req)
+// SelectMergeProfile calls querier.v1.AsyncQuerierService.SelectMergeProfile.
+func (c *asyncQuerierServiceClient) SelectMergeProfile(ctx context.Context, req *connect.Request[v1.SelectMergeProfileAsyncRequest]) (*connect.Response[v1.SelectMergeProfileAsyncResponse], error) {
+	return c.selectMergeProfile.CallUnary(ctx, req)
 }
 
 // AsyncQuerierServiceHandler is an implementation of the querier.v1.AsyncQuerierService service.
 type AsyncQuerierServiceHandler interface {
-	// SelectMergeProfileAsync starts an async query or polls for results.
+	// SelectMergeProfile starts an async query or polls for results.
 	// If request_id is empty, starts a new async query and returns the request_id.
 	// If request_id is populated, polls for the result of the async query.
-	SelectMergeProfileAsync(context.Context, *connect.Request[v1.SelectMergeProfileAsyncRequest]) (*connect.Response[v1.SelectMergeProfileAsyncResponse], error)
+	SelectMergeProfile(context.Context, *connect.Request[v1.SelectMergeProfileAsyncRequest]) (*connect.Response[v1.SelectMergeProfileAsyncResponse], error)
 }
 
 // NewAsyncQuerierServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -91,16 +91,16 @@ type AsyncQuerierServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewAsyncQuerierServiceHandler(svc AsyncQuerierServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	asyncQuerierServiceMethods := v1.File_querier_v1_querier_async_proto.Services().ByName("AsyncQuerierService").Methods()
-	asyncQuerierServiceSelectMergeProfileAsyncHandler := connect.NewUnaryHandler(
-		AsyncQuerierServiceSelectMergeProfileAsyncProcedure,
-		svc.SelectMergeProfileAsync,
-		connect.WithSchema(asyncQuerierServiceMethods.ByName("SelectMergeProfileAsync")),
+	asyncQuerierServiceSelectMergeProfileHandler := connect.NewUnaryHandler(
+		AsyncQuerierServiceSelectMergeProfileProcedure,
+		svc.SelectMergeProfile,
+		connect.WithSchema(asyncQuerierServiceMethods.ByName("SelectMergeProfile")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/querier.v1.AsyncQuerierService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case AsyncQuerierServiceSelectMergeProfileAsyncProcedure:
-			asyncQuerierServiceSelectMergeProfileAsyncHandler.ServeHTTP(w, r)
+		case AsyncQuerierServiceSelectMergeProfileProcedure:
+			asyncQuerierServiceSelectMergeProfileHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -110,6 +110,6 @@ func NewAsyncQuerierServiceHandler(svc AsyncQuerierServiceHandler, opts ...conne
 // UnimplementedAsyncQuerierServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAsyncQuerierServiceHandler struct{}
 
-func (UnimplementedAsyncQuerierServiceHandler) SelectMergeProfileAsync(context.Context, *connect.Request[v1.SelectMergeProfileAsyncRequest]) (*connect.Response[v1.SelectMergeProfileAsyncResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.AsyncQuerierService.SelectMergeProfileAsync is not implemented"))
+func (UnimplementedAsyncQuerierServiceHandler) SelectMergeProfile(context.Context, *connect.Request[v1.SelectMergeProfileAsyncRequest]) (*connect.Response[v1.SelectMergeProfileAsyncResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.AsyncQuerierService.SelectMergeProfile is not implemented"))
 }

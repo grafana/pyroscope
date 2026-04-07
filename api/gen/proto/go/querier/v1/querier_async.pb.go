@@ -215,9 +215,9 @@ const file_querier_v1_querier_async_proto_rawDesc = "" +
 	"\x1eASYNC_QUERY_STATUS_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eASYNC_QUERY_STATUS_IN_PROGRESS\x10\x01\x12\x1e\n" +
 	"\x1aASYNC_QUERY_STATUS_SUCCESS\x10\x02\x12\x1e\n" +
-	"\x1aASYNC_QUERY_STATUS_FAILURE\x10\x032\x8b\x01\n" +
-	"\x13AsyncQuerierService\x12t\n" +
-	"\x17SelectMergeProfileAsync\x12*.querier.v1.SelectMergeProfileAsyncRequest\x1a+.querier.v1.SelectMergeProfileAsyncResponse\"\x00B\xb0\x01\n" +
+	"\x1aASYNC_QUERY_STATUS_FAILURE\x10\x032\x86\x01\n" +
+	"\x13AsyncQuerierService\x12o\n" +
+	"\x12SelectMergeProfile\x12*.querier.v1.SelectMergeProfileAsyncRequest\x1a+.querier.v1.SelectMergeProfileAsyncResponse\"\x00B\xb0\x01\n" +
 	"\x0ecom.querier.v1B\x11QuerierAsyncProtoP\x01ZBgithub.com/grafana/pyroscope/api/gen/proto/go/querier/v1;querierv1\xa2\x02\x03QXX\xaa\x02\n" +
 	"Querier.V1\xca\x02\n" +
 	"Querier\\V1\xe2\x02\x16Querier\\V1\\GPBMetadata\xea\x02\vQuerier::V1b\x06proto3"
@@ -247,8 +247,8 @@ var file_querier_v1_querier_async_proto_depIdxs = []int32{
 	3, // 0: querier.v1.SelectMergeProfileAsyncRequest.request:type_name -> querier.v1.SelectMergeProfileRequest
 	0, // 1: querier.v1.SelectMergeProfileAsyncResponse.status:type_name -> querier.v1.AsyncQueryStatus
 	4, // 2: querier.v1.SelectMergeProfileAsyncResponse.profile:type_name -> google.v1.Profile
-	1, // 3: querier.v1.AsyncQuerierService.SelectMergeProfileAsync:input_type -> querier.v1.SelectMergeProfileAsyncRequest
-	2, // 4: querier.v1.AsyncQuerierService.SelectMergeProfileAsync:output_type -> querier.v1.SelectMergeProfileAsyncResponse
+	1, // 3: querier.v1.AsyncQuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileAsyncRequest
+	2, // 4: querier.v1.AsyncQuerierService.SelectMergeProfile:output_type -> querier.v1.SelectMergeProfileAsyncResponse
 	4, // [4:5] is the sub-list for method output_type
 	3, // [3:4] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name

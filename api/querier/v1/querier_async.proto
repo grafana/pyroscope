@@ -6,10 +6,10 @@ import "google/v1/profile.proto";
 import "querier/v1/querier.proto";
 
 service AsyncQuerierService {
-  // SelectMergeProfileAsync starts an async query or polls for results.
+  // SelectMergeProfile starts an async query or polls for results.
   // If request_id is empty, starts a new async query and returns the request_id.
   // If request_id is populated, polls for the result of the async query.
-  rpc SelectMergeProfileAsync(SelectMergeProfileAsyncRequest) returns (SelectMergeProfileAsyncResponse) {}
+  rpc SelectMergeProfile(SelectMergeProfileAsyncRequest) returns (SelectMergeProfileAsyncResponse) {}
 }
 
 message SelectMergeProfileAsyncRequest {

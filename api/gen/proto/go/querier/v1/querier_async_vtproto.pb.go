@@ -132,10 +132,10 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AsyncQuerierServiceClient interface {
-	// SelectMergeProfileAsync starts an async query or polls for results.
+	// SelectMergeProfile starts an async query or polls for results.
 	// If request_id is empty, starts a new async query and returns the request_id.
 	// If request_id is populated, polls for the result of the async query.
-	SelectMergeProfileAsync(ctx context.Context, in *SelectMergeProfileAsyncRequest, opts ...grpc.CallOption) (*SelectMergeProfileAsyncResponse, error)
+	SelectMergeProfile(ctx context.Context, in *SelectMergeProfileAsyncRequest, opts ...grpc.CallOption) (*SelectMergeProfileAsyncResponse, error)
 }
 
 type asyncQuerierServiceClient struct {
@@ -146,9 +146,9 @@ func NewAsyncQuerierServiceClient(cc grpc.ClientConnInterface) AsyncQuerierServi
 	return &asyncQuerierServiceClient{cc}
 }
 
-func (c *asyncQuerierServiceClient) SelectMergeProfileAsync(ctx context.Context, in *SelectMergeProfileAsyncRequest, opts ...grpc.CallOption) (*SelectMergeProfileAsyncResponse, error) {
+func (c *asyncQuerierServiceClient) SelectMergeProfile(ctx context.Context, in *SelectMergeProfileAsyncRequest, opts ...grpc.CallOption) (*SelectMergeProfileAsyncResponse, error) {
 	out := new(SelectMergeProfileAsyncResponse)
-	err := c.cc.Invoke(ctx, "/querier.v1.AsyncQuerierService/SelectMergeProfileAsync", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/querier.v1.AsyncQuerierService/SelectMergeProfile", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -159,10 +159,10 @@ func (c *asyncQuerierServiceClient) SelectMergeProfileAsync(ctx context.Context,
 // All implementations must embed UnimplementedAsyncQuerierServiceServer
 // for forward compatibility
 type AsyncQuerierServiceServer interface {
-	// SelectMergeProfileAsync starts an async query or polls for results.
+	// SelectMergeProfile starts an async query or polls for results.
 	// If request_id is empty, starts a new async query and returns the request_id.
 	// If request_id is populated, polls for the result of the async query.
-	SelectMergeProfileAsync(context.Context, *SelectMergeProfileAsyncRequest) (*SelectMergeProfileAsyncResponse, error)
+	SelectMergeProfile(context.Context, *SelectMergeProfileAsyncRequest) (*SelectMergeProfileAsyncResponse, error)
 	mustEmbedUnimplementedAsyncQuerierServiceServer()
 }
 
@@ -170,8 +170,8 @@ type AsyncQuerierServiceServer interface {
 type UnimplementedAsyncQuerierServiceServer struct {
 }
 
-func (UnimplementedAsyncQuerierServiceServer) SelectMergeProfileAsync(context.Context, *SelectMergeProfileAsyncRequest) (*SelectMergeProfileAsyncResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SelectMergeProfileAsync not implemented")
+func (UnimplementedAsyncQuerierServiceServer) SelectMergeProfile(context.Context, *SelectMergeProfileAsyncRequest) (*SelectMergeProfileAsyncResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SelectMergeProfile not implemented")
 }
 func (UnimplementedAsyncQuerierServiceServer) mustEmbedUnimplementedAsyncQuerierServiceServer() {}
 
@@ -186,20 +186,20 @@ func RegisterAsyncQuerierServiceServer(s grpc.ServiceRegistrar, srv AsyncQuerier
 	s.RegisterService(&AsyncQuerierService_ServiceDesc, srv)
 }
 
-func _AsyncQuerierService_SelectMergeProfileAsync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _AsyncQuerierService_SelectMergeProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SelectMergeProfileAsyncRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AsyncQuerierServiceServer).SelectMergeProfileAsync(ctx, in)
+		return srv.(AsyncQuerierServiceServer).SelectMergeProfile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/querier.v1.AsyncQuerierService/SelectMergeProfileAsync",
+		FullMethod: "/querier.v1.AsyncQuerierService/SelectMergeProfile",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AsyncQuerierServiceServer).SelectMergeProfileAsync(ctx, req.(*SelectMergeProfileAsyncRequest))
+		return srv.(AsyncQuerierServiceServer).SelectMergeProfile(ctx, req.(*SelectMergeProfileAsyncRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -212,8 +212,8 @@ var AsyncQuerierService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*AsyncQuerierServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SelectMergeProfileAsync",
-			Handler:    _AsyncQuerierService_SelectMergeProfileAsync_Handler,
+			MethodName: "SelectMergeProfile",
+			Handler:    _AsyncQuerierService_SelectMergeProfile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -293,11 +293,11 @@ func queryProfileAsync(ctx context.Context, params *queryProfileParams, from tim
 	ac := params.phlareClient.asyncQueryClient()
 
 	// Start the async query.
-	resp, err := ac.SelectMergeProfileAsync(ctx, connect.NewRequest(req))
+	resp, err := ac.SelectMergeProfile(ctx, connect.NewRequest(req))
 	if err != nil {
 		if connectErr := new(connect.Error); errors.As(err, &connectErr) {
 			if connectErr.Code() == connect.CodeUnimplemented || connectErr.Code() == connect.CodeNotFound {
-				return fmt.Errorf("the server does not support async queries (SelectMergeProfileAsync); try without --async")
+				return fmt.Errorf("the server does not support async queries (SelectMergeProfile); try without --async")
 			}
 		}
 		return errors.Wrap(err, "failed to start async query")
@@ -319,7 +319,7 @@ func queryProfileAsync(ctx context.Context, params *queryProfileParams, from tim
 		case <-ticker.C:
 		}
 
-		resp, err = ac.SelectMergeProfileAsync(ctx, connect.NewRequest(pollReq))
+		resp, err = ac.SelectMergeProfile(ctx, connect.NewRequest(pollReq))
 		if err != nil {
 			return errors.Wrap(err, "failed to poll async query")
 		}

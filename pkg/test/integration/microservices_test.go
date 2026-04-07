@@ -538,7 +538,7 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 				}
 
 				// Start async query.
-				resp, err := tc.asyncQuerier.SelectMergeProfileAsync(ctx, connect.NewRequest(req))
+				resp, err := tc.asyncQuerier.SelectMergeProfile(ctx, connect.NewRequest(req))
 				require.NoError(t, err)
 				require.NotEmpty(t, resp.Msg.RequestId)
 				assert.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Status)
@@ -546,7 +546,7 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 				// Poll until done.
 				pollReq := &querierv1.SelectMergeProfileAsyncRequest{RequestId: resp.Msg.RequestId}
 				require.Eventually(t, func() bool {
-					pollResp, err := tc.asyncQuerier.SelectMergeProfileAsync(ctx, connect.NewRequest(pollReq))
+					pollResp, err := tc.asyncQuerier.SelectMergeProfile(ctx, connect.NewRequest(pollReq))
 					if err != nil {
 						return false
 					}

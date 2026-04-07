@@ -9,16 +9,16 @@ tags:
     description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
   - name: querier.v1.AsyncQuerierService
 paths:
-  /querier.v1.AsyncQuerierService/SelectMergeProfileAsync:
+  /querier.v1.AsyncQuerierService/SelectMergeProfile:
     post:
       tags:
         - querier.v1.AsyncQuerierService
-      summary: SelectMergeProfileAsync starts an async query or polls for results.  If request_id is empty, starts a new async query and returns the request_id.  If request_id is populated, polls for the result of the async query.
+      summary: SelectMergeProfile starts an async query or polls for results.  If request_id is empty, starts a new async query and returns the request_id.  If request_id is populated, polls for the result of the async query.
       description: |-
-        SelectMergeProfileAsync starts an async query or polls for results.
+        SelectMergeProfile starts an async query or polls for results.
          If request_id is empty, starts a new async query and returns the request_id.
          If request_id is populated, polls for the result of the async query.
-      operationId: querier.v1.AsyncQuerierService.SelectMergeProfileAsync
+      operationId: querier.v1.AsyncQuerierService.SelectMergeProfile
       parameters:
         - name: Connect-Protocol-Version
           in: header

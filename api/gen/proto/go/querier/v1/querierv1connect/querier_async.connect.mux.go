@@ -19,9 +19,9 @@ const _ = connect.IsAtLeastVersion0_1_0
 // RegisterAsyncQuerierServiceHandler register an HTTP handler to a mux.Router from the service
 // implementation.
 func RegisterAsyncQuerierServiceHandler(mux *mux.Router, svc AsyncQuerierServiceHandler, opts ...connect.HandlerOption) {
-	mux.Handle("/querier.v1.AsyncQuerierService/SelectMergeProfileAsync", connect.NewUnaryHandler(
-		"/querier.v1.AsyncQuerierService/SelectMergeProfileAsync",
-		svc.SelectMergeProfileAsync,
+	mux.Handle("/querier.v1.AsyncQuerierService/SelectMergeProfile", connect.NewUnaryHandler(
+		"/querier.v1.AsyncQuerierService/SelectMergeProfile",
+		svc.SelectMergeProfile,
 		opts...,
 	))
 }
