@@ -21,6 +21,52 @@ func (_m *MockLimits) EXPECT() *MockLimits_Expecter {
 	return &MockLimits_Expecter{mock: &_m.Mock}
 }
 
+// MaxAsyncQueryConcurrency provides a mock function with given fields: _a0
+func (_m *MockLimits) MaxAsyncQueryConcurrency(_a0 string) int {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MaxAsyncQueryConcurrency")
+	}
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func(string) int); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	return r0
+}
+
+// MockLimits_MaxAsyncQueryConcurrency_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MaxAsyncQueryConcurrency'
+type MockLimits_MaxAsyncQueryConcurrency_Call struct {
+	*mock.Call
+}
+
+// MaxAsyncQueryConcurrency is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockLimits_Expecter) MaxAsyncQueryConcurrency(_a0 interface{}) *MockLimits_MaxAsyncQueryConcurrency_Call {
+	return &MockLimits_MaxAsyncQueryConcurrency_Call{Call: _e.mock.On("MaxAsyncQueryConcurrency", _a0)}
+}
+
+func (_c *MockLimits_MaxAsyncQueryConcurrency_Call) Run(run func(_a0 string)) *MockLimits_MaxAsyncQueryConcurrency_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockLimits_MaxAsyncQueryConcurrency_Call) Return(_a0 int) *MockLimits_MaxAsyncQueryConcurrency_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockLimits_MaxAsyncQueryConcurrency_Call) RunAndReturn(run func(string) int) *MockLimits_MaxAsyncQueryConcurrency_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MaxFlameGraphNodesDefault provides a mock function with given fields: _a0
 func (_m *MockLimits) MaxFlameGraphNodesDefault(_a0 string) int {
 	ret := _m.Called(_a0)

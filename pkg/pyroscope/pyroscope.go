@@ -48,6 +48,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/distributor/writepath"
 	"github.com/grafana/pyroscope/v2/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	asyncquery "github.com/grafana/pyroscope/v2/pkg/frontend/async"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/ingester"
@@ -411,6 +412,7 @@ type Pyroscope struct {
 	symbolizer            *symbolizer.Symbolizer
 	queryDiagnosticsStore *diagnostics.Store
 	queryDiagnosticsAdmin *querydiagnostics.Admin
+	asyncQueryStore       *asyncquery.Store
 
 	// legacy modules.
 	ingester *ingester.Ingester
@@ -496,6 +498,7 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(RecordingRulesClient, f.initRecordingRulesClient, modules.UserInvisibleModule)
 	mm.RegisterModule(QueryDiagnosticsStore, f.initQueryDiagnosticsStore, modules.UserInvisibleModule)
 	mm.RegisterModule(QueryDiagnosticsAdmin, f.initQueryDiagnosticsAdmin, modules.UserInvisibleModule)
+	mm.RegisterModule(AsyncQueryStore, f.initAsyncQueryStore, modules.UserInvisibleModule)
 
 	// Add dependencies
 	deps := map[string][]string{
@@ -522,7 +525,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		SegmentWriterRing:     {Overrides, API, MemberlistKV},
 		SegmentWriterClient:   {Overrides, API, SegmentWriterRing, PlacementAgent},
 		CompactionWorker:      {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
-		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore},
+		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore, AsyncQueryStore},
 		QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
 		QueryDiagnosticsStore: {Storage},
 		QueryDiagnosticsAdmin: {QueryDiagnosticsStore, API, MetastoreClient},
@@ -539,6 +542,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		AdHocProfiles:         {API, Overrides, Storage},
 		EmbeddedGrafana:       {API},
 		FeatureFlags:          {API},
+		AsyncQueryStore:       {Storage},
 	}
 
 	if f.Cfg.ArchitectureStorage == V1V2Dual || f.Cfg.ArchitectureStorage == V1 {

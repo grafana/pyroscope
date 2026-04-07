@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package querier.v1;
+
+import "google/v1/profile.proto";
+import "types/v1/types.proto";
+
+service AsyncQuerierService {
+  // SelectMergeProfileAsync starts an async query or polls for results.
+  // If request_id is empty, starts a new async query and returns the request_id.
+  // If request_id is populated, polls for the result of the async query.
+  rpc SelectMergeProfileAsync(SelectMergeProfileAsyncRequest) returns (SelectMergeProfileAsyncResponse) {}
+}
+
+message SelectMergeProfileAsyncRequest {
+  // Same fields as SelectMergeProfileRequest.
+  string profile_typeID = 1;
+  string label_selector = 2;
+  int64 start = 3;
+  int64 end = 4;
+  optional int64 max_nodes = 5;
+  optional types.v1.StackTraceSelector stack_trace_selector = 6;
+  repeated string profile_id_selector = 7;
+  // If populated, the query fields above are ignored and this becomes a poll request.
+  string request_id = 8;
+}
+
+enum AsyncQueryStatus {
+  ASYNC_QUERY_STATUS_UNSPECIFIED = 0;
+  ASYNC_QUERY_STATUS_IN_PROGRESS = 1;
+  ASYNC_QUERY_STATUS_SUCCESS = 2;
+  ASYNC_QUERY_STATUS_FAILURE = 3;
+}
+
+message SelectMergeProfileAsyncResponse {
+  string request_id = 1;
+  AsyncQueryStatus status = 2;
+  string error_message = 3;
+  google.v1.Profile profile = 4;
+}

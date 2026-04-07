@@ -17,8 +17,10 @@ import (
 	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
 
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	"github.com/grafana/pyroscope/v2/pkg/compactionworker"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	asyncquery "github.com/grafana/pyroscope/v2/pkg/frontend/async"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
@@ -71,10 +73,12 @@ func (f *Pyroscope) initQueryFrontendV1() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
+	handler := spanlogger.NewLogSpanParametersWrapper(f.frontend, queryFrontendLogger)
 	f.API.RegisterFrontendForQuerierHandler(f.frontend)
-	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(f.frontend, queryFrontendLogger))
-	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(f.frontend, queryFrontendLogger))
+	f.API.RegisterQuerierServiceHandler(handler)
+	f.API.RegisterPyroscopeHandlers(handler)
 	f.API.RegisterVCSServiceHandler(f.frontend)
+	f.registerAsyncQueryHandler(handler)
 	return f.frontend, nil
 }
 
@@ -106,6 +110,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	f.API.RegisterQuerierServiceHandler(handler)
 	f.API.RegisterPyroscopeHandlers(handler)
 	f.API.RegisterVCSServiceHandler(vcsService)
+	f.registerAsyncQueryHandler(handler)
 
 	// New query frontend does not have any state.
 	// For simplicity, we return a no-op service.
@@ -145,15 +150,18 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 		f.queryFrontend,
 	)
 
+	wrappedHandler := spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger)
+
 	vcsService := vcs.New(
 		log.With(f.logger, "component", "vcs-service"),
 		f.reg,
 	)
 
 	f.API.RegisterFrontendForQuerierHandler(f.frontend)
-	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger))
-	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger))
+	f.API.RegisterQuerierServiceHandler(wrappedHandler)
+	f.API.RegisterPyroscopeHandlers(wrappedHandler)
 	f.API.RegisterVCSServiceHandler(vcsService)
+	f.registerAsyncQueryHandler(wrappedHandler)
 
 	return f.frontend, nil
 }
@@ -167,6 +175,31 @@ func (f *Pyroscope) getFrontendAddress() (addr string, err error) {
 		return addr, nil
 	}
 	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
+}
+
+func (f *Pyroscope) registerAsyncQueryHandler(upstream querierv1connect.QuerierServiceHandler) {
+	if f.asyncQueryStore == nil {
+		return
+	}
+	coordinator := asyncquery.NewCoordinator(
+		log.With(f.logger, "component", "async-query-coordinator"),
+		f.asyncQueryStore,
+		f.Overrides,
+		f.reg,
+	)
+	handler := asyncquery.NewHandler(coordinator, upstream)
+	f.API.RegisterAsyncQuerierServiceHandler(handler)
+}
+
+func (f *Pyroscope) initAsyncQueryStore() (services.Service, error) {
+	if f.storageBucket == nil {
+		return nil, nil
+	}
+	f.asyncQueryStore = asyncquery.NewStore(
+		log.With(f.logger, "component", "async-query-store"),
+		f.storageBucket,
+	)
+	return f.asyncQueryStore, nil
 }
 
 func (f *Pyroscope) initSegmentWriterRing() (_ services.Service, err error) {

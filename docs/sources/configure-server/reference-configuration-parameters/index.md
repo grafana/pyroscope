@@ -2402,6 +2402,11 @@ distributor_usage_groups:
 # CLI flag: -querier.sanitize-on-merge
 [query_sanitize_on_merge: <boolean> | default = true]
 
+# Maximum number of concurrent async queries per tenant. 0 to disable async
+# queries.
+# CLI flag: -querier.max-async-query-concurrency
+[max_async_query_concurrency: <int> | default = 5]
+
 # Delete blocks containing samples older than the specified retention period. 0
 # to disable.
 # CLI flag: -compactor.blocks-retention-period

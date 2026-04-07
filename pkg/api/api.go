@@ -239,6 +239,10 @@ func (a *API) RegisterQuerierServiceHandler(svc querierv1connect.QuerierServiceH
 	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogDiagnosticsRecovery()...)
 }
 
+func (a *API) RegisterAsyncQuerierServiceHandler(svc querierv1connect.AsyncQuerierServiceHandler) {
+	querierv1connect.RegisterAsyncQuerierServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
+}
+
 func (a *API) RegisterVCSServiceHandler(svc vcsv1connect.VCSServiceHandler) {
 	vcsv1connect.RegisterVCSServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
 }

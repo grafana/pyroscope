@@ -36,6 +36,9 @@
       "name": "QuerierService"
     },
     {
+      "name": "AsyncQuerierService"
+    },
+    {
       "name": "QueryFrontendService"
     },
     {
