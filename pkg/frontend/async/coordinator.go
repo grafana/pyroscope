@@ -12,14 +12,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
+
+type Limits interface {
+	MaxAsyncQueryConcurrency(tenantID string) int
+}
 
 type Coordinator struct {
 	logger log.Logger
 	store  *Store
-	limits frontend.Limits
+	limits Limits
 
 	mu       sync.Mutex
 	inFlight map[string]int // tenantID -> count
@@ -28,7 +31,7 @@ type Coordinator struct {
 	asyncQueriesMax     *prometheus.GaugeVec
 }
 
-func NewCoordinator(logger log.Logger, store *Store, limits frontend.Limits, reg prometheus.Registerer) *Coordinator {
+func NewCoordinator(logger log.Logger, store *Store, limits Limits, reg prometheus.Registerer) *Coordinator {
 	c := &Coordinator{
 		logger:   logger,
 		store:    store,
@@ -48,25 +51,31 @@ func NewCoordinator(logger log.Logger, store *Store, limits frontend.Limits, reg
 
 type QueryFunc func(context.Context) (*profilev1.Profile, error)
 
-// StartQuery starts a new async query if the tenant has capacity.
-// It returns the request ID for polling.
-func (c *Coordinator) StartQuery(ctx context.Context, tenantID string, queryFn QueryFunc) (string, error) {
+func (c *Coordinator) tryAcquire(tenantID string) error {
 	maxConcurrent := c.limits.MaxAsyncQueryConcurrency(tenantID)
 	c.asyncQueriesMax.WithLabelValues(tenantID).Set(float64(maxConcurrent))
 
 	if maxConcurrent <= 0 {
-		return "", fmt.Errorf("async queries are disabled for tenant %s", tenantID)
+		return fmt.Errorf("async queries are disabled for tenant %s", tenantID)
 	}
 
 	c.mu.Lock()
-	current := c.inFlight[tenantID]
-	if current >= maxConcurrent {
-		c.mu.Unlock()
-		return "", fmt.Errorf("tenant %s has reached the maximum number of concurrent async queries (%d)", tenantID, maxConcurrent)
+	defer c.mu.Unlock()
+
+	if c.inFlight[tenantID] >= maxConcurrent {
+		return fmt.Errorf("tenant %s has reached the maximum number of concurrent async queries (%d)", tenantID, maxConcurrent)
 	}
 	c.inFlight[tenantID]++
 	c.asyncQueriesCurrent.WithLabelValues(tenantID).Set(float64(c.inFlight[tenantID]))
-	c.mu.Unlock()
+	return nil
+}
+
+// StartQuery starts a new async query if the tenant has capacity.
+// It returns the request ID for polling.
+func (c *Coordinator) StartQuery(ctx context.Context, tenantID string, queryFn QueryFunc) (string, error) {
+	if err := c.tryAcquire(tenantID); err != nil {
+		return "", err
+	}
 
 	requestID := uuid.New().String()
 
