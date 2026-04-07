@@ -133,6 +133,8 @@ Usage of ./pyroscope:
     	Maximum time to wait for ring stability at startup. If the compactor ring keeps changing after this period of time, the compactor will start anyway. (default 5m0s)
   -compactor.ring.wait-stability-min-duration duration
     	Minimum time to wait for ring stability at startup. 0 to disable.
+  -compactor.shutdown-timeout duration
+    	Maximum time to wait for in-flight cleanup and ring operations to finish during shutdown. If the timeout is reached, the compactor will forcefully stop. 0 = no timeout (wait indefinitely).
   -compactor.split-and-merge-shards int
     	The number of shards to use when splitting blocks. 0 to disable splitting.
   -compactor.split-and-merge-stage-size int
