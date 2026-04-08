@@ -83,6 +83,8 @@ When a patch release is needed, make PRs containing the necessary changes agains
 Changes done in patch releases should be documented in the existing website release notes for that version under a new heading with
 the version number. These documentation changes should be done with a PR against the appropriate release branch and then [backported](#backport) to the main branch.
 
+Before tagging, check for open security PRs from Dependabot or Renovate. Review, merge, and backport any applicable security fixes to the `release/vX.Y` branch.
+
 Once the release notes are merged, a `vX.Y.Z` patch release tag must be created and pushed to remote to create a new release.
 
 > [!WARNING]
