@@ -11,9 +11,10 @@
    > ✅ Correct: `release/v1.3`
    >
    > ⚠️  Incorrect: `release/v1.3.0`  
-2. Create the tag for the release (e.g., `vX.Y.Z`)
-3. Push the release branch and tag to the remote. Note that the tag will kick off a release workflow via [goreleaser](https://github.com/grafana/pyroscope/actions/workflows/release.yml).
-4. Create a GitHub label for backports:
+2. Before tagging, check for open security PRs from Dependabot or Renovate targeting the release branch. Review and merge any applicable security fixes to avoid shipping known vulnerabilities.
+3. Create the tag for the release (e.g., `vX.Y.Z`)
+4. Push the release branch and tag to the remote. Note that the tag will kick off a release workflow via [goreleaser](https://github.com/grafana/pyroscope/actions/workflows/release.yml).
+5. Create a GitHub label for backports:
 
    ```gh label create "backport release/vX.Y" -d "This label will backport a merged PR to the release/vX.Y branch" -c "#0052cc"```
 
@@ -77,10 +78,7 @@ A PR to be backported must have the appropriate `backport release/vX.Y` label(s)
 
 ## Patch Releases
 
-When a patch release is needed:
-
-1. Check for open security patches from Dependabot or Renovate PRs targeting the `release/vX.Y` branch. Review and merge any applicable security fixes before cutting the release to avoid shipping known vulnerabilities.
-2. Make PRs containing the necessary changes against the appropriate `release/vX.Y` branch.
+When a patch release is needed, make PRs containing the necessary changes against the appropriate `release/vX.Y` branch.
 
 Changes done in patch releases should be documented in the existing website release notes for that version under a new heading with
 the version number. These documentation changes should be done with a PR against the appropriate release branch and then [backported](#backport) to the main branch.
