@@ -111,7 +111,7 @@ func TestHTTPLog(t *testing.T) {
 				LogRequestHeaders: false,
 			},
 			setHeaderList: []string{"good-header", "authorization"},
-			message:       `level=debug method=GET uri=http://example.com/foo status=200 duration= msg="http request processed"`,
+			message:       `level=debug method=GET uri=http://example.com/foo status=200 duration= proto=HTTP/1.1 msg="http request processed"`,
 		},
 		{
 			name: "Header logging enable",
@@ -119,7 +119,7 @@ func TestHTTPLog(t *testing.T) {
 				LogRequestHeaders: true,
 			},
 			setHeaderList: []string{"good-header", "authorization"},
-			message:       `level=debug method=GET uri=http://example.com/foo status=200 duration= request_header_Good-Header=good-headerValue msg="http request processed"`,
+			message:       `level=debug method=GET uri=http://example.com/foo status=200 duration= proto=HTTP/1.1 request_header_Good-Header=good-headerValue msg="http request processed"`,
 		},
 		{
 			name: "Extra Header excluded",
@@ -128,7 +128,7 @@ func TestHTTPLog(t *testing.T) {
 				LogRequestExcludeHeaders: []string{"bad-header"},
 			},
 			setHeaderList: []string{"good-header", "bad-header", "authorization"},
-			message:       `level=debug method=GET uri=http://example.com/foo status=200 duration= request_header_Good-Header=good-headerValue msg="http request processed"`,
+			message:       `level=debug method=GET uri=http://example.com/foo status=200 duration= proto=HTTP/1.1 request_header_Good-Header=good-headerValue msg="http request processed"`,
 		},
 		{
 			name: "Extra Header with different casing",
@@ -137,7 +137,7 @@ func TestHTTPLog(t *testing.T) {
 				LogRequestExcludeHeaders: []string{"Bad-Header"},
 			},
 			setHeaderList: []string{"good-header", "bad-header", "authorization"},
-			message:       `level=debug method=GET uri=http://example.com/foo status=200 duration= request_header_Good-Header=good-headerValue msg="http request processed"`,
+			message:       `level=debug method=GET uri=http://example.com/foo status=200 duration= proto=HTTP/1.1 request_header_Good-Header=good-headerValue msg="http request processed"`,
 		},
 		{
 			name: "Two Extra Headers excluded",
@@ -146,7 +146,7 @@ func TestHTTPLog(t *testing.T) {
 				LogRequestExcludeHeaders: []string{"bad-header", "bad-header2"},
 			},
 			setHeaderList: []string{"good-header", "bad-header", "bad-header2", "authorization"},
-			message:       `level=debug method=GET uri=http://example.com/foo status=200 duration= request_header_Good-Header=good-headerValue msg="http request processed"`,
+			message:       `level=debug method=GET uri=http://example.com/foo status=200 duration= proto=HTTP/1.1 request_header_Good-Header=good-headerValue msg="http request processed"`,
 		},
 		{
 			name: "Status code 500 should still log headers",
@@ -155,7 +155,7 @@ func TestHTTPLog(t *testing.T) {
 				LogRequestExcludeHeaders: []string{"bad-header"},
 			},
 			setHeaderList: []string{"good-header", "bad-header", "authorization"},
-			message:       `level=warn method=GET uri=http://example.com/foo status=500 duration= request_header_Good-Header=good-headerValue msg="http request failed" response_body="<html><body>Hello world!</body></html>"`,
+			message:       `level=warn method=GET uri=http://example.com/foo status=500 duration= proto=HTTP/1.1 request_header_Good-Header=good-headerValue msg="http request failed" response_body="<html><body>Hello world!</body></html>"`,
 
 			statusCode: http.StatusInternalServerError,
 		},
@@ -163,25 +163,25 @@ func TestHTTPLog(t *testing.T) {
 			name:    "Log request body size latency",
 			log:     &Log{},
 			reqBody: strings.NewReader("Hello World! I am a request body."),
-			message: `level=debug method=GET uri=http://example.com/foo status=200 duration= request_body_size=33B request_body_read_duration= msg="http request processed"`,
+			message: `level=debug method=GET uri=http://example.com/foo status=200 duration= proto=HTTP/1.1 request_body_size=33B request_body_read_duration= msg="http request processed"`,
 		},
 		{
 			name:     "Write errors should be shown at warning level",
 			log:      &Log{},
 			writeErr: errors.New("some error"),
-			message:  `level=warn method=GET uri=http://example.com/foo status=200 duration= msg="http request failed" err="some error"`,
+			message:  `level=warn method=GET uri=http://example.com/foo status=200 duration= proto=HTTP/1.1 msg="http request failed" err="some error"`,
 		},
 		{
 			name:     "Context cancelled requests should not be at warning level",
 			log:      &Log{},
 			writeErr: context.Canceled,
-			message:  `level=debug method=GET uri=http://example.com/foo status=200 duration= msg="request cancelled"`,
+			message:  `level=debug method=GET uri=http://example.com/foo status=200 duration= proto=HTTP/1.1 msg="request cancelled"`,
 		},
 		{
 			name:    "Tenant id should be logged",
 			ctx:     ctxTenant,
 			log:     &Log{},
-			message: `level=debug tenant=my-tenant method=GET uri=http://example.com/foo status=200 duration= msg="http request processed"`,
+			message: `level=debug tenant=my-tenant method=GET uri=http://example.com/foo status=200 duration= proto=HTTP/1.1 msg="http request processed"`,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
