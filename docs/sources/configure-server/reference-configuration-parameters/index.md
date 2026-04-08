@@ -2407,6 +2407,11 @@ distributor_usage_groups:
 # CLI flag: -querier.max-async-query-concurrency
 [max_async_query_concurrency: <int> | default = 5]
 
+# Queries taking longer than this threshold are automatically promoted to async
+# execution. 0 to disable auto-async.
+# CLI flag: -querier.async-query-threshold
+[async_query_threshold: <duration> | default = 2s]
+
 # Delete blocks containing samples older than the specified retention period. 0
 # to disable.
 # CLI flag: -compactor.blocks-retention-period

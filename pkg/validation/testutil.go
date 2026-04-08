@@ -39,6 +39,7 @@ type MockLimits struct {
 	QueryTreeEnabledValue  bool
 
 	MaxAsyncQueryConcurrencyValue int
+	AsyncQueryThresholdValue      time.Duration
 
 	IngestionBodyLimitBytesValue int64
 }
@@ -105,6 +106,9 @@ func (m MockLimits) RejectNewerThan(userID string) time.Duration {
 func (m MockLimits) SymbolizerEnabled(s string) bool       { return m.SymbolizerEnabledValue }
 func (m MockLimits) QueryTreeEnabled(s string) bool        { return m.QueryTreeEnabledValue }
 func (m MockLimits) MaxAsyncQueryConcurrency(s string) int { return m.MaxAsyncQueryConcurrencyValue }
+func (m MockLimits) AsyncQueryThreshold(s string) time.Duration {
+	return m.AsyncQueryThresholdValue
+}
 
 func (m MockLimits) IngestionBodyLimitBytes(tenantID string) int64 {
 	return m.IngestionBodyLimitBytesValue

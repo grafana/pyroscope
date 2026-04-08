@@ -27,10 +27,26 @@ message QueryRequest {
   int64 end_time = 2;
   string label_selector = 3;
   repeated Query query = 4;
+  // If set, this is a poll request for an async query — query fields are ignored.
+  string request_id = 5;
+  // Force async execution. Primarily for testing.
+  // The server could choose async execution even when this is disabled.
+  bool async = 6;
 }
 
 message QueryResponse {
   repeated Report reports = 1;
+  // Set when the query is executing asynchronously.
+  string request_id = 2;
+  AsyncQueryStatus status = 3;
+  string error_message = 4;
+}
+
+enum AsyncQueryStatus {
+  ASYNC_QUERY_STATUS_UNSPECIFIED = 0;
+  ASYNC_QUERY_STATUS_IN_PROGRESS = 1;
+  ASYNC_QUERY_STATUS_SUCCESS = 2;
+  ASYNC_QUERY_STATUS_FAILURE = 3;
 }
 
 service QueryBackendService {

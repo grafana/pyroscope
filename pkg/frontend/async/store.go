@@ -16,7 +16,7 @@ import (
 	"github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/proto"
 
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 )
 
 const (
@@ -46,7 +46,7 @@ type Metadata struct {
 
 type Result struct {
 	Metadata Metadata
-	Profile  *profilev1.Profile
+	Response *queryv1.QueryResponse
 }
 
 type Store struct {
@@ -123,12 +123,12 @@ func (s *Store) HeartbeatInterval() time.Duration {
 	return s.heartbeatInterval
 }
 
-func (s *Store) Complete(ctx context.Context, tenantID, requestID string, profile *profilev1.Profile) error {
+func (s *Store) Complete(ctx context.Context, tenantID, requestID string, resp *queryv1.QueryResponse) error {
 	base := s.basePath(tenantID, requestID)
 
-	data, err := proto.Marshal(profile)
+	data, err := proto.Marshal(resp)
 	if err != nil {
-		return fmt.Errorf("failed to marshal profile: %w", err)
+		return fmt.Errorf("failed to marshal response: %w", err)
 	}
 	if err := s.bucket.Upload(ctx, base+"result.pb", bytes.NewReader(data)); err != nil {
 		return fmt.Errorf("failed to upload result: %w", err)
@@ -186,11 +186,11 @@ func (s *Store) Get(ctx context.Context, tenantID, requestID string) (*Result, e
 		if err != nil {
 			return nil, fmt.Errorf("failed to read result: %w", err)
 		}
-		var p profilev1.Profile
-		if err := proto.Unmarshal(data, &p); err != nil {
+		var resp queryv1.QueryResponse
+		if err := proto.Unmarshal(data, &resp); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal result: %w", err)
 		}
-		result.Profile = &p
+		result.Response = &resp
 	}
 
 	return result, nil

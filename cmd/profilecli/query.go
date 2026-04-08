@@ -19,6 +19,8 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/query/v1/queryv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
@@ -39,8 +41,8 @@ func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
 	)
 }
 
-func (c *phlareClient) asyncQueryClient() querierv1connect.AsyncQuerierServiceClient {
-	return querierv1connect.NewAsyncQuerierServiceClient(
+func (c *phlareClient) queryFrontendClient() queryv1connect.QueryFrontendServiceClient {
+	return queryv1connect.NewQueryFrontendServiceClient(
 		c.httpClient(),
 		c.URL,
 		append(
@@ -264,50 +266,32 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 	return resp.Msg, err
 }
 
-func queryProfileAsync(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, outputFlag string, force bool) error {
-	profileReq := &querierv1.SelectMergeProfileRequest{
-		ProfileTypeID: params.ProfileType,
-		Start:         from.UnixMilli(),
-		End:           to.UnixMilli(),
-		LabelSelector: params.Query,
-	}
+// queryViaFrontendService sends a query via the QueryFrontendService and handles
+// async responses transparently. If the server returns IN_PROGRESS, it polls
+// until the query completes. Returns errFrontendUnsupported if the server
+// doesn't support the QueryFrontendService.
+var errFrontendUnsupported = fmt.Errorf("server does not support QueryFrontendService")
 
-	if params.MaxNodes > 0 {
-		profileReq.MaxNodes = &params.MaxNodes
-	}
-
-	if len(params.StacktraceSelector) > 0 {
-		locations := make([]*typesv1.Location, 0, len(params.StacktraceSelector))
-		for _, cs := range params.StacktraceSelector {
-			locations = append(locations, &typesv1.Location{Name: cs})
-		}
-		profileReq.StackTraceSelector = &typesv1.StackTraceSelector{CallSite: locations}
-	}
-
-	if len(params.ProfileIDs) > 0 {
-		profileReq.ProfileIdSelector = params.ProfileIDs
-	}
-
-	req := &querierv1.SelectMergeProfileAsyncRequest{Request: profileReq}
-
-	ac := params.phlareClient.asyncQueryClient()
-
-	// Start the async query.
-	resp, err := ac.SelectMergeProfile(ctx, connect.NewRequest(req))
+func queryViaFrontendService(ctx context.Context, client queryv1connect.QueryFrontendServiceClient, req *queryv1.QueryRequest) (*queryv1.QueryResponse, error) {
+	resp, err := client.Query(ctx, connect.NewRequest(req))
 	if err != nil {
 		if connectErr := new(connect.Error); errors.As(err, &connectErr) {
 			if connectErr.Code() == connect.CodeUnimplemented || connectErr.Code() == connect.CodeNotFound {
-				return fmt.Errorf("the server does not support async queries (SelectMergeProfile); try without --async")
+				return nil, errFrontendUnsupported
 			}
 		}
-		return errors.Wrap(err, "failed to start async query")
+		return nil, err
 	}
 
-	requestID := resp.Msg.RequestId
-	level.Info(logger).Log("msg", "async query started", "request_id", requestID)
+	// Sync response — no async promotion happened.
+	if resp.Msg.RequestId == "" {
+		return resp.Msg, nil
+	}
+
+	level.Info(logger).Log("msg", "query promoted to async", "request_id", resp.Msg.RequestId)
 
 	// Poll until the query completes.
-	pollReq := &querierv1.SelectMergeProfileAsyncRequest{RequestId: requestID}
+	pollReq := &queryv1.QueryRequest{RequestId: resp.Msg.RequestId}
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -315,28 +299,102 @@ func queryProfileAsync(ctx context.Context, params *queryProfileParams, from tim
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil, ctx.Err()
 		case <-ticker.C:
 		}
 
-		resp, err = ac.SelectMergeProfile(ctx, connect.NewRequest(pollReq))
+		resp, err = client.Query(ctx, connect.NewRequest(pollReq))
 		if err != nil {
-			return errors.Wrap(err, "failed to poll async query")
+			return nil, errors.Wrap(err, "failed to poll async query")
 		}
 
 		switch resp.Msg.Status {
-		case querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS:
-			level.Info(logger).Log("msg", "waiting for async query", "request_id", requestID, "elapsed", time.Since(start).Truncate(time.Second))
+		case queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS:
+			level.Info(logger).Log("msg", "waiting for async query", "request_id", resp.Msg.RequestId, "elapsed", time.Since(start).Truncate(time.Second))
 			continue
-		case querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS:
-			level.Info(logger).Log("msg", "async query completed", "request_id", requestID, "elapsed", time.Since(start).Truncate(time.Second))
-			return outputMergeProfile(ctx, outputFlag, force, resp.Msg.Profile)
-		case querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_FAILURE:
-			return fmt.Errorf("async query failed: %s", resp.Msg.ErrorMessage)
+		case queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS:
+			level.Info(logger).Log("msg", "async query completed", "request_id", resp.Msg.RequestId, "elapsed", time.Since(start).Truncate(time.Second))
+			return resp.Msg, nil
+		case queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_FAILURE:
+			return nil, fmt.Errorf("async query failed: %s", resp.Msg.ErrorMessage)
 		default:
-			return fmt.Errorf("unexpected async query status: %v", resp.Msg.Status)
+			return nil, fmt.Errorf("unexpected async query status: %v", resp.Msg.Status)
 		}
 	}
+}
+
+func queryProfileAsync(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, outputFlag string, force bool) error {
+	req := &queryv1.QueryRequest{
+		StartTime:     from.UnixMilli(),
+		EndTime:       to.UnixMilli(),
+		LabelSelector: buildProfileLabelSelector(params),
+		Async:         true,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_PPROF,
+			Pprof:     buildPprofQuery(params),
+		}},
+	}
+
+	client := params.phlareClient.queryFrontendClient()
+	resp, err := queryViaFrontendService(ctx, client, req)
+	if err != nil {
+		if errors.Is(err, errFrontendUnsupported) {
+			return fmt.Errorf("the server does not support async queries; try without --async")
+		}
+		return err
+	}
+
+	profile, err := extractProfileFromResponse(resp)
+	if err != nil {
+		return err
+	}
+	return outputMergeProfile(ctx, outputFlag, force, profile)
+}
+
+func buildProfileLabelSelector(params *queryProfileParams) string {
+	profileType, err := model.ParseProfileTypeSelector(params.ProfileType)
+	if err != nil {
+		return params.Query
+	}
+	ptMatcher := model.SelectorFromProfileType(profileType)
+	if params.Query == "" || params.Query == "{}" {
+		return "{" + ptMatcher.String() + "}"
+	}
+	// Strip trailing "}" and append the profile type matcher.
+	return params.Query[:len(params.Query)-1] + "," + ptMatcher.String() + "}"
+}
+
+func buildPprofQuery(params *queryProfileParams) *queryv1.PprofQuery {
+	q := &queryv1.PprofQuery{}
+	if params.MaxNodes > 0 {
+		q.MaxNodes = params.MaxNodes
+	}
+	if len(params.StacktraceSelector) > 0 {
+		locations := make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+		for _, cs := range params.StacktraceSelector {
+			locations = append(locations, &typesv1.Location{Name: cs})
+		}
+		q.StackTraceSelector = &typesv1.StackTraceSelector{CallSite: locations}
+	}
+	if len(params.ProfileIDs) > 0 {
+		q.ProfileIdSelector = params.ProfileIDs
+	}
+	return q
+}
+
+func extractProfileFromResponse(resp *queryv1.QueryResponse) (*googlev1.Profile, error) {
+	if len(resp.Reports) == 0 {
+		return &googlev1.Profile{}, nil
+	}
+	report := resp.Reports[0]
+	if report.Pprof == nil {
+		return nil, fmt.Errorf("unexpected report type: expected pprof")
+	}
+	var p googlev1.Profile
+	if err := pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal pprof from response")
+	}
+	return &p, nil
 }
 
 func queryProfileTree(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, locations []*typesv1.Location) (*googlev1.Profile, error) {

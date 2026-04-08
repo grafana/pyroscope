@@ -116,6 +116,7 @@ type Limits interface {
 	QuerySanitizeOnMerge(string) bool
 	QueryTreeEnabled(string) bool
 	MaxAsyncQueryConcurrency(string) int
+	AsyncQueryThreshold(string) time.Duration
 	validation.FlameGraphLimits
 }
 

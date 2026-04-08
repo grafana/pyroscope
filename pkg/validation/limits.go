@@ -98,6 +98,7 @@ type Limits struct {
 	QuerySplitDuration       model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
 	QuerySanitizeOnMerge     bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge"`
 	MaxAsyncQueryConcurrency int            `yaml:"max_async_query_concurrency" json:"max_async_query_concurrency"`
+	AsyncQueryThreshold      model.Duration `yaml:"async_query_threshold" json:"async_query_threshold"`
 
 	// Compactor.
 	CompactorBlocksRetentionPeriod     model.Duration `yaml:"compactor_blocks_retention_period" json:"compactor_blocks_retention_period"`
@@ -176,6 +177,8 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&l.QuerySplitDuration, "querier.split-queries-by-interval", "Split queries by a time interval and execute in parallel. The value 0 disables splitting by time")
 	f.BoolVar(&l.QuerySanitizeOnMerge, "querier.sanitize-on-merge", true, "Whether profiles should be sanitized when merging.")
 	f.IntVar(&l.MaxAsyncQueryConcurrency, "querier.max-async-query-concurrency", 5, "Maximum number of concurrent async queries per tenant. 0 to disable async queries.")
+	_ = l.AsyncQueryThreshold.Set("2s")
+	f.Var(&l.AsyncQueryThreshold, "querier.async-query-threshold", "Queries taking longer than this threshold are automatically promoted to async execution. 0 to disable auto-async.")
 
 	f.IntVar(&l.MaxQueryParallelism, "querier.max-query-parallelism", 0, "Maximum number of queries that will be scheduled in parallel by the frontend.")
 
@@ -460,6 +463,11 @@ func (o *Overrides) QuerySanitizeOnMerge(tenantID string) bool {
 // MaxAsyncQueryConcurrency returns the maximum number of concurrent async queries per tenant.
 func (o *Overrides) MaxAsyncQueryConcurrency(tenantID string) int {
 	return o.getOverridesForTenant(tenantID).MaxAsyncQueryConcurrency
+}
+
+// AsyncQueryThreshold returns the duration after which a query is promoted to async execution.
+func (o *Overrides) AsyncQueryThreshold(tenantID string) time.Duration {
+	return time.Duration(o.getOverridesForTenant(tenantID).AsyncQueryThreshold)
 }
 
 // CompactorTenantShardSize returns number of compactors that this user can use. 0 = all compactors.

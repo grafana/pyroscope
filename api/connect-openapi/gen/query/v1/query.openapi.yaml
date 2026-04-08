@@ -535,6 +535,14 @@ components:
         - HEATMAP_QUERY_TYPE_UNSPECIFIED
         - HEATMAP_QUERY_TYPE_INDIVIDUAL
         - HEATMAP_QUERY_TYPE_SPAN
+    query.v1.AsyncQueryStatus:
+      type: string
+      title: AsyncQueryStatus
+      enum:
+        - ASYNC_QUERY_STATUS_UNSPECIFIED
+        - ASYNC_QUERY_STATUS_IN_PROGRESS
+        - ASYNC_QUERY_STATUS_SUCCESS
+        - ASYNC_QUERY_STATUS_FAILURE
     query.v1.AttributeTable:
       type: object
       properties:
@@ -1062,6 +1070,14 @@ components:
           items:
             $ref: '#/components/schemas/query.v1.Query'
           title: query
+        requestId:
+          type: string
+          title: request_id
+          description: If set, this is a poll request for an async query — query fields are ignored.
+        async:
+          type: boolean
+          title: async
+          description: Force async execution. Primarily for testing.
       title: QueryRequest
       additionalProperties: false
     query.v1.QueryResponse:
@@ -1072,6 +1088,16 @@ components:
           items:
             $ref: '#/components/schemas/query.v1.Report'
           title: reports
+        requestId:
+          type: string
+          title: request_id
+          description: Set when the query is executing asynchronously.
+        status:
+          title: status
+          $ref: '#/components/schemas/query.v1.AsyncQueryStatus'
+        errorMessage:
+          type: string
+          title: error_message
       title: QueryResponse
       additionalProperties: false
     query.v1.QueryType:

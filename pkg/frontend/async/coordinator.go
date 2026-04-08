@@ -12,12 +12,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
 type Limits interface {
 	MaxAsyncQueryConcurrency(tenantID string) int
+}
+
+// QueryResult is the result of a query execution sent over a channel.
+type QueryResult struct {
+	Response *queryv1.QueryResponse
+	Err      error
 }
 
 type Coordinator struct {
@@ -33,7 +39,7 @@ type Coordinator struct {
 }
 
 func NewCoordinator(logger log.Logger, store *Store, limits Limits, reg prometheus.Registerer) *Coordinator {
-	c := &Coordinator{
+	return &Coordinator{
 		logger:   logger,
 		store:    store,
 		limits:   limits,
@@ -47,10 +53,7 @@ func NewCoordinator(logger log.Logger, store *Store, limits Limits, reg promethe
 			Help: "Maximum number of concurrent async queries allowed per tenant.",
 		}, []string{"tenant"}),
 	}
-	return c
 }
-
-type QueryFunc func(context.Context) (*profilev1.Profile, error)
 
 func (c *Coordinator) tryAcquire(tenantID string) error {
 	maxConcurrent := c.limits.MaxAsyncQueryConcurrency(tenantID)
@@ -71,9 +74,10 @@ func (c *Coordinator) tryAcquire(tenantID string) error {
 	return nil
 }
 
-// StartQuery starts a new async query if the tenant has capacity.
-// It returns the request ID for polling.
-func (c *Coordinator) StartQuery(ctx context.Context, tenantID string, queryFn QueryFunc) (string, error) {
+// PromoteToAsync promotes an already-running query to async execution.
+// It takes ownership of the result channel: the coordinator will read from it,
+// store the result, and manage the heartbeat loop. Returns the request ID.
+func (c *Coordinator) PromoteToAsync(ctx context.Context, tenantID string, resultCh <-chan QueryResult) (string, error) {
 	if err := c.tryAcquire(tenantID); err != nil {
 		return "", err
 	}
@@ -85,28 +89,15 @@ func (c *Coordinator) StartQuery(ctx context.Context, tenantID string, queryFn Q
 		return "", fmt.Errorf("failed to create async query: %w", err)
 	}
 
-	go c.executeQuery(tenantID, requestID, queryFn)
+	go c.awaitResult(tenantID, requestID, resultCh)
 
 	return requestID, nil
 }
 
-func (c *Coordinator) executeQuery(tenantID, requestID string, queryFn QueryFunc) {
+func (c *Coordinator) awaitResult(tenantID, requestID string, resultCh <-chan QueryResult) {
 	defer c.decrement(tenantID)
 
-	// Use a background context with the tenant injected so downstream
-	// handlers can extract it. The caller's context is not used because
-	// the query should complete even if the caller disconnects.
 	ctx := tenant.InjectTenantID(context.Background(), tenantID)
-
-	type queryResult struct {
-		profile *profilev1.Profile
-		err     error
-	}
-	resultCh := make(chan queryResult, 1)
-	go func() {
-		profile, err := queryFn(ctx)
-		resultCh <- queryResult{profile, err}
-	}()
 
 	ticker := time.NewTicker(c.store.HeartbeatInterval())
 	defer ticker.Stop()
@@ -114,14 +105,14 @@ func (c *Coordinator) executeQuery(tenantID, requestID string, queryFn QueryFunc
 	for {
 		select {
 		case res := <-resultCh:
-			if res.err != nil {
-				level.Error(c.logger).Log("msg", "async query failed", "tenant", tenantID, "request_id", requestID, "err", res.err)
-				if storeErr := c.store.Fail(ctx, tenantID, requestID, res.err); storeErr != nil {
+			if res.Err != nil {
+				level.Error(c.logger).Log("msg", "async query failed", "tenant", tenantID, "request_id", requestID, "err", res.Err)
+				if storeErr := c.store.Fail(ctx, tenantID, requestID, res.Err); storeErr != nil {
 					level.Error(c.logger).Log("msg", "failed to store async query failure", "tenant", tenantID, "request_id", requestID, "err", storeErr)
 				}
 				return
 			}
-			if err := c.store.Complete(ctx, tenantID, requestID, res.profile); err != nil {
+			if err := c.store.Complete(ctx, tenantID, requestID, res.Response); err != nil {
 				level.Error(c.logger).Log("msg", "failed to store async query result", "tenant", tenantID, "request_id", requestID, "err", err)
 			}
 			return

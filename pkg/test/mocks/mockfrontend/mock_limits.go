@@ -21,6 +21,49 @@ func (_m *MockLimits) EXPECT() *MockLimits_Expecter {
 	return &MockLimits_Expecter{mock: &_m.Mock}
 }
 
+// AsyncQueryThreshold provides a mock function with given fields: _a0
+func (_m *MockLimits) AsyncQueryThreshold(_a0 string) time.Duration {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AsyncQueryThreshold")
+	}
+
+	var r0 time.Duration
+	if rf, ok := ret.Get(0).(func(string) time.Duration); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(time.Duration)
+	}
+
+	return r0
+}
+
+type MockLimits_AsyncQueryThreshold_Call struct {
+	*mock.Call
+}
+
+func (_e *MockLimits_Expecter) AsyncQueryThreshold(_a0 interface{}) *MockLimits_AsyncQueryThreshold_Call {
+	return &MockLimits_AsyncQueryThreshold_Call{Call: _e.mock.On("AsyncQueryThreshold", _a0)}
+}
+
+func (_c *MockLimits_AsyncQueryThreshold_Call) Run(run func(_a0 string)) *MockLimits_AsyncQueryThreshold_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockLimits_AsyncQueryThreshold_Call) Return(_a0 time.Duration) *MockLimits_AsyncQueryThreshold_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockLimits_AsyncQueryThreshold_Call) RunAndReturn(run func(string) time.Duration) *MockLimits_AsyncQueryThreshold_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MaxAsyncQueryConcurrency provides a mock function with given fields: _a0
 func (_m *MockLimits) MaxAsyncQueryConcurrency(_a0 string) int {
 	ret := _m.Called(_a0)

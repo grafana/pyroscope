@@ -17,7 +17,6 @@ import (
 	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
 
-	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	"github.com/grafana/pyroscope/v2/pkg/compactionworker"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	asyncquery "github.com/grafana/pyroscope/v2/pkg/frontend/async"
@@ -78,7 +77,6 @@ func (f *Pyroscope) initQueryFrontendV1() (services.Service, error) {
 	f.API.RegisterQuerierServiceHandler(handler)
 	f.API.RegisterPyroscopeHandlers(handler)
 	f.API.RegisterVCSServiceHandler(f.frontend)
-	f.registerAsyncQueryHandler(handler)
 	return f.frontend, nil
 }
 
@@ -110,7 +108,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	f.API.RegisterQuerierServiceHandler(handler)
 	f.API.RegisterPyroscopeHandlers(handler)
 	f.API.RegisterVCSServiceHandler(vcsService)
-	f.registerAsyncQueryHandler(handler)
+	f.registerQueryFrontendServiceHandler()
 
 	// New query frontend does not have any state.
 	// For simplicity, we return a no-op service.
@@ -161,7 +159,7 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 	f.API.RegisterQuerierServiceHandler(wrappedHandler)
 	f.API.RegisterPyroscopeHandlers(wrappedHandler)
 	f.API.RegisterVCSServiceHandler(vcsService)
-	f.registerAsyncQueryHandler(wrappedHandler)
+	f.registerQueryFrontendServiceHandler()
 
 	return f.frontend, nil
 }
@@ -177,8 +175,8 @@ func (f *Pyroscope) getFrontendAddress() (addr string, err error) {
 	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
 }
 
-func (f *Pyroscope) registerAsyncQueryHandler(upstream querierv1connect.QuerierServiceHandler) {
-	if f.asyncQueryStore == nil {
+func (f *Pyroscope) registerQueryFrontendServiceHandler() {
+	if f.asyncQueryStore == nil || f.queryFrontend == nil {
 		return
 	}
 	coordinator := asyncquery.NewCoordinator(
@@ -187,8 +185,8 @@ func (f *Pyroscope) registerAsyncQueryHandler(upstream querierv1connect.QuerierS
 		f.Overrides,
 		f.reg,
 	)
-	handler := asyncquery.NewHandler(coordinator, upstream)
-	f.API.RegisterAsyncQuerierServiceHandler(handler)
+	handler := asyncquery.NewHandler(coordinator, f.Overrides, f.queryFrontend.Query)
+	f.API.RegisterQueryFrontendServiceHandler(handler)
 }
 
 func (f *Pyroscope) initAsyncQueryStore() (services.Service, error) {

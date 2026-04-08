@@ -2,32 +2,43 @@ package async
 
 import (
 	"context"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
 
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	pyrotenant "github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
-// Handler implements the AsyncQuerierServiceHandler interface.
-type Handler struct {
-	coordinator *Coordinator
-	upstream    querierv1connect.QuerierServiceHandler
+// QueryFn executes a query and returns the response.
+type QueryFn func(ctx context.Context, req *queryv1.QueryRequest) (*queryv1.QueryResponse, error)
+
+// HandlerLimits is the subset of limits needed by the handler.
+type HandlerLimits interface {
+	Limits
+	AsyncQueryThreshold(tenantID string) time.Duration
 }
 
-func NewHandler(coordinator *Coordinator, upstream querierv1connect.QuerierServiceHandler) *Handler {
+// Handler implements queryv1connect.QueryFrontendServiceHandler.
+type Handler struct {
+	coordinator *Coordinator
+	queryFn     QueryFn
+	limits      HandlerLimits
+}
+
+func NewHandler(coordinator *Coordinator, limits HandlerLimits, queryFn QueryFn) *Handler {
 	return &Handler{
 		coordinator: coordinator,
-		upstream:    upstream,
+		queryFn:     queryFn,
+		limits:      limits,
 	}
 }
 
-func (h *Handler) SelectMergeProfile(
+func (h *Handler) Query(
 	ctx context.Context,
-	req *connect.Request[querierv1.SelectMergeProfileAsyncRequest],
-) (*connect.Response[querierv1.SelectMergeProfileAsyncResponse], error) {
+	req *connect.Request[queryv1.QueryRequest],
+) (*connect.Response[queryv1.QueryResponse], error) {
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -37,39 +48,69 @@ func (h *Handler) SelectMergeProfile(
 	if req.Msg.RequestId != "" {
 		return h.poll(ctx, tenantID, req.Msg.RequestId)
 	}
-	return h.start(ctx, tenantID, req)
+
+	return h.execute(ctx, tenantID, req.Msg)
 }
 
-func (h *Handler) start(
+func (h *Handler) execute(
 	ctx context.Context,
 	tenantID string,
-	req *connect.Request[querierv1.SelectMergeProfileAsyncRequest],
-) (*connect.Response[querierv1.SelectMergeProfileAsyncResponse], error) {
-	// Build the closure that performs the actual synchronous query.
-	// We copy the request headers so the downstream handler sees the tenant context.
-	headers := req.Header().Clone()
-	queryFn := func(ctx context.Context) (*profilev1.Profile, error) {
-		syncReq := connect.NewRequest(req.Msg.Request)
-		for k, vals := range headers {
-			for _, v := range vals {
-				syncReq.Header().Add(k, v)
-			}
-		}
-		resp, err := h.upstream.SelectMergeProfile(ctx, syncReq)
-		if err != nil {
-			return nil, err
-		}
-		return resp.Msg, nil
+	req *queryv1.QueryRequest,
+) (*connect.Response[queryv1.QueryResponse], error) {
+	// Use a detached context with the tenant injected so the query survives
+	// even if the HTTP request context is cancelled (which happens when we
+	// return an async IN_PROGRESS response).
+	queryCtx := pyrotenant.InjectTenantID(context.Background(), tenantID)
+
+	resultCh := make(chan QueryResult, 1)
+	go func() {
+		resp, err := h.queryFn(queryCtx, req)
+		resultCh <- QueryResult{Response: resp, Err: err}
+	}()
+
+	// If the client explicitly requested async, promote immediately.
+	if req.Async {
+		return h.promoteToAsync(ctx, tenantID, resultCh)
 	}
 
-	requestID, err := h.coordinator.StartQuery(ctx, tenantID, queryFn)
+	// Otherwise, wait up to the threshold for a sync response.
+	threshold := h.limits.AsyncQueryThreshold(tenantID)
+	if threshold <= 0 {
+		// Auto-async disabled: wait for the result synchronously.
+		res := <-resultCh
+		if res.Err != nil {
+			return nil, res.Err
+		}
+		return connect.NewResponse(res.Response), nil
+	}
+
+	timer := time.NewTimer(threshold)
+	defer timer.Stop()
+
+	select {
+	case res := <-resultCh:
+		if res.Err != nil {
+			return nil, res.Err
+		}
+		return connect.NewResponse(res.Response), nil
+	case <-timer.C:
+		return h.promoteToAsync(ctx, tenantID, resultCh)
+	}
+}
+
+func (h *Handler) promoteToAsync(
+	ctx context.Context,
+	tenantID string,
+	resultCh <-chan QueryResult,
+) (*connect.Response[queryv1.QueryResponse], error) {
+	requestID, err := h.coordinator.PromoteToAsync(ctx, tenantID, resultCh)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeResourceExhausted, err)
 	}
 
-	return connect.NewResponse(&querierv1.SelectMergeProfileAsyncResponse{
+	return connect.NewResponse(&queryv1.QueryResponse{
 		RequestId: requestID,
-		Status:    querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS,
+		Status:    queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS,
 	}), nil
 }
 
@@ -77,7 +118,7 @@ func (h *Handler) poll(
 	ctx context.Context,
 	tenantID string,
 	requestID string,
-) (*connect.Response[querierv1.SelectMergeProfileAsyncResponse], error) {
+) (*connect.Response[queryv1.QueryResponse], error) {
 	result, err := h.coordinator.PollQuery(ctx, tenantID, requestID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -86,18 +127,20 @@ func (h *Handler) poll(
 		return nil, connect.NewError(connect.CodeNotFound, nil)
 	}
 
-	resp := &querierv1.SelectMergeProfileAsyncResponse{
+	resp := &queryv1.QueryResponse{
 		RequestId: requestID,
 	}
 
 	switch result.Metadata.Status {
 	case StatusInProgress:
-		resp.Status = querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS
+		resp.Status = queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS
 	case StatusSuccess:
-		resp.Status = querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS
-		resp.Profile = result.Profile
+		resp.Status = queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS
+		if result.Response != nil {
+			resp.Reports = result.Response.Reports
+		}
 	case StatusFailure:
-		resp.Status = querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_FAILURE
+		resp.Status = queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_FAILURE
 		resp.ErrorMessage = result.Metadata.ErrorMessage
 	}
 
