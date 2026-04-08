@@ -48,6 +48,9 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
+        go_test_flags:
+          - "-v -race -cover"
+          - "-v"
     # Compute runner OS dynamically based on arch and repo ownership
     runs-on: >-
       ${{ 
@@ -67,7 +70,7 @@ jobs:
       - name: Go Mod
         run: make check/go/mod
       - name: Test
-        run: make go/test
+        run: make go/test GO_TEST_FLAGS="${{ matrix.go_test_flags }}"
   lint:
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
     steps:
