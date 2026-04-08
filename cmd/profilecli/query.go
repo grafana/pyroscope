@@ -162,12 +162,40 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 		return err
 	}
 
-	if async {
-		return queryProfileAsync(ctx, params, from, to, outputFlag, force)
+	// Try QueryFrontendService first — handles async transparently.
+	req := &querierv1.SelectMergeProfileRequest{
+		ProfileTypeID: params.ProfileType,
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
+		LabelSelector: params.Query,
+	}
+	if params.MaxNodes > 0 {
+		req.MaxNodes = &params.MaxNodes
+	}
+	if len(params.StacktraceSelector) > 0 {
+		locations := make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+		for _, cs := range params.StacktraceSelector {
+			locations = append(locations, &typesv1.Location{Name: cs})
+		}
+		req.StackTraceSelector = &typesv1.StackTraceSelector{CallSite: locations}
+	}
+	if len(params.ProfileIDs) > 0 {
+		req.ProfileIdSelector = params.ProfileIDs
 	}
 
-	var profile *googlev1.Profile
+	profile, err := queryProfileViaFrontend(ctx, params.phlareClient.queryFrontendClient(), req, async)
+	if err != nil && !errors.Is(err, errFrontendUnsupported) {
+		return err
+	}
+	if err == nil {
+		return outputMergeProfile(ctx, outputFlag, force, profile)
+	}
 
+	if async {
+		return fmt.Errorf("the server does not support async queries; try without --async")
+	}
+
+	// Fallback to QuerierService.
 	if len(params.SpanSelector) > 0 {
 		level.Info(logger).Log("msg", "selecting with span selector", "spans", fmt.Sprintf("%v", params.SpanSelector))
 		profile, err = querySpanProfile(ctx, params, from, to)
@@ -176,9 +204,7 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 		if len(params.StacktraceSelector) > 0 {
 			locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
 			for _, cs := range params.StacktraceSelector {
-				locations = append(locations, &typesv1.Location{
-					Name: cs,
-				})
+				locations = append(locations, &typesv1.Location{Name: cs})
 			}
 			level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
 		}
@@ -323,80 +349,6 @@ func queryViaFrontendService(ctx context.Context, client queryv1connect.QueryFro
 	}
 }
 
-func queryProfileAsync(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, outputFlag string, force bool) error {
-	req := &queryv1.QueryRequest{
-		StartTime:     from.UnixMilli(),
-		EndTime:       to.UnixMilli(),
-		LabelSelector: buildProfileLabelSelector(params),
-		Async:         true,
-		Query: []*queryv1.Query{{
-			QueryType: queryv1.QueryType_QUERY_PPROF,
-			Pprof:     buildPprofQuery(params),
-		}},
-	}
-
-	client := params.phlareClient.queryFrontendClient()
-	resp, err := queryViaFrontendService(ctx, client, req)
-	if err != nil {
-		if errors.Is(err, errFrontendUnsupported) {
-			return fmt.Errorf("the server does not support async queries; try without --async")
-		}
-		return err
-	}
-
-	profile, err := extractProfileFromResponse(resp)
-	if err != nil {
-		return err
-	}
-	return outputMergeProfile(ctx, outputFlag, force, profile)
-}
-
-func buildProfileLabelSelector(params *queryProfileParams) string {
-	profileType, err := model.ParseProfileTypeSelector(params.ProfileType)
-	if err != nil {
-		return params.Query
-	}
-	ptMatcher := model.SelectorFromProfileType(profileType)
-	if params.Query == "" || params.Query == "{}" {
-		return "{" + ptMatcher.String() + "}"
-	}
-	// Strip trailing "}" and append the profile type matcher.
-	return params.Query[:len(params.Query)-1] + "," + ptMatcher.String() + "}"
-}
-
-func buildPprofQuery(params *queryProfileParams) *queryv1.PprofQuery {
-	q := &queryv1.PprofQuery{}
-	if params.MaxNodes > 0 {
-		q.MaxNodes = params.MaxNodes
-	}
-	if len(params.StacktraceSelector) > 0 {
-		locations := make([]*typesv1.Location, 0, len(params.StacktraceSelector))
-		for _, cs := range params.StacktraceSelector {
-			locations = append(locations, &typesv1.Location{Name: cs})
-		}
-		q.StackTraceSelector = &typesv1.StackTraceSelector{CallSite: locations}
-	}
-	if len(params.ProfileIDs) > 0 {
-		q.ProfileIdSelector = params.ProfileIDs
-	}
-	return q
-}
-
-func extractProfileFromResponse(resp *queryv1.QueryResponse) (*googlev1.Profile, error) {
-	if len(resp.Reports) == 0 {
-		return &googlev1.Profile{}, nil
-	}
-	report := resp.Reports[0]
-	if report.Pprof == nil {
-		return nil, fmt.Errorf("unexpected report type: expected pprof")
-	}
-	var p googlev1.Profile
-	if err := pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal pprof from response")
-	}
-	return &p, nil
-}
-
 func queryProfileTree(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, locations []*typesv1.Location) (*googlev1.Profile, error) {
 	req := &querierv1.SelectMergeStacktracesRequest{
 		ProfileTypeID: params.ProfileType,
@@ -483,7 +435,7 @@ func addQueryGoPGOParams(queryCmd commander) *queryGoPGOParams {
 	return params
 }
 
-func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string, force bool) (err error) {
+func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string, force bool, async bool) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -498,19 +450,28 @@ func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string
 		"keep-locations", params.KeepLocations,
 		"aggregate-callees", params.AggregateCallees,
 	)
-	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force,
-		&querierv1.SelectMergeProfileRequest{
-			ProfileTypeID: params.ProfileType,
-			Start:         from.UnixMilli(),
-			End:           to.UnixMilli(),
-			LabelSelector: params.Query,
-			StackTraceSelector: &typesv1.StackTraceSelector{
-				GoPgo: &typesv1.GoPGO{
-					KeepLocations:    params.KeepLocations,
-					AggregateCallees: params.AggregateCallees,
-				},
+	req := &querierv1.SelectMergeProfileRequest{
+		ProfileTypeID: params.ProfileType,
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
+		LabelSelector: params.Query,
+		StackTraceSelector: &typesv1.StackTraceSelector{
+			GoPgo: &typesv1.GoPGO{
+				KeepLocations:    params.KeepLocations,
+				AggregateCallees: params.AggregateCallees,
 			},
-		})
+		},
+	}
+
+	profile, err := queryProfileViaFrontend(ctx, params.phlareClient.queryFrontendClient(), req, async)
+	if err != nil && !errors.Is(err, errFrontendUnsupported) {
+		return err
+	}
+	if err == nil {
+		return outputMergeProfile(ctx, outputFlag, force, profile)
+	}
+
+	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force, req)
 }
 
 type querySeriesParams struct {
@@ -529,7 +490,7 @@ func addQuerySeriesParams(queryCmd commander) *querySeriesParams {
 	return params
 }
 
-func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
+func querySeries(ctx context.Context, params *querySeriesParams, async bool) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -537,6 +498,24 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 
 	level.Info(logger).Log("msg", fmt.Sprintf("query series from %s", params.APIType), "url", params.URL, "from", from, "to", to, "labelNames", fmt.Sprintf("%q", params.LabelNames))
 
+	// Try QueryFrontendService for the querier API type.
+	if params.APIType == "querier" {
+		seriesReq := &querierv1.SeriesRequest{
+			Start:      from.UnixMilli(),
+			End:        to.UnixMilli(),
+			Matchers:   []string{params.Query},
+			LabelNames: params.LabelNames,
+		}
+		result, err := querySeriesViaFrontend(ctx, params.phlareClient.queryFrontendClient(), seriesReq, async)
+		if err != nil && !errors.Is(err, errFrontendUnsupported) {
+			return err
+		}
+		if err == nil {
+			return outputSeries(ctx, result, params.Output, from, to)
+		}
+	}
+
+	// Fallback to direct API calls.
 	var result []*typesv1.Labels
 	switch params.APIType {
 	case "querier":
@@ -595,7 +574,7 @@ func addQueryLabelValuesCardinalityParams(queryCmd commander) *queryLabelValuesC
 	return params
 }
 
-func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCardinalityParams) (err error) {
+func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCardinalityParams, async bool) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err

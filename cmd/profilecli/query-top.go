@@ -35,7 +35,7 @@ func addQueryTopParams(queryCmd commander) *queryTopParams {
 	return params
 }
 
-func queryTop(ctx context.Context, params *queryTopParams) error {
+func queryTop(ctx context.Context, params *queryTopParams, async bool) error {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -54,28 +54,37 @@ func queryTop(ctx context.Context, params *queryTopParams) error {
 
 	stepSeconds := to.Sub(from).Seconds()
 
-	qc := params.queryClient()
-	resp, err := qc.SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
+	selectSeriesReq := &querierv1.SelectSeriesRequest{
 		ProfileTypeID: params.ProfileType,
 		LabelSelector: params.Query,
 		Start:         from.UnixMilli(),
 		End:           to.UnixMilli(),
 		Step:          stepSeconds,
 		GroupBy:       params.LabelNames,
-	}))
-	if err != nil {
-		return errors.Wrap(err, "failed to query series")
 	}
 
-	logDiagnostics(params.phlareClient, resp.Header())
+	series, frontendErr := querySelectSeriesViaFrontend(ctx, params.queryFrontendClient(), selectSeriesReq, async)
+	if frontendErr != nil && !errors.Is(frontendErr, errFrontendUnsupported) {
+		return frontendErr
+	}
+	if frontendErr != nil {
+		// Fallback to QuerierService.
+		qc := params.queryClient()
+		resp, err := qc.SelectSeries(ctx, connect.NewRequest(selectSeriesReq))
+		if err != nil {
+			return errors.Wrap(err, "failed to query series")
+		}
+		logDiagnostics(params.phlareClient, resp.Header())
+		series = resp.Msg.Series
+	}
 
 	type seriesTotal struct {
 		labelValues []string
 		total       float64
 	}
 
-	totals := make([]seriesTotal, 0, len(resp.Msg.Series))
-	for _, s := range resp.Msg.Series {
+	totals := make([]seriesTotal, 0, len(series))
+	for _, s := range series {
 		var total float64
 		for _, p := range s.Points {
 			total += p.Value
