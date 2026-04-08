@@ -29,17 +29,17 @@ import (
 func TestMergeSampleByStacktraces(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		in   func() ([]*pprofth.ProfileBuilder, *phlaremodel.Tree)
+		in   func() ([]*pprofth.ProfileBuilder, *phlaremodel.FunctionNameTree)
 	}{
 		{
 			name: "single profile",
-			in: func() (ps []*pprofth.ProfileBuilder, tree *phlaremodel.Tree) {
+			in: func() (ps []*pprofth.ProfileBuilder, tree *phlaremodel.FunctionNameTree) {
 				p := pprofth.NewProfileBuilder(int64(15 * time.Second)).CPUProfile()
 				p.ForStacktraceString("my", "other").AddSamples(1)
 				p.ForStacktraceString("my", "other").AddSamples(3)
 				p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 				ps = append(ps, p)
-				tree = new(phlaremodel.Tree)
+				tree = new(phlaremodel.FunctionNameTree)
 				tree.InsertStack(4, "other", "my")
 				tree.InsertStack(3, "stack", "other", "my")
 				return ps, tree
@@ -47,7 +47,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 		},
 		{
 			name: "multiple profiles",
-			in: func() (ps []*pprofth.ProfileBuilder, tree *phlaremodel.Tree) {
+			in: func() (ps []*pprofth.ProfileBuilder, tree *phlaremodel.FunctionNameTree) {
 				for i := 0; i < 3000; i++ {
 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 						CPUProfile().WithLabels("series", fmt.Sprintf("%d", i))
@@ -56,7 +56,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 					p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 					ps = append(ps, p)
 				}
-				tree = new(phlaremodel.Tree)
+				tree = new(phlaremodel.FunctionNameTree)
 				tree.InsertStack(12000, "other", "my")
 				tree.InsertStack(9000, "stack", "other", "my")
 				return ps, tree
@@ -64,7 +64,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 		},
 		{
 			name: "filtering multiple profiles",
-			in: func() (ps []*pprofth.ProfileBuilder, tree *phlaremodel.Tree) {
+			in: func() (ps []*pprofth.ProfileBuilder, tree *phlaremodel.FunctionNameTree) {
 				for i := 0; i < 3000; i++ {
 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 						MemoryProfile().WithLabels("series", fmt.Sprintf("%d", i))
@@ -81,7 +81,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 					p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 					ps = append(ps, p)
 				}
-				tree = new(phlaremodel.Tree)
+				tree = new(phlaremodel.FunctionNameTree)
 				tree.InsertStack(12000, "other", "my")
 				tree.InsertStack(9000, "stack", "other", "my")
 				return ps, tree
@@ -135,17 +135,17 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 func TestHeadMergeSampleByStacktraces(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		in   func() ([]*pprofth.ProfileBuilder, *phlaremodel.Tree)
+		in   func() ([]*pprofth.ProfileBuilder, *phlaremodel.FunctionNameTree)
 	}{
 		{
 			name: "single profile",
-			in: func() (ps []*pprofth.ProfileBuilder, tree *phlaremodel.Tree) {
+			in: func() (ps []*pprofth.ProfileBuilder, tree *phlaremodel.FunctionNameTree) {
 				p := pprofth.NewProfileBuilder(int64(15 * time.Second)).CPUProfile()
 				p.ForStacktraceString("my", "other").AddSamples(1)
 				p.ForStacktraceString("my", "other").AddSamples(3)
 				p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 				ps = append(ps, p)
-				tree = new(phlaremodel.Tree)
+				tree = new(phlaremodel.FunctionNameTree)
 				tree.InsertStack(4, "other", "my")
 				tree.InsertStack(3, "stack", "other", "my")
 				return ps, tree
@@ -153,7 +153,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 		},
 		{
 			name: "multiple profiles",
-			in: func() (ps []*pprofth.ProfileBuilder, tree *phlaremodel.Tree) {
+			in: func() (ps []*pprofth.ProfileBuilder, tree *phlaremodel.FunctionNameTree) {
 				for i := 0; i < 3000; i++ {
 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 						CPUProfile().WithLabels("series", fmt.Sprintf("%d", i))
@@ -162,7 +162,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 					p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 					ps = append(ps, p)
 				}
-				tree = new(phlaremodel.Tree)
+				tree = new(phlaremodel.FunctionNameTree)
 				tree.InsertStack(12000, "other", "my")
 				tree.InsertStack(9000, "stack", "other", "my")
 				return ps, tree
@@ -170,7 +170,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 		},
 		{
 			name: "filtering multiple profiles",
-			in: func() (ps []*pprofth.ProfileBuilder, tree *phlaremodel.Tree) {
+			in: func() (ps []*pprofth.ProfileBuilder, tree *phlaremodel.FunctionNameTree) {
 				for i := 0; i < 3000; i++ {
 					p := pprofth.NewProfileBuilder(int64(15*time.Second)).
 						MemoryProfile().WithLabels("series", fmt.Sprintf("%d", i))
@@ -187,7 +187,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 					p.ForStacktraceString("my", "other", "stack").AddSamples(3)
 					ps = append(ps, p)
 				}
-				tree = new(phlaremodel.Tree)
+				tree = new(phlaremodel.FunctionNameTree)
 				tree.InsertStack(12000, "other", "my")
 				tree.InsertStack(9000, "stack", "other", "my")
 				return ps, tree
@@ -627,7 +627,7 @@ func TestMergeSpans(t *testing.T) {
 	result, err := q.queriers[0].MergeBySpans(ctx, iter.NewSliceIterator(profiles), spanSelector)
 	require.NoError(t, err)
 
-	expected := new(phlaremodel.Tree)
+	expected := new(phlaremodel.FunctionNameTree)
 	expected.InsertStack(1, "bar", "foo")
 	expected.InsertStack(2, "foo")
 
@@ -670,7 +670,7 @@ func TestHeadMergeSpans(t *testing.T) {
 	result, err := db.headQueriers()[0].MergeBySpans(ctx, iter.NewSliceIterator(profiles), spanSelector)
 	require.NoError(t, err)
 
-	expected := new(phlaremodel.Tree)
+	expected := new(phlaremodel.FunctionNameTree)
 	expected.InsertStack(1, "bar", "foo")
 	expected.InsertStack(2, "foo")
 

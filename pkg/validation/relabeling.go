@@ -85,7 +85,7 @@ func (p *RelabelRules) Set(s string) error {
 	}
 
 	for idx, rule := range v {
-		if err := rule.Validate(); err != nil {
+		if err := rule.Validate(model.UTF8Validation); err != nil {
 			return fmt.Errorf("rule at pos %d is not valid: %w", idx, err)
 		}
 	}

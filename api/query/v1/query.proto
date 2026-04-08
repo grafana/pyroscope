@@ -214,11 +214,24 @@ message TreeQuery {
   repeated string span_selector = 2;
   optional types.v1.StackTraceSelector stack_trace_selector = 3;
   repeated string profile_id_selector = 4;
+  bool full_symbols = 5;
+}
+
+message TreeSymbols {
+  repeated google.v1.Mapping mappings = 1;
+  repeated google.v1.Location locations = 2;
+  repeated google.v1.Function functions = 3;
+  repeated string strings = 4;
+  repeated uint64 mapping_hashes = 5;
+  repeated uint64 location_hashes = 6;
+  repeated uint64 function_hashes = 7;
+  repeated uint64 string_hashes = 8;
 }
 
 message TreeReport {
   TreeQuery query = 1;
   bytes tree = 2;
+  optional TreeSymbols symbols = 3;
 }
 
 message PprofQuery {

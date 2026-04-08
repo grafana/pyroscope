@@ -13,10 +13,10 @@ func Benchmark_NewFlamegraphDiff(b *testing.B) {
 	rightTreeBytes, err := os.ReadFile("testdata/diff_right_tree.bin")
 	require.NoError(b, err)
 
-	leftTree, err := UnmarshalTree(leftTreeBytes)
+	leftTree, err := UnmarshalTree[FunctionName, FunctionNameI](leftTreeBytes)
 	require.NoError(b, err)
 
-	rightTree, err := UnmarshalTree(rightTreeBytes)
+	rightTree, err := UnmarshalTree[FunctionName, FunctionNameI](rightTreeBytes)
 	require.NoError(b, err)
 
 	b.ResetTimer()

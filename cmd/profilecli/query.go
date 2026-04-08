@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
+	"github.com/google/uuid"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -89,8 +90,6 @@ func addQueryParams(queryCmd commander) *queryParams {
 	params := new(queryParams)
 	params.phlareClient = addPhlareClient(queryCmd)
 
-	queryCmd.Flag("collect-diagnostics", "Request query diagnostics collection. The server will return a diagnostics ID in a response header.").Default("false").Envar(envPrefix + "COLLECT_DIAGNOSTICS").BoolVar(&params.phlareClient.CollectDiagnostics)
-
 	queryCmd.Flag("from", "Beginning of the query.").Default("now-1h").StringVar(&params.From)
 	queryCmd.Flag("to", "End of the query.").Default("now").StringVar(&params.To)
 	queryCmd.Flag("query", "Label selector to query.").Default("{}").StringVar(&params.Query)
@@ -102,6 +101,7 @@ type queryProfileParams struct {
 	ProfileType        string
 	StacktraceSelector []string
 	SpanSelector       []string
+	ProfileIDs         []string
 	MaxNodes           int64
 }
 
@@ -115,6 +115,30 @@ func addQueryProfileParams(queryCmd commander) *queryProfileParams {
 	return params
 }
 
+// validateQueryProfileParams checks for mutual exclusion between flags and
+// validates the --profile-id format when provided.
+func validateQueryProfileParams(params *queryProfileParams) error {
+	if len(params.SpanSelector) > 0 && len(params.StacktraceSelector) > 0 {
+		return errors.New("--span-selector and --stacktrace-selector cannot be used together")
+	}
+
+	// --profile-id and --span-selector serve different purposes and cannot be combined.
+	// ProfileIdSelector uses profile_id (UUID) for drilling down from exemplars.
+	// SpanSelector uses span_id for span-filtered queries. See PR #4872.
+	if len(params.ProfileIDs) > 0 && len(params.SpanSelector) > 0 {
+		return errors.New("--profile-id and --span-selector cannot be used together. --profile-id selects a specific profile by UUID (from exemplar queries). --span-selector filters by trace span ID.")
+	}
+
+	// Validate each --profile-id is a valid UUID if provided.
+	for _, id := range params.ProfileIDs {
+		if _, err := uuid.Parse(id); err != nil {
+			return errors.New("--profile-id must be a valid UUID (e.g. 550e8400-e29b-41d4-a716-446655440000). Did you mean --span-selector for span IDs?")
+		}
+	}
+
+	return nil
+}
+
 func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool, profileTree bool) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
@@ -122,8 +146,8 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 	}
 	level.Info(logger).Log("msg", "query aggregated profile from profile store", "url", params.URL, "from", from, "to", to, "query", params.Query, "type", params.ProfileType)
 
-	if len(params.SpanSelector) > 0 && len(params.StacktraceSelector) > 0 {
-		return errors.New("--span-selector and --stacktrace-selector cannot be used together")
+	if err := validateQueryProfileParams(params); err != nil {
+		return err
 	}
 
 	var profile *googlev1.Profile
@@ -178,7 +202,7 @@ func querySpanProfile(ctx context.Context, params *queryProfileParams, from time
 
 	logDiagnostics(params.phlareClient, resp.Header())
 
-	tree, err := model.UnmarshalTree(resp.Msg.Tree)
+	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Msg.Tree)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal tree")
 	}
@@ -207,6 +231,11 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 		req.StackTraceSelector = &typesv1.StackTraceSelector{
 			CallSite: locations,
 		}
+	}
+
+	// ProfileIdSelector uses profile_id (UUID), NOT span_id. See PR #4872.
+	if len(params.ProfileIDs) > 0 {
+		req.ProfileIdSelector = params.ProfileIDs
 	}
 
 	qc := params.phlareClient.queryClient()
@@ -240,6 +269,11 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 		}
 	}
 
+	// ProfileIdSelector uses profile_id (UUID), NOT span_id. See PR #4872.
+	if len(params.ProfileIDs) > 0 {
+		req.ProfileIdSelector = params.ProfileIDs
+	}
+
 	qc := params.phlareClient.queryClient()
 	resp, err := qc.SelectMergeStacktraces(ctx, connect.NewRequest(req))
 	if err != nil {
@@ -248,7 +282,7 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 
 	logDiagnostics(params.phlareClient, resp.Header())
 
-	tree, err := model.UnmarshalTree(resp.Msg.Tree)
+	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Msg.Tree)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal tree")
 	}
@@ -336,6 +370,7 @@ type querySeriesParams struct {
 	*queryParams
 	LabelNames []string
 	APIType    string
+	Output     string
 }
 
 func addQuerySeriesParams(queryCmd commander) *querySeriesParams {
@@ -343,6 +378,7 @@ func addQuerySeriesParams(queryCmd commander) *querySeriesParams {
 	params.queryParams = addQueryParams(queryCmd)
 	queryCmd.Flag("label-names", "Filter returned labels to the supplied label names. Without any filter all labels are returned.").StringsVar(&params.LabelNames)
 	queryCmd.Flag("api-type", "Which API type to query (querier, ingester or store-gateway).").Default("querier").StringVar(&params.APIType)
+	queryCmd.Flag("output", "Output format, one of: table, json.").Default("table").StringVar(&params.Output)
 	return params
 }
 
@@ -397,8 +433,7 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 		return errors.Errorf("unknown api type %s", params.APIType)
 	}
 
-	err = outputSeries(result)
-	return err
+	return outputSeries(ctx, result, params.Output, from, to)
 }
 
 type queryLabelValuesCardinalityParams struct {

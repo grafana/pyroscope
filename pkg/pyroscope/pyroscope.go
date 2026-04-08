@@ -31,11 +31,8 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/signals"
 	"github.com/grafana/dskit/spanlogger"
-	"github.com/grafana/dskit/spanprofiler"
-	wwtracing "github.com/grafana/dskit/tracing"
 	"github.com/grafana/pyroscope-go"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
@@ -46,6 +43,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/compactionworker"
 	"github.com/grafana/pyroscope/pkg/compactor"
+	"github.com/grafana/pyroscope/pkg/debuginfo"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/frontend"
@@ -115,12 +113,15 @@ type Config struct {
 	ConfigExpandEnv bool   `yaml:"-"`
 
 	V2                bool                    `yaml:"-" doc:"hidden"`
+	EnableV1WritePath bool                    `yaml:"enable_v1_write_path" doc:"hidden"`
+	EnableV1ReadPath  bool                    `yaml:"enable_v1_read_path"  doc:"hidden"`
 	SegmentWriter     segmentwriter.Config    `yaml:"segment_writer"     doc:"hidden"`
 	Metastore         metastore.Config        `yaml:"metastore"          doc:"hidden"`
 	QueryBackend      querybackend.Config     `yaml:"query_backend"      doc:"hidden"`
 	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"  doc:"hidden"`
 	AdaptivePlacement placement.Config        `yaml:"adaptive_placement" doc:"hidden"`
 	Symbolizer        symbolizer.Config       `yaml:"symbolizer"         doc:"hidden"`
+	DebugInfo         debuginfo.Config        `yaml:"-"`
 }
 
 func newDefaultConfig() *Config {
@@ -139,10 +140,11 @@ func (c *StorageConfig) RegisterFlags(f *flag.FlagSet) {
 }
 
 type SelfProfilingConfig struct {
-	DisablePush          bool `yaml:"disable_push,omitempty"`
-	MutexProfileFraction int  `yaml:"mutex_profile_fraction,omitempty"`
-	BlockProfileRate     int  `yaml:"block_profile_rate,omitempty"`
-	UseK6Middleware      bool `yaml:"use_k6_middleware,omitempty"`
+	DisablePush          bool   `yaml:"disable_push,omitempty"`
+	MutexProfileFraction int    `yaml:"mutex_profile_fraction,omitempty"`
+	BlockProfileRate     int    `yaml:"block_profile_rate,omitempty"`
+	UseK6Middleware      bool   `yaml:"use_k6_middleware,omitempty"`
+	TenantID             string `yaml:"tenant_id,omitempty"`
 }
 
 func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
@@ -160,6 +162,12 @@ func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
 		"self-profiling.use-k6-middleware",
 		false,
 		"Read k6 labels from request headers and set them as dynamic profile tags.",
+	)
+	f.StringVar(
+		&c.TenantID,
+		"self-profiling.tenant-id",
+		"",
+		"Tenant ID for self-profiling data. If empty, no tenant header is sent (anonymous).",
 	)
 }
 
@@ -227,6 +235,11 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	}
 
 	if c.V2 {
+		c.EnableV1WritePath = true
+		c.EnableV1ReadPath = true
+		fs.BoolVar(&c.EnableV1WritePath, "all.enable-v1-write-path", true, "When using target=all with V2 enabled, also start V1 write path components (ingester, compactor). Set to false after fully migrating to V2.")
+		fs.BoolVar(&c.EnableV1ReadPath, "all.enable-v1-read-path", true, "When using target=all with V2 enabled, also start V1 read path components (querier, query-scheduler, store-gateway). Set to false after fully migrating to V2.")
+
 		for k, v := range map[string]string{
 			"server.grpc-max-recv-msg-size-bytes":                    "104857600",
 			"server.grpc-max-send-msg-size-bytes":                    "104857600",
@@ -257,6 +270,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
 		c.LimitsConfig.Symbolizer.RegisterFlags(throwaway)
 		c.Symbolizer.RegisterFlags(throwaway)
+		c.DebugInfo.RegisterFlags(throwaway)
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {
@@ -411,17 +425,16 @@ func New(cfg Config) (*Pyroscope, error) {
 	runtime.SetBlockProfileRate(cfg.SelfProfiling.BlockProfileRate)
 
 	if cfg.Tracing.Enabled {
-		// Setting the environment variable JAEGER_AGENT_HOST enables tracing
-		name := os.Getenv("JAEGER_SERVICE_NAME")
+		name := os.Getenv("OTEL_SERVICE_NAME")
+		if name == "" {
+			name = os.Getenv("JAEGER_SERVICE_NAME")
+		}
 		if name == "" {
 			name = fmt.Sprintf("pyroscope-%s", cfg.Target)
 		}
-		trace, err := wwtracing.NewFromEnv(name)
+		trace, err := initTracing(name, logger, cfg.Tracing.ProfilingEnabled)
 		if err != nil {
 			level.Error(logger).Log("msg", "error in initializing tracing. tracing will not be enabled", "err", err)
-		}
-		if cfg.Tracing.ProfilingEnabled {
-			opentracing.SetGlobalTracer(spanprofiler.NewTracer(opentracing.GlobalTracer()))
 		}
 		phlare.tracer = trace
 	}
@@ -478,7 +491,7 @@ func (f *Pyroscope) setupModuleManager() error {
 
 		Server:            {GRPCGateway},
 		API:               {Server},
-		Distributor:       {Overrides, IngesterRing, API, UsageReport},
+		Distributor:       {Overrides, IngesterRing, API, UsageReport, Storage},
 		Querier:           {Overrides, API, MemberlistKV, IngesterRing, UsageReport, Version, FeatureFlags},
 		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags},
 		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},
@@ -519,6 +532,20 @@ func (f *Pyroscope) setupModuleManager() error {
 		}
 
 		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend)
+
+		// When fully migrated to V2, operators can disable V1 components.
+		v1WritePath := []string{Ingester, Compactor}
+		v1ReadPath := []string{Querier, QueryScheduler, StoreGateway}
+		if !f.Cfg.EnableV1WritePath {
+			deps[All] = slices.DeleteFunc(deps[All], func(s string) bool {
+				return slices.Contains(v1WritePath, s)
+			})
+		}
+		if !f.Cfg.EnableV1ReadPath {
+			deps[All] = slices.DeleteFunc(deps[All], func(s string) bool {
+				return slices.Contains(v1ReadPath, s)
+			})
+		}
 		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore)
 		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
 		deps[Server] = append(deps[Server], HealthServer)
@@ -602,6 +629,7 @@ func (f *Pyroscope) Run() error {
 			_, err := pyroscope.Start(pyroscope.Config{
 				ApplicationName: "pyroscope",
 				ServerAddress:   fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort),
+				TenantID:        f.Cfg.SelfProfiling.TenantID,
 				Tags: map[string]string{
 					"hostname":           os.Getenv("HOSTNAME"),
 					"target":             "all",

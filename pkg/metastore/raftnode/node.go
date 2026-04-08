@@ -15,12 +15,11 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/dskit/tracing"
 	"github.com/hashicorp/raft"
 	raftwal "github.com/hashicorp/raft-wal"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/client_golang/prometheus"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 
@@ -56,6 +55,10 @@ type Config struct {
 	SnapshotThreshold     uint64        `yaml:"snapshot_threshold" doc:"hidden"`
 	TransportConnPoolSize uint64        `yaml:"transport_conn_pool_size" doc:"hidden"`
 	TransportTimeout      time.Duration `yaml:"transport_timeout" doc:"hidden"`
+	LogStoreTimeout       time.Duration `yaml:"log_store_timeout" doc:"hidden"`
+
+	// If set, wraps the log store after construction. Used only for testing.
+	LogStoreMiddleware func(raft.LogStore) raft.LogStore `yaml:"-"`
 }
 
 const (
@@ -69,6 +72,7 @@ const (
 	defaultSnapshotThreshold     = 8 << 10
 	defaultTransportConnPoolSize = 10
 	defaultTransportTimeout      = 10 * time.Second
+	defaultLogStoreTimeout       = 10 * time.Second
 )
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
@@ -95,6 +99,7 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.Uint64Var(&cfg.SnapshotThreshold, prefix+"snapshot-threshold", defaultSnapshotThreshold, "")
 	f.Uint64Var(&cfg.TransportConnPoolSize, prefix+"transport-conn-pool-size", defaultTransportConnPoolSize, "")
 	f.DurationVar(&cfg.TransportTimeout, prefix+"transport-timeout", defaultTransportTimeout, "")
+	f.DurationVar(&cfg.LogStoreTimeout, prefix+"log-store-timeout", defaultLogStoreTimeout, "")
 }
 
 func (cfg *Config) Validate() error {
@@ -232,6 +237,13 @@ func (n *Node) openStore() (err error) {
 	}
 	n.logStore = n.wal
 	n.logStore, _ = raft.NewLogCache(int(n.config.WALCacheEntries), n.logStore)
+
+	// For testing purposes only. Needs to happen here, before wrapping the store.
+	if n.config.LogStoreMiddleware != nil {
+		n.logStore = n.config.LogStoreMiddleware(n.logStore)
+	}
+
+	n.logStore = newTimeoutLogStore(n.logStore, n.config.LogStoreTimeout, n.metrics.logStoreWrite, n.metrics.logStoreTimeout)
 	n.stableStore = n.wal
 	n.snapshotStore = n.snapshots
 	return nil
@@ -313,10 +325,12 @@ func (n *Node) TransferLeadership() (err error) {
 // Propose makes an attempt to apply the given command to the FSM.
 // The function returns an error if node is not the leader.
 func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Message) (resp proto.Message, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "node.Propose")
+	span, ctx := tracing.StartSpanFromContext(ctx, "node.Propose")
+	otelSpan := oteltrace.SpanFromContext(ctx)
 	defer func() {
 		if err != nil {
-			ext.LogError(span, err)
+			span.LogError(err)
+			span.SetError()
 		}
 		span.Finish()
 	}()
@@ -324,32 +338,32 @@ func (n *Node) Propose(ctx context.Context, t fsm.RaftLogEntryType, m proto.Mess
 	ctxID := uuid.New().String()
 	n.contextRegistry.Store(ctxID, ctx)
 
-	span.LogFields(otlog.String("msg", "marshalling log entry"))
+	otelSpan.AddEvent("marshalling log entry")
 
 	raw, err := fsm.MarshalEntry(t, m)
 	if err != nil {
 		return nil, err
 	}
 
-	span.LogFields(otlog.String("msg", "log entry marshalled"))
+	otelSpan.AddEvent("log entry marshalled")
 	timer := prometheus.NewTimer(n.metrics.apply)
 	defer timer.ObserveDuration()
 
-	span.LogFields(otlog.String("msg", "applying log entry"))
+	otelSpan.AddEvent("applying log entry")
 
 	future := n.raft.ApplyLog(raft.Log{
 		Data:       raw,
 		Extensions: []byte(ctxID),
 	}, n.config.ApplyTimeout)
 
-	span.LogFields(otlog.String("msg", "waiting for apply result"))
+	otelSpan.AddEvent("waiting for apply result")
 
 	if err = future.Error(); err != nil {
 		return nil, WithRaftLeaderStatusDetails(err, n.raft)
 	}
 	r := future.Response().(fsm.Response)
 
-	span.LogFields(otlog.String("msg", "apply result received"))
+	otelSpan.AddEvent("apply result received")
 	if r.Data != nil {
 		resp = r.Data
 	}

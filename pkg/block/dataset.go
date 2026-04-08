@@ -34,6 +34,50 @@ const (
 	SectionDatasetIndex
 )
 
+// DatasetWeight holds the section-level size breakdown of a dataset.
+// For Format1 (tenant-wide TSDB index) datasets, IndexLookupCount is 1
+// and only TSDBBytes is set; the real profile and symbol sizes are
+// unknown until the query backend resolves the datasets at runtime.
+type DatasetWeight struct {
+	ProfilesBytes    uint64
+	TSDBBytes        uint64
+	SymbolsBytes     uint64
+	IndexLookupCount int
+}
+
+// WeightOf computes the section size breakdown for a dataset from its
+// table of contents.
+func WeightOf(ds *metastorev1.Dataset) DatasetWeight {
+	toc := ds.TableOfContents
+	switch {
+	case len(toc) >= 3: // Format0: profiles, tsdb, symbols
+		return DatasetWeight{
+			ProfilesBytes: toc[1] - toc[0],
+			TSDBBytes:     toc[2] - toc[1],
+			SymbolsBytes:  (toc[0] + ds.Size) - toc[2],
+		}
+	case len(toc) == 1: // Format1: tenant-wide dataset index
+		return DatasetWeight{
+			TSDBBytes:        ds.Size,
+			IndexLookupCount: 1,
+		}
+	}
+	return DatasetWeight{}
+}
+
+// Add accumulates another DatasetWeight into this one.
+func (w *DatasetWeight) Add(other DatasetWeight) {
+	w.ProfilesBytes += other.ProfilesBytes
+	w.TSDBBytes += other.TSDBBytes
+	w.SymbolsBytes += other.SymbolsBytes
+	w.IndexLookupCount += other.IndexLookupCount
+}
+
+// Total returns the sum of all section bytes.
+func (w DatasetWeight) Total() uint64 {
+	return w.ProfilesBytes + w.TSDBBytes + w.SymbolsBytes
+}
+
 type sectionDesc struct {
 	// The section entry index in the table of contents.
 	index int

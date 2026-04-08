@@ -79,7 +79,7 @@ func (q *QueryFrontend) queryStandard(ctx context.Context, start, end int64, lab
 				ExemplarType: req.GetExemplarType(),
 			},
 		}},
-	})
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (q *QueryFrontend) queryCompact(ctx context.Context, start, end int64, labe
 				ExemplarType: req.GetExemplarType(),
 			},
 		}},
-	})
+	}, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -100,7 +100,7 @@ func TestCompact(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, res)
 
-	expected := new(phlaremodel.Tree)
+	expected := new(phlaremodel.FunctionNameTree)
 	expected.InsertStack(3, "baz", "bar", "foo")
 	require.Equal(t, expected.String(), res.String())
 }
@@ -177,7 +177,7 @@ func TestCompactWithDownsampling(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, res)
 
-	expected := new(phlaremodel.Tree)
+	expected := new(phlaremodel.FunctionNameTree)
 	expected.InsertStack(3, "baz", "bar", "foo")
 	require.Equal(t, expected.String(), res.String())
 
@@ -309,7 +309,7 @@ func TestCompactWithSplitting(t *testing.T) {
 	res, err := queriers[1].MergeByStacktraces(ctx, it, 0)
 	require.NoError(t, err)
 
-	expected := new(phlaremodel.Tree)
+	expected := new(phlaremodel.FunctionNameTree)
 	expected.InsertStack(10, "baz", "bar", "foo")
 	require.Equal(t, expected.String(), res.String())
 }

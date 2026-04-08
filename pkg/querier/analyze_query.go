@@ -5,7 +5,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
+	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -22,10 +22,13 @@ type queryScope struct {
 }
 
 func (q *Querier) AnalyzeQuery(ctx context.Context, req *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "AnalyzeQuery")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "AnalyzeQuery")
 	defer sp.Finish()
 
 	plan, err := q.blockSelect(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
+	if err != nil {
+		return nil, err
+	}
 	ingesterQueryScope, storeGatewayQueryScope, deduplicationNeeded := getDataFromPlan(plan)
 
 	blockStatsFromReplicas, err := q.getBlockStatsFromIngesters(ctx, plan, ingesterQueryScope.blockIds)
@@ -107,7 +110,7 @@ func (q *Querier) getBlockStatsFromStoreGateways(ctx context.Context, plan block
 		}
 		return stats.Msg, err
 	})
-	return blockStatsFromReplicas, nil
+	return blockStatsFromReplicas, err
 }
 
 func addBlockStatsToQueryScope(blockStatsFromReplicas []ResponseFromReplica[*ingestv1.GetBlockStatsResponse], queryScope *queryScope) {

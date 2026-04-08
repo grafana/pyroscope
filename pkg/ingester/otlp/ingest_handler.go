@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -253,8 +254,9 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 				}
 
 				req := &distributormodel.PushRequest{
-					ReceivedCompressedProfileSize: proto.Size(p),
-					RawProfileType:                distributormodel.RawProfileTypeOTEL,
+					ReceivedCompressedProfileSize:   proto.Size(p),
+					ReceivedDecompressedProfileSize: proto.Size(p),
+					RawProfileType:                  distributormodel.RawProfileTypeOTEL,
 				}
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {
@@ -305,14 +307,12 @@ func getServiceNameFromAttributes(attrs []*v1.KeyValue) string {
 	fallback := model.AttrServiceNameFallback
 	for _, attr := range attrs {
 		if attr.Key == string(model.AttrServiceName) {
-			val := attr.GetValue()
-			if sv := val.GetStringValue(); sv != "" {
+			if sv := stringValueFromAnyValue(attr.GetValue()); sv != "" {
 				return sv
 			}
 		}
 		if attr.Key == string(model.AttrProcessExecutableName) {
-			val := attr.GetValue()
-			if sv := val.GetStringValue(); sv != "" {
+			if sv := stringValueFromAnyValue(attr.GetValue()); sv != "" {
 				fallback += ":" + sv
 			}
 		}
@@ -342,8 +342,7 @@ func appendAttributesUnique(labels []*typesv1.LabelPair, attrs []*v1.KeyValue, p
 			continue
 		}
 
-		val := attr.GetValue()
-		if sv := val.GetStringValue(); sv != "" {
+		if sv := stringValueFromAnyValue(attr.GetValue()); sv != "" {
 			labels = append(labels, &typesv1.LabelPair{
 				Name:  attr.Key,
 				Value: sv,
@@ -352,4 +351,35 @@ func appendAttributesUnique(labels []*typesv1.LabelPair, attrs []*v1.KeyValue, p
 		}
 	}
 	return labels
+}
+
+func decodeSingleAnyValue(v *v1.AnyValue) string {
+	if v == nil {
+		return ""
+	}
+
+	switch value := v.Value.(type) {
+	case *v1.AnyValue_StringValue:
+		return value.StringValue
+	case *v1.AnyValue_IntValue:
+		return strconv.FormatInt(value.IntValue, 10)
+	default:
+		return ""
+	}
+}
+
+func stringValueFromAnyValue(v *v1.AnyValue) string {
+	if v == nil {
+		return ""
+	}
+	if decoded := decodeSingleAnyValue(v); decoded != "" {
+		return decoded
+	}
+	if av := v.GetArrayValue(); av != nil {
+		values := av.GetValues()
+		if len(values) == 1 {
+			return decodeSingleAnyValue(values[0])
+		}
+	}
+	return ""
 }

@@ -106,6 +106,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 			assert.NoError(t, err)
 		}()
 		res.Instances = append(res.Instances, MetastoreInstance{
+			Config:     configs[i],
 			Metastore:  m,
 			Connection: cc,
 			Server:     server,
@@ -152,6 +153,7 @@ func MockStaticDiscovery(t *testing.T, servers []discovery.Server) *mockdiscover
 }
 
 type MetastoreInstance struct {
+	Config     metastore.Config
 	Metastore  *metastore.Metastore
 	Server     *grpc.Server
 	Connection *grpc.ClientConn

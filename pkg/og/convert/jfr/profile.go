@@ -2,7 +2,7 @@ package jfr
 
 import (
 	"bytes"
-	"compress/gzip"
+	"github.com/klauspost/compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -69,6 +69,7 @@ func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata, li
 		})
 	}
 	res.ReceivedCompressedProfileSize = rawSize
+	res.ReceivedDecompressedProfileSize = len(r)
 	res.RawProfileType = distributormodel.RawProfileTypeJFR
 	return res, err
 }

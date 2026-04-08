@@ -18,7 +18,7 @@
         }
       ],
       "values": "239",
-      "labels": "process=firefox"
+      "labels": "cpu.logical_number=0,process=firefox"
     },
     {
       "locations": [
@@ -32,7 +32,7 @@
         }
       ],
       "values": "61423",
-      "labels": "process=chrome"
+      "labels": "cpu.logical_number=7,process=chrome"
     }
   ],
   "time_nanos": "239",

@@ -9,6 +9,10 @@ aliases:
 
 # Pyroscope ingester
 
+{{< admonition type="note" >}}
+The ingester is a v1 architecture component. For the v2 equivalent, refer to [segment writer]({{< relref "../../reference-pyroscope-v2-architecture/components/segment-writer" >}}).
+{{< /admonition >}}
+
 The ingester is a stateful component that writes incoming profiles first to [on disk storage](../../about-grafana-pyroscope-architecture/#long-term-storage) on the write path and returns series samples for queries on the read path.
 
 Incoming profiles from [distributors](../distributor/) are not immediately written to the long-term storage but are either kept in the ingester's memory or offloaded to the ingester's disk.

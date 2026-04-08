@@ -23,6 +23,8 @@ pyroscope.java "java" {
     interval = "15s"
     alloc = "512k"
     cpu = true
+    event = "wall"
+    per_thread = true
     lock = "10ms"
     sample_rate = 100
   }
@@ -62,9 +64,11 @@ It supports the following arguments:
 |---------------|------------|----------------------------------------------------------------------------------------------------------|---------|----------|
 | `interval`    | `duration` | How frequently to collect profiles from the targets.                                                     | "60s"   | no       |
 | `cpu`         | `bool`     | A flag to enable CPU profiling, using `itimer` async-profiler event.                                     | true    | no       |
+| `event`       | `string`   | Sets the CPU profiling event. Can be one of `itimer`, `cpu`, or `wall`.                                  | "itimer" | no       |
 | `sample_rate` | `int`      | CPU profiling sample rate. It's converted from Hz to interval and passed as `-i` arg to async-profiler. | 100     | no       |
 | `alloc`       | `string`   | Allocation profiling sampling configuration  It's passed as `--alloc` arg to async-profiler.            | "512k"  | no       |
 | `lock`        | `string`   | Lock profiling sampling configuration. It's passed as `--lock` arg to async-profiler.                   | "10ms"  | no       |
+| `per_thread`  | `bool`     | Enables async-profiler per-thread mode (`-t`). Recommended when using wall event profiling.              | false   | no       |
 
 For more information on async-profiler configuration,
 see [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options).

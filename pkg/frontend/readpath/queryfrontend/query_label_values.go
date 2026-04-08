@@ -44,7 +44,7 @@ func (q *QueryFrontend) LabelValues(
 			QueryType:   queryv1.QueryType_QUERY_LABEL_VALUES,
 			LabelValues: &queryv1.LabelValuesQuery{LabelName: c.Msg.Name},
 		}},
-	})
+	}, nil)
 	if err != nil {
 		return nil, err
 	}

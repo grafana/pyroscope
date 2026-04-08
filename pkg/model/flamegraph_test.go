@@ -102,7 +102,7 @@ func BenchmarkFlamegraph(b *testing.B) {
 func Test_FlameGraphMerger(t *testing.T) {
 	t.Run("two non-empty flamegraphs", func(t *testing.T) {
 		m := NewFlameGraphMerger()
-		s := new(Tree)
+		s := new(FunctionNameTree)
 		s.InsertStack(1, "foo", "bar")
 		s.InsertStack(1, "foo", "bar", "baz")
 		s.InsertStack(2, "foo", "qux")
@@ -110,7 +110,7 @@ func Test_FlameGraphMerger(t *testing.T) {
 		s.InsertStack(1, "fred", "other")
 		m.MergeFlameGraph(NewFlameGraph(s, -1))
 
-		s = new(Tree)
+		s = new(FunctionNameTree)
 		s.InsertStack(1, "foo", "bar", "baz")
 		s.InsertStack(1, "fred", "zoo")
 		s.InsertStack(1, "fred", "zoo", "ward")
@@ -119,7 +119,7 @@ func Test_FlameGraphMerger(t *testing.T) {
 		s.InsertStack(1, "other")
 		m.MergeFlameGraph(NewFlameGraph(s, -1))
 
-		expected := new(Tree)
+		expected := new(FunctionNameTree)
 		expected.InsertStack(1, "foo", "bar")
 		expected.InsertStack(1, "foo", "bar", "baz")
 		expected.InsertStack(2, "foo", "qux")
@@ -137,7 +137,7 @@ func Test_FlameGraphMerger(t *testing.T) {
 
 	t.Run("non-empty flamegraph result truncation", func(t *testing.T) {
 		m := NewFlameGraphMerger()
-		s := new(Tree)
+		s := new(FunctionNameTree)
 		s.InsertStack(1, "foo", "bar")
 		s.InsertStack(1, "foo", "bar", "baz")
 		s.InsertStack(2, "foo", "qux")
@@ -149,7 +149,7 @@ func Test_FlameGraphMerger(t *testing.T) {
 		m = NewFlameGraphMerger()
 		m.MergeFlameGraph(fg)
 
-		expected := new(Tree)
+		expected := new(FunctionNameTree)
 		expected.InsertStack(1, "foo", "bar")
 		expected.InsertStack(1, "foo", "bar", "other")
 		expected.InsertStack(2, "foo", "qux")
@@ -160,12 +160,12 @@ func Test_FlameGraphMerger(t *testing.T) {
 
 	t.Run("empty flamegraph", func(t *testing.T) {
 		m := NewFlameGraphMerger()
-		m.MergeFlameGraph(NewFlameGraph(new(Tree), -1))
-		require.Equal(t, new(Tree).String(), m.Tree().String())
+		m.MergeFlameGraph(NewFlameGraph(new(FunctionNameTree), -1))
+		require.Equal(t, new(FunctionNameTree).String(), m.Tree().String())
 	})
 
 	t.Run("no flamegraphs", func(t *testing.T) {
 		m := NewFlameGraphMerger()
-		require.Equal(t, new(Tree).String(), m.Tree().String())
+		require.Equal(t, new(FunctionNameTree).String(), m.Tree().String())
 	})
 }

@@ -1,0 +1,52 @@
+services:
+
+  otel-ebpf-profiler:
+    image: otel/opentelemetry-collector-ebpf-profiler:0.147.0
+    command:
+     - --config=/etc/ebpf-profiler-config.yaml
+     - --feature-gates=service.profilesSupport
+    hostname: ebpf-profiler
+    privileged: true
+    pid: "host"
+    volumes:
+      - ./config/ebpf-profiler-config.yaml:/etc/ebpf-profiler-config.yaml:ro
+      - ./config/kubeconfig.yaml:/root/.kube/config:ro
+      - /sys/kernel/debug:/sys/kernel/debug:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    networks:
+      - otel-net
+
+  # The otel-ebpf-profiler doesnt support adding docker metadata, this shim translates it into kubernetes API and makes it available
+  docker-k8sattributesprocessor-shim:
+    image: ghcr.io/simonswine/docker-k8sattributesprocessor-shim:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - otel-net
+
+  pyroscope:
+    image: grafana/pyroscope:1.18.1
+    command: 
+      - -self-profiling.disable-push=true
+    ports:
+      - "4040:4040"
+    networks:
+      - otel-net
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    networks:
+      - otel-net
+
+networks:
+  otel-net:
+    driver: bridge

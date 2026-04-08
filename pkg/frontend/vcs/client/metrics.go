@@ -32,10 +32,13 @@ var (
 func InstrumentedHTTPClient(logger log.Logger, reg prometheus.Registerer) *http.Client {
 	apiDuration := util.RegisterOrGet(reg, prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "vcs_github_request_duration",
-			Help:      "Duration of GitHub API requests in seconds",
-			Buckets:   prometheus.ExponentialBucketsRange(0.1, 10, 8),
+			Namespace:                       "pyroscope",
+			Name:                            "vcs_github_request_duration",
+			Help:                            "Duration of GitHub API requests in seconds",
+			Buckets:                         prometheus.ExponentialBucketsRange(0.1, 10, 8),
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  50,
+			NativeHistogramMinResetDuration: time.Hour,
 		},
 		[]string{"method", "route", "status_code"},
 	))

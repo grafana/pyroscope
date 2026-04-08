@@ -9,7 +9,7 @@ MAKEFLAGS += --no-print-directory
 BIN := $(CURDIR)/.tmp/bin
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
-GO_TEST_FLAGS ?= -v -race -cover
+GO_TEST_FLAGS ?= -race -cover
 
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
@@ -84,7 +84,11 @@ buf/lint: $(BIN)/buf
 
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./lidia/...' -- $(GO_TEST_FLAGS)
+	$(BIN)/gotestsum --rerun-fails=2 --packages "$$(go list ./... ./lidia/... | grep -v /test/integration)" -- $(GO_TEST_FLAGS)
+
+.PHONY: go/test-integration
+go/test-integration: $(BIN)/gotestsum
+	$(BIN)/gotestsum --rerun-fails=2 --packages './pkg/test/integration/...' -- $(GO_TEST_FLAGS)
 
 # Run test on examples
 # This can also be used to run it on a subset of tests
@@ -103,7 +107,7 @@ build-dev: ## Do a dev build (without requiring the frontend)
 
 .PHONY: frontend/build
 frontend/build:
-	docker build -f cmd/pyroscope/frontend.Dockerfile --output=public/build .
+	docker build -f cmd/pyroscope/frontend.Dockerfile --output=ui/dist .
 
 .PHONY: frontend/shell
 frontend/shell:

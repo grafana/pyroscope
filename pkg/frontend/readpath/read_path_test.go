@@ -28,6 +28,7 @@ type routerTestSuite struct {
 	registry *prometheus.Registry
 
 	overrides   *mockOverrides
+	resolver    *mockSplitTimeResolver
 	oldFrontend *mockquerierv1connect.MockQuerierServiceClient
 	newFrontend *mockquerierv1connect.MockQuerierServiceClient
 
@@ -41,15 +42,24 @@ func (m *mockOverrides) ReadPathOverrides(tenantID string) Config {
 	return args.Get(0).(Config)
 }
 
+type mockSplitTimeResolver struct{ mock.Mock }
+
+func (m *mockSplitTimeResolver) OldestProfileTime(ctx context.Context, tenantID string) (time.Time, error) {
+	args := m.Called(ctx, tenantID)
+	return args.Get(0).(time.Time), args.Error(1)
+}
+
 func (s *routerTestSuite) SetupTest() {
 	s.logger = log.NewLogfmtLogger(io.Discard)
 	s.registry = prometheus.NewRegistry()
 	s.overrides = new(mockOverrides)
+	s.resolver = new(mockSplitTimeResolver)
 	s.oldFrontend = new(mockquerierv1connect.MockQuerierServiceClient)
 	s.newFrontend = new(mockquerierv1connect.MockQuerierServiceClient)
 	s.router = NewRouter(
 		s.logger,
 		s.overrides,
+		s.resolver,
 		s.oldFrontend,
 		s.newFrontend,
 	)
@@ -60,6 +70,7 @@ func (s *routerTestSuite) BeforeTest(_, _ string) {}
 
 func (s *routerTestSuite) AfterTest(_, _ string) {
 	s.overrides.AssertExpectations(s.T())
+	s.resolver.AssertExpectations(s.T())
 	s.oldFrontend.AssertExpectations(s.T())
 	s.newFrontend.AssertExpectations(s.T())
 }
@@ -91,7 +102,7 @@ func (s *routerTestSuite) Test_NewFrontendOnly() {
 func (s *routerTestSuite) Test_Combined() {
 	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
 		EnableQueryBackend:     true,
-		EnableQueryBackendFrom: time.Unix(20, 0),
+		EnableQueryBackendFrom: QueryBackendFrom{Time: time.Unix(20, 0)},
 	})
 
 	req1 := connect.NewRequest(&typesv1.LabelNamesRequest{Start: 10, End: 19999})
@@ -115,7 +126,7 @@ func (s *routerTestSuite) Test_Combined() {
 func (s *routerTestSuite) Test_Combined_BeforeSplit() {
 	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
 		EnableQueryBackend:     true,
-		EnableQueryBackendFrom: time.Unix(20, 0),
+		EnableQueryBackendFrom: QueryBackendFrom{Time: time.Unix(20, 0)},
 	})
 
 	expected := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}})
@@ -130,7 +141,7 @@ func (s *routerTestSuite) Test_Combined_BeforeSplit() {
 func (s *routerTestSuite) Test_Combined_AfterSplit() {
 	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
 		EnableQueryBackend:     true,
-		EnableQueryBackendFrom: time.Unix(20, 0),
+		EnableQueryBackendFrom: QueryBackendFrom{Time: time.Unix(20, 0)},
 	})
 
 	expected := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}})
@@ -145,7 +156,7 @@ func (s *routerTestSuite) Test_Combined_AfterSplit() {
 func (s *routerTestSuite) Test_LabelNames() {
 	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
 		EnableQueryBackend:     true,
-		EnableQueryBackendFrom: time.Unix(5, 0),
+		EnableQueryBackendFrom: QueryBackendFrom{Time: time.Unix(5, 0)},
 	})
 
 	req := connect.NewRequest(&typesv1.LabelNamesRequest{Start: 10, End: 10000})
@@ -161,7 +172,7 @@ func (s *routerTestSuite) Test_LabelNames() {
 func (s *routerTestSuite) Test_LabelValues() {
 	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
 		EnableQueryBackend:     true,
-		EnableQueryBackendFrom: time.Unix(5, 0),
+		EnableQueryBackendFrom: QueryBackendFrom{Time: time.Unix(5, 0)},
 	})
 
 	req := connect.NewRequest(&typesv1.LabelValuesRequest{Start: 10, End: 10000})
@@ -177,7 +188,7 @@ func (s *routerTestSuite) Test_LabelValues() {
 func (s *routerTestSuite) Test_Series() {
 	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
 		EnableQueryBackend:     true,
-		EnableQueryBackendFrom: time.Unix(5, 0),
+		EnableQueryBackendFrom: QueryBackendFrom{Time: time.Unix(5, 0)},
 	})
 
 	req := connect.NewRequest(&querierv1.SeriesRequest{Start: 10, End: 10000})
@@ -198,7 +209,7 @@ func (s *routerTestSuite) Test_Series() {
 func (s *routerTestSuite) Test_TimeSeries_Limit() {
 	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
 		EnableQueryBackend:     true,
-		EnableQueryBackendFrom: time.Unix(5, 0),
+		EnableQueryBackendFrom: QueryBackendFrom{Time: time.Unix(5, 0)},
 	})
 
 	one := int64(1)
@@ -269,7 +280,7 @@ func (s *routerTestSuite) Test_TimeSeries_Limit_OldFrontendOnly() {
 func (s *routerTestSuite) Test_TimeSeries_NoLimit() {
 	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
 		EnableQueryBackend:     true,
-		EnableQueryBackendFrom: time.Unix(5, 0),
+		EnableQueryBackendFrom: QueryBackendFrom{Time: time.Unix(5, 0)},
 	})
 
 	req := connect.NewRequest(&querierv1.SelectSeriesRequest{Start: 10, End: 10000})
@@ -297,6 +308,71 @@ func (s *routerTestSuite) Test_TimeSeries_NoLimit() {
 			}}), nil).Once()
 
 	resp, err := s.router.SelectSeries(s.ctx, req)
+	s.Require().NoError(err)
+	s.Assert().Equal(expected, resp)
+}
+
+func (s *routerTestSuite) Test_Auto_ResolvesFromMetastore() {
+	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
+		EnableQueryBackend:     true,
+		EnableQueryBackendFrom: QueryBackendFrom{Auto: true},
+	})
+	s.resolver.On("OldestProfileTime", mock.Anything, "tenant-a").Return(time.Unix(20, 0), nil)
+
+	req1 := connect.NewRequest(&typesv1.LabelNamesRequest{Start: 10, End: 19999})
+	resp1 := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}})
+	s.oldFrontend.On("LabelNames", mock.Anything, req1).Return(resp1, nil).Once()
+
+	req2 := connect.NewRequest(&typesv1.LabelNamesRequest{Start: 20000, End: math.MaxInt64})
+	resp2 := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"baz", "foo", "qux"}})
+	s.newFrontend.On("LabelNames", mock.Anything, req2).Return(resp2, nil).Once()
+
+	expected := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"bar", "baz", "foo", "qux"}})
+	resp, err := s.router.LabelNames(s.ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
+		Start: 10,
+		End:   math.MaxInt64,
+	}))
+
+	s.Require().NoError(err)
+	s.Assert().Equal(expected, resp)
+}
+
+func (s *routerTestSuite) Test_Auto_FallbackOnError() {
+	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
+		EnableQueryBackend:     true,
+		EnableQueryBackendFrom: QueryBackendFrom{Auto: true},
+	})
+	s.resolver.On("OldestProfileTime", mock.Anything, "tenant-a").
+		Return(time.Time{}, context.DeadlineExceeded)
+
+	expected := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}})
+	s.oldFrontend.On("LabelNames", mock.Anything, mock.Anything).Return(expected, nil).Once()
+
+	resp, err := s.router.LabelNames(s.ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
+		Start: 10,
+		End:   math.MaxInt64,
+	}))
+
+	s.Require().NoError(err)
+	s.Assert().Equal(expected, resp)
+}
+
+func (s *routerTestSuite) Test_Auto_NoV2Data_FallsBackToOldFrontend() {
+	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
+		EnableQueryBackend:     true,
+		EnableQueryBackendFrom: QueryBackendFrom{Auto: true},
+	})
+	s.resolver.On("OldestProfileTime", mock.Anything, "tenant-a").
+		Return(time.Time{}, ErrNoV2Data)
+
+	expected := connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}})
+	s.oldFrontend.On("LabelNames", mock.Anything, mock.Anything).Return(expected, nil).Once()
+
+	resp, err := s.router.LabelNames(s.ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
+		Start: 10,
+		End:   math.MaxInt64,
+	}))
+
 	s.Require().NoError(err)
 	s.Assert().Equal(expected, resp)
 }

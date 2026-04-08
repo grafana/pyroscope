@@ -44,7 +44,7 @@ func (f *Frontend) Diff(
 	c.Msg.Left.MaxNodes = &maxNodes
 	c.Msg.Right.MaxNodes = &maxNodes
 
-	var left, right *phlaremodel.Tree
+	var left, right *phlaremodel.FunctionNameTree
 	g.Go(func() error {
 		var leftErr error
 		left, leftErr = f.selectMergeStacktracesTree(ctx, connect.NewRequest(c.Msg.Left))

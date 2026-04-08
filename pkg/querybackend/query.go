@@ -8,9 +8,10 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/tracing"
 	"github.com/iancoleman/strcase"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -83,20 +84,21 @@ func registerQueryType(
 }
 
 type blockContext struct {
-	ctx           context.Context
-	log           log.Logger
-	req           *request
-	agg           *reportAggregator
-	obj           *block.Object
-	grp           *errgroup.Group
-	execCollector *blockExecutionCollector
+	ctx             context.Context
+	log             log.Logger
+	req             *request
+	agg             *reportAggregator
+	obj             *block.Object
+	grp             *errgroup.Group
+	execCollector   *blockExecutionCollector
+	weightCollector *queryWeightCollector
 }
 
 func (b *blockContext) execute() error {
 	startTime := time.Now()
 
-	var span opentracing.Span
-	span, b.ctx = opentracing.StartSpanFromContext(b.ctx, "blockContext.execute")
+	var span *tracing.Span
+	span, b.ctx = tracing.StartSpanFromContext(b.ctx, "blockContext.execute")
 	defer span.Finish()
 
 	if idx := b.datasetIndex(); idx != nil {
@@ -107,6 +109,9 @@ func (b *blockContext) execute() error {
 			}
 			return fmt.Errorf("failed to lookup datasets: %w", err)
 		}
+		// Only accumulate datasets resolved from the index lookup; Format0
+		// datasets were already counted by the query frontend at planning time.
+		b.weightCollector.addDatasets(b.obj.Metadata().Datasets)
 	}
 
 	md := b.obj.Metadata()
@@ -155,7 +160,7 @@ func (b *blockContext) datasetIndex() *metastorev1.Dataset {
 	s := (&queryContext{blockContext: b}).sections()
 	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
 	if indexOnly {
-		opentracing.SpanFromContext(b.ctx).SetTag("dataset_index_query_index_only", indexOnly)
+		oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query_index_only", indexOnly))
 		return nil
 	}
 
@@ -163,7 +168,7 @@ func (b *blockContext) datasetIndex() *metastorev1.Dataset {
 }
 
 func (b *blockContext) lookupDatasets(ds *metastorev1.Dataset) error {
-	opentracing.SpanFromContext(b.ctx).SetTag("dataset_index_query", true)
+	oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query", true))
 
 	// As query execution has not started yet,
 	// we can safely open datasets.
@@ -200,8 +205,7 @@ func (b *blockContext) lookupDatasets(ds *metastorev1.Dataset) error {
 	md.Datasets = md.Datasets[:j]
 	b.obj.SetMetadata(md)
 
-	opentracing.SpanFromContext(b.ctx).
-		LogFields(otlog.String("msg", "dataset tsdb index lookup complete"))
+	oteltrace.SpanFromContext(b.ctx).AddEvent("dataset tsdb index lookup complete")
 
 	return nil
 }
@@ -220,8 +224,8 @@ type queryContext struct {
 }
 
 func (q *queryContext) execute(query *queryv1.Query) error {
-	var span opentracing.Span
-	span, q.ctx = opentracing.StartSpanFromContext(q.ctx, "executeQuery."+strcase.ToCamel(query.QueryType.String()))
+	var span *tracing.Span
+	span, q.ctx = tracing.StartSpanFromContext(q.ctx, "executeQuery."+strcase.ToCamel(query.QueryType.String()))
 	defer span.Finish()
 	handle, err := getQueryHandler(query.QueryType)
 	if err != nil {

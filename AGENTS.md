@@ -136,6 +136,14 @@ Commit the generated files with your changes.
 go run ./cmd/pyroscope --target all,embedded-grafana
 # Pyroscope: http://localhost:4040
 # Grafana: http://localhost:4041
+
+# Run with V2 architecture (segment writers, query backend, symbolizer)
+PYROSCOPE_V2=1 go run ./cmd/pyroscope \
+  -target=all \
+  -storage.backend=filesystem \
+  -write-path=segment-writer \
+  -enable-query-backend=true \
+  -symbolizer.enabled=true
 ```
 
 ## Code Style & Conventions
@@ -345,7 +353,7 @@ make docker-image/pyroscope/build  # Build Docker image
 - **parquet-go**: Parquet file format implementation
 - **go-kit/log**: Structured logging
 - **prometheus/client_golang**: Metrics instrumentation
-- **opentracing-go**: Distributed tracing
+- **opentelemetry**: Distributed tracing
 
 ## When Working on Features
 

@@ -14,6 +14,7 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/go-kit/log"
+	prommodel "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -357,7 +358,7 @@ func TestIngestPPROFFixtures(t *testing.T) {
 				require.Equal(t, 1, len(svc.reqPprof))
 				actualReq := svc.reqPprof[0]
 				ls := phlaremodel.Labels(actualReq.Labels)
-				require.Equal(t, testdatum.expectMetric, ls.Get(labels.MetricName))
+				require.Equal(t, testdatum.expectMetric, ls.Get(string(prommodel.MetricNameLabel)))
 				require.Equal(t, "asd", ls.Get("qwe"))
 				require.Equal(t, spyName, ls.Get(phlaremodel.LabelNamePyroscopeSpy))
 				require.Equal(t, "pprof.test", ls.Get("service_name"))

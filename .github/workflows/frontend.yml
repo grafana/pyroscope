@@ -13,8 +13,11 @@ concurrency:
 permissions:
   contents: read
 jobs:
-  type-check:
+  install:
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64' || 'ubuntu-latest' }}
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -22,13 +25,51 @@ jobs:
           persist-credentials: 'false'
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
-          node-version: 20
-          cache: yarn
-      - run: yarn --frozen-lockfile
+          node-version: 24
+      - run: corepack enable
+      - name: Get yarn cache dir
+        id: yarn-cache
+        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: yarn-${{ hashFiles('ui/yarn.lock') }}
+          restore-keys: yarn-
+      - run: yarn install --immutable
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: node_modules
+          include-hidden-files: true
+          path: |
+            ui/node_modules
+            ui/.yarn/install-state.gz
+  type-check:
+    needs: install
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64' || 'ubuntu-latest' }}
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: 'false'
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+      - run: corepack enable
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: node_modules
+          path: ui
       - name: Run type-check
         run: yarn type-check
   format:
+    needs: install
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64' || 'ubuntu-latest' }}
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -36,13 +77,20 @@ jobs:
           persist-credentials: 'false'
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
-          node-version: 20
-          cache: yarn
-      - run: yarn --frozen-lockfile
+          node-version: 24
+      - run: corepack enable
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: node_modules
+          path: ui
       - name: Run format
         run: yarn run format
   lint:
+    needs: install
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64' || 'ubuntu-latest' }}
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -50,13 +98,20 @@ jobs:
           persist-credentials: 'false'
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
-          node-version: 20
-          cache: yarn
-      - run: yarn --frozen-lockfile
+          node-version: 24
+      - run: corepack enable
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: node_modules
+          path: ui
       - name: Run lint
         run: yarn lint
   build:
+    needs: install
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64' || 'ubuntu-latest' }}
+    defaults:
+      run:
+        working-directory: ui
     steps:
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -64,8 +119,11 @@ jobs:
           persist-credentials: 'false'
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
-          node-version: 20
-          cache: yarn
-      - run: yarn --frozen-lockfile
+          node-version: 24
+      - run: corepack enable
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: node_modules
+          path: ui
       - name: Run build
         run: yarn build

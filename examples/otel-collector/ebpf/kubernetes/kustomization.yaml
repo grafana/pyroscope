@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - rbac.yaml
+  - otel-ebpf-profiler.yaml
+  - pyroscope.yaml
+  - grafana.yaml
+  - cpu-stress.yaml
+
+configMapGenerator:
+  - name: otel-ebpf-profiler-config
+    files:
+      - config.yaml=config/ebpf-profiler-config.yaml
+
+generatorOptions:
+  #disableNameSuffixHash: true

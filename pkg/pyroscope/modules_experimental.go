@@ -12,9 +12,8 @@ import (
 	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	otgrpc "github.com/opentracing-contrib/go-grpc"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
 
@@ -29,7 +28,6 @@ import (
 	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/metrics"
-	"github.com/grafana/pyroscope/pkg/objstore"
 	blocksv2 "github.com/grafana/pyroscope/pkg/operations/v2/blocks"
 	"github.com/grafana/pyroscope/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/pkg/querybackend"
@@ -69,6 +67,9 @@ func (f *Pyroscope) initQueryFrontend() (services.Service, error) {
 	case c.EnableQueryBackend && c.EnableQueryBackendFrom.IsZero():
 		return f.initQueryFrontendV2()
 	case c.EnableQueryBackend && !c.EnableQueryBackendFrom.IsZero():
+		// Both fixed timestamps and "auto" mode use the hybrid frontend:
+		// fixed timestamps are resolved immediately, while "auto" queries
+		// the metastore at request time.
 		return f.initQueryFrontendV12()
 	default:
 		return nil, fmt.Errorf("invalid query backend configuration: %v", c)
@@ -146,9 +147,12 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 		nil,
 	)
 
+	resolver := readpath.NewMetastoreSplitTimeResolver(f.metastoreClient, time.Minute)
+
 	handler := readpath.NewRouter(
 		log.With(f.logger, "component", "read-path-router"),
 		f.Overrides,
+		resolver,
 		f.frontend,
 		f.queryFrontend,
 	)
@@ -233,6 +237,7 @@ func (f *Pyroscope) initSegmentWriterClient() (_ services.Service, err error) {
 		logger, f.reg,
 		f.segmentWriterRing,
 		placement,
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {
 		return nil, err
@@ -321,6 +326,7 @@ func (f *Pyroscope) initMetastoreClient() (services.Service, error) {
 		f.logger,
 		f.Cfg.Metastore.GRPCClientConfig,
 		disc,
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	return f.metastoreClient.Service(), nil
 }
@@ -382,6 +388,7 @@ func (f *Pyroscope) initQueryBackendClient() (services.Service, error) {
 		f.Cfg.QueryBackend.Address,
 		f.Cfg.QueryBackend.GRPCClientConfig,
 		f.Cfg.QueryBackend.ClientTimeout,
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {
 		return nil, err
@@ -407,13 +414,12 @@ func (f *Pyroscope) initRecordingRulesClient() (services.Service, error) {
 }
 
 func (f *Pyroscope) initSymbolizer() (services.Service, error) {
-	prefixedBucket := objstore.NewPrefixedBucket(f.storageBucket, "symbolizer")
 
 	sym, err := symbolizer.New(
 		f.logger,
 		f.Cfg.Symbolizer,
 		f.reg,
-		prefixedBucket,
+		f.storageBucket,
 		f.Overrides,
 	)
 	if err != nil {
@@ -498,6 +504,5 @@ func (f *Pyroscope) grpcClientInterceptors() []grpc.UnaryClientInterceptor {
 
 	return []grpc.UnaryClientInterceptor{
 		middleware.UnaryClientInstrumentInterceptor(requestDuration, middleware.ReportGRPCStatusOption),
-		otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer()),
 	}
 }

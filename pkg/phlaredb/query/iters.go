@@ -10,9 +10,10 @@ import (
 	"sync"
 
 	"github.com/grafana/dskit/multierror"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
 	"github.com/parquet-go/parquet-go"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 )
@@ -445,68 +446,61 @@ func NewBinaryJoinIterator(definitionLevel int, left, right Iterator) *BinaryJoi
 	}
 }
 
-// nextOrSeek will use next if the iterator is exactly one row aways
-func (bj *BinaryJoinIterator) nextOrSeek(to RowNumberWithDefinitionLevel, it Iterator) bool {
-	oldResult := it.At()
-	defer iteratorResultPoolPut(oldResult)
-	// Seek when definition level is higher then 0, there is not previous iteration or when the difference between current position and to is not 1
-	if to.DefinitionLevel != 0 || oldResult == nil || to.RowNumber[0] != (oldResult.RowNumber[0]-1) {
-		return it.Seek(to)
+// nextOrSeek advances it toward the target's position.
+// If to is nil (not yet positioned), or to is at/behind it, it calls Next.
+// If to is exactly one row ahead, it calls Next as an optimization.
+// Otherwise, it calls Seek.
+func (bj *BinaryJoinIterator) nextOrSeek(it Iterator, to *IteratorResult) bool {
+	from := it.At()
+
+	var ok bool
+	switch {
+	// If to points nowhere, we can't seek, hence we need to next().
+	case to == nil:
+		ok = it.Next()
+	// If from points nowhere, we directly seek towards to.
+	case from == nil:
+		ok = it.Seek(RowNumberWithDefinitionLevel{to.RowNumber, bj.definitionLevel})
+	// Optimized to do next if we are just 1 position behind it (only for definitionLevels of 0).
+	case bj.definitionLevel == 0 && to.RowNumber[0] == from.RowNumber[0]+1:
+		ok = it.Next()
+	default:
+		ok = it.Seek(RowNumberWithDefinitionLevel{to.RowNumber, bj.definitionLevel})
 	}
-	return it.Next()
+
+	// Return the old result to the pool if the iterator replaced it with a new one.
+	if from != nil && from != it.At() {
+		iteratorResultPoolPut(from)
+	}
+	return ok
+}
+
+func (bj *BinaryJoinIterator) rowsMatch() bool {
+	l, r := bj.left.At(), bj.right.At()
+	return l != nil && r != nil && CompareRowNumbers(bj.definitionLevel, l.RowNumber, r.RowNumber) == 0
 }
 
 func (bj *BinaryJoinIterator) makeResult() {
+	l, r := bj.left.At(), bj.right.At()
 	bj.res.Reset()
 	bj.res.RowNumber = EmptyRowNumber()
-	bj.res.RowNumber[0] = bj.left.At().RowNumber[0]
-	bj.res.Append(bj.left.At())
-	bj.res.Append(bj.right.At())
+	bj.res.RowNumber[0] = l.RowNumber[0]
+	bj.res.Append(l)
+	bj.res.Append(r)
 }
 
 func (bj *BinaryJoinIterator) Next() bool {
-	var r *IteratorResult
+	cur, other := bj.left, bj.right
 	for {
-		if r != nil {
-			iteratorResultPoolPut(r)
-		}
-		r = bj.left.At()
-		if !bj.left.Next() {
-			bj.err = bj.left.Err()
+		if !bj.nextOrSeek(cur, other.At()) {
+			bj.err = cur.Err()
 			return false
 		}
-
-		// now seek the right iterator to the left position
-		if !bj.nextOrSeek(RowNumberWithDefinitionLevel{bj.left.At().RowNumber, bj.definitionLevel}, bj.right) {
-			bj.err = bj.right.Err()
-			return false
-		}
-
-		if cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber); cmp == 0 {
-			// we have a found an element
+		if bj.rowsMatch() {
 			bj.makeResult()
 			return true
-		} else if cmp < 0 {
-			// left is smaller, so we need to seek the left iterator to the right position
-			if !bj.nextOrSeek(RowNumberWithDefinitionLevel{bj.right.At().RowNumber, bj.definitionLevel}, bj.left) {
-				bj.err = bj.left.Err()
-				return false
-			}
-
-			if cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber); cmp == 0 {
-				bj.makeResult()
-				return true
-			}
-
-		} else {
-			panic(fmt.Sprintf(
-				"bug in iterator during join: the right iterator cannot be smaller than the left one, as it just has been Seeked beyond left=%v %T right=%v %T",
-				bj.left.At().RowNumber[0],
-				bj.left,
-				bj.right.At().RowNumber[0],
-				bj.right,
-			))
 		}
+		cur, other = other, cur
 	}
 }
 
@@ -519,17 +513,17 @@ func (bj *BinaryJoinIterator) Seek(to RowNumberWithDefinitionLevel) bool {
 		bj.err = bj.left.Err()
 		return false
 	}
+	// move right to at least the row left is currently on
+	to.RowNumber = bj.left.At().RowNumber
 	if !bj.right.Seek(to) {
 		bj.err = bj.right.Err()
 		return false
 	}
-
 	// if there is a match right away return true
 	if cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber); cmp == 0 {
 		bj.makeResult()
 		return true
 	}
-
 	// if not look for the next match
 	return bj.Next()
 }
@@ -844,7 +838,7 @@ type SyncIterator struct {
 	// Status
 	ctx             context.Context
 	cancel          func()
-	span            opentracing.Span
+	span            oteltrace.Span
 	metrics         *Metrics
 	curr            RowNumber
 	currRowGroup    parquet.RowGroup
@@ -900,10 +894,12 @@ func NewSyncIterator(ctx context.Context, rgs []parquet.RowGroup, column int, co
 		rn.Skip(rg.NumRows())
 	}
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "syncIterator", opentracing.Tags{
-		"columnIndex": column,
-		"column":      columnName,
-	})
+	_, ctx = tracing.StartSpanFromContext(ctx, "syncIterator")
+	span := oteltrace.SpanFromContext(ctx)
+	span.SetAttributes(
+		attribute.Int("columnIndex", column),
+		attribute.String("column", columnName),
+	)
 
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -1084,11 +1080,12 @@ func (c *SyncIterator) seekPages(seekTo RowNumber, definitionLevel int) (done bo
 				return true, err
 			}
 			c.metrics.pageReadsTotal.WithLabelValues(c.table, c.columnName).Add(1)
-			c.span.LogFields(
-				log.String("msg", "reading page (seekPages)"),
-				log.Int64("page_num_values", pg.NumValues()),
-				log.Int64("page_size", pg.Size()),
-			)
+			if c.span.IsRecording() {
+				c.span.AddEvent("reading page (seekPages)", oteltrace.WithAttributes(
+					attribute.Int64("page_num_values", pg.NumValues()),
+					attribute.Int64("page_size", pg.Size()),
+				))
+			}
 
 			// Skip based on row number?
 			newRN := c.curr
@@ -1156,11 +1153,12 @@ func (c *SyncIterator) next() (RowNumber, *parquet.Value, error) {
 				return EmptyRowNumber(), nil, err
 			}
 			c.metrics.pageReadsTotal.WithLabelValues(c.table, c.columnName).Add(1)
-			c.span.LogFields(
-				log.String("msg", "reading page (next)"),
-				log.Int64("page_num_values", pg.NumValues()),
-				log.Int64("page_size", pg.Size()),
-			)
+			if c.span.IsRecording() {
+				c.span.AddEvent("reading page (next)", oteltrace.WithAttributes(
+					attribute.Int64("page_num_values", pg.NumValues()),
+					attribute.Int64("page_size", pg.Size()),
+				))
+			}
 
 			if c.filter != nil && !c.filter.KeepPage(pg) {
 				// This page filtered out
@@ -1278,12 +1276,14 @@ func (c *SyncIterator) Close() error {
 	c.cancel()
 	c.closeCurrRowGroup()
 
-	c.span.SetTag("inspectedColumnChunks", c.filter.InspectedColumnChunks.Load())
-	c.span.SetTag("inspectedPages", c.filter.InspectedPages.Load())
-	c.span.SetTag("inspectedValues", c.filter.InspectedValues.Load())
-	c.span.SetTag("keptColumnChunks", c.filter.KeptColumnChunks.Load())
-	c.span.SetTag("keptPages", c.filter.KeptPages.Load())
-	c.span.SetTag("keptValues", c.filter.KeptValues.Load())
-	c.span.Finish()
+	c.span.SetAttributes(
+		attribute.Int64("inspectedColumnChunks", c.filter.InspectedColumnChunks.Load()),
+		attribute.Int64("inspectedPages", c.filter.InspectedPages.Load()),
+		attribute.Int64("inspectedValues", c.filter.InspectedValues.Load()),
+		attribute.Int64("keptColumnChunks", c.filter.KeptColumnChunks.Load()),
+		attribute.Int64("keptPages", c.filter.KeptPages.Load()),
+		attribute.Int64("keptValues", c.filter.KeptValues.Load()),
+	)
+	c.span.End()
 	return nil
 }

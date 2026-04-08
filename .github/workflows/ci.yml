@@ -27,7 +27,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.8
+          go-version: 1.25.9
       - name: Format
         run: make fmt check/unstaged-changes
   check-generated:
@@ -40,7 +40,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.8
+          go-version: 1.25.9
       - name: Check generated files
         run: make generate check/unstaged-changes
   test:
@@ -48,6 +48,9 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
+        go_test_flags:
+          - "-race -cover"
+          - ""
     # Compute runner OS dynamically based on arch and repo ownership
     runs-on: >-
       ${{ 
@@ -63,11 +66,35 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.8
+          go-version: 1.25.9
       - name: Go Mod
         run: make check/go/mod
       - name: Test
-        run: make go/test
+        run: make go/test GO_TEST_FLAGS="${{ matrix.go_test_flags }}"
+  test-integration:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+        go_test_flags: ["-race -cover", ""]
+    # Compute runner OS dynamically based on arch and repo ownership
+    runs-on: >-
+      ${{
+        github.repository_owner == 'grafana'
+          && format('ubuntu-{0}-large', matrix.arch)
+          || (matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04')
+      }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - name: Install Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version: 1.25.9
+      - name: Integration Test
+        run: make go/test-integration GO_TEST_FLAGS="${{ matrix.go_test_flags }}"
   lint:
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
     steps:
@@ -78,7 +105,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.8
+          go-version: 1.25.9
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -109,11 +136,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.8
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 20
-          cache: yarn
+          go-version: 1.25.9
       - name: Build image Pyroscope
         run: make docker-image/pyroscope/build-multiarch "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
@@ -139,7 +162,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.8
+          go-version: 1.25.9
       # login to docker hub
       - id: get-secrets
         uses: grafana/shared-workflows/actions/get-vault-secrets@c2f1df59dba624b3fd509e5181aa8da5217120c0

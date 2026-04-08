@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"slices"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
+
 	"google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -27,12 +27,10 @@ import (
 	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/services"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
-	objstoretracing "github.com/thanos-io/objstore/tracing/opentracing"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -40,6 +38,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/compactor"
+	"github.com/grafana/pyroscope/pkg/debuginfo"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/featureflags"
@@ -327,6 +326,12 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 		return nil, err
 	}
 	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server)
+
+	if store, err := debuginfo.NewStore(f.logger, f.storageBucket, f.Cfg.DebugInfo); err != nil {
+		return nil, err
+	} else {
+		f.API.RegisterDebugInfo(store)
+	}
 	return d, nil
 }
 
@@ -346,6 +351,7 @@ func (f *Pyroscope) initMemberlistKV() (services.Service, error) {
 	)
 	dnsProvider := dns.NewProvider(f.logger, dnsProviderReg, dns.GolangResolverType)
 
+	f.Cfg.MemberlistKV.MetricsNamespace = "pyroscope"
 	f.MemberlistKV = memberlist.NewKVInitService(&f.Cfg.MemberlistKV, f.logger, dnsProvider, f.reg)
 
 	f.Cfg.Distributor.DistributorRing.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
@@ -444,16 +450,6 @@ func (f *Pyroscope) initStoreGateway() (serv services.Service, err error) {
 	return svc, nil
 }
 
-var objstoreTracerMiddleware = middleware.Func(func(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		if tracer := opentracing.GlobalTracer(); tracer != nil {
-			ctx = objstoretracing.ContextWithTracer(ctx, opentracing.GlobalTracer())
-		}
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-})
-
 func (f *Pyroscope) initServer() (services.Service, error) {
 	f.reg.MustRegister(version.NewCollector("pyroscope"))
 	f.reg.Unregister(collectors.NewGoCollector())
@@ -526,7 +522,6 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 			LogRequestExcludeHeaders: strings.Split(f.Cfg.Server.LogRequestExcludeHeadersList, ","),
 		},
 		httpMetric,
-		objstoreTracerMiddleware,
 		httputil.K6Middleware(),
 		featureflags.ClientCapabilitiesHttpMiddleware(),
 	}

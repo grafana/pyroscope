@@ -69,18 +69,3 @@ func (s *ingestionRateStrategy) Limit(tenantID string) float64 {
 func (s *ingestionRateStrategy) Burst(tenantID string) int {
 	return s.limits.IngestionBurstSizeBytes(tenantID)
 }
-
-type infiniteStrategy struct{}
-
-func newInfiniteRateStrategy() limiter.RateLimiterStrategy {
-	return &infiniteStrategy{}
-}
-
-func (s *infiniteStrategy) Limit(tenantID string) float64 {
-	return float64(rate.Inf)
-}
-
-func (s *infiniteStrategy) Burst(tenantID string) int {
-	// Burst is ignored when limit = rate.Inf
-	return 0
-}

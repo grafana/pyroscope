@@ -23,8 +23,7 @@ import (
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
+	"github.com/grafana/dskit/tracing"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -560,7 +559,7 @@ func (c *MultitenantCompactor) running(ctx context.Context) error {
 }
 
 func (c *MultitenantCompactor) compactUsers(ctx context.Context) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "CompactUsers")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "CompactUsers")
 	defer sp.Finish()
 
 	succeeded := false
@@ -577,7 +576,7 @@ func (c *MultitenantCompactor) compactUsers(ctx context.Context) {
 		} else {
 			c.compactionRunsErred.Inc()
 		}
-		sp.LogKV("error_count", compactionErrorCount)
+		sp.SetTag("error_count", compactionErrorCount)
 
 		// Reset progress metrics once done.
 		c.compactionRunDiscoveredTenants.Set(0)
@@ -595,7 +594,7 @@ func (c *MultitenantCompactor) compactUsers(ctx context.Context) {
 		}
 		return
 	}
-	sp.LogKV("discovered_user_count", len(users))
+	sp.SetTag("discovered_user_count", len(users))
 	level.Info(c.logger).Log("msg", "discovered users from bucket", "users", len(users))
 	c.compactionRunDiscoveredTenants.Set(float64(len(users)))
 
@@ -609,7 +608,7 @@ func (c *MultitenantCompactor) compactUsers(ctx context.Context) {
 	// Keep track of users owned by this shard, so that we can delete the local files for all other users.
 	ownedUsers := map[string]struct{}{}
 	defer func() {
-		sp.LogKV("owned_user_count", len(ownedUsers))
+		sp.SetTag("owned_user_count", len(ownedUsers))
 	}()
 	for _, userID := range users {
 		// Ensure the context has not been canceled (ie. compactor shutdown has been triggered).
@@ -701,13 +700,15 @@ func (c *MultitenantCompactor) compactUserWithRetries(ctx context.Context, userI
 	})
 
 	for retries.Ongoing() {
-		sp, ctx := opentracing.StartSpanFromContext(ctx, "CompactUser", opentracing.Tag{Key: "tenantID", Value: userID})
+		sp, ctx := tracing.StartSpanFromContext(ctx, "CompactUser")
+		sp.SetTag("tenantID", userID)
 		lastErr = c.compactUser(ctx, userID)
 		if lastErr == nil {
 			sp.Finish()
 			return nil
 		}
-		ext.LogError(sp, lastErr)
+		sp.LogError(lastErr)
+		sp.SetError()
 		sp.Finish()
 		retries.Wait()
 	}
@@ -790,7 +791,7 @@ func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) e
 }
 
 func (c *MultitenantCompactor) discoverUsersWithRetries(ctx context.Context) ([]string, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "DiscoverUsers")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "DiscoverUsers")
 	defer sp.Finish()
 
 	var lastErr error

@@ -38,18 +38,24 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 	m := &segmentMetrics{
 		segmentIngestBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "pyroscope",
-				Subsystem: "segment_writer",
-				Name:      "segment_ingest_bytes",
-				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 20),
+				Namespace:                       "pyroscope",
+				Subsystem:                       "segment_writer",
+				Name:                            "segment_ingest_bytes",
+				Buckets:                         prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 20),
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  32,
+				NativeHistogramMinResetDuration: time.Minute * 15,
 			},
 			[]string{"shard", "tenant"}),
 		segmentSizeBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "pyroscope",
-				Subsystem: "segment_writer",
-				Name:      "segment_size_bytes",
-				Buckets:   prometheus.ExponentialBucketsRange(100*1024, 100*1024*1024, 20),
+				Namespace:                       "pyroscope",
+				Subsystem:                       "segment_writer",
+				Name:                            "segment_size_bytes",
+				Buckets:                         prometheus.ExponentialBucketsRange(100*1024, 100*1024*1024, 20),
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  32,
+				NativeHistogramMinResetDuration: time.Minute * 15,
 			},
 			[]string{"shard"}),
 
@@ -94,9 +100,12 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 		}, []string{"status"}),
 
 		segmentFlushWaitDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "segment_ingester_wait_duration_seconds",
-			Buckets:   segmentFlushWaitBuckets,
+			Namespace:                       "pyroscope",
+			Name:                            "segment_ingester_wait_duration_seconds",
+			Buckets:                         segmentFlushWaitBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  32,
+			NativeHistogramMinResetDuration: time.Minute * 15,
 		}, []string{"tenant"}),
 		segmentFlushTimeouts: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -104,19 +113,28 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 				Name:      "segment_ingester_wait_timeouts",
 			}, []string{"tenant"}),
 		flushHeadsDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "segment_flush_heads_duration_seconds",
-			Buckets:   dataTimingBuckets,
+			Namespace:                       "pyroscope",
+			Name:                            "segment_flush_heads_duration_seconds",
+			Buckets:                         dataTimingBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  32,
+			NativeHistogramMinResetDuration: time.Minute * 15,
 		}, []string{"shard"}),
 		flushServiceHeadDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "segment_flush_service_head_duration_seconds",
-			Buckets:   dataTimingBuckets,
+			Namespace:                       "pyroscope",
+			Name:                            "segment_flush_service_head_duration_seconds",
+			Buckets:                         dataTimingBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  32,
+			NativeHistogramMinResetDuration: time.Minute * 15,
 		}, []string{"shard", "tenant"}),
 		flushSegmentDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: "pyroscope",
-			Name:      "segment_flush_segment_duration_seconds",
-			Buckets:   networkTimingBuckets,
+			Namespace:                       "pyroscope",
+			Name:                            "segment_flush_segment_duration_seconds",
+			Buckets:                         networkTimingBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  32,
+			NativeHistogramMinResetDuration: time.Minute * 15,
 		}, []string{"shard"}),
 
 		flushServiceHeadError: prometheus.NewCounterVec(
@@ -126,9 +144,12 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 			}, []string{"shard", "tenant"}),
 		headSizeBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "pyroscope",
-				Name:      "segment_head_size_bytes",
-				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 100*1024*1024, 30),
+				Namespace:                       "pyroscope",
+				Name:                            "segment_head_size_bytes",
+				Buckets:                         prometheus.ExponentialBucketsRange(10*1024, 100*1024*1024, 30),
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  32,
+				NativeHistogramMinResetDuration: time.Minute * 15,
 			}, []string{"shard", "tenant"}),
 	}
 

@@ -307,19 +307,19 @@ func createTestFile(t testing.TB, count int) *parquet.File {
 	return pf
 }
 
-func createProfileLikeFile(t testing.TB, count int) *parquet.File {
-	type T struct {
-		SeriesID  uint32
-		TimeNanos int64
-	}
+type SeriesIndexTimeNanosPair struct {
+	SeriesID  uint32
+	TimeNanos int64
+}
 
+func createProfileLikeFile(t testing.TB, count int) (*parquet.File, []SeriesIndexTimeNanosPair) {
 	// every row group is ordered by serieID and then time nanos
 	// time is always increasing between rowgroups
 
 	rowGroups := 10
 	series := 8
 
-	rows := make([]T, count)
+	rows := make([]SeriesIndexTimeNanosPair, count)
 	for i := range rows {
 
 		rowsPerRowGroup := count / rowGroups
@@ -327,14 +327,13 @@ func createProfileLikeFile(t testing.TB, count int) *parquet.File {
 		rowGroupNum := i / rowsPerRowGroup
 
 		seriesID := uint32(i % (count / rowGroups) / (rowsPerRowGroup / series))
-		rows[i] = T{
+		rows[i] = SeriesIndexTimeNanosPair{
 			SeriesID:  seriesID,
 			TimeNanos: int64(i%seriesPerRowGroup+rowGroupNum*seriesPerRowGroup) * 1000,
 		}
-
 	}
 
-	return createFileWith[T](t, rows, rowGroups)
+	return createFileWith[SeriesIndexTimeNanosPair](t, rows, rowGroups), rows
 }
 
 func createFileWith[T any](t testing.TB, rows []T, rowGroups int) *parquet.File {
@@ -369,7 +368,7 @@ func createFileWith[T any](t testing.TB, rows []T, rowGroups int) *parquet.File 
 
 func TestBinaryJoinIterator(t *testing.T) {
 	rowCount := 1600
-	pf := createProfileLikeFile(t, rowCount)
+	pf, _ := createProfileLikeFile(t, rowCount)
 
 	for _, tc := range []struct {
 		name                string
@@ -433,8 +432,8 @@ func TestBinaryJoinIterator(t *testing.T) {
 
 			reg := prometheus.NewRegistry()
 			metrics := NewMetrics(reg)
-			metrics.pageReadsTotal.WithLabelValues("ts", "SeriesId").Add(0)
-			metrics.pageReadsTotal.WithLabelValues("ts", "TimeNanos").Add(0)
+			metrics.pageReadsTotal.WithLabelValues("seriesindextimenanospairs", "SeriesId").Add(0)
+			metrics.pageReadsTotal.WithLabelValues("seriesindextimenanospairs", "TimeNanos").Add(0)
 			ctx = AddMetricsToContext(ctx, metrics)
 
 			seriesIt := NewSyncIterator(ctx, pf.RowGroups(), 0, "SeriesId", 1000, tc.seriesPredicate, "SeriesId")
@@ -460,11 +459,87 @@ func TestBinaryJoinIterator(t *testing.T) {
 				`
         # HELP pyroscopedb_page_reads_total Total number of pages read while querying
         # TYPE pyroscopedb_page_reads_total counter
-        pyroscopedb_page_reads_total{column="SeriesId",table="ts"} %d
-        pyroscopedb_page_reads_total{column="TimeNanos",table="ts"} %d
+        pyroscopedb_page_reads_total{column="SeriesId",table="seriesindextimenanospairs"} %d
+        pyroscopedb_page_reads_total{column="TimeNanos",table="seriesindextimenanospairs"} %d
         `, tc.seriesPageReads, tc.timePageReads))), "pyroscopedb_page_reads_total"))
 		})
 	}
+}
+
+func TestBinaryJoinIteratorMultiplePredicates(t *testing.T) {
+	// This test was failing for ~4% of samples with the previous BinaryJoinIterator implementation
+	rowCount := 1600
+	pf, pairs := createProfileLikeFile(t, rowCount)
+
+	t.Run("Double predicate, all possible pairs", func(t *testing.T) {
+		for _, pair := range pairs {
+			ctx, cancel := context.WithCancel(context.Background())
+
+			seriesPredicate := NewMapPredicate(map[int64]struct{}{int64(pair.SeriesID): {}})
+			timePredicate := NewIntBetweenPredicate(pair.TimeNanos, pair.TimeNanos)
+			seriesIt := NewSyncIterator(ctx, pf.RowGroups(), 0, "SeriesId", 1000, seriesPredicate, "SeriesId")
+			timeIt := NewSyncIterator(ctx, pf.RowGroups(), 1, "TimeNanos", 1000, timePredicate, "TimeNanos")
+
+			it := NewBinaryJoinIterator(
+				0,
+				seriesIt,
+				timeIt,
+			)
+
+			results := 0
+			for it.Next() {
+				results++
+			}
+			require.NoError(t, it.Err())
+
+			require.NoError(t, it.Close())
+
+			require.Equal(t, 1, results, "pair=%v can't be found", pair)
+			cancel()
+		}
+	})
+}
+
+func TestBinaryJoinIteratorSeek(t *testing.T) {
+	// This test was failing with the previous BinaryJoinIterator implementation
+	rows := []SeriesIndexTimeNanosPair{
+		{SeriesID: 1, TimeNanos: 1000},
+		{SeriesID: 2, TimeNanos: 2000},
+		{SeriesID: 3, TimeNanos: 3000},
+		{SeriesID: 4, TimeNanos: 1000},
+		{SeriesID: 1, TimeNanos: 1000},
+	}
+	pf := createFileWith[SeriesIndexTimeNanosPair](t, rows, 1)
+	t.Run("Seek multiple predicates", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		seriesPredicate := NewMapPredicate(map[int64]struct{}{1: {}})
+		timePredicate := NewIntBetweenPredicate(1000, 1000)
+		seriesIt := NewSyncIterator(ctx, pf.RowGroups(), 0, "SeriesId", 1000, seriesPredicate, "SeriesId")
+		timeIt := NewSyncIterator(ctx, pf.RowGroups(), 1, "TimeNanos", 1000, timePredicate, "TimeNanos")
+
+		it := NewBinaryJoinIterator(
+			0,
+			seriesIt,
+			timeIt,
+		)
+
+		results := 0
+		if it.Next() { // Iterator at first (1, 1000)
+			results++
+		}
+		require.NoError(t, it.Err())
+		rowNumber := it.At().RowNumber
+		rowNumber[0] += 2                                                // seeking to (3, 3000)
+		if it.Seek(RowNumberWithDefinitionLevel{RowNumber: rowNumber}) { // Iterator at second (1, 1000)
+			results++
+		}
+		require.NoError(t, it.Err())
+
+		require.Equal(t, 2, results)
+		require.NoError(t, it.Close())
+	})
 }
 
 type rowGetter int64

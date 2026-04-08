@@ -129,12 +129,12 @@ func testSymbolizationFlow(t *testing.T, ctx context.Context, c *cluster.Cluster
 Period: 1000000000
 Samples:
 cpu/nanoseconds[dflt]
-        200: 2 
-          3: 1 2 
-        100: 1 
+        200: 1 
+        100: 2 
+          3: 2 1 
 Locations
-     1: 0x1500 M=1 main :0:0 s=0()
-     2: 0x3c5a M=1 atoll_b :0:0 s=0()
+     1: 0x3c5a M=1 atoll_b :0:0 s=0()
+     2: 0x1500 M=1 main :0:0 s=0()
 Mappings
 1: 0x0/0x1000000/0x0 libfoo.so 2fa2055ef20fabc972d5751147e093275514b142 [FN]
 `,
@@ -261,13 +261,14 @@ Mappings
 					t.Logf("Error querying profile: %v", err)
 					return false
 				}
-				rp := pprof.RawFromProto(resp.Msg)
+				normalized := normalizePprof(resp.Msg)
+				rp := pprof.RawFromProto(normalized)
 				rp.TimeNanos = 0
 				actual := rp.DebugString()
 
 				fmt.Println(actual)
 
-				if len(resp.Msg.Sample) == 0 {
+				if len(normalized.Sample) == 0 {
 					return false
 				}
 

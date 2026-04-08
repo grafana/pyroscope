@@ -78,7 +78,7 @@ func (q *QueryFrontend) SelectHeatmap(
 				Limit:        c.Msg.GetLimit(),
 			},
 		}},
-	})
+	}, nil)
 	if err != nil {
 		return nil, err
 	}

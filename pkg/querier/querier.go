@@ -17,8 +17,7 @@ import (
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/grafana/dskit/tracing"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -169,7 +168,7 @@ func (q *Querier) stopping(_ error) error {
 }
 
 func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "ProfileTypes")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "ProfileTypes")
 	defer sp.Finish()
 
 	lblReq := connect.NewRequest(&typesv1.LabelValuesRequest{
@@ -204,17 +203,15 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 }
 
 func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "LabelValues")
 	defer sp.Finish()
 
 	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
-	sp.LogFields(
-		otlog.Bool("legacy_request", !hasTimeRange),
-		otlog.String("name", req.Msg.Name),
-		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
-		otlog.Int64("start", req.Msg.Start),
-		otlog.Int64("end", req.Msg.End),
-	)
+	sp.SetTag("legacy_request", !hasTimeRange)
+	sp.SetTag("name", req.Msg.Name)
+	sp.SetTag("matchers", strings.Join(req.Msg.Matchers, ","))
+	sp.SetTag("start", req.Msg.Start)
+	sp.SetTag("end", req.Msg.End)
 
 	if req.Msg.Name == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
@@ -291,16 +288,14 @@ func filterLabelNames(labelNames []string) []string {
 }
 
 func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "LabelNames")
 	defer sp.Finish()
 
 	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
-	sp.LogFields(
-		otlog.Bool("legacy_request", !hasTimeRange),
-		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
-		otlog.Int64("start", req.Msg.Start),
-		otlog.Int64("end", req.Msg.End),
-	)
+	sp.SetTag("legacy_request", !hasTimeRange)
+	sp.SetTag("matchers", strings.Join(req.Msg.Matchers, ","))
+	sp.SetTag("start", req.Msg.Start)
+	sp.SetTag("end", req.Msg.End)
 
 	if q.storeGatewayQuerier == nil || !hasTimeRange {
 		responses, err := q.labelNamesFromIngesters(ctx, req.Msg)
@@ -374,13 +369,11 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 }
 
 func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (blockPlan, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "blockSelect")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "blockSelect")
 	defer sp.Finish()
 
-	sp.LogFields(
-		otlog.String("start", start.Time().String()),
-		otlog.String("end", end.Time().String()),
-	)
+	sp.SetTag("start", start.Time().String())
+	sp.SetTag("end", end.Time().String())
 
 	ingesterReq := &ingestv1.BlockMetadataRequest{
 		Start: int64(start),
@@ -448,17 +441,15 @@ func (q *Querier) filterLabelNames(
 }
 
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "Series")
 	defer sp.Finish()
 
 	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
-	sp.LogFields(
-		otlog.Bool("legacy_request", !hasTimeRange),
-		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
-		otlog.String("label_names", strings.Join(req.Msg.LabelNames, ",")),
-		otlog.Int64("start", req.Msg.Start),
-		otlog.Int64("end", req.Msg.End),
-	)
+	sp.SetTag("legacy_request", !hasTimeRange)
+	sp.SetTag("matchers", strings.Join(req.Msg.Matchers, ","))
+	sp.SetTag("label_names", strings.Join(req.Msg.LabelNames, ","))
+	sp.SetTag("start", req.Msg.Start)
+	sp.SetTag("end", req.Msg.End)
 
 	// Update LabelNames
 	filteredLabelNames, err := q.filterLabelNames(ctx, req)
@@ -547,19 +538,17 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 
 // FIXME(kolesnikovae): The method is never used and should be removed.
 func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Diff")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "Diff")
 	defer func() {
-		sp.LogFields(
-			otlog.String("leftStart", model.Time(req.Msg.Left.Start).Time().String()),
-			otlog.String("leftEnd", model.Time(req.Msg.Left.End).Time().String()),
-			// Assume are the same
-			otlog.String("selector", req.Msg.Left.LabelSelector),
-			otlog.String("profile_id", req.Msg.Left.ProfileTypeID),
-		)
+		sp.SetTag("leftStart", model.Time(req.Msg.Left.Start).Time().String())
+		sp.SetTag("leftEnd", model.Time(req.Msg.Left.End).Time().String())
+		// Assume are the same
+		sp.SetTag("selector", req.Msg.Left.LabelSelector)
+		sp.SetTag("profile_id", req.Msg.Left.ProfileTypeID)
 		sp.Finish()
 	}()
 
-	var leftTree, rightTree *phlaremodel.Tree
+	var leftTree, rightTree *phlaremodel.FunctionNameTree
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -596,7 +585,7 @@ func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffR
 }
 
 func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "GetProfileStats")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "GetProfileStats")
 	defer sp.Finish()
 
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) (*typesv1.GetProfileStatsResponse, error) {
@@ -653,7 +642,7 @@ func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[type
 }
 
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
 	level.Info(spanlogger.FromContext(ctx, q.logger)).Log(
 		"start", model.Time(req.Msg.Start).Time().String(),
 		"end", model.Time(req.Msg.End).Time().String(),
@@ -683,13 +672,13 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	default:
 		resp.Flamegraph = phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-		resp.Tree = t.Bytes(req.Msg.GetMaxNodes())
+		resp.Tree = t.Bytes(req.Msg.GetMaxNodes(), nil)
 	}
 	return connect.NewResponse(&resp), nil
 }
 
 func (q *Querier) SelectMergeSpanProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeSpanProfileRequest]) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeSpanProfile")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectMergeSpanProfile")
 	level.Info(spanlogger.FromContext(ctx, q.logger)).Log(
 		"start", model.Time(req.Msg.Start).Time().String(),
 		"end", model.Time(req.Msg.End).Time().String(),
@@ -715,7 +704,7 @@ func (q *Querier) SelectMergeSpanProfile(ctx context.Context, req *connect.Reque
 	default:
 		resp.Flamegraph = phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-		resp.Tree = t.Bytes(req.Msg.GetMaxNodes())
+		resp.Tree = t.Bytes(req.Msg.GetMaxNodes(), nil)
 	}
 	return connect.NewResponse(&resp), nil
 }
@@ -733,7 +722,7 @@ func isEndpointNotExistingErr(err error) bool {
 	return err.Error() == "405 Method Not Allowed"
 }
 
-func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.Tree, error) {
+func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.FunctionNameTree, error) {
 	// determine the block hints
 	plan, err := q.blockSelect(ctx, model.Time(req.Start), model.Time(req.End))
 	if isEndpointNotExistingErr(err) {
@@ -766,7 +755,7 @@ func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStac
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
-	var ingesterTree, storegatewayTree *phlaremodel.Tree
+	var ingesterTree, storegatewayTree *phlaremodel.FunctionNameTree
 	g.Go(func() error {
 		var err error
 		ingesterTree, err = q.selectTreeFromIngesters(gCtx, storeQueries.ingester.MergeStacktracesRequest(req), plan)
@@ -919,12 +908,12 @@ func splitQueryToStores(start, end model.Time, now model.Time, queryStoreAfter t
 }
 
 func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[googlev1.Profile], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeProfile")
-	sp.SetTag("start", model.Time(req.Msg.Start).Time().String()).
-		SetTag("end", model.Time(req.Msg.End).Time().String()).
-		SetTag("selector", req.Msg.LabelSelector).
-		SetTag("max_nodes", req.Msg.GetMaxNodes()).
-		SetTag("profile_type", req.Msg.ProfileTypeID)
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectMergeProfile")
+	sp.SetTag("start", model.Time(req.Msg.Start).Time().String())
+	sp.SetTag("end", model.Time(req.Msg.End).Time().String())
+	sp.SetTag("selector", req.Msg.LabelSelector)
+	sp.SetTag("max_nodes", req.Msg.GetMaxNodes())
+	sp.SetTag("profile_type", req.Msg.ProfileTypeID)
 	defer sp.Finish()
 
 	profile, err := q.selectProfile(ctx, req.Msg)
@@ -992,16 +981,14 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 }
 
 func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSeries")
+	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectSeries")
 	defer func() {
-		sp.LogFields(
-			otlog.String("start", model.Time(req.Msg.Start).Time().String()),
-			otlog.String("end", model.Time(req.Msg.End).Time().String()),
-			otlog.String("selector", req.Msg.LabelSelector),
-			otlog.String("profile_id", req.Msg.ProfileTypeID),
-			otlog.String("group_by", strings.Join(req.Msg.GroupBy, ",")),
-			otlog.Float64("step", req.Msg.Step),
-		)
+		sp.SetTag("start", model.Time(req.Msg.Start).Time().String())
+		sp.SetTag("end", model.Time(req.Msg.End).Time().String())
+		sp.SetTag("selector", req.Msg.LabelSelector)
+		sp.SetTag("profile_id", req.Msg.ProfileTypeID)
+		sp.SetTag("group_by", strings.Join(req.Msg.GroupBy, ","))
+		sp.SetTag("step", req.Msg.Step)
 		sp.Finish()
 	}()
 
@@ -1138,7 +1125,7 @@ func uniqueSortedStrings(responses []ResponseFromReplica[[]string]) []string {
 	return result
 }
 
-func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {
+func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.FunctionNameTree, error) {
 	// determine the block hints
 	plan, err := q.blockSelect(ctx, model.Time(req.Start), model.Time(req.End))
 	if isEndpointNotExistingErr(err) {
@@ -1171,7 +1158,7 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
-	var ingesterTree, storegatewayTree *phlaremodel.Tree
+	var ingesterTree, storegatewayTree *phlaremodel.FunctionNameTree
 	g.Go(func() error {
 		var err error
 		ingesterTree, err = q.selectSpanProfileFromIngesters(gCtx, storeQueries.ingester.MergeSpanProfileRequest(req), plan)

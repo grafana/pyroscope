@@ -572,7 +572,7 @@ func (ce *canaryExporter) testSelectSeries(ctx context.Context, now time.Time) e
 	series := respQuery.Msg.Series[0]
 
 	if len(series.Points) != 1 {
-		return fmt.Errorf("expected 2 points, got %d", len(series.Points))
+		return fmt.Errorf("expected 1 points, got %d", len(series.Points))
 	}
 
 	labels := model.Labels(series.Labels)
@@ -642,6 +642,67 @@ func (ce *canaryExporter) testSelectMergeSpanProfile(ctx context.Context, now ti
 
 	if len(flamegraph.Levels) != 2 {
 		return fmt.Errorf("expected 2 levels in flamegraph, got %d", len(flamegraph.Levels))
+	}
+
+	return nil
+}
+
+func (ce *canaryExporter) testQueryExemplars(ctx context.Context, now time.Time) error {
+	selectSeriesResp, err := ce.params.queryClient().SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
+		Start:         now.UnixMilli(),
+		End:           now.Add(5 * time.Second).UnixMilli(),
+		Step:          5,
+		LabelSelector: ce.createLabelSelector(),
+		ProfileTypeID: profileTypeID,
+		ExemplarType:  typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL,
+	}))
+
+	if err != nil {
+		return err
+	}
+
+	if len(selectSeriesResp.Msg.Series) != 1 {
+		return fmt.Errorf("expected 1 series, got %d", len(selectSeriesResp.Msg.Series))
+	}
+
+	series := selectSeriesResp.Msg.Series[0]
+
+	if len(series.Points) != 1 {
+		return fmt.Errorf("expected 1 points, got %d", len(series.Points))
+	}
+
+	point := series.Points[0]
+
+	if len(point.Exemplars) != 1 {
+		return fmt.Errorf("expected 1 exemplar, got %d", len(point.Exemplars))
+	}
+
+	exemplar := point.Exemplars[0]
+
+	if exemplar.Value != 30 {
+		return fmt.Errorf("expected exemplar value to be 30, got %d", exemplar.Value)
+	}
+
+	respQuery, err := ce.params.queryClient().SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+		Start:             now.UnixMilli(),
+		End:               now.Add(5 * time.Second).UnixMilli(),
+		LabelSelector:     ce.createLabelSelector(),
+		ProfileTypeID:     profileTypeID,
+		ProfileIdSelector: []string{exemplar.ProfileId},
+	}))
+
+	if err != nil {
+		return err
+	}
+
+	flamegraph := respQuery.Msg.Flamegraph
+
+	if len(flamegraph.Names) != 3 {
+		return fmt.Errorf("expected 3 names in flamegraph, got %d", len(flamegraph.Names))
+	}
+
+	if len(flamegraph.Levels) != 3 {
+		return fmt.Errorf("expected 3 levels in flamegraph, got %d", len(flamegraph.Levels))
 	}
 
 	return nil

@@ -19,6 +19,8 @@ Profiling is an essential tool for understanding and optimizing application perf
 
 Profiling types refer to different dimensions of application performance analysis, focusing on specific aspects like CPU usage, memory allocation, or thread synchronization.
 
+Note that when Pyroscope receives a Java wall profile, both `cpu` and `wall` profiles are automatically ingested, even if `cpu` profiling is turned off.
+
 [//]: # 'Shared content for available profile types'
 [//]: # 'This content is located in /pyroscope/docs/sources/shared/available-profile-types.md'
 
@@ -58,7 +60,7 @@ This table lists the available profile types based on auto instrumentation using
 | Lock Count     |           | Yes  |           |
 | Lock Duration  |           | Yes  |           |
 | Exceptions     |           |      |           |
-| Wall           |           |      |           |
+| Wall           |           | Yes  |           |
 | Heap           |           |      |           |
 
 ### Instrumentation with SDKs
@@ -84,7 +86,7 @@ This table lists the available profile types based on the language SDK.
 | Lock Count     |           | Yes  | Yes        |      |        |      |         |
 | Lock Duration  |           | Yes  | Yes        |      |        |      |         |
 | Exceptions     |           |      | Yes        |      |        |      |         |
-| Wall           |           |      | Yes        |      |        |      | Yes     |
+| Wall           |           | Yes  | Yes        |      |        |      | Yes     |
 | Heap           |           |      | Yes (7.0+) |      |        |      | Yes     |
 
 ## Profile types supported with span profiles

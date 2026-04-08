@@ -29,7 +29,7 @@ func (n nopDelegate) OnRingInstanceHeartbeat(lifecycler *ring.BasicLifecycler, r
 func TestHealthyInstanceDelegate_OnRingInstanceHeartbeat(t *testing.T) {
 	// addInstance registers a new instance with the given ring and sets its last heartbeat timestamp
 	addInstance := func(desc *ring.Desc, id string, state ring.InstanceState, timestamp int64) {
-		instance := desc.AddIngester(id, "127.0.0.1", "", []uint32{1}, state, time.Now(), false, time.Now())
+		instance := desc.AddIngester(id, "127.0.0.1", "", []uint32{1}, state, time.Now(), false, time.Now(), ring.InstanceVersions{})
 		instance.Timestamp = timestamp
 		desc.Ingesters[id] = instance
 	}
@@ -72,14 +72,14 @@ func TestHealthyInstanceDelegate_OnRingInstanceHeartbeat(t *testing.T) {
 			expectedCount:    2,
 		},
 
-		"some instances healthy but timeout disabled all instances active": {
+		"all instances healthy with long timeout all instances active": {
 			ringSetup: func(desc *ring.Desc) {
 				now := time.Now()
 				addInstance(desc, "distributor-1", ring.ACTIVE, now.Unix())
 				addInstance(desc, "distributor-2", ring.ACTIVE, now.Unix())
 				addInstance(desc, "distributor-3", ring.ACTIVE, now.Add(-5*time.Minute).Unix())
 			},
-			heartbeatTimeout: 0,
+			heartbeatTimeout: 10 * time.Minute,
 			expectedCount:    3,
 		},
 	}

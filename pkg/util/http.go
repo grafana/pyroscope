@@ -28,15 +28,15 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/tracing"
 	"github.com/grafana/dskit/user"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/http2"
 	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/pyroscope/pkg/tenant"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
-	"github.com/grafana/pyroscope/pkg/util/nethttp"
 )
 
 var defaultTransport http.RoundTripper = &http2.Transport{
@@ -82,11 +82,7 @@ func InstrumentedHTTPClient(client *http.Client, instruments ...RoundTripperInst
 // one.
 func WithTracingTransport() RoundTripperInstrumentFunc {
 	return func(next http.RoundTripper) http.RoundTripper {
-		next = &nethttp.Transport{RoundTripper: next}
-		return RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
-			req = nethttp.TraceRequest(opentracing.GlobalTracer(), req)
-			return next.RoundTrip(req)
-		})
+		return otelhttp.NewTransport(next)
 	}
 }
 
@@ -221,14 +217,14 @@ type reqBody struct {
 	start    time.Time
 	duration time.Duration
 
-	sp opentracing.Span
+	sp trace.Span
 }
 
 func (w *reqBody) Read(p []byte) (int, error) {
 	if w.start.IsZero() {
 		w.start = timeNow()
 		if w.sp != nil {
-			w.sp.LogFields(otlog.String("msg", "start reading body from request"))
+			w.sp.AddEvent("start reading body from request")
 		}
 	}
 	n, err := w.b.Read(p)
@@ -238,9 +234,9 @@ func (w *reqBody) Read(p []byte) (int, error) {
 	if err == io.EOF {
 		w.duration = timeNow().Sub(w.start)
 		if w.sp != nil {
-			w.sp.LogFields(otlog.String("msg", "read body from request"))
+			w.sp.AddEvent("read body from request")
 			if w.read > 0 {
-				w.sp.SetTag("request_body_size", w.read)
+				w.sp.SetAttributes(attribute.Int64("request_body_size", int64(w.read)))
 			}
 		}
 	}
@@ -316,7 +312,7 @@ func (l *Log) Wrap(next http.Handler) http.Handler {
 
 		rBody := &reqBody{
 			b:  origBody,
-			sp: opentracing.SpanFromContext(r.Context()),
+			sp: trace.SpanFromContext(r.Context()),
 		}
 		r.Body = rBody
 
@@ -324,7 +320,7 @@ func (l *Log) Wrap(next http.Handler) http.Handler {
 
 		statusCode, writeErr := httpCode, httpErr.Err()
 
-		requestLog = log.With(requestLog, "method", r.Method, "uri", uri, "status", statusCode, "duration", time.Since(begin))
+		requestLog = log.With(requestLog, "method", r.Method, "uri", uri, "status", statusCode, "duration", time.Since(begin), "proto", r.Proto)
 
 		if l.LogRequestHeaders {
 			requestLog = log.With(requestLog, headerFields...)
@@ -386,10 +382,13 @@ func captureResponseBody(data []byte, bodyBytesLeft int, buf *bytes.Buffer) int 
 func NewHTTPMetricMiddleware(mux *mux.Router, namespace string, reg prometheus.Registerer) (middleware.Interface, error) {
 	// Prometheus histograms for requests.
 	requestDuration := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "request_duration_seconds",
-		Help:      "Time (in seconds) spent serving HTTP requests.",
-		Buckets:   instrument.DefBuckets,
+		Namespace:                       namespace,
+		Name:                            "request_duration_seconds",
+		Help:                            "Time (in seconds) spent serving HTTP requests.",
+		Buckets:                         instrument.DefBuckets,
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	}, []string{"method", "route", "status_code", "ws"})
 	err := reg.Register(requestDuration)
 	if err != nil {
@@ -402,10 +401,13 @@ func NewHTTPMetricMiddleware(mux *mux.Router, namespace string, reg prometheus.R
 	}
 
 	receivedMessageSize := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "request_message_bytes",
-		Help:      "Size (in bytes) of messages received in the request.",
-		Buckets:   middleware.BodySizeBuckets,
+		Namespace:                       namespace,
+		Name:                            "request_message_bytes",
+		Help:                            "Size (in bytes) of messages received in the request.",
+		Buckets:                         middleware.BodySizeBuckets,
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	}, []string{"method", "route"})
 	err = reg.Register(receivedMessageSize)
 	if err != nil {
@@ -418,10 +420,13 @@ func NewHTTPMetricMiddleware(mux *mux.Router, namespace string, reg prometheus.R
 	}
 
 	sentMessageSize := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "response_message_bytes",
-		Help:      "Size (in bytes) of messages sent in response.",
-		Buckets:   middleware.BodySizeBuckets,
+		Namespace:                       namespace,
+		Name:                            "response_message_bytes",
+		Help:                            "Size (in bytes) of messages sent in response.",
+		Buckets:                         middleware.BodySizeBuckets,
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  50,
+		NativeHistogramMinResetDuration: time.Hour,
 	}, []string{"method", "route"})
 
 	err = reg.Register(sentMessageSize)

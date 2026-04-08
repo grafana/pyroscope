@@ -86,7 +86,7 @@ func (f *Frontend) SelectMergeSpanProfile(
 	default:
 		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-		resp.Tree = t.Bytes(c.Msg.GetMaxNodes())
+		resp.Tree = t.Bytes(c.Msg.GetMaxNodes(), nil)
 	}
 	return connect.NewResponse(&resp), nil
 }

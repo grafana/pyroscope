@@ -11,6 +11,8 @@ import (
 
 var digitsOnly = regexp.MustCompile("^\\d+$")
 
+var timeNow = time.Now
+
 func Parse(s string) time.Time {
 	s = strings.TrimSpace(s)
 	// s = strings.ToLower(s)
@@ -54,9 +56,8 @@ func Parse(s string) time.Time {
 }
 
 func parseTimeReference(_ string) time.Time {
-	now := time.Now()
 	// TODO: implement
-	return now
+	return timeNow()
 }
 
 func parseTimeOffset(offset string) (d time.Duration) {

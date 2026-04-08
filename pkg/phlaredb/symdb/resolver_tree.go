@@ -14,17 +14,18 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/minheap"
 )
 
-func buildTree(
+func buildTree[N model.NodeName, I model.NodeNameI[N]](
 	ctx context.Context,
 	symbols *Symbols,
 	appender *SampleAppender,
 	maxNodes int64,
 	selection *SelectedStackTraces,
-) (*model.Tree, error) {
+	lookup func(int32) N,
+) (*model.Tree[N, I], error) {
 	if !selection.HasValidCallSite() {
 		// TODO(bryan) Maybe return an error here? buildPprof returns a blank
 		// profile. So mimicking that behavior for now.
-		return &model.Tree{}, nil
+		return &model.Tree[N, I]{}, nil
 	}
 
 	// If the number of samples is large (> 128K) and the StacktraceResolver
@@ -36,19 +37,23 @@ func buildTree(
 	iterator, ok := symbols.Stacktraces.(StacktraceIDRangeIterator)
 	if ok && shouldCopyTree(appender, maxNodes) {
 		ranges := iterator.SplitStacktraceIDRanges(appender)
-		return buildTreeFromParentPointerTrees(ctx, ranges, symbols, maxNodes, selection)
+		return buildTreeFromParentPointerTrees[N, I](ctx, ranges, symbols, maxNodes, selection, lookup)
 	}
 	// Otherwise, use the basic approach: resolve each stack trace
 	// and insert them into the new tree one by one. The method
 	// performs best on small sample sets.
+
+	// Select insert method depending on type
+	var treeI I
+
 	samples := appender.Samples()
 	t := treeSymbolsFromPool()
 	defer t.reset()
-	t.init(symbols, samples, selection)
+	t.init(symbols, samples, selection, treeI.IsLocationTree())
 	if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
 		return nil, err
 	}
-	return t.tree.Tree(maxNodes, t.symbols.Strings), nil
+	return model.TreeFromStacktraceTree[N, I](t.tree, maxNodes, lookup), nil
 }
 
 func shouldCopyTree(appender *SampleAppender, maxNodes int64) bool {
@@ -62,7 +67,10 @@ type treeSymbols struct {
 	samples *schemav1.Samples
 	tree    *model.StacktraceTree
 	lines   []int32
+	locID   []int32 // only used when addLocation is true
 	cur     int
+
+	addLocation bool
 
 	selection        *SelectedStackTraces
 	funcNamesMatcher func(funcNames []int32) bool
@@ -81,14 +89,16 @@ func (r *treeSymbols) reset() {
 	r.samples = nil
 	r.tree.Reset()
 	r.lines = r.lines[:0]
+	r.locID = r.locID[:0]
 	r.cur = 0
 	treeSymbolsPool.Put(r)
 }
 
-func (r *treeSymbols) init(symbols *Symbols, samples schemav1.Samples, selection *SelectedStackTraces) {
+func (r *treeSymbols) init(symbols *Symbols, samples schemav1.Samples, selection *SelectedStackTraces, addLocation bool) {
 	r.symbols = symbols
 	r.samples = &samples
 	r.selection = selection
+	r.addLocation = addLocation
 
 	if r.tree == nil {
 		// Branching factor.
@@ -98,17 +108,32 @@ func (r *treeSymbols) init(symbols *Symbols, samples schemav1.Samples, selection
 		r.funcNamesMatcher = r.funcNamesMatchSelection
 	}
 }
+
 func (r *treeSymbols) InsertStacktrace(_ uint32, locations []int32) {
-	r.lines = r.lines[:0]
+	needLines := !r.addLocation || r.funcNamesMatcher != nil // lines needed lines should be insered or we have a funNamesMatcher
+	needLocs := r.addLocation                                // locs needed when requested
+
+	if needLines {
+		r.lines = r.lines[:0]
+	}
+	if needLocs {
+		r.locID = r.locID[:0]
+	}
+
 	for i := 0; i < len(locations); i++ {
-		lines := r.symbols.Locations[locations[i]].Line
-		for j := 0; j < len(lines); j++ {
-			f := r.symbols.Functions[lines[j].FunctionId]
-			r.lines = append(r.lines, int32(f.Name))
+		if needLines {
+			r.lines = addFunctionNames(r.lines, locations[i], r.symbols)
+		}
+		if needLocs {
+			r.locID = addLocationID(r.locID, locations[i], r.symbols)
 		}
 	}
 	if r.funcNamesMatcher == nil || r.funcNamesMatcher(r.lines) {
-		r.tree.Insert(r.lines, int64(r.samples.Values[r.cur]))
+		if needLocs {
+			r.tree.Insert(r.locID, int64(r.samples.Values[r.cur]))
+		} else {
+			r.tree.Insert(r.lines, int64(r.samples.Values[r.cur]))
+		}
 	}
 	r.cur++
 }
@@ -128,19 +153,20 @@ func (r *treeSymbols) funcNamesMatchSelection(funcNames []int32) bool {
 	return true
 }
 
-func buildTreeFromParentPointerTrees(
+func buildTreeFromParentPointerTrees[N model.NodeName, I model.NodeNameI[N]](
 	ctx context.Context,
 	ranges iter.Iterator[*StacktraceIDRange],
 	symbols *Symbols,
 	maxNodes int64,
 	selection *SelectedStackTraces,
-) (*model.Tree, error) {
-	m := model.NewTreeMerger()
+	lookup func(int32) N,
+) (*model.Tree[N, I], error) {
+	m := model.NewTreeMerger[N, I]()
 	g, _ := errgroup.WithContext(ctx)
 	for ranges.Next() {
 		sr := ranges.At()
 		g.Go(util.RecoverPanic(func() error {
-			m.MergeTree(buildTreeForStacktraceIDRange(sr, symbols, maxNodes, selection))
+			m.MergeTree(buildTreeForStacktraceIDRange[N, I](sr, symbols, maxNodes, selection, lookup))
 			return nil
 		}))
 	}
@@ -307,12 +333,13 @@ func markSelectedNodes(
 	return m.nodes
 }
 
-func buildTreeForStacktraceIDRange(
+func buildTreeForStacktraceIDRange[N model.NodeName, I model.NodeNameI[N]](
 	stacktraces *StacktraceIDRange,
 	symbols *Symbols,
 	maxNodes int64,
 	selection *SelectedStackTraces,
-) *model.Tree {
+	lookup func(int32) N,
+) *model.Tree[N, I] {
 	// Get the parent pointer tree for the range. The tree is
 	// not specific to the samples we've collected and includes
 	// all the stack traces.
@@ -347,11 +374,19 @@ func buildTreeForStacktraceIDRange(
 	// tree is optimized for inserts and lookups, while the output
 	// tree is optimized for merge operations.
 	t := model.NewStacktraceTree(int(maxNodes))
-	insertStacktraces(t, nodes, symbols)
+
+	// Select insert method depending on type
+	var treeI I
+	if treeI.IsLocationTree() {
+		insertStacktraces(t, nodes, symbols, addLocationID)
+	} else {
+		insertStacktraces(t, nodes, symbols, addFunctionNames)
+	}
+
 	// Finally, we convert the stack trace tree into the function
 	// tree, dropping insignificant functions, and symbolizing the
 	// nodes (function names).
-	return t.Tree(maxNodes, symbols.Strings)
+	return model.TreeFromStacktraceTree[N, I](t, maxNodes, lookup)
 }
 
 func propagateNodeValues(nodes []Node) {
@@ -386,30 +421,42 @@ func markNodesForTruncation(nodes []Node, maxNodes int64) {
 	}
 }
 
-func insertStacktraces(t *model.StacktraceTree, nodes []Node, symbols *Symbols) {
+func insertStacktraces(t *model.StacktraceTree, nodes []Node, symbols *Symbols, addLocationF addLocationFunc) {
 	l := int32(len(nodes))
 	s := make([]int32, 0, 64)
 	for i := int32(1); i < l; i++ {
 		p := nodes[i].Parent
 		v := nodes[i].Value
 		if v > 0 && nodes[p].Location&truncationMark == 0 {
-			s = resolveStack(s, nodes, i, symbols)
+			s = resolveStack(s, nodes, i, addLocationF, symbols)
 			t.Insert(s, v)
 		}
 	}
 }
 
-func resolveStack(dst []int32, nodes []Node, i int32, symbols *Symbols) []int32 {
+type addLocationFunc func([]int32, int32, *Symbols) []int32
+
+func addFunctionNames(dst []int32, locID int32, symbols *Symbols) []int32 {
+	loc := symbols.Locations[locID]
+	for l := 0; l < len(loc.Line); l++ {
+		dst = append(dst, int32(symbols.Functions[loc.Line[l].FunctionId].Name))
+	}
+	return dst
+}
+
+func addLocationID(dst []int32, locID int32, symbols *Symbols) []int32 {
+	dst = append(dst, locID)
+	return dst
+}
+
+func resolveStack(dst []int32, nodes []Node, i int32, addLocationF addLocationFunc, symbols *Symbols) []int32 {
 	dst = dst[:0]
 	for i > 0 {
 		j := nodes[i].Location
 		if j&truncationMark > 0 {
 			dst = append(dst, sentinel)
 		} else {
-			loc := symbols.Locations[j]
-			for l := 0; l < len(loc.Line); l++ {
-				dst = append(dst, int32(symbols.Functions[loc.Line[l].FunctionId].Name))
-			}
+			dst = addLocationF(dst, j, symbols)
 		}
 		i = nodes[i].Parent
 	}

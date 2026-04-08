@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/tracing"
-	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -75,7 +75,7 @@ func (b *BlockReader) Invoke(
 	ctx context.Context,
 	req *queryv1.InvokeRequest,
 ) (*queryv1.InvokeResponse, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "BlockReader.Invoke")
+	span, ctx := tracing.StartSpanFromContext(ctx, "BlockReader.Invoke")
 	defer span.Finish()
 
 	collectDiag := req.Options != nil && req.Options.CollectDiagnostics
@@ -100,6 +100,8 @@ func (b *BlockReader) Invoke(
 		blockExecCollector = &blockExecutionCollector{}
 	}
 
+	weightCollector := &queryWeightCollector{}
+
 	var blocksCount, datasetsCount int64
 	for _, md := range req.QueryPlan.Root.Blocks {
 		md.Datasets, err = filterNotOwnedDatasets(md, tenantMap)
@@ -115,18 +117,40 @@ func (b *BlockReader) Invoke(
 		datasetsCount += int64(len(md.Datasets))
 		obj := block.NewObject(b.storage, md)
 		g.Go(util.RecoverPanic((&blockContext{
-			ctx:           ctx,
-			log:           b.log,
-			req:           r,
-			agg:           agg,
-			obj:           obj,
-			grp:           g,
-			execCollector: blockExecCollector,
+			ctx:             ctx,
+			log:             b.log,
+			req:             r,
+			agg:             agg,
+			obj:             obj,
+			grp:             g,
+			execCollector:   blockExecCollector,
+			weightCollector: weightCollector,
 		}).execute))
 	}
 
 	if err = g.Wait(); err != nil {
 		return nil, err
+	}
+
+	if weightCollector.datasetsCount > 0 {
+		traceID, _ := tracing.ExtractTraceID(ctx)
+		level.Info(b.log).Log(
+			"msg", "query weight (index lookup resolved)",
+			"trace_id", traceID,
+			"tenant", strings.Join(req.Tenant, ","),
+			"blocks", blocksCount,
+			"datasets", weightCollector.datasetsCount,
+			"profiles_bytes", humanize.Bytes(weightCollector.weight.ProfilesBytes),
+			"tsdb_bytes", humanize.Bytes(weightCollector.weight.TSDBBytes),
+			"symbols_bytes", humanize.Bytes(weightCollector.weight.SymbolsBytes),
+			"total_bytes", humanize.Bytes(weightCollector.weight.Total()),
+		)
+		span.SetTag("index_lookup_resolved", true)
+		span.SetTag("resolved_profiles_bytes", weightCollector.weight.ProfilesBytes)
+		span.SetTag("resolved_tsdb_bytes", weightCollector.weight.TSDBBytes)
+		span.SetTag("resolved_symbols_bytes", weightCollector.weight.SymbolsBytes)
+		span.SetTag("resolved_total_bytes", weightCollector.weight.Total())
+		span.SetTag("resolved_datasets_count", weightCollector.datasetsCount)
 	}
 
 	resp := agg.response()
@@ -158,7 +182,7 @@ type request struct {
 	endTime   int64 // Unix nano.
 }
 
-func (r *request) setTraceTags(span opentracing.Span) {
+func (r *request) setTraceTags(span *tracing.Span) {
 	if r.src == nil {
 		return
 	}
@@ -213,6 +237,25 @@ func filterNotOwnedDatasets(b *metastorev1.BlockMeta, tenantMap map[string]struc
 		}
 	}
 	return datasets, errs.Err()
+}
+
+// queryWeightCollector accumulates dataset section sizes across all blocks in a query,
+// including Format1 blocks whose datasets are resolved at runtime.
+type queryWeightCollector struct {
+	mu            sync.Mutex
+	weight        block.DatasetWeight
+	datasetsCount int64
+}
+
+func (c *queryWeightCollector) addDatasets(datasets []*metastorev1.Dataset) {
+	var w block.DatasetWeight
+	for _, ds := range datasets {
+		w.Add(block.WeightOf(ds))
+	}
+	c.mu.Lock()
+	c.weight.Add(w)
+	c.datasetsCount += int64(len(datasets))
+	c.mu.Unlock()
 }
 
 // blockExecutionCollector collects per-block execution stats in a thread-safe manner.

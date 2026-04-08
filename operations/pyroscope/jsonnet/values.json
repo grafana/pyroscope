@@ -339,6 +339,9 @@
       "v2": false
     }
   },
+  "global": {
+    "imageRegistry": null
+  },
   "ingress": {
     "annotations": {},
     "className": "",
@@ -394,6 +397,7 @@
     },
     "image": {
       "pullPolicy": "IfNotPresent",
+      "registry": "",
       "repository": "grafana/pyroscope",
       "tag": ""
     },

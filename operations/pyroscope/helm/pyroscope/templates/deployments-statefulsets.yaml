@@ -71,7 +71,8 @@ spec:
         - name: {{ if eq $component "all" }}"pyroscope"{{ else }}"{{ $component }}"{{ end }}
           securityContext:
             {{- toYaml $values.securityContext | nindent 12 }}
-          image: "{{ $values.image.repository }}:{{ $values.image.tag | default .Chart.AppVersion }}"
+          {{- $registry := $global.Values.global.imageRegistry | default $values.image.registry }}
+          image: "{{ if $registry }}{{ $registry }}/{{ end }}{{ $values.image.repository }}:{{ $values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $values.image.pullPolicy }}
           args:
             - "-target={{ $component }}"
@@ -126,6 +127,15 @@ spec:
             - "-write-path=segment-writer"
           {{- end }}
           {{- end }}
+          {{- end }}
+          {{- /* single-binary v2: disable v1 components when v1 storage is off */}}
+          {{- if and (eq $component "all") $hasV2 (not $hasV1) }}
+          {{-   if not (hasKey $extraArgs "all.enable-v1-write-path") }}
+            - "-all.enable-v1-write-path=false"
+          {{-   end }}
+          {{-   if not (hasKey $extraArgs "all.enable-v1-read-path") }}
+            - "-all.enable-v1-read-path=false"
+          {{-   end }}
           {{- end }}
           {{- /* query-frontend specific v1/v2 migration config */}}
           {{- if or (eq $component "all") (eq $component "query-frontend") }}

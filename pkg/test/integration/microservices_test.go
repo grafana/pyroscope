@@ -478,11 +478,12 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 					}
 				}
 
+				normalized := normalizePprof(resp.Msg)
 				assert.Equal(t,
 					[]*profilev1.Sample{
-						{LocationId: []uint64{1, 2, 3}, Value: []int64{int64(params.serviceCount)}},
-						{LocationId: []uint64{1, 2, 4}, Value: []int64{int64(bozSamples)}},
-					}, resp.Msg.Sample, "Samples",
+						{LocationId: []uint64{4, 1, 2}, Value: []int64{int64(params.serviceCount)}},
+						{LocationId: []uint64{4, 1, 3}, Value: []int64{int64(bozSamples)}},
+					}, normalized.Sample, "Samples",
 				)
 				assert.Equal(t,
 					[]*profilev1.Mapping{
@@ -495,15 +496,15 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 						{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
 						{Id: 3, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 3}}},
 						{Id: 4, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 4}}},
-					}, resp.Msg.Location, "Locations",
+					}, normalized.Location, "Locations",
 				)
 				assert.Equal(t,
 					[]*profilev1.Function{
-						{Id: 1, Name: 1},
-						{Id: 2, Name: 2},
-						{Id: 3, Name: 3},
-						{Id: 4, Name: 4},
-					}, resp.Msg.Function, "Functions",
+						{Id: 1, Name: 2},
+						{Id: 2, Name: 3},
+						{Id: 3, Name: 4},
+						{Id: 4, Name: 1},
+					}, normalized.Function, "Functions",
 				)
 				assert.Equal(t,
 					[]string{"", "foo", "bar", "baz", "boz", "nanoseconds", "cpu"},
