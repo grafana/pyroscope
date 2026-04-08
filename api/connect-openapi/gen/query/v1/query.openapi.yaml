@@ -1077,7 +1077,9 @@ components:
         async:
           type: boolean
           title: async
-          description: Force async execution. Primarily for testing.
+          description: |-
+            Force async execution. Primarily for testing.
+             The server could choose async execution even when this is disabled.
       title: QueryRequest
       additionalProperties: false
     query.v1.QueryResponse:

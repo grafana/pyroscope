@@ -269,6 +269,7 @@ type QueryRequest struct {
 	// If set, this is a poll request for an async query — query fields are ignored.
 	RequestId string `protobuf:"bytes,5,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	// Force async execution. Primarily for testing.
+	// The server could choose async execution even when this is disabled.
 	Async         bool `protobuf:"varint,6,opt,name=async,proto3" json:"async,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
