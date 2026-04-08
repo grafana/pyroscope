@@ -395,8 +395,7 @@ func outputSpanExemplarsTable(ctx context.Context, entries []exemplarEntry, samp
 		aligns = append(aligns, tablewriter.ALIGN_LEFT)
 	}
 
-	table := tablewriter.NewWriter(output(ctx))
-	table.SetAutoFormatHeaders(false)
+	table := newTableWriter(output(ctx))
 	table.SetHeader(headers)
 	table.SetColumnAlignment(aligns)
 
@@ -438,8 +437,7 @@ func outputExemplarsTable(ctx context.Context, entries []exemplarEntry, sampleUn
 		aligns = append(aligns, tablewriter.ALIGN_LEFT)
 	}
 
-	table := tablewriter.NewWriter(output(ctx))
-	table.SetAutoFormatHeaders(false)
+	table := newTableWriter(output(ctx))
 	table.SetHeader(headers)
 	table.SetColumnAlignment(aligns)
 

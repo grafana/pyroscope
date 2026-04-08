@@ -10,7 +10,6 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
-	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -118,8 +117,7 @@ func compact(ctx context.Context, src, dst string, metas []*block.Meta, shards i
 }
 
 func printMeta(ctx context.Context, metas []block.Meta) {
-	table := tablewriter.NewWriter(output(ctx))
-	table.SetAutoFormatHeaders(false)
+	table := newTableWriter(output(ctx))
 	table.SetHeader([]string{"Block ID", "MinTime", "MaxTime", "Duration", "Index", "Profiles", "Symbols", "Labels"})
 	for _, blockInfo := range metas {
 		table.Append([]string{

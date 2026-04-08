@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
-	"github.com/olekukonko/tablewriter"
 	"github.com/parquet-go/parquet-go"
 )
 
@@ -36,8 +35,7 @@ func parquetInspect(ctx context.Context, path string) error {
 		fmt.Fprintln(out, "\t\t Row Count:", rg.NumRows)
 		fmt.Fprintln(out, "\t\t Row size:", humanize.Bytes(uint64(rg.TotalByteSize)))
 		fmt.Fprintln(out, "\t\t Columns:")
-		table := tablewriter.NewWriter(out)
-		table.SetAutoFormatHeaders(false)
+		table := newTableWriter(out)
 		table.SetHeader([]string{
 			"Col", "Type", "NumVal", "TotalCompressedSize", "TotalUncompressedSize", "Compression", "%", "PageCount", "PageSize",
 		})

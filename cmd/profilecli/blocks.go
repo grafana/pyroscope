@@ -9,7 +9,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
-	"github.com/olekukonko/tablewriter"
 
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
@@ -37,8 +36,7 @@ func blocksList(ctx context.Context) error {
 		return err
 	}
 
-	table := tablewriter.NewWriter(output(ctx))
-	table.SetAutoFormatHeaders(false)
+	table := newTableWriter(output(ctx))
 	table.SetHeader([]string{"Block ID", "MinTime", "MaxTime", "Duration", "Index", "Profiles", "Stacktraces", "Locations", "Functions", "Strings"})
 	for _, blockInfo := range metas {
 		table.Append([]string{

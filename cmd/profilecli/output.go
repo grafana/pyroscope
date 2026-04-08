@@ -30,6 +30,12 @@ const (
 	outputJSON    = "json"
 )
 
+func newTableWriter(w io.Writer) *tablewriter.Table {
+	t := tablewriter.NewWriter(w)
+	t.SetAutoFormatHeaders(false)
+	return t
+}
+
 func outputSeries(ctx context.Context, result []*typesv1.Labels, format string, from, to time.Time) error {
 	switch format {
 	case outputJSON:
@@ -80,8 +86,7 @@ func outputSeriesTable(ctx context.Context, result []*typesv1.Labels) error {
 	}
 	sort.Strings(colNames)
 
-	table := tablewriter.NewWriter(output(ctx))
-	table.SetAutoFormatHeaders(false)
+	table := newTableWriter(output(ctx))
 	table.SetHeader(colNames)
 	for _, s := range result {
 		vals := make(map[string]string, len(s.Labels))

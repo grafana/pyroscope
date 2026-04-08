@@ -11,7 +11,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
-	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -505,8 +504,7 @@ func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCa
 		return result[i].count > result[j].count
 	})
 
-	table := tablewriter.NewWriter(output(ctx))
-	table.SetAutoFormatHeaders(false)
+	table := newTableWriter(output(ctx))
 	table.SetHeader([]string{"LabelName", "Value count"})
 	if len(result) > int(params.TopN) {
 		result = result[:params.TopN]
