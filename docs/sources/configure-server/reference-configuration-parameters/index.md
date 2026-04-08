@@ -1535,6 +1535,12 @@ The `compactor` block configures the compactor.
 # CLI flag: -compactor.max-compaction-time
 [max_compaction_time: <duration> | default = 1h]
 
+# Maximum time to wait for in-flight cleanup and ring operations to finish
+# during shutdown. If the timeout is reached, the compactor will forcefully
+# stop. 0 = no timeout (wait indefinitely).
+# CLI flag: -compactor.shutdown-timeout
+[shutdown_timeout: <duration> | default = 0s]
+
 # If enabled, will delete the bucket-index, markers and debug files in the
 # tenant bucket when there are no blocks left in the index.
 # CLI flag: -compactor.no-blocks-file-cleanup-enabled
