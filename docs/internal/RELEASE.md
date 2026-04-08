@@ -77,7 +77,10 @@ A PR to be backported must have the appropriate `backport release/vX.Y` label(s)
 
 ## Patch Releases
 
-When a patch release is needed, make PRs containing the necessary changes against the appropriate `release/vX.Y` branch.
+When a patch release is needed:
+
+1. Check for open security patches from Dependabot or Renovate PRs targeting the `release/vX.Y` branch. Review and merge any applicable security fixes before cutting the release to avoid shipping known vulnerabilities.
+2. Make PRs containing the necessary changes against the appropriate `release/vX.Y` branch.
 
 Changes done in patch releases should be documented in the existing website release notes for that version under a new heading with
 the version number. These documentation changes should be done with a PR against the appropriate release branch and then [backported](#backport) to the main branch.
