@@ -4,14 +4,14 @@
 
 ### GitHub Release
 
-1. Create a new branch for the release (e.g., `release/vX.Y`).
+1. Check for open security PRs from Dependabot or Renovate. Review and merge any applicable security fixes to avoid shipping known vulnerabilities.
+2. Create a new branch for the release (e.g., `release/vX.Y`).
    > [!IMPORTANT]
    > The release branch should only contain the major (X) and minor (Y) version, but not the patch level (Z), for example:
    >
    > ✅ Correct: `release/v1.3`
    >
    > ⚠️  Incorrect: `release/v1.3.0`  
-2. Before tagging, check for open security PRs from Dependabot or Renovate. Review and merge any applicable security fixes to avoid shipping known vulnerabilities.
 3. Create the tag for the release (e.g., `vX.Y.Z`)
 4. Push the release branch and tag to the remote. Note that the tag will kick off a release workflow via [goreleaser](https://github.com/grafana/pyroscope/actions/workflows/release.yml).
 5. Create a GitHub label for backports:
