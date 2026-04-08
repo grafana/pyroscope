@@ -84,7 +84,11 @@ buf/lint: $(BIN)/buf
 
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum --rerun-fails=2 --packages './... ./lidia/...' -- $(GO_TEST_FLAGS)
+	$(BIN)/gotestsum --rerun-fails=2 --packages "$$(go list ./... ./lidia/... | grep -v /test/integration)" -- $(GO_TEST_FLAGS)
+
+.PHONY: go/test-integration
+go/test-integration: $(BIN)/gotestsum
+	$(BIN)/gotestsum --rerun-fails=2 --packages './pkg/test/integration/...' -- $(GO_TEST_FLAGS)
 
 # Run test on examples
 # This can also be used to run it on a subset of tests

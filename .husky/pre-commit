@@ -1,4 +1,7 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
 
-npx lint-staged
+# Lint staged UI files (TypeScript / TSX) before committing.
+staged_ui_files=$(git diff --cached --name-only --diff-filter=ACM -- 'ui/*.ts' 'ui/*.tsx')
+if [ -n "$staged_ui_files" ]; then
+  cd ui && yarn lint
+fi
