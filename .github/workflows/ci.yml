@@ -49,8 +49,8 @@ jobs:
       matrix:
         arch: [amd64, arm64]
         go_test_flags:
-          - "-v -race -cover"
-          - "-v"
+          - "-race -cover"
+          - ""
     # Compute runner OS dynamically based on arch and repo ownership
     runs-on: >-
       ${{ 
