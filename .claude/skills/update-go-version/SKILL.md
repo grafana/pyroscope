@@ -28,6 +28,19 @@ If no version argument is provided, do NOT guess. Instead:
 
 ## Steps
 
+### 0. Create a feature branch
+
+Always create a new branch from the latest main before making any changes. Never commit directly to main.
+
+```bash
+git checkout main
+git fetch origin
+git pull origin main
+git checkout -b update-go-X.Y.Z
+```
+
+Use the naming convention `update-go-X.Y.Z` where `X.Y.Z` is the target version.
+
 ### 1. Read current state
 
 Extract the current versions from the codebase:
