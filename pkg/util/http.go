@@ -320,7 +320,7 @@ func (l *Log) Wrap(next http.Handler) http.Handler {
 
 		statusCode, writeErr := httpCode, httpErr.Err()
 
-		requestLog = log.With(requestLog, "method", r.Method, "uri", uri, "status", statusCode, "duration", time.Since(begin))
+		requestLog = log.With(requestLog, "method", r.Method, "uri", uri, "status", statusCode, "duration", time.Since(begin), "proto", r.Proto)
 
 		if l.LogRequestHeaders {
 			requestLog = log.With(requestLog, headerFields...)
