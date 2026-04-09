@@ -102,6 +102,15 @@ spec:
           {{- end }}
           {{- /* metastore specific v2 migration config */}}
           {{-  if $isMetastore }}
+          {{-  if (not (hasKey $extraArgs "metastore.data-dir"))  }}
+            - "-metastore.data-dir=./data-metastore/data"
+          {{- end }}
+          {{-  if (not (hasKey $extraArgs "metastore.raft.dir"))  }}
+            - "-metastore.raft.dir=./data-metastore/raft"
+          {{- end }}
+          {{-  if (not (hasKey $extraArgs "metastore.raft.snapshots-dir"))  }}
+            - "-metastore.raft.snapshots-dir=./data-metastore/raft"
+          {{- end }}
           {{-  if (not (hasKey $extraArgs "metastore.raft.server-id"))  }}
             - "-metastore.raft.bind-address=:{{ .Values.pyroscope.metastore.port }}"
           {{- end }}
