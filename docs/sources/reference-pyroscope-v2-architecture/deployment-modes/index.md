@@ -58,18 +58,26 @@ For evaluation, development, or small-scale deployments, Pyroscope v2 can run as
 
 ## Kubernetes deployment
 
-For Kubernetes deployments, use the Helm chart with the values file located in the `tools/dev/v2` directory.
+For Kubernetes deployments, use the Helm chart with v2 storage enabled.
 
-### Getting started
-
-Clone the repository and deploy using Helm with v2 configuration:
+### Single-binary mode
 
 ```bash
-git clone https://github.com/grafana/pyroscope.git
-
-helm install pyroscope ./pyroscope \
-  -f tools/dev/v2/values.yaml
+helm install pyroscope grafana/pyroscope --version 1.20.3 \
+  --set architecture.storage.v1=false \
+  --set architecture.storage.v2=true
 ```
+
+### Microservices mode
+
+```bash
+helm install pyroscope grafana/pyroscope --version 1.20.3 \
+  --set architecture.microservices.enabled=true \
+  --set architecture.storage.v1=false \
+  --set architecture.storage.v2=true
+```
+
+For migrating an existing v1 deployment, refer to the [migration guide](../migrate-from-v1/).
 
 ### Helm chart considerations
 

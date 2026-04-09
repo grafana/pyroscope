@@ -1,28 +1,20 @@
 # Pyroscope v2
 
-We're working on the next major version of **Pyroscope** – a complete architectural redesign focused on improving
-scalability, performance, and cost-efficiency. The biggest change in Pyroscope v2 is how it handles storage: data
-is now written directly to object storage, removing the need for local disks in ingesters. For single-node
-deployments, local file systems can still be used as object storage, but this setup isn't supported in the microservice 
-mode.
+**Pyroscope v2** is a complete architectural redesign of Pyroscope focused on improving scalability, performance,
+and cost-efficiency. It is nearing official release.
 
-We've also **decoupled the write and query paths**. This means each path can scale independently, so even the heaviest
-queries won't interfere with ingestion performance. The read path can now scale to hundreds of instances instantly.
-Looking ahead, we're exploring a serverless query backend to make querying even more cost-effective. Compaction,
-a previous bottleneck, has also been overhauled. The new design supports significantly higher throughput and
-scalability, allowing hundreds of tenants to ingest thousands of profiles per second – without compromising performance.
+The biggest change in Pyroscope v2 is how it handles storage: data is now written directly to object storage,
+removing the need for local disks in ingesters. For single-node deployments, local file systems can still be used
+as object storage, but this setup isn't supported in the microservice mode.
+
+The **write and query paths are fully decoupled**. Each path can scale independently, so even the heaviest queries
+won't interfere with ingestion performance. The read path can scale to hundreds of instances instantly. Compaction
+has also been overhauled – the new design supports significantly higher throughput and scalability, allowing hundreds
+of tenants to ingest thousands of profiles per second without compromising performance.
 
 This is made possible by a dedicated control plane that orchestrates data placement and compaction. To ensure high
 availability and fault tolerance, the control plane uses Raft consensus and is the only component that requires
-persistent local storage. In the future, we plan to transition this to a serverless model as well – making Pyroscope 
-fully stateless and diskless.
-
-> **Note:** This project is currently under active testing. Some features may not yet be fully implemented or stable.
-
-## Getting started
-
-If you want to evaluate the new version, we recommend using the Kubernetes setup. Pyroscope can be deployed as usual,
-using the Helm chart and the values file located in the `tools/dev/v2` directory.
+persistent local storage.
 
 # Architecture Overview
 
