@@ -124,7 +124,7 @@ export async function fetchFlamegraph(params: {
   return { names, levels };
 }
 
-interface Point {
+export interface Point {
   value: number;
   timestamp: number;
 }
@@ -139,16 +139,13 @@ export async function fetchTimeline(params: {
   start: number;
   end: number;
   step: number;
-}): Promise<number[]> {
+}): Promise<Point[]> {
   const data = await post<SelectSeriesResponse>(
     '/querier.v1.QuerierService/SelectSeries',
     params,
   );
 
-  const points = data.series?.[0]?.points ?? [];
-  if (!points.length) return [];
-
-  return points.map((p) => p.value);
+  return data.series?.[0]?.points ?? [];
 }
 
 function parseProfileTypeId(
