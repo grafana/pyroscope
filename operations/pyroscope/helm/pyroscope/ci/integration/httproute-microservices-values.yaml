@@ -1,0 +1,127 @@
+# Values for v2 microservices e2e integration test of HTTPRoute support.
+# Placed in ci/integration/ (not ci/) so the standard call-lint-test-pyroscope
+# job does not try to install this on a bare cluster without Gateway API CRDs.
+
+architecture:
+  storage:
+    v1: false
+    v2: true
+  microservices:
+    enabled: true
+
+pyroscope:
+  components:
+    distributor:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 32Mi
+          cpu: 10m
+    query-frontend:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 32Mi
+          cpu: 10m
+    query-backend:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 32Mi
+          cpu: 10m
+    segment-writer:
+      kind: StatefulSet
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 4Gi
+        requests:
+          memory: 256Mi
+          cpu: 100m
+      initContainers:
+        - name: create-bucket
+          image: minio/mc:RELEASE.2025-04-08T15-39-49Z
+          command:
+            - /bin/sh
+            - -c
+            - |
+              export MC_CONFIG_DIR="/tmp/mc"
+              mkdir -p "$MC_CONFIG_DIR"
+              until mc config host add myminio http://$MINIO_ENDPOINT:9000 grafana-pyroscope supersecret; do
+                echo "Waiting for Minio to be available..."
+                sleep 5
+              done
+              mc mb myminio/grafana-pyroscope-data --ignore-existing
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: MINIO_ENDPOINT
+              value: $(POD_NAMESPACE)-minio
+    metastore:
+      kind: StatefulSet
+      replicaCount: 1
+      # Default bootstrap-expect-peers is 3 (HA). Override for single-replica CI.
+      extraArgs:
+        metastore.raft.bootstrap-expect-peers: 1
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 64Mi
+          cpu: 10m
+    compaction-worker:
+      kind: StatefulSet
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 64Mi
+          cpu: 10m
+    tenant-settings:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 32Mi
+          cpu: 10m
+    ad-hoc-profiles:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 32Mi
+          cpu: 10m
+
+minio:
+  enabled: true
+
+# Not needed for routing tests — saves image pull time and startup overhead
+alloy:
+  enabled: false
+agent:
+  enabled: false
+
+httpRoute:
+  enabled: true
+  gateway:
+    name: pyroscope
+    namespace: default
+    sectionName: http
+  hostnames:
+    - pyroscope.test
