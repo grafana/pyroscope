@@ -106,6 +106,27 @@ jobs:
           path: ui
       - name: Run lint
         run: yarn lint
+  test:
+    needs: install
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64' || 'ubuntu-latest' }}
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: 'false'
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+      - run: corepack enable
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: node_modules
+          path: ui
+      - name: Run tests
+        run: yarn test
   build:
     needs: install
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64' || 'ubuntu-latest' }}
