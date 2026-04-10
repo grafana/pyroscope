@@ -210,6 +210,10 @@ pyroscope:
   # -- Grafana Agent Configuration.
 
 
+upgrade:
+  # -- Set to true to acknowledge breaking changes and skip the pre-upgrade check.
+  acknowledgeBreakingChanges: false
+
 architecture:
   storage:
     # -- (bool) Enable v1 storage layer.

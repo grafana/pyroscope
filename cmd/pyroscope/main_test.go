@@ -125,7 +125,7 @@ func TestHelp(t *testing.T) {
 
 			expected, err := os.ReadFile(tc.filename)
 			require.NoError(t, err)
-			assert.Equalf(t, string(expected), stdout, "%s %s output changed; try `make reference-help`", cmd, tc.arg)
+			assert.Equalf(t, string(expected), stdout, "%s %s output changed; try `make reference-help`", cmd, tc.arg) // TODO: make reference-help is broken
 			assert.Empty(t, stderr)
 		})
 	}

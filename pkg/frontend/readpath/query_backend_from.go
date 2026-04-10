@@ -9,21 +9,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// QueryBackendFrom is a flag/config type that accepts either an RFC3339
+// TODO RENAME FILE
+
+// QuerierFrom is a flag/config type that accepts either an RFC3339
 // timestamp or the special value "auto". When set to "auto", the split
 // point is resolved at query time by looking up the tenant's oldest
 // profile time in the metastore.
-type QueryBackendFrom struct {
+type QuerierFrom struct {
 	Auto bool
 	Time time.Time
 }
 
-func (q QueryBackendFrom) IsZero() bool {
+func (q QuerierFrom) IsZero() bool {
 	return !q.Auto && q.Time.IsZero()
 }
 
 // Set implements flag.Value.
-func (q *QueryBackendFrom) Set(s string) error {
+func (q *QuerierFrom) Set(s string) error {
 	if s == "auto" {
 		q.Auto = true
 		q.Time = time.Time{}
@@ -34,18 +36,18 @@ func (q *QueryBackendFrom) Set(s string) error {
 }
 
 // String implements flag.Value.
-func (q QueryBackendFrom) String() string {
+func (q QuerierFrom) String() string {
 	if q.Auto {
 		return "auto"
 	}
 	return flagext.Time(q.Time).String()
 }
 
-func (q QueryBackendFrom) MarshalJSON() ([]byte, error) {
+func (q QuerierFrom) MarshalJSON() ([]byte, error) {
 	return json.Marshal(q.String())
 }
 
-func (q *QueryBackendFrom) UnmarshalJSON(data []byte) error {
+func (q *QuerierFrom) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
 		return err
@@ -53,22 +55,22 @@ func (q *QueryBackendFrom) UnmarshalJSON(data []byte) error {
 	return q.Set(s)
 }
 
-func (q QueryBackendFrom) MarshalYAML() (interface{}, error) {
+func (q QuerierFrom) MarshalYAML() (interface{}, error) {
 	return q.String(), nil
 }
 
-func (q *QueryBackendFrom) UnmarshalYAML(value *yaml.Node) error {
+func (q *QuerierFrom) UnmarshalYAML(value *yaml.Node) error {
 	if value.Value == "" {
 		return nil
 	}
 	return q.Set(value.Value)
 }
 
-func (q QueryBackendFrom) MarshalText() ([]byte, error) {
+func (q QuerierFrom) MarshalText() ([]byte, error) {
 	return []byte(q.String()), nil
 }
 
-func (q *QueryBackendFrom) UnmarshalText(data []byte) error {
+func (q *QuerierFrom) UnmarshalText(data []byte) error {
 	s := string(data)
 	if s == "" {
 		return nil
@@ -80,7 +82,7 @@ func (q *QueryBackendFrom) UnmarshalText(data []byte) error {
 // For a fixed timestamp, it returns the time directly.
 // For "auto" mode, it queries the metastore for the tenant's oldest profile time.
 // Returns zero time if the split cannot be determined.
-func (q QueryBackendFrom) SplitTime(tenantOldestProfileTime func() (time.Time, error)) (time.Time, error) {
+func (q QuerierFrom) SplitTime(tenantOldestProfileTime func() (time.Time, error)) (time.Time, error) {
 	if !q.Auto {
 		return q.Time, nil
 	}

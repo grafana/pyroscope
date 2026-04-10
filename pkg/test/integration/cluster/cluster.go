@@ -132,7 +132,7 @@ type Cluster struct {
 
 	wg sync.WaitGroup // components wait group
 
-	v2                 bool     // is this a v2 cluster
+	v1                 bool     // is this a v1 cluster
 	debuginfodURL      string   // debuginfod URL for symbolization
 	expectedComponents []string // number of expected components
 
@@ -210,7 +210,7 @@ func (c *Cluster) Prepare(ctx context.Context) (err error) {
 
 	// allocate two tcp ports per component
 	portsPerComponent := 3
-	if c.v2 {
+	if !c.v1 {
 		portsPerComponent = 4
 	}
 	ports, err := getFreeTCPPorts(listenAddr, len(c.Components)*portsPerComponent)
@@ -237,7 +237,7 @@ func (c *Cluster) Prepare(ctx context.Context) (err error) {
 		}
 	}
 
-	if c.v2 {
+	if !c.v1 {
 		return c.v2Prepare(ctx, memberlistJoin)
 	}
 
@@ -299,10 +299,10 @@ func (c *Cluster) Start(ctx context.Context) (err error) {
 					var found bool
 					var err error
 
-					if c.v2 {
-						found, err = c.v2ReadyCheckComponent(ctx, t)
-					} else {
+					if c.v1 {
 						found, err = c.v1ReadyCheckComponent(ctx, t)
+					} else {
+						found, err = c.v2ReadyCheckComponent(ctx, t)
 					}
 					if found {
 						if err != nil {

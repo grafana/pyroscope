@@ -17,6 +17,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
+// TODO
 type Overrides interface {
 	ReadPathOverrides(tenantID string) Config
 }
@@ -84,12 +85,12 @@ func Query[Req, Resp any](
 	// Verbose but explicit. Note that limits, error handling, etc.,
 	// are delegated to the callee.
 	overrides := router.overrides.ReadPathOverrides(tenantID)
-	if !overrides.EnableQueryBackend {
-		sanitize(req.Msg, nil)
-		return query[Req, Resp](ctx, router.oldFrontend, req)
+	if !overrides.EnableQuerier {
+		sanitize(nil, req.Msg)
+		return query[Req, Resp](ctx, router.newFrontend, req)
 	}
 
-	splitTime, err := overrides.EnableQueryBackendFrom.SplitTime(func() (time.Time, error) {
+	splitTime, err := overrides.EnableQuerierUntil.SplitTime(func() (time.Time, error) {
 		return router.resolver.OldestProfileTime(ctx, tenantID)
 	})
 	if err != nil {

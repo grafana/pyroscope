@@ -47,7 +47,7 @@ func TestQueryBackendFrom_Set(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var q QueryBackendFrom
+			var q QuerierFrom
 			err := q.Set(tt.input)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -63,30 +63,30 @@ func TestQueryBackendFrom_Set(t *testing.T) {
 }
 
 func TestQueryBackendFrom_String(t *testing.T) {
-	assert.Equal(t, "auto", QueryBackendFrom{Auto: true}.String())
-	assert.Equal(t, "0", QueryBackendFrom{}.String())
+	assert.Equal(t, "auto", QuerierFrom{Auto: true}.String())
+	assert.Equal(t, "0", QuerierFrom{}.String())
 }
 
 func TestQueryBackendFrom_IsZero(t *testing.T) {
-	assert.True(t, QueryBackendFrom{}.IsZero())
-	assert.False(t, QueryBackendFrom{Auto: true}.IsZero())
-	assert.False(t, QueryBackendFrom{Time: time.Now()}.IsZero())
+	assert.True(t, QuerierFrom{}.IsZero())
+	assert.False(t, QuerierFrom{Auto: true}.IsZero())
+	assert.False(t, QuerierFrom{Time: time.Now()}.IsZero())
 }
 
 func TestQueryBackendFrom_JSON(t *testing.T) {
 	tests := []struct {
 		name  string
-		value QueryBackendFrom
+		value QuerierFrom
 		json  string
 	}{
 		{
 			name:  "auto",
-			value: QueryBackendFrom{Auto: true},
+			value: QuerierFrom{Auto: true},
 			json:  `"auto"`,
 		},
 		{
 			name:  "zero",
-			value: QueryBackendFrom{},
+			value: QuerierFrom{},
 			json:  `"0"`,
 		},
 	}
@@ -97,7 +97,7 @@ func TestQueryBackendFrom_JSON(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.json, string(data))
 
-			var decoded QueryBackendFrom
+			var decoded QuerierFrom
 			err = json.Unmarshal(data, &decoded)
 			require.NoError(t, err)
 			assert.Equal(t, tt.value.Auto, decoded.Auto)
@@ -108,17 +108,17 @@ func TestQueryBackendFrom_JSON(t *testing.T) {
 func TestQueryBackendFrom_YAML(t *testing.T) {
 	tests := []struct {
 		name  string
-		value QueryBackendFrom
+		value QuerierFrom
 		yaml  string
 	}{
 		{
 			name:  "auto",
-			value: QueryBackendFrom{Auto: true},
+			value: QuerierFrom{Auto: true},
 			yaml:  "auto\n",
 		},
 		{
 			name:  "zero",
-			value: QueryBackendFrom{},
+			value: QuerierFrom{},
 			yaml:  "\"0\"\n",
 		},
 	}
@@ -129,7 +129,7 @@ func TestQueryBackendFrom_YAML(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.yaml, string(data))
 
-			var decoded QueryBackendFrom
+			var decoded QuerierFrom
 			err = yaml.Unmarshal(data, &decoded)
 			require.NoError(t, err)
 			assert.Equal(t, tt.value.Auto, decoded.Auto)
@@ -140,7 +140,7 @@ func TestQueryBackendFrom_YAML(t *testing.T) {
 func TestQueryBackendFrom_SplitTime(t *testing.T) {
 	t.Run("fixed time", func(t *testing.T) {
 		ts := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
-		q := QueryBackendFrom{Time: ts}
+		q := QuerierFrom{Time: ts}
 		result, err := q.SplitTime(func() (time.Time, error) {
 			t.Fatal("should not be called")
 			return time.Time{}, nil
@@ -151,7 +151,7 @@ func TestQueryBackendFrom_SplitTime(t *testing.T) {
 
 	t.Run("auto resolves from callback", func(t *testing.T) {
 		expected := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-		q := QueryBackendFrom{Auto: true}
+		q := QuerierFrom{Auto: true}
 		result, err := q.SplitTime(func() (time.Time, error) {
 			return expected, nil
 		})

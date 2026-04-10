@@ -468,7 +468,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		featureflags.ClientCapabilitiesGRPCMiddleware(),
 	)
 
-	if f.Cfg.V2 {
+	if !f.Cfg.V1 {
 		f.Cfg.Server.MetricsNativeHistogramFactor = 1.1 // 10% increase from bucket to bucket
 		if slices.Contains(f.Cfg.Target, QueryBackend) {
 			concurrencyInterceptor, err := querybackend.CreateConcurrencyInterceptor(f.logger)
@@ -578,7 +578,7 @@ func (f *Pyroscope) initUsageReport() (services.Service, error) {
 }
 
 func (f *Pyroscope) initAdmin() (services.Service, error) {
-	if f.Cfg.V2 {
+	if !f.Cfg.V1 {
 		// For v2 storage, use metastore-based admin
 		if f.metastoreClient == nil {
 			level.Warn(f.logger).Log("msg", "v2 enabled but no metastore client configured, the admin component will not be loaded")

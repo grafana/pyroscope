@@ -14,7 +14,6 @@ import (
 
 func WithV2() ClusterOption {
 	return func(c *Cluster) {
-		c.v2 = true
 		c.expectedComponents = []string{
 			"distributor",
 			"distributor",
@@ -117,7 +116,6 @@ func (c *Cluster) v2Prepare(_ context.Context, memberlistJoin []string) error {
 func (c *Cluster) v2PrepareComponent(comp *Component, metastoreLeader *Component) error {
 	dataDir := c.dataDir(comp)
 
-	comp.cfg.V2 = true
 	comp.flags = c.commonFlags(comp)
 
 	comp.flags = append(comp.flags,

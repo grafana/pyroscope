@@ -9,7 +9,7 @@ import (
 
 func WithV1() ClusterOption {
 	return func(c *Cluster) {
-		c.v2 = false
+		c.v1 = true
 		c.expectedComponents = []string{
 			"distributor",
 			"distributor",
@@ -53,6 +53,7 @@ func (c *Cluster) v1Prepare(_ context.Context, memberlistJoin []string) error {
 			}
 		}
 
+		comp.cfg.V1 = true
 		comp.flags = c.commonFlags(comp)
 		comp.flags = append(comp.flags,
 			fmt.Sprintf("-blocks-storage.bucket-store.sync-dir=%s", syncDir),

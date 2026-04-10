@@ -54,13 +54,13 @@ func EachPyroscopeTest(t *testing.T, f func(p *PyroscopeTest, t *testing.T)) {
 		{
 			"v1",
 			func(t *testing.T) *PyroscopeTest {
-				return new(PyroscopeTest).Configure(t, false)
+				return new(PyroscopeTest).Configure(t, true)
 			},
 		},
 		{
 			"v2",
 			func(t *testing.T) *PyroscopeTest {
-				return new(PyroscopeTest).Configure(t, true)
+				return new(PyroscopeTest).Configure(t, false)
 			},
 		},
 	}
@@ -109,7 +109,7 @@ func (p *PyroscopeTest) start(t *testing.T) {
 	}, 30*time.Second, 100*time.Millisecond)
 }
 
-func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
+func (p *PyroscopeTest) Configure(t *testing.T, v1 bool) *PyroscopeTest {
 	ports, err := GetFreePorts(4)
 	require.NoError(t, err)
 	p.httpPort = ports[0]
@@ -122,7 +122,7 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 	p.reg = prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = p.reg
 
-	p.config.V2 = v2
+	p.config.V1 = v1
 	err = cfg.DynamicUnmarshal(&p.config, []string{"pyroscope"}, flag.NewFlagSet("pyroscope", flag.ContinueOnError))
 	require.NoError(t, err)
 
@@ -158,11 +158,10 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 	p.config.LimitsConfig.RejectOlderThan = 0
 	_ = p.config.Server.LogLevel.Set("debug")
 
-	if v2 {
+	if !v1 {
 		p.config.Storage.Bucket.Filesystem.Directory = t.TempDir()
 		p.config.Storage.Bucket.Backend = "filesystem"
 		p.config.LimitsConfig.WritePathOverrides.WritePath = "segment-writer"
-		p.config.LimitsConfig.ReadPathOverrides.EnableQueryBackend = true
 		p.config.SegmentWriter.LifecyclerConfig.MinReadyDuration = 0 * time.Second
 		p.config.SegmentWriter.LifecyclerConfig.Addr = address
 		p.config.SegmentWriter.MetadataUpdateTimeout = 0 * time.Second

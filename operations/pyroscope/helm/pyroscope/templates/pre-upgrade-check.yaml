@@ -1,0 +1,24 @@
+{{- $ack := false }}
+{{- if .Values.upgrade }}
+{{- $ack = .Values.upgrade.acknowledgeBreakingChanges | default false }}
+{{- end }}
+{{- if and .Release.IsUpgrade (not .Values.architecture.storage.v1) (not .Values.architecture.storage.v2) (not $ack) }}
+{{- fail `
+=============================================
+BREAKING CHANGE: Pyroscope 2.0 uses v2 storage as a default.
+
+If you are upgrading from 1.x, choose one of the following:
+1. [Recommended] Migrate your data first.
+   See: https://grafana.com/docs/pyroscope/latest/migrate-to-v2/
+2. Explicitly use legacy architecture and migrate later:
+   helm upgrade -n pyroscope pyroscope grafana/pyroscope \
+     --reuse-values \
+     --set architecture.storage.v1=true \
+     --set architecture.storage.v2=false
+3. Start a new blank v2 Pyroscope (WARNING: this implies NO data migration):
+   helm upgrade -n pyroscope pyroscope grafana/pyroscope \
+     --reuse-values \
+     --set upgrade.acknowledgeBreakingChanges=true
+=============================================
+` }}
+{{- end }}

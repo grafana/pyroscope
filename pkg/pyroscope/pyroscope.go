@@ -112,7 +112,7 @@ type Config struct {
 	ConfigFile      string `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
 
-	V2                bool                    `yaml:"-" doc:"hidden"`
+	V1                bool                    `yaml:"-" doc:"hidden"`
 	EnableV1WritePath bool                    `yaml:"enable_v1_write_path" doc:"hidden"`
 	EnableV1ReadPath  bool                    `yaml:"enable_v1_read_path"  doc:"hidden"`
 	SegmentWriter     segmentwriter.Config    `yaml:"segment_writer"     doc:"hidden"`
@@ -234,11 +234,11 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		"query-scheduler.service-discovery-mode": schedulerdiscovery.ModeRing,
 	}
 
-	if c.V2 {
+	if !c.V1 {
 		c.EnableV1WritePath = true
 		c.EnableV1ReadPath = true
-		fs.BoolVar(&c.EnableV1WritePath, "all.enable-v1-write-path", true, "When using target=all with V2 enabled, also start V1 write path components (ingester, compactor). Set to false after fully migrating to V2.")
-		fs.BoolVar(&c.EnableV1ReadPath, "all.enable-v1-read-path", true, "When using target=all with V2 enabled, also start V1 read path components (querier, query-scheduler, store-gateway). Set to false after fully migrating to V2.")
+		fs.BoolVar(&c.EnableV1WritePath, "all.enable-v1-write-path", true, "When using target=all (and V1 is not enabled), also start V1 write path components (ingester, compactor). Set to false after fully migrating to V2.")
+		fs.BoolVar(&c.EnableV1ReadPath, "all.enable-v1-read-path", true, "When using target=all (and V1 is not enabled), also start V1 read path components (querier, query-scheduler, store-gateway). Set to false after fully migrating to V2.")
 
 		for k, v := range map[string]string{
 			"server.grpc-max-recv-msg-size-bytes":                    "104857600",
@@ -512,7 +512,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		FeatureFlags:      {API},
 	}
 
-	if f.Cfg.V2 {
+	if !f.Cfg.V1 {
 		v2Modules := map[string][]string{
 			SegmentWriter:         {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
 			Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},

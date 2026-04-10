@@ -51,7 +51,7 @@ func (f *Pyroscope) initQueryFrontend() (services.Service, error) {
 	if f.Cfg.Frontend.Port == 0 {
 		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
 	}
-	if !f.Cfg.V2 {
+	if f.Cfg.V1 {
 		return f.initQueryFrontendV1()
 	}
 	// If the new read path is enabled globally by default,
@@ -62,11 +62,11 @@ func (f *Pyroscope) initQueryFrontend() (services.Service, error) {
 	// to use both the old and new query frontends.
 	c := f.Overrides.ReadPathOverrides(tenant.DefaultTenantID)
 	switch {
-	case !c.EnableQueryBackend:
-		return f.initQueryFrontendV1()
-	case c.EnableQueryBackend && c.EnableQueryBackendFrom.IsZero():
+	case !c.EnableQuerier:
 		return f.initQueryFrontendV2()
-	case c.EnableQueryBackend && !c.EnableQueryBackendFrom.IsZero():
+	case c.EnableQuerier && c.EnableQuerierUntil.IsZero():
+		return f.initQueryFrontendV1()
+	case c.EnableQuerier && !c.EnableQuerierUntil.IsZero():
 		// Both fixed timestamps and "auto" mode use the hybrid frontend:
 		// fixed timestamps are resolved immediately, while "auto" queries
 		// the metastore at request time.

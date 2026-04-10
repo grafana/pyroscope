@@ -1,10 +1,66 @@
 Usage of ./pyroscope:
+  -adaptive-placement.burst-window duration
+    	Duration of the burst window. During this time, scale-outs are more aggressive. (default 17m0s)
+  -adaptive-placement.decay-window duration
+    	Duration of the decay window. During this time, scale-ins are delayed. (default 19m0s)
+  -adaptive-placement.default-dataset-shards uint
+    	Default number of shards per dataset. (default 1)
+  -adaptive-placement.export-shard-limit-metrics
+    	If enabled, shard limit metrics are exported as Prometheus metrics. (default true)
+  -adaptive-placement.export-shard-usage-breakdown-metrics
+    	If enabled, shard utilization breakdown metrics, including shard ownership, are exported as Prometheus metrics.
+  -adaptive-placement.export-shard-usage-metrics
+    	If enabled, shard utilization metrics are exported as Prometheus metrics.
+  -adaptive-placement.load-balancing value
+    	Load balancing strategy; valid options: fingerprint, round-robin, dynamic. (default "dynamic")
+  -adaptive-placement.max-dataset-shards uint
+    	Maximum number of shards per dataset. (default 1024)
+  -adaptive-placement.min-dataset-shards uint
+    	Minimum number of shards per dataset. (default 1)
+  -adaptive-placement.placement-rules-retention-period duration
+    	Retention period for inactive placement rules. (default 15m0s)
+  -adaptive-placement.placement-rules-update-interval duration
+    	Interval between updates to placement rules. (default 15s)
+  -adaptive-placement.stats-aggregation-window duration
+    	Time window for aggregating shard stats. (default 3m0s)
+  -adaptive-placement.stats-confidence-period duration
+    	Confidence period for stats. During this period, placement rules are not updated. If 0, placement rules may be applied using incomplete stats.
+  -adaptive-placement.stats-retention-period duration
+    	Retention period for stats that are no longer updated. (default 15m0s)
+  -adaptive-placement.tenant-shards uint
+    	Number of shards per tenant. If 0, the limit is not applied.
+  -adaptive-placement.unit-size-bytes uint
+    	Shards are allocated based on the utilisation of units per second. The option specifies the unit size in bytes. (default 131072)
+  -all.enable-v1-read-path
+    	When using target=all (and V1 is not enabled), also start V1 read path components (querier, query-scheduler, store-gateway). Set to false after fully migrating to V2. (default true)
+  -all.enable-v1-write-path
+    	When using target=all (and V1 is not enabled), also start V1 write path components (ingester, compactor). Set to false after fully migrating to V2. (default true)
   -api.base-url string
     	base URL for when the server is behind a reverse proxy with a different path
+  -async-ingest
+    	If true, the write path will not wait for the segment-writer to finish processing the request. Writes to ingester always synchronous.
   -auth.multitenancy-enabled
     	When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
   -blocks-storage.bucket-store.sync-dir string
     	Directory to store synchronized pyroscope block headers. This directory is not required to be persisted between restarts, but it's highly recommended in order to improve the store-gateway startup time. (default "./data/pyroscope-sync/")
+  -compaction-worker.cleanup-max-duration duration
+    	Maximum duration of the cleanup operations. (default 15s)
+  -compaction-worker.job-concurrency int
+    	Number of concurrent jobs compaction worker will run. Defaults to the number of CPU cores.
+  -compaction-worker.job-poll-interval duration
+    	Interval between job requests (default 5s)
+  -compaction-worker.metrics-exporter.enabled
+    	This parameter specifies whether the metrics exporter is enabled.
+  -compaction-worker.metrics-exporter.remote-write-address string
+    	The address to use for metrics tenant.
+  -compaction-worker.metrics-exporter.rules-source.client-address string
+    	The address to use for the recording rules client connection.
+  -compaction-worker.request-timeout duration
+    	Job request timeout. (default 5s)
+  -compaction-worker.small-object-size-bytes int
+    	Size of the object that can be loaded in memory. (default 8388608)
+  -compaction-worker.temp-dir string
+    	Temporary directory for compaction jobs. (default "/var/folders/vb/05pl5dpx4rg581lfjkm5j8980000gn/T/")
   -compactor.blocks-retention-period duration
     	Delete blocks containing samples older than the specified retention period. 0 to disable.
   -compactor.compactor-downsampler-enabled
@@ -43,6 +99,12 @@ Usage of ./pyroscope:
     	Prints the application banner at startup. (default true)
   -consul.hostname string
     	Hostname and port of Consul. (default "localhost:8500")
+  -debug-info.enabled
+    	Enable debug info. (default true)
+  -debug-info.max-upload-duration duration
+    	Maximum duration of a single debug info upload. (default 1m0s)
+  -debug-info.max-upload-size int
+    	Maximum size of a single debug info upload in bytes. (default 104857600)
   -distributor.aggregation-period duration
     	Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.
   -distributor.aggregation-window duration
@@ -83,6 +145,10 @@ Usage of ./pyroscope:
     	The port on which the Grafana will listen. (default 4041)
   -embedded-grafana.pyroscope-url string
     	The URL of the Pyroscope instance to use for the Grafana datasources. (default "http://localhost:4040")
+  -enable-querier
+    	This parameter specifies whether the old querier is enabled.
+  -enable-querier-until value
+    	This parameter specifies the point in time until which data is queried from the old querier. The value can be an RFC3339 timestamp (2020-10-20T00:00:00Z) or "auto" to automatically determine the split point from the tenant's oldest profile time in the metastore.
   -etcd.endpoints string
     	The etcd endpoints to connect to.
   -etcd.password string
@@ -121,6 +187,76 @@ Usage of ./pyroscope:
     	Port to listen on for gossip messages. (default 7946)
   -memberlist.join value
     	Other cluster members to join. Can be specified multiple times or as a comma-separated list. It can be an IP, hostname or an entry specified in the DNS Service Discovery format.
+  -metastore.address string
+    	 (default "localhost:9095")
+  -metastore.compaction-job-lease-duration duration
+    	 (default 15s)
+  -metastore.compaction-max-failures uint
+    	 (default 3)
+  -metastore.compaction-max-job-queue-size uint
+    	 (default 10000)
+  -metastore.data-dir string
+    	Directory to store the data. (default "./data/v2/metastore/data")
+  -metastore.index.block-read-cache-size int
+    	Maximum number of read blocks to keep in memory (default 100000)
+  -metastore.index.block-write-cache-size int
+    	Maximum number of written blocks to keep in memory (default 10000)
+  -metastore.index.cleanup-grace-period duration
+    	After a partition is eligible for deletion, it will be kept for this period before actually being evaluated. The period should cover the time difference between the block creation time and the data timestamps. Blocks are only deleted if all data in the block has passed the retention period, and the grace period delays the moment when the partition is evaluated for deletion. (default 6h0m0s)
+  -metastore.index.cleanup-interval duration
+    	Interval for index cleanup check. 0 to disable.
+  -metastore.index.cleanup-max-partitions int
+    	Maximum number of partitions to cleanup at once. A partition is qualified by partition key, tenant, and shard. (default 32)
+  -metastore.index.dlq-recovery-check-interval duration
+    	Dead Letter Queue check interval. 0 to disable. (default 15s)
+  -metastore.index.shard-cache-size int
+    	Maximum number of shards to keep in memory (default 2000)
+  -metastore.raft.advertise-address string
+    	 (default "localhost:9099")
+  -metastore.raft.apply-timeout duration
+    	 (default 5s)
+  -metastore.raft.auto-join
+    	If enabled, new nodes (without a state) will try to join an existing cluster on startup.
+  -metastore.raft.bind-address string
+    	 (default "localhost:9099")
+  -metastore.raft.bootstrap-expect-peers int
+    	Expected number of peers including the local node. (default 1)
+  -metastore.raft.bootstrap-peers string
+    	
+  -metastore.raft.dir string
+    	Directory to store WAL and raft state. It must be a persistent directory, not a tmpfs or similar. (default "./data/v2/metastore/raft")
+  -metastore.raft.log-index-check-interval duration
+    	 (default 14ms)
+  -metastore.raft.log-store-timeout duration
+    	 (default 10s)
+  -metastore.raft.read-index-max-distance uint
+    	 (default 10240)
+  -metastore.raft.server-id string
+    	 (default "localhost:9099")
+  -metastore.raft.snapshot-interval duration
+    	 (default 3m0s)
+  -metastore.raft.snapshot-threshold uint
+    	 (default 8192)
+  -metastore.raft.snapshots-dir string
+    	Directory to store FSM snapshots. Raft creates 'snapshots' subdirectory in this directory. It must be a persistent directory, not a tmpfs or similar. (default "./data/v2/metastore/raft")
+  -metastore.raft.snapshots-import-dir string
+    	Directory to import snapshots from; the directory must contain 'snapshots' subdirectory. If not set, no import will be done.
+  -metastore.raft.snapshots-retain uint
+    	 (default 3)
+  -metastore.raft.trailing-logs uint
+    	 (default 18432)
+  -metastore.raft.transport-conn-pool-size uint
+    	 (default 10)
+  -metastore.raft.transport-timeout duration
+    	 (default 10s)
+  -metastore.raft.wal-cache-entries uint
+    	 (default 512)
+  -metastore.snapshot-compact-on-restore
+    	Compact the database on restore.
+  -metastore.snapshot-compression string
+    	Compression algorithm to use for snapshots. Supported compressions: zstd. (default "zstd")
+  -metastore.snapshot-rate-limit int
+    	Rate limit for snapshot writer in MB/s. (default 15)
   -modules
     	List available modules that can be used as target and exit.
   -overrides-exporter.ring.consul.hostname string
@@ -171,10 +307,16 @@ Usage of ./pyroscope:
     	Whether query analysis is enabled in the query frontend. If disabled, the /AnalyzeQuery endpoint will return an empty response. (default true)
   -querier.query-analysis-series-enabled
     	Whether the series portion of query analysis is enabled. If disabled, no series data (e.g., series count) will be calculated by the /AnalyzeQuery endpoint.
+  -querier.query-tree-enabled
+    	Use the tree-based query path for SelectMergeProfile. Experimental.
   -querier.sanitize-on-merge
     	Whether profiles should be sanitized when merging. (default true)
   -querier.split-queries-by-interval duration
     	Split queries by a time interval and execute in parallel. The value 0 disables splitting by time
+  -query-backend.address string
+    	 (default "localhost:9095")
+  -query-backend.client-timeout duration
+    	Timeout for query-backend client requests. (default 30s)
   -query-scheduler.max-outstanding-requests-per-tenant int
     	Maximum number of outstanding requests per tenant per query-scheduler. In-flight requests above this limit will fail with HTTP response status code 429. (default 100)
   -query-scheduler.ring.consul.hostname string
@@ -189,10 +331,32 @@ Usage of ./pyroscope:
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -query-scheduler.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -retention-period duration
+    	Retention period for the data. 0 means data never deleted. (default 31d)
   -ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -runtime-config.file comma-separated-list-of-strings
     	Comma separated list of yaml files with the configuration that can be updated at runtime. Runtime config files will be merged from left to right.
+  -segment-writer.availability-zone string
+    	The availability zone where this instance is running.
+  -segment-writer.consul.hostname string
+    	Hostname and port of Consul. (default "localhost:8500")
+  -segment-writer.distributor.replication-factor int
+    	The number of ingesters to write to and read from. (default 3)
+  -segment-writer.distributor.zone-awareness-enabled
+    	True to enable the zone-awareness and replicate ingested samples across different availability zones.
+  -segment-writer.etcd.endpoints string
+    	The etcd endpoints to connect to.
+  -segment-writer.etcd.password string
+    	Etcd password.
+  -segment-writer.etcd.username string
+    	Etcd username.
+  -segment-writer.lifecycler.interface string
+    	Name of network interface to read address from. (default [<private network interfaces>])
+  -segment-writer.store string
+    	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -segment-writer.tokens-file-path string
+    	File path where tokens are stored. If empty, tokens are not stored at shutdown and restored at startup.
   -self-profiling.block-profile-rate int
     	 (default 5)
   -self-profiling.disable-push
@@ -220,9 +384,9 @@ Usage of ./pyroscope:
   -server.grpc-max-concurrent-streams uint
     	Limit on the number of concurrent streams for gRPC calls per client connection (0 = unlimited) (default 100)
   -server.grpc-max-recv-msg-size-bytes int
-    	Limit on the size of a gRPC message this server can receive (bytes). (default 4194304)
+    	Limit on the size of a gRPC message this server can receive (bytes). (default 104857600)
   -server.grpc-max-send-msg-size-bytes int
-    	Limit on the size of a gRPC message this server can send (bytes). (default 4194304)
+    	Limit on the size of a gRPC message this server can send (bytes). (default 104857600)
   -server.grpc-tls-ca-path string
     	GRPC TLS Client CA path.
   -server.grpc-tls-cert-path string
@@ -238,7 +402,7 @@ Usage of ./pyroscope:
   -server.grpc.keepalive.max-connection-idle duration
     	The duration after which an idle connection should be closed. Default: infinity (default 2562047h47m16.854775807s)
   -server.grpc.keepalive.min-time-between-pings duration
-    	Minimum amount of time a client should wait before sending a keepalive ping. If client sends keepalive ping more often, server will send GOAWAY and close the connection. (default 5m0s)
+    	Minimum amount of time a client should wait before sending a keepalive ping. If client sends keepalive ping more often, server will send GOAWAY and close the connection. (default 1s)
   -server.grpc.keepalive.ping-without-stream-allowed
     	If true, server allows keepalive pings even when there are no active streams(RPCs). If false, and client sends ping when there are no active streams, server will send GOAWAY and close the connection.
   -server.grpc.keepalive.time duration
@@ -423,12 +587,16 @@ Usage of ./pyroscope:
     	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway and querier when running in microservices mode.
   -store-gateway.tenant-shard-size int
     	The tenant's shard size, used when store-gateway sharding is enabled. Value of 0 disables shuffle sharding for the tenant, that is all tenant blocks are sharded across all store-gateway replicas.
+  -symbolizer.debuginfod-url string
+    	URL of the debuginfod server (default "https://debuginfod.elfutils.org")
   -target comma-separated-list-of-strings
     	Comma-separated list of Pyroscope modules to load. The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode.  (default all)
   -tracing.enabled
     	Set to false to disable tracing. (default true)
   -usage-stats.enabled
     	Enable anonymous usage statistics collection. For more details about usage statistics, refer to https://grafana.com/docs/pyroscope/latest/configure-server/anonymous-usage-statistics-reporting/ (default true)
+  -valdation.symbolizer.max-symbol-size-bytes int
+    	Maximum size of a symbol in bytes. This an upper limits to both the compressed and uncompressed size. 0 to disable. (default 536870912)
   -validation.disable-label-sanitization
     	Disable label name sanitization (converting dots to underscores). When disabled, labels with dots are accepted as-is using UTF-8 validation.
   -validation.enforce-labels-order
@@ -457,5 +625,15 @@ Usage of ./pyroscope:
     	This limits how far into the past profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 1h. (default 1h)
   -version
     	Show the version of pyroscope and exit
+  -write-path value
+    	Controls the write path route; valid options: ingester, segment-writer, combined. (default "ingester")
+  -write-path.compression value
+    	Compression algorithm to use for segment writer requests; valid compression options: none, gzip. (default "none")
+  -write-path.ingester-weight float
+    	Specifies the fraction [0:1] that should be send to ingester in combined mode. 0 means no traffics is sent to ingester. 1 means 100% of requests are sent to ingester. (default 1)
+  -write-path.segment-writer-timeout duration
+    	Timeout for segment writer requests. (default 5s)
+  -write-path.segment-writer-weight float
+    	Specifies the fraction [0:1] that should be send to segment-writer in combined mode. 0 means no traffics is sent to segment-writer. 1 means 100% of requests are sent to segment-writer.
 
 To see all flags, use -help-all

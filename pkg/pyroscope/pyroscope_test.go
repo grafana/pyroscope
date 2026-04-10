@@ -60,9 +60,9 @@ func TestFlagDefaults(t *testing.T) {
 }
 
 // newTestConfig creates a Config with flags registered and parsed.
-func newTestConfig(t *testing.T, v2 bool, args []string) Config {
+func newTestConfig(t *testing.T, v1 bool, args []string) Config {
 	t.Helper()
-	cfg := Config{V2: v2}
+	cfg := Config{V1: v1}
 	fs := flag.NewFlagSet(t.Name(), flag.ContinueOnError)
 	cfg.RegisterFlags(fs)
 	require.NoError(t, fs.Parse(args))
@@ -71,7 +71,7 @@ func newTestConfig(t *testing.T, v2 bool, args []string) Config {
 
 func TestSetupModuleManager_V2_ExcludesV1Components(t *testing.T) {
 	t.Run("excludes V1 write path when disabled", func(t *testing.T) {
-		cfg := newTestConfig(t, true, []string{"-all.enable-v1-write-path=false"})
+		cfg := newTestConfig(t, false, []string{"-all.enable-v1-write-path=false"})
 		f := &Pyroscope{Cfg: cfg}
 		require.NoError(t, f.setupModuleManager())
 
@@ -83,7 +83,7 @@ func TestSetupModuleManager_V2_ExcludesV1Components(t *testing.T) {
 	})
 
 	t.Run("excludes V1 read path when disabled", func(t *testing.T) {
-		cfg := newTestConfig(t, true, []string{"-all.enable-v1-read-path=false"})
+		cfg := newTestConfig(t, false, []string{"-all.enable-v1-read-path=false"})
 		f := &Pyroscope{Cfg: cfg}
 		require.NoError(t, f.setupModuleManager())
 
@@ -95,7 +95,7 @@ func TestSetupModuleManager_V2_ExcludesV1Components(t *testing.T) {
 	})
 
 	t.Run("includes all components when both V1 paths enabled", func(t *testing.T) {
-		cfg := newTestConfig(t, true, []string{
+		cfg := newTestConfig(t, false, []string{
 			"-all.enable-v1-write-path=true",
 			"-all.enable-v1-read-path=true",
 		})
@@ -111,8 +111,8 @@ func TestSetupModuleManager_V2_ExcludesV1Components(t *testing.T) {
 		}
 	})
 
-	t.Run("non-V2 has no V2 modules", func(t *testing.T) {
-		cfg := newTestConfig(t, false, nil)
+	t.Run("V1-only has no V2 modules", func(t *testing.T) {
+		cfg := newTestConfig(t, true, nil)
 		f := &Pyroscope{Cfg: cfg}
 		require.NoError(t, f.setupModuleManager())
 
@@ -127,7 +127,7 @@ func TestSetupModuleManager_V2_ExcludesV1Components(t *testing.T) {
 
 func TestRegisterServerFlagsWithChangedDefaultValues_V2(t *testing.T) {
 	t.Run("registers enable-v1 flags with default true", func(t *testing.T) {
-		cfg := Config{V2: true}
+		cfg := Config{}
 		fs := flag.NewFlagSet("test", flag.ContinueOnError)
 		cfg.RegisterFlagsWithContext(fs)
 
@@ -140,8 +140,8 @@ func TestRegisterServerFlagsWithChangedDefaultValues_V2(t *testing.T) {
 		assert.Equal(t, "true", readPath.DefValue)
 	})
 
-	t.Run("non-V2 does not register enable-v1 flags", func(t *testing.T) {
-		cfg := Config{V2: false}
+	t.Run("V1-only does not register enable-v1 flags", func(t *testing.T) {
+		cfg := Config{V1: true}
 		fs := flag.NewFlagSet("test", flag.ContinueOnError)
 		cfg.RegisterFlagsWithContext(fs)
 
@@ -150,7 +150,7 @@ func TestRegisterServerFlagsWithChangedDefaultValues_V2(t *testing.T) {
 	})
 
 	t.Run("V2 applies additional default overrides", func(t *testing.T) {
-		cfg := Config{V2: true}
+		cfg := Config{}
 		fs := flag.NewFlagSet("test", flag.ContinueOnError)
 		cfg.RegisterFlagsWithContext(fs)
 
