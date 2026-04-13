@@ -143,7 +143,16 @@ dashboards:
   # ingest label selector
   ingestSelector: container=~"pyroscope|distributor|query-frontend"
 
+  # Set to true when Prometheus scrapes native histograms (scrape_native_histograms: true).
+  # When false, dashboards use classic _bucket/_sum/_count suffix queries instead.
+  nativeHistograms: true
+
   tenantQuery: |
+    sum by (tenant, slug, org_name, environment) (
+      histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~"$cluster",namespace=~"$namespace"}[$__rate_interval]))
+    )
+
+  tenantQueryClassic: |
     sum by (tenant, slug, org_name, environment) (
       rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~"$cluster",namespace=~"$namespace"}[$__rate_interval])
     )
