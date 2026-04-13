@@ -123,7 +123,9 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 	p.reg = prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = p.reg
 
-	p.config.V2 = v2
+	if !v2 {
+		p.config.ArchitectureStorage = pyroscope.Legacy
+	}
 	err = cfg.DynamicUnmarshal(&p.config, []string{"pyroscope"}, flag.NewFlagSet("pyroscope", flag.ContinueOnError))
 	require.NoError(t, err)
 
