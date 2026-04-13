@@ -509,7 +509,7 @@ func startTestServer(t *testing.T, store *Store) testServer {
 		connect.WithInterceptors(tenant.NewAuthInterceptor(true)),
 	)
 	router.Handle(
-		"/api/debuginfo/v1alpha1/upload/{gnu_build_id}",
+		"/debuginfo.v1alpha1.DebuginfoService/Upload/{gnu_build_id}",
 		util.AuthenticateUser(true).Wrap(store.UploadHTTPHandler()),
 	).Methods("POST")
 
@@ -525,7 +525,7 @@ func startTestServer(t *testing.T, store *Store) testServer {
 
 func (ts testServer) upload(t *testing.T, tenantID, gnuBuildID string, body []byte) *http.Response {
 	t.Helper()
-	req, err := http.NewRequest("POST", ts.srv.URL+"/api/debuginfo/v1alpha1/upload/"+gnuBuildID, bytes.NewReader(body))
+	req, err := http.NewRequest("POST", ts.srv.URL+"/debuginfo.v1alpha1.DebuginfoService/Upload/"+gnuBuildID, bytes.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Set("X-Scope-OrgID", tenantID)
 	resp, err := ts.srv.Client().Do(req)
