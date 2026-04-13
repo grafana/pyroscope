@@ -60,7 +60,18 @@ func (q *QueryFrontend) selectMergeStacktracesDot(
 		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{}), nil
 	}
 
-	d, err := dot.FromProfile(pprofResp.Msg, int(c.Msg.GetMaxNodes()))
+	// Use the same validated max nodes for DOT rendering as SelectMergeProfile
+	// uses for the pprof fetch. This ensures tenant limits are respected.
+	tenantIDs, err := tenant.TenantIDs(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	maxNodes, err := validation.ValidateMaxNodes(q.limits, tenantIDs, c.Msg.GetMaxNodes())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	d, err := dot.FromProfile(pprofResp.Msg, int(maxNodes))
 	if err != nil {
 		return nil, err
 	}
