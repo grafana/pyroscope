@@ -1,0 +1,22 @@
+overrides:
+  "hola":
+    compactor_split_and_merge_shards: 69
+    recording_rules:
+      - external_labels: []
+        group_by:
+          - pod
+          - span_name
+        matchers:
+          - '{service_name="loki-dev-005/distributor"}' #__profile_type__="process_cpu:samples:count:cpu:nanoseconds"
+        metric_name: pyroscope_exported_metrics_loki_dev_005_distributor_cpu
+        author: me@me
+      - external_labels:
+          - name: foo
+            value: bar
+        group_by:
+          - pod
+        matchers:
+          - '{__profile_type__="process_cpu:samples:count:cpu:nanoseconds",service_name="loki-dev-005/distributor",span_name="/httpgrpc.HTTP/Handle"}'
+        metric_name: pyroscope_exported_metrics_loki_dev_005_distributor_cpu_grpc_handle
+
+#-runtime-config.file=/Users/alberto/repos/pyroscope/cmd/pyroscope/overrides.yaml
