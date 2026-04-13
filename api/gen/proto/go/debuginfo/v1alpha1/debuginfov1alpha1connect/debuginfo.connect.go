@@ -33,15 +33,18 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// DebuginfoServiceUploadProcedure is the fully-qualified name of the DebuginfoService's Upload RPC.
-	DebuginfoServiceUploadProcedure = "/debuginfo.v1alpha1.DebuginfoService/Upload"
+	// DebuginfoServiceShouldInitiateUploadProcedure is the fully-qualified name of the
+	// DebuginfoService's ShouldInitiateUpload RPC.
+	DebuginfoServiceShouldInitiateUploadProcedure = "/debuginfo.v1alpha1.DebuginfoService/ShouldInitiateUpload"
+	// DebuginfoServiceUploadFinishedProcedure is the fully-qualified name of the DebuginfoService's
+	// UploadFinished RPC.
+	DebuginfoServiceUploadFinishedProcedure = "/debuginfo.v1alpha1.DebuginfoService/UploadFinished"
 )
 
 // DebuginfoServiceClient is a client for the debuginfo.v1alpha1.DebuginfoService service.
 type DebuginfoServiceClient interface {
-	// clients are expected to send ShouldInitiateUploadRequest, receive ShouldInitiateUploadResponse and then
-	// if should_initiate_upload is true send a bunch of UploadChunk until EOF
-	Upload(context.Context) *connect.BidiStreamForClient[v1alpha1.UploadRequest, v1alpha1.UploadResponse]
+	ShouldInitiateUpload(context.Context, *connect.Request[v1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[v1alpha1.ShouldInitiateUploadResponse], error)
+	UploadFinished(context.Context, *connect.Request[v1alpha1.UploadFinishedRequest]) (*connect.Response[v1alpha1.UploadFinishedResponse], error)
 }
 
 // NewDebuginfoServiceClient constructs a client for the debuginfo.v1alpha1.DebuginfoService
@@ -55,10 +58,16 @@ func NewDebuginfoServiceClient(httpClient connect.HTTPClient, baseURL string, op
 	baseURL = strings.TrimRight(baseURL, "/")
 	debuginfoServiceMethods := v1alpha1.File_debuginfo_v1alpha1_debuginfo_proto.Services().ByName("DebuginfoService").Methods()
 	return &debuginfoServiceClient{
-		upload: connect.NewClient[v1alpha1.UploadRequest, v1alpha1.UploadResponse](
+		shouldInitiateUpload: connect.NewClient[v1alpha1.ShouldInitiateUploadRequest, v1alpha1.ShouldInitiateUploadResponse](
 			httpClient,
-			baseURL+DebuginfoServiceUploadProcedure,
-			connect.WithSchema(debuginfoServiceMethods.ByName("Upload")),
+			baseURL+DebuginfoServiceShouldInitiateUploadProcedure,
+			connect.WithSchema(debuginfoServiceMethods.ByName("ShouldInitiateUpload")),
+			connect.WithClientOptions(opts...),
+		),
+		uploadFinished: connect.NewClient[v1alpha1.UploadFinishedRequest, v1alpha1.UploadFinishedResponse](
+			httpClient,
+			baseURL+DebuginfoServiceUploadFinishedProcedure,
+			connect.WithSchema(debuginfoServiceMethods.ByName("UploadFinished")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -66,19 +75,24 @@ func NewDebuginfoServiceClient(httpClient connect.HTTPClient, baseURL string, op
 
 // debuginfoServiceClient implements DebuginfoServiceClient.
 type debuginfoServiceClient struct {
-	upload *connect.Client[v1alpha1.UploadRequest, v1alpha1.UploadResponse]
+	shouldInitiateUpload *connect.Client[v1alpha1.ShouldInitiateUploadRequest, v1alpha1.ShouldInitiateUploadResponse]
+	uploadFinished       *connect.Client[v1alpha1.UploadFinishedRequest, v1alpha1.UploadFinishedResponse]
 }
 
-// Upload calls debuginfo.v1alpha1.DebuginfoService.Upload.
-func (c *debuginfoServiceClient) Upload(ctx context.Context) *connect.BidiStreamForClient[v1alpha1.UploadRequest, v1alpha1.UploadResponse] {
-	return c.upload.CallBidiStream(ctx)
+// ShouldInitiateUpload calls debuginfo.v1alpha1.DebuginfoService.ShouldInitiateUpload.
+func (c *debuginfoServiceClient) ShouldInitiateUpload(ctx context.Context, req *connect.Request[v1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[v1alpha1.ShouldInitiateUploadResponse], error) {
+	return c.shouldInitiateUpload.CallUnary(ctx, req)
+}
+
+// UploadFinished calls debuginfo.v1alpha1.DebuginfoService.UploadFinished.
+func (c *debuginfoServiceClient) UploadFinished(ctx context.Context, req *connect.Request[v1alpha1.UploadFinishedRequest]) (*connect.Response[v1alpha1.UploadFinishedResponse], error) {
+	return c.uploadFinished.CallUnary(ctx, req)
 }
 
 // DebuginfoServiceHandler is an implementation of the debuginfo.v1alpha1.DebuginfoService service.
 type DebuginfoServiceHandler interface {
-	// clients are expected to send ShouldInitiateUploadRequest, receive ShouldInitiateUploadResponse and then
-	// if should_initiate_upload is true send a bunch of UploadChunk until EOF
-	Upload(context.Context, *connect.BidiStream[v1alpha1.UploadRequest, v1alpha1.UploadResponse]) error
+	ShouldInitiateUpload(context.Context, *connect.Request[v1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[v1alpha1.ShouldInitiateUploadResponse], error)
+	UploadFinished(context.Context, *connect.Request[v1alpha1.UploadFinishedRequest]) (*connect.Response[v1alpha1.UploadFinishedResponse], error)
 }
 
 // NewDebuginfoServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -88,16 +102,24 @@ type DebuginfoServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewDebuginfoServiceHandler(svc DebuginfoServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	debuginfoServiceMethods := v1alpha1.File_debuginfo_v1alpha1_debuginfo_proto.Services().ByName("DebuginfoService").Methods()
-	debuginfoServiceUploadHandler := connect.NewBidiStreamHandler(
-		DebuginfoServiceUploadProcedure,
-		svc.Upload,
-		connect.WithSchema(debuginfoServiceMethods.ByName("Upload")),
+	debuginfoServiceShouldInitiateUploadHandler := connect.NewUnaryHandler(
+		DebuginfoServiceShouldInitiateUploadProcedure,
+		svc.ShouldInitiateUpload,
+		connect.WithSchema(debuginfoServiceMethods.ByName("ShouldInitiateUpload")),
+		connect.WithHandlerOptions(opts...),
+	)
+	debuginfoServiceUploadFinishedHandler := connect.NewUnaryHandler(
+		DebuginfoServiceUploadFinishedProcedure,
+		svc.UploadFinished,
+		connect.WithSchema(debuginfoServiceMethods.ByName("UploadFinished")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/debuginfo.v1alpha1.DebuginfoService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case DebuginfoServiceUploadProcedure:
-			debuginfoServiceUploadHandler.ServeHTTP(w, r)
+		case DebuginfoServiceShouldInitiateUploadProcedure:
+			debuginfoServiceShouldInitiateUploadHandler.ServeHTTP(w, r)
+		case DebuginfoServiceUploadFinishedProcedure:
+			debuginfoServiceUploadFinishedHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -107,6 +129,10 @@ func NewDebuginfoServiceHandler(svc DebuginfoServiceHandler, opts ...connect.Han
 // UnimplementedDebuginfoServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedDebuginfoServiceHandler struct{}
 
-func (UnimplementedDebuginfoServiceHandler) Upload(context.Context, *connect.BidiStream[v1alpha1.UploadRequest, v1alpha1.UploadResponse]) error {
-	return connect.NewError(connect.CodeUnimplemented, errors.New("debuginfo.v1alpha1.DebuginfoService.Upload is not implemented"))
+func (UnimplementedDebuginfoServiceHandler) ShouldInitiateUpload(context.Context, *connect.Request[v1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[v1alpha1.ShouldInitiateUploadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("debuginfo.v1alpha1.DebuginfoService.ShouldInitiateUpload is not implemented"))
+}
+
+func (UnimplementedDebuginfoServiceHandler) UploadFinished(context.Context, *connect.Request[v1alpha1.UploadFinishedRequest]) (*connect.Response[v1alpha1.UploadFinishedResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("debuginfo.v1alpha1.DebuginfoService.UploadFinished is not implemented"))
 }

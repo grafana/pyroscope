@@ -1,7 +1,9 @@
 package debuginfo
 
 import (
+	"bytes"
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -19,6 +21,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
 	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 func newTestStore(t *testing.T, cfg Config) (*Store, *memory.InMemBucket) {
@@ -305,7 +308,7 @@ func TestShouldInitiateUpload(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			s, _ := newTestStore(t, tt.cfg)
-			resp, err := s.shouldInitiateUpload(tt.metadata)
+			resp, err := s.checkShouldInitiateUpload(tt.metadata)
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Nil(t, resp)
@@ -493,22 +496,41 @@ func TestWriteMetadata(t *testing.T) {
 	})
 }
 
-func startTestServer(t *testing.T, store *Store) debuginfov1alpha1connect.DebuginfoServiceClient {
+type testServer struct {
+	client debuginfov1alpha1connect.DebuginfoServiceClient
+	srv    *httptest.Server
+}
+
+func startTestServer(t *testing.T, store *Store) testServer {
 	t.Helper()
 	router := mux.NewRouter()
 	debuginfov1alpha1connect.RegisterDebuginfoServiceHandler(
 		router, store,
 		connect.WithInterceptors(tenant.NewAuthInterceptor(true)),
 	)
-	srv := httptest.NewUnstartedServer(router)
-	srv.EnableHTTP2 = true
-	srv.StartTLS()
+	router.Handle(
+		"/api/debuginfo/v1alpha1/upload/{gnu_build_id}",
+		util.AuthenticateUser(true).Wrap(store.UploadHTTPHandler()),
+	).Methods("POST")
+
+	srv := httptest.NewServer(router)
 	t.Cleanup(srv.Close)
-	return debuginfov1alpha1connect.NewDebuginfoServiceClient(
+	client := debuginfov1alpha1connect.NewDebuginfoServiceClient(
 		srv.Client(),
 		srv.URL,
 		connect.WithInterceptors(tenant.NewAuthInterceptor(true)),
 	)
+	return testServer{client: client, srv: srv}
+}
+
+func (ts testServer) upload(t *testing.T, tenantID, gnuBuildID string, body []byte) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest("POST", ts.srv.URL+"/api/debuginfo/v1alpha1/upload/"+gnuBuildID, bytes.NewReader(body))
+	require.NoError(t, err)
+	req.Header.Set("X-Scope-OrgID", tenantID)
+	resp, err := ts.srv.Client().Do(req)
+	require.NoError(t, err)
+	return resp
 }
 
 func TestUploadE2E(t *testing.T) {
@@ -517,48 +539,33 @@ func TestUploadE2E(t *testing.T) {
 	t.Run("full upload flow", func(t *testing.T) {
 		t.Parallel()
 		store, bucket := newTestStore(t, Config{Enabled: true, MaxUploadDuration: time.Minute})
-		client := startTestServer(t, store)
+		ts := startTestServer(t, store)
 
 		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
-		stream := client.Upload(ctx)
 
-		// Send init request.
-		err := stream.Send(&debuginfov1alpha1.UploadRequest{
-			Data: &debuginfov1alpha1.UploadRequest_Init{
-				Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
-					File: &debuginfov1alpha1.FileMetadata{
-						GnuBuildId: "aabbccdd",
-						Name:       "my-binary",
-						Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
-					},
-				},
+		// Step 1: ShouldInitiateUpload.
+		resp, err := ts.client.ShouldInitiateUpload(ctx, connect.NewRequest(&debuginfov1alpha1.ShouldInitiateUploadRequest{
+			File: &debuginfov1alpha1.FileMetadata{
+				GnuBuildId: "aabbccdd",
+				Name:       "my-binary",
+				Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
 			},
-		})
+		}))
 		require.NoError(t, err)
+		assert.True(t, resp.Msg.ShouldInitiateUpload)
+		assert.Equal(t, ReasonFirstTimeSeen, resp.Msg.Reason)
 
-		// Receive init response: first time seen, should upload.
-		resp, err := stream.Receive()
+		// Step 2: HTTP POST upload.
+		httpResp := ts.upload(t, "test-tenant", "aabbccdd", []byte("chunk-1-chunk-2-chunk-3"))
+		assert.Equal(t, http.StatusOK, httpResp.StatusCode)
+		httpResp.Body.Close()
+
+		// Step 3: UploadFinished.
+		finResp, err := ts.client.UploadFinished(ctx, connect.NewRequest(&debuginfov1alpha1.UploadFinishedRequest{
+			GnuBuildId: "aabbccdd",
+		}))
 		require.NoError(t, err)
-		initResp := resp.GetInit()
-		require.NotNil(t, initResp)
-		assert.True(t, initResp.ShouldInitiateUpload)
-		assert.Equal(t, ReasonFirstTimeSeen, initResp.Reason)
-
-		// Send upload chunks.
-		for _, chunk := range [][]byte{[]byte("chunk-1-"), []byte("chunk-2-"), []byte("chunk-3")} {
-			err = stream.Send(&debuginfov1alpha1.UploadRequest{
-				Data: &debuginfov1alpha1.UploadRequest_Chunk{
-					Chunk: &debuginfov1alpha1.UploadChunk{Chunk: chunk},
-				},
-			})
-			require.NoError(t, err)
-		}
-
-		// Close the send side to signal EOF and wait for the server to finish.
-		require.NoError(t, stream.CloseRequest())
-		_, err = stream.Receive()
-		require.Error(t, err, "expected EOF after server completes")
-		require.NoError(t, stream.CloseResponse())
+		require.NotNil(t, finResp)
 
 		// Verify the debug info was stored in the bucket.
 		id := mustValidateGnuBuildID(t, "aabbccdd")
@@ -580,7 +587,7 @@ func TestUploadE2E(t *testing.T) {
 	t.Run("already uploaded returns should not initiate", func(t *testing.T) {
 		t.Parallel()
 		store, bucket := newTestStore(t, Config{Enabled: true, MaxUploadDuration: time.Minute})
-		client := startTestServer(t, store)
+		ts := startTestServer(t, store)
 
 		// Pre-populate metadata as already uploaded.
 		id := mustValidateGnuBuildID(t, "aabbccdd")
@@ -598,63 +605,107 @@ func TestUploadE2E(t *testing.T) {
 		bucket.Set(MetadataObjectPath("test-tenant", id), mdBytes)
 
 		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
-		stream := client.Upload(ctx)
-
-		// Send init request.
-		err = stream.Send(&debuginfov1alpha1.UploadRequest{
-			Data: &debuginfov1alpha1.UploadRequest_Init{
-				Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
-					File: &debuginfov1alpha1.FileMetadata{
-						GnuBuildId: "aabbccdd",
-						Name:       "my-binary",
-						Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
-					},
-				},
+		resp, err := ts.client.ShouldInitiateUpload(ctx, connect.NewRequest(&debuginfov1alpha1.ShouldInitiateUploadRequest{
+			File: &debuginfov1alpha1.FileMetadata{
+				GnuBuildId: "aabbccdd",
+				Name:       "my-binary",
+				Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
 			},
-		})
+		}))
 		require.NoError(t, err)
-
-		// Should not initiate upload.
-		resp, err := stream.Receive()
-		require.NoError(t, err)
-		initResp := resp.GetInit()
-		require.NotNil(t, initResp)
-		assert.False(t, initResp.ShouldInitiateUpload)
-		assert.Equal(t, ReasonDebuginfoAlreadyExists, initResp.Reason)
-
-		require.NoError(t, stream.CloseRequest())
-		require.NoError(t, stream.CloseResponse())
+		assert.False(t, resp.Msg.ShouldInitiateUpload)
+		assert.Equal(t, ReasonDebuginfoAlreadyExists, resp.Msg.Reason)
 	})
 
 	t.Run("disabled service returns should not initiate", func(t *testing.T) {
 		t.Parallel()
 		store, _ := newTestStore(t, Config{Enabled: false, MaxUploadDuration: time.Minute})
-		client := startTestServer(t, store)
+		ts := startTestServer(t, store)
 
 		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
-		stream := client.Upload(ctx)
-
-		err := stream.Send(&debuginfov1alpha1.UploadRequest{
-			Data: &debuginfov1alpha1.UploadRequest_Init{
-				Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
-					File: &debuginfov1alpha1.FileMetadata{
-						GnuBuildId: "aabbccdd",
-						Name:       "my-binary",
-						Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
-					},
-				},
+		resp, err := ts.client.ShouldInitiateUpload(ctx, connect.NewRequest(&debuginfov1alpha1.ShouldInitiateUploadRequest{
+			File: &debuginfov1alpha1.FileMetadata{
+				GnuBuildId: "aabbccdd",
+				Name:       "my-binary",
+				Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
 			},
-		})
+		}))
 		require.NoError(t, err)
+		assert.False(t, resp.Msg.ShouldInitiateUpload)
+		assert.Equal(t, ReasonDisabled, resp.Msg.Reason)
+	})
 
-		resp, err := stream.Receive()
+	t.Run("upload without prior ShouldInitiateUpload returns 412", func(t *testing.T) {
+		t.Parallel()
+		store, _ := newTestStore(t, Config{Enabled: true, MaxUploadDuration: time.Minute})
+		ts := startTestServer(t, store)
+
+		httpResp := ts.upload(t, "test-tenant", "aabbccdd", []byte("some-data"))
+		assert.Equal(t, http.StatusPreconditionFailed, httpResp.StatusCode)
+		httpResp.Body.Close()
+	})
+
+	t.Run("UploadFinished without upload returns FailedPrecondition", func(t *testing.T) {
+		t.Parallel()
+		store, bucket := newTestStore(t, Config{Enabled: true, MaxUploadDuration: time.Minute})
+		ts := startTestServer(t, store)
+
+		// Write metadata in STATE_UPLOADING but don't upload the actual file.
+		id := mustValidateGnuBuildID(t, "aabbccdd")
+		md := &debuginfov1alpha1.ObjectMetadata{
+			File: &debuginfov1alpha1.FileMetadata{
+				GnuBuildId: "aabbccdd",
+				Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+			},
+			State:     debuginfov1alpha1.ObjectMetadata_STATE_UPLOADING,
+			StartedAt: timestamppb.New(time.Now()),
+		}
+		mdBytes, err := protojson.Marshal(md)
 		require.NoError(t, err)
-		initResp := resp.GetInit()
-		require.NotNil(t, initResp)
-		assert.False(t, initResp.ShouldInitiateUpload)
-		assert.Equal(t, ReasonDisabled, initResp.Reason)
+		bucket.Set(MetadataObjectPath("test-tenant", id), mdBytes)
 
-		require.NoError(t, stream.CloseRequest())
-		require.NoError(t, stream.CloseResponse())
+		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+		_, err = ts.client.UploadFinished(ctx, connect.NewRequest(&debuginfov1alpha1.UploadFinishedRequest{
+			GnuBuildId: "aabbccdd",
+		}))
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeFailedPrecondition, connect.CodeOf(err))
+	})
+
+	t.Run("UploadFinished for unknown build ID returns NotFound", func(t *testing.T) {
+		t.Parallel()
+		store, _ := newTestStore(t, Config{Enabled: true, MaxUploadDuration: time.Minute})
+		ts := startTestServer(t, store)
+
+		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+		_, err := ts.client.UploadFinished(ctx, connect.NewRequest(&debuginfov1alpha1.UploadFinishedRequest{
+			GnuBuildId: "aabbccdd",
+		}))
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	})
+
+	t.Run("upload exceeding max size fails", func(t *testing.T) {
+		t.Parallel()
+		store, _ := newTestStore(t, Config{Enabled: true, MaxUploadSize: 10, MaxUploadDuration: time.Minute})
+		ts := startTestServer(t, store)
+
+		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+
+		// Step 1: ShouldInitiateUpload.
+		resp, err := ts.client.ShouldInitiateUpload(ctx, connect.NewRequest(&debuginfov1alpha1.ShouldInitiateUploadRequest{
+			File: &debuginfov1alpha1.FileMetadata{
+				GnuBuildId: "aabbccdd",
+				Name:       "my-binary",
+				Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+			},
+		}))
+		require.NoError(t, err)
+		assert.True(t, resp.Msg.ShouldInitiateUpload)
+
+		// Step 2: Upload body larger than 10 bytes.
+		httpResp := ts.upload(t, "test-tenant", "aabbccdd", []byte("this-is-way-too-large"))
+		assert.NotEqual(t, http.StatusOK, httpResp.StatusCode)
+		httpResp.Body.Close()
 	})
 }

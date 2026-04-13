@@ -194,8 +194,10 @@ func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
 	})
 }
 
-func (a *API) RegisterDebugInfo(svc debuginfov1alpha1connect.DebuginfoServiceHandler) {
+func (a *API) RegisterDebugInfo(svc debuginfov1alpha1connect.DebuginfoServiceHandler, uploadHandler http.Handler) {
 	debuginfov1alpha1connect.RegisterDebuginfoServiceHandler(a.server.HTTP, svc, a.connectOptionsDebugInfo()...)
+	a.RegisterRoute("/api/debuginfo/v1alpha1/upload/{gnu_build_id}", uploadHandler,
+		a.WithAuthMiddleware(), WithMethod("POST"))
 }
 
 // RegisterDistributor registers the endpoints associated with the distributor.
