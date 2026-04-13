@@ -55,6 +55,7 @@ func (c *Cluster) v1Prepare(_ context.Context, memberlistJoin []string) error {
 
 		comp.flags = c.commonFlags(comp)
 		comp.flags = append(comp.flags,
+			"-architecture.storage=legacy",
 			fmt.Sprintf("-blocks-storage.bucket-store.sync-dir=%s", syncDir),
 			fmt.Sprintf("-compactor.data-dir=%s", compactorDir),
 			fmt.Sprintf("-pyroscopedb.data-path=%s", dataDir),

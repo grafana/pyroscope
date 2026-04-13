@@ -11,7 +11,7 @@ type Config struct {
 }
 
 func (o *Config) RegisterFlags(f *flag.FlagSet) {
-	f.BoolVar(&o.EnableQueryBackend, "enable-query-backend", false,
+	f.BoolVar(&o.EnableQueryBackend, "enable-query-backend", true,
 		"This parameter specifies whether the new query backend is enabled.")
 	f.Var(&o.EnableQueryBackendFrom, "enable-query-backend-from",
 		"This parameter specifies the point in time from which data is queried from the new query backend. "+

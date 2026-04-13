@@ -80,24 +80,25 @@ import (
 )
 
 type Config struct {
-	Target            flagext.StringSliceCSV `yaml:"target,omitempty"`
-	API               api.Config             `yaml:"api"`
-	Server            server.Config          `yaml:"server,omitempty"`
-	Distributor       distributor.Config     `yaml:"distributor,omitempty"`
-	Querier           querier.Config         `yaml:"querier,omitempty"`
-	Frontend          frontend.Config        `yaml:"frontend,omitempty"`
-	Worker            worker.Config          `yaml:"frontend_worker"`
-	LimitsConfig      validation.Limits      `yaml:"limits"`
-	QueryScheduler    scheduler.Config       `yaml:"query_scheduler"`
-	Ingester          ingester.Config        `yaml:"ingester,omitempty"`
-	StoreGateway      storegateway.Config    `yaml:"store_gateway,omitempty"`
-	MemberlistKV      memberlist.KVConfig    `yaml:"memberlist"`
-	PhlareDB          phlaredb.Config        `yaml:"pyroscopedb,omitempty"`
-	Tracing           tracing.Config         `yaml:"tracing"`
-	OverridesExporter exporter.Config        `yaml:"overrides_exporter"      doc:"hidden"`
-	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
-	Compactor         compactor.Config       `yaml:"compactor"`
-	TenantSettings    settings.Config        `yaml:"tenant_settings"`
+	Target            flagext.StringSliceCSV  `yaml:"target,omitempty"`
+	API               api.Config              `yaml:"api"`
+	Server            server.Config           `yaml:"server,omitempty"`
+	Metastore         metastore.Config        `yaml:"metastore"          doc:"hidden"`
+	Distributor       distributor.Config      `yaml:"distributor,omitempty"`
+	Frontend          frontend.Config         `yaml:"frontend,omitempty"`
+	QueryBackend      querybackend.Config     `yaml:"query_backend"      doc:"hidden"`
+	AdaptivePlacement placement.Config        `yaml:"adaptive_placement" doc:"hidden"`
+	Symbolizer        symbolizer.Config       `yaml:"symbolizer"         doc:"hidden"`
+	Worker            worker.Config           `yaml:"frontend_worker"`
+	LimitsConfig      validation.Limits       `yaml:"limits"`
+	SegmentWriter     segmentwriter.Config    `yaml:"segment_writer"     doc:"hidden"`
+	MemberlistKV      memberlist.KVConfig     `yaml:"memberlist"`
+	PhlareDB          phlaredb.Config         `yaml:"pyroscopedb,omitempty"`
+	Tracing           tracing.Config          `yaml:"tracing"`
+	OverridesExporter exporter.Config         `yaml:"overrides_exporter"      doc:"hidden"`
+	RuntimeConfig     runtimeconfig.Config    `yaml:"runtime_config"`
+	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"  doc:"hidden"`
+	TenantSettings    settings.Config         `yaml:"tenant_settings"`
 
 	Storage       StorageConfig       `yaml:"storage"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
@@ -106,22 +107,21 @@ type Config struct {
 	Analytics           usagestats.Config `yaml:"analytics"`
 	ShowBanner          bool              `yaml:"show_banner,omitempty"`
 	ShutdownDelay       time.Duration     `yaml:"shutdown_delay,omitempty"`
+	ArchitectureStorage StorageMode       `yaml:"architecture_storage,omitempty"`
 
 	EmbeddedGrafana grafana.Config `yaml:"embedded_grafana,omitempty"`
 
 	ConfigFile      string `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
 
-	V2                bool                    `yaml:"-" doc:"hidden"`
-	EnableV1WritePath bool                    `yaml:"enable_v1_write_path" doc:"hidden"`
-	EnableV1ReadPath  bool                    `yaml:"enable_v1_read_path"  doc:"hidden"`
-	SegmentWriter     segmentwriter.Config    `yaml:"segment_writer"     doc:"hidden"`
-	Metastore         metastore.Config        `yaml:"metastore"          doc:"hidden"`
-	QueryBackend      querybackend.Config     `yaml:"query_backend"      doc:"hidden"`
-	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"  doc:"hidden"`
-	AdaptivePlacement placement.Config        `yaml:"adaptive_placement" doc:"hidden"`
-	Symbolizer        symbolizer.Config       `yaml:"symbolizer"         doc:"hidden"`
-	DebugInfo         debuginfo.Config        `yaml:"-"`
+	DebugInfo debuginfo.Config `yaml:"-"`
+
+	// Legacy v1
+	Querier        querier.Config      `yaml:"querier,omitempty"`
+	Ingester       ingester.Config     `yaml:"ingester,omitempty"`
+	Compactor      compactor.Config    `yaml:"compactor"`
+	StoreGateway   storegateway.Config `yaml:"store_gateway,omitempty"`
+	QueryScheduler scheduler.Config    `yaml:"query_scheduler"`
 }
 
 func newDefaultConfig() *Config {
@@ -196,21 +196,25 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	)
 	f.BoolVar(&c.ShowBanner, "config.show_banner", true, "Prints the application banner at startup.")
 	f.DurationVar(&c.ShutdownDelay, "shutdown-delay", 0, "Wait time before shutting down after a termination signal.")
+	c.ArchitectureStorage = Default
+	f.Var(&c.ArchitectureStorage, "architecture.storage", "Storage architecture. Use 'legacy', 'dual' or 'default'.")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.MemberlistKV.RegisterFlags(f)
-	c.Querier.RegisterFlags(f)
-	c.StoreGateway.RegisterFlags(f, util.Logger)
 	c.PhlareDB.RegisterFlags(f)
 	c.Tracing.RegisterFlags(f)
 	c.SelfProfiling.RegisterFlags(f)
 	c.RuntimeConfig.RegisterFlags(f)
 	c.Analytics.RegisterFlags(f)
 	c.LimitsConfig.RegisterFlags(f)
-	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 	c.API.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
+
+	// Legacy flags
+	c.StoreGateway.RegisterFlags(f, util.Logger)
+	c.Querier.RegisterFlags(f)
+	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.
@@ -221,56 +225,46 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	// but we can take values from throwaway flag set and reregister into supplied flags with new default values.
 	c.Storage.RegisterFlags(throwaway)
 	c.Server.RegisterFlags(throwaway)
-	c.Ingester.RegisterFlags(throwaway)
 	c.Distributor.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 	c.Frontend.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
-	c.QueryScheduler.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 	c.Worker.RegisterFlags(throwaway)
 	c.OverridesExporter.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
+	c.Metastore.RegisterFlags(throwaway)
+	c.SegmentWriter.RegisterFlags(throwaway)
+	c.QueryBackend.RegisterFlags(throwaway)
+	c.CompactionWorker.RegisterFlags(throwaway)
+	c.AdaptivePlacement.RegisterFlags(throwaway)
+	c.LimitsConfig.WritePathOverrides.RegisterFlags(throwaway)
+	c.LimitsConfig.ReadPathOverrides.RegisterFlags(throwaway)
+	c.LimitsConfig.AdaptivePlacementLimits.RegisterFlags(throwaway)
+	c.LimitsConfig.Retention.RegisterFlags(throwaway)
+	c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
+	c.LimitsConfig.Symbolizer.RegisterFlags(throwaway)
+	c.Symbolizer.RegisterFlags(throwaway)
+	c.DebugInfo.RegisterFlags(throwaway)
+
+	// Legacy modules
+	c.QueryScheduler.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
+	c.Ingester.RegisterFlags(throwaway)
 
 	overrides := map[string]string{
-		"server.http-listen-port":                "4040",
+		"server.http-listen-port":                                "4040",
+		"server.grpc-max-recv-msg-size-bytes":                    "104857600",
+		"server.grpc-max-send-msg-size-bytes":                    "104857600",
+		"server.grpc.keepalive.min-time-between-pings":           "1s",
+		"segment-writer.grpc-client-config.connect-timeout":      "1s",
+		"segment-writer.num-tokens":                              "4",
+		"segment-writer.heartbeat-timeout":                       "1m",
+		"segment-writer.unregister-on-shutdown":                  "false",
+		"segment-writer.min-ready-duration":                      "30s",
+		"storage.s3.http.idle-conn-timeout":                      "10m",
+		"storage.s3.max-idle-connections-per-host":               "1000",
+		"storage.gcs.http.idle-conn-timeout":                     "10m",
+		"storage.gcs.max-idle-connections-per-host":              "1000",
+		"compaction-worker.metrics-exporter.rules-source.static": "[]",
+		// Legacy overrides
 		"distributor.replication-factor":         "1",
 		"query-scheduler.service-discovery-mode": schedulerdiscovery.ModeRing,
-	}
-
-	if c.V2 {
-		c.EnableV1WritePath = true
-		c.EnableV1ReadPath = true
-		fs.BoolVar(&c.EnableV1WritePath, "all.enable-v1-write-path", true, "When using target=all with V2 enabled, also start V1 write path components (ingester, compactor). Set to false after fully migrating to V2.")
-		fs.BoolVar(&c.EnableV1ReadPath, "all.enable-v1-read-path", true, "When using target=all with V2 enabled, also start V1 read path components (querier, query-scheduler, store-gateway). Set to false after fully migrating to V2.")
-
-		for k, v := range map[string]string{
-			"server.grpc-max-recv-msg-size-bytes":                    "104857600",
-			"server.grpc-max-send-msg-size-bytes":                    "104857600",
-			"server.grpc.keepalive.min-time-between-pings":           "1s",
-			"segment-writer.grpc-client-config.connect-timeout":      "1s",
-			"segment-writer.num-tokens":                              "4",
-			"segment-writer.heartbeat-timeout":                       "1m",
-			"segment-writer.unregister-on-shutdown":                  "false",
-			"segment-writer.min-ready-duration":                      "30s",
-			"storage.s3.http.idle-conn-timeout":                      "10m",
-			"storage.s3.max-idle-connections-per-host":               "1000",
-			"storage.gcs.http.idle-conn-timeout":                     "10m",
-			"storage.gcs.max-idle-connections-per-host":              "1000",
-			"compaction-worker.metrics-exporter.rules-source.static": "[]",
-		} {
-			overrides[k] = v
-		}
-
-		c.Metastore.RegisterFlags(throwaway)
-		c.SegmentWriter.RegisterFlags(throwaway)
-		c.QueryBackend.RegisterFlags(throwaway)
-		c.CompactionWorker.RegisterFlags(throwaway)
-		c.AdaptivePlacement.RegisterFlags(throwaway)
-		c.LimitsConfig.WritePathOverrides.RegisterFlags(throwaway)
-		c.LimitsConfig.ReadPathOverrides.RegisterFlags(throwaway)
-		c.LimitsConfig.AdaptivePlacementLimits.RegisterFlags(throwaway)
-		c.LimitsConfig.Retention.RegisterFlags(throwaway)
-		c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
-		c.LimitsConfig.Symbolizer.RegisterFlags(throwaway)
-		c.Symbolizer.RegisterFlags(throwaway)
-		c.DebugInfo.RegisterFlags(throwaway)
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {
@@ -382,10 +376,8 @@ type Pyroscope struct {
 	grpcGatewayMux *grpcgw.ServeMux
 
 	auth     connect.Option
-	ingester *ingester.Ingester
 	frontend *frontend.Frontend
 
-	// Experimental modules.
 	segmentWriter         *segmentwriter.SegmentWriterService
 	segmentWriterClient   *segmentwriterclient.Client
 	segmentWriterRing     *ring.Ring
@@ -402,6 +394,9 @@ type Pyroscope struct {
 	symbolizer            *symbolizer.Symbolizer
 	queryDiagnosticsStore *diagnostics.Store
 	queryDiagnosticsAdmin *querydiagnostics.Admin
+
+	// legacy modules.
+	ingester *ingester.Ingester
 }
 
 func New(cfg Config) (*Pyroscope, error) {
@@ -456,118 +451,108 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(RuntimeConfig, f.initRuntimeConfig, modules.UserInvisibleModule)
 	mm.RegisterModule(Overrides, f.initOverrides, modules.UserInvisibleModule)
 	mm.RegisterModule(OverridesExporter, f.initOverridesExporter)
-	mm.RegisterModule(Ingester, f.initIngester)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
 	mm.RegisterModule(API, f.initAPI, modules.UserInvisibleModule)
 	mm.RegisterModule(Version, f.initVersion, modules.UserInvisibleModule)
+	mm.RegisterModule(Metastore, f.initMetastore)
+	mm.RegisterModule(MetastoreClient, f.initMetastoreClient, modules.UserInvisibleModule)
+	mm.RegisterModule(MetastoreAdmin, f.initMetastoreAdmin, modules.UserInvisibleModule)
 	mm.RegisterModule(Distributor, f.initDistributor)
-	mm.RegisterModule(Querier, f.initQuerier)
-	mm.RegisterModule(StoreGateway, f.initStoreGateway)
+	mm.RegisterModule(PlacementAgent, f.initPlacementAgent, modules.UserInvisibleModule)
+	mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)
+	mm.RegisterModule(SegmentWriter, f.initSegmentWriter)
+	mm.RegisterModule(SegmentWriterRing, f.initSegmentWriterRing, modules.UserInvisibleModule)
+	mm.RegisterModule(SegmentWriterClient, f.initSegmentWriterClient, modules.UserInvisibleModule)
+	mm.RegisterModule(CompactionWorker, f.initCompactionWorker)
 	mm.RegisterModule(UsageReport, f.initUsageReport)
 	mm.RegisterModule(QueryFrontend, f.initQueryFrontend)
-	mm.RegisterModule(QueryScheduler, f.initQueryScheduler)
-	mm.RegisterModule(Compactor, f.initCompactor)
+	mm.RegisterModule(QueryBackend, f.initQueryBackend)
+	mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
+	mm.RegisterModule(Symbolizer, f.initSymbolizer)
 	mm.RegisterModule(Admin, f.initAdmin)
 	mm.RegisterModule(All, nil)
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
 	mm.RegisterModule(AdHocProfiles, f.initAdHocProfiles)
 	mm.RegisterModule(EmbeddedGrafana, f.initEmbeddedGrafana)
 	mm.RegisterModule(FeatureFlags, f.initFeatureFlags)
+	mm.RegisterModule(HealthServer, f.initHealthServer, modules.UserInvisibleModule)
+	mm.RegisterModule(RecordingRulesClient, f.initRecordingRulesClient, modules.UserInvisibleModule)
+	mm.RegisterModule(QueryDiagnosticsStore, f.initQueryDiagnosticsStore, modules.UserInvisibleModule)
+	mm.RegisterModule(QueryDiagnosticsAdmin, f.initQueryDiagnosticsAdmin, modules.UserInvisibleModule)
 
 	// Add dependencies
 	deps := map[string][]string{
 		All: {
-			Ingester,
+			Metastore,
 			Distributor,
+			SegmentWriter,
+			CompactionWorker,
 			QueryFrontend,
-			QueryScheduler,
-			Querier,
-			StoreGateway,
-			Compactor,
+			QueryBackend,
 			Admin,
 			TenantSettings,
 			AdHocProfiles,
 		},
 
-		Server:            {GRPCGateway},
-		API:               {Server},
-		Distributor:       {Overrides, IngesterRing, API, UsageReport, Storage},
-		Querier:           {Overrides, API, MemberlistKV, IngesterRing, UsageReport, Version, FeatureFlags},
-		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags},
-		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},
-		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport, Version},
-		StoreGateway:      {API, Storage, Overrides, MemberlistKV, UsageReport, Admin, Version},
-		Compactor:         {API, Storage, Overrides, MemberlistKV, UsageReport},
-		UsageReport:       {Storage, MemberlistKV},
-		Overrides:         {RuntimeConfig},
-		OverridesExporter: {Overrides, MemberlistKV},
-		RuntimeConfig:     {API},
-		IngesterRing:      {API, MemberlistKV},
-		MemberlistKV:      {API},
-		Admin:             {API, Storage},
-		Version:           {API, MemberlistKV},
-		TenantSettings:    {API, Overrides, Storage},
-		AdHocProfiles:     {API, Overrides, Storage},
-		EmbeddedGrafana:   {API},
-		FeatureFlags:      {API},
+		Server:                {GRPCGateway, HealthServer},
+		API:                   {Server},
+		Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},
+		MetastoreAdmin:        {API, MetastoreClient},
+		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage},
+		PlacementAgent:        {Overrides, API, Storage},
+		PlacementManager:      {Overrides, API, Storage},
+		SegmentWriter:         {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
+		SegmentWriterRing:     {Overrides, API, MemberlistKV},
+		SegmentWriterClient:   {Overrides, API, SegmentWriterRing, PlacementAgent},
+		CompactionWorker:      {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
+		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore},
+		QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
+		QueryDiagnosticsStore: {Storage},
+		QueryDiagnosticsAdmin: {QueryDiagnosticsStore, API, MetastoreClient},
+		Symbolizer:            {Overrides, Storage},
+		UsageReport:           {Storage, MemberlistKV},
+		Overrides:             {RuntimeConfig},
+		OverridesExporter:     {Overrides, MemberlistKV},
+		RuntimeConfig:         {API},
+		IngesterRing:          {API, MemberlistKV},
+		MemberlistKV:          {API},
+		Admin:                 {API, Storage, MetastoreAdmin, QueryDiagnosticsAdmin},
+		Version:               {API, MemberlistKV},
+		TenantSettings:        {API, Overrides, Storage},
+		AdHocProfiles:         {API, Overrides, Storage},
+		EmbeddedGrafana:       {API},
+		FeatureFlags:          {API},
 	}
 
-	if f.Cfg.V2 {
-		v2Modules := map[string][]string{
-			SegmentWriter:         {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
-			Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},
-			MetastoreAdmin:        {API, MetastoreClient},
-			CompactionWorker:      {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
-			QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
-			SegmentWriterRing:     {Overrides, API, MemberlistKV},
-			SegmentWriterClient:   {Overrides, API, SegmentWriterRing, PlacementAgent},
-			PlacementAgent:        {Overrides, API, Storage},
-			PlacementManager:      {Overrides, API, Storage},
-			Symbolizer:            {Overrides, Storage},
-			QueryDiagnosticsStore: {Storage},
-			QueryDiagnosticsAdmin: {QueryDiagnosticsStore, API, MetastoreClient},
+	if f.Cfg.ArchitectureStorage == Dual || f.Cfg.ArchitectureStorage == Legacy {
+		// add v1 modules if legacy or dual storage mode
+		mm.RegisterModule(Ingester, f.initIngester)
+		mm.RegisterModule(Compactor, f.initCompactor)
+		mm.RegisterModule(Querier, f.initQuerier)
+		mm.RegisterModule(StoreGateway, f.initStoreGateway)
+		mm.RegisterModule(QueryScheduler, f.initQueryScheduler)
+
+		legacyModules := map[string][]string{
+			Ingester:       {Overrides, API, MemberlistKV, Storage, UsageReport, Version},
+			Compactor:      {API, Storage, Overrides, MemberlistKV, UsageReport},
+			QueryScheduler: {Overrides, API, MemberlistKV, UsageReport},
+			Querier:        {Overrides, API, MemberlistKV, IngesterRing, UsageReport, Version, FeatureFlags},
+			StoreGateway:   {API, Storage, Overrides, MemberlistKV, UsageReport, Admin, Version},
 		}
-		for k, v := range v2Modules {
+		for k, v := range legacyModules {
 			deps[k] = v
 		}
 
-		deps[All] = append(deps[All], SegmentWriter, Metastore, CompactionWorker, QueryBackend)
+		deps[All] = append(deps[All], Ingester, Compactor, QueryScheduler, Querier, StoreGateway)
 
-		// When fully migrated to V2, operators can disable V1 components.
-		v1WritePath := []string{Ingester, Compactor}
-		v1ReadPath := []string{Querier, QueryScheduler, StoreGateway}
-		if !f.Cfg.EnableV1WritePath {
-			deps[All] = slices.DeleteFunc(deps[All], func(s string) bool {
-				return slices.Contains(v1WritePath, s)
-			})
-		}
-		if !f.Cfg.EnableV1ReadPath {
-			deps[All] = slices.DeleteFunc(deps[All], func(s string) bool {
-				return slices.Contains(v1ReadPath, s)
-			})
-		}
-		deps[QueryFrontend] = append(deps[QueryFrontend], MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore)
-		deps[Distributor] = append(deps[Distributor], SegmentWriterClient)
-		deps[Server] = append(deps[Server], HealthServer)
-		deps[Admin] = append(deps[Admin], MetastoreAdmin, QueryDiagnosticsAdmin)
-
-		mm.RegisterModule(SegmentWriter, f.initSegmentWriter)
-		mm.RegisterModule(Metastore, f.initMetastore)
-		mm.RegisterModule(CompactionWorker, f.initCompactionWorker)
-		mm.RegisterModule(QueryBackend, f.initQueryBackend)
-		mm.RegisterModule(Symbolizer, f.initSymbolizer)
-
-		mm.RegisterModule(SegmentWriterRing, f.initSegmentWriterRing, modules.UserInvisibleModule)
-		mm.RegisterModule(SegmentWriterClient, f.initSegmentWriterClient, modules.UserInvisibleModule)
-		mm.RegisterModule(MetastoreClient, f.initMetastoreClient, modules.UserInvisibleModule)
-		mm.RegisterModule(MetastoreAdmin, f.initMetastoreAdmin, modules.UserInvisibleModule)
-		mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
-		mm.RegisterModule(PlacementAgent, f.initPlacementAgent, modules.UserInvisibleModule)
-		mm.RegisterModule(PlacementManager, f.initPlacementManager, modules.UserInvisibleModule)
-		mm.RegisterModule(HealthServer, f.initHealthServer, modules.UserInvisibleModule)
-		mm.RegisterModule(RecordingRulesClient, f.initRecordingRulesClient, modules.UserInvisibleModule)
-		mm.RegisterModule(QueryDiagnosticsStore, f.initQueryDiagnosticsStore, modules.UserInvisibleModule)
-		mm.RegisterModule(QueryDiagnosticsAdmin, f.initQueryDiagnosticsAdmin, modules.UserInvisibleModule)
+		deps[Distributor] = append(deps[Distributor], IngesterRing)
+	}
+	if f.Cfg.ArchitectureStorage == Legacy {
+		// remove v2 modules if using legacy storage
+		v2Modules := []string{QueryBackend, SegmentWriter, CompactionWorker, Metastore}
+		deps[All] = slices.DeleteFunc(deps[All], func(s string) bool {
+			return slices.Contains(v2Modules, s)
+		})
 	}
 
 	for mod, targets := range deps {

@@ -92,7 +92,7 @@ type Config struct {
 }
 
 func (o *Config) RegisterFlags(f *flag.FlagSet) {
-	o.WritePath = IngesterPath
+	o.WritePath = SegmentWriterPath
 	o.Compression = CompressionNone
 	f.Var(&o.WritePath, "write-path", "Controls the write path route; "+validWritePathOptionsString+".")
 	f.Float64Var(&o.IngesterWeight, "write-path.ingester-weight", 1,
