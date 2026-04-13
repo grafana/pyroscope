@@ -1,8 +1,12 @@
-{{- $ack := false }}
-{{- if .Values.upgrade }}
-{{- $ack = .Values.upgrade.acknowledgeBreakingChanges | default false }}
-{{- end }}
-{{- if and .Release.IsUpgrade (not .Values.architecture.storage.v1) (not .Values.architecture.storage.v2) (not $ack) }}
+{{- $components := (fromYaml (include "pyroscope.components" .)) }}
+{{- $isSingleBinary := hasKey $components "all" }}
+
+{{- $currentImage := (include "pyroscope.detectImage" .) }}
+{{- $installedPyroscopeV1 := and $currentImage (regexMatch ":1\\." $currentImage) }}
+{{- $storageVersion := (include "pyroscope.installedStorageVersionPyroscopeV1" .) }}
+{{- $ack := and .Values.upgrade (.Values.upgrade.acknowledgeBreakingChanges | default false) }}
+
+{{- if and .Release.IsUpgrade $installedPyroscopeV1 $isSingleBinary (eq $storageVersion "v1") (not .Values.architecture.storage.v1) (not $ack) }}
 {{- fail `
 =============================================
 BREAKING CHANGE: Pyroscope 2.0 uses v2 storage as a default.

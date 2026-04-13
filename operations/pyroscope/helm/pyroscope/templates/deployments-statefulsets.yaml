@@ -148,14 +148,12 @@ spec:
           {{- end }}
           {{- /* query-frontend specific v1/v2 migration config */}}
           {{- if or (eq $component "all") (eq $component "query-frontend") }}
-          {{-   if and $hasV2 (not (hasKey $extraArgs "enable-query-backend"))  }}
-          {{-     if and $hasV1 $global.Values.architecture.storage.migration.queryBackend }}
-            - "-enable-query-backend=true"
-          {{-       if and (not (hasKey $extraArgs "enable-query-backend-from")) $global.Values.architecture.storage.migration.queryBackendFrom }}
-            - "-enable-query-backend-from={{$global.Values.architecture.storage.migration.queryBackendFrom}}"
+          {{-   if and $hasV2 (not (hasKey $extraArgs "enable-querier"))  }}
+          {{-     if and $hasV1 $global.Values.architecture.storage.migration.querier }} # TODO
+            - "-enable-querier=true"
+          {{-       if and (not (hasKey $extraArgs "enable-querier-until")) $global.Values.architecture.storage.migration.querierUntil }}
+            - "-enable-querier-until={{$global.Values.architecture.storage.migration.querierUntil}}"
           {{-       end }}
-          {{-     else }}
-            - "-enable-query-backend=true"
           {{-     end }}
           {{-   end }}
           {{- end }}
@@ -166,8 +164,8 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}"
-          {{- if and $hasV2 (not (hasKey $values.extraEnvVars "PYROSCOPE_V2_EXPERIMENT"))  }}
-            - name: PYROSCOPE_V2_EXPERIMENT
+          {{- if and $hasV1 (not $hasV2) (not (hasKey $values.extraEnvVars "PYROSCOPE_V1_LEGACY"))  }}
+            - name: PYROSCOPE_V1_LEGACY
               value: "1"
           {{- end }}
           {{- if and $hasV2 (not (hasKey $values.extraEnvVars "PYROSCOPE_METASTORE_SERVICE"))  }}

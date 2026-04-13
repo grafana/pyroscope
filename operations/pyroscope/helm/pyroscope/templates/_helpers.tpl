@@ -132,7 +132,7 @@ Return the URL for querying profiles from Pyroscope.
 {{- $components := (fromYaml (include "pyroscope.components" .)) -}}
 {{- if .Values.architecture.deployUnifiedServices -}}
 http://{{ include "pyroscope.fullname" . }}-read.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}
-{{- else if hasKey $components "query-frontend" -}}A
+{{- else if hasKey $components "query-frontend" -}}
 {{- $port := ((index $components "query-frontend").service).port | default .Values.pyroscope.service.port }}
 http://{{ include "pyroscope.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ $port }}
 {{- else -}}
@@ -167,3 +167,28 @@ behavior:
     scaleDown: {}
     scaleUp: {}
 {{- end }}
+
+{{- define "pyroscope.detectImage" -}}
+{{-   $fullname := (include "pyroscope.fullname" .) }}
+{{-   $sts := (lookup "apps/v1" "StatefulSet" .Release.Namespace $fullname) }}
+{{-   if $sts -}}
+{{-     (index $sts.spec.template.spec.containers 0).image -}}
+{{-   else -}}
+{{-     $distributor := (lookup "apps/v1" "Deployment" .Release.Namespace (printf "%s-distributor" $fullname)) }}
+{{-     if $distributor -}}
+{{-       (index $distributor.spec.template.spec.containers 0).image -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+
+{{- define "pyroscope.installedStorageVersionPyroscopeV1" -}}
+{{-   $fullname := (include "pyroscope.fullname" .) }}
+{{-   $sts := (lookup "apps/v1" "StatefulSet" .Release.Namespace "pyroscope") }}
+{{-   $storageVersion := "v1" -}}
+{{-   range (index $sts.spec.template.spec.containers 0).env }}
+{{-     if and (eq .name "PYROSCOPE_V2_EXPERIMENT") (ne (.value | default "") "") }}
+{{-       $storageVersion = "v2" }}
+{{-     end }}
+{{-   end }}
+{{-   (index $storageVersion) -}}
+{{- end -}}
