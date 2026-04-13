@@ -55,7 +55,6 @@ func errorHandler() {
 func main() {
 	var flags mainFlags
 
-	flags.V2 = os.Getenv("PYROSCOPE_V2") != "" || os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
 	if err := cfg.DynamicUnmarshal(&flags, os.Args[1:], flag.CommandLine); err != nil {
 		fmt.Fprintf(os.Stderr, "failed parsing config: %v\n", err)
 		errorHandler()

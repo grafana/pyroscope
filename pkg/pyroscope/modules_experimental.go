@@ -28,7 +28,6 @@ import (
 	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
 	"github.com/grafana/pyroscope/pkg/metastore/discovery"
 	"github.com/grafana/pyroscope/pkg/metrics"
-	blocksv2 "github.com/grafana/pyroscope/pkg/operations/v2/blocks"
 	"github.com/grafana/pyroscope/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/pkg/querybackend"
 	querybackendclient "github.com/grafana/pyroscope/pkg/querybackend/client"
@@ -37,7 +36,6 @@ import (
 	placement "github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 	recordingrulesclient "github.com/grafana/pyroscope/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/pkg/symbolizer"
-	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/health"
 	"github.com/grafana/pyroscope/pkg/util/spanlogger"
@@ -51,28 +49,18 @@ func (f *Pyroscope) initQueryFrontend() (services.Service, error) {
 	if f.Cfg.Frontend.Port == 0 {
 		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
 	}
-	if !f.Cfg.V2 {
+	switch f.Cfg.ArchitectureStorage {
+	case Legacy:
 		return f.initQueryFrontendV1()
-	}
-	// If the new read path is enabled globally by default,
-	// the old query frontend is not used. Tenant-specific overrides
-	// are ignored — all tenants use the new read path.
-	//
-	// If the old read path is still in use, we configure the router
-	// to use both the old and new query frontends.
-	c := f.Overrides.ReadPathOverrides(tenant.DefaultTenantID)
-	switch {
-	case !c.EnableQueryBackend:
-		return f.initQueryFrontendV1()
-	case c.EnableQueryBackend && c.EnableQueryBackendFrom.IsZero():
+	case Default:
 		return f.initQueryFrontendV2()
-	case c.EnableQueryBackend && !c.EnableQueryBackendFrom.IsZero():
+	case Dual:
 		// Both fixed timestamps and "auto" mode use the hybrid frontend:
 		// fixed timestamps are resolved immediately, while "auto" queries
 		// the metastore at request time.
 		return f.initQueryFrontendV12()
 	default:
-		return nil, fmt.Errorf("invalid query backend configuration: %v", c)
+		return nil, fmt.Errorf("invalid architecture storage configuration: %v", f.Cfg.ArchitectureStorage)
 	}
 }
 
@@ -345,19 +333,6 @@ func (f *Pyroscope) initMetastoreAdmin() (services.Service, error) {
 	level.Info(f.logger).Log("msg", "registering metastore admin routes")
 	f.API.RegisterMetastoreAdmin(f.metastoreAdmin)
 	return f.metastoreAdmin.Service(), nil
-}
-
-func (f *Pyroscope) initAdminV2() (services.Service, error) {
-	level.Info(f.logger).Log("msg", "initializing v2 admin (metastore-based)")
-
-	a, err := blocksv2.NewAdmin(f.metastoreClient, f.storageBucket, f.logger)
-	if err != nil {
-		level.Info(f.logger).Log("msg", "failed to initialize v2 admin", "err", err)
-		return nil, nil
-	}
-	f.admin = a
-	f.API.RegisterAdmin(a)
-	return a, nil
 }
 
 func (f *Pyroscope) initQueryBackend() (services.Service, error) {

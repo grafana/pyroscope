@@ -60,9 +60,9 @@ func TestFlagDefaults(t *testing.T) {
 }
 
 // newTestConfig creates a Config with flags registered and parsed.
-func newTestConfig(t *testing.T, v2 bool, args []string) Config {
+func newTestConfig(t *testing.T, args []string) Config {
 	t.Helper()
-	cfg := Config{V2: v2}
+	cfg := Config{}
 	fs := flag.NewFlagSet(t.Name(), flag.ContinueOnError)
 	cfg.RegisterFlags(fs)
 	require.NoError(t, fs.Parse(args))
@@ -70,35 +70,22 @@ func newTestConfig(t *testing.T, v2 bool, args []string) Config {
 }
 
 func TestSetupModuleManager_V2_ExcludesV1Components(t *testing.T) {
-	t.Run("excludes V1 write path when disabled", func(t *testing.T) {
-		cfg := newTestConfig(t, true, []string{"-all.enable-v1-write-path=false"})
+	t.Run("excludes V1 by default", func(t *testing.T) {
+		cfg := newTestConfig(t, []string{})
 		f := &Pyroscope{Cfg: cfg}
 		require.NoError(t, f.setupModuleManager())
 
 		allDeps := f.deps[All]
-		assert.False(t, slices.Contains(allDeps, Ingester), "Ingester should not be in All deps")
-		assert.False(t, slices.Contains(allDeps, Compactor), "Compactor should not be in All deps")
-		assert.True(t, slices.Contains(allDeps, SegmentWriter), "SegmentWriter should still be in All deps")
-		assert.True(t, slices.Contains(allDeps, CompactionWorker), "CompactionWorker should still be in All deps")
+		for _, mod := range []string{Ingester, Compactor, Querier, QueryScheduler, StoreGateway} {
+			assert.False(t, slices.Contains(allDeps, mod), "%s should not be in All deps", mod)
+		}
+		for _, mod := range []string{SegmentWriter, Metastore, CompactionWorker, QueryBackend} {
+			assert.True(t, slices.Contains(allDeps, mod), "%s should be in All deps", mod)
+		}
 	})
 
-	t.Run("excludes V1 read path when disabled", func(t *testing.T) {
-		cfg := newTestConfig(t, true, []string{"-all.enable-v1-read-path=false"})
-		f := &Pyroscope{Cfg: cfg}
-		require.NoError(t, f.setupModuleManager())
-
-		allDeps := f.deps[All]
-		assert.False(t, slices.Contains(allDeps, Querier), "Querier should not be in All deps")
-		assert.False(t, slices.Contains(allDeps, QueryScheduler), "QueryScheduler should not be in All deps")
-		assert.False(t, slices.Contains(allDeps, StoreGateway), "StoreGateway should not be in All deps")
-		assert.True(t, slices.Contains(allDeps, QueryBackend), "QueryBackend should still be in All deps")
-	})
-
-	t.Run("includes all components when both V1 paths enabled", func(t *testing.T) {
-		cfg := newTestConfig(t, true, []string{
-			"-all.enable-v1-write-path=true",
-			"-all.enable-v1-read-path=true",
-		})
+	t.Run("includes all components when dual mode is enabled", func(t *testing.T) {
+		cfg := newTestConfig(t, []string{"-architecture.storage=dual"})
 		f := &Pyroscope{Cfg: cfg}
 		require.NoError(t, f.setupModuleManager())
 
@@ -111,46 +98,34 @@ func TestSetupModuleManager_V2_ExcludesV1Components(t *testing.T) {
 		}
 	})
 
-	t.Run("non-V2 has no V2 modules", func(t *testing.T) {
-		cfg := newTestConfig(t, false, nil)
+	t.Run("exclude V2 when legacy storage", func(t *testing.T) {
+		cfg := newTestConfig(t, []string{"-architecture.storage=legacy"})
 		f := &Pyroscope{Cfg: cfg}
 		require.NoError(t, f.setupModuleManager())
 
 		allDeps := f.deps[All]
-		assert.True(t, slices.Contains(allDeps, Ingester))
-		assert.True(t, slices.Contains(allDeps, Compactor))
-		assert.True(t, slices.Contains(allDeps, Querier))
-		assert.False(t, slices.Contains(allDeps, SegmentWriter))
-		assert.False(t, slices.Contains(allDeps, QueryBackend))
+		for _, mod := range []string{Ingester, Compactor, Querier, QueryScheduler, StoreGateway} {
+			assert.True(t, slices.Contains(allDeps, mod), "%s should be in All deps", mod)
+		}
+		for _, mod := range []string{SegmentWriter, Metastore, CompactionWorker, QueryBackend} {
+			assert.False(t, slices.Contains(allDeps, mod), "%s should not be in All deps", mod)
+		}
 	})
 }
 
 func TestRegisterServerFlagsWithChangedDefaultValues_V2(t *testing.T) {
-	t.Run("registers enable-v1 flags with default true", func(t *testing.T) {
-		cfg := Config{V2: true}
+	t.Run("registers default v2 architecture flag with default value", func(t *testing.T) {
+		cfg := newTestConfig(t, []string{})
 		fs := flag.NewFlagSet("test", flag.ContinueOnError)
 		cfg.RegisterFlagsWithContext(fs)
 
-		writePath := fs.Lookup("all.enable-v1-write-path")
-		require.NotNil(t, writePath)
-		assert.Equal(t, "true", writePath.DefValue)
-
-		readPath := fs.Lookup("all.enable-v1-read-path")
-		require.NotNil(t, readPath)
-		assert.Equal(t, "true", readPath.DefValue)
-	})
-
-	t.Run("non-V2 does not register enable-v1 flags", func(t *testing.T) {
-		cfg := Config{V2: false}
-		fs := flag.NewFlagSet("test", flag.ContinueOnError)
-		cfg.RegisterFlagsWithContext(fs)
-
-		assert.Nil(t, fs.Lookup("all.enable-v1-write-path"))
-		assert.Nil(t, fs.Lookup("all.enable-v1-read-path"))
+		archStorage := fs.Lookup("architecture.storage")
+		require.NotNil(t, archStorage)
+		assert.Equal(t, "default", archStorage.DefValue)
 	})
 
 	t.Run("V2 applies additional default overrides", func(t *testing.T) {
-		cfg := Config{V2: true}
+		cfg := newTestConfig(t, []string{})
 		fs := flag.NewFlagSet("test", flag.ContinueOnError)
 		cfg.RegisterFlagsWithContext(fs)
 

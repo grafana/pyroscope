@@ -39,8 +39,8 @@ func TestFlagParsing(t *testing.T) {
 		},
 		"user visible module listing": {
 			arguments:      []string{"-modules"},
-			stdoutMessage:  "ingester *\n",
-			stderrExcluded: "ingester\n",
+			stdoutMessage:  "segment-writer *\n",
+			stderrExcluded: "segment-writer\n",
 		},
 		"version": {
 			arguments:      []string{"-version"},
@@ -55,7 +55,7 @@ func TestFlagParsing(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_ = os.Setenv("TARGET", "ingester")
+			_ = os.Setenv("TARGET", "segment-writer")
 			oldDefaultRegistry := prometheus.DefaultRegisterer
 			defer func() {
 				prometheus.DefaultRegisterer = oldDefaultRegistry
