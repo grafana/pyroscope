@@ -149,7 +149,7 @@ spec:
           {{- /* query-frontend specific v1/v2 migration config */}}
           {{- if or (eq $component "all") (eq $component "query-frontend") }}
           {{-   if and $hasV2 (not (hasKey $extraArgs "enable-querier"))  }}
-          {{-     if and $hasV1 $global.Values.architecture.storage.migration.querier }} # TODO
+          {{-     if and $hasV1 $global.Values.architecture.storage.migration.querier }}
             - "-enable-querier=true"
           {{-       if and (not (hasKey $extraArgs "enable-querier-until")) $global.Values.architecture.storage.migration.querierUntil }}
             - "-enable-querier-until={{$global.Values.architecture.storage.migration.querierUntil}}"
