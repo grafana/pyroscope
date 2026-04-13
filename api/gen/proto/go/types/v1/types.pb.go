@@ -1241,7 +1241,8 @@ func (x *HeatmapSeries) GetSlots() []*HeatmapSlot {
 
 type HeatmapSlot struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Milliseconds unix timestamp
+	// Milliseconds unix timestamp of the right edge (x_max) of this slot.
+	// The slot covers the half-open interval (timestamp - step, timestamp].
 	Timestamp int64 `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	// Minimum y value
 	YMin []float64 `protobuf:"fixed64,2,rep,packed,name=y_min,json=yMin,proto3" json:"y_min,omitempty"`

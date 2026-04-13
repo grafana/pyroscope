@@ -534,6 +534,23 @@ ingress:
   # tls:
   #   - secretName: certificate
 
+httpRoute:
+  enabled: false
+  gateway:
+    name: ""
+    namespace: ""
+    # -- Optional to specify listener's name.
+    sectionName: null
+  # -- Additional labels to add to HTTPRoute resource.
+  labels: {}
+  # -- Additional annotations to add to HTTPRoute resource.
+  annotations: {}
+  hostnames: []
+  # -- Timeout settings to add to each rule in HTTPRoute resource.
+  # https://gateway-api.sigs.k8s.io/reference/spec/#httproutetimeouts.
+  timeouts: {}
+   # request: 0s
+
 # ServiceMonitor configuration
 serviceMonitor:
   # -- If enabled, ServiceMonitor resources for Prometheus Operator are created

@@ -26,10 +26,10 @@ Before starting the migration, make sure you have:
 - **Pyroscope running on v1 storage via Helm.** Verify with:
 
   ```bash
-  helm get values -n pyroscope pyroscope -o yaml | grep -A2 'storage:'
+  helm get values -n pyroscope pyroscope -o yaml --all | grep -A8 'storage:' | grep -E 'v1:|v2:'
   ```
 
-  You should see `v1: true` and `v2: false` (or `v2` absent, since v1 is the default). If you see `v2: true`, your installation is already using v2 or is mid-migration.
+  You should see `v1: true` and `v2: false`. If you see `v2: true`, your installation is already using v2 or is mid-migration.
 
 - **Persistence enabled** (`pyroscope.persistence.enabled=true`).
 
@@ -121,6 +121,7 @@ Also verify:
   ```bash
   kubectl port-forward -n pyroscope svc/pyroscope 4040:4040 &
   PF_PID=$!
+  sleep 2
   curl -s http://localhost:4040/ring-segment-writer | grep -o 'ACTIVE' | wc -l
   kill $PF_PID
   ```
@@ -138,6 +139,7 @@ Query recent profiling data. The v2 read path should serve data ingested after P
 ```bash
 kubectl port-forward -n pyroscope svc/pyroscope 4040:4040 &
 PF_PID=$!
+sleep 2
 profilecli query series --url http://localhost:4040 --from "now-1h" --to "now"
 kill $PF_PID
 ```
@@ -198,6 +200,7 @@ Verify that queries still return data:
 ```bash
 kubectl port-forward -n pyroscope svc/pyroscope 4040:4040 &
 PF_PID=$!
+sleep 2
 profilecli query series --url http://localhost:4040 --from "now-1h" --to "now"
 kill $PF_PID
 ```
@@ -261,6 +264,7 @@ Also verify:
   ```bash
   kubectl port-forward -n pyroscope svc/pyroscope-distributor 4040:4040 &
   PF_PID=$!
+  sleep 2
   curl -s http://localhost:4040/ring-segment-writer | grep -o 'ACTIVE' | wc -l
   kill $PF_PID
   ```
@@ -278,6 +282,7 @@ Query recent profiling data. The v2 read path should serve data ingested after P
 ```bash
 kubectl port-forward -n pyroscope svc/pyroscope-query-frontend 4040:4040 &
 PF_PID=$!
+sleep 2
 profilecli query series --url http://localhost:4040 --from "now-1h" --to "now"
 kill $PF_PID
 ```
@@ -342,6 +347,7 @@ Verify that queries still return data:
 ```bash
 kubectl port-forward -n pyroscope svc/pyroscope-query-frontend 4040:4040 &
 PF_PID=$!
+sleep 2
 profilecli query series --url http://localhost:4040 --from "now-1h" --to "now"
 kill $PF_PID
 ```

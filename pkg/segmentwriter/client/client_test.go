@@ -2,6 +2,7 @@ package segmentwriterclient
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -95,7 +96,9 @@ func (s *segwriterClientSuite) SetupTest() {
 	s.done = make(chan struct{})
 	go func() {
 		defer close(s.done)
-		s.Require().NoError(s.server.Serve(listener))
+		if err := s.server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			s.T().Errorf("unexpected server error: %v", err)
+		}
 	}()
 
 	// Wait for the server

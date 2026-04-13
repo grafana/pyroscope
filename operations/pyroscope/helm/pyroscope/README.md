@@ -36,6 +36,14 @@
 | architecture.storage.v1 | bool | `true` | Enable v1 storage layer. |
 | architecture.storage.v2 | bool | `false` | Enable v2 storage layer. |
 | global.imageRegistry | string | `nil` | Overrides the Docker registry globally for all images |
+| httpRoute.annotations | object | `{}` | Additional annotations to add to HTTPRoute resource. |
+| httpRoute.enabled | bool | `false` |  |
+| httpRoute.gateway.name | string | `""` |  |
+| httpRoute.gateway.namespace | string | `""` |  |
+| httpRoute.gateway.sectionName | string | `nil` | Optional to specify listener's name. |
+| httpRoute.hostnames | list | `[]` |  |
+| httpRoute.labels | object | `{}` | Additional labels to add to HTTPRoute resource. |
+| httpRoute.timeouts | object | `{}` | Timeout settings to add to each rule in HTTPRoute resource. https://gateway-api.sigs.k8s.io/reference/spec/#httproutetimeouts. |
 | ingress.annotations | object | `{}` |  |
 | ingress.className | string | `""` |  |
 | ingress.enabled | bool | `false` |  |
