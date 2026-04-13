@@ -662,6 +662,10 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("profile_id_selector is only supported with the v2 query backend"))
 	}
 
+	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_DOT {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("dot format is only supported with the v2 query backend"))
+	}
+
 	t, err := q.selectTree(ctx, req.Msg)
 	if err != nil {
 		return nil, err

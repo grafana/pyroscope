@@ -125,12 +125,15 @@ enum ProfileFormat {
   PROFILE_FORMAT_UNSPECIFIED = 0;
   PROFILE_FORMAT_FLAMEGRAPH = 1;
   PROFILE_FORMAT_TREE = 2;
+  PROFILE_FORMAT_DOT = 3;
 }
 
 message SelectMergeStacktracesResponse {
   FlameGraph flamegraph = 1;
   // Pyroscope tree bytes.
   bytes tree = 2;
+  // DOT graph representation.
+  string dot = 3;
 }
 
 message SelectMergeSpanProfileRequest {

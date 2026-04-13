@@ -33,6 +33,7 @@ const (
 	ProfileFormat_PROFILE_FORMAT_UNSPECIFIED ProfileFormat = 0
 	ProfileFormat_PROFILE_FORMAT_FLAMEGRAPH  ProfileFormat = 1
 	ProfileFormat_PROFILE_FORMAT_TREE        ProfileFormat = 2
+	ProfileFormat_PROFILE_FORMAT_DOT         ProfileFormat = 3
 )
 
 // Enum value maps for ProfileFormat.
@@ -41,11 +42,13 @@ var (
 		0: "PROFILE_FORMAT_UNSPECIFIED",
 		1: "PROFILE_FORMAT_FLAMEGRAPH",
 		2: "PROFILE_FORMAT_TREE",
+		3: "PROFILE_FORMAT_DOT",
 	}
 	ProfileFormat_value = map[string]int32{
 		"PROFILE_FORMAT_UNSPECIFIED": 0,
 		"PROFILE_FORMAT_FLAMEGRAPH":  1,
 		"PROFILE_FORMAT_TREE":        2,
+		"PROFILE_FORMAT_DOT":         3,
 	}
 )
 
@@ -458,7 +461,9 @@ type SelectMergeStacktracesResponse struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	Flamegraph *FlameGraph            `protobuf:"bytes,1,opt,name=flamegraph,proto3" json:"flamegraph,omitempty"`
 	// Pyroscope tree bytes.
-	Tree          []byte `protobuf:"bytes,2,opt,name=tree,proto3" json:"tree,omitempty"`
+	Tree []byte `protobuf:"bytes,2,opt,name=tree,proto3" json:"tree,omitempty"`
+	// DOT graph representation.
+	Dot           string `protobuf:"bytes,3,opt,name=dot,proto3" json:"dot,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -505,6 +510,13 @@ func (x *SelectMergeStacktracesResponse) GetTree() []byte {
 		return x.Tree
 	}
 	return nil
+}
+
+func (x *SelectMergeStacktracesResponse) GetDot() string {
+	if x != nil {
+		return x.Dot
+	}
+	return ""
 }
 
 type SelectMergeSpanProfileRequest struct {
@@ -1698,12 +1710,13 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x13profile_id_selector\x18\b \x03(\tB/\xbaG,:*\x12(['7c9e6679-7425-40de-944b-e07fc1f90ae7']R\x11profileIdSelectorB\f\n" +
 	"\n" +
 	"_max_nodesB\x17\n" +
-	"\x15_stack_trace_selector\"l\n" +
+	"\x15_stack_trace_selector\"~\n" +
 	"\x1eSelectMergeStacktracesResponse\x126\n" +
 	"\n" +
 	"flamegraph\x18\x01 \x01(\v2\x16.querier.v1.FlameGraphR\n" +
 	"flamegraph\x12\x12\n" +
-	"\x04tree\x18\x02 \x01(\fR\x04tree\"\xd2\x03\n" +
+	"\x04tree\x18\x02 \x01(\fR\x04tree\x12\x10\n" +
+	"\x03dot\x18\x03 \x01(\tR\x03dot\"\xd2\x03\n" +
 	"\x1dSelectMergeSpanProfileRequest\x12Y\n" +
 	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
 	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12S\n" +
@@ -1808,11 +1821,12 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\vQueryImpact\x128\n" +
 	"\x19total_bytes_in_time_range\x18\x02 \x01(\x04R\x15totalBytesInTimeRange\x120\n" +
 	"\x14total_queried_series\x18\x03 \x01(\x04R\x12totalQueriedSeries\x121\n" +
-	"\x14deduplication_needed\x18\x04 \x01(\bR\x13deduplicationNeeded*g\n" +
+	"\x14deduplication_needed\x18\x04 \x01(\bR\x13deduplicationNeeded*\x7f\n" +
 	"\rProfileFormat\x12\x1e\n" +
 	"\x1aPROFILE_FORMAT_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19PROFILE_FORMAT_FLAMEGRAPH\x10\x01\x12\x17\n" +
-	"\x13PROFILE_FORMAT_TREE\x10\x02*v\n" +
+	"\x13PROFILE_FORMAT_TREE\x10\x02\x12\x16\n" +
+	"\x12PROFILE_FORMAT_DOT\x10\x03*v\n" +
 	"\x10HeatmapQueryType\x12\"\n" +
 	"\x1eHEATMAP_QUERY_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dHEATMAP_QUERY_TYPE_INDIVIDUAL\x10\x01\x12\x1b\n" +

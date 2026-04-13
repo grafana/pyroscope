@@ -1090,6 +1090,7 @@ components:
         - PROFILE_FORMAT_UNSPECIFIED
         - PROFILE_FORMAT_FLAMEGRAPH
         - PROFILE_FORMAT_TREE
+        - PROFILE_FORMAT_DOT
     querier.v1.ProfileTypesRequest:
       type: object
       properties:
@@ -1506,6 +1507,10 @@ components:
           title: tree
           format: byte
           description: Pyroscope tree bytes.
+        dot:
+          type: string
+          title: dot
+          description: DOT graph representation.
       title: SelectMergeStacktracesResponse
       additionalProperties: false
     querier.v1.SelectSeriesRequest:
