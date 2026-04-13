@@ -1,13 +1,14 @@
-{{- $components := (fromYaml (include "pyroscope.components" .)) }}
-{{- $isSingleBinary := hasKey $components "all" }}
+{{- if .Release.IsUpgrade }}
+{{-   $components := (fromYaml (include "pyroscope.components" .)) }}
+{{-   $isSingleBinary := hasKey $components "all" }}
 
-{{- $currentImage := (include "pyroscope.detectImage" .) }}
-{{- $installedPyroscopeV1 := and $currentImage (regexMatch ":1\\." $currentImage) }}
-{{- $storageVersion := (include "pyroscope.installedStorageVersionPyroscopeV1" .) }}
-{{- $ack := and .Values.upgrade (.Values.upgrade.acknowledgeBreakingChanges | default false) }}
+{{-   $currentImage := (include "pyroscope.detectImage" .) }}
+{{-   $installedPyroscopeV1 := and $currentImage (regexMatch ":1\\." $currentImage) }}
+{{-   $storageVersion := (include "pyroscope.installedStorageVersionPyroscopeV1" .) }}
+{{-   $ack := and .Values.upgrade (.Values.upgrade.acknowledgeBreakingChanges | default false) }}
 
-{{- if and .Release.IsUpgrade $installedPyroscopeV1 $isSingleBinary (eq $storageVersion "v1") (not .Values.architecture.storage.v1) (not $ack) }}
-{{- fail `
+{{-   if and $installedPyroscopeV1 $isSingleBinary (eq $storageVersion "v1") (not .Values.architecture.storage.v1) (not $ack) }}
+{{-     fail `
 =============================================
 BREAKING CHANGE: Pyroscope 2.0 uses v2 storage as a default.
 
@@ -25,4 +26,5 @@ If you are upgrading from 1.x, choose one of the following:
      --set upgrade.acknowledgeBreakingChanges=true
 =============================================
 ` }}
-{{- end }}
+{{-   end }}
+{{- end}}
