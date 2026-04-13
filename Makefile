@@ -460,9 +460,12 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	cat operations/pyroscope/helm/pyroscope/values.yaml \
 		| go run ./tools/yaml-to-json \
 		> ./operations/pyroscope/jsonnet/values.json
-	# Generate dashboards and rules
+	# Generate dashboards and rules (native histograms, default)
 	$(BIN)/helm template pyroscope-monitoring --show-only templates/dashboards.yaml --show-only templates/rules.yaml operations/monitoring/helm/pyroscope-monitoring \
 		| go run ./tools/monitoring-chart-extractor
+	# Generate dashboards for classic histograms (--set dashboards.nativeHistograms=false)
+	$(BIN)/helm template pyroscope-monitoring --show-only templates/dashboards.yaml operations/monitoring/helm/pyroscope-monitoring --set dashboards.nativeHistograms=false \
+		| go run ./tools/monitoring-chart-extractor --output.dashboards.path ./operations/monitoring/dashboards-classic-histogram/
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build

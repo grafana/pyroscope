@@ -18,7 +18,7 @@
           "type": "loki",
           "uid": "${loki_datasource}"
         },
-        "enable": false,
+        "enable": true,
         "expr": "{cluster=\"$cluster\", container=\"kube-diff-logger\"} | json | namespace_extracted=\"$namespace\"",
         "hide": false,
         "iconColor": "yellow",
@@ -67,7 +67,7 @@
         "hide": false,
         "iconColor": "blue",
         "instant": false,
-        "name": "K8s All events",
+        "name": "K8s All Events",
         "tagKeys": "type,object_kind,object_name",
         "textFormat": "{{message}}"
       }
@@ -76,7 +76,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": 12593,
+  "id": 12198,
   "links": [
     {
       "asDropdown": true,
@@ -93,471 +93,16 @@
   ],
   "panels": [
     {
-      "collapsed": true,
+      "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 0
       },
-      "id": 68,
-      "panels": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "${loki_datasource}"
-          },
-          "description": "SelectMergeProfile filtered out by default as the API is used by Canary Exporter",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "filterable": true,
-                "inspect": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "pod"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 280
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "orgID"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 86
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "uri"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 312
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Time"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 179
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Trace ID"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 318
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Endpoint"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 420
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Pod"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 379
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "route"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 347
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Route"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 363
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 1
-          },
-          "id": 69,
-          "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
-            },
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": true,
-                "displayName": "Time"
-              }
-            ]
-          },
-          "pluginVersion": "12.1.0-90017",
-          "targets": [
-            {
-              "datasource": {
-                "type": "loki",
-                "uid": "${loki_datasource}"
-              },
-              "direction": "backward",
-              "editorMode": "code",
-              "expr": "{namespace=~\"$namespace\",cluster=~\"$cluster\",container=\"query-frontend\"}\n|= \"route=/querier.v1.\"\n| logfmt | line_format \"tenant={{.orgID}} status={{.status}}  duration={{.duration}} traceID={{.traceID}} {{.uri}}\"",
-              "queryType": "range",
-              "refId": "A"
-            }
-          ],
-          "title": "All Queries",
-          "transformations": [
-            {
-              "id": "extractFields",
-              "options": {
-                "delimiter": ",",
-                "format": "json",
-                "keepTime": false,
-                "replace": false,
-                "source": "labels"
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Drone build for Grafana": true,
-                  "Drone build for Grafana Enterprise": true,
-                  "Line": true,
-                  "Okta Logs": true,
-                  "Profile TraceID": true,
-                  "TraceID (json)": true,
-                  "__adaptive_logs_sampled__": true,
-                  "app_kubernetes_io_component": true,
-                  "app_kubernetes_io_instance": true,
-                  "app_kubernetes_io_name": true,
-                  "caller": true,
-                  "cluster": true,
-                  "container": true,
-                  "debug": true,
-                  "detected_level": true,
-                  "id": true,
-                  "job": true,
-                  "labelTypes": true,
-                  "labels": true,
-                  "level": true,
-                  "method": true,
-                  "msg": true,
-                  "name": true,
-                  "pod_template_hash": true,
-                  "request_body_size": true,
-                  "service_name": true,
-                  "status": false,
-                  "stream": true,
-                  "test_run_id": true,
-                  "traceID": true,
-                  "traceID (label)": true,
-                  "traceID 1": true,
-                  "trace_id (labels)": true,
-                  "ts": true,
-                  "tsNs": true
-                },
-                "includeByName": {},
-                "indexByName": {
-                  "Drone build for Grafana": 30,
-                  "Drone build for Grafana Enterprise": 31,
-                  "Line": 4,
-                  "Time": 1,
-                  "TraceID (json)": 8,
-                  "TraceID (log line)": 29,
-                  "app_kubernetes_io_component": 11,
-                  "app_kubernetes_io_instance": 12,
-                  "app_kubernetes_io_name": 13,
-                  "caller": 14,
-                  "cluster": 15,
-                  "container": 16,
-                  "detected_level": 17,
-                  "duration": 18,
-                  "id": 7,
-                  "job": 19,
-                  "labelTypes": 6,
-                  "labels": 0,
-                  "level": 20,
-                  "msg": 21,
-                  "name": 22,
-                  "namespace": 24,
-                  "pod": 23,
-                  "pod_template_hash": 25,
-                  "route": 3,
-                  "service_name": 26,
-                  "stream": 27,
-                  "tenant": 2,
-                  "test_run_id": 10,
-                  "traceID": 9,
-                  "traceID (label)": 32,
-                  "trace_id (labels)": 33,
-                  "ts": 28,
-                  "tsNs": 5
-                },
-                "renameByName": {
-                  "Line": "",
-                  "Time": "",
-                  "TraceID": "Trace ID",
-                  "duration": "Duration",
-                  "labels": "",
-                  "namespace": "Namespace",
-                  "orgID": "Tenant",
-                  "pod": "Pod",
-                  "pod_template_hash": "",
-                  "route": "Route",
-                  "status": "Status",
-                  "tenant": "Tenant",
-                  "uri": "Endpoint"
-                }
-              }
-            }
-          ],
-          "transparent": true,
-          "type": "table"
-        },
-        {
-          "datasource": {
-            "type": "tempo",
-            "uid": "${tempo_datasource}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto",
-                  "wrapText": false
-                },
-                "filterable": true,
-                "inspect": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Trace Name"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 455
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Trace ID"
-                },
-                "properties": [
-                  {
-                    "id": "custom.width",
-                    "value": 311
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 10,
-            "w": 24,
-            "x": 0,
-            "y": 9
-          },
-          "id": 70,
-          "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "enablePagination": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
-            },
-            "frameIndex": 0,
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": true,
-                "displayName": "Start time"
-              }
-            ]
-          },
-          "pluginVersion": "12.1.0-90017",
-          "targets": [
-            {
-              "datasource": {
-                "type": "tempo",
-                "uid": "${tempo_datasource}"
-              },
-              "filters": [
-                {
-                  "id": "d5be7410",
-                  "operator": "=",
-                  "scope": "resource",
-                  "tag": "k8s.namespace.name",
-                  "value": [
-                    "$namespace"
-                  ],
-                  "valueType": "string"
-                },
-                {
-                  "id": "service-name",
-                  "operator": "=",
-                  "scope": "resource",
-                  "tag": "service.name",
-                  "value": [
-                    "pyroscope-query-frontend",
-                    "pyroscope-query-backend"
-                  ],
-                  "valueType": "string"
-                },
-                {
-                  "id": "min-duration",
-                  "operator": "\u003e",
-                  "tag": "duration",
-                  "value": "100ms",
-                  "valueType": "duration"
-                },
-                {
-                  "id": "span-name",
-                  "operator": "!=",
-                  "scope": "span",
-                  "tag": "name",
-                  "value": [
-                    "HTTP GET - debug_pprof"
-                  ],
-                  "valueType": "string"
-                }
-              ],
-              "limit": 25,
-              "metricsQueryType": "instant",
-              "queryType": "traceqlSearch",
-              "refId": "A",
-              "spss": 5,
-              "tableType": "traces"
-            }
-          ],
-          "title": "Traces",
-          "transparent": true,
-          "type": "table"
-        }
-      ],
-      "title": "Query Log",
-      "type": "row"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 1
-      },
-      "id": 57,
+      "id": 71,
       "panels": [],
-      "title": "Metadata Query Service (metastore)",
+      "title": "Raft",
       "type": "row"
     },
     {
@@ -629,11 +174,11 @@
       },
       "gridPos": {
         "h": 7,
-        "w": 12,
+        "w": 8,
         "x": 0,
-        "y": 2
+        "y": 1
       },
-      "id": 54,
+      "id": 81,
       "options": {
         "alignValue": "center",
         "legend": {
@@ -677,7 +222,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "The latency of QueryMetadata endpoint observed by metastore nodes.\n\nThe only user is the query-frontend service.",
+      "description": "The latency of raft commands observed by the metastore leader",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -759,12 +304,12 @@
         ]
       },
       "gridPos": {
-        "h": 7,
-        "w": 6,
-        "x": 12,
-        "y": 2
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 1
       },
-      "id": 56,
+      "id": 68,
       "options": {
         "legend": {
           "calcs": [],
@@ -786,28 +331,15 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadata\",\n}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.995, sum(rate(pyroscope_metastore_raft_apply_command_duration_seconds_bucket{\n  namespace=\"$namespace\",\n}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "p99",
           "range": true,
           "refId": "D"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadata\",\n}[$__rate_interval])))",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "p95",
-          "range": true,
-          "refId": "A"
         }
       ],
-      "title": "QueryMetadata Latency",
+      "title": "Command Latency",
       "transparent": true,
       "type": "timeseries"
     },
@@ -816,7 +348,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "The latency of QueryMetadataLabels endpoint observed by metastore nodes.\n\nThe only user is the query-frontend service.",
+      "description": "The latency of raft read index observed by the metastore nodes",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -898,12 +430,138 @@
         ]
       },
       "gridPos": {
-        "h": 7,
-        "w": 6,
-        "x": 18,
-        "y": 2
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 1
       },
-      "id": 55,
+      "id": 72,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_metastore_raft_read_index_wait_duration_seconds_bucket{\n  namespace=\"$namespace\",\n}[$__rate_interval])) by (le))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "ReadIndex Latency",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "The time takes to write a snapshot",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 11
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "id": 78,
       "options": {
         "legend": {
           "calcs": [],
@@ -925,12 +583,12 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadataLabels\",\n}[$__rate_interval])))",
+          "expr": "(\n  histogram_quantile(0.99,(sum by (le, pod) (\n    irate(pyroscope_metastore_boltdb_persist_snapshot_duration_seconds_bucket{namespace=\"$namespace\"}[$__rate_interval])))\n  ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace=\"$namespace\", state=\"Leader\"} \u003e= 1)\n)",
           "hide": false,
           "instant": false,
-          "legendFormat": "p99",
+          "legendFormat": "{{pod}} Leader",
           "range": true,
-          "refId": "D"
+          "refId": "B"
         },
         {
           "datasource": {
@@ -938,15 +596,15 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadataLabels\",\n}[$__rate_interval])))",
+          "expr": "(\n  histogram_quantile(0.99,(sum by (le, pod) (\n    irate(pyroscope_metastore_boltdb_persist_snapshot_duration_seconds_bucket{namespace=\"$namespace\"}[$__rate_interval])))\n  ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace=\"$namespace\", state!=\"Leader\"} \u003e= 1)\n)",
           "hide": false,
           "instant": false,
-          "legendFormat": "p95",
+          "legendFormat": "{{pod}} Follower",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "QueryMetadataLabels Latency",
+      "title": "Snapshot Latency",
       "transparent": true,
       "type": "timeseries"
     },
@@ -1037,12 +695,12 @@
         ]
       },
       "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
+        "h": 8,
+        "w": 8,
+        "x": 8,
         "y": 9
       },
-      "id": 60,
+      "id": 77,
       "options": {
         "legend": {
           "calcs": [],
@@ -1081,6 +739,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
+      "description": "The time takes to apply the command onto FSM",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1133,577 +792,17 @@
               }
             ]
           },
-          "unit": "ops"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "error"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "success"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 6,
-        "x": 12,
-        "y": 9
-      },
-      "id": 58,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.1.0-90017",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(histogram_count(irate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadata\",\n}[$__rate_interval]))) by (status_code)",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "D"
-        }
-      ],
-      "title": "",
-      "transparent": true,
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "ops"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "error"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "success"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 6,
-        "x": 18,
-        "y": 9
-      },
-      "id": 59,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.1.0-90017",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(histogram_count(irate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadataLabels\",\n}[$__rate_interval]))) by (status_code)",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "D"
-        }
-      ],
-      "title": "",
-      "transparent": true,
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 16
-      },
-      "id": 63,
-      "panels": [],
-      "title": "Query Frontend",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "$datasource"
-      },
-      "description": "Query rate observed by cortex-gw",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": true,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "axisSoftMin": 0,
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "lineWidth": 1,
-            "pointSize": 1,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "reqps"
+          "unit": "s"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 17
-      },
-      "id": 67,
-      "options": {
-        "dataLinks": [],
-        "legend": {
-          "calcs": [
-            "max",
-            "mean"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": true,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.1.0-90017",
-      "targets": [
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "editorMode": "code",
-          "expr": "sum by (status_code) (histogram_count(rate(pyroscope_request_duration_seconds{cluster=~\"$cluster\", container=~\"pyroscope|distributor|query-frontend\", namespace=~\"$namespace\", route=~\".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*\"}[5m])))",
-          "legendFormat": "{{status_code}} ",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Query rate",
-      "transparent": true,
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "Query duration observed by cortex-gw",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "custom.drawStyle",
-                "value": "points"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.pointSize",
-                "value": 11
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 17
-      },
-      "id": 66,
-      "options": {
-        "legend": {
-          "calcs": [
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true,
-          "sortBy": "Name",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.1.0-90017",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (route) ( rate(pyroscope_request_duration_seconds{container=~\"pyroscope|distributor|query-frontend\", namespace=~\"$namespace\", cluster=~\"$cluster\",route=~\".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*\"}[$__rate_interval])))",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "D"
-        }
-      ],
-      "title": "Query Duartion",
-      "transparent": true,
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 26
-      },
-      "id": 61,
-      "panels": [],
-      "title": "Query Backend",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "Number of query-backend invocations.\n\nErrors are expected: usually those indicate that the query is throttled with the concurrency limiter.\n\nIf errors are presents in the query-frontend/gateway, the query is failed.\n",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "ops"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "error"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "success"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 0,
-        "y": 27
+        "w": 8,
+        "x": 16,
+        "y": 9
       },
-      "id": 64,
+      "id": 79,
       "options": {
         "legend": {
           "calcs": [],
@@ -1725,138 +824,12 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(histogram_count(irate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/query.v1.QueryBackendService/Invoke\",\n}[$__rate_interval]))) by (status_code)",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "D"
-        }
-      ],
-      "title": "Invocations",
-      "transparent": true,
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "description": "QueryBackend.Invoke latency observed by query-backend instances",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "custom.drawStyle",
-                "value": "points"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.pointSize",
-                "value": 11
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 6,
-        "y": 27
-      },
-      "id": 62,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.1.0-90017",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/query.v1.QueryBackendService/Invoke\",\n}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_metastore_fsm_apply_command_duration_seconds_bucket{namespace=\"$namespace\"}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "p99",
           "range": true,
-          "refId": "D"
+          "refId": "B"
         },
         {
           "datasource": {
@@ -1864,7 +837,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/query.v1.QueryBackendService/Invoke\",\n}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum(rate(pyroscope_metastore_fsm_apply_command_duration_seconds_bucket{namespace=\"$namespace\"}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "p95",
@@ -1872,16 +845,184 @@
           "refId": "A"
         }
       ],
-      "title": "Invocation Duration",
+      "title": "FSM Latency",
       "transparent": true,
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "id": 51,
+      "panels": [],
+      "title": "Metadata Index Service",
+      "type": "row"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "QueryBackend.Invokeduration observed by query-backend instances",
+      "description": "The latency of AddBlock endpoint observed by metastore nodes\n\nThe only user is the segment-writer service.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 11
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 18
+      },
+      "id": 49,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "(\n  histogram_quantile(1,(sum by (le, pod) (\n    irate(pyroscope_metastore_boltdb_persist_snapshot_duration_seconds_bucket{namespace=\"$namespace\"}[$__rate_interval])))\n  ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace=\"$namespace\", state=\"Leader\"} \u003e= 1)\n)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Metastore leader snapshot ({{pod}})",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.IndexService/AddBlock\",\n}[$__rate_interval])) by (le, pod))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "p99 {{pod}}",
+          "range": true,
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.IndexService/AddBlock\",\n}[$__rate_interval])) by (le))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "AddBlock Latency",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1895,52 +1036,58 @@
             }
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": []
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 12,
-        "y": 27
+        "w": 8,
+        "x": 8,
+        "y": 18
       },
-      "id": 71,
+      "id": 95,
       "options": {
         "calculate": false,
+        "calculation": {
+          "xBuckets": {
+            "mode": "count",
+            "value": ""
+          },
+          "yBuckets": {
+            "mode": "count",
+            "scale": {
+              "type": "linear"
+            }
+          }
+        },
         "cellGap": 0,
-        "cellValues": {},
+        "cellValues": {
+          "unit": "requests"
+        },
         "color": {
-          "exponent": 0.5,
-          "fill": "dark-orange",
+          "exponent": 0.2,
+          "fill": "super-light-red",
           "mode": "scheme",
-          "reverse": false,
+          "reverse": true,
           "scale": "exponential",
-          "scheme": "Rainbow",
-          "steps": 64
+          "scheme": "Turbo",
+          "steps": 128
         },
         "exemplars": {
-          "color": "rgba(255,0,255,0.7)"
+          "color": "orange"
         },
         "filterValues": {
           "le": 1e-9
         },
         "legend": {
-          "show": true
+          "show": false
         },
         "rowsFrame": {
           "layout": "auto"
         },
         "tooltip": {
           "mode": "single",
-          "showColorScale": false,
-          "yHistogram": false
+          "showColorScale": true,
+          "yHistogram": true
         },
         "yAxis": {
           "axisPlacement": "left",
@@ -1956,15 +1103,14 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum (rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/query.v1.QueryBackendService/Invoke\",\n  status_code=\"success\"\n}[$__rate_interval]))",
+          "expr": "sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.IndexService/AddBlock\",\n}[$__rate_interval]))",
           "hide": false,
-          "instant": false,
-          "legendFormat": "p99",
+          "legendFormat": "__auto",
           "range": true,
-          "refId": "D"
+          "refId": "B"
         }
       ],
-      "title": "Heatmap",
+      "title": "Latency Heatmap",
       "transparent": true,
       "type": "heatmap"
     },
@@ -1973,7 +1119,139 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 18
+      },
+      "id": 50,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(irate(pyroscope_request_duration_seconds_count{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.IndexService/AddBlock\",\n}[$__rate_interval])) by (status_code)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "The latency of GetBlockMetadata endpoint observed by metastore nodes.\n\nThe only user is the compaction-worker service.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2056,17 +1334,17 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 18,
-        "y": 27
+        "w": 8,
+        "x": 0,
+        "y": 26
       },
-      "id": 65,
+      "id": 75,
       "options": {
         "legend": {
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
         "tooltip": {
           "hideZeros": false,
@@ -2082,15 +1360,256 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/query.v1.QueryBackendService/Invoke\",\n}[$__rate_interval])) by (pod))",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.IndexService/GetBlockMetadata\",\n}[$__rate_interval])) by (le, pod))",
           "hide": false,
           "instant": false,
-          "legendFormat": "{{pod}}",
+          "legendFormat": "p99 {{pod}}",
+          "range": true,
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.IndexService/GetBlockMetadata\",\n}[$__rate_interval])) by (le))",
+          "hide": true,
+          "instant": false,
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "GetBlockMetadata Latency",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 26
+      },
+      "id": 99,
+      "options": {
+        "calculate": false,
+        "calculation": {
+          "xBuckets": {
+            "mode": "count",
+            "value": ""
+          },
+          "yBuckets": {
+            "mode": "count",
+            "scale": {
+              "type": "linear"
+            }
+          }
+        },
+        "cellGap": 0,
+        "cellValues": {
+          "unit": "requests"
+        },
+        "color": {
+          "exponent": 0.2,
+          "fill": "super-light-red",
+          "mode": "scheme",
+          "reverse": true,
+          "scale": "exponential",
+          "scheme": "Turbo",
+          "steps": 128
+        },
+        "exemplars": {
+          "color": "orange"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "legend": {
+          "show": false
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "mode": "single",
+          "showColorScale": true,
+          "yHistogram": true
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "s"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.IndexService/GetBlockMetadata\"\n}[$__rate_interval]))",
+          "hide": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Latency Heatmap",
+      "transparent": true,
+      "type": "heatmap"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 26
+      },
+      "id": 76,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(irate(pyroscope_request_duration_seconds_count{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.IndexService/GetBlockMetadata\",\n}[$__rate_interval])) by (status_code)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
           "range": true,
           "refId": "D"
         }
       ],
-      "title": "Breakdown",
+      "title": "",
       "transparent": true,
       "type": "timeseries"
     },
@@ -2100,9 +1619,1136 @@
         "h": 1,
         "w": 24,
         "x": 0,
+        "y": 34
+      },
+      "id": 89,
+      "panels": [],
+      "title": "Metadata Query Service",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "The latency of QueryMetadata endpoint observed by metastore nodes.\n\nThe only user is the query-frontend service.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 11
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
         "y": 35
       },
-      "id": 32,
+      "id": 90,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadata\",\n}[$__rate_interval])) by (le, pod))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "p99 {{pod}}",
+          "range": true,
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadata\",\n}[$__rate_interval])) by (le))",
+          "hide": true,
+          "instant": false,
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "QueryMetadata Latency",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 35
+      },
+      "id": 98,
+      "options": {
+        "calculate": false,
+        "calculation": {
+          "xBuckets": {
+            "mode": "count",
+            "value": ""
+          },
+          "yBuckets": {
+            "mode": "count",
+            "scale": {
+              "type": "linear"
+            }
+          }
+        },
+        "cellGap": 0,
+        "cellValues": {
+          "unit": "requests"
+        },
+        "color": {
+          "exponent": 0.2,
+          "fill": "super-light-red",
+          "mode": "scheme",
+          "reverse": true,
+          "scale": "exponential",
+          "scheme": "Turbo",
+          "steps": 128
+        },
+        "exemplars": {
+          "color": "orange"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "legend": {
+          "show": false
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "mode": "single",
+          "showColorScale": true,
+          "yHistogram": true
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "s"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadata\",\n}[$__rate_interval]))",
+          "hide": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Latency Heatmap",
+      "transparent": true,
+      "type": "heatmap"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 35
+      },
+      "id": 92,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(irate(pyroscope_request_duration_seconds_count{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadata\",\n}[$__rate_interval])) by (status_code)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "The latency of QueryMetadataLabels endpoint observed by metastore nodes.\n\nThe only user is the query-frontend service.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 11
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 43
+      },
+      "id": 91,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadataLabels\",\n}[$__rate_interval])) by (le, pod))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "p99 {{pod}}",
+          "range": true,
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadataLabels\",\n}[$__rate_interval])) by (le))",
+          "hide": true,
+          "instant": false,
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "QueryMetadataLabels Latency",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 43
+      },
+      "id": 96,
+      "options": {
+        "calculate": false,
+        "calculation": {
+          "xBuckets": {
+            "mode": "count",
+            "value": ""
+          },
+          "yBuckets": {
+            "mode": "count",
+            "scale": {
+              "type": "linear"
+            }
+          }
+        },
+        "cellGap": 0,
+        "cellValues": {
+          "unit": "requests"
+        },
+        "color": {
+          "exponent": 0.2,
+          "fill": "super-light-red",
+          "mode": "scheme",
+          "reverse": true,
+          "scale": "exponential",
+          "scheme": "Turbo",
+          "steps": 128
+        },
+        "exemplars": {
+          "color": "orange"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "legend": {
+          "show": false
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "mode": "single",
+          "showColorScale": true,
+          "yHistogram": true
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "s"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadataLabels\",\n}[$__rate_interval]))",
+          "hide": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Latency Heatmap",
+      "transparent": true,
+      "type": "heatmap"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 43
+      },
+      "id": 93,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(irate(pyroscope_request_duration_seconds_count{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.MetadataQueryService/QueryMetadataLabels\",\n}[$__rate_interval])) by (status_code)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 51
+      },
+      "id": 86,
+      "panels": [],
+      "title": "Compaction Service",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "The latency of PollCompactionJobs endpoint observed by metastore nodes.\n\nThe only user is the compaction-worker service.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 11
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 52
+      },
+      "id": 87,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.CompactionService/PollCompactionJobs\",\n}[$__rate_interval])) by (le, pod))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "p99 {{pod}}",
+          "range": true,
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.CompactionService/PollCompactionJobs\",\n}[$__rate_interval])) by (le))",
+          "hide": true,
+          "instant": false,
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "PollCompactionJobs Latency",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 52
+      },
+      "id": 97,
+      "options": {
+        "calculate": false,
+        "calculation": {
+          "xBuckets": {
+            "mode": "count",
+            "value": ""
+          },
+          "yBuckets": {
+            "mode": "count",
+            "scale": {
+              "type": "linear"
+            }
+          }
+        },
+        "cellGap": 0,
+        "cellValues": {
+          "unit": "requests"
+        },
+        "color": {
+          "exponent": 0.2,
+          "fill": "super-light-red",
+          "mode": "scheme",
+          "reverse": true,
+          "scale": "exponential",
+          "scheme": "Turbo",
+          "steps": 128
+        },
+        "exemplars": {
+          "color": "orange"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "legend": {
+          "show": false
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "mode": "single",
+          "showColorScale": true,
+          "yHistogram": true
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "s"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.CompactionService/PollCompactionJobs\",\n}[$__rate_interval]))",
+          "hide": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Latency Heatmap",
+      "transparent": true,
+      "type": "heatmap"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 52
+      },
+      "id": 88,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(irate(pyroscope_request_duration_seconds_count{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.CompactionService/PollCompactionJobs\",\n}[$__rate_interval])) by (status_code)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 60
+      },
+      "id": 67,
       "panels": [],
       "title": "Resource Usage",
       "type": "row"
@@ -2170,25 +2816,10 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byFrameRefID",
-              "options": "A"
+              "id": "byName",
+              "options": "Limit"
             },
             "properties": [
-              {
-                "id": "custom.axisColorMode",
-                "value": "text"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 1
-              },
               {
                 "id": "custom.lineStyle",
                 "value": {
@@ -2198,13 +2829,6 @@
                   ],
                   "fill": "dash"
                 }
-              },
-              {
-                "id": "custom.stacking",
-                "value": {
-                  "group": "A",
-                  "mode": "none"
-                }
               }
             ]
           }
@@ -2212,11 +2836,11 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
+        "w": 8,
         "x": 0,
-        "y": 36
+        "y": 61
       },
-      "id": 29,
+      "id": 65,
       "options": {
         "legend": {
           "calcs": [
@@ -2243,7 +2867,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (pod) (irate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container=\"query-backend\"}[$__rate_interval]))",
+          "expr": "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace=\"$namespace\",container=\"metastore\"})",
           "legendFormat": "__auto",
           "range": true,
           "refId": "by pod"
@@ -2254,8 +2878,8 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max(\n    kube_pod_container_resource_requests{job=~\"(.*/)?kube-state-metrics\", namespace=\"$namespace\", resource=\"cpu\"}\n  * on(namespace,pod)\n    group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{namespace=\"$namespace\", workload=~\".*-query-backend\"}\n)",
-          "hide": false,
+          "expr": "max(\n    kube_pod_container_resource_requests{job=~\"(.*/)?kube-state-metrics\", namespace=\"$namespace\", resource=\"cpu\"}\n  * on(namespace,pod)\n    group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{namespace=\"$namespace\", workload=~\".*-metastore\"}\n)",
+          "hide": true,
           "legendFormat": "Request",
           "range": true,
           "refId": "A"
@@ -2266,196 +2890,14 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max(\n    kube_pod_container_resource_limits{job=~\"(.*/)?kube-state-metrics\", namespace=\"$namespace\", resource=\"cpu\"}\n  * on(namespace,pod)\n    group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{namespace=\"$namespace\", workload=~\".*-query-backend\"}\n)",
-          "hide": false,
+          "expr": "max(\n    kube_pod_container_resource_limits{job=~\"(.*/)?kube-state-metrics\", namespace=\"$namespace\", resource=\"cpu\"}\n  * on(namespace,pod)\n    group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{namespace=\"$namespace\", workload=~\".*-metastore\"}\n)",
+          "hide": true,
           "legendFormat": "Limit",
           "range": true,
           "refId": "B"
         }
       ],
       "title": "CPU Usage",
-      "transparent": true,
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "datasource",
-        "uid": "-- Mixed --"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "axisSoftMin": 0,
-            "barAlignment": 1,
-            "barWidthFactor": 1,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "fieldMinMax": false,
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "A"
-            },
-            "properties": [
-              {
-                "id": "custom.axisColorMode",
-                "value": "text"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.stacking",
-                "value": {
-                  "group": "A",
-                  "mode": "none"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 2
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Request"
-            },
-            "properties": [
-              {
-                "id": "custom.stacking",
-                "value": {
-                  "group": "A",
-                  "mode": "none"
-                }
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 6,
-        "y": 36
-      },
-      "id": 72,
-      "options": {
-        "legend": {
-          "calcs": [
-            "last",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": false,
-          "sortBy": "Max",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "12.1.0-90017",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (pod) (irate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container=\"query-backend\"}[$__rate_interval]))",
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "by pod"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum (irate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container=\"query-backend\"}[$__rate_interval]))",
-          "hide": false,
-          "legendFormat": "Total",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(kube_pod_container_resource_requests{namespace=\"$namespace\", resource=\"cpu\",container=\"query-backend\"})",
-          "hide": false,
-          "legendFormat": "Request",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "CPU Usage (stack)",
       "transparent": true,
       "type": "timeseries"
     },
@@ -2522,29 +2964,17 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Request"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "Limit"
             },
             "properties": [
               {
-                "id": "color",
+                "id": "custom.lineStyle",
                 "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
                 }
               }
             ]
@@ -2553,11 +2983,11 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 36
+        "w": 8,
+        "x": 8,
+        "y": 61
       },
-      "id": 30,
+      "id": 66,
       "options": {
         "legend": {
           "calcs": [
@@ -2584,7 +3014,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\", container=\"query-backend\", image!=\"\"}) by (pod)",
+          "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\", container=\"metastore\", image!=\"\"}) by (pod)",
           "hide": false,
           "legendFormat": "__auto",
           "range": true,
@@ -2596,9 +3026,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max(kube_pod_container_resource_requests{namespace=\"$namespace\", resource=\"memory\",container=\"query-backend\"})",
-          "hide": false,
-          "legendFormat": "Request",
+          "expr": "max(\n    kube_pod_container_resource_requests{job=~\"(.*/)?kube-state-metrics\", namespace=\"$namespace\", resource=\"memory\"}\n  * on(namespace,pod)\n    group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{namespace=\"$namespace\", workload=~\".*-metastore\"}\n)",
+          "hide": true,
+          "legendFormat": "Requests",
           "range": true,
           "refId": "B"
         },
@@ -2608,14 +3038,119 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max (kube_pod_container_resource_limits{namespace=\"$namespace\", resource=\"memory\",container=\"query-backend\"})",
-          "hide": false,
+          "expr": "max(\n    kube_pod_container_resource_limits{job=~\"(.*/)?kube-state-metrics\", namespace=\"$namespace\", resource=\"memory\"}\n  * on(namespace,pod)\n    group_left(workload) namespace_workload_pod:kube_pod_owner:relabel{namespace=\"$namespace\", workload=\".*-metastore\"}\n)",
+          "hide": true,
           "legendFormat": "Limit",
           "range": true,
           "refId": "C"
         }
       ],
       "title": "Memory Usage",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 1,
+            "barWidthFactor": 1,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 61
+      },
+      "id": 84,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": false,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "kubelet_volume_stats_used_bytes{namespace=\"$namespace\",persistentvolumeclaim=~\".*metastore.*\"} /\nkubelet_volume_stats_capacity_bytes{namespace=\"$namespace\",persistentvolumeclaim=~\".*metastore.*\"}",
+          "hide": false,
+          "legendFormat": "{{persistentvolumeclaim}}",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Disk Usage",
       "transparent": true,
       "type": "timeseries"
     },
@@ -2678,12 +3213,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
+        "h": 9,
+        "w": 6,
         "x": 0,
-        "y": 44
+        "y": 69
       },
-      "id": 31,
+      "id": 85,
       "options": {
         "legend": {
           "calcs": [
@@ -2709,7 +3244,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by(operation) (irate(objstore_bucket_operations_total{namespace=\"$namespace\",container=\"query-backend\"}[$__rate_interval]))",
+          "expr": "sum by(operation) (rate(objstore_bucket_operations_total{namespace=\"$namespace\",container=\"metastore\"}[$__rate_interval]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2759,7 +3294,7 @@
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "normal"
+              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -2781,12 +3316,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 44
+        "h": 9,
+        "w": 6,
+        "x": 6,
+        "y": 69
       },
-      "id": 53,
+      "id": 82,
       "options": {
         "legend": {
           "calcs": [
@@ -2813,7 +3348,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "(sum(irate(container_network_transmit_bytes_total{job=~\"(.*/)?cadvisor\", cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval]) * on (namespace,pod)\ngroup_left(workload,workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\".*query-backend.*\"}) by (namespace,pod)) * -1",
+          "expr": "(sum(irate(container_network_transmit_bytes_total{job=~\"(.*/)?cadvisor\", cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval]) * on (namespace,pod)\ngroup_left(workload,workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\".*metastore.*\"}) by (namespace,pod)) * -1",
           "hide": false,
           "legendFormat": "tx {{pod}}",
           "range": true,
@@ -2825,7 +3360,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "(sum(irate(container_network_receive_bytes_total{job=~\"(.*/)?cadvisor\", cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval]) * on (namespace,pod)\ngroup_left(workload,workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\".*query-backend.*\"}) by (namespace,pod))",
+          "expr": "(sum(irate(container_network_receive_bytes_total{job=~\"(.*/)?cadvisor\", cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval]) * on (namespace,pod)\ngroup_left(workload,workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster=~\"$cluster\", namespace=~\"$namespace\", workload=~\".*metastore.*\"}) by (namespace,pod))",
           "hide": false,
           "legendFormat": "rx {{pod}}",
           "range": true,
@@ -2837,14 +3372,241 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 1,
+            "barWidthFactor": 1,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 12,
+        "y": 69
+      },
+      "id": 83,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": false,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (pod) (irate(container_fs_writes_total{namespace=\"$namespace\",container=\"metastore\"}[$__rate_interval])) * -1",
+          "format": "time_series",
+          "hide": false,
+          "legendFormat": "write {{pod}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (pod) (irate(container_fs_reads_total{namespace=\"$namespace\",container=\"metastore\"}[$__rate_interval]))",
+          "hide": false,
+          "legendFormat": "read {{pod}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Disk I/O",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 1,
+            "barWidthFactor": 1,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 18,
+        "y": 69
+      },
+      "id": 94,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.1.0-90017",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "irate(node_disk_io_time_seconds_total{cluster=\"$cluster\"}[$__rate_interval])\n+ on(instance, device) group_left(pod)\ntopk by(instance, device) (\n  1,\n  0 * label_replace(\n    container_blkio_device_usage_total{\n      cluster=\"$cluster\",\n      namespace=\"$namespace\",\n      container=\"metastore\",\n      operation=\"Write\",\n    },\n    \"device\", \"$1\", \"device\", \"/dev/(.*)\"\n  )\n)\n",
+          "hide": false,
+          "legendFormat": "{{pod}}/{{device}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Disk I/O Wait",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
       "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 52
+        "y": 78
       },
-      "id": 43,
+      "id": 60,
       "panels": [
         {
           "datasource": {
@@ -2930,9 +3692,9 @@
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 155
+            "y": 113
           },
-          "id": 48,
+          "id": 61,
           "options": {
             "legend": {
               "calcs": [
@@ -2951,7 +3713,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "12.0.0-85113",
+          "pluginVersion": "12.0.0-85518.patch7-85777",
           "targets": [
             {
               "datasource": {
@@ -2959,7 +3721,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "go_threads{namespace=\"$namespace\",container=\"query-backend\"}",
+              "expr": "go_threads{namespace=\"$namespace\",container=\"metastore\"}",
               "hide": false,
               "legendFormat": "{{pod}}",
               "range": true,
@@ -3053,9 +3815,9 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 155
+            "y": 113
           },
-          "id": 46,
+          "id": 62,
           "options": {
             "legend": {
               "calcs": [
@@ -3074,7 +3836,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "12.0.0-85113",
+          "pluginVersion": "12.0.0-85518.patch7-85777",
           "targets": [
             {
               "datasource": {
@@ -3082,7 +3844,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (go_goroutines{namespace=\"$namespace\",container=\"query-backend\"})",
+              "expr": "sum by (pod) (go_goroutines{namespace=\"$namespace\",container=\"metastore\"})",
               "hide": false,
               "legendFormat": "__auto",
               "range": true,
@@ -3176,9 +3938,9 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 155
+            "y": 113
           },
-          "id": 44,
+          "id": 63,
           "options": {
             "legend": {
               "calcs": [
@@ -3197,7 +3959,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "12.0.0-85113",
+          "pluginVersion": "12.0.0-85518.patch7-85777",
           "targets": [
             {
               "datasource": {
@@ -3205,7 +3967,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (go_memstats_heap_inuse_bytes{namespace=\"$namespace\",container=\"query-backend\"})",
+              "expr": "sum by (pod) (go_memstats_heap_inuse_bytes{namespace=\"$namespace\",container=\"metastore\"})",
               "hide": false,
               "legendFormat": "__auto",
               "range": true,
@@ -3300,9 +4062,9 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 155
+            "y": 113
           },
-          "id": 45,
+          "id": 64,
           "options": {
             "legend": {
               "calcs": [
@@ -3321,7 +4083,7 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "12.0.0-85113",
+          "pluginVersion": "12.0.0-85518.patch7-85777",
           "targets": [
             {
               "datasource": {
@@ -3329,7 +4091,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (container_file_descriptors{namespace=\"$namespace\",container=\"query-backend\"})",
+              "expr": "sum by (pod) (container_file_descriptors{namespace=\"$namespace\",container=\"metastore\"})",
               "hide": false,
               "legendFormat": "__auto",
               "range": true,
@@ -3343,65 +4105,6 @@
       ],
       "title": "Runtime",
       "type": "row"
-    },
-    {
-      "collapsed": true,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 53
-      },
-      "id": 42,
-      "panels": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "OP27Xzxnk"
-          },
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 156
-          },
-          "id": 41,
-          "options": {
-            "dedupStrategy": "none",
-            "enableInfiniteScrolling": false,
-            "enableLogDetails": true,
-            "prettifyLogMessage": false,
-            "showCommonLabels": false,
-            "showLabels": false,
-            "showTime": false,
-            "sortOrder": "Descending",
-            "wrapLogMessage": false
-          },
-          "pluginVersion": "12.0.0-85113",
-          "targets": [
-            {
-              "datasource": {
-                "type": "loki",
-                "uid": "OP27Xzxnk"
-              },
-              "direction": "backward",
-              "editorMode": "code",
-              "expr": "{cluster=\"$cluster\", namespace=\"$namespace\", container=\"query-backend\"} |= \"level=err\" or \"level=warn\" or \"panic\"",
-              "queryType": "range",
-              "refId": "A"
-            }
-          ],
-          "title": "Worker log",
-          "transparent": true,
-          "type": "logs"
-        }
-      ],
-      "title": "Errors and warnings",
-      "type": "row"
     }
   ],
   "preload": false,
@@ -3413,12 +4116,11 @@
   "templating": {
     "list": [
       {
-        "allowCustomValue": true,
         "current": {
           "text": "ops-cortex",
           "value": "000000134"
         },
-        "label": "metrics",
+        "includeAll": false,
         "name": "datasource",
         "options": [],
         "query": "prometheus",
@@ -3432,26 +4134,9 @@
           "text": "Grafana Logging",
           "value": "000000193"
         },
-        "description": "",
-        "label": "logs",
         "name": "loki_datasource",
         "options": [],
         "query": "loki",
-        "refresh": 1,
-        "regex": "",
-        "type": "datasource"
-      },
-      {
-        "allowCustomValue": false,
-        "current": {
-          "text": "Tempo Ops (tempo-ops-01)",
-          "value": "fds8vtxx3ao74b"
-        },
-        "description": "",
-        "label": "traces",
-        "name": "tempo_datasource",
-        "options": [],
-        "query": "tempo",
         "refresh": 1,
         "regex": "",
         "type": "datasource"
@@ -3511,5 +4196,5 @@
   },
   "timepicker": {},
   "timezone": "utc",
-  "title": "Pyroscope v2 / Read Path"
+  "title": "Pyroscope v2 / Metastore"
 }
