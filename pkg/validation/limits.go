@@ -158,7 +158,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxLabelNamesPerSeries, "validation.max-label-names-per-series", 30, "Maximum number of label names per series.")
 	f.IntVar(&l.MaxSessionsPerSeries, "validation.max-sessions-per-series", 0, "Maximum number of sessions per series. 0 to disable.")
 	f.BoolVar(&l.EnforceLabelsOrder, "validation.enforce-labels-order", false, "Enforce labels order optimization.")
-	f.BoolVar(&l.DisableLabelSanitization, "validation.disable-label-sanitization", false, "Disable label name sanitization (converting dots to underscores). When disabled, labels with dots are accepted as-is using UTF-8 validation.")
+	f.BoolVar(&l.DisableLabelSanitization, "validation.disable-label-sanitization", true, "Disable label name sanitization (converting dots to underscores). When disabled, labels with dots are accepted as-is using UTF-8 validation.")
 
 	f.IntVar(&l.MaxLocalSeriesPerTenant, "ingester.max-local-series-per-tenant", 0, "Maximum number of active series of profiles per tenant, per ingester. 0 to disable.")
 	f.IntVar(&l.MaxGlobalSeriesPerTenant, "ingester.max-global-series-per-tenant", 5000, "Maximum number of active series of profiles per tenant, across the cluster. 0 to disable. When the global limit is enabled, each ingester is configured with a dynamic local limit based on the replication factor and the current number of healthy ingesters, and is kept updated whenever the number of ingesters change.")
