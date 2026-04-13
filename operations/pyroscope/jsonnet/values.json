@@ -331,12 +331,12 @@
     "storage": {
       "migration": {
         "ingesterWeight": 1,
-        "queryBackend": true,
-        "queryBackendFrom": "auto",
+        "querier": true,
+        "querierUntil": "auto",
         "segmentWriterWeight": 1
       },
-      "v1": true,
-      "v2": false
+      "v1": false,
+      "v2": true
     }
   },
   "global": {
@@ -479,5 +479,8 @@
     "scrapeTimeout": null,
     "targetLabels": [],
     "tlsConfig": null
+  },
+  "upgrade": {
+    "acknowledgeBreakingChanges": false
   }
 }

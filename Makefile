@@ -45,10 +45,10 @@ GO_MOD_PATHS := api/ lidia/ examples/language-sdk-instrumentation/golang-push/ri
 # Add extra arguments to helm commands
 HELM_ARGS =
 
-HELM_FLAGS_V1 :=
-HELM_FLAGS_V1_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true
-HELM_FLAGS_V2 := --set architecture.storage.v1=false --set architecture.storage.v2=true
-HELM_FLAGS_V2_MICROSERVICES := $(HELM_FLAGS_V1_MICROSERVICES) $(HELM_FLAGS_V2)
+HELM_FLAGS_V2 :=
+HELM_FLAGS_V2_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true
+HELM_FLAGS_V1 := --set architecture.storage.v1=true --set architecture.storage.v2=false
+HELM_FLAGS_V1_MICROSERVICES := $(HELM_FLAGS_V2_MICROSERVICES) $(HELM_FLAGS_V1)
 
 
 # Local deployment params
