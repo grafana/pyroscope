@@ -44,10 +44,7 @@ func (q *QueryFrontend) selectMergeStacktracesDot(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
-	// Use separate max nodes for source pprof fetch vs DOT rendering,
-	// matching the /pyroscope/render behavior. The source pprof should
-	// be richer (at least 512 nodes) so the DOT truncation algorithm
-	// can pick the most important nodes from a larger dataset.
+	// Use separate max nodes for source pprof fetch vs DOT rendering
 	const defaultSourceMaxNodes = int64(512)
 	const defaultDotMaxNodes = int64(100)
 	dotMaxNodes := defaultDotMaxNodes
