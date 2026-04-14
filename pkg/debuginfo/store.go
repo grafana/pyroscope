@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"path"
 	"regexp"
 	"time"
@@ -14,12 +15,12 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/gorilla/mux"
 	"github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
-	debuginforeader "github.com/grafana/pyroscope/pkg/debuginfo/reader"
 	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
@@ -67,13 +68,12 @@ const (
 	ReasonDisabled               = "DebugInfo upload disabled"
 )
 
-func (s *Store) shouldInitiateUpload(
+func (s *Store) checkShouldInitiateUpload(
 	md *debuginfov1alpha1.ObjectMetadata,
 ) (
 	*debuginfov1alpha1.ShouldInitiateUploadResponse,
 	error,
 ) {
-
 	if md == nil {
 		return &debuginfov1alpha1.ShouldInitiateUploadResponse{
 			ShouldInitiateUpload: true,
@@ -104,107 +104,137 @@ func (s *Store) shouldInitiateUpload(
 	}
 }
 
-func (s *Store) Upload(ctx context.Context, stream *connect.BidiStream[debuginfov1alpha1.UploadRequest, debuginfov1alpha1.UploadResponse]) error {
+func (s *Store) ShouldInitiateUpload(
+	ctx context.Context,
+	req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest],
+) (*connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], error) {
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
-		return connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	req, err := stream.Receive()
+
+	if !s.cfg.Enabled {
+		return connect.NewResponse(&debuginfov1alpha1.ShouldInitiateUploadResponse{
+			ShouldInitiateUpload: false,
+			Reason:               ReasonDisabled,
+		}), nil
+	}
+
+	id, err := validateInit(req.Msg)
 	if err != nil {
-		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to receive init request: %w", err))
-	}
-	init := req.GetInit()
-	id, err := validateInit(init)
-	if err != nil {
-		return connect.NewError(connect.CodeInternal, fmt.Errorf("invalid init request: %w", err))
-	}
-
-	l := log.With(s.logger, "gnu_build_id", init.File.GnuBuildId)
-
-	if !s.cfg.Enabled { // move this to 	shouldInitiateUpload func
-
-		return stream.Send(&debuginfov1alpha1.UploadResponse{
-			Data: &debuginfov1alpha1.UploadResponse_Init{
-				Init: &debuginfov1alpha1.ShouldInitiateUploadResponse{
-					ShouldInitiateUpload: false,
-					Reason:               ReasonDisabled,
-				},
-			},
-		})
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid request: %w", err))
 	}
 
 	md, err := s.fetchMetadata(ctx, tenantID, id)
 	if err != nil {
-		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch metadata: %w", err))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch metadata: %w", err))
 	}
 
-	initResponse, err := s.shouldInitiateUpload(md)
+	resp, err := s.checkShouldInitiateUpload(md)
 	if err != nil {
-		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed shouldInitiateUpload check: %w", err))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed shouldInitiateUpload check: %w", err))
 	}
 
-	err = stream.Send(&debuginfov1alpha1.UploadResponse{
-		Data: &debuginfov1alpha1.UploadResponse_Init{
-			Init: initResponse,
-		},
+	if resp.ShouldInitiateUpload {
+		md = &debuginfov1alpha1.ObjectMetadata{
+			File:      req.Msg.File,
+			State:     debuginfov1alpha1.ObjectMetadata_STATE_UPLOADING,
+			StartedAt: timestamppb.New(time.Now()),
+		}
+		if err := s.writeMetadata(ctx, tenantID, id, md); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to write uploading metadata: %w", err))
+		}
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+func (s *Store) UploadHTTPHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+		if err != nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		gnuBuildIDStr := mux.Vars(r)["gnu_build_id"]
+		id, err := ValidateGnuBuildID(gnuBuildIDStr)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("invalid gnu_build_id: %v", err), http.StatusBadRequest)
+			return
+		}
+
+		l := log.With(s.logger, "gnu_build_id", id.gnuBuildID)
+
+		md, err := s.fetchMetadata(ctx, tenantID, id)
+		if err != nil {
+			_ = level.Error(l).Log("msg", "failed to fetch metadata", "err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if md == nil || md.State != debuginfov1alpha1.ObjectMetadata_STATE_UPLOADING {
+			http.Error(w, "no pending upload for this build ID", http.StatusPreconditionFailed)
+			return
+		}
+
+		if s.cfg.MaxUploadSize > 0 {
+			r.Body = http.MaxBytesReader(w, r.Body, s.cfg.MaxUploadSize)
+		}
+		if err := s.bucket.Upload(ctx, ObjectPath(tenantID, id), r.Body); err != nil {
+			_ = level.Error(l).Log("msg", "failed to upload debuginfo", "err", err)
+			http.Error(w, "upload failed", http.StatusInternalServerError)
+			return
+		}
+
+		_ = level.Debug(l).Log("msg", "debuginfo upload completed")
+		w.WriteHeader(http.StatusOK)
 	})
+}
+
+func (s *Store) UploadFinished(
+	ctx context.Context,
+	req *connect.Request[debuginfov1alpha1.UploadFinishedRequest],
+) (*connect.Response[debuginfov1alpha1.UploadFinishedResponse], error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
-		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to send init response: %w", err))
-	}
-	if !initResponse.ShouldInitiateUpload {
-		return nil
-	}
-	md = &debuginfov1alpha1.ObjectMetadata{
-		File:       init.File,
-		State:      debuginfov1alpha1.ObjectMetadata_STATE_UPLOADING,
-		StartedAt:  timestamppb.New(time.Now()),
-		FinishedAt: nil,
-	}
-	if err := s.writeMetadata(ctx, tenantID, id, md); err != nil {
-		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to write uploading metadata: %w", err))
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	r := debuginforeader.New(ctx, readChunksFromStream(stream))
-	var uploadReader io.Reader = r
-	if s.cfg.MaxUploadSize > 0 {
-		uploadReader = io.LimitReader(r, s.cfg.MaxUploadSize+1)
+	id, err := ValidateGnuBuildID(req.Msg.GnuBuildId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid gnu_build_id: %w", err))
 	}
-	if err := s.bucket.Upload(ctx, ObjectPath(tenantID, id), uploadReader); err != nil {
-		return connect.NewError(connect.CodeInternal, fmt.Errorf("upload debuginfo: %w", err))
+
+	l := log.With(s.logger, "gnu_build_id", id.gnuBuildID)
+
+	md, err := s.fetchMetadata(ctx, tenantID, id)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch metadata: %w", err))
 	}
-	if s.cfg.MaxUploadSize > 0 && r.Size() > uint64(s.cfg.MaxUploadSize) {
-		_ = s.bucket.Delete(ctx, ObjectPath(tenantID, id))
-		return connect.NewError(connect.CodeInvalidArgument,
-			fmt.Errorf("upload size %d exceeds maximum allowed size of %d bytes", r.Size(), s.cfg.MaxUploadSize))
+	if md == nil {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no upload metadata found for build ID %s", req.Msg.GnuBuildId))
 	}
+	if md.State != debuginfov1alpha1.ObjectMetadata_STATE_UPLOADING {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("upload is not in uploading state"))
+	}
+
+	exists, err := s.bucket.Exists(ctx, ObjectPath(tenantID, id))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to check uploaded file: %w", err))
+	}
+	if !exists {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("no uploaded file found for build ID %s", req.Msg.GnuBuildId))
+	}
+
 	md.State = debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED
 	md.FinishedAt = timestamppb.New(time.Now())
 	if err := s.writeMetadata(ctx, tenantID, id, md); err != nil {
-		return connect.NewError(connect.CodeInternal, fmt.Errorf("failed to write uploaded metadata: %w", err))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to write uploaded metadata: %w", err))
 	}
 
-	_ = level.Debug(l).Log(
-		"msg", "debuginfo upload completed",
-		"size", r.Size(),
-	)
-	return nil
-}
-
-func readChunksFromStream(stream *connect.BidiStream[debuginfov1alpha1.UploadRequest, debuginfov1alpha1.UploadResponse]) func() ([]byte, error) {
-	return func() ([]byte, error) {
-		req, err := stream.Receive()
-		if errors.Is(err, io.EOF) {
-			return nil, io.EOF
-		}
-		if err != nil {
-			return nil, fmt.Errorf("receive from stream: %w", err)
-		}
-		chunk := req.GetChunk()
-		if chunk == nil || len(chunk.Chunk) == 0 {
-			return nil, fmt.Errorf("receive from stream: chunk is nil")
-		}
-		return chunk.Chunk, nil
-	}
+	_ = level.Debug(l).Log("msg", "debuginfo upload finished")
+	return connect.NewResponse(&debuginfov1alpha1.UploadFinishedResponse{}), nil
 }
 
 func validateInit(init *debuginfov1alpha1.ShouldInitiateUploadRequest) (*ValidGnuBuildID, error) {

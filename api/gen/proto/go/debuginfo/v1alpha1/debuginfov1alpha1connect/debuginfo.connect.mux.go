@@ -19,9 +19,14 @@ const _ = connect.IsAtLeastVersion0_1_0
 // RegisterDebuginfoServiceHandler register an HTTP handler to a mux.Router from the service
 // implementation.
 func RegisterDebuginfoServiceHandler(mux *mux.Router, svc DebuginfoServiceHandler, opts ...connect.HandlerOption) {
-	mux.Handle("/debuginfo.v1alpha1.DebuginfoService/Upload", connect.NewBidiStreamHandler(
-		"/debuginfo.v1alpha1.DebuginfoService/Upload",
-		svc.Upload,
+	mux.Handle("/debuginfo.v1alpha1.DebuginfoService/ShouldInitiateUpload", connect.NewUnaryHandler(
+		"/debuginfo.v1alpha1.DebuginfoService/ShouldInitiateUpload",
+		svc.ShouldInitiateUpload,
+		opts...,
+	))
+	mux.Handle("/debuginfo.v1alpha1.DebuginfoService/UploadFinished", connect.NewUnaryHandler(
+		"/debuginfo.v1alpha1.DebuginfoService/UploadFinished",
+		svc.UploadFinished,
 		opts...,
 	))
 }

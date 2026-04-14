@@ -46,92 +46,6 @@ func (m *FileMetadata) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *UploadRequest) CloneVT() *UploadRequest {
-	if m == nil {
-		return (*UploadRequest)(nil)
-	}
-	r := new(UploadRequest)
-	if m.Data != nil {
-		r.Data = m.Data.(interface{ CloneVT() isUploadRequest_Data }).CloneVT()
-	}
-	if len(m.unknownFields) > 0 {
-		r.unknownFields = make([]byte, len(m.unknownFields))
-		copy(r.unknownFields, m.unknownFields)
-	}
-	return r
-}
-
-func (m *UploadRequest) CloneMessageVT() proto.Message {
-	return m.CloneVT()
-}
-
-func (m *UploadRequest_Init) CloneVT() isUploadRequest_Data {
-	if m == nil {
-		return (*UploadRequest_Init)(nil)
-	}
-	r := new(UploadRequest_Init)
-	r.Init = m.Init.CloneVT()
-	return r
-}
-
-func (m *UploadRequest_Chunk) CloneVT() isUploadRequest_Data {
-	if m == nil {
-		return (*UploadRequest_Chunk)(nil)
-	}
-	r := new(UploadRequest_Chunk)
-	r.Chunk = m.Chunk.CloneVT()
-	return r
-}
-
-func (m *UploadResponse) CloneVT() *UploadResponse {
-	if m == nil {
-		return (*UploadResponse)(nil)
-	}
-	r := new(UploadResponse)
-	if m.Data != nil {
-		r.Data = m.Data.(interface{ CloneVT() isUploadResponse_Data }).CloneVT()
-	}
-	if len(m.unknownFields) > 0 {
-		r.unknownFields = make([]byte, len(m.unknownFields))
-		copy(r.unknownFields, m.unknownFields)
-	}
-	return r
-}
-
-func (m *UploadResponse) CloneMessageVT() proto.Message {
-	return m.CloneVT()
-}
-
-func (m *UploadResponse_Init) CloneVT() isUploadResponse_Data {
-	if m == nil {
-		return (*UploadResponse_Init)(nil)
-	}
-	r := new(UploadResponse_Init)
-	r.Init = m.Init.CloneVT()
-	return r
-}
-
-func (m *UploadChunk) CloneVT() *UploadChunk {
-	if m == nil {
-		return (*UploadChunk)(nil)
-	}
-	r := new(UploadChunk)
-	if rhs := m.Chunk; rhs != nil {
-		tmpBytes := make([]byte, len(rhs))
-		copy(tmpBytes, rhs)
-		r.Chunk = tmpBytes
-	}
-	if len(m.unknownFields) > 0 {
-		r.unknownFields = make([]byte, len(m.unknownFields))
-		copy(r.unknownFields, m.unknownFields)
-	}
-	return r
-}
-
-func (m *UploadChunk) CloneMessageVT() proto.Message {
-	return m.CloneVT()
-}
-
 func (m *ShouldInitiateUploadRequest) CloneVT() *ShouldInitiateUploadRequest {
 	if m == nil {
 		return (*ShouldInitiateUploadRequest)(nil)
@@ -146,52 +60,6 @@ func (m *ShouldInitiateUploadRequest) CloneVT() *ShouldInitiateUploadRequest {
 }
 
 func (m *ShouldInitiateUploadRequest) CloneMessageVT() proto.Message {
-	return m.CloneVT()
-}
-
-func (m *UploadStrategy) CloneVT() *UploadStrategy {
-	if m == nil {
-		return (*UploadStrategy)(nil)
-	}
-	r := new(UploadStrategy)
-	if m.Strategy != nil {
-		r.Strategy = m.Strategy.(interface {
-			CloneVT() isUploadStrategy_Strategy
-		}).CloneVT()
-	}
-	if len(m.unknownFields) > 0 {
-		r.unknownFields = make([]byte, len(m.unknownFields))
-		copy(r.unknownFields, m.unknownFields)
-	}
-	return r
-}
-
-func (m *UploadStrategy) CloneMessageVT() proto.Message {
-	return m.CloneVT()
-}
-
-func (m *UploadStrategy_Grpc) CloneVT() isUploadStrategy_Strategy {
-	if m == nil {
-		return (*UploadStrategy_Grpc)(nil)
-	}
-	r := new(UploadStrategy_Grpc)
-	r.Grpc = m.Grpc.CloneVT()
-	return r
-}
-
-func (m *GrpcStrategy) CloneVT() *GrpcStrategy {
-	if m == nil {
-		return (*GrpcStrategy)(nil)
-	}
-	r := new(GrpcStrategy)
-	if len(m.unknownFields) > 0 {
-		r.unknownFields = make([]byte, len(m.unknownFields))
-		copy(r.unknownFields, m.unknownFields)
-	}
-	return r
-}
-
-func (m *GrpcStrategy) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -210,6 +78,39 @@ func (m *ShouldInitiateUploadResponse) CloneVT() *ShouldInitiateUploadResponse {
 }
 
 func (m *ShouldInitiateUploadResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *UploadFinishedRequest) CloneVT() *UploadFinishedRequest {
+	if m == nil {
+		return (*UploadFinishedRequest)(nil)
+	}
+	r := new(UploadFinishedRequest)
+	r.GnuBuildId = m.GnuBuildId
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *UploadFinishedRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *UploadFinishedResponse) CloneVT() *UploadFinishedResponse {
+	if m == nil {
+		return (*UploadFinishedResponse)(nil)
+	}
+	r := new(UploadFinishedResponse)
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *UploadFinishedResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -264,156 +165,6 @@ func (this *FileMetadata) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *UploadRequest) EqualVT(that *UploadRequest) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	if this.Data == nil && that.Data != nil {
-		return false
-	} else if this.Data != nil {
-		if that.Data == nil {
-			return false
-		}
-		if !this.Data.(interface {
-			EqualVT(isUploadRequest_Data) bool
-		}).EqualVT(that.Data) {
-			return false
-		}
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *UploadRequest) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*UploadRequest)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
-func (this *UploadRequest_Init) EqualVT(thatIface isUploadRequest_Data) bool {
-	that, ok := thatIface.(*UploadRequest_Init)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.Init, that.Init; p != q {
-		if p == nil {
-			p = &ShouldInitiateUploadRequest{}
-		}
-		if q == nil {
-			q = &ShouldInitiateUploadRequest{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *UploadRequest_Chunk) EqualVT(thatIface isUploadRequest_Data) bool {
-	that, ok := thatIface.(*UploadRequest_Chunk)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.Chunk, that.Chunk; p != q {
-		if p == nil {
-			p = &UploadChunk{}
-		}
-		if q == nil {
-			q = &UploadChunk{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *UploadResponse) EqualVT(that *UploadResponse) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	if this.Data == nil && that.Data != nil {
-		return false
-	} else if this.Data != nil {
-		if that.Data == nil {
-			return false
-		}
-		if !this.Data.(interface {
-			EqualVT(isUploadResponse_Data) bool
-		}).EqualVT(that.Data) {
-			return false
-		}
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *UploadResponse) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*UploadResponse)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
-func (this *UploadResponse_Init) EqualVT(thatIface isUploadResponse_Data) bool {
-	that, ok := thatIface.(*UploadResponse_Init)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.Init, that.Init; p != q {
-		if p == nil {
-			p = &ShouldInitiateUploadResponse{}
-		}
-		if q == nil {
-			q = &ShouldInitiateUploadResponse{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *UploadChunk) EqualVT(that *UploadChunk) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	if string(this.Chunk) != string(that.Chunk) {
-		return false
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *UploadChunk) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*UploadChunk)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
 func (this *ShouldInitiateUploadRequest) EqualVT(that *ShouldInitiateUploadRequest) bool {
 	if this == that {
 		return true
@@ -428,75 +179,6 @@ func (this *ShouldInitiateUploadRequest) EqualVT(that *ShouldInitiateUploadReque
 
 func (this *ShouldInitiateUploadRequest) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*ShouldInitiateUploadRequest)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
-func (this *UploadStrategy) EqualVT(that *UploadStrategy) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	if this.Strategy == nil && that.Strategy != nil {
-		return false
-	} else if this.Strategy != nil {
-		if that.Strategy == nil {
-			return false
-		}
-		if !this.Strategy.(interface {
-			EqualVT(isUploadStrategy_Strategy) bool
-		}).EqualVT(that.Strategy) {
-			return false
-		}
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *UploadStrategy) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*UploadStrategy)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
-func (this *UploadStrategy_Grpc) EqualVT(thatIface isUploadStrategy_Strategy) bool {
-	that, ok := thatIface.(*UploadStrategy_Grpc)
-	if !ok {
-		return false
-	}
-	if this == that {
-		return true
-	}
-	if this == nil && that != nil || this != nil && that == nil {
-		return false
-	}
-	if p, q := this.Grpc, that.Grpc; p != q {
-		if p == nil {
-			p = &GrpcStrategy{}
-		}
-		if q == nil {
-			q = &GrpcStrategy{}
-		}
-		if !p.EqualVT(q) {
-			return false
-		}
-	}
-	return true
-}
-
-func (this *GrpcStrategy) EqualVT(that *GrpcStrategy) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *GrpcStrategy) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*GrpcStrategy)
 	if !ok {
 		return false
 	}
@@ -519,6 +201,41 @@ func (this *ShouldInitiateUploadResponse) EqualVT(that *ShouldInitiateUploadResp
 
 func (this *ShouldInitiateUploadResponse) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*ShouldInitiateUploadResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *UploadFinishedRequest) EqualVT(that *UploadFinishedRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.GnuBuildId != that.GnuBuildId {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *UploadFinishedRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*UploadFinishedRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *UploadFinishedResponse) EqualVT(that *UploadFinishedResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *UploadFinishedResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*UploadFinishedResponse)
 	if !ok {
 		return false
 	}
@@ -562,9 +279,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DebuginfoServiceClient interface {
-	// clients are expected to send ShouldInitiateUploadRequest, receive ShouldInitiateUploadResponse and then
-	// if should_initiate_upload is true send a bunch of UploadChunk until EOF
-	Upload(ctx context.Context, opts ...grpc.CallOption) (DebuginfoService_UploadClient, error)
+	ShouldInitiateUpload(ctx context.Context, in *ShouldInitiateUploadRequest, opts ...grpc.CallOption) (*ShouldInitiateUploadResponse, error)
+	UploadFinished(ctx context.Context, in *UploadFinishedRequest, opts ...grpc.CallOption) (*UploadFinishedResponse, error)
 }
 
 type debuginfoServiceClient struct {
@@ -575,44 +291,30 @@ func NewDebuginfoServiceClient(cc grpc.ClientConnInterface) DebuginfoServiceClie
 	return &debuginfoServiceClient{cc}
 }
 
-func (c *debuginfoServiceClient) Upload(ctx context.Context, opts ...grpc.CallOption) (DebuginfoService_UploadClient, error) {
-	stream, err := c.cc.NewStream(ctx, &DebuginfoService_ServiceDesc.Streams[0], "/debuginfo.v1alpha1.DebuginfoService/Upload", opts...)
+func (c *debuginfoServiceClient) ShouldInitiateUpload(ctx context.Context, in *ShouldInitiateUploadRequest, opts ...grpc.CallOption) (*ShouldInitiateUploadResponse, error) {
+	out := new(ShouldInitiateUploadResponse)
+	err := c.cc.Invoke(ctx, "/debuginfo.v1alpha1.DebuginfoService/ShouldInitiateUpload", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &debuginfoServiceUploadClient{stream}
-	return x, nil
+	return out, nil
 }
 
-type DebuginfoService_UploadClient interface {
-	Send(*UploadRequest) error
-	Recv() (*UploadResponse, error)
-	grpc.ClientStream
-}
-
-type debuginfoServiceUploadClient struct {
-	grpc.ClientStream
-}
-
-func (x *debuginfoServiceUploadClient) Send(m *UploadRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *debuginfoServiceUploadClient) Recv() (*UploadResponse, error) {
-	m := new(UploadResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
+func (c *debuginfoServiceClient) UploadFinished(ctx context.Context, in *UploadFinishedRequest, opts ...grpc.CallOption) (*UploadFinishedResponse, error) {
+	out := new(UploadFinishedResponse)
+	err := c.cc.Invoke(ctx, "/debuginfo.v1alpha1.DebuginfoService/UploadFinished", in, out, opts...)
+	if err != nil {
 		return nil, err
 	}
-	return m, nil
+	return out, nil
 }
 
 // DebuginfoServiceServer is the server API for DebuginfoService service.
 // All implementations must embed UnimplementedDebuginfoServiceServer
 // for forward compatibility
 type DebuginfoServiceServer interface {
-	// clients are expected to send ShouldInitiateUploadRequest, receive ShouldInitiateUploadResponse and then
-	// if should_initiate_upload is true send a bunch of UploadChunk until EOF
-	Upload(DebuginfoService_UploadServer) error
+	ShouldInitiateUpload(context.Context, *ShouldInitiateUploadRequest) (*ShouldInitiateUploadResponse, error)
+	UploadFinished(context.Context, *UploadFinishedRequest) (*UploadFinishedResponse, error)
 	mustEmbedUnimplementedDebuginfoServiceServer()
 }
 
@@ -620,8 +322,11 @@ type DebuginfoServiceServer interface {
 type UnimplementedDebuginfoServiceServer struct {
 }
 
-func (UnimplementedDebuginfoServiceServer) Upload(DebuginfoService_UploadServer) error {
-	return status.Errorf(codes.Unimplemented, "method Upload not implemented")
+func (UnimplementedDebuginfoServiceServer) ShouldInitiateUpload(context.Context, *ShouldInitiateUploadRequest) (*ShouldInitiateUploadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShouldInitiateUpload not implemented")
+}
+func (UnimplementedDebuginfoServiceServer) UploadFinished(context.Context, *UploadFinishedRequest) (*UploadFinishedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UploadFinished not implemented")
 }
 func (UnimplementedDebuginfoServiceServer) mustEmbedUnimplementedDebuginfoServiceServer() {}
 
@@ -636,30 +341,40 @@ func RegisterDebuginfoServiceServer(s grpc.ServiceRegistrar, srv DebuginfoServic
 	s.RegisterService(&DebuginfoService_ServiceDesc, srv)
 }
 
-func _DebuginfoService_Upload_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(DebuginfoServiceServer).Upload(&debuginfoServiceUploadServer{stream})
-}
-
-type DebuginfoService_UploadServer interface {
-	Send(*UploadResponse) error
-	Recv() (*UploadRequest, error)
-	grpc.ServerStream
-}
-
-type debuginfoServiceUploadServer struct {
-	grpc.ServerStream
-}
-
-func (x *debuginfoServiceUploadServer) Send(m *UploadResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *debuginfoServiceUploadServer) Recv() (*UploadRequest, error) {
-	m := new(UploadRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _DebuginfoService_ShouldInitiateUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShouldInitiateUploadRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(DebuginfoServiceServer).ShouldInitiateUpload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/debuginfo.v1alpha1.DebuginfoService/ShouldInitiateUpload",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DebuginfoServiceServer).ShouldInitiateUpload(ctx, req.(*ShouldInitiateUploadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DebuginfoService_UploadFinished_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadFinishedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DebuginfoServiceServer).UploadFinished(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/debuginfo.v1alpha1.DebuginfoService/UploadFinished",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DebuginfoServiceServer).UploadFinished(ctx, req.(*UploadFinishedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 // DebuginfoService_ServiceDesc is the grpc.ServiceDesc for DebuginfoService service.
@@ -668,15 +383,17 @@ func (x *debuginfoServiceUploadServer) Recv() (*UploadRequest, error) {
 var DebuginfoService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "debuginfo.v1alpha1.DebuginfoService",
 	HandlerType: (*DebuginfoServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams: []grpc.StreamDesc{
+	Methods: []grpc.MethodDesc{
 		{
-			StreamName:    "Upload",
-			Handler:       _DebuginfoService_Upload_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
+			MethodName: "ShouldInitiateUpload",
+			Handler:    _DebuginfoService_ShouldInitiateUpload_Handler,
+		},
+		{
+			MethodName: "UploadFinished",
+			Handler:    _DebuginfoService_UploadFinished_Handler,
 		},
 	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "debuginfo/v1alpha1/debuginfo.proto",
 }
 
@@ -746,187 +463,6 @@ func (m *FileMetadata) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *UploadRequest) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *UploadRequest) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *UploadRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	if vtmsg, ok := m.Data.(interface {
-		MarshalToSizedBufferVT([]byte) (int, error)
-	}); ok {
-		size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *UploadRequest_Init) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *UploadRequest_Init) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Init != nil {
-		size, err := m.Init.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-func (m *UploadRequest_Chunk) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *UploadRequest_Chunk) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Chunk != nil {
-		size, err := m.Chunk.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x12
-	}
-	return len(dAtA) - i, nil
-}
-func (m *UploadResponse) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *UploadResponse) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *UploadResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	if vtmsg, ok := m.Data.(interface {
-		MarshalToSizedBufferVT([]byte) (int, error)
-	}); ok {
-		size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *UploadResponse_Init) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *UploadResponse_Init) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Init != nil {
-		size, err := m.Init.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-func (m *UploadChunk) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *UploadChunk) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *UploadChunk) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	if len(m.Chunk) > 0 {
-		i -= len(m.Chunk)
-		copy(dAtA[i:], m.Chunk)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Chunk)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
 func (m *ShouldInitiateUploadRequest) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -966,100 +502,6 @@ func (m *ShouldInitiateUploadRequest) MarshalToSizedBufferVT(dAtA []byte) (int, 
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
 		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *UploadStrategy) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *UploadStrategy) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *UploadStrategy) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	if vtmsg, ok := m.Strategy.(interface {
-		MarshalToSizedBufferVT([]byte) (int, error)
-	}); ok {
-		size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *UploadStrategy_Grpc) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *UploadStrategy_Grpc) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Grpc != nil {
-		size, err := m.Grpc.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-func (m *GrpcStrategy) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *GrpcStrategy) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *GrpcStrategy) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
 	}
 	return len(dAtA) - i, nil
 }
@@ -1110,6 +552,79 @@ func (m *ShouldInitiateUploadResponse) MarshalToSizedBufferVT(dAtA []byte) (int,
 		}
 		i--
 		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *UploadFinishedRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *UploadFinishedRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *UploadFinishedRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.GnuBuildId) > 0 {
+		i -= len(m.GnuBuildId)
+		copy(dAtA[i:], m.GnuBuildId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.GnuBuildId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *UploadFinishedResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *UploadFinishedResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *UploadFinishedResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
 	}
 	return len(dAtA) - i, nil
 }
@@ -1211,82 +726,6 @@ func (m *FileMetadata) SizeVT() (n int) {
 	return n
 }
 
-func (m *UploadRequest) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if vtmsg, ok := m.Data.(interface{ SizeVT() int }); ok {
-		n += vtmsg.SizeVT()
-	}
-	n += len(m.unknownFields)
-	return n
-}
-
-func (m *UploadRequest_Init) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Init != nil {
-		l = m.Init.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *UploadRequest_Chunk) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Chunk != nil {
-		l = m.Chunk.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *UploadResponse) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if vtmsg, ok := m.Data.(interface{ SizeVT() int }); ok {
-		n += vtmsg.SizeVT()
-	}
-	n += len(m.unknownFields)
-	return n
-}
-
-func (m *UploadResponse_Init) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Init != nil {
-		l = m.Init.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *UploadChunk) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Chunk)
-	if l > 0 {
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	n += len(m.unknownFields)
-	return n
-}
-
 func (m *ShouldInitiateUploadRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -1297,41 +736,6 @@ func (m *ShouldInitiateUploadRequest) SizeVT() (n int) {
 		l = m.File.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	n += len(m.unknownFields)
-	return n
-}
-
-func (m *UploadStrategy) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if vtmsg, ok := m.Strategy.(interface{ SizeVT() int }); ok {
-		n += vtmsg.SizeVT()
-	}
-	n += len(m.unknownFields)
-	return n
-}
-
-func (m *UploadStrategy_Grpc) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Grpc != nil {
-		l = m.Grpc.SizeVT()
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	return n
-}
-func (m *GrpcStrategy) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
 	n += len(m.unknownFields)
 	return n
 }
@@ -1349,6 +753,30 @@ func (m *ShouldInitiateUploadResponse) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *UploadFinishedRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.GnuBuildId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *UploadFinishedResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
 	n += len(m.unknownFields)
 	return n
 }
@@ -1576,316 +1004,6 @@ func (m *FileMetadata) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *UploadRequest) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return protohelpers.ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: UploadRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: UploadRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Init", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if oneof, ok := m.Data.(*UploadRequest_Init); ok {
-				if err := oneof.Init.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &ShouldInitiateUploadRequest{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.Data = &UploadRequest_Init{Init: v}
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Chunk", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if oneof, ok := m.Data.(*UploadRequest_Chunk); ok {
-				if err := oneof.Chunk.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &UploadChunk{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.Data = &UploadRequest_Chunk{Chunk: v}
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *UploadResponse) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return protohelpers.ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: UploadResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: UploadResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Init", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if oneof, ok := m.Data.(*UploadResponse_Init); ok {
-				if err := oneof.Init.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &ShouldInitiateUploadResponse{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.Data = &UploadResponse_Init{Init: v}
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *UploadChunk) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return protohelpers.ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: UploadChunk: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: UploadChunk: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Chunk", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Chunk = append(m.Chunk[:0], dAtA[iNdEx:postIndex]...)
-			if m.Chunk == nil {
-				m.Chunk = []byte{}
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
 func (m *ShouldInitiateUploadRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -1951,149 +1069,6 @@ func (m *ShouldInitiateUploadRequest) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *UploadStrategy) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return protohelpers.ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: UploadStrategy: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: UploadStrategy: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Grpc", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if oneof, ok := m.Strategy.(*UploadStrategy_Grpc); ok {
-				if err := oneof.Grpc.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				v := &GrpcStrategy{}
-				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-				m.Strategy = &UploadStrategy_Grpc{Grpc: v}
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *GrpcStrategy) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return protohelpers.ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: GrpcStrategy: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GrpcStrategy: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -2197,6 +1172,140 @@ func (m *ShouldInitiateUploadResponse) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Reason = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UploadFinishedRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UploadFinishedRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UploadFinishedRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field GnuBuildId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.GnuBuildId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UploadFinishedResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UploadFinishedResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UploadFinishedResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
