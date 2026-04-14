@@ -93,9 +93,9 @@ func Query[Req, Resp any](
 		return router.resolver.OldestProfileTime(ctx, tenantID)
 	})
 	if err != nil {
-		level.Warn(router.logger).Log("msg", "failed to resolve split time, falling back to old frontend", "err", err)
-		sanitize(req.Msg, nil)
-		return query[Req, Resp](ctx, router.oldFrontend, req)
+		level.Warn(router.logger).Log("msg", "failed to resolve split time, falling back to new frontend", "err", err)
+		sanitize(nil, req.Msg)
+		return query[Req, Resp](ctx, router.newFrontend, req)
 	}
 	level.Debug(router.logger).Log("msg", "resolved split time for query backend routing", "split_time", splitTime.UTC().Format(time.RFC3339))
 
