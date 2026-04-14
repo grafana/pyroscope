@@ -44,12 +44,29 @@ func (q *QueryFrontend) selectMergeStacktracesDot(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	// Use separate max nodes for source pprof fetch vs DOT rendering,
+	// matching the /pyroscope/render behavior. The source pprof should
+	// be richer (at least 512 nodes) so the DOT truncation algorithm
+	// can pick the most important nodes from a larger dataset.
+	const defaultSourceMaxNodes = int64(512)
+	const defaultDotMaxNodes = int64(100)
+	dotMaxNodes := defaultDotMaxNodes
+	sourceMaxNodes := defaultSourceMaxNodes
+	if c.Msg.MaxNodes != nil {
+		if v := c.Msg.GetMaxNodes(); v > 0 {
+			dotMaxNodes = v
+		}
+		if dotMaxNodes > sourceMaxNodes {
+			sourceMaxNodes = dotMaxNodes
+		}
+	}
+
 	pprofResp, err := q.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
 		ProfileTypeID:      c.Msg.ProfileTypeID,
 		LabelSelector:      c.Msg.LabelSelector,
 		Start:              c.Msg.Start,
 		End:                c.Msg.End,
-		MaxNodes:           c.Msg.MaxNodes,
+		MaxNodes:           &sourceMaxNodes,
 		StackTraceSelector: c.Msg.StackTraceSelector,
 		ProfileIdSelector:  c.Msg.ProfileIdSelector,
 	}))
@@ -60,18 +77,7 @@ func (q *QueryFrontend) selectMergeStacktracesDot(
 		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{}), nil
 	}
 
-	// Use the same validated max nodes for DOT rendering as SelectMergeProfile
-	// uses for the pprof fetch. This ensures tenant limits are respected.
-	tenantIDs, err := tenant.TenantIDs(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	maxNodes, err := validation.ValidateMaxNodes(q.limits, tenantIDs, c.Msg.GetMaxNodes())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-
-	d, err := dot.FromProfile(pprofResp.Msg, int(maxNodes))
+	d, err := dot.FromProfile(pprofResp.Msg, int(dotMaxNodes))
 	if err != nil {
 		return nil, err
 	}
