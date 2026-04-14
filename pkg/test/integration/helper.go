@@ -40,6 +40,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/cfg"
+	"github.com/grafana/pyroscope/pkg/distributor/writepath"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -160,12 +161,11 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 
 	if !v2 {
 		p.config.ArchitectureStorage = pyroscope.Legacy
+		p.config.LimitsConfig.WritePathOverrides.WritePath = writepath.IngesterPath
 		p.config.Storage.Bucket.Backend = objstoreclient.None
 	} else {
 		p.config.Storage.Bucket.Filesystem.Directory = t.TempDir()
 		p.config.Storage.Bucket.Backend = "filesystem"
-		p.config.LimitsConfig.WritePathOverrides.WritePath = "segment-writer"
-		p.config.LimitsConfig.ReadPathOverrides.EnableQueryBackend = true
 		p.config.SegmentWriter.LifecyclerConfig.MinReadyDuration = 0 * time.Second
 		p.config.SegmentWriter.LifecyclerConfig.Addr = address
 		p.config.SegmentWriter.MetadataUpdateTimeout = 0 * time.Second
