@@ -853,7 +853,7 @@ func TestStatusCodes(t *testing.T) {
 						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":      time.Now().UnixMilli(),
 					}),
-					WantV1StatusCode: http.StatusOK,
+					WantV1StatusCode: http.StatusInternalServerError,
 				},
 				{
 					Name:   "invalid_json",
@@ -1046,7 +1046,7 @@ func TestStatusCodes(t *testing.T) {
 						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":      time.Now().UnixMilli(),
 					}),
-					WantV1StatusCode: http.StatusOK,
+					WantV1StatusCode: http.StatusInternalServerError,
 				},
 			},
 			http.StatusMethodNotAllowed: {
@@ -1200,7 +1200,7 @@ func TestStatusCodes(t *testing.T) {
 						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":      time.Now().UnixMilli(),
 					}),
-					WantV1StatusCode: http.StatusOK,
+					WantV1StatusCode: http.StatusInternalServerError,
 				},
 			},
 			http.StatusMethodNotAllowed: {
@@ -2309,7 +2309,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1", "span2"},
+						"spanSelector":  []string{"0123456789012345", "0123456789012346"},
 					}),
 				},
 				{
@@ -2323,7 +2323,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 						"maxNodes":      1024,
 					}),
 				},
@@ -2338,7 +2338,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 						"format":        2,
 					}),
 				},
@@ -2354,7 +2354,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2368,7 +2368,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2382,7 +2382,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2395,7 +2395,7 @@ func TestStatusCodes(t *testing.T) {
 						"profileTypeID": profileTypeProcessCPU,
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2409,7 +2409,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "!bad_syntax!",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2439,7 +2439,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().UnixMilli(),
 						"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2451,7 +2451,7 @@ func TestStatusCodes(t *testing.T) {
 					Body: toJSON(map[string]any{
 						"profileTypeID": profileTypeProcessCPU,
 						"labelSelector": "{}",
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 			},
@@ -2474,7 +2474,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2488,7 +2488,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2502,7 +2502,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 			},
@@ -2518,7 +2518,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 			},
