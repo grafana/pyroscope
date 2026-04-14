@@ -481,7 +481,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	}
 
 	f.setupWorkerTimeout()
-	if f.isModuleActive(QueryScheduler) {
+	if f.isModuleActive(QueryScheduler) || f.isModuleActive(QueryFrontend) {
 		// to ensure that the query scheduler is always able to handle the request, we need to double the timeout
 		f.Cfg.Server.HTTPServerReadTimeout = 2 * f.Cfg.Server.HTTPServerReadTimeout
 		f.Cfg.Server.HTTPServerWriteTimeout = 2 * f.Cfg.Server.HTTPServerWriteTimeout
