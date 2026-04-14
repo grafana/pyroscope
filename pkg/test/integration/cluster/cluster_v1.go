@@ -67,6 +67,7 @@ func (c *Cluster) v1Prepare(_ context.Context, memberlistJoin []string) error {
 			"-store-gateway.sharding-ring.instance-addr="+listenAddr,
 			"-compactor.ring.instance-addr="+listenAddr,
 			"-compactor.ring.instance-id="+comp.nodeName(),
+			"-write-path=ingester",
 			"-ingester.lifecycler.addr="+listenAddr,
 			"-ingester.lifecycler.ID="+comp.nodeName(),
 			"-ingester.min-ready-duration=0",
