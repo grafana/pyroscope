@@ -123,9 +123,6 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 	p.reg = prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = p.reg
 
-	if !v2 {
-		p.config.ArchitectureStorage = pyroscope.Legacy
-	}
 	err = cfg.DynamicUnmarshal(&p.config, []string{"pyroscope"}, flag.NewFlagSet("pyroscope", flag.ContinueOnError))
 	require.NoError(t, err)
 
@@ -162,6 +159,7 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 	_ = p.config.Server.LogLevel.Set("debug")
 
 	if !v2 {
+		p.config.ArchitectureStorage = pyroscope.Legacy
 		p.config.Storage.Bucket.Backend = objstoreclient.None
 	} else {
 		p.config.Storage.Bucket.Filesystem.Directory = t.TempDir()
@@ -196,7 +194,10 @@ func (p *PyroscopeTest) ready() bool {
 	return httpBodyContains(p.URL()+"/ready", "ready")
 }
 func (p *PyroscopeTest) ringActive() bool {
-	return httpBodyContains(p.URL()+"/ring", "ACTIVE")
+	if p.config.ArchitectureStorage == pyroscope.Legacy || p.config.ArchitectureStorage == pyroscope.Dual {
+		return httpBodyContains(p.URL()+"/ring", "ACTIVE")
+	}
+	return httpBodyContains(p.URL()+"/ring-segment-writer", "ACTIVE")
 }
 func (p *PyroscopeTest) URL() string {
 	return fmt.Sprintf("http://%s:%d", address, p.httpPort)

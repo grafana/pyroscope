@@ -498,7 +498,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		API:                   {Server},
 		Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},
 		MetastoreAdmin:        {API, MetastoreClient},
-		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage},
+		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing},
 		PlacementAgent:        {Overrides, API, Storage},
 		PlacementManager:      {Overrides, API, Storage},
 		SegmentWriter:         {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
@@ -544,10 +544,11 @@ func (f *Pyroscope) setupModuleManager() error {
 		}
 
 		deps[All] = append(deps[All], Ingester, Compactor, QueryScheduler, Querier, StoreGateway)
-
-		deps[Distributor] = append(deps[Distributor], IngesterRing)
 	}
 	if f.Cfg.ArchitectureStorage == Legacy {
+		// disable v2 features
+		f.Cfg.DebugInfo.Enabled = false
+
 		// remove v2 modules if using legacy storage
 		v2Modules := []string{QueryBackend, SegmentWriter, CompactionWorker, Metastore}
 		deps[All] = slices.DeleteFunc(deps[All], func(s string) bool {
