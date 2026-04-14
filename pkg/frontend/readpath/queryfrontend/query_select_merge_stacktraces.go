@@ -9,6 +9,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/pkg/frontend/dot"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -17,6 +18,10 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_DOT {
+		return q.selectMergeStacktracesDot(ctx, c)
+	}
+
 	b, err := q.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
 		return nil, err
@@ -33,6 +38,47 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
 	}
 	return connect.NewResponse(&resp), nil
+}
+
+func (q *QueryFrontend) selectMergeStacktracesDot(
+	ctx context.Context,
+	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
+) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	// Use separate max nodes for source pprof fetch vs DOT rendering
+	const defaultSourceMaxNodes = int64(512)
+	const defaultDotMaxNodes = int64(100)
+	dotMaxNodes := defaultDotMaxNodes
+	sourceMaxNodes := defaultSourceMaxNodes
+	if c.Msg.MaxNodes != nil {
+		if v := c.Msg.GetMaxNodes(); v > 0 {
+			dotMaxNodes = v
+		}
+		if dotMaxNodes > sourceMaxNodes {
+			sourceMaxNodes = dotMaxNodes
+		}
+	}
+
+	pprofResp, err := q.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+		ProfileTypeID:      c.Msg.ProfileTypeID,
+		LabelSelector:      c.Msg.LabelSelector,
+		Start:              c.Msg.Start,
+		End:                c.Msg.End,
+		MaxNodes:           &sourceMaxNodes,
+		StackTraceSelector: c.Msg.StackTraceSelector,
+		ProfileIdSelector:  c.Msg.ProfileIdSelector,
+	}))
+	if err != nil {
+		return nil, err
+	}
+	if pprofResp.Msg == nil || len(pprofResp.Msg.Sample) == 0 {
+		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{}), nil
+	}
+
+	d, err := dot.FromProfile(pprofResp.Msg, int(dotMaxNodes))
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{Dot: d}), nil
 }
 
 func (q *QueryFrontend) selectMergeStacktracesTree(

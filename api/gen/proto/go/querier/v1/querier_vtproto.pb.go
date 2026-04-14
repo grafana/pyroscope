@@ -170,6 +170,7 @@ func (m *SelectMergeStacktracesResponse) CloneVT() *SelectMergeStacktracesRespon
 	}
 	r := new(SelectMergeStacktracesResponse)
 	r.Flamegraph = m.Flamegraph.CloneVT()
+	r.Dot = m.Dot
 	if rhs := m.Tree; rhs != nil {
 		tmpBytes := make([]byte, len(rhs))
 		copy(tmpBytes, rhs)
@@ -805,6 +806,9 @@ func (this *SelectMergeStacktracesResponse) EqualVT(that *SelectMergeStacktraces
 		return false
 	}
 	if string(this.Tree) != string(that.Tree) {
+		return false
+	}
+	if this.Dot != that.Dot {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2283,6 +2287,13 @@ func (m *SelectMergeStacktracesResponse) MarshalToSizedBufferVT(dAtA []byte) (in
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.Dot) > 0 {
+		i -= len(m.Dot)
+		copy(dAtA[i:], m.Dot)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Dot)))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if len(m.Tree) > 0 {
 		i -= len(m.Tree)
 		copy(dAtA[i:], m.Tree)
@@ -3503,6 +3514,10 @@ func (m *SelectMergeStacktracesResponse) SizeVT() (n int) {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	l = len(m.Tree)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.Dot)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
@@ -4747,6 +4762,38 @@ func (m *SelectMergeStacktracesResponse) UnmarshalVT(dAtA []byte) error {
 			if m.Tree == nil {
 				m.Tree = []byte{}
 			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Dot", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Dot = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

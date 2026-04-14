@@ -2,6 +2,7 @@ package frontend
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"connectrpc.com/connect"
@@ -21,6 +22,9 @@ func (f *Frontend) SelectMergeStacktraces(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_DOT {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("dot format is only supported with the v2 query backend"))
+	}
 	t, err := f.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
 		return nil, err

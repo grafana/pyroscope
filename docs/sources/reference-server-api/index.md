@@ -123,7 +123,7 @@ A request body with the following fields is required:
 |:-----|:------------|:--------|
 |`left.start` | Milliseconds since epoch. | `1676282400000` |
 |`left.end` | Milliseconds since epoch. | `1676289600000` |
-|`left.format` | Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE` |  |
+|`left.format` | Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
 |`left.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`left.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`left.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
@@ -133,7 +133,7 @@ A request body with the following fields is required:
 |`left.stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
 |`right.start` | Milliseconds since epoch. | `1676282400000` |
 |`right.end` | Milliseconds since epoch. | `1676289600000` |
-|`right.format` | Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE` |  |
+|`right.format` | Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
 |`right.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`right.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`right.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
@@ -437,7 +437,7 @@ A request body with the following fields is required:
 |:-----|:------------|:--------|
 |`start` | Milliseconds since epoch. | `1676282400000` |
 |`end` | Milliseconds since epoch. | `1676289600000` |
-|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE` |  |
+|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
@@ -492,7 +492,7 @@ A request body with the following fields is required:
 |:-----|:------------|:--------|
 |`start` | Milliseconds since epoch. | `1676282400000` |
 |`end` | Milliseconds since epoch. | `1676289600000` |
-|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE` |  |
+|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |

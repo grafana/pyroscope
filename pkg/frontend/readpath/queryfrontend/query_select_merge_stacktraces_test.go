@@ -172,3 +172,60 @@ func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 		})
 	}
 }
+
+func TestSelectMergeStacktraces_DotFormat(t *testing.T) {
+	p := &profilev1.Profile{
+		StringTable: []string{"", "my_func", "samples", "count", "", ""},
+		Function:    []*profilev1.Function{{Id: 1, Name: 1}},
+		Location:    []*profilev1.Location{{Id: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+		Mapping:     []*profilev1.Mapping{{Id: 1}},
+		Sample:      []*profilev1.Sample{{LocationId: []uint64{1}, Value: []int64{10}}},
+		PeriodType:  &profilev1.ValueType{Type: 2, Unit: 3},
+		SampleType:  []*profilev1.ValueType{{Type: 4, Unit: 5}},
+	}
+	pprofBytes, err := pprof.Marshal(p, true)
+	require.NoError(t, err)
+
+	mockLimits := mockfrontend.NewMockLimits(t)
+	mockLimits.On("MaxQueryLookback", "tenant1").Return(time.Duration(0))
+	mockLimits.On("MaxQueryLength", "tenant1").Return(time.Duration(0))
+	mockLimits.On("MaxFlameGraphNodesOnSelectMergeProfile", "tenant1").Return(false)
+	mockLimits.On("QueryTreeEnabled", "tenant1").Return(false)
+	mockLimits.On("QuerySanitizeOnMerge", "tenant1").Return(false)
+
+	mockQueryBackend := mockqueryfrontend.NewMockQueryBackend(t)
+	mockQueryBackend.On("Invoke", mock.Anything, mock.Anything).Return(&queryv1.InvokeResponse{
+		Reports: []*queryv1.Report{{
+			ReportType: queryv1.ReportType_REPORT_PPROF,
+			Pprof:      &queryv1.PprofReport{Pprof: pprofBytes},
+		}},
+	}, nil)
+
+	mockMetadataClient := new(mockmetastorev1.MockMetadataQueryServiceClient)
+	mockMetadataClient.On("QueryMetadata", mock.Anything, mock.Anything).
+		Return(&metastorev1.QueryMetadataResponse{
+			Blocks: []*metastorev1.BlockMeta{{
+				Id:          "block_id",
+				Datasets:    []*metastorev1.Dataset{{Labels: []int32{1, 1, 2}}},
+				StringTable: []string{"", metadata.LabelNameUnsymbolized, "false"},
+			}},
+		}, nil)
+
+	qf := NewQueryFrontend(log.NewNopLogger(), mockLimits, mockMetadataClient, nil, mockQueryBackend, nil, nil)
+
+	ctx := tenant.InjectTenantID(context.Background(), "tenant1")
+	start, end := smpValidTimeRange()
+	resp, err := qf.SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+		ProfileTypeID: smpProfileType,
+		LabelSelector: `{service_name="test-service"}`,
+		Start:         start,
+		End:           end,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_DOT,
+	}))
+
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.Msg.Dot)
+	require.Contains(t, resp.Msg.Dot, "digraph")
+	require.Nil(t, resp.Msg.Flamegraph)
+	require.Empty(t, resp.Msg.Tree)
+}
