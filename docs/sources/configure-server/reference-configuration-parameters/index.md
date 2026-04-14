@@ -285,9 +285,9 @@ self_profiling:
 # CLI flag: -shutdown-delay
 [shutdown_delay: <duration> | default = 0s]
 
-# Storage architecture. Use 'legacy', 'dual' or 'default'.
+# Storage architecture. Use 'v1', 'v1-v2-dual' or 'v2'.
 # CLI flag: -architecture.storage
-[architecture_storage: <string> | default = "default"]
+[architecture_storage: <string> | default = "v2"]
 
 embedded_grafana:
   # The directory where the Grafana data will be stored.

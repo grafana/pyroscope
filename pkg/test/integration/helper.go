@@ -160,7 +160,7 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 	_ = p.config.Server.LogLevel.Set("debug")
 
 	if !v2 {
-		p.config.ArchitectureStorage = pyroscope.Legacy
+		p.config.ArchitectureStorage = pyroscope.V1
 		p.config.LimitsConfig.WritePathOverrides.WritePath = writepath.IngesterPath
 		p.config.Storage.Bucket.Backend = objstoreclient.None
 	} else {
@@ -194,7 +194,7 @@ func (p *PyroscopeTest) ready() bool {
 	return httpBodyContains(p.URL()+"/ready", "ready")
 }
 func (p *PyroscopeTest) ringActive() bool {
-	if p.config.ArchitectureStorage == pyroscope.Legacy || p.config.ArchitectureStorage == pyroscope.Dual {
+	if p.config.ArchitectureStorage == pyroscope.V1 || p.config.ArchitectureStorage == pyroscope.V1V2Dual {
 		return httpBodyContains(p.URL()+"/ring", "ACTIVE")
 	}
 	return httpBodyContains(p.URL()+"/ring-segment-writer", "ACTIVE")

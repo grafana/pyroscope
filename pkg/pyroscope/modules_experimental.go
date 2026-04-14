@@ -50,11 +50,11 @@ func (f *Pyroscope) initQueryFrontend() (services.Service, error) {
 		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
 	}
 	switch f.Cfg.ArchitectureStorage {
-	case Legacy:
+	case V1:
 		return f.initQueryFrontendV1()
-	case Default:
+	case V2:
 		return f.initQueryFrontendV2()
-	case Dual:
+	case V1V2Dual:
 		// Both fixed timestamps and "auto" mode use the hybrid frontend:
 		// fixed timestamps are resolved immediately, while "auto" queries
 		// the metastore at request time.

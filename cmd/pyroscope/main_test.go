@@ -108,6 +108,9 @@ func TestHelp(t *testing.T) {
 			// "duplicate metrics collector registration attempted" errors.
 			prometheus.DefaultRegisterer = prometheus.NewRegistry()
 
+			// Mocking TMPDIR for predictable output
+			t.Setenv("TMPDIR", "/tmp")
+
 			co := test.CaptureOutput(t)
 
 			const cmd = "./pyroscope"
