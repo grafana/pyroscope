@@ -469,7 +469,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		featureflags.ClientCapabilitiesGRPCMiddleware(),
 	)
 
-	if f.Cfg.ArchitectureStorage != Legacy {
+	if f.Cfg.ArchitectureStorage != V1 {
 		f.Cfg.Server.MetricsNativeHistogramFactor = 1.1 // 10% increase from bucket to bucket
 		if slices.Contains(f.Cfg.Target, QueryBackend) {
 			concurrencyInterceptor, err := querybackend.CreateConcurrencyInterceptor(f.logger)
@@ -579,7 +579,7 @@ func (f *Pyroscope) initUsageReport() (services.Service, error) {
 }
 
 func (f *Pyroscope) initAdmin() (services.Service, error) {
-	if f.Cfg.ArchitectureStorage == Legacy {
+	if f.Cfg.ArchitectureStorage == V1 {
 		return f.initLegacyAdmin()
 	}
 	if f.metastoreClient == nil {

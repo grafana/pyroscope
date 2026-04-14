@@ -107,7 +107,7 @@ type Config struct {
 	Analytics           usagestats.Config `yaml:"analytics"`
 	ShowBanner          bool              `yaml:"show_banner,omitempty"`
 	ShutdownDelay       time.Duration     `yaml:"shutdown_delay,omitempty"`
-	ArchitectureStorage StorageMode       `yaml:"architecture_storage,omitempty"`
+	ArchitectureStorage StorageLayer      `yaml:"architecture_storage,omitempty"`
 
 	EmbeddedGrafana grafana.Config `yaml:"embedded_grafana,omitempty"`
 
@@ -196,8 +196,8 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	)
 	f.BoolVar(&c.ShowBanner, "config.show_banner", true, "Prints the application banner at startup.")
 	f.DurationVar(&c.ShutdownDelay, "shutdown-delay", 0, "Wait time before shutting down after a termination signal.")
-	c.ArchitectureStorage = Default
-	f.Var(&c.ArchitectureStorage, "architecture.storage", "Storage architecture. Use 'legacy', 'dual' or 'default'.")
+	c.ArchitectureStorage = V2
+	f.Var(&c.ArchitectureStorage, "architecture.storage", "Storage architecture. Use 'v1', 'v1-v2-dual' or 'v2'.")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.MemberlistKV.RegisterFlags(f)
@@ -524,7 +524,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		FeatureFlags:          {API},
 	}
 
-	if f.Cfg.ArchitectureStorage == Dual || f.Cfg.ArchitectureStorage == Legacy {
+	if f.Cfg.ArchitectureStorage == V1V2Dual || f.Cfg.ArchitectureStorage == V1 {
 		// add v1 modules if legacy or dual storage mode
 		mm.RegisterModule(Ingester, f.initIngester)
 		mm.RegisterModule(Compactor, f.initCompactor)
@@ -545,7 +545,7 @@ func (f *Pyroscope) setupModuleManager() error {
 
 		deps[All] = append(deps[All], Ingester, Compactor, QueryScheduler, Querier, StoreGateway)
 	}
-	if f.Cfg.ArchitectureStorage == Legacy {
+	if f.Cfg.ArchitectureStorage == V1 {
 		// disable v2 features
 		f.Cfg.DebugInfo.Enabled = false
 
