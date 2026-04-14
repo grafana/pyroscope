@@ -330,7 +330,7 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 	if store, err := debuginfo.NewStore(f.logger, f.storageBucket, f.Cfg.DebugInfo); err != nil {
 		return nil, err
 	} else {
-		f.API.RegisterDebugInfo(store)
+		f.API.RegisterDebugInfo(store, store.UploadHTTPHandler())
 	}
 	return d, nil
 }

@@ -8,12 +8,77 @@ tags:
   - name: scope/internal
     description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
   - name: debuginfo.v1alpha1.DebuginfoService
-    description: |-
-      This service is inspired by parca debug info upload rpc
-       It is however different, specifically original ShouldInitiateUpload,InitiateUpload,InitiateUpload are merged into Upload
-       Some structs were renamed. Some features removed (signed upload, force upload)
 paths:
-  /debuginfo.v1alpha1.DebuginfoService/Upload: {}
+  /debuginfo.v1alpha1.DebuginfoService/ShouldInitiateUpload:
+    post:
+      tags:
+        - debuginfo.v1alpha1.DebuginfoService
+      summary: ShouldInitiateUpload
+      operationId: debuginfo.v1alpha1.DebuginfoService.ShouldInitiateUpload
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/debuginfo.v1alpha1.ShouldInitiateUploadRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/debuginfo.v1alpha1.ShouldInitiateUploadResponse'
+  /debuginfo.v1alpha1.DebuginfoService/UploadFinished:
+    post:
+      tags:
+        - debuginfo.v1alpha1.DebuginfoService
+      summary: UploadFinished
+      operationId: debuginfo.v1alpha1.DebuginfoService.UploadFinished
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/debuginfo.v1alpha1.UploadFinishedRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/debuginfo.v1alpha1.UploadFinishedResponse'
 components:
   schemas:
     connect-protocol-version:
@@ -122,7 +187,6 @@ components:
       properties:
         file:
           title: file
-          description: bool force = ;
           $ref: '#/components/schemas/debuginfo.v1alpha1.FileMetadata'
       title: ShouldInitiateUploadRequest
       additionalProperties: false
@@ -137,44 +201,16 @@ components:
           title: reason
       title: ShouldInitiateUploadResponse
       additionalProperties: false
-    debuginfo.v1alpha1.UploadChunk:
+    debuginfo.v1alpha1.UploadFinishedRequest:
       type: object
       properties:
-        chunk:
+        gnuBuildId:
           type: string
-          title: chunk
-          format: byte
-      title: UploadChunk
+          title: gnu_build_id
+      title: UploadFinishedRequest
       additionalProperties: false
-    debuginfo.v1alpha1.UploadRequest:
+    debuginfo.v1alpha1.UploadFinishedResponse:
       type: object
-      oneOf:
-        - properties:
-            chunk:
-              title: chunk
-              $ref: '#/components/schemas/debuginfo.v1alpha1.UploadChunk'
-          title: chunk
-          required:
-            - chunk
-        - properties:
-            init:
-              title: init
-              $ref: '#/components/schemas/debuginfo.v1alpha1.ShouldInitiateUploadRequest'
-          title: init
-          required:
-            - init
-      title: UploadRequest
-      additionalProperties: false
-    debuginfo.v1alpha1.UploadResponse:
-      type: object
-      oneOf:
-        - properties:
-            init:
-              title: init
-              $ref: '#/components/schemas/debuginfo.v1alpha1.ShouldInitiateUploadResponse'
-          title: init
-          required:
-            - init
-      title: UploadResponse
+      title: UploadFinishedResponse
       additionalProperties: false
 security: []
