@@ -68,12 +68,7 @@ func setupScheduler(t *testing.T, args schedulerArgs) (*Scheduler, schedulerpb.S
 	mux := mux.NewRouter()
 	server.Config.Handler = h2c.NewHandler(mux, &http2.Server{})
 
-	// Use an in-memory network connection to avoid test flake from network access.
-	listener := bufconn.Listen(256 << 10)
-	server.Listener = listener
-
 	server.Start()
-	require.NoError(t, err)
 	schedulerpbconnect.RegisterSchedulerForFrontendHandler(mux, s, args.handlerOpts...)
 	schedulerpbconnect.RegisterSchedulerForQuerierHandler(mux, s, args.handlerOpts...)
 
@@ -84,10 +79,7 @@ func setupScheduler(t *testing.T, args schedulerArgs) (*Scheduler, schedulerpb.S
 	})
 
 	c, err := grpc.NewClient(
-		// Target address is irrelevant as we're using an in-memory connection.
-		// We simply need the DNS resolution to succeed.
-		"localhost:3030",
-		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) { return listener.Dial() }),
+		server.Listener.Addr().String(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 
@@ -266,8 +258,12 @@ func TestCancelRequestInProgress(t *testing.T) {
 	// Simulate frontend disconnect.
 	require.NoError(t, frontendLoop.CloseSend())
 
-	// Add a little sleep to make sure that scheduler notices frontend disconnect.
-	time.Sleep(500 * time.Millisecond)
+	// Wait until the scheduler notices the frontend disconnect before sending
+	// a response. If we send too early, it completes the normal request cycle
+	// in forwardRequestToQuerier and the context cancellation is never triggered.
+	test.Poll(t, time.Second, float64(0), func() interface{} {
+		return promtest.ToFloat64(scheduler.connectedFrontendClients)
+	})
 
 	// Report back end of request processing. This should return error, since the QuerierLoop call has finished on scheduler.
 	// Note: testing on querierLoop.Context() cancellation didn't work :(
