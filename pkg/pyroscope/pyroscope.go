@@ -45,6 +45,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/debuginfo"
 	"github.com/grafana/pyroscope/pkg/distributor"
+	"github.com/grafana/pyroscope/pkg/distributor/writepath"
 	"github.com/grafana/pyroscope/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend"
@@ -319,6 +320,17 @@ func (c *Config) Validate() error {
 
 	if err := c.TenantSettings.Validate(); err != nil {
 		return err
+	}
+
+	// Validate that write-path matches the storage layer.
+	storageLayerRequirements := map[StorageLayer]writepath.WritePath{
+		V1: writepath.IngesterPath,
+		V2: writepath.SegmentWriterPath,
+	}
+	for layer, path := range storageLayerRequirements {
+		if layer == c.ArchitectureStorage && c.LimitsConfig.WritePathOverrides.WritePath != path {
+			return fmt.Errorf("write-path=%s is required for %s storage layer", path, layer)
+		}
 	}
 
 	return nil

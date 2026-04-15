@@ -35,3 +35,7 @@ func (m *StorageLayer) Set(text string) error {
 }
 
 func (m *StorageLayer) String() string { return string(*m) }
+
+func (m *StorageLayer) UnmarshalText(text []byte) error {
+	return m.Set(string(text))
+}
