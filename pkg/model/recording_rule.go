@@ -6,7 +6,6 @@ import (
 
 	prometheusmodel "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )
@@ -105,7 +104,7 @@ func newRecordingRuleWithBuilder(rule *settingsv1.RecordingRule, sb *labels.Scra
 func parseMatchers(matchers []string) ([]*labels.Matcher, error) {
 	parsed := make([]*labels.Matcher, 0, len(matchers))
 	for _, m := range matchers {
-		s, err := parser.NewParser(parser.Options{}).ParseMetricSelector(m)
+		s, err := ParseMetricSelector(m)
 		if err != nil {
 			return nil, err
 		}

@@ -7,7 +7,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -53,7 +52,7 @@ func buildLabelSelectorFromMatchers(matchers []string) (string, error) {
 }
 
 func buildLabelSelectorWithProfileType(labelSelector, profileTypeID string) (string, error) {
-	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(labelSelector)
+	matchers, err := phlaremodel.ParseMetricSelector(labelSelector)
 	if err != nil {
 		return "", fmt.Errorf("parsing label selector %q: %w", labelSelector, err)
 	}
@@ -68,7 +67,7 @@ func buildLabelSelectorWithProfileType(labelSelector, profileTypeID string) (str
 func parseMatchers(matchers []string) ([]*labels.Matcher, error) {
 	parsed := make([]*labels.Matcher, 0, len(matchers))
 	for _, m := range matchers {
-		s, err := parser.NewParser(parser.Options{}).ParseMetricSelector(m)
+		s, err := phlaremodel.ParseMetricSelector(m)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse label selector %q: %w", s, err)
 		}

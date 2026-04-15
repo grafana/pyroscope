@@ -18,7 +18,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 	"github.com/samber/lo"
 	"go.uber.org/atomic"
@@ -459,7 +458,7 @@ type selectors [][]*labels.Matcher
 func parseSelectors(selectorStrings []string) (selectors, error) {
 	sels := make([][]*labels.Matcher, 0, len(selectorStrings))
 	for _, m := range selectorStrings {
-		s, err := parser.NewParser(parser.Options{}).ParseMetricSelector(m)
+		s, err := phlaremodel.ParseMetricSelector(m)
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("failed to parse label selector: %v", err))
 		}

@@ -24,7 +24,6 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/samber/lo"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -1524,7 +1523,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	b.queries.Add(1)
 	defer b.queries.Done()
 
-	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(params.LabelSelector)
+	matchers, err := phlaremodel.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
@@ -1631,7 +1630,7 @@ func (b *singleBlockQuerier) SelectMergeByLabels(
 	b.queries.Add(1)
 	defer b.queries.Done()
 
-	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(params.LabelSelector)
+	matchers, err := phlaremodel.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
@@ -1711,7 +1710,7 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 	b.queries.Add(1)
 	defer b.queries.Done()
 
-	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(params.LabelSelector)
+	matchers, err := phlaremodel.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
@@ -1780,7 +1779,7 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 	b.queries.Add(1)
 	defer b.queries.Done()
 
-	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(params.LabelSelector)
+	matchers, err := phlaremodel.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
@@ -1848,7 +1847,7 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 	b.queries.Add(1)
 	defer b.queries.Done()
 
-	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(params.LabelSelector)
+	matchers, err := phlaremodel.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}

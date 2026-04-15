@@ -12,7 +12,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -300,7 +299,7 @@ func parseQuery(fieldName string, req *http.Request) (string, *typesv1.ProfileTy
 		return "", nil, fmt.Errorf("%q is required", fieldName)
 	}
 
-	parsedSelector, err := parser.NewParser(parser.Options{}).ParseMetricSelector(q)
+	parsedSelector, err := phlaremodel.ParseMetricSelector(q)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to parse %q: %w", fieldName, err)
 	}

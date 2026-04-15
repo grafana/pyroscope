@@ -7,7 +7,6 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/tracing"
-	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -90,7 +89,7 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	_, err = parser.NewParser(parser.Options{}).ParseMetricSelector(req.LabelSelector)
+	_, err = phlaremodel.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -147,7 +146,7 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	_, err = parser.NewParser(parser.Options{}).ParseMetricSelector(req.LabelSelector)
+	_, err = phlaremodel.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -300,7 +299,7 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	_, err = parser.NewParser(parser.Options{}).ParseMetricSelector(req.LabelSelector)
+	_, err = phlaremodel.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
