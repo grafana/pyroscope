@@ -566,6 +566,9 @@ func (f *Pyroscope) setupModuleManager() error {
 		deps[All] = slices.DeleteFunc(deps[All], func(s string) bool {
 			return slices.Contains(v2Modules, s)
 		})
+		deps[Admin] = []string{API, Storage}
+		deps[Distributor] = []string{Overrides, API, UsageReport, Storage, IngesterRing}
+		deps[QueryFrontend] = []string{OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags}
 	}
 
 	for mod, targets := range deps {
