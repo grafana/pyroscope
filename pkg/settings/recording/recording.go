@@ -271,7 +271,7 @@ func validateUpsert(req *settingsv1.UpsertRecordingRuleRequest) error {
 
 	profileTypeMatcher := 0
 	for _, m := range req.Matchers {
-		matchers, err := parser.ParseMetricSelector(m)
+		matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(m)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("matcher %q is invalid: %v", m, err))
 		}
@@ -344,7 +344,7 @@ func convertRuleToAPI(rule *settingsv1.RecordingRuleStore) *settingsv1.Recording
 	// Try find the profile type from the matchers.
 Loop:
 	for _, m := range rule.Matchers {
-		s, err := parser.ParseMetricSelector(m)
+		s, err := parser.NewParser(parser.Options{}).ParseMetricSelector(m)
 		if err != nil {
 			// Since this value is loaded from the tenant settings database and
 			// we validate selectors before saving, we should theoretically

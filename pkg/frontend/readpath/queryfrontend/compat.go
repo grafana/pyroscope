@@ -53,7 +53,7 @@ func buildLabelSelectorFromMatchers(matchers []string) (string, error) {
 }
 
 func buildLabelSelectorWithProfileType(labelSelector, profileTypeID string) (string, error) {
-	matchers, err := parser.ParseMetricSelector(labelSelector)
+	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(labelSelector)
 	if err != nil {
 		return "", fmt.Errorf("parsing label selector %q: %w", labelSelector, err)
 	}
@@ -68,7 +68,7 @@ func buildLabelSelectorWithProfileType(labelSelector, profileTypeID string) (str
 func parseMatchers(matchers []string) ([]*labels.Matcher, error) {
 	parsed := make([]*labels.Matcher, 0, len(matchers))
 	for _, m := range matchers {
-		s, err := parser.ParseMetricSelector(m)
+		s, err := parser.NewParser(parser.Options{}).ParseMetricSelector(m)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse label selector %q: %w", s, err)
 		}

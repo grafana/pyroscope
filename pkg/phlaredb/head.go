@@ -459,7 +459,7 @@ type selectors [][]*labels.Matcher
 func parseSelectors(selectorStrings []string) (selectors, error) {
 	sels := make([][]*labels.Matcher, 0, len(selectorStrings))
 	for _, m := range selectorStrings {
-		s, err := parser.ParseMetricSelector(m)
+		s, err := parser.NewParser(parser.Options{}).ParseMetricSelector(m)
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("failed to parse label selector: %v", err))
 		}

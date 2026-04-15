@@ -580,7 +580,7 @@ func TestUsageGroupConfig_UnmarshalJSON(t *testing.T) {
 }
 
 func testMustParseMatcher(t *testing.T, s string) []*labels.Matcher {
-	m, err := parser.ParseMetricSelector(s)
+	m, err := parser.NewParser(parser.Options{}).ParseMetricSelector(s)
 	require.NoError(t, err)
 	return m
 }

@@ -1524,7 +1524,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	b.queries.Add(1)
 	defer b.queries.Done()
 
-	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
+	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
@@ -1631,7 +1631,7 @@ func (b *singleBlockQuerier) SelectMergeByLabels(
 	b.queries.Add(1)
 	defer b.queries.Done()
 
-	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
+	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
@@ -1711,7 +1711,7 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 	b.queries.Add(1)
 	defer b.queries.Done()
 
-	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
+	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
@@ -1780,7 +1780,7 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 	b.queries.Add(1)
 	defer b.queries.Done()
 
-	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
+	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
@@ -1848,7 +1848,7 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 	b.queries.Add(1)
 	defer b.queries.Done()
 
-	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
+	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}

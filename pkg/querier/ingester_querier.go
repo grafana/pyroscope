@@ -90,7 +90,7 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	_, err = parser.ParseMetricSelector(req.LabelSelector)
+	_, err = parser.NewParser(parser.Options{}).ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -147,7 +147,7 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	_, err = parser.ParseMetricSelector(req.LabelSelector)
+	_, err = parser.NewParser(parser.Options{}).ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -300,7 +300,7 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	_, err = parser.ParseMetricSelector(req.LabelSelector)
+	_, err = parser.NewParser(parser.Options{}).ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

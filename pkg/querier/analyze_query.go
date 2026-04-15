@@ -153,7 +153,7 @@ func createMatchersFromQuery(query string) ([]string, error) {
 	var matchers []*labels.Matcher
 	var err error
 	if query != "" {
-		matchers, err = parser.ParseMetricSelector(query)
+		matchers, err = parser.NewParser(parser.Options{}).ParseMetricSelector(query)
 		if err != nil {
 			return nil, err
 		}

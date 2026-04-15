@@ -88,7 +88,7 @@ func TestIndex(t *testing.T) {
 }
 
 func selectMatchingFPs(pi *profilesIndex, params *ingestv1.SelectProfilesRequest) ([]model.Fingerprint, error) {
-	selectors, err := parser.ParseMetricSelector(params.LabelSelector)
+	selectors, err := parser.NewParser(parser.Options{}).ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}

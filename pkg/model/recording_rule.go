@@ -105,7 +105,7 @@ func newRecordingRuleWithBuilder(rule *settingsv1.RecordingRule, sb *labels.Scra
 func parseMatchers(matchers []string) ([]*labels.Matcher, error) {
 	parsed := make([]*labels.Matcher, 0, len(matchers))
 	for _, m := range matchers {
-		s, err := parser.ParseMetricSelector(m)
+		s, err := parser.NewParser(parser.Options{}).ParseMetricSelector(m)
 		if err != nil {
 			return nil, err
 		}

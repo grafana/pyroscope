@@ -235,7 +235,7 @@ func (q *QueryFrontend) QueryMetadata(
 	}
 	span.SetTag("tenant_ids", tenants)
 
-	matchers, err := parser.ParseMetricSelector(req.LabelSelector)
+	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

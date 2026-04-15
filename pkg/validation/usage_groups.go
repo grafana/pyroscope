@@ -237,7 +237,7 @@ func parseUsageGroupEntries(m map[string]string) ([]usageGroupEntry, map[string]
 			return nil, nil, fmt.Errorf("usage group name %q is reserved", noMatchName)
 		}
 
-		matchers, err := parser.ParseMetricSelector(matchersText)
+		matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(matchersText)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to parse matchers for usage group %q: %w", name, err)
 		}

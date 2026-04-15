@@ -56,7 +56,7 @@ func newMetadataQuery(index *Index, query MetadataQuery) (*metadataQuery, error)
 	if len(query.Tenant) == 0 {
 		return nil, &InvalidQueryError{Query: query, Err: fmt.Errorf("tenant_id is required")}
 	}
-	matchers, err := parser.ParseMetricSelector(query.Expr)
+	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(query.Expr)
 	if err != nil {
 		return nil, &InvalidQueryError{Query: query, Err: fmt.Errorf("failed to parse label matcher: %w", err)}
 	}

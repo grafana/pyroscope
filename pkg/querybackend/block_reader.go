@@ -209,7 +209,7 @@ func validateRequest(req *queryv1.InvokeRequest) (*request, error) {
 	if len(req.Tenant) == 0 {
 		return nil, fmt.Errorf("no tenant provided")
 	}
-	matchers, err := parser.ParseMetricSelector(req.LabelSelector)
+	matchers, err := parser.NewParser(parser.Options{}).ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, fmt.Errorf("label selection is invalid: %w", err)
 	}

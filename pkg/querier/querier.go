@@ -996,7 +996,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		sp.Finish()
 	}()
 
-	_, err := parser.ParseMetricSelector(req.Msg.LabelSelector)
+	_, err := parser.NewParser(parser.Options{}).ParseMetricSelector(req.Msg.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

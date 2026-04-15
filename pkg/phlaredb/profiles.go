@@ -218,7 +218,7 @@ func (pi *profilesIndex) Add(ps *schemav1.InMemoryProfile, lbs phlaremodel.Label
 func (pi *profilesIndex) selectMatchingFPs(ctx context.Context, params *ingestv1.SelectProfilesRequest) ([]model.Fingerprint, error) {
 	sp, _ := tracing.StartSpanFromContext(ctx, "selectMatchingFPs - Index")
 	defer sp.Finish()
-	selectors, err := parser.ParseMetricSelector(params.LabelSelector)
+	selectors, err := parser.NewParser(parser.Options{}).ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
