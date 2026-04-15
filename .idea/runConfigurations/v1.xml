@@ -3,7 +3,7 @@
     <module name="pyroscope" />
     <working_directory value="$PROJECT_DIR$" />
     <go_parameters value="-tags embedassets" />
-    <parameters value="-architecture.storage=v1  -write-path=ingester" />
+    <parameters value="-architecture.storage=v1 -write-path=ingester" />
     <kind value="FILE" />
     <package value="github.com/grafana/pyroscope" />
     <directory value="$PROJECT_DIR$" />
