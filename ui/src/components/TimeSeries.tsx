@@ -8,7 +8,7 @@ import {
   parseRangeMs,
   tickStepMs,
   formatTickTime,
-} from './timeseries';
+} from './timeseries-utils';
 import './TimeSeries.css';
 
 export function TimeSeries({
