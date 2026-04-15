@@ -6,7 +6,7 @@ import {
   parseRangeMs,
   tickStepMs,
   formatTickTime,
-} from './timeseries';
+} from './timeseries-utils';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 3_600_000;
