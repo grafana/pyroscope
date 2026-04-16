@@ -188,6 +188,17 @@ func TestNewStore(t *testing.T) {
 			bucket: func() *memory.InMemBucket { return memory.NewInMemBucket() },
 		},
 		{
+			name: "enabled with upload timeout beyond stale threshold",
+			cfg: Config{
+				Enabled:           true,
+				UploadStalePeriod: time.Minute,
+				UploadTimeout:     4 * time.Minute,
+			},
+			bucket:     func() *memory.InMemBucket { return memory.NewInMemBucket() },
+			wantErr:    true,
+			errContain: "exceeds stale threshold",
+		},
+		{
 			name:       "enabled without bucket",
 			cfg:        Config{Enabled: true},
 			bucket:     func() *memory.InMemBucket { return nil },
