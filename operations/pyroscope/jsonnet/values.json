@@ -250,8 +250,6 @@
         },
         "metastore": {
           "extraArgs": {
-            "adaptive-placement.max-dataset-shards": 1024,
-            "adaptive-placement.unit-size-bytes": 131072,
             "metastore.index.cleanup-interval": "1m",
             "metastore.raft.bootstrap-expect-peers": 3,
             "metastore.snapshot-compact-on-restore": true
