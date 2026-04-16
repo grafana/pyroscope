@@ -65,7 +65,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.67.5
-	github.com/prometheus/prometheus v0.310.0
+	github.com/prometheus/prometheus v0.311.2
 	github.com/samber/lo v1.52.0
 	github.com/simonswine/tempopb v0.2.0
 	github.com/sirupsen/logrus v1.9.4
