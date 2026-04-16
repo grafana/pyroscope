@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
+	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/build"
 )
 
@@ -76,7 +77,7 @@ func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) 
 	)
 }
 
-func newProfileStore(phlarectx context.Context) *profileStore {
+func newProfileStore(phlarectx context.Context, cfg Config) *profileStore {
 	s := &profileStore{
 		logger:     phlarecontext.Logger(phlarectx),
 		metrics:    contextHeadMetrics(phlarectx),
@@ -88,7 +89,11 @@ func newProfileStore(phlarectx context.Context) *profileStore {
 	go s.cutRowGroupLoop()
 	// Initialize writer on /dev/null
 	// TODO: Reuse parquet.Writer beyond life time of the head.
-	s.writer = newParquetProfileWriter(io.Discard)
+	var opts []parquet.WriterOption
+	if o, err := util.ParseCompressionOpt(cfg.CompressionAlgo, cfg.CompressionLevel); err == nil {
+		opts = append(opts, o)
+	}
+	s.writer = newParquetProfileWriter(io.Discard, opts...)
 
 	return s
 }
