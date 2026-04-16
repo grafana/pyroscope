@@ -55,6 +55,13 @@ func NewStore(
 	if cfg.Enabled && bucket == nil {
 		return nil, errors.New("enabled debug info requires a bucket")
 	}
+	if cfg.Enabled && cfg.UploadTimeout > cfg.UploadStalePeriod+2*time.Minute {
+		return nil, fmt.Errorf(
+			"debug info upload timeout %s exceeds stale threshold %s; increase debug-info.max-upload-duration or lower debug-info.upload-timeout",
+			cfg.UploadTimeout,
+			cfg.UploadStalePeriod+2*time.Minute,
+		)
+	}
 	return &Store{
 		logger: log.With(logger, "component", "debuginfo"),
 		bucket: bucket,
