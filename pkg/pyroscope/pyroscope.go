@@ -197,8 +197,8 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	)
 	f.BoolVar(&c.ShowBanner, "config.show_banner", true, "Prints the application banner at startup.")
 	f.DurationVar(&c.ShutdownDelay, "shutdown-delay", 0, "Wait time before shutting down after a termination signal.")
-	c.ArchitectureStorage = V2
-	f.Var(&c.ArchitectureStorage, "architecture.storage", "Storage architecture. Use 'v1', 'v1-v2-dual' or 'v2'.")
+	c.ArchitectureStorage = V1V2Dual
+	f.Var(&c.ArchitectureStorage, "architecture.storage", "Storage architecture layer. Use 'v1' to use legacy ingester-based storage, 'v2' for new storage, and 'v1-v2-dual' to use new storage while being able to query old data.")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.MemberlistKV.RegisterFlags(f)
