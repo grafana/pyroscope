@@ -164,6 +164,7 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 		p.config.LimitsConfig.WritePathOverrides.WritePath = writepath.IngesterPath
 		p.config.Storage.Bucket.Backend = objstoreclient.None
 	} else {
+		p.config.ArchitectureStorage = pyroscope.V2
 		p.config.Storage.Bucket.Filesystem.Directory = t.TempDir()
 		p.config.Storage.Bucket.Backend = "filesystem"
 		p.config.SegmentWriter.LifecyclerConfig.MinReadyDuration = 0 * time.Second

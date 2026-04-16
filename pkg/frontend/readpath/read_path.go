@@ -13,6 +13,7 @@ type Config struct {
 func (o *Config) RegisterFlags(f *flag.FlagSet) {
 	f.BoolVar(&o.EnableQueryBackend, "enable-query-backend", true,
 		"This parameter specifies whether the new query backend is enabled.")
+	o.EnableQueryBackendFrom = QueryBackendFrom{Auto: true}
 	f.Var(&o.EnableQueryBackendFrom, "enable-query-backend-from",
 		"This parameter specifies the point in time from which data is queried from the new query backend. "+
 			"The value can be an RFC3339 timestamp (2020-10-20T00:00:00Z) or \"auto\" to automatically "+

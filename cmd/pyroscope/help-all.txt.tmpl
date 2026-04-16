@@ -332,7 +332,7 @@ Usage of ./pyroscope:
   -enable-query-backend
     	This parameter specifies whether the new query backend is enabled. (default true)
   -enable-query-backend-from value
-    	This parameter specifies the point in time from which data is queried from the new query backend. The value can be an RFC3339 timestamp (2020-10-20T00:00:00Z) or "auto" to automatically determine the split point from the tenant's oldest profile time in the metastore.
+    	This parameter specifies the point in time from which data is queried from the new query backend. The value can be an RFC3339 timestamp (2020-10-20T00:00:00Z) or "auto" to automatically determine the split point from the tenant's oldest profile time in the metastore. (default auto)
   -etcd.dial-timeout duration
     	The dial timeout for the etcd connection. (default 10s)
   -etcd.endpoints string
