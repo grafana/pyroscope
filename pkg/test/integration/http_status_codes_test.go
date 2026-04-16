@@ -13,6 +13,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
 type Request struct {
@@ -851,7 +853,7 @@ func TestStatusCodes(t *testing.T) {
 						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":      time.Now().UnixMilli(),
 					}),
-					WantV1StatusCode: http.StatusOK,
+					WantV1StatusCode: http.StatusInternalServerError,
 				},
 				{
 					Name:   "invalid_json",
@@ -1044,7 +1046,7 @@ func TestStatusCodes(t *testing.T) {
 						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":      time.Now().UnixMilli(),
 					}),
-					WantV1StatusCode: http.StatusOK,
+					WantV1StatusCode: http.StatusInternalServerError,
 				},
 			},
 			http.StatusMethodNotAllowed: {
@@ -1198,7 +1200,7 @@ func TestStatusCodes(t *testing.T) {
 						"start":    time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":      time.Now().UnixMilli(),
 					}),
-					WantV1StatusCode: http.StatusOK,
+					WantV1StatusCode: http.StatusInternalServerError,
 				},
 			},
 			http.StatusMethodNotAllowed: {
@@ -2307,7 +2309,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1", "span2"},
+						"spanSelector":  []string{"0123456789012345", "0123456789012346"},
 					}),
 				},
 				{
@@ -2321,7 +2323,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 						"maxNodes":      1024,
 					}),
 				},
@@ -2336,7 +2338,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 						"format":        2,
 					}),
 				},
@@ -2352,7 +2354,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2366,7 +2368,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2380,7 +2382,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2393,7 +2395,7 @@ func TestStatusCodes(t *testing.T) {
 						"profileTypeID": profileTypeProcessCPU,
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2407,7 +2409,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "!bad_syntax!",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2437,7 +2439,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().UnixMilli(),
 						"end":           time.Now().Add(-1 * time.Hour).UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2449,7 +2451,7 @@ func TestStatusCodes(t *testing.T) {
 					Body: toJSON(map[string]any{
 						"profileTypeID": profileTypeProcessCPU,
 						"labelSelector": "{}",
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 			},
@@ -2472,7 +2474,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2486,7 +2488,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 				{
@@ -2500,7 +2502,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 			},
@@ -2516,7 +2518,7 @@ func TestStatusCodes(t *testing.T) {
 						"labelSelector": "{}",
 						"start":         time.Now().Add(-1 * time.Hour).UnixMilli(),
 						"end":           time.Now().UnixMilli(),
-						"spanSelector":  []string{"span1"},
+						"spanSelector":  []string{"0123456789012345"},
 					}),
 				},
 			},
@@ -2538,6 +2540,18 @@ func TestStatusCodes(t *testing.T) {
 	}
 
 	EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+		// Ingest a minimal profile so the head's time range covers [now-1h, now].
+		// Without this, the head has Bounds() = (0,0) and ForTimeRange excludes it,
+		// meaning invalid matchers are never parsed and always return 200.
+		rb := p.NewRequestBuilder(t)
+		profileBytes, err := testhelper.NewProfileBuilder(time.Now().Add(-time.Second).UnixNano()).
+			CPUProfile().
+			ForStacktraceString("foo", "bar").
+			AddSamples(1).
+			MarshalVT()
+		require.NoError(t, err)
+		rb.Push(rb.PushPPROFRequestFromBytes(profileBytes, "process_cpu"), 200, "")
+
 		client := http.DefaultClient
 		isV1Test := strings.HasSuffix(t.Name(), "v1")
 
