@@ -1,14 +1,20 @@
-use pyroscope::PyroscopeAgent;
-use pyroscope_pprofrs::{pprof_backend, PprofConfig};
+use pyroscope::pyroscope::PyroscopeAgentBuilder;
+use pyroscope::backend::{pprof_backend, BackendConfig, PprofConfig};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::env::set_var("RUST_LOG", "debug");
     pretty_env_logger::init_timed();
 
-    let agent = PyroscopeAgent::builder("http://pyroscope:4040", "rust-app")
-        .backend(pprof_backend(PprofConfig::new().sample_rate(100)))
-        .tags(vec![("Hostname", "pyroscope")])
-        .build()?;
+    let agent = PyroscopeAgentBuilder::new(
+        "http://pyroscope:4040",
+        "rust-app",
+        100,
+        "pyroscope-rs",
+        env!("CARGO_PKG_VERSION"),
+        pprof_backend(PprofConfig::default(), BackendConfig::default()),
+    )
+    .tags(vec![("Hostname", "pyroscope")])
+    .build()?;
 
     let agent_running = agent.start()?;
 
