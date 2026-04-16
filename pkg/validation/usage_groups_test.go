@@ -8,7 +8,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
@@ -580,7 +579,7 @@ func TestUsageGroupConfig_UnmarshalJSON(t *testing.T) {
 }
 
 func testMustParseMatcher(t *testing.T, s string) []*labels.Matcher {
-	m, err := parser.ParseMetricSelector(s)
+	m, err := phlaremodel.ParseMetricSelector(s)
 	require.NoError(t, err)
 	return m
 }

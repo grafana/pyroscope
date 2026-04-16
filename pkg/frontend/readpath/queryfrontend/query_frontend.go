@@ -15,7 +15,6 @@ import (
 	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -235,7 +234,7 @@ func (q *QueryFrontend) QueryMetadata(
 	}
 	span.SetTag("tenant_ids", tenants)
 
-	matchers, err := parser.ParseMetricSelector(req.LabelSelector)
+	matchers, err := model.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

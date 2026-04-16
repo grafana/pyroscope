@@ -8,7 +8,6 @@ import (
 	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -153,7 +152,7 @@ func createMatchersFromQuery(query string) ([]string, error) {
 	var matchers []*labels.Matcher
 	var err error
 	if query != "" {
-		matchers, err = parser.ParseMetricSelector(query)
+		matchers, err = phlaremodel.ParseMetricSelector(query)
 		if err != nil {
 			return nil, err
 		}
