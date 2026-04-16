@@ -798,7 +798,7 @@ Usage of ./pyroscope:
   -querier.query-store-after duration
     	The time after which a metric should be queried from storage and not just ingesters. 0 means all queries are sent to store. If this option is enabled, the time range of the query sent to the store-gateway will be manipulated to ensure the query end is not more recent than 'now - query-store-after'. (default 4h0m0s)
   -querier.query-tree-enabled
-    	Use the tree-based query path for SelectMergeProfile. Experimental.
+    	[experimental] Use the tree-based query path for SelectMergeProfile. Experimental.
   -querier.sanitize-on-merge
     	Whether profiles should be sanitized when merging. (default true)
   -querier.split-queries-by-interval duration
@@ -1156,7 +1156,7 @@ Usage of ./pyroscope:
   -segment-writer.lifecycler.addr string
     	IP address to advertise in the ring.
   -segment-writer.lifecycler.interface string
-    	Name of network interface to read address from. (default [<private network interfaces>])
+    	Name of network interface to read address from. (default [en0 bridge100 bridge102 bridge101])
   -segment-writer.lifecycler.port int
     	port to advertise in consul (defaults to server.grpc-listen-port).
   -segment-writer.metadata-dlq-enabled

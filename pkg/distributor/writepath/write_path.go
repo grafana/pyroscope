@@ -84,11 +84,11 @@ func (m *Compression) String() string { return string(*m) }
 
 type Config struct {
 	WritePath            WritePath     `yaml:"write_path" json:"write_path" doc:"hidden"`
-	IngesterWeight       float64       `yaml:"write_path_ingester_weight" json:"write_path_ingester_weight" doc:"hidden"`
-	SegmentWriterWeight  float64       `yaml:"write_path_segment_writer_weight" json:"write_path_segment_writer_weight" doc:"hidden"`
-	SegmentWriterTimeout time.Duration `yaml:"write_path_segment_writer_timeout" json:"write_path_segment_writer_timeout" doc:"hidden"`
-	Compression          Compression   `yaml:"write_path_compression" json:"write_path_compression" doc:"hidden"`
-	AsyncIngest          bool          `yaml:"async_ingest" json:"async_ingest" doc:"hidden"`
+	IngesterWeight       float64       `yaml:"write_path_ingester_weight" json:"write_path_ingester_weight" category:"advanced" doc:"hidden"`
+	SegmentWriterWeight  float64       `yaml:"write_path_segment_writer_weight" json:"write_path_segment_writer_weight" category:"advanced" doc:"hidden"`
+	SegmentWriterTimeout time.Duration `yaml:"write_path_segment_writer_timeout" json:"write_path_segment_writer_timeout" category:"advanced" doc:"hidden"`
+	Compression          Compression   `yaml:"write_path_compression" json:"write_path_compression" category:"advanced" doc:"hidden"`
+	AsyncIngest          bool          `yaml:"async_ingest" json:"async_ingest" category:"advanced" doc:"hidden"`
 }
 
 func (o *Config) RegisterFlags(f *flag.FlagSet) {

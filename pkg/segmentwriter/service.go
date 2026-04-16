@@ -26,6 +26,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/segmentwriter/memdb"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/fieldcategory"
 	"github.com/grafana/pyroscope/pkg/util/health"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -68,6 +69,19 @@ func (cfg *Config) Validate() error {
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "segment-writer"
+	// Ring/KV store flags come from dskit and cannot be tagged directly; mark them advanced here.
+	fieldcategory.AddOverrides(map[string]fieldcategory.Category{
+		prefix + ".availability-zone":              fieldcategory.Advanced,
+		prefix + ".consul.hostname":                fieldcategory.Advanced,
+		prefix + ".distributor.replication-factor": fieldcategory.Advanced,
+		prefix + ".distributor.zone-awareness-enabled": fieldcategory.Advanced,
+		prefix + ".etcd.endpoints":                 fieldcategory.Advanced,
+		prefix + ".etcd.password":                  fieldcategory.Advanced,
+		prefix + ".etcd.username":                  fieldcategory.Advanced,
+		prefix + ".lifecycler.interface":            fieldcategory.Advanced,
+		prefix + ".store":                          fieldcategory.Advanced,
+		prefix + ".tokens-file-path":               fieldcategory.Advanced,
+	})
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+".grpc-client-config", f)
 	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")

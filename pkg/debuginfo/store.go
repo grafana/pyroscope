@@ -25,10 +25,10 @@ import (
 )
 
 type Config struct {
-	Enabled           bool          `yaml:"-"`
-	MaxUploadSize     int64         `yaml:"-"`
-	UploadStalePeriod time.Duration `yaml:"-"`
-	UploadTimeout     time.Duration `yaml:"-"`
+	Enabled           bool          `yaml:"-" category:"advanced"`
+	MaxUploadSize     int64         `yaml:"-" category:"advanced"`
+	UploadStalePeriod time.Duration `yaml:"-" category:"advanced"`
+	UploadTimeout     time.Duration `yaml:"-" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {

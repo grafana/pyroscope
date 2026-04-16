@@ -26,9 +26,9 @@ import (
 var ErrBlockExists = fmt.Errorf("block already exists")
 
 type Config struct {
-	ShardCacheSize      int `yaml:"shard_cache_size"`
-	BlockWriteCacheSize int `yaml:"block_write_cache_size"`
-	BlockReadCacheSize  int `yaml:"block_read_cache_size"`
+	ShardCacheSize      int `yaml:"shard_cache_size" category:"advanced"`
+	BlockWriteCacheSize int `yaml:"block_write_cache_size" category:"advanced"`
+	BlockReadCacheSize  int `yaml:"block_read_cache_size" category:"advanced"`
 
 	Cleaner  cleaner.Config `yaml:",inline"`
 	Recovery dlq.Config     `yaml:",inline"`

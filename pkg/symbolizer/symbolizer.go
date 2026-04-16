@@ -33,7 +33,7 @@ type DebuginfodClient interface {
 }
 
 type Config struct {
-	DebuginfodURL            string `yaml:"debuginfod_url"`
+	DebuginfodURL            string `yaml:"debuginfod_url" category:"advanced"`
 	MaxDebuginfodConcurrency int    `yaml:"max_debuginfod_concurrency" category:"advanced"`
 }
 

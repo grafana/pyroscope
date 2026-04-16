@@ -5,9 +5,9 @@ import (
 )
 
 type Config struct {
-	EnableQueryBackend     bool             `yaml:"enable_query_backend" json:"enable_query_backend" doc:"hidden"`
+	EnableQueryBackend     bool             `yaml:"enable_query_backend" json:"enable_query_backend" category:"advanced" doc:"hidden"`
 	EnableQueryBackendFrom QueryBackendFrom `yaml:"enable_query_backend_from" json:"enable_query_backend_from" doc:"hidden"`
-	QueryTreeEnabled       bool             `yaml:"query_tree_enabled" json:"query_tree_enabled" doc:"hidden"`
+	QueryTreeEnabled       bool             `yaml:"query_tree_enabled" json:"query_tree_enabled" category:"experimental" doc:"hidden"`
 }
 
 func (o *Config) RegisterFlags(f *flag.FlagSet) {

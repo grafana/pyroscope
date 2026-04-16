@@ -43,9 +43,9 @@ type JobStore interface {
 }
 
 type Config struct {
-	MaxFailures   uint64        `yaml:"compaction_max_failures" doc:""`
-	LeaseDuration time.Duration `yaml:"compaction_job_lease_duration" doc:""`
-	MaxQueueSize  uint64        `yaml:"compaction_max_job_queue_size" doc:""`
+	MaxFailures   uint64        `yaml:"compaction_max_failures" category:"advanced" doc:""`
+	LeaseDuration time.Duration `yaml:"compaction_job_lease_duration" category:"advanced" doc:""`
+	MaxQueueSize  uint64        `yaml:"compaction_max_job_queue_size" category:"advanced" doc:""`
 }
 
 func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
