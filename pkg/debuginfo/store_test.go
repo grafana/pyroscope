@@ -261,7 +261,7 @@ func TestShouldInitiateUpload(t *testing.T) {
 		{
 			name:       "nil metadata first time seen",
 			metadata:   nil,
-			cfg:        Config{Enabled: true, MaxUploadDuration: time.Minute},
+			cfg:        Config{Enabled: true, UploadStalePeriod: time.Minute},
 			wantUpload: true,
 			wantReason: ReasonFirstTimeSeen,
 		},
@@ -271,7 +271,7 @@ func TestShouldInitiateUpload(t *testing.T) {
 				State:     debuginfov1alpha1.ObjectMetadata_STATE_UPLOADING,
 				StartedAt: timestamppb.New(time.Now().Add(-1 * time.Hour)),
 			},
-			cfg:        Config{Enabled: true, MaxUploadDuration: time.Minute},
+			cfg:        Config{Enabled: true, UploadStalePeriod: time.Minute},
 			wantUpload: true,
 			wantReason: ReasonUploadStale,
 		},
@@ -281,7 +281,7 @@ func TestShouldInitiateUpload(t *testing.T) {
 				State:     debuginfov1alpha1.ObjectMetadata_STATE_UPLOADING,
 				StartedAt: timestamppb.New(time.Now()),
 			},
-			cfg:        Config{Enabled: true, MaxUploadDuration: time.Minute},
+			cfg:        Config{Enabled: true, UploadStalePeriod: time.Minute},
 			wantUpload: false,
 			wantReason: ReasonUploadInProgress,
 		},
@@ -290,7 +290,7 @@ func TestShouldInitiateUpload(t *testing.T) {
 			metadata: &debuginfov1alpha1.ObjectMetadata{
 				State: debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED,
 			},
-			cfg:        Config{Enabled: true, MaxUploadDuration: time.Minute},
+			cfg:        Config{Enabled: true, UploadStalePeriod: time.Minute},
 			wantUpload: false,
 			wantReason: ReasonDebuginfoAlreadyExists,
 		},
@@ -299,7 +299,7 @@ func TestShouldInitiateUpload(t *testing.T) {
 			metadata: &debuginfov1alpha1.ObjectMetadata{
 				State: debuginfov1alpha1.ObjectMetadata_State(99),
 			},
-			cfg:     Config{Enabled: true, MaxUploadDuration: time.Minute},
+			cfg:     Config{Enabled: true, UploadStalePeriod: time.Minute},
 			wantErr: true,
 		},
 	}
@@ -366,7 +366,7 @@ func TestUploadIsStale(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			s, _ := newTestStore(t, Config{Enabled: true, MaxUploadDuration: tt.maxUploadDuration})
+			s, _ := newTestStore(t, Config{Enabled: true, UploadStalePeriod: tt.maxUploadDuration})
 			md := &debuginfov1alpha1.ObjectMetadata{
 				StartedAt: timestamppb.New(tt.startedAt),
 			}
@@ -538,7 +538,7 @@ func TestUploadE2E(t *testing.T) {
 
 	t.Run("full upload flow", func(t *testing.T) {
 		t.Parallel()
-		store, bucket := newTestStore(t, Config{Enabled: true, MaxUploadDuration: time.Minute})
+		store, bucket := newTestStore(t, Config{Enabled: true, UploadStalePeriod: time.Minute})
 		ts := startTestServer(t, store)
 
 		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
@@ -586,7 +586,7 @@ func TestUploadE2E(t *testing.T) {
 
 	t.Run("already uploaded returns should not initiate", func(t *testing.T) {
 		t.Parallel()
-		store, bucket := newTestStore(t, Config{Enabled: true, MaxUploadDuration: time.Minute})
+		store, bucket := newTestStore(t, Config{Enabled: true, UploadStalePeriod: time.Minute})
 		ts := startTestServer(t, store)
 
 		// Pre-populate metadata as already uploaded.
@@ -619,7 +619,7 @@ func TestUploadE2E(t *testing.T) {
 
 	t.Run("disabled service returns should not initiate", func(t *testing.T) {
 		t.Parallel()
-		store, _ := newTestStore(t, Config{Enabled: false, MaxUploadDuration: time.Minute})
+		store, _ := newTestStore(t, Config{Enabled: false, UploadStalePeriod: time.Minute})
 		ts := startTestServer(t, store)
 
 		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
@@ -637,7 +637,7 @@ func TestUploadE2E(t *testing.T) {
 
 	t.Run("upload without prior ShouldInitiateUpload returns 412", func(t *testing.T) {
 		t.Parallel()
-		store, _ := newTestStore(t, Config{Enabled: true, MaxUploadDuration: time.Minute})
+		store, _ := newTestStore(t, Config{Enabled: true, UploadStalePeriod: time.Minute})
 		ts := startTestServer(t, store)
 
 		httpResp := ts.upload(t, "test-tenant", "aabbccdd", []byte("some-data"))
@@ -647,7 +647,7 @@ func TestUploadE2E(t *testing.T) {
 
 	t.Run("UploadFinished without upload returns FailedPrecondition", func(t *testing.T) {
 		t.Parallel()
-		store, bucket := newTestStore(t, Config{Enabled: true, MaxUploadDuration: time.Minute})
+		store, bucket := newTestStore(t, Config{Enabled: true, UploadStalePeriod: time.Minute})
 		ts := startTestServer(t, store)
 
 		// Write metadata in STATE_UPLOADING but don't upload the actual file.
@@ -674,7 +674,7 @@ func TestUploadE2E(t *testing.T) {
 
 	t.Run("UploadFinished for unknown build ID returns NotFound", func(t *testing.T) {
 		t.Parallel()
-		store, _ := newTestStore(t, Config{Enabled: true, MaxUploadDuration: time.Minute})
+		store, _ := newTestStore(t, Config{Enabled: true, UploadStalePeriod: time.Minute})
 		ts := startTestServer(t, store)
 
 		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
@@ -687,7 +687,7 @@ func TestUploadE2E(t *testing.T) {
 
 	t.Run("upload exceeding max size fails", func(t *testing.T) {
 		t.Parallel()
-		store, _ := newTestStore(t, Config{Enabled: true, MaxUploadSize: 10, MaxUploadDuration: time.Minute})
+		store, _ := newTestStore(t, Config{Enabled: true, MaxUploadSize: 10, UploadStalePeriod: time.Minute})
 		ts := startTestServer(t, store)
 
 		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
