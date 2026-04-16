@@ -13,6 +13,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
 type Request struct {
@@ -2538,6 +2540,18 @@ func TestStatusCodes(t *testing.T) {
 	}
 
 	EachPyroscopeTest(t, func(p *PyroscopeTest, t *testing.T) {
+		// Ingest a minimal profile so the head's time range covers [now-1h, now].
+		// Without this, the head has Bounds() = (0,0) and ForTimeRange excludes it,
+		// meaning invalid matchers are never parsed and always return 200.
+		rb := p.NewRequestBuilder(t)
+		profileBytes, err := testhelper.NewProfileBuilder(time.Now().Add(-time.Second).UnixNano()).
+			CPUProfile().
+			ForStacktraceString("foo", "bar").
+			AddSamples(1).
+			MarshalVT()
+		require.NoError(t, err)
+		rb.Push(rb.PushPPROFRequestFromBytes(profileBytes, "process_cpu"), 200, "")
+
 		client := http.DefaultClient
 		isV1Test := strings.HasSuffix(t.Name(), "v1")
 
