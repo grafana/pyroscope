@@ -71,7 +71,7 @@ func newTestConfig(t *testing.T, args []string) Config {
 
 func TestSetupModuleManager_V2_ExcludesV1Components(t *testing.T) {
 	t.Run("excludes V1 by default", func(t *testing.T) {
-		cfg := newTestConfig(t, []string{})
+		cfg := newTestConfig(t, []string{"-architecture.storage=v2"})
 		f := &Pyroscope{Cfg: cfg}
 		require.NoError(t, f.setupModuleManager())
 
@@ -121,7 +121,7 @@ func TestRegisterServerFlagsWithChangedDefaultValues_V2(t *testing.T) {
 
 		archStorage := fs.Lookup("architecture.storage")
 		require.NotNil(t, archStorage)
-		assert.Equal(t, "v2", archStorage.DefValue)
+		assert.Equal(t, "v1-v2-dual", archStorage.DefValue)
 	})
 
 	t.Run("V2 applies additional default overrides", func(t *testing.T) {
