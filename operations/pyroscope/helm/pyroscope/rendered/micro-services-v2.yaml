@@ -3376,8 +3376,6 @@ spec:
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
-            - "-adaptive-placement.max-dataset-shards=1024"
-            - "-adaptive-placement.unit-size-bytes=131072"
             - "-log.level=debug"
             - "-metastore.index.cleanup-interval=1m"
             - "-metastore.raft.bootstrap-expect-peers=3"
