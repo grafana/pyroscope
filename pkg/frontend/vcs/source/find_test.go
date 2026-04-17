@@ -225,7 +225,7 @@ func TestFileFinder_Find(t *testing.T) {
 				},
 			},
 			expectedContent: "# CONTENT RideShareController.java",
-			expectedURL:     "https://github.com/grafana/pyroscope/v2/blob/main/examples/language-sdk-instrumentation/java/rideshare/src/main/java/org/example/rideshare/RideShareController.java",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/language-sdk-instrumentation/java/rideshare/src/main/java/org/example/rideshare/RideShareController.java",
 			expectedError:   false,
 		},
 		{
@@ -271,7 +271,7 @@ func TestFileFinder_Find(t *testing.T) {
 				},
 			},
 			expectedContent: "# CONTENT worker.go",
-			expectedURL:     "https://github.com/grafana/pyroscope/v2/blob/main/pkg/compactionworker/worker.go",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/pkg/compactionworker/worker.go",
 			expectedError:   false,
 		},
 		{
@@ -471,7 +471,7 @@ require (
 				},
 			},
 			expectedContent: "# CONTENT main.py",
-			expectedURL:     "https://github.com/grafana/pyroscope/v2/blob/main/examples/python-app/src/module/main.py",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/python-app/src/module/main.py",
 			expectedError:   false,
 		},
 		{
@@ -494,7 +494,7 @@ require (
 				},
 			},
 			expectedContent: "# CONTENT recommendation_server.py",
-			expectedURL:     "https://github.com/grafana/pyroscope/v2/blob/main/examples/python-app/recommendation_server.py",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/python-app/recommendation_server.py",
 			expectedError:   false,
 		},
 		// JavaScript tests
@@ -521,7 +521,7 @@ require (
 				},
 			},
 			expectedContent: "// CONTENT index.js\nfunction chargeServiceHandler() {}",
-			expectedURL:     "https://github.com/grafana/pyroscope/v2/blob/a35e42d4b114cfada7ef6d53c4a63d6ba44a72d9/src/paymentservice/index.js",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/a35e42d4b114cfada7ef6d53c4a63d6ba44a72d9/src/paymentservice/index.js",
 			expectedError:   false,
 		},
 		// TypeScript tests (uses language: javascript)
@@ -548,7 +548,7 @@ require (
 				},
 			},
 			expectedContent: "// CONTENT handler.ts\nexport function processPayment() {}",
-			expectedURL:     "https://github.com/grafana/pyroscope/v2/blob/main/src/paymentservice/handler.ts",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/src/paymentservice/handler.ts",
 			expectedError:   false,
 		},
 		{
@@ -571,7 +571,7 @@ require (
 				},
 			},
 			expectedContent: "// CONTENT server.js",
-			expectedURL:     "https://github.com/grafana/pyroscope/v2/blob/main/examples/nodejs-app/server.js",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/nodejs-app/server.js",
 			expectedError:   false,
 		},
 		{
@@ -593,7 +593,7 @@ require (
 				},
 			},
 			expectedContent: "# Python script content\nprint('hello')",
-			expectedURL:     "https://github.com/grafana/pyroscope/v2/blob/main/scripts/example.unknown_extension",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/scripts/example.unknown_extension",
 			expectedError:   false,
 		},
 	}

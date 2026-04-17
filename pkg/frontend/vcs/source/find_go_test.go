@@ -45,7 +45,7 @@ func Test_tryFindGoFile(t *testing.T) {
 		},
 		{
 			name:                  "path with relative repository prefix",
-			searchedPath:          "github.com/grafana/pyroscope/v2/main.go",
+			searchedPath:          "github.com/grafana/pyroscope/main.go",
 			rootPath:              "",
 			repo:                  pyroscopeRepo,
 			clientMock:            newMockVCSClient().addFiles(newFile("main.go")),
@@ -55,7 +55,7 @@ func Test_tryFindGoFile(t *testing.T) {
 		},
 		{
 			name:                  "path with absolute repository prefix",
-			searchedPath:          "/Users/pyroscope/git/github.com/grafana/pyroscope/v2/main.go",
+			searchedPath:          "/Users/pyroscope/git/github.com/grafana/pyroscope/main.go",
 			rootPath:              "",
 			repo:                  pyroscopeRepo,
 			clientMock:            newMockVCSClient().addFiles(newFile("main.go")),
