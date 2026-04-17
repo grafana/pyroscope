@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -207,7 +208,9 @@ func (ff FileFinder) tryFindGoFile(ctx context.Context, maxAttempts int) (*vcsv1
 	path = strings.TrimLeft(path, "/")
 	if i := strings.IndexByte(path, '/'); i > 0 {
 		if seg := path[:i]; len(seg) > 1 && seg[0] == 'v' && isDigits(seg[1:]) {
-			path = path[i+1:]
+			if majorVer, _ := strconv.Atoi(seg[1:]); majorVer >= 2 {
+				path = path[i+1:]
+			}
 		}
 	}
 

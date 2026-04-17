@@ -84,6 +84,16 @@ func Test_tryFindGoFile(t *testing.T) {
 			expectedError:         nil,
 		},
 		{
+			name:                  "path with v1 directory not stripped (legitimate v1/ dir)",
+			searchedPath:          "github.com/grafana/pyroscope/v1/main.go",
+			rootPath:              "",
+			repo:                  pyroscopeRepo,
+			clientMock:            newMockVCSClient().addFiles(newFile("v1/main.go")),
+			attempts:              2,
+			expectedSearchedPaths: []string{"v1/main.go"},
+			expectedError:         nil,
+		},
+		{
 			name:                  "not found, attempts exceeded",
 			searchedPath:          "/var/service1/src/main.go",
 			rootPath:              "",
