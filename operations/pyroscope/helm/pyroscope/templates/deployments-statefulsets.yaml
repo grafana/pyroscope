@@ -40,7 +40,7 @@ spec:
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         {{- end }}
         {{- if not (hasKey $values.podAnnotations "profiles.grafana.com/service_git_ref")  }}
-        profiles.grafana.com/service_git_ref: "v{{ .Chart.AppVersion }}"
+        profiles.grafana.com/service_git_ref: "{{ if regexMatch "^[0-9]" .Chart.AppVersion }}v{{ end }}{{ .Chart.AppVersion }}"
         {{- end }}
         {{- with $values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
