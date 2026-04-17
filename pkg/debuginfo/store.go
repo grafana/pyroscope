@@ -160,15 +160,17 @@ func (s *Store) ShouldInitiateUpload(
 
 func (s *Store) UploadHTTPHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.cfg.UploadTimeout > 0 {
-			deadline := time.Now().Add(s.cfg.UploadTimeout)
-			rc := http.NewResponseController(w)
-			_ = rc.SetReadDeadline(deadline)
-			_ = rc.SetWriteDeadline(deadline)
-		}
-
 		ctx := r.Context()
 		if s.cfg.UploadTimeout > 0 {
+			now := time.Now()
+			rc := http.NewResponseController(w)
+			if err := rc.SetReadDeadline(now.Add(s.cfg.UploadTimeout)); err != nil {
+				_ = level.Warn(s.logger).Log("msg", "failed to set read deadline", "err", err)
+			}
+			if err := rc.SetWriteDeadline(now.Add(s.cfg.UploadTimeout + 30*time.Second)); err != nil {
+				_ = level.Warn(s.logger).Log("msg", "failed to set write deadline", "err", err)
+			}
+
 			var cancel context.CancelFunc
 			ctx, cancel = context.WithTimeout(ctx, s.cfg.UploadTimeout)
 			defer cancel()
