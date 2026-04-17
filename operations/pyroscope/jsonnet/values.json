@@ -329,7 +329,6 @@
     "storage": {
       "migration": {
         "ingesterWeight": 1,
-        "queryBackend": true,
         "queryBackendFrom": "auto",
         "segmentWriterWeight": 1
       },
@@ -431,10 +430,6 @@
       "enabled": false,
       "metastore": {
         "subPath": ".metastore"
-      },
-      "shared": {
-        "enabled": true,
-        "subPath": ".shared"
       },
       "size": "10Gi"
     },

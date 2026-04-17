@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 1.21.0](https://img.shields.io/badge/Version-1.21.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.21.0](https://img.shields.io/badge/AppVersion-1.21.0-informational?style=flat-square)
+![Version: 1.21.0](https://img.shields.io/badge/Version-1.21.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: main-171db75](https://img.shields.io/badge/AppVersion-main--171db75-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -30,8 +30,7 @@
 | architecture.microservices.enabled | bool | `false` | Enable micro-services deployment mode. This is recommend for larger scale deployment and allow right size each aspect of Pyroscope. |
 | architecture.overwriteResources | object | `{}` | This flag is useful for testing, it will overwrite all pods resource statements with its contents |
 | architecture.storage.migration.ingesterWeight | float | `1` | Specifies the fraction [0:1] that should be send to the v1 write path / ingester in combined mode. 0 means no traffics is sent to ingester. 1 means 100% of requests are sent to ingester. |
-| architecture.storage.migration.queryBackend | bool | `true` | Specify a time stamp from when the v2 read path should serve traffic. |
-| architecture.storage.migration.queryBackendFrom | string | `"auto"` | Specify a time stamp from when the v2 read path should serve traffic. |
+| architecture.storage.migration.queryBackendFrom | string | `"auto"` | Specify a time stamp from when the v2 read path should serve traffic. Defaults to "auto" which determines the split point from the metastore. |
 | architecture.storage.migration.segmentWriterWeight | float | `1` | Specifies the fraction [0:1] that should be send to the v2 write path / segment-writer in combined mode. 0 means no traffics is sent to segment-writer. 1 means 100% of requests are sent to segment-writer. |
 | architecture.storage.v1 | bool | `true` | Enable v1 storage layer. |
 | architecture.storage.v2 | bool | `false` | Enable v2 storage layer. |
@@ -83,8 +82,6 @@
 | pyroscope.persistence.annotations | object | `{}` |  |
 | pyroscope.persistence.enabled | bool | `false` |  |
 | pyroscope.persistence.metastore.subPath | string | `".metastore"` |  |
-| pyroscope.persistence.shared.enabled | bool | `true` |  |
-| pyroscope.persistence.shared.subPath | string | `".shared"` |  |
 | pyroscope.persistence.size | string | `"10Gi"` |  |
 | pyroscope.podAnnotations."profiles.grafana.com/cpu.port_name" | string | `"http2"` |  |
 | pyroscope.podAnnotations."profiles.grafana.com/cpu.scrape" | string | `"true"` |  |

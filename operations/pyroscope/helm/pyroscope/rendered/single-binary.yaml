@@ -9,7 +9,7 @@ metadata:
     helm.sh/chart: pyroscope-1.21.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.21.0"
+    app.kubernetes.io/version: "main-171db75"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -46,7 +46,7 @@ metadata:
     helm.sh/chart: pyroscope-1.21.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.21.0"
+    app.kubernetes.io/version: "main-171db75"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: pyroscope/templates/configmap-alloy.yaml
@@ -59,7 +59,7 @@ metadata:
     helm.sh/chart: pyroscope-1.21.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.21.0"
+    app.kubernetes.io/version: "main-171db75"
     app.kubernetes.io/managed-by: Helm
 data:
   config.alloy: |
@@ -917,7 +917,7 @@ metadata:
     helm.sh/chart: pyroscope-1.21.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.21.0"
+    app.kubernetes.io/version: "main-171db75"
     app.kubernetes.io/managed-by: Helm
 data:
   overrides.yaml: |
@@ -934,7 +934,7 @@ metadata:
     helm.sh/chart: pyroscope-1.21.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.21.0"
+    app.kubernetes.io/version: "main-171db75"
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
@@ -1144,7 +1144,7 @@ metadata:
     helm.sh/chart: pyroscope-1.21.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.21.0"
+    app.kubernetes.io/version: "main-171db75"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -1171,7 +1171,7 @@ metadata:
     helm.sh/chart: pyroscope-1.21.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.21.0"
+    app.kubernetes.io/version: "main-171db75"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1196,7 +1196,7 @@ metadata:
     helm.sh/chart: pyroscope-1.21.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.21.0"
+    app.kubernetes.io/version: "main-171db75"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1312,7 +1312,7 @@ metadata:
     helm.sh/chart: pyroscope-1.21.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.21.0"
+    app.kubernetes.io/version: "main-171db75"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1327,9 +1327,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: fbd928f21b3db7574eb01571d06ea679904aa0af4b2d57bbc3d6cbc694de8a8d
+        checksum/config: 5c82c812cd288ff8b12368a190656be7f3105dcb893d9a8ae8194319e39ba008
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v1.21.0"
+        profiles.grafana.com/service_git_ref: "main-171db75"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1352,7 +1352,7 @@ spec:
         - name: "pyroscope"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.21.0"
+          image: "grafana/pyroscope:main-171db75"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=all"
@@ -1363,6 +1363,8 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-architecture.storage=v1"
+            - "-write-path=ingester"
           env:
             - name: POD_NAME
               valueFrom:
