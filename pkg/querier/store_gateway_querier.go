@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -180,7 +179,7 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	_, err = parser.ParseMetricSelector(req.LabelSelector)
+	_, err = model.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -240,7 +239,7 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	_, err = parser.ParseMetricSelector(req.LabelSelector)
+	_, err = model.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -408,7 +407,7 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	_, err = parser.ParseMetricSelector(req.LabelSelector)
+	_, err = model.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

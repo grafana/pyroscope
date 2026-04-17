@@ -25,45 +25,56 @@ The Pyroscope server can be a local server for development or a remote server fo
 
 ## Add Rust profiling to your application
 
-Add the `pyroscope` and `pyroscope_pprofrs` crates to your Cargo.toml:
+Add the `pyroscope` crate with the `backend-pprof-rs` feature to your Cargo.toml:
 
-```bash
-cargo add pyroscope
-cargo add pyroscope_pprofrs
+```toml
+[dependencies]
+pyroscope = { version = "2.0.0", features = ["backend-pprof-rs"] }
 ```
 
 ## Configure the Rust client
 
 At a minimum, you need to provide the URL of the Pyroscope server and the name
 of your application. You also need to configure a profiling backend. For Rust,
-you can use [pprof-rs](https://github.com/pyroscope-io/pyroscope-rs/tree/main/pyroscope_backends/pyroscope_pprofrs).
+you can use the [pprof-rs backend](https://github.com/grafana/pyroscope-rs) (enabled via the `backend-pprof-rs` feature).
 
 ```rust
-// Configure profiling backend
-let pprof_config = PprofConfig::new().sample_rate(100);
-let backend_impl = pprof_backend(pprof_config);
+use pyroscope::pyroscope::PyroscopeAgentBuilder;
+use pyroscope::backend::{pprof_backend, PprofConfig, BackendConfig};
 
 // Configure Pyroscope Agent
-let agent = PyroscopeAgent::builder("http://localhost:4040", "myapp")
-    .backend(backend_impl)
-    .build()?;
+let agent = PyroscopeAgentBuilder::new(
+    "http://localhost:4040",
+    "myapp",
+    100, // sample rate in Hz
+    "pyroscope-rs",
+    env!("CARGO_PKG_VERSION"),
+    pprof_backend(PprofConfig::default(), BackendConfig::default()),
+)
+.build()?;
 ```
 
 Users of a secured backend will need to provide authentication details. **Grafana Cloud** uses Basic authentication. Your username is a numeric value which you can get from the "Details Page" for Pyroscope from your stack on grafana.com. On this same page, create a token and use it as the Basic authentication password. The configuration then would look similar to:
 
 ```rust
-fn  main() ->  Result<()> {
-std::env::set_var("RUST_LOG", "debug");
-pretty_env_logger::init_timed();
-let user = std::env::var("USER").unwrap();
-let password = std::env::var("PASSWORD").unwrap();
-let url = std::env::var("PYROSCOPE_URL").unwrap();
-let samplerate = std::env::var("SAMPLE_RATE").unwrap().to_string().parse().unwrap();
-let application_name = "example.basic";
+use pyroscope::pyroscope::PyroscopeAgentBuilder;
+use pyroscope::backend::{pprof_backend, PprofConfig, BackendConfig};
 
-let agent = PyroscopeAgent::builder(url, application_name.to_string())
-    .basic_auth(user, password).backend(pprof_backend(PprofConfig::new().sample_rate(samplerate)))
-    .tags([("app", "Rust"), ("TagB", "ValueB")].to_vec())
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let user = std::env::var("USER").unwrap();
+    let password = std::env::var("PASSWORD").unwrap();
+    let url = std::env::var("PYROSCOPE_URL").unwrap();
+
+    let agent = PyroscopeAgentBuilder::new(
+        url,
+        "example.basic",
+        100,
+        "pyroscope-rs",
+        env!("CARGO_PKG_VERSION"),
+        pprof_backend(PprofConfig::default(), BackendConfig::default()),
+    )
+    .basic_auth(user, password)
+    .tags(vec![("app", "Rust"), ("TagB", "ValueB")])
     .build()?;
 ```
 
@@ -76,7 +87,7 @@ let agent_running = agent.start().unwrap();
 The agent can be stopped at any point, and it'll send a last report to the server. The agent can be restarted at a later point.
 
 ```rust
-let agent_ready = agent.stop().unwrap();
+let agent_ready = agent_running.stop().unwrap();
 ```
 
 It's recommended to shut down the agent before exiting the application. A last
@@ -95,8 +106,7 @@ agent_ready.shutdown();
 
 ## Add profiling labels to Rust applications
 
-Tags can be added or removed after the agent is started. As of 0.5.0, the
-Pyroscope Agent supports tagging within threads. Check the [tags](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/tags.rs) and [multi-thread](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/multi-thread.rs) examples for detailed usage.
+Tags can be added or removed after the agent is started. The Pyroscope Agent supports tagging within threads.
 
 After the agent is started, the `tag_wrapper` function becomes available.
 `tag_wrapper` returns a tuple of functions to add and remove tags to the agent
@@ -121,44 +131,42 @@ add_tag("key".to_string(), "value".to_string());
 remove_tag("key".to_string(), "value".to_string());
 
 // Stop the agent
-let agent_ready = running_agent.stop();
+let agent_ready = agent_running.stop()?;
 ```
 
 ## Rust client configuration options
 
 The agent accepts additional initial parameters:
 
-- **Backend**: Profiling backend. For Rust, it's [pprof-rs](https://github.com/pyroscope-io/pyroscope-rs/tree/main/pyroscope_backends/pyroscope_pprofrs)
-- **Sample Rate**: Sampling Frequency in Hertz. Default is 100.
+- **Backend**: Profiling backend. For Rust, it's the [pprof-rs backend](https://github.com/grafana/pyroscope-rs) (enabled via the `backend-pprof-rs` feature).
+- **Sample Rate**: Sampling frequency in Hertz. Default is 100. Set via `PprofConfig` and the `sample_rate` parameter of `PyroscopeAgentBuilder::new()`.
 - **Tags**: Initial tags.
 
 ```rust
-// Configure Profiling backend
-let pprof_config = PprofConfig::new().sample_rate(100);
-let pprof_backend = Pprof::new(pprof_config);
+use pyroscope::pyroscope::PyroscopeAgentBuilder;
+use pyroscope::backend::{pprof_backend, PprofConfig, BackendConfig};
 
 // Configure Pyroscope Agent
-let agent =
-PyroscopeAgent::builder("http://localhost:4040", "myapp")
-// Profiling backend
-.backend(pprof_backend)
-// Sample rate
-.sample_rate(100)
-// Tags
+let agent = PyroscopeAgentBuilder::new(
+    "http://localhost:4040",
+    "myapp",
+    100, // sample rate in Hz
+    "pyroscope-rs",
+    env!("CARGO_PKG_VERSION"),
+    pprof_backend(PprofConfig { sample_rate: 100 }, BackendConfig::default()),
+)
 .tags(vec![("env", "dev")])
-// Create the agent
 .build()?;
 ```
 
 ## Technical details
 
-- **Backend**: The Pyroscope Agent uses [pprof-rs](https://github.com/tikv/pprof-rs) as a backend. As a result, the [limitations](https://github.com/tikv/pprof-rs#why-not-) for pprof-rs also applies.
-As of 0.5.0, the Pyroscope Agent supports tagging within threads. Check the [tags](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/tags.rs) and [multi-thread](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/multi-thread.rs) examples for usage.
+- **Backend**: The Pyroscope Agent uses [pprof-rs](https://github.com/tikv/pprof-rs) as a backend. As a result, the [limitations](https://github.com/tikv/pprof-rs#why-not-) for pprof-rs also apply. The Pyroscope Agent supports tagging within threads.
 - **Timer**: epoll (for Linux) and kqueue (for macOS) are required for a more precise timer.
 - **Shutdown**: The Pyroscope Agent might take some time (usually less than 10 seconds) to shut down properly and drop its threads. For a proper shutdown, it's recommended that you run the `shutdown` function before dropping the agent.
 
 - **Relevant Links**
-  - [GitHub Repository](https://github.com/pyroscope-io/pyroscope-rs)
+  - [GitHub Repository](https://github.com/grafana/pyroscope-rs)
   - [Cargo crate](https://crates.io/crates/pyroscope)
   - [Crate documentation](https://docs.rs/pyroscope/latest/pyroscope/index.html)
 
@@ -166,12 +174,7 @@ As of 0.5.0, the Pyroscope Agent supports tagging within threads. Check the [tag
 
 ### Usage examples
 
-- [**basic**](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/basic.rs): Minimal configuration example.
-- [**tags**](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/tags.rs): Example using Tags.
-- [**async**](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/async.rs): Example using Async code with Tokio.
-- [**multi-thread**](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/multi-thread.rs): Example using multiple threads.
-- [**with-logger**](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/with-logger.rs): Example with logging to stdout.
-- [**error**](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/error.rs): Example with an invalid server address.
+- [**jemalloc**](https://github.com/grafana/pyroscope-rs/blob/main/examples/jemalloc.rs): Memory profiling with jemalloc backend.
 
 #### Stand-alone examples
 

@@ -15,7 +15,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 	"gopkg.in/yaml.v3"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -237,7 +236,7 @@ func parseUsageGroupEntries(m map[string]string) ([]usageGroupEntry, map[string]
 			return nil, nil, fmt.Errorf("usage group name %q is reserved", noMatchName)
 		}
 
-		matchers, err := parser.ParseMetricSelector(matchersText)
+		matchers, err := phlaremodel.ParseMetricSelector(matchersText)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to parse matchers for usage group %q: %w", name, err)
 		}

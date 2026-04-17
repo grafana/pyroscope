@@ -13,13 +13,23 @@ import (
 	"github.com/cespare/xxhash/v2"
 	pmodel "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/promql/parser"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
-var seps = []byte{'\xff'}
+var (
+	seps       = []byte{'\xff'}
+	promParser = parser.NewParser(parser.Options{})
+)
+
+// ParseMetricSelector parses the provided textual metric selector into a
+// list of label matchers.
+func ParseMetricSelector(input string) ([]*labels.Matcher, error) {
+	return promParser.ParseMetricSelector(input)
+}
 
 const (
 	LabelNameProfileType        = "__profile_type__"

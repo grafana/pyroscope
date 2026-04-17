@@ -27,13 +27,15 @@ import (
 type Config struct {
 	Enabled           bool          `yaml:"-"`
 	MaxUploadSize     int64         `yaml:"-"`
-	MaxUploadDuration time.Duration `yaml:"-"`
+	UploadStalePeriod time.Duration `yaml:"-"`
+	UploadTimeout     time.Duration `yaml:"-"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.BoolVar(&cfg.Enabled, "debug-info.enabled", true, "Enable debug info.")
-	f.Int64Var(&cfg.MaxUploadSize, "debug-info.max-upload-size", 100*1024*1024, "Maximum size of a single debug info upload in bytes.")
-	f.DurationVar(&cfg.MaxUploadDuration, "debug-info.max-upload-duration", time.Minute, "Maximum duration of a single debug info upload.")
+	f.Int64Var(&cfg.MaxUploadSize, "debug-info.max-upload-size", 1024*1024*1024, "Maximum size of a single debug info upload in bytes.")
+	f.DurationVar(&cfg.UploadStalePeriod, "debug-info.upload-stale-period", 5*time.Minute, "Period after which a pending upload is considered stale and can be retried.")
+	f.DurationVar(&cfg.UploadTimeout, "debug-info.upload-timeout", 2*time.Minute, "Timeout for a single debug info upload request. Overrides server HTTP write timeout for this handler.")
 }
 
 type Store struct {
@@ -52,6 +54,13 @@ func NewStore(
 ) (*Store, error) {
 	if cfg.Enabled && bucket == nil {
 		return nil, errors.New("enabled debug info requires a bucket")
+	}
+	if cfg.Enabled && cfg.UploadTimeout > cfg.UploadStalePeriod+2*time.Minute {
+		return nil, fmt.Errorf(
+			"debug info upload timeout %s exceeds stale threshold %s; increase debug-info.max-upload-duration or lower debug-info.upload-timeout",
+			cfg.UploadTimeout,
+			cfg.UploadStalePeriod+2*time.Minute,
+		)
 	}
 	return &Store{
 		logger: log.With(logger, "component", "debuginfo"),
@@ -152,6 +161,21 @@ func (s *Store) ShouldInitiateUpload(
 func (s *Store) UploadHTTPHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		if s.cfg.UploadTimeout > 0 {
+			now := time.Now()
+			rc := http.NewResponseController(w)
+			if err := rc.SetReadDeadline(now.Add(s.cfg.UploadTimeout)); err != nil {
+				_ = level.Warn(s.logger).Log("msg", "failed to set read deadline", "err", err)
+			}
+			if err := rc.SetWriteDeadline(now.Add(s.cfg.UploadTimeout + 30*time.Second)); err != nil {
+				_ = level.Warn(s.logger).Log("msg", "failed to set write deadline", "err", err)
+			}
+
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, s.cfg.UploadTimeout)
+			defer cancel()
+		}
+
 		tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 		if err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -255,7 +279,7 @@ func validateInit(init *debuginfov1alpha1.ShouldInitiateUploadRequest) (*ValidGn
 }
 
 func (s *Store) uploadIsStale(upload *debuginfov1alpha1.ObjectMetadata) bool {
-	return upload.StartedAt.AsTime().Add(s.cfg.MaxUploadDuration + 2*time.Minute).Before(time.Now())
+	return upload.StartedAt.AsTime().Add(s.cfg.UploadStalePeriod + 2*time.Minute).Before(time.Now())
 }
 
 func (s *Store) fetchMetadata(ctx context.Context, tenantID string, id *ValidGnuBuildID) (*debuginfov1alpha1.ObjectMetadata, error) {

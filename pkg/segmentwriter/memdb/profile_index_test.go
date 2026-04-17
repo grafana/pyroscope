@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -88,7 +87,7 @@ func TestIndex(t *testing.T) {
 }
 
 func selectMatchingFPs(pi *profilesIndex, params *ingestv1.SelectProfilesRequest) ([]model.Fingerprint, error) {
-	selectors, err := parser.ParseMetricSelector(params.LabelSelector)
+	selectors, err := phlaremodel.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}

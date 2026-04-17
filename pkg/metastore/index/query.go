@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/promql/parser"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/pkg/block/metadata"
 	"github.com/grafana/pyroscope/pkg/metastore/index/store"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 type InvalidQueryError struct {
@@ -56,7 +56,7 @@ func newMetadataQuery(index *Index, query MetadataQuery) (*metadataQuery, error)
 	if len(query.Tenant) == 0 {
 		return nil, &InvalidQueryError{Query: query, Err: fmt.Errorf("tenant_id is required")}
 	}
-	matchers, err := parser.ParseMetricSelector(query.Expr)
+	matchers, err := phlaremodel.ParseMetricSelector(query.Expr)
 	if err != nil {
 		return nil, &InvalidQueryError{Query: query, Err: fmt.Errorf("failed to parse label matcher: %w", err)}
 	}

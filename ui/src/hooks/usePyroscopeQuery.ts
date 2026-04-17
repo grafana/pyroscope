@@ -5,6 +5,7 @@ import {
   fetchTimeline,
   type Service,
   type FlamegraphData,
+  type Point,
 } from '@api/client';
 export type { Service, FlamegraphData } from '@api/client';
 
@@ -22,7 +23,7 @@ export interface QueryResult {
   services: Service[];
   servicesLoading: boolean;
   flamegraph: FlamegraphData;
-  timeline: number[];
+  timeline: Point[];
   loading: boolean;
   error: string | null;
   run: () => void;
@@ -48,7 +49,7 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
     names: [],
     levels: [],
   });
-  const [timeline, setTimeline] = useState<number[]>([]);
+  const [timeline, setTimeline] = useState<Point[]>([]);
   const [loading, setLoading] = useState(false);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

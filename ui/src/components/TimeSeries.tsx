@@ -1,84 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Empty } from '@components/core/Empty';
 import { profileTypeUnit } from '@api/client';
+import {
+  toDisplayValue,
+  niceMax,
+  yAxisFormatter,
+  parseRangeMs,
+  tickStepMs,
+  formatTickTime,
+} from './timeseries-utils';
 import './TimeSeries.css';
-
-function toDisplayValue(raw: number, unit: string): number {
-  if (unit === 'ns') return raw / 1e9;
-  return raw;
-}
-
-function niceMax(value: number): number {
-  if (value <= 0) return 1;
-  const exp = Math.floor(Math.log10(value));
-  const mag = Math.pow(10, exp);
-  const norm = value / mag;
-  if (norm <= 1) return mag;
-  if (norm <= 2) return 2 * mag;
-  if (norm <= 5) return 5 * mag;
-  return 10 * mag;
-}
-
-function yAxisFormatter(displayMax: number): (v: number) => string {
-  let divisor = 1,
-    suffix = '';
-  if (displayMax >= 1e9) {
-    divisor = 1e9;
-    suffix = 'G';
-  } else if (displayMax >= 1e6) {
-    divisor = 1e6;
-    suffix = 'M';
-  } else if (displayMax >= 1e3) {
-    divisor = 1e3;
-    suffix = 'k';
-  } else if (displayMax < 1e-3 && displayMax > 0) {
-    divisor = 1e-6;
-    suffix = 'µ';
-  } else if (displayMax < 1 && displayMax > 0) {
-    divisor = 1e-3;
-    suffix = 'm';
-  }
-  return (v: number) => {
-    if (v === 0) return '0';
-    return `${parseFloat((v / divisor).toPrecision(3))}${suffix}`;
-  };
-}
-
-function parseRangeMs(range: string): number {
-  const m = range.match(/^now-(\d+)([mhd])$/);
-  if (!m) return 3_600_000;
-  const mult: Record<string, number> = {
-    m: 60_000,
-    h: 3_600_000,
-    d: 86_400_000,
-  };
-  return parseInt(m[1]) * (mult[m[2]] ?? 60_000);
-}
-
-function tickStepMs(durationMs: number): number {
-  const m = 60_000,
-    h = 3_600_000,
-    d = 86_400_000;
-  if (durationMs <= 15 * m) return m;
-  if (durationMs <= 2 * h) return 5 * m;
-  if (durationMs <= 4 * h) return 15 * m;
-  if (durationMs <= 8 * h) return 30 * m;
-  if (durationMs <= 12 * h) return h;
-  if (durationMs <= d) return 2 * h;
-  if (durationMs <= 7 * d) return 12 * h;
-  return d;
-}
-
-function formatTickTime(ts: number, stepMs: number): string {
-  const d = new Date(ts);
-  if (stepMs >= 86_400_000) {
-    return d.toLocaleDateString(undefined, {
-      month: 'numeric',
-      day: 'numeric',
-    });
-  }
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
 
 export function TimeSeries({
   data,
@@ -88,7 +19,7 @@ export function TimeSeries({
   endMs,
   onRangeSelect,
 }: {
-  data: number[];
+  data: { value: number; timestamp: number }[];
   timeRange: string;
   profileTypeId: string;
   startMs?: number;
@@ -155,18 +86,21 @@ export function TimeSeries({
   const rangeStart = rangeEnd - durationMs;
   timeRef.current = { rangeStart, durationMs, onRangeSelect };
 
-  const max = Math.max(...data);
-  const norm = max === 0 ? data.map(() => 0) : data.map((v) => v / max);
+  const max = Math.max(...data.map((d) => d.value));
+  const norm = max === 0 ? data.map(() => 0) : data.map((d) => d.value / max);
 
   const pts = norm.map(
     (v, i) =>
-      [(i / Math.max(n - 1, 1)) * W, H - 4 - v * (H - 10)] as [number, number],
+      [
+        ((data[i].timestamp - rangeStart) / durationMs) * W,
+        H - 4 - v * (H - 10),
+      ] as [number, number],
   );
 
   const area =
-    `M 0,${H} ` +
+    `M ${pts[0][0].toFixed(1)},${H} ` +
     pts.map(([x, y]) => `L ${x.toFixed(1)},${y.toFixed(1)}`).join(' ') +
-    ` L ${W},${H} Z`;
+    ` L ${pts[pts.length - 1][0].toFixed(1)},${H} Z`;
 
   const line =
     `M ${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)} ` +
