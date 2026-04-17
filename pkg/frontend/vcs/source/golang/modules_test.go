@@ -47,7 +47,7 @@ require (
 replace (
 	github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20231121154247-84f91ea90e72
 	gopkg.in/yaml.v3 => github.com/colega/go-yaml-yaml v0.0.0-20220720105220-255a8d16d094
-	github.com/grafana/pyroscope/v2/api => ./api
+	github.com/grafana/pyroscope/api => ./api
 )
 		`), nil)
 	if err != nil {
@@ -175,14 +175,14 @@ func Test_ApplyGoModule(t *testing.T) {
 		{
 			Module{
 				Version: module.Version{
-					Path:    "github.com/grafana/pyroscope/v2/api",
+					Path:    "github.com/grafana/pyroscope/api",
 					Version: "v0.4.0",
 				},
 				FilePath: "foo_gen.go",
 			},
 			Module{
 				Version: module.Version{
-					Path:    "github.com/grafana/pyroscope/v2/api",
+					Path:    "github.com/grafana/pyroscope/api",
 					Version: "v0.5.0",
 				},
 				FilePath: "foo_gen.go",
