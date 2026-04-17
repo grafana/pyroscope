@@ -370,7 +370,8 @@ func (f *Pyroscope) initQueryBackend() (services.Service, error) {
 		logger,
 		f.reg,
 		f.queryBackendClient,
-		querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg),
+		querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg,
+			querybackend.WithBlockReaderHedgeAfter(f.Cfg.QueryBackend.BlockReadHedgeAfter)),
 	)
 	if err != nil {
 		return nil, err

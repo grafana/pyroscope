@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/oklog/ulid/v2"
@@ -39,6 +40,7 @@ type Object struct {
 
 	memSize     int
 	downloadDir string
+	hedgeAfter  time.Duration
 }
 
 type ObjectOption func(*Object)
@@ -58,6 +60,12 @@ func WithObjectMaxSizeLoadInMemory(size int) ObjectOption {
 func WithObjectDownload(dir string) ObjectOption {
 	return func(obj *Object) {
 		obj.downloadDir = dir
+	}
+}
+
+func WithObjectHedgeAfter(d time.Duration) ObjectOption {
+	return func(obj *Object) {
+		obj.hedgeAfter = d
 	}
 }
 
