@@ -201,6 +201,16 @@ func (ff FileFinder) tryFindGoFile(ctx context.Context, maxAttempts int) (*vcsv1
 		path = path[len(repoPath)+pos:]
 	}
 
+	// strip Go module major version segment (e.g. "v2/"), if present.
+	// GitHub repo paths don't include the major version directory, but Go
+	// symbol paths do (e.g. "github.com/grafana/pyroscope/v2/pkg/foo.go").
+	path = strings.TrimLeft(path, "/")
+	if i := strings.IndexByte(path, '/'); i > 0 {
+		if seg := path[:i]; len(seg) > 1 && seg[0] == 'v' && isDigits(seg[1:]) {
+			path = path[i+1:]
+		}
+	}
+
 	// now try to find file in repo
 	path = strings.TrimLeft(path, "/")
 	attempts := 0
@@ -230,4 +240,13 @@ func (ff FileFinder) tryFindGoFile(ctx context.Context, maxAttempts int) (*vcsv1
 		}
 		return newFileResponse(content.Content, content.URL)
 	}
+}
+
+func isDigits(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return len(s) > 0
 }
