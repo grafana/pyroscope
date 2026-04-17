@@ -162,7 +162,7 @@ func TestMicroServicesIntegrationV2Issue4789Reproducer(t *testing.T) {
 	t.Logf("flamegraph names: %v, total: %d", fg.Names, fg.Total)
 
 	// Fetch the same data again as a tree and log it so reviewers can
-	// see the shape of the result without decoding the flamegraph levels.
+	// see the shape of the flamegraph result without decoding levels.
 	treeReq := connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
 		ProfileTypeID: q.Msg.ProfileTypeID,
 		Start:         q.Msg.Start,
@@ -174,7 +174,25 @@ func TestMicroServicesIntegrationV2Issue4789Reproducer(t *testing.T) {
 	require.NoError(t, err)
 	tree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](treeResp.Msg.GetTree())
 	require.NoError(t, err)
-	t.Logf("tree:\n%s", tree.String())
+	t.Logf("stacktraces tree (via SelectMergeStacktraces, buggy path):\n%s", tree.String())
+
+	// Query the same data as pprof via SelectMergeProfile (the pprof export
+	// path). With query-tree-enabled=true this goes through QUERY_TREE /
+	// resolver.Tree() and is NOT affected by the bug — it's a reference for
+	// what the data looks like when the truncation tree is built over
+	// symbols rather than function IDs.
+	pprofResp, err := querier.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+		ProfileTypeID: q.Msg.ProfileTypeID,
+		Start:         q.Msg.Start,
+		End:           q.Msg.End,
+		LabelSelector: q.Msg.LabelSelector,
+	}))
+	require.NoError(t, err)
+	pprofTreeBytes, err := phlaremodel.TreeFromBackendProfile(pprofResp.Msg, 8192)
+	require.NoError(t, err)
+	pprofTree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](pprofTreeBytes)
+	require.NoError(t, err)
+	t.Logf("pprof tree (via SelectMergeProfile → TreeFromBackendProfile, reference path):\n%s", pprofTree.String())
 
 	assert.Contains(t, fg.Names, "foo")
 	assert.Contains(t, fg.Names, "bar")
