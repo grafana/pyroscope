@@ -42,8 +42,6 @@ import (
 // function names appear. On current main the flamegraph contains only
 // "other" under "total".
 func TestMicroServicesIntegrationV2Issue4789Reproducer(t *testing.T) {
-	t.Skip("TODO(#4789): reproducer for unsymbolized maxNodes collapse; unskip when the bug is fixed")
-
 	debuginfodServer, err := NewTestDebuginfodServer()
 	require.NoError(t, err)
 
