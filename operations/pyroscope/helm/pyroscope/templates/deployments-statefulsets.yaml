@@ -133,7 +133,7 @@ spec:
           {{-  if and $hasV1 $hasV2 }}
             - "-write-path=combined"
           {{-  if not (hasKey $extraArgs "write-path.segment-writer-weight")  }}
-            - "-write-path.segment-writer-weight=1"
+            - "-write-path.segment-writer-weight={{ $global.Values.architecture.storage.migration.segmentWriterWeight }}"
           {{- end }}
           {{- else if not $hasV2 }}
             - "-write-path=ingester"
