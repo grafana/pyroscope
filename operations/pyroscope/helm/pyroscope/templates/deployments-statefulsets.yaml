@@ -139,10 +139,11 @@ spec:
             - "-write-path=ingester"
           {{- end }}
           {{- end }}
-          {{- /* query-frontend v2 migration config */}}
-          {{- if and $hasV2 (or (eq $component "all") (eq $component "query-frontend")) }}
-          {{-   if and (not (hasKey $extraArgs "enable-query-backend-from")) $global.Values.architecture.storage.migration.queryBackendFrom }}
-            - "-enable-query-backend-from={{$global.Values.architecture.storage.migration.queryBackendFrom}}"
+          {{- /* query-frontend v1-v2-dual migration config */}}
+          {{- if and $hasV1 $hasV2 (or (eq $component "all") (eq $component "query-frontend")) }}
+          {{-   $qbFrom := $global.Values.architecture.storage.migration.queryBackendFrom }}
+          {{-   if and (not (hasKey $extraArgs "enable-query-backend-from")) $qbFrom (ne $qbFrom "auto") }}
+            - "-enable-query-backend-from={{$qbFrom}}"
           {{-   end }}
           {{- end }}
           env:

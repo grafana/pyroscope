@@ -2832,7 +2832,6 @@ spec:
             - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
-            - "-enable-query-backend-from=auto"
           env:
             - name: POD_NAME
               valueFrom:
