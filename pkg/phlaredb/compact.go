@@ -599,7 +599,7 @@ func newProfileRowIterator(s BlockReader) (*profileRowIterator, error) {
 	if err != nil {
 		return nil, err
 	}
-	// todo close once https://github.com/grafana/pyroscope/v2/issues/2172 is done.
+	// todo close once https://github.com/grafana/pyroscope/issues/2172 is done.
 	reader := parquet.NewReader(s.Profiles(), schemav1.ProfilesSchema)
 	return &profileRowIterator{
 		profiles:         phlareparquet.NewBufferedRowReaderIterator(reader, 32),

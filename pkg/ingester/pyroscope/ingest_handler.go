@@ -35,7 +35,7 @@ import (
 )
 
 // Copy-pasted from
-// https://github.com/grafana/pyroscope/v2/blob/main/pkg/server/ingest.go
+// https://github.com/grafana/pyroscope/blob/main/pkg/server/ingest.go
 // with minor changes to make it propagate http response codes.
 type ingestHandler struct {
 	log      log.Logger

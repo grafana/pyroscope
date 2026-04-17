@@ -461,7 +461,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	DisableSignalHandling(&f.Cfg.Server)
 	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg)
 	// Not all default middleware works with http2 so we'll add then manually.
-	// see https://github.com/grafana/pyroscope/v2/issues/231
+	// see https://github.com/grafana/pyroscope/issues/231
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware,

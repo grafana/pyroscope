@@ -310,7 +310,7 @@ func TestIngestPPROFFixtures(t *testing.T) {
 		},
 		{
 			// this one have milliseconds in Profile.TimeNanos
-			// https://github.com/grafana/pyroscope/v2/pull/2376/files
+			// https://github.com/grafana/pyroscope/pull/2376/files
 			profile:      repoRoot + "pkg/og/convert/pprof/testdata/pyspy-1.pb.gz",
 			expectStatus: 200,
 			expectMetric: "process_cpu",
