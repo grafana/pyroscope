@@ -19,9 +19,9 @@ type Index interface {
 }
 
 type Config struct {
-	CleanupMaxPartitions int           `yaml:"cleanup_max_partitions"`
-	CleanupGracePeriod   time.Duration `yaml:"cleanup_grace_period"`
-	CleanupInterval      time.Duration `yaml:"cleanup_interval"`
+	CleanupMaxPartitions int           `yaml:"cleanup_max_partitions" category:"advanced"`
+	CleanupGracePeriod   time.Duration `yaml:"cleanup_grace_period" category:"advanced"`
+	CleanupInterval      time.Duration `yaml:"cleanup_interval" category:"advanced"`
 }
 
 func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {

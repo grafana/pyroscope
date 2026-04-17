@@ -77,9 +77,6 @@ api:
 # The distributor block configures the distributor.
 [distributor: <distributor>]
 
-# The querier block configures the querier.
-[querier: <querier>]
-
 # The query_frontend block configures the query-frontend.
 [frontend: <query_frontend>]
 
@@ -89,15 +86,6 @@ api:
 # The limits block configures default and per-tenant limits imposed by
 # components.
 [limits: <limits>]
-
-# The query_scheduler block configures the query-scheduler.
-[query_scheduler: <query_scheduler>]
-
-# The ingester block configures the ingester.
-[ingester: <ingester>]
-
-# The store_gateway block configures the store-gateway.
-[store_gateway: <store_gateway>]
 
 # The memberlist block configures the Gossip memberlist.
 [memberlist: <memberlist>]
@@ -151,9 +139,6 @@ runtime_config:
   # CLI flag: -runtime-config.file
   [file: <string> | default = ""]
 
-# The compactor block configures the compactor.
-[compactor: <compactor>]
-
 tenant_settings:
   recording_rules:
     # Enable the storing of recording rules in tenant settings.
@@ -164,7 +149,7 @@ storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.
   # CLI flag: -storage.backend
-  [backend: <string> | default = ""]
+  [backend: <string> | default = "filesystem"]
 
   # The s3_backend block configures the connection to Amazon S3 object storage
   # backend.
@@ -300,6 +285,12 @@ self_profiling:
 # CLI flag: -shutdown-delay
 [shutdown_delay: <duration> | default = 0s]
 
+# Storage architecture layer. Use 'v1' to use legacy ingester-based storage,
+# 'v2' for new storage, and 'v1-v2-dual' to use new storage while being able to
+# query old data.
+# CLI flag: -architecture.storage
+[architecture_storage: <string> | default = "v1-v2-dual"]
+
 embedded_grafana:
   # The directory where the Grafana data will be stored.
   # CLI flag: -embedded-grafana.data-path
@@ -312,6 +303,21 @@ embedded_grafana:
   # The URL of the Pyroscope instance to use for the Grafana datasources.
   # CLI flag: -embedded-grafana.pyroscope-url
   [pyroscope_url: <string> | default = "http://localhost:4040"]
+
+# The querier block configures the querier.
+[querier: <querier>]
+
+# The ingester block configures the ingester.
+[ingester: <ingester>]
+
+# The compactor block configures the compactor.
+[compactor: <compactor>]
+
+# The store_gateway block configures the store-gateway.
+[store_gateway: <store_gateway>]
+
+# The query_scheduler block configures the query-scheduler.
+[query_scheduler: <query_scheduler>]
 ```
 
 ### server
@@ -460,11 +466,11 @@ grpc_tls_config:
 
 # Limit on the size of a gRPC message this server can receive (bytes).
 # CLI flag: -server.grpc-max-recv-msg-size-bytes
-[grpc_server_max_recv_msg_size: <int> | default = 4194304]
+[grpc_server_max_recv_msg_size: <int> | default = 104857600]
 
 # Limit on the size of a gRPC message this server can send (bytes).
 # CLI flag: -server.grpc-max-send-msg-size-bytes
-[grpc_server_max_send_msg_size: <int> | default = 4194304]
+[grpc_server_max_send_msg_size: <int> | default = 104857600]
 
 # Limit on the number of concurrent streams for gRPC calls per client connection
 # (0 = unlimited)
@@ -500,7 +506,7 @@ grpc_tls_config:
 # If client sends keepalive ping more often, server will send GOAWAY and close
 # the connection.
 # CLI flag: -server.grpc.keepalive.min-time-between-pings
-[grpc_server_min_time_between_pings: <duration> | default = 5m]
+[grpc_server_min_time_between_pings: <duration> | default = 1s]
 
 # If true, server allows keepalive pings even when there are no active
 # streams(RPCs). If false, and client sends ping when there are no active
@@ -2238,7 +2244,7 @@ The `limits` block configures default and per-tenant limits imposed by component
 # Disable label name sanitization (converting dots to underscores). When
 # disabled, labels with dots are accepted as-is using UTF-8 validation.
 # CLI flag: -validation.disable-label-sanitization
-[disable_label_sanitization: <boolean> | default = false]
+[disable_label_sanitization: <boolean> | default = true]
 
 # Maximum size of a profile in bytes. This is based off the uncompressed size. 0
 # to disable.
@@ -2530,7 +2536,7 @@ sse:
 http:
   # The time an idle connection will remain idle before closing.
   # CLI flag: -storage.s3.http.idle-conn-timeout
-  [idle_conn_timeout: <duration> | default = 1m30s]
+  [idle_conn_timeout: <duration> | default = 10m]
 
   # The amount of time the client will wait for a servers response headers.
   # CLI flag: -storage.s3.http.response-header-timeout
@@ -2559,7 +2565,7 @@ http:
   # Maximum number of idle (keep-alive) connections to keep per-host. If 0, a
   # built-in default value is used.
   # CLI flag: -storage.s3.max-idle-connections-per-host
-  [max_idle_connections_per_host: <int> | default = 100]
+  [max_idle_connections_per_host: <int> | default = 1000]
 
   # Maximum number of connections per host. 0 means no limit.
   # CLI flag: -storage.s3.max-connections-per-host
@@ -2592,7 +2598,7 @@ The gcs_backend block configures the connection to Google Cloud Storage object s
 http:
   # The time an idle connection will remain idle before closing.
   # CLI flag: -storage.gcs.http.idle-conn-timeout
-  [idle_conn_timeout: <duration> | default = 1m30s]
+  [idle_conn_timeout: <duration> | default = 10m]
 
   # The amount of time the client will wait for a servers response headers.
   # CLI flag: -storage.gcs.http.response-header-timeout
@@ -2621,7 +2627,7 @@ http:
   # Maximum number of idle (keep-alive) connections to keep per-host. If 0, a
   # built-in default value is used.
   # CLI flag: -storage.gcs.max-idle-connections-per-host
-  [max_idle_conns_per_host: <int> | default = 100]
+  [max_idle_conns_per_host: <int> | default = 1000]
 
   # Maximum number of connections per host. 0 means no limit.
   # CLI flag: -storage.gcs.max-connections-per-host
@@ -2775,7 +2781,7 @@ The `filesystem_storage_backend` block configures the usage of local file system
 ```yaml
 # Local filesystem storage directory.
 # CLI flag: -storage.filesystem.dir
-[dir: <string> | default = "./data-shared"]
+[dir: <string> | default = "./data/v2/shared"]
 ```
 
 ### analytics

@@ -1,6 +1,42 @@
 Usage of ./pyroscope:
+  -adaptive-placement.burst-window duration
+    	Duration of the burst window. During this time, scale-outs are more aggressive. (default 17m0s)
+  -adaptive-placement.decay-window duration
+    	Duration of the decay window. During this time, scale-ins are delayed. (default 19m0s)
+  -adaptive-placement.default-dataset-shards uint
+    	Default number of shards per dataset. (default 1)
+  -adaptive-placement.export-shard-limit-metrics
+    	If enabled, shard limit metrics are exported as Prometheus metrics. (default true)
+  -adaptive-placement.export-shard-usage-breakdown-metrics
+    	If enabled, shard utilization breakdown metrics, including shard ownership, are exported as Prometheus metrics.
+  -adaptive-placement.export-shard-usage-metrics
+    	If enabled, shard utilization metrics are exported as Prometheus metrics.
+  -adaptive-placement.load-balancing value
+    	Load balancing strategy; valid options: fingerprint, round-robin, dynamic. (default "dynamic")
+  -adaptive-placement.max-dataset-shards uint
+    	Maximum number of shards per dataset. (default 1024)
+  -adaptive-placement.min-dataset-shards uint
+    	Minimum number of shards per dataset. (default 1)
+  -adaptive-placement.placement-rules-retention-period duration
+    	Retention period for inactive placement rules. (default 15m0s)
+  -adaptive-placement.placement-rules-update-interval duration
+    	Interval between updates to placement rules. (default 15s)
+  -adaptive-placement.stats-aggregation-window duration
+    	Time window for aggregating shard stats. (default 3m0s)
+  -adaptive-placement.stats-confidence-period duration
+    	Confidence period for stats. During this period, placement rules are not updated. If 0, placement rules may be applied using incomplete stats.
+  -adaptive-placement.stats-retention-period duration
+    	Retention period for stats that are no longer updated. (default 15m0s)
+  -adaptive-placement.tenant-shards uint
+    	Number of shards per tenant. If 0, the limit is not applied.
+  -adaptive-placement.unit-size-bytes uint
+    	Shards are allocated based on the utilisation of units per second. The option specifies the unit size in bytes. (default 131072)
   -api.base-url string
     	base URL for when the server is behind a reverse proxy with a different path
+  -architecture.storage value
+    	Storage architecture layer. Use 'v1' to use legacy ingester-based storage, 'v2' for new storage, and 'v1-v2-dual' to use new storage while being able to query old data. (default "v1-v2-dual")
+  -async-ingest
+    	If true, the write path will not wait for the segment-writer to finish processing the request. Writes to ingester always synchronous.
   -auth.multitenancy-enabled
     	When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
   -blocks-storage.bucket-store.ignore-blocks-within duration
@@ -15,6 +51,26 @@ Usage of ./pyroscope:
     	How frequently to scan the bucket, or to refresh the bucket index (if enabled), in order to look for changes (new blocks shipped by ingesters and blocks deleted by retention or compaction). (default 15m0s)
   -blocks-storage.bucket-store.tenant-sync-concurrency int
     	Maximum number of concurrent tenants synching blocks. (default 10)
+  -compaction-worker.cleanup-max-duration duration
+    	Maximum duration of the cleanup operations. (default 15s)
+  -compaction-worker.job-concurrency int
+    	Number of concurrent jobs compaction worker will run. Defaults to the number of CPU cores.
+  -compaction-worker.job-poll-interval duration
+    	Interval between job requests (default 5s)
+  -compaction-worker.metrics-exporter.enabled
+    	This parameter specifies whether the metrics exporter is enabled.
+  -compaction-worker.metrics-exporter.remote-write-address string
+    	The address to use for metrics tenant.
+  -compaction-worker.metrics-exporter.rules-source.client-address string
+    	The address to use for the recording rules client connection.
+  -compaction-worker.metrics-exporter.rules-source.static value
+    	[experimental] List of static recording rules of the type settingsv1.RecordingRule. Will only be use in the absence of a recording rules client. (default [])
+  -compaction-worker.request-timeout duration
+    	Job request timeout. (default 5s)
+  -compaction-worker.small-object-size-bytes int
+    	Size of the object that can be loaded in memory. (default 8388608)
+  -compaction-worker.temp-dir string
+    	Temporary directory for compaction jobs. (default "/tmp")
   -compactor.block-ranges value
     	List of compaction time ranges. (default 1h0m0s,2h0m0s,8h0m0s)
   -compactor.block-sync-concurrency int
@@ -161,6 +217,14 @@ Usage of ./pyroscope:
     	Burst size used in rate limit. Values less than 1 are treated as 1. (default 1)
   -consul.watch-rate-limit float
     	Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
+  -debug-info.enabled
+    	Enable debug info. (default true)
+  -debug-info.max-upload-size int
+    	Maximum size of a single debug info upload in bytes. (default 1073741824)
+  -debug-info.upload-stale-period duration
+    	Period after which a pending upload is considered stale and can be retried. (default 5m0s)
+  -debug-info.upload-timeout duration
+    	Timeout for a single debug info upload request. Overrides server HTTP write timeout for this handler. (default 2m0s)
   -distributor.aggregation-period duration
     	Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.
   -distributor.aggregation-window duration
@@ -267,6 +331,10 @@ Usage of ./pyroscope:
     	The port on which the Grafana will listen. (default 4041)
   -embedded-grafana.pyroscope-url string
     	The URL of the Pyroscope instance to use for the Grafana datasources. (default "http://localhost:4040")
+  -enable-query-backend
+    	This parameter specifies whether the new query backend is enabled. (default true)
+  -enable-query-backend-from value
+    	This parameter specifies the point in time from which data is queried from the new query backend. The value can be an RFC3339 timestamp (2020-10-20T00:00:00Z) or "auto" to automatically determine the split point from the tenant's oldest profile time in the metastore. (default auto)
   -etcd.dial-timeout duration
     	The dial timeout for the etcd connection. (default 10s)
   -etcd.endpoints string
@@ -443,6 +511,124 @@ Usage of ./pyroscope:
     	[experimental] Availability zone where this node is running.
   -memberlist.zone-aware-routing.role string
     	[experimental] Role of this node in the cluster. Valid values: member, bridge. (default "member")
+  -metastore.address string
+    	 (default "localhost:9095")
+  -metastore.compaction-job-lease-duration duration
+    	 (default 15s)
+  -metastore.compaction-max-failures uint
+    	 (default 3)
+  -metastore.compaction-max-job-queue-size uint
+    	 (default 10000)
+  -metastore.data-dir string
+    	Directory to store the data. (default "./data/v2/metastore/data")
+  -metastore.grpc-client-config.backoff-max-period duration
+    	Maximum delay when backing off. (default 10s)
+  -metastore.grpc-client-config.backoff-min-period duration
+    	Minimum delay when backing off. (default 100ms)
+  -metastore.grpc-client-config.backoff-on-ratelimits
+    	Enable backoff and retry when we hit rate limits.
+  -metastore.grpc-client-config.backoff-retries int
+    	Number of times to backoff and retry before failing. (default 10)
+  -metastore.grpc-client-config.cluster-validation.label string
+    	[experimental] Primary cluster validation label.
+  -metastore.grpc-client-config.connect-backoff-base-delay duration
+    	Initial backoff delay after first connection failure. Only relevant if ConnectTimeout > 0. (default 1s)
+  -metastore.grpc-client-config.connect-backoff-max-delay duration
+    	Maximum backoff delay when establishing a connection. Only relevant if ConnectTimeout > 0. (default 5s)
+  -metastore.grpc-client-config.connect-timeout duration
+    	The maximum amount of time to establish a connection. A value of 0 means default gRPC client connect timeout and backoff. (default 5s)
+  -metastore.grpc-client-config.grpc-client-rate-limit float
+    	Rate limit for gRPC client; 0 means disabled.
+  -metastore.grpc-client-config.grpc-client-rate-limit-burst int
+    	Rate limit burst for gRPC client.
+  -metastore.grpc-client-config.grpc-compression string
+    	Use compression when sending messages. Supported values are: 'gzip', 'snappy' and '' (disable compression)
+  -metastore.grpc-client-config.grpc-max-recv-msg-size int
+    	gRPC client max receive message size (bytes). (default 104857600)
+  -metastore.grpc-client-config.grpc-max-send-msg-size int
+    	gRPC client max send message size (bytes). (default 104857600)
+  -metastore.grpc-client-config.initial-connection-window-size value
+    	[experimental] Initial connection window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
+  -metastore.grpc-client-config.initial-stream-window-size value
+    	[experimental] Initial stream window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
+  -metastore.grpc-client-config.tls-ca-path string
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
+  -metastore.grpc-client-config.tls-cert-path string
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -metastore.grpc-client-config.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -metastore.grpc-client-config.tls-enabled
+    	Enable TLS in the gRPC client. This flag needs to be enabled when any other TLS flag is set. If set to false, insecure connection to gRPC server will be used.
+  -metastore.grpc-client-config.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -metastore.grpc-client-config.tls-key-path string
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
+  -metastore.grpc-client-config.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -metastore.grpc-client-config.tls-server-name string
+    	Override the expected name on the server certificate.
+  -metastore.index.block-read-cache-size int
+    	Maximum number of read blocks to keep in memory (default 100000)
+  -metastore.index.block-write-cache-size int
+    	Maximum number of written blocks to keep in memory (default 10000)
+  -metastore.index.cleanup-grace-period duration
+    	After a partition is eligible for deletion, it will be kept for this period before actually being evaluated. The period should cover the time difference between the block creation time and the data timestamps. Blocks are only deleted if all data in the block has passed the retention period, and the grace period delays the moment when the partition is evaluated for deletion. (default 6h0m0s)
+  -metastore.index.cleanup-interval duration
+    	Interval for index cleanup check. 0 to disable.
+  -metastore.index.cleanup-max-partitions int
+    	Maximum number of partitions to cleanup at once. A partition is qualified by partition key, tenant, and shard. (default 32)
+  -metastore.index.dlq-recovery-check-interval duration
+    	Dead Letter Queue check interval. 0 to disable. (default 15s)
+  -metastore.index.shard-cache-size int
+    	Maximum number of shards to keep in memory (default 2000)
+  -metastore.min-ready-duration duration
+    	Minimum duration to wait after the internal readiness checks have passed but before succeeding the readiness endpoint. This is used to slowdown deployment controllers (eg. Kubernetes) after an instance is ready and before they proceed with a rolling update, to give the rest of the cluster instances enough time to receive some (DNS?) updates. (default 15s)
+  -metastore.raft.advertise-address string
+    	 (default "localhost:9099")
+  -metastore.raft.apply-timeout duration
+    	 (default 5s)
+  -metastore.raft.auto-join
+    	If enabled, new nodes (without a state) will try to join an existing cluster on startup.
+  -metastore.raft.bind-address string
+    	 (default "localhost:9099")
+  -metastore.raft.bootstrap-expect-peers int
+    	Expected number of peers including the local node. (default 1)
+  -metastore.raft.bootstrap-peers string
+    	
+  -metastore.raft.dir string
+    	Directory to store WAL and raft state. It must be a persistent directory, not a tmpfs or similar. (default "./data/v2/metastore/raft")
+  -metastore.raft.log-index-check-interval duration
+    	 (default 14ms)
+  -metastore.raft.log-store-timeout duration
+    	 (default 10s)
+  -metastore.raft.read-index-max-distance uint
+    	 (default 10240)
+  -metastore.raft.server-id string
+    	 (default "localhost:9099")
+  -metastore.raft.snapshot-interval duration
+    	 (default 3m0s)
+  -metastore.raft.snapshot-threshold uint
+    	 (default 8192)
+  -metastore.raft.snapshots-dir string
+    	Directory to store FSM snapshots. Raft creates 'snapshots' subdirectory in this directory. It must be a persistent directory, not a tmpfs or similar. (default "./data/v2/metastore/raft")
+  -metastore.raft.snapshots-import-dir string
+    	Directory to import snapshots from; the directory must contain 'snapshots' subdirectory. If not set, no import will be done.
+  -metastore.raft.snapshots-retain uint
+    	 (default 3)
+  -metastore.raft.trailing-logs uint
+    	 (default 18432)
+  -metastore.raft.transport-conn-pool-size uint
+    	 (default 10)
+  -metastore.raft.transport-timeout duration
+    	 (default 10s)
+  -metastore.raft.wal-cache-entries uint
+    	 (default 512)
+  -metastore.snapshot-compact-on-restore
+    	Compact the database on restore.
+  -metastore.snapshot-compression string
+    	Compression algorithm to use for snapshots. Supported compressions: zstd. (default "zstd")
+  -metastore.snapshot-rate-limit int
+    	Rate limit for snapshot writer in MB/s. (default 15)
   -modules
     	List available modules that can be used as target and exit.
   -multi.mirror-enabled
@@ -613,10 +799,62 @@ Usage of ./pyroscope:
     	Whether the series portion of query analysis is enabled. If disabled, no series data (e.g., series count) will be calculated by the /AnalyzeQuery endpoint.
   -querier.query-store-after duration
     	The time after which a metric should be queried from storage and not just ingesters. 0 means all queries are sent to store. If this option is enabled, the time range of the query sent to the store-gateway will be manipulated to ensure the query end is not more recent than 'now - query-store-after'. (default 4h0m0s)
+  -querier.query-tree-enabled
+    	[experimental] Use the tree-based query path for SelectMergeProfile. Experimental.
   -querier.sanitize-on-merge
     	Whether profiles should be sanitized when merging. (default true)
   -querier.split-queries-by-interval duration
     	Split queries by a time interval and execute in parallel. The value 0 disables splitting by time
+  -query-backend.address string
+    	 (default "localhost:9095")
+  -query-backend.client-timeout duration
+    	Timeout for query-backend client requests. (default 30s)
+  -query-backend.grpc-client-config.backoff-max-period duration
+    	Maximum delay when backing off. (default 10s)
+  -query-backend.grpc-client-config.backoff-min-period duration
+    	Minimum delay when backing off. (default 100ms)
+  -query-backend.grpc-client-config.backoff-on-ratelimits
+    	Enable backoff and retry when we hit rate limits.
+  -query-backend.grpc-client-config.backoff-retries int
+    	Number of times to backoff and retry before failing. (default 10)
+  -query-backend.grpc-client-config.cluster-validation.label string
+    	[experimental] Primary cluster validation label.
+  -query-backend.grpc-client-config.connect-backoff-base-delay duration
+    	Initial backoff delay after first connection failure. Only relevant if ConnectTimeout > 0. (default 1s)
+  -query-backend.grpc-client-config.connect-backoff-max-delay duration
+    	Maximum backoff delay when establishing a connection. Only relevant if ConnectTimeout > 0. (default 5s)
+  -query-backend.grpc-client-config.connect-timeout duration
+    	The maximum amount of time to establish a connection. A value of 0 means default gRPC client connect timeout and backoff. (default 5s)
+  -query-backend.grpc-client-config.grpc-client-rate-limit float
+    	Rate limit for gRPC client; 0 means disabled.
+  -query-backend.grpc-client-config.grpc-client-rate-limit-burst int
+    	Rate limit burst for gRPC client.
+  -query-backend.grpc-client-config.grpc-compression string
+    	Use compression when sending messages. Supported values are: 'gzip', 'snappy' and '' (disable compression)
+  -query-backend.grpc-client-config.grpc-max-recv-msg-size int
+    	gRPC client max receive message size (bytes). (default 104857600)
+  -query-backend.grpc-client-config.grpc-max-send-msg-size int
+    	gRPC client max send message size (bytes). (default 104857600)
+  -query-backend.grpc-client-config.initial-connection-window-size value
+    	[experimental] Initial connection window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
+  -query-backend.grpc-client-config.initial-stream-window-size value
+    	[experimental] Initial stream window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
+  -query-backend.grpc-client-config.tls-ca-path string
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
+  -query-backend.grpc-client-config.tls-cert-path string
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -query-backend.grpc-client-config.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -query-backend.grpc-client-config.tls-enabled
+    	Enable TLS in the gRPC client. This flag needs to be enabled when any other TLS flag is set. If set to false, insecure connection to gRPC server will be used.
+  -query-backend.grpc-client-config.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -query-backend.grpc-client-config.tls-key-path string
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
+  -query-backend.grpc-client-config.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -query-backend.grpc-client-config.tls-server-name string
+    	Override the expected name on the server certificate.
   -query-frontend.grpc-client-config.backoff-max-period duration
     	Maximum delay when backing off. (default 10s)
   -query-frontend.grpc-client-config.backoff-min-period duration
@@ -793,6 +1031,8 @@ Usage of ./pyroscope:
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -query-scheduler.service-discovery-mode string
     	[experimental] Service discovery mode that query-frontends and queriers use to find query-scheduler instances. When query-scheduler ring-based service discovery is enabled, this option needs be set on query-schedulers, query-frontends and queriers. Supported values are: dns, ring. (default "ring")
+  -retention-period duration
+    	Retention period for the data. 0 means data never deleted. (default 31d)
   -ring.heartbeat-timeout duration
     	The heartbeat timeout after which ingesters are skipped for reads/writes. (default 1m0s)
   -ring.prefix string
@@ -803,6 +1043,170 @@ Usage of ./pyroscope:
     	Comma separated list of yaml files with the configuration that can be updated at runtime. Runtime config files will be merged from left to right.
   -runtime-config.reload-period duration
     	How often to check runtime config files. (default 10s)
+  -segment-writer.availability-zone string
+    	The availability zone where this instance is running.
+  -segment-writer.bucket-health-check-enabled
+    	Enables bucket health check on startup. This both validates credentials and warms up the connection to reduce latency for the first write. (default true)
+  -segment-writer.bucket-health-check-timeout duration
+    	Timeout for bucket health check operations. (default 10s)
+  -segment-writer.consul.acl-token string
+    	ACL Token used to interact with Consul.
+  -segment-writer.consul.cas-retry-delay duration
+    	Maximum duration to wait before retrying a Compare And Swap (CAS) operation. (default 1s)
+  -segment-writer.consul.client-timeout duration
+    	HTTP timeout when talking to Consul (default 20s)
+  -segment-writer.consul.consistent-reads
+    	Enable consistent reads to Consul.
+  -segment-writer.consul.hostname string
+    	Hostname and port of Consul. (default "localhost:8500")
+  -segment-writer.consul.watch-burst-size int
+    	Burst size used in rate limit. Values less than 1 are treated as 1. (default 1)
+  -segment-writer.consul.watch-rate-limit float
+    	Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
+  -segment-writer.distributor.excluded-zones comma-separated-list-of-strings
+    	Comma-separated list of zones to exclude from the ring. Instances in excluded zones will be filtered out from the ring.
+  -segment-writer.distributor.replication-factor int
+    	The number of ingesters to write to and read from. (default 3)
+  -segment-writer.distributor.zone-awareness-enabled
+    	True to enable the zone-awareness and replicate ingested samples across different availability zones.
+  -segment-writer.enable-inet6
+    	Enable IPv6 support. Required to make use of IP addresses from IPv6 interfaces.
+  -segment-writer.etcd.dial-timeout duration
+    	The dial timeout for the etcd connection. (default 10s)
+  -segment-writer.etcd.endpoints string
+    	The etcd endpoints to connect to.
+  -segment-writer.etcd.max-retries int
+    	The maximum number of retries to do for failed ops. (default 10)
+  -segment-writer.etcd.password string
+    	Etcd password.
+  -segment-writer.etcd.tls-ca-path string
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
+  -segment-writer.etcd.tls-cert-path string
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -segment-writer.etcd.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -segment-writer.etcd.tls-enabled
+    	Enable TLS.
+  -segment-writer.etcd.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -segment-writer.etcd.tls-key-path string
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
+  -segment-writer.etcd.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -segment-writer.etcd.tls-server-name string
+    	Override the expected name on the server certificate.
+  -segment-writer.etcd.username string
+    	Etcd username.
+  -segment-writer.final-sleep duration
+    	Duration to sleep for before exiting, to ensure metrics are scraped.
+  -segment-writer.flush-concurrency uint
+    	Number of concurrent flushes. Defaults to the number of CPUs, but not less than 8.
+  -segment-writer.grpc-client-config.backoff-max-period duration
+    	Maximum delay when backing off. (default 10s)
+  -segment-writer.grpc-client-config.backoff-min-period duration
+    	Minimum delay when backing off. (default 100ms)
+  -segment-writer.grpc-client-config.backoff-on-ratelimits
+    	Enable backoff and retry when we hit rate limits.
+  -segment-writer.grpc-client-config.backoff-retries int
+    	Number of times to backoff and retry before failing. (default 10)
+  -segment-writer.grpc-client-config.cluster-validation.label string
+    	[experimental] Primary cluster validation label.
+  -segment-writer.grpc-client-config.connect-backoff-base-delay duration
+    	Initial backoff delay after first connection failure. Only relevant if ConnectTimeout > 0. (default 1s)
+  -segment-writer.grpc-client-config.connect-backoff-max-delay duration
+    	Maximum backoff delay when establishing a connection. Only relevant if ConnectTimeout > 0. (default 5s)
+  -segment-writer.grpc-client-config.connect-timeout duration
+    	The maximum amount of time to establish a connection. A value of 0 means default gRPC client connect timeout and backoff. (default 1s)
+  -segment-writer.grpc-client-config.grpc-client-rate-limit float
+    	Rate limit for gRPC client; 0 means disabled.
+  -segment-writer.grpc-client-config.grpc-client-rate-limit-burst int
+    	Rate limit burst for gRPC client.
+  -segment-writer.grpc-client-config.grpc-compression string
+    	Use compression when sending messages. Supported values are: 'gzip', 'snappy' and '' (disable compression)
+  -segment-writer.grpc-client-config.grpc-max-recv-msg-size int
+    	gRPC client max receive message size (bytes). (default 104857600)
+  -segment-writer.grpc-client-config.grpc-max-send-msg-size int
+    	gRPC client max send message size (bytes). (default 104857600)
+  -segment-writer.grpc-client-config.initial-connection-window-size value
+    	[experimental] Initial connection window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
+  -segment-writer.grpc-client-config.initial-stream-window-size value
+    	[experimental] Initial stream window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
+  -segment-writer.grpc-client-config.tls-ca-path string
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
+  -segment-writer.grpc-client-config.tls-cert-path string
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -segment-writer.grpc-client-config.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -segment-writer.grpc-client-config.tls-enabled
+    	Enable TLS in the gRPC client. This flag needs to be enabled when any other TLS flag is set. If set to false, insecure connection to gRPC server will be used.
+  -segment-writer.grpc-client-config.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -segment-writer.grpc-client-config.tls-key-path string
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
+  -segment-writer.grpc-client-config.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -segment-writer.grpc-client-config.tls-server-name string
+    	Override the expected name on the server certificate.
+  -segment-writer.heartbeat-period duration
+    	Period at which to heartbeat to consul. (default 5s)
+  -segment-writer.heartbeat-timeout duration
+    	Heartbeat timeout after which instance is assumed to be unhealthy. (default 1m0s)
+  -segment-writer.join-after duration
+    	Period to wait for a claim from another member; will join automatically after this.
+  -segment-writer.lifecycler.ID string
+    	ID to register in the ring. (default "<hostname>")
+  -segment-writer.lifecycler.addr string
+    	IP address to advertise in the ring.
+  -segment-writer.lifecycler.interface string
+    	Name of network interface to read address from. (default [<private network interfaces>])
+  -segment-writer.lifecycler.port int
+    	port to advertise in consul (defaults to server.grpc-listen-port).
+  -segment-writer.metadata-dlq-enabled
+    	Enables dead letter queue (DLQ) for metadata. If the metadata update fails, it will be stored and updated asynchronously. (default true)
+  -segment-writer.metadata-update-timeout duration
+    	Timeout for metadata update requests. (default 2s)
+  -segment-writer.min-ready-duration duration
+    	Minimum duration to wait after the internal readiness checks have passed but before succeeding the readiness endpoint. This is used to slowdown deployment controllers (eg. Kubernetes) after an instance is ready and before they proceed with a rolling update, to give the rest of the cluster instances enough time to receive ring updates. (default 30s)
+  -segment-writer.multi.mirror-enabled
+    	Mirror writes to the secondary store.
+  -segment-writer.multi.mirror-timeout duration
+    	Timeout for storing a value to the secondary store. (default 2s)
+  -segment-writer.multi.primary string
+    	Primary backend storage used by multi-client.
+  -segment-writer.multi.secondary string
+    	Secondary backend storage used by multi-client.
+  -segment-writer.num-tokens int
+    	Number of tokens for each ingester. (default 4)
+  -segment-writer.observe-period duration
+    	Observe tokens after generating to resolve collisions. Useful when using gossiping ring.
+  -segment-writer.prefix string
+    	The prefix for the keys in the store. Should end with a /. (default "collectors/")
+  -segment-writer.readiness-check-ring-health
+    	When enabled the readiness probe succeeds only after all instances are ACTIVE and healthy in the ring, otherwise only the instance itself is checked. This option should be disabled if in your cluster multiple instances can be rolled out simultaneously, otherwise rolling updates may be slowed down. (default true)
+  -segment-writer.ring.heartbeat-timeout duration
+    	The heartbeat timeout after which ingesters are skipped for reads/writes. (default 1m0s)
+  -segment-writer.segment-duration duration
+    	Timeout when flushing segments to bucket. (default 500ms)
+  -segment-writer.store string
+    	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -segment-writer.tokens-file-path string
+    	File path where tokens are stored. If empty, tokens are not stored at shutdown and restored at startup.
+  -segment-writer.unregister-on-shutdown
+    	Unregister from the ring upon clean shutdown. It can be useful to disable for rolling restarts with consistent naming in conjunction with -distributor.extend-writes=false.
+  -segment-writer.upload-hedge-after duration
+    	Time after which to hedge the upload request. (default 500ms)
+  -segment-writer.upload-hedge-rate-burst uint
+    	Maximum number of hedged requests in a burst. (default 10)
+  -segment-writer.upload-hedge-rate-max float
+    	Maximum number of hedged requests per second. 0 disables rate limiting. (default 2)
+  -segment-writer.upload-max-retries int
+    	Number of times to backoff and retry before failing. (default 3)
+  -segment-writer.upload-retry-max-period duration
+    	Maximum delay when backing off. (default 500ms)
+  -segment-writer.upload-retry-min-period duration
+    	Minimum delay when backing off. (default 50ms)
+  -segment-writer.upload-timeout duration
+    	Timeout for upload requests, including retries. (default 2s)
   -self-profiling.block-profile-rate int
     	 (default 5)
   -self-profiling.disable-push
@@ -846,9 +1250,9 @@ Usage of ./pyroscope:
   -server.grpc-max-concurrent-streams uint
     	Limit on the number of concurrent streams for gRPC calls per client connection (0 = unlimited) (default 100)
   -server.grpc-max-recv-msg-size-bytes int
-    	Limit on the size of a gRPC message this server can receive (bytes). (default 4194304)
+    	Limit on the size of a gRPC message this server can receive (bytes). (default 104857600)
   -server.grpc-max-send-msg-size-bytes int
-    	Limit on the size of a gRPC message this server can send (bytes). (default 4194304)
+    	Limit on the size of a gRPC message this server can send (bytes). (default 104857600)
   -server.grpc-tls-ca-path string
     	GRPC TLS Client CA path.
   -server.grpc-tls-cert-path string
@@ -864,7 +1268,7 @@ Usage of ./pyroscope:
   -server.grpc.keepalive.max-connection-idle duration
     	The duration after which an idle connection should be closed. Default: infinity (default 2562047h47m16.854775807s)
   -server.grpc.keepalive.min-time-between-pings duration
-    	Minimum amount of time a client should wait before sending a keepalive ping. If client sends keepalive ping more often, server will send GOAWAY and close the connection. (default 5m0s)
+    	Minimum amount of time a client should wait before sending a keepalive ping. If client sends keepalive ping more often, server will send GOAWAY and close the connection. (default 1s)
   -server.grpc.keepalive.ping-without-stream-allowed
     	If true, server allows keepalive pings even when there are no active streams(RPCs). If false, and client sends ping when there are no active streams, server will send GOAWAY and close the connection.
   -server.grpc.keepalive.time duration
@@ -964,7 +1368,7 @@ Usage of ./pyroscope:
   -storage.azure.user-assigned-id string
     	User assigned managed identity. If empty, then System assigned identity is used.
   -storage.backend string
-    	Backend storage to use. Supported backends are: s3, gcs, azure, swift, filesystem, cos.
+    	Backend storage to use. Supported backends are: s3, gcs, azure, swift, filesystem, cos. (default "filesystem")
   -storage.cos.app-id string
     	COS app id
   -storage.cos.bucket string
@@ -994,13 +1398,13 @@ Usage of ./pyroscope:
   -storage.cos.tls-handshake-timeout duration
     	Maximum time to wait for a TLS handshake. 0 means no limit. (default 10s)
   -storage.filesystem.dir string
-    	Local filesystem storage directory. (default "./data-shared")
+    	Local filesystem storage directory. (default "./data/v2/shared")
   -storage.gcs.bucket-name string
     	GCS bucket name
   -storage.gcs.expect-continue-timeout duration
     	The time to wait for a server's first response headers after fully writing the request headers if the request has an Expect header. 0 to send the request body immediately. (default 1s)
   -storage.gcs.http.idle-conn-timeout duration
-    	The time an idle connection will remain idle before closing. (default 1m30s)
+    	The time an idle connection will remain idle before closing. (default 10m0s)
   -storage.gcs.http.insecure-skip-verify
     	If the client connects to GCS via HTTPS and this option is enabled, the client will accept any certificate and hostname.
   -storage.gcs.http.response-header-timeout duration
@@ -1010,7 +1414,7 @@ Usage of ./pyroscope:
   -storage.gcs.max-idle-connections int
     	Maximum number of idle (keep-alive) connections across all hosts. 0 means no limit.
   -storage.gcs.max-idle-connections-per-host int
-    	Maximum number of idle (keep-alive) connections to keep per-host. If 0, a built-in default value is used. (default 100)
+    	Maximum number of idle (keep-alive) connections to keep per-host. If 0, a built-in default value is used. (default 1000)
   -storage.gcs.service-account string
     	JSON either from a Google Developers Console client_credentials.json file, or a Google Developers service account key. Needs to be valid JSON, not a filesystem path.
   -storage.gcs.tls-handshake-timeout duration
@@ -1030,7 +1434,7 @@ Usage of ./pyroscope:
   -storage.s3.force-path-style
     	Deprecated, use s3.bucket-lookup-type instead. Set this to `true` to force the bucket lookup to be using path-style.
   -storage.s3.http.idle-conn-timeout duration
-    	The time an idle connection will remain idle before closing. (default 1m30s)
+    	The time an idle connection will remain idle before closing. (default 10m0s)
   -storage.s3.http.insecure-skip-verify
     	If the client connects to S3 via HTTPS and this option is enabled, the client will accept any certificate and hostname.
   -storage.s3.http.response-header-timeout duration
@@ -1042,7 +1446,7 @@ Usage of ./pyroscope:
   -storage.s3.max-idle-connections int
     	Maximum number of idle (keep-alive) connections across all hosts. 0 means no limit.
   -storage.s3.max-idle-connections-per-host int
-    	Maximum number of idle (keep-alive) connections to keep per-host. If 0, a built-in default value is used. (default 100)
+    	Maximum number of idle (keep-alive) connections to keep per-host. If 0, a built-in default value is used. (default 1000)
   -storage.s3.native-aws-auth-enabled
     	[experimental] If enabled, it will use the default authentication methods of the AWS SDK for go based on known environment variables and known AWS config files.
   -storage.s3.region string
@@ -1179,6 +1583,12 @@ Usage of ./pyroscope:
     	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway and querier when running in microservices mode.
   -store-gateway.tenant-shard-size int
     	The tenant's shard size, used when store-gateway sharding is enabled. Value of 0 disables shuffle sharding for the tenant, that is all tenant blocks are sharded across all store-gateway replicas.
+  -symbolizer.debuginfod-url string
+    	URL of the debuginfod server (default "https://debuginfod.elfutils.org")
+  -symbolizer.enabled
+    	[experimental] Enable symbolization for tenants by default.
+  -symbolizer.max-debuginfod-concurrency int
+    	Maximum number of concurrent symbolization requests to debuginfod server. (default 10)
   -target comma-separated-list-of-strings
     	Comma-separated list of Pyroscope modules to load. The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode.  (default all)
   -tenant-settings.recording-rules.enabled
@@ -1189,8 +1599,10 @@ Usage of ./pyroscope:
     	[experimental] Set to true to enable profiling integration.
   -usage-stats.enabled
     	Enable anonymous usage statistics collection. For more details about usage statistics, refer to https://grafana.com/docs/pyroscope/latest/configure-server/anonymous-usage-statistics-reporting/ (default true)
+  -valdation.symbolizer.max-symbol-size-bytes int
+    	Maximum size of a symbol in bytes. This an upper limits to both the compressed and uncompressed size. 0 to disable. (default 536870912)
   -validation.disable-label-sanitization
-    	Disable label name sanitization (converting dots to underscores). When disabled, labels with dots are accepted as-is using UTF-8 validation.
+    	Disable label name sanitization (converting dots to underscores). When disabled, labels with dots are accepted as-is using UTF-8 validation. (default true)
   -validation.enforce-labels-order
     	Enforce labels order optimization.
   -validation.max-label-names-per-series int
@@ -1217,3 +1629,13 @@ Usage of ./pyroscope:
     	This limits how far into the past profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 1h. (default 1h)
   -version
     	Show the version of pyroscope and exit
+  -write-path value
+    	Controls the write path route; valid options: ingester, segment-writer, combined. (default "segment-writer")
+  -write-path.compression value
+    	Compression algorithm to use for segment writer requests; valid compression options: none, gzip. (default "none")
+  -write-path.ingester-weight float
+    	Specifies the fraction [0:1] that should be send to ingester in combined mode. 0 means no traffics is sent to ingester. 1 means 100% of requests are sent to ingester. (default 1)
+  -write-path.segment-writer-timeout duration
+    	Timeout for segment writer requests. (default 5s)
+  -write-path.segment-writer-weight float
+    	Specifies the fraction [0:1] that should be send to segment-writer in combined mode. 0 means no traffics is sent to segment-writer. 1 means 100% of requests are sent to segment-writer.

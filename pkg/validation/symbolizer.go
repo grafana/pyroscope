@@ -9,7 +9,7 @@ type Symbolizer struct {
 	Enabled bool `yaml:"enabled" json:"enabled" category:"experimental" doc:"hidden"`
 
 	// Maximum symbol size is checked against both the payload size and the decompressed size
-	MaxSymbolSizeBytes int
+	MaxSymbolSizeBytes int `category:"advanced"`
 }
 
 func (s *Symbolizer) RegisterFlags(f *flag.FlagSet) {

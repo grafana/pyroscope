@@ -39,8 +39,8 @@ func TestFlagParsing(t *testing.T) {
 		},
 		"user visible module listing": {
 			arguments:      []string{"-modules"},
-			stdoutMessage:  "ingester *\n",
-			stderrExcluded: "ingester\n",
+			stdoutMessage:  "segment-writer *\n",
+			stderrExcluded: "segment-writer\n",
 		},
 		"version": {
 			arguments:      []string{"-version"},
@@ -55,7 +55,7 @@ func TestFlagParsing(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_ = os.Setenv("TARGET", "ingester")
+			_ = os.Setenv("TARGET", "segment-writer")
 			oldDefaultRegistry := prometheus.DefaultRegisterer
 			defer func() {
 				prometheus.DefaultRegisterer = oldDefaultRegistry
@@ -107,6 +107,9 @@ func TestHelp(t *testing.T) {
 			// We need to reset the default registry to avoid
 			// "duplicate metrics collector registration attempted" errors.
 			prometheus.DefaultRegisterer = prometheus.NewRegistry()
+
+			// Mocking TMPDIR for predictable output
+			t.Setenv("TMPDIR", "/tmp")
 
 			co := test.CaptureOutput(t)
 

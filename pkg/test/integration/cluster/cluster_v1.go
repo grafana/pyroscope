@@ -55,6 +55,7 @@ func (c *Cluster) v1Prepare(_ context.Context, memberlistJoin []string) error {
 
 		comp.flags = c.commonFlags(comp)
 		comp.flags = append(comp.flags,
+			"-architecture.storage=v1",
 			fmt.Sprintf("-blocks-storage.bucket-store.sync-dir=%s", syncDir),
 			fmt.Sprintf("-compactor.data-dir=%s", compactorDir),
 			fmt.Sprintf("-pyroscopedb.data-path=%s", dataDir),
@@ -66,6 +67,7 @@ func (c *Cluster) v1Prepare(_ context.Context, memberlistJoin []string) error {
 			"-store-gateway.sharding-ring.instance-addr="+listenAddr,
 			"-compactor.ring.instance-addr="+listenAddr,
 			"-compactor.ring.instance-id="+comp.nodeName(),
+			"-write-path=ingester",
 			"-ingester.lifecycler.addr="+listenAddr,
 			"-ingester.lifecycler.ID="+comp.nodeName(),
 			"-ingester.min-ready-duration=0",

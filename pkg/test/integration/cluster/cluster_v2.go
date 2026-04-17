@@ -117,13 +117,11 @@ func (c *Cluster) v2Prepare(_ context.Context, memberlistJoin []string) error {
 func (c *Cluster) v2PrepareComponent(comp *Component, metastoreLeader *Component) error {
 	dataDir := c.dataDir(comp)
 
-	comp.cfg.V2 = true
 	comp.flags = c.commonFlags(comp)
 
 	comp.flags = append(comp.flags,
-		"-enable-query-backend=true",
+		"-architecture.storage=v2",
 		"-querier.query-tree-enabled=true", // always enable the tree based SelectMergeProfiles
-		"-write-path=segment-writer",
 		"-metastore.min-ready-duration=0",
 		fmt.Sprintf("-metastore.address=%s:%d/%s", listenAddr, metastoreLeader.grpcPort, metastoreLeader.nodeName()),
 	)

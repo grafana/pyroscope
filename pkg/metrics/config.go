@@ -6,11 +6,11 @@ import (
 )
 
 type Config struct {
-	Enabled     bool `yaml:"enabled"`
+	Enabled     bool `yaml:"enabled" category:"advanced"`
 	RulesSource struct {
-		ClientAddress string `yaml:"client_address"`
+		ClientAddress string `yaml:"client_address" category:"advanced"`
 	} `yaml:"rules_source"`
-	RemoteWriteAddress string `yaml:"remote_write_address"`
+	RemoteWriteAddress string `yaml:"remote_write_address" category:"advanced"`
 }
 
 func (c *Config) Validate() error {

@@ -34,28 +34,28 @@ type ContextRegistry interface {
 type Config struct {
 	Dir                string `yaml:"dir"`
 	SnapshotsDir       string `yaml:"snapshots_dir" doc:"hidden"`
-	SnapshotsImportDir string `yaml:"snapshots_import_dir" doc:"hidden"`
+	SnapshotsImportDir string `yaml:"snapshots_import_dir" category:"advanced" doc:"hidden"`
 
-	BootstrapPeers       []string `yaml:"bootstrap_peers"`
-	BootstrapExpectPeers int      `yaml:"bootstrap_expect_peers"`
-	AutoJoin             bool     `yaml:"auto_join"`
+	BootstrapPeers       []string `yaml:"bootstrap_peers" category:"advanced"`
+	BootstrapExpectPeers int      `yaml:"bootstrap_expect_peers" category:"advanced"`
+	AutoJoin             bool     `yaml:"auto_join" category:"advanced"`
 
-	ServerID         string `yaml:"server_id"`
-	BindAddress      string `yaml:"bind_address"`
-	AdvertiseAddress string `yaml:"advertise_address"`
+	ServerID         string `yaml:"server_id" category:"advanced"`
+	BindAddress      string `yaml:"bind_address" category:"advanced"`
+	AdvertiseAddress string `yaml:"advertise_address" category:"advanced"`
 
-	ApplyTimeout          time.Duration `yaml:"apply_timeout" doc:"hidden"`
-	LogIndexCheckInterval time.Duration `yaml:"log_index_check_interval" doc:"hidden"`
-	ReadIndexMaxDistance  uint64        `yaml:"read_index_max_distance" doc:"hidden"`
+	ApplyTimeout          time.Duration `yaml:"apply_timeout" category:"advanced" doc:"hidden"`
+	LogIndexCheckInterval time.Duration `yaml:"log_index_check_interval" category:"advanced" doc:"hidden"`
+	ReadIndexMaxDistance  uint64        `yaml:"read_index_max_distance" category:"advanced" doc:"hidden"`
 
-	WALCacheEntries       uint64        `yaml:"wal_cache_entries" doc:"hidden"`
-	TrailingLogs          uint64        `yaml:"trailing_logs" doc:"hidden"`
-	SnapshotsRetain       uint64        `yaml:"snapshots_retain" doc:"hidden"`
-	SnapshotInterval      time.Duration `yaml:"snapshot_interval" doc:"hidden"`
-	SnapshotThreshold     uint64        `yaml:"snapshot_threshold" doc:"hidden"`
-	TransportConnPoolSize uint64        `yaml:"transport_conn_pool_size" doc:"hidden"`
-	TransportTimeout      time.Duration `yaml:"transport_timeout" doc:"hidden"`
-	LogStoreTimeout       time.Duration `yaml:"log_store_timeout" doc:"hidden"`
+	WALCacheEntries       uint64        `yaml:"wal_cache_entries" category:"advanced" doc:"hidden"`
+	TrailingLogs          uint64        `yaml:"trailing_logs" category:"advanced" doc:"hidden"`
+	SnapshotsRetain       uint64        `yaml:"snapshots_retain" category:"advanced" doc:"hidden"`
+	SnapshotInterval      time.Duration `yaml:"snapshot_interval" category:"advanced" doc:"hidden"`
+	SnapshotThreshold     uint64        `yaml:"snapshot_threshold" category:"advanced" doc:"hidden"`
+	TransportConnPoolSize uint64        `yaml:"transport_conn_pool_size" category:"advanced" doc:"hidden"`
+	TransportTimeout      time.Duration `yaml:"transport_timeout" category:"advanced" doc:"hidden"`
+	LogStoreTimeout       time.Duration `yaml:"log_store_timeout" category:"advanced" doc:"hidden"`
 
 	// If set, wraps the log store after construction. Used only for testing.
 	LogStoreMiddleware func(raft.LogStore) raft.LogStore `yaml:"-"`

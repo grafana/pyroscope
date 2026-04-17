@@ -191,7 +191,7 @@ func (c *Cluster) pickHealthyComponent(targets ...string) (addr string, err erro
 	return "", fmt.Errorf("no healthy component found for targets %v", targets)
 }
 func (c *Cluster) dataSharedDir() string {
-	return filepath.Join(c.tmpDir, "data-shared")
+	return filepath.Join(c.tmpDir, "data", "v2", "shared")
 }
 
 func (c *Cluster) dataDir(comp *Component) string {
@@ -204,7 +204,7 @@ func (c *Cluster) Prepare(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	if err := os.Mkdir(c.dataSharedDir(), 0o755); err != nil {
+	if err := os.MkdirAll(c.dataSharedDir(), 0o755); err != nil {
 		return err
 	}
 

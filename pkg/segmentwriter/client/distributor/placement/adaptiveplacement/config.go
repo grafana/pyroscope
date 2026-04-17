@@ -14,14 +14,14 @@ type Limits interface {
 // PlacementLimits defines the limits for adaptive sharding.
 // These parameters are tenant-specific.
 type PlacementLimits struct {
-	TenantShards         uint64        `yaml:"adaptive_placement_tenant_shards" json:"adaptive_placement_tenant_shards" doc:"hidden"`
-	DefaultDatasetShards uint64        `yaml:"adaptive_placement_default_dataset_shards" json:"adaptive_placement_default_dataset_shards" doc:"hidden"`
-	LoadBalancing        LoadBalancing `yaml:"adaptive_placement_load_balancing" json:"adaptive_placement_load_balancing" doc:"hidden"`
-	MinDatasetShards     uint64        `yaml:"adaptive_placement_min_dataset_shards" json:"adaptive_placement_min_dataset_shards" doc:"hidden"`
-	MaxDatasetShards     uint64        `yaml:"adaptive_placement_max_dataset_shards" json:"adaptive_placement_max_dataset_shards" doc:"hidden"`
-	UnitSizeBytes        uint64        `yaml:"adaptive_placement_unit_size_bytes" json:"adaptive_placement_unit_size_bytes" doc:"hidden"`
-	BurstWindow          time.Duration `yaml:"adaptive_placement_burst_window" json:"adaptive_placement_burst_window" doc:"hidden"`
-	DecayWindow          time.Duration `yaml:"adaptive_placement_decay_window" json:"adaptive_placement_decay_window" doc:"hidden"`
+	TenantShards         uint64        `yaml:"adaptive_placement_tenant_shards" json:"adaptive_placement_tenant_shards" category:"advanced" doc:"hidden"`
+	DefaultDatasetShards uint64        `yaml:"adaptive_placement_default_dataset_shards" json:"adaptive_placement_default_dataset_shards" category:"advanced" doc:"hidden"`
+	LoadBalancing        LoadBalancing `yaml:"adaptive_placement_load_balancing" json:"adaptive_placement_load_balancing" category:"advanced" doc:"hidden"`
+	MinDatasetShards     uint64        `yaml:"adaptive_placement_min_dataset_shards" json:"adaptive_placement_min_dataset_shards" category:"advanced" doc:"hidden"`
+	MaxDatasetShards     uint64        `yaml:"adaptive_placement_max_dataset_shards" json:"adaptive_placement_max_dataset_shards" category:"advanced" doc:"hidden"`
+	UnitSizeBytes        uint64        `yaml:"adaptive_placement_unit_size_bytes" json:"adaptive_placement_unit_size_bytes" category:"advanced" doc:"hidden"`
+	BurstWindow          time.Duration `yaml:"adaptive_placement_burst_window" json:"adaptive_placement_burst_window" category:"advanced" doc:"hidden"`
+	DecayWindow          time.Duration `yaml:"adaptive_placement_decay_window" json:"adaptive_placement_decay_window" category:"advanced" doc:"hidden"`
 }
 
 func (o *PlacementLimits) RegisterFlags(f *flag.FlagSet) {
@@ -41,14 +41,14 @@ func (o *PlacementLimits) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet
 }
 
 type Config struct {
-	PlacementUpdateInterval          time.Duration `yaml:"placement_rules_update_interval" json:"placement_rules_update_interval"`
-	PlacementRetentionPeriod         time.Duration `yaml:"placement_rules_retention_period" json:"placement_rules_retention_period"`
-	StatsConfidencePeriod            time.Duration `yaml:"stats_confidence_period" json:"stats_confidence_period"`
-	StatsAggregationWindow           time.Duration `yaml:"stats_aggregation_window" json:"stats_aggregation_window"`
-	StatsRetentionPeriod             time.Duration `yaml:"stats_retention_period" json:"stats_retention_period"`
-	ExportShardLimitMetrics          bool          `yaml:"export_shard_limit_metrics" json:"export_shard_limit_metrics"`
-	ExportShardUsageMetrics          bool          `yaml:"export_shard_usage_metrics" json:"export_shard_usage_metrics"`
-	ExportShardUsageBreakdownMetrics bool          `yaml:"export_shard_usage_breakdown_metrics" json:"export_shard_usage_breakdown_metrics"`
+	PlacementUpdateInterval          time.Duration `yaml:"placement_rules_update_interval" json:"placement_rules_update_interval" category:"advanced"`
+	PlacementRetentionPeriod         time.Duration `yaml:"placement_rules_retention_period" json:"placement_rules_retention_period" category:"advanced"`
+	StatsConfidencePeriod            time.Duration `yaml:"stats_confidence_period" json:"stats_confidence_period" category:"advanced"`
+	StatsAggregationWindow           time.Duration `yaml:"stats_aggregation_window" json:"stats_aggregation_window" category:"advanced"`
+	StatsRetentionPeriod             time.Duration `yaml:"stats_retention_period" json:"stats_retention_period" category:"advanced"`
+	ExportShardLimitMetrics          bool          `yaml:"export_shard_limit_metrics" json:"export_shard_limit_metrics" category:"advanced"`
+	ExportShardUsageMetrics          bool          `yaml:"export_shard_usage_metrics" json:"export_shard_usage_metrics" category:"advanced"`
+	ExportShardUsageBreakdownMetrics bool          `yaml:"export_shard_usage_breakdown_metrics" json:"export_shard_usage_breakdown_metrics" category:"advanced"`
 }
 
 func DefaultConfig() Config {

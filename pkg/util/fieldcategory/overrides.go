@@ -2,7 +2,10 @@
 
 package fieldcategory
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 type Category int
 
@@ -30,20 +33,29 @@ func (c Category) String() string {
 
 // Fields are primarily categorized via struct tags, but this can be impossible when third party libraries are involved
 // Only categorize fields here when you can't otherwise, since struct tags are less likely to become stale
-var overrides = map[string]Category{}
+var (
+	overridesMu sync.RWMutex
+	overrides   = map[string]Category{}
+)
 
 func AddOverrides(o map[string]Category) {
+	overridesMu.Lock()
+	defer overridesMu.Unlock()
 	for n, c := range o {
 		overrides[n] = c
 	}
 }
 
 func GetOverride(fieldName string) (category Category, ok bool) {
+	overridesMu.RLock()
+	defer overridesMu.RUnlock()
 	category, ok = overrides[fieldName]
 	return
 }
 
 func VisitOverrides(f func(name string)) {
+	overridesMu.RLock()
+	defer overridesMu.RUnlock()
 	for override := range overrides {
 		f(override)
 	}

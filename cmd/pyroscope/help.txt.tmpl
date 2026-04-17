@@ -1,6 +1,8 @@
 Usage of ./pyroscope:
   -api.base-url string
     	base URL for when the server is behind a reverse proxy with a different path
+  -architecture.storage value
+    	Storage architecture layer. Use 'v1' to use legacy ingester-based storage, 'v2' for new storage, and 'v1-v2-dual' to use new storage while being able to query old data. (default "v1-v2-dual")
   -auth.multitenancy-enabled
     	When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
   -blocks-storage.bucket-store.sync-dir string
@@ -83,6 +85,8 @@ Usage of ./pyroscope:
     	The port on which the Grafana will listen. (default 4041)
   -embedded-grafana.pyroscope-url string
     	The URL of the Pyroscope instance to use for the Grafana datasources. (default "http://localhost:4040")
+  -enable-query-backend-from value
+    	This parameter specifies the point in time from which data is queried from the new query backend. The value can be an RFC3339 timestamp (2020-10-20T00:00:00Z) or "auto" to automatically determine the split point from the tenant's oldest profile time in the metastore. (default auto)
   -etcd.endpoints string
     	The etcd endpoints to connect to.
   -etcd.password string
@@ -121,6 +125,12 @@ Usage of ./pyroscope:
     	Port to listen on for gossip messages. (default 7946)
   -memberlist.join value
     	Other cluster members to join. Can be specified multiple times or as a comma-separated list. It can be an IP, hostname or an entry specified in the DNS Service Discovery format.
+  -metastore.data-dir string
+    	Directory to store the data. (default "./data/v2/metastore/data")
+  -metastore.raft.dir string
+    	Directory to store WAL and raft state. It must be a persistent directory, not a tmpfs or similar. (default "./data/v2/metastore/raft")
+  -metastore.raft.snapshots-dir string
+    	Directory to store FSM snapshots. Raft creates 'snapshots' subdirectory in this directory. It must be a persistent directory, not a tmpfs or similar. (default "./data/v2/metastore/raft")
   -modules
     	List available modules that can be used as target and exit.
   -overrides-exporter.ring.consul.hostname string
@@ -189,6 +199,8 @@ Usage of ./pyroscope:
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -query-scheduler.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -retention-period duration
+    	Retention period for the data. 0 means data never deleted. (default 31d)
   -ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -runtime-config.file comma-separated-list-of-strings
@@ -220,9 +232,9 @@ Usage of ./pyroscope:
   -server.grpc-max-concurrent-streams uint
     	Limit on the number of concurrent streams for gRPC calls per client connection (0 = unlimited) (default 100)
   -server.grpc-max-recv-msg-size-bytes int
-    	Limit on the size of a gRPC message this server can receive (bytes). (default 4194304)
+    	Limit on the size of a gRPC message this server can receive (bytes). (default 104857600)
   -server.grpc-max-send-msg-size-bytes int
-    	Limit on the size of a gRPC message this server can send (bytes). (default 4194304)
+    	Limit on the size of a gRPC message this server can send (bytes). (default 104857600)
   -server.grpc-tls-ca-path string
     	GRPC TLS Client CA path.
   -server.grpc-tls-cert-path string
@@ -238,7 +250,7 @@ Usage of ./pyroscope:
   -server.grpc.keepalive.max-connection-idle duration
     	The duration after which an idle connection should be closed. Default: infinity (default 2562047h47m16.854775807s)
   -server.grpc.keepalive.min-time-between-pings duration
-    	Minimum amount of time a client should wait before sending a keepalive ping. If client sends keepalive ping more often, server will send GOAWAY and close the connection. (default 5m0s)
+    	Minimum amount of time a client should wait before sending a keepalive ping. If client sends keepalive ping more often, server will send GOAWAY and close the connection. (default 1s)
   -server.grpc.keepalive.ping-without-stream-allowed
     	If true, server allows keepalive pings even when there are no active streams(RPCs). If false, and client sends ping when there are no active streams, server will send GOAWAY and close the connection.
   -server.grpc.keepalive.time duration
@@ -334,7 +346,7 @@ Usage of ./pyroscope:
   -storage.azure.endpoint-suffix string
     	Azure storage endpoint suffix without schema. The account name will be prefixed to this value to create the FQDN. If set to empty string, default endpoint suffix is used.
   -storage.backend string
-    	Backend storage to use. Supported backends are: s3, gcs, azure, swift, filesystem, cos.
+    	Backend storage to use. Supported backends are: s3, gcs, azure, swift, filesystem, cos. (default "filesystem")
   -storage.cos.app-id string
     	COS app id
   -storage.cos.bucket string
@@ -348,7 +360,7 @@ Usage of ./pyroscope:
   -storage.cos.secret-key string
     	COS secret key
   -storage.filesystem.dir string
-    	Local filesystem storage directory. (default "./data-shared")
+    	Local filesystem storage directory. (default "./data/v2/shared")
   -storage.gcs.bucket-name string
     	GCS bucket name
   -storage.gcs.service-account string
@@ -430,7 +442,7 @@ Usage of ./pyroscope:
   -usage-stats.enabled
     	Enable anonymous usage statistics collection. For more details about usage statistics, refer to https://grafana.com/docs/pyroscope/latest/configure-server/anonymous-usage-statistics-reporting/ (default true)
   -validation.disable-label-sanitization
-    	Disable label name sanitization (converting dots to underscores). When disabled, labels with dots are accepted as-is using UTF-8 validation.
+    	Disable label name sanitization (converting dots to underscores). When disabled, labels with dots are accepted as-is using UTF-8 validation. (default true)
   -validation.enforce-labels-order
     	Enforce labels order optimization.
   -validation.max-label-names-per-series int
@@ -457,5 +469,7 @@ Usage of ./pyroscope:
     	This limits how far into the past profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 1h. (default 1h)
   -version
     	Show the version of pyroscope and exit
+  -write-path value
+    	Controls the write path route; valid options: ingester, segment-writer, combined. (default "segment-writer")
 
 To see all flags, use -help-all

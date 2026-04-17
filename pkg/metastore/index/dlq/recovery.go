@@ -21,7 +21,7 @@ import (
 )
 
 type Config struct {
-	CheckInterval time.Duration `yaml:"dlq_recovery_check_interval"`
+	CheckInterval time.Duration `yaml:"dlq_recovery_check_interval" category:"advanced"`
 }
 
 func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {

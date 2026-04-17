@@ -48,9 +48,9 @@ type StateRestorer interface {
 }
 
 type Config struct {
-	SnapshotCompression      string `yaml:"snapshot_compression"`
-	SnapshotRateLimit        int    `yaml:"snapshot_rate_limit"`
-	SnapshotCompactOnRestore bool   `yaml:"snapshot_compact_on_restore"`
+	SnapshotCompression      string `yaml:"snapshot_compression" category:"advanced"`
+	SnapshotRateLimit        int    `yaml:"snapshot_rate_limit" category:"advanced"`
+	SnapshotCompactOnRestore bool   `yaml:"snapshot_compact_on_restore" category:"advanced"`
 	// Where the FSM BoltDB data is located.
 	// Does not have to be a persistent volume.
 	DataDir string `yaml:"data_dir"`

@@ -55,28 +55,10 @@ func errorHandler() {
 func main() {
 	var flags mainFlags
 
-	flags.V2 = os.Getenv("PYROSCOPE_V2") != "" || os.Getenv("PYROSCOPE_V2_EXPERIMENT") != ""
 	if err := cfg.DynamicUnmarshal(&flags, os.Args[1:], flag.CommandLine); err != nil {
 		fmt.Fprintf(os.Stderr, "failed parsing config: %v\n", err)
 		errorHandler()
 		return
-	}
-
-	if args := flag.Args(); len(args) > 0 {
-		switch args[0] {
-		// server mode is the pyroscope's only mode from 1.0
-		case "server":
-			break
-		case "agent", "ebpf":
-			fmt.Printf("%s mode is deprecated. Please use Grafana Agent instead.\n", args[0])
-			os.Exit(1)
-		case "connect", "exec":
-			fmt.Printf("%s mode is deprecated. Please use Pyroscope 0.37 or earlier.\n", args[0])
-			os.Exit(1)
-		default:
-			fmt.Printf("unknown mode: %s\n", args[0])
-			os.Exit(1)
-		}
 	}
 
 	f, err := pyroscope.New(flags.Config)

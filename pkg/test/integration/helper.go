@@ -40,6 +40,8 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
 	"github.com/grafana/pyroscope/pkg/cfg"
+	"github.com/grafana/pyroscope/pkg/distributor/writepath"
+	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/pyroscope"
@@ -122,7 +124,6 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 	p.reg = prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = p.reg
 
-	p.config.V2 = v2
 	err = cfg.DynamicUnmarshal(&p.config, []string{"pyroscope"}, flag.NewFlagSet("pyroscope", flag.ContinueOnError))
 	require.NoError(t, err)
 
@@ -158,11 +159,14 @@ func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
 	p.config.LimitsConfig.RejectOlderThan = 0
 	_ = p.config.Server.LogLevel.Set("debug")
 
-	if v2 {
+	if !v2 {
+		p.config.ArchitectureStorage = pyroscope.V1
+		p.config.LimitsConfig.WritePathOverrides.WritePath = writepath.IngesterPath
+		p.config.Storage.Bucket.Backend = objstoreclient.None
+	} else {
+		p.config.ArchitectureStorage = pyroscope.V2
 		p.config.Storage.Bucket.Filesystem.Directory = t.TempDir()
 		p.config.Storage.Bucket.Backend = "filesystem"
-		p.config.LimitsConfig.WritePathOverrides.WritePath = "segment-writer"
-		p.config.LimitsConfig.ReadPathOverrides.EnableQueryBackend = true
 		p.config.SegmentWriter.LifecyclerConfig.MinReadyDuration = 0 * time.Second
 		p.config.SegmentWriter.LifecyclerConfig.Addr = address
 		p.config.SegmentWriter.MetadataUpdateTimeout = 0 * time.Second
@@ -191,7 +195,10 @@ func (p *PyroscopeTest) ready() bool {
 	return httpBodyContains(p.URL()+"/ready", "ready")
 }
 func (p *PyroscopeTest) ringActive() bool {
-	return httpBodyContains(p.URL()+"/ring", "ACTIVE")
+	if p.config.ArchitectureStorage == pyroscope.V1 || p.config.ArchitectureStorage == pyroscope.V1V2Dual {
+		return httpBodyContains(p.URL()+"/ring", "ACTIVE")
+	}
+	return httpBodyContains(p.URL()+"/ring-segment-writer", "ACTIVE")
 }
 func (p *PyroscopeTest) URL() string {
 	return fmt.Sprintf("http://%s:%d", address, p.httpPort)

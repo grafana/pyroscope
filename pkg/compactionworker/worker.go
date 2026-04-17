@@ -35,13 +35,13 @@ import (
 )
 
 type Config struct {
-	JobConcurrency     int            `yaml:"job_capacity"`
-	JobPollInterval    time.Duration  `yaml:"job_poll_interval"`
-	SmallObjectSize    int            `yaml:"small_object_size_bytes"`
-	TempDir            string         `yaml:"temp_dir"`
-	RequestTimeout     time.Duration  `yaml:"request_timeout"`
-	CleanupMaxDuration time.Duration  `yaml:"cleanup_max_duration"`
-	MetricsExporter    metrics.Config `yaml:"metrics_exporter"`
+	JobConcurrency     int            `yaml:"job_capacity" category:"advanced"`
+	JobPollInterval    time.Duration  `yaml:"job_poll_interval" category:"advanced"`
+	SmallObjectSize    int            `yaml:"small_object_size_bytes" category:"advanced"`
+	TempDir            string         `yaml:"temp_dir" category:"advanced" doc:"default=/tmp"`
+	RequestTimeout     time.Duration  `yaml:"request_timeout" category:"advanced"`
+	CleanupMaxDuration time.Duration  `yaml:"cleanup_max_duration" category:"advanced"`
+	MetricsExporter    metrics.Config `yaml:"metrics_exporter" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {

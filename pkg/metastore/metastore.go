@@ -34,7 +34,7 @@ import (
 )
 
 type Config struct {
-	Address          string            `yaml:"address"`
+	Address          string            `yaml:"address" category:"advanced"`
 	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the metastore."`
 	MinReadyDuration time.Duration     `yaml:"min_ready_duration" category:"advanced"`
 	Raft             raftnode.Config   `yaml:"raft"`

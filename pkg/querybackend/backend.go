@@ -21,9 +21,9 @@ import (
 )
 
 type Config struct {
-	Address          string            `yaml:"address"`
+	Address          string            `yaml:"address" category:"advanced"`
 	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
-	ClientTimeout    time.Duration     `yaml:"client_timeout"`
+	ClientTimeout    time.Duration     `yaml:"client_timeout" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {

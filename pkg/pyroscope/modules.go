@@ -46,6 +46,7 @@ import (
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/operations"
+	blocksv2 "github.com/grafana/pyroscope/pkg/operations/v2/blocks"
 	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
@@ -468,7 +469,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		featureflags.ClientCapabilitiesGRPCMiddleware(),
 	)
 
-	if f.Cfg.V2 {
+	if f.Cfg.ArchitectureStorage != V1 {
 		f.Cfg.Server.MetricsNativeHistogramFactor = 1.1 // 10% increase from bucket to bucket
 		if slices.Contains(f.Cfg.Target, QueryBackend) {
 			concurrencyInterceptor, err := querybackend.CreateConcurrencyInterceptor(f.logger)
@@ -480,7 +481,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	}
 
 	f.setupWorkerTimeout()
-	if f.isModuleActive(QueryScheduler) {
+	if f.isModuleActive(QueryScheduler) || f.isModuleActive(QueryFrontend) {
 		// to ensure that the query scheduler is always able to handle the request, we need to double the timeout
 		f.Cfg.Server.HTTPServerReadTimeout = 2 * f.Cfg.Server.HTTPServerReadTimeout
 		f.Cfg.Server.HTTPServerWriteTimeout = 2 * f.Cfg.Server.HTTPServerWriteTimeout
@@ -578,15 +579,26 @@ func (f *Pyroscope) initUsageReport() (services.Service, error) {
 }
 
 func (f *Pyroscope) initAdmin() (services.Service, error) {
-	if f.Cfg.V2 {
-		// For v2 storage, use metastore-based admin
-		if f.metastoreClient == nil {
-			level.Warn(f.logger).Log("msg", "v2 enabled but no metastore client configured, the admin component will not be loaded")
-			return nil, nil
-		}
-		return f.initAdminV2()
+	if f.Cfg.ArchitectureStorage == V1 {
+		return f.initLegacyAdmin()
 	}
+	if f.metastoreClient == nil {
+		level.Warn(f.logger).Log("msg", "v2 enabled but no metastore client configured, the admin component will not be loaded")
+		return nil, nil
+	}
+	level.Info(f.logger).Log("msg", "initializing v2 admin (metastore-based)")
 
+	a, err := blocksv2.NewAdmin(f.metastoreClient, f.storageBucket, f.logger)
+	if err != nil {
+		level.Info(f.logger).Log("msg", "failed to initialize v2 admin", "err", err)
+		return nil, nil
+	}
+	f.admin = a
+	f.API.RegisterAdmin(a)
+	return a, nil
+}
+
+func (f *Pyroscope) initLegacyAdmin() (services.Service, error) {
 	if f.storageBucket == nil {
 		level.Warn(f.logger).Log("msg", "no storage bucket configured, the admin component will not be loaded")
 		return nil, nil
@@ -600,6 +612,7 @@ func (f *Pyroscope) initAdmin() (services.Service, error) {
 	f.admin = a
 	f.API.RegisterAdmin(a)
 	return a, nil
+
 }
 
 func (f *Pyroscope) initEmbeddedGrafana() (services.Service, error) {
