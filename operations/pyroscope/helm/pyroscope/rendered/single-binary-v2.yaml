@@ -1425,7 +1425,6 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
-            - "-storage.backend=filesystem"
             - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.data-dir=./data-metastore/data"
@@ -1435,10 +1434,8 @@ spec:
             - "-metastore.raft.server-id=$(POD_NAME).$(PYROSCOPE_METASTORE_SERVICE)"
             - "-metastore.raft.advertise-address=$(POD_NAME).$(PYROSCOPE_METASTORE_SERVICE)"
             - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.$(PYROSCOPE_METASTORE_SERVICE)"
-            - "-write-path=segment-writer"
-            - "-all.enable-v1-write-path=false"
-            - "-all.enable-v1-read-path=false"
-            - "-enable-query-backend=true"
+            - "-architecture.storage=v2"
+            - "-enable-query-backend-from=auto"
           env:
             - name: POD_NAME
               valueFrom:
@@ -1446,8 +1443,6 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "default.svc.cluster.local."
-            - name: PYROSCOPE_V2_EXPERIMENT
-              value: "1"
             - name: PYROSCOPE_METASTORE_SERVICE
               value: "pyroscope-dev-headless.default.svc.cluster.local.:9099"
           ports:
@@ -1476,9 +1471,6 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
-            - name: data
-              mountPath: /data-shared
-              subPath: .shared
             - name: data
               mountPath: /data-metastore
               subPath: .metastore

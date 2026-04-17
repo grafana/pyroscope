@@ -2263,6 +2263,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-architecture.storage=v1"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2365,6 +2366,8 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-architecture.storage=v1"
+            - "-write-path=ingester"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2468,6 +2471,7 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+            - "-architecture.storage=v1"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2570,6 +2574,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-architecture.storage=v1"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2672,6 +2677,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-architecture.storage=v1"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2774,6 +2780,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-architecture.storage=v1"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3061,6 +3068,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-architecture.storage=v1"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3170,6 +3178,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-architecture.storage=v1"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3276,6 +3285,7 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
+            - "-architecture.storage=v1"
           env:
             - name: POD_NAME
               valueFrom:

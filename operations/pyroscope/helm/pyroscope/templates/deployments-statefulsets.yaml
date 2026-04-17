@@ -85,12 +85,6 @@ spec:
           {{- range $key, $value := $extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
-          {{- /* When v2 and single binary is used we need to explicitly configure "filesystem" (TODO: This should be the default in v2) */}}
-          {{- if and $hasV2 (eq $component "all") }}
-          {{-  if (not (hasKey $extraArgs "storage.backend")) }}
-            - "-storage.backend=filesystem"
-          {{- end }}
-          {{- end }}
           {{- /* v2 specific options for all components */}}
           {{- if $hasV2 }}
           {{-  if (not (hasKey $extraArgs "query-backend.address"))  }}
@@ -124,39 +118,33 @@ spec:
             - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.$(PYROSCOPE_METASTORE_SERVICE)"
           {{- end }}
           {{- end }}
-          {{- /* distributor specific v1/v2 migration config */}}
+          {{- /* architecture storage layer */}}
+          {{- if not (hasKey $extraArgs "architecture.storage") }}
+          {{- if and $hasV1 $hasV2 }}
+            - "-architecture.storage=v1-v2-dual"
+          {{- else if $hasV1 }}
+            - "-architecture.storage=v1"
+          {{- else if $hasV2 }}
+            - "-architecture.storage=v2"
+          {{- end }}
+          {{- end }}
+          {{- /* distributor write path config */}}
           {{-  if or (eq $component "all") (eq $component "distributor") }}
-          {{-  if and $hasV2 (not (hasKey $extraArgs "write-path"))  }}
-          {{-  if $hasV1 }}
+          {{-  if (not (hasKey $extraArgs "write-path"))  }}
+          {{-  if and $hasV1 $hasV2 }}
             - "-write-path=combined"
           {{-  if not (hasKey $extraArgs "write-path.segment-writer-weight")  }}
             - "-write-path.segment-writer-weight=1"
           {{- end }}
-          {{- else }}
-            - "-write-path=segment-writer"
+          {{- else if not $hasV2 }}
+            - "-write-path=ingester"
           {{- end }}
           {{- end }}
           {{- end }}
-          {{- /* single-binary v2: disable v1 components when v1 storage is off */}}
-          {{- if and (eq $component "all") $hasV2 (not $hasV1) }}
-          {{-   if not (hasKey $extraArgs "all.enable-v1-write-path") }}
-            - "-all.enable-v1-write-path=false"
-          {{-   end }}
-          {{-   if not (hasKey $extraArgs "all.enable-v1-read-path") }}
-            - "-all.enable-v1-read-path=false"
-          {{-   end }}
-          {{- end }}
-          {{- /* query-frontend specific v1/v2 migration config */}}
-          {{- if or (eq $component "all") (eq $component "query-frontend") }}
-          {{-   if and $hasV2 (not (hasKey $extraArgs "enable-query-backend"))  }}
-          {{-     if and $hasV1 $global.Values.architecture.storage.migration.queryBackend }}
-            - "-enable-query-backend=true"
-          {{-       if and (not (hasKey $extraArgs "enable-query-backend-from")) $global.Values.architecture.storage.migration.queryBackendFrom }}
+          {{- /* query-frontend v2 migration config */}}
+          {{- if and $hasV2 (or (eq $component "all") (eq $component "query-frontend")) }}
+          {{-   if and (not (hasKey $extraArgs "enable-query-backend-from")) $global.Values.architecture.storage.migration.queryBackendFrom }}
             - "-enable-query-backend-from={{$global.Values.architecture.storage.migration.queryBackendFrom}}"
-          {{-       end }}
-          {{-     else }}
-            - "-enable-query-backend=true"
-          {{-     end }}
           {{-   end }}
           {{- end }}
           env:
@@ -166,10 +154,6 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}"
-          {{- if and $hasV2 (not (hasKey $values.extraEnvVars "PYROSCOPE_V2_EXPERIMENT"))  }}
-            - name: PYROSCOPE_V2_EXPERIMENT
-              value: "1"
-          {{- end }}
           {{- if and $hasV2 (not (hasKey $values.extraEnvVars "PYROSCOPE_METASTORE_SERVICE"))  }}
             - name: PYROSCOPE_METASTORE_SERVICE
               value: "{{ include "pyroscope.fullname" .}}{{ if $hasMetastore }}-metastore{{ end }}-headless.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.metastore.port }}"
@@ -229,11 +213,6 @@ spec:
             - name: data
               mountPath: /data-compactor
               subPath: compactor
-            {{- end }}
-            {{- if (and $hasV2 $values.persistence.shared.enabled) }}
-            - name: data
-              mountPath: /data-shared
-              subPath: {{ $values.persistence.shared.subPath }}
             {{- end }}
             {{- if $isMetastore }}
             - name: data
