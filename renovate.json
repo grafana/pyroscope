@@ -3,7 +3,7 @@
   "extends": ["config:best-practices"],
   "timezone": "UTC",
   "schedule": ["before 4am on monday"],
-  "prConcurrentLimit": 10,
+  "prConcurrentLimit": 239,
   "prCreation": "not-pending",
   "internalChecksFilter": "strict",
   "ignoreDeps": [],
