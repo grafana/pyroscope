@@ -471,7 +471,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	if f.Cfg.V2 {
 		f.Cfg.Server.MetricsNativeHistogramFactor = 1.1 // 10% increase from bucket to bucket
 		if slices.Contains(f.Cfg.Target, QueryBackend) {
-			concurrencyInterceptor, err := querybackend.CreateConcurrencyInterceptor(f.logger)
+			concurrencyInterceptor, err := querybackend.CreateConcurrencyInterceptor(f.logger, f.reg)
 			if err != nil {
 				return nil, err
 			}
