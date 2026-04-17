@@ -23,15 +23,15 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/iter"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	testutil2 "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	"github.com/grafana/pyroscope/pkg/segmentwriter/memdb/testutil"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	testutil2 "github.com/grafana/pyroscope/v2/pkg/phlaredb/block/testutil"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/memdb/testutil"
 )
 
 var defaultAnnotations []*typesv1.ProfileAnnotation
@@ -416,7 +416,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		// short timing for that to happen with real HTTP servers makes this
 		// unlikely, but it does happen with the synchronous in memory
 		// net.Pipe() that is used here.
-		// See https://github.com/grafana/pyroscope/issues/3549 for more details.
+		// See https://github.com/grafana/pyroscope/v2/issues/3549 for more details.
 		if err := bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{}); !errors.Is(err, io.EOF) {
 			require.NoError(t, err)
 		}
@@ -618,7 +618,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 		// short timing for that to happen with real HTTP servers makes this
 		// unlikely, but it does happen with the synchronous in memory
 		// net.Pipe() that is used here.
-		// See https://github.com/grafana/pyroscope/issues/3549 for more details.
+		// See https://github.com/grafana/pyroscope/v2/issues/3549 for more details.
 		if err := bidi.Send(&ingestv1.MergeProfilesPprofRequest{}); !errors.Is(err, io.EOF) {
 			require.NoError(t, err)
 		}
@@ -671,7 +671,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 	})
 }
 
-// See https://github.com/grafana/pyroscope/pull/3356
+// See https://github.com/grafana/pyroscope/v2/pull/3356
 func Test_HeadFlush_DuplicateLabels(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 

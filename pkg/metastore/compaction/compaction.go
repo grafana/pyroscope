@@ -6,7 +6,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 )
 
 type Compactor interface {

@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/grafana/pyroscope/pkg/metastore/compaction"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
 )
 
 func BenchmarkCompactionQueue_Push(b *testing.B) {

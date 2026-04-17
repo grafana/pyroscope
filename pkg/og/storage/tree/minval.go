@@ -1,7 +1,7 @@
 package tree
 
 import (
-	"github.com/grafana/pyroscope/pkg/og/structs/cappedarr"
+	"github.com/grafana/pyroscope/v2/pkg/og/structs/cappedarr"
 )
 
 func (t *Tree) minValue(maxNodes int) uint64 {

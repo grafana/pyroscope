@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	util_log "github.com/grafana/pyroscope/pkg/util"
+	util_log "github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // Copied from Mimir.

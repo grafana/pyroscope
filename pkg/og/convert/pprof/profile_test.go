@@ -5,11 +5,11 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/api/model/labelset"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
-	"github.com/grafana/pyroscope/pkg/og/storage/tree"
-	"github.com/grafana/pyroscope/pkg/pprof"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

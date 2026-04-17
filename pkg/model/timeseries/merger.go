@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 func MergeSeries(aggregation *typesv1.TimeSeriesAggregationType, series ...[]*typesv1.Series) []*typesv1.Series {

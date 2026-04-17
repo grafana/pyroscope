@@ -20,7 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thanos-io/objstore"
 
-	"github.com/grafana/pyroscope/pkg/util/fnv32"
+	"github.com/grafana/pyroscope/v2/pkg/util/fnv32"
 )
 
 const (

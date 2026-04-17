@@ -26,13 +26,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
-	objstore_testutil "github.com/grafana/pyroscope/pkg/objstore/testutil"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
-	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
-	"github.com/grafana/pyroscope/pkg/test"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	objstore_testutil "github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/bucket"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/bucketindex"
+	"github.com/grafana/pyroscope/v2/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 type testBlocksCleanerOptions struct {

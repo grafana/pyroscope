@@ -22,12 +22,12 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/block"
-	"github.com/grafana/pyroscope/pkg/block/metadata"
-	"github.com/grafana/pyroscope/pkg/frontend"
-	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
-	"github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/querybackend/queryplan"
+	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
+	"github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)

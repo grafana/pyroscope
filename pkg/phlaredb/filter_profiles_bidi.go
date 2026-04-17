@@ -12,8 +12,8 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
-	"github.com/grafana/pyroscope/pkg/iter"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 type BidiServerMerge[Res any, Req any] interface {

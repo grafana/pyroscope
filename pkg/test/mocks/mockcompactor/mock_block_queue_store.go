@@ -3,10 +3,10 @@
 package mockcompactor
 
 import (
-	compaction "github.com/grafana/pyroscope/pkg/metastore/compaction"
+	compaction "github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
 	bbolt "go.etcd.io/bbolt"
 
-	iter "github.com/grafana/pyroscope/pkg/iter"
+	iter "github.com/grafana/pyroscope/v2/pkg/iter"
 
 	mock "github.com/stretchr/testify/mock"
 )

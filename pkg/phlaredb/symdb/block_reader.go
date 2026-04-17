@@ -15,12 +15,12 @@ import (
 	"github.com/grafana/dskit/tracing"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/util/bufferpool"
-	"github.com/grafana/pyroscope/pkg/util/refctr"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/util/bufferpool"
+	"github.com/grafana/pyroscope/v2/pkg/util/refctr"
 )
 
 type Reader struct {

@@ -14,7 +14,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"go.etcd.io/bbolt"
 
-	"github.com/grafana/pyroscope/pkg/util/ratelimit"
+	"github.com/grafana/pyroscope/v2/pkg/util/ratelimit"
 )
 
 type snapshotWriter struct {

@@ -13,10 +13,10 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/block"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetrics"
+	"github.com/grafana/pyroscope/v2/pkg/block"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetrics"
 )
 
 var (

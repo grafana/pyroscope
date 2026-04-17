@@ -15,13 +15,13 @@ import (
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/block"
-	"github.com/grafana/pyroscope/pkg/frontend/dot/measurement"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/dot/measurement"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 func (h *Handlers) CreateDatasetProfilesHandler() func(http.ResponseWriter, *http.Request) {

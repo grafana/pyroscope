@@ -19,11 +19,11 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/thanos-io/objstore"
 
-	"github.com/grafana/pyroscope/pkg/block"
-	"github.com/grafana/pyroscope/pkg/block/metadata"
-	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
-	"github.com/grafana/pyroscope/pkg/operations"
+	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
+	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
+	"github.com/grafana/pyroscope/v2/pkg/operations"
 )
 
 type bucketParams struct {

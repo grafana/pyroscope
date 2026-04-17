@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/grafana/pyroscope/api/model/labelset"
-	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
-	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/tree"
 )
 
 // MetricsExporter exports values of particular stack traces sample from profiling

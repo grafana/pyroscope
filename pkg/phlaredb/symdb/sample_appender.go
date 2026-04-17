@@ -3,7 +3,7 @@ package symdb
 import (
 	"slices"
 
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 // SampleAppender is a dynamic data structure that accumulates

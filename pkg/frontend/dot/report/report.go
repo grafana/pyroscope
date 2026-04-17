@@ -25,8 +25,8 @@ import (
 
 	"github.com/google/pprof/profile"
 
-	"github.com/grafana/pyroscope/pkg/frontend/dot/graph"
-	"github.com/grafana/pyroscope/pkg/frontend/dot/measurement"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/dot/graph"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/dot/measurement"
 )
 
 // Options are the formatting and filtering options used to generate a

@@ -139,7 +139,7 @@ const file_querier_stats_stats_proto_rawDesc = "" +
 	"\rsplit_queries\x18\x06 \x01(\rR\fsplitQueries\x12.\n" +
 	"\x13fetched_index_bytes\x18\a \x01(\x04R\x11fetchedIndexBytesB{\n" +
 	"\tcom.statsB\n" +
-	"StatsProtoP\x01Z.github.com/grafana/pyroscope/pkg/querier/stats\xa2\x02\x03SXX\xaa\x02\x05Stats\xca\x02\x05Stats\xe2\x02\x11Stats\\GPBMetadata\xea\x02\x05Statsb\x06proto3"
+	"StatsProtoP\x01Z.github.com/grafana/pyroscope/v2/pkg/querier/stats\xa2\x02\x03SXX\xaa\x02\x05Stats\xca\x02\x05Stats\xe2\x02\x11Stats\\GPBMetadata\xea\x02\x05Statsb\x06proto3"
 
 var (
 	file_querier_stats_stats_proto_rawDescOnce sync.Once

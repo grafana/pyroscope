@@ -6,9 +6,9 @@ import (
 
 	"go.etcd.io/bbolt"
 
-	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/metastore/compaction"
-	"github.com/grafana/pyroscope/pkg/metastore/store"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/store"
 )
 
 var ErrInvalidBlockEntry = errors.New("invalid block entry")

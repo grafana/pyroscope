@@ -10,8 +10,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 
-	"github.com/grafana/pyroscope/pkg/metastore/index/cleaner/retention"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/index/cleaner/retention"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode"
 )
 
 type Index interface {

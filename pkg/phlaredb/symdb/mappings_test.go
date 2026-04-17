@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 func Test_MappingsEncoding(t *testing.T) {

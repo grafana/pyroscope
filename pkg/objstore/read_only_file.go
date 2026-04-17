@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/thanos-io/objstore"
 
-	"github.com/grafana/pyroscope/pkg/util/bufferpool"
+	"github.com/grafana/pyroscope/v2/pkg/util/bufferpool"
 )
 
 var _ objstore.BucketReader = &ReadOnlyFile{}

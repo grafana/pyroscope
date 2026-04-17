@@ -16,7 +16,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	oteltrace "go.opentelemetry.io/otel/trace"
 
-	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
 )
 
 type RepeatedRow[T any] struct {

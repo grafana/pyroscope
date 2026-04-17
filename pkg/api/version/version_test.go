@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	versionv1 "github.com/grafana/pyroscope/api/gen/proto/go/version/v1"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 type dnsProviderMock struct {

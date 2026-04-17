@@ -17,12 +17,12 @@ import (
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
-	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
-	"github.com/grafana/pyroscope/pkg/util/delayhandler"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/delayhandler"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 type SegmentWriterClient interface {

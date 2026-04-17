@@ -12,14 +12,14 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/grafana/pyroscope/pkg/iter"
-	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	parquetobj "github.com/grafana/pyroscope/pkg/objstore/parquet"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/query"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
+	parquetobj "github.com/grafana/pyroscope/v2/pkg/objstore/parquet"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // TODO(kolesnikovae) Decouple from phlaredb and refactor to symdb/compat.

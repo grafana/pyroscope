@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/ingestlimits"
 )
 
 type ThrottledAnnotation struct {

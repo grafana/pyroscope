@@ -4,7 +4,7 @@ import (
 	"time"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 // Test_QueryTree_FullSymbols_Basic verifies that a tree query with FullSymbols=true

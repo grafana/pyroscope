@@ -15,8 +15,8 @@ import (
 
 	"github.com/go-kit/log"
 
-	"github.com/grafana/pyroscope/pkg/pyroscope"
-	"github.com/grafana/pyroscope/tools/doc-generator/parse"
+	"github.com/grafana/pyroscope/v2/pkg/pyroscope"
+	"github.com/grafana/pyroscope/v2/tools/doc-generator/parse"
 )
 
 const (

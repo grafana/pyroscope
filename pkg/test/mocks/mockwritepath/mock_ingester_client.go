@@ -9,7 +9,7 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	model "github.com/grafana/pyroscope/pkg/distributor/model"
+	model "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 )

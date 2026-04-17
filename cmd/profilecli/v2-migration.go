@@ -11,9 +11,9 @@ import (
 	"github.com/grafana/dskit/flagext"
 	"golang.org/x/sync/errgroup"
 
-	pyroscopecfg "github.com/grafana/pyroscope/pkg/cfg"
-	pyroscopeobj "github.com/grafana/pyroscope/pkg/objstore"
-	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
+	pyroscopecfg "github.com/grafana/pyroscope/v2/pkg/cfg"
+	pyroscopeobj "github.com/grafana/pyroscope/v2/pkg/objstore"
+	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 )
 
 type v2MigrationBucketCleanupParams struct {

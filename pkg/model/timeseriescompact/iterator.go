@@ -1,7 +1,7 @@
 package timeseriescompact
 
 import (
-	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
 )
 
 type seriesIterator struct {

@@ -16,8 +16,8 @@ import (
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
-	"github.com/grafana/pyroscope/pkg/tenant"
+	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
 const listenAddr = "127.0.0.1"

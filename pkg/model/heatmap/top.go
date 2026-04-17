@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 // TopSeries returns the top k heatmap series by sum of counts.

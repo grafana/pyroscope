@@ -20,10 +20,10 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/test/integration/cluster"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/test/integration/cluster"
 )
 
 // TestMicroServicesIntegration tests the integration of the microservices in a
@@ -103,7 +103,7 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 	})
 
 	// ingest some more data to compact the rest of the data we care about
-	// TODO: This shouldn't be necessary see https://github.com/grafana/pyroscope/issues/4193.
+	// TODO: This shouldn't be necessary see https://github.com/grafana/pyroscope/v2/issues/4193.
 	pushCtx, pushCancel := context.WithCancel(ctx)
 	g, gctx := errgroup.WithContext(pushCtx)
 	g.SetLimit(4)
@@ -144,7 +144,7 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 	t.Log("Compaction worker finished")
 
 	// await until all tenants have all expected labelValues available
-	// TODO: This shouldn't be necessary see https://github.com/grafana/pyroscope/issues/4193.
+	// TODO: This shouldn't be necessary see https://github.com/grafana/pyroscope/v2/issues/4193.
 	require.Eventually(t, func() bool {
 		for tenantID := range tc.perTenantData {
 			ctx := tenant.InjectTenantID(ctx, tenantID)
@@ -455,7 +455,7 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 				}
 
 				// TODO: Experimental storage layer v2 doesn't support DurationNanos yet
-				// https://github.com/grafana/pyroscope/issues/4192
+				// https://github.com/grafana/pyroscope/v2/issues/4192
 				if !isV2 {
 					assert.Equal(t, int64(7200000000000), resp.Msg.DurationNanos, "DurationNanos")
 				}

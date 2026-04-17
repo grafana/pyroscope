@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/metastore"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
+	"github.com/grafana/pyroscope/v2/pkg/metastore"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/memory"
 )
 
 // TestMetastoreDiskFailure_ClusterRecovery verifies that a full Pyroscope

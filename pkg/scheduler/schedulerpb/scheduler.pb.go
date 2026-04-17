@@ -12,7 +12,7 @@
 package schedulerpb
 
 import (
-	httpgrpc "github.com/grafana/pyroscope/pkg/util/httpgrpc"
+	httpgrpc "github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -517,7 +517,7 @@ const file_scheduler_schedulerpb_scheduler_proto_rawDesc = "" +
 	"\x15NotifyQuerierShutdown\x12).schedulerpb.NotifyQuerierShutdownRequest\x1a*.schedulerpb.NotifyQuerierShutdownResponse2p\n" +
 	"\x14SchedulerForFrontend\x12X\n" +
 	"\fFrontendLoop\x12 .schedulerpb.FrontendToScheduler\x1a .schedulerpb.SchedulerToFrontend\"\x00(\x010\x01B\xa5\x01\n" +
-	"\x0fcom.schedulerpbB\x0eSchedulerProtoP\x01Z6github.com/grafana/pyroscope/pkg/scheduler/schedulerpb\xa2\x02\x03SXX\xaa\x02\vSchedulerpb\xca\x02\vSchedulerpb\xe2\x02\x17Schedulerpb\\GPBMetadata\xea\x02\vSchedulerpbb\x06proto3"
+	"\x0fcom.schedulerpbB\x0eSchedulerProtoP\x01Z6github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb\xa2\x02\x03SXX\xaa\x02\vSchedulerpb\xca\x02\vSchedulerpb\xe2\x02\x17Schedulerpb\\GPBMetadata\xea\x02\vSchedulerpbb\x06proto3"
 
 var (
 	file_scheduler_schedulerpb_scheduler_proto_rawDescOnce sync.Once

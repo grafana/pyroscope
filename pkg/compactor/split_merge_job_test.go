@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	sharding "github.com/grafana/pyroscope/pkg/phlaredb/sharding"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	sharding "github.com/grafana/pyroscope/v2/pkg/phlaredb/sharding"
 )
 
 func TestJob_conflicts(t *testing.T) {

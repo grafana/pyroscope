@@ -38,14 +38,14 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
-	"github.com/grafana/pyroscope/pkg/cfg"
-	"github.com/grafana/pyroscope/pkg/distributor/writepath"
-	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
-	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/pyroscope"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
+	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
+	"github.com/grafana/pyroscope/v2/pkg/cfg"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/writepath"
+	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
+	"github.com/grafana/pyroscope/v2/pkg/og/structs/flamebearer"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/pyroscope"
+	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
 )
 
 func EachPyroscopeTest(t *testing.T, f func(p *PyroscopeTest, t *testing.T)) {

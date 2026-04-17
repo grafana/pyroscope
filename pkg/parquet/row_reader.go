@@ -6,9 +6,9 @@ import (
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
 
-	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/loser"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/loser"
 )
 
 const (

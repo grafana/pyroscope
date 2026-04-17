@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc/resolver"
 
-	"github.com/grafana/pyroscope/pkg/metastore/discovery/kuberesolver"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery/kuberesolver"
 )
 
 type KubeDiscovery struct {

@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/adaptive_placementpb"
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/ewma"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/adaptive_placementpb"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/ewma"
 
-	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
 )
 
 // DistributionStats is a helper struct that tracks the data rate of each

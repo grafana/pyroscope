@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"

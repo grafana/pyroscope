@@ -5,11 +5,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/grafana/pyroscope/pkg/og/convert"
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
-	"github.com/grafana/pyroscope/pkg/og/storage"
-	"github.com/grafana/pyroscope/pkg/og/storage/tree"
-	"github.com/grafana/pyroscope/pkg/og/structs/transporttrie"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert"
+	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/v2/pkg/og/structs/transporttrie"
 )
 
 type RawProfile struct {

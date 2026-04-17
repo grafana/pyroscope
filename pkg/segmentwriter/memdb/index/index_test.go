@@ -23,7 +23,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -36,8 +36,8 @@ import (
 	"github.com/prometheus/prometheus/util/testutil"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/iter"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 func TestMain(m *testing.M) {

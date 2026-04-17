@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 func TestTable_LookupOrAdd(t *testing.T) {

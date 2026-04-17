@@ -13,9 +13,9 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/util/build"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/util/build"
 )
 
 type writerV2 struct {
@@ -212,7 +212,7 @@ func (s *parquetWriter[M, P]) init(dir string, c ParquetConfig) (err error) {
 	s.rowsBatch = make([]parquet.Row, 0, 128)
 	s.buffer = parquet.NewBuffer(s.persister.Schema())
 	s.writer = parquet.NewGenericWriter[P](s.file, s.persister.Schema(),
-		parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
+		parquet.CreatedBy("github.com/grafana/pyroscope/v2/", build.Version, build.Revision),
 		parquet.PageBufferSize(3*1024*1024),
 	)
 	return nil

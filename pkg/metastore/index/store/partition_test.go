@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/pyroscope/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/test"
 )
 
 func TestPartition_Overlaps(t *testing.T) {

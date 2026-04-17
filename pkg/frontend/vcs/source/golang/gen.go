@@ -12,7 +12,7 @@ import (
 
 	"github.com/github/go-pipe/pipe"
 
-	"github.com/grafana/pyroscope/pkg/querier/golang"
+	"github.com/grafana/pyroscope/v2/pkg/querier/golang"
 )
 
 func main() {

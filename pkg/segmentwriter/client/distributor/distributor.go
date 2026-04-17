@@ -10,8 +10,8 @@ import (
 
 	"github.com/grafana/dskit/ring"
 
-	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement"
 )
 
 // NOTE(kolesnikovae): Essentially, we do not depend on the dskit/ring and

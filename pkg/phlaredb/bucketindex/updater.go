@@ -18,8 +18,8 @@ import (
 	"github.com/oklog/ulid/v2"
 	"github.com/pkg/errors"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
 )
 
 var (

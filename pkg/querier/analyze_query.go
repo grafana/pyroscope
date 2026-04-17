@@ -11,7 +11,7 @@ import (
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 type queryScope struct {

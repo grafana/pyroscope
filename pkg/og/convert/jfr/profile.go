@@ -13,12 +13,12 @@ import (
 	jfrPprof "github.com/grafana/jfr-parser/pprof"
 	jfrPprofPyroscope "github.com/grafana/jfr-parser/pprof/pyroscope"
 
-	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-	"github.com/grafana/pyroscope/pkg/pprof"
+	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
-	"github.com/grafana/pyroscope/pkg/og/storage"
-	"github.com/grafana/pyroscope/pkg/og/util/form"
+	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage"
+	"github.com/grafana/pyroscope/v2/pkg/og/util/form"
 )
 
 type RawProfile struct {

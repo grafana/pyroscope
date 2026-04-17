@@ -9,7 +9,7 @@ import (
 	"github.com/dolthub/swiss"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/pkg/slices"
+	"github.com/grafana/pyroscope/v2/pkg/slices"
 )
 
 // TODO(kolesnikovae):

@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	objstore_testutil "github.com/grafana/pyroscope/pkg/objstore/testutil"
+	objstore_testutil "github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
 )
 
 func TestLoader_GetIndex_ShouldLazyLoadBucketIndex(t *testing.T) {

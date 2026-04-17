@@ -2,7 +2,7 @@ package symdb
 
 import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 type pprofFull struct {

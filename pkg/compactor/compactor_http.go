@@ -13,7 +13,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
 
-	util_log "github.com/grafana/pyroscope/pkg/util"
+	util_log "github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 var (

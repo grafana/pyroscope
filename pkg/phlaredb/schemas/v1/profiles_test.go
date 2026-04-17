@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
+	phlareparquet "github.com/grafana/pyroscope/v2/pkg/parquet"
 )
 
 func TestInMemoryProfilesRowReader(t *testing.T) {

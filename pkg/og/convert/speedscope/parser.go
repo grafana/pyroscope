@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
-	"github.com/grafana/pyroscope/pkg/og/storage"
-	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
-	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/tree"
 	"golang.org/x/exp/maps"
 )
 

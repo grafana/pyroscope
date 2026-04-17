@@ -12,7 +12,7 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
 )
 
 var ErrMetadataInvalid = errors.New("metadata: invalid metadata")

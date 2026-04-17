@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/pyroscope/ui"
+	"github.com/grafana/pyroscope/v2/ui"
 )
 
 func TestInjectingBaseURL(t *testing.T) {

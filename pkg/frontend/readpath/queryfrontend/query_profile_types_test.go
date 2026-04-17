@@ -14,10 +14,10 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockfrontend"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
 )
 
 func TestQueryFrontend_ProfileTypes(t *testing.T) {

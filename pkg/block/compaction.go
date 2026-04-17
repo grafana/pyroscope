@@ -18,13 +18,13 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/block/metadata"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
-	memindex "github.com/grafana/pyroscope/pkg/segmentwriter/memdb/index"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
+	memindex "github.com/grafana/pyroscope/v2/pkg/segmentwriter/memdb/index"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 var (

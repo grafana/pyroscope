@@ -27,11 +27,11 @@ import (
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-	"github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
-	"github.com/grafana/pyroscope/pkg/validation"
+	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
+	"github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 type ingestHandler struct {

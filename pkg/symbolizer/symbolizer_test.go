@@ -18,11 +18,11 @@ import (
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
-	"github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mocksymbolizer"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockobjstore"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mocksymbolizer"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 type symbolizerInputs struct {

@@ -14,8 +14,8 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/metastore/index"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/index"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode"
 )
 
 type IndexQuerier interface {

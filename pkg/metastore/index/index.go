@@ -16,11 +16,11 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/block/metadata"
-	"github.com/grafana/pyroscope/pkg/metastore/index/cleaner"
-	"github.com/grafana/pyroscope/pkg/metastore/index/dlq"
-	indexstore "github.com/grafana/pyroscope/pkg/metastore/index/store"
-	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/index/cleaner"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/index/dlq"
+	indexstore "github.com/grafana/pyroscope/v2/pkg/metastore/index/store"
+	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 var ErrBlockExists = fmt.Errorf("block already exists")

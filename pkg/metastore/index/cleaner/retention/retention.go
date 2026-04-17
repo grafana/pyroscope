@@ -13,7 +13,7 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	indexstore "github.com/grafana/pyroscope/pkg/metastore/index/store"
+	indexstore "github.com/grafana/pyroscope/v2/pkg/metastore/index/store"
 )
 
 // Policy determines which parts of the index should be retained or deleted.

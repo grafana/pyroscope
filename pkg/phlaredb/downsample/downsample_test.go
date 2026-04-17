@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	schemav1testhelper "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1/testhelper"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	phlareparquet "github.com/grafana/pyroscope/v2/pkg/parquet"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	schemav1testhelper "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 )
 
 func TestDownsampler_ProfileCounts(t *testing.T) {

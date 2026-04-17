@@ -24,8 +24,8 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement"
-	"github.com/grafana/pyroscope/pkg/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement"
+	"github.com/grafana/pyroscope/v2/pkg/testhelper"
 )
 
 type segwriterServerMock struct {

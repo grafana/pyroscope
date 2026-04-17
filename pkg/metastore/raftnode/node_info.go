@@ -3,8 +3,8 @@ package raftnode
 import (
 	"sort"
 
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
-	"github.com/grafana/pyroscope/pkg/util/build"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/v2/pkg/util/build"
 )
 
 func (n *Node) NodeInfo() (*raftnodepb.NodeInfo, error) {

@@ -20,9 +20,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
-	objstore_testutil "github.com/grafana/pyroscope/pkg/objstore/testutil"
-	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	objstore_testutil "github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
+	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
 )
 
 func TestGlobalMarkersBucket_Delete_ShouldSucceedIfDeletionMarkDoesNotExistInTheBlockButExistInTheGlobalLocation(t *testing.T) {

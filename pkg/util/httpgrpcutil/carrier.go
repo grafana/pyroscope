@@ -11,7 +11,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 
-	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 )
 
 // HttpgrpcHeadersCarrier implements propagation.TextMapCarrier for OTel trace context propagation over httpgrpc requests.

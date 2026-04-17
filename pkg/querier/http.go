@@ -17,12 +17,12 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/frontend/dot"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
-	"github.com/grafana/pyroscope/pkg/og/util/attime"
-	"github.com/grafana/pyroscope/pkg/querier/timeline"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/dot"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/og/structs/flamebearer"
+	"github.com/grafana/pyroscope/v2/pkg/og/util/attime"
+	"github.com/grafana/pyroscope/v2/pkg/querier/timeline"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 func NewHTTPHandlers(client querierv1connect.QuerierServiceClient) *QueryHandlers {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/thanos-io/objstore"
 
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/adaptive_placementpb"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/adaptive_placementpb"
 )
 
 const (

@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	pprof2 "github.com/grafana/pyroscope/v2/pkg/og/convert/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/strprofile"
+	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 )
 
 const repoRoot = "../../../"
@@ -180,7 +180,7 @@ var (
 		},
 		{
 			// this one have milliseconds in Profile.TimeNanos
-			// https://github.com/grafana/pyroscope/pull/2376/files
+			// https://github.com/grafana/pyroscope/v2/pull/2376/files
 			profile:            repoRoot + "pkg/og/convert/pprof/testdata/pyspy-1.pb.gz",
 			expectStatusIngest: 200,
 			expectStatusPush:   200,

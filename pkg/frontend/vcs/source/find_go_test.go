@@ -7,8 +7,8 @@ import (
 	giturl "github.com/kubescape/go-git-url"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/config"
 )
 
 func Test_tryFindGoFile(t *testing.T) {
@@ -45,7 +45,7 @@ func Test_tryFindGoFile(t *testing.T) {
 		},
 		{
 			name:                  "path with relative repository prefix",
-			searchedPath:          "github.com/grafana/pyroscope/main.go",
+			searchedPath:          "github.com/grafana/pyroscope/v2/main.go",
 			rootPath:              "",
 			repo:                  pyroscopeRepo,
 			clientMock:            newMockVCSClient().addFiles(newFile("main.go")),
@@ -55,7 +55,7 @@ func Test_tryFindGoFile(t *testing.T) {
 		},
 		{
 			name:                  "path with absolute repository prefix",
-			searchedPath:          "/Users/pyroscope/git/github.com/grafana/pyroscope/main.go",
+			searchedPath:          "/Users/pyroscope/git/github.com/grafana/pyroscope/v2/main.go",
 			rootPath:              "",
 			repo:                  pyroscopeRepo,
 			clientMock:            newMockVCSClient().addFiles(newFile("main.go")),

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/querier/timeline"
+	"github.com/grafana/pyroscope/v2/pkg/querier/timeline"
 )
 
 const timelineStepSec = 10

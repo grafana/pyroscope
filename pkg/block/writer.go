@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
 )
 
 type Writer struct {

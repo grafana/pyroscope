@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement"
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/adaptive_placementpb"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/adaptive_placementpb"
 )
 
 func Test_AdaptivePlacement(t *testing.T) {

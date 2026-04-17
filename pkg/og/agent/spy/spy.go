@@ -2,7 +2,7 @@
 package spy
 
 import (
-	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/metadata"
 )
 
 type ProfileType string

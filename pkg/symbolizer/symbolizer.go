@@ -22,8 +22,8 @@ import (
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
-	"github.com/grafana/pyroscope/pkg/debuginfo"
-	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/debuginfo"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
 )
 
 const bucketPrefix = "symbolizer"

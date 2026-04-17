@@ -7,7 +7,7 @@ import (
 	"github.com/go-kit/log/level"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 type RuntimeConfigValues struct {

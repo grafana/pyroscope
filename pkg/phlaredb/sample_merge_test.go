@@ -18,12 +18,12 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/iter"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	"github.com/grafana/pyroscope/pkg/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	pprofth "github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/testhelper"
 )
 
 func TestMergeSampleByStacktraces(t *testing.T) {

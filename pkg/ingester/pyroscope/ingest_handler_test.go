@@ -22,14 +22,14 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/distributor/model"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/util/body"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/model"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	pprof2 "github.com/grafana/pyroscope/v2/pkg/og/convert/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/util/body"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 type flatProfileSeries struct {
@@ -310,7 +310,7 @@ func TestIngestPPROFFixtures(t *testing.T) {
 		},
 		{
 			// this one have milliseconds in Profile.TimeNanos
-			// https://github.com/grafana/pyroscope/pull/2376/files
+			// https://github.com/grafana/pyroscope/v2/pull/2376/files
 			profile:      repoRoot + "pkg/og/convert/pprof/testdata/pyspy-1.pb.gz",
 			expectStatus: 200,
 			expectMetric: "process_cpu",

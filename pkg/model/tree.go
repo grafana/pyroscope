@@ -13,9 +13,9 @@ import (
 	dvarint "github.com/dennwc/varint"
 	"github.com/xlab/treeprint"
 
-	"github.com/grafana/pyroscope/pkg/og/util/varint"
-	"github.com/grafana/pyroscope/pkg/slices"
-	"github.com/grafana/pyroscope/pkg/util/minheap"
+	"github.com/grafana/pyroscope/v2/pkg/og/util/varint"
+	"github.com/grafana/pyroscope/v2/pkg/slices"
+	"github.com/grafana/pyroscope/v2/pkg/util/minheap"
 )
 
 const OtherFunctionName = FunctionName(truncatedNodeName)

@@ -15,7 +15,7 @@ import (
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/strprofile"
 )
 
 type otlpTestData struct {

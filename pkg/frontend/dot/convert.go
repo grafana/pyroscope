@@ -7,8 +7,8 @@ import (
 	"github.com/google/pprof/profile"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/pkg/frontend/dot/graph"
-	"github.com/grafana/pyroscope/pkg/frontend/dot/report"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/dot/graph"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/dot/report"
 )
 
 // FromProfile converts a pprof profile to a DOT graph string.

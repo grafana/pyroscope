@@ -17,7 +17,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"gopkg.in/yaml.v3"
 
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 const (

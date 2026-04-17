@@ -1,7 +1,7 @@
 package symdb
 
 import (
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 // StacktraceIDRange represents a range of stack trace

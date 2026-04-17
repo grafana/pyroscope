@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/grafana/pyroscope/api/model/labelset"
-	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/metadata"
 )
 
 type unit string

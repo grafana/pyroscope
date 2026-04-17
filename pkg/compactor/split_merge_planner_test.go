@@ -13,7 +13,7 @@ import (
 	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
 )
 
 func TestSplitAndMergePlanner_Plan(t *testing.T) {

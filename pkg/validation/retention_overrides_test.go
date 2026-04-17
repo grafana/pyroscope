@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/metastore/index/cleaner/retention"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/index/cleaner/retention"
 )
 
 func TestRetentionOverridesYAML(t *testing.T) {

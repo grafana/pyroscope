@@ -31,12 +31,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
-	querier_stats "github.com/grafana/pyroscope/pkg/querier/stats"
-	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb"
-	util_log "github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
-	"github.com/grafana/pyroscope/pkg/util/httpgrpcutil"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/frontendpb"
+	querier_stats "github.com/grafana/pyroscope/v2/pkg/querier/stats"
+	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb"
+	util_log "github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpcutil"
 )
 
 var processorBackoffConfig = backoff.Config{

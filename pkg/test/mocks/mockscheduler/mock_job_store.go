@@ -3,7 +3,7 @@
 package mockscheduler
 
 import (
-	iter "github.com/grafana/pyroscope/pkg/iter"
+	iter "github.com/grafana/pyroscope/v2/pkg/iter"
 	mock "github.com/stretchr/testify/mock"
 	bbolt "go.etcd.io/bbolt"
 

@@ -2,14 +2,14 @@ package sampletype
 
 import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/slices"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/slices"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 
 	"github.com/prometheus/prometheus/model/relabel"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	phlarerelabel "github.com/grafana/pyroscope/pkg/model/relabel"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	phlarerelabel "github.com/grafana/pyroscope/v2/pkg/model/relabel"
 )
 
 func Relabel(p validation.ValidatedProfile, rules []*relabel.Config, labels []*typesv1.LabelPair) {

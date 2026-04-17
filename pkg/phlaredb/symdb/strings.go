@@ -9,7 +9,7 @@ import (
 	"io"
 	"unsafe"
 
-	"github.com/grafana/pyroscope/pkg/slices"
+	"github.com/grafana/pyroscope/v2/pkg/slices"
 )
 
 const maxStringLen = 1<<16 - 1

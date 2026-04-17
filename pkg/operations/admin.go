@@ -8,7 +8,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
 )
 
 type Admin struct {

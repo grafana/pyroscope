@@ -23,9 +23,9 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/testhelper"
+	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/testhelper"
 )
 
 func TestCreateLocalDir(t *testing.T) {
@@ -253,7 +253,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		// short timing for that to happen with real HTTP servers makes this
 		// unlikely, but it does happen with the synchronous in memory
 		// net.Pipe() that is used here.
-		// See https://github.com/grafana/pyroscope/issues/3549 for more details.
+		// See https://github.com/grafana/pyroscope/v2/issues/3549 for more details.
 		if err := bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{}); !errors.Is(err, io.EOF) {
 			require.NoError(t, err)
 		}
@@ -290,7 +290,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	})
 }
 
-// See https://github.com/grafana/pyroscope/pull/3356
+// See https://github.com/grafana/pyroscope/v2/pull/3356
 func Test_HeadFlush_DuplicateLabels(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
@@ -422,7 +422,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 		// short timing for that to happen with real HTTP servers makes this
 		// unlikely, but it does happen with the synchronous in memory
 		// net.Pipe() that is used here.
-		// See https://github.com/grafana/pyroscope/issues/3549 for more details.
+		// See https://github.com/grafana/pyroscope/v2/issues/3549 for more details.
 		if err := bidi.Send(&ingestv1.MergeProfilesPprofRequest{}); !errors.Is(err, io.EOF) {
 			require.NoError(t, err)
 		}

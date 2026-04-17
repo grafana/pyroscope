@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/metastore/compaction"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
 )
 
 func testBlockEntry(id int) blockEntry { return blockEntry{id: strconv.Itoa(id)} }

@@ -19,8 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
-	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
-	"github.com/grafana/pyroscope/pkg/util/servicediscovery"
+	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerdiscovery"
+	"github.com/grafana/pyroscope/v2/pkg/util/servicediscovery"
 )
 
 func TestConfig_Validate(t *testing.T) {

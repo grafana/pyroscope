@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/pkg/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/testhelper"
 )
 
 func Test_Merge_Single(t *testing.T) {

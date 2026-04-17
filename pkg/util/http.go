@@ -35,8 +35,8 @@ import (
 	"golang.org/x/net/http2"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/pyroscope/pkg/tenant"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 var defaultTransport http.RoundTripper = &http2.Transport{

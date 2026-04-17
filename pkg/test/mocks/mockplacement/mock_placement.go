@@ -3,7 +3,7 @@
 package mockplacement
 
 import (
-	placement "github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement"
+	placement "github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement"
 	mock "github.com/stretchr/testify/mock"
 )
 

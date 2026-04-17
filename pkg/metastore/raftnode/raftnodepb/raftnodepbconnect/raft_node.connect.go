@@ -8,7 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	raftnodepb "github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
+	raftnodepb "github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
 	http "net/http"
 	strings "strings"
 )

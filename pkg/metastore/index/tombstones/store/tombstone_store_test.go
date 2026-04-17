@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/test"
 )
 
 func TestBlockQueueStore_StoreEntry(t *testing.T) {

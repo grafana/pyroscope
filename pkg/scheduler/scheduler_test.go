@@ -37,12 +37,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 
-	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
-	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb"
-	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
-	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
-	"github.com/grafana/pyroscope/pkg/util/httpgrpcutil"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/frontendpb"
+	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb"
+	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb/schedulerpbconnect"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpcutil"
 )
 
 const testMaxOutstandingPerTenant = 5

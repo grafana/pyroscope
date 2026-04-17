@@ -15,10 +15,10 @@ import (
 	"golang.org/x/oauth2"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/source"
-	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/config"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/source"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
 
 type hybridVCSClient struct {

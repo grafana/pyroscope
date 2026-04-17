@@ -6,7 +6,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/tree"
 )
 
 func ParseTreeNoDict(r io.Reader, cb func(name []byte, val int)) error {

@@ -5,7 +5,7 @@ import (
 	"html/template"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/metastore/discovery"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery"
 )
 
 //go:embed metastore.nodes.gohtml

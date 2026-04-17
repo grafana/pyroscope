@@ -15,8 +15,8 @@ import (
 	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/objstore"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 type MetastoreClient interface {

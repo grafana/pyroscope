@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/grafana/pyroscope/api/model/labelset"
-	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 
-	"github.com/grafana/pyroscope/pkg/og/storage"
-	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/metadata"
 )
 
 type Ingester interface {

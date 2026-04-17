@@ -7,8 +7,8 @@ import (
 
 	lru "github.com/hashicorp/golang-lru/v2"
 
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/slices"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/slices"
 )
 
 type Rewriter struct {
@@ -329,7 +329,7 @@ func (t *lookupTable[T]) reset() {
 // index to unresolved.
 func (t *lookupTable[T]) tryLookup(x uint32) uint32 {
 	// todo(ctovena): this is a hack to make sure we don't have any out of bounds errors
-	// see https://github.com/grafana/pyroscope/issues/2488
+	// see https://github.com/grafana/pyroscope/v2/issues/2488
 	if x >= uint32(len(t.resolved)) {
 		t.grow(int(x + 1))
 	}

@@ -54,7 +54,7 @@ const (
 	MetaVersion2 = MetaVersion(2)
 
 	// MetaVersion3 indicates the block format version.
-	// https://github.com/grafana/pyroscope/pull/2196.
+	// https://github.com/grafana/pyroscope/v2/pull/2196.
 	//  1. Introduction of symdb v2:
 	//     - locations, functions, mappings, strings parquet tables
 	//       moved to ./symbols sub-directory (symdb) and partitioned

@@ -15,8 +15,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/prometheus/model/labels"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 //go:embed blocks.gohtml

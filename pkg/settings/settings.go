@@ -16,8 +16,8 @@ import (
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
-	"github.com/grafana/pyroscope/pkg/settings/recording"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/settings/recording"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 type Config struct {

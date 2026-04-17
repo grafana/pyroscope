@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/pyroscope/pkg/metastore/discovery/kuberesolver"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery/kuberesolver"
 )
 
 func NewDiscovery(l log.Logger, address string, reg prometheus.Registerer) (Discovery, error) {

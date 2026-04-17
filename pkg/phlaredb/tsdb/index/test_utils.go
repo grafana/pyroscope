@@ -1,7 +1,7 @@
 package index
 
 import (
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 type IndexWriterSeries struct {

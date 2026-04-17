@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 )
 
 func Benchmark_RepairGoTruncatedStacktraces(b *testing.B) {

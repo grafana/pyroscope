@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 
-	"github.com/grafana/pyroscope/pkg/og/util/varint"
+	"github.com/grafana/pyroscope/v2/pkg/og/util/varint"
 )
 
 func randStr(l int) []byte {

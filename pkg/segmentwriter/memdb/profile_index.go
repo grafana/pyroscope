@@ -9,11 +9,11 @@ import (
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/atomic"
 
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
-	memindex "github.com/grafana/pyroscope/pkg/segmentwriter/memdb/index"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
+	memindex "github.com/grafana/pyroscope/v2/pkg/segmentwriter/memdb/index"
 )
 
 type profileSeries struct {

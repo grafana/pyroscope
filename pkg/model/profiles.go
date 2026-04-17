@@ -4,8 +4,8 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/util/loser"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/util/loser"
 )
 
 type Timestamp interface {

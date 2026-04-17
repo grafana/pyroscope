@@ -14,7 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 const maxStacksize = 8 * 1024

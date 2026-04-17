@@ -15,9 +15,9 @@ import (
 	"golang.org/x/mod/module"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/source/golang"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/config"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/source/golang"
 )
 
 const (
@@ -194,7 +194,7 @@ func (ff FileFinder) tryFindGoFile(ctx context.Context, maxAttempts int) (*vcsv1
 		return nil, errors.New("invalid max attempts")
 	}
 
-	// trim repo path (e.g. "github.com/grafana/pyroscope/") in path
+	// trim repo path (e.g. "github.com/grafana/pyroscope/v2/") in path
 	path := ff.file.Path
 	repoPath := strings.Join([]string{ff.repo.GetHostName(), ff.repo.GetOwnerName(), ff.repo.GetRepoName(), ""}, "/")
 	if pos := strings.Index(path, repoPath); pos != -1 {

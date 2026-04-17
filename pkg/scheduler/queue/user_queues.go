@@ -11,7 +11,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // querier holds information about a querier registered in the queue.

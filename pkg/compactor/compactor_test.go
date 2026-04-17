@@ -38,14 +38,14 @@ import (
 	"github.com/thanos-io/objstore"
 	"gopkg.in/yaml.v3"
 
-	pyroscope_objstore "github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
-	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
-	"github.com/grafana/pyroscope/pkg/validation"
+	pyroscope_objstore "github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block/testutil"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/bucket"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockobjstore"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 const (

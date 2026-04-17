@@ -11,10 +11,10 @@ import (
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	"github.com/grafana/pyroscope/pkg/model/timeseries"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
-	validationutil "github.com/grafana/pyroscope/pkg/util/validation"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/model/timeseries"
+	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
+	validationutil "github.com/grafana/pyroscope/v2/pkg/util/validation"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 func (f *Frontend) SelectSeries(

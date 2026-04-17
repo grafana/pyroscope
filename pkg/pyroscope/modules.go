@@ -35,31 +35,31 @@ import (
 	"golang.org/x/net/http2/h2c"
 
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
-	"github.com/grafana/pyroscope/pkg/adhocprofiles"
-	apiversion "github.com/grafana/pyroscope/pkg/api/version"
-	"github.com/grafana/pyroscope/pkg/compactor"
-	"github.com/grafana/pyroscope/pkg/debuginfo"
-	"github.com/grafana/pyroscope/pkg/distributor"
-	"github.com/grafana/pyroscope/pkg/embedded/grafana"
-	"github.com/grafana/pyroscope/pkg/featureflags"
-	"github.com/grafana/pyroscope/pkg/ingester"
-	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
-	"github.com/grafana/pyroscope/pkg/operations"
-	blocksv2 "github.com/grafana/pyroscope/pkg/operations/v2/blocks"
-	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
-	"github.com/grafana/pyroscope/pkg/querier"
-	"github.com/grafana/pyroscope/pkg/querier/worker"
-	"github.com/grafana/pyroscope/pkg/querybackend"
-	"github.com/grafana/pyroscope/pkg/scheduler"
-	"github.com/grafana/pyroscope/pkg/settings"
-	"github.com/grafana/pyroscope/pkg/storegateway"
-	"github.com/grafana/pyroscope/pkg/usagestats"
-	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/build"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
-	"github.com/grafana/pyroscope/pkg/validation"
-	"github.com/grafana/pyroscope/pkg/validation/exporter"
+	"github.com/grafana/pyroscope/v2/pkg/adhocprofiles"
+	apiversion "github.com/grafana/pyroscope/v2/pkg/api/version"
+	"github.com/grafana/pyroscope/v2/pkg/compactor"
+	"github.com/grafana/pyroscope/v2/pkg/debuginfo"
+	"github.com/grafana/pyroscope/v2/pkg/distributor"
+	"github.com/grafana/pyroscope/v2/pkg/embedded/grafana"
+	"github.com/grafana/pyroscope/v2/pkg/featureflags"
+	"github.com/grafana/pyroscope/v2/pkg/ingester"
+	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/v2/pkg/operations"
+	blocksv2 "github.com/grafana/pyroscope/v2/pkg/operations/v2/blocks"
+	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
+	"github.com/grafana/pyroscope/v2/pkg/querier"
+	"github.com/grafana/pyroscope/v2/pkg/querier/worker"
+	"github.com/grafana/pyroscope/v2/pkg/querybackend"
+	"github.com/grafana/pyroscope/v2/pkg/scheduler"
+	"github.com/grafana/pyroscope/v2/pkg/settings"
+	"github.com/grafana/pyroscope/v2/pkg/storegateway"
+	"github.com/grafana/pyroscope/v2/pkg/usagestats"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/build"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
 )
 
 // The various modules that make up Pyroscope.
@@ -461,7 +461,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	DisableSignalHandling(&f.Cfg.Server)
 	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg)
 	// Not all default middleware works with http2 so we'll add then manually.
-	// see https://github.com/grafana/pyroscope/issues/231
+	// see https://github.com/grafana/pyroscope/v2/issues/231
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware,

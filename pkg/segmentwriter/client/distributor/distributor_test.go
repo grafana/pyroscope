@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockplacement"
-	"github.com/grafana/pyroscope/pkg/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockplacement"
+	"github.com/grafana/pyroscope/v2/pkg/testhelper"
 )
 
 // TODO(kolesnikovae): Test distribution fairness.

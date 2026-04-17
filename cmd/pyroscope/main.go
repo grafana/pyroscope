@@ -12,10 +12,10 @@ import (
 
 	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
 
-	"github.com/grafana/pyroscope/pkg/cfg"
-	"github.com/grafana/pyroscope/pkg/pyroscope"
-	"github.com/grafana/pyroscope/pkg/usage"
-	_ "github.com/grafana/pyroscope/pkg/util/build"
+	"github.com/grafana/pyroscope/v2/pkg/cfg"
+	"github.com/grafana/pyroscope/v2/pkg/pyroscope"
+	"github.com/grafana/pyroscope/v2/pkg/usage"
+	_ "github.com/grafana/pyroscope/v2/pkg/util/build"
 )
 
 type mainFlags struct {

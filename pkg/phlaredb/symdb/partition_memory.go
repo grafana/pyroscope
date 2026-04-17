@@ -5,7 +5,7 @@ import (
 	"io"
 	"sync"
 
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 type PartitionWriter struct {

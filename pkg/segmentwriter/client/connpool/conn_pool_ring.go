@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 
-	"github.com/grafana/pyroscope/pkg/util/health"
+	"github.com/grafana/pyroscope/v2/pkg/util/health"
 )
 
 // NOTE(kolesnikovae): This is a tiny wrapper for ring_client.Pool

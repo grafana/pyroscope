@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 //go:embed tenants.gohtml

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/grafana/pyroscope/pkg/util/minheap"
+	"github.com/grafana/pyroscope/v2/pkg/util/minheap"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 )

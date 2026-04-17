@@ -10,9 +10,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/pyroscope/pkg/tenant"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 // Test handler that records what happened

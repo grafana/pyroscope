@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/grafana/pyroscope/pkg/frontend/dot/measurement"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/dot/measurement"
 )
 
 // DotAttributes contains details about the graph itself, giving

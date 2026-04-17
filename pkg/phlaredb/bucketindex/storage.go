@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/dskit/runutil"
 	"github.com/pkg/errors"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
 )
 
 var (

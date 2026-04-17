@@ -9,11 +9,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/block"
-	"github.com/grafana/pyroscope/pkg/model"
-	parquetquery "github.com/grafana/pyroscope/pkg/phlaredb/query"
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/model"
+	parquetquery "github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
+	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
 )
 
 func init() {

@@ -11,7 +11,7 @@ import (
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 func Test_memory_Resolver_ResolvePprof(t *testing.T) {
@@ -373,7 +373,7 @@ func Test_Resolver_pprof_options(t *testing.T) {
 //
 // We used to have an issue that the first string is not empty,
 // as it's required by the pprof format:
-// https://github.com/grafana/pyroscope/issues/3199
+// https://github.com/grafana/pyroscope/v2/issues/3199
 func Test_Resolver_pprof_strings(t *testing.T) {
 	type testCase struct {
 		name     string

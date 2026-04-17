@@ -16,9 +16,9 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/querybackend"
-	"github.com/grafana/pyroscope/pkg/querybackend/queryplan"
-	"github.com/grafana/pyroscope/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/querybackend"
+	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
+	"github.com/grafana/pyroscope/v2/pkg/test"
 )
 
 const (

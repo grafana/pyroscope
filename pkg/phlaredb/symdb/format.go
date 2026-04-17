@@ -11,7 +11,7 @@ import (
 
 	"github.com/parquet-go/parquet-go/encoding/delta"
 
-	"github.com/grafana/pyroscope/pkg/slices"
+	"github.com/grafana/pyroscope/v2/pkg/slices"
 )
 
 // V1 and V2:

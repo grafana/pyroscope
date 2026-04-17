@@ -4,9 +4,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
-	"github.com/grafana/pyroscope/pkg/og/storage/segment"
-	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/segment"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/tree"
 )
 
 var (

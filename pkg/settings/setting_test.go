@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
-	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
 func TestTenantSettings_Get(t *testing.T) {

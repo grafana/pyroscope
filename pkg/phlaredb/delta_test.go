@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	schemav1testhelper "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1/testhelper"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	schemav1testhelper "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 )
 
 func TestComputeDelta(t *testing.T) {
