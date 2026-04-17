@@ -322,6 +322,11 @@ func (c *Config) Validate() error {
 		return err
 	}
 
+	// Validate that V2 storage layers have a storage backend configured.
+	if c.ArchitectureStorage != V1 && c.Storage.Bucket.Backend == objstoreclient.None {
+		return fmt.Errorf("storage.backend is required for %s storage layer", c.ArchitectureStorage)
+	}
+
 	// Validate that write-path matches the storage layer.
 	storageLayerRequirements := map[StorageLayer]writepath.WritePath{
 		V1: writepath.IngesterPath,

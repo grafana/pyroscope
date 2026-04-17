@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
+	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 )
 
 func TestFlagDefaults(t *testing.T) {
@@ -157,4 +158,53 @@ func TestConfigDiff(t *testing.T) {
 		require.Equal(t, "text/plain; charset=utf-8", result.ContentType)
 		require.Equal(t, "limits:\n    max_label_name_length: 123\n", string(result.Data))
 	})
+}
+
+func TestConfigValidate_StorageBackendRequired(t *testing.T) {
+	tests := []struct {
+		name           string
+		args           []string
+		wantErr        bool
+		wantErrContain string
+	}{
+		{
+			name:           "v2 with no backend errors",
+			args:           []string{"-architecture.storage=v2", "-storage.backend=", "-write-path=segment-writer"},
+			wantErr:        true,
+			wantErrContain: "storage.backend is required",
+		},
+		{
+			name:           "v1-v2-dual with no backend errors",
+			args:           []string{"-architecture.storage=v1-v2-dual", "-storage.backend=", "-write-path=segment-writer"},
+			wantErr:        true,
+			wantErrContain: "storage.backend is required",
+		},
+		{
+			name:    "v1 with no backend is allowed",
+			args:    []string{"-architecture.storage=v1", "-storage.backend=", "-write-path=ingester"},
+			wantErr: false,
+		},
+		{
+			name:    "v2 with filesystem backend is valid",
+			args:    []string{"-architecture.storage=v2", "-storage.backend=" + objstoreclient.Filesystem, "-write-path=segment-writer"},
+			wantErr: false,
+		},
+		{
+			name:    "v1-v2-dual with filesystem backend is valid",
+			args:    []string{"-architecture.storage=v1-v2-dual", "-storage.backend=" + objstoreclient.Filesystem, "-write-path=segment-writer"},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := newTestConfig(t, tt.args)
+			err := cfg.Validate()
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErrContain)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
