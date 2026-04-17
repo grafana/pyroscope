@@ -51,11 +51,7 @@ Write traffic will be written to:
 - {{ mul $storage.migration.ingesterWeight 100 }}% v1: ingester
 - {{ mul $storage.migration.segmentWriterWeight 100 }}% v2: segment-writer
 
-{{ if $storage.migration.queryBackend }}
 Read traffic is served from v2 read path from {{if eq $storage.migration.queryBackendFrom "auto"}}as soon as data was first ingested to v2{{else}}{{$storage.migration.queryBackendFrom}}{{end}}.
-{{- else }}
-Read traffic is served from v1 read path.
-{{- end }}
 {{- end }}
 
 {{- if and (not $storage.v1) (not $storage.v2) }}
