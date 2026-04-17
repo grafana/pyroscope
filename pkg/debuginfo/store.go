@@ -33,7 +33,7 @@ type Config struct {
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.BoolVar(&cfg.Enabled, "debug-info.enabled", true, "Enable debug info.")
-	f.Int64Var(&cfg.MaxUploadSize, "debug-info.max-upload-size", 100*1024*1024, "Maximum size of a single debug info upload in bytes.")
+	f.Int64Var(&cfg.MaxUploadSize, "debug-info.max-upload-size", 1024*1024*1024, "Maximum size of a single debug info upload in bytes.")
 	f.DurationVar(&cfg.UploadStalePeriod, "debug-info.upload-stale-period", 5*time.Minute, "Period after which a pending upload is considered stale and can be retried.")
 	f.DurationVar(&cfg.UploadTimeout, "debug-info.upload-timeout", 2*time.Minute, "Timeout for a single debug info upload request. Overrides server HTTP write timeout for this handler.")
 }
