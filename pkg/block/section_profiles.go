@@ -187,7 +187,7 @@ func newProfileWriter(pageBufferSize int, w io.Writer) *profilesWriter {
 	return &profilesWriter{
 		buf: make([]parquet.Row, 1),
 		GenericWriter: parquet.NewGenericWriter[*schemav1.Profile](w,
-			parquet.CreatedBy("github.com/grafana/pyroscope/v2/", build.Version, build.Revision),
+			parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
 			parquet.PageBufferSize(pageBufferSize),
 			// Note that parquet keeps ALL RG pages in memory (ColumnPageBuffers).
 			parquet.MaxRowsPerRowGroup(maxRowsPerRowGroup),

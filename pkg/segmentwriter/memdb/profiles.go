@@ -17,7 +17,7 @@ func WriteProfiles(metrics *HeadMetrics, profiles []v1.InMemoryProfile) ([]byte,
 	w := parquet.NewGenericWriter[*v1.Profile](
 		buf,
 		parquet.PageBufferSize(segmentsParquetWriteBufferSize),
-		parquet.CreatedBy("github.com/grafana/pyroscope/v2/", build.Version, build.Revision),
+		parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
 		v1.ProfilesSchema,
 	)
 

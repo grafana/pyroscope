@@ -256,7 +256,7 @@ func TestFileFinder_Find(t *testing.T) {
 			name: "go/not-mapped-local-path",
 			fileSpec: config.FileSpec{
 				FunctionName: "github.com/grafana/pyroscope/v2/pkg/compactionworker.(*Worker).runCompaction",
-				Path:         "/Users/christian/git/github.com/grafana/pyroscope/v2/pkg/compactionworker/worker.go",
+				Path:         "/Users/christian/git/github.com/grafana/pyroscope/pkg/compactionworker/worker.go",
 			},
 			ref: "main",
 			mockFiles: []mockFileResponse{
@@ -681,7 +681,7 @@ func TestFileFinder_Find_FileNotFound(t *testing.T) {
 			name: "go/local-file-not-found",
 			fileSpec: config.FileSpec{
 				FunctionName: "github.com/grafana/pyroscope/v2/pkg/foo.Bar",
-				Path:         "/Users/christian/git/github.com/grafana/pyroscope/v2/pkg/foo/bar.go",
+				Path:         "/Users/christian/git/github.com/grafana/pyroscope/pkg/foo/bar.go",
 			},
 			ref: "main",
 		},

@@ -133,7 +133,7 @@ func newProfilesWriter(path string, i interval, aggregation string) (*profilesWr
 
 func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) *parquet.GenericWriter[*schemav1.Profile] {
 	options = append(options, parquet.PageBufferSize(3*1024*1024))
-	options = append(options, parquet.CreatedBy("github.com/grafana/pyroscope/v2/", build.Version, build.Revision))
+	options = append(options, parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision))
 	options = append(options, schemav1.DownsampledProfilesSchema)
 	return parquet.NewGenericWriter[*schemav1.Profile](
 		writer, options...,
