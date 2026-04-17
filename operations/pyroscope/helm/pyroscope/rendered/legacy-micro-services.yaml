@@ -2265,6 +2265,7 @@ spec:
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
             - "-architecture.storage=v1"
+            - "-write-path=ingester"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2474,6 +2475,7 @@ spec:
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
             - "-architecture.storage=v1"
+            - "-write-path=ingester"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2578,6 +2580,7 @@ spec:
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
             - "-architecture.storage=v1"
+            - "-write-path=ingester"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2682,6 +2685,7 @@ spec:
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
             - "-architecture.storage=v1"
+            - "-write-path=ingester"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2786,6 +2790,7 @@ spec:
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
             - "-architecture.storage=v1"
+            - "-write-path=ingester"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3075,6 +3080,7 @@ spec:
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
             - "-architecture.storage=v1"
+            - "-write-path=ingester"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3186,6 +3192,7 @@ spec:
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
             - "-architecture.storage=v1"
+            - "-write-path=ingester"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3293,6 +3300,7 @@ spec:
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
             - "-architecture.storage=v1"
+            - "-write-path=ingester"
           env:
             - name: POD_NAME
               valueFrom:

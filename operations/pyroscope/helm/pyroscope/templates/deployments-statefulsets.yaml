@@ -128,8 +128,7 @@ spec:
             - "-architecture.storage=v2"
           {{- end }}
           {{- end }}
-          {{- /* distributor write path config */}}
-          {{-  if or (eq $component "all") (eq $component "distributor") }}
+          {{- /* write path config */}}
           {{-  if (not (hasKey $extraArgs "write-path"))  }}
           {{-  if and $hasV1 $hasV2 }}
             - "-write-path=combined"
@@ -138,7 +137,6 @@ spec:
           {{- end }}
           {{- else if not $hasV2 }}
             - "-write-path=ingester"
-          {{- end }}
           {{- end }}
           {{- end }}
           {{- /* query-frontend v2 migration config */}}
