@@ -219,10 +219,12 @@ Usage of ./pyroscope:
     	Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
   -debug-info.enabled
     	Enable debug info. (default true)
-  -debug-info.max-upload-duration duration
-    	Maximum duration of a single debug info upload. (default 1m0s)
   -debug-info.max-upload-size int
-    	Maximum size of a single debug info upload in bytes. (default 104857600)
+    	Maximum size of a single debug info upload in bytes. (default 1073741824)
+  -debug-info.upload-stale-period duration
+    	Period after which a pending upload is considered stale and can be retried. (default 5m0s)
+  -debug-info.upload-timeout duration
+    	Timeout for a single debug info upload request. Overrides server HTTP write timeout for this handler. (default 2m0s)
   -distributor.aggregation-period duration
     	Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.
   -distributor.aggregation-window duration
