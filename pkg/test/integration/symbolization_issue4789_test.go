@@ -15,6 +15,7 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/test/integration/cluster"
 )
@@ -159,6 +160,22 @@ func TestMicroServicesIntegrationV2Issue4789Reproducer(t *testing.T) {
 	}, 10*time.Second, 500*time.Millisecond, "flamegraph never contained the symbolized function names")
 
 	t.Logf("flamegraph names: %v, total: %d", fg.Names, fg.Total)
+
+	// Fetch the same data again as a tree and log it so reviewers can
+	// see the shape of the result without decoding the flamegraph levels.
+	treeReq := connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+		ProfileTypeID: q.Msg.ProfileTypeID,
+		Start:         q.Msg.Start,
+		End:           q.Msg.End,
+		LabelSelector: q.Msg.LabelSelector,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+	})
+	treeResp, err := querier.SelectMergeStacktraces(ctx, treeReq)
+	require.NoError(t, err)
+	tree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](treeResp.Msg.GetTree())
+	require.NoError(t, err)
+	t.Logf("tree:\n%s", tree.String())
+
 	assert.Contains(t, fg.Names, "foo")
 	assert.Contains(t, fg.Names, "bar")
 	for _, stub := range wantStubs {
