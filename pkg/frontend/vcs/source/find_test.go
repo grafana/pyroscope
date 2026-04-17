@@ -680,7 +680,7 @@ func TestFileFinder_Find_FileNotFound(t *testing.T) {
 		{
 			name: "go/local-file-not-found",
 			fileSpec: config.FileSpec{
-				FunctionName: "github.com/grafana/pyroscope/v2/pkg/foo.Bar",
+				FunctionName: "github.com/grafana/pyroscope/pkg/foo.Bar",
 				Path:         "/Users/christian/git/github.com/grafana/pyroscope/pkg/foo/bar.go",
 			},
 			ref: "main",
