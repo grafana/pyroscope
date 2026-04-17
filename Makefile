@@ -320,7 +320,7 @@ clean: ## Delete intermediate build artifacts
 
 .PHONY: reference-help
 reference-help: ## Generates the reference help documentation.
-reference-help: go/bin
+reference-help: frontend/build go/bin
 	@(./pyroscope -h || true) > cmd/pyroscope/help.txt.tmpl
 	@(./pyroscope -help-all || true) > cmd/pyroscope/help-all.txt.tmpl
 
