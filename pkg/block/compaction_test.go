@@ -238,7 +238,7 @@ func Test_CompactBlocks_recordingRules_shadowedSymbols(t *testing.T) {
 				labels.MustNewMatcher(labels.MatchEqual, "__profile_type__", "memory:alloc_space:bytes:space:bytes"),
 			},
 			ExternalLabels: labels.New(labels.Label{Name: "__name__", Value: "profiles_recorded_mem_alloc_total_pyroscope_ingester_Push_bytes"}),
-			FunctionName:   "github.com/grafana/pyroscope/v2/pkg/ingester.(*Ingester).Push",
+			FunctionName:   "github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push",
 		},
 		{
 			Matchers: []*labels.Matcher{
@@ -246,7 +246,7 @@ func Test_CompactBlocks_recordingRules_shadowedSymbols(t *testing.T) {
 				labels.MustNewMatcher(labels.MatchEqual, "__profile_type__", "memory:inuse_space:bytes:space:bytes"),
 			},
 			ExternalLabels: labels.New(labels.Label{Name: "__name__", Value: "profiles_recorded_mem_inuse_total_pyroscope_ingester_Push_bytes"}),
-			FunctionName:   "github.com/grafana/pyroscope/v2/pkg/ingester.(*Ingester).Push",
+			FunctionName:   "github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push",
 		},
 		{
 			Matchers: []*labels.Matcher{
@@ -254,7 +254,7 @@ func Test_CompactBlocks_recordingRules_shadowedSymbols(t *testing.T) {
 				labels.MustNewMatcher(labels.MatchEqual, "__profile_type__", "process_cpu:samples:count:cpu:nanoseconds"),
 			},
 			ExternalLabels: labels.New(labels.Label{Name: "__name__", Value: "profiles_recorded_cpu_usage_total_pyroscope_ingester_Push_samples"}),
-			FunctionName:   "github.com/grafana/pyroscope/v2/pkg/ingester.(*Ingester).Push",
+			FunctionName:   "github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push",
 		},
 		{
 			Matchers: []*labels.Matcher{
