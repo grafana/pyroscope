@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
-	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
+	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 )
 
 func TestFlagDefaults(t *testing.T) {
