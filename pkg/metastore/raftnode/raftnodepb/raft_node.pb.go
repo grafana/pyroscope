@@ -906,8 +906,8 @@ const file_metastore_raftnode_raftnodepb_raft_node_proto_rawDesc = "" +
 	"RemoveNode\x12\x1c.raft_node.RemoveNodeRequest\x1a\x1d.raft_node.RemoveNodeResponse\"\x00\x12B\n" +
 	"\aAddNode\x12\x19.raft_node.AddNodeRequest\x1a\x1a.raft_node.AddNodeResponse\"\x00\x12Q\n" +
 	"\fDemoteLeader\x12\x1e.raft_node.DemoteLeaderRequest\x1a\x1f.raft_node.DemoteLeaderResponse\"\x00\x12Z\n" +
-	"\x0fPromoteToLeader\x12!.raft_node.PromoteToLeaderRequest\x1a\".raft_node.PromoteToLeaderResponse\"\x00B\x9e\x01\n" +
-	"\rcom.raft_nodeB\rRaftNodeProtoP\x01Z>github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb\xa2\x02\x03RXX\xaa\x02\bRaftNode\xca\x02\bRaftNode\xe2\x02\x14RaftNode\\GPBMetadata\xea\x02\bRaftNodeb\x06proto3"
+	"\x0fPromoteToLeader\x12!.raft_node.PromoteToLeaderRequest\x1a\".raft_node.PromoteToLeaderResponse\"\x00B\xa1\x01\n" +
+	"\rcom.raft_nodeB\rRaftNodeProtoP\x01ZAgithub.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb\xa2\x02\x03RXX\xaa\x02\bRaftNode\xca\x02\bRaftNode\xe2\x02\x14RaftNode\\GPBMetadata\xea\x02\bRaftNodeb\x06proto3"
 
 var (
 	file_metastore_raftnode_raftnodepb_raft_node_proto_rawDescOnce sync.Once

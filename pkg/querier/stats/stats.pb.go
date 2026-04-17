@@ -137,9 +137,9 @@ const file_querier_stats_stats_proto_rawDesc = "" +
 	"\x14fetched_chunks_count\x18\x04 \x01(\x04R\x12fetchedChunksCount\x12'\n" +
 	"\x0fsharded_queries\x18\x05 \x01(\rR\x0eshardedQueries\x12#\n" +
 	"\rsplit_queries\x18\x06 \x01(\rR\fsplitQueries\x12.\n" +
-	"\x13fetched_index_bytes\x18\a \x01(\x04R\x11fetchedIndexBytesB{\n" +
+	"\x13fetched_index_bytes\x18\a \x01(\x04R\x11fetchedIndexBytesB~\n" +
 	"\tcom.statsB\n" +
-	"StatsProtoP\x01Z.github.com/grafana/pyroscope/v2/pkg/querier/stats\xa2\x02\x03SXX\xaa\x02\x05Stats\xca\x02\x05Stats\xe2\x02\x11Stats\\GPBMetadata\xea\x02\x05Statsb\x06proto3"
+	"StatsProtoP\x01Z1github.com/grafana/pyroscope/v2/pkg/querier/stats\xa2\x02\x03SXX\xaa\x02\x05Stats\xca\x02\x05Stats\xe2\x02\x11Stats\\GPBMetadata\xea\x02\x05Statsb\x06proto3"
 
 var (
 	file_querier_stats_stats_proto_rawDescOnce sync.Once

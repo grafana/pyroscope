@@ -136,8 +136,8 @@ const file_frontend_frontendpb_frontend_proto_rawDesc = "" +
 	"\x05stats\x18\x03 \x01(\v2\f.stats.StatsR\x05stats\"\x15\n" +
 	"\x13QueryResultResponse2f\n" +
 	"\x12FrontendForQuerier\x12P\n" +
-	"\vQueryResult\x12\x1e.frontendpb.QueryResultRequest\x1a\x1f.frontendpb.QueryResultResponse\"\x00B\x9d\x01\n" +
-	"\x0ecom.frontendpbB\rFrontendProtoP\x01Z4github.com/grafana/pyroscope/v2/pkg/frontend/frontendpb\xa2\x02\x03FXX\xaa\x02\n" +
+	"\vQueryResult\x12\x1e.frontendpb.QueryResultRequest\x1a\x1f.frontendpb.QueryResultResponse\"\x00B\xa0\x01\n" +
+	"\x0ecom.frontendpbB\rFrontendProtoP\x01Z7github.com/grafana/pyroscope/v2/pkg/frontend/frontendpb\xa2\x02\x03FXX\xaa\x02\n" +
 	"Frontendpb\xca\x02\n" +
 	"Frontendpb\xe2\x02\x16Frontendpb\\GPBMetadata\xea\x02\n" +
 	"Frontendpbb\x06proto3"
