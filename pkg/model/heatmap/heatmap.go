@@ -8,8 +8,8 @@ import (
 	prommodel "github.com/prometheus/common/model"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/model/attributetable"
+	"github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/attributetable"
 )
 
 type heatmapSeries struct {

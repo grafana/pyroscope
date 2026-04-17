@@ -7,8 +7,8 @@ import (
 
 	lru "github.com/hashicorp/golang-lru/v2"
 
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/slices"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/slices"
 )
 
 type Rewriter struct {

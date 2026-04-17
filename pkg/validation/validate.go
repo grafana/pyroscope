@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -19,9 +19,9 @@ import (
 	"github.com/prometheus/common/model"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/validation"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/validation"
 )
 
 type Reason string

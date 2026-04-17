@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 
-	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
 )
 
 func TestTenantDeletionMarkExists(t *testing.T) {

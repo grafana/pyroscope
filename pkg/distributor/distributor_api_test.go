@@ -26,12 +26,12 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/api"
-	"github.com/grafana/pyroscope/pkg/distributor"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/api"
+	"github.com/grafana/pyroscope/v2/pkg/distributor"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 type apiTest struct {

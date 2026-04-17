@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
 )
 
 type SplitAndMergePlanner struct {

@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
+	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 type QuerierSvc interface {

@@ -19,16 +19,16 @@ import (
 	"google.golang.org/grpc/status"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
-	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
-	"github.com/grafana/pyroscope/pkg/model/relabel"
-	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/segmentwriter/memdb"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/fieldcategory"
-	"github.com/grafana/pyroscope/pkg/util/health"
-	"github.com/grafana/pyroscope/pkg/validation"
+	metastoreclient "github.com/grafana/pyroscope/v2/pkg/metastore/client"
+	"github.com/grafana/pyroscope/v2/pkg/model/relabel"
+	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/memdb"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/fieldcategory"
+	"github.com/grafana/pyroscope/v2/pkg/util/health"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 const (

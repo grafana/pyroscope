@@ -9,7 +9,7 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/objstore/testutil"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
 )
 
 func createParquetFile[T any](t testing.TB, f io.Writer, rows []T, rowGroups int) {

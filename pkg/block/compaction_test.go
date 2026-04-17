@@ -18,11 +18,11 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/block"
-	"github.com/grafana/pyroscope/pkg/metrics"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/objstore/testutil"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetrics"
+	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/metrics"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetrics"
 )
 
 func Test_CompactBlocks(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/pprof"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
 
 func Test_Stacktrace_append_empty(t *testing.T) {

@@ -32,14 +32,14 @@ import (
 	"github.com/grafana/dskit/tenant"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
-	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs"
-	"github.com/grafana/pyroscope/pkg/querier/stats"
-	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
-	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
-	"github.com/grafana/pyroscope/pkg/util/httpgrpcutil"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/frontendpb"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs"
+	"github.com/grafana/pyroscope/v2/pkg/querier/stats"
+	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerdiscovery"
+	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpcutil"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 // Config for a Frontend.

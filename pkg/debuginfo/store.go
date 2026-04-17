@@ -21,7 +21,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
-	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
 type Config struct {

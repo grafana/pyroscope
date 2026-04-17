@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
-	mockclient "github.com/grafana/pyroscope/pkg/test/mocks/mockclient"
+	mockclient "github.com/grafana/pyroscope/v2/pkg/test/mocks/mockclient"
 )
 
 func TestGetCommit(t *testing.T) {

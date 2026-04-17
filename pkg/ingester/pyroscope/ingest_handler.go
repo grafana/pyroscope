@@ -15,23 +15,23 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/grafana/pyroscope/pkg/tenant"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 
-	"github.com/grafana/pyroscope/pkg/og/convert/speedscope"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/speedscope"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 
 	"github.com/grafana/pyroscope/api/model/labelset"
-	"github.com/grafana/pyroscope/pkg/og/agent/types"
-	"github.com/grafana/pyroscope/pkg/og/convert/jfr"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof"
-	"github.com/grafana/pyroscope/pkg/og/convert/profile"
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
-	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
-	"github.com/grafana/pyroscope/pkg/og/util/attime"
+	"github.com/grafana/pyroscope/v2/pkg/og/agent/types"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/jfr"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/profile"
+	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/og/util/attime"
 )
 
 // Copy-pasted from

@@ -17,15 +17,15 @@ import (
 	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/metastore"
-	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
-	"github.com/grafana/pyroscope/pkg/metastore/discovery"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
-	placement "github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
-	"github.com/grafana/pyroscope/pkg/test"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockdiscovery"
-	"github.com/grafana/pyroscope/pkg/util/health"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/metastore"
+	metastoreclient "github.com/grafana/pyroscope/v2/pkg/metastore/client"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
+	placement "github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
+	"github.com/grafana/pyroscope/v2/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockdiscovery"
+	"github.com/grafana/pyroscope/v2/pkg/util/health"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore.Bucket) MetastoreSet {

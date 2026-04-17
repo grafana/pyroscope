@@ -21,12 +21,12 @@ import (
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/objstore/client"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
-	"github.com/grafana/pyroscope/pkg/tenant"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/client"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
 func defaultIngesterTestConfig(t testing.TB) Config {

@@ -6,7 +6,7 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/model/attributetable"
+	"github.com/grafana/pyroscope/v2/pkg/model/attributetable"
 )
 
 const (

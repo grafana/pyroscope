@@ -7,9 +7,9 @@ import (
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/grafana/pyroscope/pkg/metastore/fsm"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/fsm"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
 )
 
 // Raft represents a Raft consensus protocol interface. Any modifications to

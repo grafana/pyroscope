@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/metastore/store"
-	"github.com/grafana/pyroscope/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/store"
+	"github.com/grafana/pyroscope/v2/pkg/test"
 )
 
 func TestJobStateStore(t *testing.T) {

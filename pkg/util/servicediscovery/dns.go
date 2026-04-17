@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/pkg/errors"
 
-	util_log "github.com/grafana/pyroscope/pkg/util"
+	util_log "github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // Instance notified by the service discovery.

@@ -11,7 +11,7 @@ import (
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 func Test_memory_Resolver_ResolvePprof(t *testing.T) {

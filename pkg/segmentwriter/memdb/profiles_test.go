@@ -8,7 +8,7 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/require"
 
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 func genProfile(series uint32, timeNanos int, numSamples int) schemav1.InMemoryProfile {

@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/config"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 )
 
 func TestExtractFunctions(t *testing.T) {

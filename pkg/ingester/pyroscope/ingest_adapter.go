@@ -9,8 +9,8 @@ import (
 
 	"github.com/go-kit/log/level"
 
-	"github.com/grafana/pyroscope/pkg/distributor/model"
-	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/model"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
@@ -21,10 +21,10 @@ import (
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
-	"github.com/grafana/pyroscope/pkg/og/storage"
-	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/tree"
 )
 
 type PushService interface {

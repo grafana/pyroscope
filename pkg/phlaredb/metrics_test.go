@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
 )
 
 func TestMultipleRegistrationMetrics(t *testing.T) {

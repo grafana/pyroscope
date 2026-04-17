@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	pkgmodel "github.com/grafana/pyroscope/pkg/model"
+	pkgmodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 func TestPointsBuilder_SameFingerprintDifferentExemplars(t *testing.T) {

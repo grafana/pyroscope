@@ -10,10 +10,10 @@ import (
 	"go.etcd.io/bbolt"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/metastore/compaction"
-	"github.com/grafana/pyroscope/pkg/metastore/compaction/scheduler/store"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction/scheduler/store"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 var _ compaction.Scheduler = (*Scheduler)(nil)

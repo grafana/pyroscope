@@ -15,7 +15,7 @@ import (
 	"gonum.org/v1/plot/vg"
 	"gonum.org/v1/plot/vg/draw"
 
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/ewma"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/ewma"
 )
 
 type testPlot struct {

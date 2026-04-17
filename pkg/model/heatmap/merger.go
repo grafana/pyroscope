@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/model/attributetable"
+	"github.com/grafana/pyroscope/v2/pkg/model/attributetable"
 )
 
 type Merger struct {

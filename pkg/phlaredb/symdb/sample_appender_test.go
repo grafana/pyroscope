@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 func Test_SampleAppender(t *testing.T) {

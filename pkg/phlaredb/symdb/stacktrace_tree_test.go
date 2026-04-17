@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
 
 func Test_stacktrace_tree_encoding(t *testing.T) {

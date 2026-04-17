@@ -66,8 +66,8 @@ func Test_dropGoTypeParameters(t *testing.T) {
 	}{
 		{
 			name:     "no type parameters",
-			input:    "github.com/grafana/pyroscope/pkg/distributor.(*Distributor).Push",
-			expected: "github.com/grafana/pyroscope/pkg/distributor.(*Distributor).Push",
+			input:    "github.com/grafana/pyroscope/v2/pkg/distributor.(*Distributor).Push",
+			expected: "github.com/grafana/pyroscope/v2/pkg/distributor.(*Distributor).Push",
 		},
 		{
 			name:     "empty string",
@@ -125,7 +125,7 @@ func Test_dropGoTypeParameters(t *testing.T) {
 
 func Benchmark_dropGoTypeParameters(b *testing.B) {
 	withParams := `github.com/bufbuild/connect-go.(*Client[go.shape.struct { github.com/grafana/pyroscope/api/gen/proto/go/push/v1.state google.golang.org/protobuf/internal/impl.MessageState; github.com/grafana/pyroscope/api/gen/proto/go/push/v1.sizeCache int32; github.com/grafana/pyroscope/api/gen/proto/go/push/v1.unknownFields []uint8; Series []*github.com/grafana/pyroscope/api/gen/proto/go/push/v1.RawProfileSeries "protobuf:\"bytes,1,rep,name=series,proto3\" json:\"series,omitempty\"" },go.shape.struct { github.com/grafana/pyroscope/api/gen/proto/go/push/v1.state google.golang.org/protobuf/internal/impl.MessageState; github.com/grafana/pyroscope/api/gen/proto/go/push/v1.sizeCache int32; github.com/grafana/pyroscope/api/gen/proto/go/push/v1.unknownFields []uint8 }]).CallUnary`
-	withoutParams := "github.com/grafana/pyroscope/pkg/distributor.(*Distributor).Push"
+	withoutParams := "github.com/grafana/pyroscope/v2/pkg/distributor.(*Distributor).Push"
 
 	b.Run("with_type_params", func(b *testing.B) {
 		for b.Loop() {

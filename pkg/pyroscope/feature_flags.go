@@ -3,7 +3,7 @@ package pyroscope
 import (
 	"github.com/grafana/dskit/services"
 
-	"github.com/grafana/pyroscope/pkg/featureflags"
+	"github.com/grafana/pyroscope/v2/pkg/featureflags"
 )
 
 func (c *Config) getFeatureFlags() map[string]bool {

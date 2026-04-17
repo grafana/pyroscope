@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/metastore/compaction"
-	"github.com/grafana/pyroscope/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
+	"github.com/grafana/pyroscope/v2/pkg/test"
 )
 
 func TestBlockQueueStore_StoreEntry(t *testing.T) {

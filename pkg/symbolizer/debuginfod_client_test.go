@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 func TestDebuginfodClient(t *testing.T) {

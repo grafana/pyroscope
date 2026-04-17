@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/pyroscope/pkg/util/servicediscovery"
+	"github.com/grafana/pyroscope/v2/pkg/util/servicediscovery"
 )
 
 func New(cfg Config, schedulerAddress string, lookupPeriod time.Duration, component string, receiver servicediscovery.Notifications, logger log.Logger, reg prometheus.Registerer) (services.Service, error) {

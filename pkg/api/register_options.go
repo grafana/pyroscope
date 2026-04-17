@@ -9,10 +9,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/middleware"
 
-	"github.com/grafana/pyroscope/pkg/util/body"
-	"github.com/grafana/pyroscope/pkg/util/delayhandler"
-	"github.com/grafana/pyroscope/pkg/util/gziphandler"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/util/body"
+	"github.com/grafana/pyroscope/v2/pkg/util/delayhandler"
+	"github.com/grafana/pyroscope/v2/pkg/util/gziphandler"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 type registerMiddleware struct {

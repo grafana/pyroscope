@@ -2,7 +2,7 @@ version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/grafana/pyroscope/pkg/
+    default: github.com/grafana/pyroscope/v2/pkg/
     except:
       - buf.build/googleapis/googleapis
 

@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/config"
 )
 
 func newMockVCSClient() *mockVCSClient {
@@ -255,7 +255,7 @@ func TestFileFinder_Find(t *testing.T) {
 		{
 			name: "go/not-mapped-local-path",
 			fileSpec: config.FileSpec{
-				FunctionName: "github.com/grafana/pyroscope/pkg/compactionworker.(*Worker).runCompaction",
+				FunctionName: "github.com/grafana/pyroscope/v2/pkg/compactionworker.(*Worker).runCompaction",
 				Path:         "/Users/christian/git/github.com/grafana/pyroscope/pkg/compactionworker/worker.go",
 			},
 			ref: "main",

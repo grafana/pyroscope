@@ -17,12 +17,12 @@ import (
 	"google.golang.org/grpc/codes"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
-	"github.com/grafana/pyroscope/pkg/iter"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb/query"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 )
 
 // delta encoding for ranges

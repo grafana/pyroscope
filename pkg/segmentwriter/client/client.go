@@ -22,10 +22,10 @@ import (
 	"google.golang.org/grpc/status"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/connpool"
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor"
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement"
-	"github.com/grafana/pyroscope/pkg/util/circuitbreaker"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/connpool"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement"
+	"github.com/grafana/pyroscope/v2/pkg/util/circuitbreaker"
 )
 
 var errServiceUnavailableMsg = "service is unavailable"

@@ -13,9 +13,9 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/util/build"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/util/build"
 )
 
 type writerV2 struct {

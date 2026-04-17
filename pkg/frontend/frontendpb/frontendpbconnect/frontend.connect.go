@@ -13,7 +13,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	frontendpb "github.com/grafana/pyroscope/pkg/frontend/frontendpb"
+	frontendpb "github.com/grafana/pyroscope/v2/pkg/frontend/frontendpb"
 	http "net/http"
 	strings "strings"
 )

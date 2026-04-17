@@ -16,13 +16,13 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
-	"github.com/grafana/pyroscope/pkg/og/storage"
-	"github.com/grafana/pyroscope/pkg/og/storage/tree"
-	"github.com/grafana/pyroscope/pkg/og/util/form"
-	"github.com/grafana/pyroscope/pkg/pprof"
+	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/v2/pkg/og/util/form"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
 
 type RawProfile struct {

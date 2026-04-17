@@ -11,7 +11,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
 )
 
 // AllTenants returns true to each call and should be used whenever the UsersScanner should not filter out

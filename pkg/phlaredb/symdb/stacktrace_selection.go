@@ -4,7 +4,7 @@ import (
 	"github.com/parquet-go/parquet-go"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 // CallSiteValues represents statistics associated with a call tree node.

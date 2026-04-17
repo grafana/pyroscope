@@ -7,9 +7,9 @@ import (
 
 	"github.com/prometheus/prometheus/model/labels"
 
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 )
 
 func tsdbSeries(ctx context.Context, path string) error {

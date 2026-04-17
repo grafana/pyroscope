@@ -16,7 +16,7 @@ import (
 	"connectrpc.com/connect"
 	"golang.org/x/oauth2"
 
-	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
 const (

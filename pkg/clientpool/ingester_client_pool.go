@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // PoolConfig is config for creating a Pool.

@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/middleware"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )

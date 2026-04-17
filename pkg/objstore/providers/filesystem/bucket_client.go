@@ -8,7 +8,7 @@ import (
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/providers/filesystem"
 
-	phlareobjstore "github.com/grafana/pyroscope/pkg/objstore"
+	phlareobjstore "github.com/grafana/pyroscope/v2/pkg/objstore"
 )
 
 type Bucket struct {

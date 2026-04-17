@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"text/template"
 
-	"github.com/grafana/pyroscope/pkg/og/build"
+	"github.com/grafana/pyroscope/v2/pkg/og/build"
 )
 
 // TODO(kolesnikovae): Refactor to ./convert?

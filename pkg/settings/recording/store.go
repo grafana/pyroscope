@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
-	"github.com/grafana/pyroscope/pkg/settings/store"
+	"github.com/grafana/pyroscope/v2/pkg/settings/store"
 )
 
 func newBucketStore(logger log.Logger, bucket objstore.Bucket, key store.Key) *bucketStore {

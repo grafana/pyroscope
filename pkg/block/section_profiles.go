@@ -11,17 +11,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/pyroscope/pkg/iter"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/objstore"
-	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/query"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
-	"github.com/grafana/pyroscope/pkg/util/bufferpool"
-	"github.com/grafana/pyroscope/pkg/util/build"
-	"github.com/grafana/pyroscope/pkg/util/loser"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	phlareparquet "github.com/grafana/pyroscope/v2/pkg/parquet"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/v2/pkg/util/bufferpool"
+	"github.com/grafana/pyroscope/v2/pkg/util/build"
+	"github.com/grafana/pyroscope/v2/pkg/util/loser"
 )
 
 func openProfileTable(_ context.Context, s *Dataset) (err error) {

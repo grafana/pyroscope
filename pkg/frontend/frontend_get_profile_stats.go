@@ -7,7 +7,7 @@ import (
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
 )
 
 func (f *Frontend) GetProfileStats(

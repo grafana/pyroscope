@@ -12,8 +12,8 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/metastore/fsm"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/fsm"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode"
 )
 
 type CompactionService struct {

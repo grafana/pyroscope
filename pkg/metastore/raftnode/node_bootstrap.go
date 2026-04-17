@@ -14,8 +14,8 @@ import (
 	"github.com/grafana/dskit/dns"
 	"github.com/hashicorp/raft"
 
-	"github.com/grafana/pyroscope/pkg/metastore/discovery"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
 )
 
 func (n *Node) bootstrap() error {

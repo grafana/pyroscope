@@ -12,10 +12,10 @@ import (
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
-	validationutil "github.com/grafana/pyroscope/pkg/util/validation"
-	"github.com/grafana/pyroscope/pkg/validation"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
+	validationutil "github.com/grafana/pyroscope/v2/pkg/util/validation"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 func (f *Frontend) SelectMergeStacktraces(

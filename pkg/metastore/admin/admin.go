@@ -16,10 +16,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	metastoreclient "github.com/grafana/pyroscope/pkg/metastore/client"
-	"github.com/grafana/pyroscope/pkg/metastore/discovery"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	metastoreclient "github.com/grafana/pyroscope/v2/pkg/metastore/client"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 type configChangeRequest struct {

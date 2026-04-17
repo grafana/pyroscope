@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/shard"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/shard"
 )
 
 func Test_BitPrefixGetShards(t *testing.T) {

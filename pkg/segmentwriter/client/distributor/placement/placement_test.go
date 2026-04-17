@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
 )
 
 func Test_ActiveInstances(t *testing.T) {

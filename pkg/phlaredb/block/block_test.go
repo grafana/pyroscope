@@ -26,11 +26,11 @@ import (
 	"github.com/thanos-io/objstore"
 	"go.uber.org/goleak"
 
-	objstore_testutil "github.com/grafana/pyroscope/pkg/objstore/testutil"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	block_testutil "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	"github.com/grafana/pyroscope/pkg/test"
+	objstore_testutil "github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	block_testutil "github.com/grafana/pyroscope/v2/pkg/phlaredb/block/testutil"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/test"
 )
 
 func TestIsBlockDir(t *testing.T) {

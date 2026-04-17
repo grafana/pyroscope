@@ -9,7 +9,7 @@ import (
 
 	"github.com/grafana/dskit/tenant"
 
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 var (

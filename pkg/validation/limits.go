@@ -12,14 +12,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/pyroscope/pkg/distributor/ingestlimits"
-	"github.com/grafana/pyroscope/pkg/distributor/sampling"
-	"github.com/grafana/pyroscope/pkg/distributor/writepath"
-	"github.com/grafana/pyroscope/pkg/frontend/readpath"
-	"github.com/grafana/pyroscope/pkg/metastore/index/cleaner/retention"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	placement "github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/ingestlimits"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/writepath"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/index/cleaner/retention"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	placement "github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 )
 
 const (

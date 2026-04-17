@@ -3,7 +3,7 @@
 package mockmetrics
 
 import (
-	model "github.com/grafana/pyroscope/pkg/model"
+	model "github.com/grafana/pyroscope/v2/pkg/model"
 	mock "github.com/stretchr/testify/mock"
 )
 

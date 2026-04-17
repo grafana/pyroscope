@@ -21,15 +21,15 @@ import (
 
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/objstore/client"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/client"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/sharding"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
+	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
 )
 
 func TestCompact(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"html/template"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/bucketindex"
 )
 
 //go:embed tool.blocks.index.gohtml

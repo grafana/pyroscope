@@ -7,8 +7,8 @@ import (
 	"unsafe"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
-	"github.com/grafana/pyroscope/pkg/og/util/varint"
-	"github.com/grafana/pyroscope/pkg/util/minheap"
+	"github.com/grafana/pyroscope/v2/pkg/og/util/varint"
+	"github.com/grafana/pyroscope/v2/pkg/util/minheap"
 )
 
 // TODO(kolesnikovae): Remove support for StacktracesMergeFormat_MERGE_FORMAT_STACKTRACES.

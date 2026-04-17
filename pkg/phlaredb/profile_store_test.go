@@ -23,12 +23,12 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	phlareobjclient "github.com/grafana/pyroscope/pkg/objstore/client"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
+	phlareobjclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
+	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
 )
 
 const (

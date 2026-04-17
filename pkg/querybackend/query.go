@@ -16,8 +16,8 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/block"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // TODO(kolesnikovae): We have a procedural definition of our queries,

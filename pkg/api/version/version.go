@@ -22,7 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	versionv1 "github.com/grafana/pyroscope/api/gen/proto/go/version/v1"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // currentQuerierVersion is the current version of the querier API.

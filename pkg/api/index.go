@@ -13,7 +13,7 @@ import (
 	"sort"
 	"sync"
 
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 // List of weights to order link groups in the same order as weights are ordered here.

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/grafana/pyroscope/pkg/og/structs/merge"
+	"github.com/grafana/pyroscope/v2/pkg/og/structs/merge"
 )
 
 type jsonableSlice []byte

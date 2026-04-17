@@ -16,10 +16,10 @@ import (
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockwritepath"
-	"github.com/grafana/pyroscope/pkg/util/delayhandler"
+	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockwritepath"
+	"github.com/grafana/pyroscope/v2/pkg/util/delayhandler"
 )
 
 type routerTestSuite struct {

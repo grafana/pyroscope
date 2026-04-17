@@ -19,9 +19,9 @@ import (
 
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/memory"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 func newTestStore(t *testing.T, cfg Config) (*Store, *memory.InMemBucket) {

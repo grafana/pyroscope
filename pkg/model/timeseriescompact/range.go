@@ -4,7 +4,7 @@ import (
 	"sort"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
 )
 
 // RangeSeries aggregates compact points into time steps.

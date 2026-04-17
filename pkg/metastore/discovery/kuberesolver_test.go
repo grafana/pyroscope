@@ -8,8 +8,8 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/metastore/discovery/kuberesolver"
-	"github.com/grafana/pyroscope/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery/kuberesolver"
+	"github.com/grafana/pyroscope/v2/pkg/test"
 )
 
 func TestDebugLocalhost(t *testing.T) {

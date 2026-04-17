@@ -4,7 +4,7 @@ package mockcompactor
 
 import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	iter "github.com/grafana/pyroscope/pkg/iter"
+	iter "github.com/grafana/pyroscope/v2/pkg/iter"
 	mock "github.com/stretchr/testify/mock"
 
 	time "time"

@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/pkg/model/timeseries"
+	"github.com/grafana/pyroscope/v2/pkg/model/timeseries"
 )
 
 // Aggregator aggregates compact points within a time step.

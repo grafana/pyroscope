@@ -11,8 +11,8 @@ import (
 
 	"github.com/parquet-go/parquet-go/encoding/delta"
 
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/slices"
+	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/slices"
 )
 
 const maxLocationLines = 255

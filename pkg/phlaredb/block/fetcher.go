@@ -26,8 +26,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/util/extprom"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/util/extprom"
 )
 
 // FetcherMetrics holds metrics tracked by the metadata fetcher. This struct and its fields are exported

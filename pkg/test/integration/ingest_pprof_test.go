@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/strprofile"
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	pprof2 "github.com/grafana/pyroscope/v2/pkg/og/convert/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/strprofile"
+	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 )
 
 const repoRoot = "../../../"

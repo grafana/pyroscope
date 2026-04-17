@@ -22,14 +22,14 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/distributor/model"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/util/body"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/model"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	pprof2 "github.com/grafana/pyroscope/v2/pkg/og/convert/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/util/body"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 type flatProfileSeries struct {

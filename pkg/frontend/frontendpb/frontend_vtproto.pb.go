@@ -7,8 +7,8 @@ package frontendpb
 import (
 	context "context"
 	fmt "fmt"
-	stats "github.com/grafana/pyroscope/pkg/querier/stats"
-	httpgrpc "github.com/grafana/pyroscope/pkg/util/httpgrpc"
+	stats "github.com/grafana/pyroscope/v2/pkg/querier/stats"
+	httpgrpc "github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 	protohelpers "github.com/planetscale/vtprotobuf/protohelpers"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
 )
 
 type repeatedTestRow struct {

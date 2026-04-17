@@ -11,8 +11,8 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/test"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockscheduler"
+	"github.com/grafana/pyroscope/v2/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockscheduler"
 )
 
 func TestSchedule_Update_LeaseRenewal(t *testing.T) {

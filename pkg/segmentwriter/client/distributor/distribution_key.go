@@ -4,8 +4,8 @@ import (
 	"github.com/cespare/xxhash/v2"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement"
 )
 
 // NewTenantServiceDatasetKey builds a distribution key, where the dataset

@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
 
-	querydiagnostics "github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
+	querydiagnostics "github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
 )
 
 const (

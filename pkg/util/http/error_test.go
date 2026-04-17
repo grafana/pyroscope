@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 
-	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
 func Test_writeError(t *testing.T) {

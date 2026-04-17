@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	"github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockfrontend"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
-	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
+	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 )
 
 type mockRoundTripper struct {

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	phlareobjstore "github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	phlareobjstore "github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
 )
 
 // bufferPool is a pool of bytes.Buffers.

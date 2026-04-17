@@ -3,7 +3,7 @@
 package mockdiscovery
 
 import (
-	discovery "github.com/grafana/pyroscope/pkg/metastore/discovery"
+	discovery "github.com/grafana/pyroscope/v2/pkg/metastore/discovery"
 	mock "github.com/stretchr/testify/mock"
 )
 

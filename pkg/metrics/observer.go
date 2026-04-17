@@ -6,9 +6,9 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/prompb"
 
-	"github.com/grafana/pyroscope/pkg/block"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/block"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 type SampleObserver struct {

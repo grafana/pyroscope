@@ -13,13 +13,13 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/block/metadata"
-	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/metastore/fsm"
-	"github.com/grafana/pyroscope/pkg/metastore/index/cleaner/retention"
-	indexstore "github.com/grafana/pyroscope/pkg/metastore/index/store"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode"
-	placement "github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
+	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/fsm"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/index/cleaner/retention"
+	indexstore "github.com/grafana/pyroscope/v2/pkg/metastore/index/store"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode"
+	placement "github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 )
 
 type PlacementStats interface {

@@ -10,7 +10,7 @@ import (
 
 	"github.com/grafana/dskit/flagext"
 
-	"github.com/grafana/pyroscope/pkg/util/fieldcategory"
+	"github.com/grafana/pyroscope/v2/pkg/util/fieldcategory"
 )
 
 // Usage prints command-line usage.

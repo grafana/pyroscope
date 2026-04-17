@@ -3,7 +3,7 @@ package raftnode
 import (
 	"context"
 
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
 )
 
 type RaftNode interface {

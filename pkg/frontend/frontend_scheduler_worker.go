@@ -22,11 +22,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc"
 
-	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
-	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
-	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb"
-	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
-	"github.com/grafana/pyroscope/pkg/util/servicediscovery"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/frontendpb"
+	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerdiscovery"
+	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb"
+	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/servicediscovery"
 )
 
 const (

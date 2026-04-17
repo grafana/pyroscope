@@ -9,8 +9,8 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 func Test_memory_Resolver_ResolveTree(t *testing.T) {

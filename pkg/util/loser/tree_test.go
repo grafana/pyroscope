@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/util/loser"
+	"github.com/grafana/pyroscope/v2/pkg/util/loser"
 )
 
 type List struct {

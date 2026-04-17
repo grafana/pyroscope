@@ -11,8 +11,8 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/adaptive_placementpb"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/adaptive_placementpb"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 type Agent struct {

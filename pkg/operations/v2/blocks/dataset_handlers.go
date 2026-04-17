@@ -11,13 +11,13 @@ import (
 	"github.com/pkg/errors"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/block"
-	"github.com/grafana/pyroscope/pkg/block/metadata"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 func (h *Handlers) CreateDatasetDetailsHandler() func(http.ResponseWriter, *http.Request) {

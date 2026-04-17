@@ -3,12 +3,12 @@ package api
 import (
 	"connectrpc.com/connect"
 
-	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
-	querydiagnostics "github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/delayhandler"
-	"github.com/grafana/pyroscope/pkg/validation"
+	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
+	querydiagnostics "github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/delayhandler"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 func connectInterceptorRecovery() connect.HandlerOption {

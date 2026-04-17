@@ -3,7 +3,7 @@ package placement
 import (
 	"github.com/grafana/dskit/ring"
 
-	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
 )
 
 // Placement is a strategy to distribute keys over shards.

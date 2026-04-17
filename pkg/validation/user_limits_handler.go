@@ -7,8 +7,8 @@ import (
 
 	"github.com/grafana/dskit/tenant"
 
-	"github.com/grafana/pyroscope/pkg/util"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 type TenantLimitsResponse struct {

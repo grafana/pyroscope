@@ -31,7 +31,7 @@ import (
 	"sort"
 	"unsafe"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
@@ -40,9 +40,9 @@ import (
 	tsdb_enc "github.com/prometheus/prometheus/tsdb/encoding"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/encoding"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/encoding"
 )
 
 const (

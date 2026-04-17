@@ -17,13 +17,13 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/query"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	phlarecontext "github.com/grafana/pyroscope/pkg/pyroscope/context"
-	"github.com/grafana/pyroscope/pkg/util/build"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	phlareparquet "github.com/grafana/pyroscope/v2/pkg/parquet"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
+	"github.com/grafana/pyroscope/v2/pkg/util/build"
 )
 
 const (

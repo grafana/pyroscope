@@ -16,12 +16,12 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/block/metadata"
-	"github.com/grafana/pyroscope/pkg/featureflags"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockfrontend"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockqueryfrontend"
+	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/featureflags"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockqueryfrontend"
 )
 
 const (

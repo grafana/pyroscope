@@ -6,7 +6,7 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 // VisitSampleSeriesBy visits samples in a profile, splitting them by the

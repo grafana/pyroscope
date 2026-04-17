@@ -12,8 +12,8 @@ import (
 	"github.com/grafana/dskit/tracing"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/config"
 )
 
 const (

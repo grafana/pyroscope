@@ -12,7 +12,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
 )
 
 func TestSortJobsBySmallestRangeOldestBlocksFirst(t *testing.T) {

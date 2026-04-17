@@ -19,7 +19,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/grafana/pyroscope/pkg/metastore/tracing"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/tracing"
 )
 
 type ContextRegistry interface {

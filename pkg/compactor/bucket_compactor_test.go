@@ -23,10 +23,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 
-	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	objstore_testutil "github.com/grafana/pyroscope/pkg/objstore/testutil"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/util/extprom"
+	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
+	objstore_testutil "github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/util/extprom"
 )
 
 func TestGroupKey(t *testing.T) {

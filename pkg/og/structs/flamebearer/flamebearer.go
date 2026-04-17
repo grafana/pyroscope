@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/grafana/pyroscope/pkg/og/storage/heatmap"
-	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
-	"github.com/grafana/pyroscope/pkg/og/storage/segment"
-	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/heatmap"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/segment"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/tree"
 )
 
 //revive:disable:max-public-structs Config structs

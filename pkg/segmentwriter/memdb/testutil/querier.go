@@ -13,9 +13,9 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/testhelper"
+	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	"github.com/grafana/pyroscope/v2/pkg/testhelper"
 )
 
 // Copied from phlaredb, todo

@@ -7,9 +7,9 @@ import (
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/model/labelset"
-	"github.com/grafana/pyroscope/pkg/og/storage"
-	"github.com/grafana/pyroscope/pkg/og/storage/tree"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockpyroscope"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockpyroscope"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"

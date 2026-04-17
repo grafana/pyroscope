@@ -5,10 +5,10 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
-	metastoreadmin "github.com/grafana/pyroscope/pkg/metastore/admin"
-	"github.com/grafana/pyroscope/pkg/operations/v2/querydiagnostics"
-	"github.com/grafana/pyroscope/pkg/querybackend"
-	"github.com/grafana/pyroscope/pkg/segmentwriter"
+	metastoreadmin "github.com/grafana/pyroscope/v2/pkg/metastore/admin"
+	"github.com/grafana/pyroscope/v2/pkg/operations/v2/querydiagnostics"
+	"github.com/grafana/pyroscope/v2/pkg/querybackend"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter"
 )
 
 // TODO(kolesnikovae): Recovery interceptor.

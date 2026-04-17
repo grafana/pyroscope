@@ -3,7 +3,7 @@ package annotation
 import (
 	"encoding/json"
 
-	"github.com/grafana/pyroscope/pkg/distributor/sampling"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
 )
 
 type SampledAnnotation struct {

@@ -16,8 +16,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/block"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode"
+	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode"
 )
 
 type Config struct {

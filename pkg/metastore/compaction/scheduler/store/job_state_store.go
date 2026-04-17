@@ -7,8 +7,8 @@ import (
 	"go.etcd.io/bbolt"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/metastore/store"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/store"
 )
 
 var jobStateBucketName = []byte("compaction_job_state")

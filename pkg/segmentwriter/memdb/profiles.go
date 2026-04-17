@@ -6,8 +6,8 @@ import (
 
 	"github.com/parquet-go/parquet-go"
 
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/util/build"
+	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/util/build"
 )
 
 const segmentsParquetWriteBufferSize = 32 << 10

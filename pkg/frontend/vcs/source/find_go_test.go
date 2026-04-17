@@ -7,8 +7,8 @@ import (
 	giturl "github.com/kubescape/go-git-url"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/client"
-	"github.com/grafana/pyroscope/pkg/frontend/vcs/config"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/client"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/config"
 )
 
 func Test_tryFindGoFile(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
+	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
 )
 
 const createRuleExampleMsg = `

@@ -10,8 +10,8 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/featureflags"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/featureflags"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 func (q *QueryFrontend) LabelNames(

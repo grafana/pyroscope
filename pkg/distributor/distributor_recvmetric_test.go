@@ -18,12 +18,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/testhelper"
-	"github.com/grafana/pyroscope/pkg/validation"
+	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 func TestDistributorPushWithDifferentTenantStages(t *testing.T) {

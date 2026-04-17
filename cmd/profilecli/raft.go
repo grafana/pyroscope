@@ -8,9 +8,9 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	connectapi "github.com/grafana/pyroscope/pkg/api/connect"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb/raftnodepbconnect"
+	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb/raftnodepbconnect"
 )
 
 func (c *phlareClient) metadataOperatorClient() raftnodepbconnect.RaftNodeServiceClient {

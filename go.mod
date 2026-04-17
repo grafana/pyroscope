@@ -1,4 +1,4 @@
-module github.com/grafana/pyroscope
+module github.com/grafana/pyroscope/v2
 
 go 1.25.7
 

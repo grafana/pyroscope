@@ -21,9 +21,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/shipper"
-	diskutil "github.com/grafana/pyroscope/pkg/util/disk"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/shipper"
+	diskutil "github.com/grafana/pyroscope/v2/pkg/util/disk"
 )
 
 func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {

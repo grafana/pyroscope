@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
-	"github.com/grafana/pyroscope/pkg/iter"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/testhelper"
 )
 
 func TestFilterProfiles(t *testing.T) {

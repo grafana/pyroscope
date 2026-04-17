@@ -4,7 +4,7 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/metadata"
 )
 
 type SampleTypeConfig struct {

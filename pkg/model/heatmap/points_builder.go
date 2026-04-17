@@ -6,7 +6,7 @@ import (
 
 	prommodel "github.com/prometheus/common/model"
 
-	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 // pointsBuilder builds exemplars for a single time series.

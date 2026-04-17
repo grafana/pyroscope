@@ -16,9 +16,9 @@ import (
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
-	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/spanlogger"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/sharding"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
 )
 
 type ResponseFromReplica[T any] struct {

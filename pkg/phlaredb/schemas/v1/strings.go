@@ -3,7 +3,7 @@ package v1
 import (
 	"github.com/parquet-go/parquet-go"
 
-	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
+	phlareparquet "github.com/grafana/pyroscope/v2/pkg/parquet"
 )
 
 var stringsSchema = parquet.NewSchema("String", phlareparquet.Group{

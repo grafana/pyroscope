@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
-	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockscheduler"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockscheduler"
 )
 
 func TestScheduler_UpdateSchedule(t *testing.T) {

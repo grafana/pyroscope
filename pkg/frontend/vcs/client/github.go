@@ -13,7 +13,7 @@ import (
 	"golang.org/x/oauth2"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
 )
 
 // GithubClient returns a github client.

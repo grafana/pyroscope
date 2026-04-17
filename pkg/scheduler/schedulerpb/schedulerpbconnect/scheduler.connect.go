@@ -13,7 +13,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	schedulerpb "github.com/grafana/pyroscope/pkg/scheduler/schedulerpb"
+	schedulerpb "github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb"
 	http "net/http"
 	strings "strings"
 )

@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/shard"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/shard"
 
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"

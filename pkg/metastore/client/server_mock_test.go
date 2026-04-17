@@ -16,11 +16,11 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/metastore/discovery"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
-	"github.com/grafana/pyroscope/pkg/test"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockmetastorev1"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockraftnodepb"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/v2/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockraftnodepb"
 )
 
 type mockServer struct {

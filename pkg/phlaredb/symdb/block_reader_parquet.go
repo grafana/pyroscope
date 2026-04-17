@@ -14,11 +14,11 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
-	parquetobj "github.com/grafana/pyroscope/pkg/objstore/parquet"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/util/refctr"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	parquetobj "github.com/grafana/pyroscope/v2/pkg/objstore/parquet"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/util/refctr"
 )
 
 // Used in v2. Left for compatibility.

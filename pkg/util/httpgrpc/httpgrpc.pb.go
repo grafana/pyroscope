@@ -219,8 +219,8 @@ const file_util_httpgrpc_httpgrpc_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x16\n" +
 	"\x06values\x18\x02 \x03(\tR\x06values2A\n" +
 	"\x04HTTP\x129\n" +
-	"\x06Handle\x12\x15.httpgrpc.HTTPRequest\x1a\x16.httpgrpc.HTTPResponse\"\x00B\x8d\x01\n" +
-	"\fcom.httpgrpcB\rHttpgrpcProtoP\x01Z.github.com/grafana/pyroscope/pkg/util/httpgrpc\xa2\x02\x03HXX\xaa\x02\bHttpgrpc\xca\x02\bHttpgrpc\xe2\x02\x14Httpgrpc\\GPBMetadata\xea\x02\bHttpgrpcb\x06proto3"
+	"\x06Handle\x12\x15.httpgrpc.HTTPRequest\x1a\x16.httpgrpc.HTTPResponse\"\x00B\x90\x01\n" +
+	"\fcom.httpgrpcB\rHttpgrpcProtoP\x01Z1github.com/grafana/pyroscope/v2/pkg/util/httpgrpc\xa2\x02\x03HXX\xaa\x02\bHttpgrpc\xca\x02\bHttpgrpc\xe2\x02\x14Httpgrpc\\GPBMetadata\xea\x02\bHttpgrpcb\x06proto3"
 
 var (
 	file_util_httpgrpc_httpgrpc_proto_rawDescOnce sync.Once

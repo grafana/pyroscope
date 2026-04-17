@@ -1,8 +1,8 @@
 package storegateway
 
 import (
-	"github.com/grafana/pyroscope/pkg/phlaredb"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 
 	"github.com/prometheus/client_golang/prometheus"
 )

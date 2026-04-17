@@ -10,8 +10,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/pyroscope/pkg/cfg"
-	"github.com/grafana/pyroscope/pkg/pyroscope"
+	"github.com/grafana/pyroscope/v2/pkg/cfg"
+	"github.com/grafana/pyroscope/v2/pkg/pyroscope"
 )
 
 type Component struct {

@@ -23,12 +23,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	thanos_objstore "github.com/thanos-io/objstore"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
-	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
-	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/bucket"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/bucketindex"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 const (

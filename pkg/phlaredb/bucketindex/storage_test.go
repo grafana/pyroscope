@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	objstore_testutil "github.com/grafana/pyroscope/pkg/objstore/testutil"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	block_testutil "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
+	objstore_testutil "github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	block_testutil "github.com/grafana/pyroscope/v2/pkg/phlaredb/block/testutil"
 )
 
 func TestReadIndex_ShouldReturnErrorIfIndexDoesNotExist(t *testing.T) {

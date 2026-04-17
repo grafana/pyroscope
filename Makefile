@@ -35,7 +35,7 @@ else
 endif
 
 # Build flags
-VPREFIX := github.com/grafana/pyroscope/pkg/util/build
+VPREFIX := github.com/grafana/pyroscope/v2/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
 GO_GCFLAGS_DEBUG := all="-N -l"
 

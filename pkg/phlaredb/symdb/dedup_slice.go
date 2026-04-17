@@ -13,9 +13,9 @@ import (
 	"go.uber.org/atomic"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/slices"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+	"github.com/grafana/pyroscope/v2/pkg/slices"
 )
 
 // Refactored as is from the phlaredb package.

@@ -9,10 +9,10 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/querybackend"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
-	"github.com/grafana/pyroscope/pkg/util/http"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/querybackend"
+	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 // querySingle is a helper method that expects a single report

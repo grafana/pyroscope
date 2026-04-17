@@ -20,10 +20,10 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/metastore/raftnode/raftnodepb"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/test/integration/cluster"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
+	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/test/integration/cluster"
 )
 
 // TestMicroServicesIntegration tests the integration of the microservices in a

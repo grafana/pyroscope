@@ -15,7 +15,7 @@ import (
 	"github.com/oklog/ulid/v2"
 	thanosobjstore "github.com/thanos-io/objstore"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
 )
 
 // globalMarkersBucket is a bucket client which stores markers (eg. block deletion marks) in a per-tenant

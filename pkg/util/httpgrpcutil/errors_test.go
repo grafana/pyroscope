@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 )
 
 func TestPrioritizeRecoverableErr(t *testing.T) {

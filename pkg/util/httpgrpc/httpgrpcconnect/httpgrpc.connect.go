@@ -8,7 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	httpgrpc "github.com/grafana/pyroscope/pkg/util/httpgrpc"
+	httpgrpc "github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 	http "net/http"
 	strings "strings"
 )

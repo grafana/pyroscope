@@ -15,8 +15,8 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
-	util_log "github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	util_log "github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // Relative to user-specific prefix.

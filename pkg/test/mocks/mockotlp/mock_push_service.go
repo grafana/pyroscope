@@ -5,7 +5,7 @@ package mockotlp
 import (
 	context "context"
 
-	model "github.com/grafana/pyroscope/pkg/distributor/model"
+	model "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	mock "github.com/stretchr/testify/mock"
 )
 

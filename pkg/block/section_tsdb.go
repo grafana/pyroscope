@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
-	"github.com/grafana/pyroscope/pkg/util/bufferpool"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/v2/pkg/util/bufferpool"
 )
 
 func openDatasetIndex(ctx context.Context, s *Dataset) error {

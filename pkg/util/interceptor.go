@@ -9,7 +9,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tracing"
 
-	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
 type timeoutInterceptor struct {

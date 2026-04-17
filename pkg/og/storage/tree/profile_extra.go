@@ -6,7 +6,7 @@ import (
 	"sort"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/pkg/og/agent/spy"
+	"github.com/grafana/pyroscope/v2/pkg/og/agent/spy"
 	"github.com/valyala/bytebufferpool"
 )
 

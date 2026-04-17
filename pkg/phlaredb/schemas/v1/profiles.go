@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/common/model"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
+	phlareparquet "github.com/grafana/pyroscope/v2/pkg/parquet"
 )
 
 const (

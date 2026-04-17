@@ -13,8 +13,8 @@ import (
 	"github.com/go-kit/log/level"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/frontend/readpath/queryfrontend/diagnostics"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 type DiagnosticsStore interface {

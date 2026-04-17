@@ -6,7 +6,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/grafana/pyroscope/pkg/og/util/varint"
+	"github.com/grafana/pyroscope/v2/pkg/og/util/varint"
 )
 
 func (t *Trie) Serialize(w io.Writer) error {

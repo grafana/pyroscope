@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 type writerV3 struct {

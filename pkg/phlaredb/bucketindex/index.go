@@ -13,9 +13,9 @@ import (
 	"github.com/oklog/ulid/v2"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/sharding"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 const (

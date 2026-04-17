@@ -540,8 +540,8 @@ const file_segmentwriter_client_distributor_placement_adaptiveplacement_adaptive
 	"\rLoadBalancing\x12\x1e\n" +
 	"\x1aLOAD_BALANCING_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aLOAD_BALANCING_FINGERPRINT\x10\x01\x12\x1e\n" +
-	"\x1aLOAD_BALANCING_ROUND_ROBIN\x10\x02B\x88\x02\n" +
-	"\x16com.adaptive_placementB\x16AdaptivePlacementProtoP\x01Zrgithub.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/adaptive_placementpb\xa2\x02\x03AXX\xaa\x02\x11AdaptivePlacement\xca\x02\x11AdaptivePlacement\xe2\x02\x1dAdaptivePlacement\\GPBMetadata\xea\x02\x11AdaptivePlacementb\x06proto3"
+	"\x1aLOAD_BALANCING_ROUND_ROBIN\x10\x02B\x8b\x02\n" +
+	"\x16com.adaptive_placementB\x16AdaptivePlacementProtoP\x01Zugithub.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/adaptive_placementpb\xa2\x02\x03AXX\xaa\x02\x11AdaptivePlacement\xca\x02\x11AdaptivePlacement\xe2\x02\x1dAdaptivePlacement\\GPBMetadata\xea\x02\x11AdaptivePlacementb\x06proto3"
 
 var (
 	file_segmentwriter_client_distributor_placement_adaptiveplacement_adaptive_placementpb_adaptive_placement_proto_rawDescOnce sync.Once

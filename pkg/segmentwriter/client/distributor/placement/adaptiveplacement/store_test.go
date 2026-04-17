@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/grafana/pyroscope/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/adaptive_placementpb"
-	"github.com/grafana/pyroscope/pkg/test/mocks/mockobjstore"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement/adaptive_placementpb"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockobjstore"
 )
 
 type storeSuite struct {

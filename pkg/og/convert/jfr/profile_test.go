@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/api/model/labelset"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
 )
 
 const testTenantID = "test-tenant"

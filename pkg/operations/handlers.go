@@ -15,11 +15,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
-	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/bucket"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/bucketindex"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 type Handlers struct {

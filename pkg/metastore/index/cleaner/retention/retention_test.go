@@ -12,8 +12,8 @@ import (
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	indexstore "github.com/grafana/pyroscope/pkg/metastore/index/store"
-	"github.com/grafana/pyroscope/pkg/test"
+	indexstore "github.com/grafana/pyroscope/v2/pkg/metastore/index/store"
+	"github.com/grafana/pyroscope/v2/pkg/test"
 )
 
 type mockOverrides struct {

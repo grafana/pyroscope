@@ -27,11 +27,11 @@ import (
 	_ "go.uber.org/automaxprocs"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/block"
-	"github.com/grafana/pyroscope/pkg/block/metadata"
-	"github.com/grafana/pyroscope/pkg/metrics"
-	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/metrics"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 type Config struct {

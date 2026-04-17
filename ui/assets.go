@@ -6,7 +6,7 @@ package ui
 import (
 	"net/http"
 
-	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 var AssetsEmbedded = false

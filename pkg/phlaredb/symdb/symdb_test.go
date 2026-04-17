@@ -9,20 +9,20 @@ import (
 	"testing"
 	"time"
 
-	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/memory"
-	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/memory"
+	pprofth "github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/pprof"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
 
 type memSuite struct {

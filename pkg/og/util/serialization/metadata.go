@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/grafana/pyroscope/pkg/og/util/varint"
+	"github.com/grafana/pyroscope/v2/pkg/og/util/varint"
 )
 
 func WriteMetadata(w io.Writer, metadata map[string]interface{}) error {

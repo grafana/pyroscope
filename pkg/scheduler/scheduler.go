@@ -29,14 +29,14 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 
-	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
-	"github.com/grafana/pyroscope/pkg/scheduler/queue"
-	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
-	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb"
-	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
-	"github.com/grafana/pyroscope/pkg/util/httpgrpcutil"
-	"github.com/grafana/pyroscope/pkg/util/validation"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/frontendpb"
+	"github.com/grafana/pyroscope/v2/pkg/scheduler/queue"
+	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerdiscovery"
+	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpcutil"
+	"github.com/grafana/pyroscope/v2/pkg/util/validation"
 )
 
 // Scheduler is responsible for queueing and dispatching queries to Queriers.

@@ -22,17 +22,17 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
 
-	"github.com/grafana/pyroscope/pkg/iter"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/downsample"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
-	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
-	"github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/loser"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	phlareparquet "github.com/grafana/pyroscope/v2/pkg/parquet"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/downsample"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/sharding"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/loser"
 )
 
 type BlockReader interface {

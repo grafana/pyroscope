@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	"github.com/grafana/pyroscope/pkg/metastore/index/tombstones/store"
-	"github.com/grafana/pyroscope/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/index/tombstones/store"
+	"github.com/grafana/pyroscope/v2/pkg/test"
 )
 
 func TestTombstonesRestore(t *testing.T) {
