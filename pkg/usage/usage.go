@@ -42,12 +42,11 @@ func Usage(printAll bool, configs ...interface{}) error {
 			return
 		}
 
-		if override, ok := fieldcategory.GetOverride(fl.Name); ok {
-			fieldCat = override
-		} else if v.Kind() == reflect.Ptr {
+		if v.Kind() == reflect.Ptr {
 			ptr := v.Pointer()
-			field, ok = fields[ptr]
-			if ok {
+			var found bool
+			field, found = fields[ptr]
+			if found {
 				catStr := field.Tag.Get("category")
 				switch catStr {
 				case "advanced":
@@ -56,6 +55,10 @@ func Usage(printAll bool, configs ...interface{}) error {
 					fieldCat = fieldcategory.Experimental
 				}
 			}
+		}
+		// Category overrides take precedence over struct field tags.
+		if override, ok := fieldcategory.GetOverride(fl.Name); ok {
+			fieldCat = override
 		}
 
 		if fieldCat != fieldcategory.Basic && !printAll {

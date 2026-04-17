@@ -71,16 +71,16 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "segment-writer"
 	// Ring/KV store flags come from dskit and cannot be tagged directly; mark them advanced here.
 	fieldcategory.AddOverrides(map[string]fieldcategory.Category{
-		prefix + ".availability-zone":              fieldcategory.Advanced,
-		prefix + ".consul.hostname":                fieldcategory.Advanced,
-		prefix + ".distributor.replication-factor": fieldcategory.Advanced,
+		prefix + ".availability-zone":                  fieldcategory.Advanced,
+		prefix + ".consul.hostname":                    fieldcategory.Advanced,
+		prefix + ".distributor.replication-factor":     fieldcategory.Advanced,
 		prefix + ".distributor.zone-awareness-enabled": fieldcategory.Advanced,
-		prefix + ".etcd.endpoints":                 fieldcategory.Advanced,
-		prefix + ".etcd.password":                  fieldcategory.Advanced,
-		prefix + ".etcd.username":                  fieldcategory.Advanced,
-		prefix + ".lifecycler.interface":            fieldcategory.Advanced,
-		prefix + ".store":                          fieldcategory.Advanced,
-		prefix + ".tokens-file-path":               fieldcategory.Advanced,
+		prefix + ".etcd.endpoints":                     fieldcategory.Advanced,
+		prefix + ".etcd.password":                      fieldcategory.Advanced,
+		prefix + ".etcd.username":                      fieldcategory.Advanced,
+		prefix + ".lifecycler.interface":               fieldcategory.Advanced,
+		prefix + ".store":                              fieldcategory.Advanced,
+		prefix + ".tokens-file-path":                   fieldcategory.Advanced,
 	})
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+".grpc-client-config", f)
