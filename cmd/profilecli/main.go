@@ -143,6 +143,10 @@ func main() {
 	recordingRulesDeleteId := recordingRulesDeleteCmd.Arg("rule_id", "Recording rule Id to delete").Required().String()
 	recordingRulesParams := addRecordingRulesListParams(recordingRulesCmd)
 
+	debuginfoCmd := app.Command("debuginfo", "Operations on debuginfo (experimental).")
+	debuginfoUploadCmd := debuginfoCmd.Command("upload", "Upload debuginfo.")
+	debuginfoUploadParams := addDebuginfoUploadParams(debuginfoUploadCmd)
+
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -268,6 +272,10 @@ func main() {
 		}
 	case recordingRulesDeleteCmd.FullCommand():
 		if err := deleteRecordingRule(ctx, recordingRulesDeleteId, recordingRulesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case debuginfoUploadCmd.FullCommand():
+		if err := uploadDebuginfo(ctx, debuginfoUploadParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:
