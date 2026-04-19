@@ -51,6 +51,11 @@ func generateContributors() (string, error) {
 
 	sb := strings.Builder{}
 
+	// Wrap in <p> so GitHub treats this as an HTML block and does not insert
+	// <br> between lines; omit the height attribute so GitHub does not inject
+	// a display:block aspect-ratio style that breaks the horizontal grid.
+	sb.WriteString("<p>\n")
+
 	limit := 9 * 7
 
 	for _, c := range contributors {
@@ -64,13 +69,15 @@ func generateContributors() (string, error) {
 		sb.WriteString(c.AvatarURL)
 		sb.WriteString(`" title="`)
 		sb.WriteString(c.Login)
-		sb.WriteString(`" width="80" height="80"></a>`)
+		sb.WriteString(`" width="80"></a>`)
 		sb.WriteByte('\n')
 		limit--
 		if limit == 0 {
 			break
 		}
 	}
+
+	sb.WriteString("</p>\n")
 
 	return sb.String(), nil
 }
