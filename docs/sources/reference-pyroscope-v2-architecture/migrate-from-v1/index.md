@@ -31,8 +31,6 @@ Before starting the migration, make sure you have:
 
   You should see `v1: true` and `v2: false`. If you see `v2: true`, your installation is already using v2 or is mid-migration.
 
-- **Persistence enabled** (`pyroscope.persistence.enabled=true`).
-
 - **Object storage configured.** v2 writes directly to object storage — it doesn't use local disk for block storage. If you haven't configured object storage yet, add it to your Helm values. For example, for S3:
 
   ```yaml
@@ -74,8 +72,8 @@ The steps below are specific to your deployment mode. Follow the section that ma
 In this phase, the single-binary process enables the v2 storage modules alongside v1. Writes go to both storage backends simultaneously, and the read path serves data from both v1 and v2.
 
 ```bash
-helm upgrade -n pyroscope pyroscope grafana/pyroscope \
-  --reuse-values \
+helm upgrade -n pyroscope pyroscope grafana/pyroscope --version 2.0.0 \
+  --reset-then-reuse-values \
   --set architecture.storage.v1=true \
   --set architecture.storage.v2=true
 ```
@@ -181,8 +179,8 @@ After this step, data ingested before Phase 1 is no longer queryable through Pyr
 {{< /admonition >}}
 
 ```bash
-helm upgrade -n pyroscope pyroscope grafana/pyroscope \
-  --reuse-values \
+helm upgrade -n pyroscope pyroscope grafana/pyroscope --version 2.0.0 \
+  --reset-then-reuse-values \
   --set architecture.storage.v1=false \
   --set architecture.storage.v2=true
 ```
