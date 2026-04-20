@@ -162,8 +162,8 @@ PYROSCOPE_V2=1 go run ./cmd/pyroscope \
        "go.uber.org/atomic"
 
        // Internal packages
-       "github.com/grafana/pyroscope/pkg/model"
-       "github.com/grafana/pyroscope/pkg/objstore"
+       "github.com/grafana/pyroscope/v2/pkg/model"
+       "github.com/grafana/pyroscope/v2/pkg/objstore"
    )
    ```
 
@@ -206,7 +206,7 @@ PYROSCOPE_V2=1 go run ./cmd/pyroscope \
 All requests must include a tenant ID in the `X-Scope-OrgID` header:
 
 ```go
-import "github.com/grafana/pyroscope/pkg/tenant"
+import "github.com/grafana/pyroscope/v2/pkg/tenant"
 
 // Extract tenant ID from context
 tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
@@ -229,7 +229,7 @@ replicationSet, err := ring.Get(key, op, bufDescs, bufHosts, bufZones)
 Abstract object storage operations:
 
 ```go
-import "github.com/grafana/pyroscope/pkg/objstore"
+import "github.com/grafana/pyroscope/v2/pkg/objstore"
 
 // Use the Bucket interface
 bucket := objstore.NewBucket(cfg)
