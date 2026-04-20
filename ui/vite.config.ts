@@ -39,6 +39,30 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
+        admin: fileURLToPath(new URL('./src/admin/admin.tsx', import.meta.url)),
+      },
+      output: {
+        // Admin bundle is loaded by name from Go-rendered HTML templates
+        // (pkg/operations/v2/querydiagnostics/*.gohtml), so its filename must
+        // be stable. Other entries keep content hashes for cache busting.
+        entryFileNames: (chunk) =>
+          chunk.name === 'admin'
+            ? 'assets/admin.js'
+            : 'assets/[name]-[hash].js',
+        assetFileNames: (asset) => {
+          const names = [asset.name, ...(asset.names ?? [])].filter(
+            (n): n is string => typeof n === 'string',
+          );
+          if (names.some((n) => n === 'admin.css' || n.endsWith('/admin.css'))) {
+            return 'assets/admin.css';
+          }
+          return 'assets/[name]-[hash][extname]';
+        },
+      },
+    },
   },
   server: {
     proxy: {

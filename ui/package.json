@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@grafana/flamegraph": "patch:@grafana/flamegraph@npm%3A12.4.2#~/.yarn/patches/@grafana-flamegraph-npm-12.4.2-6f441dce57.patch",
+    "@xyflow/react": "^12.10.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
