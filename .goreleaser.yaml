@@ -37,10 +37,10 @@ builds:
     ldflags:
       - >
         -extldflags "-static" {{ .Env.GORELEASER_DEBUG_INFO_FLAGS }}
-        -X "github.com/grafana/pyroscope/pkg/util/build.Branch={{ .Branch }}"
-        -X "github.com/grafana/pyroscope/pkg/util/build.Version={{ .Version }}"
-        -X "github.com/grafana/pyroscope/pkg/util/build.Revision={{ .ShortCommit }}"
-        -X "github.com/grafana/pyroscope/pkg/util/build.BuildDate={{ .CommitDate }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.Branch={{ .Branch }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.Version={{ .Version }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.Revision={{ .ShortCommit }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.BuildDate={{ .CommitDate }}"
     id: pyroscope
   - env:
       - CGO_ENABLED=0
@@ -61,10 +61,10 @@ builds:
     ldflags:
       - >
         -extldflags "-static" {{ .Env.GORELEASER_DEBUG_INFO_FLAGS }}
-        -X "github.com/grafana/pyroscope/pkg/util/build.Branch={{ .Branch }}"
-        -X "github.com/grafana/pyroscope/pkg/util/build.Version={{ .Version }}"
-        -X "github.com/grafana/pyroscope/pkg/util/build.Revision={{ .ShortCommit }}"
-        -X "github.com/grafana/pyroscope/pkg/util/build.BuildDate={{ .CommitDate }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.Branch={{ .Branch }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.Version={{ .Version }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.Revision={{ .ShortCommit }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.BuildDate={{ .CommitDate }}"
     id: pyroscope_non_linux
     skip: '{{ if eq .Env.GORELEASER_LINUX_ONLY "true" }}true{{ else }}false{{ end }}'
   - env:
@@ -74,10 +74,10 @@ builds:
     ldflags:
       - >
         -extldflags "-static" {{ .Env.GORELEASER_DEBUG_INFO_FLAGS }}
-        -X "github.com/grafana/pyroscope/pkg/util/build.Branch={{ .Branch }}"
-        -X "github.com/grafana/pyroscope/pkg/util/build.Version={{ .Version }}"
-        -X "github.com/grafana/pyroscope/pkg/util/build.Revision={{ .ShortCommit }}"
-        -X "github.com/grafana/pyroscope/pkg/util/build.BuildDate={{ .CommitDate }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.Branch={{ .Branch }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.Version={{ .Version }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.Revision={{ .ShortCommit }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.BuildDate={{ .CommitDate }}"
     goos:
       - linux
     goarch:
@@ -101,10 +101,10 @@ builds:
     ldflags:
       - >
         -extldflags "-static" {{ .Env.GORELEASER_DEBUG_INFO_FLAGS }}
-        -X "github.com/grafana/pyroscope/pkg/util/build.Branch={{ .Branch }}"
-        -X "github.com/grafana/pyroscope/pkg/util/build.Version={{ .Version }}"
-        -X "github.com/grafana/pyroscope/pkg/util/build.Revision={{ .ShortCommit }}"
-        -X "github.com/grafana/pyroscope/pkg/util/build.BuildDate={{ .CommitDate }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.Branch={{ .Branch }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.Version={{ .Version }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.Revision={{ .ShortCommit }}"
+        -X "github.com/grafana/pyroscope/v2/pkg/util/build.BuildDate={{ .CommitDate }}"
     goos:
       - windows
       - darwin
