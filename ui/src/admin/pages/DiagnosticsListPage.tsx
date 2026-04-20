@@ -71,7 +71,7 @@ export function DiagnosticsListPage() {
         setDiagnostics(diagList);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : 'Failed to load diagnostics'
+          err instanceof Error ? err.message : 'Failed to load diagnostics',
         );
         setDiagnostics([]);
       } finally {
@@ -177,7 +177,7 @@ export function DiagnosticsListPage() {
         }&tenant=${encodeURIComponent(selectedTenant)}`;
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : 'Failed to import diagnostic'
+          err instanceof Error ? err.message : 'Failed to import diagnostic',
         );
       } finally {
         setIsImporting(false);
@@ -187,7 +187,7 @@ export function DiagnosticsListPage() {
         }
       }
     },
-    [selectedTenant]
+    [selectedTenant],
   );
 
   const SortIcon = ({ field }: { field: SortField }) => {

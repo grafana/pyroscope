@@ -18,7 +18,7 @@ export async function fetchTenants(): Promise<string[]> {
 export async function fetchProfileTypes(
   tenantId: string,
   startMs: number,
-  endMs: number
+  endMs: number,
 ): Promise<string[]> {
   const basePath = getQueryFrontendBasePath();
   const response = await fetch(
@@ -30,7 +30,7 @@ export async function fetchProfileTypes(
         'X-Scope-OrgID': tenantId,
       },
       body: JSON.stringify({ start: startMs, end: endMs }),
-    }
+    },
   );
   if (!response.ok) {
     throw new Error(`Failed to fetch profile types: ${response.status}`);
@@ -40,13 +40,13 @@ export async function fetchProfileTypes(
 }
 
 export async function listDiagnostics(
-  tenant: string
+  tenant: string,
 ): Promise<DiagnosticSummary[]> {
   const basePath = getBasePath();
   const response = await fetch(
     `${basePath}/query-diagnostics/api/diagnostics?tenant=${encodeURIComponent(
-      tenant
-    )}`
+      tenant,
+    )}`,
   );
   if (!response.ok) {
     throw new Error(`Failed to list diagnostics: ${response.status}`);
@@ -56,13 +56,13 @@ export async function listDiagnostics(
 
 export async function loadDiagnostic(
   tenant: string,
-  id: string
+  id: string,
 ): Promise<RawDiagnostic> {
   const basePath = getBasePath();
   const response = await fetch(
     `${basePath}/query-diagnostics/api/diagnostics/${encodeURIComponent(
-      id
-    )}?tenant=${encodeURIComponent(tenant)}`
+      id,
+    )}?tenant=${encodeURIComponent(tenant)}`,
   );
   if (!response.ok) {
     throw new Error(`Failed to load diagnostic: ${response.status}`);
@@ -104,7 +104,7 @@ function calculateDefaultStep(startMs: number, endMs: number): number {
 
 function buildRequestBody(
   method: QueryMethod,
-  params: QueryParams
+  params: QueryParams,
 ): Record<string, unknown> {
   const startMs = parseTime(params.startTime);
   const endMs = parseTime(params.endTime);
@@ -260,7 +260,7 @@ export interface ExecuteQueryResult {
 }
 
 export async function executeQuery(
-  params: QueryParams
+  params: QueryParams,
 ): Promise<ExecuteQueryResult> {
   const basePath = getQueryFrontendBasePath();
   const endpoint = `${basePath}/querier.v1.QuerierService/${params.method}`;
@@ -288,13 +288,13 @@ export async function executeQuery(
 
 export async function exportDiagnostic(
   tenant: string,
-  id: string
+  id: string,
 ): Promise<Blob> {
   const basePath = getBasePath();
   const response = await fetch(
     `${basePath}/query-diagnostics/api/export/${encodeURIComponent(
-      id
-    )}?tenant=${encodeURIComponent(tenant)}`
+      id,
+    )}?tenant=${encodeURIComponent(tenant)}`,
   );
   if (!response.ok) {
     const text = await response.text();
@@ -305,7 +305,7 @@ export async function exportDiagnostic(
 
 export async function importDiagnostic(
   tenant: string,
-  file: File
+  file: File,
 ): Promise<{ id: string }> {
   const basePath = getBasePath();
   const formData = new FormData();
@@ -313,12 +313,12 @@ export async function importDiagnostic(
 
   const response = await fetch(
     `${basePath}/query-diagnostics/api/import?tenant=${encodeURIComponent(
-      tenant
+      tenant,
     )}`,
     {
       method: 'POST',
       body: formData,
-    }
+    },
   );
   if (!response.ok) {
     const text = await response.text();

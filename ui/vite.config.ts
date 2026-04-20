@@ -56,7 +56,9 @@ export default defineConfig({
           const names = [asset.name, ...(asset.names ?? [])].filter(
             (n): n is string => typeof n === 'string',
           );
-          if (names.some((n) => n === 'admin.css' || n.endsWith('/admin.css'))) {
+          if (
+            names.some((n) => n === 'admin.css' || n.endsWith('/admin.css'))
+          ) {
             return 'assets/admin.css';
           }
           return 'assets/[name]-[hash][extname]';

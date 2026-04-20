@@ -79,7 +79,7 @@ interface RequestData {
 
 function deserializeRequest(
   method: string,
-  request: unknown
+  request: unknown,
 ): Partial<QueryParams> {
   if (!request) {
     return {};
@@ -246,7 +246,7 @@ export function QueryDiagnosticsPage() {
   const [planJson, setPlanJson] = useState<string | null>(null);
   const [metadataStats, setMetadataStats] = useState<string | null>(null);
   const [executionTree, setExecutionTree] = useState<ExecutionTreeNode | null>(
-    null
+    null,
   );
   const [responseTimeMs, setResponseTimeMs] = useState<number | null>(null);
   const [diagnosticsId, setDiagnosticsId] = useState<string | null>(null);
@@ -271,7 +271,7 @@ export function QueryDiagnosticsPage() {
         // Deserialize request to get form fields
         const requestParams = deserializeRequest(
           diagnostic.method,
-          diagnostic.request
+          diagnostic.request,
         );
 
         const newParams = {
@@ -287,11 +287,11 @@ export function QueryDiagnosticsPage() {
         populateFromDiagnostic(diagnostic, newParams);
       } catch (err) {
         setGlobalError(
-          err instanceof Error ? err.message : 'Failed to load diagnostic'
+          err instanceof Error ? err.message : 'Failed to load diagnostic',
         );
       }
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -306,7 +306,7 @@ export function QueryDiagnosticsPage() {
 
   const populateFromDiagnostic = (
     diagnostic: RawDiagnostic,
-    currentParams: QueryParams
+    currentParams: QueryParams,
   ) => {
     setDiagnosticsId(diagnostic.id);
     setResponseTimeMs(diagnostic.response_time_ms);
@@ -349,7 +349,7 @@ export function QueryDiagnosticsPage() {
       }
     } catch (err) {
       setError(
-        'Query failed: ' + (err instanceof Error ? err.message : String(err))
+        'Query failed: ' + (err instanceof Error ? err.message : String(err)),
       );
     } finally {
       setIsSubmitting(false);

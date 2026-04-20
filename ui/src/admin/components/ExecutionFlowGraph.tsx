@@ -136,12 +136,12 @@ interface LayoutNode {
 
 function buildLayoutTree(
   tree: ExecutionTreeNode,
-  idCounter = { value: 0 }
+  idCounter = { value: 0 },
 ): LayoutNode {
   const nodeId = `node-${idCounter.value++}`;
 
   const children: LayoutNode[] = (tree.children || []).map((child) =>
-    buildLayoutTree(child, idCounter)
+    buildLayoutTree(child, idCounter),
   );
 
   return {
@@ -255,7 +255,7 @@ function flattenLayoutTree(
   node: LayoutNode,
   nodes: ExecutionFlowNode[],
   edges: Edge[],
-  parentId: string | null = null
+  parentId: string | null = null,
 ): void {
   const flowNode: ExecutionFlowNode = {
     id: node.id,
@@ -294,7 +294,7 @@ function formatDurationNs(ns: number): string {
 
 function layoutTree(
   tree: ExecutionTreeNode,
-  responseTimeMs: number | null
+  responseTimeMs: number | null,
 ): { nodes: ExecutionFlowNode[]; edges: Edge[] } {
   const layoutRoot = buildLayoutTree(tree);
 
@@ -350,7 +350,7 @@ function calculateTotalDuration(nodes: ExecutionFlowNode[]): number {
 
 function getNodeAnimationState(
   node: ExecutionFlowNode,
-  currentTime: number
+  currentTime: number,
 ): AnimationState {
   const start = node.data.relativeStart;
   const end = start + node.data.duration;
@@ -585,14 +585,14 @@ export function ExecutionFlowGraph({
   // edges, animation timers) initializes fresh and never needs a reset effect.
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
     () => layoutTree(executionTree, responseTimeMs),
-    [executionTree, responseTimeMs]
+    [executionTree, responseTimeMs],
   );
 
   const [nodes, setNodes, onNodesChange] =
     useNodesState<ExecutionFlowNode>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<ExecutionFlowNode | null>(
-    null
+    null,
   );
 
   const [isPlaying, setIsPlaying] = useState(true); // Auto-play on load
@@ -602,7 +602,7 @@ export function ExecutionFlowGraph({
   const baseNodesRef = useRef<ExecutionFlowNode[]>(initialNodes);
   const totalDuration = useMemo(
     () => calculateTotalDuration(initialNodes),
-    [initialNodes]
+    [initialNodes],
   );
   const currentTimeRef = useRef<number>(0);
   const nodeStatesRef = useRef<Map<string, AnimationState>>(new Map());
@@ -633,7 +633,7 @@ export function ExecutionFlowGraph({
               ...node.data,
               animationState: newStates.get(node.id) || 'pending',
             },
-          }))
+          })),
         );
 
         setEdges((currentEdges) =>
@@ -644,11 +644,11 @@ export function ExecutionFlowGraph({
               animated: targetState === 'active',
               style: getEdgeStyleFromState(targetState),
             };
-          })
+          }),
         );
       }
     },
-    [setNodes, setEdges]
+    [setNodes, setEdges],
   );
 
   useEffect(() => {
@@ -691,7 +691,7 @@ export function ExecutionFlowGraph({
       setCurrentTime(time);
       updateAnimationState(time);
     },
-    [updateAnimationState]
+    [updateAnimationState],
   );
 
   const handleRestart = useCallback(() => {
@@ -706,7 +706,7 @@ export function ExecutionFlowGraph({
     (_event: React.MouseEvent, node: ExecutionFlowNode) => {
       setSelectedNode(node);
     },
-    []
+    [],
   );
 
   const handleClosePanel = useCallback(() => {

@@ -926,15 +926,21 @@
 @keyframes borderRotate {
   0% {
     border-color: var(--dark-accent-yellow);
-    box-shadow: 0 0 8px rgba(210, 153, 34, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow:
+      0 0 8px rgba(210, 153, 34, 0.5),
+      0 2px 8px rgba(0, 0, 0, 0.3);
   }
   50% {
     border-color: var(--dark-accent-cyan);
-    box-shadow: 0 0 12px rgba(57, 197, 207, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow:
+      0 0 12px rgba(57, 197, 207, 0.6),
+      0 2px 8px rgba(0, 0, 0, 0.3);
   }
   100% {
     border-color: var(--dark-accent-yellow);
-    box-shadow: 0 0 8px rgba(210, 153, 34, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow:
+      0 0 8px rgba(210, 153, 34, 0.5),
+      0 2px 8px rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -956,7 +962,8 @@
 }
 
 .execution-flow-node.active {
-  animation: borderRotate 1s ease-in-out infinite,
+  animation:
+    borderRotate 1s ease-in-out infinite,
     pulseGlow 1s ease-in-out infinite;
   border-width: 2px;
 }
@@ -978,7 +985,9 @@
 
 .execution-flow-node.completed {
   opacity: 1;
-  box-shadow: 0 0 4px rgba(63, 185, 80, 0.3), 0 2px 6px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 0 4px rgba(63, 185, 80, 0.3),
+    0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .execution-flow-node.completed.merge {

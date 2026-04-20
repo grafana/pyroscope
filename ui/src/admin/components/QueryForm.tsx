@@ -47,14 +47,14 @@ export function QueryForm({
   const [profileTypes, setProfileTypes] = useState<string[]>([]);
   const [profileTypesLoading, setProfileTypesLoading] = useState(false);
   const [profileTypesError, setProfileTypesError] = useState<string | null>(
-    null
+    null,
   );
 
   const updateParam = useCallback(
     <K extends keyof QueryParams>(key: K, value: QueryParams[K]) => {
       onParamsChange({ ...params, [key]: value });
     },
-    [params, onParamsChange]
+    [params, onParamsChange],
   );
 
   const loadProfileTypes = useCallback(async () => {
@@ -71,7 +71,7 @@ export function QueryForm({
       setProfileTypes(types);
     } catch (err) {
       setProfileTypesError(
-        err instanceof Error ? err.message : 'Failed to load profile types'
+        err instanceof Error ? err.message : 'Failed to load profile types',
       );
       setProfileTypes([]);
     } finally {
@@ -237,10 +237,10 @@ export function QueryForm({
                   {profileTypesLoading
                     ? 'Loading...'
                     : profileTypesError
-                    ? 'Failed to load'
-                    : params.tenantId
-                    ? '-- Select profile type --'
-                    : '-- Select tenant first --'}
+                      ? 'Failed to load'
+                      : params.tenantId
+                        ? '-- Select profile type --'
+                        : '-- Select tenant first --'}
                 </option>
                 {profileTypes.map((pt) => (
                   <option key={pt} value={pt}>
@@ -528,8 +528,8 @@ export function QueryForm({
                       {profileTypesLoading
                         ? 'Loading...'
                         : params.tenantId
-                        ? '-- Select profile type --'
-                        : '-- Select tenant first --'}
+                          ? '-- Select profile type --'
+                          : '-- Select tenant first --'}
                     </option>
                     {profileTypes.map((pt) => (
                       <option key={pt} value={pt}>
@@ -558,8 +558,8 @@ export function QueryForm({
                       {profileTypesLoading
                         ? 'Loading...'
                         : params.tenantId
-                        ? '-- Select profile type --'
-                        : '-- Select tenant first --'}
+                          ? '-- Select profile type --'
+                          : '-- Select tenant first --'}
                     </option>
                     {profileTypes.map((pt) => (
                       <option key={pt} value={pt}>

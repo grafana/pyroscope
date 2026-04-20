@@ -78,7 +78,7 @@ export function formatTime(isoString: string): string {
 }
 
 export function convertQueryPlanToTree(
-  plan: RawQueryPlan
+  plan: RawQueryPlan,
 ): PlanTreeNode | null {
   if (!plan || !plan.root) {
     return null;
@@ -107,7 +107,7 @@ function convertQueryNodeToTree(node: RawQueryNode): PlanTreeNode | null {
       .filter((n): n is PlanTreeNode => n !== null);
     treeNode.totalBlocks = treeNode.children.reduce(
       (sum, child) => sum + child.totalBlocks,
-      0
+      0,
     );
   } else {
     treeNode.blockCount = node.blocks?.length || 0;
@@ -157,7 +157,7 @@ function extractBlocksFromNode(node: RawQueryNode, blocks: BlockMeta[]): void {
 export function buildMetadataStats(
   blocks: BlockMeta[],
   startTime: Date,
-  endTime: Date
+  endTime: Date,
 ): string {
   let result = `Blocks found: ${blocks.length}\n`;
   result += `Time range: ${startTime.toISOString()} to ${endTime.toISOString()}`;
@@ -229,10 +229,10 @@ export function buildMetadataStats(
     if (largestDataset) {
       const dsName = getDatasetName(
         largestDataset.dataset,
-        largestDataset.block
+        largestDataset.block,
       );
       result += `  Largest: ${formatBytes(
-        largestDataset.dataset.size
+        largestDataset.dataset.size,
       )} (${dsName} in ${largestDataset.block.id}, shard ${
         largestDataset.block.shard
       }, L${largestDataset.block.compaction_level ?? 0})\n`;
@@ -240,10 +240,10 @@ export function buildMetadataStats(
     if (smallestDataset) {
       const dsName = getDatasetName(
         smallestDataset.dataset,
-        smallestDataset.block
+        smallestDataset.block,
       );
       result += `  Smallest: ${formatBytes(
-        smallestDataset.dataset.size
+        smallestDataset.dataset.size,
       )} (${dsName} in ${smallestDataset.block.id}, shard ${
         smallestDataset.block.shard
       }, L${smallestDataset.block.compaction_level ?? 0})`;
@@ -255,7 +255,7 @@ export function buildMetadataStats(
 
 function getDatasetName(
   ds: { name: number; size: number },
-  block: BlockMeta
+  block: BlockMeta,
 ): string {
   if (
     ds.name >= 0 &&
@@ -268,7 +268,7 @@ function getDatasetName(
 }
 
 export function convertExecutionNodeToTree(
-  node: RawExecutionNode
+  node: RawExecutionNode,
 ): ExecutionTreeNode | null {
   if (!node) {
     return null;
@@ -305,7 +305,7 @@ function findEarliestStartTime(node: RawExecutionNode): number {
 
 function convertExecutionNodeToTreeWithBase(
   node: RawExecutionNode,
-  queryStartNs: number
+  queryStartNs: number,
 ): ExecutionTreeNode | null {
   if (!node) {
     return null;

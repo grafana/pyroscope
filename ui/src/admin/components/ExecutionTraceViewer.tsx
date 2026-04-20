@@ -54,7 +54,7 @@ export function ExecutionTraceViewer({
       console.error('Failed to export diagnostic:', err);
       alert(
         'Failed to export diagnostic: ' +
-          (err instanceof Error ? err.message : String(err))
+          (err instanceof Error ? err.message : String(err)),
       );
     } finally {
       setIsExporting(false);
