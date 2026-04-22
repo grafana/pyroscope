@@ -525,3 +525,9 @@ func TestWorker_CleanupMaxDurationAtShutdown(t *testing.T) {
 
 	require.Equal(t, 2, int(blocksDeleted.Load()))
 }
+
+func TestEffectiveJobConcurrency(t *testing.T) {
+	require.Equal(t, 1, effectiveJobConcurrency(0))
+	require.Equal(t, 1, effectiveJobConcurrency(-1))
+	require.Equal(t, 3, effectiveJobConcurrency(3))
+}

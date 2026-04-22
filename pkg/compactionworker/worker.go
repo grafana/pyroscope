@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -46,13 +45,20 @@ type Config struct {
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "compaction-worker."
-	f.IntVar(&cfg.JobConcurrency, prefix+"job-concurrency", 0, "Number of concurrent jobs compaction worker will run. Defaults to the number of CPU cores.")
+	f.IntVar(&cfg.JobConcurrency, prefix+"job-concurrency", 1, "Number of concurrent jobs compaction worker will run. Values less than 1 are treated as 1.")
 	f.DurationVar(&cfg.JobPollInterval, prefix+"job-poll-interval", 5*time.Second, "Interval between job requests")
 	f.DurationVar(&cfg.RequestTimeout, prefix+"request-timeout", 5*time.Second, "Job request timeout.")
 	f.DurationVar(&cfg.CleanupMaxDuration, prefix+"cleanup-max-duration", 15*time.Second, "Maximum duration of the cleanup operations.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", os.TempDir(), "Temporary directory for compaction jobs.")
 	cfg.MetricsExporter.RegisterFlags(f)
+}
+
+func effectiveJobConcurrency(configured int) int {
+	if configured < 1 {
+		return 1
+	}
+	return configured
 }
 
 type Worker struct {
@@ -123,10 +129,7 @@ func New(
 		ruler:     ruler,
 		exporter:  exporter,
 	}
-	w.threads = config.JobConcurrency
-	if w.threads < 1 {
-		w.threads = runtime.GOMAXPROCS(-1)
-	}
+	w.threads = effectiveJobConcurrency(config.JobConcurrency)
 	w.queue = make(chan *compactionJob, 2*w.threads)
 	w.jobs = make(map[string]*compactionJob, 2*w.threads)
 	w.capacity.Store(int32(w.threads))

@@ -54,7 +54,7 @@ Usage of ./pyroscope:
   -compaction-worker.cleanup-max-duration duration
     	Maximum duration of the cleanup operations. (default 15s)
   -compaction-worker.job-concurrency int
-    	Number of concurrent jobs compaction worker will run. Defaults to the number of CPU cores.
+    	Number of concurrent jobs compaction worker will run. Values less than 1 are treated as 1.
   -compaction-worker.job-poll-interval duration
     	Interval between job requests (default 5s)
   -compaction-worker.metrics-exporter.enabled
