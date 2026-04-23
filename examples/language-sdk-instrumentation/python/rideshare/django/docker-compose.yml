@@ -31,7 +31,7 @@ services:
     depends_on:
     - db
   db:
-    image: postgres:13.0-alpine
+    image: postgres:16-alpine
     ports:
     - '5432'
     environment:
