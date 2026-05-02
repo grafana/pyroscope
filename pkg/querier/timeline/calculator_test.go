@@ -68,6 +68,9 @@ func Test_CalcPointIntervalWithMinInterval(t *testing.T) {
 		// Sub-second values are clamped to 1s to prevent int64 truncation to 0
 		{name: "500ms min interval clamped to 1s", start: TestDate, end: TestDate.Add(1 * time.Second), minInterval: 500 * time.Millisecond, want: 1},
 		{name: "100ms min interval clamped to 1s", start: TestDate, end: TestDate.Add(1 * time.Hour), minInterval: 100 * time.Millisecond, want: 2},
+
+		// roundInterval must not violate the configured minimum (e.g. 7s rounds down to 5s without this guard)
+		{name: "6s min interval not violated by rounding", start: TestDate, end: TestDate.Add(1500 * 7 * time.Second), minInterval: 6 * time.Second, want: 6},
 	}
 
 	for _, tc := range testCases {

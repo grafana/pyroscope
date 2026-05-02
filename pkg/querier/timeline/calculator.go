@@ -40,7 +40,11 @@ func CalcPointIntervalWithMinInterval(fromMs int64, untilMs int64, minInterval t
 		return minInterval.Seconds()
 	}
 
-	return roundInterval(calculatedIntervalNano).Seconds()
+	rounded := roundInterval(calculatedIntervalNano)
+	if rounded < minInterval {
+		return minInterval.Seconds()
+	}
+	return rounded.Seconds()
 }
 
 //nolint:gocyclo
