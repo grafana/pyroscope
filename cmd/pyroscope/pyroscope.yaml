@@ -1,2 +1,84 @@
+# Pyroscope example configuration file
+#
+# This file documents the most commonly used configuration options.
+# For the full reference see:
+#   https://grafana.com/docs/pyroscope/latest/configure-server/reference-configuration-parameters/
+#
+# All values below are defaults unless otherwise noted.
+
+# ---------------------------------------------------------------------------
+# Server / HTTP
+# ---------------------------------------------------------------------------
 server:
+  # Port on which Pyroscope's HTTP API and UI are served.
   http_listen_port: 4040
+
+  # Bind address for the HTTP server.  0.0.0.0 listens on all interfaces.
+  http_listen_address: 0.0.0.0
+
+  # gRPC port used for internal component communication.
+  grpc_listen_port: 9095
+
+# ---------------------------------------------------------------------------
+# Target
+# ---------------------------------------------------------------------------
+# Which Pyroscope components to run.  The special value "all" starts every
+# component in a single process (default for single-node deployments).
+# For a distributed deployment, run separate processes with targets such as
+# "distributor", "ingester", "query-frontend", "querier", "compactor".
+#
+# target: all
+
+# ---------------------------------------------------------------------------
+# Storage
+# ---------------------------------------------------------------------------
+storage:
+  # Local filesystem path where Pyroscope stores its data.
+  # Ignored when an object store (S3, GCS, Azure, …) is configured.
+  path: .data/pyroscope
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+# Log verbosity.  Allowed values: debug | info | warn | error
+#
+# log_level: info
+
+# ---------------------------------------------------------------------------
+# Multi-tenancy
+# ---------------------------------------------------------------------------
+# Set to true to require every request to carry a tenant identifier in the
+# X-Scope-OrgID header.  Set to false (default) for a single implicit
+# tenant "anonymous".
+#
+# multitenancy_enabled: false
+
+# ---------------------------------------------------------------------------
+# Memberlist (distributed / HA deployments)
+# ---------------------------------------------------------------------------
+# For a cluster, list seed nodes here.  Not required for single-node setups.
+#
+# memberlist:
+#   join_members:
+#     - pyroscope-0.pyroscope:7946
+#     - pyroscope-1.pyroscope:7946
+
+# ---------------------------------------------------------------------------
+# Limits (per-tenant defaults)
+# ---------------------------------------------------------------------------
+# limits:
+#   # Maximum active series per tenant.
+#   max_global_series_per_tenant: 5000000
+#
+#   # Profile retention window.
+#   compaction_window: 168h  # 7 days
+
+# ---------------------------------------------------------------------------
+# Self-profiling
+# ---------------------------------------------------------------------------
+# Pyroscope can profile itself.  Useful for troubleshooting.
+#
+# self_profiling:
+#   disable_push: false
+#   mutex_profile_fraction: 5
+#   block_profile_rate: 5
