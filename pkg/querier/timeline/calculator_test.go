@@ -64,6 +64,10 @@ func Test_CalcPointIntervalWithMinInterval(t *testing.T) {
 		{name: "15s min interval - 1 second", start: TestDate, end: TestDate.Add(1 * time.Second), minInterval: 15 * time.Second, want: 15},
 		{name: "15s min interval - 1 hour", start: TestDate, end: TestDate.Add(1 * time.Hour), minInterval: 15 * time.Second, want: 15},
 		{name: "15s min interval - 7 days", start: TestDate, end: TestDate.Add(7 * 24 * time.Hour), minInterval: 15 * time.Second, want: 300},
+
+		// Sub-second values are clamped to 1s to prevent int64 truncation to 0
+		{name: "500ms min interval clamped to 1s", start: TestDate, end: TestDate.Add(1 * time.Second), minInterval: 500 * time.Millisecond, want: 1},
+		{name: "100ms min interval clamped to 1s", start: TestDate, end: TestDate.Add(1 * time.Hour), minInterval: 100 * time.Millisecond, want: 2},
 	}
 
 	for _, tc := range testCases {

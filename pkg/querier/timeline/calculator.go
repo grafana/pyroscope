@@ -27,6 +27,9 @@ func CalcPointInterval(fromMs int64, untilMs int64) float64 {
 // * inputs are in ms
 // * output is in seconds
 func CalcPointIntervalWithMinInterval(fromMs int64, untilMs int64, minInterval time.Duration) float64 {
+	if minInterval < time.Second {
+		minInterval = time.Second
+	}
 	resolution := DefaultRes
 
 	fromNano := fromMs * 1000000
