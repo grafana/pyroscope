@@ -185,10 +185,12 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(
 	in *ingestion.IngestInput,
 	pprofable ingestion.ParseableToPprof,
 ) error {
+	parseStart := time.Now()
 	plainReq, err := pprofable.ParseToPprof(ctx, in.Metadata, p.limits)
 	if err != nil {
 		return fmt.Errorf("parsing IngestInput-pprof failed %w", err)
 	}
+	plainReq.ParseDuration = time.Since(parseStart)
 	if len(plainReq.Series) == 0 {
 		tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
 		_ = level.Debug(p.log).Log("msg", "empty profile",

@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/annotation"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/ingestlimits"
@@ -21,6 +23,7 @@ type PushRequest struct {
 	ReceivedCompressedProfileSize   int
 	ReceivedDecompressedProfileSize int
 	RawProfileType                  RawProfileType
+	ParseDuration                   time.Duration
 }
 
 // todo better name
