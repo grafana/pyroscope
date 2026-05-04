@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -102,49 +101,8 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 		tc.pushProfiles(ctx, t)
 	})
 
-	// ingest some more data to compact the rest of the data we care about
-	// TODO: This shouldn't be necessary see https://github.com/grafana/pyroscope/issues/4193.
-	pushCtx, pushCancel := context.WithCancel(ctx)
-	g, gctx := errgroup.WithContext(pushCtx)
-	g.SetLimit(4)
-	for i := 0; i < 200; i++ {
-		g.Go(func() error {
-			p, err := testhelper.NewProfileBuilder(tc.now.UnixNano()).
-				CPUProfile().
-				ForStacktraceString("foo", "bar", "baz").AddSamples(1).
-				MarshalVT()
-			require.NoError(t, err)
-
-			pctx := tenant.InjectTenantID(gctx, fmt.Sprintf("dummy-tenant-%d", i))
-			_, err = tc.pusher.Push(pctx, connect.NewRequest(&pushv1.PushRequest{
-				Series: []*pushv1.RawProfileSeries{{
-					Labels: []*typesv1.LabelPair{
-						{Name: "service_name", Value: fmt.Sprintf("dummy-service/%d", i)},
-						{Name: "__name__", Value: "process_cpu"},
-					},
-					Samples: []*pushv1.RawSample{{RawProfile: p}},
-				}},
-			}))
-			return err
-		})
-	}
-	defer func() {
-		pushCancel()
-		err := g.Wait()
-		if !errors.Is(err, context.Canceled) {
-			require.NoError(t, g.Wait())
-		}
-	}()
-
-	// await compaction so tenant wide index is available
-	require.Eventually(t, func() bool {
-		jobs, err := c.CompactionJobsFinished(ctx)
-		return err == nil && jobs > 0
-	}, time.Minute, time.Second)
-	t.Log("Compaction worker finished")
-
-	// await until all tenants have all expected labelValues available
-	// TODO: This shouldn't be necessary see https://github.com/grafana/pyroscope/issues/4193.
+	// Segments contain a per-tenant dataset index, so queries that do not
+	// match a service_name can find data without waiting for compaction.
 	require.Eventually(t, func() bool {
 		for tenantID := range tc.perTenantData {
 			ctx := tenant.InjectTenantID(ctx, tenantID)
@@ -250,7 +208,7 @@ func (tc *testCtx) pushProfiles(ctx context.Context, t *testing.T) {
 			var i = i
 			g.Go(func() error {
 				serviceName := fmt.Sprintf("%s/test-service-%d", tenantID, i)
-				builder := testhelper.NewProfileBuilder(int64(1)).
+				builder := testhelper.NewProfileBuilder(tc.now.UnixNano()).
 					CPUProfile().
 					WithLabels(
 						"job", "test",
@@ -258,7 +216,6 @@ func (tc *testCtx) pushProfiles(ctx context.Context, t *testing.T) {
 					)
 				builder.ForStacktraceString("foo", "bar", "baz").AddSamples(1)
 				for j := 0; j < params.samples; j++ {
-					builder.TimeNanos = tc.now.Add(time.Duration(j) * 5 * time.Second).UnixNano()
 					if (i+j)%3 == 0 {
 						builder.ForStacktraceString("foo", "bar", "boz").AddSamples(3)
 					}

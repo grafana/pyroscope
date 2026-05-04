@@ -308,10 +308,15 @@ func TestDatasetMinMaxTime(t *testing.T) {
 
 	block := <-metas
 
+	// Datasets in the block: real datasets are sorted by tenant+service; a
+	// per-tenant dataset index pseudo-dataset is appended after the last
+	// real dataset of each tenant.
 	expected := [][2]int{
-		{10, 1337},
-		{239, 420},
-		{420, 421},
+		{10, 1337},   // ta/svc1
+		{10, 1337},   // ta dataset index
+		{239, 420},   // tb/svc1
+		{420, 421},   // tb/svc2
+		{239, 421},   // tb dataset index
 	}
 
 	require.Equal(t, len(expected), len(block.Datasets))
@@ -552,6 +557,10 @@ func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClien
 		require.NoError(sw.t, err)
 
 		for _, ds := range meta.Datasets {
+			if block.DatasetFormat(ds.Format) != block.DatasetFormat0 {
+				// Skip pseudo-datasets such as the per-tenant dataset index.
+				continue
+			}
 			tenant := meta.StringTable[ds.Tenant]
 			profiles := blob[ds.TableOfContents[0]:ds.TableOfContents[1]]
 			tsdb := blob[ds.TableOfContents[1]:ds.TableOfContents[2]]
@@ -570,6 +579,9 @@ func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClien
 	res := make(tenantClients)
 	for _, meta := range blocks {
 		for _, ds := range meta.Datasets {
+			if block.DatasetFormat(ds.Format) != block.DatasetFormat0 {
+				continue
+			}
 			tenant := meta.StringTable[ds.Tenant]
 			if _, ok := res[tenant]; !ok {
 				// todo consider not using BlockQuerier for tests

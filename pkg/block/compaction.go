@@ -177,7 +177,7 @@ type CompactionPlan struct {
 	datasets     []*datasetCompaction
 	meta         *metastorev1.BlockMeta
 	strings      *metadata.StringTable
-	datasetIndex *datasetIndexWriter
+	datasetIndex *DatasetIndexWriter
 }
 
 func newBlockCompaction(
@@ -190,7 +190,7 @@ func newBlockCompaction(
 		tenant:       tenant,
 		datasetMap:   make(map[int32]*datasetCompaction),
 		strings:      metadata.NewStringTable(),
-		datasetIndex: newDatasetIndexWriter(),
+		datasetIndex: NewDatasetIndexWriter(),
 	}
 	p.path = BuildObjectPath(tenant, shard, compactionLevel, id)
 	p.meta = &metastorev1.BlockMeta{
@@ -219,7 +219,7 @@ func (b *CompactionPlan) Compact(
 
 	// Datasets are compacted in a strict order.
 	for i, s := range b.datasets {
-		b.datasetIndex.setIndex(uint32(i))
+		b.datasetIndex.SetIndex(uint32(i))
 		s.registerSampleObserver(observer)
 		if err = s.compact(ctx, w); err != nil {
 			return nil, fmt.Errorf("compacting block: %w", err)
@@ -246,7 +246,7 @@ func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
 		return err
 	}
 	off := w.Offset()
-	n, err := io.Copy(w, bytes.NewReader(b.datasetIndex.buf))
+	n, err := io.Copy(w, bytes.NewReader(b.datasetIndex.Buf()))
 	if err != nil {
 		return err
 	}
@@ -438,7 +438,7 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 		observe := m.observer.Evaluate(r)
 		defer observe()
 	}
-	m.parent.datasetIndex.writeRow(r)
+	m.parent.datasetIndex.WriteRow(r)
 	m.indexRewriter.rewriteRow(r)
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
@@ -609,75 +609,3 @@ func (s *symbolsRewriter) loadStacktraceIDs(values []parquet.Value) {
 }
 
 func (s *symbolsRewriter) Flush() error { return s.w.Flush() }
-
-// datasetIndexWriter is identical with indexRewriter,
-// except it writes dataset ID instead of series ID.
-type datasetIndexWriter struct {
-	series   []seriesLabels
-	chunks   []index.ChunkMeta
-	previous model.Fingerprint
-	symbols  map[string]struct{}
-	idx      uint32
-	buf      []byte
-}
-
-func newDatasetIndexWriter() *datasetIndexWriter {
-	return &datasetIndexWriter{
-		symbols: make(map[string]struct{}),
-	}
-}
-
-func (rw *datasetIndexWriter) setIndex(i uint32) { rw.idx = i }
-
-func (rw *datasetIndexWriter) writeRow(e ProfileEntry) {
-	if rw.previous != e.Fingerprint || len(rw.series) == 0 {
-		series := e.Labels.Clone()
-		for _, l := range series {
-			rw.symbols[l.Name] = struct{}{}
-			rw.symbols[l.Value] = struct{}{}
-		}
-		rw.series = append(rw.series, seriesLabels{
-			labels:      series,
-			fingerprint: e.Fingerprint,
-		})
-		rw.chunks = append(rw.chunks, index.ChunkMeta{
-			SeriesIndex: rw.idx,
-		})
-		rw.previous = e.Fingerprint
-	}
-}
-
-func (rw *datasetIndexWriter) Flush() error {
-	// TODO(kolesnikovae):
-	//  * Estimate size.
-	//  * Use buffer pool.
-	w, err := memindex.NewWriter(context.Background(), 1<<20)
-	if err != nil {
-		return err
-	}
-
-	// Sort symbols
-	symbols := make([]string, 0, len(rw.symbols))
-	for s := range rw.symbols {
-		symbols = append(symbols, s)
-	}
-	sort.Strings(symbols)
-
-	// Add symbols
-	for _, symbol := range symbols {
-		if err = w.AddSymbol(symbol); err != nil {
-			return err
-		}
-	}
-
-	// Add Series
-	for i, series := range rw.series {
-		if err = w.AddSeries(storage.SeriesRef(i), series.labels, series.fingerprint, rw.chunks[i]); err != nil {
-			return err
-		}
-	}
-
-	err = w.Close()
-	rw.buf = w.ReleaseIndex()
-	return err
-}

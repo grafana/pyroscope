@@ -24,6 +24,12 @@ type FlushedHead struct {
 	Index        []byte
 	Profiles     []byte
 	Symbols      []byte
+	// Series contains the series of the flushed head, sorted in the same
+	// order as they appear in the TSDB Index. The segment writer uses it
+	// to build the per-tenant dataset index without having to re-read the
+	// index. It only contains label sets and fingerprints; chunk metadata
+	// is omitted as the dataset index does not need it.
+	Series       []FlushedSeries
 	Unsymbolized bool
 	Meta         struct {
 		ProfileTypeNames []string
@@ -33,6 +39,13 @@ type FlushedHead struct {
 		NumProfiles      uint64
 		NumSeries        uint64
 	}
+}
+
+// FlushedSeries is a single series labels with its fingerprint, captured
+// at the time of flushing the head.
+type FlushedSeries struct {
+	Labels      phlaremodel.Labels
+	Fingerprint model.Fingerprint
 }
 
 type Head struct {
@@ -173,7 +186,7 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		return nil, fmt.Errorf("failed to get profile type names: %w", err)
 	}
 
-	if res.Index, profiles, err = h.profiles.Flush(ctx); err != nil {
+	if res.Index, profiles, res.Series, err = h.profiles.Flush(ctx); err != nil {
 		return nil, fmt.Errorf("failed to flush profiles: %w", err)
 	}
 	res.Meta.NumProfiles = uint64(len(profiles))

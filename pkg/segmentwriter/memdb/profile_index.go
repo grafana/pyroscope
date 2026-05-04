@@ -91,16 +91,14 @@ func (pi *profilesIndex) Add(ps *schemav1.InMemoryProfile, lbs phlaremodel.Label
 	pi.metrics.profilesCreated.WithLabelValues(profileName).Inc()
 }
 
-func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemoryProfile, error) {
+func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemoryProfile, []FlushedSeries, error) {
 	writer, err := memindex.NewWriter(ctx, memindex.SegmentsIndexWriterBufSize)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	pi.mutex.RLock()
 	defer pi.mutex.RUnlock()
 
-	// TODO(kolesnikovae): We should reuse these series
-	//   when building dataset index.
 	pfs := make([]*profileSeries, 0, len(pi.profilesPerFP))
 	profilesSize := 0
 
@@ -132,11 +130,12 @@ func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemory
 	// Add symbols
 	for _, symbol := range symbols {
 		if err := writer.AddSymbol(symbol); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
 	profiles := make([]schemav1.InMemoryProfile, 0, profilesSize)
+	series := make([]FlushedSeries, 0, len(pfs))
 
 	// Add series
 	for i, s := range pfs {
@@ -146,8 +145,12 @@ func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemory
 			// We store the series Index from the head with the series to use when retrieving data from parquet.
 			SeriesIndex: uint32(i),
 		}); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
+		series = append(series, FlushedSeries{
+			Labels:      s.lbs,
+			Fingerprint: s.fp,
+		})
 		// store series index
 		for j := range s.profiles {
 			s.profiles[j].SeriesIndex = uint32(i)
@@ -160,13 +163,13 @@ func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemory
 
 	err = writer.Close()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	//todo maybe return the bufferWriter to avoid copy, it is copied again anyway
 	tsdbIndex := writer.ReleaseIndex()
 
-	return tsdbIndex, profiles, err
+	return tsdbIndex, profiles, series, err
 }
 
 func (pi *profilesIndex) profileTypeNames() ([]string, error) {
