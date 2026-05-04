@@ -2,7 +2,7 @@ FROM node:25
 
 WORKDIR /app
 
-COPY package.json yarn.lock .npmrc .
+COPY package.json yarn.lock .npmrc .yarnrc .
 RUN yarn install
 
 COPY index.js .
