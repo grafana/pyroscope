@@ -1,0 +1,5 @@
+immediately boost resolution for adaptive profiles for 8hours in the problematic cell
+immediately disable adaptive logging in the problematic cell
+prepare a list of usefull log lines to query
+prepare a list of usefull metrics to check
+
