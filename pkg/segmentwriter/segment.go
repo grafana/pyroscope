@@ -296,9 +296,7 @@ func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta
 		}
 		ds := concatSegmentHead(f, w, stringTable)
 		dsIndex.SetIndex(uint32(len(meta.Datasets)))
-		for _, series := range f.flushed.Series {
-			dsIndex.AddSeries(series.Labels, series.Fingerprint)
-		}
+		f.flushed.WriteDatasetIndex(dsIndex)
 		meta.MinTime = min(meta.MinTime, ds.MinTime)
 		meta.MaxTime = max(meta.MaxTime, ds.MaxTime)
 		meta.Datasets = append(meta.Datasets, ds)
