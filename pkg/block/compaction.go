@@ -242,11 +242,12 @@ func (b *CompactionPlan) Compact(
 }
 
 func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
-	if err := b.datasetIndex.Flush(); err != nil {
-		return err
+	defer b.datasetIndex.Close()
+	if b.datasetIndex.Empty() {
+		return nil
 	}
 	off := w.Offset()
-	n, err := io.Copy(w, bytes.NewReader(b.datasetIndex.Buf()))
+	n, err := b.datasetIndex.WriteTo(w)
 	if err != nil {
 		return err
 	}

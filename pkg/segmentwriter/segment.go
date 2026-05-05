@@ -346,15 +346,12 @@ func writeTenantDatasetIndex(
 	firstDatasetIdx int,
 	dsIndex *block.DatasetIndexWriter,
 ) error {
+	defer dsIndex.Close()
 	if dsIndex.Empty() {
 		return nil
 	}
-	if err := dsIndex.Flush(); err != nil {
-		return fmt.Errorf("failed to flush dataset index: %w", err)
-	}
-	buf := dsIndex.Buf()
 	off := uint64(w.offset)
-	n, err := w.Write(buf)
+	n, err := dsIndex.WriteTo(w)
 	if err != nil {
 		return fmt.Errorf("failed to write dataset index: %w", err)
 	}
