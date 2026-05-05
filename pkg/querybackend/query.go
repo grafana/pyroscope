@@ -101,8 +101,8 @@ func (b *blockContext) execute() error {
 	span, b.ctx = tracing.StartSpanFromContext(b.ctx, "blockContext.execute")
 	defer span.Finish()
 
-	if idx := b.datasetIndex(); idx != nil {
-		if err := b.lookupDatasets(idx); err != nil {
+	if idxs := b.datasetIndices(); len(idxs) > 0 {
+		if err := b.lookupDatasets(idxs); err != nil {
 			if b.obj.IsNotExists(err) {
 				level.Warn(b.log).Log("msg", "object not found", "err", err)
 				return nil
@@ -142,21 +142,43 @@ func (b *blockContext) execute() error {
 	return nil
 }
 
-// datasetIndex returns the dataset index if it is present in
-// the metadata and the query needs to lookup datasets.
-func (b *blockContext) datasetIndex() *metastorev1.Dataset {
+// datasetIndices returns the Format1 (dataset_tsdb_index) pseudo-datasets
+// in the block metadata that need to be resolved into concrete datasets
+// before the query can be executed. It returns nil when no resolution
+// is needed: either the metadata already lists explicit (Format0)
+// datasets, or the query is index-only and can be served directly from
+// the dataset_index TSDB section.
+//
+// Multiple Format1 datasets may be present in a single block when a
+// segment writer covers more than one tenant: it emits a per-tenant
+// dataset_index pseudo-dataset, and the metastore returns all matching
+// pseudo-datasets to the query backend. In that case all of their
+// indices must be looked up so the union of resolved datasets is
+// considered.
+func (b *blockContext) datasetIndices() []*metastorev1.Dataset {
 	md := b.obj.Metadata()
-	if len(md.Datasets) != 1 {
-		// The blocks metadata explicitly lists datasets to be queried.
+	var indices []*metastorev1.Dataset
+	for _, ds := range md.Datasets {
+		if block.DatasetFormat(ds.Format) == block.DatasetFormat1 {
+			indices = append(indices, ds)
+		}
+	}
+	if len(indices) == 0 {
+		// The block's metadata explicitly lists datasets to be queried.
 		return nil
 	}
-	ds := md.Datasets[0]
-	if block.DatasetFormat(ds.Format) != block.DatasetFormat1 {
+	if len(indices) != len(md.Datasets) {
+		// The metastore is expected to return a uniform set of datasets
+		// (either all Format0 explicit datasets matched by service_name,
+		// or all Format1 pseudo-datasets matched by __tenant_dataset__).
+		// A mixed set is not expected; bail on the lookup so the query
+		// runs against the explicitly-listed datasets only.
 		return nil
 	}
 
-	// If the query only requires TSDB data, we can serve
-	// it using the dataset index.
+	// If the query only requires TSDB data, we can serve it directly
+	// from each Format1 dataset's TSDB section (which is aliased to the
+	// dataset_index) without resolving real datasets.
 	s := (&queryContext{blockContext: b}).sections()
 	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
 	if indexOnly {
@@ -164,17 +186,23 @@ func (b *blockContext) datasetIndex() *metastorev1.Dataset {
 		return nil
 	}
 
-	return ds
+	return indices
 }
 
-func (b *blockContext) lookupDatasets(ds *metastorev1.Dataset) error {
+func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
 	oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query", true))
+	oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Int("dataset_index_count", len(indices)))
 
 	// As query execution has not started yet,
 	// we can safely open datasets.
-	idx := block.NewDataset(ds, b.obj)
+	datasets := make([]*block.Dataset, len(indices))
+	for i, ds := range indices {
+		datasets[i] = block.NewDataset(ds, b.obj)
+	}
 	defer func() {
-		_ = idx.Close()
+		for _, d := range datasets {
+			_ = d.Close()
+		}
 	}()
 
 	g, ctx := errgroup.WithContext(b.ctx)
@@ -183,16 +211,29 @@ func (b *blockContext) lookupDatasets(ds *metastorev1.Dataset) error {
 		md, err = b.obj.ReadMetadata(ctx)
 		return err
 	})
-	g.Go(func() error {
-		return idx.Open(ctx, block.SectionDatasetIndex)
-	})
+	for _, d := range datasets {
+		g.Go(func() error {
+			return d.Open(ctx, block.SectionDatasetIndex)
+		})
+	}
 	if err := g.Wait(); err != nil {
 		return err
 	}
 
-	datasetIDs, err := getSeriesIDs(idx.Index(), b.req.matchers...)
-	if err != nil {
-		return err
+	// Each per-tenant dataset_index encodes its tenant's real datasets
+	// using their global position within the block as the chunk
+	// SeriesIndex (see segment writer and compaction). Therefore IDs
+	// from different per-tenant indices are disjoint and a simple union
+	// across tenants is correct.
+	datasetIDs := make(map[uint32]struct{})
+	for _, d := range datasets {
+		ids, err := getSeriesIDs(d.Index(), b.req.matchers...)
+		if err != nil {
+			return err
+		}
+		for id := range ids {
+			datasetIDs[id] = struct{}{}
+		}
 	}
 
 	var j int

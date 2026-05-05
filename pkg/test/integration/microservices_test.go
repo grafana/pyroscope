@@ -126,6 +126,68 @@ func TestMicroServicesIntegrationV2(t *testing.T) {
 
 }
 
+// TestMicroServicesIntegrationV2_Federated boots a V2 cluster with a
+// single segment-writer and no compaction-worker, ingests profiles for
+// multiple tenants and runs federated (multi-tenant) queries against
+// them. The single-writer / no-compaction setup deterministically
+// produces L0 blocks containing one Format1 dataset_index pseudo-dataset
+// per tenant, which is what the multi-Format1 resolution path in the
+// query backend handles.
+func TestMicroServicesIntegrationV2_Federated(t *testing.T) {
+	c := cluster.NewMicroServiceCluster(cluster.WithV2Federated())
+	ctx := context.Background()
+
+	require.NoError(t, c.Prepare(ctx))
+	for _, comp := range c.Components {
+		t.Log(comp.String())
+	}
+
+	require.NoError(t, c.Start(ctx))
+	t.Log("Cluster ready")
+	defer func() {
+		waitStopped := c.Stop()
+		require.NoError(t, waitStopped(ctx))
+	}()
+
+	tc := newTestCtx(c)
+	// Use a small fixed dataset for this test: federated correctness does
+	// not depend on dataset size, and this keeps the test fast.
+	tc.perTenantData = map[string]tenantParams{
+		"tenant-a": {serviceCount: 3, samples: 2},
+		"tenant-b": {serviceCount: 2, samples: 2},
+	}
+
+	t.Run("PushProfiles", func(t *testing.T) {
+		tc.pushProfiles(ctx, t)
+	})
+
+	// Wait for all per-tenant services to be visible via the dataset
+	// index. Without a compaction-worker the L0 segments are the only
+	// queryable blocks, so a positive answer here also confirms that
+	// multi-tenant L0 blocks have been flushed and indexed.
+	require.Eventually(t, func() bool {
+		for tenantID := range tc.perTenantData {
+			ctx := tenant.InjectTenantID(ctx, tenantID)
+			resp, err := tc.querier.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
+				Start: tc.now.Add(-time.Hour).UnixMilli(),
+				End:   tc.now.Add(time.Hour).UnixMilli(),
+				Name:  "service_name",
+			}))
+			if err != nil {
+				return false
+			}
+			if len(resp.Msg.Names) != tc.perTenantData[tenantID].serviceCount {
+				return false
+			}
+		}
+		return true
+	}, time.Minute, time.Second)
+
+	t.Run("QueryFederatedMultiTenant", func(t *testing.T) {
+		tc.runFederatedQueryTest(ctx, t)
+	})
+}
+
 // TestMetastoreAutoJoin tests that a new metastore node can join an existing cluster
 // using the auto-join feature without requiring bootstrap configuration.
 func TestMetastoreAutoJoin(t *testing.T) {
@@ -474,4 +536,79 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 			})
 		}
 	})
+
+}
+
+// runFederatedQueryTest exercises queries that span multiple tenants by
+// passing a pipe-separated tenant ID in X-Scope-OrgID. It is intended to
+// be driven against a cluster that produces multi-tenant L0 blocks (see
+// cluster.WithV2Federated), so that the query backend's multi-Format1
+// dataset_index resolution path is exercised.
+func (tc *testCtx) runFederatedQueryTest(ctx context.Context, t *testing.T) {
+	tenants := make([]string, 0, len(tc.perTenantData))
+	expectedServices := 0
+	expectedServiceNames := make([]string, 0)
+	// expectedTotalSampleValue mirrors the per-tenant ingest pattern in
+	// pushProfiles: each service emits one foo/bar/baz sample with
+	// value=1, plus a foo/bar/boz sample with value=3 for every (i,j)
+	// where (i+j)%3 == 0. The merged federated profile sums all those
+	// values across every service of every tenant.
+	expectedTotalSampleValue := int64(0)
+	for tenantID, params := range tc.perTenantData {
+		tenants = append(tenants, tenantID)
+		expectedServices += params.serviceCount
+		for i := 0; i < params.serviceCount; i++ {
+			expectedServiceNames = append(expectedServiceNames, fmt.Sprintf("%s/test-service-%d", tenantID, i))
+			expectedTotalSampleValue++ // foo/bar/baz, value=1
+			for j := 0; j < params.samples; j++ {
+				if (i+j)%3 == 0 {
+					expectedTotalSampleValue += 3 // foo/bar/boz, value=3
+				}
+			}
+		}
+	}
+	sort.Strings(tenants)
+	sort.Strings(expectedServiceNames)
+	orgID := strings.Join(tenants, "|")
+	// The connect tenant interceptor on the client side calls the
+	// single-tenant resolver, which rejects multi-tenant IDs, so
+	// we set the X-Scope-OrgID header explicitly to bypass it.
+
+	// LabelValues without a service_name matcher takes the
+	// dataset_index lookup path (index-only branch). Asserting the
+	// exact set of service names confirms that every tenant's data is
+	// reachable through the federated query, not just one of them.
+	lvReq := connect.NewRequest(&typesv1.LabelValuesRequest{
+		Start: tc.now.Add(-time.Hour).UnixMilli(),
+		End:   tc.now.Add(time.Hour).UnixMilli(),
+		Name:  "service_name",
+	})
+	lvReq.Header().Set("X-Scope-OrgID", orgID)
+	lv, err := tc.querier.LabelValues(ctx, lvReq)
+	require.NoError(t, err)
+	assert.Equal(t, expectedServiceNames, lv.Msg.Names, "federated label values must include every tenant's services")
+
+	// SelectMergeProfile without a service_name matcher needs
+	// SectionProfiles+SectionSymbols, exercising the resolve path
+	// where each per-tenant dataset_index is opened. Summing the
+	// merged sample values lets us check that data from every
+	// tenant ended up in the merged profile.
+	smpReq := connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+		ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+		LabelSelector: "{}",
+		Start:         tc.now.Add(-time.Hour).UnixMilli(),
+		End:           tc.now.Add(time.Hour).UnixMilli(),
+	})
+	smpReq.Header().Set("X-Scope-OrgID", orgID)
+	resp, err := tc.querier.SelectMergeProfile(ctx, smpReq)
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg)
+	assert.NotEmpty(t, resp.Msg.Sample, "federated profile must contain samples")
+	var totalSampleValue int64
+	for _, s := range resp.Msg.Sample {
+		for _, v := range s.Value {
+			totalSampleValue += v
+		}
+	}
+	assert.Equal(t, expectedTotalSampleValue, totalSampleValue, "federated profile must merge sample values from every tenant")
 }
