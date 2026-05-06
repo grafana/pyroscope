@@ -31,11 +31,6 @@ type profilesIndex struct {
 	totalSeries   *atomic.Int64
 }
 
-type flushedSeries struct {
-	Labels      phlaremodel.Labels
-	Fingerprint model.Fingerprint
-}
-
 func newProfileIndex(metrics *HeadMetrics) *profilesIndex {
 	ix, err := tsdb.NewBitPrefixWithShards(32)
 	if err != nil {
@@ -96,7 +91,7 @@ func (pi *profilesIndex) Add(ps *schemav1.InMemoryProfile, lbs phlaremodel.Label
 	pi.metrics.profilesCreated.WithLabelValues(profileName).Inc()
 }
 
-func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemoryProfile, []flushedSeries, error) {
+func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemoryProfile, []*profileSeries, error) {
 	writer, err := memindex.NewWriter(ctx, memindex.SegmentsIndexWriterBufSize)
 	if err != nil {
 		return nil, nil, nil, err
@@ -139,7 +134,6 @@ func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemory
 	}
 
 	profiles := make([]schemav1.InMemoryProfile, 0, profilesSize)
-	series := make([]flushedSeries, 0, len(pfs))
 
 	// Add series
 	for i, s := range pfs {
@@ -151,10 +145,6 @@ func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemory
 		}); err != nil {
 			return nil, nil, nil, err
 		}
-		series = append(series, flushedSeries{
-			Labels:      s.lbs,
-			Fingerprint: s.fp,
-		})
 		// store series index
 		for j := range s.profiles {
 			s.profiles[j].SeriesIndex = uint32(i)
@@ -173,7 +163,7 @@ func (pi *profilesIndex) Flush(ctx context.Context) ([]byte, []schemav1.InMemory
 	//todo maybe return the bufferWriter to avoid copy, it is copied again anyway
 	tsdbIndex := writer.ReleaseIndex()
 
-	return tsdbIndex, profiles, series, err
+	return tsdbIndex, profiles, pfs, err
 }
 
 func (pi *profilesIndex) profileTypeNames() ([]string, error) {

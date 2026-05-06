@@ -28,18 +28,16 @@ const datasetIndexEncBufferSize = 1 << 14
 // datasets within a block match a given label selector without opening
 // each dataset's TSDB index individually.
 //
-// It is used both at compaction time (where series labels are discovered
-// row-by-row via WriteRow) and at segment flush time (where series are
-// already known and added in bulk via AddSeries).
+// Series are added one-at-a-time via AddSeries with an explicit dataset
+// index. Callers that observe series row-by-row (e.g. compaction) are
+// expected to deduplicate by fingerprint before calling AddSeries.
 //
 // Writers are pooled. Obtain one with NewDatasetIndexWriter and return
 // it with Close once WriteTo has been called.
 type DatasetIndexWriter struct {
-	series   []seriesLabels
-	chunks   []index.ChunkMeta
-	previous model.Fingerprint
-	symbols  map[string]struct{}
-	idx      uint32
+	series  []seriesLabels
+	chunks  []index.ChunkMeta
+	symbols map[string]struct{}
 }
 
 var datasetIndexWriterPool = sync.Pool{
@@ -66,32 +64,13 @@ func (rw *DatasetIndexWriter) reset() {
 	rw.series = rw.series[:0]
 	rw.chunks = rw.chunks[:0]
 	clear(rw.symbols)
-	rw.previous = 0
-	rw.idx = 0
 }
 
-// SetIndex sets the dataset index assigned to subsequent series added
-// via WriteRow or AddSeries.
-func (rw *DatasetIndexWriter) SetIndex(i uint32) { rw.idx = i }
-
-// WriteRow ingests a profile row, deduplicating series by fingerprint.
-// It is used by compaction, which iterates rows in series order.
-func (rw *DatasetIndexWriter) WriteRow(e ProfileEntry) {
-	if rw.previous != e.Fingerprint || len(rw.series) == 0 {
-		rw.addSeries(e.Labels, e.Fingerprint)
-		rw.previous = e.Fingerprint
-	}
-}
-
-// AddSeries adds a single series at the current dataset index. The caller
-// is responsible for ensuring fingerprints are unique within the dataset.
-// It is used by the segment writer, where heads already provide a
-// deduplicated series list.
-func (rw *DatasetIndexWriter) AddSeries(labels phlaremodel.Labels, fp model.Fingerprint) {
-	rw.addSeries(labels, fp)
-}
-
-func (rw *DatasetIndexWriter) addSeries(labels phlaremodel.Labels, fp model.Fingerprint) {
+// AddSeries adds a single series at the given dataset index. The caller
+// is responsible for ensuring fingerprints are unique within the
+// writer (e.g. by deduplicating consecutive rows with the same
+// fingerprint at compaction time).
+func (rw *DatasetIndexWriter) AddSeries(idx uint32, labels phlaremodel.Labels, fp model.Fingerprint) {
 	cloned := labels.Clone()
 	for _, l := range cloned {
 		rw.symbols[l.Name] = struct{}{}
@@ -102,7 +81,7 @@ func (rw *DatasetIndexWriter) addSeries(labels phlaremodel.Labels, fp model.Fing
 		fingerprint: fp,
 	})
 	rw.chunks = append(rw.chunks, index.ChunkMeta{
-		SeriesIndex: rw.idx,
+		SeriesIndex: idx,
 	})
 }
 

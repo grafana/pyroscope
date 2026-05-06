@@ -34,21 +34,22 @@ type FlushedHead struct {
 		NumSeries        uint64
 	}
 
-	datasetIndexSeries []flushedSeries
+	datasetIndexSeries []*profileSeries
 }
 
 type datasetIndexWriter interface {
-	AddSeries(phlaremodel.Labels, model.Fingerprint)
+	AddSeries(idx uint32, labels phlaremodel.Labels, fp model.Fingerprint)
 }
 
-// WriteDatasetIndex feeds the flushed head's series (labels + fingerprint) into
-// the given dataset index writer at its current dataset position. It is
-// safe to call concurrently with other heads' writes only if the writer
-// itself is externally synchronised; segment flushes call it serially in
-// dataset (tenant+service) order.
-func (f *FlushedHead) WriteDatasetIndex(w datasetIndexWriter) {
-	for _, series := range f.datasetIndexSeries {
-		w.AddSeries(series.Labels, series.Fingerprint)
+// WriteDatasetIndex feeds the flushed head's series (labels + fingerprint)
+// into the given dataset index writer, attributing every series to the
+// supplied dataset index (the dataset's global position in the block).
+// It is safe to call concurrently with other heads' writes only if the
+// writer itself is externally synchronised; segment flushes call it
+// serially in dataset (tenant+service) order.
+func (f *FlushedHead) WriteDatasetIndex(w datasetIndexWriter, idx uint32) {
+	for _, s := range f.datasetIndexSeries {
+		w.AddSeries(idx, s.lbs, s.fp)
 	}
 }
 

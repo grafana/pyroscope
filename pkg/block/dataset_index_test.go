@@ -31,9 +31,8 @@ func BenchmarkDatasetIndexWriter_WriteTo(b *testing.B) {
 	for b.Loop() {
 		w := NewDatasetIndexWriter()
 		for d := range datasetsPerTenant {
-			w.SetIndex(uint32(d))
 			for j, lbs := range series {
-				w.AddSeries(lbs, model.Fingerprint(uint64(d)<<32|uint64(j)))
+				w.AddSeries(uint32(d), lbs, model.Fingerprint(uint64(d)<<32|uint64(j)))
 			}
 		}
 		if _, err := w.WriteTo(io.Discard); err != nil {

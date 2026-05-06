@@ -178,6 +178,14 @@ type CompactionPlan struct {
 	meta         *metastorev1.BlockMeta
 	strings      *metadata.StringTable
 	datasetIndex *DatasetIndexWriter
+
+	// datasetIndex state for the compaction-time dedup of consecutive
+	// rows that share a fingerprint. The DatasetIndexWriter itself
+	// expects callers to add already-deduplicated series; compaction
+	// observes rows in series order, so we collapse runs of equal
+	// fingerprints here.
+	currentDatasetIdx  uint32
+	lastDatasetIndexFP model.Fingerprint
 }
 
 func newBlockCompaction(
@@ -219,7 +227,7 @@ func (b *CompactionPlan) Compact(
 
 	// Datasets are compacted in a strict order.
 	for i, s := range b.datasets {
-		b.datasetIndex.SetIndex(uint32(i))
+		b.currentDatasetIdx = uint32(i)
 		s.registerSampleObserver(observer)
 		if err = s.compact(ctx, w); err != nil {
 			return nil, fmt.Errorf("compacting block: %w", err)
@@ -239,6 +247,17 @@ func (b *CompactionPlan) Compact(
 		return nil, fmt.Errorf("uploading block: %w", err)
 	}
 	return b.meta, nil
+}
+
+// addRowToDatasetIndex appends the row's series to the per-tenant
+// dataset index, deduplicating runs of consecutive rows that share a
+// fingerprint. Compaction iterates rows in series order, so runs of
+// matching fingerprints belong to the same series.
+func (b *CompactionPlan) addRowToDatasetIndex(r ProfileEntry) {
+	if b.lastDatasetIndexFP != r.Fingerprint || b.datasetIndex.Empty() {
+		b.datasetIndex.AddSeries(b.currentDatasetIdx, r.Labels, r.Fingerprint)
+		b.lastDatasetIndexFP = r.Fingerprint
+	}
 }
 
 func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
@@ -439,7 +458,7 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 		observe := m.observer.Evaluate(r)
 		defer observe()
 	}
-	m.parent.datasetIndex.WriteRow(r)
+	m.parent.addRowToDatasetIndex(r)
 	m.indexRewriter.rewriteRow(r)
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
