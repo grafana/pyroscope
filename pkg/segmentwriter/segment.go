@@ -367,7 +367,7 @@ func writeTenantDatasetIndex(
 		WithLabelSet(metadata.LabelNameTenantDataset, metadata.LabelValueDatasetTSDBIndex).
 		Build()
 	meta.Datasets = append(meta.Datasets, &metastorev1.Dataset{
-		Format:          1,
+		Format:          uint32(block.DatasetFormat1),
 		Tenant:          stringTable.Put(tenant),
 		Name:            0, // Anonymous.
 		MinTime:         minT,

@@ -258,7 +258,7 @@ func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
 		WithLabelSet(metadata.LabelNameTenantDataset, metadata.LabelValueDatasetTSDBIndex).
 		Build()
 	b.meta.Datasets = append(b.meta.Datasets, &metastorev1.Dataset{
-		Format:          1,
+		Format:          uint32(DatasetFormat1),
 		Tenant:          b.meta.Tenant,
 		Name:            0, // Anonymous.
 		MinTime:         b.meta.MinTime,
