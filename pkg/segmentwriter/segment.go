@@ -118,6 +118,8 @@ func (sh *shard) flushSegment(ctx context.Context, wg *sync.WaitGroup) {
 				"writing segment block done",
 				"heads-count", len(s.datasets),
 				"heads-moved-count", s.debuginfo.movedHeads,
+				"tenant-indexes", s.debuginfo.tenantIndexes,
+				"tenant-index-bytes", s.debuginfo.tenantIndexBytes,
 				"inflight-duration", s.debuginfo.waitInflight,
 				"flush-heads-duration", s.debuginfo.flushHeadsDuration,
 				"flush-block-duration", s.debuginfo.flushBlockDuration,
@@ -286,8 +288,14 @@ func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta
 		f := stream.At()
 		if dsIndex == nil || f.dataset.key.tenant != curTenant {
 			if dsIndex != nil {
-				if err := writeTenantDatasetIndex(w, meta, stringTable, curTenant, curTenantIdx, dsIndex); err != nil {
+				n, err := writeTenantDatasetIndex(w, meta, stringTable, curTenant, curTenantIdx, dsIndex)
+				if err != nil {
 					return nil, nil, err
+				}
+				if n > 0 {
+					s.debuginfo.tenantIndexes++
+					s.debuginfo.tenantIndexBytes += n
+					s.sw.metrics.tenantIndexBytes.WithLabelValues(s.sshard, curTenant).Observe(float64(n))
 				}
 			}
 			curTenant = f.dataset.key.tenant
@@ -303,8 +311,14 @@ func (s *segment) flushBlock(stream flushStream) ([]byte, *metastorev1.BlockMeta
 		s.sw.metrics.headSizeBytes.WithLabelValues(s.sshard, f.dataset.key.tenant).Observe(float64(ds.Size))
 	}
 	if dsIndex != nil {
-		if err := writeTenantDatasetIndex(w, meta, stringTable, curTenant, curTenantIdx, dsIndex); err != nil {
+		n, err := writeTenantDatasetIndex(w, meta, stringTable, curTenant, curTenantIdx, dsIndex)
+		if err != nil {
 			return nil, nil, err
+		}
+		if n > 0 {
+			s.debuginfo.tenantIndexes++
+			s.debuginfo.tenantIndexBytes += n
+			s.sw.metrics.tenantIndexBytes.WithLabelValues(s.sshard, curTenant).Observe(float64(n))
 		}
 	}
 
@@ -338,6 +352,9 @@ func (w *writerOffset) Write(p []byte) (n int, err error) {
 // firstDatasetIdx is the index of the tenant's first real dataset within
 // meta.Datasets and is used to derive the time range covered by the
 // tenant in the segment.
+// writeTenantDatasetIndex returns the number of bytes written for the
+// dataset index payload (0 if the index is empty and no pseudo-dataset
+// was emitted).
 func writeTenantDatasetIndex(
 	w *writerOffset,
 	meta *metastorev1.BlockMeta,
@@ -345,15 +362,15 @@ func writeTenantDatasetIndex(
 	tenant string,
 	firstDatasetIdx int,
 	dsIndex *block.DatasetIndexWriter,
-) error {
+) (int64, error) {
 	defer dsIndex.Close()
 	if dsIndex.Empty() {
-		return nil
+		return 0, nil
 	}
 	off := uint64(w.offset)
 	n, err := dsIndex.WriteTo(w)
 	if err != nil {
-		return fmt.Errorf("failed to write dataset index: %w", err)
+		return 0, fmt.Errorf("failed to write dataset index: %w", err)
 	}
 	var minT, maxT int64 = math.MaxInt64, 0
 	for _, ds := range meta.Datasets[firstDatasetIdx:] {
@@ -376,7 +393,7 @@ func writeTenantDatasetIndex(
 		Size:            uint64(n),
 		Labels:          labels,
 	})
-	return nil
+	return n, nil
 }
 
 func concatSegmentHead(f *datasetFlush, w *writerOffset, s *metadata.StringTable) *metastorev1.Dataset {
@@ -561,6 +578,8 @@ type segment struct {
 		flushHeadsDuration time.Duration
 		flushBlockDuration time.Duration
 		storeMetaDuration  time.Duration
+		tenantIndexes      int
+		tenantIndexBytes   int64
 	}
 
 	// TODO(kolesnikovae): Naming.
