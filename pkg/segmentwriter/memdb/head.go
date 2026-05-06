@@ -7,7 +7,6 @@ import (
 	"math"
 	"sync"
 
-
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"

@@ -36,13 +36,13 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/metastore/index/dlq"
 	metastoretest "github.com/grafana/pyroscope/v2/pkg/metastore/test"
 	"github.com/grafana/pyroscope/v2/pkg/model"
+	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/memory"
 	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/bench"
-	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
-	tsdbindex "github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 	testutil3 "github.com/grafana/pyroscope/v2/pkg/phlaredb/block/testutil"
+	tsdbindex "github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 	pprofth "github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/memdb"
 	memdbtest "github.com/grafana/pyroscope/v2/pkg/segmentwriter/memdb/testutil"
@@ -314,11 +314,11 @@ func TestDatasetMinMaxTime(t *testing.T) {
 	// per-tenant dataset index pseudo-dataset is appended after the last
 	// real dataset of each tenant.
 	expected := [][2]int{
-		{10, 1337},   // ta/svc1
-		{10, 1337},   // ta dataset index
-		{239, 420},   // tb/svc1
-		{420, 421},   // tb/svc2
-		{239, 421},   // tb dataset index
+		{10, 1337}, // ta/svc1
+		{10, 1337}, // ta dataset index
+		{239, 420}, // tb/svc1
+		{420, 421}, // tb/svc2
+		{239, 421}, // tb dataset index
 	}
 
 	require.Equal(t, len(expected), len(block.Datasets))
