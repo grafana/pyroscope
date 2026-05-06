@@ -662,7 +662,7 @@ The following query parameters are accepted:
 | `sampleRate`       | sample rate used in Hz                  | optional (default is `100` Hz) |
 | `spyName`          | name of the spy used                    | optional                       |
 | `units`            | name of the profiling data unit         | optional (default is `samples` |
-| `aggregrationType` | type of aggregation to merge profiles   | optional (default is `sum`)    |
+| `aggregationType`  | type of aggregation to merge profiles   | optional (default is `sum`)    |
 
 
 `name` specifies application name. For example:
