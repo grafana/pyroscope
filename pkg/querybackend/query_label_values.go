@@ -3,6 +3,7 @@ package querybackend
 import (
 	"errors"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/prometheus/prometheus/model/labels"
@@ -30,6 +31,15 @@ func queryLabelValues(q *queryContext, query *queryv1.Query) (*queryv1.Report, e
 	var err error
 	if len(q.req.matchers) == 0 {
 		values, err = q.ds.Index().LabelValues(query.LabelValues.LabelName)
+		// Reader.LabelValues returns strings that alias the underlying
+		// index buffer ("It is not safe to use the return value beyond
+		// the lifetime of the byte slice passed into the Reader"). The
+		// dataset's buffer is recycled to a pool on close, which may
+		// happen before the staged report is marshaled, so we clone the
+		// values here to decouple them from the buffer lifetime.
+		for i, v := range values {
+			values[i] = strings.Clone(v)
+		}
 	} else {
 		values, err = labelValuesForMatchers(q.ds.Index(), query.LabelValues.LabelName, q.req.matchers)
 	}
