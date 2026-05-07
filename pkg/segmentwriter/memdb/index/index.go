@@ -732,8 +732,6 @@ func (w *Writer) writeFingerprintOffsetsTable() error {
 	return nil
 }
 
-const indexTOCLen = 8*9 + crc32.Size
-
 func (w *Writer) writeTOC() error {
 	w.buf1.Reset()
 
