@@ -177,6 +177,19 @@ func Test_validateUpsert(t *testing.T) {
 			WantErr: `matcher "" is invalid: unknown position: parse error: unexpected end of input`,
 		},
 		{
+			Name: "mixed_invalid_matchers",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName: "profiles_recorded_my_metric",
+				Matchers: []string{
+					"",
+					`{ __profile_type__ = "any-type", INVALID }`,
+				},
+				GroupBy:        []string{},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: "matcher \"\" is invalid: unknown position: parse error: unexpected end of input\nmatcher \"{ __profile_type__ = \\\"any-type\\\", INVALID }\" is invalid: 1:42: parse error: unexpected \"}\" in label matching, expected label matching operator",
+		},
+		{
 			Name: "missing __profile_type__ matcher",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName:     "profiles_recorded_my_metric",
