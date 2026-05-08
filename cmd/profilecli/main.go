@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/common/version"
-	"github.com/alecthomas/kingpin/v2"
 
 	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
 	_ "github.com/grafana/pyroscope/v2/pkg/util/build"

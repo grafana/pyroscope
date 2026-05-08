@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	"github.com/prometheus/common/version"
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/prometheus/common/version"
 
 	querydiagnostics "github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
 )
