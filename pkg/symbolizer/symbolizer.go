@@ -35,16 +35,26 @@ type DebuginfodClient interface {
 type Config struct {
 	DebuginfodURL            string `yaml:"debuginfod_url" category:"advanced"`
 	MaxDebuginfodConcurrency int    `yaml:"max_debuginfod_concurrency" category:"advanced"`
+	LidiaCacheSizeBytes      int64  `yaml:"lidia_cache_size_bytes" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
-	f.IntVar(&cfg.MaxDebuginfodConcurrency, "symbolizer.max-debuginfod-concurrency", 10, "Maximum number of concurrent symbolization requests to debuginfod server.")
+	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org",
+		"URL of the debuginfod server")
+	f.IntVar(&cfg.MaxDebuginfodConcurrency, "symbolizer.max-debuginfod-concurrency", 10, "Maximum "+
+		"number of concurrent symbolization requests to debuginfod server.")
+	f.Int64Var(&cfg.LidiaCacheSizeBytes, "symbolizer.lidia-cache-size-bytes", 0, "Maximum size in "+
+		"bytes of the in-memory lidia cache. The cache is per-process: each query-frontend replica holds its own "+
+		"copy. Items larger than this value are silently rejected; watch the "+
+		"cache_operations{cache_type=\"lidia_inmem\",status=\"rejected\"} metric.")
 }
 
 func (cfg *Config) Validate() error {
 	if cfg.MaxDebuginfodConcurrency < 1 {
 		return fmt.Errorf("invalid max-debuginfod-concurrency value, must be positive")
+	}
+	if cfg.LidiaCacheSizeBytes < 0 {
+		return fmt.Errorf("invalid lidia-cache-size-bytes value, must be non-negative")
 	}
 	return nil
 }
@@ -56,6 +66,7 @@ type Symbolizer struct {
 	metrics *metrics
 	cfg     Config
 	limits  Limits
+	cache   *lidiaCache
 }
 
 type ErrSymbolSizeBytesExceedsLimit struct {
@@ -81,6 +92,11 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, storageBucket
 		return nil, err
 	}
 
+	cache, err := newLidiaCache(cfg.LidiaCacheSizeBytes, m, logger)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Symbolizer{
 		logger:  logger,
 		client:  client,
@@ -88,7 +104,13 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, storageBucket
 		metrics: m,
 		cfg:     cfg,
 		limits:  limits,
+		cache:   cache,
 	}, nil
+}
+
+// Close releases resources held by the Symbolizer. After Close, the Symbolizer must not be used.
+func (s *Symbolizer) Close() {
+	s.cache.close()
 }
 
 func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error {
@@ -426,6 +448,14 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		return nil, err
 	}
 
+	return s.cache.getOrFetch(tenantID+"/"+buildID, func() ([]byte, error) {
+		return s.fetchLidiaFromBackends(ctx, tenantID, buildID)
+	})
+}
+
+// Fill function for lidiaCache: object storage first, debuginfod on miss
+// (uploading the converted lidia back to object storage on success).
+func (s *Symbolizer) fetchLidiaFromBackends(ctx context.Context, tenantID, buildID string) ([]byte, error) {
 	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, tenantID, buildID)
 	if err == nil {
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", statusSuccess).Inc()

@@ -26,8 +26,9 @@ import (
 )
 
 type symbolizerInputs struct {
-	Registry *prometheus.Registry
-	Limits   Limits
+	Registry            *prometheus.Registry
+	Limits              Limits
+	LidiaCacheSizeBytes int64 // 0 disables the in-memory lidia cache.
 }
 
 func newSymbolizerTest(t *testing.T, inp *symbolizerInputs) (*Symbolizer, *mocksymbolizer.MockDebuginfodClient, *mockobjstore.MockBucket) {
@@ -49,13 +50,17 @@ func newSymbolizerTest(t *testing.T, inp *symbolizerInputs) (*Symbolizer, *mocks
 
 	s, err := New(
 		log.NewNopLogger(),
-		Config{MaxDebuginfodConcurrency: 1},
+		Config{
+			MaxDebuginfodConcurrency: 1,
+			LidiaCacheSizeBytes:      inp.LidiaCacheSizeBytes,
+		},
 		inp.Registry,
 		lidiaBucket,
 		inp.Limits,
 	)
 	require.NoError(t, err)
 	s.client = mockClient
+	t.Cleanup(s.Close)
 
 	return s, mockClient, lidiaBucket
 }

@@ -1587,6 +1587,8 @@ Usage of ./pyroscope:
     	URL of the debuginfod server (default "https://debuginfod.elfutils.org")
   -symbolizer.enabled
     	[experimental] Enable symbolization for tenants by default.
+  -symbolizer.lidia-cache-size-bytes int
+    	Maximum size in bytes of the in-memory lidia cache. The cache is per-process: each query-frontend replica holds its own copy. Items larger than this value are silently rejected; watch the cache_operations{cache_type="lidia_inmem",status="rejected"} metric.
   -symbolizer.max-debuginfod-concurrency int
     	Maximum number of concurrent symbolization requests to debuginfod server. (default 10)
   -target comma-separated-list-of-strings
