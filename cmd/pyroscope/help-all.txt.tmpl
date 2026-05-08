@@ -477,6 +477,8 @@ Usage of ./pyroscope:
     	How often to use pull/push sync. (default 30s)
   -memberlist.randomize-node-name
     	Add random suffix to the node name. (default true)
+  -memberlist.received-messages-queue-size int
+    	Size of the internal queue for messages received from other nodes. Increasing this value may help to avoid dropping messages when the node is processing a large number of messages from other nodes. (default 1024)
   -memberlist.rejoin-interval duration
     	If not 0, how often to rejoin the cluster. Occasional rejoin can help to fix the cluster split issue, and is harmless otherwise. For example when using only few components as a seed nodes (via -memberlist.join), then it's recommended to use rejoin. If -memberlist.join points to dynamic service that resolves to all gossiping nodes (eg. Kubernetes headless service), then rejoin is not needed.
   -memberlist.rejoin-seed-nodes value
@@ -1040,7 +1042,11 @@ Usage of ./pyroscope:
   -ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -runtime-config.file comma-separated-list-of-strings
-    	Comma separated list of yaml files with the configuration that can be updated at runtime. Runtime config files will be merged from left to right.
+    	Comma separated list of yaml files or URLs with the configuration that can be updated at runtime. Runtime config files will be merged from left to right.
+  -runtime-config.http-client-cluster-validation.label string
+    	[experimental] Primary cluster validation label.
+  -runtime-config.http-client-timeout duration
+    	HTTP client timeout when fetching runtime config from URLs. (default 30s)
   -runtime-config.reload-period duration
     	How often to check runtime config files. (default 10s)
   -segment-writer.availability-zone string
