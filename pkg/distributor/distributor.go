@@ -61,6 +61,11 @@ type PushClient interface {
 	Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
 }
 
+type SegmentWriterClient interface {
+	Push(context.Context, *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error)
+	CheckReady(context.Context) error
+}
+
 const (
 	// distributorRingKey is the key under which we store the distributors ring in the KVStore.
 	distributorRingKey = "distributor"
@@ -121,7 +126,7 @@ type Distributor struct {
 	profileSizeStats        *usagestats.MultiStatistics
 
 	router        *writepath.Router
-	segmentWriter writepath.SegmentWriterClient
+	segmentWriter SegmentWriterClient
 }
 
 type Limits interface {
@@ -157,7 +162,7 @@ func New(
 	limits Limits,
 	reg prometheus.Registerer,
 	logger log.Logger,
-	segmentWriter writepath.SegmentWriterClient,
+	segmentWriter SegmentWriterClient,
 	ingesterClientsOptions ...connect.ClientOption,
 ) (*Distributor, error) {
 	ingesterClientsOptions = append(
@@ -238,6 +243,54 @@ func (d *Distributor) running(ctx context.Context) error {
 func (d *Distributor) stopping(_ error) error {
 	d.asyncRequests.Wait()
 	return services.StopManagerAndAwaitStopped(context.Background(), d.subservices)
+}
+
+// CheckReady reports whether the distributor is ready to serve requests.
+// It verifies the destinations selected by the deployment default write path,
+// so the distributor does not accept traffic before the relevant ring is
+// populated during rollouts.
+func (d *Distributor) CheckReady(ctx context.Context) error {
+	if s := d.State(); s != services.Running && s != services.Stopping {
+		return fmt.Errorf("distributor not ready: %v", s)
+	}
+
+	switch d.limits.WritePathOverrides("").WritePath {
+	case writepath.SegmentWriterPath:
+		return d.checkSegmentWriterReady(ctx)
+	case writepath.CombinedPath:
+		if err := d.checkIngesterRingReady(ctx); err != nil {
+			return fmt.Errorf("ingester write path: %w", err)
+		}
+		if err := d.checkSegmentWriterReady(ctx); err != nil {
+			return fmt.Errorf("segment-writer write path: %w", err)
+		}
+		return nil
+	default:
+		return d.checkIngesterRingReady(ctx)
+	}
+}
+
+// checkIngesterRingReady reports whether the ingester ring has at least one
+// healthy instance available for writes.
+func (d *Distributor) checkIngesterRingReady(context.Context) error {
+	if d.ingestersRing == nil {
+		return errors.New("ingester ring not configured")
+	}
+	rs, err := d.ingestersRing.GetAllHealthy(ring.Write)
+	if err != nil {
+		return fmt.Errorf("ingester ring: %w", err)
+	}
+	if len(rs.Instances) == 0 {
+		return errors.New("ingester ring has no healthy instances")
+	}
+	return nil
+}
+
+func (d *Distributor) checkSegmentWriterReady(ctx context.Context) error {
+	if d.segmentWriter == nil {
+		return errors.New("segment-writer client not configured")
+	}
+	return d.segmentWriter.CheckReady(ctx)
 }
 
 func isKnownConnectError(err error) bool {
