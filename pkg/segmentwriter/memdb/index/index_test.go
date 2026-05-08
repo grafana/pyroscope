@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"math/rand"
-	"os"
-	"path/filepath"
 	"sort"
 	"testing"
 
@@ -33,7 +31,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb/encoding"
-	"github.com/prometheus/prometheus/util/testutil"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/iter"
@@ -164,7 +161,7 @@ func TestIndexRW_Create_Open(t *testing.T) {
 	require.NoError(t, iw.Close())
 
 	bytes := iw.ReleaseIndexBuffer().buf.Bytes()
-	ir, err := NewReader(RealByteSlice(bytes))
+	ir, err := index.NewReader(index.RealByteSlice(bytes))
 	require.NoError(t, err)
 	require.NoError(t, ir.Close())
 
@@ -208,7 +205,7 @@ func TestIndexRW_Postings(t *testing.T) {
 
 	require.NoError(t, iw.Close())
 
-	ir, err := NewReader(RealByteSlice(iw.ReleaseIndexBuffer().buf.Bytes()))
+	ir, err := index.NewReader(index.RealByteSlice(iw.ReleaseIndexBuffer().buf.Bytes()))
 	require.NoError(t, err)
 
 	p, err := ir.Postings("a", nil, "1")
@@ -225,34 +222,6 @@ func TestIndexRW_Postings(t *testing.T) {
 		require.Equal(t, series[i], l)
 	}
 	require.NoError(t, p.Err())
-
-	// The label indices are no longer used, so test them by hand here.
-	labelIndices := map[string][]string{}
-	require.NoError(t, ReadOffsetTable(ir.b, ir.toc.LabelIndicesTable, func(key []string, off uint64, _ int) error {
-		if len(key) != 1 {
-			return errors.Errorf("unexpected key length for label indices table %d", len(key))
-		}
-
-		d := encoding.NewDecbufAt(ir.b, int(off), castagnoliTable)
-		vals := []string{}
-		nc := d.Be32int()
-		if nc != 1 {
-			return errors.Errorf("unexpected number of label indices table names %d", nc)
-		}
-		for i := d.Be32(); i > 0; i-- {
-			v, err := ir.lookupSymbol(d.Be32())
-			if err != nil {
-				return err
-			}
-			vals = append(vals, v)
-		}
-		labelIndices[key[0]] = vals
-		return d.Err()
-	}))
-	require.Equal(t, map[string][]string{
-		"a": {"1"},
-		"b": {"1", "2", "3", "4"},
-	}, labelIndices)
 
 	require.NoError(t, ir.Close())
 }
@@ -291,7 +260,7 @@ func TestPostingsMany(t *testing.T) {
 	}
 	require.NoError(t, iw.Close())
 
-	ir, err := NewReader(RealByteSlice(iw.ReleaseIndexBuffer().buf.Bytes()))
+	ir, err := index.NewReader(index.RealByteSlice(iw.ReleaseIndexBuffer().buf.Bytes()))
 	require.NoError(t, err)
 	defer func() { require.NoError(t, ir.Close()) }()
 
@@ -438,7 +407,7 @@ func TestPersistence_index_e2e(t *testing.T) {
 	err = iw.Close()
 	require.NoError(t, err)
 
-	ir, err := NewReader(RealByteSlice(iw.ReleaseIndexBuffer().buf.Bytes()))
+	ir, err := index.NewReader(index.RealByteSlice(iw.ReleaseIndexBuffer().buf.Bytes()))
 	require.NoError(t, err)
 
 	for p := range mi.postings {
@@ -507,28 +476,6 @@ func TestDecbufUvarintWithInvalidBuffer(t *testing.T) {
 	require.Error(t, db.Err())
 }
 
-func TestReaderWithInvalidBuffer(t *testing.T) {
-	b := RealByteSlice([]byte{0x81, 0x81, 0x81, 0x81, 0x81, 0x81})
-
-	_, err := NewReader(b)
-	require.Error(t, err)
-}
-
-// TestNewFileReaderErrorNoOpenFiles ensures that in case of an error no file remains open.
-func TestNewFileReaderErrorNoOpenFiles(t *testing.T) {
-	dir := testutil.NewTemporaryDirectory("block", t)
-
-	idxName := filepath.Join(dir.Path(), "index")
-	err := os.WriteFile(idxName, []byte("corrupted contents"), 0o666)
-	require.NoError(t, err)
-
-	_, err = NewFileReader(idxName)
-	require.Error(t, err)
-
-	// dir.Close will fail on Win if idxName fd is not closed on error path.
-	dir.Close()
-}
-
 func TestSymbols(t *testing.T) {
 	buf := encoding.Encbuf{}
 
@@ -574,11 +521,6 @@ func TestSymbols(t *testing.T) {
 		i++
 	}
 	require.NoError(t, iter.Err())
-}
-
-func TestDecoder_Postings_WrongInput(t *testing.T) {
-	_, _, err := (&Decoder{}).Postings([]byte("the cake is a lie"))
-	require.Error(t, err)
 }
 
 func TestWriter_ShouldReturnErrorOnSeriesWithDuplicatedLabelNames(t *testing.T) {
