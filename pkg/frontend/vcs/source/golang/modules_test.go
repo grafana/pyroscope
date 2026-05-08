@@ -336,7 +336,7 @@ func Test_Resolve(t *testing.T) {
 		{
 			in: Module{
 				Version: module.Version{
-					Path: "gopkg.in/alecthomas/kingpin.v2",
+					Path: "github.com/alecthomas/kingpin/v2",
 				},
 			},
 			main:    mainModule,
