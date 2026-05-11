@@ -125,7 +125,11 @@ func parseOne(prof *profile, putInput storage.PutInput, frames []frame, multi bo
 	// TODO(petethepig): We need a way to tell if it's a default or a value set by user
 	//   See https://github.com/pyroscope-io/pyroscope/issues/1598
 	if putInput.SampleRate == 100 {
-		putInput.SampleRate = uint32(prof.Unit.defaultSampleRate())
+		rate, err := prof.Unit.defaultSampleRate()
+		if err != nil {
+			return nil, fmt.Errorf("invalid profile unit: %w", err)
+		}
+		putInput.SampleRate = rate
 	}
 
 	var err error
@@ -150,7 +154,10 @@ func parseEvented(tr *tree.Tree, prof *profile, frames []frame) error {
 	last := prof.StartValue
 	indexStack := []int{}
 	nameStack := []string{}
-	precisionMultiplier := prof.Unit.precisionMultiplier()
+	precisionMultiplier, err := prof.Unit.precisionMultiplier()
+	if err != nil {
+		return fmt.Errorf("invalid profile unit: %w", err)
+	}
 
 	for _, ev := range prof.Events {
 		if ev.At < last {
@@ -198,7 +205,10 @@ func parseSampled(tr *tree.Tree, prof *profile, frames []frame) error {
 		return fmt.Errorf("Unequal lengths of samples and weights: %d != %d", len(prof.Samples), len(prof.Weights))
 	}
 
-	precisionMultiplier := prof.Unit.precisionMultiplier()
+	precisionMultiplier, err := prof.Unit.precisionMultiplier()
+	if err != nil {
+		return fmt.Errorf("invalid profile unit: %w", err)
+	}
 	stack := []string{}
 	for i, samp := range prof.Samples {
 		weight := prof.Weights[i]
