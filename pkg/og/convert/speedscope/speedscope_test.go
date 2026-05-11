@@ -93,6 +93,50 @@ a;b;d 400
 		Expect(input2.SampleRate).To(Equal(uint32(100)))
 	})
 
+	It("Returns error for unknown unit in defaultSampleRate", func() {
+		u := unit("UNKNOWN_UNIT")
+		_, err := u.defaultSampleRate()
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("unknown unit"))
+	})
+
+	It("Returns error for unknown unit in precisionMultiplier", func() {
+		u := unit("UNKNOWN_UNIT")
+		_, err := u.precisionMultiplier()
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("unknown unit"))
+	})
+
+	It("Returns error instead of panicking for unknown unit in sampled profile", func() {
+		data := []byte(`{"$schema":"https://www.speedscope.app/file-format-schema.json","shared":{"frames":[{"name":"main"}]},"profiles":[{"type":"sampled","unit":"TRIGGER_PANIC_UNKNOWN_UNIT","name":"poc","startValue":0,"endValue":1,"samples":[[0]],"weights":[1]}]}`)
+
+		key, err := labelset.Parse("foo")
+		Expect(err).ToNot(HaveOccurred())
+
+		ingester := new(mockIngester)
+		profile := &RawProfile{RawData: data}
+
+		md := ingestion.Metadata{LabelSet: key, SampleRate: 100}
+		err = profile.Parse(context.Background(), ingester, nil, md)
+		Expect(err).To(HaveOccurred())
+		Expect(ingester.actual).To(BeEmpty())
+	})
+
+	It("Returns error instead of panicking for unknown unit in evented profile", func() {
+		data := []byte(`{"$schema":"https://www.speedscope.app/file-format-schema.json","shared":{"frames":[{"name":"a"}]},"profiles":[{"type":"evented","unit":"TRIGGER_PANIC_UNKNOWN_UNIT","name":"poc","startValue":0,"endValue":1,"events":[{"type":"O","frame":0,"at":0},{"type":"C","frame":0,"at":1}]}]}`)
+
+		key, err := labelset.Parse("foo")
+		Expect(err).ToNot(HaveOccurred())
+
+		ingester := new(mockIngester)
+		profile := &RawProfile{RawData: data}
+
+		md := ingestion.Metadata{LabelSet: key, SampleRate: 100}
+		err = profile.Parse(context.Background(), ingester, nil, md)
+		Expect(err).To(HaveOccurred())
+		Expect(ingester.actual).To(BeEmpty())
+	})
+
 	It("Merges duplicate profiles", func() {
 		data, err := os.ReadFile("testdata/duplicates.speedscope.json")
 		Expect(err).ToNot(HaveOccurred())
