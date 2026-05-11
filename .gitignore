@@ -40,4 +40,4 @@ tools/k6/.env
 
 # grafana/shared-workflows composite action dockerhub-login check itself out
 # into the working tree, which trips goreleaser's dirty-state check.
-_shared-workflows-dockerhub-login
+/_shared-workflows-dockerhub-login/
