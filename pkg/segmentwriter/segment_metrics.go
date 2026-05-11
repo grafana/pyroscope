@@ -10,6 +10,7 @@ type segmentMetrics struct {
 	segmentIngestBytes          *prometheus.HistogramVec
 	segmentSizeBytes            *prometheus.HistogramVec
 	headSizeBytes               *prometheus.HistogramVec
+	tenantIndexBytes            *prometheus.HistogramVec
 	segmentFlushWaitDuration    *prometheus.HistogramVec
 	segmentFlushTimeouts        *prometheus.CounterVec
 	storeMetadataDuration       *prometheus.HistogramVec
@@ -151,6 +152,16 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 				NativeHistogramMaxBucketNumber:  32,
 				NativeHistogramMinResetDuration: time.Minute * 15,
 			}, []string{"shard", "tenant"}),
+		tenantIndexBytes: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace:                       "pyroscope",
+				Name:                            "segment_tenant_index_bytes",
+				Help:                            "Size of the per-tenant dataset index emitted into a flushed segment block.",
+				Buckets:                         prometheus.ExponentialBucketsRange(1024, 100*1024*1024, 20),
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  32,
+				NativeHistogramMinResetDuration: time.Minute * 15,
+			}, []string{"shard", "tenant"}),
 	}
 
 	if reg != nil {
@@ -167,6 +178,7 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 		reg.MustRegister(m.flushServiceHeadError)
 		reg.MustRegister(m.flushSegmentDuration)
 		reg.MustRegister(m.headSizeBytes)
+		reg.MustRegister(m.tenantIndexBytes)
 	}
 	return m
 }

@@ -161,7 +161,7 @@ func TestWriteRead(t *testing.T) {
 		}
 	}
 
-	indexData, _, err := a.Flush(context.Background())
+	indexData, _, _, err := a.Flush(context.Background())
 	require.NoError(t, err)
 
 	r, err := index.NewReader(index.RealByteSlice(indexData))
@@ -226,7 +226,7 @@ func TestQueryIndex(t *testing.T) {
 		}
 	}
 
-	indexData, _, err := a.Flush(context.Background())
+	indexData, _, _, err := a.Flush(context.Background())
 	require.NoError(t, err)
 
 	r, err := index.NewReader(index.RealByteSlice(indexData))
@@ -311,7 +311,7 @@ func TestIndexAddOutOfOrder(t *testing.T) {
 		SeriesFingerprint: model.Fingerprint(lb2.Hash()),
 	}, lb2, "memory")
 
-	_, profiles, err := a.Flush(context.Background())
+	_, profiles, _, err := a.Flush(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, 5, len(profiles))
 	expectedTS := []int64{0, 10, 20, 238, 239}
