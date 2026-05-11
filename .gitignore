@@ -37,3 +37,7 @@ pyroscope.sln
 /.tmp
 tools/k6/.env
 .claude/worktrees/
+
+# grafana/shared-workflows composite action dockerhub-login check itself out
+# into the working tree, which trips goreleaser's dirty-state check.
+_shared-workflows-dockerhub-login
