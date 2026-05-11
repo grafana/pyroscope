@@ -17,48 +17,37 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/clientpool"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/writepath"
 	segmentwriterclient "github.com/grafana/pyroscope/v2/pkg/segmentwriter/client"
-	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement"
 	"github.com/grafana/pyroscope/v2/pkg/testhelper"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
-type readinessPlacement struct{}
-
-func (readinessPlacement) Policy(placement.Key) placement.Policy {
-	return placement.Policy{
-		TenantShards:  0,
-		DatasetShards: 1,
-		PickShard:     func(int) int { return 0 },
-	}
-}
-
-// TestDistributor_CheckReady_EmptyRing tests that the distributor reports not ready
-// while the segment-writer ring is empty (e.g. during a rollout), the distributor
-// must not report itself as ready, because any incoming write would fail
-// with a 503 ("empty ring"). The distributor and segment-writer client are
-// both fully Running here; only the ring is unpopulated.
-func TestDistributor_CheckReady_EmptyRing(t *testing.T) {
-	logger := log.NewLogfmtLogger(os.Stdout)
-	ctx := context.Background()
-
+func newReadinessSegmentWriterClient(t *testing.T, ctx context.Context, logger log.Logger, r ring.ReadRing) *segmentwriterclient.Client {
+	t.Helper()
 	var grpcCfg grpcclient.Config
 	grpcCfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
 
-	emptyRing := testhelper.NewMockRing(nil, 1)
 	swClient, err := segmentwriterclient.NewSegmentWriterClient(
-		grpcCfg, logger, nil, emptyRing, readinessPlacement{},
+		grpcCfg, logger, nil, r, nil,
 	)
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(ctx, swClient.Service()))
 	t.Cleanup(func() {
 		_ = services.StopAndAwaitTerminated(context.Background(), swClient.Service())
 	})
+	return swClient
+}
 
-	// Simulate a V2-only deployment: deployment-default WritePath routes
-	// to the segment-writer, so the readiness check should fail when its
-	// ring is empty regardless of ingester ring state.
+func newReadinessDistributor(
+	t *testing.T,
+	ctx context.Context,
+	logger log.Logger,
+	path writepath.WritePath,
+	ingesterRing ring.ReadRing,
+	swClient SegmentWriterClient,
+) *Distributor {
+	t.Helper()
 	overrides := validation.MockOverrides(func(defaults *validation.Limits, _ map[string]*validation.Limits) {
-		defaults.WritePathOverrides.WritePath = writepath.SegmentWriterPath
+		defaults.WritePathOverrides.WritePath = path
 	})
 
 	d, err := New(
@@ -66,7 +55,7 @@ func TestDistributor_CheckReady_EmptyRing(t *testing.T) {
 			DistributorRing: ringConfig,
 			PoolConfig:      clientpool.PoolConfig{ClientCleanupPeriod: time.Second},
 		},
-		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+		ingesterRing,
 		&poolFactory{f: func(string) (client.PoolClient, error) {
 			return newFakeIngester(t, false), nil
 		}},
@@ -80,11 +69,89 @@ func TestDistributor_CheckReady_EmptyRing(t *testing.T) {
 	t.Cleanup(func() {
 		_ = services.StopAndAwaitTerminated(context.Background(), d)
 	})
-
 	require.Equal(t, services.Running, d.State())
-	require.Equal(t, services.Running, swClient.Service().State())
-	require.Zero(t, emptyRing.InstancesCount(), "ring should be empty for this scenario")
+	return d
+}
 
-	require.Error(t, d.CheckReady(ctx),
-		"distributor must not report ready while segment-writer ring is empty")
+func TestDistributor_CheckReady_V2SegmentWriterPath(t *testing.T) {
+	logger := log.NewLogfmtLogger(os.Stdout)
+	ctx := context.Background()
+
+	tests := []struct {
+		name              string
+		segmentWriterRing ring.ReadRing
+		wantErr           bool
+	}{
+		{
+			name:              "ready when segment-writer ring has healthy instances",
+			segmentWriterRing: testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 1),
+		},
+		{
+			name:              "not ready when segment-writer ring is empty",
+			segmentWriterRing: testhelper.NewMockRing(nil, 1),
+			wantErr:           true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			swClient := newReadinessSegmentWriterClient(t, ctx, logger, tt.segmentWriterRing)
+			d := newReadinessDistributor(
+				t,
+				ctx,
+				logger,
+				writepath.SegmentWriterPath,
+				testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+				swClient,
+			)
+
+			err := d.CheckReady(ctx)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestDistributor_CheckReady_V1IngesterPath(t *testing.T) {
+	logger := log.NewLogfmtLogger(os.Stdout)
+	ctx := context.Background()
+
+	tests := []struct {
+		name         string
+		ingesterRing ring.ReadRing
+		wantErr      bool
+	}{
+		{
+			name:         "ready when ingester ring has healthy instances",
+			ingesterRing: testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+		},
+		{
+			name:         "not ready when ingester ring is empty",
+			ingesterRing: testhelper.NewMockRing(nil, 3),
+			wantErr:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := newReadinessDistributor(
+				t,
+				ctx,
+				logger,
+				writepath.IngesterPath,
+				tt.ingesterRing,
+				nil,
+			)
+
+			err := d.CheckReady(ctx)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
 }
