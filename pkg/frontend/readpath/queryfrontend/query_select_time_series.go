@@ -38,8 +38,11 @@ func (q *QueryFrontend) SelectSeries(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if c.Msg.Step == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be non-zero"))
+	// Sub-millisecond step values truncate to 0 in the backend's millisecond
+	// arithmetic and would cause an unbounded loop in RangeSeries; reject
+	// anything below 1ms.
+	if c.Msg.Step < 0.001 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be >= 1ms"))
 	}
 
 	stepMs := time.Duration(c.Msg.Step * float64(time.Second)).Milliseconds()

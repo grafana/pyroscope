@@ -1006,8 +1006,10 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start must be before end"))
 	}
 
-	if req.Msg.Step == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be non-zero"))
+	// Sub-millisecond step values truncate to 0 in stepMs and would cause an
+	// unbounded loop in RangeSeries; reject anything below 1ms.
+	if req.Msg.Step < 0.001 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be >= 1ms"))
 	}
 
 	// SelectSeries (v1 API) does not support exemplars

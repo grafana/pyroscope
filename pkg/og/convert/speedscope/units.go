@@ -22,42 +22,34 @@ const (
 // from doubles to integers
 var timePrecisionMultiplier = 100
 
-func (u unit) defaultSampleRate() uint32 {
+func (u unit) defaultSampleRate() (uint32, error) {
 	switch u {
 	case unitNanoseconds:
-		return uint32(timePrecisionMultiplier) * 1000 * 1000 * 1000
+		return uint32(timePrecisionMultiplier) * 1000 * 1000 * 1000, nil
 	case unitMicroseconds:
-		return uint32(timePrecisionMultiplier) * 1000 * 1000
+		return uint32(timePrecisionMultiplier) * 1000 * 1000, nil
 	case unitMilliseconds:
-		return uint32(timePrecisionMultiplier) * 1000
+		return uint32(timePrecisionMultiplier) * 1000, nil
 	case unitSeconds:
-		return uint32(timePrecisionMultiplier)
+		return uint32(timePrecisionMultiplier), nil
 	case unitNone:
 		// 100 is a common default value for sample rate
-		return uint32(timePrecisionMultiplier) * 100
+		return uint32(timePrecisionMultiplier) * 100, nil
 	case unitBytes:
-		return 0
+		return 0, nil
 	default:
-		panic("unknown unit " + u)
+		return 0, fmt.Errorf("unknown unit: %s", u)
 	}
 }
 
-func (u unit) precisionMultiplier() uint64 {
+func (u unit) precisionMultiplier() (uint64, error) {
 	switch u {
-	case unitNanoseconds:
-		return uint64(timePrecisionMultiplier)
-	case unitMicroseconds:
-		return uint64(timePrecisionMultiplier)
-	case unitMilliseconds:
-		return uint64(timePrecisionMultiplier)
-	case unitSeconds:
-		return uint64(timePrecisionMultiplier)
-	case unitNone:
-		return uint64(timePrecisionMultiplier)
+	case unitNanoseconds, unitMicroseconds, unitMilliseconds, unitSeconds, unitNone:
+		return uint64(timePrecisionMultiplier), nil
 	case unitBytes:
-		return 1
+		return 1, nil
 	default:
-		panic("unknown unit " + u)
+		return 0, fmt.Errorf("unknown unit: %s", u)
 	}
 }
 
