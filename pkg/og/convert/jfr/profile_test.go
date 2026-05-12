@@ -20,7 +20,9 @@ const testTenantID = "test-tenant"
 
 type fixedMaxProfileSize int
 
-func (l fixedMaxProfileSize) MaxProfileSizeBytes(_ string) int { return int(l) }
+func (l fixedMaxProfileSize) MaxProfileSizeBytes(_ string) int         { return int(l) }
+func (l fixedMaxProfileSize) MaxProfileSymbolValueLength(_ string) int { return 0 }
+func (l fixedMaxProfileSize) MaxProfileStacktraceSamples(_ string) int { return 0 }
 
 func testContext() context.Context {
 	return user.InjectOrgID(context.Background(), testTenantID)
