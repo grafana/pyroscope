@@ -46,7 +46,6 @@ import (
 	pprof2 "github.com/grafana/pyroscope/v2/pkg/pprof"
 	pproftesthelper "github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
-	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockwritepath"
 	"github.com/grafana/pyroscope/v2/pkg/testhelper"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
@@ -1795,7 +1794,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 				return newFakeIngester(t, false), nil
-			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), new(mockwritepath.MockSegmentWriterClient))
+			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
 
 			require.NoError(t, err)
 			var series []*distributormodel.ProfileSeries

@@ -34,7 +34,6 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
-	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/v2/pkg/adhocprofiles"
 	apiversion "github.com/grafana/pyroscope/v2/pkg/api/version"
 	"github.com/grafana/pyroscope/v2/pkg/compactor"
@@ -60,6 +59,8 @@ import (
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
+
+	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 )
 
 // The various modules that make up Pyroscope.
@@ -322,10 +323,15 @@ func (f *Pyroscope) initGRPCGateway() (services.Service, error) {
 func (f *Pyroscope) initDistributor() (services.Service, error) {
 	f.Cfg.Distributor.DistributorRing.ListenPort = f.Cfg.Server.HTTPListenPort
 	logger := log.With(f.logger, "component", "distributor")
-	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, f.segmentWriterClient, f.auth)
+	var swClient distributor.SegmentWriterClient
+	if f.segmentWriterClient != nil {
+		swClient = f.segmentWriterClient
+	}
+	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, swClient, f.auth)
 	if err != nil {
 		return nil, err
 	}
+	f.distributor = d
 	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server)
 
 	if store, err := debuginfo.NewStore(f.logger, f.storageBucket, f.Cfg.DebugInfo); err != nil {

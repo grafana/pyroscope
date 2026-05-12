@@ -392,8 +392,9 @@ type Pyroscope struct {
 
 	grpcGatewayMux *grpcgw.ServeMux
 
-	auth     connect.Option
-	frontend *frontend.Frontend
+	auth        connect.Option
+	frontend    *frontend.Frontend
+	distributor *distributor.Distributor
 
 	segmentWriter         *segmentwriter.SegmentWriterService
 	segmentWriterClient   *segmentwriterclient.Client
@@ -784,6 +785,13 @@ func (f *Pyroscope) readyHandler(sm *services.Manager) http.HandlerFunc {
 		if f.frontend != nil {
 			if err := f.frontend.CheckReady(r.Context()); err != nil {
 				http.Error(w, "Query Frontend not ready: "+err.Error(), http.StatusServiceUnavailable)
+				return
+			}
+		}
+
+		if f.distributor != nil {
+			if err := f.distributor.CheckReady(r.Context()); err != nil {
+				http.Error(w, "Distributor not ready: "+err.Error(), http.StatusServiceUnavailable)
 				return
 			}
 		}
