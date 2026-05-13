@@ -2475,6 +2475,297 @@ func (x *TimeSeriesCompactReport) GetAttributeTable() *AttributeTable {
 	return nil
 }
 
+// InvokeStreamEvent is one message in a server-streaming response from
+// InvokeStream. Messages arrive interleaved: IndexLookupEvent fires as soon as
+// a block finishes its TSDB dataset-index lookup; SnapshotEvent fires on the
+// periodic snapshot cadence; TerminalEvent is the last message and carries the
+// fully-merged result.
+type InvokeStreamEvent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Event:
+	//
+	//	*InvokeStreamEvent_IndexLookup
+	//	*InvokeStreamEvent_Snapshot
+	//	*InvokeStreamEvent_Terminal
+	Event         isInvokeStreamEvent_Event `protobuf_oneof:"event"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InvokeStreamEvent) Reset() {
+	*x = InvokeStreamEvent{}
+	mi := &file_query_v1_query_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InvokeStreamEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InvokeStreamEvent) ProtoMessage() {}
+
+func (x *InvokeStreamEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_query_v1_query_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InvokeStreamEvent.ProtoReflect.Descriptor instead.
+func (*InvokeStreamEvent) Descriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *InvokeStreamEvent) GetEvent() isInvokeStreamEvent_Event {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+func (x *InvokeStreamEvent) GetIndexLookup() *IndexLookupEvent {
+	if x != nil {
+		if x, ok := x.Event.(*InvokeStreamEvent_IndexLookup); ok {
+			return x.IndexLookup
+		}
+	}
+	return nil
+}
+
+func (x *InvokeStreamEvent) GetSnapshot() *SnapshotEvent {
+	if x != nil {
+		if x, ok := x.Event.(*InvokeStreamEvent_Snapshot); ok {
+			return x.Snapshot
+		}
+	}
+	return nil
+}
+
+func (x *InvokeStreamEvent) GetTerminal() *TerminalEvent {
+	if x != nil {
+		if x, ok := x.Event.(*InvokeStreamEvent_Terminal); ok {
+			return x.Terminal
+		}
+	}
+	return nil
+}
+
+type isInvokeStreamEvent_Event interface {
+	isInvokeStreamEvent_Event()
+}
+
+type InvokeStreamEvent_IndexLookup struct {
+	IndexLookup *IndexLookupEvent `protobuf:"bytes,1,opt,name=index_lookup,json=indexLookup,proto3,oneof"`
+}
+
+type InvokeStreamEvent_Snapshot struct {
+	Snapshot *SnapshotEvent `protobuf:"bytes,2,opt,name=snapshot,proto3,oneof"`
+}
+
+type InvokeStreamEvent_Terminal struct {
+	Terminal *TerminalEvent `protobuf:"bytes,3,opt,name=terminal,proto3,oneof"`
+}
+
+func (*InvokeStreamEvent_IndexLookup) isInvokeStreamEvent_Event() {}
+
+func (*InvokeStreamEvent_Snapshot) isInvokeStreamEvent_Event() {}
+
+func (*InvokeStreamEvent_Terminal) isInvokeStreamEvent_Event() {}
+
+// IndexLookupEvent is emitted once per block as soon as the TSDB index lookup
+// for that block completes, before profile data is read. Clients accumulate
+// these to build a running datasets_total denominator for progress reporting.
+type IndexLookupEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BlockId       string                 `protobuf:"bytes,1,opt,name=block_id,json=blockId,proto3" json:"block_id,omitempty"`
+	DatasetsFound uint32                 `protobuf:"varint,2,opt,name=datasets_found,json=datasetsFound,proto3" json:"datasets_found,omitempty"`
+	BytesEstimate uint64                 `protobuf:"varint,3,opt,name=bytes_estimate,json=bytesEstimate,proto3" json:"bytes_estimate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IndexLookupEvent) Reset() {
+	*x = IndexLookupEvent{}
+	mi := &file_query_v1_query_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IndexLookupEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IndexLookupEvent) ProtoMessage() {}
+
+func (x *IndexLookupEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_query_v1_query_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IndexLookupEvent.ProtoReflect.Descriptor instead.
+func (*IndexLookupEvent) Descriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *IndexLookupEvent) GetBlockId() string {
+	if x != nil {
+		return x.BlockId
+	}
+	return ""
+}
+
+func (x *IndexLookupEvent) GetDatasetsFound() uint32 {
+	if x != nil {
+		return x.DatasetsFound
+	}
+	return 0
+}
+
+func (x *IndexLookupEvent) GetBytesEstimate() uint64 {
+	if x != nil {
+		return x.BytesEstimate
+	}
+	return 0
+}
+
+// SnapshotEvent carries a periodic partial result. Reports contain the same
+// report types as InvokeResponse but represent an intermediate (under-counted)
+// merged state. Each snapshot fully replaces the previous one.
+type SnapshotEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BlocksDone    uint32                 `protobuf:"varint,1,opt,name=blocks_done,json=blocksDone,proto3" json:"blocks_done,omitempty"`
+	DatasetsDone  uint32                 `protobuf:"varint,2,opt,name=datasets_done,json=datasetsDone,proto3" json:"datasets_done,omitempty"`
+	BytesDone     uint64                 `protobuf:"varint,3,opt,name=bytes_done,json=bytesDone,proto3" json:"bytes_done,omitempty"`
+	Reports       []*Report              `protobuf:"bytes,4,rep,name=reports,proto3" json:"reports,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SnapshotEvent) Reset() {
+	*x = SnapshotEvent{}
+	mi := &file_query_v1_query_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SnapshotEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SnapshotEvent) ProtoMessage() {}
+
+func (x *SnapshotEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_query_v1_query_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SnapshotEvent.ProtoReflect.Descriptor instead.
+func (*SnapshotEvent) Descriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *SnapshotEvent) GetBlocksDone() uint32 {
+	if x != nil {
+		return x.BlocksDone
+	}
+	return 0
+}
+
+func (x *SnapshotEvent) GetDatasetsDone() uint32 {
+	if x != nil {
+		return x.DatasetsDone
+	}
+	return 0
+}
+
+func (x *SnapshotEvent) GetBytesDone() uint64 {
+	if x != nil {
+		return x.BytesDone
+	}
+	return 0
+}
+
+func (x *SnapshotEvent) GetReports() []*Report {
+	if x != nil {
+		return x.Reports
+	}
+	return nil
+}
+
+// TerminalEvent is the last message in an InvokeStream response. It carries
+// the fully-merged result and optional diagnostics.
+type TerminalEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reports       []*Report              `protobuf:"bytes,1,rep,name=reports,proto3" json:"reports,omitempty"`
+	Diagnostics   *Diagnostics           `protobuf:"bytes,2,opt,name=diagnostics,proto3" json:"diagnostics,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerminalEvent) Reset() {
+	*x = TerminalEvent{}
+	mi := &file_query_v1_query_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerminalEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerminalEvent) ProtoMessage() {}
+
+func (x *TerminalEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_query_v1_query_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerminalEvent.ProtoReflect.Descriptor instead.
+func (*TerminalEvent) Descriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *TerminalEvent) GetReports() []*Report {
+	if x != nil {
+		return x.Reports
+	}
+	return nil
+}
+
+func (x *TerminalEvent) GetDiagnostics() *Diagnostics {
+	if x != nil {
+		return x.Diagnostics
+	}
+	return nil
+}
+
 var File_query_v1_query_proto protoreflect.FileDescriptor
 
 const file_query_v1_query_proto_rawDesc = "" +
@@ -2666,7 +2957,26 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x05query\x18\x01 \x01(\v2\x19.query.v1.TimeSeriesQueryR\x05query\x121\n" +
 	"\vtime_series\x18\x02 \x03(\v2\x10.query.v1.SeriesR\n" +
 	"timeSeries\x12A\n" +
-	"\x0fattribute_table\x18\x03 \x01(\v2\x18.query.v1.AttributeTableR\x0eattributeTable*\xd4\x01\n" +
+	"\x0fattribute_table\x18\x03 \x01(\v2\x18.query.v1.AttributeTableR\x0eattributeTable\"\xcb\x01\n" +
+	"\x11InvokeStreamEvent\x12?\n" +
+	"\findex_lookup\x18\x01 \x01(\v2\x1a.query.v1.IndexLookupEventH\x00R\vindexLookup\x125\n" +
+	"\bsnapshot\x18\x02 \x01(\v2\x17.query.v1.SnapshotEventH\x00R\bsnapshot\x125\n" +
+	"\bterminal\x18\x03 \x01(\v2\x17.query.v1.TerminalEventH\x00R\bterminalB\a\n" +
+	"\x05event\"{\n" +
+	"\x10IndexLookupEvent\x12\x19\n" +
+	"\bblock_id\x18\x01 \x01(\tR\ablockId\x12%\n" +
+	"\x0edatasets_found\x18\x02 \x01(\rR\rdatasetsFound\x12%\n" +
+	"\x0ebytes_estimate\x18\x03 \x01(\x04R\rbytesEstimate\"\xa0\x01\n" +
+	"\rSnapshotEvent\x12\x1f\n" +
+	"\vblocks_done\x18\x01 \x01(\rR\n" +
+	"blocksDone\x12#\n" +
+	"\rdatasets_done\x18\x02 \x01(\rR\fdatasetsDone\x12\x1d\n" +
+	"\n" +
+	"bytes_done\x18\x03 \x01(\x04R\tbytesDone\x12*\n" +
+	"\areports\x18\x04 \x03(\v2\x10.query.v1.ReportR\areports\"t\n" +
+	"\rTerminalEvent\x12*\n" +
+	"\areports\x18\x01 \x03(\v2\x10.query.v1.ReportR\areports\x127\n" +
+	"\vdiagnostics\x18\x02 \x01(\v2\x15.query.v1.DiagnosticsR\vdiagnostics*\xd4\x01\n" +
 	"\tQueryType\x12\x15\n" +
 	"\x11QUERY_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11QUERY_LABEL_NAMES\x10\x01\x12\x16\n" +
@@ -2690,9 +3000,10 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x0eREPORT_HEATMAP\x10\a\x12\x1e\n" +
 	"\x1aREPORT_TIME_SERIES_COMPACT\x10\b2R\n" +
 	"\x14QueryFrontendService\x12:\n" +
-	"\x05Query\x12\x16.query.v1.QueryRequest\x1a\x17.query.v1.QueryResponse\"\x002T\n" +
+	"\x05Query\x12\x16.query.v1.QueryRequest\x1a\x17.query.v1.QueryResponse\"\x002\x9e\x01\n" +
 	"\x13QueryBackendService\x12=\n" +
-	"\x06Invoke\x12\x17.query.v1.InvokeRequest\x1a\x18.query.v1.InvokeResponse\"\x00B\x9b\x01\n" +
+	"\x06Invoke\x12\x17.query.v1.InvokeRequest\x1a\x18.query.v1.InvokeResponse\"\x00\x12H\n" +
+	"\fInvokeStream\x12\x17.query.v1.InvokeRequest\x1a\x1b.query.v1.InvokeStreamEvent\"\x000\x01B\x9b\x01\n" +
 	"\fcom.query.v1B\n" +
 	"QueryProtoP\x01Z>github.com/grafana/pyroscope/api/gen/proto/go/query/v1;queryv1\xa2\x02\x03QXX\xaa\x02\bQuery.V1\xca\x02\bQuery\\V1\xe2\x02\x14Query\\V1\\GPBMetadata\xea\x02\tQuery::V1b\x06proto3"
 
@@ -2709,7 +3020,7 @@ func file_query_v1_query_proto_rawDescGZIP() []byte {
 }
 
 var file_query_v1_query_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_query_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
+var file_query_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_query_v1_query_proto_goTypes = []any{
 	(QueryType)(0),                  // 0: query.v1.QueryType
 	(ReportType)(0),                 // 1: query.v1.ReportType
@@ -2749,15 +3060,19 @@ var file_query_v1_query_proto_goTypes = []any{
 	(*Point)(nil),                   // 35: query.v1.Point
 	(*Series)(nil),                  // 36: query.v1.Series
 	(*TimeSeriesCompactReport)(nil), // 37: query.v1.TimeSeriesCompactReport
-	(*v1.BlockMeta)(nil),            // 38: metastore.v1.BlockMeta
-	(*v11.Labels)(nil),              // 39: types.v1.Labels
-	(v11.ExemplarType)(0),           // 40: types.v1.ExemplarType
-	(*v11.Series)(nil),              // 41: types.v1.Series
-	(*v11.StackTraceSelector)(nil),  // 42: types.v1.StackTraceSelector
-	(*v12.Mapping)(nil),             // 43: google.v1.Mapping
-	(*v12.Location)(nil),            // 44: google.v1.Location
-	(*v12.Function)(nil),            // 45: google.v1.Function
-	(v13.HeatmapQueryType)(0),       // 46: querier.v1.HeatmapQueryType
+	(*InvokeStreamEvent)(nil),       // 38: query.v1.InvokeStreamEvent
+	(*IndexLookupEvent)(nil),        // 39: query.v1.IndexLookupEvent
+	(*SnapshotEvent)(nil),           // 40: query.v1.SnapshotEvent
+	(*TerminalEvent)(nil),           // 41: query.v1.TerminalEvent
+	(*v1.BlockMeta)(nil),            // 42: metastore.v1.BlockMeta
+	(*v11.Labels)(nil),              // 43: types.v1.Labels
+	(v11.ExemplarType)(0),           // 44: types.v1.ExemplarType
+	(*v11.Series)(nil),              // 45: types.v1.Series
+	(*v11.StackTraceSelector)(nil),  // 46: types.v1.StackTraceSelector
+	(*v12.Mapping)(nil),             // 47: google.v1.Mapping
+	(*v12.Location)(nil),            // 48: google.v1.Location
+	(*v12.Function)(nil),            // 49: google.v1.Function
+	(v13.HeatmapQueryType)(0),       // 50: querier.v1.HeatmapQueryType
 }
 var file_query_v1_query_proto_depIdxs = []int32{
 	9,  // 0: query.v1.QueryRequest.query:type_name -> query.v1.Query
@@ -2768,7 +3083,7 @@ var file_query_v1_query_proto_depIdxs = []int32{
 	8,  // 5: query.v1.QueryPlan.root:type_name -> query.v1.QueryNode
 	2,  // 6: query.v1.QueryNode.type:type_name -> query.v1.QueryNode.Type
 	8,  // 7: query.v1.QueryNode.children:type_name -> query.v1.QueryNode
-	38, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
+	42, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
 	0,  // 9: query.v1.Query.query_type:type_name -> query.v1.QueryType
 	16, // 10: query.v1.Query.label_names:type_name -> query.v1.LabelNamesQuery
 	18, // 11: query.v1.Query.label_values:type_name -> query.v1.LabelValuesQuery
@@ -2798,20 +3113,20 @@ var file_query_v1_query_proto_depIdxs = []int32{
 	16, // 35: query.v1.LabelNamesReport.query:type_name -> query.v1.LabelNamesQuery
 	18, // 36: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
 	20, // 37: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
-	39, // 38: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
-	40, // 39: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	43, // 38: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
+	44, // 39: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
 	22, // 40: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
-	41, // 41: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
-	42, // 42: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	43, // 43: query.v1.TreeSymbols.mappings:type_name -> google.v1.Mapping
-	44, // 44: query.v1.TreeSymbols.locations:type_name -> google.v1.Location
-	45, // 45: query.v1.TreeSymbols.functions:type_name -> google.v1.Function
+	45, // 41: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
+	46, // 42: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	47, // 43: query.v1.TreeSymbols.mappings:type_name -> google.v1.Mapping
+	48, // 44: query.v1.TreeSymbols.locations:type_name -> google.v1.Location
+	49, // 45: query.v1.TreeSymbols.functions:type_name -> google.v1.Function
 	24, // 46: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
 	25, // 47: query.v1.TreeReport.symbols:type_name -> query.v1.TreeSymbols
-	42, // 48: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	46, // 48: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
 	27, // 49: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
-	46, // 50: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
-	40, // 51: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	50, // 50: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
+	44, // 51: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
 	31, // 52: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
 	29, // 53: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
 	32, // 54: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
@@ -2821,15 +3136,23 @@ var file_query_v1_query_proto_depIdxs = []int32{
 	22, // 58: query.v1.TimeSeriesCompactReport.query:type_name -> query.v1.TimeSeriesQuery
 	36, // 59: query.v1.TimeSeriesCompactReport.time_series:type_name -> query.v1.Series
 	30, // 60: query.v1.TimeSeriesCompactReport.attribute_table:type_name -> query.v1.AttributeTable
-	3,  // 61: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
-	6,  // 62: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
-	4,  // 63: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
-	10, // 64: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
-	63, // [63:65] is the sub-list for method output_type
-	61, // [61:63] is the sub-list for method input_type
-	61, // [61:61] is the sub-list for extension type_name
-	61, // [61:61] is the sub-list for extension extendee
-	0,  // [0:61] is the sub-list for field type_name
+	39, // 61: query.v1.InvokeStreamEvent.index_lookup:type_name -> query.v1.IndexLookupEvent
+	40, // 62: query.v1.InvokeStreamEvent.snapshot:type_name -> query.v1.SnapshotEvent
+	41, // 63: query.v1.InvokeStreamEvent.terminal:type_name -> query.v1.TerminalEvent
+	15, // 64: query.v1.SnapshotEvent.reports:type_name -> query.v1.Report
+	15, // 65: query.v1.TerminalEvent.reports:type_name -> query.v1.Report
+	11, // 66: query.v1.TerminalEvent.diagnostics:type_name -> query.v1.Diagnostics
+	3,  // 67: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
+	6,  // 68: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
+	6,  // 69: query.v1.QueryBackendService.InvokeStream:input_type -> query.v1.InvokeRequest
+	4,  // 70: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
+	10, // 71: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
+	38, // 72: query.v1.QueryBackendService.InvokeStream:output_type -> query.v1.InvokeStreamEvent
+	70, // [70:73] is the sub-list for method output_type
+	67, // [67:70] is the sub-list for method input_type
+	67, // [67:67] is the sub-list for extension type_name
+	67, // [67:67] is the sub-list for extension extendee
+	0,  // [0:67] is the sub-list for field type_name
 }
 
 func init() { file_query_v1_query_proto_init() }
@@ -2840,13 +3163,18 @@ func file_query_v1_query_proto_init() {
 	file_query_v1_query_proto_msgTypes[21].OneofWrappers = []any{}
 	file_query_v1_query_proto_msgTypes[23].OneofWrappers = []any{}
 	file_query_v1_query_proto_msgTypes[24].OneofWrappers = []any{}
+	file_query_v1_query_proto_msgTypes[35].OneofWrappers = []any{
+		(*InvokeStreamEvent_IndexLookup)(nil),
+		(*InvokeStreamEvent_Snapshot)(nil),
+		(*InvokeStreamEvent_Terminal)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_query_v1_query_proto_rawDesc), len(file_query_v1_query_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   35,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

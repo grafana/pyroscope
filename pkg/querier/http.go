@@ -1,6 +1,7 @@
 package querier
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,8 +15,8 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"golang.org/x/sync/errgroup"
 
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/dot"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
@@ -25,12 +26,23 @@ import (
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
-func NewHTTPHandlers(client querierv1connect.QuerierServiceClient) *QueryHandlers {
+// HTTPQueryClient is satisfied by both QuerierServiceClient and
+// QuerierServiceHandler (all unary methods share identical signatures).
+type HTTPQueryClient interface {
+	ProfileTypes(context.Context, *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error)
+	LabelValues(context.Context, *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error)
+	SelectMergeStacktraces(context.Context, *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error)
+	SelectMergeProfile(context.Context, *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[googlev1.Profile], error)
+	SelectSeries(context.Context, *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error)
+	Diff(context.Context, *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error)
+}
+
+func NewHTTPHandlers(client HTTPQueryClient) *QueryHandlers {
 	return &QueryHandlers{client}
 }
 
 type QueryHandlers struct {
-	client querierv1connect.QuerierServiceClient
+	client HTTPQueryClient
 }
 
 // LabelValues only returns the label values for the given label name.

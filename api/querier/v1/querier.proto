@@ -67,6 +67,23 @@ service QuerierService {
   rpc AnalyzeQuery(AnalyzeQueryRequest) returns (AnalyzeQueryResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/internal";
   }
+
+  // SelectMergeStacktracesStream streams incremental flamegraph results.
+  // The first messages are QueryPlanUpdate (one per IndexLookupEvent from the
+  // backend), followed by zero or more QuerySnapshot intermediates, and a
+  // final QueryResult. Returns CodeUnimplemented when the V1 path is selected.
+  rpc SelectMergeStacktracesStream(SelectMergeStacktracesRequest)
+      returns (stream SelectMergeStacktracesPartial) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
+
+  // SelectSeriesStream streams incremental time-series results.
+  // Same message ordering as SelectMergeStacktracesStream.
+  // Returns CodeUnimplemented when the V1 path is selected.
+  rpc SelectSeriesStream(SelectSeriesRequest)
+      returns (stream SelectSeriesPartial) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
 }
 
 message ProfileTypesRequest {
@@ -299,4 +316,60 @@ message QueryImpact {
   uint64 total_bytes_in_time_range = 2;
   uint64 total_queried_series = 3;
   bool deduplication_needed = 4;
+}
+
+// QueryPlanUpdate carries a running (not final) totals update. datasets_total
+// and bytes_total_estimate increase as more IndexLookupEvents arrive from
+// query-backend shards; the UI must treat them as mutable until the stream ends.
+message QueryPlanUpdate {
+  uint32 blocks_total         = 1;
+  uint32 datasets_total       = 2;
+  uint64 bytes_total_estimate = 3;
+}
+
+// QuerySnapshot carries a periodic intermediate flamegraph. Each snapshot is a
+// full replacement of the previous one (not a delta).
+message QuerySnapshot {
+  uint32    blocks_done    = 1;
+  uint32    datasets_done  = 2;
+  uint64    bytes_done     = 3;
+  FlameGraph flamegraph    = 4;
+}
+
+// SeriesChunk carries a batch of time-series intervals. Intervals within a
+// stream are append-only (non-overlapping), so the UI appends rather than replaces.
+message SeriesChunk {
+  uint32                  blocks_done   = 1;
+  uint32                  datasets_done = 2;
+  uint64                  bytes_done    = 3;
+  repeated types.v1.Series series       = 4;
+}
+
+// QueryResult is the final message of a streaming query. It carries the
+// fully-merged result equivalent to the unary response.
+message QueryResult {
+  FlameGraph              flamegraph = 1;
+  repeated types.v1.Series series   = 2;
+}
+
+// SelectMergeStacktracesPartial is one message in a SelectMergeStacktracesStream
+// response. Messages arrive in this order: zero or more plan_update, zero or
+// more snapshot, exactly one result (last).
+message SelectMergeStacktracesPartial {
+  oneof kind {
+    QueryPlanUpdate plan_update = 1;
+    QuerySnapshot   snapshot    = 2;
+    QueryResult     result      = 3;
+  }
+}
+
+// SelectSeriesPartial is one message in a SelectSeriesStream response.
+// Messages arrive in this order: zero or more plan_update, zero or more chunk,
+// exactly one result (last).
+message SelectSeriesPartial {
+  oneof kind {
+    QueryPlanUpdate plan_update = 1;
+    SeriesChunk     chunk       = 2;
+    QueryResult     result      = 3;
+  }
 }

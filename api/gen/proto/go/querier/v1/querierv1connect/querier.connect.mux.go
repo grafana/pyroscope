@@ -79,4 +79,14 @@ func RegisterQuerierServiceHandler(mux *mux.Router, svc QuerierServiceHandler, o
 		svc.AnalyzeQuery,
 		opts...,
 	))
+	mux.Handle("/querier.v1.QuerierService/SelectMergeStacktracesStream", connect.NewServerStreamHandler(
+		"/querier.v1.QuerierService/SelectMergeStacktracesStream",
+		svc.SelectMergeStacktracesStream,
+		opts...,
+	))
+	mux.Handle("/querier.v1.QuerierService/SelectSeriesStream", connect.NewServerStreamHandler(
+		"/querier.v1.QuerierService/SelectSeriesStream",
+		svc.SelectSeriesStream,
+		opts...,
+	))
 }

@@ -35,6 +35,7 @@ message QueryResponse {
 
 service QueryBackendService {
   rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
+  rpc InvokeStream(InvokeRequest) returns (stream InvokeStreamEvent) {}
 }
 
 message InvokeOptions {
@@ -309,4 +310,43 @@ message TimeSeriesCompactReport {
   TimeSeriesQuery query = 1;
   repeated Series time_series = 2;
   AttributeTable attribute_table = 3;
+}
+
+// InvokeStreamEvent is one message in a server-streaming response from
+// InvokeStream. Messages arrive interleaved: IndexLookupEvent fires as soon as
+// a block finishes its TSDB dataset-index lookup; SnapshotEvent fires on the
+// periodic snapshot cadence; TerminalEvent is the last message and carries the
+// fully-merged result.
+message InvokeStreamEvent {
+  oneof event {
+    IndexLookupEvent index_lookup = 1;
+    SnapshotEvent    snapshot     = 2;
+    TerminalEvent    terminal     = 3;
+  }
+}
+
+// IndexLookupEvent is emitted once per block as soon as the TSDB index lookup
+// for that block completes, before profile data is read. Clients accumulate
+// these to build a running datasets_total denominator for progress reporting.
+message IndexLookupEvent {
+  string block_id       = 1;
+  uint32 datasets_found = 2;
+  uint64 bytes_estimate = 3;
+}
+
+// SnapshotEvent carries a periodic partial result. Reports contain the same
+// report types as InvokeResponse but represent an intermediate (under-counted)
+// merged state. Each snapshot fully replaces the previous one.
+message SnapshotEvent {
+  uint32 blocks_done   = 1;
+  uint32 datasets_done = 2;
+  uint64 bytes_done    = 3;
+  repeated Report reports = 4;
+}
+
+// TerminalEvent is the last message in an InvokeStream response. It carries
+// the fully-merged result and optional diagnostics.
+message TerminalEvent {
+  repeated Report   reports     = 1;
+  Diagnostics       diagnostics = 2;
 }

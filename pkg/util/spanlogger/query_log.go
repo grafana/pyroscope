@@ -16,12 +16,14 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
+var _ querierv1connect.QuerierServiceHandler = (*LogSpanParametersWrapper)(nil)
+
 type LogSpanParametersWrapper struct {
-	client querierv1connect.QuerierServiceClient
+	client querierv1connect.QuerierServiceHandler
 	logger log.Logger
 }
 
-func NewLogSpanParametersWrapper(client querierv1connect.QuerierServiceClient, logger log.Logger) *LogSpanParametersWrapper {
+func NewLogSpanParametersWrapper(client querierv1connect.QuerierServiceHandler, logger log.Logger) *LogSpanParametersWrapper {
 	return &LogSpanParametersWrapper{
 		client: client,
 		logger: logger,
@@ -239,6 +241,38 @@ func (l LogSpanParametersWrapper) GetProfileStats(ctx context.Context, c *connec
 	defer sp.Finish()
 
 	return l.client.GetProfileStats(ctx, c)
+}
+
+func (l LogSpanParametersWrapper) SelectMergeStacktracesStream(ctx context.Context, c *connect.Request[querierv1.SelectMergeStacktracesRequest], stream *connect.ServerStream[querierv1.SelectMergeStacktracesPartial]) error {
+	return l.client.SelectMergeStacktracesStream(ctx, c, stream)
+}
+
+func (l LogSpanParametersWrapper) SelectSeriesStream(ctx context.Context, c *connect.Request[querierv1.SelectSeriesRequest], stream *connect.ServerStream[querierv1.SelectSeriesPartial]) error {
+	return l.client.SelectSeriesStream(ctx, c, stream)
+}
+
+// StreamSelectMergeStacktraces forwards in-process streaming calls to the inner
+// client if it implements the in-process streaming interface (same method signature).
+func (l LogSpanParametersWrapper) StreamSelectMergeStacktraces(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, stream *connect.ServerStream[querierv1.SelectMergeStacktracesPartial]) error {
+	type streamer interface {
+		StreamSelectMergeStacktraces(context.Context, *querierv1.SelectMergeStacktracesRequest, *connect.ServerStream[querierv1.SelectMergeStacktracesPartial]) error
+	}
+	if sf, ok := l.client.(streamer); ok {
+		return sf.StreamSelectMergeStacktraces(ctx, req, stream)
+	}
+	return connect.NewError(connect.CodeUnimplemented, nil)
+}
+
+// StreamSelectSeries forwards in-process streaming calls to the inner client if
+// it implements the in-process streaming interface (same method signature).
+func (l LogSpanParametersWrapper) StreamSelectSeries(ctx context.Context, req *querierv1.SelectSeriesRequest, stream *connect.ServerStream[querierv1.SelectSeriesPartial]) error {
+	type streamer interface {
+		StreamSelectSeries(context.Context, *querierv1.SelectSeriesRequest, *connect.ServerStream[querierv1.SelectSeriesPartial]) error
+	}
+	if sf, ok := l.client.(streamer); ok {
+		return sf.StreamSelectSeries(ctx, req, stream)
+	}
+	return connect.NewError(connect.CodeUnimplemented, nil)
 }
 
 func (l LogSpanParametersWrapper) AnalyzeQuery(ctx context.Context, c *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {

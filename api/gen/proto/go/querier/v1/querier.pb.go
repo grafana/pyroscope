@@ -1679,6 +1679,465 @@ func (x *QueryImpact) GetDeduplicationNeeded() bool {
 	return false
 }
 
+// QueryPlanUpdate carries a running (not final) totals update. datasets_total
+// and bytes_total_estimate increase as more IndexLookupEvents arrive from
+// query-backend shards; the UI must treat them as mutable until the stream ends.
+type QueryPlanUpdate struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	BlocksTotal        uint32                 `protobuf:"varint,1,opt,name=blocks_total,json=blocksTotal,proto3" json:"blocks_total,omitempty"`
+	DatasetsTotal      uint32                 `protobuf:"varint,2,opt,name=datasets_total,json=datasetsTotal,proto3" json:"datasets_total,omitempty"`
+	BytesTotalEstimate uint64                 `protobuf:"varint,3,opt,name=bytes_total_estimate,json=bytesTotalEstimate,proto3" json:"bytes_total_estimate,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *QueryPlanUpdate) Reset() {
+	*x = QueryPlanUpdate{}
+	mi := &file_querier_v1_querier_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QueryPlanUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueryPlanUpdate) ProtoMessage() {}
+
+func (x *QueryPlanUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QueryPlanUpdate.ProtoReflect.Descriptor instead.
+func (*QueryPlanUpdate) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *QueryPlanUpdate) GetBlocksTotal() uint32 {
+	if x != nil {
+		return x.BlocksTotal
+	}
+	return 0
+}
+
+func (x *QueryPlanUpdate) GetDatasetsTotal() uint32 {
+	if x != nil {
+		return x.DatasetsTotal
+	}
+	return 0
+}
+
+func (x *QueryPlanUpdate) GetBytesTotalEstimate() uint64 {
+	if x != nil {
+		return x.BytesTotalEstimate
+	}
+	return 0
+}
+
+// QuerySnapshot carries a periodic intermediate flamegraph. Each snapshot is a
+// full replacement of the previous one (not a delta).
+type QuerySnapshot struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BlocksDone    uint32                 `protobuf:"varint,1,opt,name=blocks_done,json=blocksDone,proto3" json:"blocks_done,omitempty"`
+	DatasetsDone  uint32                 `protobuf:"varint,2,opt,name=datasets_done,json=datasetsDone,proto3" json:"datasets_done,omitempty"`
+	BytesDone     uint64                 `protobuf:"varint,3,opt,name=bytes_done,json=bytesDone,proto3" json:"bytes_done,omitempty"`
+	Flamegraph    *FlameGraph            `protobuf:"bytes,4,opt,name=flamegraph,proto3" json:"flamegraph,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QuerySnapshot) Reset() {
+	*x = QuerySnapshot{}
+	mi := &file_querier_v1_querier_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QuerySnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QuerySnapshot) ProtoMessage() {}
+
+func (x *QuerySnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QuerySnapshot.ProtoReflect.Descriptor instead.
+func (*QuerySnapshot) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *QuerySnapshot) GetBlocksDone() uint32 {
+	if x != nil {
+		return x.BlocksDone
+	}
+	return 0
+}
+
+func (x *QuerySnapshot) GetDatasetsDone() uint32 {
+	if x != nil {
+		return x.DatasetsDone
+	}
+	return 0
+}
+
+func (x *QuerySnapshot) GetBytesDone() uint64 {
+	if x != nil {
+		return x.BytesDone
+	}
+	return 0
+}
+
+func (x *QuerySnapshot) GetFlamegraph() *FlameGraph {
+	if x != nil {
+		return x.Flamegraph
+	}
+	return nil
+}
+
+// SeriesChunk carries a batch of time-series intervals. Intervals within a
+// stream are append-only (non-overlapping), so the UI appends rather than replaces.
+type SeriesChunk struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BlocksDone    uint32                 `protobuf:"varint,1,opt,name=blocks_done,json=blocksDone,proto3" json:"blocks_done,omitempty"`
+	DatasetsDone  uint32                 `protobuf:"varint,2,opt,name=datasets_done,json=datasetsDone,proto3" json:"datasets_done,omitempty"`
+	BytesDone     uint64                 `protobuf:"varint,3,opt,name=bytes_done,json=bytesDone,proto3" json:"bytes_done,omitempty"`
+	Series        []*v1.Series           `protobuf:"bytes,4,rep,name=series,proto3" json:"series,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SeriesChunk) Reset() {
+	*x = SeriesChunk{}
+	mi := &file_querier_v1_querier_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SeriesChunk) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SeriesChunk) ProtoMessage() {}
+
+func (x *SeriesChunk) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SeriesChunk.ProtoReflect.Descriptor instead.
+func (*SeriesChunk) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *SeriesChunk) GetBlocksDone() uint32 {
+	if x != nil {
+		return x.BlocksDone
+	}
+	return 0
+}
+
+func (x *SeriesChunk) GetDatasetsDone() uint32 {
+	if x != nil {
+		return x.DatasetsDone
+	}
+	return 0
+}
+
+func (x *SeriesChunk) GetBytesDone() uint64 {
+	if x != nil {
+		return x.BytesDone
+	}
+	return 0
+}
+
+func (x *SeriesChunk) GetSeries() []*v1.Series {
+	if x != nil {
+		return x.Series
+	}
+	return nil
+}
+
+// QueryResult is the final message of a streaming query. It carries the
+// fully-merged result equivalent to the unary response.
+type QueryResult struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Flamegraph    *FlameGraph            `protobuf:"bytes,1,opt,name=flamegraph,proto3" json:"flamegraph,omitempty"`
+	Series        []*v1.Series           `protobuf:"bytes,2,rep,name=series,proto3" json:"series,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QueryResult) Reset() {
+	*x = QueryResult{}
+	mi := &file_querier_v1_querier_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QueryResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueryResult) ProtoMessage() {}
+
+func (x *QueryResult) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QueryResult.ProtoReflect.Descriptor instead.
+func (*QueryResult) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *QueryResult) GetFlamegraph() *FlameGraph {
+	if x != nil {
+		return x.Flamegraph
+	}
+	return nil
+}
+
+func (x *QueryResult) GetSeries() []*v1.Series {
+	if x != nil {
+		return x.Series
+	}
+	return nil
+}
+
+// SelectMergeStacktracesPartial is one message in a SelectMergeStacktracesStream
+// response. Messages arrive in this order: zero or more plan_update, zero or
+// more snapshot, exactly one result (last).
+type SelectMergeStacktracesPartial struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Kind:
+	//
+	//	*SelectMergeStacktracesPartial_PlanUpdate
+	//	*SelectMergeStacktracesPartial_Snapshot
+	//	*SelectMergeStacktracesPartial_Result
+	Kind          isSelectMergeStacktracesPartial_Kind `protobuf_oneof:"kind"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SelectMergeStacktracesPartial) Reset() {
+	*x = SelectMergeStacktracesPartial{}
+	mi := &file_querier_v1_querier_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SelectMergeStacktracesPartial) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SelectMergeStacktracesPartial) ProtoMessage() {}
+
+func (x *SelectMergeStacktracesPartial) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SelectMergeStacktracesPartial.ProtoReflect.Descriptor instead.
+func (*SelectMergeStacktracesPartial) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *SelectMergeStacktracesPartial) GetKind() isSelectMergeStacktracesPartial_Kind {
+	if x != nil {
+		return x.Kind
+	}
+	return nil
+}
+
+func (x *SelectMergeStacktracesPartial) GetPlanUpdate() *QueryPlanUpdate {
+	if x != nil {
+		if x, ok := x.Kind.(*SelectMergeStacktracesPartial_PlanUpdate); ok {
+			return x.PlanUpdate
+		}
+	}
+	return nil
+}
+
+func (x *SelectMergeStacktracesPartial) GetSnapshot() *QuerySnapshot {
+	if x != nil {
+		if x, ok := x.Kind.(*SelectMergeStacktracesPartial_Snapshot); ok {
+			return x.Snapshot
+		}
+	}
+	return nil
+}
+
+func (x *SelectMergeStacktracesPartial) GetResult() *QueryResult {
+	if x != nil {
+		if x, ok := x.Kind.(*SelectMergeStacktracesPartial_Result); ok {
+			return x.Result
+		}
+	}
+	return nil
+}
+
+type isSelectMergeStacktracesPartial_Kind interface {
+	isSelectMergeStacktracesPartial_Kind()
+}
+
+type SelectMergeStacktracesPartial_PlanUpdate struct {
+	PlanUpdate *QueryPlanUpdate `protobuf:"bytes,1,opt,name=plan_update,json=planUpdate,proto3,oneof"`
+}
+
+type SelectMergeStacktracesPartial_Snapshot struct {
+	Snapshot *QuerySnapshot `protobuf:"bytes,2,opt,name=snapshot,proto3,oneof"`
+}
+
+type SelectMergeStacktracesPartial_Result struct {
+	Result *QueryResult `protobuf:"bytes,3,opt,name=result,proto3,oneof"`
+}
+
+func (*SelectMergeStacktracesPartial_PlanUpdate) isSelectMergeStacktracesPartial_Kind() {}
+
+func (*SelectMergeStacktracesPartial_Snapshot) isSelectMergeStacktracesPartial_Kind() {}
+
+func (*SelectMergeStacktracesPartial_Result) isSelectMergeStacktracesPartial_Kind() {}
+
+// SelectSeriesPartial is one message in a SelectSeriesStream response.
+// Messages arrive in this order: zero or more plan_update, zero or more chunk,
+// exactly one result (last).
+type SelectSeriesPartial struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Kind:
+	//
+	//	*SelectSeriesPartial_PlanUpdate
+	//	*SelectSeriesPartial_Chunk
+	//	*SelectSeriesPartial_Result
+	Kind          isSelectSeriesPartial_Kind `protobuf_oneof:"kind"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SelectSeriesPartial) Reset() {
+	*x = SelectSeriesPartial{}
+	mi := &file_querier_v1_querier_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SelectSeriesPartial) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SelectSeriesPartial) ProtoMessage() {}
+
+func (x *SelectSeriesPartial) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SelectSeriesPartial.ProtoReflect.Descriptor instead.
+func (*SelectSeriesPartial) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *SelectSeriesPartial) GetKind() isSelectSeriesPartial_Kind {
+	if x != nil {
+		return x.Kind
+	}
+	return nil
+}
+
+func (x *SelectSeriesPartial) GetPlanUpdate() *QueryPlanUpdate {
+	if x != nil {
+		if x, ok := x.Kind.(*SelectSeriesPartial_PlanUpdate); ok {
+			return x.PlanUpdate
+		}
+	}
+	return nil
+}
+
+func (x *SelectSeriesPartial) GetChunk() *SeriesChunk {
+	if x != nil {
+		if x, ok := x.Kind.(*SelectSeriesPartial_Chunk); ok {
+			return x.Chunk
+		}
+	}
+	return nil
+}
+
+func (x *SelectSeriesPartial) GetResult() *QueryResult {
+	if x != nil {
+		if x, ok := x.Kind.(*SelectSeriesPartial_Result); ok {
+			return x.Result
+		}
+	}
+	return nil
+}
+
+type isSelectSeriesPartial_Kind interface {
+	isSelectSeriesPartial_Kind()
+}
+
+type SelectSeriesPartial_PlanUpdate struct {
+	PlanUpdate *QueryPlanUpdate `protobuf:"bytes,1,opt,name=plan_update,json=planUpdate,proto3,oneof"`
+}
+
+type SelectSeriesPartial_Chunk struct {
+	Chunk *SeriesChunk `protobuf:"bytes,2,opt,name=chunk,proto3,oneof"`
+}
+
+type SelectSeriesPartial_Result struct {
+	Result *QueryResult `protobuf:"bytes,3,opt,name=result,proto3,oneof"`
+}
+
+func (*SelectSeriesPartial_PlanUpdate) isSelectSeriesPartial_Kind() {}
+
+func (*SelectSeriesPartial_Chunk) isSelectSeriesPartial_Kind() {}
+
+func (*SelectSeriesPartial_Result) isSelectSeriesPartial_Kind() {}
+
 var File_querier_v1_querier_proto protoreflect.FileDescriptor
 
 const file_querier_v1_querier_proto_rawDesc = "" +
@@ -1821,7 +2280,44 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\vQueryImpact\x128\n" +
 	"\x19total_bytes_in_time_range\x18\x02 \x01(\x04R\x15totalBytesInTimeRange\x120\n" +
 	"\x14total_queried_series\x18\x03 \x01(\x04R\x12totalQueriedSeries\x121\n" +
-	"\x14deduplication_needed\x18\x04 \x01(\bR\x13deduplicationNeeded*\x7f\n" +
+	"\x14deduplication_needed\x18\x04 \x01(\bR\x13deduplicationNeeded\"\x8d\x01\n" +
+	"\x0fQueryPlanUpdate\x12!\n" +
+	"\fblocks_total\x18\x01 \x01(\rR\vblocksTotal\x12%\n" +
+	"\x0edatasets_total\x18\x02 \x01(\rR\rdatasetsTotal\x120\n" +
+	"\x14bytes_total_estimate\x18\x03 \x01(\x04R\x12bytesTotalEstimate\"\xac\x01\n" +
+	"\rQuerySnapshot\x12\x1f\n" +
+	"\vblocks_done\x18\x01 \x01(\rR\n" +
+	"blocksDone\x12#\n" +
+	"\rdatasets_done\x18\x02 \x01(\rR\fdatasetsDone\x12\x1d\n" +
+	"\n" +
+	"bytes_done\x18\x03 \x01(\x04R\tbytesDone\x126\n" +
+	"\n" +
+	"flamegraph\x18\x04 \x01(\v2\x16.querier.v1.FlameGraphR\n" +
+	"flamegraph\"\x9c\x01\n" +
+	"\vSeriesChunk\x12\x1f\n" +
+	"\vblocks_done\x18\x01 \x01(\rR\n" +
+	"blocksDone\x12#\n" +
+	"\rdatasets_done\x18\x02 \x01(\rR\fdatasetsDone\x12\x1d\n" +
+	"\n" +
+	"bytes_done\x18\x03 \x01(\x04R\tbytesDone\x12(\n" +
+	"\x06series\x18\x04 \x03(\v2\x10.types.v1.SeriesR\x06series\"o\n" +
+	"\vQueryResult\x126\n" +
+	"\n" +
+	"flamegraph\x18\x01 \x01(\v2\x16.querier.v1.FlameGraphR\n" +
+	"flamegraph\x12(\n" +
+	"\x06series\x18\x02 \x03(\v2\x10.types.v1.SeriesR\x06series\"\xd3\x01\n" +
+	"\x1dSelectMergeStacktracesPartial\x12>\n" +
+	"\vplan_update\x18\x01 \x01(\v2\x1b.querier.v1.QueryPlanUpdateH\x00R\n" +
+	"planUpdate\x127\n" +
+	"\bsnapshot\x18\x02 \x01(\v2\x19.querier.v1.QuerySnapshotH\x00R\bsnapshot\x121\n" +
+	"\x06result\x18\x03 \x01(\v2\x17.querier.v1.QueryResultH\x00R\x06resultB\x06\n" +
+	"\x04kind\"\xc1\x01\n" +
+	"\x13SelectSeriesPartial\x12>\n" +
+	"\vplan_update\x18\x01 \x01(\v2\x1b.querier.v1.QueryPlanUpdateH\x00R\n" +
+	"planUpdate\x12/\n" +
+	"\x05chunk\x18\x02 \x01(\v2\x17.querier.v1.SeriesChunkH\x00R\x05chunk\x121\n" +
+	"\x06result\x18\x03 \x01(\v2\x17.querier.v1.QueryResultH\x00R\x06resultB\x06\n" +
+	"\x04kind*\x7f\n" +
 	"\rProfileFormat\x12\x1e\n" +
 	"\x1aPROFILE_FORMAT_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19PROFILE_FORMAT_FLAMEGRAPH\x10\x01\x12\x17\n" +
@@ -1830,7 +2326,7 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x10HeatmapQueryType\x12\"\n" +
 	"\x1eHEATMAP_QUERY_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dHEATMAP_QUERY_TYPE_INDIVIDUAL\x10\x01\x12\x1b\n" +
-	"\x17HEATMAP_QUERY_TYPE_SPAN\x10\x022\xe5\t\n" +
+	"\x17HEATMAP_QUERY_TYPE_SPAN\x10\x022\xde\v\n" +
 	"\x0eQuerierService\x12d\n" +
 	"\fProfileTypes\x12\x1f.querier.v1.ProfileTypesRequest\x1a .querier.v1.ProfileTypesResponse\"\x11\xbaG\x0e\n" +
 	"\fscope/public\x12]\n" +
@@ -1856,7 +2352,11 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x0fGetProfileStats\x12 .types.v1.GetProfileStatsRequest\x1a!.types.v1.GetProfileStatsResponse\"\x13\xbaG\x10\n" +
 	"\x0escope/internal\x12f\n" +
 	"\fAnalyzeQuery\x12\x1f.querier.v1.AnalyzeQueryRequest\x1a .querier.v1.AnalyzeQueryResponse\"\x13\xbaG\x10\n" +
-	"\x0escope/internalB\xab\x01\n" +
+	"\x0escope/internal\x12\x89\x01\n" +
+	"\x1cSelectMergeStacktracesStream\x12).querier.v1.SelectMergeStacktracesRequest\x1a).querier.v1.SelectMergeStacktracesPartial\"\x11\xbaG\x0e\n" +
+	"\fscope/public0\x01\x12k\n" +
+	"\x12SelectSeriesStream\x12\x1f.querier.v1.SelectSeriesRequest\x1a\x1f.querier.v1.SelectSeriesPartial\"\x11\xbaG\x0e\n" +
+	"\fscope/public0\x01B\xab\x01\n" +
 	"\x0ecom.querier.v1B\fQuerierProtoP\x01ZBgithub.com/grafana/pyroscope/api/gen/proto/go/querier/v1;querierv1\xa2\x02\x03QXX\xaa\x02\n" +
 	"Querier.V1\xca\x02\n" +
 	"Querier\\V1\xe2\x02\x16Querier\\V1\\GPBMetadata\xea\x02\vQuerier::V1b\x06proto3"
@@ -1874,7 +2374,7 @@ func file_querier_v1_querier_proto_rawDescGZIP() []byte {
 }
 
 var file_querier_v1_querier_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_querier_v1_querier_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_querier_v1_querier_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_querier_v1_querier_proto_goTypes = []any{
 	(ProfileFormat)(0),                     // 0: querier.v1.ProfileFormat
 	(HeatmapQueryType)(0),                  // 1: querier.v1.HeatmapQueryType
@@ -1900,26 +2400,32 @@ var file_querier_v1_querier_proto_goTypes = []any{
 	(*AnalyzeQueryResponse)(nil),           // 21: querier.v1.AnalyzeQueryResponse
 	(*QueryScope)(nil),                     // 22: querier.v1.QueryScope
 	(*QueryImpact)(nil),                    // 23: querier.v1.QueryImpact
-	(*v1.ProfileType)(nil),                 // 24: types.v1.ProfileType
-	(*v1.Labels)(nil),                      // 25: types.v1.Labels
-	(*v1.StackTraceSelector)(nil),          // 26: types.v1.StackTraceSelector
-	(v1.TimeSeriesAggregationType)(0),      // 27: types.v1.TimeSeriesAggregationType
-	(v1.ExemplarType)(0),                   // 28: types.v1.ExemplarType
-	(*v1.Series)(nil),                      // 29: types.v1.Series
-	(*v1.HeatmapSeries)(nil),               // 30: types.v1.HeatmapSeries
-	(*v1.LabelValuesRequest)(nil),          // 31: types.v1.LabelValuesRequest
-	(*v1.LabelNamesRequest)(nil),           // 32: types.v1.LabelNamesRequest
-	(*v1.GetProfileStatsRequest)(nil),      // 33: types.v1.GetProfileStatsRequest
-	(*v1.LabelValuesResponse)(nil),         // 34: types.v1.LabelValuesResponse
-	(*v1.LabelNamesResponse)(nil),          // 35: types.v1.LabelNamesResponse
-	(*v11.Profile)(nil),                    // 36: google.v1.Profile
-	(*v1.GetProfileStatsResponse)(nil),     // 37: types.v1.GetProfileStatsResponse
+	(*QueryPlanUpdate)(nil),                // 24: querier.v1.QueryPlanUpdate
+	(*QuerySnapshot)(nil),                  // 25: querier.v1.QuerySnapshot
+	(*SeriesChunk)(nil),                    // 26: querier.v1.SeriesChunk
+	(*QueryResult)(nil),                    // 27: querier.v1.QueryResult
+	(*SelectMergeStacktracesPartial)(nil),  // 28: querier.v1.SelectMergeStacktracesPartial
+	(*SelectSeriesPartial)(nil),            // 29: querier.v1.SelectSeriesPartial
+	(*v1.ProfileType)(nil),                 // 30: types.v1.ProfileType
+	(*v1.Labels)(nil),                      // 31: types.v1.Labels
+	(*v1.StackTraceSelector)(nil),          // 32: types.v1.StackTraceSelector
+	(v1.TimeSeriesAggregationType)(0),      // 33: types.v1.TimeSeriesAggregationType
+	(v1.ExemplarType)(0),                   // 34: types.v1.ExemplarType
+	(*v1.Series)(nil),                      // 35: types.v1.Series
+	(*v1.HeatmapSeries)(nil),               // 36: types.v1.HeatmapSeries
+	(*v1.LabelValuesRequest)(nil),          // 37: types.v1.LabelValuesRequest
+	(*v1.LabelNamesRequest)(nil),           // 38: types.v1.LabelNamesRequest
+	(*v1.GetProfileStatsRequest)(nil),      // 39: types.v1.GetProfileStatsRequest
+	(*v1.LabelValuesResponse)(nil),         // 40: types.v1.LabelValuesResponse
+	(*v1.LabelNamesResponse)(nil),          // 41: types.v1.LabelNamesResponse
+	(*v11.Profile)(nil),                    // 42: google.v1.Profile
+	(*v1.GetProfileStatsResponse)(nil),     // 43: types.v1.GetProfileStatsResponse
 }
 var file_querier_v1_querier_proto_depIdxs = []int32{
-	24, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
-	25, // 1: querier.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
+	30, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
+	31, // 1: querier.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
 	0,  // 2: querier.v1.SelectMergeStacktracesRequest.format:type_name -> querier.v1.ProfileFormat
-	26, // 3: querier.v1.SelectMergeStacktracesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	32, // 3: querier.v1.SelectMergeStacktracesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
 	12, // 4: querier.v1.SelectMergeStacktracesResponse.flamegraph:type_name -> querier.v1.FlameGraph
 	0,  // 5: querier.v1.SelectMergeSpanProfileRequest.format:type_name -> querier.v1.ProfileFormat
 	12, // 6: querier.v1.SelectMergeSpanProfileResponse.flamegraph:type_name -> querier.v1.FlameGraph
@@ -1928,45 +2434,59 @@ var file_querier_v1_querier_proto_depIdxs = []int32{
 	13, // 9: querier.v1.DiffResponse.flamegraph:type_name -> querier.v1.FlameGraphDiff
 	14, // 10: querier.v1.FlameGraph.levels:type_name -> querier.v1.Level
 	14, // 11: querier.v1.FlameGraphDiff.levels:type_name -> querier.v1.Level
-	26, // 12: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	27, // 13: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
-	26, // 14: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	28, // 15: querier.v1.SelectSeriesRequest.exemplar_type:type_name -> types.v1.ExemplarType
-	29, // 16: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
+	32, // 12: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	33, // 13: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
+	32, // 14: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	34, // 15: querier.v1.SelectSeriesRequest.exemplar_type:type_name -> types.v1.ExemplarType
+	35, // 16: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
 	1,  // 17: querier.v1.SelectHeatmapRequest.query_type:type_name -> querier.v1.HeatmapQueryType
-	28, // 18: querier.v1.SelectHeatmapRequest.exemplar_type:type_name -> types.v1.ExemplarType
-	30, // 19: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
+	34, // 18: querier.v1.SelectHeatmapRequest.exemplar_type:type_name -> types.v1.ExemplarType
+	36, // 19: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
 	22, // 20: querier.v1.AnalyzeQueryResponse.query_scopes:type_name -> querier.v1.QueryScope
 	23, // 21: querier.v1.AnalyzeQueryResponse.query_impact:type_name -> querier.v1.QueryImpact
-	2,  // 22: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
-	31, // 23: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
-	32, // 24: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
-	4,  // 25: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
-	6,  // 26: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
-	8,  // 27: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
-	15, // 28: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
-	16, // 29: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
-	18, // 30: querier.v1.QuerierService.SelectHeatmap:input_type -> querier.v1.SelectHeatmapRequest
-	10, // 31: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
-	33, // 32: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
-	20, // 33: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
-	3,  // 34: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
-	34, // 35: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
-	35, // 36: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
-	5,  // 37: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
-	7,  // 38: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
-	9,  // 39: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
-	36, // 40: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
-	17, // 41: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
-	19, // 42: querier.v1.QuerierService.SelectHeatmap:output_type -> querier.v1.SelectHeatmapResponse
-	11, // 43: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
-	37, // 44: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
-	21, // 45: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
-	34, // [34:46] is the sub-list for method output_type
-	22, // [22:34] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	12, // 22: querier.v1.QuerySnapshot.flamegraph:type_name -> querier.v1.FlameGraph
+	35, // 23: querier.v1.SeriesChunk.series:type_name -> types.v1.Series
+	12, // 24: querier.v1.QueryResult.flamegraph:type_name -> querier.v1.FlameGraph
+	35, // 25: querier.v1.QueryResult.series:type_name -> types.v1.Series
+	24, // 26: querier.v1.SelectMergeStacktracesPartial.plan_update:type_name -> querier.v1.QueryPlanUpdate
+	25, // 27: querier.v1.SelectMergeStacktracesPartial.snapshot:type_name -> querier.v1.QuerySnapshot
+	27, // 28: querier.v1.SelectMergeStacktracesPartial.result:type_name -> querier.v1.QueryResult
+	24, // 29: querier.v1.SelectSeriesPartial.plan_update:type_name -> querier.v1.QueryPlanUpdate
+	26, // 30: querier.v1.SelectSeriesPartial.chunk:type_name -> querier.v1.SeriesChunk
+	27, // 31: querier.v1.SelectSeriesPartial.result:type_name -> querier.v1.QueryResult
+	2,  // 32: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
+	37, // 33: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
+	38, // 34: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
+	4,  // 35: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
+	6,  // 36: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
+	8,  // 37: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
+	15, // 38: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
+	16, // 39: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
+	18, // 40: querier.v1.QuerierService.SelectHeatmap:input_type -> querier.v1.SelectHeatmapRequest
+	10, // 41: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
+	39, // 42: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
+	20, // 43: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
+	6,  // 44: querier.v1.QuerierService.SelectMergeStacktracesStream:input_type -> querier.v1.SelectMergeStacktracesRequest
+	16, // 45: querier.v1.QuerierService.SelectSeriesStream:input_type -> querier.v1.SelectSeriesRequest
+	3,  // 46: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
+	40, // 47: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
+	41, // 48: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
+	5,  // 49: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
+	7,  // 50: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
+	9,  // 51: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
+	42, // 52: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
+	17, // 53: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
+	19, // 54: querier.v1.QuerierService.SelectHeatmap:output_type -> querier.v1.SelectHeatmapResponse
+	11, // 55: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
+	43, // 56: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
+	21, // 57: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
+	28, // 58: querier.v1.QuerierService.SelectMergeStacktracesStream:output_type -> querier.v1.SelectMergeStacktracesPartial
+	29, // 59: querier.v1.QuerierService.SelectSeriesStream:output_type -> querier.v1.SelectSeriesPartial
+	46, // [46:60] is the sub-list for method output_type
+	32, // [32:46] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_querier_v1_querier_proto_init() }
@@ -1979,13 +2499,23 @@ func file_querier_v1_querier_proto_init() {
 	file_querier_v1_querier_proto_msgTypes[13].OneofWrappers = []any{}
 	file_querier_v1_querier_proto_msgTypes[14].OneofWrappers = []any{}
 	file_querier_v1_querier_proto_msgTypes[16].OneofWrappers = []any{}
+	file_querier_v1_querier_proto_msgTypes[26].OneofWrappers = []any{
+		(*SelectMergeStacktracesPartial_PlanUpdate)(nil),
+		(*SelectMergeStacktracesPartial_Snapshot)(nil),
+		(*SelectMergeStacktracesPartial_Result)(nil),
+	}
+	file_querier_v1_querier_proto_msgTypes[27].OneofWrappers = []any{
+		(*SelectSeriesPartial_PlanUpdate)(nil),
+		(*SelectSeriesPartial_Chunk)(nil),
+		(*SelectSeriesPartial_Result)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_querier_v1_querier_proto_rawDesc), len(file_querier_v1_querier_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   22,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

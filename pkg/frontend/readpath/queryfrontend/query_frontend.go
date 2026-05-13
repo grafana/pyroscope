@@ -30,10 +30,13 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
 )
 
-var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
+var _ querierv1connect.QuerierServiceHandler = (*QueryFrontend)(nil)
 
 type QueryBackend interface {
 	Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
+	// InvokeStream opens a server-streaming RPC to the query backend.
+	// Used by the streaming query methods on QueryFrontend.
+	InvokeStream(ctx context.Context, req *queryv1.InvokeRequest) (queryv1.QueryBackendService_InvokeStreamClient, error)
 }
 
 type Symbolizer interface {

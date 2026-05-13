@@ -11,14 +11,33 @@ import (
 	"github.com/prometheus/common/model"
 	"golang.org/x/sync/errgroup"
 
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 type Overrides interface {
 	ReadPathOverrides(tenantID string) Config
+}
+
+// unaryQuerierSvc is satisfied by both QuerierServiceClient and
+// QuerierServiceHandler — all unary methods share identical signatures.
+// Using this avoids the naming conflict on server-streaming methods between
+// the two generated interfaces.
+type unaryQuerierSvc interface {
+	ProfileTypes(context.Context, *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error)
+	LabelValues(context.Context, *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error)
+	LabelNames(context.Context, *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error)
+	Series(context.Context, *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error)
+	SelectMergeStacktraces(context.Context, *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error)
+	SelectMergeSpanProfile(context.Context, *connect.Request[querierv1.SelectMergeSpanProfileRequest]) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error)
+	SelectMergeProfile(context.Context, *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[googlev1.Profile], error)
+	SelectSeries(context.Context, *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error)
+	SelectHeatmap(context.Context, *connect.Request[querierv1.SelectHeatmapRequest]) (*connect.Response[querierv1.SelectHeatmapResponse], error)
+	Diff(context.Context, *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error)
+	GetProfileStats(context.Context, *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error)
+	AnalyzeQuery(context.Context, *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error)
 }
 
 // SplitTimeResolver resolves the split time for a tenant in "auto" mode.
@@ -41,16 +60,16 @@ type Router struct {
 	overrides Overrides
 	resolver  SplitTimeResolver
 
-	oldFrontend querierv1connect.QuerierServiceClient
-	newFrontend querierv1connect.QuerierServiceClient
+	oldFrontend unaryQuerierSvc
+	newFrontend unaryQuerierSvc
 }
 
 func NewRouter(
 	logger log.Logger,
 	overrides Overrides,
 	resolver SplitTimeResolver,
-	oldFrontend querierv1connect.QuerierServiceClient,
-	newFrontend querierv1connect.QuerierServiceClient,
+	oldFrontend unaryQuerierSvc,
+	newFrontend unaryQuerierSvc,
 ) *Router {
 	return &Router{
 		logger:      logger,
@@ -150,7 +169,7 @@ func Query[Req, Resp any](
 
 func query[Req, Resp any](
 	ctx context.Context,
-	svc querierv1connect.QuerierServiceClient,
+	svc unaryQuerierSvc,
 	req *connect.Request[Req],
 ) (*connect.Response[Resp], error) {
 	var resp any

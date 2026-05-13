@@ -34,4 +34,9 @@ func RegisterQueryBackendServiceHandler(mux *mux.Router, svc QueryBackendService
 		svc.Invoke,
 		opts...,
 	))
+	mux.Handle("/query.v1.QueryBackendService/InvokeStream", connect.NewServerStreamHandler(
+		"/query.v1.QueryBackendService/InvokeStream",
+		svc.InvokeStream,
+		opts...,
+	))
 }

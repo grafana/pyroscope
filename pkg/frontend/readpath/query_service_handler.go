@@ -2,9 +2,14 @@ package readpath
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"time"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/tenant"
+	"github.com/prometheus/common/model"
 	"golang.org/x/sync/errgroup"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -15,6 +20,15 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/model/timeseries"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
+
+// inProcessStreamer is implemented by in-process query frontends that can serve
+// streaming RPCs directly without a network round-trip. Go's structural typing
+// means that any type with the right method signatures satisfies this interface
+// without explicitly importing this package.
+type inProcessStreamer interface {
+	StreamSelectMergeStacktraces(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, stream *connect.ServerStream[querierv1.SelectMergeStacktracesPartial]) error
+	StreamSelectSeries(ctx context.Context, req *querierv1.SelectSeriesRequest, stream *connect.ServerStream[querierv1.SelectSeriesPartial]) error
+}
 
 var _ querierv1connect.QuerierServiceHandler = (*Router)(nil)
 
@@ -216,6 +230,64 @@ func (r *Router) Diff(
 	}
 
 	return connect.NewResponse(&querierv1.DiffResponse{Flamegraph: diff}), nil
+}
+
+func (r *Router) SelectMergeStacktracesStream(
+	ctx context.Context,
+	req *connect.Request[querierv1.SelectMergeStacktracesRequest],
+	stream *connect.ServerStream[querierv1.SelectMergeStacktracesPartial],
+) error {
+	if err := r.requireV2Only(ctx, phlaremodel.GetSafeTimeRange(time.Now(), req.Msg)); err != nil {
+		return err
+	}
+	// Use in-process dispatch when the frontend supports it (avoids a
+	// network round-trip through connect.ServerStreamForClient).
+	if sf, ok := r.newFrontend.(inProcessStreamer); ok {
+		return sf.StreamSelectMergeStacktraces(ctx, req.Msg, stream)
+	}
+	return connect.NewError(connect.CodeUnimplemented, fmt.Errorf("streaming requires an in-process query frontend"))
+}
+
+func (r *Router) SelectSeriesStream(
+	ctx context.Context,
+	req *connect.Request[querierv1.SelectSeriesRequest],
+	stream *connect.ServerStream[querierv1.SelectSeriesPartial],
+) error {
+	if err := r.requireV2Only(ctx, phlaremodel.GetSafeTimeRange(time.Now(), req.Msg)); err != nil {
+		return err
+	}
+	// Use in-process dispatch when the frontend supports it (avoids a
+	// network round-trip through connect.ServerStreamForClient).
+	if sf, ok := r.newFrontend.(inProcessStreamer); ok {
+		return sf.StreamSelectSeries(ctx, req.Msg, stream)
+	}
+	return connect.NewError(connect.CodeUnimplemented, fmt.Errorf("streaming requires an in-process query frontend"))
+}
+
+// requireV2Only returns CodeUnimplemented if the query spans V1 data or the
+// query backend is disabled. Streaming is only supported on the V2 path.
+func (r *Router) requireV2Only(ctx context.Context, queryRange model.Interval) error {
+	tenantIDs, err := tenant.TenantIDs(ctx)
+	if err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	tenantID := tenantIDs[0]
+	overrides := r.overrides.ReadPathOverrides(tenantID)
+	if !overrides.EnableQueryBackend {
+		return connect.NewError(connect.CodeUnimplemented, fmt.Errorf("streaming not supported on V1 path"))
+	}
+	splitTime, err := overrides.EnableQueryBackendFrom.SplitTime(func() (time.Time, error) {
+		return r.resolver.OldestProfileTime(ctx, tenantID)
+	})
+	if err != nil {
+		level.Warn(r.logger).Log("msg", "streaming: failed to resolve split time, falling back to unimplemented", "err", err)
+		return connect.NewError(connect.CodeUnimplemented, fmt.Errorf("streaming unavailable"))
+	}
+	split := model.TimeFromUnixNano(splitTime.UnixNano())
+	if split.After(queryRange.Start) {
+		return connect.NewError(connect.CodeUnimplemented, fmt.Errorf("streaming not supported for queries spanning V1 storage"))
+	}
+	return nil
 }
 
 // Stubs: these methods are not supposed to be implemented

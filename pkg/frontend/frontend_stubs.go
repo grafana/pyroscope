@@ -18,3 +18,19 @@ func (f *Frontend) SelectHeatmap(
 ) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
 	return nil, errNotAvailableInV1Frontend
 }
+
+func (f *Frontend) SelectMergeStacktracesStream(
+	_ context.Context,
+	_ *connect.Request[querierv1.SelectMergeStacktracesRequest],
+	_ *connect.ServerStream[querierv1.SelectMergeStacktracesPartial],
+) error {
+	return errNotAvailableInV1Frontend
+}
+
+func (f *Frontend) SelectSeriesStream(
+	_ context.Context,
+	_ *connect.Request[querierv1.SelectSeriesRequest],
+	_ *connect.ServerStream[querierv1.SelectSeriesPartial],
+) error {
+	return errNotAvailableInV1Frontend
+}

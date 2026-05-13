@@ -3,6 +3,7 @@ package querybackendclient
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/grafana/dskit/grpcclient"
@@ -49,6 +50,33 @@ func (b *Client) stopping(error) error           { return nil }
 
 func (b *Client) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
 	return b.grpcClient.Invoke(ctx, req)
+}
+
+// InvokeStream opens a gRPC server-streaming call to the query backend.
+// It satisfies the QueryBackend interface used by QueryFrontend.
+func (b *Client) InvokeStream(ctx context.Context, req *queryv1.InvokeRequest) (queryv1.QueryBackendService_InvokeStreamClient, error) {
+	return b.grpcClient.InvokeStream(ctx, req)
+}
+
+// InvokeStreamEvents implements the streamEventSender interface used by QueryBackend
+// when this client is used as the backendClient in a multi-tier deployment.
+func (b *Client) InvokeStreamEvents(ctx context.Context, req *queryv1.InvokeRequest, send func(*queryv1.InvokeStreamEvent) error) error {
+	stream, err := b.grpcClient.InvokeStream(ctx, req)
+	if err != nil {
+		return err
+	}
+	for {
+		event, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if err := send(event); err != nil {
+			return err
+		}
+	}
 }
 
 const grpcServiceConfigTemplate = `{

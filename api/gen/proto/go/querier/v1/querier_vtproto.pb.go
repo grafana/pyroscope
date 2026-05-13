@@ -608,6 +608,199 @@ func (m *QueryImpact) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *QueryPlanUpdate) CloneVT() *QueryPlanUpdate {
+	if m == nil {
+		return (*QueryPlanUpdate)(nil)
+	}
+	r := new(QueryPlanUpdate)
+	r.BlocksTotal = m.BlocksTotal
+	r.DatasetsTotal = m.DatasetsTotal
+	r.BytesTotalEstimate = m.BytesTotalEstimate
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *QueryPlanUpdate) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *QuerySnapshot) CloneVT() *QuerySnapshot {
+	if m == nil {
+		return (*QuerySnapshot)(nil)
+	}
+	r := new(QuerySnapshot)
+	r.BlocksDone = m.BlocksDone
+	r.DatasetsDone = m.DatasetsDone
+	r.BytesDone = m.BytesDone
+	r.Flamegraph = m.Flamegraph.CloneVT()
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *QuerySnapshot) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *SeriesChunk) CloneVT() *SeriesChunk {
+	if m == nil {
+		return (*SeriesChunk)(nil)
+	}
+	r := new(SeriesChunk)
+	r.BlocksDone = m.BlocksDone
+	r.DatasetsDone = m.DatasetsDone
+	r.BytesDone = m.BytesDone
+	if rhs := m.Series; rhs != nil {
+		tmpContainer := make([]*v1.Series, len(rhs))
+		for k, v := range rhs {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v1.Series }); ok {
+				tmpContainer[k] = vtpb.CloneVT()
+			} else {
+				tmpContainer[k] = proto.Clone(v).(*v1.Series)
+			}
+		}
+		r.Series = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *SeriesChunk) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *QueryResult) CloneVT() *QueryResult {
+	if m == nil {
+		return (*QueryResult)(nil)
+	}
+	r := new(QueryResult)
+	r.Flamegraph = m.Flamegraph.CloneVT()
+	if rhs := m.Series; rhs != nil {
+		tmpContainer := make([]*v1.Series, len(rhs))
+		for k, v := range rhs {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v1.Series }); ok {
+				tmpContainer[k] = vtpb.CloneVT()
+			} else {
+				tmpContainer[k] = proto.Clone(v).(*v1.Series)
+			}
+		}
+		r.Series = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *QueryResult) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *SelectMergeStacktracesPartial) CloneVT() *SelectMergeStacktracesPartial {
+	if m == nil {
+		return (*SelectMergeStacktracesPartial)(nil)
+	}
+	r := new(SelectMergeStacktracesPartial)
+	if m.Kind != nil {
+		r.Kind = m.Kind.(interface {
+			CloneVT() isSelectMergeStacktracesPartial_Kind
+		}).CloneVT()
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *SelectMergeStacktracesPartial) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *SelectMergeStacktracesPartial_PlanUpdate) CloneVT() isSelectMergeStacktracesPartial_Kind {
+	if m == nil {
+		return (*SelectMergeStacktracesPartial_PlanUpdate)(nil)
+	}
+	r := new(SelectMergeStacktracesPartial_PlanUpdate)
+	r.PlanUpdate = m.PlanUpdate.CloneVT()
+	return r
+}
+
+func (m *SelectMergeStacktracesPartial_Snapshot) CloneVT() isSelectMergeStacktracesPartial_Kind {
+	if m == nil {
+		return (*SelectMergeStacktracesPartial_Snapshot)(nil)
+	}
+	r := new(SelectMergeStacktracesPartial_Snapshot)
+	r.Snapshot = m.Snapshot.CloneVT()
+	return r
+}
+
+func (m *SelectMergeStacktracesPartial_Result) CloneVT() isSelectMergeStacktracesPartial_Kind {
+	if m == nil {
+		return (*SelectMergeStacktracesPartial_Result)(nil)
+	}
+	r := new(SelectMergeStacktracesPartial_Result)
+	r.Result = m.Result.CloneVT()
+	return r
+}
+
+func (m *SelectSeriesPartial) CloneVT() *SelectSeriesPartial {
+	if m == nil {
+		return (*SelectSeriesPartial)(nil)
+	}
+	r := new(SelectSeriesPartial)
+	if m.Kind != nil {
+		r.Kind = m.Kind.(interface {
+			CloneVT() isSelectSeriesPartial_Kind
+		}).CloneVT()
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *SelectSeriesPartial) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *SelectSeriesPartial_PlanUpdate) CloneVT() isSelectSeriesPartial_Kind {
+	if m == nil {
+		return (*SelectSeriesPartial_PlanUpdate)(nil)
+	}
+	r := new(SelectSeriesPartial_PlanUpdate)
+	r.PlanUpdate = m.PlanUpdate.CloneVT()
+	return r
+}
+
+func (m *SelectSeriesPartial_Chunk) CloneVT() isSelectSeriesPartial_Kind {
+	if m == nil {
+		return (*SelectSeriesPartial_Chunk)(nil)
+	}
+	r := new(SelectSeriesPartial_Chunk)
+	r.Chunk = m.Chunk.CloneVT()
+	return r
+}
+
+func (m *SelectSeriesPartial_Result) CloneVT() isSelectSeriesPartial_Kind {
+	if m == nil {
+		return (*SelectSeriesPartial_Result)(nil)
+	}
+	r := new(SelectSeriesPartial_Result)
+	r.Result = m.Result.CloneVT()
+	return r
+}
+
 func (this *ProfileTypesRequest) EqualVT(that *ProfileTypesRequest) bool {
 	if this == that {
 		return true
@@ -1413,6 +1606,350 @@ func (this *QueryImpact) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+func (this *QueryPlanUpdate) EqualVT(that *QueryPlanUpdate) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.BlocksTotal != that.BlocksTotal {
+		return false
+	}
+	if this.DatasetsTotal != that.DatasetsTotal {
+		return false
+	}
+	if this.BytesTotalEstimate != that.BytesTotalEstimate {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *QueryPlanUpdate) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*QueryPlanUpdate)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *QuerySnapshot) EqualVT(that *QuerySnapshot) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.BlocksDone != that.BlocksDone {
+		return false
+	}
+	if this.DatasetsDone != that.DatasetsDone {
+		return false
+	}
+	if this.BytesDone != that.BytesDone {
+		return false
+	}
+	if !this.Flamegraph.EqualVT(that.Flamegraph) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *QuerySnapshot) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*QuerySnapshot)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SeriesChunk) EqualVT(that *SeriesChunk) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.BlocksDone != that.BlocksDone {
+		return false
+	}
+	if this.DatasetsDone != that.DatasetsDone {
+		return false
+	}
+	if this.BytesDone != that.BytesDone {
+		return false
+	}
+	if len(this.Series) != len(that.Series) {
+		return false
+	}
+	for i, vx := range this.Series {
+		vy := that.Series[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &v1.Series{}
+			}
+			if q == nil {
+				q = &v1.Series{}
+			}
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.Series) bool }); ok {
+				if !equal.EqualVT(q) {
+					return false
+				}
+			} else if !proto.Equal(p, q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SeriesChunk) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SeriesChunk)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *QueryResult) EqualVT(that *QueryResult) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Flamegraph.EqualVT(that.Flamegraph) {
+		return false
+	}
+	if len(this.Series) != len(that.Series) {
+		return false
+	}
+	for i, vx := range this.Series {
+		vy := that.Series[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &v1.Series{}
+			}
+			if q == nil {
+				q = &v1.Series{}
+			}
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.Series) bool }); ok {
+				if !equal.EqualVT(q) {
+					return false
+				}
+			} else if !proto.Equal(p, q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *QueryResult) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*QueryResult)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SelectMergeStacktracesPartial) EqualVT(that *SelectMergeStacktracesPartial) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Kind == nil && that.Kind != nil {
+		return false
+	} else if this.Kind != nil {
+		if that.Kind == nil {
+			return false
+		}
+		if !this.Kind.(interface {
+			EqualVT(isSelectMergeStacktracesPartial_Kind) bool
+		}).EqualVT(that.Kind) {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SelectMergeStacktracesPartial) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SelectMergeStacktracesPartial)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SelectMergeStacktracesPartial_PlanUpdate) EqualVT(thatIface isSelectMergeStacktracesPartial_Kind) bool {
+	that, ok := thatIface.(*SelectMergeStacktracesPartial_PlanUpdate)
+	if !ok {
+		return false
+	}
+	if this == that {
+		return true
+	}
+	if this == nil && that != nil || this != nil && that == nil {
+		return false
+	}
+	if p, q := this.PlanUpdate, that.PlanUpdate; p != q {
+		if p == nil {
+			p = &QueryPlanUpdate{}
+		}
+		if q == nil {
+			q = &QueryPlanUpdate{}
+		}
+		if !p.EqualVT(q) {
+			return false
+		}
+	}
+	return true
+}
+
+func (this *SelectMergeStacktracesPartial_Snapshot) EqualVT(thatIface isSelectMergeStacktracesPartial_Kind) bool {
+	that, ok := thatIface.(*SelectMergeStacktracesPartial_Snapshot)
+	if !ok {
+		return false
+	}
+	if this == that {
+		return true
+	}
+	if this == nil && that != nil || this != nil && that == nil {
+		return false
+	}
+	if p, q := this.Snapshot, that.Snapshot; p != q {
+		if p == nil {
+			p = &QuerySnapshot{}
+		}
+		if q == nil {
+			q = &QuerySnapshot{}
+		}
+		if !p.EqualVT(q) {
+			return false
+		}
+	}
+	return true
+}
+
+func (this *SelectMergeStacktracesPartial_Result) EqualVT(thatIface isSelectMergeStacktracesPartial_Kind) bool {
+	that, ok := thatIface.(*SelectMergeStacktracesPartial_Result)
+	if !ok {
+		return false
+	}
+	if this == that {
+		return true
+	}
+	if this == nil && that != nil || this != nil && that == nil {
+		return false
+	}
+	if p, q := this.Result, that.Result; p != q {
+		if p == nil {
+			p = &QueryResult{}
+		}
+		if q == nil {
+			q = &QueryResult{}
+		}
+		if !p.EqualVT(q) {
+			return false
+		}
+	}
+	return true
+}
+
+func (this *SelectSeriesPartial) EqualVT(that *SelectSeriesPartial) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Kind == nil && that.Kind != nil {
+		return false
+	} else if this.Kind != nil {
+		if that.Kind == nil {
+			return false
+		}
+		if !this.Kind.(interface {
+			EqualVT(isSelectSeriesPartial_Kind) bool
+		}).EqualVT(that.Kind) {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SelectSeriesPartial) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SelectSeriesPartial)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SelectSeriesPartial_PlanUpdate) EqualVT(thatIface isSelectSeriesPartial_Kind) bool {
+	that, ok := thatIface.(*SelectSeriesPartial_PlanUpdate)
+	if !ok {
+		return false
+	}
+	if this == that {
+		return true
+	}
+	if this == nil && that != nil || this != nil && that == nil {
+		return false
+	}
+	if p, q := this.PlanUpdate, that.PlanUpdate; p != q {
+		if p == nil {
+			p = &QueryPlanUpdate{}
+		}
+		if q == nil {
+			q = &QueryPlanUpdate{}
+		}
+		if !p.EqualVT(q) {
+			return false
+		}
+	}
+	return true
+}
+
+func (this *SelectSeriesPartial_Chunk) EqualVT(thatIface isSelectSeriesPartial_Kind) bool {
+	that, ok := thatIface.(*SelectSeriesPartial_Chunk)
+	if !ok {
+		return false
+	}
+	if this == that {
+		return true
+	}
+	if this == nil && that != nil || this != nil && that == nil {
+		return false
+	}
+	if p, q := this.Chunk, that.Chunk; p != q {
+		if p == nil {
+			p = &SeriesChunk{}
+		}
+		if q == nil {
+			q = &SeriesChunk{}
+		}
+		if !p.EqualVT(q) {
+			return false
+		}
+	}
+	return true
+}
+
+func (this *SelectSeriesPartial_Result) EqualVT(thatIface isSelectSeriesPartial_Kind) bool {
+	that, ok := thatIface.(*SelectSeriesPartial_Result)
+	if !ok {
+		return false
+	}
+	if this == that {
+		return true
+	}
+	if this == nil && that != nil || this != nil && that == nil {
+		return false
+	}
+	if p, q := this.Result, that.Result; p != q {
+		if p == nil {
+			p = &QueryResult{}
+		}
+		if q == nil {
+			q = &QueryResult{}
+		}
+		if !p.EqualVT(q) {
+			return false
+		}
+	}
+	return true
+}
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
@@ -1455,6 +1992,15 @@ type QuerierServiceClient interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(ctx context.Context, in *v1.GetProfileStatsRequest, opts ...grpc.CallOption) (*v1.GetProfileStatsResponse, error)
 	AnalyzeQuery(ctx context.Context, in *AnalyzeQueryRequest, opts ...grpc.CallOption) (*AnalyzeQueryResponse, error)
+	// SelectMergeStacktracesStream streams incremental flamegraph results.
+	// The first messages are QueryPlanUpdate (one per IndexLookupEvent from the
+	// backend), followed by zero or more QuerySnapshot intermediates, and a
+	// final QueryResult. Returns CodeUnimplemented when the V1 path is selected.
+	SelectMergeStacktracesStream(ctx context.Context, in *SelectMergeStacktracesRequest, opts ...grpc.CallOption) (QuerierService_SelectMergeStacktracesStreamClient, error)
+	// SelectSeriesStream streams incremental time-series results.
+	// Same message ordering as SelectMergeStacktracesStream.
+	// Returns CodeUnimplemented when the V1 path is selected.
+	SelectSeriesStream(ctx context.Context, in *SelectSeriesRequest, opts ...grpc.CallOption) (QuerierService_SelectSeriesStreamClient, error)
 }
 
 type querierServiceClient struct {
@@ -1573,6 +2119,70 @@ func (c *querierServiceClient) AnalyzeQuery(ctx context.Context, in *AnalyzeQuer
 	return out, nil
 }
 
+func (c *querierServiceClient) SelectMergeStacktracesStream(ctx context.Context, in *SelectMergeStacktracesRequest, opts ...grpc.CallOption) (QuerierService_SelectMergeStacktracesStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &QuerierService_ServiceDesc.Streams[0], "/querier.v1.QuerierService/SelectMergeStacktracesStream", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &querierServiceSelectMergeStacktracesStreamClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type QuerierService_SelectMergeStacktracesStreamClient interface {
+	Recv() (*SelectMergeStacktracesPartial, error)
+	grpc.ClientStream
+}
+
+type querierServiceSelectMergeStacktracesStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *querierServiceSelectMergeStacktracesStreamClient) Recv() (*SelectMergeStacktracesPartial, error) {
+	m := new(SelectMergeStacktracesPartial)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *querierServiceClient) SelectSeriesStream(ctx context.Context, in *SelectSeriesRequest, opts ...grpc.CallOption) (QuerierService_SelectSeriesStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &QuerierService_ServiceDesc.Streams[1], "/querier.v1.QuerierService/SelectSeriesStream", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &querierServiceSelectSeriesStreamClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type QuerierService_SelectSeriesStreamClient interface {
+	Recv() (*SelectSeriesPartial, error)
+	grpc.ClientStream
+}
+
+type querierServiceSelectSeriesStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *querierServiceSelectSeriesStreamClient) Recv() (*SelectSeriesPartial, error) {
+	m := new(SelectSeriesPartial)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // QuerierServiceServer is the server API for QuerierService service.
 // All implementations must embed UnimplementedQuerierServiceServer
 // for forward compatibility
@@ -1609,6 +2219,15 @@ type QuerierServiceServer interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *v1.GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error)
 	AnalyzeQuery(context.Context, *AnalyzeQueryRequest) (*AnalyzeQueryResponse, error)
+	// SelectMergeStacktracesStream streams incremental flamegraph results.
+	// The first messages are QueryPlanUpdate (one per IndexLookupEvent from the
+	// backend), followed by zero or more QuerySnapshot intermediates, and a
+	// final QueryResult. Returns CodeUnimplemented when the V1 path is selected.
+	SelectMergeStacktracesStream(*SelectMergeStacktracesRequest, QuerierService_SelectMergeStacktracesStreamServer) error
+	// SelectSeriesStream streams incremental time-series results.
+	// Same message ordering as SelectMergeStacktracesStream.
+	// Returns CodeUnimplemented when the V1 path is selected.
+	SelectSeriesStream(*SelectSeriesRequest, QuerierService_SelectSeriesStreamServer) error
 	mustEmbedUnimplementedQuerierServiceServer()
 }
 
@@ -1651,6 +2270,12 @@ func (UnimplementedQuerierServiceServer) GetProfileStats(context.Context, *v1.Ge
 }
 func (UnimplementedQuerierServiceServer) AnalyzeQuery(context.Context, *AnalyzeQueryRequest) (*AnalyzeQueryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AnalyzeQuery not implemented")
+}
+func (UnimplementedQuerierServiceServer) SelectMergeStacktracesStream(*SelectMergeStacktracesRequest, QuerierService_SelectMergeStacktracesStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method SelectMergeStacktracesStream not implemented")
+}
+func (UnimplementedQuerierServiceServer) SelectSeriesStream(*SelectSeriesRequest, QuerierService_SelectSeriesStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method SelectSeriesStream not implemented")
 }
 func (UnimplementedQuerierServiceServer) mustEmbedUnimplementedQuerierServiceServer() {}
 
@@ -1881,6 +2506,48 @@ func _QuerierService_AnalyzeQuery_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _QuerierService_SelectMergeStacktracesStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SelectMergeStacktracesRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(QuerierServiceServer).SelectMergeStacktracesStream(m, &querierServiceSelectMergeStacktracesStreamServer{stream})
+}
+
+type QuerierService_SelectMergeStacktracesStreamServer interface {
+	Send(*SelectMergeStacktracesPartial) error
+	grpc.ServerStream
+}
+
+type querierServiceSelectMergeStacktracesStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *querierServiceSelectMergeStacktracesStreamServer) Send(m *SelectMergeStacktracesPartial) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _QuerierService_SelectSeriesStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SelectSeriesRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(QuerierServiceServer).SelectSeriesStream(m, &querierServiceSelectSeriesStreamServer{stream})
+}
+
+type QuerierService_SelectSeriesStreamServer interface {
+	Send(*SelectSeriesPartial) error
+	grpc.ServerStream
+}
+
+type querierServiceSelectSeriesStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *querierServiceSelectSeriesStreamServer) Send(m *SelectSeriesPartial) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // QuerierService_ServiceDesc is the grpc.ServiceDesc for QuerierService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1937,7 +2604,18 @@ var QuerierService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _QuerierService_AnalyzeQuery_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "SelectMergeStacktracesStream",
+			Handler:       _QuerierService_SelectMergeStacktracesStream_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SelectSeriesStream",
+			Handler:       _QuerierService_SelectSeriesStream_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "querier/v1/querier.proto",
 }
 
@@ -3369,6 +4047,449 @@ func (m *QueryImpact) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *QueryPlanUpdate) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryPlanUpdate) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *QueryPlanUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.BytesTotalEstimate != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BytesTotalEstimate))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.DatasetsTotal != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.DatasetsTotal))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.BlocksTotal != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BlocksTotal))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QuerySnapshot) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QuerySnapshot) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *QuerySnapshot) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Flamegraph != nil {
+		size, err := m.Flamegraph.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.BytesDone != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BytesDone))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.DatasetsDone != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.DatasetsDone))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.BlocksDone != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BlocksDone))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SeriesChunk) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SeriesChunk) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SeriesChunk) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Series) > 0 {
+		for iNdEx := len(m.Series) - 1; iNdEx >= 0; iNdEx-- {
+			if vtmsg, ok := interface{}(m.Series[iNdEx]).(interface {
+				MarshalToSizedBufferVT([]byte) (int, error)
+			}); ok {
+				size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			} else {
+				encoded, err := proto.Marshal(m.Series[iNdEx])
+				if err != nil {
+					return 0, err
+				}
+				i -= len(encoded)
+				copy(dAtA[i:], encoded)
+				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+			}
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if m.BytesDone != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BytesDone))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.DatasetsDone != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.DatasetsDone))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.BlocksDone != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BlocksDone))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryResult) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryResult) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *QueryResult) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Series) > 0 {
+		for iNdEx := len(m.Series) - 1; iNdEx >= 0; iNdEx-- {
+			if vtmsg, ok := interface{}(m.Series[iNdEx]).(interface {
+				MarshalToSizedBufferVT([]byte) (int, error)
+			}); ok {
+				size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			} else {
+				encoded, err := proto.Marshal(m.Series[iNdEx])
+				if err != nil {
+					return 0, err
+				}
+				i -= len(encoded)
+				copy(dAtA[i:], encoded)
+				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+			}
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if m.Flamegraph != nil {
+		size, err := m.Flamegraph.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SelectMergeStacktracesPartial) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SelectMergeStacktracesPartial) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SelectMergeStacktracesPartial) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if vtmsg, ok := m.Kind.(interface {
+		MarshalToSizedBufferVT([]byte) (int, error)
+	}); ok {
+		size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SelectMergeStacktracesPartial_PlanUpdate) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SelectMergeStacktracesPartial_PlanUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.PlanUpdate != nil {
+		size, err := m.PlanUpdate.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+func (m *SelectMergeStacktracesPartial_Snapshot) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SelectMergeStacktracesPartial_Snapshot) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Snapshot != nil {
+		size, err := m.Snapshot.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
+	}
+	return len(dAtA) - i, nil
+}
+func (m *SelectMergeStacktracesPartial_Result) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SelectMergeStacktracesPartial_Result) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Result != nil {
+		size, err := m.Result.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x1a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *SelectSeriesPartial) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SelectSeriesPartial) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SelectSeriesPartial) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if vtmsg, ok := m.Kind.(interface {
+		MarshalToSizedBufferVT([]byte) (int, error)
+	}); ok {
+		size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SelectSeriesPartial_PlanUpdate) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SelectSeriesPartial_PlanUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.PlanUpdate != nil {
+		size, err := m.PlanUpdate.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+func (m *SelectSeriesPartial_Chunk) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SelectSeriesPartial_Chunk) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Chunk != nil {
+		size, err := m.Chunk.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
+	}
+	return len(dAtA) - i, nil
+}
+func (m *SelectSeriesPartial_Result) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SelectSeriesPartial_Result) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Result != nil {
+		size, err := m.Result.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x1a
+	}
+	return len(dAtA) - i, nil
+}
 func (m *ProfileTypesRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -3968,6 +5089,203 @@ func (m *QueryImpact) SizeVT() (n int) {
 	return n
 }
 
+func (m *QueryPlanUpdate) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.BlocksTotal != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.BlocksTotal))
+	}
+	if m.DatasetsTotal != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.DatasetsTotal))
+	}
+	if m.BytesTotalEstimate != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.BytesTotalEstimate))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *QuerySnapshot) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.BlocksDone != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.BlocksDone))
+	}
+	if m.DatasetsDone != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.DatasetsDone))
+	}
+	if m.BytesDone != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.BytesDone))
+	}
+	if m.Flamegraph != nil {
+		l = m.Flamegraph.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *SeriesChunk) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.BlocksDone != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.BlocksDone))
+	}
+	if m.DatasetsDone != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.DatasetsDone))
+	}
+	if m.BytesDone != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.BytesDone))
+	}
+	if len(m.Series) > 0 {
+		for _, e := range m.Series {
+			if size, ok := interface{}(e).(interface {
+				SizeVT() int
+			}); ok {
+				l = size.SizeVT()
+			} else {
+				l = proto.Size(e)
+			}
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *QueryResult) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Flamegraph != nil {
+		l = m.Flamegraph.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if len(m.Series) > 0 {
+		for _, e := range m.Series {
+			if size, ok := interface{}(e).(interface {
+				SizeVT() int
+			}); ok {
+				l = size.SizeVT()
+			} else {
+				l = proto.Size(e)
+			}
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *SelectMergeStacktracesPartial) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if vtmsg, ok := m.Kind.(interface{ SizeVT() int }); ok {
+		n += vtmsg.SizeVT()
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *SelectMergeStacktracesPartial_PlanUpdate) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.PlanUpdate != nil {
+		l = m.PlanUpdate.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	return n
+}
+func (m *SelectMergeStacktracesPartial_Snapshot) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Snapshot != nil {
+		l = m.Snapshot.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	return n
+}
+func (m *SelectMergeStacktracesPartial_Result) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Result != nil {
+		l = m.Result.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	return n
+}
+func (m *SelectSeriesPartial) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if vtmsg, ok := m.Kind.(interface{ SizeVT() int }); ok {
+		n += vtmsg.SizeVT()
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *SelectSeriesPartial_PlanUpdate) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.PlanUpdate != nil {
+		l = m.PlanUpdate.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	return n
+}
+func (m *SelectSeriesPartial_Chunk) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Chunk != nil {
+		l = m.Chunk.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	return n
+}
+func (m *SelectSeriesPartial_Result) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Result != nil {
+		l = m.Result.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	return n
+}
 func (m *ProfileTypesRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -7399,6 +8717,885 @@ func (m *QueryImpact) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.DeduplicationNeeded = bool(v != 0)
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryPlanUpdate) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryPlanUpdate: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryPlanUpdate: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlocksTotal", wireType)
+			}
+			m.BlocksTotal = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BlocksTotal |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DatasetsTotal", wireType)
+			}
+			m.DatasetsTotal = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DatasetsTotal |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BytesTotalEstimate", wireType)
+			}
+			m.BytesTotalEstimate = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BytesTotalEstimate |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QuerySnapshot) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QuerySnapshot: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QuerySnapshot: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlocksDone", wireType)
+			}
+			m.BlocksDone = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BlocksDone |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DatasetsDone", wireType)
+			}
+			m.DatasetsDone = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DatasetsDone |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BytesDone", wireType)
+			}
+			m.BytesDone = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BytesDone |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Flamegraph", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Flamegraph == nil {
+				m.Flamegraph = &FlameGraph{}
+			}
+			if err := m.Flamegraph.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SeriesChunk) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SeriesChunk: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SeriesChunk: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlocksDone", wireType)
+			}
+			m.BlocksDone = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BlocksDone |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DatasetsDone", wireType)
+			}
+			m.DatasetsDone = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DatasetsDone |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BytesDone", wireType)
+			}
+			m.BytesDone = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BytesDone |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Series", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Series = append(m.Series, &v1.Series{})
+			if unmarshal, ok := interface{}(m.Series[len(m.Series)-1]).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Series[len(m.Series)-1]); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryResult) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryResult: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryResult: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Flamegraph", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Flamegraph == nil {
+				m.Flamegraph = &FlameGraph{}
+			}
+			if err := m.Flamegraph.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Series", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Series = append(m.Series, &v1.Series{})
+			if unmarshal, ok := interface{}(m.Series[len(m.Series)-1]).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Series[len(m.Series)-1]); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SelectMergeStacktracesPartial) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SelectMergeStacktracesPartial: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SelectMergeStacktracesPartial: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PlanUpdate", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if oneof, ok := m.Kind.(*SelectMergeStacktracesPartial_PlanUpdate); ok {
+				if err := oneof.PlanUpdate.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				v := &QueryPlanUpdate{}
+				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+				m.Kind = &SelectMergeStacktracesPartial_PlanUpdate{PlanUpdate: v}
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Snapshot", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if oneof, ok := m.Kind.(*SelectMergeStacktracesPartial_Snapshot); ok {
+				if err := oneof.Snapshot.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				v := &QuerySnapshot{}
+				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+				m.Kind = &SelectMergeStacktracesPartial_Snapshot{Snapshot: v}
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Result", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if oneof, ok := m.Kind.(*SelectMergeStacktracesPartial_Result); ok {
+				if err := oneof.Result.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				v := &QueryResult{}
+				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+				m.Kind = &SelectMergeStacktracesPartial_Result{Result: v}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SelectSeriesPartial) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SelectSeriesPartial: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SelectSeriesPartial: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PlanUpdate", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if oneof, ok := m.Kind.(*SelectSeriesPartial_PlanUpdate); ok {
+				if err := oneof.PlanUpdate.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				v := &QueryPlanUpdate{}
+				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+				m.Kind = &SelectSeriesPartial_PlanUpdate{PlanUpdate: v}
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Chunk", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if oneof, ok := m.Kind.(*SelectSeriesPartial_Chunk); ok {
+				if err := oneof.Chunk.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				v := &SeriesChunk{}
+				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+				m.Kind = &SelectSeriesPartial_Chunk{Chunk: v}
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Result", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if oneof, ok := m.Kind.(*SelectSeriesPartial_Result); ok {
+				if err := oneof.Result.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				v := &QueryResult{}
+				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+				m.Kind = &SelectSeriesPartial_Result{Result: v}
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

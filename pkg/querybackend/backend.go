@@ -14,6 +14,8 @@ import (
 	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -191,4 +193,95 @@ func (q *QueryBackend) read(
 		},
 	}
 	return q.blockReader.Invoke(ctx, request)
+}
+
+// streamEventSender is implemented by components (BlockReader and the gRPC
+// client) that can execute an InvokeRequest and forward events to a callback.
+type streamEventSender interface {
+	InvokeStreamEvents(ctx context.Context, req *queryv1.InvokeRequest, send func(*queryv1.InvokeStreamEvent) error) error
+}
+
+// InvokeStream implements the gRPC server-streaming RPC.
+func (q *QueryBackend) InvokeStream(req *queryv1.InvokeRequest, stream queryv1.QueryBackendService_InvokeStreamServer) error {
+	ctx := stream.Context()
+	root := req.QueryPlan.Root
+
+	send := func(e *queryv1.InvokeStreamEvent) error { return stream.Send(e) }
+
+	switch root.Type {
+	case queryv1.QueryNode_MERGE:
+		return q.mergeStream(ctx, req, root.Children, send)
+	case queryv1.QueryNode_READ:
+		return q.readStream(ctx, req, root.Blocks, send)
+	default:
+		return status.Errorf(codes.Unknown, "query plan: unknown node type")
+	}
+}
+
+func (q *QueryBackend) mergeStream(
+	ctx context.Context,
+	request *queryv1.InvokeRequest,
+	children []*queryv1.QueryNode,
+	send func(*queryv1.InvokeStreamEvent) error,
+) error {
+	sender, ok := q.backendClient.(streamEventSender)
+	if !ok {
+		return status.Errorf(codes.Unimplemented, "backend client does not support streaming")
+	}
+
+	request.QueryPlan = nil
+	m := newAggregator(request)
+	var sendMu sync.Mutex
+	safeSend := func(e *queryv1.InvokeStreamEvent) error {
+		sendMu.Lock()
+		defer sendMu.Unlock()
+		return send(e)
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+	for _, child := range children {
+		req := request.CloneVT()
+		req.QueryPlan = &queryv1.QueryPlan{Root: child}
+		g.Go(util.RecoverPanic(func() error {
+			return sender.InvokeStreamEvents(ctx, req, func(e *queryv1.InvokeStreamEvent) error {
+				switch ev := e.Event.(type) {
+				case *queryv1.InvokeStreamEvent_IndexLookup:
+					return safeSend(e)
+				case *queryv1.InvokeStreamEvent_Snapshot:
+					return m.aggregateResponse(&queryv1.InvokeResponse{Reports: ev.Snapshot.Reports}, nil)
+				case *queryv1.InvokeStreamEvent_Terminal:
+					return m.aggregateResponse(&queryv1.InvokeResponse{Reports: ev.Terminal.Reports}, nil)
+				}
+				return nil
+			})
+		}))
+	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	resp := m.response()
+	return send(&queryv1.InvokeStreamEvent{
+		Event: &queryv1.InvokeStreamEvent_Terminal{
+			Terminal: &queryv1.TerminalEvent{Reports: resp.Reports},
+		},
+	})
+}
+
+func (q *QueryBackend) readStream(
+	ctx context.Context,
+	request *queryv1.InvokeRequest,
+	blocks []*metastorev1.BlockMeta,
+	send func(*queryv1.InvokeStreamEvent) error,
+) error {
+	sender, ok := q.blockReader.(streamEventSender)
+	if !ok {
+		return status.Errorf(codes.Unimplemented, "block reader does not support streaming")
+	}
+	request.QueryPlan = &queryv1.QueryPlan{
+		Root: &queryv1.QueryNode{
+			Blocks: blocks,
+		},
+	}
+	return sender.InvokeStreamEvents(ctx, request, send)
 }

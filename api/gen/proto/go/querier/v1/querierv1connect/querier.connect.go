@@ -71,6 +71,12 @@ const (
 	// QuerierServiceAnalyzeQueryProcedure is the fully-qualified name of the QuerierService's
 	// AnalyzeQuery RPC.
 	QuerierServiceAnalyzeQueryProcedure = "/querier.v1.QuerierService/AnalyzeQuery"
+	// QuerierServiceSelectMergeStacktracesStreamProcedure is the fully-qualified name of the
+	// QuerierService's SelectMergeStacktracesStream RPC.
+	QuerierServiceSelectMergeStacktracesStreamProcedure = "/querier.v1.QuerierService/SelectMergeStacktracesStream"
+	// QuerierServiceSelectSeriesStreamProcedure is the fully-qualified name of the QuerierService's
+	// SelectSeriesStream RPC.
+	QuerierServiceSelectSeriesStreamProcedure = "/querier.v1.QuerierService/SelectSeriesStream"
 )
 
 // QuerierServiceClient is a client for the querier.v1.QuerierService service.
@@ -107,6 +113,15 @@ type QuerierServiceClient interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
 	AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error)
+	// SelectMergeStacktracesStream streams incremental flamegraph results.
+	// The first messages are QueryPlanUpdate (one per IndexLookupEvent from the
+	// backend), followed by zero or more QuerySnapshot intermediates, and a
+	// final QueryResult. Returns CodeUnimplemented when the V1 path is selected.
+	SelectMergeStacktracesStream(context.Context, *connect.Request[v1.SelectMergeStacktracesRequest]) (*connect.ServerStreamForClient[v1.SelectMergeStacktracesPartial], error)
+	// SelectSeriesStream streams incremental time-series results.
+	// Same message ordering as SelectMergeStacktracesStream.
+	// Returns CodeUnimplemented when the V1 path is selected.
+	SelectSeriesStream(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.ServerStreamForClient[v1.SelectSeriesPartial], error)
 }
 
 // NewQuerierServiceClient constructs a client for the querier.v1.QuerierService service. By
@@ -192,23 +207,37 @@ func NewQuerierServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(querierServiceMethods.ByName("AnalyzeQuery")),
 			connect.WithClientOptions(opts...),
 		),
+		selectMergeStacktracesStream: connect.NewClient[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesPartial](
+			httpClient,
+			baseURL+QuerierServiceSelectMergeStacktracesStreamProcedure,
+			connect.WithSchema(querierServiceMethods.ByName("SelectMergeStacktracesStream")),
+			connect.WithClientOptions(opts...),
+		),
+		selectSeriesStream: connect.NewClient[v1.SelectSeriesRequest, v1.SelectSeriesPartial](
+			httpClient,
+			baseURL+QuerierServiceSelectSeriesStreamProcedure,
+			connect.WithSchema(querierServiceMethods.ByName("SelectSeriesStream")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // querierServiceClient implements QuerierServiceClient.
 type querierServiceClient struct {
-	profileTypes           *connect.Client[v1.ProfileTypesRequest, v1.ProfileTypesResponse]
-	labelValues            *connect.Client[v11.LabelValuesRequest, v11.LabelValuesResponse]
-	labelNames             *connect.Client[v11.LabelNamesRequest, v11.LabelNamesResponse]
-	series                 *connect.Client[v1.SeriesRequest, v1.SeriesResponse]
-	selectMergeStacktraces *connect.Client[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesResponse]
-	selectMergeSpanProfile *connect.Client[v1.SelectMergeSpanProfileRequest, v1.SelectMergeSpanProfileResponse]
-	selectMergeProfile     *connect.Client[v1.SelectMergeProfileRequest, v12.Profile]
-	selectSeries           *connect.Client[v1.SelectSeriesRequest, v1.SelectSeriesResponse]
-	selectHeatmap          *connect.Client[v1.SelectHeatmapRequest, v1.SelectHeatmapResponse]
-	diff                   *connect.Client[v1.DiffRequest, v1.DiffResponse]
-	getProfileStats        *connect.Client[v11.GetProfileStatsRequest, v11.GetProfileStatsResponse]
-	analyzeQuery           *connect.Client[v1.AnalyzeQueryRequest, v1.AnalyzeQueryResponse]
+	profileTypes                 *connect.Client[v1.ProfileTypesRequest, v1.ProfileTypesResponse]
+	labelValues                  *connect.Client[v11.LabelValuesRequest, v11.LabelValuesResponse]
+	labelNames                   *connect.Client[v11.LabelNamesRequest, v11.LabelNamesResponse]
+	series                       *connect.Client[v1.SeriesRequest, v1.SeriesResponse]
+	selectMergeStacktraces       *connect.Client[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesResponse]
+	selectMergeSpanProfile       *connect.Client[v1.SelectMergeSpanProfileRequest, v1.SelectMergeSpanProfileResponse]
+	selectMergeProfile           *connect.Client[v1.SelectMergeProfileRequest, v12.Profile]
+	selectSeries                 *connect.Client[v1.SelectSeriesRequest, v1.SelectSeriesResponse]
+	selectHeatmap                *connect.Client[v1.SelectHeatmapRequest, v1.SelectHeatmapResponse]
+	diff                         *connect.Client[v1.DiffRequest, v1.DiffResponse]
+	getProfileStats              *connect.Client[v11.GetProfileStatsRequest, v11.GetProfileStatsResponse]
+	analyzeQuery                 *connect.Client[v1.AnalyzeQueryRequest, v1.AnalyzeQueryResponse]
+	selectMergeStacktracesStream *connect.Client[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesPartial]
+	selectSeriesStream           *connect.Client[v1.SelectSeriesRequest, v1.SelectSeriesPartial]
 }
 
 // ProfileTypes calls querier.v1.QuerierService.ProfileTypes.
@@ -271,6 +300,16 @@ func (c *querierServiceClient) AnalyzeQuery(ctx context.Context, req *connect.Re
 	return c.analyzeQuery.CallUnary(ctx, req)
 }
 
+// SelectMergeStacktracesStream calls querier.v1.QuerierService.SelectMergeStacktracesStream.
+func (c *querierServiceClient) SelectMergeStacktracesStream(ctx context.Context, req *connect.Request[v1.SelectMergeStacktracesRequest]) (*connect.ServerStreamForClient[v1.SelectMergeStacktracesPartial], error) {
+	return c.selectMergeStacktracesStream.CallServerStream(ctx, req)
+}
+
+// SelectSeriesStream calls querier.v1.QuerierService.SelectSeriesStream.
+func (c *querierServiceClient) SelectSeriesStream(ctx context.Context, req *connect.Request[v1.SelectSeriesRequest]) (*connect.ServerStreamForClient[v1.SelectSeriesPartial], error) {
+	return c.selectSeriesStream.CallServerStream(ctx, req)
+}
+
 // QuerierServiceHandler is an implementation of the querier.v1.QuerierService service.
 type QuerierServiceHandler interface {
 	// ProfileType returns a list of the existing profile types.
@@ -305,6 +344,15 @@ type QuerierServiceHandler interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
 	AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error)
+	// SelectMergeStacktracesStream streams incremental flamegraph results.
+	// The first messages are QueryPlanUpdate (one per IndexLookupEvent from the
+	// backend), followed by zero or more QuerySnapshot intermediates, and a
+	// final QueryResult. Returns CodeUnimplemented when the V1 path is selected.
+	SelectMergeStacktracesStream(context.Context, *connect.Request[v1.SelectMergeStacktracesRequest], *connect.ServerStream[v1.SelectMergeStacktracesPartial]) error
+	// SelectSeriesStream streams incremental time-series results.
+	// Same message ordering as SelectMergeStacktracesStream.
+	// Returns CodeUnimplemented when the V1 path is selected.
+	SelectSeriesStream(context.Context, *connect.Request[v1.SelectSeriesRequest], *connect.ServerStream[v1.SelectSeriesPartial]) error
 }
 
 // NewQuerierServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -386,6 +434,18 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 		connect.WithSchema(querierServiceMethods.ByName("AnalyzeQuery")),
 		connect.WithHandlerOptions(opts...),
 	)
+	querierServiceSelectMergeStacktracesStreamHandler := connect.NewServerStreamHandler(
+		QuerierServiceSelectMergeStacktracesStreamProcedure,
+		svc.SelectMergeStacktracesStream,
+		connect.WithSchema(querierServiceMethods.ByName("SelectMergeStacktracesStream")),
+		connect.WithHandlerOptions(opts...),
+	)
+	querierServiceSelectSeriesStreamHandler := connect.NewServerStreamHandler(
+		QuerierServiceSelectSeriesStreamProcedure,
+		svc.SelectSeriesStream,
+		connect.WithSchema(querierServiceMethods.ByName("SelectSeriesStream")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/querier.v1.QuerierService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case QuerierServiceProfileTypesProcedure:
@@ -412,6 +472,10 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 			querierServiceGetProfileStatsHandler.ServeHTTP(w, r)
 		case QuerierServiceAnalyzeQueryProcedure:
 			querierServiceAnalyzeQueryHandler.ServeHTTP(w, r)
+		case QuerierServiceSelectMergeStacktracesStreamProcedure:
+			querierServiceSelectMergeStacktracesStreamHandler.ServeHTTP(w, r)
+		case QuerierServiceSelectSeriesStreamProcedure:
+			querierServiceSelectSeriesStreamHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -467,4 +531,12 @@ func (UnimplementedQuerierServiceHandler) GetProfileStats(context.Context, *conn
 
 func (UnimplementedQuerierServiceHandler) AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.AnalyzeQuery is not implemented"))
+}
+
+func (UnimplementedQuerierServiceHandler) SelectMergeStacktracesStream(context.Context, *connect.Request[v1.SelectMergeStacktracesRequest], *connect.ServerStream[v1.SelectMergeStacktracesPartial]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectMergeStacktracesStream is not implemented"))
+}
+
+func (UnimplementedQuerierServiceHandler) SelectSeriesStream(context.Context, *connect.Request[v1.SelectSeriesRequest], *connect.ServerStream[v1.SelectSeriesPartial]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectSeriesStream is not implemented"))
 }

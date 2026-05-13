@@ -92,6 +92,11 @@ type blockContext struct {
 	grp             *errgroup.Group
 	execCollector   *blockExecutionCollector
 	weightCollector *queryWeightCollector
+	// onIndexLookup is called after dataset resolution completes (both for
+	// Format1 index-lookup blocks and Format0 blocks that already have
+	// concrete datasets). It receives the resolved BlockMeta so callers can
+	// emit progress events. May be nil.
+	onIndexLookup func(*metastorev1.BlockMeta)
 }
 
 func (b *blockContext) execute() error {
@@ -112,6 +117,11 @@ func (b *blockContext) execute() error {
 		// Only accumulate datasets resolved from the index lookup; Format0
 		// datasets were already counted by the query frontend at planning time.
 		b.weightCollector.addDatasets(b.obj.Metadata().Datasets)
+	}
+
+	// Notify the caller that dataset resolution is complete.
+	if b.onIndexLookup != nil {
+		b.onIndexLookup(b.obj.Metadata())
 	}
 
 	md := b.obj.Metadata()

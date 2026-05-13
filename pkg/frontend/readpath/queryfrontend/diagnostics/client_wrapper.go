@@ -16,10 +16,10 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
-// Wrapper wraps a QuerierServiceClient to handle query diagnostics.
+// Wrapper wraps a QuerierServiceHandler to handle query diagnostics.
 type Wrapper struct {
 	logger log.Logger
-	client querierv1connect.QuerierServiceClient
+	client querierv1connect.QuerierServiceHandler
 	store  Writer
 }
 
@@ -29,7 +29,7 @@ type Writer interface {
 	Flush(ctx context.Context, tenantID string, id string) error
 }
 
-func NewWrapper(logger log.Logger, client querierv1connect.QuerierServiceClient, writer Writer) *Wrapper {
+func NewWrapper(logger log.Logger, client querierv1connect.QuerierServiceHandler, writer Writer) *Wrapper {
 	return &Wrapper{
 		logger: logger,
 		client: client,
@@ -170,5 +170,37 @@ func (w *Wrapper) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	return resp, err
 }
 
+func (w *Wrapper) SelectMergeStacktracesStream(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest], stream *connect.ServerStream[querierv1.SelectMergeStacktracesPartial]) error {
+	return w.client.SelectMergeStacktracesStream(ctx, req, stream)
+}
+
+func (w *Wrapper) SelectSeriesStream(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest], stream *connect.ServerStream[querierv1.SelectSeriesPartial]) error {
+	return w.client.SelectSeriesStream(ctx, req, stream)
+}
+
+// StreamSelectMergeStacktraces forwards in-process streaming calls to the inner
+// client if it implements the in-process streaming interface (same method signature).
+func (w *Wrapper) StreamSelectMergeStacktraces(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, stream *connect.ServerStream[querierv1.SelectMergeStacktracesPartial]) error {
+	type streamer interface {
+		StreamSelectMergeStacktraces(context.Context, *querierv1.SelectMergeStacktracesRequest, *connect.ServerStream[querierv1.SelectMergeStacktracesPartial]) error
+	}
+	if sf, ok := w.client.(streamer); ok {
+		return sf.StreamSelectMergeStacktraces(ctx, req, stream)
+	}
+	return connect.NewError(connect.CodeUnimplemented, nil)
+}
+
+// StreamSelectSeries forwards in-process streaming calls to the inner client if
+// it implements the in-process streaming interface (same method signature).
+func (w *Wrapper) StreamSelectSeries(ctx context.Context, req *querierv1.SelectSeriesRequest, stream *connect.ServerStream[querierv1.SelectSeriesPartial]) error {
+	type streamer interface {
+		StreamSelectSeries(context.Context, *querierv1.SelectSeriesRequest, *connect.ServerStream[querierv1.SelectSeriesPartial]) error
+	}
+	if sf, ok := w.client.(streamer); ok {
+		return sf.StreamSelectSeries(ctx, req, stream)
+	}
+	return connect.NewError(connect.CodeUnimplemented, nil)
+}
+
 // Ensure Wrapper implements the interface
-var _ querierv1connect.QuerierServiceClient = (*Wrapper)(nil)
+var _ querierv1connect.QuerierServiceHandler = (*Wrapper)(nil)

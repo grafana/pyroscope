@@ -389,6 +389,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesResponse'
+  /querier.v1.QuerierService/SelectMergeStacktracesStream: {}
   /querier.v1.QuerierService/SelectSeries:
     post:
       tags:
@@ -428,6 +429,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/querier.v1.SelectSeriesResponse'
+  /querier.v1.QuerierService/SelectSeriesStream: {}
   /querier.v1.QuerierService/Series:
     post:
       tags:
@@ -1148,6 +1150,43 @@ components:
           title: deduplication_needed
       title: QueryImpact
       additionalProperties: false
+    querier.v1.QueryPlanUpdate:
+      type: object
+      properties:
+        blocksTotal:
+          type: integer
+          title: blocks_total
+        datasetsTotal:
+          type: integer
+          title: datasets_total
+        bytesTotalEstimate:
+          type:
+            - integer
+            - string
+          title: bytes_total_estimate
+          format: int64
+      title: QueryPlanUpdate
+      additionalProperties: false
+      description: |-
+        QueryPlanUpdate carries a running (not final) totals update. datasets_total
+         and bytes_total_estimate increase as more IndexLookupEvents arrive from
+         query-backend shards; the UI must treat them as mutable until the stream ends.
+    querier.v1.QueryResult:
+      type: object
+      properties:
+        flamegraph:
+          title: flamegraph
+          $ref: '#/components/schemas/querier.v1.FlameGraph'
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Series'
+          title: series
+      title: QueryResult
+      additionalProperties: false
+      description: |-
+        QueryResult is the final message of a streaming query. It carries the
+         fully-merged result equivalent to the unary response.
     querier.v1.QueryScope:
       type: object
       properties:
@@ -1206,6 +1245,29 @@ components:
           format: int64
       title: QueryScope
       additionalProperties: false
+    querier.v1.QuerySnapshot:
+      type: object
+      properties:
+        blocksDone:
+          type: integer
+          title: blocks_done
+        datasetsDone:
+          type: integer
+          title: datasets_done
+        bytesDone:
+          type:
+            - integer
+            - string
+          title: bytes_done
+          format: int64
+        flamegraph:
+          title: flamegraph
+          $ref: '#/components/schemas/querier.v1.FlameGraph'
+      title: QuerySnapshot
+      additionalProperties: false
+      description: |-
+        QuerySnapshot carries a periodic intermediate flamegraph. Each snapshot is a
+         full replacement of the previous one (not a delta).
     querier.v1.SelectHeatmapRequest:
       type: object
       properties:
@@ -1428,6 +1490,36 @@ components:
           description: Pyroscope tree bytes.
       title: SelectMergeSpanProfileResponse
       additionalProperties: false
+    querier.v1.SelectMergeStacktracesPartial:
+      type: object
+      oneOf:
+        - properties:
+            planUpdate:
+              title: plan_update
+              $ref: '#/components/schemas/querier.v1.QueryPlanUpdate'
+          title: plan_update
+          required:
+            - planUpdate
+        - properties:
+            result:
+              title: result
+              $ref: '#/components/schemas/querier.v1.QueryResult'
+          title: result
+          required:
+            - result
+        - properties:
+            snapshot:
+              title: snapshot
+              $ref: '#/components/schemas/querier.v1.QuerySnapshot'
+          title: snapshot
+          required:
+            - snapshot
+      title: SelectMergeStacktracesPartial
+      additionalProperties: false
+      description: |-
+        SelectMergeStacktracesPartial is one message in a SelectMergeStacktracesStream
+         response. Messages arrive in this order: zero or more plan_update, zero or
+         more snapshot, exactly one result (last).
     querier.v1.SelectMergeStacktracesRequest:
       type: object
       properties:
@@ -1513,6 +1605,36 @@ components:
           description: DOT graph representation.
       title: SelectMergeStacktracesResponse
       additionalProperties: false
+    querier.v1.SelectSeriesPartial:
+      type: object
+      oneOf:
+        - properties:
+            chunk:
+              title: chunk
+              $ref: '#/components/schemas/querier.v1.SeriesChunk'
+          title: chunk
+          required:
+            - chunk
+        - properties:
+            planUpdate:
+              title: plan_update
+              $ref: '#/components/schemas/querier.v1.QueryPlanUpdate'
+          title: plan_update
+          required:
+            - planUpdate
+        - properties:
+            result:
+              title: result
+              $ref: '#/components/schemas/querier.v1.QueryResult'
+          title: result
+          required:
+            - result
+      title: SelectSeriesPartial
+      additionalProperties: false
+      description: |-
+        SelectSeriesPartial is one message in a SelectSeriesStream response.
+         Messages arrive in this order: zero or more plan_update, zero or more chunk,
+         exactly one result (last).
     querier.v1.SelectSeriesRequest:
       type: object
       properties:
@@ -1595,6 +1717,31 @@ components:
           title: series
       title: SelectSeriesResponse
       additionalProperties: false
+    querier.v1.SeriesChunk:
+      type: object
+      properties:
+        blocksDone:
+          type: integer
+          title: blocks_done
+        datasetsDone:
+          type: integer
+          title: datasets_done
+        bytesDone:
+          type:
+            - integer
+            - string
+          title: bytes_done
+          format: int64
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.Series'
+          title: series
+      title: SeriesChunk
+      additionalProperties: false
+      description: |-
+        SeriesChunk carries a batch of time-series intervals. Intervals within a
+         stream are append-only (non-overlapping), so the UI appends rather than replaces.
     querier.v1.SeriesRequest:
       type: object
       properties:

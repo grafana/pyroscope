@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -237,6 +238,126 @@ func filterNotOwnedDatasets(b *metastorev1.BlockMeta, tenantMap map[string]struc
 		}
 	}
 	return datasets, errs.Err()
+}
+
+// InvokeStreamEvents executes an InvokeRequest and streams progress events to
+// the provided send function. Three event types are emitted:
+//   - IndexLookupEvent: once per block, after TSDB dataset-index lookup completes.
+//   - SnapshotEvent: periodically (~250ms), carrying a partial aggregation result.
+//   - TerminalEvent: exactly once, as the last event, carrying the final result.
+//
+// send is called from multiple goroutines concurrently; it is protected by an
+// internal mutex, so the provided function does not need to be thread-safe.
+func (b *BlockReader) InvokeStreamEvents(ctx context.Context, req *queryv1.InvokeRequest, send func(*queryv1.InvokeStreamEvent) error) error {
+	r, err := validateRequest(req)
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "request validation failed: %v", err)
+	}
+
+	agg := newAggregator(req)
+
+	var sendMu sync.Mutex
+	safeSend := func(e *queryv1.InvokeStreamEvent) error {
+		sendMu.Lock()
+		defer sendMu.Unlock()
+		return send(e)
+	}
+
+	var blocksDone, datasetsDone uint32
+	var bytesDone uint64
+
+	// Start a snapshot ticker that periodically emits partial results.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	snapshotDone := make(chan struct{})
+	go func() {
+		defer close(snapshotDone)
+		ticker := time.NewTicker(250 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				snap := agg.snapshot()
+				if len(snap.Reports) == 0 {
+					continue
+				}
+				bd := atomic.LoadUint32(&blocksDone)
+				dd := atomic.LoadUint32(&datasetsDone)
+				byt := atomic.LoadUint64(&bytesDone)
+				_ = safeSend(&queryv1.InvokeStreamEvent{
+					Event: &queryv1.InvokeStreamEvent_Snapshot{
+						Snapshot: &queryv1.SnapshotEvent{
+							BlocksDone:   bd,
+							DatasetsDone: dd,
+							BytesDone:    byt,
+							Reports:      snap.Reports,
+						},
+					},
+				})
+			}
+		}
+	}()
+
+	tenantMap := make(map[string]struct{})
+	for _, t := range req.Tenant {
+		tenantMap[t] = struct{}{}
+	}
+
+	weightCollector := &queryWeightCollector{}
+	g, ctx2 := errgroup.WithContext(ctx)
+
+	for _, md := range req.QueryPlan.Root.Blocks {
+		md.Datasets, err = filterNotOwnedDatasets(md, tenantMap)
+		if err != nil {
+			b.metrics.datasetTenantIsolationFailure.Inc()
+			traceId, _ := tracing.ExtractTraceID(ctx2)
+			level.Error(b.log).Log("msg", "trying to query datasets of other tenants", "valid-tenant", strings.Join(req.Tenant, ","), "block", md.Id, "err", err, "traceId", traceId)
+		}
+		if len(md.Datasets) == 0 {
+			continue
+		}
+		obj := block.NewObject(b.storage, md)
+		capturedMD := md
+		g.Go(util.RecoverPanic((&blockContext{
+			ctx:             ctx2,
+			log:             b.log,
+			req:             r,
+			agg:             agg,
+			obj:             obj,
+			grp:             g,
+			weightCollector: weightCollector,
+			onIndexLookup: func(resolvedMD *metastorev1.BlockMeta) {
+				atomic.AddUint32(&blocksDone, 1)
+				atomic.AddUint32(&datasetsDone, uint32(len(resolvedMD.Datasets)))
+				atomic.AddUint64(&bytesDone, capturedMD.Size)
+				_ = safeSend(&queryv1.InvokeStreamEvent{
+					Event: &queryv1.InvokeStreamEvent_IndexLookup{
+						IndexLookup: &queryv1.IndexLookupEvent{
+							BlockId:       resolvedMD.Id,
+							DatasetsFound: uint32(len(resolvedMD.Datasets)),
+							BytesEstimate: capturedMD.Size,
+						},
+					},
+				})
+			},
+		}).execute))
+	}
+
+	err = g.Wait()
+	cancel() // stop the snapshot ticker
+	<-snapshotDone
+	if err != nil {
+		return err
+	}
+
+	resp := agg.response()
+	return safeSend(&queryv1.InvokeStreamEvent{
+		Event: &queryv1.InvokeStreamEvent_Terminal{
+			Terminal: &queryv1.TerminalEvent{Reports: resp.Reports},
+		},
+	})
 }
 
 // queryWeightCollector accumulates dataset section sizes across all blocks in a query,

@@ -28,6 +28,13 @@ type backendTreeSymbolizer struct {
 	symbolizer Symbolizer
 }
 
+// InvokeStream forwards the streaming request to the upstream backend.
+// Symbolization is not applied to streaming results; that is a future
+// TODO once symbolization moves into the query backend.
+func (b *backendTreeSymbolizer) InvokeStream(ctx context.Context, req *queryv1.InvokeRequest) (queryv1.QueryBackendService_InvokeStreamClient, error) {
+	return b.upstream.InvokeStream(ctx, req)
+}
+
 func (b *backendTreeSymbolizer) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (resp *queryv1.InvokeResponse, err error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "backendTreeSymbolizer.Invoke")
 	defer func() {

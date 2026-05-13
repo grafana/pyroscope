@@ -45,6 +45,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/query.v1.InvokeResponse'
+  /query.v1.QueryBackendService/InvokeStream: {}
   /query.v1.QueryFrontendService/Query:
     post:
       tags:
@@ -794,6 +795,27 @@ components:
           description: Points are timestamp, then span_id, then porfile_id ordered
       title: HeatmapSeries
       additionalProperties: false
+    query.v1.IndexLookupEvent:
+      type: object
+      properties:
+        blockId:
+          type: string
+          title: block_id
+        datasetsFound:
+          type: integer
+          title: datasets_found
+        bytesEstimate:
+          type:
+            - integer
+            - string
+          title: bytes_estimate
+          format: int64
+      title: IndexLookupEvent
+      additionalProperties: false
+      description: |-
+        IndexLookupEvent is emitted once per block as soon as the TSDB index lookup
+         for that block completes, before profile data is read. Clients accumulate
+         these to build a running datasets_total denominator for progress reporting.
     query.v1.InvokeOptions:
       type: object
       properties:
@@ -858,6 +880,38 @@ components:
           $ref: '#/components/schemas/query.v1.Diagnostics'
       title: InvokeResponse
       additionalProperties: false
+    query.v1.InvokeStreamEvent:
+      type: object
+      oneOf:
+        - properties:
+            indexLookup:
+              title: index_lookup
+              $ref: '#/components/schemas/query.v1.IndexLookupEvent'
+          title: index_lookup
+          required:
+            - indexLookup
+        - properties:
+            snapshot:
+              title: snapshot
+              $ref: '#/components/schemas/query.v1.SnapshotEvent'
+          title: snapshot
+          required:
+            - snapshot
+        - properties:
+            terminal:
+              title: terminal
+              $ref: '#/components/schemas/query.v1.TerminalEvent'
+          title: terminal
+          required:
+            - terminal
+      title: InvokeStreamEvent
+      additionalProperties: false
+      description: |-
+        InvokeStreamEvent is one message in a server-streaming response from
+         InvokeStream. Messages arrive interleaved: IndexLookupEvent fires as soon as
+         a block finishes its TSDB dataset-index lookup; SnapshotEvent fires on the
+         periodic snapshot cadence; TerminalEvent is the last message and carries the
+         fully-merged result.
     query.v1.LabelNamesQuery:
       type: object
       title: LabelNamesQuery
@@ -1179,6 +1233,48 @@ components:
           title: series_labels
       title: SeriesLabelsReport
       additionalProperties: false
+    query.v1.SnapshotEvent:
+      type: object
+      properties:
+        blocksDone:
+          type: integer
+          title: blocks_done
+        datasetsDone:
+          type: integer
+          title: datasets_done
+        bytesDone:
+          type:
+            - integer
+            - string
+          title: bytes_done
+          format: int64
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Report'
+          title: reports
+      title: SnapshotEvent
+      additionalProperties: false
+      description: |-
+        SnapshotEvent carries a periodic partial result. Reports contain the same
+         report types as InvokeResponse but represent an intermediate (under-counted)
+         merged state. Each snapshot fully replaces the previous one.
+    query.v1.TerminalEvent:
+      type: object
+      properties:
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.Report'
+          title: reports
+        diagnostics:
+          title: diagnostics
+          $ref: '#/components/schemas/query.v1.Diagnostics'
+      title: TerminalEvent
+      additionalProperties: false
+      description: |-
+        TerminalEvent is the last message in an InvokeStream response. It carries
+         the fully-merged result and optional diagnostics.
     query.v1.TimeSeriesCompactReport:
       type: object
       properties:

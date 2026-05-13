@@ -155,6 +155,34 @@ func (ra *reportAggregator) aggregateReportNoCheck(report *queryv1.Report) (err 
 	return a.aggregate(report)
 }
 
+// snapshot returns an InvokeResponse with the current partial aggregation state.
+// It is safe to call concurrently with aggregateReport. Note that aggregator.build()
+// is called outside the lock: this is safe because all registered aggregators
+// (e.g. TreeMerger) carry their own internal mutex.
+func (ra *reportAggregator) snapshot() *queryv1.InvokeResponse {
+	ra.sm.Lock()
+	staged := make([]*queryv1.Report, 0, len(ra.staged))
+	for _, st := range ra.staged {
+		if st != nil {
+			staged = append(staged, st)
+		}
+	}
+	aggs := make(map[queryv1.ReportType]aggregator, len(ra.aggregators))
+	for t, a := range ra.aggregators {
+		aggs[t] = a
+	}
+	ra.sm.Unlock()
+
+	reports := make([]*queryv1.Report, 0, len(staged)+len(aggs))
+	reports = append(reports, staged...)
+	for t, a := range aggs {
+		r := a.build()
+		r.ReportType = t
+		reports = append(reports, r)
+	}
+	return &queryv1.InvokeResponse{Reports: reports}
+}
+
 func (ra *reportAggregator) response() *queryv1.InvokeResponse {
 	// if there are staged reports, we can just add them, no need to aggregate because there is one per type
 	reports := make([]*queryv1.Report, 0, len(ra.staged))
