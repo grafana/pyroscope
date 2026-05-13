@@ -138,12 +138,9 @@ go run ./cmd/pyroscope --target all,embedded-grafana
 # Grafana: http://localhost:4041
 
 # Run with V2 architecture (segment writers, query backend, symbolizer)
-PYROSCOPE_V2=1 go run ./cmd/pyroscope \
-  -target=all \
-  -storage.backend=filesystem \
-  -write-path=segment-writer \
-  -enable-query-backend=true \
-  -symbolizer.enabled=true
+# V2 is the default since the v2.0 release; only -storage.backend is required.
+# -symbolizer.enabled=true opts into symbolization (off by default).
+go run ./cmd/pyroscope -target=all -storage.backend=filesystem -symbolizer.enabled=true
 ```
 
 ## Code Style & Conventions
