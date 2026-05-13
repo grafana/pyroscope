@@ -14,15 +14,8 @@ import (
 )
 
 const (
-	clusterName    = "pyroscope-httproute"
-	gatewayName    = "pyroscope"
-	gatewayNS      = "default"
-	gatewayHost    = "pyroscope.test"
-	gatewayPort    = "8080"
-	envoyGWNS      = "envoy-gateway-system"
-	gwAPIVersion   = "v1.2.0"
-	envoyGWVersion = "v1.2.0"
-	kindNodeImage  = "kindest/node:v1.33.7"
+	clusterName   = "pyroscope-helm-e2e"
+	kindNodeImage = "kindest/node:v1.33.7"
 )
 
 // chartDir is the path to the Helm chart root (the e2e/ package directory's parent).

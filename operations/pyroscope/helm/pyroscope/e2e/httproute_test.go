@@ -21,6 +21,16 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
+const (
+	gatewayName    = "pyroscope"
+	gatewayNS      = "default"
+	gatewayHost    = "pyroscope.test"
+	gatewayPort    = "8080"
+	envoyGWNS      = "envoy-gateway-system"
+	gwAPIVersion   = "v1.2.0"
+	envoyGWVersion = "v1.2.0"
+)
+
 // variants defines the chart configurations under test.
 // Each installs the chart, runs all route assertions, then uninstalls.
 var variants = []struct {
