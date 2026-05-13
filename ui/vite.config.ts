@@ -69,6 +69,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/querier.v1.QuerierService': 'http://localhost:4040',
+      '/querier.v1.QuerierStreamService': 'http://localhost:4040',
     },
   },
   test: {

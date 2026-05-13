@@ -12,7 +12,7 @@ export interface FlamegraphData {
 
 // Reads the <base href> injected by the Go server. Returns a path prefix like
 // "/uscentral" (no trailing slash), or "" when running at the root or in dev.
-function getBasePath(): string {
+export function getBasePath(): string {
   const base = document.querySelector('base') as HTMLBaseElement | null;
   if (!base) return '';
   const href = base.getAttribute('href') ?? '';
@@ -26,6 +26,10 @@ let orgID = '';
 
 export function setOrgID(id: string) {
   orgID = id;
+}
+
+export function getOrgID(): string {
+  return orgID;
 }
 
 export async function checkMultitenancy(): Promise<

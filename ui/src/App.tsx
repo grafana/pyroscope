@@ -7,13 +7,43 @@ import { QueryBar } from '@components/QueryBar';
 import { TimeSeries } from '@components/TimeSeries';
 import { Panel } from '@components/Panel';
 import { TenantDialog } from '@components/TenantDialog';
-import { usePyroscopeQuery, type ProfileType } from '@hooks/usePyroscopeQuery';
+import {
+  usePyroscopeQuery,
+  type ProfileType,
+  type QueryProgress,
+} from '@hooks/usePyroscopeQuery';
 import { useTenant } from '@hooks/useTenant';
 import {
   profileTypeLabel,
   profileTypeRateLabel,
   sortProfileTypes,
 } from '@api/client';
+
+function humanBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let v = n / 1024;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v >= 10 ? v.toFixed(0) : v.toFixed(1)} ${units[i]}`;
+}
+
+function formatEta(unixMs: number): string {
+  if (unixMs <= 0) return '…';
+  const d = new Date(unixMs);
+  const hh = d.getHours().toString().padStart(2, '0');
+  const mm = d.getMinutes().toString().padStart(2, '0');
+  const ss = d.getSeconds().toString().padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
+}
+
+function progressMeta(p: QueryProgress | null): string {
+  if (!p) return 'loading…';
+  return `loading… ${humanBytes(p.bytesDone)} / ${humanBytes(p.bytesTotalEstimate)} · eta ${formatEta(p.etaUnixMs)}`;
+}
 
 function useTheme() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -143,7 +173,12 @@ export default function App() {
       )}
 
       <div className="app-content">
-        <Panel title={`${profileTypeRateLabel(profileType)}`}>
+        <Panel
+          title={`${profileTypeRateLabel(profileType)}`}
+          meta={
+            query.loading ? progressMeta(query.progress.timeline) : undefined
+          }
+        >
           <TimeSeries
             data={query.timeline}
             timeRange={timeRange}
@@ -156,7 +191,11 @@ export default function App() {
 
         <Panel
           title="Flamegraph"
-          meta={`${service} · ${profileTypeLabel(profileType)} · ${timeRange}`}
+          meta={
+            query.loading
+              ? progressMeta(query.progress.flamegraph)
+              : `${service} · ${profileTypeLabel(profileType)} · ${timeRange}`
+          }
         >
           <FlameGraph
             data={query.flamegraph}
