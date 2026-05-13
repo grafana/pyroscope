@@ -131,15 +131,14 @@ func generateBlockMarkdown(blocks []*parse.ConfigBlock, blockName, fieldName str
 	return ""
 }
 
+var (
+	outputFormat = flag.String("format", "markdown", "Output format: markdown or yaml-example")
+	skipBlocks   = flag.String("skip-blocks", "", "Comma-separated list of top-level block names to omit from yaml-example output")
+)
+
 func main() {
 	// Parse the generator flags.
 	flag.Parse()
-	if flag.NArg() != 1 {
-		fmt.Fprintf(os.Stderr, "Usage: doc-generator template-file")
-		os.Exit(1)
-	}
-
-	templatePath := flag.Arg(0)
 
 	// In order to match YAML config fields with CLI flags, we map
 	// the memory address of the CLI flag variables and match them with
@@ -157,6 +156,26 @@ func main() {
 	// Annotate the flags prefix for each root block, and remove the
 	// prefix wherever encountered in the config blocks.
 	annotateFlagPrefix(blocks)
+
+	if *outputFormat == "yaml-example" {
+		skip := map[string]bool{}
+		for _, name := range strings.Split(*skipBlocks, ",") {
+			if name = strings.TrimSpace(name); name != "" {
+				skip[name] = true
+			}
+		}
+		w := &yamlExampleWriter{skipBlocks: skip}
+		w.writeConfigYAML(blocks)
+		fmt.Print(w.string())
+		return
+	}
+
+	if flag.NArg() != 1 {
+		fmt.Fprintf(os.Stderr, "Usage: doc-generator [-format yaml-example] template-file\n")
+		os.Exit(1)
+	}
+
+	templatePath := flag.Arg(0)
 
 	// Generate documentation markdown.
 	data := struct {
