@@ -1,8 +1,6 @@
 package queryplan
 
 import (
-	"math"
-
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 )
@@ -35,38 +33,39 @@ func Build(
 	}
 
 	// create leaf nodes and spread the blocks in a uniform way
-	var leafNodes []*queryv1.QueryNode
+	var nodes []*queryv1.QueryNode
 	for i := 0; i < len(blocks); i += maxReads {
 		end := i + maxReads
 		if end > len(blocks) {
 			end = len(blocks)
 		}
-		leafNodes = append(leafNodes, &queryv1.QueryNode{
+		nodes = append(nodes, &queryv1.QueryNode{
 			Type:   queryv1.QueryNode_READ,
 			Blocks: blocks[i:end],
 		})
 	}
 
 	// create merge nodes until we reach a single root node
-	for len(leafNodes) > 1 {
-		numNodes := len(leafNodes)
-		numMerges := int(math.Ceil(float64(numNodes) / float64(maxMerges)))
+	for len(nodes) > 1 {
+		mergeNodeCount := (len(nodes) + maxMerges - 1) / maxMerges
+		mergeNodes := make([]*queryv1.QueryNode, 0, mergeNodeCount)
 
-		var newLeafNodes []*queryv1.QueryNode
-		for i := 0; i < numMerges; i++ {
-			newNode := &queryv1.QueryNode{
-				Type: queryv1.QueryNode_MERGE,
+		for i := 0; i < len(nodes); i += maxMerges {
+			end := i + maxMerges
+			if end > len(nodes) {
+				end = len(nodes)
 			}
-			for j := 0; j < maxMerges && len(leafNodes) > 0; j++ {
-				newNode.Children = append(newNode.Children, leafNodes[0])
-				leafNodes = leafNodes[1:]
-			}
-			newLeafNodes = append(newLeafNodes, newNode)
+
+			mergeNodes = append(mergeNodes, &queryv1.QueryNode{
+				Type:     queryv1.QueryNode_MERGE,
+				Children: nodes[i:end:end],
+			})
 		}
-		leafNodes = newLeafNodes
+
+		nodes = mergeNodes
 	}
 
 	return &queryv1.QueryPlan{
-		Root: leafNodes[0],
+		Root: nodes[0],
 	}
 }
