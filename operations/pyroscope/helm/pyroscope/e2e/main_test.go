@@ -169,7 +169,7 @@ func kubectl(args ...string) error {
 }
 
 func helm(args ...string) error {
-	return runCmd("helm", args...)
+	return runCmd("helm", append([]string{"--kube-context", "kind-" + clusterName}, args...)...)
 }
 
 func runCmd(name string, args ...string) error {
