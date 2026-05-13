@@ -92,6 +92,11 @@ func main() {
 	queryExemplarsParams := addQueryExemplarsParams(queryExemplarsProfileCmd)
 	queryExemplarsSpanCmd := queryExemplarsCmd.Command("span", "List span exemplars for a time window. Requires span-aware SDK instrumentation. V2 only.")
 	queryExemplarsSpanParams := addQueryExemplarsParams(queryExemplarsSpanCmd)
+	queryStreamCmd := queryCmd.Command("stream", "Stream incremental query results. V2 only.")
+	queryStreamFlamegraphCmd := queryStreamCmd.Command("flamegraph", "Stream incremental flamegraph (SelectMergeStacktracesStream).")
+	queryStreamFlamegraphParams := addQueryStreamFlamegraphParams(queryStreamFlamegraphCmd)
+	queryStreamSeriesCmd := queryStreamCmd.Command("series", "Stream incremental time-series (SelectSeriesStream).")
+	queryStreamSeriesParams := addQueryStreamSeriesParams(queryStreamSeriesCmd)
 
 	queryTracerCmd := app.Command("query-tracer", "Analyze query traces.")
 	queryTracerParams := addQueryTracerParams(queryTracerCmd)
@@ -206,6 +211,14 @@ func main() {
 		}
 	case queryExemplarsSpanCmd.FullCommand():
 		if err := querySpanExemplars(ctx, queryExemplarsSpanParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case queryStreamFlamegraphCmd.FullCommand():
+		if err := queryStreamFlamegraph(ctx, queryStreamFlamegraphParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case queryStreamSeriesCmd.FullCommand():
+		if err := queryStreamSeries(ctx, queryStreamSeriesParams); err != nil {
 			os.Exit(checkError(err))
 		}
 

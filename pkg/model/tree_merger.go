@@ -62,6 +62,17 @@ func (m *TreeMerger[N, I]) Tree() *Tree[N, I] {
 	return m.t
 }
 
+// Bytes serializes the merged tree, holding the internal mutex so it is safe
+// to call concurrently with MergeTree / MergeTreeBytes.
+func (m *TreeMerger[N, I]) Bytes(maxNodes int64, keepName func(N) N) []byte {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.t == nil {
+		return nil
+	}
+	return m.t.Bytes(maxNodes, keepName)
+}
+
 func (m *TreeMerger[N, I]) IsEmpty() bool {
 	return m.t == nil
 }

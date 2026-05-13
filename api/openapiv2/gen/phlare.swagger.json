@@ -36,6 +36,9 @@
       "name": "QuerierService"
     },
     {
+      "name": "QuerierStreamService"
+    },
+    {
       "name": "QueryFrontendService"
     },
     {

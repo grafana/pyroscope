@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+// Streaming query API for the Pyroscope query frontend.
+// This file defines an improved streaming service (QuerierStreamService) that
+// supersedes the streaming RPCs in QuerierService. The key difference is that
+// the frontend summarises all progress into a single periodic event (~500 ms)
+// that carries the ETA, total bytes to scan, and the latest partial result.
+package querier.v1;
+
+import "querier/v1/querier.proto";
+import "types/v1/types.proto";
+
+// FlamegraphProgress is a periodic update emitted roughly every 500 ms while
+// a SelectMergeStacktracesStream query is in progress. Each message is a full
+// replacement of the previous one (not a delta). The flamegraph field is absent
+// until the first partial result is available.
+message FlamegraphProgress {
+  // Running estimate of total bytes to be scanned. Grows as index lookups
+  // across query-backend shards complete; treat as mutable until the stream ends.
+  uint64 bytes_total_estimate = 1;
+  // Bytes for blocks whose index lookup has completed; used to derive ETA.
+  uint64 bytes_done = 2;
+  // Estimated completion time as Unix milliseconds. Zero until estimable.
+  int64 eta_unix_ms = 3;
+  // Latest partial flamegraph. Absent until the first partial result arrives.
+  FlameGraph flamegraph = 4;
+}
+
+// SeriesProgress is a periodic update emitted roughly every 500 ms while a
+// SelectSeriesStream query is in progress. Each message replaces the previous.
+message SeriesProgress {
+  uint64                   bytes_total_estimate = 1;
+  uint64                   bytes_done           = 2;
+  int64                    eta_unix_ms          = 3;
+  repeated types.v1.Series series               = 4;
+}
+
+// SeriesStreamResult wraps the final series payload. A wrapper message is
+// required because proto3 oneof cannot contain repeated fields directly.
+message SeriesStreamResult {
+  repeated types.v1.Series series = 1;
+}
+
+// FlamegraphStreamEvent is one message in a SelectMergeStacktracesStream
+// response. Zero or more progress events arrive first (approximately every
+// 500 ms), followed by exactly one flamegraph as the final result.
+message FlamegraphStreamEvent {
+  oneof kind {
+    FlamegraphProgress progress  = 1;
+    FlameGraph         flamegraph = 2;
+  }
+}
+
+// SeriesStreamEvent is one message in a SelectSeriesStream response.
+// Zero or more progress events arrive first, followed by exactly one result.
+message SeriesStreamEvent {
+  oneof kind {
+    SeriesProgress    progress = 1;
+    SeriesStreamResult result  = 2;
+  }
+}
+
+// QuerierStreamService is the improved streaming API for the Pyroscope query
+// frontend. It supersedes the streaming RPCs in QuerierService with a simpler
+// event model: clients receive only ETA, total scan size, and partial results.
+service QuerierStreamService {
+  rpc SelectMergeStacktracesStream(SelectMergeStacktracesRequest)
+      returns (stream FlamegraphStreamEvent);
+  rpc SelectSeriesStream(SelectSeriesRequest)
+      returns (stream SeriesStreamEvent);
+}

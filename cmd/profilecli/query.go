@@ -39,6 +39,17 @@ func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
 	)
 }
 
+func (c *phlareClient) streamQueryClient() querierv1connect.QuerierStreamServiceClient {
+	return querierv1connect.NewQuerierStreamServiceClient(
+		c.httpClient(),
+		c.URL,
+		append(
+			connectapi.DefaultClientOptions(),
+			c.protocolOption(),
+		)...,
+	)
+}
+
 func (c *phlareClient) storeGatewayClient() storegatewayv1connect.StoreGatewayServiceClient {
 	return storegatewayv1connect.NewStoreGatewayServiceClient(
 		c.httpClient(),

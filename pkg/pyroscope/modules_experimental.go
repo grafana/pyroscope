@@ -104,6 +104,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	)
 
 	f.API.RegisterQuerierServiceHandler(handler)
+	f.API.RegisterQuerierStreamServiceHandler(f.queryFrontend.StreamHandler())
 	f.API.RegisterPyroscopeHandlers(handler)
 	f.API.RegisterVCSServiceHandler(vcsService)
 
@@ -152,6 +153,7 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 
 	f.API.RegisterFrontendForQuerierHandler(f.frontend)
 	f.API.RegisterQuerierServiceHandler(spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger))
+	f.API.RegisterQuerierStreamServiceHandler(f.queryFrontend.StreamHandler())
 	f.API.RegisterPyroscopeHandlers(spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger))
 	f.API.RegisterVCSServiceHandler(vcsService)
 

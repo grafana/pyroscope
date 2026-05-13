@@ -181,13 +181,16 @@ func (a *treeAggregator) build() *queryv1.Report {
 	}
 
 	if a.query.FullSymbols {
+		// symbolLock guards both symbolMerger and lrTree (same order as aggregate).
+		a.symbolLock.Lock()
+		defer a.symbolLock.Unlock()
 		builder := a.symbolMerger.ResultBuilder()
-		result.Tree.Tree = a.lrTree.Tree().Bytes(a.query.GetMaxNodes(), builder.KeepSymbol)
+		result.Tree.Tree = a.lrTree.Bytes(a.query.GetMaxNodes(), builder.KeepSymbol)
 		result.Tree.Symbols = new(queryv1.TreeSymbols)
 		builder.Build(result.Tree.Symbols)
 		return result
 	}
 
-	result.Tree.Tree = a.tree.Tree().Bytes(a.query.GetMaxNodes(), nil)
+	result.Tree.Tree = a.tree.Bytes(a.query.GetMaxNodes(), nil)
 	return result
 }

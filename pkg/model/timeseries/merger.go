@@ -57,7 +57,9 @@ func (m *Merger) IsEmpty() bool {
 }
 
 func (m *Merger) TimeSeries() []*typesv1.Series {
+	m.mu.Lock()
 	r := m.mergeTimeSeries()
+	m.mu.Unlock()
 	sort.Slice(r, func(i, j int) bool {
 		return phlaremodel.CompareLabelPairs(r[i].Labels, r[j].Labels) < 0
 	})
@@ -71,15 +73,22 @@ func (m *Merger) mergeTimeSeries() []*typesv1.Series {
 	r := make([]*typesv1.Series, len(m.series))
 	var i int
 	for _, s := range m.series {
-		s.Points = s.Points[:m.mergePoints(s.Points)]
-		r[i] = s
+		merged := s.Points[:m.mergePoints(s.Points)]
+		s.Points = merged
+		// Return a new Series so callers don't share the Points field with
+		// the map entry; subsequent MergeTimeSeries calls may write s.Points
+		// and would race with any concurrent reads of the returned value.
+		r[i] = &typesv1.Series{Labels: s.Labels, Points: merged}
 		i++
 	}
 	return r
 }
 
 func (m *Merger) Top(n int) []*typesv1.Series {
-	return TopSeries(m.mergeTimeSeries(), n)
+	m.mu.Lock()
+	r := m.mergeTimeSeries()
+	m.mu.Unlock()
+	return TopSeries(r, n)
 }
 
 func (m *Merger) mergePoints(points []*typesv1.Point) int {

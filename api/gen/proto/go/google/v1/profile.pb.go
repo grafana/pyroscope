@@ -60,7 +60,7 @@ const (
 )
 
 type Profile struct {
-	state protoimpl.MessageState `protogen:"open.v1" parquet:"-"`
+	state protoimpl.MessageState `protogen:"open.v1"`
 	// A description of the samples associated with each Sample.value.
 	// For a cpu profile this might be:
 	//
@@ -73,41 +73,41 @@ type Profile struct {
 	// If one of the values represents the number of events represented
 	// by the sample, by convention it should be at index 0 and use
 	// sample_type.unit == "count".
-	SampleType []*ValueType `protobuf:"bytes,1,rep,name=sample_type,json=sampleType,proto3" json:"sample_type,omitempty" parquet:","`
+	SampleType []*ValueType `protobuf:"bytes,1,rep,name=sample_type,json=sampleType,proto3" json:"sample_type,omitempty"`
 	// The set of samples recorded in this profile.
-	Sample []*Sample `protobuf:"bytes,2,rep,name=sample,proto3" json:"sample,omitempty" parquet:","`
+	Sample []*Sample `protobuf:"bytes,2,rep,name=sample,proto3" json:"sample,omitempty"`
 	// Mapping from address ranges to the image/binary/library mapped
 	// into that address range.  mapping[0] will be the main binary.
-	Mapping []*Mapping `protobuf:"bytes,3,rep,name=mapping,proto3" json:"mapping,omitempty" parquet:","`
+	Mapping []*Mapping `protobuf:"bytes,3,rep,name=mapping,proto3" json:"mapping,omitempty"`
 	// Useful program location
-	Location []*Location `protobuf:"bytes,4,rep,name=location,proto3" json:"location,omitempty" parquet:","`
+	Location []*Location `protobuf:"bytes,4,rep,name=location,proto3" json:"location,omitempty"`
 	// Functions referenced by locations
-	Function []*Function `protobuf:"bytes,5,rep,name=function,proto3" json:"function,omitempty" parquet:","`
+	Function []*Function `protobuf:"bytes,5,rep,name=function,proto3" json:"function,omitempty"`
 	// A common table for strings referenced by various messages.
 	// string_table[0] must always be "".
-	StringTable []string `protobuf:"bytes,6,rep,name=string_table,json=stringTable,proto3" json:"string_table,omitempty" parquet:","`
+	StringTable []string `protobuf:"bytes,6,rep,name=string_table,json=stringTable,proto3" json:"string_table,omitempty"`
 	// frames with Function.function_name fully matching the following
 	// regexp will be dropped from the samples, along with their successors.
-	DropFrames int64 `protobuf:"varint,7,opt,name=drop_frames,json=dropFrames,proto3" json:"drop_frames,omitempty" parquet:"-"` // Index into string table.
+	DropFrames int64 `protobuf:"varint,7,opt,name=drop_frames,json=dropFrames,proto3" json:"drop_frames,omitempty"` // Index into string table.
 	// frames with Function.function_name fully matching the following
 	// regexp will be kept, even if it matches drop_frames.
-	KeepFrames int64 `protobuf:"varint,8,opt,name=keep_frames,json=keepFrames,proto3" json:"keep_frames,omitempty" parquet:"-"` // Index into string table.
+	KeepFrames int64 `protobuf:"varint,8,opt,name=keep_frames,json=keepFrames,proto3" json:"keep_frames,omitempty"` // Index into string table.
 	// Time of collection (UTC) represented as nanoseconds past the epoch.
-	TimeNanos int64 `protobuf:"varint,9,opt,name=time_nanos,json=timeNanos,proto3" json:"time_nanos,omitempty" parquet:",delta"`
+	TimeNanos int64 `protobuf:"varint,9,opt,name=time_nanos,json=timeNanos,proto3" json:"time_nanos,omitempty"`
 	// Duration of the profile, if a duration makes sense.
-	DurationNanos int64 `protobuf:"varint,10,opt,name=duration_nanos,json=durationNanos,proto3" json:"duration_nanos,omitempty" parquet:"-"`
+	DurationNanos int64 `protobuf:"varint,10,opt,name=duration_nanos,json=durationNanos,proto3" json:"duration_nanos,omitempty"`
 	// The kind of events between sampled ocurrences.
 	// e.g [ "cpu","cycles" ] or [ "heap","bytes" ]
-	PeriodType *ValueType `protobuf:"bytes,11,opt,name=period_type,json=periodType,proto3" json:"period_type,omitempty" parquet:"-"`
+	PeriodType *ValueType `protobuf:"bytes,11,opt,name=period_type,json=periodType,proto3" json:"period_type,omitempty"`
 	// The number of events between sampled occurrences.
-	Period int64 `protobuf:"varint,12,opt,name=period,proto3" json:"period,omitempty" parquet:"-"`
+	Period int64 `protobuf:"varint,12,opt,name=period,proto3" json:"period,omitempty"`
 	// Freeform text associated to the profile.
-	Comment []int64 `protobuf:"varint,13,rep,packed,name=comment,proto3" json:"comment,omitempty" parquet:"-"` // Indices into string table.
+	Comment []int64 `protobuf:"varint,13,rep,packed,name=comment,proto3" json:"comment,omitempty"` // Indices into string table.
 	// Index into the string table of the type of the preferred sample
 	// value. If unset, clients should default to the last sample value.
-	DefaultSampleType int64                   `protobuf:"varint,14,opt,name=default_sample_type,json=defaultSampleType,proto3" json:"default_sample_type,omitempty" parquet:"-"`
-	unknownFields     protoimpl.UnknownFields `parquet:"-"`
-	sizeCache         protoimpl.SizeCache     `parquet:"-"`
+	DefaultSampleType int64 `protobuf:"varint,14,opt,name=default_sample_type,json=defaultSampleType,proto3" json:"default_sample_type,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Profile) Reset() {
@@ -241,8 +241,8 @@ func (x *Profile) GetDefaultSampleType() int64 {
 // ValueType describes the semantics and measurement units of a value.
 type ValueType struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          int64                  `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty" parquet:","` // Index into string table.
-	Unit          int64                  `protobuf:"varint,2,opt,name=unit,proto3" json:"unit,omitempty" parquet:","` // Index into string table.
+	Type          int64                  `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty"` // Index into string table.
+	Unit          int64                  `protobuf:"varint,2,opt,name=unit,proto3" json:"unit,omitempty"` // Index into string table.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -299,14 +299,14 @@ type Sample struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ids recorded here correspond to a Profile.location.id.
 	// The leaf is at location_id[0].
-	LocationId []uint64 `protobuf:"varint,1,rep,packed,name=location_id,json=locationId,proto3" json:"location_id,omitempty" parquet:","`
+	LocationId []uint64 `protobuf:"varint,1,rep,packed,name=location_id,json=locationId,proto3" json:"location_id,omitempty"`
 	// The type and unit of each value is defined by the corresponding
 	// entry in Profile.sample_type. All samples must have the same
 	// number of values, the same as the length of Profile.sample_type.
 	// When aggregating multiple samples into a single sample, the
 	// result has a list of values that is the element-wise sum of the
 	// lists of the originals.
-	Value []int64 `protobuf:"varint,2,rep,packed,name=value,proto3" json:"value,omitempty" parquet:","`
+	Value []int64 `protobuf:"varint,2,rep,packed,name=value,proto3" json:"value,omitempty"`
 	// label includes additional context for this sample. It can include
 	// things like a thread id, allocation size, etc
 	Label         []*Label `protobuf:"bytes,3,rep,name=label,proto3" json:"label,omitempty"`
@@ -369,8 +369,8 @@ type Label struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Key   int64                  `protobuf:"varint,1,opt,name=key,proto3" json:"key,omitempty"` // Index into string table
 	// At most one of the following must be present
-	Str int64 `protobuf:"varint,2,opt,name=str,proto3" json:"str,omitempty" parquet:",optional"` // Index into string table
-	Num int64 `protobuf:"varint,3,opt,name=num,proto3" json:"num,omitempty" parquet:",optional"`
+	Str int64 `protobuf:"varint,2,opt,name=str,proto3" json:"str,omitempty"` // Index into string table
+	Num int64 `protobuf:"varint,3,opt,name=num,proto3" json:"num,omitempty"`
 	// Should only be present when num is present.
 	// Specifies the units of num.
 	// Use arbitrary string (for example, "requests") as a custom count unit.
@@ -378,7 +378,7 @@ type Label struct {
 	// Consumers may also  interpret units like "bytes" and "kilobytes" as memory
 	// units and units like "seconds" and "nanoseconds" as time units,
 	// and apply appropriate unit conversions to these.
-	NumUnit       int64 `protobuf:"varint,4,opt,name=num_unit,json=numUnit,proto3" json:"num_unit,omitempty" parquet:",optional"` // Index into string table
+	NumUnit       int64 `protobuf:"varint,4,opt,name=num_unit,json=numUnit,proto3" json:"num_unit,omitempty"` // Index into string table
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

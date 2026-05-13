@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -238,14 +239,51 @@ func (q *QueryBackend) mergeStream(
 		return send(e)
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
+	var blocksDone, datasetsDone uint32
+	var bytesDone uint64
+
+	// Periodic snapshot emission: mirrors BlockReader.InvokeStreamEvents.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	snapshotDone := make(chan struct{})
+	go func() {
+		defer close(snapshotDone)
+		ticker := time.NewTicker(250 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				snap := m.snapshot()
+				if len(snap.Reports) == 0 {
+					continue
+				}
+				_ = safeSend(&queryv1.InvokeStreamEvent{
+					Event: &queryv1.InvokeStreamEvent_Snapshot{
+						Snapshot: &queryv1.SnapshotEvent{
+							BlocksDone:   atomic.LoadUint32(&blocksDone),
+							DatasetsDone: atomic.LoadUint32(&datasetsDone),
+							BytesDone:    atomic.LoadUint64(&bytesDone),
+							Reports:      snap.Reports,
+						},
+					},
+				})
+			}
+		}
+	}()
+
+	g, ctx2 := errgroup.WithContext(ctx)
 	for _, child := range children {
 		req := request.CloneVT()
 		req.QueryPlan = &queryv1.QueryPlan{Root: child}
 		g.Go(util.RecoverPanic(func() error {
-			return sender.InvokeStreamEvents(ctx, req, func(e *queryv1.InvokeStreamEvent) error {
+			return sender.InvokeStreamEvents(ctx2, req, func(e *queryv1.InvokeStreamEvent) error {
 				switch ev := e.Event.(type) {
 				case *queryv1.InvokeStreamEvent_IndexLookup:
+					atomic.AddUint32(&blocksDone, 1)
+					atomic.AddUint32(&datasetsDone, ev.IndexLookup.DatasetsFound)
+					atomic.AddUint64(&bytesDone, ev.IndexLookup.BytesEstimate)
 					return safeSend(e)
 				case *queryv1.InvokeStreamEvent_Snapshot:
 					return m.aggregateResponse(&queryv1.InvokeResponse{Reports: ev.Snapshot.Reports}, nil)
@@ -256,7 +294,11 @@ func (q *QueryBackend) mergeStream(
 			})
 		}))
 	}
-	if err := g.Wait(); err != nil {
+
+	err := g.Wait()
+	cancel()
+	<-snapshotDone
+	if err != nil {
 		return err
 	}
 
