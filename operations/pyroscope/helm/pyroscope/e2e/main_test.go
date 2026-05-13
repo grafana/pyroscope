@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 func run(m *testing.M) (code int) {
 	// ── 1. Kind cluster ──────────────────────────────────────────────────────
 	fmt.Println("==> Creating Kind cluster", clusterName)
-	if err := kubectl("cluster-info", "--context", "kind-"+clusterName); err != nil {
+	if err := kubectl("cluster-info"); err != nil {
 		// Cluster doesn't exist yet, create it.
 		if err := kind("create", "cluster",
 			"--name", clusterName,
