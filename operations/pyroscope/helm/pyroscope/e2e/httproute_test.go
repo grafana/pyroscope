@@ -3,7 +3,12 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,6 +35,117 @@ const (
 	gwAPIVersion   = "v1.2.0"
 	envoyGWVersion = "v1.2.0"
 )
+
+func init() {
+	suiteSetup = setupHTTPRoute
+}
+
+// setupHTTPRoute installs the Gateway API CRDs, Envoy Gateway, the test
+// GatewayClass/Gateway, and starts a port-forward to the Envoy proxy.
+func setupHTTPRoute() (func(), error) {
+	// ── 1. Gateway API CRDs ──────────────────────────────────────────────────
+	fmt.Println("==> Installing Gateway API CRDs")
+	if err := kubectl("apply", "-f",
+		"https://github.com/kubernetes-sigs/gateway-api/releases/download/"+gwAPIVersion+"/standard-install.yaml",
+	); err != nil {
+		return nil, fmt.Errorf("gateway API CRDs: %w", err)
+	}
+	for _, crd := range []string{
+		"gateways.gateway.networking.k8s.io",
+		"httproutes.gateway.networking.k8s.io",
+		"gatewayclasses.gateway.networking.k8s.io",
+	} {
+		if err := kubectl("wait", "--for=condition=established", "--timeout=1m", "crd/"+crd); err != nil {
+			return nil, fmt.Errorf("wait for CRD %s: %w", crd, err)
+		}
+	}
+
+	// ── 2. Envoy Gateway ─────────────────────────────────────────────────────
+	fmt.Println("==> Installing Envoy Gateway", envoyGWVersion)
+	if err := kubectl("apply", "--server-side", "-f",
+		"https://github.com/envoyproxy/gateway/releases/download/"+envoyGWVersion+"/install.yaml",
+	); err != nil {
+		return nil, fmt.Errorf("envoy gateway: %w", err)
+	}
+	if err := kubectl("wait", "--timeout=5m",
+		"-n", envoyGWNS,
+		"deployment/envoy-gateway",
+		"--for=condition=Available",
+	); err != nil {
+		return nil, fmt.Errorf("wait for envoy-gateway deployment: %w", err)
+	}
+
+	// ── 3. GatewayClass + Gateway ─────────────────────────────────────────────
+	fmt.Println("==> Applying GatewayClass and Gateway")
+	if err := kubectl("apply", "-f", filepath.Join(chartDir, "ci/gateway-resources.yaml")); err != nil {
+		return nil, fmt.Errorf("gateway resources: %w", err)
+	}
+	if err := kubectl("wait", "gatewayclass/envoy", "--for=condition=Accepted", "--timeout=1m"); err != nil {
+		return nil, fmt.Errorf("wait for GatewayClass: %w", err)
+	}
+	if err := kubectl("wait", "gateway/"+gatewayName,
+		"-n", gatewayNS,
+		"--for=condition=Programmed",
+		"--timeout=2m",
+	); err != nil {
+		return nil, fmt.Errorf("wait for Gateway: %w", err)
+	}
+
+	// ── 4. Port-forward Envoy proxy ───────────────────────────────────────────
+	fmt.Println("==> Port-forwarding Envoy proxy on :" + gatewayPort)
+	pfCmd, err := startPortForward()
+	if err != nil {
+		return nil, fmt.Errorf("port-forward: %w", err)
+	}
+	return func() { _ = pfCmd.Process.Kill() }, nil
+}
+
+func startPortForward() (*exec.Cmd, error) {
+	// Find the Envoy proxy service by label.
+	out, err := exec.Command("kubectl",
+		"--context", "kind-"+clusterName,
+		"get", "svc", "-n", envoyGWNS,
+		"-l", fmt.Sprintf(
+			"gateway.envoyproxy.io/owning-gateway-name=%s,gateway.envoyproxy.io/owning-gateway-namespace=%s",
+			gatewayName, gatewayNS,
+		),
+		"-o", "jsonpath={.items[0].metadata.name}",
+	).Output()
+	if err != nil {
+		return nil, fmt.Errorf("get envoy svc: %w", err)
+	}
+	svcName := strings.TrimSpace(string(out))
+	if svcName == "" {
+		return nil, fmt.Errorf("envoy proxy service not found")
+	}
+
+	cmd := exec.Command("kubectl",
+		"--context", "kind-"+clusterName,
+		"port-forward",
+		"-n", envoyGWNS,
+		"svc/"+svcName,
+		gatewayPort+":80",
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("start port-forward: %w", err)
+	}
+
+	// Wait until the port-forward is accepting connections.
+	deadline := time.Now().Add(30 * time.Second)
+	client := &http.Client{Timeout: time.Second}
+	for time.Now().Before(deadline) {
+		resp, err := client.Get("http://localhost:" + gatewayPort + "/")
+		if err == nil {
+			resp.Body.Close()
+			return cmd, nil
+		}
+		time.Sleep(time.Second)
+	}
+	// Return the command even if not ready; the tests will produce clear errors.
+	return cmd, nil
+}
 
 // variants defines the chart configurations under test.
 // Each installs the chart, runs all route assertions, then uninstalls.
