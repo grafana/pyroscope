@@ -67,7 +67,7 @@ func run(m *testing.M) (code int) {
 		"httproutes.gateway.networking.k8s.io",
 		"gatewayclasses.gateway.networking.k8s.io",
 	} {
-		if err := kubectl("wait", "--for=condition=established", "--timeout=60s", "crd/"+crd); err != nil {
+		if err := kubectl("wait", "--for=condition=established", "--timeout=1m", "crd/"+crd); err != nil {
 			fmt.Fprintf(os.Stderr, "wait for CRD %s: %v\n", crd, err)
 			return 1
 		}
@@ -103,7 +103,7 @@ func run(m *testing.M) (code int) {
 	if err := kubectl("wait", "gateway/"+gatewayName,
 		"-n", gatewayNS,
 		"--for=condition=Programmed",
-		"--timeout=120s",
+		"--timeout=2m",
 	); err != nil {
 		fmt.Fprintf(os.Stderr, "wait for Gateway: %v\n", err)
 		return 1
@@ -145,7 +145,7 @@ func installChart(t *testing.T, valuesFile string) string {
 		"--namespace", ns,
 		"--values", filepath.Join(chartDir, valuesFile),
 		"--wait",
-		"--timeout", "1200s",
+		"--timeout", "20m",
 	); err != nil {
 		_ = kubectl("get", "pods", "-n", ns)
 		t.Fatalf("helm install: %v", err)
