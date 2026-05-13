@@ -102,6 +102,10 @@ func (b *BlockReader) Invoke(
 
 	weightCollector := &queryWeightCollector{}
 
+	// Build block-id → dataset-index map from the resolved plan so that
+	// each blockContext can skip the TSDB index lookup.
+	resolvedPlan := buildResolvedPlanMap(req.ResolvedPlan)
+
 	var blocksCount, datasetsCount int64
 	for _, md := range req.QueryPlan.Root.Blocks {
 		md.Datasets, err = filterNotOwnedDatasets(md, tenantMap)
@@ -117,14 +121,15 @@ func (b *BlockReader) Invoke(
 		datasetsCount += int64(len(md.Datasets))
 		obj := block.NewObject(b.storage, md)
 		g.Go(util.RecoverPanic((&blockContext{
-			ctx:             ctx,
-			log:             b.log,
-			req:             r,
-			agg:             agg,
-			obj:             obj,
-			grp:             g,
-			execCollector:   blockExecCollector,
-			weightCollector: weightCollector,
+			ctx:              ctx,
+			log:              b.log,
+			req:              r,
+			agg:              agg,
+			obj:              obj,
+			grp:              g,
+			execCollector:    blockExecCollector,
+			weightCollector:  weightCollector,
+			resolvedDatasets: resolvedPlan[md.Id],
 		}).execute))
 	}
 
@@ -256,6 +261,19 @@ func (c *queryWeightCollector) addDatasets(datasets []*metastorev1.Dataset) {
 	c.weight.Add(w)
 	c.datasetsCount += int64(len(datasets))
 	c.mu.Unlock()
+}
+
+// buildResolvedPlanMap indexes a resolved plan by block ID so each blockContext
+// can look up its pre-resolved dataset indices in O(1).
+func buildResolvedPlanMap(plan []*queryv1.ResolvedDataset) map[string][]uint32 {
+	if len(plan) == 0 {
+		return nil
+	}
+	m := make(map[string][]uint32, len(plan))
+	for _, rd := range plan {
+		m[rd.BlockId] = append(m[rd.BlockId], rd.DatasetIndex)
+	}
+	return m
 }
 
 // blockExecutionCollector collects per-block execution stats in a thread-safe manner.

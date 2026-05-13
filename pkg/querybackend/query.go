@@ -92,6 +92,9 @@ type blockContext struct {
 	grp             *errgroup.Group
 	execCollector   *blockExecutionCollector
 	weightCollector *queryWeightCollector
+	// resolvedDatasets is the pre-resolved list of dataset indices for this
+	// block from a prior QUERY_INDEX_LOOKUP call. When set, lookupDatasets is skipped.
+	resolvedDatasets []uint32
 }
 
 func (b *blockContext) execute() error {
@@ -101,7 +104,23 @@ func (b *blockContext) execute() error {
 	span, b.ctx = tracing.StartSpanFromContext(b.ctx, "blockContext.execute")
 	defer span.Finish()
 
-	if idxs := b.datasetIndices(); len(idxs) > 0 {
+	// QUERY_INDEX_LOOKUP is handled at the block level: resolve datasets via
+	// the TSDB index and emit an IndexLookupReport without reading profile data.
+	if b.isPlanQuery() {
+		return b.executePlan()
+	}
+
+	if len(b.resolvedDatasets) > 0 {
+		// Pre-resolved plan: skip the TSDB index lookup and apply directly.
+		if err := b.applyResolvedPlan(); err != nil {
+			if b.obj.IsNotExists(err) {
+				level.Warn(b.log).Log("msg", "object not found", "err", err)
+				return nil
+			}
+			return fmt.Errorf("failed to apply resolved plan: %w", err)
+		}
+		b.weightCollector.addDatasets(b.obj.Metadata().Datasets)
+	} else if idxs := b.datasetIndices(); len(idxs) > 0 {
 		if err := b.lookupDatasets(idxs); err != nil {
 			if b.obj.IsNotExists(err) {
 				level.Warn(b.log).Log("msg", "object not found", "err", err)
@@ -190,6 +209,15 @@ func (b *blockContext) datasetIndices() []*metastorev1.Dataset {
 }
 
 func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
+	_, err := b.doLookupDatasets(indices)
+	return err
+}
+
+// doLookupDatasets resolves block datasets via the TSDB index, updates the
+// block's cached metadata, and returns the original dataset indices (before
+// filtering). The returned indices are needed by executePlan to emit correct
+// ResolvedDataset entries.
+func (b *blockContext) doLookupDatasets(indices []*metastorev1.Dataset) (origIndices []uint32, err error) {
 	oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query", true))
 	oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Int("dataset_index_count", len(indices)))
 
@@ -216,8 +244,8 @@ func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
 			return d.Open(ctx, block.SectionDatasetIndex)
 		})
 	}
-	if err := g.Wait(); err != nil {
-		return err
+	if err = g.Wait(); err != nil {
+		return nil, err
 	}
 
 	// Each per-tenant dataset_index encodes its tenant's real datasets
@@ -227,18 +255,21 @@ func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
 	// across tenants is correct.
 	datasetIDs := make(map[uint32]struct{})
 	for _, d := range datasets {
-		ids, err := getSeriesIDs(d.Index(), b.req.matchers...)
+		var ids map[uint32]struct{}
+		ids, err = getSeriesIDs(d.Index(), b.req.matchers...)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for id := range ids {
 			datasetIDs[id] = struct{}{}
 		}
 	}
 
+	origIndices = make([]uint32, 0, len(datasetIDs))
 	var j int
 	for i := range md.Datasets {
 		if _, ok := datasetIDs[uint32(i)]; ok {
+			origIndices = append(origIndices, uint32(i))
 			md.Datasets[j] = md.Datasets[i]
 			j++
 		}
@@ -248,6 +279,90 @@ func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
 
 	oteltrace.SpanFromContext(b.ctx).AddEvent("dataset tsdb index lookup complete")
 
+	return origIndices, nil
+}
+
+// isPlanQuery reports whether the request is a QUERY_INDEX_LOOKUP request,
+// which is handled at the block level without reading profile data.
+func (b *blockContext) isPlanQuery() bool {
+	for _, q := range b.req.src.Query {
+		if q.QueryType == queryv1.QueryType_QUERY_INDEX_LOOKUP {
+			return true
+		}
+	}
+	return false
+}
+
+// executePlan resolves datasets for the block (running doLookupDatasets for
+// Format1 blocks) and emits an IndexLookupReport. No profile data is read.
+// The DatasetIndex in each ResolvedDataset is the original (pre-filter) index
+// in the block's full metadata dataset list, which applyResolvedPlan requires.
+func (b *blockContext) executePlan() error {
+	var span *tracing.Span
+	span, b.ctx = tracing.StartSpanFromContext(b.ctx, "executeQuery.IndexLookup")
+	defer span.Finish()
+
+	var origIndices []uint32
+	if idxs := b.datasetIndices(); len(idxs) > 0 {
+		var err error
+		origIndices, err = b.doLookupDatasets(idxs)
+		if err != nil {
+			if b.obj.IsNotExists(err) {
+				level.Warn(b.log).Log("msg", "object not found", "err", err)
+				return nil
+			}
+			return fmt.Errorf("failed to lookup datasets: %w", err)
+		}
+	}
+
+	md := b.obj.Metadata()
+	if len(md.Datasets) == 0 {
+		return nil
+	}
+
+	datasets := make([]*queryv1.ResolvedDataset, len(md.Datasets))
+	for i, ds := range md.Datasets {
+		var origIdx uint32
+		if origIndices != nil {
+			origIdx = origIndices[i]
+		} else {
+			// Format0 blocks: metadata from metastore is already filtered;
+			// index position is stable relative to the block's own metadata.
+			origIdx = uint32(i)
+		}
+		datasets[i] = &queryv1.ResolvedDataset{
+			BlockId:       md.Id,
+			DatasetIndex:  origIdx,
+			BytesEstimate: ds.Size,
+		}
+	}
+	return b.agg.aggregateReport(&queryv1.Report{
+		ReportType:  queryv1.ReportType_REPORT_INDEX_LOOKUP,
+		IndexLookup: &queryv1.IndexLookupReport{Datasets: datasets},
+	})
+}
+
+// applyResolvedPlan reads the full block metadata and filters datasets to only
+// those listed in resolvedDatasets, bypassing the TSDB index lookup.
+func (b *blockContext) applyResolvedPlan() error {
+	oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("resolved_plan", true))
+	md, err := b.obj.ReadMetadata(b.ctx)
+	if err != nil {
+		return err
+	}
+	keep := make(map[uint32]struct{}, len(b.resolvedDatasets))
+	for _, idx := range b.resolvedDatasets {
+		keep[idx] = struct{}{}
+	}
+	j := 0
+	for i := range md.Datasets {
+		if _, ok := keep[uint32(i)]; ok {
+			md.Datasets[j] = md.Datasets[i]
+			j++
+		}
+	}
+	md.Datasets = md.Datasets[:j]
+	b.obj.SetMetadata(md)
 	return nil
 }
 

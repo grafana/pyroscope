@@ -179,6 +179,34 @@ func (q *QueryFrontend) doQuery(
 	// TODO(kolesnikovae): Should be dynamic.
 	p := queryplan.Build(blocks, 4, 20)
 
+	// For service-name-less queries (Format1 blocks), issue a QUERY_INDEX_LOOKUP
+	// call first to resolve datasets and skip TSDB lookups on execution.
+	// Service-scoped queries already have explicit datasets from the metastore
+	// and skip this step.
+	var resolvedPlan []*queryv1.ResolvedDataset
+	if q.limits.QueryIndexLookupEnabled(tenants[0]) && hasIndexLookupBlocks(blocks) {
+		indexSpan, indexCtx := tracing.StartSpanFromContext(ctx, "QueryFrontend.IndexLookup")
+		indexSpan.SetTag("index_lookup_blocks", weight.IndexLookupCount)
+		planResp, planErr := q.querybackend.Invoke(indexCtx, &queryv1.InvokeRequest{
+			Tenant:        tenants,
+			StartTime:     req.StartTime,
+			EndTime:       req.EndTime,
+			LabelSelector: req.LabelSelector,
+			QueryPlan:     p,
+			Query:         []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_INDEX_LOOKUP}},
+		})
+		if planErr != nil {
+			indexSpan.LogError(planErr)
+			indexSpan.SetError()
+			indexSpan.Finish()
+			return nil, fmt.Errorf("query plan: %w", planErr)
+		}
+		resolvedPlan = extractResolvedPlan(planResp.Reports)
+		indexSpan.SetTag("resolved_datasets", len(resolvedPlan))
+		indexSpan.Finish()
+		span.SetTag("resolved_datasets", len(resolvedPlan))
+	}
+
 	backend := q.querybackend
 	if backendC != nil {
 		backend = backendC(ctx, backend, blocks)
@@ -192,8 +220,9 @@ func (q *QueryFrontend) doQuery(
 			SanitizeOnMerge:    q.limits.QuerySanitizeOnMerge(tenants[0]),
 			CollectDiagnostics: collectDiagnostics,
 		},
-		QueryPlan: p,
-		Query:     req.Query,
+		QueryPlan:    p,
+		Query:        req.Query,
+		ResolvedPlan: resolvedPlan,
 	})
 	if err != nil {
 		return nil, err
@@ -272,4 +301,28 @@ func (q *QueryFrontend) QueryMetadata(
 	span.SetTag("blocks_count", len(md.Blocks))
 
 	return md.Blocks, nil
+}
+
+// hasIndexLookupBlocks reports whether any block requires TSDB index dataset
+// resolution at query time (Format1 blocks, used for service-name-less queries).
+func hasIndexLookupBlocks(blocks []*metastorev1.BlockMeta) bool {
+	for _, b := range blocks {
+		for _, ds := range b.Datasets {
+			if block.DatasetFormat(ds.Format) == block.DatasetFormat1 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// extractResolvedPlan pulls the dataset list out of the first
+// REPORT_INDEX_LOOKUP report in the slice.
+func extractResolvedPlan(reports []*queryv1.Report) []*queryv1.ResolvedDataset {
+	for _, r := range reports {
+		if r.ReportType == queryv1.ReportType_REPORT_INDEX_LOOKUP && r.IndexLookup != nil {
+			return r.IndexLookup.Datasets
+		}
+	}
+	return nil
 }

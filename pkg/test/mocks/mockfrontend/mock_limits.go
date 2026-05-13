@@ -343,6 +343,52 @@ func (_c *MockLimits_QueryAnalysisEnabled_Call) RunAndReturn(run func(string) bo
 	return _c
 }
 
+// QueryIndexLookupEnabled provides a mock function with given fields: _a0
+func (_m *MockLimits) QueryIndexLookupEnabled(_a0 string) bool {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for QueryIndexLookupEnabled")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockLimits_QueryIndexLookupEnabled_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'QueryIndexLookupEnabled'
+type MockLimits_QueryIndexLookupEnabled_Call struct {
+	*mock.Call
+}
+
+// QueryIndexLookupEnabled is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockLimits_Expecter) QueryIndexLookupEnabled(_a0 interface{}) *MockLimits_QueryIndexLookupEnabled_Call {
+	return &MockLimits_QueryIndexLookupEnabled_Call{Call: _e.mock.On("QueryIndexLookupEnabled", _a0)}
+}
+
+func (_c *MockLimits_QueryIndexLookupEnabled_Call) Run(run func(_a0 string)) *MockLimits_QueryIndexLookupEnabled_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockLimits_QueryIndexLookupEnabled_Call) Return(_a0 bool) *MockLimits_QueryIndexLookupEnabled_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockLimits_QueryIndexLookupEnabled_Call) RunAndReturn(run func(string) bool) *MockLimits_QueryIndexLookupEnabled_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // QuerySanitizeOnMerge provides a mock function with given fields: _a0
 func (_m *MockLimits) QuerySanitizeOnMerge(_a0 string) bool {
 	ret := _m.Called(_a0)

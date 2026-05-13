@@ -53,6 +53,10 @@ message InvokeRequest {
   repeated Query query = 5;
   QueryPlan query_plan = 6;
   InvokeOptions options = 7;
+  // When set, query-backend skips TSDB index dataset resolution and reads only
+  // the listed datasets. Populated by the query-frontend after a
+  // QUERY_INDEX_LOOKUP call.
+  repeated ResolvedDataset resolved_plan = 8;
 }
 
 // A query plan is represented by a directed acyclic graph (DAG),
@@ -88,6 +92,7 @@ message Query {
   PprofQuery pprof = 7;
   HeatmapQuery heatmap = 8;
   TimeSeriesQuery time_series_compact = 9;
+  IndexLookupQuery index_lookup = 10;
   // function_details
   // call_graph
   // top_table
@@ -104,6 +109,7 @@ enum QueryType {
   QUERY_PPROF = 6;
   QUERY_HEATMAP = 7;
   QUERY_TIME_SERIES_COMPACT = 8;
+  QUERY_INDEX_LOOKUP = 9;
 }
 
 message InvokeResponse {
@@ -158,6 +164,7 @@ message Report {
   PprofReport pprof = 7;
   HeatmapReport heatmap = 8;
   TimeSeriesCompactReport time_series_compact = 9;
+  IndexLookupReport index_lookup = 10;
 }
 
 enum ReportType {
@@ -170,6 +177,7 @@ enum ReportType {
   REPORT_PPROF = 6;
   REPORT_HEATMAP = 7;
   REPORT_TIME_SERIES_COMPACT = 8;
+  REPORT_INDEX_LOOKUP = 9;
 }
 
 message LabelNamesQuery {}
@@ -309,4 +317,25 @@ message TimeSeriesCompactReport {
   TimeSeriesQuery query = 1;
   repeated Series time_series = 2;
   AttributeTable attribute_table = 3;
+}
+
+// IndexLookupQuery is a marker type for QUERY_INDEX_LOOKUP requests. The
+// query-backend resolves datasets (for Format1 blocks) via the TSDB index and
+// returns an IndexLookupReport without reading any profile data.
+message IndexLookupQuery {}
+
+// ResolvedDataset identifies a dataset within a block by its index in the
+// block's full metadata dataset list. Used in resolved_plan to skip the
+// TSDB index lookup on execution.
+message ResolvedDataset {
+  string block_id = 1;
+  uint32 dataset_index = 2;
+  uint64 bytes_estimate = 3;
+}
+
+// IndexLookupReport is the result of a QUERY_INDEX_LOOKUP request. It lists
+// the resolved datasets across all queried blocks so the query-frontend can
+// provide an accurate progress denominator and skip TSDB lookups on execution.
+message IndexLookupReport {
+  repeated ResolvedDataset datasets = 1;
 }

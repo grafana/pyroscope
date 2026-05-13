@@ -35,8 +35,9 @@ type MockLimits struct {
 
 	MaxQueriersPerTenantValue int
 
-	SymbolizerEnabledValue bool
-	QueryTreeEnabledValue  bool
+	SymbolizerEnabledValue        bool
+	QueryTreeEnabledValue         bool
+	QueryIndexLookupEnabledValue  bool
 
 	IngestionBodyLimitBytesValue int64
 }
@@ -100,8 +101,9 @@ func (m MockLimits) RejectNewerThan(userID string) time.Duration {
 	return m.RejectNewerThanValue
 }
 
-func (m MockLimits) SymbolizerEnabled(s string) bool { return m.SymbolizerEnabledValue }
-func (m MockLimits) QueryTreeEnabled(s string) bool  { return m.QueryTreeEnabledValue }
+func (m MockLimits) SymbolizerEnabled(s string) bool      { return m.SymbolizerEnabledValue }
+func (m MockLimits) QueryTreeEnabled(s string) bool        { return m.QueryTreeEnabledValue }
+func (m MockLimits) QueryIndexLookupEnabled(s string) bool { return m.QueryIndexLookupEnabledValue }
 
 func (m MockLimits) IngestionBodyLimitBytes(tenantID string) int64 {
 	return m.IngestionBodyLimitBytesValue

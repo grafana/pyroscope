@@ -794,6 +794,28 @@ components:
           description: Points are timestamp, then span_id, then porfile_id ordered
       title: HeatmapSeries
       additionalProperties: false
+    query.v1.IndexLookupQuery:
+      type: object
+      title: IndexLookupQuery
+      additionalProperties: false
+      description: |-
+        IndexLookupQuery is a marker type for QUERY_INDEX_LOOKUP requests. The
+         query-backend resolves datasets (for Format1 blocks) via the TSDB index and
+         returns an IndexLookupReport without reading any profile data.
+    query.v1.IndexLookupReport:
+      type: object
+      properties:
+        datasets:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.ResolvedDataset'
+          title: datasets
+      title: IndexLookupReport
+      additionalProperties: false
+      description: |-
+        IndexLookupReport is the result of a QUERY_INDEX_LOOKUP request. It lists
+         the resolved datasets across all queried blocks so the query-frontend can
+         provide an accurate progress denominator and skip TSDB lookups on execution.
     query.v1.InvokeOptions:
       type: object
       properties:
@@ -843,6 +865,15 @@ components:
         options:
           title: options
           $ref: '#/components/schemas/query.v1.InvokeOptions'
+        resolvedPlan:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.ResolvedDataset'
+          title: resolved_plan
+          description: |-
+            When set, query-backend skips TSDB index dataset resolution and reads only
+             the listed datasets. Populated by the query-frontend after a
+             QUERY_INDEX_LOOKUP call.
       title: InvokeRequest
       additionalProperties: false
     query.v1.InvokeResponse:
@@ -992,12 +1023,15 @@ components:
           $ref: '#/components/schemas/query.v1.HeatmapQuery'
         timeSeriesCompact:
           title: time_series_compact
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+        indexLookup:
+          title: index_lookup
           description: |-
             function_details
              call_graph
              top_table
              ...
-          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+          $ref: '#/components/schemas/query.v1.IndexLookupQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -1087,6 +1121,7 @@ components:
         - QUERY_PPROF
         - QUERY_HEATMAP
         - QUERY_TIME_SERIES_COMPACT
+        - QUERY_INDEX_LOOKUP
     query.v1.Report:
       type: object
       properties:
@@ -1120,6 +1155,9 @@ components:
         timeSeriesCompact:
           title: time_series_compact
           $ref: '#/components/schemas/query.v1.TimeSeriesCompactReport'
+        indexLookup:
+          title: index_lookup
+          $ref: '#/components/schemas/query.v1.IndexLookupReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -1135,6 +1173,28 @@ components:
         - REPORT_PPROF
         - REPORT_HEATMAP
         - REPORT_TIME_SERIES_COMPACT
+        - REPORT_INDEX_LOOKUP
+    query.v1.ResolvedDataset:
+      type: object
+      properties:
+        blockId:
+          type: string
+          title: block_id
+        datasetIndex:
+          type: integer
+          title: dataset_index
+        bytesEstimate:
+          type:
+            - integer
+            - string
+          title: bytes_estimate
+          format: int64
+      title: ResolvedDataset
+      additionalProperties: false
+      description: |-
+        ResolvedDataset identifies a dataset within a block by its index in the
+         block's full metadata dataset list. Used in resolved_plan to skip the
+         TSDB index lookup on execution.
     query.v1.Series:
       type: object
       properties:
