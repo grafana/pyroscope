@@ -297,7 +297,7 @@ func TestIndex_Query(t *testing.T) {
 		})
 	}
 
-	idx := NewIndex(util.Logger, NewStore(), DefaultConfig)
+	idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 	require.NoError(t, idx.Init(tx))
@@ -314,7 +314,7 @@ func TestIndex_Query(t *testing.T) {
 	})
 
 	t.Run("Restored", func(t *testing.T) {
-		idx = NewIndex(util.Logger, NewStore(), DefaultConfig)
+		idx = NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
 		tx, err = db.Begin(false)
 		defer func() {
 			require.NoError(t, tx.Rollback())
@@ -378,7 +378,7 @@ func (s *queryTestSuite) setup(t *testing.T) {
 	s.blocks.Store(&metastorev1.BlockList{})
 
 	s.db = test.BoltDB(t)
-	s.idx = NewIndex(util.Logger, NewStore(), DefaultConfig)
+	s.idx = NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
 	// Enforce aggressive cache evictions:
 	s.idx.config.partitionDuration = time.Minute * 30
 	s.idx.config.ShardCacheSize = 3
