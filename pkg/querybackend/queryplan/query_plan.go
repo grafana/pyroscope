@@ -33,33 +33,29 @@ func Build(
 	}
 
 	// create leaf nodes and spread the blocks in a uniform way
-	var nodes []*queryv1.QueryNode
-	for i := 0; i < len(blocks); i += maxReads {
-		end := i + maxReads
+	leafNodeCount := (len(blocks) + maxReads - 1) / maxReads
+	nodes := allocateContiguous[queryv1.QueryNode](leafNodeCount)
+	for start, idx := 0, 0; start < len(blocks); start, idx = start+maxReads, idx+1 {
+		end := start + maxReads
 		if end > len(blocks) {
 			end = len(blocks)
 		}
-		nodes = append(nodes, &queryv1.QueryNode{
-			Type:   queryv1.QueryNode_READ,
-			Blocks: blocks[i:end],
-		})
+		nodes[idx].Type = queryv1.QueryNode_READ
+		nodes[idx].Blocks = blocks[start:end]
 	}
 
 	// create merge nodes until we reach a single root node
 	for len(nodes) > 1 {
 		mergeNodeCount := (len(nodes) + maxMerges - 1) / maxMerges
-		mergeNodes := make([]*queryv1.QueryNode, 0, mergeNodeCount)
+		mergeNodes := allocateContiguous[queryv1.QueryNode](mergeNodeCount)
 
-		for i := 0; i < len(nodes); i += maxMerges {
-			end := i + maxMerges
+		for start, idx := 0, 0; start < len(nodes); start, idx = start+maxMerges, idx+1 {
+			end := start + maxMerges
 			if end > len(nodes) {
 				end = len(nodes)
 			}
-
-			mergeNodes = append(mergeNodes, &queryv1.QueryNode{
-				Type:     queryv1.QueryNode_MERGE,
-				Children: nodes[i:end:end],
-			})
+			mergeNodes[idx].Type = queryv1.QueryNode_MERGE
+			mergeNodes[idx].Children = nodes[start:end:end]
 		}
 
 		nodes = mergeNodes
@@ -68,4 +64,16 @@ func Build(
 	return &queryv1.QueryPlan{
 		Root: nodes[0],
 	}
+}
+
+// allocateContiguous returns a []*T of length size where every element points
+// into a single backing []T allocation. This avoids the per-element heap
+// allocations from N separate &T{} expressions.
+func allocateContiguous[T any](size int) []*T {
+	values := make([]T, size)
+	pointers := make([]*T, size)
+	for i := range values {
+		pointers[i] = &values[i]
+	}
+	return pointers
 }
