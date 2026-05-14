@@ -3,7 +3,6 @@ import {
   toDisplayValue,
   niceMax,
   yAxisFormatter,
-  parseRangeMs,
   tickStepMs,
   formatTickTime,
 } from './timeseries-utils';
@@ -78,29 +77,6 @@ describe('yAxisFormatter', () => {
     const fmt = yAxisFormatter(100);
     expect(fmt(50)).toBe('50');
     expect(fmt(100)).toBe('100');
-  });
-});
-
-describe('parseRangeMs', () => {
-  it('parses minutes', () => {
-    expect(parseRangeMs('now-5m')).toBe(5 * MINUTE_MS);
-    expect(parseRangeMs('now-30m')).toBe(30 * MINUTE_MS);
-  });
-
-  it('parses hours', () => {
-    expect(parseRangeMs('now-1h')).toBe(HOUR_MS);
-    expect(parseRangeMs('now-6h')).toBe(6 * HOUR_MS);
-  });
-
-  it('parses days', () => {
-    expect(parseRangeMs('now-1d')).toBe(DAY_MS);
-    expect(parseRangeMs('now-7d')).toBe(7 * DAY_MS);
-  });
-
-  it('falls back to 1 hour for unrecognized formats', () => {
-    expect(parseRangeMs('last-5m')).toBe(HOUR_MS);
-    expect(parseRangeMs('')).toBe(HOUR_MS);
-    expect(parseRangeMs('now-5x')).toBe(HOUR_MS);
   });
 });
 

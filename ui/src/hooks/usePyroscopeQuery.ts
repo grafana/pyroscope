@@ -26,11 +26,21 @@ export interface QueryProgress {
   etaUnixMs: number;
 }
 
+export interface QueryWindow {
+  start: number;
+  end: number;
+}
+
 export interface QueryResult {
   services: Service[];
   servicesLoading: boolean;
   flamegraph: FlamegraphData;
   timeline: Point[];
+  // Resolved absolute window of the in-flight or most recent query. Charts
+  // should render their time axis from this so the displayed range matches
+  // what was actually queried (rather than drifting against Date.now() on
+  // each render).
+  queryWindow: QueryWindow;
   progress: {
     flamegraph: QueryProgress | null;
     timeline: QueryProgress | null;
@@ -68,6 +78,9 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
   const [loading, setLoading] = useState(false);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [queryWindow, setQueryWindow] = useState<QueryWindow>(() =>
+    params.absoluteRange ?? parseTimeRange(params.timeRange),
+  );
 
   const abortRef = useRef<AbortController | null>(null);
   // Monotonic per-run token: callbacks that resolve after a newer run has
@@ -106,6 +119,7 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
     const runId = ++runIdRef.current;
     const isCurrent = () => runId === runIdRef.current;
 
+    setQueryWindow({ start, end });
     setProgress({ flamegraph: null, timeline: null });
     setError(null);
     setLoading(true);
@@ -255,6 +269,7 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
     servicesLoading,
     flamegraph,
     timeline,
+    queryWindow,
     progress,
     loading,
     error,

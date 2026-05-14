@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Empty } from '@components/core/Empty';
 import { profileTypeUnit } from '@api/client';
 import {
   toDisplayValue,
   niceMax,
   yAxisFormatter,
-  parseRangeMs,
   tickStepMs,
   formatTickTime,
 } from './timeseries-utils';
@@ -13,17 +11,15 @@ import './TimeSeries.css';
 
 export function TimeSeries({
   data,
-  timeRange,
   profileTypeId,
   startMs,
   endMs,
   onRangeSelect,
 }: {
   data: { value: number; timestamp: number }[];
-  timeRange: string;
   profileTypeId: string;
-  startMs?: number;
-  endMs?: number;
+  startMs: number;
+  endMs: number;
   onRangeSelect: (start: number, end: number) => void;
 }) {
   const W = 800,
@@ -36,10 +32,13 @@ export function TimeSeries({
     currentFrac: number;
   } | null>(null);
   const dragRef = useRef(drag);
-  dragRef.current = drag;
   const timeRef = useRef({ rangeStart: 0, durationMs: 0, onRangeSelect });
 
   const isDragging = drag !== null;
+
+  useEffect(() => {
+    dragRef.current = drag;
+  }, [drag]);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -73,21 +72,19 @@ export function TimeSeries({
     };
   }, [isDragging]);
 
-  if (n === 0) {
-    return <Empty />;
-  }
+  const rangeStart = startMs;
+  const rangeEnd = endMs;
+  const durationMs = endMs - startMs;
 
-  // eslint-disable-next-line react-hooks/purity
-  const rangeEnd = endMs ?? Date.now();
-  const durationMs =
-    startMs != null && endMs != null
-      ? endMs - startMs
-      : parseRangeMs(timeRange);
-  const rangeStart = rangeEnd - durationMs;
-  timeRef.current = { rangeStart, durationMs, onRangeSelect };
+  useEffect(() => {
+    timeRef.current = { rangeStart, durationMs, onRangeSelect };
+  }, [rangeStart, durationMs, onRangeSelect]);
 
-  const max = Math.max(...data.map((d) => d.value));
-  const norm = max === 0 ? data.map(() => 0) : data.map((d) => d.value / max);
+  const max = n > 0 ? Math.max(...data.map((d) => d.value)) : 0;
+  const norm =
+    n === 0 || max === 0
+      ? data.map(() => 0)
+      : data.map((d) => d.value / max);
 
   const pts = norm.map(
     (v, i) =>
@@ -98,16 +95,20 @@ export function TimeSeries({
   );
 
   const area =
-    `M ${pts[0][0].toFixed(1)},${H} ` +
-    pts.map(([x, y]) => `L ${x.toFixed(1)},${y.toFixed(1)}`).join(' ') +
-    ` L ${pts[pts.length - 1][0].toFixed(1)},${H} Z`;
+    n > 0
+      ? `M ${pts[0][0].toFixed(1)},${H} ` +
+        pts.map(([x, y]) => `L ${x.toFixed(1)},${y.toFixed(1)}`).join(' ') +
+        ` L ${pts[pts.length - 1][0].toFixed(1)},${H} Z`
+      : '';
 
   const line =
-    `M ${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)} ` +
-    pts
-      .slice(1)
-      .map(([x, y]) => `L ${x.toFixed(1)},${y.toFixed(1)}`)
-      .join(' ');
+    n > 0
+      ? `M ${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)} ` +
+        pts
+          .slice(1)
+          .map(([x, y]) => `L ${x.toFixed(1)},${y.toFixed(1)}`)
+          .join(' ')
+      : '';
 
   const stepMs = tickStepMs(durationMs);
 
@@ -232,14 +233,16 @@ export function TimeSeries({
             strokeWidth="1"
             vectorEffect="non-scaling-stroke"
           />
-          <path d={area} fill="url(#tl-fill)" />
-          <path
-            d={line}
-            fill="none"
-            stroke="#3d71d9"
-            strokeWidth="1.5"
-            vectorEffect="non-scaling-stroke"
-          />
+          {area && <path d={area} fill="url(#tl-fill)" />}
+          {line && (
+            <path
+              d={line}
+              fill="none"
+              stroke="#3d71d9"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
           {drag &&
             (() => {
               const x1 = Math.min(drag.startFrac, drag.currentFrac) * W;

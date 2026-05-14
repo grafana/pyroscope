@@ -27,6 +27,19 @@
   font-family: var(--font-mono);
 }
 
+.panel-progress {
+  height: 2px;
+  background: var(--border-weak);
+}
+
+.panel-progress-bar {
+  height: 100%;
+  background: var(--color-primary);
+  transition:
+    width var(--duration-base) var(--ease-out),
+    opacity var(--duration-base) var(--ease-out);
+}
+
 .panel-body {
   padding: var(--space-3) var(--space-4);
 }

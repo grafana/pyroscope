@@ -39,17 +39,6 @@ export function yAxisFormatter(displayMax: number): (v: number) => string {
   };
 }
 
-export function parseRangeMs(range: string): number {
-  const m = range.match(/^now-(\d+)([mhd])$/);
-  if (!m) return 3_600_000;
-  const mult: Record<string, number> = {
-    m: 60_000,
-    h: 3_600_000,
-    d: 86_400_000,
-  };
-  return parseInt(m[1]) * (mult[m[2]] ?? 60_000);
-}
-
 export function tickStepMs(durationMs: number): number {
   const m = 60_000,
     h = 3_600_000,

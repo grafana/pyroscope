@@ -45,6 +45,11 @@ function progressMeta(p: QueryProgress | null): string {
   return `loading… ${humanBytes(p.bytesDone)} / ${humanBytes(p.bytesTotalEstimate)} · eta ${formatEta(p.etaUnixMs)}`;
 }
 
+function progressFraction(p: QueryProgress | null): number {
+  if (!p || p.bytesTotalEstimate <= 0) return 0;
+  return p.bytesDone / p.bytesTotalEstimate;
+}
+
 function useTheme() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const setAndApply = (next: 'dark' | 'light') => {
@@ -178,13 +183,15 @@ export default function App() {
           meta={
             query.loading ? progressMeta(query.progress.timeline) : undefined
           }
+          progress={
+            query.loading ? progressFraction(query.progress.timeline) : null
+          }
         >
           <TimeSeries
             data={query.timeline}
-            timeRange={timeRange}
             profileTypeId={profileType}
-            startMs={absoluteRange?.start}
-            endMs={absoluteRange?.end}
+            startMs={query.queryWindow.start}
+            endMs={query.queryWindow.end}
             onRangeSelect={(start, end) => setAbsoluteRange({ start, end })}
           />
         </Panel>
@@ -195,6 +202,9 @@ export default function App() {
             query.loading
               ? progressMeta(query.progress.flamegraph)
               : `${service} · ${profileTypeLabel(profileType)} · ${timeRange}`
+          }
+          progress={
+            query.loading ? progressFraction(query.progress.flamegraph) : null
           }
         >
           <FlameGraph
