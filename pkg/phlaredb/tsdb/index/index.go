@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"unsafe"
 
 	"github.com/pkg/errors"
@@ -1592,9 +1593,15 @@ func (r *Reader) Checksum() uint32 {
 	return r.toc.Metadata.Checksum
 }
 
-// Symbols returns an iterator over the symbols that exist within the index.
-func (r *Reader) Symbols() StringIter {
-	return r.symbols.Iter()
+// SymbolTable returns all symbols in the index as owned strings safe to use
+// beyond the reader's lifetime.
+func (r *Reader) SymbolTable() ([]string, error) {
+	iter := r.symbols.Iter()
+	syms := make([]string, 0, r.symbols.seen)
+	for iter.Next() {
+		syms = append(syms, strings.Clone(iter.At()))
+	}
+	return syms, iter.Err()
 }
 
 // SymbolTableSize returns the symbol table size in bytes.
@@ -1602,21 +1609,7 @@ func (r *Reader) SymbolTableSize() uint64 {
 	return uint64(r.symbols.Size())
 }
 
-// SortedLabelValues returns value tuples that exist for the given label name.
-// It is not safe to use the return value beyond the lifetime of the byte slice
-// passed into the Reader.
-func (r *Reader) SortedLabelValues(name string, matchers ...*labels.Matcher) ([]string, error) {
-	values, err := r.LabelValues(name, matchers...)
-	if err == nil && r.version == FormatV1 {
-		sort.Strings(values)
-	}
-	return values, err
-}
-
 // LabelValues returns value tuples that exist for the given label name.
-// It is not safe to use the return value beyond the lifetime of the byte slice
-// passed into the Reader.
-// TODO(replay): Support filtering by matchers
 func (r *Reader) LabelValues(name string, matchers ...*labels.Matcher) ([]string, error) {
 	if len(matchers) > 0 {
 		return nil, errors.Errorf("matchers parameter is not implemented: %+v", matchers)
@@ -1629,7 +1622,9 @@ func (r *Reader) LabelValues(name string, matchers ...*labels.Matcher) ([]string
 		}
 		values := make([]string, 0, len(e))
 		for k := range e {
-			values = append(values, k)
+			// postingsV1 keys are yoloStrings aliasing the index buffer;
+			// clone so the caller owns the returned strings.
+			values = append(values, strings.Clone(k))
 		}
 		return values, nil
 
@@ -1659,7 +1654,7 @@ func (r *Reader) LabelValues(name string, matchers ...*labels.Matcher) ([]string
 		} else {
 			d.Skip(skip)
 		}
-		s := yoloString(d.UvarintBytes()) // Label value.
+		s := string(d.UvarintBytes()) // Label value — owned copy, safe beyond reader lifetime.
 		values = append(values, s)
 		if s == lastVal {
 			break
@@ -1883,6 +1878,86 @@ func (r *Reader) Postings(name string, shard *ShardAnnotation, values ...string)
 		return NewShardedPostings(merged, *shard, r.fingerprintOffsets), nil
 	}
 
+	return merged, nil
+}
+
+// PostingsForLabelMatching returns the merged postings for all values of label
+// name for which match returns true. It is equivalent to calling LabelValues
+// followed by Postings but avoids allocating an intermediate string slice and
+// never lets the label value strings escape the index buffer.
+func (r *Reader) PostingsForLabelMatching(name string, shard *ShardAnnotation, match func(string) bool) (Postings, error) {
+	if r.version == FormatV1 {
+		e, ok := r.postingsV1[name]
+		if !ok {
+			return EmptyPostings(), nil
+		}
+		var res []Postings
+		for v, off := range e {
+			if !match(v) {
+				continue
+			}
+			d := encoding.DecWrap(tsdb_enc.NewDecbufAt(r.b, int(off), castagnoliTable))
+			_, p, err := r.dec.Postings(d.Get())
+			if err != nil {
+				return nil, errors.Wrap(err, "decode postings")
+			}
+			res = append(res, p)
+		}
+		merged := Merge(res...)
+		if shard != nil {
+			return NewShardedPostings(merged, *shard, r.fingerprintOffsets), nil
+		}
+		return merged, nil
+	}
+
+	e, ok := r.postings[name]
+	if !ok {
+		return EmptyPostings(), nil
+	}
+	if len(e) == 0 {
+		return EmptyPostings(), nil
+	}
+
+	d := encoding.DecWrap(tsdb_enc.NewDecbufAt(r.b, int(r.toc.PostingsTable), nil))
+	d.Skip(e[0].off)
+	lastVal := e[len(e)-1].value
+
+	var res []Postings
+	skip := 0
+	for d.Err() == nil {
+		if skip == 0 {
+			skip = d.Len()
+			d.Uvarint()      // Keycount.
+			d.UvarintBytes() // Label name.
+			skip -= d.Len()
+		} else {
+			d.Skip(skip)
+		}
+		v := d.UvarintBytes() // Label value — zero-copy slice into buffer.
+		postingsOff := d.Uvarint64()
+		if d.Err() != nil {
+			break
+		}
+		if match(yoloString(v)) {
+			d2 := encoding.DecWrap(tsdb_enc.NewDecbufAt(r.b, int(postingsOff), castagnoliTable))
+			_, p, err := r.dec.Postings(d2.Get())
+			if err != nil {
+				return nil, errors.Wrap(err, "decode postings")
+			}
+			res = append(res, p)
+		}
+		if yoloString(v) == lastVal {
+			break
+		}
+	}
+	if d.Err() != nil {
+		return nil, errors.Wrap(d.Err(), "get postings offset entry")
+	}
+
+	merged := Merge(res...)
+	if shard != nil {
+		return NewShardedPostings(merged, *shard, r.fingerprintOffsets), nil
+	}
 	return merged, nil
 }
 
