@@ -80,11 +80,13 @@ export function TimeSeries({
     timeRef.current = { rangeStart, durationMs, onRangeSelect };
   }, [rangeStart, durationMs, onRangeSelect]);
 
+  const unit = profileTypeUnit(profileTypeId);
   const max = n > 0 ? Math.max(...data.map((d) => d.value)) : 0;
+  const displayMax = niceMax(toDisplayValue(max, unit));
   const norm =
-    n === 0 || max === 0
+    n === 0 || displayMax === 0
       ? data.map(() => 0)
-      : data.map((d) => d.value / max);
+      : data.map((d) => toDisplayValue(d.value, unit) / displayMax);
 
   const pts = norm.map(
     (v, i) =>
@@ -146,8 +148,6 @@ export function TimeSeries({
 
   const ticks = Array.from(tickMap.values()).sort((a, b) => a.x - b.x);
 
-  const unit = profileTypeUnit(profileTypeId);
-  const displayMax = niceMax(toDisplayValue(max, unit));
   const fmt = yAxisFormatter(displayMax);
   const yTicks = [0, 0.5, 1].map((v) => ({
     y: H - 4 - v * (H - 10),

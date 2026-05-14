@@ -265,10 +265,18 @@ func (q *QueryBackend) mergeStream(
 			if len(reports) == 0 {
 				continue
 			}
-			// Errors here would indicate corrupt tree bytes from a child;
-			// log-and-continue keeps streaming alive. The final aggregate
-			// after the errgroup joins will surface any persistent failure.
-			_ = m.aggregateResponse(&queryv1.InvokeResponse{Reports: reports}, nil)
+			// Clone reports before aggregating. mergeTimeSeries() mutates
+			// Series.Points in-place (truncates and modifies Point.Value
+			// fields when summing duplicates). Without cloning, a second
+			// call to buildAggregate() would see the first child's series
+			// already carrying A+B values, then add B again, yielding A+2B.
+			// Cloning ensures cs.reports are never modified, so every call
+			// starts from the original per-child state.
+			cloned := make([]*queryv1.Report, len(reports))
+			for i, r := range reports {
+				cloned[i] = r.CloneVT()
+			}
+			_ = m.aggregateResponse(&queryv1.InvokeResponse{Reports: cloned}, nil)
 		}
 		return m
 	}
