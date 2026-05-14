@@ -231,7 +231,6 @@ func (q *QueryBackend) mergeStream(
 	}
 
 	request.QueryPlan = nil
-	m := newAggregator(request)
 	var sendMu sync.Mutex
 	safeSend := func(e *queryv1.InvokeStreamEvent) error {
 		sendMu.Lock()
@@ -242,7 +241,39 @@ func (q *QueryBackend) mergeStream(
 	var blocksDone, datasetsDone uint32
 	var bytesDone uint64
 
-	// Periodic snapshot emission: mirrors BlockReader.InvokeStreamEvents.
+	// Per-child latest reports. Child snapshots are cumulative full-state
+	// reports (each one is the running merge of every block that child has
+	// processed so far), not deltas. Aggregating them additively would
+	// over-count every block once per snapshot it appears in. Instead, hold
+	// each child's most recent reports and rebuild a fresh merge aggregator
+	// on every parent snapshot tick.
+	type childState struct {
+		mu      sync.Mutex
+		reports []*queryv1.Report
+	}
+	childStates := make([]*childState, len(children))
+	for i := range childStates {
+		childStates[i] = &childState{}
+	}
+
+	buildAggregate := func() *reportAggregator {
+		m := newAggregator(request)
+		for _, cs := range childStates {
+			cs.mu.Lock()
+			reports := cs.reports
+			cs.mu.Unlock()
+			if len(reports) == 0 {
+				continue
+			}
+			// Errors here would indicate corrupt tree bytes from a child;
+			// log-and-continue keeps streaming alive. The final aggregate
+			// after the errgroup joins will surface any persistent failure.
+			_ = m.aggregateResponse(&queryv1.InvokeResponse{Reports: reports}, nil)
+		}
+		return m
+	}
+
+	// Periodic snapshot emission.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	snapshotDone := make(chan struct{})
@@ -255,7 +286,7 @@ func (q *QueryBackend) mergeStream(
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				snap := m.snapshot()
+				snap := buildAggregate().snapshot()
 				if len(snap.Reports) == 0 {
 					continue
 				}
@@ -274,7 +305,8 @@ func (q *QueryBackend) mergeStream(
 	}()
 
 	g, ctx2 := errgroup.WithContext(ctx)
-	for _, child := range children {
+	for i, child := range children {
+		idx := i
 		req := request.CloneVT()
 		req.QueryPlan = &queryv1.QueryPlan{Root: child}
 		g.Go(util.RecoverPanic(func() error {
@@ -286,9 +318,17 @@ func (q *QueryBackend) mergeStream(
 					atomic.AddUint64(&bytesDone, ev.IndexLookup.BytesEstimate)
 					return safeSend(e)
 				case *queryv1.InvokeStreamEvent_Snapshot:
-					return m.aggregateResponse(&queryv1.InvokeResponse{Reports: ev.Snapshot.Reports}, nil)
+					cs := childStates[idx]
+					cs.mu.Lock()
+					cs.reports = ev.Snapshot.Reports
+					cs.mu.Unlock()
+					return nil
 				case *queryv1.InvokeStreamEvent_Terminal:
-					return m.aggregateResponse(&queryv1.InvokeResponse{Reports: ev.Terminal.Reports}, nil)
+					cs := childStates[idx]
+					cs.mu.Lock()
+					cs.reports = ev.Terminal.Reports
+					cs.mu.Unlock()
+					return nil
 				}
 				return nil
 			})
@@ -302,7 +342,19 @@ func (q *QueryBackend) mergeStream(
 		return err
 	}
 
-	resp := m.response()
+	// Build the final aggregate from the latest reports each child settled on.
+	// The errgroup has joined and the snapshot goroutine has exited, so no
+	// other goroutine is touching childStates.
+	finalAgg := newAggregator(request)
+	for _, cs := range childStates {
+		if len(cs.reports) == 0 {
+			continue
+		}
+		if err := finalAgg.aggregateResponse(&queryv1.InvokeResponse{Reports: cs.reports}, nil); err != nil {
+			return err
+		}
+	}
+	resp := finalAgg.response()
 	return send(&queryv1.InvokeStreamEvent{
 		Event: &queryv1.InvokeStreamEvent_Terminal{
 			Terminal: &queryv1.TerminalEvent{Reports: resp.Reports},
