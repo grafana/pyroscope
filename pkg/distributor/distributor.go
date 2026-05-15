@@ -426,6 +426,10 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		)
 	}
 
+	if req.ParseDuration > 0 {
+		d.metrics.parseDuration.WithLabelValues(string(req.RawProfileType), tenantID).Observe(req.ParseDuration.Seconds())
+	}
+
 	res := multierror.New()
 	errorsMutex := new(sync.Mutex)
 	wg := new(sync.WaitGroup)
@@ -434,7 +438,7 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		go func() {
 			defer wg.Done()
 			itErr := util.RecoverPanic(func() error {
-				return d.pushSeries(ctx, s, req.RawProfileType, tenantID)
+				return d.pushSeries(ctx, s, req.RawProfileType, tenantID, req.ParseDuration)
 			})()
 
 			if itErr != nil {
@@ -504,14 +508,14 @@ func (p *pushLog) log(logger log.Logger, err error) {
 	p.lvl(logger).Log(p.fields...)
 }
 
-func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string) (err error) {
+func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string, parseDuration time.Duration) (err error) {
 	if req.Profile == nil {
 		return noNewProfilesReceivedError()
 	}
 	now := model.Now()
 
 	logger := spanlogger.FromContext(ctx, log.With(d.logger, "tenant", tenantID))
-	finalLog := newPushLog(10)
+	finalLog := newPushLog(13)
 	defer func() {
 		finalLog.log(logger, err)
 	}()
@@ -597,6 +601,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		"ingestion_delay", now.Time().Sub(profTime),
 		"decompressed_size", decompressedSize,
 		"sample_count", len(p.Sample),
+		"parse_duration", parseDuration,
 	)
 	d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize))                              //todo use req.TotalBytesUncompressed to include labels siz
 	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize)) // deprecated TODO remove

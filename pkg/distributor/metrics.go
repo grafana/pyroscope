@@ -39,6 +39,7 @@ type metrics struct {
 	receivedSymbolsBytes           *prometheus.HistogramVec
 	replicationFactor              prometheus.Gauge
 	receivedDecompressedBytesTotal *prometheus.HistogramVec
+	parseDuration                  *prometheus.HistogramVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -126,6 +127,18 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 				"stage",
 			},
 		),
+		parseDuration: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace:                       "pyroscope",
+				Name:                            "distributor_parse_duration_seconds",
+				Help:                            "Duration of profile parsing (JFR or pprof) per ingest request in the distributor.",
+				Buckets:                         prometheus.ExponentialBucketsRange(0.001, 10, 30),
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  50,
+				NativeHistogramMinResetDuration: time.Hour,
+			},
+			[]string{"type", "tenant"},
+		),
 	}
 	if reg != nil {
 		reg.MustRegister(
@@ -136,6 +149,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			m.receivedSymbolsBytes,
 			m.replicationFactor,
 			m.receivedDecompressedBytesTotal,
+			m.parseDuration,
 		)
 	}
 	return m
