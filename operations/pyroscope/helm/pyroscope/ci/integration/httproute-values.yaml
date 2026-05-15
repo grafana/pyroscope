@@ -1,0 +1,17 @@
+# Values for v2 single-binary e2e integration test of HTTPRoute support.
+# Placed in ci/integration/ (not ci/) so the standard call-lint-test-pyroscope
+# job does not try to install this on a bare cluster without Gateway API CRDs.
+
+architecture:
+  storage:
+    v1: false
+    v2: true
+
+httpRoute:
+  enabled: true
+  gateway:
+    name: pyroscope
+    namespace: default
+    sectionName: http
+  hostnames:
+    - pyroscope.test
