@@ -444,8 +444,9 @@ func TestPersistence_index_e2e(t *testing.T) {
 	for k, v := range labelPairs {
 		sort.Strings(v)
 
-		res, err := ir.SortedLabelValues(k)
+		res, err := ir.LabelValues(k)
 		require.NoError(t, err)
+		sort.Strings(res)
 
 		require.Equal(t, len(v), len(res))
 		for i := 0; i < len(v); i++ {
@@ -453,12 +454,9 @@ func TestPersistence_index_e2e(t *testing.T) {
 		}
 	}
 
-	gotSymbols := []string{}
-	it := ir.Symbols()
-	for it.Next() {
-		gotSymbols = append(gotSymbols, it.At())
-	}
-	require.NoError(t, it.Err())
+	gotSymbols, err := ir.SymbolTable()
+	require.NoError(t, err)
+	sort.Strings(gotSymbols)
 	expSymbols := []string{}
 	for s := range mi.symbols {
 		expSymbols = append(expSymbols, s)
