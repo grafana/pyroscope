@@ -84,21 +84,21 @@ type Config struct {
 	Target            flagext.StringSliceCSV  `yaml:"target,omitempty"`
 	API               api.Config              `yaml:"api"`
 	Server            server.Config           `yaml:"server,omitempty"`
-	Metastore         metastore.Config        `yaml:"metastore"          doc:"hidden"`
+	Metastore         metastore.Config        `yaml:"metastore"`
 	Distributor       distributor.Config      `yaml:"distributor,omitempty"`
 	Frontend          frontend.Config         `yaml:"frontend,omitempty"`
-	QueryBackend      querybackend.Config     `yaml:"query_backend"      doc:"hidden"`
-	AdaptivePlacement placement.Config        `yaml:"adaptive_placement" doc:"hidden"`
-	Symbolizer        symbolizer.Config       `yaml:"symbolizer"         doc:"hidden"`
+	QueryBackend      querybackend.Config     `yaml:"query_backend"`
+	AdaptivePlacement placement.Config        `yaml:"adaptive_placement"`
+	Symbolizer        symbolizer.Config       `yaml:"symbolizer"`
 	Worker            worker.Config           `yaml:"frontend_worker"`
 	LimitsConfig      validation.Limits       `yaml:"limits"`
-	SegmentWriter     segmentwriter.Config    `yaml:"segment_writer"     doc:"hidden"`
+	SegmentWriter     segmentwriter.Config    `yaml:"segment_writer"`
 	MemberlistKV      memberlist.KVConfig     `yaml:"memberlist"`
 	PhlareDB          phlaredb.Config         `yaml:"pyroscopedb,omitempty"`
 	Tracing           tracing.Config          `yaml:"tracing"`
-	OverridesExporter exporter.Config         `yaml:"overrides_exporter"      doc:"hidden"`
+	OverridesExporter exporter.Config         `yaml:"overrides_exporter"`
 	RuntimeConfig     runtimeconfig.Config    `yaml:"runtime_config"`
-	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"  doc:"hidden"`
+	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"`
 	TenantSettings    settings.Config         `yaml:"tenant_settings"`
 
 	Storage       StorageConfig       `yaml:"storage"`
