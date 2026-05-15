@@ -46,9 +46,7 @@ const (
 	// HeaderLen represents number of bytes reserved of index for header.
 	HeaderLen = 5
 
-	// FormatV1 represents 1 version of index.
-	FormatV1 = 1
-	// FormatV2 represents 2 version of index.
+	// FormatV2 represents the index file format version.
 	FormatV2 = 2
 
 	IndexFilename = "index"
@@ -461,7 +459,7 @@ func (w *Writer) finishSymbols() error {
 	}
 
 	// Load in the symbol table efficiently for the rest of the index writing.
-	w.symbols, err = NewSymbols(RealByteSlice(buf), FormatV2, int(w.toc.Symbols))
+	w.symbols, err = NewSymbols(RealByteSlice(buf), int(w.toc.Symbols))
 	if err != nil {
 		return errors.Wrap(err, "read symbols")
 	}
@@ -1034,9 +1032,8 @@ func (b RealByteSlice) Sub(start, end int) ByteSlice {
 }
 
 type Symbols struct {
-	bs      ByteSlice
-	version int
-	off     int
+	bs  ByteSlice
+	off int
 
 	offsets []int
 	seen    int
@@ -1045,11 +1042,10 @@ type Symbols struct {
 const symbolFactor = 32
 
 // NewSymbols returns a Symbols object for symbol lookups.
-func NewSymbols(bs ByteSlice, version, off int) (*Symbols, error) {
+func NewSymbols(bs ByteSlice, off int) (*Symbols, error) {
 	s := &Symbols{
-		bs:      bs,
-		version: version,
-		off:     off,
+		bs:  bs,
+		off: off,
 	}
 	d := encoding.DecWrap(tsdb_enc.NewDecbufAt(bs, off, castagnoliTable))
 	var (
@@ -1076,17 +1072,13 @@ func (s Symbols) Lookup(o uint32) (string, error) {
 		B: s.bs.Range(0, s.bs.Len()),
 	})
 
-	if s.version == FormatV2 {
-		if int(o) >= s.seen {
-			return "", errors.Errorf("unknown symbol offset %d", o)
-		}
-		d.Skip(s.offsets[int(o/symbolFactor)])
-		// Walk until we find the one we want.
-		for i := o - (o / symbolFactor * symbolFactor); i > 0; i-- {
-			d.UvarintBytes()
-		}
-	} else {
-		d.Skip(int(o))
+	if int(o) >= s.seen {
+		return "", errors.Errorf("unknown symbol offset %d", o)
+	}
+	d.Skip(s.offsets[int(o/symbolFactor)])
+	// Walk until we find the one we want.
+	for i := o - (o / symbolFactor * symbolFactor); i > 0; i-- {
+		d.UvarintBytes()
 	}
 	sym := d.UvarintStr()
 	if d.Err() != nil {
@@ -1116,10 +1108,8 @@ func (s Symbols) ReverseLookup(sym string) (uint32, error) {
 	}
 	d.Skip(s.offsets[i])
 	res := i * symbolFactor
-	var lastLen int
 	var lastSymbol string
 	for d.Err() == nil && res <= s.seen {
-		lastLen = d.Len()
 		lastSymbol = yoloString(d.UvarintBytes())
 		if lastSymbol >= sym {
 			break
@@ -1132,10 +1122,7 @@ func (s Symbols) ReverseLookup(sym string) (uint32, error) {
 	if lastSymbol != sym {
 		return 0, errors.Errorf("unknown symbol %q", sym)
 	}
-	if s.version == FormatV2 {
-		return uint32(res), nil
-	}
-	return uint32(s.bs.Len() - lastLen), nil
+	return uint32(res), nil
 }
 
 func (s Symbols) Size() int {
