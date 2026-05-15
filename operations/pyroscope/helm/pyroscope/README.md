@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 2.0.1](https://img.shields.io/badge/Version-2.0.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.1](https://img.shields.io/badge/AppVersion-2.0.1-informational?style=flat-square)
+![Version: 2.0.2](https://img.shields.io/badge/Version-2.0.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.2](https://img.shields.io/badge/AppVersion-2.0.2-informational?style=flat-square)
 
 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -32,8 +32,8 @@ horizontally-scalable, highly-available, multi-tenant continuous profiling aggre
 | architecture.storage.migration.ingesterWeight | float | `1` | Specifies the fraction [0:1] that should be send to the v1 write path / ingester in combined mode. 0 means no traffics is sent to ingester. 1 means 100% of requests are sent to ingester. |
 | architecture.storage.migration.queryBackendFrom | string | `"auto"` | Specify a time stamp from when the v2 read path should serve traffic. Defaults to "auto" which determines the split point from the metastore. |
 | architecture.storage.migration.segmentWriterWeight | float | `1` | Specifies the fraction [0:1] that should be send to the v2 write path / segment-writer in combined mode. 0 means no traffics is sent to segment-writer. 1 means 100% of requests are sent to segment-writer. |
-| architecture.storage.v1 | bool | `true` | Enable v1 storage layer. |
-| architecture.storage.v2 | bool | `false` | Enable v2 storage layer. |
+| architecture.storage.v1 | bool | `false` | Enable v1 storage layer. |
+| architecture.storage.v2 | bool | `true` | Enable v2 storage layer. |
 | extraObjects | list | `[]` | Array of extra K8s manifests to deploy alongside the chart |
 | global.imageRegistry | string | `nil` | Overrides the Docker registry globally for all images |
 | httpRoute.annotations | object | `{}` | Additional annotations to add to HTTPRoute resource. |
