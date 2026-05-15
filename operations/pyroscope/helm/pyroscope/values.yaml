@@ -580,6 +580,7 @@ serviceMonitor:
   tlsConfig: null
 
 # -- Array of extra K8s manifests to deploy alongside the chart
+extraObjects: []
 #   extraObjects:
 #     - apiVersion: autoscaling.k8s.io/v1
 #       kind: VerticalPodAutoscaler
@@ -592,4 +593,3 @@ serviceMonitor:
 #           name: '{{ include "pyroscope.fullname" . }}-distributor'
 #         updatePolicy:
 #           updateMode: Auto
-extraObjects: []
