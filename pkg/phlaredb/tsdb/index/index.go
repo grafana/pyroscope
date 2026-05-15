@@ -589,7 +589,7 @@ func (w *Writer) finishSymbols() error {
 
 	hashPos := w.f.pos
 	// Leave space for the hash. We can only calculate it
-	// now that the number of symbols is known, so mmap and do it from there.
+	// now that the number of symbols is known, so seek back and write it.
 	if err := w.write([]byte("hash")); err != nil {
 		return err
 	}
@@ -1249,8 +1249,8 @@ func newReader(b ByteSlice, c io.Closer) (*Reader, error) {
 		return nil, errors.Wrap(err, "read symbols")
 	}
 
-	// lastNameB/lastValueB alias the mmap buffer and are only converted to
-	// owned strings if the entry turns out to be the final one for its label.
+	// lastNameB/lastValueB alias the underlying buffer and are only converted
+	// to owned strings if the entry turns out to be the final one for its label.
 	var lastNameB, lastValueB []byte
 	lastOff := 0
 	valueCount := 0
