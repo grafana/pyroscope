@@ -1885,7 +1885,7 @@ func (r *Reader) Postings(name string, shard *ShardAnnotation, values ...string)
 // name for which match returns true. It is equivalent to calling LabelValues
 // followed by Postings but avoids allocating an intermediate string slice and
 // never lets the label value strings escape the index buffer.
-func (r *Reader) PostingsForLabelMatching(name string, shard *ShardAnnotation, match func(string) bool) (Postings, error) {
+func (r *Reader) PostingsForLabelMatching(name string, shard *ShardAnnotation, match func(YoloString) bool) (Postings, error) {
 	if r.version == FormatV1 {
 		e, ok := r.postingsV1[name]
 		if !ok {
@@ -1893,7 +1893,7 @@ func (r *Reader) PostingsForLabelMatching(name string, shard *ShardAnnotation, m
 		}
 		var res []Postings
 		for v, off := range e {
-			if !match(v) {
+			if !match(YoloString{String: v}) {
 				continue
 			}
 			d := encoding.DecWrap(tsdb_enc.NewDecbufAt(r.b, int(off), castagnoliTable))
@@ -1938,7 +1938,7 @@ func (r *Reader) PostingsForLabelMatching(name string, shard *ShardAnnotation, m
 		if d.Err() != nil {
 			break
 		}
-		if match(yoloString(v)) {
+		if match(YoloString{String: yoloString(v)}) {
 			d2 := encoding.DecWrap(tsdb_enc.NewDecbufAt(r.b, int(postingsOff), castagnoliTable))
 			_, p, err := r.dec.Postings(d2.Get())
 			if err != nil {
@@ -2155,6 +2155,10 @@ func (dec *Decoder) Series(b []byte, lbls *phlaremodel.Labels, chks *[]ChunkMeta
 	}
 	return fprint, d.Err()
 }
+
+// YoloString is a string that aliases the index buffer and is only valid for
+// the duration of the call that produced it. Never store or escape it.
+type YoloString struct{ String string }
 
 func yoloString(b []byte) string {
 	return *((*string)(unsafe.Pointer(&b)))

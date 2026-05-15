@@ -32,10 +32,9 @@ type IndexReader interface {
 	Postings(name string, shard *index.ShardAnnotation, values ...string) (index.Postings, error)
 
 	// PostingsForLabelMatching returns merged postings for all values of label
-	// name for which match returns true. Label value strings are never
-	// materialized outside the index — match is called with a transient string
-	// that is only valid for the duration of the call.
-	PostingsForLabelMatching(name string, shard *index.ShardAnnotation, match func(string) bool) (index.Postings, error)
+	// name for which match returns true. The YoloString passed to match aliases
+	// the index buffer and must not be retained beyond the call.
+	PostingsForLabelMatching(name string, shard *index.ShardAnnotation, match func(index.YoloString) bool) (index.Postings, error)
 
 	// Series populates the given labels and chunk metas for the series identified
 	// by the reference.
@@ -160,10 +159,10 @@ func postingsForMatcher(ix IndexReader, shard *index.ShardAnnotation, m *labels.
 		}
 	}
 
-	return ix.PostingsForLabelMatching(m.Name, shard, m.Matches)
+	return ix.PostingsForLabelMatching(m.Name, shard, func(v index.YoloString) bool { return m.Matches(v.String) })
 }
 
 // inversePostingsForMatcher returns the postings for the series with the label name set but not matching the matcher.
 func inversePostingsForMatcher(ix IndexReader, shard *index.ShardAnnotation, m *labels.Matcher) (index.Postings, error) {
-	return ix.PostingsForLabelMatching(m.Name, shard, func(v string) bool { return !m.Matches(v) })
+	return ix.PostingsForLabelMatching(m.Name, shard, func(v index.YoloString) bool { return !m.Matches(v.String) })
 }
