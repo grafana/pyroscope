@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -203,6 +204,9 @@ func (b *bufferCloser) Close() error {
 // TestGoPclntabSelfExe tests creating a lidia table from /proc/self/exe using only gopclntab
 // (no symtab) and resolving the test function's address.
 func TestGoPclntabSelfExe(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("skipping: /proc/self/exe is only available on Linux")
+	}
 	// Get the address of this test function using reflect
 	testFuncAddr := reflect.ValueOf(TestGoPclntabSelfExe).Pointer()
 
