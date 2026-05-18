@@ -654,10 +654,10 @@ func (w *Writer) writePostingsOffsetTable() error {
 	cnt := w.cntPO
 	for d.Err() == nil && cnt > 0 {
 		w.buf1.Reset()
-		w.buf1.PutUvarint(d.Uvarint())                     // Keycount.
-		w.buf1.PutUvarintStr(yoloString(d.UvarintBytes())) // Label name.
-		w.buf1.PutUvarintStr(yoloString(d.UvarintBytes())) // Label value.
-		w.buf1.PutUvarint64(d.Uvarint64() + adjustment)    // Offset.
+		w.buf1.PutUvarint(d.Uvarint())                  // Keycount.
+		w.buf1.PutUvarintBytes(d.UvarintBytes())        // Label name.
+		w.buf1.PutUvarintBytes(d.UvarintBytes())        // Label value.
+		w.buf1.PutUvarint64(d.Uvarint64() + adjustment) // Offset.
 		w.buf1.WriteToHash(w.crc32)
 		if err := w.write(w.buf1.Get()); err != nil {
 			return err
