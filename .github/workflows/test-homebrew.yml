@@ -1,0 +1,37 @@
+name: test-homebrew
+
+on:
+  push:
+    branches:
+      - 20260518_home-brew
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            arch: arm64
+          - os: macos-13
+            arch: amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Tap pyroscope-io/brew
+        run: brew tap pyroscope-io/brew
+
+      - name: Install pyroscope
+        run: brew install pyroscope-io/brew/pyroscope
+
+      - name: Verify pyroscope binary
+        run: pyroscope --version
+
+      - name: Install profilecli
+        run: brew install pyroscope-io/brew/profilecli
+
+      - name: Verify profilecli binary
+        run: profilecli --version
