@@ -671,6 +671,10 @@ pool_config:
   # CLI flag: -distributor.health-check-timeout
   [remote_timeout: <duration> | default = 5s]
 
+  # Enable TLS for ingester client connections.
+  # CLI flag: -distributor.tls-enabled
+  [tls_enabled: <boolean> | default = false]
+
 ring:
   # The key-value store used to share the hash ring across multiple instances.
   kvstore:
@@ -1115,6 +1119,10 @@ pool_config:
   # Timeout for ingester client healthcheck RPCs.
   # CLI flag: -querier.health-check-timeout
   [remote_timeout: <duration> | default = 5s]
+
+  # Enable TLS for ingester client connections.
+  # CLI flag: -querier.tls-enabled
+  [tls_enabled: <boolean> | default = false]
 
 # The time after which a metric should be queried from storage and not just
 # ingesters. 0 means all queries are sent to store. If this option is enabled,
