@@ -1129,39 +1129,6 @@ func (s Symbols) Size() int {
 	return len(s.offsets) * 8
 }
 
-func (s Symbols) Iter() StringIter {
-	d := encoding.DecWrap(tsdb_enc.NewDecbufAt(s.bs, s.off, castagnoliTable))
-	cnt := d.Be32int()
-	return &symbolsIter{
-		d:   d,
-		cnt: cnt,
-	}
-}
-
-// symbolsIter implements StringIter.
-type symbolsIter struct {
-	d   encoding.Decbuf
-	cnt int
-	cur string
-	err error
-}
-
-func (s *symbolsIter) Next() bool {
-	if s.cnt == 0 || s.err != nil {
-		return false
-	}
-	s.cur = yoloString(s.d.UvarintBytes())
-	s.cnt--
-	if s.d.Err() != nil {
-		s.err = s.d.Err()
-		return false
-	}
-	return true
-}
-
-func (s symbolsIter) At() string { return s.cur }
-func (s symbolsIter) Err() error { return s.err }
-
 func yoloString(b []byte) string {
 	return *((*string)(unsafe.Pointer(&b)))
 }
