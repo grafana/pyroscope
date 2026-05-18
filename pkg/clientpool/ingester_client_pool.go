@@ -2,6 +2,7 @@ package clientpool
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"io"
 	"time"
@@ -12,6 +13,7 @@ import (
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
@@ -24,6 +26,7 @@ type PoolConfig struct {
 	ClientCleanupPeriod  time.Duration `yaml:"client_cleanup_period"`
 	HealthCheckIngesters bool          `yaml:"health_check_ingesters"`
 	RemoteTimeout        time.Duration `yaml:"remote_timeout"`
+	TLSEnabled           bool          `yaml:"tls_enabled"`
 }
 
 // RegisterFlagsWithPrefix adds the flags required to config this to the given FlagSet.
@@ -31,11 +34,12 @@ func (cfg *PoolConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&cfg.ClientCleanupPeriod, prefix+".client-cleanup-period", 15*time.Second, "How frequently to clean up clients for ingesters that have gone away.")
 	f.BoolVar(&cfg.HealthCheckIngesters, prefix+".health-check-ingesters", true, "Run a health check on each ingester client during periodic cleanup.")
 	f.DurationVar(&cfg.RemoteTimeout, prefix+".health-check-timeout", 5*time.Second, "Timeout for ingester client healthcheck RPCs.")
+	f.BoolVar(&cfg.TLSEnabled, prefix+".tls-enabled", false, "Enable TLS for ingester client connections.")
 }
 
 func NewIngesterPool(cfg PoolConfig, ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger, options ...connect.ClientOption) *ring_client.Pool {
 	if factory == nil {
-		factory = newIngesterPoolFactory(options...)
+		factory = newIngesterPoolFactory(cfg.TLSEnabled, options...)
 	}
 	poolCfg := ring_client.PoolConfig{
 		CheckInterval:      cfg.ClientCleanupPeriod,
@@ -47,22 +51,37 @@ func NewIngesterPool(cfg PoolConfig, ring ring.ReadRing, factory ring_client.Poo
 }
 
 type ingesterPoolFactory struct {
-	options []connect.ClientOption
+	tlsEnabled bool
+	options    []connect.ClientOption
 }
 
-func newIngesterPoolFactory(options ...connect.ClientOption) ring_client.PoolFactory {
-	return &ingesterPoolFactory{options: options}
+func newIngesterPoolFactory(tlsEnabled bool, options ...connect.ClientOption) ring_client.PoolFactory {
+	return &ingesterPoolFactory{
+		tlsEnabled: tlsEnabled,
+		options:    options,
+	}
 }
 
 func (f *ingesterPoolFactory) FromInstance(inst ring.InstanceDesc) (ring_client.PoolClient, error) {
-	conn, err := grpc.Dial(inst.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	var dialOpts []grpc.DialOption
+	var scheme string
+
+	if f.tlsEnabled {
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
+		scheme = "https://"
+	} else {
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		scheme = "http://"
+	}
+
+	conn, err := grpc.Dial(inst.Addr, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
 
 	httpClient := util.InstrumentedDefaultHTTPClient(util.WithTracingTransport(), util.WithBaggageTransport())
 	return &ingesterPoolClient{
-		IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(httpClient, "http://"+inst.Addr, f.options...),
+		IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(httpClient, scheme+inst.Addr, f.options...),
 		HealthClient:          grpc_health_v1.NewHealthClient(conn),
 		Closer:                conn,
 	}, nil
