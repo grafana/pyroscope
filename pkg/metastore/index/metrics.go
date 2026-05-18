@@ -14,8 +14,8 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 				Subsystem: "metastore",
 				Name:      "index_cache_requests_total",
 				Help: "Total number of metastore index cache lookups, partitioned by cache and result. " +
-					"For the block cache, result distinguishes which tier served the lookup " +
-					"(read_hit / write_hit) or whether both tiers missed.",
+					"The block cache has two tiers; result distinguishes which tier served the " +
+					"lookup (read_hit / write_hit) or whether both tiers missed.",
 			},
 			[]string{"cache", "result"},
 		),
@@ -58,26 +58,19 @@ func (m *metrics) recordBlockReadHit() {
 	if m == nil {
 		return
 	}
-	m.cacheRequests.WithLabelValues("block_read", "hit").Inc()
-}
-
-func (m *metrics) recordBlockReadMiss() {
-	if m == nil {
-		return
-	}
-	m.cacheRequests.WithLabelValues("block_read", "miss").Inc()
+	m.cacheRequests.WithLabelValues("block", "read_hit").Inc()
 }
 
 func (m *metrics) recordBlockWriteHit() {
 	if m == nil {
 		return
 	}
-	m.cacheRequests.WithLabelValues("block_write", "hit").Inc()
+	m.cacheRequests.WithLabelValues("block", "write_hit").Inc()
 }
 
-func (m *metrics) recordBlockWriteMiss() {
+func (m *metrics) recordBlockMiss() {
 	if m == nil {
 		return
 	}
-	m.cacheRequests.WithLabelValues("block_write", "miss").Inc()
+	m.cacheRequests.WithLabelValues("block", "miss").Inc()
 }

@@ -206,7 +206,6 @@ func (c *blockCache) getOrCreate(shard *indexstore.Shard, block kvstore.KV) *met
 	v, ok = c.write.Get(k)
 	if ok {
 		c.mu.RUnlock()
-		c.metrics.recordBlockReadMiss()
 		c.metrics.recordBlockWriteHit()
 		return v
 	}
@@ -220,12 +219,10 @@ func (c *blockCache) getOrCreate(shard *indexstore.Shard, block kvstore.KV) *met
 	}
 	v, ok = c.write.Get(k)
 	if ok {
-		c.metrics.recordBlockReadMiss()
 		c.metrics.recordBlockWriteHit()
 		return v
 	}
-	c.metrics.recordBlockReadMiss()
-	c.metrics.recordBlockWriteMiss()
+	c.metrics.recordBlockMiss()
 	var md metastorev1.BlockMeta
 	if err := md.UnmarshalVT(block.Value); err != nil {
 		return &md

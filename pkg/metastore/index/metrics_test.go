@@ -3,7 +3,7 @@ package index
 import (
 	"testing"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
 
@@ -19,8 +19,7 @@ func TestCacheMetrics(t *testing.T) {
 		shardID uint32 = 1
 	)
 
-	reg := prometheus.NewRegistry()
-	m := newMetrics(reg)
+	m := newMetrics(nil)
 
 	db := test.BoltDB(t)
 	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
@@ -41,8 +40,8 @@ func TestCacheMetrics(t *testing.T) {
 		require.Equal(t, shardID, shard.Shard)
 		return nil
 	}))
-	require.Equal(t, float64(1), cacheCounter(t, reg, "shard_write", "miss"))
-	require.Equal(t, float64(0), cacheCounter(t, reg, "shard_write", "hit"))
+	require.Equal(t, float64(1), testutil.ToFloat64(m.cacheRequests.WithLabelValues("shard_write", "miss")))
+	require.Equal(t, float64(0), testutil.ToFloat64(m.cacheRequests.WithLabelValues("shard_write", "hit")))
 
 	// Second write lookup: cached writable == hit.
 	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
@@ -53,21 +52,21 @@ func TestCacheMetrics(t *testing.T) {
 		require.Equal(t, shardID, shard.Shard)
 		return nil
 	}))
-	require.Equal(t, float64(1), cacheCounter(t, reg, "shard_write", "hit"))
+	require.Equal(t, float64(1), testutil.ToFloat64(m.cacheRequests.WithLabelValues("shard_write", "hit")))
 
 	// Read lookup on the same key: writable entry counts as a read hit too.
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
 		_, err := sc.getForRead(tx, p, tenant, shardID)
 		return err
 	}))
-	require.Equal(t, float64(1), cacheCounter(t, reg, "shard_read", "hit"))
+	require.Equal(t, float64(1), testutil.ToFloat64(m.cacheRequests.WithLabelValues("shard_read", "hit")))
 
 	// Read lookup on a new key: miss + entry inserted as read-only.
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
 		_, err := sc.getForRead(tx, p, tenant, shardID+1)
 		return err
 	}))
-	require.Equal(t, float64(1), cacheCounter(t, reg, "shard_read", "miss"))
+	require.Equal(t, float64(1), testutil.ToFloat64(m.cacheRequests.WithLabelValues("shard_read", "miss")))
 
 	// Now a write lookup on that key: cached entry is read-only == miss + reload.
 	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
@@ -78,7 +77,7 @@ func TestCacheMetrics(t *testing.T) {
 		require.Equal(t, shardID+1, shard.Shard)
 		return nil
 	}))
-	require.Equal(t, float64(2), cacheCounter(t, reg, "shard_write", "miss"))
+	require.Equal(t, float64(2), testutil.ToFloat64(m.cacheRequests.WithLabelValues("shard_write", "miss")))
 
 	// Block cache.
 	bc := newBlockCache(DefaultConfig.BlockReadCacheSize, DefaultConfig.BlockWriteCacheSize, m)
@@ -96,17 +95,17 @@ func TestCacheMetrics(t *testing.T) {
 	l2Bytes, err := blockL2.MarshalVT()
 	require.NoError(t, err)
 
-	// blockL0 was put in the write tier (CompactionLevel < 2):
-	// read tier misses, write tier hits.
+	// blockL0 was put in the write tier (CompactionLevel < 2): write tier serves the lookup.
 	bc.getOrCreate(shard, kvstore.KV{Key: []byte(blockL0.Id), Value: l0Bytes})
-	require.Equal(t, float64(1), cacheCounter(t, reg, "block_read", "miss"))
-	require.Equal(t, float64(1), cacheCounter(t, reg, "block_write", "hit"))
+	require.Equal(t, float64(1), testutil.ToFloat64(m.cacheRequests.WithLabelValues("block", "write_hit")))
+	require.Equal(t, float64(0), testutil.ToFloat64(m.cacheRequests.WithLabelValues("block", "read_hit")))
+	require.Equal(t, float64(0), testutil.ToFloat64(m.cacheRequests.WithLabelValues("block", "miss")))
 
-	// blockL2 was put in the read tier (CompactionLevel >= 2):
-	// read tier hits, write tier is not consulted.
+	// blockL2 was put in the read tier (CompactionLevel >= 2): read tier serves the lookup.
 	bc.getOrCreate(shard, kvstore.KV{Key: []byte(blockL2.Id), Value: l2Bytes})
-	require.Equal(t, float64(1), cacheCounter(t, reg, "block_read", "hit"))
-	require.Equal(t, float64(0), cacheCounter(t, reg, "block_write", "miss"))
+	require.Equal(t, float64(1), testutil.ToFloat64(m.cacheRequests.WithLabelValues("block", "read_hit")))
+	require.Equal(t, float64(1), testutil.ToFloat64(m.cacheRequests.WithLabelValues("block", "write_hit")))
+	require.Equal(t, float64(0), testutil.ToFloat64(m.cacheRequests.WithLabelValues("block", "miss")))
 
 	// Unknown block: both tiers miss == decoded fresh.
 	uncachedID := test.ULID("2024-09-11T09:00:00.001Z")
@@ -114,32 +113,5 @@ func TestCacheMetrics(t *testing.T) {
 	uncachedBytes, err := uncached.MarshalVT()
 	require.NoError(t, err)
 	bc.getOrCreate(shard, kvstore.KV{Key: []byte(uncachedID), Value: uncachedBytes})
-	require.Equal(t, float64(2), cacheCounter(t, reg, "block_read", "miss"))
-	require.Equal(t, float64(1), cacheCounter(t, reg, "block_write", "miss"))
-}
-
-func cacheCounter(t *testing.T, reg *prometheus.Registry, cache, result string) float64 {
-	t.Helper()
-	mfs, err := reg.Gather()
-	require.NoError(t, err)
-	for _, mf := range mfs {
-		if mf.GetName() != "pyroscope_metastore_index_cache_requests_total" {
-			continue
-		}
-		for _, m := range mf.GetMetric() {
-			var gotCache, gotResult string
-			for _, lp := range m.GetLabel() {
-				switch lp.GetName() {
-				case "cache":
-					gotCache = lp.GetValue()
-				case "result":
-					gotResult = lp.GetValue()
-				}
-			}
-			if gotCache == cache && gotResult == result {
-				return m.GetCounter().GetValue()
-			}
-		}
-	}
-	return 0
+	require.Equal(t, float64(1), testutil.ToFloat64(m.cacheRequests.WithLabelValues("block", "miss")))
 }
