@@ -1,0 +1,45 @@
+name: helm-integration-httproute
+
+on:
+  pull_request:
+    paths:
+      - 'operations/pyroscope/helm/**'
+      - '.github/workflows/helm-integration-httproute.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-test-httproute:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # kind, kubectl, and helm must be on PATH; the test binary orchestrates
+      # everything else (cluster creation, gateway setup, chart install).
+      - name: Install kind
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+        with:
+          install_only: true
+
+      - name: Install Helm
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+        with:
+          version: v3.14.3
+
+      # kubectl is pre-installed on ubuntu-latest; this just verifies it.
+      - name: Check kubectl
+        run: kubectl version --client
+
+      - name: Run HTTPRoute integration tests
+        run: go test ./operations/pyroscope/helm/pyroscope/e2e/... -v -timeout 60m

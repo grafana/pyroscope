@@ -521,31 +521,47 @@ func Test_QueryNotInitializedHead(t *testing.T) {
 	})
 
 	t.Run("MergeProfilesLabels", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(ctx)
 		bidi := client.MergeProfilesLabels(ctx)
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesLabelsRequest{
 			Request: &ingestv1.SelectProfilesRequest{},
 		}))
-		cancel()
+		closeBidi(t, bidi)
 	})
 
 	t.Run("MergeProfilesStacktraces", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(ctx)
 		bidi := client.MergeProfilesStacktraces(ctx)
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
 			Request: &ingestv1.SelectProfilesRequest{},
 		}))
-		cancel()
+		closeBidi(t, bidi)
 	})
 
 	t.Run("MergeProfilesPprof", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(ctx)
 		bidi := client.MergeProfilesPprof(ctx)
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
 			Request: &ingestv1.SelectProfilesRequest{},
 		}))
-		cancel()
+		closeBidi(t, bidi)
 	})
+}
+
+// closeBidi gracefully shuts down a connect bidi stream by signalling
+// end-of-send and draining the response side until EOF.
+//
+// We can't just cancel the context: under -race on Go 1.25 that triggers
+// a data race inside net/http. The HTTP/2 stream reset spawns a goroutine
+// that calls (*readTrackingBody).Close() while the original roundTrip
+// goroutine is still reading the same struct (transport.go:725 vs :765).
+// Closing the stream on the normal codepath avoids the reset entirely.
+func closeBidi[Req, Res any](t *testing.T, bidi *connect.BidiStreamForClient[Req, Res]) {
+	t.Helper()
+	require.NoError(t, bidi.CloseRequest())
+	for {
+		if _, err := bidi.Receive(); err != nil {
+			break
+		}
+	}
+	require.NoError(t, bidi.CloseResponse())
 }
 
 func Test_FlushNotInitializedHead(t *testing.T) {

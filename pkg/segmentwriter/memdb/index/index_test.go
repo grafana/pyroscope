@@ -444,8 +444,9 @@ func TestPersistence_index_e2e(t *testing.T) {
 	for k, v := range labelPairs {
 		sort.Strings(v)
 
-		res, err := ir.SortedLabelValues(k)
+		res, err := ir.LabelValues(k)
 		require.NoError(t, err)
+		sort.Strings(res)
 
 		require.Equal(t, len(v), len(res))
 		for i := 0; i < len(v); i++ {
@@ -453,12 +454,9 @@ func TestPersistence_index_e2e(t *testing.T) {
 		}
 	}
 
-	gotSymbols := []string{}
-	it := ir.Symbols()
-	for it.Next() {
-		gotSymbols = append(gotSymbols, it.At())
-	}
-	require.NoError(t, it.Err())
+	gotSymbols, err := ir.SymbolTable()
+	require.NoError(t, err)
+	sort.Strings(gotSymbols)
 	expSymbols := []string{}
 	for s := range mi.symbols {
 		expSymbols = append(expSymbols, s)
@@ -492,7 +490,7 @@ func TestSymbols(t *testing.T) {
 	checksum := crc32.Checksum(buf.Get()[symbolsStart+4:], castagnoliTable)
 	buf.PutBE32(checksum) // Check sum at the end.
 
-	s, err := NewSymbols(RealByteSlice(buf.Get()), FormatV2, symbolsStart)
+	s, err := NewSymbols(RealByteSlice(buf.Get()), symbolsStart)
 	require.NoError(t, err)
 
 	// We store only 4 offsets to symbols.
@@ -513,14 +511,6 @@ func TestSymbols(t *testing.T) {
 	}
 	_, err = s.ReverseLookup(string(rune(100)))
 	require.Error(t, err)
-
-	iter := s.Iter()
-	i := 0
-	for iter.Next() {
-		require.Equal(t, string(rune(i)), iter.At())
-		i++
-	}
-	require.NoError(t, iter.Err())
 }
 
 func TestWriter_ShouldReturnErrorOnSeriesWithDuplicatedLabelNames(t *testing.T) {

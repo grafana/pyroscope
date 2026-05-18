@@ -227,27 +227,32 @@ func TestIndexRW_Postings(t *testing.T) {
 
 	// The label indices are no longer used, so test them by hand here.
 	labelIndices := map[string][]string{}
-	require.NoError(t, ReadOffsetTable(ir.b, ir.toc.LabelIndicesTable, func(key []string, off uint64, _ int) error {
-		if len(key) != 1 {
-			return errors.Errorf("unexpected key length for label indices table %d", len(key))
-		}
-
-		d := encoding.NewDecbufAt(ir.b, int(off), castagnoliTable)
-		vals := []string{}
-		nc := d.Be32int()
-		if nc != 1 {
-			return errors.Errorf("unexpected number of label indices table names %d", nc)
-		}
-		for i := d.Be32(); i > 0; i-- {
-			v, err := ir.lookupSymbol(d.Be32())
-			if err != nil {
-				return err
+	{
+		d := encoding.NewDecbufAt(ir.b, int(ir.toc.LabelIndicesTable), castagnoliTable)
+		cnt := d.Be32()
+		for d.Err() == nil && d.Len() > 0 && cnt > 0 {
+			if keyCount := d.Uvarint(); keyCount != 1 {
+				require.Failf(t, "label indices table", "unexpected key count %d", keyCount)
 			}
-			vals = append(vals, v)
+			name := string(d.UvarintBytes())
+			off := d.Uvarint64()
+			require.NoError(t, d.Err())
+
+			d2 := encoding.NewDecbufAt(ir.b, int(off), castagnoliTable)
+			vals := []string{}
+			nc := d2.Be32int()
+			require.Equal(t, 1, nc, "unexpected number of label indices table names")
+			for i := d2.Be32(); i > 0; i-- {
+				v, err := ir.lookupSymbol(d2.Be32())
+				require.NoError(t, err)
+				vals = append(vals, v)
+			}
+			require.NoError(t, d2.Err())
+			labelIndices[name] = vals
+			cnt--
 		}
-		labelIndices[key[0]] = vals
-		return d.Err()
-	}))
+		require.NoError(t, d.Err())
+	}
 	require.Equal(t, map[string][]string{
 		"a": {"1"},
 		"b": {"1", "2", "3", "4"},
@@ -479,8 +484,9 @@ func TestPersistence_index_e2e(t *testing.T) {
 	for k, v := range labelPairs {
 		sort.Strings(v)
 
-		res, err := ir.SortedLabelValues(k)
+		res, err := ir.LabelValues(k)
 		require.NoError(t, err)
+		sort.Strings(res)
 
 		require.Equal(t, len(v), len(res))
 		for i := 0; i < len(v); i++ {
@@ -488,12 +494,9 @@ func TestPersistence_index_e2e(t *testing.T) {
 		}
 	}
 
-	gotSymbols := []string{}
-	it := ir.Symbols()
-	for it.Next() {
-		gotSymbols = append(gotSymbols, it.At())
-	}
-	require.NoError(t, it.Err())
+	gotSymbols, err := ir.SymbolTable()
+	require.NoError(t, err)
+	sort.Strings(gotSymbols)
 	expSymbols := []string{}
 	for s := range mi.symbols {
 		expSymbols = append(expSymbols, s)
@@ -549,7 +552,7 @@ func TestSymbols(t *testing.T) {
 	checksum := crc32.Checksum(buf.Get()[symbolsStart+4:], castagnoliTable)
 	buf.PutBE32(checksum) // Check sum at the end.
 
-	s, err := NewSymbols(RealByteSlice(buf.Get()), FormatV2, symbolsStart)
+	s, err := NewSymbols(RealByteSlice(buf.Get()), symbolsStart)
 	require.NoError(t, err)
 
 	// We store only 4 offsets to symbols.
@@ -583,6 +586,68 @@ func TestSymbols(t *testing.T) {
 func TestDecoder_Postings_WrongInput(t *testing.T) {
 	_, _, err := (&Decoder{}).Postings([]byte("the cake is a lie"))
 	require.Error(t, err)
+}
+
+// BenchmarkNewReader measures the cost of opening an index file, dominated by
+// the postings-offset-table scan in newReader. The fixture uses several label
+// names with > symbolFactor (32) values each so the sampling logic is exercised.
+func BenchmarkNewReader(b *testing.B) {
+	dir := b.TempDir()
+	fn := filepath.Join(dir, IndexFilename)
+
+	iw, err := NewWriter(context.Background(), fn)
+	require.NoError(b, err)
+
+	const (
+		numNames   = 10
+		numValues  = 200
+		numSeries  = numNames * numValues
+		nameFormat = "label_%02d"
+		valFormat  = "value_%04d"
+	)
+
+	symbolSet := map[string]struct{}{}
+	for n := 0; n < numNames; n++ {
+		symbolSet[fmt.Sprintf(nameFormat, n)] = struct{}{}
+	}
+	for v := 0; v < numValues; v++ {
+		symbolSet[fmt.Sprintf(valFormat, v)] = struct{}{}
+	}
+	syms := make([]string, 0, len(symbolSet))
+	for s := range symbolSet {
+		syms = append(syms, s)
+	}
+	sort.Strings(syms)
+	for _, s := range syms {
+		require.NoError(b, iw.AddSymbol(s))
+	}
+
+	series := make([]phlaremodel.Labels, 0, numSeries)
+	for n := 0; n < numNames; n++ {
+		name := fmt.Sprintf(nameFormat, n)
+		for v := 0; v < numValues; v++ {
+			series = append(series, phlaremodel.LabelsFromStrings(name, fmt.Sprintf(valFormat, v)))
+		}
+	}
+	sort.Slice(series, func(i, j int) bool {
+		return series[i].Hash() < series[j].Hash()
+	})
+	for i, s := range series {
+		require.NoError(b, iw.AddSeries(storage.SeriesRef(i), s, model.Fingerprint(s.Hash())))
+	}
+	require.NoError(b, iw.Close())
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		r, err := NewFileReader(fn)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if err := r.Close(); err != nil {
+			b.Fatal(err)
+		}
+	}
 }
 
 func TestWriter_ShouldReturnErrorOnSeriesWithDuplicatedLabelNames(t *testing.T) {

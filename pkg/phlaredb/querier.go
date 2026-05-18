@@ -18,13 +18,9 @@ type IndexReader interface {
 
 	Checksum() uint32
 
-	// Symbols return an iterator over sorted string symbols that may occur in
-	// series' labels and indices. It is not safe to use the returned strings
-	// beyond the lifetime of the index reader.
-	Symbols() index.StringIter
-
-	// SortedLabelValues returns sorted possible label values.
-	SortedLabelValues(name string, matchers ...*labels.Matcher) ([]string, error)
+	// SymbolTable returns all symbols in the index as owned strings safe to use
+	// beyond the reader's lifetime.
+	SymbolTable() ([]string, error)
 
 	// LabelValues returns possible label values which may not be sorted.
 	LabelValues(name string, matchers ...*labels.Matcher) ([]string, error)
@@ -34,6 +30,11 @@ type IndexReader interface {
 	// Found IDs are not strictly required to point to a valid Series, e.g.
 	// during background garbage collections. Input values must be sorted.
 	Postings(name string, shard *index.ShardAnnotation, values ...string) (index.Postings, error)
+
+	// PostingsForLabelMatching returns merged postings for all values of label
+	// name for which match returns true. The YoloString passed to match aliases
+	// the index buffer and must not be retained beyond the call.
+	PostingsForLabelMatching(name string, shard *index.ShardAnnotation, match func(index.YoloString) bool) (index.Postings, error)
 
 	// Series populates the given labels and chunk metas for the series identified
 	// by the reference.
@@ -158,54 +159,10 @@ func postingsForMatcher(ix IndexReader, shard *index.ShardAnnotation, m *labels.
 		}
 	}
 
-	vals, err := ix.LabelValues(m.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	var res []string
-	lastVal, isSorted := "", true
-	for _, val := range vals {
-		if m.Matches(val) {
-			res = append(res, val)
-			if isSorted && val < lastVal {
-				isSorted = false
-			}
-			lastVal = val
-		}
-	}
-
-	if len(res) == 0 {
-		return index.EmptyPostings(), nil
-	}
-
-	if !isSorted {
-		sort.Strings(res)
-	}
-	return ix.Postings(m.Name, shard, res...)
+	return ix.PostingsForLabelMatching(m.Name, shard, func(v index.YoloString) bool { return m.Matches(v.String) })
 }
 
 // inversePostingsForMatcher returns the postings for the series with the label name set but not matching the matcher.
 func inversePostingsForMatcher(ix IndexReader, shard *index.ShardAnnotation, m *labels.Matcher) (index.Postings, error) {
-	vals, err := ix.LabelValues(m.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	var res []string
-	lastVal, isSorted := "", true
-	for _, val := range vals {
-		if !m.Matches(val) {
-			res = append(res, val)
-			if isSorted && val < lastVal {
-				isSorted = false
-			}
-			lastVal = val
-		}
-	}
-
-	if !isSorted {
-		sort.Strings(res)
-	}
-	return ix.Postings(m.Name, shard, res...)
+	return ix.PostingsForLabelMatching(m.Name, shard, func(v index.YoloString) bool { return !m.Matches(v.String) })
 }
