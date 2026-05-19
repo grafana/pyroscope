@@ -21,6 +21,10 @@ export interface LabelSuggestionsResult {
   context: CursorContext;
   suggestions: string[];
   loading: boolean;
+  // True when the most recently committed request has resolved to an empty
+  // result. Distinct from `suggestions.length === 0`, which is also true
+  // during the debounce window before any fetch has been attempted.
+  definitelyEmpty: boolean;
 }
 
 export function useLabelSuggestions({
@@ -135,5 +139,15 @@ export function useLabelSuggestions({
 
   const loading = !!debouncedKey && !cache.has(debouncedKey);
 
-  return { context, suggestions, loading };
+  // We have a "definite" answer only when the user has stopped typing long
+  // enough for the debounce to settle (requestKey === debouncedKey) and the
+  // cache has been populated for that key. Without this, "No matches"
+  // would flash during every keystroke.
+  const definitelyEmpty =
+    context.kind !== 'none' &&
+    requestKey === debouncedKey &&
+    cache.has(debouncedKey) &&
+    suggestions.length === 0;
+
+  return { context, suggestions, loading, definitelyEmpty };
 }

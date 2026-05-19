@@ -12,6 +12,13 @@ export function SuggestionList({
   onHover: (i: number) => void;
   onAccept: (item: string) => void;
 }) {
+  if (items.length === 0) {
+    return (
+      <div className="suggestion-list" role="listbox">
+        <div className="suggestion-empty">No matches</div>
+      </div>
+    );
+  }
   return (
     <div className="suggestion-list" role="listbox">
       {items.map((item, i) => (

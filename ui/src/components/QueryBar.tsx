@@ -25,6 +25,11 @@ export function QueryBar({
   const [focused, setFocused] = useState(false);
   const [escaped, setEscaped] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  // Gates the dropdown on the user having actually typed or accepted a
+  // suggestion since the input was last focused. Without this, clicking
+  // into the input would pop the dropdown solely from the cursor position,
+  // which is noisy when the user just wants to read or move the caret.
+  const [interacted, setInteracted] = useState(false);
 
   // Carries the caret position that should be applied to the input after the
   // next commit. We use a ref instead of state so the post-commit effect can
@@ -34,7 +39,7 @@ export function QueryBar({
   const [lastRun, setLastRun] = useState<string | null>(null);
   const dirty = lastRun === null || lastRun !== query;
 
-  const { context, suggestions } = useLabelSuggestions({
+  const { context, suggestions, definitelyEmpty } = useLabelSuggestions({
     query,
     cursor,
     start,
@@ -50,7 +55,11 @@ export function QueryBar({
       ? 0
       : Math.min(highlightedIndex, suggestions.length - 1);
 
-  const open = focused && !escaped && suggestions.length > 0;
+  const open =
+    focused &&
+    interacted &&
+    !escaped &&
+    (suggestions.length > 0 || definitelyEmpty);
 
   useEffect(() => {
     if (pendingCursorRef.current === null) return;
@@ -73,6 +82,7 @@ export function QueryBar({
     setCursor(newCursor);
     setHighlightedIndex(0);
     setEscaped(false);
+    setInteracted(true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -107,6 +117,7 @@ export function QueryBar({
           value={query}
           onChange={(e) => {
             setEscaped(false);
+            setInteracted(true);
             setHighlightedIndex(0);
             onQueryChange(e.target.value);
             setCursor(e.target.selectionStart ?? e.target.value.length);
@@ -119,7 +130,10 @@ export function QueryBar({
             setFocused(true);
             setCursor(e.currentTarget.selectionStart ?? 0);
           }}
-          onBlur={() => setFocused(false)}
+          onBlur={() => {
+            setFocused(false);
+            setInteracted(false);
+          }}
           onKeyDown={handleKeyDown}
         />
         {open && (
