@@ -7,13 +7,18 @@ import { QueryBar } from '@components/QueryBar';
 import { TimeSeries } from '@components/TimeSeries';
 import { Panel } from '@components/Panel';
 import { TenantDialog } from '@components/TenantDialog';
-import { usePyroscopeQuery, type ProfileType } from '@hooks/usePyroscopeQuery';
+import {
+  parseTimeRange,
+  usePyroscopeQuery,
+  type ProfileType,
+} from '@hooks/usePyroscopeQuery';
 import { useTenant } from '@hooks/useTenant';
 import {
   profileTypeLabel,
   profileTypeRateLabel,
   sortProfileTypes,
 } from '@api/client';
+import { buildQuery, parseQuery } from './queryLang';
 
 function useTheme() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -24,19 +29,6 @@ function useTheme() {
     else document.documentElement.removeAttribute('data-theme');
   };
   return { theme, setTheme: setAndApply };
-}
-
-function buildQuery(service: string, pt: ProfileType): string {
-  return `{service_name="${service}", profile_type="${pt}"}`;
-}
-
-function parseQuery(
-  q: string,
-): { service: string; profileType: string } | null {
-  const service = q.match(/service_name\s*=\s*"([^"]+)"/)?.[1];
-  const profileType = q.match(/profile_type\s*=\s*"([^"]+)"/)?.[1];
-  if (!service || !profileType) return null;
-  return { service, profileType };
 }
 
 export default function App() {
@@ -88,6 +80,8 @@ export default function App() {
     !!service && queryInput !== buildQuery(service, profileType);
   const handleReset = () => setQueryUserInput(null);
 
+  const timeWindow = absoluteRange ?? parseTimeRange(timeRange);
+
   if (tenant.status === 'loading') return null;
 
   if (tenant.status === 'needs_tenant_id') {
@@ -133,6 +127,9 @@ export default function App() {
             query.execute(parsed.service, parsed.profileType, timeRange);
           }
         }}
+        start={timeWindow.start}
+        end={timeWindow.end}
+        tenantID={tenant.tenantID}
       />
 
       {query.error && (
