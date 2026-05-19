@@ -39,13 +39,14 @@ export function QueryBar({
   const [lastRun, setLastRun] = useState<string | null>(null);
   const dirty = lastRun === null || lastRun !== query;
 
-  const { context, suggestions, definitelyEmpty } = useLabelSuggestions({
-    query,
-    cursor,
-    start,
-    end,
-    tenantID,
-  });
+  const { context, suggestions, definitelyEmpty, loading } =
+    useLabelSuggestions({
+      query,
+      cursor,
+      start,
+      end,
+      tenantID,
+    });
 
   // Clamp the highlight against the current suggestions length. This avoids
   // a setState-in-effect reset; if the list shrinks below the previous
@@ -59,7 +60,8 @@ export function QueryBar({
     focused &&
     interacted &&
     !escaped &&
-    (suggestions.length > 0 || definitelyEmpty);
+    context.kind !== 'none' &&
+    (suggestions.length > 0 || definitelyEmpty || loading);
 
   useEffect(() => {
     if (pendingCursorRef.current === null) return;
@@ -139,6 +141,7 @@ export function QueryBar({
         {open && (
           <SuggestionList
             items={suggestions}
+            loading={loading}
             highlightedIndex={safeHighlight}
             onHover={setHighlightedIndex}
             onAccept={accept}

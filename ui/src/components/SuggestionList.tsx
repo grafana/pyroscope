@@ -3,11 +3,13 @@ import './SuggestionList.css';
 
 export function SuggestionList({
   items,
+  loading,
   highlightedIndex,
   onHover,
   onAccept,
 }: {
   items: string[];
+  loading: boolean;
   highlightedIndex: number;
   onHover: (i: number) => void;
   onAccept: (item: string) => void;
@@ -15,7 +17,9 @@ export function SuggestionList({
   if (items.length === 0) {
     return (
       <div className="suggestion-list" role="listbox">
-        <div className="suggestion-empty">No matches</div>
+        <div className="suggestion-empty">
+          {loading ? 'Loading…' : 'No matches'}
+        </div>
       </div>
     );
   }
