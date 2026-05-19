@@ -75,6 +75,20 @@ export function useLabelSuggestions({
     paramsRef.current = { context, startBucket, endBucket };
   });
 
+  // Force a re-render after the cache is populated by an async fetch.
+  //
+  // The cache is module-scope mutable state that React doesn't observe.
+  // After `cache.set(...)` we need *something* to trigger a re-render so the
+  // `suggestions` memo recomputes and reads the new entry. An unused state
+  // setter does that minimally.
+  //
+  // The more idiomatic alternative is to put results in `useState` and let
+  // the cache be an optimization, but that requires a synchronous setState
+  // inside the fetch effect on cache hits — which trips
+  // react-hooks/set-state-in-effect. A future maintainer can swap in the
+  // useState shape (and rely on the "async initialization from external
+  // data" lint exception documented in CLAUDE.md) if the indirection here
+  // ever becomes a debugging hazard.
   const [, setFetchTick] = useState(0);
 
   useEffect(() => {
