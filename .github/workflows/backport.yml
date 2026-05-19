@@ -29,27 +29,15 @@ jobs:
       - name: Install Actions
         run: npm install --production --prefix ./actions
 
-      - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@c2f1df59dba624b3fd509e5181aa8da5217120c0
+      - id: get-github-app-token
+        uses: grafana/shared-workflows/actions/create-github-app-token@580590a644e82e79bb2598bdaba0be245a14dda0 # create-github-app-token/v0.2.2
         with:
-          repo_secrets: |
-            GITHUB_APP_ID=pyroscope-development-app:app-id
-            GITHUB_APP_PRIVATE_KEY=pyroscope-development-app:private-key
-
-      - name: Generate token
-        id: app-token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ env.GITHUB_APP_ID }}
-          private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: |
-            pyroscope
+          github_app: pyroscope-development-app
 
       - name: Run backport
         uses: ./actions/backport
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.get-github-app-token.outputs.token }}
           labelsToAdd: backport
           # The provided token needs read permissions for organization members if you want to remove the default reviewers.
           removeDefaultReviewers: false
