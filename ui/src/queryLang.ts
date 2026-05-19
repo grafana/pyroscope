@@ -207,10 +207,7 @@ function serializeMatcher(m: Matcher): string {
   return `{${toInternalLabel(m.name)}${m.op}"${m.value}"}`;
 }
 
-export function getCursorContext(
-  query: string,
-  cursor: number,
-): CursorContext {
+export function getCursorContext(query: string, cursor: number): CursorContext {
   const { matchers, braceOpen, braceClose } = tokenize(query);
   if (braceOpen === -1) return { kind: 'none' };
   if (cursor <= braceOpen) return { kind: 'none' };
@@ -292,7 +289,9 @@ export function applySuggestion(
   const insertion = needsCloseQuote ? `${suggestion}"` : suggestion;
   const next = query.slice(0, s) + insertion + query.slice(e);
   // Cursor lands after the closing quote.
-  const cursor = needsCloseQuote ? s + insertion.length : s + suggestion.length + 1;
+  const cursor = needsCloseQuote
+    ? s + insertion.length
+    : s + suggestion.length + 1;
   return { next, cursor };
 }
 
