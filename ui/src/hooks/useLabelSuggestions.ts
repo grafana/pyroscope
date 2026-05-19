@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchLabelNames, fetchLabelValues } from '@api/client';
 import {
   getCursorContext,
+  isInternalLabel,
   toDisplayLabel,
   toInternalLabel,
   type CursorContext,
@@ -108,10 +109,17 @@ export function useLabelSuggestions({
     const promise =
       ctx.kind === 'name'
         ? fetchLabelNames(ctx.otherMatchers, s, e, controller.signal).then(
-            // Translate internal label names back to their display form
-            // (e.g. __profile_type__ → profile_type) and dedupe in case the
-            // backend ever returns both spellings.
-            (names) => Array.from(new Set(names.map(toDisplayLabel))),
+            // Translate to display form first (so __profile_type__ becomes
+            // profile_type) and then drop anything still wrapped in double
+            // underscores — those are reserved internal labels. Dedupe in
+            // case the backend ever returns both an internal name and its
+            // alias.
+            (names) =>
+              Array.from(
+                new Set(
+                  names.map(toDisplayLabel).filter((n) => !isInternalLabel(n)),
+                ),
+              ),
           )
         : ctx.kind === 'value'
           ? fetchLabelValues(
