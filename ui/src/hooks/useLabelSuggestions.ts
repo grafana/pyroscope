@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchLabelNames, fetchLabelValues } from '@api/client';
-import { getCursorContext, type CursorContext } from '../queryLang';
+import {
+  getCursorContext,
+  toDisplayLabel,
+  toInternalLabel,
+  type CursorContext,
+} from '../queryLang';
 import { useDebouncedValue } from './useDebouncedValue';
 
 const cache = new Map<string, string[]>();
@@ -102,10 +107,15 @@ export function useLabelSuggestions({
     const { context: ctx, startBucket: s, endBucket: e } = paramsRef.current;
     const promise =
       ctx.kind === 'name'
-        ? fetchLabelNames(ctx.otherMatchers, s, e, controller.signal)
+        ? fetchLabelNames(ctx.otherMatchers, s, e, controller.signal).then(
+            // Translate internal label names back to their display form
+            // (e.g. __profile_type__ → profile_type) and dedupe in case the
+            // backend ever returns both spellings.
+            (names) => Array.from(new Set(names.map(toDisplayLabel))),
+          )
         : ctx.kind === 'value'
           ? fetchLabelValues(
-              ctx.labelName,
+              toInternalLabel(ctx.labelName),
               ctx.otherMatchers,
               s,
               e,
