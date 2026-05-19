@@ -32,6 +32,11 @@ export async function checkMultitenancy(): Promise<
   'single_tenant' | 'multi_tenant' | 'error'
 > {
   try {
+    // /LabelNames requires a time range; the backend returns 400 without
+    // one regardless of auth state. We send a short recent window so the
+    // auth-vs-no-auth distinction (401 vs 200) is the only signal we read.
+    const end = Date.now();
+    const start = end - 5 * 60_000;
     const res = await fetch(
       `${getBasePath()}/querier.v1.QuerierService/LabelNames`,
       {
@@ -40,7 +45,7 @@ export async function checkMultitenancy(): Promise<
           'Content-Type': 'application/json',
           'X-Scope-OrgID': '',
         },
-        body: JSON.stringify({ matchers: [] }),
+        body: JSON.stringify({ matchers: [], start, end }),
       },
     );
     if (res.ok) return 'single_tenant';
