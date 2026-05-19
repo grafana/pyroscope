@@ -1,0 +1,125 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { fetchLabelNames, fetchLabelValues } from '@api/client';
+import { getCursorContext, type CursorContext } from '../queryLang';
+import { useDebouncedValue } from './useDebouncedValue';
+
+const cache = new Map<string, string[]>();
+const BUCKET_MS = 10_000;
+const MAX_SUGGESTIONS = 200;
+const DEBOUNCE_NAMES_MS = 150;
+const DEBOUNCE_VALUES_MS = 250;
+
+export interface LabelSuggestionsArgs {
+  query: string;
+  cursor: number;
+  start: number;
+  end: number;
+  tenantID?: string;
+}
+
+export interface LabelSuggestionsResult {
+  context: CursorContext;
+  suggestions: string[];
+  loading: boolean;
+}
+
+export function useLabelSuggestions({
+  query,
+  cursor,
+  start,
+  end,
+  tenantID,
+}: LabelSuggestionsArgs): LabelSuggestionsResult {
+  const context = useMemo(
+    () => getCursorContext(query, cursor),
+    [query, cursor],
+  );
+
+  // Bucket the time range so that relative ranges (`now-1h`) — which mutate
+  // start/end every render — don't churn the request key.
+  const startBucket = Math.floor(start / BUCKET_MS) * BUCKET_MS;
+  const endBucket = Math.floor(end / BUCKET_MS) * BUCKET_MS;
+
+  const requestKey = useMemo(() => {
+    if (context.kind === 'none') return '';
+    if (context.kind === 'name') {
+      return JSON.stringify([
+        'n',
+        context.otherMatchers,
+        startBucket,
+        endBucket,
+        tenantID ?? '',
+      ]);
+    }
+    return JSON.stringify([
+      'v',
+      context.labelName,
+      context.otherMatchers,
+      startBucket,
+      endBucket,
+      tenantID ?? '',
+    ]);
+  }, [context, startBucket, endBucket, tenantID]);
+
+  const debounceMs =
+    context.kind === 'value' ? DEBOUNCE_VALUES_MS : DEBOUNCE_NAMES_MS;
+  const debouncedKey = useDebouncedValue(requestKey, debounceMs);
+
+  // The fetch effect reads the most recent context/buckets via a ref so it
+  // can depend solely on debouncedKey (avoiding a re-run on every render
+  // driven by start/end churn). The sync effect below runs in declaration
+  // order, ahead of the fetch effect, so the ref is current when the fetch
+  // effect reads it.
+  const paramsRef = useRef({ context, startBucket, endBucket });
+  useEffect(() => {
+    paramsRef.current = { context, startBucket, endBucket };
+  });
+
+  const [, setFetchTick] = useState(0);
+
+  useEffect(() => {
+    if (!debouncedKey || cache.has(debouncedKey)) return;
+
+    const controller = new AbortController();
+    const { context: ctx, startBucket: s, endBucket: e } = paramsRef.current;
+    const promise =
+      ctx.kind === 'name'
+        ? fetchLabelNames(ctx.otherMatchers, s, e, controller.signal)
+        : ctx.kind === 'value'
+          ? fetchLabelValues(
+              ctx.labelName,
+              ctx.otherMatchers,
+              s,
+              e,
+              controller.signal,
+            )
+          : Promise.resolve<string[]>([]);
+
+    promise
+      .then((names) => {
+        cache.set(debouncedKey, names);
+        setFetchTick((v) => v + 1);
+      })
+      .catch((err: unknown) => {
+        if ((err as { name?: string }).name === 'AbortError') return;
+        cache.set(debouncedKey, []);
+        setFetchTick((v) => v + 1);
+      });
+
+    return () => controller.abort();
+  }, [debouncedKey]);
+
+  const suggestions = useMemo(() => {
+    if (context.kind === 'none') return [];
+    const results = cache.get(debouncedKey) ?? [];
+    const prefix = context.prefix.toLowerCase();
+    const filtered = prefix
+      ? results.filter((n) => n.toLowerCase().includes(prefix))
+      : results.slice();
+    return filtered.slice(0, MAX_SUGGESTIONS);
+  }, [debouncedKey, context]);
+
+  const loading = !!debouncedKey && !cache.has(debouncedKey);
+
+  return { context, suggestions, loading };
+}
