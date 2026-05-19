@@ -130,6 +130,10 @@ export function useLabelSuggestions({
       })
       .catch((err: unknown) => {
         if ((err as { name?: string }).name === 'AbortError') return;
+        // Negative-cache errors so `loading` can resolve to false; without
+        // this the dropdown would be stuck on "Loading…" forever after a
+        // failed fetch. The empty-prefix branch in `definitelyEmpty` keeps
+        // this from masquerading as a "No matches" result.
         cache.set(debouncedKey, []);
         setFetchTick((v) => v + 1);
       });
@@ -137,24 +141,37 @@ export function useLabelSuggestions({
     return () => controller.abort();
   }, [debouncedKey]);
 
-  const suggestions = useMemo(() => {
-    if (context.kind === 'none') return [];
+  // Computed inline rather than via useMemo. The body reads cache.get(),
+  // which is mutable module-scope state that React's dependency tracking
+  // can't observe — memoization would return a stale empty array after the
+  // fetch resolved and called setFetchTick. Filtering up to 200 strings on
+  // every render is cheap enough that the memo wasn't earning its keep.
+  let suggestions: string[] = [];
+  if (context.kind !== 'none') {
     const results = cache.get(debouncedKey) ?? [];
-    const prefix = context.prefix.toLowerCase();
-    const filtered = prefix
-      ? results.filter((n) => n.toLowerCase().includes(prefix))
+    const prefixLower = context.prefix.toLowerCase();
+    const filtered = prefixLower
+      ? results.filter((n) => n.toLowerCase().includes(prefixLower))
       : results.slice();
-    return filtered.slice(0, MAX_SUGGESTIONS);
-  }, [debouncedKey, context]);
+    suggestions = filtered.slice(0, MAX_SUGGESTIONS);
+  }
 
-  const loading = !!debouncedKey && !cache.has(debouncedKey);
+  // Loading covers the entire window from "user typed something" through
+  // "fetch settled" — including the debounce window — so the dropdown can
+  // surface a "Loading…" affordance immediately on a keystroke instead of
+  // staying blank for 150ms.
+  const loading =
+    context.kind !== 'none' &&
+    !(requestKey === debouncedKey && cache.has(debouncedKey));
 
-  // We have a "definite" answer only when the user has stopped typing long
-  // enough for the debounce to settle (requestKey === debouncedKey) and the
-  // cache has been populated for that key. Without this, "No matches"
-  // would flash during every keystroke.
+  // "No matches" should only appear when the user is actively filtering
+  // (non-empty prefix) and the backend has confirmed there's nothing. With
+  // an empty prefix the user just opened a slot — there's nothing to
+  // "match against" yet, and showing "No matches" reads as a bug.
+  const prefix = context.kind === 'none' ? '' : context.prefix;
   const definitelyEmpty =
     context.kind !== 'none' &&
+    prefix !== '' &&
     requestKey === debouncedKey &&
     cache.has(debouncedKey) &&
     suggestions.length === 0;
