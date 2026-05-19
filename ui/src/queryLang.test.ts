@@ -290,7 +290,10 @@ describe('label name translation', () => {
 
 describe('parseQuery / buildQuery', () => {
   it('round-trips a built query', () => {
-    const q = buildQuery('my-service', 'process_cpu:cpu:nanoseconds:cpu:nanoseconds');
+    const q = buildQuery(
+      'my-service',
+      'process_cpu:cpu:nanoseconds:cpu:nanoseconds',
+    );
     const parsed = parseQuery(q);
     expect(parsed).toEqual({
       service: 'my-service',
