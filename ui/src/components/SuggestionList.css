@@ -18,3 +18,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.suggestion-empty {
+  padding: var(--space-1-5) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-style: italic;
+}
