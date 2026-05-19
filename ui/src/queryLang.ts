@@ -41,6 +41,24 @@ export type CursorContext =
 const IDENT = /[A-Za-z0-9_]/;
 const WS = /\s/;
 
+// Label names that are presented to the user in a friendlier form than the
+// backend uses. The query bar accepts and renders the display name; we
+// translate to/from the internal name whenever a matcher crosses the API.
+const DISPLAY_TO_INTERNAL: Record<string, string> = {
+  profile_type: '__profile_type__',
+};
+const INTERNAL_TO_DISPLAY: Record<string, string> = Object.fromEntries(
+  Object.entries(DISPLAY_TO_INTERNAL).map(([d, i]) => [i, d]),
+);
+
+export function toInternalLabel(name: string): string {
+  return DISPLAY_TO_INTERNAL[name] ?? name;
+}
+
+export function toDisplayLabel(name: string): string {
+  return INTERNAL_TO_DISPLAY[name] ?? name;
+}
+
 export function tokenize(q: string): Tokens {
   const braceOpen = q.indexOf('{');
   if (braceOpen === -1) {
@@ -178,7 +196,7 @@ function parseSlot(q: string, slotStart: number, slotEnd: number): Matcher {
 }
 
 function serializeMatcher(m: Matcher): string {
-  return `{${m.name}${m.op}"${m.value}"}`;
+  return `{${toInternalLabel(m.name)}${m.op}"${m.value}"}`;
 }
 
 export function getCursorContext(

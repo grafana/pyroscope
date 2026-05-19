@@ -5,6 +5,8 @@ import {
   applySuggestion,
   buildQuery,
   parseQuery,
+  toDisplayLabel,
+  toInternalLabel,
 } from './queryLang';
 
 describe('tokenize', () => {
@@ -251,6 +253,27 @@ describe('applySuggestion', () => {
     const ctx = getCursorContext(q, 4);
     const { next } = applySuggestion(q, ctx, 'api');
     expect(next).toBe('{a="api"}');
+  });
+});
+
+describe('label name translation', () => {
+  it('maps display names to their internal form', () => {
+    expect(toInternalLabel('profile_type')).toBe('__profile_type__');
+    expect(toInternalLabel('service_name')).toBe('service_name');
+  });
+
+  it('maps internal names to their display form', () => {
+    expect(toDisplayLabel('__profile_type__')).toBe('profile_type');
+    expect(toDisplayLabel('service_name')).toBe('service_name');
+  });
+
+  it('serializes profile_type matchers using the internal label name', () => {
+    const q = '{profile_type="cpu", service_name="ap"}';
+    const cursor = q.indexOf('"ap"') + 2;
+    const ctx = getCursorContext(q, cursor);
+    expect(ctx.kind).toBe('value');
+    if (ctx.kind !== 'value') return;
+    expect(ctx.otherMatchers).toEqual(['{__profile_type__="cpu"}']);
   });
 });
 
