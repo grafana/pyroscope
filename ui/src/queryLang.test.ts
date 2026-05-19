@@ -7,6 +7,7 @@ import {
   parseQuery,
   toDisplayLabel,
   toInternalLabel,
+  isInternalLabel,
 } from './queryLang';
 
 describe('tokenize', () => {
@@ -265,6 +266,16 @@ describe('label name translation', () => {
   it('maps internal names to their display form', () => {
     expect(toDisplayLabel('__profile_type__')).toBe('profile_type');
     expect(toDisplayLabel('service_name')).toBe('service_name');
+  });
+
+  it('detects internal __xxx__ labels', () => {
+    expect(isInternalLabel('__delta__')).toBe(true);
+    expect(isInternalLabel('__session_id__')).toBe(true);
+    expect(isInternalLabel('__profile_type__')).toBe(true);
+    expect(isInternalLabel('service_name')).toBe(false);
+    expect(isInternalLabel('profile_type')).toBe(false);
+    expect(isInternalLabel('__partial')).toBe(false);
+    expect(isInternalLabel('partial__')).toBe(false);
   });
 
   it('serializes profile_type matchers using the internal label name', () => {

@@ -59,6 +59,14 @@ export function toDisplayLabel(name: string): string {
   return INTERNAL_TO_DISPLAY[name] ?? name;
 }
 
+// Labels wrapped in double underscores (e.g. __delta__, __session_id__) are
+// reserved internals and should not surface in autocomplete. Aliased labels
+// like __profile_type__ are first translated via `toDisplayLabel`, so this
+// check sees the display form (`profile_type`) and lets them through.
+export function isInternalLabel(name: string): boolean {
+  return name.startsWith('__') && name.endsWith('__');
+}
+
 export function tokenize(q: string): Tokens {
   const braceOpen = q.indexOf('{');
   if (braceOpen === -1) {
