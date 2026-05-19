@@ -51,7 +51,11 @@ export async function checkMultitenancy(): Promise<
   }
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+async function post<T>(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -60,9 +64,43 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
+    signal,
   });
   if (!res.ok) throw new Error(`${path} ${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
+}
+
+interface NamesResponse {
+  names?: string[];
+}
+
+export async function fetchLabelNames(
+  matchers: string[],
+  start: number,
+  end: number,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const data = await post<NamesResponse>(
+    '/querier.v1.QuerierService/LabelNames',
+    { matchers, start, end },
+    signal,
+  );
+  return data.names ?? [];
+}
+
+export async function fetchLabelValues(
+  name: string,
+  matchers: string[],
+  start: number,
+  end: number,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const data = await post<NamesResponse>(
+    '/querier.v1.QuerierService/LabelValues',
+    { name, matchers, start, end },
+    signal,
+  );
+  return data.names ?? [];
 }
 
 interface LabelSet {
