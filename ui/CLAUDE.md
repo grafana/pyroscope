@@ -85,6 +85,34 @@ Banner comments are not allowed. Do not use decorative section dividers such as:
 // ─── Section name ────────────────────────
 ```
 
+## Documenting non-obvious tradeoffs
+
+The default is no comments — well-named identifiers and obvious code don't need narration. But when a piece of code makes a **specific, non-obvious tradeoff** that a future maintainer might reasonably want to revisit, leave a comment that captures the decision.
+
+A tradeoff comment should answer three questions:
+
+1. **What is this doing that looks unusual?** Name the pattern or shape directly.
+2. **Why this instead of the obvious alternative?** Identify the alternative and the specific reason it was rejected (a lint rule, a performance constraint, a library quirk, a known bug).
+3. **What would have to change for the alternative to win?** Give the maintainer a concrete trigger for reconsidering.
+
+This kind of comment is the opposite of describing *what* the code does — it documents the *decision* behind the code so the decision can be re-litigated later with full context.
+
+**When to write one:**
+
+- A workaround for a lint rule or framework quirk.
+- A pattern that differs from how the same problem is solved elsewhere in this codebase.
+- A choice that trades simplicity for performance, or vice versa.
+- A deviation from React/TypeScript idioms (e.g. unused state setters as re-render triggers, reading mutable module state during render, using refs to bypass exhaustive-deps).
+- Anything where a careful reader would reasonably ask "why isn't this written the obvious way?"
+
+**When NOT to write one:**
+
+- The code is the obvious solution.
+- The "why" is captured by the function name or a nearby type signature.
+- The reason is the current task or PR (that belongs in the commit message).
+
+See `src/hooks/useLabelSuggestions.ts` for an example.
+
 ## Dependency workarounds
 
 Several packages are patched via `yarn patch` due to incompatibilities with our stack. Before debugging a dependency issue, read `WORKAROUNDS.md` — it documents each patch, why it exists, and when it can be removed. Patch files live in `.yarn/patches/`.
