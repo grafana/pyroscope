@@ -45,20 +45,10 @@ jobs:
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
       - name: Login to DockerHub (from vault)
         uses: grafana/shared-workflows/actions/dockerhub-login@081a366728379fd0426b9cfef190e9a21c2d5418 # dockerhub-login/v1.0.3
-      - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@c2f1df59dba624b3fd509e5181aa8da5217120c0
+      - id: get-github-app-token
+        uses: grafana/shared-workflows/actions/create-github-app-token@580590a644e82e79bb2598bdaba0be245a14dda0 # create-github-app-token/v0.2.2
         with:
-          repo_secrets: |
-            GRAFANA_PYROSCOPE_BOT_APP_APP_ID=grafana-pyroscope-bot:app-id
-            GRAFANA_PYROSCOPE_BOT_APP_PRIVATE_KEY=grafana-pyroscope-bot:app-private-key
-      - name: Get github app token (valid for an hour)
-        id: brew-token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ env.GRAFANA_PYROSCOPE_BOT_APP_APP_ID }}
-          private-key: ${{ env.GRAFANA_PYROSCOPE_BOT_APP_PRIVATE_KEY }}
-          owner: pyroscope-io
-          repositories: homebrew-brew
+          github_app: grafana-pyroscope-bot
       - run: make frontend/build
       - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
@@ -75,12 +65,12 @@ jobs:
       - if: env.IMAGE_PUBLISH_LATEST == 'true'
         name: Update homebrew formulas
         run: |
-          git config --global url."https://x-access-token:$(echo "${HOMEBREW_GITHUB_TOKEN}" | xargs)@github.com/pyroscope-io/homebrew-brew".insteadOf "https://github.com/pyroscope-io/homebrew-brew" 2> /dev/null
+          git config --global url."https://x-access-token:$(echo "${HOMEBREW_GITHUB_TOKEN}" | xargs)@github.com/grafana/homebrew-pyroscope".insteadOf "https://github.com/grafana/homebrew-pyroscope" 2> /dev/null
           git config --global user.email "dmitry+bot@pyroscope.io"
           git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
-          git clone https://github.com/pyroscope-io/homebrew-brew ../homebrew-brew
-          cd ../homebrew-brew
+          git clone https://github.com/grafana/homebrew-pyroscope ../homebrew-pyroscope
+          cd ../homebrew-pyroscope
           make generate-formulas && git add Formula && git commit -m "chore: update formulas" && git push origin main
         env:
-          HOMEBREW_GITHUB_TOKEN: ${{ steps.brew-token.outputs.token }}
+          HOMEBREW_GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

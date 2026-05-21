@@ -654,10 +654,10 @@ func (w *Writer) writePostingsOffsetTable() error {
 	cnt := w.cntPO
 	for d.Err() == nil && cnt > 0 {
 		w.buf1.Reset()
-		w.buf1.PutUvarint(d.Uvarint())                     // Keycount.
-		w.buf1.PutUvarintStr(yoloString(d.UvarintBytes())) // Label name.
-		w.buf1.PutUvarintStr(yoloString(d.UvarintBytes())) // Label value.
-		w.buf1.PutUvarint64(d.Uvarint64() + adjustment)    // Offset.
+		w.buf1.PutUvarint(d.Uvarint())                  // Keycount.
+		w.buf1.PutUvarintBytes(d.UvarintBytes())        // Label name.
+		w.buf1.PutUvarintBytes(d.UvarintBytes())        // Label value.
+		w.buf1.PutUvarint64(d.Uvarint64() + adjustment) // Offset.
 		w.buf1.WriteToHash(w.crc32)
 		if err := w.write(w.buf1.Get()); err != nil {
 			return err
@@ -1128,39 +1128,6 @@ func (s Symbols) ReverseLookup(sym string) (uint32, error) {
 func (s Symbols) Size() int {
 	return len(s.offsets) * 8
 }
-
-func (s Symbols) Iter() StringIter {
-	d := encoding.DecWrap(tsdb_enc.NewDecbufAt(s.bs, s.off, castagnoliTable))
-	cnt := d.Be32int()
-	return &symbolsIter{
-		d:   d,
-		cnt: cnt,
-	}
-}
-
-// symbolsIter implements StringIter.
-type symbolsIter struct {
-	d   encoding.Decbuf
-	cnt int
-	cur string
-	err error
-}
-
-func (s *symbolsIter) Next() bool {
-	if s.cnt == 0 || s.err != nil {
-		return false
-	}
-	s.cur = yoloString(s.d.UvarintBytes())
-	s.cnt--
-	if s.d.Err() != nil {
-		s.err = s.d.Err()
-		return false
-	}
-	return true
-}
-
-func (s symbolsIter) At() string { return s.cur }
-func (s symbolsIter) Err() error { return s.err }
 
 func yoloString(b []byte) string {
 	return *((*string)(unsafe.Pointer(&b)))
