@@ -147,8 +147,8 @@ func validStoragePrefixPart(part string) bool {
 	if part == "." || part == ".." {
 		return false
 	}
-	for i, b := range part {
-		if (b < 'a' || b > 'z') && (b < 'A' || b > 'Z') && b != '_' && b != '-' && b != '.' && (b < '0' || b > '9' || i == 0) {
+	for _, b := range part {
+		if (b < 'a' || b > 'z') && (b < 'A' || b > 'Z') && b != '_' && b != '-' && b != '.' && (b < '0' || b > '9') {
 			return false
 		}
 	}

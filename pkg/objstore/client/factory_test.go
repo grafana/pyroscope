@@ -114,8 +114,16 @@ func TestClient_ConfigValidation(t *testing.T) {
 			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "helloWORLD123"},
 		},
 		{
+			name: "prefix/valid-starts-with-digit",
+			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "2026"},
+		},
+		{
 			name: "prefix/valid-subdir",
 			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello/world/env"},
+		},
+		{
+			name: "prefix/valid-subdir-starts-with-digit",
+			cfg:  Config{StorageBackendConfig: StorageBackendConfig{Backend: Filesystem}, Prefix: "hello/2026/env"},
 		},
 		{
 			name: "prefix/valid-subdir-trailing-slash",
