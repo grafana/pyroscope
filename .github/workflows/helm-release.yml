@@ -17,7 +17,7 @@ jobs:
       charts_dir: operations/pyroscope/helm/
       cr_configfile: operations/pyroscope/helm/cr.yaml
       ct_configfile: operations/pyroscope/helm/ct.yaml
-      github_app_name: grafana-pyroscope-releases
+      github_app: grafana-pyroscope-releases
   call-update-helm-repo-pyroscope-monitoring:
     uses: grafana/helm-charts/.github/workflows/update-helm-repo.yaml@9ddb81243bfc8aea3bf3d0a9954451d407cee1c6
     permissions:
@@ -28,4 +28,4 @@ jobs:
       charts_dir: operations/pyroscope/helm/
       cr_configfile: operations/monitoring/helm/cr.yaml
       ct_configfile: operations/monitoring/helm/ct.yaml
-      github_app_name: grafana-pyroscope-releases
+      github_app: grafana-pyroscope-releases
