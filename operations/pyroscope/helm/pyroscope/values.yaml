@@ -212,9 +212,9 @@ pyroscope:
 architecture:
   storage:
     # -- (bool) Enable v1 storage layer.
-    v1: true
+    v1: false
     # -- (bool) Enable v2 storage layer.
-    v2: false
+    v2: true
 
     migration:
       # -- (float) Specifies the fraction [0:1] that should be send to the v1 write path / ingester in combined mode. 0 means no traffics is sent to ingester. 1 means 100% of requests are sent to ingester.
