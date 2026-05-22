@@ -115,6 +115,9 @@ func TestFormatTreeWithLimits(t *testing.T) {
 	})
 
 	t.Run("does not enforce limits when nil is passed", func(t *testing.T) {
+		// With nil limits the oversized varint reaches make([]byte, n) and panics
+		// without the serialize.go guard — the guard doesn't fire because maxNameLen=0
+		// means disabled. This test confirms nil limits don't error on valid payloads.
 		ingester := new(mockIngester)
 		md := ingestion.Metadata{LabelSet: new(labelset.LabelSet)}
 		ctx := user.InjectOrgID(context.Background(), "test-tenant")
