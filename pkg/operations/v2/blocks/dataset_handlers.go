@@ -221,13 +221,9 @@ func (h *Handlers) readTSDBIndex(ctx context.Context, blockMeta *metastorev1.Blo
 		return nil, fmt.Errorf("failed to get labels: %w", err)
 	}
 
-	symbolIter := idx.Symbols()
-	var symbols []string
-	for symbolIter.Next() {
-		symbols = append(symbols, symbolIter.At())
-	}
-	if err := symbolIter.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate symbols: %w", err)
+	symbols, err := idx.SymbolTable()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read symbol table: %w", err)
 	}
 
 	series, err := h.getIndexSeries(idx)

@@ -30,6 +30,34 @@ func WithV2() ClusterOption {
 	}
 }
 
+// WithV2Federated configures a V2 cluster suitable for exercising the
+// federated (multi-tenant) query path. It mirrors the V2 cluster but
+// without a compaction-worker: L0 segment blocks therefore remain
+// Format1 (per-tenant dataset_index pseudo-datasets) for the duration
+// of the test, which is what the multi-Format1 resolution path in the
+// query backend handles.
+//
+// With two segment-writers and adaptive placement defaults, profiles
+// from each tenant are spread across both writers, so each flushed L0
+// segment is a multi-tenant block and naturally exercises the
+// multi-Format1 resolution path.
+func WithV2Federated() ClusterOption {
+	return func(c *Cluster) {
+		c.v2 = true
+		c.expectedComponents = []string{
+			"distributor",
+			"distributor",
+			"segment-writer",
+			"segment-writer",
+			"metastore",
+			"metastore",
+			"metastore",
+			"query-frontend",
+			"query-backend",
+		}
+	}
+}
+
 func (c *Cluster) metastoreConfig() (string, error) {
 	cfgPath := filepath.Join(c.tmpDir, "metastore.yaml")
 

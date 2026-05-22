@@ -270,7 +270,7 @@ func (a *API) RegisterStoreGateway(svc *storegateway.StoreGateway) {
 		{Desc: "Ring status", Path: "/store-gateway/ring"},
 		{Desc: "Tenants & Blocks", Path: "/store-gateway/tenants"},
 	})
-	a.RegisterRoute("/store-gateway/tenants", http.HandlerFunc(svc.RingHandler), a.registerOptionsRingPage()...)
+	a.RegisterRoute("/store-gateway/ring", http.HandlerFunc(svc.RingHandler), a.registerOptionsRingPage()...)
 	a.RegisterRoute("/store-gateway/tenants", http.HandlerFunc(svc.TenantsHandler), a.registerOptionsPublicAccess()...)
 	a.RegisterRoute("/store-gateway/tenant/{tenant}/blocks", http.HandlerFunc(svc.BlocksHandler), a.registerOptionsPublicAccess()...)
 }

@@ -75,6 +75,7 @@ generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/pr
 	cd pkg && PATH=$(BIN) $(BIN)/buf generate
 	PATH="$(BIN):$(PATH)" ./tools/add-parquet-tags.sh
 	go run ./tools/doc-generator/ ./docs/sources/configure-server/reference-configuration-parameters/index.template > docs/sources/configure-server/reference-configuration-parameters/index.md
+	go run ./tools/doc-generator/ -format yaml-example -skip-blocks ingester,querier,query_scheduler,compactor,store_gateway > cmd/pyroscope/pyroscope.yaml
 	go run ./tools/api-docs-generator/
 
 .PHONY: buf/lint

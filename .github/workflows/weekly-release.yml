@@ -39,25 +39,15 @@ jobs:
           git tag "$IMAGE_TAG"
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: "1.25.9"
+          go-version: "1.25.10"
           cache: false
       # setup docker buildx
       - name: Set up QEMU
         uses: docker/setup-qemu-action@2b82ce82d56a2a04d2637cd93a637ae1b359c0a7 # v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55 # v2
-      # login to docker hub
-      - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@c2f1df59dba624b3fd509e5181aa8da5217120c0
-        with:
-          common_secrets: |
-            DOCKERHUB_USERNAME=dockerhub:username
-            DOCKERHUB_PASSWORD=dockerhub:password
-      - uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
-        name: Login to Docker Hub
-        with:
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ env.DOCKERHUB_PASSWORD }}
+      - name: Login to DockerHub (from vault)
+        uses: grafana/shared-workflows/actions/dockerhub-login@081a366728379fd0426b9cfef190e9a21c2d5418 # dockerhub-login/v1.0.3
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 20

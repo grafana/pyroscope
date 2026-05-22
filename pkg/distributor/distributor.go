@@ -61,6 +61,11 @@ type PushClient interface {
 	Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
 }
 
+type SegmentWriterClient interface {
+	Push(context.Context, *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error)
+	CheckReady(context.Context) error
+}
+
 const (
 	// distributorRingKey is the key under which we store the distributors ring in the KVStore.
 	distributorRingKey = "distributor"
@@ -121,7 +126,7 @@ type Distributor struct {
 	profileSizeStats        *usagestats.MultiStatistics
 
 	router        *writepath.Router
-	segmentWriter writepath.SegmentWriterClient
+	segmentWriter SegmentWriterClient
 }
 
 type Limits interface {
@@ -157,7 +162,7 @@ func New(
 	limits Limits,
 	reg prometheus.Registerer,
 	logger log.Logger,
-	segmentWriter writepath.SegmentWriterClient,
+	segmentWriter SegmentWriterClient,
 	ingesterClientsOptions ...connect.ClientOption,
 ) (*Distributor, error) {
 	ingesterClientsOptions = append(
@@ -238,6 +243,54 @@ func (d *Distributor) running(ctx context.Context) error {
 func (d *Distributor) stopping(_ error) error {
 	d.asyncRequests.Wait()
 	return services.StopManagerAndAwaitStopped(context.Background(), d.subservices)
+}
+
+// CheckReady reports whether the distributor is ready to serve requests.
+// It verifies the destinations selected by the deployment default write path,
+// so the distributor does not accept traffic before the relevant ring is
+// populated during rollouts.
+func (d *Distributor) CheckReady(ctx context.Context) error {
+	if s := d.State(); s != services.Running && s != services.Stopping {
+		return fmt.Errorf("distributor not ready: %v", s)
+	}
+
+	switch d.limits.WritePathOverrides("").WritePath {
+	case writepath.SegmentWriterPath:
+		return d.checkSegmentWriterReady(ctx)
+	case writepath.CombinedPath:
+		if err := d.checkIngesterRingReady(ctx); err != nil {
+			return fmt.Errorf("ingester write path: %w", err)
+		}
+		if err := d.checkSegmentWriterReady(ctx); err != nil {
+			return fmt.Errorf("segment-writer write path: %w", err)
+		}
+		return nil
+	default:
+		return d.checkIngesterRingReady(ctx)
+	}
+}
+
+// checkIngesterRingReady reports whether the ingester ring has at least one
+// healthy instance available for writes.
+func (d *Distributor) checkIngesterRingReady(context.Context) error {
+	if d.ingestersRing == nil {
+		return errors.New("ingester ring not configured")
+	}
+	rs, err := d.ingestersRing.GetAllHealthy(ring.Write)
+	if err != nil {
+		return fmt.Errorf("ingester ring: %w", err)
+	}
+	if len(rs.Instances) == 0 {
+		return errors.New("ingester ring has no healthy instances")
+	}
+	return nil
+}
+
+func (d *Distributor) checkSegmentWriterReady(ctx context.Context) error {
+	if d.segmentWriter == nil {
+		return errors.New("segment-writer client not configured")
+	}
+	return d.segmentWriter.CheckReady(ctx)
 }
 
 func isKnownConnectError(err error) bool {
@@ -373,6 +426,10 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		)
 	}
 
+	if req.ParseDuration > 0 {
+		d.metrics.parseDuration.WithLabelValues(string(req.RawProfileType), tenantID).Observe(req.ParseDuration.Seconds())
+	}
+
 	res := multierror.New()
 	errorsMutex := new(sync.Mutex)
 	wg := new(sync.WaitGroup)
@@ -381,7 +438,7 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		go func() {
 			defer wg.Done()
 			itErr := util.RecoverPanic(func() error {
-				return d.pushSeries(ctx, s, req.RawProfileType, tenantID)
+				return d.pushSeries(ctx, s, req.RawProfileType, tenantID, req.ParseDuration)
 			})()
 
 			if itErr != nil {
@@ -451,14 +508,14 @@ func (p *pushLog) log(logger log.Logger, err error) {
 	p.lvl(logger).Log(p.fields...)
 }
 
-func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string) (err error) {
+func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string, parseDuration time.Duration) (err error) {
 	if req.Profile == nil {
 		return noNewProfilesReceivedError()
 	}
 	now := model.Now()
 
 	logger := spanlogger.FromContext(ctx, log.With(d.logger, "tenant", tenantID))
-	finalLog := newPushLog(10)
+	finalLog := newPushLog(13)
 	defer func() {
 		finalLog.log(logger, err)
 	}()
@@ -544,6 +601,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		"ingestion_delay", now.Time().Sub(profTime),
 		"decompressed_size", decompressedSize,
 		"sample_count", len(p.Sample),
+		"parse_duration", parseDuration,
 	)
 	d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize))                              //todo use req.TotalBytesUncompressed to include labels siz
 	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize)) // deprecated TODO remove

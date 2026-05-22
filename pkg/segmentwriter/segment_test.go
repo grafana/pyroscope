@@ -36,11 +36,13 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/metastore/index/dlq"
 	metastoretest "github.com/grafana/pyroscope/v2/pkg/metastore/test"
 	"github.com/grafana/pyroscope/v2/pkg/model"
+	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/memory"
 	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
 	testutil3 "github.com/grafana/pyroscope/v2/pkg/phlaredb/block/testutil"
+	tsdbindex "github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 	pprofth "github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/v2/pkg/segmentwriter/memdb"
 	memdbtest "github.com/grafana/pyroscope/v2/pkg/segmentwriter/memdb/testutil"
@@ -308,10 +310,15 @@ func TestDatasetMinMaxTime(t *testing.T) {
 
 	block := <-metas
 
+	// Datasets in the block: real datasets are sorted by tenant+service; a
+	// per-tenant dataset index pseudo-dataset is appended after the last
+	// real dataset of each tenant.
 	expected := [][2]int{
-		{10, 1337},
-		{239, 420},
-		{420, 421},
+		{10, 1337}, // ta/svc1
+		{10, 1337}, // ta dataset index
+		{239, 420}, // tb/svc1
+		{420, 421}, // tb/svc2
+		{239, 421}, // tb dataset index
 	}
 
 	require.Equal(t, len(expected), len(block.Datasets))
@@ -321,6 +328,100 @@ func TestDatasetMinMaxTime(t *testing.T) {
 	}
 	assert.Equal(t, int64(10), block.MinTime)
 	assert.Equal(t, int64(1337), block.MaxTime)
+}
+
+// TestSegmentTenantDatasetIndexes flushes a multi-tenant segment and
+// inspects the per-tenant Format1 dataset_index pseudo-datasets in the
+// resulting block. For each tenant it verifies that the dataset_index
+// encodes one entry per real dataset of the tenant, and that each
+// entry's chunk SeriesIndex is the global position of the real dataset
+// within meta.Datasets (this is what the query backend uses to resolve
+// datasets from a Format1 lookup).
+func TestSegmentTenantDatasetIndexes(t *testing.T) {
+	l := test.NewTestingLogger(t)
+	bucket := memory.NewInMemBucket()
+	metas := make(chan *metastorev1.BlockMeta, 1)
+	client := mockmetastorev1.NewMockIndexServiceClient(t)
+	client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			metas <- args.Get(1).(*metastorev1.AddBlockRequest).Block
+		}).Return(new(metastorev1.AddBlockResponse), nil)
+	sw := newSegmentWriter(
+		l,
+		newSegmentMetrics(nil),
+		memdb.NewHeadMetricsWithPrefix(nil, ""),
+		defaultTestConfig(),
+		validation.MockDefaultOverrides(),
+		bucket,
+		client,
+	)
+	defer sw.stop()
+
+	// Two tenants on the same shard so they share the segment block.
+	data := []input{
+		{shard: 1, tenant: "ta", profile: cpuProfile(13, 100, "svc1", "foo", "bar")},
+		{shard: 1, tenant: "ta", profile: cpuProfile(13, 110, "svc2", "foo", "bar")},
+		{shard: 1, tenant: "tb", profile: cpuProfile(13, 120, "svc1", "foo", "bar")},
+	}
+	_ = sw.ingest(1, func(head segmentIngest) {
+		for _, p := range data {
+			head.ingest(p.tenant, p.profile.Profile, p.profile.UUID, p.profile.Labels, p.profile.Annotations)
+		}
+	})
+
+	meta := <-metas
+
+	// Group real datasets by tenant; record their global positions in
+	// meta.Datasets and find each tenant's Format1 pseudo-dataset.
+	realByTenant := map[string][]int{}
+	indexByTenant := map[string]*metastorev1.Dataset{}
+	for i, ds := range meta.Datasets {
+		tenantName := meta.StringTable[ds.Tenant]
+		switch block.DatasetFormat(ds.Format) {
+		case block.DatasetFormat0:
+			realByTenant[tenantName] = append(realByTenant[tenantName], i)
+		case block.DatasetFormat1:
+			require.Nil(t, indexByTenant[tenantName], "more than one Format1 dataset for tenant %s", tenantName)
+			indexByTenant[tenantName] = ds
+		}
+	}
+	require.Equal(t, []int{0, 1}, realByTenant["ta"], "expected ta to have two real datasets")
+	require.Len(t, realByTenant["tb"], 1, "expected tb to have one real dataset")
+	require.Len(t, indexByTenant, 2, "expected one Format1 dataset per tenant")
+
+	// Open the block and inspect each tenant's dataset_index.
+	obj := block.NewObject(phlareobj.NewBucket(bucket), meta)
+	t.Cleanup(func() { _ = obj.Close() })
+	require.NoError(t, obj.Open(context.Background()))
+
+	for tenantName, indexDS := range indexByTenant {
+		t.Run(tenantName, func(t *testing.T) {
+			ds := block.NewDataset(indexDS, obj)
+			t.Cleanup(func() { _ = ds.Close() })
+			require.NoError(t, ds.Open(context.Background(), block.SectionDatasetIndex))
+
+			// Walk every series in the index and collect chunk
+			// SeriesIndex values; they must equal the global
+			// positions of the tenant's real datasets within
+			// meta.Datasets.
+			indexReader := ds.Index()
+			n, v := tsdbindex.AllPostingsKey()
+			postings, err := indexReader.Postings(n, nil, v)
+			require.NoError(t, err)
+			var seriesIndices []int
+			chunks := make([]tsdbindex.ChunkMeta, 1)
+			for postings.Next() {
+				_, err := indexReader.Series(postings.At(), nil, &chunks)
+				require.NoError(t, err)
+				require.Len(t, chunks, 1, "each series in the dataset_index should map to exactly one chunk")
+				seriesIndices = append(seriesIndices, int(chunks[0].SeriesIndex))
+			}
+			require.NoError(t, postings.Err())
+			slices.Sort(seriesIndices)
+			assert.Equal(t, realByTenant[tenantName], seriesIndices,
+				"dataset_index series must point to the tenant's real datasets via global positions")
+		})
+	}
 }
 
 func TestQueryMultipleSeriesSingleTenant(t *testing.T) {
@@ -552,6 +653,10 @@ func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClien
 		require.NoError(sw.t, err)
 
 		for _, ds := range meta.Datasets {
+			if block.DatasetFormat(ds.Format) != block.DatasetFormat0 {
+				// Skip pseudo-datasets such as the per-tenant dataset index.
+				continue
+			}
 			tenant := meta.StringTable[ds.Tenant]
 			profiles := blob[ds.TableOfContents[0]:ds.TableOfContents[1]]
 			tsdb := blob[ds.TableOfContents[1]:ds.TableOfContents[2]]
@@ -570,6 +675,9 @@ func (sw *sw) createBlocksFromMetas(blocks []*metastorev1.BlockMeta) tenantClien
 	res := make(tenantClients)
 	for _, meta := range blocks {
 		for _, ds := range meta.Datasets {
+			if block.DatasetFormat(ds.Format) != block.DatasetFormat0 {
+				continue
+			}
 			tenant := meta.StringTable[ds.Tenant]
 			if _, ok := res[tenant]; !ok {
 				// todo consider not using BlockQuerier for tests

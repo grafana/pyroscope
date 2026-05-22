@@ -25,9 +25,11 @@ func (q *QueryFrontend) SelectHeatmap(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectHeatmapRequest],
 ) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
-	// Validate step
-	if c.Msg.Step <= 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("step must be greater than 0, got %f", c.Msg.Step))
+	// Sub-millisecond step values truncate to 0 in the backend's millisecond
+	// arithmetic and would cause divide-by-zero / unbounded loop downstream;
+	// reject anything below 1ms.
+	if c.Msg.Step < 0.001 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("step must be >= 1ms, got %f", c.Msg.Step))
 	}
 
 	// Validate limit if provided

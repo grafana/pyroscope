@@ -24,17 +24,22 @@ The .NET Profiler supports the following profiling types:
 * Allocations
 * Lock contention
 * Exceptions
-* Live heap (requires .NET 7+)
+* Live heap
 
 ### Compatibility
 
 The only compatible operating system and architecture combination is Linux running on amd64 architecture.
 
-Our .NET profiler works with .NET 6 and later versions.
+Our .NET profiler works with the following .NET versions:
+
+* .NET 8
+* .NET 9
+* .NET 10
+
 
 ## Before you begin
 
-To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pyroscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pyroscope instance with Grafana Cloud Profiles](/products/cloud/profiles/) (requires a free Grafana Cloud account).
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 
@@ -175,7 +180,7 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 | PYROSCOPE_PROFILING_EXCEPTION_ENABLED  | Boolean      | If set to true, enables the Exceptions profiling. Defaults to false.                                                              |
 | PYROSCOPE_PROFILING_ALLOCATION_ENABLED | Boolean      | If set to true, enables the Allocations profiling. Defaults to false.                                                             |
 | PYROSCOPE_PROFILING_LOCK_ENABLED       | Boolean      | If set to true, enables the Lock Contention profiling. Defaults to false.                                                         |
-| PYROSCOPE_PROFILING_HEAP_ENABLED       | Boolean      | If set to true, enables the Live heap profiling. Requires .NET 7+. Defaults to false.                                             |
+| PYROSCOPE_PROFILING_HEAP_ENABLED       | Boolean      | If set to true, enables the Live heap profiling. Defaults to false.                                                               |
 | PYROSCOPE_BASIC_AUTH_USER              | String       | For HTTP Basic Authentication, use this to send profiles to authenticated server, for example Grafana Cloud                       |
 | PYROSCOPE_BASIC_AUTH_PASSWORD          | String       | For HTTP Basic Authentication, use this to send profiles to authenticated server, for example Grafana Cloud                       |
 | PYROSCOPE_TENANT_ID                    | String       | Only needed if using multi-tenancy in Pyroscope.                                                                                  |

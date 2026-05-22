@@ -225,6 +225,114 @@ func pad(length int) string {
 	return strings.Repeat(" ", length)
 }
 
+type yamlExampleWriter struct {
+	out        strings.Builder
+	skipBlocks map[string]bool
+}
+
+func (w *yamlExampleWriter) writeConfigYAML(blocks []*parse.ConfigBlock) {
+	var topBlock *parse.ConfigBlock
+	for _, b := range blocks {
+		if b.Name == "" {
+			topBlock = b
+			break
+		}
+	}
+	if topBlock == nil {
+		return
+	}
+
+	w.out.WriteString("# Pyroscope example configuration file.\n")
+	w.out.WriteString("#\n")
+	w.out.WriteString("# All fields are shown with their default values, commented out.\n")
+	w.out.WriteString("# Uncomment and modify the ones you want to override.\n")
+	w.out.WriteString("# For the full reference see:\n")
+	w.out.WriteString("#   https://grafana.com/docs/pyroscope/latest/configure-server/reference-configuration-parameters/\n")
+	w.out.WriteString("\n")
+
+	w.writeBlock(topBlock, 0)
+}
+
+func (w *yamlExampleWriter) hasBasicContent(block *parse.ConfigBlock) bool {
+	for _, entry := range block.Entries {
+		switch entry.Kind {
+		case parse.KindBlock:
+			if w.hasBasicContent(entry.Block) {
+				return true
+			}
+		default:
+			if entry.FieldCategory == "" || entry.FieldCategory == "basic" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (w *yamlExampleWriter) writeBlock(block *parse.ConfigBlock, indent int) {
+	first := true
+	for _, entry := range block.Entries {
+		switch entry.Kind {
+		case parse.KindBlock:
+			if w.skipBlocks[entry.Name] {
+				continue
+			}
+			if !w.hasBasicContent(entry.Block) {
+				continue
+			}
+			if !first {
+				w.out.WriteString("\n")
+			}
+			first = false
+			w.out.WriteString(pad(indent) + entry.Name + ":\n")
+			w.writeBlock(entry.Block, indent+tabWidth)
+
+		case parse.KindField, parse.KindSlice, parse.KindMap:
+			if entry.FieldCategory != "" && entry.FieldCategory != "basic" {
+				continue
+			}
+			if !first {
+				w.out.WriteString("\n")
+			}
+			first = false
+			if entry.FieldDesc != "" {
+				w.writeDescComment(entry.FieldDesc, indent)
+			}
+			w.out.WriteString(fmt.Sprintf("%s# %s: %s\n", pad(indent), entry.Name, yamlDefaultValue(entry)))
+		}
+	}
+}
+
+func (w *yamlExampleWriter) writeDescComment(desc string, indent int) {
+	wrapped := wordwrap.WrapString(desc, uint(maxLineWidth-indent-2))
+	for _, line := range strings.Split(strings.TrimSpace(wrapped), "\n") {
+		w.out.WriteString(pad(indent) + "# " + line + "\n")
+	}
+}
+
+func (w *yamlExampleWriter) string() string {
+	return strings.TrimSpace(w.out.String()) + "\n"
+}
+
+func yamlDefaultValue(e *parse.ConfigEntry) string {
+	def := e.FieldDefault
+	switch e.FieldType {
+	case "string", "url":
+		return strconv.Quote(def)
+	case "duration":
+		cleaned := cleanupDuration(def)
+		if cleaned == "" {
+			cleaned = "0s"
+		}
+		return cleaned
+	default:
+		if def == "" {
+			return "0"
+		}
+		return def
+	}
+}
+
 func cleanupDuration(value string) string {
 	// This is the list of suffixes to remove from the duration if they're not
 	// the whole duration value.
