@@ -336,6 +336,7 @@
       "v2": false
     }
   },
+  "extraObjects": [],
   "global": {
     "imageRegistry": null
   },

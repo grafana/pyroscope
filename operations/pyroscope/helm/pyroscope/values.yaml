@@ -578,3 +578,18 @@ serviceMonitor:
   scheme: http
   # -- ServiceMonitor will use these tlsConfig settings to make the health check requests
   tlsConfig: null
+
+# -- Array of extra K8s manifests to deploy alongside the chart
+extraObjects: []
+#   extraObjects:
+#     - apiVersion: autoscaling.k8s.io/v1
+#       kind: VerticalPodAutoscaler
+#       metadata:
+#         name: pyroscope-distributor
+#       spec:
+#         targetRef:
+#           apiVersion: apps/v1
+#           kind: Deployment
+#           name: '{{ include "pyroscope.fullname" . }}-distributor'
+#         updatePolicy:
+#           updateMode: Auto
