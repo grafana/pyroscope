@@ -174,6 +174,7 @@ func TestSelectMergeSpanProfile_Symbolization(t *testing.T) {
 				mockQueryBackend,
 				mockSymbolizer,
 				nil,
+				nil,
 			)
 
 			ctx := tenant.InjectTenantID(context.Background(), tt.tenantID)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -94,6 +95,7 @@ func (q *QueryBackend) Invoke(
 	var resp *queryv1.InvokeResponse
 	var err error
 	var childNodes []*queryv1.ExecutionNode
+	var mergeBytes uint64
 
 	// Capture the node type before merge() sets QueryPlan to nil.
 	root := req.QueryPlan.Root
@@ -101,7 +103,7 @@ func (q *QueryBackend) Invoke(
 
 	switch nodeType {
 	case queryv1.QueryNode_MERGE:
-		resp, childNodes, err = q.merge(ctx, req, root.Children, collectDiag)
+		resp, childNodes, mergeBytes, err = q.merge(ctx, req, root.Children, collectDiag)
 	case queryv1.QueryNode_READ:
 		resp, err = q.read(ctx, req, root.Blocks)
 	default:
@@ -112,21 +114,28 @@ func (q *QueryBackend) Invoke(
 		return nil, err
 	}
 
-	if collectDiag {
-		// For READ nodes, BlockReader already set the ExecutionNode with stats.
-		// We just need to wrap it for MERGE nodes.
-		if nodeType == queryv1.QueryNode_MERGE {
-			execNode := &queryv1.ExecutionNode{
+	// For MERGE nodes, unconditionally expose the summed BytesFetched so the
+	// query-frontend counter is correct even when diagnostics are not collected
+	// (the common production case).  For READ nodes, BlockReader already set
+	// the ExecutionNode.
+	if nodeType == queryv1.QueryNode_MERGE {
+		if resp.Diagnostics == nil {
+			resp.Diagnostics = &queryv1.Diagnostics{}
+		}
+		stats := &queryv1.ExecutionStats{BytesFetched: mergeBytes}
+		if collectDiag {
+			resp.Diagnostics.ExecutionNode = &queryv1.ExecutionNode{
 				Type:        nodeType,
 				Executor:    q.hostname,
 				StartTimeNs: startTime.UnixNano(),
 				EndTimeNs:   time.Now().UnixNano(),
 				Children:    childNodes,
+				Stats:       stats,
 			}
-			if resp.Diagnostics == nil {
-				resp.Diagnostics = &queryv1.Diagnostics{}
+		} else {
+			resp.Diagnostics.ExecutionNode = &queryv1.ExecutionNode{
+				Stats: stats,
 			}
-			resp.Diagnostics.ExecutionNode = execNode
 		}
 	}
 
@@ -138,13 +147,14 @@ func (q *QueryBackend) merge(
 	request *queryv1.InvokeRequest,
 	children []*queryv1.QueryNode,
 	collectDiag bool,
-) (*queryv1.InvokeResponse, []*queryv1.ExecutionNode, error) {
+) (*queryv1.InvokeResponse, []*queryv1.ExecutionNode, uint64, error) {
 	request.QueryPlan = nil
 	m := newAggregator(request)
 	g, ctx := errgroup.WithContext(ctx)
 
 	childExecNodes := make([]*queryv1.ExecutionNode, len(children))
 	var mu sync.Mutex
+	var totalBytesFetched atomic.Uint64
 
 	for i, child := range children {
 		idx := i
@@ -158,6 +168,9 @@ func (q *QueryBackend) merge(
 			if err != nil {
 				return err
 			}
+			// Always accumulate bytes regardless of collectDiag so the
+			// query-frontend counter is correct in the common (non-diagnostic) path.
+			totalBytesFetched.Add(resp.GetDiagnostics().GetExecutionNode().GetStats().GetBytesFetched())
 			if collectDiag && resp.Diagnostics != nil && resp.Diagnostics.ExecutionNode != nil {
 				mu.Lock()
 				childExecNodes[idx] = resp.Diagnostics.ExecutionNode
@@ -167,7 +180,7 @@ func (q *QueryBackend) merge(
 		}))
 	}
 	if err := g.Wait(); err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	var executionNodes []*queryv1.ExecutionNode
@@ -178,7 +191,7 @@ func (q *QueryBackend) merge(
 	}
 
 	resp := m.response()
-	return resp, executionNodes, nil
+	return resp, executionNodes, totalBytesFetched.Load(), nil
 }
 
 func (q *QueryBackend) read(

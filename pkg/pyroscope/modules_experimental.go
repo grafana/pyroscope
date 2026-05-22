@@ -89,6 +89,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 		f.queryBackendClient,
 		f.symbolizer,
 		f.queryDiagnosticsStore,
+		f.reg,
 	)
 
 	// Wrap the query frontend: diagnostics wrapper -> spanlogger wrapper -> query frontend
@@ -133,6 +134,7 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 		f.queryBackendClient,
 		f.symbolizer,
 		nil,
+		f.reg,
 	)
 
 	resolver := readpath.NewMetastoreSplitTimeResolver(f.metastoreClient, time.Minute)
