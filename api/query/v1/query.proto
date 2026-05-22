@@ -133,6 +133,11 @@ message ExecutionStats {
   int64 blocks_read = 1;
   int64 datasets_processed = 2;
   repeated BlockExecution block_executions = 3;
+  // bytes_fetched is the total number of bytes requested from object storage
+  // during this invocation. It counts only the bytes from this single,
+  // successful Invoke call: retried or hedged calls that did not produce a
+  // response are not included, so the value is deterministic across retries.
+  uint64 bytes_fetched = 4;
 }
 
 // BlockExecution captures execution details for a single block.

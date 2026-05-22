@@ -471,6 +471,59 @@ func (s *testSuite) Test_ProfileIDSelector() {
 	}
 }
 
+func (s *testSuite) Test_BytesFetched_Populated() {
+	// BytesFetched must always be populated in the response regardless of
+	// whether diagnostics collection is enabled, and must be > 0 for any
+	// query that actually reads block data.
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree:      &queryv1.TreeQuery{MaxNodes: 16},
+		}},
+		Tenant: s.tenant,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().NotNil(resp.Diagnostics)
+	s.Require().NotNil(resp.Diagnostics.ExecutionNode)
+	s.Require().NotNil(resp.Diagnostics.ExecutionNode.Stats)
+	s.Assert().Greater(resp.Diagnostics.ExecutionNode.Stats.BytesFetched, uint64(0))
+}
+
+func (s *testSuite) Test_BytesFetched_ConsistentAcrossInvocations() {
+	// Two independent Invoke calls with identical inputs must return the same
+	// BytesFetched value: the counter is scoped to a single invocation, so
+	// neither retries from a higher layer nor shared bucket state can inflate it.
+	//
+	// Use a fixed end time and clone the plan for each call: BlockReader.Invoke
+	// mutates QueryPlan.Root.Blocks[i].Datasets in place (filterNotOwnedDatasets),
+	// so sharing a plan across calls would cause different datasets to be processed
+	// on the second invocation.
+	endTime := time.Now().UnixMilli()
+	invoke := func() uint64 {
+		resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+			EndTime:       endTime,
+			LabelSelector: "{}",
+			QueryPlan:     s.plan.CloneVT(),
+			Query: []*queryv1.Query{{
+				QueryType: queryv1.QueryType_QUERY_TREE,
+				Tree:      &queryv1.TreeQuery{MaxNodes: 16},
+			}},
+			Tenant: s.tenant,
+		})
+		s.Require().NoError(err)
+		return resp.Diagnostics.ExecutionNode.Stats.BytesFetched
+	}
+	first := invoke()
+	second := invoke()
+	s.Assert().Greater(first, uint64(0))
+	// Two identical queries on an in-memory bucket must fetch the same bytes.
+	s.Assert().Equal(first, second)
+}
+
 func (s *testSuite) getProfileIDFromExemplars(t *testing.T) string {
 	t.Helper()
 

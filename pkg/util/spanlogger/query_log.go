@@ -3,8 +3,10 @@ package spanlogger
 import (
 	"context"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tracing"
@@ -38,71 +40,125 @@ func (l LogSpanParametersWrapper) logWithRequestMetadata(ctx context.Context, re
 	return FromContext(ctx, logger)
 }
 
+// logQuery emits a "query started" line, executes fn, then emits a "query
+// finished" line with latency and (optionally) humanized bytes fetched.
+// reqFields must be a flat key-value list of request-scoped fields that will
+// appear on both lines.
+func (l LogSpanParametersWrapper) logQuery(
+	logger *SpanLogger,
+	stats *QueryStats,
+	reqFields []interface{},
+	fn func() error,
+) error {
+	level.Info(logger).Log(append([]interface{}{"msg", "query started"}, reqFields...)...)
+
+	t := time.Now()
+	err := fn()
+	latency := time.Since(t)
+
+	finishFields := make([]interface{}, 0, len(reqFields)+8)
+	finishFields = append(finishFields, "msg", "query finished")
+	finishFields = append(finishFields, reqFields...)
+	finishFields = append(finishFields, "latency", latency)
+	if stats != nil {
+		finishFields = append(finishFields,
+			"fetched_object_bytes", humanize.Bytes(stats.ObjectStorageBytes),
+			"fetched_metastore_bytes", humanize.Bytes(stats.MetastoreBytes),
+		)
+	}
+	level.Info(logger).Log(finishFields...)
+	return err
+}
+
 func (l LogSpanParametersWrapper) ProfileTypes(ctx context.Context, c *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error) {
 	spanName := "ProfileTypes"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
+	defer sp.Finish()
+	ctx, stats := ContextWithQueryStats(ctx)
+
+	var resp *connect.Response[querierv1.ProfileTypesResponse]
+	err := l.logQuery(l.logWithRequestMetadata(ctx, c), stats, []interface{}{
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
-	)
-	defer sp.Finish()
-
-	return l.client.ProfileTypes(ctx, c)
+	}, func() (err error) {
+		resp, err = l.client.ProfileTypes(ctx, c)
+		return err
+	})
+	return resp, err
 }
 
 func (l LogSpanParametersWrapper) LabelValues(ctx context.Context, c *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
 	spanName := "LabelValues"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
+	defer sp.Finish()
+	ctx, stats := ContextWithQueryStats(ctx)
+
+	var resp *connect.Response[typesv1.LabelValuesResponse]
+	err := l.logQuery(l.logWithRequestMetadata(ctx, c), stats, []interface{}{
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"matchers", lazyJoin(c.Msg.Matchers),
 		"name", c.Msg.Name,
-	)
-	defer sp.Finish()
-
-	return l.client.LabelValues(ctx, c)
+	}, func() (err error) {
+		resp, err = l.client.LabelValues(ctx, c)
+		return err
+	})
+	return resp, err
 }
 
 func (l LogSpanParametersWrapper) LabelNames(ctx context.Context, c *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	spanName := "LabelNames"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
+	defer sp.Finish()
+	ctx, stats := ContextWithQueryStats(ctx)
+
+	var resp *connect.Response[typesv1.LabelNamesResponse]
+	err := l.logQuery(l.logWithRequestMetadata(ctx, c), stats, []interface{}{
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"matchers", lazyJoin(c.Msg.Matchers),
-	)
-	defer sp.Finish()
-
-	return l.client.LabelNames(ctx, c)
+	}, func() (err error) {
+		resp, err = l.client.LabelNames(ctx, c)
+		return err
+	})
+	return resp, err
 }
 
 func (l LogSpanParametersWrapper) Series(ctx context.Context, c *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	spanName := "Series"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
+	defer sp.Finish()
+	ctx, stats := ContextWithQueryStats(ctx)
+
+	var resp *connect.Response[querierv1.SeriesResponse]
+	err := l.logQuery(l.logWithRequestMetadata(ctx, c), stats, []interface{}{
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"matchers", lazyJoin(c.Msg.Matchers),
 		"label_names", lazyJoin(c.Msg.LabelNames),
-	)
-	defer sp.Finish()
-
-	return l.client.Series(ctx, c)
+	}, func() (err error) {
+		resp, err = l.client.Series(ctx, c)
+		return err
+	})
+	return resp, err
 }
 
 func (l LogSpanParametersWrapper) SelectMergeStacktraces(ctx context.Context, c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	spanName := "SelectMergeStacktraces"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
+	defer sp.Finish()
+	ctx, stats := ContextWithQueryStats(ctx)
+
+	var resp *connect.Response[querierv1.SelectMergeStacktracesResponse]
+	err := l.logQuery(l.logWithRequestMetadata(ctx, c), stats, []interface{}{
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -112,16 +168,21 @@ func (l LogSpanParametersWrapper) SelectMergeStacktraces(ctx context.Context, c 
 		"format", c.Msg.Format,
 		"max_nodes", c.Msg.GetMaxNodes(),
 		"profile_id_selector", lazyJoin(c.Msg.ProfileIdSelector),
-	)
-	defer sp.Finish()
-
-	return l.client.SelectMergeStacktraces(ctx, c)
+	}, func() (err error) {
+		resp, err = l.client.SelectMergeStacktraces(ctx, c)
+		return err
+	})
+	return resp, err
 }
 
 func (l LogSpanParametersWrapper) SelectMergeSpanProfile(ctx context.Context, c *connect.Request[querierv1.SelectMergeSpanProfileRequest]) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
 	spanName := "SelectMergeSpanProfile"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
+	defer sp.Finish()
+	ctx, stats := ContextWithQueryStats(ctx)
+
+	var resp *connect.Response[querierv1.SelectMergeSpanProfileResponse]
+	err := l.logQuery(l.logWithRequestMetadata(ctx, c), stats, []interface{}{
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -130,16 +191,21 @@ func (l LogSpanParametersWrapper) SelectMergeSpanProfile(ctx context.Context, c 
 		"profile_type", c.Msg.ProfileTypeID,
 		"format", c.Msg.Format,
 		"max_nodes", c.Msg.GetMaxNodes(),
-	)
-	defer sp.Finish()
-
-	return l.client.SelectMergeSpanProfile(ctx, c)
+	}, func() (err error) {
+		resp, err = l.client.SelectMergeSpanProfile(ctx, c)
+		return err
+	})
+	return resp, err
 }
 
 func (l LogSpanParametersWrapper) SelectMergeProfile(ctx context.Context, c *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[profilev1.Profile], error) {
 	spanName := "SelectMergeProfile"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
+	defer sp.Finish()
+	ctx, stats := ContextWithQueryStats(ctx)
+
+	var resp *connect.Response[profilev1.Profile]
+	err := l.logQuery(l.logWithRequestMetadata(ctx, c), stats, []interface{}{
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -149,16 +215,21 @@ func (l LogSpanParametersWrapper) SelectMergeProfile(ctx context.Context, c *con
 		"profile_type", c.Msg.ProfileTypeID,
 		"stacktrace_selector", c.Msg.GetStackTraceSelector(),
 		"profile_id_selector", lazyJoin(c.Msg.ProfileIdSelector),
-	)
-	defer sp.Finish()
-
-	return l.client.SelectMergeProfile(ctx, c)
+	}, func() (err error) {
+		resp, err = l.client.SelectMergeProfile(ctx, c)
+		return err
+	})
+	return resp, err
 }
 
 func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
 	spanName := "SelectSeries"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
+	defer sp.Finish()
+	ctx, stats := ContextWithQueryStats(ctx)
+
+	var resp *connect.Response[querierv1.SelectSeriesResponse]
+	err := l.logQuery(l.logWithRequestMetadata(ctx, c), stats, []interface{}{
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -171,16 +242,21 @@ func (l LogSpanParametersWrapper) SelectSeries(ctx context.Context, c *connect.R
 		"aggregation", c.Msg.GetAggregation().String(),
 		"limit", c.Msg.Limit,
 		"exemplar_type", c.Msg.ExemplarType,
-	)
-	defer sp.Finish()
-
-	return l.client.SelectSeries(ctx, c)
+	}, func() (err error) {
+		resp, err = l.client.SelectSeries(ctx, c)
+		return err
+	})
+	return resp, err
 }
 
 func (l LogSpanParametersWrapper) SelectHeatmap(ctx context.Context, c *connect.Request[querierv1.SelectHeatmapRequest]) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
 	spanName := "SelectHeatmap"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
+	defer sp.Finish()
+	ctx, stats := ContextWithQueryStats(ctx)
+
+	var resp *connect.Response[querierv1.SelectHeatmapResponse]
+	err := l.logQuery(l.logWithRequestMetadata(ctx, c), stats, []interface{}{
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
@@ -192,27 +268,30 @@ func (l LogSpanParametersWrapper) SelectHeatmap(ctx context.Context, c *connect.
 		"query_type", c.Msg.QueryType,
 		"exemplar_type", c.Msg.ExemplarType,
 		"limit", c.Msg.Limit,
-	)
-	defer sp.Finish()
-
-	return l.client.SelectHeatmap(ctx, c)
+	}, func() (err error) {
+		resp, err = l.client.SelectHeatmap(ctx, c)
+		return err
+	})
+	return resp, err
 }
 
 func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
 	spanName := "Diff"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
+	defer sp.Finish()
+	ctx, stats := ContextWithQueryStats(ctx)
 
 	left := &querierv1.SelectMergeStacktracesRequest{}
 	if c.Msg.Left != nil {
 		left = c.Msg.Left
 	}
-
 	right := &querierv1.SelectMergeStacktracesRequest{}
 	if c.Msg.Right != nil {
 		right = c.Msg.Right
 	}
 
-	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
+	var resp *connect.Response[querierv1.DiffResponse]
+	err := l.logQuery(l.logWithRequestMetadata(ctx, c), stats, []interface{}{
 		"method", spanName,
 		"left_start", model.Time(left.Start).Time().String(),
 		"left_end", model.Time(left.End).Time().String(),
@@ -228,10 +307,11 @@ func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[q
 		"right_profile_type", right.ProfileTypeID,
 		"right_format", right.Format,
 		"right_max_nodes", right.GetMaxNodes(),
-	)
-	defer sp.Finish()
-
-	return l.client.Diff(ctx, c)
+	}, func() (err error) {
+		resp, err = l.client.Diff(ctx, c)
+		return err
+	})
+	return resp, err
 }
 
 func (l LogSpanParametersWrapper) GetProfileStats(ctx context.Context, c *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
@@ -244,16 +324,21 @@ func (l LogSpanParametersWrapper) GetProfileStats(ctx context.Context, c *connec
 func (l LogSpanParametersWrapper) AnalyzeQuery(ctx context.Context, c *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
 	spanName := "AnalyzeQuery"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
-	level.Info(l.logWithRequestMetadata(ctx, c)).Log(
+	defer sp.Finish()
+	ctx, stats := ContextWithQueryStats(ctx)
+
+	var resp *connect.Response[querierv1.AnalyzeQueryResponse]
+	err := l.logQuery(l.logWithRequestMetadata(ctx, c), stats, []interface{}{
 		"method", spanName,
 		"start", model.Time(c.Msg.Start).Time().String(),
 		"end", model.Time(c.Msg.End).Time().String(),
 		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
 		"query", c.Msg.Query,
-	)
-	defer sp.Finish()
-
-	return l.client.AnalyzeQuery(ctx, c)
+	}, func() (err error) {
+		resp, err = l.client.AnalyzeQuery(ctx, c)
+		return err
+	})
+	return resp, err
 }
 
 type LazyJoin struct {
