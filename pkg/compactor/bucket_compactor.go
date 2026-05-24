@@ -297,7 +297,7 @@ func newCompactorMetrics(r prometheus.Registerer) *CompactorMetrics {
 	m.Size = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:                            "pyroscope_compaction_size_bytes",
 		Help:                            "Final block size after compaction by level",
-		Buckets:                         prometheus.ExponentialBuckets(32, 1.5, 12),
+		Buckets:                         prometheus.ExponentialBuckets(1<<20, 2, 15),
 		NativeHistogramBucketFactor:     1.1,
 		NativeHistogramMaxBucketNumber:  50,
 		NativeHistogramMinResetDuration: time.Hour,
