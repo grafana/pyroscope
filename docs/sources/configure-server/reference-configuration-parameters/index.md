@@ -286,6 +286,12 @@ self_profiling:
   # CLI flag: -self-profiling.disable-push
   [disable_push: <boolean> | default = false]
 
+  # URL where single-binary self-profiling profiles are pushed. If empty,
+  # Pyroscope pushes to itself using the HTTP listen port and the scheme implied
+  # by server HTTP TLS.
+  # CLI flag: -self-profiling.push-url
+  [push_url: <string> | default = ""]
+
   # CLI flag: -self-profiling.mutex-profile-fraction
   [mutex_profile_fraction: <int> | default = 5]
 

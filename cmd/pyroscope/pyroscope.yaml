@@ -760,6 +760,11 @@ self_profiling:
   # profiles to itself. Set to true to disable self-profiling.
   # disable_push: false
 
+  # URL where single-binary self-profiling profiles are pushed. If empty,
+  # Pyroscope pushes to itself using the HTTP listen port and the scheme implied
+  # by server HTTP TLS.
+  # push_url: ""
+
   # mutex_profile_fraction: 5
 
   # block_profile_rate: 5

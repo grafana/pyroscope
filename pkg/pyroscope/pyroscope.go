@@ -142,6 +142,7 @@ func (c *StorageConfig) RegisterFlags(f *flag.FlagSet) {
 
 type SelfProfilingConfig struct {
 	DisablePush          bool   `yaml:"disable_push,omitempty"`
+	PushURL              string `yaml:"push_url,omitempty"`
 	MutexProfileFraction int    `yaml:"mutex_profile_fraction,omitempty"`
 	BlockProfileRate     int    `yaml:"block_profile_rate,omitempty"`
 	UseK6Middleware      bool   `yaml:"use_k6_middleware,omitempty"`
@@ -158,6 +159,12 @@ func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
 		false,
 		"When running in single binary (--target=all) Pyroscope will push (Go SDK) profiles to itself. Set to true to disable self-profiling.",
 	)
+	f.StringVar(
+		&c.PushURL,
+		"self-profiling.push-url",
+		"",
+		"URL where single-binary self-profiling profiles are pushed. If empty, Pyroscope pushes to itself using the HTTP listen port and the scheme implied by server HTTP TLS.",
+	)
 	f.BoolVar(
 		&c.UseK6Middleware,
 		"self-profiling.use-k6-middleware",
@@ -170,6 +177,23 @@ func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
 		"",
 		"Tenant ID for self-profiling data. If empty, no tenant header is sent (anonymous).",
 	)
+}
+
+func (c SelfProfilingConfig) serverAddress(serverCfg server.Config) string {
+	if c.PushURL != "" {
+		return c.PushURL
+	}
+	scheme := "http"
+	if httpTLSEnabled(serverCfg.HTTPTLSConfig) {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://localhost:%d", scheme, serverCfg.HTTPListenPort)
+}
+
+func httpTLSEnabled(cfg server.TLSConfig) bool {
+	hasCert := cfg.TLSCertPath != "" || cfg.TLSCert != ""
+	hasKey := cfg.TLSKeyPath != "" || string(cfg.TLSKey) != ""
+	return hasCert && hasKey
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {
@@ -635,7 +659,7 @@ func (f *Pyroscope) Run() error {
 		if !f.Cfg.SelfProfiling.DisablePush && slices.Contains(f.Cfg.Target, All) {
 			_, err := pyroscope.Start(pyroscope.Config{
 				ApplicationName: "pyroscope",
-				ServerAddress:   fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort),
+				ServerAddress:   f.Cfg.SelfProfiling.serverAddress(f.Cfg.Server),
 				TenantID:        f.Cfg.SelfProfiling.TenantID,
 				Tags: map[string]string{
 					"hostname":           os.Getenv("HOSTNAME"),
