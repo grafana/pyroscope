@@ -4,12 +4,15 @@ export type IconType =
   | 'angle-down'
   | 'angle-left'
   | 'angle-right'
+  | 'angle-up'
   | 'check'
   | 'logo'
   | 'moon'
   | 'play'
   | 'plus'
   | 'refresh'
+  | 'sandwich'
+  | 'search'
   | 'sun'
   | 'times';
 

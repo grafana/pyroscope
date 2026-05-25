@@ -212,12 +212,9 @@ test.describe('top table', () => {
       .locator('.flamegraph-wrapper')
       .getByPlaceholder('Search...');
     // Switch to Total sort descending so prominent parent bars show up in
-    // the table. First Total click sorts ascending; click again for desc.
-    // Then locate runtime.mcall — a parent bar (~5.7s in the fixture) whose
-    // highlight is visibly prominent in the canvas.
-    const totalSort = page.getByRole('button', { name: /^Sort by column Total/ });
-    await totalSort.click();
-    await totalSort.click();
+    // the table; runtime.mcall (~5.7s in the fixture) is the largest
+    // non-synthetic and its highlight is visibly prominent in the canvas.
+    await page.getByRole('button', { name: /^Sort by column Total/ }).click();
     const targetRow = page.locator('[role="row"]', {
       has: page.getByRole('link', { name: 'runtime.mcall' }),
     });
@@ -251,13 +248,10 @@ test.describe('top table', () => {
     page,
   }) => {
     await waitForFlamegraphReady(page);
-    const totalSort = page.getByRole('button', { name: /^Sort by column Total/ });
-    // First click sorts ascending, second to descending. Once desc, the
-    // synthetic "total" row (which aggregates everything, ~11.1 s) sits on
-    // top, and runtime.mcall (~5.7 s, the largest non-synthetic) is right
-    // beneath it.
-    await totalSort.click();
-    await totalSort.click();
+    // A single click on a numeric column sorts it descending. The synthetic
+    // "total" row aggregates everything (~11.1 s) and sits on top;
+    // runtime.mcall (~5.7 s, the largest non-synthetic) is right beneath it.
+    await page.getByRole('button', { name: /^Sort by column Total/ }).click();
     await expect(
       page.locator('[role="row"]').nth(1).getByRole('link'),
     ).toHaveText('total');
@@ -291,24 +285,35 @@ test.describe('top table', () => {
     ).toHaveCount(0);
   });
 
-  test('top-table grows when the viewport grows', async ({ page }) => {
-    // Known bug in @grafana/ui's <Table>: the table can only grow, not
-    // shrink, so this test starts narrow and resizes wider — covering the
-    // direction that works today. Once we replace the table, extend this
-    // test to also verify the shrink direction.
+  test('top-table re-lays out when the viewport changes in either direction', async ({
+    page,
+  }) => {
+    // Both grow and shrink: the table must follow the surrounding flex
+    // container in both directions. (Grafana's <Table> only ever grew —
+    // see git history for the workaround that this test now verifies is
+    // no longer needed.)
+    const waitForLayoutSettled = () =>
+      page.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+          }),
+      );
+
     await page.setViewportSize({ width: 900, height: 700 });
     await waitForFlamegraphReady(page);
     await snap(page, 'top-table-viewport-narrow.png', topTable(page));
 
     await page.setViewportSize({ width: 1600, height: 900 });
-    await page.evaluate(
-      () =>
-        new Promise<void>((resolve) => {
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-        }),
-    );
+    await waitForLayoutSettled();
     await page.waitForTimeout(100);
     await snap(page, 'top-table-viewport-wide.png', topTable(page));
+
+    // Shrink back — the table should return to the narrow layout exactly.
+    await page.setViewportSize({ width: 900, height: 700 });
+    await waitForLayoutSettled();
+    await page.waitForTimeout(100);
+    await snap(page, 'top-table-viewport-narrow.png', topTable(page));
   });
 
   test('top-table content is reachable via scroll when there are many rows', async ({

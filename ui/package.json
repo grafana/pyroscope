@@ -25,7 +25,6 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-use": "^17.6.0",
-    "react-virtualized-auto-sizer": "^1.0.26",
     "tinycolor2": "^1.6.0"
   },
   "devDependencies": {
