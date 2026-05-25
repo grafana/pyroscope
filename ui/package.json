@@ -12,7 +12,9 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@grafana/flamegraph": "patch:@grafana/flamegraph@npm%3A12.4.2#~/.yarn/patches/@grafana-flamegraph-npm-12.4.2-6f441dce57.patch",
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
