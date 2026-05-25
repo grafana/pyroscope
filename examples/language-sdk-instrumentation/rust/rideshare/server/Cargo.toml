@@ -16,7 +16,7 @@ codegen-units = 4
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 warp = "0.3"
-pyroscope = { version = "2.0.0", features = ["backend-pprof-rs"] }
+pyroscope = { version = "^2.0.4", features = ["backend-pprof-rs"] }
 log = "0.4"
 pretty_env_logger = "0.5"
 chrono = "0.4"

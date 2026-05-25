@@ -4,7 +4,7 @@ source "https://rubygems.org"
 
 git_source(:github) { |repo_name| "https://github.com/#{repo_name}" }
 
-gem 'pyroscope', '= 0.6.7'
+gem 'pyroscope', '= 1.0.1'
 gem "sinatra", "~> 4.2"
 gem "thin", "~> 2.0"
 gem 'pyroscope-otel'
