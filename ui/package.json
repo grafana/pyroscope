@@ -17,10 +17,16 @@
     "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
-    "@grafana/flamegraph": "patch:@grafana/flamegraph@npm%3A12.4.2#~/.yarn/patches/@grafana-flamegraph-npm-12.4.2-6f441dce57.patch",
+    "@emotion/css": "^11.13.5",
+    "@grafana/data": "^13.0.1",
+    "@grafana/ui": "^13.0.1",
+    "@leeoniya/ufuzzy": "^1.0.19",
     "@xyflow/react": "^12.10.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "react-use": "^17.6.0",
+    "react-virtualized-auto-sizer": "^1.0.26",
+    "tinycolor2": "^1.6.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -28,6 +34,7 @@
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/tinycolor2": "^1.4.6",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",

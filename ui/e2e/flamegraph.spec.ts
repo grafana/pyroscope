@@ -196,7 +196,10 @@ test.describe('top table', () => {
       .nth(1)
       .getByRole('link');
     await expect(firstRowLink).toHaveText('runtime.kevent');
-    await page.getByRole('button', { name: 'Symbol', exact: true }).click();
+    // v13's column headers have accessible names like "Sort by column Symbol";
+    // a substring match keeps the assertion forward-compatible if a sort
+    // direction suffix is appended.
+    await page.getByRole('button', { name: /^Sort by column Symbol/ }).click();
     await expect(firstRowLink).not.toHaveText('runtime.kevent');
     await snap(page, 'top-table-sort-by-symbol.png', topTable(page));
   });
@@ -212,7 +215,7 @@ test.describe('top table', () => {
     // the table. First Total click sorts ascending; click again for desc.
     // Then locate runtime.mcall — a parent bar (~5.7s in the fixture) whose
     // highlight is visibly prominent in the canvas.
-    const totalSort = page.getByRole('button', { name: 'Total', exact: true });
+    const totalSort = page.getByRole('button', { name: /^Sort by column Total/ });
     await totalSort.click();
     await totalSort.click();
     const targetRow = page.locator('[role="row"]', {

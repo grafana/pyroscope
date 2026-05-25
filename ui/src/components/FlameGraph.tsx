@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { FlameGraph as GrafanaFlameGraph } from '@grafana/flamegraph';
+import { FlameGraph as GrafanaFlameGraph } from '@lib/flamegraph';
 import { createTheme, FieldType } from '@grafana/data';
 import type { DataFrame } from '@grafana/data';
 import type { FlamegraphData } from '@api/client';

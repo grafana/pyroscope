@@ -33,6 +33,7 @@ export default defineConfig({
       ),
       '@hooks': fileURLToPath(new URL('./src/hooks', import.meta.url)),
       '@api': fileURLToPath(new URL('./src/api', import.meta.url)),
+      '@lib': fileURLToPath(new URL('./src/lib', import.meta.url)),
     },
   },
   base: './',
