@@ -228,6 +228,102 @@ test.describe('top table', () => {
     await snap(page, 'row-action-search-highlight.png');
   });
 
+  test('clicking the active sort column rotates the row order', async ({
+    page,
+  }) => {
+    await waitForFlamegraphReady(page);
+    const firstRowLink = page
+      .locator('[role="row"]')
+      .nth(1)
+      .getByRole('link');
+    const initial = await firstRowLink.textContent();
+    expect(initial).toBe('runtime.kevent');
+
+    const selfSort = page.getByRole('button', { name: /^Sort by column Self/ });
+    // Cycling the sort column must visibly change which row is on top — the
+    // exact cycle (asc → desc → off vs desc → asc) is implementation-defined,
+    // but a single click must move us off the initial state.
+    await selfSort.click();
+    await expect(firstRowLink).not.toHaveText(initial!);
+  });
+
+  test('sort by Total brings the highest-total row to the top', async ({
+    page,
+  }) => {
+    await waitForFlamegraphReady(page);
+    const totalSort = page.getByRole('button', { name: /^Sort by column Total/ });
+    // First click sorts ascending, second to descending. Once desc, the
+    // synthetic "total" row (which aggregates everything, ~11.1 s) sits on
+    // top, and runtime.mcall (~5.7 s, the largest non-synthetic) is right
+    // beneath it.
+    await totalSort.click();
+    await totalSort.click();
+    await expect(
+      page.locator('[role="row"]').nth(1).getByRole('link'),
+    ).toHaveText('total');
+    await expect(
+      page.locator('[role="row"]').nth(2).getByRole('link'),
+    ).toHaveText('runtime.mcall');
+  });
+
+  test('typing in the search field filters down the top-table rows', async ({
+    page,
+  }) => {
+    await waitForFlamegraphReady(page);
+    const beforeRowCount = await page.locator('[role="row"]').count();
+    expect(beforeRowCount).toBeGreaterThan(5);
+
+    const search = page
+      .locator('.flamegraph-wrapper')
+      .getByPlaceholder('Search...');
+    await search.fill('runtime.findRunnable');
+    await page.clock.runFor(300);
+
+    // The table should now show only matching rows (header + the matched row(s)).
+    const afterRowCount = await page.locator('[role="row"]').count();
+    expect(afterRowCount).toBeLessThan(beforeRowCount);
+    await expect(
+      page.getByRole('link', { name: 'runtime.findRunnable' }),
+    ).toBeVisible();
+    // runtime.kevent shouldn't be in the filtered table anymore.
+    await expect(
+      page.getByRole('link', { name: 'runtime.kevent' }),
+    ).toHaveCount(0);
+  });
+
+  test('top-table grows when the viewport grows', async ({ page }) => {
+    // Known bug in @grafana/ui's <Table>: the table can only grow, not
+    // shrink, so this test starts narrow and resizes wider — covering the
+    // direction that works today. Once we replace the table, extend this
+    // test to also verify the shrink direction.
+    await page.setViewportSize({ width: 900, height: 700 });
+    await waitForFlamegraphReady(page);
+    await snap(page, 'top-table-viewport-narrow.png', topTable(page));
+
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }),
+    );
+    await page.waitForTimeout(100);
+    await snap(page, 'top-table-viewport-wide.png', topTable(page));
+  });
+
+  test('top-table content is reachable via scroll when there are many rows', async ({
+    page,
+  }) => {
+    await waitForFlamegraphReady(page);
+    // The fixture yields more rows than fit in the default viewport. The last
+    // top-table link must be reachable by scrolling the table container,
+    // which exercises the table's vertical scroll wiring.
+    const lastLink = topTable(page).getByRole('link').last();
+    await lastLink.scrollIntoViewIfNeeded();
+    await expect(lastLink).toBeVisible();
+    await expect(lastLink).not.toHaveText('runtime.kevent');
+  });
+
   test('"Show in sandwich view" splits the flamegraph into callers/callees', async ({
     page,
   }) => {
