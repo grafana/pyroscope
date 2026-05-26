@@ -12,6 +12,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid/v2"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -84,13 +85,14 @@ type Index struct {
 	blocks *blockCache
 }
 
-func NewIndex(logger log.Logger, s Store, cfg Config) *Index {
+func NewIndex(logger log.Logger, s Store, cfg Config, reg prometheus.Registerer) *Index {
+	m := newMetrics(reg)
 	return &Index{
 		logger: logger,
 		config: cfg,
 		store:  s,
-		shards: newShardCache(cfg.ShardCacheSize, s),
-		blocks: newBlockCache(cfg.BlockReadCacheSize, cfg.BlockWriteCacheSize),
+		shards: newShardCache(cfg.ShardCacheSize, s, m),
+		blocks: newBlockCache(cfg.BlockReadCacheSize, cfg.BlockWriteCacheSize, m),
 	}
 }
 
