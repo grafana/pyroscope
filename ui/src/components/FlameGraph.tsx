@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { FlameGraph as GrafanaFlameGraph } from '@lib/flamegraph';
-import { createTheme, FieldType } from '@grafana/data';
+import { FieldType } from '@grafana/data';
 import type { DataFrame } from '@grafana/data';
 import type { FlamegraphData } from '@api/client';
 import { profileTypeUnit } from '@api/client';
@@ -116,19 +116,13 @@ function toDataFrame(
 
 export function FlameGraph({
   data,
-  theme,
   profileTypeId,
 }: {
   data: FlamegraphData;
-  theme: 'dark' | 'light';
   profileTypeId: string;
 }) {
   const unit = toGrafanaUnit(profileTypeUnit(profileTypeId));
   const dataFrame = useMemo(() => toDataFrame(data, unit), [data, unit]);
-  const getTheme = useMemo(
-    () => () => createTheme({ colors: { mode: theme } }),
-    [theme],
-  );
 
   if (!dataFrame) {
     return <Empty />;
@@ -136,7 +130,7 @@ export function FlameGraph({
 
   return (
     <div className="flamegraph-wrapper">
-      <GrafanaFlameGraph data={dataFrame} getTheme={getTheme} />
+      <GrafanaFlameGraph data={dataFrame} />
     </div>
   );
 }

@@ -1,7 +1,5 @@
 import color from 'tinycolor2';
 
-import { type GrafanaTheme2 } from '@grafana/data';
-
 import murmurhash3_32_gc from './murmur3';
 
 // Colors taken from pyroscope, they should be from Grafana originally, but I didn't find from where exactly.
@@ -49,13 +47,13 @@ export function getBarColorByValue(value: number, totalTicks: number, rangeMin: 
   return color({ h, s: 100, l });
 }
 
-export function getBarColorByPackage(label: string, theme: GrafanaTheme2) {
+export function getBarColorByPackage(label: string, isLight: boolean) {
   const packageName = getPackageName(label);
   // TODO: similar thing happens in trace view with selecting colors of the spans, so maybe this could be unified.
   const hash = murmurhash3_32_gc(packageName || '', 0);
   const colorIndex = hash % packageColors.length;
   let packageColor = packageColors[colorIndex].clone();
-  if (theme.isLight) {
+  if (isLight) {
     packageColor = packageColor.brighten(15);
   }
   return packageColor;

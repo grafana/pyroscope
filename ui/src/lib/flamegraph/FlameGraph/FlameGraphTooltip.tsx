@@ -1,7 +1,5 @@
 import { css } from '@emotion/css';
-
-import { type GrafanaTheme2 } from '@grafana/data';
-import { Portal, useStyles2, VizTooltipContainer } from '@grafana/ui';
+import { createPortal } from 'react-dom';
 
 import { type CollapseConfig, type FlameGraphDataContainer, type LevelItem } from './dataTransform';
 
@@ -14,41 +12,42 @@ type Props = {
 };
 
 const FlameGraphTooltip = ({ data, item, totalTicks, position, collapseConfig }: Props) => {
-  const styles = useStyles2(getStyles);
-
   if (!(item && position)) {
     return null;
   }
 
   const tooltipData = getTooltipData(data, item, totalTicks);
 
-  return (
-    <Portal>
-      <VizTooltipContainer className={styles.tooltipContainer} position={position} offset={{ x: 15, y: 0 }}>
-        <div className={styles.tooltipContent}>
-          <p className={styles.tooltipName}>
-            {data.getLabel(item.itemIndexes[0])}
-            {collapseConfig && collapseConfig.collapsed ? (
-              <span>
-                <br />
-                and {collapseConfig.items.length} similar items
-              </span>
-            ) : (
-              ''
-            )}
-          </p>
-          <p className={styles.lastParagraph}>
-            {tooltipData.unitTitle}
-            <br />
-            Total: <b>{tooltipData.unitValue}</b> ({tooltipData.percentValue}%)
-            <br />
-            Self: <b>{tooltipData.unitSelf}</b> ({tooltipData.percentSelf}%)
-            <br />
-            Samples: <b>{tooltipData.samples}</b>
-          </p>
-        </div>
-      </VizTooltipContainer>
-    </Portal>
+  return createPortal(
+    <div
+      className={styles.tooltipContainer}
+      style={{ left: position.x + 15, top: position.y }}
+      role="tooltip"
+    >
+      <div className={styles.tooltipContent}>
+        <p className={styles.tooltipName}>
+          {data.getLabel(item.itemIndexes[0])}
+          {collapseConfig && collapseConfig.collapsed ? (
+            <span>
+              <br />
+              and {collapseConfig.items.length} similar items
+            </span>
+          ) : (
+            ''
+          )}
+        </p>
+        <p className={styles.lastParagraph}>
+          {tooltipData.unitTitle}
+          <br />
+          Total: <b>{tooltipData.unitValue}</b> ({tooltipData.percentValue}%)
+          <br />
+          Self: <b>{tooltipData.unitSelf}</b> ({tooltipData.percentSelf}%)
+          <br />
+          Samples: <b>{tooltipData.samples}</b>
+        </p>
+      </div>
+    </div>,
+    document.body
   );
 };
 
@@ -77,7 +76,6 @@ export const getTooltipData = (data: FlameGraphDataContainer, item: LevelItem, t
       unitValue = displayValue.text;
     }
     if (!displaySelf.suffix) {
-      // Makes sure we don't show 123undefined or something like that if suffix isn't defined
       unitSelf = displaySelf.text;
     }
   }
@@ -92,29 +90,35 @@ export const getTooltipData = (data: FlameGraphDataContainer, item: LevelItem, t
   };
 };
 
-const getStyles = (theme: GrafanaTheme2) => ({
+const styles = {
   tooltipContainer: css({
-    title: 'tooltipContainer',
+    label: 'tooltipContainer',
+    position: 'fixed',
+    pointerEvents: 'none',
+    zIndex: 1000,
     overflow: 'hidden',
+    background: 'var(--bg-elevated)',
+    color: 'var(--text-primary)',
+    border: '1px solid var(--border-medium)',
+    borderRadius: 'var(--radius-md)',
+    padding: '8px 12px',
+    boxShadow: 'var(--shadow-md)',
+    maxWidth: 400,
   }),
   tooltipContent: css({
-    title: 'tooltipContent',
-    fontSize: theme.typography.bodySmall.fontSize,
+    label: 'tooltipContent',
+    fontSize: 'var(--text-sm)',
     width: '100%',
   }),
   tooltipName: css({
-    title: 'tooltipName',
+    label: 'tooltipName',
     marginTop: 0,
     wordBreak: 'break-all',
   }),
   lastParagraph: css({
-    title: 'lastParagraph',
+    label: 'lastParagraph',
     marginBottom: 0,
   }),
-  name: css({
-    title: 'name',
-    marginBottom: '10px',
-  }),
-});
+};
 
 export default FlameGraphTooltip;

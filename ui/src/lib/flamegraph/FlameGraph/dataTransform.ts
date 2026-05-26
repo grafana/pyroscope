@@ -5,8 +5,16 @@ import {
   type Field,
   FieldType,
   getDisplayProcessor,
-  type GrafanaTheme2,
 } from '@grafana/data';
+
+// getDisplayProcessor requires a theme for color thresholds. We use it only
+// for unit/scale formatting (no thresholds configured), so any default theme
+// works. Resolved lazily to avoid the cost on module import.
+let _defaultTheme: ReturnType<typeof createTheme> | undefined;
+function defaultTheme() {
+  if (!_defaultTheme) _defaultTheme = createTheme();
+  return _defaultTheme;
+}
 
 import { SampleUnit } from '../types';
 
@@ -271,7 +279,7 @@ export class FlameGraphDataContainer {
   private uniqueLabelsMap: Record<string, LevelItem[]> | undefined;
   private collapsedMap: CollapsedMap | undefined;
 
-  constructor(data: DataFrame, options: Options, theme: GrafanaTheme2 = createTheme()) {
+  constructor(data: DataFrame, options: Options) {
     this.data = data;
     this.options = options;
 
@@ -286,11 +294,9 @@ export class FlameGraphDataContainer {
     this.selfField = data.fields.find((f) => f.name === 'self')!;
 
     const enumConfig = this.labelField?.config?.type?.enum;
-    // Label can actually be an enum field so depending on that we have to access it through display processor. This is
-    // both a backward compatibility but also to allow using a simple dataFrame without enum config. This would allow
-    // users to use this panel with correct query from data sources that do not return profiles natively.
+    // Label can actually be an enum field so depending on that we have to access it through display processor.
     if (enumConfig) {
-      this.labelDisplayProcessor = getDisplayProcessor({ field: this.labelField, theme });
+      this.labelDisplayProcessor = getDisplayProcessor({ field: this.labelField, theme: defaultTheme() });
       this.uniqueLabels = enumConfig.text || [];
     } else {
       this.labelDisplayProcessor = (value) => ({
@@ -302,7 +308,7 @@ export class FlameGraphDataContainer {
 
     this.valueDisplayProcessor = getDisplayProcessor({
       field: this.valueField,
-      theme,
+      theme: defaultTheme(),
     });
   }
 

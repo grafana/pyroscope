@@ -1,9 +1,7 @@
 import { css, cx } from '@emotion/css';
 
-import { type GrafanaTheme2 } from '@grafana/data';
-import { Button, Dropdown, Menu, useStyles2 } from '@grafana/ui';
-
 import { byPackageGradient, byValueGradient } from './FlameGraph/colors';
+import { Popover, PopoverItem } from './Popover';
 import { ColorScheme } from './types';
 
 type ColorSchemeButtonProps = {
@@ -12,49 +10,68 @@ type ColorSchemeButtonProps = {
 };
 
 export function ColorSchemeButton(props: ColorSchemeButtonProps) {
-  const styles = useStyles2(getStyles);
-  const menu = (
-    <Menu>
-      <Menu.Item label="By package name" onClick={() => props.onChange(ColorScheme.PackageBased)} />
-      <Menu.Item label="By value" onClick={() => props.onChange(ColorScheme.ValueBased)} />
-    </Menu>
-  );
-
-  // Show a bit different gradient as a way to indicate selected value
   const colorDotStyle =
-    {
-      [ColorScheme.ValueBased]: styles.colorDotByValue,
-      [ColorScheme.PackageBased]: styles.colorDotByPackage,
-    }[props.value] || styles.colorDotByValue;
+    props.value === ColorScheme.PackageBased ? styles.colorDotByPackage : styles.colorDotByValue;
 
   return (
-    <Dropdown overlay={menu}>
-      <Button
-        variant={'secondary'}
-        fill={'outline'}
-        size={'sm'}
-        tooltip={'Change color scheme'}
-        onClick={() => {}}
-        className={styles.buttonSpacing}
-        aria-label={'Change color scheme'}
-      >
-        <span className={cx(styles.colorDot, colorDotStyle)} />
-      </Button>
-    </Dropdown>
+    <Popover
+      trigger={({ toggle }) => (
+        <button
+          type="button"
+          className={styles.button}
+          onClick={toggle}
+          aria-label="Change color scheme"
+          title="Change color scheme"
+        >
+          <span className={cx(styles.colorDot, colorDotStyle)} />
+        </button>
+      )}
+      overlay={({ close }) => (
+        <>
+          <PopoverItem
+            label="By package name"
+            active={props.value === ColorScheme.PackageBased}
+            onClick={() => {
+              props.onChange(ColorScheme.PackageBased);
+              close();
+            }}
+          />
+          <PopoverItem
+            label="By value"
+            active={props.value === ColorScheme.ValueBased}
+            onClick={() => {
+              props.onChange(ColorScheme.ValueBased);
+              close();
+            }}
+          />
+        </>
+      )}
+    />
   );
 }
 
-const getStyles = (theme: GrafanaTheme2) => ({
-  buttonSpacing: css({
-    label: 'buttonSpacing',
-    marginRight: theme.spacing(1),
+const styles = {
+  button: css({
+    label: 'colorSchemeButton',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 28,
+    padding: '0 8px',
+    marginRight: 8,
+    background: 'transparent',
+    color: 'var(--text-primary)',
+    border: '1px solid var(--color-secondary-border)',
+    borderRadius: 'var(--radius-md)',
+    cursor: 'pointer',
+    '&:hover': { background: 'var(--action-hover)' },
   }),
   colorDot: css({
     label: 'colorDot',
     display: 'inline-block',
-    width: '10px',
-    height: '10px',
-    borderRadius: theme.shape.radius.circle,
+    width: 10,
+    height: 10,
+    borderRadius: '50%',
   }),
   colorDotByValue: css({
     label: 'colorDotByValue',
@@ -64,4 +81,4 @@ const getStyles = (theme: GrafanaTheme2) => ({
     label: 'colorDotByPackage',
     background: byPackageGradient,
   }),
-});
+};

@@ -1,8 +1,9 @@
 import { css } from '@emotion/css';
 import { memo, type ReactNode } from 'react';
 
-import { getValueFormat, type GrafanaTheme2 } from '@grafana/data';
-import { Icon, IconButton, Tooltip, useStyles2 } from '@grafana/ui';
+import { getValueFormat } from '@grafana/data';
+
+import { Icon, type IconType } from '@components/core/Icon';
 
 import { type ClickedItemData } from '../types';
 
@@ -19,7 +20,6 @@ type Props = {
 
 const FlameGraphMetadata = memo(
   ({ data, focusedItem, totalTicks, sandwichedLabel, onFocusPillClick, onSandwichPillClick }: Props) => {
-    const styles = useStyles2(getStyles);
     const parts: ReactNode[] = [];
     const ticksVal = getValueFormat('short')(totalTicks);
 
@@ -42,50 +42,32 @@ const FlameGraphMetadata = memo(
 
     if (sandwichedLabel) {
       parts.push(
-        <Tooltip key={'sandwich'} content={sandwichedLabel} placement="top">
-          <div>
-            <Icon size={'sm'} name={'angle-right'} />
-            <div className={styles.metadataPill}>
-              <Icon size={'sm'} name={'gf-show-context'} />{' '}
-              <span className={styles.metadataPillName}>
-                {sandwichedLabel.substring(sandwichedLabel.lastIndexOf('/') + 1)}
-              </span>
-              <IconButton
-                className={styles.pillCloseButton}
-                name={'times'}
-                size={'sm'}
-                onClick={onSandwichPillClick}
-                tooltip={'Remove sandwich view'}
-                aria-label={'Remove sandwich view'}
-              />
-            </div>
+        <div key={'sandwich'} title={sandwichedLabel} className={styles.pillGroup}>
+          <Icon size={12} name="angle-right" />
+          <div className={styles.metadataPill}>
+            <Icon size={12} name="sandwich" />
+            <span className={styles.metadataPillName}>
+              {sandwichedLabel.substring(sandwichedLabel.lastIndexOf('/') + 1)}
+            </span>
+            <PillCloseButton onClick={onSandwichPillClick} label="Remove sandwich view" />
           </div>
-        </Tooltip>
+        </div>
       );
     }
 
     if (focusedItem) {
       const percentValue = totalTicks > 0 ? Math.round(10000 * (focusedItem.item.value / totalTicks)) / 100 : 0;
-      const iconName = percentValue > 0 ? 'eye' : 'exclamation-circle';
+      const iconName: IconType = percentValue > 0 ? 'eye' : 'exclamation-circle';
 
       parts.push(
-        <Tooltip key={'focus'} content={focusedItem.label} placement="top">
-          <div>
-            <Icon size={'sm'} name={'angle-right'} />
-            <div className={styles.metadataPill}>
-              <Icon size={'sm'} name={iconName} />
-              &nbsp;{percentValue}% of total
-              <IconButton
-                className={styles.pillCloseButton}
-                name={'times'}
-                size={'sm'}
-                onClick={onFocusPillClick}
-                tooltip={'Remove focus'}
-                aria-label={'Remove focus'}
-              />
-            </div>
+        <div key={'focus'} title={focusedItem.label} className={styles.pillGroup}>
+          <Icon size={12} name="angle-right" />
+          <div className={styles.metadataPill}>
+            <Icon size={12} name={iconName} />
+            &nbsp;{percentValue}% of total
+            <PillCloseButton onClick={onFocusPillClick} label="Remove focus" />
           </div>
-        </Tooltip>
+        </div>
       );
     }
 
@@ -95,28 +77,53 @@ const FlameGraphMetadata = memo(
 
 FlameGraphMetadata.displayName = 'FlameGraphMetadata';
 
-const getStyles = (theme: GrafanaTheme2) => ({
+function PillCloseButton({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      className={styles.pillCloseButton}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+    >
+      <Icon name="times" size={12} />
+    </button>
+  );
+}
+
+const styles = {
   metadataPill: css({
     label: 'metadataPill',
     display: 'inline-flex',
     alignItems: 'center',
-    background: theme.colors.background.secondary,
-    borderRadius: theme.shape.borderRadius(8),
-    padding: theme.spacing(0.5, 1),
-    fontSize: theme.typography.bodySmall.fontSize,
-    fontWeight: theme.typography.fontWeightMedium,
-    lineHeight: theme.typography.bodySmall.lineHeight,
-    color: theme.colors.text.secondary,
+    gap: 4,
+    background: 'var(--bg-secondary)',
+    borderRadius: 'var(--radius-lg)',
+    padding: '4px 8px',
+    fontSize: 'var(--text-sm)',
+    fontWeight: 'var(--weight-medium)',
+    color: 'var(--text-secondary)',
   }),
   pillCloseButton: css({
     label: 'pillCloseButton',
-    verticalAlign: 'text-bottom',
-    margin: theme.spacing(0, 0.5),
+    background: 'transparent',
+    border: 'none',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    padding: '0 2px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    '&:hover': { color: 'var(--text-primary)' },
+  }),
+  pillGroup: css({
+    display: 'inline-flex',
+    alignItems: 'center',
   }),
   metadata: css({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
     margin: '8px 0',
   }),
   metadataPillName: css({
@@ -125,8 +132,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
-    marginLeft: theme.spacing(0.5),
   }),
-});
+};
 
 export default FlameGraphMetadata;

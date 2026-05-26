@@ -1,8 +1,7 @@
 import { type RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import color from 'tinycolor2';
 
-import { type GrafanaTheme2 } from '@grafana/data';
-import { useTheme2 } from '@grafana/ui';
+import { cssVar, useIsLight } from '../theme';
 
 import {
   BAR_BORDER_WIDTH,
@@ -67,20 +66,21 @@ export function useFlameRender(options: RenderOptions) {
     collapsedMap,
   } = options;
   const ctx = useSetupCanvas(canvasRef, wrapperWidth, depth);
-  const theme = useTheme2();
+  const isLight = useIsLight();
 
   // There is a bit of dependency injections here that does not add readability, mainly to prevent recomputing some
   // common stuff for all the nodes in the graph when only once is enough. perf/readability tradeoff.
 
   const mutedColor = useMemo(() => {
-    const barMutedColor = color(theme.colors.background.secondary);
-    return theme.isLight ? barMutedColor.darken(10).toHexString() : barMutedColor.lighten(10).toHexString();
-  }, [theme]);
+    const bg = cssVar('--bg-secondary') || '#28324f';
+    const barMutedColor = color(bg);
+    return isLight ? barMutedColor.darken(10).toHexString() : barMutedColor.lighten(10).toHexString();
+  }, [isLight]);
 
   const getBarColor = useColorFunction(
     totalColorTicks,
     colorScheme,
-    theme,
+    isLight,
     mutedColor,
     rangeMin,
     rangeMax,
@@ -333,7 +333,7 @@ export function walkTree(
 function useColorFunction(
   totalTicks: number,
   colorScheme: ColorScheme,
-  theme: GrafanaTheme2,
+  isLight: boolean,
   mutedColor: string,
   rangeMin: number,
   rangeMax: number,
@@ -351,7 +351,7 @@ function useColorFunction(
       const barColor =
         colorScheme === ColorScheme.ValueBased
           ? getBarColorByValue(item.value, totalTicks, rangeMin, rangeMax)
-          : getBarColorByPackage(label, theme);
+          : getBarColorByPackage(label, isLight);
 
       if (matchedLabels) {
         // Means we are searching, we use color for matches and gray the rest
@@ -361,7 +361,7 @@ function useColorFunction(
       // Mute if we are above the focused symbol
       return item.level > topLevel - 1 ? barColor.toHslString() : barColor.lighten(15).toHslString();
     },
-    [totalTicks, colorScheme, theme, rangeMin, rangeMax, matchedLabels, topLevel, mutedColor]
+    [totalTicks, colorScheme, isLight, rangeMin, rangeMax, matchedLabels, topLevel, mutedColor]
   );
 }
 

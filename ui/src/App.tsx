@@ -160,7 +160,6 @@ export default function App() {
         >
           <FlameGraph
             data={query.flamegraph}
-            theme={theme}
             profileTypeId={profileType}
           />
         </Panel>

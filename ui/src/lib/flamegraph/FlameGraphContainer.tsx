@@ -4,8 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import * as React from 'react';
 import { useMeasure } from 'react-use';
 
-import { type DataFrame, type GrafanaTheme2, escapeStringForRegex } from '@grafana/data';
-import { ThemeContext } from '@grafana/ui';
+import { type DataFrame, escapeStringForRegex } from '@grafana/data';
 
 import FlameGraph from './FlameGraph/FlameGraph';
 import { type GetExtraContextMenuButtonsFunction } from './FlameGraph/FlameGraphContextMenu';
@@ -32,11 +31,6 @@ export type Props = {
    * Whether the header should be sticky and be always visible on the top when scrolling.
    */
   stickyHeader?: boolean;
-
-  /**
-   * Provides a theme for the visualization on which colors and some sizes are based.
-   */
-  getTheme: () => GrafanaTheme2;
 
   /**
    * Various interaction hooks that can be used to report on the interaction.
@@ -83,7 +77,6 @@ const FlameGraphContainer = ({
   onViewSelected,
   onTextAlignSelected,
   onTableSort,
-  getTheme,
   stickyHeader,
   extraHeaderElements,
   vertical,
@@ -92,58 +85,6 @@ const FlameGraphContainer = ({
   keepFocusOnDataChange,
   getExtraContextMenuButtons,
 }: Props) => {
-  const theme = useMemo(() => getTheme(), [getTheme]);
-
-  return (
-    <LegacyContainer
-      data={data}
-      onTableSymbolClick={onTableSymbolClick}
-      onViewSelected={onViewSelected}
-      onTextAlignSelected={onTextAlignSelected}
-      onTableSort={onTableSort}
-      theme={theme}
-      stickyHeader={stickyHeader}
-      extraHeaderElements={extraHeaderElements}
-      vertical={vertical}
-      showFlameGraphOnly={showFlameGraphOnly}
-      disableCollapsing={disableCollapsing}
-      keepFocusOnDataChange={keepFocusOnDataChange}
-      getExtraContextMenuButtons={getExtraContextMenuButtons}
-    />
-  );
-};
-
-type InternalProps = {
-  data?: DataFrame;
-  onTableSymbolClick?: (symbol: string) => void;
-  onViewSelected?: (view: string) => void;
-  onTextAlignSelected?: (align: string) => void;
-  onTableSort?: (sort: string) => void;
-  theme: GrafanaTheme2;
-  stickyHeader?: boolean;
-  extraHeaderElements?: React.ReactNode;
-  vertical?: boolean;
-  showFlameGraphOnly?: boolean;
-  disableCollapsing?: boolean;
-  keepFocusOnDataChange?: boolean;
-  getExtraContextMenuButtons?: GetExtraContextMenuButtonsFunction;
-};
-
-const LegacyContainer = ({
-  data,
-  onTableSymbolClick,
-  onViewSelected,
-  onTextAlignSelected,
-  onTableSort,
-  theme,
-  stickyHeader,
-  extraHeaderElements,
-  vertical,
-  showFlameGraphOnly,
-  disableCollapsing,
-  keepFocusOnDataChange,
-  getExtraContextMenuButtons,
-}: InternalProps) => {
   const [focusedItemData, setFocusedItemData] = useState<ClickedItemData>();
 
   const [rangeMin, setRangeMin] = useState(0);
@@ -169,12 +110,11 @@ const LegacyContainer = ({
       return;
     }
 
-    const container = new FlameGraphDataContainer(data, { collapsing: !disableCollapsing }, theme);
+    const container = new FlameGraphDataContainer(data, { collapsing: !disableCollapsing });
     setCollapsedMap(container.getCollapsedMap());
     return container;
-  }, [data, theme, disableCollapsing]);
+  }, [data, disableCollapsing]);
   const [colorScheme, setColorScheme] = useColorScheme(dataContainer);
-  const styles = getStyles(theme);
   const matchedLabels = useLabelSearch(search, dataContainer);
 
   // If user resizes window with both as the selected view
@@ -338,43 +278,39 @@ const LegacyContainer = ({
   }
 
   return (
-    // We add the theme context to bridge the gap if this is rendered in non grafana environment where the context
-    // isn't already provided.
-    <ThemeContext.Provider value={theme}>
-      <div ref={sizeRef} className={styles.container}>
-        {!showFlameGraphOnly && (
-          <FlameGraphHeader
-            search={search}
-            setSearch={setSearch}
-            selectedView={selectedView}
-            setSelectedView={(view) => {
-              setSelectedView(view);
-              onViewSelected?.(view);
-            }}
-            containerWidth={containerWidth}
-            onReset={() => {
-              resetFocus();
-              resetSandwich();
-            }}
-            textAlign={textAlign}
-            onTextAlignChange={(align) => {
-              setTextAlign(align);
-              onTextAlignSelected?.(align);
-            }}
-            showResetButton={Boolean(focusedItemData || sandwichItem)}
-            colorScheme={colorScheme}
-            onColorSchemeChange={setColorScheme}
-            stickyHeader={Boolean(stickyHeader)}
-            extraHeaderElements={extraHeaderElements}
-            vertical={vertical}
-            setCollapsedMap={setCollapsedMap}
-            collapsedMap={collapsedMap}
-          />
-        )}
+    <div ref={sizeRef} className={styles.container}>
+      {!showFlameGraphOnly && (
+        <FlameGraphHeader
+          search={search}
+          setSearch={setSearch}
+          selectedView={selectedView}
+          setSelectedView={(view) => {
+            setSelectedView(view);
+            onViewSelected?.(view);
+          }}
+          containerWidth={containerWidth}
+          onReset={() => {
+            resetFocus();
+            resetSandwich();
+          }}
+          textAlign={textAlign}
+          onTextAlignChange={(align) => {
+            setTextAlign(align);
+            onTextAlignSelected?.(align);
+          }}
+          showResetButton={Boolean(focusedItemData || sandwichItem)}
+          colorScheme={colorScheme}
+          onColorSchemeChange={setColorScheme}
+          stickyHeader={Boolean(stickyHeader)}
+          extraHeaderElements={extraHeaderElements}
+          vertical={vertical}
+          setCollapsedMap={setCollapsedMap}
+          collapsedMap={collapsedMap}
+        />
+      )}
 
-        <div className={styles.body}>{body}</div>
-      </div>
-    </ThemeContext.Provider>
+      <div className={styles.body}>{body}</div>
+    </div>
   );
 };
 
@@ -448,75 +384,57 @@ export function labelSearch(search: string, data: FlameGraphDataContainer): Set<
   return foundLabels;
 }
 
-function getStyles(theme: GrafanaTheme2) {
-  return {
-    container: css({
-      label: 'container',
-      overflow: 'auto',
-      height: '100%',
-      display: 'flex',
-      flex: '1 1 0',
-      flexDirection: 'column',
-      minHeight: 0,
-      gap: theme.spacing(1),
-    }),
-    body: css({
-      label: 'body',
-      flexGrow: 1,
-    }),
+const styles = {
+  container: css({
+    label: 'container',
+    overflow: 'auto',
+    height: '100%',
+    display: 'flex',
+    flex: '1 1 0',
+    flexDirection: 'column',
+    minHeight: 0,
+    gap: 8,
+  }),
+  body: css({
+    label: 'body',
+    flexGrow: 1,
+  }),
 
-    tableContainer: css({
-      // This is not ideal for dashboard panel where it creates a double scroll. In a panel it should be 100% but then
-      // in explore we need a specific height.
-      height: FLAMEGRAPH_CONTAINER_HEIGHT,
-    }),
+  tableContainer: css({
+    height: FLAMEGRAPH_CONTAINER_HEIGHT,
+  }),
 
-    horizontalContainer: css({
-      label: 'horizontalContainer',
-      display: 'flex',
-      minHeight: 0,
-      flexDirection: 'row',
-      columnGap: theme.spacing(1),
-      width: '100%',
-    }),
+  horizontalContainer: css({
+    label: 'horizontalContainer',
+    display: 'flex',
+    minHeight: 0,
+    flexDirection: 'row',
+    columnGap: 8,
+    width: '100%',
+  }),
 
-    horizontalGraphContainer: css({
-      flexBasis: '50%',
-    }),
+  horizontalGraphContainer: css({
+    flexBasis: '50%',
+  }),
 
-    horizontalTableContainer: css({
-      flexBasis: '50%',
-      maxHeight: FLAMEGRAPH_CONTAINER_HEIGHT,
-    }),
+  horizontalTableContainer: css({
+    flexBasis: '50%',
+    maxHeight: FLAMEGRAPH_CONTAINER_HEIGHT,
+  }),
 
-    verticalGraphContainer: css({
-      marginBottom: theme.spacing(1),
-    }),
+  verticalGraphContainer: css({
+    marginBottom: 8,
+  }),
 
-    verticalTableContainer: css({
-      height: FLAMEGRAPH_CONTAINER_HEIGHT,
-    }),
+  verticalTableContainer: css({
+    height: FLAMEGRAPH_CONTAINER_HEIGHT,
+  }),
 
-    verticalContainer: css({
-      label: 'verticalContainer',
-      display: 'flex',
-      flexDirection: 'column',
-    }),
-
-    horizontalPaneContainer: css({
-      label: 'horizontalPaneContainer',
-      flexBasis: '50%',
-      maxHeight: FLAMEGRAPH_CONTAINER_HEIGHT,
-      minWidth: 0,
-      overflow: 'auto',
-    }),
-
-    verticalPaneContainer: css({
-      label: 'verticalPaneContainer',
-      marginBottom: theme.spacing(1),
-      height: FLAMEGRAPH_CONTAINER_HEIGHT,
-    }),
-  };
-}
+  verticalContainer: css({
+    label: 'verticalContainer',
+    display: 'flex',
+    flexDirection: 'column',
+  }),
+};
 
 export default FlameGraphContainer;

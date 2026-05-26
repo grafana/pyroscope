@@ -1,8 +1,7 @@
 import { css } from '@emotion/css';
 import { memo, useMemo, useState } from 'react';
 
-import { escapeStringForRegex, type GrafanaTheme2 } from '@grafana/data';
-import { useStyles2 } from '@grafana/ui';
+import { escapeStringForRegex } from '@grafana/data';
 
 import { Icon, type IconType } from '@components/core/Icon';
 
@@ -30,7 +29,6 @@ type Row = { symbol: string; self: number; total: number };
 
 const FlameGraphTopTableContainer = memo(
   ({ data, onSymbolClick, search, matchedLabels, onSearch, sandwichItem, onSandwich, onTableSort }: Props) => {
-    const styles = useStyles2(getStyles);
 
     const rows = useMemo(() => {
       const grouped = buildFilteredTable(data, matchedLabels);
@@ -131,7 +129,6 @@ function SortHeader({
   onClick: (column: SortColumn) => void;
   className: string;
 }) {
-  const styles = useStyles2(getStyles);
   const label = `Sort by column ${column}${active ? (direction === 'desc' ? ', descending' : ', ascending') : ''}`;
   const indicator = active ? (
     <Icon name={direction === 'desc' ? 'angle-down' : 'angle-up'} size={12} />
@@ -164,7 +161,6 @@ type TableRowProps = {
 };
 
 function TableRow({ data, row, search, sandwichItem, onSymbolClick, onSearch, onSandwich }: TableRowProps) {
-  const styles = useStyles2(getStyles);
   const isSearched = search === `^${escapeStringForRegex(row.symbol)}$`;
   const isSandwiched = sandwichItem === row.symbol;
 
@@ -222,7 +218,6 @@ function ActionButton({
   label: string;
   onClick: () => void;
 }) {
-  const styles = useStyles2(getStyles);
   return (
     <button
       type="button"
@@ -277,14 +272,14 @@ export function buildFilteredTable(data: FlameGraphDataContainer, matchedLabels?
   return filteredTable;
 }
 
-const getStyles = (theme: GrafanaTheme2) => ({
+const styles = {
   container: css({
     label: 'topTableContainer',
     height: '100%',
     minWidth: 0,
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: 'var(--bg-secondary)',
     overflow: 'hidden',
-    padding: theme.spacing(1),
+    padding: '8px',
     display: 'flex',
     flexDirection: 'column',
   }),
@@ -303,18 +298,18 @@ const getStyles = (theme: GrafanaTheme2) => ({
     minWidth: 460,
     borderCollapse: 'collapse',
     tableLayout: 'fixed',
-    fontSize: theme.typography.bodySmall.fontSize,
+    fontSize: 'var(--text-sm)',
   }),
   thead: css({
     label: 'topTableThead',
     position: 'sticky',
     top: 0,
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: 'var(--bg-secondary)',
     zIndex: 1,
   }),
   headerRow: css({
     label: 'topTableHeaderRow',
-    borderBottom: `1px solid ${theme.colors.border.weak}`,
+    borderBottom: '1px solid var(--border-weak)',
   }),
   actionHeader: css({
     width: 60,
@@ -322,39 +317,39 @@ const getStyles = (theme: GrafanaTheme2) => ({
   }),
   symbolHeader: css({
     textAlign: 'left',
-    padding: theme.spacing(0.5, 1),
+    padding: '4px 8px',
   }),
   numericHeader: css({
     textAlign: 'right',
-    padding: theme.spacing(0.5, 1),
+    padding: '4px 8px',
     width: 120,
   }),
   sortBtn: css({
     label: 'topTableSortBtn',
     display: 'inline-flex',
     alignItems: 'center',
-    gap: theme.spacing(0.5),
+    gap: '4px',
     width: '100%',
     background: 'transparent',
     border: 'none',
-    color: theme.colors.text.secondary,
+    color: 'var(--text-secondary)',
     cursor: 'pointer',
-    fontWeight: theme.typography.fontWeightMedium,
+    fontWeight: 'var(--weight-medium)',
     padding: 0,
     '&:hover': {
-      color: theme.colors.text.primary,
+      color: 'var(--text-primary)',
     },
   }),
   row: css({
     label: 'topTableRow',
-    borderBottom: `1px solid ${theme.colors.border.weak}`,
+    borderBottom: '1px solid var(--border-weak)',
     '&:hover': {
-      backgroundColor: theme.colors.action.hover,
+      backgroundColor: 'var(--action-hover)',
     },
   }),
   actionCell: css({
     width: 60,
-    padding: theme.spacing(0.25, 0.5),
+    padding: '2px 4px',
     display: 'flex',
     gap: 2,
   }),
@@ -367,26 +362,26 @@ const getStyles = (theme: GrafanaTheme2) => ({
     justifyContent: 'center',
     background: 'transparent',
     border: 'none',
-    color: theme.colors.text.secondary,
-    borderRadius: theme.shape.radius.default,
+    color: 'var(--text-secondary)',
+    borderRadius: 'var(--radius-md)',
     cursor: 'pointer',
     padding: 0,
     '&:hover': {
-      color: theme.colors.text.primary,
-      backgroundColor: theme.colors.action.hover,
+      color: 'var(--text-primary)',
+      backgroundColor: 'var(--action-hover)',
     },
     "&[data-active='true']": {
-      color: theme.colors.primary.text,
+      color: 'var(--color-primary-text)',
     },
   }),
   symbolCell: css({
-    padding: theme.spacing(0.5, 1),
+    padding: '4px 8px',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   }),
   symbolLink: css({
-    color: theme.colors.text.link,
+    color: 'var(--text-link)',
     textDecoration: 'none',
     '&:hover': {
       textDecoration: 'underline',
@@ -394,11 +389,11 @@ const getStyles = (theme: GrafanaTheme2) => ({
   }),
   numericCell: css({
     textAlign: 'right',
-    padding: theme.spacing(0.5, 1),
+    padding: '4px 8px',
     fontVariantNumeric: 'tabular-nums',
-    color: theme.colors.text.primary,
+    color: 'var(--text-primary)',
     width: 120,
   }),
-});
+};
 
 export default FlameGraphTopTableContainer;

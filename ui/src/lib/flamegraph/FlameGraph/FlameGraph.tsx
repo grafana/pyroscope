@@ -19,7 +19,7 @@
 import { css, cx } from '@emotion/css';
 import { useEffect, useState } from 'react';
 
-import { Icon } from '@grafana/ui';
+import { Icon } from '@components/core/Icon';
 
 import { PIXELS_PER_LEVEL } from '../constants';
 import { type ClickedItemData, type ColorScheme, type SelectedView, type TextAlign } from '../types';
@@ -133,7 +133,7 @@ const FlameGraph = ({
         <div className={styles.sandwichCanvasWrapper}>
           <div className={styles.sandwichMarker}>
             Callers
-            <Icon className={styles.sandwichMarkerIcon} name={'arrow-down'} />
+            <Icon className={styles.sandwichMarkerIcon} name="angle-down" />
           </div>
           <FlameGraphCanvas
             {...commonCanvasProps}
@@ -147,7 +147,7 @@ const FlameGraph = ({
 
         <div className={styles.sandwichCanvasWrapper}>
           <div className={cx(styles.sandwichMarker, styles.sandwichMarkerCalees)}>
-            <Icon className={styles.sandwichMarkerIcon} name={'arrow-up'} />
+            <Icon className={styles.sandwichMarkerIcon} name="angle-up" />
             Callees
           </div>
           <FlameGraphCanvas
