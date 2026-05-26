@@ -325,6 +325,84 @@ func TestIndex_Query(t *testing.T) {
 	})
 }
 
+func TestIndex_QueryMetadata_StaleReadCacheReloadsShard(t *testing.T) {
+	db := test.BoltDB(t)
+	idxWriter := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	require.NoError(t, db.Update(idxWriter.Init))
+
+	const tenant = "tenant-a"
+	const shard = uint32(1)
+	minT := test.UnixMilli("2024-09-23T08:00:00.000Z")
+	maxT := test.UnixMilli("2024-09-23T09:00:00.000Z")
+
+	base := &metastorev1.BlockMeta{
+		Id:      test.ULID("2024-09-23T08:00:00.001Z"),
+		Tenant:  1,
+		Shard:   shard,
+		MinTime: minT,
+		MaxTime: maxT,
+		Datasets: []*metastorev1.Dataset{{
+			Tenant:  1,
+			MinTime: minT,
+			MaxTime: maxT,
+			Labels:  []int32{1, 2, 3},
+		}},
+		StringTable: []string{"", tenant, "service_name", "old"},
+	}
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return idxWriter.InsertBlock(tx, base.CloneVT())
+	}))
+
+	staleTx, err := db.Begin(false)
+	require.NoError(t, err)
+	defer func() { _ = staleTx.Rollback() }()
+
+	newer := &metastorev1.BlockMeta{
+		Id:      test.ULID("2024-09-23T08:30:00.002Z"),
+		Tenant:  1,
+		Shard:   shard,
+		MinTime: minT,
+		MaxTime: maxT,
+		Datasets: []*metastorev1.Dataset{{
+			Tenant:  1,
+			MinTime: minT,
+			MaxTime: maxT,
+			Labels:  []int32{1, 2, 4},
+		}},
+		StringTable: []string{"", tenant, "service_name", "old", "new"},
+	}
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return idxWriter.InsertBlock(tx, newer.CloneVT())
+	}))
+
+	idxReader := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	_, err = idxReader.GetBlocks(staleTx, &metastorev1.BlockList{
+		Tenant: tenant,
+		Shard:  shard,
+		Blocks: []string{base.Id},
+	})
+	require.NoError(t, err)
+
+	var found []*metastorev1.BlockMeta
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		found, err = idxReader.QueryMetadata(tx, context.Background(), MetadataQuery{
+			Expr:      `{service_name=~".+"}`,
+			StartTime: time.UnixMilli(minT),
+			EndTime:   time.UnixMilli(maxT),
+			Tenant:    []string{tenant},
+			Labels:    []string{"service_name"},
+		})
+		return err
+	}))
+	require.NoError(t, err)
+	require.Len(t, found, 2)
+	assert.Equal(t, []string{base.Id, newer.Id}, []string{found[0].Id, found[1].Id})
+	assert.Equal(t, []string{"old", "new"}, []string{
+		found[0].StringTable[found[0].Datasets[0].Labels[2]],
+		found[1].StringTable[found[1].Datasets[0].Labels[2]],
+	})
+}
+
 func TestIndex_QueryConcurrency(t *testing.T) {
 	const N = 10
 	for i := 0; i < N && !t.Failed(); i++ {

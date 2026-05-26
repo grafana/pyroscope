@@ -56,14 +56,14 @@ func TestCacheMetrics(t *testing.T) {
 
 	// Read lookup on the same key: writable entry counts as a read hit too.
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		_, err := sc.getForRead(tx, p, tenant, shardID)
+		_, err := sc.getForReadAtVersion(tx, p, tenant, shardID, 0)
 		return err
 	}))
 	require.Equal(t, float64(1), testutil.ToFloat64(m.cacheRequests.WithLabelValues("shard_read", "hit")))
 
 	// Read lookup on a new key: miss + entry inserted as read-only.
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		_, err := sc.getForRead(tx, p, tenant, shardID+1)
+		_, err := sc.getForReadAtVersion(tx, p, tenant, shardID+1, 0)
 		return err
 	}))
 	require.Equal(t, float64(1), testutil.ToFloat64(m.cacheRequests.WithLabelValues("shard_read", "miss")))

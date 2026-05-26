@@ -77,6 +77,21 @@ func (m *IndexStore) LoadShard(tx *bbolt.Tx, p Partition, tenant string, shard u
 	return s, nil
 }
 
+func (m *IndexStore) LoadShardVersion(tx *bbolt.Tx, p Partition, tenant string, shard uint32) (uint64, error) {
+	shardBucket := getTenantShardBucket(tx, p, tenant, shard)
+	if shardBucket == nil {
+		return 0, nil
+	}
+	var idx ShardIndex
+	if b := shardBucket.Get(tenantShardIndexKeyNameBytes); len(b) > 0 {
+		if err := idx.UnmarshalBinary(b); err != nil {
+			return 0, fmt.Errorf("error loading tenant shard version %s/%d partition %q: %w", tenant, shard, p, err)
+		}
+		return idx.Version, nil
+	}
+	return 0, nil
+}
+
 func (m *IndexStore) DeleteShard(tx *bbolt.Tx, p Partition, tenant string, shard uint32) error {
 	partitions := getPartitionsBucket(tx)
 	partitionKey := p.Bytes()
