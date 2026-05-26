@@ -12,7 +12,7 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "node --test 'src/**/*.test.ts'",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui"
   },
@@ -39,8 +39,7 @@
     "prettier": "^3.8.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.57.0",
-    "vite": "^8.0.1",
-    "vitest": "^4.1.4"
+    "vite": "^8.0.1"
   },
   "packageManager": "yarn@4.13.0",
   "resolutions": {
