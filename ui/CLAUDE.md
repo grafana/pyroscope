@@ -58,9 +58,17 @@ The entire design system lives in `src/theme.css`. Read `DESIGN.md` for the full
 
 ```
 src/
-  main.tsx    # Entry point — imports theme.css once here
-  App.tsx     # Current: design system kitchen sink
-  theme.css   # All CSS custom properties (single source of truth)
+  main.tsx        # Entry point — imports theme.css once here
+  App.tsx         # Root component for the query UI
+  App.css         # Layout styles for App.tsx
+  theme.css       # All CSS custom properties (single source of truth)
+  api/            # Pyroscope API client and static metadata
+  hooks/          # Shared React hooks (query, tenant, click-outside)
+  components/     # Feature components (NavBar, QueryBar, TimeSeries, FlameGraph, Panel, …)
+    core/         # Reusable primitives (Button, Dropdown, Select, Icon, Empty, CascadeSelect)
+  lib/            # Vendored third-party code
+    flamegraph/   # Vendored @grafana/flamegraph, stripped to what we use
+  admin/          # Separate admin bundle (loaded from Go-rendered HTML templates)
 ```
 
 ## Linting
@@ -84,10 +92,6 @@ Banner comments are not allowed. Do not use decorative section dividers such as:
 ```ts
 // ─── Section name ────────────────────────
 ```
-
-## Dependency workarounds
-
-Several packages are patched via `yarn patch` due to incompatibilities with our stack. Before debugging a dependency issue, read `WORKAROUNDS.md` — it documents each patch, why it exists, and when it can be removed. Patch files live in `.yarn/patches/`.
 
 ## Components
 
