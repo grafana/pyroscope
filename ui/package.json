@@ -40,8 +40,10 @@
   "resolutions": {
     "react-custom-scrollbars-2@npm:4.5.0": "patch:react-custom-scrollbars-2@npm%3A4.5.0#~/.yarn/patches/react-custom-scrollbars-2-npm-4.5.0-420f40d266.patch",
     "brace-expansion@npm:^1.1.7": "npm:1.1.13",
+    "brace-expansion@npm:^5.0.2": "npm:5.0.6",
     "dompurify": "npm:^3.4.0",
     "immutable": "npm:5.1.5",
+    "js-cookie": "npm:3.0.7",
     "uuid": "npm:^11.1.1"
   }
 }
