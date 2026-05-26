@@ -38,18 +38,18 @@
 :root {
   /* ── Neutral (true grey, no tint) ──────────────────────────────────────── */
   --neutral-0: #ffffff;
-  --neutral-50: #f4f4f5;
-  --neutral-100: #e6e6e8;
-  --neutral-200: #c9c9cd;
-  --neutral-300: #9c9ca3;
-  --neutral-400: #6f6f76;
-  --neutral-500: #525258;
-  --neutral-600: #3d3d42;
-  --neutral-700: #2f2f33;
-  --neutral-800: #262629;
-  --neutral-850: #1f1f22;
-  --neutral-900: #1a1a1c;
-  --neutral-950: #141416;
+  --neutral-50: #f4f4f4;
+  --neutral-100: #e6e6e6;
+  --neutral-200: #c9c9c9;
+  --neutral-300: #9c9c9c;
+  --neutral-400: #6f6f6f;
+  --neutral-500: #525252;
+  --neutral-600: #3d3d3d;
+  --neutral-700: #2f2f2f;
+  --neutral-800: #262626;
+  --neutral-850: #1f1f1f;
+  --neutral-900: #1a1a1a;
+  --neutral-950: #141414;
   --neutral-1000: #000000;
 
   /* ── Blue ───────────────────────────────────────────────────────────────── */
@@ -188,10 +188,10 @@
   color-scheme: dark;
 
   /* ── Backgrounds ────────────────────────────────────────────────────────── */
-  --bg-canvas: #1a1a1c; /* page fill, outermost backdrop                 */
-  --bg-primary: #1f1f22; /* panels, cards, main content surfaces          */
-  --bg-secondary: #262629; /* sidebars, nested surfaces, form inputs        */
-  --bg-elevated: #2f2f33; /* dropdowns, popovers, tooltips, dialogs        */
+  --bg-canvas: #1a1a1a; /* page fill, outermost backdrop                 */
+  --bg-primary: #1f1f1f; /* panels, cards, main content surfaces          */
+  --bg-secondary: #262626; /* sidebars, nested surfaces, form inputs        */
+  --bg-elevated: #2f2f2f; /* dropdowns, popovers, tooltips, dialogs        */
 
   /* ── Borders ────────────────────────────────────────────────────────────── */
   --border-weak: rgba(255, 255, 255, 0.06); /* hairlines, dividers       */
@@ -199,9 +199,9 @@
   --border-strong: rgba(255, 255, 255, 0.22); /* focused / prominent rings */
 
   /* ── Text ───────────────────────────────────────────────────────────────── */
-  --text-primary: #d6d6d8; /* main body text                     */
-  --text-secondary: #8d8d92; /* labels, hints, descriptions        */
-  --text-disabled: #58585d; /* non-interactive / disabled text    */
+  --text-primary: #d6d6d6; /* main body text                     */
+  --text-secondary: #8d8d8d; /* labels, hints, descriptions        */
+  --text-disabled: #585858; /* non-interactive / disabled text    */
   --text-link: var(--blue-300); /* #6e9fff — kept blue for link affordance */
   --text-link-hover: var(--blue-200); /* #adc8ff                          */
   --text-max-contrast: #f0f0f2; /* text on colored / inverted bg     */
