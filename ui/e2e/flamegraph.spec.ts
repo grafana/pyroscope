@@ -175,8 +175,7 @@ test.describe('flamegraph header controls', () => {
 });
 
 test.describe('top table', () => {
-  const topTable = (page: Page) =>
-    page.locator('[data-testid="topTable"]');
+  const topTable = (page: Page) => page.locator('[data-testid="topTable"]');
 
   test('default ordering shows runtime.kevent first with formatted self/total', async ({
     page,
@@ -191,10 +190,7 @@ test.describe('top table', () => {
 
   test('sorting by Symbol re-orders rows alphabetically', async ({ page }) => {
     await waitForFlamegraphReady(page);
-    const firstRowLink = page
-      .locator('[role="row"]')
-      .nth(1)
-      .getByRole('link');
+    const firstRowLink = page.locator('[role="row"]').nth(1).getByRole('link');
     await expect(firstRowLink).toHaveText('runtime.kevent');
     // v13's column headers have accessible names like "Sort by column Symbol";
     // a substring match keeps the assertion forward-compatible if a sort
@@ -229,10 +225,7 @@ test.describe('top table', () => {
     page,
   }) => {
     await waitForFlamegraphReady(page);
-    const firstRowLink = page
-      .locator('[role="row"]')
-      .nth(1)
-      .getByRole('link');
+    const firstRowLink = page.locator('[role="row"]').nth(1).getByRole('link');
     const initial = await firstRowLink.textContent();
     expect(initial).toBe('runtime.kevent');
 

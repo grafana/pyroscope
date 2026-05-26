@@ -1,6 +1,10 @@
 import { createPortal } from 'react-dom';
 
-import { type CollapseConfig, type FlameGraphDataContainer, type LevelItem } from './dataTransform';
+import {
+  type CollapseConfig,
+  type FlameGraphDataContainer,
+  type LevelItem,
+} from './dataTransform';
 
 import './FlameGraphTooltip.css';
 
@@ -12,7 +16,13 @@ type Props = {
   collapseConfig?: CollapseConfig;
 };
 
-const FlameGraphTooltip = ({ data, item, totalTicks, position, collapseConfig }: Props) => {
+const FlameGraphTooltip = ({
+  data,
+  item,
+  totalTicks,
+  position,
+  collapseConfig,
+}: Props) => {
   if (!(item && position)) {
     return null;
   }
@@ -49,7 +59,7 @@ const FlameGraphTooltip = ({ data, item, totalTicks, position, collapseConfig }:
         </p>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 };
 
@@ -62,12 +72,18 @@ type TooltipData = {
   samples: string;
 };
 
-export const getTooltipData = (data: FlameGraphDataContainer, item: LevelItem, totalTicks: number): TooltipData => {
+export const getTooltipData = (
+  data: FlameGraphDataContainer,
+  item: LevelItem,
+  totalTicks: number,
+): TooltipData => {
   const displayValue = data.valueDisplayProcessor(item.value);
   const displaySelf = data.getSelfDisplay(item.itemIndexes);
 
-  const percentValue = Math.round(10000 * (displayValue.numeric / totalTicks)) / 100;
-  const percentSelf = Math.round(10000 * (displaySelf.numeric / totalTicks)) / 100;
+  const percentValue =
+    Math.round(10000 * (displayValue.numeric / totalTicks)) / 100;
+  const percentSelf =
+    Math.round(10000 * (displaySelf.numeric / totalTicks)) / 100;
   let unitValue = displayValue.text + displayValue.suffix;
   let unitSelf = displaySelf.text + displaySelf.suffix;
 

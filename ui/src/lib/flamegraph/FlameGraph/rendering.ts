@@ -1,4 +1,10 @@
-import { type RefObject, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import color from 'tinycolor2';
 
 import { cssVar, useIsLight } from '../theme';
@@ -18,7 +24,12 @@ import {
 import { type ClickedItemData, ColorScheme, type TextAlign } from '../types';
 
 import { getBarColorByPackage, getBarColorByValue } from './colors';
-import { type CollapseConfig, type CollapsedMap, type FlameGraphDataContainer, type LevelItem } from './dataTransform';
+import {
+  type CollapseConfig,
+  type CollapsedMap,
+  type FlameGraphDataContainer,
+  type LevelItem,
+} from './dataTransform';
 
 type RenderOptions = {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -74,7 +85,9 @@ export function useFlameRender(options: RenderOptions) {
   const mutedColor = useMemo(() => {
     const bg = cssVar('--bg-secondary') || '#28324f';
     const barMutedColor = color(bg);
-    return isLight ? barMutedColor.darken(10).toHexString() : barMutedColor.lighten(10).toHexString();
+    return isLight
+      ? barMutedColor.darken(10).toHexString()
+      : barMutedColor.lighten(10).toHexString();
   }, [isLight]);
 
   const getBarColor = useColorFunction(
@@ -85,10 +98,16 @@ export function useFlameRender(options: RenderOptions) {
     rangeMin,
     rangeMax,
     matchedLabels,
-    focusedItemData ? focusedItemData.item.level : 0
+    focusedItemData ? focusedItemData.item.level : 0,
   );
 
-  const renderFunc = useRenderFunc(ctx, data, getBarColor, textAlign, collapsedMap);
+  const renderFunc = useRenderFunc(
+    ctx,
+    data,
+    getBarColor,
+    textAlign,
+    collapsedMap,
+  );
 
   useEffect(() => {
     if (!ctx) {
@@ -119,7 +138,7 @@ export function useFlameRender(options: RenderOptions) {
         } else {
           renderFunc(item, x, y, width, height, label);
         }
-      }
+      },
     );
 
     // Only fill the muted rects
@@ -140,7 +159,14 @@ export function useFlameRender(options: RenderOptions) {
   ]);
 }
 
-type RenderFunc = (item: LevelItem, x: number, y: number, width: number, height: number, label: string) => void;
+type RenderFunc = (
+  item: LevelItem,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  label: string,
+) => void;
 
 type RenderFuncWrap = (
   item: LevelItem,
@@ -149,7 +175,7 @@ type RenderFuncWrap = (
   width: number,
   height: number,
   label: string,
-  muted: boolean
+  muted: boolean,
 ) => void;
 
 /**
@@ -165,7 +191,7 @@ function useRenderFunc(
   data: FlameGraphDataContainer,
   getBarColor: (item: LevelItem, label: string, muted: boolean) => string,
   textAlign: TextAlign,
-  collapsedMap: CollapsedMap
+  collapsedMap: CollapsedMap,
 ) {
   return useMemo(() => {
     if (!ctx) {
@@ -194,9 +220,11 @@ function useRenderFunc(
             finalLabel,
             item,
             width,
-            textAlign === 'left' ? x + GROUP_STRIP_MARGIN_LEFT + GROUP_TEXT_OFFSET : x,
+            textAlign === 'left'
+              ? x + GROUP_STRIP_MARGIN_LEFT + GROUP_TEXT_OFFSET
+              : x,
             y,
-            textAlign
+            textAlign,
           );
 
           renderGroupingStrip(ctx, x, y, height, item, collapsedItemConfig);
@@ -225,13 +253,18 @@ function renderGroupingStrip(
   y: number,
   height: number,
   item: LevelItem,
-  collapsedItemConfig: CollapseConfig
+  collapsedItemConfig: CollapseConfig,
 ) {
   const groupStripX = x + GROUP_STRIP_MARGIN_LEFT;
 
   // This is to mask the label in case we align it right to left.
   ctx.beginPath();
-  ctx.rect(x, y, groupStripX - x + GROUP_STRIP_WIDTH + GROUP_STRIP_PADDING, height);
+  ctx.rect(
+    x,
+    y,
+    groupStripX - x + GROUP_STRIP_WIDTH + GROUP_STRIP_PADDING,
+    height,
+  );
   ctx.fill();
 
   // For item in a group that can be collapsed, we draw a small strip to mark them. On the items that are at the
@@ -244,7 +277,9 @@ function renderGroupingStrip(
     if (collapsedItemConfig.items[0] === item) {
       // Top item
       ctx.rect(groupStripX, y + height / 2, GROUP_STRIP_WIDTH, height / 2);
-    } else if (collapsedItemConfig.items[collapsedItemConfig.items.length - 1] === item) {
+    } else if (
+      collapsedItemConfig.items[collapsedItemConfig.items.length - 1] === item
+    ) {
       // Bottom item
       ctx.rect(groupStripX, y, GROUP_STRIP_WIDTH, height / 2);
     } else {
@@ -271,21 +306,25 @@ export function walkTree(
   rangeMax: number,
   wrapperWidth: number,
   collapsedMap: CollapsedMap,
-  renderFunc: RenderFuncWrap
+  renderFunc: RenderFuncWrap,
 ) {
   // The levelOffset here is to keep track if items that we don't render because they are collapsed into single row.
   // That means we have to render next items with an offset of some rows up in the stack.
   const stack: Array<{ item: LevelItem; levelOffset: number }> = [];
   stack.push({ item: root, levelOffset: 0 });
 
-  const pixelsPerTick = (wrapperWidth * window.devicePixelRatio) / totalViewTicks / (rangeMax - rangeMin);
+  const pixelsPerTick =
+    (wrapperWidth * window.devicePixelRatio) /
+    totalViewTicks /
+    (rangeMax - rangeMin);
   let collapsedItemRendered: LevelItem | undefined = undefined;
 
   while (stack.length > 0) {
     const { item, levelOffset } = stack.shift()!;
     let curBarTicks = item.value;
     const muted = curBarTicks * pixelsPerTick <= MUTE_THRESHOLD;
-    const width = curBarTicks * pixelsPerTick - (muted ? 0 : BAR_BORDER_WIDTH * 2);
+    const width =
+      curBarTicks * pixelsPerTick - (muted ? 0 : BAR_BORDER_WIDTH * 2);
     const height = PIXELS_PER_LEVEL;
 
     if (width < HIDE_THRESHOLD) {
@@ -296,7 +335,8 @@ export function walkTree(
     let offsetModifier = 0;
     let skipRender = false;
     const collapsedItemConfig = collapsedMap.get(item);
-    const isCollapsedItem = collapsedItemConfig && collapsedItemConfig.collapsed;
+    const isCollapsedItem =
+      collapsedItemConfig && collapsedItemConfig.collapsed;
 
     if (isCollapsedItem) {
       if (collapsedItemRendered === collapsedItemConfig.items[0]) {
@@ -325,7 +365,12 @@ export function walkTree(
 
     const nextList = direction === 'children' ? item.children : item.parents;
     if (nextList) {
-      stack.unshift(...nextList.map((c) => ({ item: c, levelOffset: levelOffset + offsetModifier })));
+      stack.unshift(
+        ...nextList.map((c) => ({
+          item: c,
+          levelOffset: levelOffset + offsetModifier,
+        })),
+      );
     }
   }
 }
@@ -338,7 +383,7 @@ function useColorFunction(
   rangeMin: number,
   rangeMax: number,
   matchedLabels: Set<string> | undefined,
-  topLevel: number
+  topLevel: number,
 ) {
   return useCallback(
     function getColor(item: LevelItem, label: string, muted: boolean) {
@@ -359,13 +404,28 @@ function useColorFunction(
       }
 
       // Mute if we are above the focused symbol
-      return item.level > topLevel - 1 ? barColor.toHslString() : barColor.lighten(15).toHslString();
+      return item.level > topLevel - 1
+        ? barColor.toHslString()
+        : barColor.lighten(15).toHslString();
     },
-    [totalTicks, colorScheme, isLight, rangeMin, rangeMax, matchedLabels, topLevel, mutedColor]
+    [
+      totalTicks,
+      colorScheme,
+      isLight,
+      rangeMin,
+      rangeMax,
+      matchedLabels,
+      topLevel,
+      mutedColor,
+    ],
   );
 }
 
-function useSetupCanvas(canvasRef: RefObject<HTMLCanvasElement | null>, wrapperWidth: number, numberOfLevels: number) {
+function useSetupCanvas(
+  canvasRef: RefObject<HTMLCanvasElement | null>,
+  wrapperWidth: number,
+  numberOfLevels: number,
+) {
   const [ctx, setCtx] = useState<CanvasRenderingContext2D>();
 
   useEffect(() => {
@@ -375,7 +435,9 @@ function useSetupCanvas(canvasRef: RefObject<HTMLCanvasElement | null>, wrapperW
     const ctx = canvasRef.current.getContext('2d')!;
 
     const height = PIXELS_PER_LEVEL * numberOfLevels;
-    canvasRef.current.width = Math.round(wrapperWidth * window.devicePixelRatio);
+    canvasRef.current.width = Math.round(
+      wrapperWidth * window.devicePixelRatio,
+    );
     canvasRef.current.height = Math.round(height);
     canvasRef.current.style.width = `${wrapperWidth}px`;
     canvasRef.current.style.height = `${height / window.devicePixelRatio}px`;
@@ -398,14 +460,16 @@ function renderLabel(
   width: number,
   x: number,
   y: number,
-  textAlign: TextAlign
+  textAlign: TextAlign,
 ) {
   ctx.save();
   ctx.clip(); // so text does not overflow
   ctx.fillStyle = '#222';
 
   const displayValue = data.valueDisplayProcessor(item.value);
-  const unit = displayValue.suffix ? displayValue.text + displayValue.suffix : displayValue.text;
+  const unit = displayValue.suffix
+    ? displayValue.text + displayValue.suffix
+    : displayValue.text;
 
   // We only measure name here instead of full label because of how we deal with the units and aligning later.
   const measure = ctx.measureText(label);
@@ -438,6 +502,11 @@ function renderLabel(
  * @param rangeMin
  * @param pixelsPerTick
  */
-export function getBarX(offset: number, totalTicks: number, rangeMin: number, pixelsPerTick: number) {
+export function getBarX(
+  offset: number,
+  totalTicks: number,
+  rangeMin: number,
+  pixelsPerTick: number,
+) {
   return (offset - totalTicks * rangeMin) * pixelsPerTick;
 }

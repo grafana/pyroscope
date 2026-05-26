@@ -1,4 +1,7 @@
-function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]> {
+function groupBy<T>(
+  items: T[],
+  keyFn: (item: T) => string,
+): Record<string, T[]> {
   const groups: Record<string, T[]> = {};
   for (const item of items) {
     const key = keyFn(item);
@@ -14,7 +17,10 @@ type DataInterface = {
 };
 
 // Merge parent subtree of the roots for the callers tree in the sandwich view of the flame graph.
-export function mergeParentSubtrees(roots: LevelItem[], data: DataInterface): LevelItem[][] {
+export function mergeParentSubtrees(
+  roots: LevelItem[],
+  data: DataInterface,
+): LevelItem[][] {
   const newRoots = getParentSubtrees(roots);
   return mergeSubtrees(newRoots, data, 'parents');
 }
@@ -76,16 +82,18 @@ function getParentSubtrees(roots: LevelItem[]) {
 export function mergeSubtrees(
   roots: LevelItem[],
   data: DataInterface,
-  direction: 'parents' | 'children' = 'children'
+  direction: 'parents' | 'children' = 'children',
 ): LevelItem[][] {
   const oppositeDirection = direction === 'parents' ? 'children' : 'parents';
   const levels: LevelItem[][] = [];
 
   // Loop instead of recursion to be sure we don't blow stack size limit and save some memory. Each stack item is
   // basically a list of arrays you would pass to each level of recursion.
-  const stack: Array<{ previous: undefined | LevelItem; items: LevelItem[]; level: number }> = [
-    { previous: undefined, items: roots, level: 0 },
-  ];
+  const stack: Array<{
+    previous: undefined | LevelItem;
+    items: LevelItem[];
+    level: number;
+  }> = [{ previous: undefined, items: roots, level: 0 }];
 
   while (stack.length) {
     const args = stack.shift()!;
@@ -118,7 +126,9 @@ export function mergeSubtrees(
 
     const nextItems = args.items.flatMap((i) => i[direction] || []);
     // Group by label which for now is the only identifier by which we decide if node represents the same unit of work.
-    const nextGroups = groupBy(nextItems, (c) => data.getLabel(c.itemIndexes[0]));
+    const nextGroups = groupBy(nextItems, (c) =>
+      data.getLabel(c.itemIndexes[0]),
+    );
     for (const g of Object.values(nextGroups)) {
       stack.push({ previous: newItem, items: g, level: args.level + 1 });
     }

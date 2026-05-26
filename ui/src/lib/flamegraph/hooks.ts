@@ -1,4 +1,10 @@
-import { type DependencyList, useEffect, useRef, useState, type RefObject } from 'react';
+import {
+  type DependencyList,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 
 import { type FlameGraphDataContainer } from './FlameGraph/dataTransform';
 import { ColorScheme } from './types';
@@ -7,7 +13,9 @@ import { ColorScheme } from './types';
  * Manages the color scheme state. Kept as a hook to mirror upstream's call
  * site even though the diff-aware reset logic has been removed.
  */
-export function useColorScheme(_dataContainer: FlameGraphDataContainer | undefined) {
+export function useColorScheme(
+  _dataContainer: FlameGraphDataContainer | undefined,
+) {
   return useState<ColorScheme>(ColorScheme.PackageBased);
 }
 
@@ -17,7 +25,11 @@ export function useColorScheme(_dataContainer: FlameGraphDataContainer | undefin
  *
  * Drop-in for `react-use`'s `useDebounce`.
  */
-export function useDebounce(fn: () => void, delay: number, deps: DependencyList) {
+export function useDebounce(
+  fn: () => void,
+  delay: number,
+  deps: DependencyList,
+) {
   // Stash the latest callback so we never call a stale closure.
   const cbRef = useRef(fn);
   cbRef.current = fn;

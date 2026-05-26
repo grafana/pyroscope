@@ -1,14 +1,31 @@
-import { type MouseEvent as ReactMouseEvent, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type MouseEvent as ReactMouseEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import * as React from 'react';
 
 import { useMeasure } from '../hooks';
 
 import { PIXELS_PER_LEVEL } from '../constants';
-import { type ClickedItemData, type ColorScheme, type SelectedView, type TextAlign } from '../types';
+import {
+  type ClickedItemData,
+  type ColorScheme,
+  type SelectedView,
+  type TextAlign,
+} from '../types';
 
-import FlameGraphContextMenu, { type GetExtraContextMenuButtonsFunction } from './FlameGraphContextMenu';
+import FlameGraphContextMenu, {
+  type GetExtraContextMenuButtonsFunction,
+} from './FlameGraphContextMenu';
 import FlameGraphTooltip from './FlameGraphTooltip';
-import { type CollapsedMap, type FlameGraphDataContainer, type LevelItem } from './dataTransform';
+import {
+  type CollapsedMap,
+  type FlameGraphDataContainer,
+  type LevelItem,
+} from './dataTransform';
 import { getBarX, useFlameRender } from './rendering';
 
 import './FlameGraphCanvas.css';
@@ -68,7 +85,6 @@ const FlameGraphCanvas = ({
   selectedView,
   search,
 }: Props) => {
-
   const [sizeRef, { width: wrapperWidth }] = useMeasure<HTMLDivElement>();
   const graphRef = useRef<HTMLCanvasElement>(null);
   const [tooltipItem, setTooltipItem] = useState<LevelItem>();
@@ -96,7 +112,8 @@ const FlameGraphCanvas = ({
   const onGraphClick = useCallback(
     (e: ReactMouseEvent<HTMLCanvasElement>) => {
       setTooltipItem(undefined);
-      const pixelsPerTick = graphRef.current!.clientWidth / totalViewTicks / (rangeMax - rangeMin);
+      const pixelsPerTick =
+        graphRef.current!.clientWidth / totalViewTicks / (rangeMax - rangeMin);
       const item = convertPixelCoordinatesToBarCoordinates(
         { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY },
         root,
@@ -105,7 +122,7 @@ const FlameGraphCanvas = ({
         pixelsPerTick,
         totalViewTicks,
         rangeMin,
-        collapsedMap
+        collapsedMap,
       );
 
       // if clicking on a block in the canvas
@@ -121,16 +138,31 @@ const FlameGraphCanvas = ({
         setClickedItemData(undefined);
       }
     },
-    [data, rangeMin, rangeMax, totalViewTicks, root, direction, depth, collapsedMap]
+    [
+      data,
+      rangeMin,
+      rangeMax,
+      totalViewTicks,
+      root,
+      direction,
+      depth,
+      collapsedMap,
+    ],
   );
 
-  const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>();
+  const [mousePosition, setMousePosition] = useState<{
+    x: number;
+    y: number;
+  }>();
   const onGraphMouseMove = useCallback(
     (e: ReactMouseEvent<HTMLCanvasElement>) => {
       if (clickedItemData === undefined) {
         setTooltipItem(undefined);
         setMousePosition(undefined);
-        const pixelsPerTick = graphRef.current!.clientWidth / totalViewTicks / (rangeMax - rangeMin);
+        const pixelsPerTick =
+          graphRef.current!.clientWidth /
+          totalViewTicks /
+          (rangeMax - rangeMin);
         const item = convertPixelCoordinatesToBarCoordinates(
           { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY },
           root,
@@ -139,7 +171,7 @@ const FlameGraphCanvas = ({
           pixelsPerTick,
           totalViewTicks,
           rangeMin,
-          collapsedMap
+          collapsedMap,
         );
 
         if (item) {
@@ -148,7 +180,17 @@ const FlameGraphCanvas = ({
         }
       }
     },
-    [rangeMin, rangeMax, totalViewTicks, clickedItemData, setMousePosition, root, direction, depth, collapsedMap]
+    [
+      rangeMin,
+      rangeMax,
+      totalViewTicks,
+      clickedItemData,
+      setMousePosition,
+      root,
+      direction,
+      depth,
+      collapsedMap,
+    ],
   );
 
   const onGraphMouseLeave = useCallback(() => {
@@ -160,7 +202,8 @@ const FlameGraphCanvas = ({
     const handleOnClick = (e: MouseEvent) => {
       if (
         e.target instanceof HTMLElement &&
-        e.target.parentElement?.id !== 'flameGraphCanvasContainer_clickOutsideCheck'
+        e.target.parentElement?.id !==
+          'flameGraphCanvasContainer_clickOutsideCheck'
       ) {
         setClickedItemData(undefined);
       }
@@ -171,7 +214,11 @@ const FlameGraphCanvas = ({
 
   return (
     <div className="fg-canvas-graph">
-      <div className="fg-canvas-wrapper" id="flameGraphCanvasContainer_clickOutsideCheck" ref={sizeRef}>
+      <div
+        className="fg-canvas-wrapper"
+        id="flameGraphCanvasContainer_clickOutsideCheck"
+        ref={sizeRef}
+      >
         <canvas
           ref={graphRef}
           data-testid="flameGraph"
@@ -198,17 +245,24 @@ const FlameGraphCanvas = ({
           }}
           onItemFocus={() => {
             setRangeMin(clickedItemData.item.start / totalViewTicks);
-            setRangeMax((clickedItemData.item.start + clickedItemData.item.value) / totalViewTicks);
+            setRangeMax(
+              (clickedItemData.item.start + clickedItemData.item.value) /
+                totalViewTicks,
+            );
             onItemFocused(clickedItemData);
           }}
           onSandwich={() => {
             onSandwich(data.getLabel(clickedItemData.item.itemIndexes[0]));
           }}
           onExpandGroup={() => {
-            setCollapsedMap(collapsedMap.setCollapsedStatus(clickedItemData.item, false));
+            setCollapsedMap(
+              collapsedMap.setCollapsedStatus(clickedItemData.item, false),
+            );
           }}
           onCollapseGroup={() => {
-            setCollapsedMap(collapsedMap.setCollapsedStatus(clickedItemData.item, true));
+            setCollapsedMap(
+              collapsedMap.setCollapsedStatus(clickedItemData.item, true),
+            );
           }}
           onExpandAllGroups={() => {
             setCollapsedMap(collapsedMap.setAllCollapsedStatus(false));
@@ -216,8 +270,12 @@ const FlameGraphCanvas = ({
           onCollapseAllGroups={() => {
             setCollapsedMap(collapsedMap.setAllCollapsedStatus(true));
           }}
-          allGroupsCollapsed={Array.from(collapsedMap.values()).every((i) => i.collapsed)}
-          allGroupsExpanded={Array.from(collapsedMap.values()).every((i) => !i.collapsed)}
+          allGroupsCollapsed={Array.from(collapsedMap.values()).every(
+            (i) => i.collapsed,
+          )}
+          allGroupsExpanded={Array.from(collapsedMap.values()).every(
+            (i) => !i.collapsed,
+          )}
           getExtraContextMenuButtons={getExtraContextMenuButtons}
           selectedView={selectedView}
           search={search}
@@ -236,11 +294,13 @@ export const convertPixelCoordinatesToBarCoordinates = (
   pixelsPerTick: number,
   totalTicks: number,
   rangeMin: number,
-  collapsedMap: CollapsedMap
+  collapsedMap: CollapsedMap,
 ): LevelItem | undefined => {
   let next: LevelItem | undefined = root;
   let currentLevel = direction === 'children' ? 0 : depth - 1;
-  const levelIndex = Math.floor(pos.y / (PIXELS_PER_LEVEL / window.devicePixelRatio));
+  const levelIndex = Math.floor(
+    pos.y / (PIXELS_PER_LEVEL / window.devicePixelRatio),
+  );
   let found = undefined;
 
   while (next) {
@@ -251,18 +311,28 @@ export const convertPixelCoordinatesToBarCoordinates = (
       break;
     }
 
-    const nextList = direction === 'children' ? node.children : node.parents || [];
+    const nextList =
+      direction === 'children' ? node.children : node.parents || [];
 
     for (const child of nextList) {
       const xStart = getBarX(child.start, totalTicks, rangeMin, pixelsPerTick);
-      const xEnd = getBarX(child.start + child.value, totalTicks, rangeMin, pixelsPerTick);
+      const xEnd = getBarX(
+        child.start + child.value,
+        totalTicks,
+        rangeMin,
+        pixelsPerTick,
+      );
       if (xStart <= pos.x && pos.x < xEnd) {
         next = child;
         // Check if item is a collapsed item. if so also check if the item is the first collapsed item in the chain,
         // which we render, or a child which we don't render. If it's a child in the chain then don't increase the
         // level end effectively skip it.
         const collapsedConfig = collapsedMap.get(child);
-        if (!collapsedConfig || !collapsedConfig.collapsed || collapsedConfig.items[0] === child) {
+        if (
+          !collapsedConfig ||
+          !collapsedConfig.collapsed ||
+          collapsedConfig.items[0] === child
+        ) {
           currentLevel = currentLevel + (direction === 'children' ? 1 : -1);
         }
         break;

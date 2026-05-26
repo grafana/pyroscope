@@ -22,12 +22,21 @@ import { Icon } from '@components/core/Icon';
 
 import { PIXELS_PER_LEVEL } from '../constants';
 import { cx } from '../cx';
-import { type ClickedItemData, type ColorScheme, type SelectedView, type TextAlign } from '../types';
+import {
+  type ClickedItemData,
+  type ColorScheme,
+  type SelectedView,
+  type TextAlign,
+} from '../types';
 
 import FlameGraphCanvas from './FlameGraphCanvas';
 import { type GetExtraContextMenuButtonsFunction } from './FlameGraphContextMenu';
 import FlameGraphMetadata from './FlameGraphMetadata';
-import { type CollapsedMap, type FlameGraphDataContainer, type LevelItem } from './dataTransform';
+import {
+  type CollapsedMap,
+  type FlameGraphDataContainer,
+  type LevelItem,
+} from './dataTransform';
 
 import './FlameGraph.css';
 
@@ -134,7 +143,10 @@ const FlameGraph = ({
   if (levelsCallers?.length) {
     canvas = (
       <>
-        <div className="fg-sandwich-canvas-wrapper" style={{ marginBottom: sandwichMargin }}>
+        <div
+          className="fg-sandwich-canvas-wrapper"
+          style={{ marginBottom: sandwichMargin }}
+        >
           <div className="fg-sandwich-marker">
             Callers
             <Icon className="fg-sandwich-marker-icon" name="angle-down" />
@@ -149,8 +161,13 @@ const FlameGraph = ({
           />
         </div>
 
-        <div className="fg-sandwich-canvas-wrapper" style={{ marginBottom: sandwichMargin }}>
-          <div className={cx('fg-sandwich-marker', 'fg-sandwich-marker-callees')}>
+        <div
+          className="fg-sandwich-canvas-wrapper"
+          style={{ marginBottom: sandwichMargin }}
+        >
+          <div
+            className={cx('fg-sandwich-marker', 'fg-sandwich-marker-callees')}
+          >
             <Icon className="fg-sandwich-marker-icon" name="angle-up" />
             Callees
           </div>
@@ -166,7 +183,12 @@ const FlameGraph = ({
     );
   } else if (levels?.length) {
     canvas = (
-      <FlameGraphCanvas {...commonCanvasProps} root={levels[0][0]} depth={levels.length} direction={'children'} />
+      <FlameGraphCanvas
+        {...commonCanvasProps}
+        root={levels[0][0]}
+        depth={levels.length}
+        direction={'children'}
+      />
     );
   }
 

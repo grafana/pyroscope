@@ -4,7 +4,11 @@ import * as React from 'react';
 
 import FlameGraph from './FlameGraph/FlameGraph';
 import { type GetExtraContextMenuButtonsFunction } from './FlameGraph/FlameGraphContextMenu';
-import { CollapsedMap, type DataFrame, FlameGraphDataContainer } from './FlameGraph/dataTransform';
+import {
+  CollapsedMap,
+  type DataFrame,
+  FlameGraphDataContainer,
+} from './FlameGraph/dataTransform';
 import { escapeRegex } from './format';
 import FlameGraphHeader from './FlameGraphHeader';
 import FlameGraphTopTableContainer from './TopTable/FlameGraphTopTableContainer';
@@ -89,7 +93,9 @@ const FlameGraphContainer = ({
   const [rangeMin, setRangeMin] = useState(0);
   const [rangeMax, setRangeMax] = useState(1);
   const [search, setSearch] = useState('');
-  const [selectedView, setSelectedView] = useState<SelectedView>(SelectedView.Both);
+  const [selectedView, setSelectedView] = useState<SelectedView>(
+    SelectedView.Both,
+  );
   const [sizeRef, { width: containerWidth }] = useMeasure<HTMLDivElement>();
   const [textAlign, setTextAlign] = useState<TextAlign>('left');
   // This is a label of the item because in sandwich view we group all items by label and present a merged graph
@@ -109,7 +115,9 @@ const FlameGraphContainer = ({
       return;
     }
 
-    const container = new FlameGraphDataContainer(data, { collapsing: !disableCollapsing });
+    const container = new FlameGraphDataContainer(data, {
+      collapsing: !disableCollapsing,
+    });
     setCollapsedMap(container.getCollapsedMap());
     return container;
   }, [data, disableCollapsing]);
@@ -185,7 +193,7 @@ const FlameGraphContainer = ({
         resetFocus();
       }
     },
-    [setSearch, resetFocus, search]
+    [setSearch, resetFocus, search],
   );
 
   // Memoize methods to prevent unnecessary re-renders of FlameGraphTopTableContainer
@@ -197,14 +205,14 @@ const FlameGraphContainer = ({
       }
       setSearch(`^${escapeRegex(str)}$`);
     },
-    [setSearch]
+    [setSearch],
   );
   const onSandwich = useCallback(
     (label: string) => {
       resetFocus();
       setSandwichItem(label);
     },
-    [resetFocus, setSandwichItem]
+    [resetFocus, setSandwichItem],
   );
   const onTableSortStable = useCallback((sort: string) => {
     onTableSortRef.current?.(sort);
@@ -318,7 +326,7 @@ const FlameGraphContainer = ({
  */
 export function useLabelSearch(
   search: string | undefined,
-  data: FlameGraphDataContainer | undefined
+  data: FlameGraphDataContainer | undefined,
 ): Set<string> | undefined {
   return useMemo(() => {
     if (!search || !data) {
@@ -331,7 +339,10 @@ export function useLabelSearch(
   }, [search, data]);
 }
 
-export function labelSearch(search: string, data: FlameGraphDataContainer): Set<string> {
+export function labelSearch(
+  search: string,
+  data: FlameGraphDataContainer,
+): Set<string> {
   const foundLabels = new Set<string>();
   const terms = search.split(',');
 
@@ -382,6 +393,5 @@ export function labelSearch(search: string, data: FlameGraphDataContainer): Set<
 
   return foundLabels;
 }
-
 
 export default FlameGraphContainer;

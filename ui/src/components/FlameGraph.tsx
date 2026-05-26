@@ -96,8 +96,18 @@ function toDataFrame(
   return {
     fields: [
       { name: 'level', values: levelVals, type: FieldType.number, config: {} },
-      { name: 'value', values: valueVals, type: FieldType.number, config: { unit } },
-      { name: 'self', values: selfVals, type: FieldType.number, config: { unit } },
+      {
+        name: 'value',
+        values: valueVals,
+        type: FieldType.number,
+        config: { unit },
+      },
+      {
+        name: 'self',
+        values: selfVals,
+        type: FieldType.number,
+        config: { unit },
+      },
       { name: 'label', values: labelVals, type: FieldType.string, config: {} },
     ],
     length: labelVals.length,

@@ -38,7 +38,12 @@ export const byValueGradient = `linear-gradient(90deg, ${byValueMinColor} 0%, ${
 // Handpicked some vaguely rainbow-ish colors
 export const byPackageGradient = `linear-gradient(90deg, ${packageColors[0]} 0%, ${packageColors[2]} 30%, ${packageColors[6]} 50%, ${packageColors[7]} 70%, ${packageColors[8]} 100%)`;
 
-export function getBarColorByValue(value: number, totalTicks: number, rangeMin: number, rangeMax: number) {
+export function getBarColorByValue(
+  value: number,
+  totalTicks: number,
+  rangeMin: number,
+  rangeMax: number,
+) {
   //  / (rangeMax - rangeMin) here so when you click a bar it will adjust the top (clicked)bar to the most 'intense' color
   const intensity = Math.min(1, value / totalTicks / (rangeMax - rangeMin));
   const h = 50 - 50 * intensity;
@@ -63,9 +68,18 @@ export function getBarColorByPackage(label: string, isLight: boolean) {
 // the language from the backend and use the right regex but right now we just try all of them from most to least
 // specific.
 const matchers = [
-  ['phpspy', /^(?<packageName>([^\/]*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/],
-  ['pyspy', /^(?<packageName>([^\/]*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/],
-  ['rbspy', /^(?<packageName>([^\/]*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/],
+  [
+    'phpspy',
+    /^(?<packageName>([^\/]*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/,
+  ],
+  [
+    'pyspy',
+    /^(?<packageName>([^\/]*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
+  ],
+  [
+    'rbspy',
+    /^(?<packageName>([^\/]*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,
+  ],
   [
     'nodespy',
     /^(\.\/node_modules\/)?(?<packageName>[^/]*)(?<filename>.*\.?(jsx?|tsx?)?):(?<functionName>.*):(?<line_info>.*)$/,

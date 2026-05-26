@@ -57,7 +57,7 @@ export type CollapseConfig = {
  */
 export function nestedSetToLevels(
   container: FlameGraphDataContainer,
-  options?: Options
+  options?: Options,
 ): [LevelItem[][], Record<string, LevelItem[]>, CollapsedMap] {
   const levels: LevelItem[][] = [];
   let offset = 0;
@@ -75,7 +75,8 @@ export function nestedSetToLevels(
       // We are going down a level or staying at the same level, so we are adding a sibling to the last item in a level.
       // So we have to compute the correct offset based on the last sibling.
       const lastSibling = levels[currentLevel][levels[currentLevel].length - 1];
-      offset = lastSibling.start + container.getValue(lastSibling.itemIndexes[0]);
+      offset =
+        lastSibling.start + container.getValue(lastSibling.itemIndexes[0]);
       // we assume there is always a single root node so lastSibling should always have a parent.
       // Also it has to have the same parent because of how the items are ordered.
       parent = lastSibling.parents![0];
@@ -104,7 +105,9 @@ export function nestedSetToLevels(
     levels[currentLevel].push(newItem);
   }
 
-  const collapsedMapContainer = new CollapsedMapBuilder(options?.collapsingThreshold);
+  const collapsedMapContainer = new CollapsedMapBuilder(
+    options?.collapsingThreshold,
+  );
   if (options?.collapsing) {
     // We collapse similar items here, where it seems like parent and child are the same thing and so the distinction
     // isn't that important. We create a map of items that should be collapsed together. We need to do it with complete
@@ -200,7 +203,11 @@ export class CollapsedMapBuilder {
   // We assume items with small self just aren't too important while we cannot really collapse items with siblings
   // as it's not clear what to do with said sibling.
   addItem(item: LevelItem, parent?: LevelItem) {
-    if (parent && item.value > parent.value * this.threshold && parent.children.length === 1) {
+    if (
+      parent &&
+      item.value > parent.value * this.threshold &&
+      parent.children.length === 1
+    ) {
       if (this.map.has(parent)) {
         const config = this.map.get(parent)!;
         this.map.set(item, config);
@@ -225,7 +232,10 @@ export function getMessageCheckFieldsResult(wrongFields: CheckFieldsResult) {
 
   if (wrongFields.wrongTypeFields.length) {
     return `Data has fields of wrong type: ${wrongFields.wrongTypeFields
-      .map((f) => `${f.name} has type ${f.type} but should be ${f.expectedTypes.join(' or ')}`)
+      .map(
+        (f) =>
+          `${f.name} has type ${f.type} but should be ${f.expectedTypes.join(' or ')}`,
+      )
       .join(', ')}`;
   }
 
@@ -233,7 +243,11 @@ export function getMessageCheckFieldsResult(wrongFields: CheckFieldsResult) {
 }
 
 export type CheckFieldsResult = {
-  wrongTypeFields: Array<{ name: string; expectedTypes: FieldType[]; type: FieldType }>;
+  wrongTypeFields: Array<{
+    name: string;
+    expectedTypes: FieldType[];
+    type: FieldType;
+  }>;
   missingFields: string[];
 };
 
@@ -256,7 +270,11 @@ export function checkFields(data: DataFrame): CheckFieldsResult | undefined {
       continue;
     }
     if (!types.includes(frameField.type)) {
-      wrongTypeFields.push({ name, expectedTypes: types, type: frameField.type });
+      wrongTypeFields.push({
+        name,
+        expectedTypes: types,
+        type: frameField.type,
+      });
     }
   }
 
@@ -312,7 +330,10 @@ export class FlameGraphDataContainer {
     if (enumConfig) {
       const lookup = enumConfig.text || [];
       this.labelDisplayProcessor = (value) => ({
-        text: typeof value === 'number' ? (lookup[value] ?? String(value)) : String(value),
+        text:
+          typeof value === 'number'
+            ? (lookup[value] ?? String(value))
+            : String(value),
         suffix: '',
         numeric: 0,
       });
@@ -323,7 +344,9 @@ export class FlameGraphDataContainer {
         suffix: '',
         numeric: 0,
       });
-      this.uniqueLabels = [...new Set<string>(this.labelField.values as string[])];
+      this.uniqueLabels = [
+        ...new Set<string>(this.labelField.values as string[]),
+      ];
     }
 
     const unit = this.valueField.config.unit;
@@ -395,7 +418,10 @@ export class FlameGraphDataContainer {
 
   private initLevels() {
     if (!this.levels) {
-      const [levels, uniqueLabelsMap, collapsedMap] = nestedSetToLevels(this, this.options);
+      const [levels, uniqueLabelsMap, collapsedMap] = nestedSetToLevels(
+        this,
+        this.options,
+      );
       this.levels = levels;
       this.uniqueLabelsMap = uniqueLabelsMap;
       this.collapsedMap = collapsedMap;
@@ -405,10 +431,16 @@ export class FlameGraphDataContainer {
 
 // Access field value with either single index or array of indexes. This is needed as we sometimes merge multiple
 // into one, and we want to access aggregated values.
-function fieldAccessor(field: Field | undefined, index: number | number[]): number {
+function fieldAccessor(
+  field: Field | undefined,
+  index: number | number[],
+): number {
   if (!field) {
     return 0;
   }
   const indexArray: number[] = typeof index === 'number' ? [index] : index;
-  return indexArray.reduce<number>((acc, i) => acc + Number(field.values[i]), 0);
+  return indexArray.reduce<number>(
+    (acc, i) => acc + Number(field.values[i]),
+    0,
+  );
 }

@@ -43,7 +43,8 @@ export function Popover({
   useEffect(() => {
     if (!open || !anchorRef.current) return;
     const rect = anchorRef.current.getBoundingClientRect();
-    const wantsTop = rect.bottom + 240 > window.innerHeight && rect.top - 240 > 0;
+    const wantsTop =
+      rect.bottom + 240 > window.innerHeight && rect.top - 240 > 0;
     setPos({
       left: rect.left,
       top: wantsTop ? rect.top - 4 : rect.bottom + 4,
@@ -60,10 +61,15 @@ export function Popover({
       </span>
       {open && pos
         ? createPortal(
-            <div ref={overlayRef} className="fg-popover-overlay" style={pos} role="menu">
+            <div
+              ref={overlayRef}
+              className="fg-popover-overlay"
+              style={pos}
+              role="menu"
+            >
               {overlay({ close })}
             </div>,
-            document.body
+            document.body,
           )
         : null}
     </>

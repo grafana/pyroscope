@@ -58,7 +58,10 @@ export function formatBytes(b: number): Formatted {
 }
 
 /** Pick a formatter by unit string. Falls back to short for unknown units. */
-export function formatByUnit(value: number, unit: string | undefined): Formatted {
+export function formatByUnit(
+  value: number,
+  unit: string | undefined,
+): Formatted {
   switch (unit) {
     case 'ns':
       return formatDuration(value);

@@ -158,10 +158,7 @@ export default function App() {
           title="Flamegraph"
           meta={`${service} · ${profileTypeLabel(profileType)} · ${timeRange}`}
         >
-          <FlameGraph
-            data={query.flamegraph}
-            profileTypeId={profileType}
-          />
+          <FlameGraph data={query.flamegraph} profileTypeId={profileType} />
         </Panel>
       </div>
     </div>

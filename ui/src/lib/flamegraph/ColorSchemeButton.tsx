@@ -9,7 +9,10 @@ type ColorSchemeButtonProps = {
 };
 
 export function ColorSchemeButton(props: ColorSchemeButtonProps) {
-  const gradient = props.value === ColorScheme.PackageBased ? byPackageGradient : byValueGradient;
+  const gradient =
+    props.value === ColorScheme.PackageBased
+      ? byPackageGradient
+      : byValueGradient;
 
   return (
     <Popover

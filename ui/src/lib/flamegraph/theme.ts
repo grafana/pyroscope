@@ -29,5 +29,7 @@ function getIsLight(): boolean {
 /** Reads a `--var` from :root computed style. Returns trimmed string. */
 export function cssVar(name: string): string {
   if (typeof getComputedStyle === 'undefined') return '';
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
 }

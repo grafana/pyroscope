@@ -19,7 +19,14 @@ type Props = {
 };
 
 const FlameGraphMetadata = memo(
-  ({ data, focusedItem, totalTicks, sandwichedLabel, onFocusPillClick, onSandwichPillClick }: Props) => {
+  ({
+    data,
+    focusedItem,
+    totalTicks,
+    sandwichedLabel,
+    onFocusPillClick,
+    onSandwichPillClick,
+  }: Props) => {
     const parts: ReactNode[] = [];
     const ticksVal = formatShort(totalTicks);
 
@@ -37,47 +44,68 @@ const FlameGraphMetadata = memo(
       <div className="fg-metadata-pill" key={'default'}>
         {unitValue} | {ticksVal.text}
         {ticksVal.suffix} samples ({unitTitle})
-      </div>
+      </div>,
     );
 
     if (sandwichedLabel) {
       parts.push(
-        <div key={'sandwich'} title={sandwichedLabel} className="fg-metadata-pill-group">
+        <div
+          key={'sandwich'}
+          title={sandwichedLabel}
+          className="fg-metadata-pill-group"
+        >
           <Icon size={12} name="angle-right" />
           <div className="fg-metadata-pill">
             <Icon size={12} name="sandwich" />
             <span className="fg-metadata-pill-name">
               {sandwichedLabel.substring(sandwichedLabel.lastIndexOf('/') + 1)}
             </span>
-            <PillCloseButton onClick={onSandwichPillClick} label="Remove sandwich view" />
+            <PillCloseButton
+              onClick={onSandwichPillClick}
+              label="Remove sandwich view"
+            />
           </div>
-        </div>
+        </div>,
       );
     }
 
     if (focusedItem) {
-      const percentValue = totalTicks > 0 ? Math.round(10000 * (focusedItem.item.value / totalTicks)) / 100 : 0;
-      const iconName: IconType = percentValue > 0 ? 'eye' : 'exclamation-circle';
+      const percentValue =
+        totalTicks > 0
+          ? Math.round(10000 * (focusedItem.item.value / totalTicks)) / 100
+          : 0;
+      const iconName: IconType =
+        percentValue > 0 ? 'eye' : 'exclamation-circle';
 
       parts.push(
-        <div key={'focus'} title={focusedItem.label} className="fg-metadata-pill-group">
+        <div
+          key={'focus'}
+          title={focusedItem.label}
+          className="fg-metadata-pill-group"
+        >
           <Icon size={12} name="angle-right" />
           <div className="fg-metadata-pill">
             <Icon size={12} name={iconName} />
             &nbsp;{percentValue}% of total
             <PillCloseButton onClick={onFocusPillClick} label="Remove focus" />
           </div>
-        </div>
+        </div>,
       );
     }
 
     return <div className="fg-metadata">{parts}</div>;
-  }
+  },
 );
 
 FlameGraphMetadata.displayName = 'FlameGraphMetadata';
 
-function PillCloseButton({ onClick, label }: { onClick: () => void; label: string }) {
+function PillCloseButton({
+  onClick,
+  label,
+}: {
+  onClick: () => void;
+  label: string;
+}) {
   return (
     <button
       type="button"

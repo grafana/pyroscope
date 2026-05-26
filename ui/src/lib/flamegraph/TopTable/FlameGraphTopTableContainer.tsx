@@ -34,19 +34,36 @@ const OVERSCAN_ROWS = 8;
 const HEADER_HEIGHT = 27;
 
 const FlameGraphTopTableContainer = memo(
-  ({ data, onSymbolClick, search, matchedLabels, onSearch, sandwichItem, onSandwich, onTableSort }: Props) => {
+  ({
+    data,
+    onSymbolClick,
+    search,
+    matchedLabels,
+    onSearch,
+    sandwichItem,
+    onSandwich,
+    onTableSort,
+  }: Props) => {
     const rows = useMemo(() => {
       const grouped = buildFilteredTable(data, matchedLabels);
-      return Object.entries(grouped).map(([symbol, v]) => ({ symbol, self: v.self ?? 0, total: v.total ?? 0 }));
+      return Object.entries(grouped).map(([symbol, v]) => ({
+        symbol,
+        self: v.self ?? 0,
+        total: v.total ?? 0,
+      }));
     }, [data, matchedLabels]);
 
-    const [sort, setSort] = useState<SortState>({ column: 'Self', direction: 'desc' });
+    const [sort, setSort] = useState<SortState>({
+      column: 'Self',
+      direction: 'desc',
+    });
 
     const sortedRows = useMemo(() => {
       const dir = sort.direction === 'asc' ? 1 : -1;
       const copy = rows.slice();
       copy.sort((a, b) => {
-        if (sort.column === 'Symbol') return a.symbol.localeCompare(b.symbol) * dir;
+        if (sort.column === 'Symbol')
+          return a.symbol.localeCompare(b.symbol) * dir;
         const av = sort.column === 'Self' ? a.self : a.total;
         const bv = sort.column === 'Self' ? b.self : b.total;
         return (av - bv) * dir;
@@ -59,13 +76,16 @@ const FlameGraphTopTableContainer = memo(
         setSort((prev) => {
           const next: SortState =
             prev.column === column
-              ? { column, direction: prev.direction === 'desc' ? 'asc' : 'desc' }
+              ? {
+                  column,
+                  direction: prev.direction === 'desc' ? 'asc' : 'desc',
+                }
               : { column, direction: column === 'Symbol' ? 'asc' : 'desc' };
           onTableSort?.(`${next.column}_${next.direction}`);
           return next;
         });
       },
-      [onTableSort]
+      [onTableSort],
     );
 
     // Virtualization: track scroll offset + viewport height of the scroll
@@ -93,10 +113,13 @@ const FlameGraphTopTableContainer = memo(
     // Subtract HEADER_HEIGHT from the visible window because the sticky thead
     // covers that many pixels at the top of the scroll container.
     const visibleBodyH = Math.max(0, viewportH - HEADER_HEIGHT);
-    const firstVisible = Math.max(0, Math.floor((scrollTop - HEADER_HEIGHT) / ROW_HEIGHT));
+    const firstVisible = Math.max(
+      0,
+      Math.floor((scrollTop - HEADER_HEIGHT) / ROW_HEIGHT),
+    );
     const lastVisible = Math.min(
       sortedRows.length,
-      Math.ceil((scrollTop + visibleBodyH) / ROW_HEIGHT) + 1
+      Math.ceil((scrollTop + visibleBodyH) / ROW_HEIGHT) + 1,
     );
     const startIdx = Math.max(0, firstVisible - OVERSCAN_ROWS);
     const endIdx = Math.min(sortedRows.length, lastVisible + OVERSCAN_ROWS);
@@ -104,19 +127,22 @@ const FlameGraphTopTableContainer = memo(
     const padBottom = (sortedRows.length - endIdx) * ROW_HEIGHT;
 
     return (
-      <div className={"fg-tt-container"} data-testid="topTable">
-        <div ref={scrollRef} className={"fg-tt-scroll"}>
-          <table className={"fg-tt-table"} role="table">
-            <thead className={"fg-tt-thead"}>
-              <tr role="row" className={"fg-tt-header-row"}>
-                <th aria-label="Row actions" className={"fg-tt-action-header"} />
+      <div className={'fg-tt-container'} data-testid="topTable">
+        <div ref={scrollRef} className={'fg-tt-scroll'}>
+          <table className={'fg-tt-table'} role="table">
+            <thead className={'fg-tt-thead'}>
+              <tr role="row" className={'fg-tt-header-row'}>
+                <th
+                  aria-label="Row actions"
+                  className={'fg-tt-action-header'}
+                />
                 <SortHeader
                   column="Symbol"
                   active={sort.column === 'Symbol'}
                   direction={sort.direction}
                   align="left"
                   onClick={handleSort}
-                  className={"fg-tt-symbol-header"}
+                  className={'fg-tt-symbol-header'}
                 />
                 <SortHeader
                   column="Self"
@@ -124,7 +150,7 @@ const FlameGraphTopTableContainer = memo(
                   direction={sort.direction}
                   align="right"
                   onClick={handleSort}
-                  className={"fg-tt-numeric-header"}
+                  className={'fg-tt-numeric-header'}
                 />
                 <SortHeader
                   column="Total"
@@ -132,7 +158,7 @@ const FlameGraphTopTableContainer = memo(
                   direction={sort.direction}
                   align="right"
                   onClick={handleSort}
-                  className={"fg-tt-numeric-header"}
+                  className={'fg-tt-numeric-header'}
                 />
               </tr>
             </thead>
@@ -164,7 +190,7 @@ const FlameGraphTopTableContainer = memo(
         </div>
       </div>
     );
-  }
+  },
 );
 
 FlameGraphTopTableContainer.displayName = 'FlameGraphTopTableContainer';
@@ -189,11 +215,18 @@ function SortHeaderInner({
     <Icon name={direction === 'desc' ? 'angle-down' : 'angle-up'} size={12} />
   ) : null;
   return (
-    <th className={className} aria-sort={active ? (direction === 'desc' ? 'descending' : 'ascending') : 'none'}>
+    <th
+      className={className}
+      aria-sort={
+        active ? (direction === 'desc' ? 'descending' : 'ascending') : 'none'
+      }
+    >
       <button
         type="button"
-        className={"fg-tt-sort-btn"}
-        style={{ justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}
+        className={'fg-tt-sort-btn'}
+        style={{
+          justifyContent: align === 'right' ? 'flex-end' : 'flex-start',
+        }}
         onClick={() => onClick(column)}
         aria-label={label}
         title={label}
@@ -216,7 +249,15 @@ type TableRowProps = {
   onSandwich: (symbol?: string) => void;
 };
 
-function TableRowInner({ data, row, search, sandwichItem, onSymbolClick, onSearch, onSandwich }: TableRowProps) {
+function TableRowInner({
+  data,
+  row,
+  search,
+  sandwichItem,
+  onSymbolClick,
+  onSearch,
+  onSandwich,
+}: TableRowProps) {
   const isSearched = search === `^${escapeRegex(row.symbol)}$`;
   const isSandwiched = sandwichItem === row.symbol;
 
@@ -225,18 +266,18 @@ function TableRowInner({ data, row, search, sandwichItem, onSymbolClick, onSearc
 
   const onSandwichClick = useCallback(
     () => onSandwich(isSandwiched ? undefined : row.symbol),
-    [onSandwich, isSandwiched, row.symbol]
+    [onSandwich, isSandwiched, row.symbol],
   );
   const onSearchClick = useCallback(
     () => onSearch(isSearched ? '' : row.symbol),
-    [onSearch, isSearched, row.symbol]
+    [onSearch, isSearched, row.symbol],
   );
   const onLinkClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       onSymbolClick(row.symbol);
     },
-    [onSymbolClick, row.symbol]
+    [onSymbolClick, row.symbol],
   );
 
   return (
@@ -248,7 +289,9 @@ function TableRowInner({ data, row, search, sandwichItem, onSymbolClick, onSearc
         <ActionButton
           icon="sandwich"
           active={isSandwiched}
-          label={isSandwiched ? 'Remove from sandwich view' : 'Show in sandwich view'}
+          label={
+            isSandwiched ? 'Remove from sandwich view' : 'Show in sandwich view'
+          }
           onClick={onSandwichClick}
         />
         <ActionButton
@@ -258,20 +301,20 @@ function TableRowInner({ data, row, search, sandwichItem, onSymbolClick, onSearc
           onClick={onSearchClick}
         />
       </td>
-      <td className={"fg-tt-symbol-cell"}>
+      <td className={'fg-tt-symbol-cell'}>
         <a
           href=""
           role="link"
           title="Highlight symbol"
           aria-label={row.symbol}
-          className={"fg-tt-symbol-link"}
+          className={'fg-tt-symbol-link'}
           onClick={onLinkClick}
         >
           {row.symbol}
         </a>
       </td>
-      <td className={"fg-tt-numeric-cell"}>{formatValue(selfDisp)}</td>
-      <td className={"fg-tt-numeric-cell"}>{formatValue(totalDisp)}</td>
+      <td className={'fg-tt-numeric-cell'}>{formatValue(selfDisp)}</td>
+      <td className={'fg-tt-numeric-cell'}>{formatValue(totalDisp)}</td>
     </tr>
   );
 }
@@ -291,7 +334,7 @@ function ActionButtonInner({
   return (
     <button
       type="button"
-      className={"fg-tt-action-btn"}
+      className={'fg-tt-action-btn'}
       data-active={active}
       onClick={onClick}
       aria-label={label}
@@ -307,7 +350,10 @@ function formatValue(disp: { text: string; suffix?: string }) {
   return disp.text + (disp.suffix ?? '');
 }
 
-export function buildFilteredTable(data: FlameGraphDataContainer, matchedLabels?: Set<string>) {
+export function buildFilteredTable(
+  data: FlameGraphDataContainer,
+  matchedLabels?: Set<string>,
+) {
   // Group the data by label, we show only one row per label and sum the values
   const filteredTable: { [key: string]: TableData } = Object.create(null);
 
@@ -330,10 +376,14 @@ export function buildFilteredTable(data: FlameGraphDataContainer, matchedLabels?
 
     if (!matchedLabels || matchedLabels.has(label)) {
       filteredTable[label] = filteredTable[label] || {};
-      filteredTable[label].self = filteredTable[label].self ? filteredTable[label].self + self : self;
+      filteredTable[label].self = filteredTable[label].self
+        ? filteredTable[label].self + self
+        : self;
 
       if (!isRecursive) {
-        filteredTable[label].total = filteredTable[label].total ? filteredTable[label].total + value : value;
+        filteredTable[label].total = filteredTable[label].total
+          ? filteredTable[label].total + value
+          : value;
       }
     }
 
@@ -342,6 +392,5 @@ export function buildFilteredTable(data: FlameGraphDataContainer, matchedLabels?
 
   return filteredTable;
 }
-
 
 export default FlameGraphTopTableContainer;

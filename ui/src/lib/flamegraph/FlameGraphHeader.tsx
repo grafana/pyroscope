@@ -33,7 +33,10 @@ type Props = {
 };
 
 const FlameGraphHeader = (props: Props) => {
-  const [localSearch, setLocalSearch] = useSearchInput(props.search, props.setSearch);
+  const [localSearch, setLocalSearch] = useSearchInput(
+    props.search,
+    props.setSearch,
+  );
 
   const {
     selectedView,
@@ -97,14 +100,18 @@ const FlameGraphHeader = (props: Props) => {
             icon="angle-double-down"
             label="Expand all groups"
             disabled={tableOnly}
-            onClick={() => setCollapsedMap(collapsedMap.setAllCollapsedStatus(false))}
+            onClick={() =>
+              setCollapsedMap(collapsedMap.setAllCollapsedStatus(false))
+            }
             grouped
           />
           <IconBtn
             icon="angle-double-up"
             label="Collapse all groups"
             disabled={tableOnly}
-            onClick={() => setCollapsedMap(collapsedMap.setAllCollapsedStatus(true))}
+            onClick={() =>
+              setCollapsedMap(collapsedMap.setAllCollapsedStatus(true))
+            }
             grouped
           />
         </div>
@@ -123,9 +130,15 @@ const FlameGraphHeader = (props: Props) => {
           name="selected-view"
           value={selectedView}
           onChange={setSelectedView}
-          options={viewOptions.map((o) => ({ value: o.value, title: o.label, label: o.label }))}
+          options={viewOptions.map((o) => ({
+            value: o.value,
+            title: o.label,
+            label: o.label,
+          }))}
         />
-        {extraHeaderElements && <div className="fg-header-extra-elements">{extraHeaderElements}</div>}
+        {extraHeaderElements && (
+          <div className="fg-header-extra-elements">{extraHeaderElements}</div>
+        )}
       </div>
     </div>
   );
@@ -147,7 +160,11 @@ function IconBtn({
   return (
     <button
       type="button"
-      className={cx('fg-header-icon-btn', grouped && 'fg-header-icon-btn-grouped', !grouped && 'fg-header-spacing-right')}
+      className={cx(
+        'fg-header-icon-btn',
+        grouped && 'fg-header-icon-btn-grouped',
+        !grouped && 'fg-header-spacing-right',
+      )}
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
@@ -200,7 +217,12 @@ function RadioGroup<T extends string>({
               className="fg-header-radio-input"
               aria-label={opt.title}
             />
-            <label htmlFor={id} title={opt.title} className="fg-header-radio-label" data-checked={checked}>
+            <label
+              htmlFor={id}
+              title={opt.title}
+              className="fg-header-radio-label"
+              data-checked={checked}
+            >
               {opt.icon && <Icon name={opt.icon} size={14} />}
               {opt.label && <span>{opt.label}</span>}
             </label>
@@ -211,7 +233,10 @@ function RadioGroup<T extends string>({
   );
 }
 
-function getViewOptions(width: number, vertical?: boolean): Array<{ value: SelectedView; label: string }> {
+function getViewOptions(
+  width: number,
+  vertical?: boolean,
+): Array<{ value: SelectedView; label: string }> {
   const options: Array<{ value: SelectedView; label: string }> = [
     { value: SelectedView.TopTable, label: 'Top Table' },
     { value: SelectedView.FlameGraph, label: 'Flame Graph' },
@@ -224,7 +249,7 @@ function getViewOptions(width: number, vertical?: boolean): Array<{ value: Selec
 
 function useSearchInput(
   search: string,
-  setSearch: (search: string) => void
+  setSearch: (search: string) => void,
 ): [string | undefined, (search: string) => void] {
   const [localSearchState, setLocalSearchState] = useState(search);
   const prevSearch = usePrevious(search);
@@ -235,7 +260,7 @@ function useSearchInput(
       setSearch(localSearchState);
     },
     250,
-    [localSearchState]
+    [localSearchState],
   );
 
   // Make sure we still handle updates from parent (from clicking on a table item for example). We check if the parent
@@ -248,6 +273,5 @@ function useSearchInput(
 
   return [localSearchState, setLocalSearchState];
 }
-
 
 export default FlameGraphHeader;

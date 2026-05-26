@@ -7,7 +7,11 @@ import './FlameGraphContextMenu.css';
 
 import { type ClickedItemData, type SelectedView } from '../types';
 
-import { type CollapseConfig, type DataFrame, type FlameGraphDataContainer } from './dataTransform';
+import {
+  type CollapseConfig,
+  type DataFrame,
+  type FlameGraphDataContainer,
+} from './dataTransform';
 
 export type GetExtraContextMenuButtonsFunction = (
   clickedItemData: ClickedItemData,
@@ -16,7 +20,7 @@ export type GetExtraContextMenuButtonsFunction = (
     selectedView?: SelectedView;
     search: string;
     collapseConfig?: CollapseConfig;
-  }
+  },
 ) => ExtraContextMenuButton[];
 
 export type ExtraContextMenuButton = {
@@ -199,11 +203,19 @@ function ContextMenu({
     >
       {children}
     </div>,
-    document.body
+    document.body,
   );
 }
 
-function MenuItem({ label, icon, onClick }: { label: string; icon?: IconType; onClick: () => void }) {
+function MenuItem({
+  label,
+  icon,
+  onClick,
+}: {
+  label: string;
+  icon?: IconType;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
@@ -217,7 +229,13 @@ function MenuItem({ label, icon, onClick }: { label: string; icon?: IconType; on
   );
 }
 
-function MenuGroup({ label, children }: { label: string; children: ReactNode }) {
+function MenuGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
   return (
     <div role="group" aria-label={label} className="fg-ctx-group">
       <div className="fg-ctx-group-label">{label}</div>
