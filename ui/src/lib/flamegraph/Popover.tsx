@@ -1,6 +1,7 @@
-import { css } from '@emotion/css';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+
+import './Popover.css';
 
 /**
  * Click-to-open popover anchored to a trigger element. Closes on outside
@@ -54,12 +55,12 @@ export function Popover({
 
   return (
     <>
-      <span ref={anchorRef} className={styles.anchor}>
+      <span ref={anchorRef} className="fg-popover-anchor">
         {trigger({ open, toggle })}
       </span>
       {open && pos
         ? createPortal(
-            <div ref={overlayRef} className={styles.overlay} style={pos} role="menu">
+            <div ref={overlayRef} className="fg-popover-overlay" style={pos} role="menu">
               {overlay({ close })}
             </div>,
             document.body
@@ -68,22 +69,6 @@ export function Popover({
     </>
   );
 }
-
-const styles = {
-  anchor: css({
-    display: 'inline-block',
-  }),
-  overlay: css({
-    position: 'fixed',
-    zIndex: 1000,
-    background: 'var(--bg-elevated)',
-    border: '1px solid var(--border-medium)',
-    borderRadius: 'var(--radius-md)',
-    boxShadow: 'var(--shadow-md)',
-    padding: '4px 0',
-    minWidth: 160,
-  }),
-};
 
 export function PopoverItem({
   label,
@@ -98,7 +83,7 @@ export function PopoverItem({
     <div
       role="menuitem"
       tabIndex={0}
-      className={popoverItemStyles.item}
+      className="fg-popover-item"
       data-active={active ?? false}
       onClick={onClick}
       onKeyDown={(e) => {
@@ -112,21 +97,3 @@ export function PopoverItem({
     </div>
   );
 }
-
-const popoverItemStyles = {
-  item: css({
-    padding: '6px 12px',
-    fontSize: 'var(--text-sm)',
-    color: 'var(--text-primary)',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    '&:hover, &:focus': {
-      background: 'var(--action-hover)',
-      outline: 'none',
-    },
-    "&[data-active='true']": {
-      background: 'var(--action-selected)',
-      color: 'var(--color-primary-text)',
-    },
-  }),
-};

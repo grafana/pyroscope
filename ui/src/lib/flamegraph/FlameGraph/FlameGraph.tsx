@@ -16,18 +16,20 @@
 // OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 // TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 // THIS SOFTWARE.
-import { css, cx } from '@emotion/css';
 import { useEffect, useState } from 'react';
 
 import { Icon } from '@components/core/Icon';
 
 import { PIXELS_PER_LEVEL } from '../constants';
+import { cx } from '../cx';
 import { type ClickedItemData, type ColorScheme, type SelectedView, type TextAlign } from '../types';
 
 import FlameGraphCanvas from './FlameGraphCanvas';
 import { type GetExtraContextMenuButtonsFunction } from './FlameGraphContextMenu';
 import FlameGraphMetadata from './FlameGraphMetadata';
 import { type CollapsedMap, type FlameGraphDataContainer, type LevelItem } from './dataTransform';
+
+import './FlameGraph.css';
 
 type Props = {
   data: FlameGraphDataContainer;
@@ -76,7 +78,9 @@ const FlameGraph = ({
   setCollapsedMap,
   selectedView,
 }: Props) => {
-  const styles = getStyles();
+  // PIXELS_PER_LEVEL depends on devicePixelRatio so it's computed at runtime
+  // rather than baked into the .css file. Used to space sandwich canvases.
+  const sandwichMargin = `${PIXELS_PER_LEVEL / window.devicePixelRatio}px`;
 
   const [levels, setLevels] = useState<LevelItem[][]>();
   const [levelsCallers, setLevelsCallers] = useState<LevelItem[][]>();
@@ -130,10 +134,10 @@ const FlameGraph = ({
   if (levelsCallers?.length) {
     canvas = (
       <>
-        <div className={styles.sandwichCanvasWrapper}>
-          <div className={styles.sandwichMarker}>
+        <div className="fg-sandwich-canvas-wrapper" style={{ marginBottom: sandwichMargin }}>
+          <div className="fg-sandwich-marker">
             Callers
-            <Icon className={styles.sandwichMarkerIcon} name="angle-down" />
+            <Icon className="fg-sandwich-marker-icon" name="angle-down" />
           </div>
           <FlameGraphCanvas
             {...commonCanvasProps}
@@ -145,9 +149,9 @@ const FlameGraph = ({
           />
         </div>
 
-        <div className={styles.sandwichCanvasWrapper}>
-          <div className={cx(styles.sandwichMarker, styles.sandwichMarkerCalees)}>
-            <Icon className={styles.sandwichMarkerIcon} name="angle-up" />
+        <div className="fg-sandwich-canvas-wrapper" style={{ marginBottom: sandwichMargin }}>
+          <div className={cx('fg-sandwich-marker', 'fg-sandwich-marker-callees')}>
+            <Icon className="fg-sandwich-marker-icon" name="angle-up" />
             Callees
           </div>
           <FlameGraphCanvas
@@ -167,7 +171,7 @@ const FlameGraph = ({
   }
 
   return (
-    <div className={styles.graph}>
+    <div className="fg-graph">
       <FlameGraphMetadata
         data={data}
         focusedItem={focusedItemData}
@@ -180,34 +184,5 @@ const FlameGraph = ({
     </div>
   );
 };
-
-const getStyles = () => ({
-  graph: css({
-    label: 'graph',
-    overflow: 'auto',
-    flexGrow: 1,
-    flexBasis: '50%',
-  }),
-  sandwichCanvasWrapper: css({
-    label: 'sandwichCanvasWrapper',
-    display: 'flex',
-    marginBottom: `${PIXELS_PER_LEVEL / window.devicePixelRatio}px`,
-  }),
-  sandwichMarker: css({
-    label: 'sandwichMarker',
-    writingMode: 'vertical-lr',
-    transform: 'rotate(180deg)',
-    overflow: 'hidden',
-    whiteSpace: 'nowrap',
-  }),
-  sandwichMarkerCalees: css({
-    label: 'sandwichMarkerCalees',
-    textAlign: 'right',
-  }),
-  sandwichMarkerIcon: css({
-    label: 'sandwichMarkerIcon',
-    verticalAlign: 'baseline',
-  }),
-});
 
 export default FlameGraph;

@@ -1,7 +1,7 @@
-import { css } from '@emotion/css';
 import { type MouseEvent as ReactMouseEvent, useCallback, useEffect, useRef, useState } from 'react';
 import * as React from 'react';
-import { useMeasure } from 'react-use';
+
+import { useMeasure } from '../hooks';
 
 import { PIXELS_PER_LEVEL } from '../constants';
 import { type ClickedItemData, type ColorScheme, type SelectedView, type TextAlign } from '../types';
@@ -10,6 +10,8 @@ import FlameGraphContextMenu, { type GetExtraContextMenuButtonsFunction } from '
 import FlameGraphTooltip from './FlameGraphTooltip';
 import { type CollapsedMap, type FlameGraphDataContainer, type LevelItem } from './dataTransform';
 import { getBarX, useFlameRender } from './rendering';
+
+import './FlameGraphCanvas.css';
 
 type Props = {
   data: FlameGraphDataContainer;
@@ -66,7 +68,6 @@ const FlameGraphCanvas = ({
   selectedView,
   search,
 }: Props) => {
-  const styles = getStyles();
 
   const [sizeRef, { width: wrapperWidth }] = useMeasure<HTMLDivElement>();
   const graphRef = useRef<HTMLCanvasElement>(null);
@@ -169,8 +170,8 @@ const FlameGraphCanvas = ({
   }, [setClickedItemData]);
 
   return (
-    <div className={styles.graph}>
-      <div className={styles.canvasWrapper} id="flameGraphCanvasContainer_clickOutsideCheck" ref={sizeRef}>
+    <div className="fg-canvas-graph">
+      <div className="fg-canvas-wrapper" id="flameGraphCanvasContainer_clickOutsideCheck" ref={sizeRef}>
         <canvas
           ref={graphRef}
           data-testid="flameGraph"
@@ -225,36 +226,6 @@ const FlameGraphCanvas = ({
     </div>
   );
 };
-
-const getStyles = () => ({
-  graph: css({
-    label: 'graph',
-    overflow: 'auto',
-    flexGrow: 1,
-    flexBasis: '50%',
-  }),
-  canvasContainer: css({
-    label: 'canvasContainer',
-    display: 'flex',
-  }),
-  canvasWrapper: css({
-    label: 'canvasWrapper',
-    cursor: 'pointer',
-    flex: 1,
-    overflow: 'hidden',
-  }),
-  sandwichMarker: css({
-    label: 'sandwichMarker',
-    writingMode: 'vertical-lr',
-    transform: 'rotate(180deg)',
-    overflow: 'hidden',
-    whiteSpace: 'nowrap',
-  }),
-  sandwichMarkerIcon: css({
-    label: 'sandwichMarkerIcon',
-    verticalAlign: 'baseline',
-  }),
-});
 
 export const convertPixelCoordinatesToBarCoordinates = (
   // position relative to the start of the graph

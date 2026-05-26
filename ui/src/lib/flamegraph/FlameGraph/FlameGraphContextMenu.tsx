@@ -1,8 +1,9 @@
-import { css } from '@emotion/css';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 import { Icon, type IconType } from '@components/core/Icon';
+
+import './FlameGraphContextMenu.css';
 
 import { type ClickedItemData, type SelectedView } from '../types';
 
@@ -193,7 +194,7 @@ function ContextMenu({
       ref={ref}
       data-testid={testId}
       role="menu"
-      className={styles.menu}
+      className="fg-ctx-menu"
       style={{ left, top }}
     >
       {children}
@@ -207,7 +208,7 @@ function MenuItem({ label, icon, onClick }: { label: string; icon?: IconType; on
     <button
       type="button"
       role="menuitem"
-      className={styles.item}
+      className="fg-ctx-item"
       onClick={onClick}
     >
       {icon && <Icon name={icon} size={14} />}
@@ -218,53 +219,11 @@ function MenuItem({ label, icon, onClick }: { label: string; icon?: IconType; on
 
 function MenuGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div role="group" aria-label={label} className={styles.group}>
-      <div className={styles.groupLabel}>{label}</div>
+    <div role="group" aria-label={label} className="fg-ctx-group">
+      <div className="fg-ctx-group-label">{label}</div>
       {children}
     </div>
   );
 }
-
-const styles = {
-  menu: css({
-    position: 'fixed',
-    zIndex: 1000,
-    background: 'var(--bg-elevated)',
-    border: '1px solid var(--border-medium)',
-    borderRadius: 'var(--radius-md)',
-    boxShadow: 'var(--shadow-md)',
-    padding: '4px 0',
-    minWidth: 200,
-    color: 'var(--text-primary)',
-    fontSize: 'var(--text-sm)',
-  }),
-  item: css({
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    width: '100%',
-    padding: '6px 12px',
-    background: 'transparent',
-    color: 'inherit',
-    border: 'none',
-    cursor: 'pointer',
-    textAlign: 'left',
-    '&:hover': {
-      background: 'var(--action-hover)',
-    },
-  }),
-  group: css({
-    borderTop: '1px solid var(--border-weak)',
-    marginTop: 4,
-    paddingTop: 4,
-  }),
-  groupLabel: css({
-    padding: '4px 12px',
-    color: 'var(--text-secondary)',
-    fontSize: 'var(--text-xs)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-  }),
-};
 
 export default FlameGraphContextMenu;

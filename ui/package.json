@@ -17,12 +17,10 @@
     "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
-    "@emotion/css": "^11.13.5",
     "@leeoniya/ufuzzy": "^1.0.19",
     "@xyflow/react": "^12.10.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-use": "^17.6.0",
     "tinycolor2": "^1.6.0"
   },
   "devDependencies": {

@@ -1,12 +1,12 @@
-import { css } from '@emotion/css';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Icon, type IconType } from '@components/core/Icon';
 
-import { escapeRegex } from '../format';
-
 import { type FlameGraphDataContainer } from '../FlameGraph/dataTransform';
+import { escapeRegex } from '../format';
 import { type TableData } from '../types';
+
+import './FlameGraphTopTableContainer.css';
 
 type Props = {
   data: FlameGraphDataContainer;
@@ -104,19 +104,19 @@ const FlameGraphTopTableContainer = memo(
     const padBottom = (sortedRows.length - endIdx) * ROW_HEIGHT;
 
     return (
-      <div className={styles.container} data-testid="topTable">
-        <div ref={scrollRef} className={styles.scroll}>
-          <table className={styles.table} role="table">
-            <thead className={styles.thead}>
-              <tr role="row" className={styles.headerRow}>
-                <th aria-label="Row actions" className={styles.actionHeader} />
+      <div className={"fg-tt-container"} data-testid="topTable">
+        <div ref={scrollRef} className={"fg-tt-scroll"}>
+          <table className={"fg-tt-table"} role="table">
+            <thead className={"fg-tt-thead"}>
+              <tr role="row" className={"fg-tt-header-row"}>
+                <th aria-label="Row actions" className={"fg-tt-action-header"} />
                 <SortHeader
                   column="Symbol"
                   active={sort.column === 'Symbol'}
                   direction={sort.direction}
                   align="left"
                   onClick={handleSort}
-                  className={styles.symbolHeader}
+                  className={"fg-tt-symbol-header"}
                 />
                 <SortHeader
                   column="Self"
@@ -124,7 +124,7 @@ const FlameGraphTopTableContainer = memo(
                   direction={sort.direction}
                   align="right"
                   onClick={handleSort}
-                  className={styles.numericHeader}
+                  className={"fg-tt-numeric-header"}
                 />
                 <SortHeader
                   column="Total"
@@ -132,7 +132,7 @@ const FlameGraphTopTableContainer = memo(
                   direction={sort.direction}
                   align="right"
                   onClick={handleSort}
-                  className={styles.numericHeader}
+                  className={"fg-tt-numeric-header"}
                 />
               </tr>
             </thead>
@@ -192,7 +192,7 @@ function SortHeaderInner({
     <th className={className} aria-sort={active ? (direction === 'desc' ? 'descending' : 'ascending') : 'none'}>
       <button
         type="button"
-        className={styles.sortBtn}
+        className={"fg-tt-sort-btn"}
         style={{ justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}
         onClick={() => onClick(column)}
         aria-label={label}
@@ -240,8 +240,8 @@ function TableRowInner({ data, row, search, sandwichItem, onSymbolClick, onSearc
   );
 
   return (
-    <tr role="row" className={styles.row}>
-      <td className={styles.actionCell}>
+    <tr role="row" className="fg-tt-row" style={{ height: ROW_HEIGHT }}>
+      <td className="fg-tt-action-cell">
         {/* Visual order matches upstream @grafana/ui <Table>: sandwich first,
             then search. Grafana's source JSX has them reversed but its
             IconButton wrapper renders them this way visually. */}
@@ -258,20 +258,20 @@ function TableRowInner({ data, row, search, sandwichItem, onSymbolClick, onSearc
           onClick={onSearchClick}
         />
       </td>
-      <td className={styles.symbolCell}>
+      <td className={"fg-tt-symbol-cell"}>
         <a
           href=""
           role="link"
           title="Highlight symbol"
           aria-label={row.symbol}
-          className={styles.symbolLink}
+          className={"fg-tt-symbol-link"}
           onClick={onLinkClick}
         >
           {row.symbol}
         </a>
       </td>
-      <td className={styles.numericCell}>{formatValue(selfDisp)}</td>
-      <td className={styles.numericCell}>{formatValue(totalDisp)}</td>
+      <td className={"fg-tt-numeric-cell"}>{formatValue(selfDisp)}</td>
+      <td className={"fg-tt-numeric-cell"}>{formatValue(totalDisp)}</td>
     </tr>
   );
 }
@@ -291,7 +291,7 @@ function ActionButtonInner({
   return (
     <button
       type="button"
-      className={styles.actionBtn}
+      className={"fg-tt-action-btn"}
       data-active={active}
       onClick={onClick}
       aria-label={label}
@@ -343,129 +343,5 @@ export function buildFilteredTable(data: FlameGraphDataContainer, matchedLabels?
   return filteredTable;
 }
 
-const styles = {
-  container: css({
-    label: 'topTableContainer',
-    height: '100%',
-    minWidth: 0,
-    backgroundColor: 'var(--bg-secondary)',
-    overflow: 'hidden',
-    padding: '8px',
-    display: 'flex',
-    flexDirection: 'column',
-  }),
-  scroll: css({
-    label: 'topTableScroll',
-    flex: 1,
-    overflow: 'auto',
-    minWidth: 0,
-  }),
-  table: css({
-    label: 'topTable',
-    width: '100%',
-    // Action (60) + Self (120) + Total (120) + Symbol (160 minimum) = 460.
-    // Below this the Symbol column would collapse to zero with tableLayout:
-    // fixed; the parent scroll container will horizontally scroll instead.
-    minWidth: 460,
-    borderCollapse: 'collapse',
-    tableLayout: 'fixed',
-    fontSize: 'var(--text-sm)',
-  }),
-  thead: css({
-    label: 'topTableThead',
-    position: 'sticky',
-    top: 0,
-    backgroundColor: 'var(--bg-secondary)',
-    zIndex: 1,
-  }),
-  headerRow: css({
-    label: 'topTableHeaderRow',
-    borderBottom: '1px solid var(--border-weak)',
-  }),
-  actionHeader: css({
-    width: 60,
-    padding: 0,
-  }),
-  symbolHeader: css({
-    textAlign: 'left',
-    padding: '4px 8px',
-  }),
-  numericHeader: css({
-    textAlign: 'right',
-    padding: '4px 8px',
-    width: 120,
-  }),
-  sortBtn: css({
-    label: 'topTableSortBtn',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-    width: '100%',
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--text-secondary)',
-    cursor: 'pointer',
-    fontWeight: 'var(--weight-medium)',
-    padding: 0,
-    '&:hover': {
-      color: 'var(--text-primary)',
-    },
-  }),
-  row: css({
-    label: 'topTableRow',
-    height: ROW_HEIGHT,
-    borderBottom: '1px solid var(--border-weak)',
-    '&:hover': {
-      backgroundColor: 'var(--action-hover)',
-    },
-  }),
-  actionCell: css({
-    width: 60,
-    padding: '2px 4px',
-    display: 'flex',
-    gap: 2,
-  }),
-  actionBtn: css({
-    label: 'topTableActionBtn',
-    width: 20,
-    height: 20,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--text-secondary)',
-    borderRadius: 'var(--radius-md)',
-    cursor: 'pointer',
-    padding: 0,
-    '&:hover': {
-      color: 'var(--text-primary)',
-      backgroundColor: 'var(--action-hover)',
-    },
-    "&[data-active='true']": {
-      color: 'var(--color-primary-text)',
-    },
-  }),
-  symbolCell: css({
-    padding: '4px 8px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  }),
-  symbolLink: css({
-    color: 'var(--text-link)',
-    textDecoration: 'none',
-    '&:hover': {
-      textDecoration: 'underline',
-    },
-  }),
-  numericCell: css({
-    textAlign: 'right',
-    padding: '4px 8px',
-    fontVariantNumeric: 'tabular-nums',
-    color: 'var(--text-primary)',
-    width: 120,
-  }),
-};
 
 export default FlameGraphTopTableContainer;

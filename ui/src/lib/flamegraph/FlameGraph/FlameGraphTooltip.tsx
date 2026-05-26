@@ -1,7 +1,8 @@
-import { css } from '@emotion/css';
 import { createPortal } from 'react-dom';
 
 import { type CollapseConfig, type FlameGraphDataContainer, type LevelItem } from './dataTransform';
+
+import './FlameGraphTooltip.css';
 
 type Props = {
   data: FlameGraphDataContainer;
@@ -20,13 +21,13 @@ const FlameGraphTooltip = ({ data, item, totalTicks, position, collapseConfig }:
 
   return createPortal(
     <div
-      className={styles.tooltipContainer}
+      className="fg-tooltip"
       style={{ left: position.x + 15, top: position.y }}
       role="tooltip"
       aria-live="polite"
     >
-      <div className={styles.tooltipContent}>
-        <p className={styles.tooltipName}>
+      <div className="fg-tooltip-content">
+        <p className="fg-tooltip-name">
           {data.getLabel(item.itemIndexes[0])}
           {collapseConfig && collapseConfig.collapsed ? (
             <span>
@@ -37,7 +38,7 @@ const FlameGraphTooltip = ({ data, item, totalTicks, position, collapseConfig }:
             ''
           )}
         </p>
-        <p className={styles.lastParagraph}>
+        <p className="fg-tooltip-last">
           {tooltipData.unitTitle}
           <br />
           Total: <b>{tooltipData.unitValue}</b> ({tooltipData.percentValue}%)
@@ -89,37 +90,6 @@ export const getTooltipData = (data: FlameGraphDataContainer, item: LevelItem, t
     unitSelf,
     samples: displayValue.numeric.toLocaleString(),
   };
-};
-
-const styles = {
-  tooltipContainer: css({
-    label: 'tooltipContainer',
-    position: 'fixed',
-    pointerEvents: 'none',
-    zIndex: 1000,
-    overflow: 'hidden',
-    background: 'var(--bg-elevated)',
-    color: 'var(--text-primary)',
-    border: '1px solid var(--border-medium)',
-    borderRadius: 'var(--radius-md)',
-    padding: '8px 12px',
-    boxShadow: 'var(--shadow-md)',
-    maxWidth: 400,
-  }),
-  tooltipContent: css({
-    label: 'tooltipContent',
-    fontSize: 'var(--text-sm)',
-    width: '100%',
-  }),
-  tooltipName: css({
-    label: 'tooltipName',
-    marginTop: 0,
-    wordBreak: 'break-all',
-  }),
-  lastParagraph: css({
-    label: 'lastParagraph',
-    marginBottom: 0,
-  }),
 };
 
 export default FlameGraphTooltip;

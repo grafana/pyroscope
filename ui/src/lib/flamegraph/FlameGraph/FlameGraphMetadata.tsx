@@ -1,13 +1,13 @@
-import { css } from '@emotion/css';
 import { memo, type ReactNode } from 'react';
 
 import { Icon, type IconType } from '@components/core/Icon';
 
 import { formatShort } from '../format';
-
 import { type ClickedItemData } from '../types';
 
 import { type FlameGraphDataContainer } from './dataTransform';
+
+import './FlameGraphMetadata.css';
 
 type Props = {
   data: FlameGraphDataContainer;
@@ -34,7 +34,7 @@ const FlameGraphMetadata = memo(
     }
 
     parts.push(
-      <div className={styles.metadataPill} key={'default'}>
+      <div className="fg-metadata-pill" key={'default'}>
         {unitValue} | {ticksVal.text}
         {ticksVal.suffix} samples ({unitTitle})
       </div>
@@ -42,11 +42,11 @@ const FlameGraphMetadata = memo(
 
     if (sandwichedLabel) {
       parts.push(
-        <div key={'sandwich'} title={sandwichedLabel} className={styles.pillGroup}>
+        <div key={'sandwich'} title={sandwichedLabel} className="fg-metadata-pill-group">
           <Icon size={12} name="angle-right" />
-          <div className={styles.metadataPill}>
+          <div className="fg-metadata-pill">
             <Icon size={12} name="sandwich" />
-            <span className={styles.metadataPillName}>
+            <span className="fg-metadata-pill-name">
               {sandwichedLabel.substring(sandwichedLabel.lastIndexOf('/') + 1)}
             </span>
             <PillCloseButton onClick={onSandwichPillClick} label="Remove sandwich view" />
@@ -60,9 +60,9 @@ const FlameGraphMetadata = memo(
       const iconName: IconType = percentValue > 0 ? 'eye' : 'exclamation-circle';
 
       parts.push(
-        <div key={'focus'} title={focusedItem.label} className={styles.pillGroup}>
+        <div key={'focus'} title={focusedItem.label} className="fg-metadata-pill-group">
           <Icon size={12} name="angle-right" />
-          <div className={styles.metadataPill}>
+          <div className="fg-metadata-pill">
             <Icon size={12} name={iconName} />
             &nbsp;{percentValue}% of total
             <PillCloseButton onClick={onFocusPillClick} label="Remove focus" />
@@ -71,7 +71,7 @@ const FlameGraphMetadata = memo(
       );
     }
 
-    return <div className={styles.metadata}>{parts}</div>;
+    return <div className="fg-metadata">{parts}</div>;
   }
 );
 
@@ -81,7 +81,7 @@ function PillCloseButton({ onClick, label }: { onClick: () => void; label: strin
   return (
     <button
       type="button"
-      className={styles.pillCloseButton}
+      className="fg-metadata-pill-close"
       onClick={onClick}
       aria-label={label}
       title={label}
@@ -90,49 +90,5 @@ function PillCloseButton({ onClick, label }: { onClick: () => void; label: strin
     </button>
   );
 }
-
-const styles = {
-  metadataPill: css({
-    label: 'metadataPill',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 4,
-    background: 'var(--bg-secondary)',
-    borderRadius: 'var(--radius-lg)',
-    padding: '4px 8px',
-    fontSize: 'var(--text-sm)',
-    fontWeight: 'var(--weight-medium)',
-    color: 'var(--text-secondary)',
-  }),
-  pillCloseButton: css({
-    label: 'pillCloseButton',
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--text-secondary)',
-    cursor: 'pointer',
-    padding: '0 2px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    '&:hover': { color: 'var(--text-primary)' },
-  }),
-  pillGroup: css({
-    display: 'inline-flex',
-    alignItems: 'center',
-  }),
-  metadata: css({
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    margin: '8px 0',
-  }),
-  metadataPillName: css({
-    label: 'metadataPillName',
-    maxWidth: '200px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  }),
-};
 
 export default FlameGraphMetadata;

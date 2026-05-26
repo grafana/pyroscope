@@ -1,8 +1,6 @@
-import { css } from '@emotion/css';
 import uFuzzy from '@leeoniya/ufuzzy';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import * as React from 'react';
-import { useMeasure } from 'react-use';
 
 import FlameGraph from './FlameGraph/FlameGraph';
 import { type GetExtraContextMenuButtonsFunction } from './FlameGraph/FlameGraphContextMenu';
@@ -10,8 +8,10 @@ import { CollapsedMap, type DataFrame, FlameGraphDataContainer } from './FlameGr
 import { escapeRegex } from './format';
 import FlameGraphHeader from './FlameGraphHeader';
 import FlameGraphTopTableContainer from './TopTable/FlameGraphTopTableContainer';
-import { MIN_WIDTH_TO_SHOW_BOTH_TOPTABLE_AND_FLAMEGRAPH, FLAMEGRAPH_CONTAINER_HEIGHT } from './constants';
-import { useColorScheme } from './hooks';
+import { MIN_WIDTH_TO_SHOW_BOTH_TOPTABLE_AND_FLAMEGRAPH } from './constants';
+
+import './FlameGraphContainer.css';
+import { useColorScheme, useMeasure } from './hooks';
 import { type ClickedItemData, SelectedView, type TextAlign } from './types';
 
 const ufuzzy = new uFuzzy();
@@ -257,27 +257,27 @@ const FlameGraphContainer = ({
   if (showFlameGraphOnly || selectedView === SelectedView.FlameGraph) {
     body = flameGraph;
   } else if (selectedView === SelectedView.TopTable) {
-    body = <div className={styles.tableContainer}>{table}</div>;
+    body = <div className="fg-table-container">{table}</div>;
   } else if (selectedView === SelectedView.Both) {
     if (vertical) {
       body = (
         <div>
-          <div className={styles.verticalGraphContainer}>{flameGraph}</div>
-          <div className={styles.verticalTableContainer}>{table}</div>
+          <div className="fg-vertical-graph">{flameGraph}</div>
+          <div className="fg-vertical-table">{table}</div>
         </div>
       );
     } else {
       body = (
-        <div className={styles.horizontalContainer}>
-          <div className={styles.horizontalTableContainer}>{table}</div>
-          <div className={styles.horizontalGraphContainer}>{flameGraph}</div>
+        <div className="fg-horizontal-container">
+          <div className="fg-horizontal-table">{table}</div>
+          <div className="fg-horizontal-graph">{flameGraph}</div>
         </div>
       );
     }
   }
 
   return (
-    <div ref={sizeRef} className={styles.container}>
+    <div ref={sizeRef} className="fg-container">
       {!showFlameGraphOnly && (
         <FlameGraphHeader
           search={search}
@@ -308,7 +308,7 @@ const FlameGraphContainer = ({
         />
       )}
 
-      <div className={styles.body}>{body}</div>
+      <div className="fg-body">{body}</div>
     </div>
   );
 };
@@ -383,57 +383,5 @@ export function labelSearch(search: string, data: FlameGraphDataContainer): Set<
   return foundLabels;
 }
 
-const styles = {
-  container: css({
-    label: 'container',
-    overflow: 'auto',
-    height: '100%',
-    display: 'flex',
-    flex: '1 1 0',
-    flexDirection: 'column',
-    minHeight: 0,
-    gap: 8,
-  }),
-  body: css({
-    label: 'body',
-    flexGrow: 1,
-  }),
-
-  tableContainer: css({
-    height: FLAMEGRAPH_CONTAINER_HEIGHT,
-  }),
-
-  horizontalContainer: css({
-    label: 'horizontalContainer',
-    display: 'flex',
-    minHeight: 0,
-    flexDirection: 'row',
-    columnGap: 8,
-    width: '100%',
-  }),
-
-  horizontalGraphContainer: css({
-    flexBasis: '50%',
-  }),
-
-  horizontalTableContainer: css({
-    flexBasis: '50%',
-    maxHeight: FLAMEGRAPH_CONTAINER_HEIGHT,
-  }),
-
-  verticalGraphContainer: css({
-    marginBottom: 8,
-  }),
-
-  verticalTableContainer: css({
-    height: FLAMEGRAPH_CONTAINER_HEIGHT,
-  }),
-
-  verticalContainer: css({
-    label: 'verticalContainer',
-    display: 'flex',
-    flexDirection: 'column',
-  }),
-};
 
 export default FlameGraphContainer;

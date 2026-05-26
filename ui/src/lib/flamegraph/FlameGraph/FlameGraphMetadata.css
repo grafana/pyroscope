@@ -1,0 +1,45 @@
+.fg-metadata {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.fg-metadata-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: 4px 8px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.fg-metadata-pill-group {
+  display: inline-flex;
+  align-items: center;
+}
+
+.fg-metadata-pill-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fg-metadata-pill-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0 2px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.fg-metadata-pill-close:hover {
+  color: var(--text-primary);
+}
