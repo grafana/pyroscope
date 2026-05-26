@@ -1,24 +1,36 @@
-import {
-  createTheme,
-  type DataFrame,
-  type DisplayProcessor,
-  type Field,
-  FieldType,
-  getDisplayProcessor,
-} from '@grafana/data';
-
-// getDisplayProcessor requires a theme for color thresholds. We use it only
-// for unit/scale formatting (no thresholds configured), so any default theme
-// works. Resolved lazily to avoid the cost on module import.
-let _defaultTheme: ReturnType<typeof createTheme> | undefined;
-function defaultTheme() {
-  if (!_defaultTheme) _defaultTheme = createTheme();
-  return _defaultTheme;
-}
-
+import { formatByUnit, type Formatted } from '../format';
 import { SampleUnit } from '../types';
 
 import { mergeParentSubtrees, mergeSubtrees } from './treeTransforms';
+
+// Minimal local mirrors of @grafana/data's DataFrame shape. The lib only
+// needs to read named fields by index and inspect their config.unit.
+export const FieldType = {
+  string: 'string',
+  number: 'number',
+  enum: 'enum',
+} as const;
+export type FieldType = (typeof FieldType)[keyof typeof FieldType];
+
+export type Field = {
+  name: string;
+  type: FieldType;
+  // Values are accessed by index; we don't constrain element type beyond
+  // the field's declared `type` since we read them through display
+  // processors that coerce as needed.
+  values: ReadonlyArray<string | number>;
+  config: {
+    unit?: string;
+    type?: { enum?: { text?: string[] } };
+  };
+};
+
+export type DataFrame = {
+  fields: Field[];
+  length: number;
+};
+
+export type DisplayProcessor = (value: unknown) => Formatted;
 
 export type LevelItem = {
   // Offset from the start of the level.
@@ -294,30 +306,36 @@ export class FlameGraphDataContainer {
     this.selfField = data.fields.find((f) => f.name === 'self')!;
 
     const enumConfig = this.labelField?.config?.type?.enum;
-    // Label can actually be an enum field so depending on that we have to access it through display processor.
+    // Labels can come as enum-encoded indexes (DataFrame enum field, where
+    // values[i] is an index into config.type.enum.text). We resolve through
+    // the lookup table; otherwise treat values as plain strings.
     if (enumConfig) {
-      this.labelDisplayProcessor = getDisplayProcessor({ field: this.labelField, theme: defaultTheme() });
-      this.uniqueLabels = enumConfig.text || [];
-    } else {
+      const lookup = enumConfig.text || [];
       this.labelDisplayProcessor = (value) => ({
-        text: value + '',
+        text: typeof value === 'number' ? (lookup[value] ?? String(value)) : String(value),
+        suffix: '',
         numeric: 0,
       });
-      this.uniqueLabels = [...new Set<string>(this.labelField.values)];
+      this.uniqueLabels = lookup;
+    } else {
+      this.labelDisplayProcessor = (value) => ({
+        text: String(value),
+        suffix: '',
+        numeric: 0,
+      });
+      this.uniqueLabels = [...new Set<string>(this.labelField.values as string[])];
     }
 
-    this.valueDisplayProcessor = getDisplayProcessor({
-      field: this.valueField,
-      theme: defaultTheme(),
-    });
+    const unit = this.valueField.config.unit;
+    this.valueDisplayProcessor = (value) => formatByUnit(Number(value), unit);
   }
 
   getLabel(index: number) {
     return this.labelDisplayProcessor(this.labelField.values[index]).text;
   }
 
-  getLevel(index: number) {
-    return this.levelField.values[index];
+  getLevel(index: number): number {
+    return Number(this.levelField.values[index]);
   }
 
   getValue(index: number | number[]) {
@@ -387,12 +405,10 @@ export class FlameGraphDataContainer {
 
 // Access field value with either single index or array of indexes. This is needed as we sometimes merge multiple
 // into one, and we want to access aggregated values.
-function fieldAccessor(field: Field | undefined, index: number | number[]) {
+function fieldAccessor(field: Field | undefined, index: number | number[]): number {
   if (!field) {
     return 0;
   }
-  let indexArray: number[] = typeof index === 'number' ? [index] : index;
-  return indexArray.reduce((acc, index) => {
-    return acc + field.values[index];
-  }, 0);
+  const indexArray: number[] = typeof index === 'number' ? [index] : index;
+  return indexArray.reduce<number>((acc, i) => acc + Number(field.values[i]), 0);
 }

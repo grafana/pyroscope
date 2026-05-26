@@ -1,9 +1,9 @@
 import { css } from '@emotion/css';
 import { memo, type ReactNode } from 'react';
 
-import { getValueFormat } from '@grafana/data';
-
 import { Icon, type IconType } from '@components/core/Icon';
+
+import { formatShort } from '../format';
 
 import { type ClickedItemData } from '../types';
 
@@ -21,7 +21,7 @@ type Props = {
 const FlameGraphMetadata = memo(
   ({ data, focusedItem, totalTicks, sandwichedLabel, onFocusPillClick, onSandwichPillClick }: Props) => {
     const parts: ReactNode[] = [];
-    const ticksVal = getValueFormat('short')(totalTicks);
+    const ticksVal = formatShort(totalTicks);
 
     const displayValue = data.valueDisplayProcessor(totalTicks);
     let unitValue = displayValue.text + displayValue.suffix;

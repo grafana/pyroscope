@@ -1,9 +1,9 @@
 import { css } from '@emotion/css';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { escapeStringForRegex } from '@grafana/data';
-
 import { Icon, type IconType } from '@components/core/Icon';
+
+import { escapeRegex } from '../format';
 
 import { type FlameGraphDataContainer } from '../FlameGraph/dataTransform';
 import { type TableData } from '../types';
@@ -217,7 +217,7 @@ type TableRowProps = {
 };
 
 function TableRowInner({ data, row, search, sandwichItem, onSymbolClick, onSearch, onSandwich }: TableRowProps) {
-  const isSearched = search === `^${escapeStringForRegex(row.symbol)}$`;
+  const isSearched = search === `^${escapeRegex(row.symbol)}$`;
   const isSandwiched = sandwichItem === row.symbol;
 
   const selfDisp = data.valueDisplayProcessor(row.self);

@@ -4,11 +4,10 @@ import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import * as React from 'react';
 import { useMeasure } from 'react-use';
 
-import { type DataFrame, escapeStringForRegex } from '@grafana/data';
-
 import FlameGraph from './FlameGraph/FlameGraph';
 import { type GetExtraContextMenuButtonsFunction } from './FlameGraph/FlameGraphContextMenu';
-import { CollapsedMap, FlameGraphDataContainer } from './FlameGraph/dataTransform';
+import { CollapsedMap, type DataFrame, FlameGraphDataContainer } from './FlameGraph/dataTransform';
+import { escapeRegex } from './format';
 import FlameGraphHeader from './FlameGraphHeader';
 import FlameGraphTopTableContainer from './TopTable/FlameGraphTopTableContainer';
 import { MIN_WIDTH_TO_SHOW_BOTH_TOPTABLE_AND_FLAMEGRAPH, FLAMEGRAPH_CONTAINER_HEIGHT } from './constants';
@@ -176,7 +175,7 @@ const FlameGraphContainer = ({
 
   const onSymbolClick = useCallback(
     (symbol: string) => {
-      const anchored = `^${escapeStringForRegex(symbol)}$`;
+      const anchored = `^${escapeRegex(symbol)}$`;
 
       if (search === anchored) {
         setSearch('');
@@ -196,7 +195,7 @@ const FlameGraphContainer = ({
         setSearch('');
         return;
       }
-      setSearch(`^${escapeStringForRegex(str)}$`);
+      setSearch(`^${escapeRegex(str)}$`);
     },
     [setSearch]
   );

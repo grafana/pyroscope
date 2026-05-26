@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
-import { FlameGraph as GrafanaFlameGraph } from '@lib/flamegraph';
-import { FieldType } from '@grafana/data';
-import type { DataFrame } from '@grafana/data';
+import {
+  type DataFrame,
+  FlameGraph as GrafanaFlameGraph,
+  FieldType,
+} from '@lib/flamegraph';
 import type { FlamegraphData } from '@api/client';
 import { profileTypeUnit } from '@api/client';
 import { Empty } from '@components/core/Empty';
@@ -92,26 +94,14 @@ function toDataFrame(
   if (labelVals.length === 0) return undefined;
 
   return {
-    name: 'flamegraph',
-    refId: 'A',
     fields: [
       { name: 'level', values: levelVals, type: FieldType.number, config: {} },
-      {
-        name: 'value',
-        values: valueVals,
-        type: FieldType.number,
-        config: { unit },
-      },
-      {
-        name: 'self',
-        values: selfVals,
-        type: FieldType.number,
-        config: { unit },
-      },
+      { name: 'value', values: valueVals, type: FieldType.number, config: { unit } },
+      { name: 'self', values: selfVals, type: FieldType.number, config: { unit } },
       { name: 'label', values: labelVals, type: FieldType.string, config: {} },
     ],
     length: labelVals.length,
-  } as unknown as DataFrame;
+  };
 }
 
 export function FlameGraph({

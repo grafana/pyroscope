@@ -2,13 +2,11 @@ import { css } from '@emotion/css';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
-import { type DataFrame } from '@grafana/data';
-
 import { Icon, type IconType } from '@components/core/Icon';
 
 import { type ClickedItemData, type SelectedView } from '../types';
 
-import { type CollapseConfig, type FlameGraphDataContainer } from './dataTransform';
+import { type CollapseConfig, type DataFrame, type FlameGraphDataContainer } from './dataTransform';
 
 export type GetExtraContextMenuButtonsFunction = (
   clickedItemData: ClickedItemData,
