@@ -185,7 +185,9 @@ function RadioGroup<T extends string>({
         const id = `${groupId}-${opt.value}`;
         const checked = value === opt.value;
         return (
-          <React.Fragment key={opt.value}>
+          <span key={opt.value} className={styles.radioCell}>
+            {/* Input must remain a preceding sibling of the label — e2e
+                tests use `label/preceding-sibling::input` XPath to find it. */}
             <input
               type="radio"
               id={id}
@@ -200,7 +202,7 @@ function RadioGroup<T extends string>({
               {opt.icon && <Icon name={opt.icon} size={14} />}
               {opt.label && <span>{opt.label}</span>}
             </label>
-          </React.Fragment>
+          </span>
         );
       })}
     </div>
@@ -365,17 +367,26 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
   }),
+  radioCell: css({
+    label: 'radioCell',
+    position: 'relative',
+    display: 'inline-flex',
+  }),
   radioInput: css({
     label: 'radioInput',
+    // Overlay the input on top of its label so it stays the click target
+    // (Playwright's .click() goes to the actual element) while the label
+    // provides the visuals.
     position: 'absolute',
-    width: 1,
-    height: 1,
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    margin: 0,
     padding: 0,
-    margin: -1,
-    overflow: 'hidden',
-    clip: 'rect(0,0,0,0)',
-    whiteSpace: 'nowrap',
     border: 0,
+    opacity: 0,
+    cursor: 'pointer',
+    zIndex: 1,
   }),
   radioLabel: css({
     label: 'radioLabel',

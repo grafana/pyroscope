@@ -23,6 +23,7 @@ const FlameGraphTooltip = ({ data, item, totalTicks, position, collapseConfig }:
       className={styles.tooltipContainer}
       style={{ left: position.x + 15, top: position.y }}
       role="tooltip"
+      aria-live="polite"
     >
       <div className={styles.tooltipContent}>
         <p className={styles.tooltipName}>
