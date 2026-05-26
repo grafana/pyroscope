@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { memo, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { escapeStringForRegex } from '@grafana/data';
 
@@ -27,9 +27,14 @@ type SortState = { column: SortColumn; direction: SortDirection };
 
 type Row = { symbol: string; self: number; total: number };
 
+// Rows are uniform — measured from a default-styled <tr>. Adjusting this is
+// a one-character change but the virtualizer math depends on it being exact.
+const ROW_HEIGHT = 25;
+const OVERSCAN_ROWS = 8;
+const HEADER_HEIGHT = 27;
+
 const FlameGraphTopTableContainer = memo(
   ({ data, onSymbolClick, search, matchedLabels, onSearch, sandwichItem, onSandwich, onTableSort }: Props) => {
-
     const rows = useMemo(() => {
       const grouped = buildFilteredTable(data, matchedLabels);
       return Object.entries(grouped).map(([symbol, v]) => ({ symbol, self: v.self ?? 0, total: v.total ?? 0 }));
@@ -49,18 +54,58 @@ const FlameGraphTopTableContainer = memo(
       return copy;
     }, [rows, sort]);
 
-    const handleSort = (column: SortColumn) => {
-      const next: SortState =
-        sort.column === column
-          ? { column, direction: sort.direction === 'desc' ? 'asc' : 'desc' }
-          : { column, direction: column === 'Symbol' ? 'asc' : 'desc' };
-      setSort(next);
-      onTableSort?.(`${next.column}_${next.direction}`);
-    };
+    const handleSort = useCallback(
+      (column: SortColumn) => {
+        setSort((prev) => {
+          const next: SortState =
+            prev.column === column
+              ? { column, direction: prev.direction === 'desc' ? 'asc' : 'desc' }
+              : { column, direction: column === 'Symbol' ? 'asc' : 'desc' };
+          onTableSort?.(`${next.column}_${next.direction}`);
+          return next;
+        });
+      },
+      [onTableSort]
+    );
+
+    // Virtualization: track scroll offset + viewport height of the scroll
+    // container so we only render visible rows. Without this, the ~1k rows in
+    // a real profile cause a noticeable jank when switching to Top Table.
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [scrollTop, setScrollTop] = useState(0);
+    const [viewportH, setViewportH] = useState(600);
+    useEffect(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const onScroll = () => setScrollTop(el.scrollTop);
+      el.addEventListener('scroll', onScroll, { passive: true });
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) setViewportH(entry.contentRect.height);
+      });
+      ro.observe(el);
+      setViewportH(el.clientHeight);
+      return () => {
+        el.removeEventListener('scroll', onScroll);
+        ro.disconnect();
+      };
+    }, []);
+
+    // Subtract HEADER_HEIGHT from the visible window because the sticky thead
+    // covers that many pixels at the top of the scroll container.
+    const visibleBodyH = Math.max(0, viewportH - HEADER_HEIGHT);
+    const firstVisible = Math.max(0, Math.floor((scrollTop - HEADER_HEIGHT) / ROW_HEIGHT));
+    const lastVisible = Math.min(
+      sortedRows.length,
+      Math.ceil((scrollTop + visibleBodyH) / ROW_HEIGHT) + 1
+    );
+    const startIdx = Math.max(0, firstVisible - OVERSCAN_ROWS);
+    const endIdx = Math.min(sortedRows.length, lastVisible + OVERSCAN_ROWS);
+    const padTop = startIdx * ROW_HEIGHT;
+    const padBottom = (sortedRows.length - endIdx) * ROW_HEIGHT;
 
     return (
       <div className={styles.container} data-testid="topTable">
-        <div className={styles.scroll}>
+        <div ref={scrollRef} className={styles.scroll}>
           <table className={styles.table} role="table">
             <thead className={styles.thead}>
               <tr role="row" className={styles.headerRow}>
@@ -92,7 +137,12 @@ const FlameGraphTopTableContainer = memo(
               </tr>
             </thead>
             <tbody>
-              {sortedRows.map((row) => (
+              {padTop > 0 && (
+                <tr aria-hidden="true" style={{ height: padTop }}>
+                  <td colSpan={4} />
+                </tr>
+              )}
+              {sortedRows.slice(startIdx, endIdx).map((row) => (
                 <TableRow
                   key={row.symbol}
                   data={data}
@@ -104,6 +154,11 @@ const FlameGraphTopTableContainer = memo(
                   onSandwich={onSandwich}
                 />
               ))}
+              {padBottom > 0 && (
+                <tr aria-hidden="true" style={{ height: padBottom }}>
+                  <td colSpan={4} />
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -114,7 +169,7 @@ const FlameGraphTopTableContainer = memo(
 
 FlameGraphTopTableContainer.displayName = 'FlameGraphTopTableContainer';
 
-function SortHeader({
+function SortHeaderInner({
   column,
   active,
   direction,
@@ -149,6 +204,7 @@ function SortHeader({
     </th>
   );
 }
+const SortHeader = memo(SortHeaderInner);
 
 type TableRowProps = {
   data: FlameGraphDataContainer;
@@ -160,12 +216,28 @@ type TableRowProps = {
   onSandwich: (symbol?: string) => void;
 };
 
-function TableRow({ data, row, search, sandwichItem, onSymbolClick, onSearch, onSandwich }: TableRowProps) {
+function TableRowInner({ data, row, search, sandwichItem, onSymbolClick, onSearch, onSandwich }: TableRowProps) {
   const isSearched = search === `^${escapeStringForRegex(row.symbol)}$`;
   const isSandwiched = sandwichItem === row.symbol;
 
   const selfDisp = data.valueDisplayProcessor(row.self);
   const totalDisp = data.valueDisplayProcessor(row.total);
+
+  const onSandwichClick = useCallback(
+    () => onSandwich(isSandwiched ? undefined : row.symbol),
+    [onSandwich, isSandwiched, row.symbol]
+  );
+  const onSearchClick = useCallback(
+    () => onSearch(isSearched ? '' : row.symbol),
+    [onSearch, isSearched, row.symbol]
+  );
+  const onLinkClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      onSymbolClick(row.symbol);
+    },
+    [onSymbolClick, row.symbol]
+  );
 
   return (
     <tr role="row" className={styles.row}>
@@ -177,13 +249,13 @@ function TableRow({ data, row, search, sandwichItem, onSymbolClick, onSearch, on
           icon="sandwich"
           active={isSandwiched}
           label={isSandwiched ? 'Remove from sandwich view' : 'Show in sandwich view'}
-          onClick={() => onSandwich(isSandwiched ? undefined : row.symbol)}
+          onClick={onSandwichClick}
         />
         <ActionButton
           icon="search"
           active={isSearched}
           label={isSearched ? 'Clear from search' : 'Search for symbol'}
-          onClick={() => onSearch(isSearched ? '' : row.symbol)}
+          onClick={onSearchClick}
         />
       </td>
       <td className={styles.symbolCell}>
@@ -193,10 +265,7 @@ function TableRow({ data, row, search, sandwichItem, onSymbolClick, onSearch, on
           title="Highlight symbol"
           aria-label={row.symbol}
           className={styles.symbolLink}
-          onClick={(e) => {
-            e.preventDefault();
-            onSymbolClick(row.symbol);
-          }}
+          onClick={onLinkClick}
         >
           {row.symbol}
         </a>
@@ -206,8 +275,9 @@ function TableRow({ data, row, search, sandwichItem, onSymbolClick, onSearch, on
     </tr>
   );
 }
+const TableRow = memo(TableRowInner);
 
-function ActionButton({
+function ActionButtonInner({
   icon,
   active,
   label,
@@ -231,6 +301,7 @@ function ActionButton({
     </button>
   );
 }
+const ActionButton = memo(ActionButtonInner);
 
 function formatValue(disp: { text: string; suffix?: string }) {
   return disp.text + (disp.suffix ?? '');
@@ -342,6 +413,7 @@ const styles = {
   }),
   row: css({
     label: 'topTableRow',
+    height: ROW_HEIGHT,
     borderBottom: '1px solid var(--border-weak)',
     '&:hover': {
       backgroundColor: 'var(--action-hover)',
@@ -355,8 +427,8 @@ const styles = {
   }),
   actionBtn: css({
     label: 'topTableActionBtn',
-    width: 24,
-    height: 24,
+    width: 20,
+    height: 20,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
