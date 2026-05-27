@@ -32,7 +32,7 @@ Usage of ./pyroscope:
   -adaptive-placement.unit-size-bytes uint
     	Shards are allocated based on the utilisation of units per second. The option specifies the unit size in bytes. (default 131072)
   -admin-server.http-listen-address string
-    	Address for the admin HTTP server. Defaults to localhost so the port is not exposed externally. (default "localhost")
+    	Address for the admin HTTP server. Defaults to localhost so the port is not exposed externally. Use :: or 0.0.0.0 to listen on all interfaces. (default "localhost")
   -admin-server.http-listen-port int
     	Port for the admin HTTP server (metrics, pprof, admin). (default 4042)
   -admin-server.mode value
