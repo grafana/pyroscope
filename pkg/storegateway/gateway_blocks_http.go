@@ -13,6 +13,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/gorilla/mux"
+	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
@@ -61,6 +62,10 @@ func (s *StoreGateway) BlocksHandler(w http.ResponseWriter, req *http.Request) {
 	tenantID := vars["tenant"]
 	if tenantID == "" {
 		util.WriteTextResponse(w, "Tenant ID can't be empty")
+		return
+	}
+	if err := tenant.ValidTenantID(tenantID); err != nil {
+		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
 		return
 	}
 
