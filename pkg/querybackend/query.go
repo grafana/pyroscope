@@ -9,7 +9,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tracing"
-	"github.com/iancoleman/strcase"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
@@ -266,7 +265,7 @@ type queryContext struct {
 
 func (q *queryContext) execute(query *queryv1.Query) error {
 	var span *tracing.Span
-	span, q.ctx = tracing.StartSpanFromContext(q.ctx, "executeQuery."+strcase.ToCamel(query.QueryType.String()))
+	span, q.ctx = tracing.StartSpanFromContext(q.ctx, "executeQuery."+util.ToCamel(query.QueryType.String()))
 	defer span.Finish()
 	handle, err := getQueryHandler(query.QueryType)
 	if err != nil {

@@ -43,7 +43,6 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/raft v1.7.3
 	github.com/hashicorp/raft-wal v0.4.2
-	github.com/iancoleman/strcase v0.3.0
 	github.com/klauspost/compress v1.18.6
 	github.com/kubescape/go-git-url v0.0.31
 	github.com/minio/minio-go/v7 v7.1.0
