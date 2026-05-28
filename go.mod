@@ -9,7 +9,6 @@ require (
 	connectrpc.com/grpchealth v1.4.0
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/alecthomas/kingpin/v2 v2.4.0
-	github.com/briandowns/spinner v1.23.2
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/colega/zeropool v0.0.0-20230505084239-6fb4a4f75381
 	github.com/dennwc/varint v1.0.0
@@ -48,10 +47,8 @@ require (
 	github.com/hashicorp/raft-wal v0.4.2
 	github.com/iancoleman/strcase v0.3.0
 	github.com/json-iterator/go v1.1.12
-	github.com/k0kubun/pp/v3 v3.5.1
 	github.com/klauspost/compress v1.18.6
 	github.com/kubescape/go-git-url v0.0.31
-	github.com/mattn/go-isatty v0.0.22
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/oklog/ulid/v2 v2.1.1
@@ -118,6 +115,7 @@ require (
 	github.com/go-openapi/swag/typeutils v0.25.5 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.5 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
+	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/opentracing-contrib/go-grpc v0.1.2 // indirect
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/parquet-go/bitpack v1.0.0 // indirect
