@@ -110,5 +110,36 @@ func Test_CountingBucket_IndependentPerInvoke(t *testing.T) {
 	require.Equal(t, first, second, "independent invokes must report the same bytes")
 }
 
+func Test_CountingBucket_Wait(t *testing.T) {
+	// Wait must block until all readers are closed, so the counter is
+	// stable before the caller samples it.
+	inner := memory.NewInMemBucket()
+	ctx := context.Background()
+	data := []byte("hello world")
+	require.NoError(t, inner.Upload(ctx, "test", bytes.NewReader(data)))
+
+	var counter atomic.Uint64
+	bkt := objstore.NewCountingBucket(objstore.NewBucket(inner), &counter)
+
+	rc, err := bkt.GetRange(ctx, "test", 0, int64(len(data)))
+	require.NoError(t, err)
+	_, err = io.ReadAll(rc)
+	require.NoError(t, err)
+	// Do not close yet; Wait must still unblock once Close is called.
+	done := make(chan struct{})
+	go func() {
+		bkt.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		t.Fatal("Wait returned before Close was called")
+	default:
+	}
+	require.NoError(t, rc.Close())
+	<-done // must unblock now
+	require.Equal(t, uint64(len(data)), counter.Load())
+}
+
 // Ensure CountingBucket satisfies the Bucket interface at compile time.
 var _ objstore.Bucket = (*objstore.CountingBucket)(nil)
