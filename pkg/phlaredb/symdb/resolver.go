@@ -299,6 +299,41 @@ func (r *Resolver) Tree() (*model.FunctionNameTree, error) {
 	return tree, err
 }
 
+func (r *Resolver) TreeWithMappings() (*model.FunctionNameTree, map[string]string, error) {
+    span, ctx := tracing.StartSpanFromContext(r.ctx, "Resolver.TreeWithMappings")
+    defer span.Finish()
+    var lock sync.Mutex
+
+    tree := new(model.FunctionNameTree)
+    nameToMapping := map[string]string{}
+
+    err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+        for _, loc := range symbols.Locations {
+            if loc.MappingId >= uint32(len(symbols.Mappings)) {
+                continue
+            }
+            mappingFilename := symbols.Strings[symbols.Mappings[loc.MappingId].Filename]
+            for _, line := range loc.Line {
+                funcName := symbols.Strings[symbols.Functions[line.FunctionId].Name]
+                nameToMapping[funcName] = mappingFilename
+            }
+        }
+
+        lookup := func(i int32) model.FunctionName {
+            return model.FunctionName(symbols.Strings[i])
+        }
+        resolved, err := symbols.Tree(ctx, appender, r.maxNodes, SelectStackTraces(symbols, r.sts), lookup)
+        if err != nil {
+            return err
+        }
+        lock.Lock()
+        tree.Merge(resolved)
+        lock.Unlock()
+        return nil
+    })
+    return tree, nameToMapping, err
+}
+
 func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	span, ctx := tracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
 	defer span.Finish()

@@ -640,6 +640,41 @@ func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[type
 	return connect.NewResponse(response), nil
 }
 
+func buildMappingFromProfile(p *googlev1.Profile) map[string]string {
+    nameToMapping := map[string]string{}
+    if p == nil {
+        return nameToMapping
+    }
+    for _, loc := range p.Location {
+        if loc.MappingId == 0 || int(loc.MappingId-1) >= len(p.Mapping) {
+            continue
+        }
+        mappingFilename := p.StringTable[p.Mapping[loc.MappingId-1].Filename]
+        for _, line := range loc.Line {
+            if line.FunctionId == 0 || int(line.FunctionId-1) >= len(p.Function) {
+                continue
+            }
+            funcName := p.StringTable[p.Function[line.FunctionId-1].Name]
+            nameToMapping[funcName] = mappingFilename
+        }
+    }
+    return nameToMapping
+}
+
+func (q *Querier) buildMappingFromPprof(ctx context.Context, profileTypeID, labelSelector string, start, end int64, maxNodes *int64) (map[string]string, error) {
+    p, err := q.selectProfile(ctx, &querierv1.SelectMergeProfileRequest{
+        ProfileTypeID: profileTypeID,
+        LabelSelector: labelSelector,
+        Start:         start,
+        End:           end,
+        MaxNodes:      maxNodes,
+    })
+    if err != nil {
+        return nil, err
+    }
+    return buildMappingFromProfile(p), nil
+}
+
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
 	level.Info(spanlogger.FromContext(ctx, q.logger)).Log(
@@ -670,12 +705,26 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		return nil, err
 	}
 
+    nameToMapping, err := q.buildMappingFromPprof(
+        ctx,
+        req.Msg.ProfileTypeID,
+        req.Msg.LabelSelector,
+        req.Msg.Start,
+        req.Msg.End,
+        req.Msg.MaxNodes,
+    )
+    if err != nil {
+        level.Warn(q.logger).Log("msg", "failed to get mapping names", "err", err)
+        nameToMapping = nil
+    }
+
 	var resp querierv1.SelectMergeStacktracesResponse
 	switch req.Msg.Format {
 	default:
-		resp.Flamegraph = phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes())
+		resp.Flamegraph = phlaremodel.NewFlameGraph(t, nameToMapping, req.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
 		resp.Tree = t.Bytes(req.Msg.GetMaxNodes(), nil)
+		resp.Mapping = nameToMapping
 	}
 	return connect.NewResponse(&resp), nil
 }
@@ -702,13 +751,27 @@ func (q *Querier) SelectMergeSpanProfile(ctx context.Context, req *connect.Reque
 		return nil, err
 	}
 
+    nameToMapping, err := q.buildMappingFromPprof(
+        ctx,
+        req.Msg.ProfileTypeID,
+        req.Msg.LabelSelector,
+        req.Msg.Start,
+        req.Msg.End,
+        req.Msg.MaxNodes,
+    )
+    if err != nil {
+        level.Warn(q.logger).Log("msg", "failed to get mapping names", "err", err)
+        nameToMapping = nil
+    }
+
 	var resp querierv1.SelectMergeSpanProfileResponse
 	switch req.Msg.Format {
 	default:
-		resp.Flamegraph = phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes())
+		resp.Flamegraph = phlaremodel.NewFlameGraph(t, nameToMapping, req.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
 		resp.Tree = t.Bytes(req.Msg.GetMaxNodes(), nil)
-	}
+		resp.Mapping = nameToMapping
+    }
 	return connect.NewResponse(&resp), nil
 }
 

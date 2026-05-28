@@ -47,12 +47,12 @@ func (f *Frontend) Diff(
 	var left, right *phlaremodel.FunctionNameTree
 	g.Go(func() error {
 		var leftErr error
-		left, leftErr = f.selectMergeStacktracesTree(ctx, connect.NewRequest(c.Msg.Left))
+		left, _, leftErr = f.selectMergeStacktracesTree(ctx, connect.NewRequest(c.Msg.Left))
 		return leftErr
 	})
 	g.Go(func() error {
 		var rightErr error
-		right, rightErr = f.selectMergeStacktracesTree(ctx, connect.NewRequest(c.Msg.Right))
+		right, _, rightErr = f.selectMergeStacktracesTree(ctx, connect.NewRequest(c.Msg.Right))
 		return rightErr
 	})
 	if err = g.Wait(); err != nil {

@@ -253,6 +253,18 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location, dictionar
 		Line:      make([]*googleProfile.Line, len(ol.Lines)),
 	}
 
+    frameType, _ := getAttributeValueByKeyOrEmpty(ol.AttributeIndices, dictionary, "profile.frame.type")
+    if frameType == "kernel" {
+        fn := p.dst.StringTable[p.dst.Mapping[mappingId-1].Filename]
+        if !strings.HasPrefix(fn, "[kernel]") {
+            if fn == "" {
+                p.dst.Mapping[mappingId-1].Filename = p.addstr("[kernel]")
+            } else {
+                p.dst.Mapping[mappingId-1].Filename = p.addstr("[kernel] " + fn)
+            }
+        }
+    }
+
 	for i, line := range ol.Lines {
 		gl.Line[i], err = p.convertLineBack(line, dictionary)
 		if err != nil {

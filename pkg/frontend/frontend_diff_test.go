@@ -117,7 +117,7 @@ func Test_Frontend_Diff(t *testing.T) {
 				}
 
 				return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
-					Flamegraph: model.NewFlameGraph(s, -1),
+					Flamegraph: model.NewFlameGraph(s, map[string]string{}, -1),
 				}), nil
 			})
 		}}

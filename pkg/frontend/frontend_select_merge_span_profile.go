@@ -48,6 +48,7 @@ func (f *Frontend) SelectMergeSpanProfile(
 	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
 	intervals := NewTimeIntervalIterator(time.UnixMilli(int64(validated.Start)), time.UnixMilli(int64(validated.End)), interval)
 
+    mapping := map[string]string{}
 	for intervals.Next() {
 		r := intervals.At()
 		g.Go(func() error {
@@ -66,6 +67,11 @@ func (f *Frontend) SelectMergeSpanProfile(
 			if err != nil {
 				return err
 			}
+            if resp.Msg.Mapping != nil {
+                for k, v := range resp.Msg.Mapping {
+                    mapping[k] = v
+                }
+            }
 			if len(resp.Msg.Tree) > 0 {
 				err = m.MergeTreeBytes(resp.Msg.Tree)
 			} else if resp.Msg.Flamegraph != nil {
@@ -84,9 +90,10 @@ func (f *Frontend) SelectMergeSpanProfile(
 	var resp querierv1.SelectMergeSpanProfileResponse
 	switch c.Msg.Format {
 	default:
-		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
+		resp.Flamegraph = phlaremodel.NewFlameGraph(t, mapping, c.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
 		resp.Tree = t.Bytes(c.Msg.GetMaxNodes(), nil)
+		resp.Mapping = mapping
 	}
 	return connect.NewResponse(&resp), nil
 }

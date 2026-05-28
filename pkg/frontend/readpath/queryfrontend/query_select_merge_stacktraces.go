@@ -18,11 +18,12 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+
 	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_DOT {
 		return q.selectMergeStacktracesDot(ctx, c)
 	}
 
-	b, err := q.selectMergeStacktracesTree(ctx, c)
+	b, mapping, err := q.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -30,12 +31,13 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 	switch c.Msg.Format {
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
 		resp.Tree = b
+		resp.Mapping = mapping
 	default:
 		t, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](b)
 		if err != nil {
 			return nil, err
 		}
-		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
+		resp.Flamegraph = phlaremodel.NewFlameGraph(t, mapping, c.Msg.GetMaxNodes())
 	}
 	return connect.NewResponse(&resp), nil
 }
@@ -84,32 +86,32 @@ func (q *QueryFrontend) selectMergeStacktracesDot(
 func (q *QueryFrontend) selectMergeStacktracesTree(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
-) (tree []byte, err error) {
+) (tree []byte, mapping map[string]string, err error) {
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	empty, err := validation.SanitizeTimeRange(q.limits, tenantIDs, &c.Msg.Start, &c.Msg.End)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if empty {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	maxNodes, err := validation.ValidateMaxNodes(q.limits, tenantIDs, c.Msg.GetMaxNodes())
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	_, err = phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	labelSelector, err := buildLabelSelectorWithProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	report, err := q.querySingle(ctx,
 		&queryv1.QueryRequest{
@@ -137,10 +139,10 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 		},
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if report == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
-	return report.Tree.Tree, nil
+	return report.Tree.Tree, report.Tree.MappingNames, nil
 }
