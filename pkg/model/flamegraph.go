@@ -3,6 +3,7 @@ package model
 import (
 	"sort"
 	"sync"
+	"maps"
 
 	"github.com/samber/lo"
 
@@ -13,7 +14,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
-func NewFlameGraph(t *FunctionNameTree, maxNodes int64) *querierv1.FlameGraph {
+func NewFlameGraph(t *FunctionNameTree, nameToMapping map[string]string, maxNodes int64) *querierv1.FlameGraph {
 	var total, max int64
 	for _, node := range t.root {
 		total += node.total
@@ -112,12 +113,18 @@ func NewFlameGraph(t *FunctionNameTree, maxNodes int64) *querierv1.FlameGraph {
 		}
 	}
 
-	return &querierv1.FlameGraph{
-		Names:   names,
-		Levels:  levels,
-		Total:   total,
-		MaxSelf: max,
-	}
+	mappingNames := make([]string, len(names))
+    for i, name := range names {
+        mappingNames[i] = nameToMapping[name]
+    }
+
+    return &querierv1.FlameGraph{
+        Names:        names,
+        Levels:       levels,
+        Total:        total,
+        MaxSelf:      max,
+        MappingNames: mappingNames,
+    }
 }
 
 // ExportToFlamebearer exports the flamegraph to a Flamebearer struct.
@@ -179,10 +186,14 @@ func ExportDiffToFlamebearer(fg *querierv1.FlameGraphDiff, profileType *typesv1.
 type FlameGraphMerger struct {
 	mu sync.Mutex
 	t  *FunctionNameTree
+	mapping map[string]string
 }
 
 func NewFlameGraphMerger() *FlameGraphMerger {
-	return &FlameGraphMerger{t: new(FunctionNameTree)}
+	return &FlameGraphMerger{
+	    t: new(FunctionNameTree),
+	    mapping: make(map[string]string),
+	}
 }
 
 // MergeFlameGraph adds the flame graph stack traces to the resulting
@@ -214,6 +225,16 @@ func (m *FlameGraphMerger) MergeFlameGraph(src *querierv1.FlameGraph) {
 	}
 }
 
+func (m *FlameGraphMerger) MergeMapping(src map[string]string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.mapping = maps.Clone(src)
+}
+
+func (m *FlameGraphMerger) Mapping() map[string]string {
+	return m.mapping
+}
+
 func (m *FlameGraphMerger) MergeTreeBytes(src []byte) error {
 	t, err := UnmarshalTree[FunctionName, FunctionNameI](src)
 	if err != nil {
@@ -232,7 +253,7 @@ func (m *FlameGraphMerger) FlameGraph(maxNodes int64) *querierv1.FlameGraph {
 	if t == nil {
 		t = new(FunctionNameTree)
 	}
-	return NewFlameGraph(t, maxNodes)
+	return NewFlameGraph(t, nil, maxNodes)
 }
 
 func deltaDecoding(levels []*querierv1.Level, start, step int) {

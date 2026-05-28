@@ -123,7 +123,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		return resp, nil
 	}
 
-	tree, err := resolver.Tree()
+	tree, nameToMapping, err := resolver.TreeWithMappings()
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +132,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		Tree: &queryv1.TreeReport{
 			Query: query.Tree.CloneVT(),
 			Tree:  tree.Bytes(query.Tree.GetMaxNodes(), nil),
+			MappingNames: nameToMapping,
 		},
 	}
 	return resp, nil
@@ -141,6 +142,9 @@ type treeAggregator struct {
 	init  sync.Once
 	query *queryv1.TreeQuery
 	tree  *model.TreeMerger[model.FunctionName, model.FunctionNameI]
+
+	mappingLock  sync.Mutex
+    mappingNames map[string]string
 
 	lrTree       *model.TreeMerger[model.LocationRefName, model.LocationRefNameI]
 	symbolLock   sync.Mutex
@@ -166,6 +170,15 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 		return a.lrTree.MergeTreeBytes(r.Tree, model.WithTreeMergeFormatNodeNames(adder))
 	}
 
+    a.mappingLock.Lock()
+    if a.mappingNames == nil {
+        a.mappingNames = make(map[string]string)
+    }
+    for k, v := range r.MappingNames {
+        a.mappingNames[k] = v
+    }
+    a.mappingLock.Unlock()
+
 	a.init.Do(func() {
 		a.tree = model.NewTreeMerger[model.FunctionName, model.FunctionNameI]()
 		a.query = r.Query.CloneVT()
@@ -189,5 +202,6 @@ func (a *treeAggregator) build() *queryv1.Report {
 	}
 
 	result.Tree.Tree = a.tree.Tree().Bytes(a.query.GetMaxNodes(), nil)
+	result.Tree.MappingNames = a.mappingNames
 	return result
 }
