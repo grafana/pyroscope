@@ -151,7 +151,7 @@ func (release *releaseArtifact) download(ctx context.Context, logger log.Logger,
 	return targetPath, nil
 }
 
-func clearPath(name string, destPath string, stripComponents int) string {
+func clearPath(name string, destPath string, stripComponents int) (string, error) {
 	isSeparator := func(r rune) bool {
 		return r == os.PathSeparator
 	}
@@ -159,7 +159,20 @@ func clearPath(name string, destPath string, stripComponents int) string {
 	if len(list) > stripComponents {
 		list = list[stripComponents:]
 	}
-	return filepath.Join(append([]string{destPath}, list...)...)
+	cleaned := filepath.Join(append([]string{destPath}, list...)...)
+	// Ensure the resolved path is confined to destPath (zip-slip / tar-slip prevention).
+	absDestPath, err := filepath.Abs(destPath)
+	if err != nil {
+		return "", fmt.Errorf("clearPath: abs destPath: %w", err)
+	}
+	absCleaned, err := filepath.Abs(cleaned)
+	if err != nil {
+		return "", fmt.Errorf("clearPath: abs cleaned: %w", err)
+	}
+	if !strings.HasPrefix(absCleaned, absDestPath+string(os.PathSeparator)) && absCleaned != absDestPath {
+		return "", fmt.Errorf("clearPath: path %q escapes destination directory", name)
+	}
+	return cleaned, nil
 }
 
 func extractZip(zipStream io.ReaderAt, size int64, destPath string, stripComponents int) error {
@@ -169,7 +182,10 @@ func extractZip(zipStream io.ReaderAt, size int64, destPath string, stripCompone
 	}
 
 	for _, f := range zipReader.File {
-		p := clearPath(f.Name, destPath, stripComponents)
+		p, err := clearPath(f.Name, destPath, stripComponents)
+		if err != nil {
+			return fmt.Errorf("ExtractZip: %w", err)
+		}
 		if f.FileInfo().IsDir() {
 			err := os.MkdirAll(p, modeDir)
 			if err != nil {
@@ -222,7 +238,10 @@ func extractTarGz(gzipStream io.Reader, destPath string, stripComponents int) er
 			return fmt.Errorf("ExtractTarGz: Next() failed: %s", err.Error())
 		}
 
-		p := clearPath(header.Name, destPath, stripComponents)
+		p, err := clearPath(header.Name, destPath, stripComponents)
+		if err != nil {
+			return fmt.Errorf("ExtractTarGz: %w", err)
+		}
 		switch header.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(p, modeDir); err != nil {
