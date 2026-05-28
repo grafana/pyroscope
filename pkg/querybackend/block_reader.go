@@ -138,6 +138,11 @@ func (b *BlockReader) Invoke(
 		return nil, err
 	}
 
+	// Wait for any async readers (e.g. parquet ReadModeAsync goroutines) that
+	// may still be draining a GetRange reader after the errgroup returned.
+	// This ensures fetchedBytes is stable before we sample it below.
+	countingStorage.Wait()
+
 	if weightCollector.datasetsCount > 0 {
 		traceID, _ := tracing.ExtractTraceID(ctx)
 		level.Info(b.log).Log(
