@@ -39,6 +39,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb"
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb/schedulerpbconnect"
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	httpserver "github.com/grafana/pyroscope/v2/pkg/util/http/server"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpcutil"
 )
@@ -64,7 +65,7 @@ func setupScheduler(t *testing.T, args schedulerArgs) (*Scheduler, schedulerpb.S
 
 	mux := mux.NewRouter()
 	server := httptest.NewUnstartedServer(mux)
-	util.EnableHTTP2(server.Config)
+	httpserver.EnableHTTP2(server.Config)
 
 	server.Start()
 	schedulerpbconnect.RegisterSchedulerForFrontendHandler(mux, s, args.handlerOpts...)

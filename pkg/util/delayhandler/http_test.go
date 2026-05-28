@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
-	"github.com/grafana/pyroscope/v2/pkg/util"
+	httpserver "github.com/grafana/pyroscope/v2/pkg/util/http/server"
 )
 
 // Mock implementation of the Limits interface
@@ -328,7 +328,7 @@ func TestGRPCHandler(t *testing.T) {
 	}))
 
 	httpServer := httptest.NewUnstartedServer(handler)
-	util.EnableHTTP2(httpServer.Config)
+	httpserver.EnableHTTP2(httpServer.Config)
 	httpServer.Start()
 	defer httpServer.Close()
 

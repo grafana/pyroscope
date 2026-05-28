@@ -15,16 +15,9 @@ import (
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	httpserver "github.com/grafana/pyroscope/v2/pkg/util/http/server"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 )
-
-func enableHTTP2(server *http.Server) {
-	protocols := new(http.Protocols)
-	protocols.SetHTTP1(true)
-	protocols.SetHTTP2(true)
-	protocols.SetUnencryptedHTTP2(true)
-	server.Protocols = protocols
-}
 
 type fakeQuerier struct {
 	querierv1connect.UnimplementedQuerierServiceHandler
@@ -62,7 +55,7 @@ func Test_RoundTripUnary(t *testing.T) {
 	request := func(t *testing.T) *connect.Request[typesv1.LabelValuesRequest] {
 		mux := mux.NewRouter()
 		server := httptest.NewUnstartedServer(mux)
-		enableHTTP2(server.Config)
+		httpserver.EnableHTTP2(server.Config)
 
 		server.Start()
 		defer server.Close()

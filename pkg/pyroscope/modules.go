@@ -55,6 +55,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/util/build"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
+	httpserver "github.com/grafana/pyroscope/v2/pkg/util/http/server"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
 
@@ -537,7 +538,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	f.Server.HTTPServer.Handler = middleware.Merge(defaultHTTPMiddleware...).Wrap(f.Server.HTTP)
 
 	s := NewServerService(f.Server, servicesToWaitFor, f.logger)
-	util.EnableHTTP2(f.Server.HTTPServer)
+	httpserver.EnableHTTP2(f.Server.HTTPServer)
 	f.Server.HTTPServer.Handler = util.RecoveryHTTPMiddleware.Wrap(f.Server.HTTPServer.Handler)
 
 	return s, nil

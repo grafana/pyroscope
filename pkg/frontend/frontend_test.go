@@ -45,8 +45,8 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb"
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb/schedulerpbconnect"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
+	httpserver "github.com/grafana/pyroscope/v2/pkg/util/http/server"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 	"github.com/grafana/pyroscope/v2/pkg/util/servicediscovery"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
@@ -76,7 +76,7 @@ func cfgFromURL(t *testing.T, urlS string) Config {
 func setupFrontendWithConcurrencyAndServerOptions(t *testing.T, reg prometheus.Registerer, schedulerReplyFunc func(f *Frontend, msg *schedulerpb.FrontendToScheduler) *schedulerpb.SchedulerToFrontend, concurrency int) (*Frontend, *mockScheduler) {
 	mux := mux.NewRouter()
 	s := httptest.NewUnstartedServer(mux)
-	util.EnableHTTP2(s.Config)
+	httpserver.EnableHTTP2(s.Config)
 
 	s.Start()
 
@@ -243,7 +243,7 @@ func TestFrontendFullRoundtrip(t *testing.T) {
 		})
 	})
 	s := httptest.NewUnstartedServer(mux)
-	util.EnableHTTP2(s.Config)
+	httpserver.EnableHTTP2(s.Config)
 	s.Start()
 	defer s.Close()
 
