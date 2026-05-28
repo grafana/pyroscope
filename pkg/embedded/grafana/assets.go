@@ -201,22 +201,44 @@ func extractZip(zipStream io.ReaderAt, size int64, destPath string, stripCompone
 			}
 		}
 
-		fileInArchive, err := f.Open()
-		if err != nil {
-			return fmt.Errorf("ExtractZip: Open() failed: %s", err.Error())
-		}
-
-		outFile, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, f.FileInfo().Mode())
-		if err != nil {
-			return fmt.Errorf("ExtractZip: OpenFile() failed: %s", err.Error())
-		}
-		if _, err := io.Copy(outFile, fileInArchive); err != nil {
-			return fmt.Errorf("ExtractZip: Copy() failed: %s", err.Error())
+		if err := extractZipFile(f, p); err != nil {
+			return fmt.Errorf("ExtractZip: %w", err)
 		}
 	}
 
 	return nil
 
+}
+
+func extractTarGzFile(p string, src io.Reader, mode fs.FileMode) error {
+	outFile, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, mode)
+	if err != nil {
+		return fmt.Errorf("OpenFile() failed: %s", err.Error())
+	}
+	defer outFile.Close()
+	if _, err := io.Copy(outFile, src); err != nil {
+		return fmt.Errorf("Copy() failed: %s", err.Error())
+	}
+	return nil
+}
+
+func extractZipFile(f *zip.File, p string) error {
+	fileInArchive, err := f.Open()
+	if err != nil {
+		return fmt.Errorf("Open() failed: %s", err.Error())
+	}
+	defer fileInArchive.Close()
+
+	outFile, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, f.FileInfo().Mode())
+	if err != nil {
+		return fmt.Errorf("OpenFile() failed: %s", err.Error())
+	}
+	defer outFile.Close()
+
+	if _, err := io.Copy(outFile, fileInArchive); err != nil {
+		return fmt.Errorf("Copy() failed: %s", err.Error())
+	}
+	return nil
 }
 
 func extractTarGz(gzipStream io.Reader, destPath string, stripComponents int) error {
@@ -254,14 +276,9 @@ func extractTarGz(gzipStream io.Reader, destPath string, stripComponents int) er
 					return fmt.Errorf("ExtractTarGz: MkdirAll() failed: %s", err.Error())
 				}
 			}
-			outFile, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fs.FileMode(header.Mode))
-			if err != nil {
-				return fmt.Errorf("ExtractTarGz: OpenFile() failed: %s", err.Error())
+			if err := extractTarGzFile(p, tarReader, fs.FileMode(header.Mode)); err != nil {
+				return fmt.Errorf("ExtractTarGz: %w", err)
 			}
-			if _, err := io.Copy(outFile, tarReader); err != nil {
-				return fmt.Errorf("ExtractTarGz: Copy() failed: %s", err.Error())
-			}
-			outFile.Close()
 
 		default:
 			return fmt.Errorf(
