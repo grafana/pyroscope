@@ -12,13 +12,19 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 )
+
+func enableHTTP2(server *http.Server) {
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetHTTP2(true)
+	protocols.SetUnencryptedHTTP2(true)
+	server.Protocols = protocols
+}
 
 type fakeQuerier struct {
 	querierv1connect.UnimplementedQuerierServiceHandler
@@ -54,9 +60,9 @@ func headerToSlice(t testing.TB, header http.Header) []string {
 
 func Test_RoundTripUnary(t *testing.T) {
 	request := func(t *testing.T) *connect.Request[typesv1.LabelValuesRequest] {
-		server := httptest.NewUnstartedServer(nil)
 		mux := mux.NewRouter()
-		server.Config.Handler = h2c.NewHandler(mux, &http2.Server{})
+		server := httptest.NewUnstartedServer(mux)
+		enableHTTP2(server.Config)
 
 		server.Start()
 		defer server.Close()

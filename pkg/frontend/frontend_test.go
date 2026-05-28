@@ -33,8 +33,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -47,6 +45,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb"
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb/schedulerpbconnect"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 	"github.com/grafana/pyroscope/v2/pkg/util/servicediscovery"
@@ -75,9 +74,9 @@ func cfgFromURL(t *testing.T, urlS string) Config {
 }
 
 func setupFrontendWithConcurrencyAndServerOptions(t *testing.T, reg prometheus.Registerer, schedulerReplyFunc func(f *Frontend, msg *schedulerpb.FrontendToScheduler) *schedulerpb.SchedulerToFrontend, concurrency int) (*Frontend, *mockScheduler) {
-	s := httptest.NewUnstartedServer(nil)
 	mux := mux.NewRouter()
-	s.Config.Handler = h2c.NewHandler(mux, &http2.Server{})
+	s := httptest.NewUnstartedServer(mux)
+	util.EnableHTTP2(s.Config)
 
 	s.Start()
 
@@ -243,7 +242,9 @@ func TestFrontendFullRoundtrip(t *testing.T) {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
-	s := httptest.NewServer(h2c.NewHandler(mux, &http2.Server{}))
+	s := httptest.NewUnstartedServer(mux)
+	util.EnableHTTP2(s.Config)
+	s.Start()
 	defer s.Close()
 
 	// initialize the scheduler

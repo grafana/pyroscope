@@ -13,13 +13,12 @@ import (
 	"github.com/grafana/dskit/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // Mock implementation of the Limits interface
@@ -317,23 +316,20 @@ func TestGRPCHandler(t *testing.T) {
 		})
 	})
 
-	h2cMiddleware := middleware.Func(func(h http.Handler) http.Handler {
-		return h2c.NewHandler(h, &http2.Server{})
-	})
-
 	grpcServer := grpc.NewServer()
 	healthM := &healthMock{}
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthM)
 
 	handler := middleware.Merge(
-		h2cMiddleware,
 		addTenantMiddleware,
 		delayMiddleware,
 	).Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		grpcServer.ServeHTTP(w, r)
 	}))
 
-	httpServer := httptest.NewServer(handler)
+	httpServer := httptest.NewUnstartedServer(handler)
+	util.EnableHTTP2(httpServer.Config)
+	httpServer.Start()
 	defer httpServer.Close()
 
 	// Set up a connection to the server.

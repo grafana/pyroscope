@@ -51,6 +51,15 @@ var defaultTransport http.RoundTripper = &http2.Transport{
 
 var timeNow = time.Now
 
+// EnableHTTP2 enables HTTP/1, TLS HTTP/2, and cleartext HTTP/2 on a server.
+func EnableHTTP2(server *http.Server) {
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetHTTP2(true)
+	protocols.SetUnencryptedHTTP2(true)
+	server.Protocols = protocols
+}
+
 type RoundTripperFunc func(req *http.Request) (*http.Response, error)
 
 func (f RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
