@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util/build"
 
 	"github.com/cespare/xxhash/v2"
-	jsoniter "github.com/json-iterator/go"
 	prom "github.com/prometheus/prometheus/web/api/v1"
 	"go.uber.org/atomic"
 )
@@ -49,7 +48,7 @@ type Report struct {
 // sendReport sends the report to the stats server
 func sendReport(ctx context.Context, seed ClusterSeed, interval time.Time) error {
 	report := buildReport(seed, interval)
-	out, err := jsoniter.MarshalIndent(report, "", " ")
+	out, err := json.MarshalIndent(report, "", " ")
 	if err != nil {
 		return err
 	}

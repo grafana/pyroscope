@@ -45,7 +45,6 @@ require (
 	github.com/hashicorp/raft v1.7.3
 	github.com/hashicorp/raft-wal v0.4.2
 	github.com/iancoleman/strcase v0.3.0
-	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.18.6
 	github.com/kubescape/go-git-url v0.0.31
 	github.com/minio/minio-go/v7 v7.1.0
@@ -114,6 +113,7 @@ require (
 	github.com/go-openapi/swag/typeutils v0.25.5 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.5 // indirect
 	github.com/gogo/status v1.1.1 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/opentracing-contrib/go-grpc v0.1.2 // indirect
