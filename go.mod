@@ -24,7 +24,6 @@ require (
 	github.com/getkin/kin-openapi v0.137.0
 	github.com/go-kit/log v0.2.1
 	github.com/gogo/protobuf v1.3.2
-	github.com/gogo/status v1.1.1
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v81 v81.0.0
@@ -114,6 +113,7 @@ require (
 	github.com/go-openapi/swag/stringutils v0.25.5 // indirect
 	github.com/go-openapi/swag/typeutils v0.25.5 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.5 // indirect
+	github.com/gogo/status v1.1.1 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/opentracing-contrib/go-grpc v0.1.2 // indirect
