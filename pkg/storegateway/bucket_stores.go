@@ -3,6 +3,7 @@ package storegateway
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/multierror"
+	"github.com/grafana/dskit/tenant"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -339,11 +341,15 @@ func (bs *BucketStores) getOrCreateStore(userID string) (*BucketStore, error) {
 		filters,
 	)
 
-	s, err := NewBucketStore(
+	userSyncDir, err := bs.syncDirForUser(userID)
+	if err != nil {
+		return nil, err
+	}
+	s, err = NewBucketStore(
 		bs.storageBucket,
 		fetcher,
 		userID,
-		bs.syncDirForUser(userID),
+		userSyncDir,
 		userLogger,
 		bs.reg,
 	)
@@ -385,7 +391,11 @@ func (bs *BucketStores) closeBucketStoreAndDeleteLocalFilesForExcludedTenants(in
 			level.Warn(bs.logger).Log("msg", "failed to close bucket store for user", "tenant", userID, "err", err)
 		}
 
-		userSyncDir := bs.syncDirForUser(userID)
+		userSyncDir, err := bs.syncDirForUser(userID)
+		if err != nil {
+			level.Warn(bs.logger).Log("msg", "skipping delete of user sync directory", "tenant", userID, "err", err)
+			continue
+		}
 		err = os.RemoveAll(userSyncDir)
 		if err == nil {
 			level.Info(bs.logger).Log("msg", "deleted user sync directory", "dir", userSyncDir)
@@ -395,8 +405,11 @@ func (bs *BucketStores) closeBucketStoreAndDeleteLocalFilesForExcludedTenants(in
 	}
 }
 
-func (u *BucketStores) syncDirForUser(userID string) string {
-	return filepath.Join(u.cfg.SyncDir, userID)
+func (u *BucketStores) syncDirForUser(userID string) (string, error) {
+	if err := tenant.ValidTenantID(userID); err != nil {
+		return "", fmt.Errorf("syncDirForUser: invalid userID: %w", err)
+	}
+	return filepath.Join(u.cfg.SyncDir, userID), nil
 }
 
 // closeBucketStore closes bucket store for given user
