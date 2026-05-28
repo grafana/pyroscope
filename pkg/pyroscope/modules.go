@@ -31,8 +31,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 
 	"github.com/grafana/pyroscope/v2/pkg/adhocprofiles"
 	apiversion "github.com/grafana/pyroscope/v2/pkg/api/version"
@@ -57,6 +55,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/util/build"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
+	httpserver "github.com/grafana/pyroscope/v2/pkg/util/http/server"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
 
@@ -539,8 +538,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	f.Server.HTTPServer.Handler = middleware.Merge(defaultHTTPMiddleware...).Wrap(f.Server.HTTP)
 
 	s := NewServerService(f.Server, servicesToWaitFor, f.logger)
-	// todo configure http2
-	f.Server.HTTPServer.Handler = h2c.NewHandler(f.Server.HTTPServer.Handler, &http2.Server{})
+	httpserver.EnableHTTP2(f.Server.HTTPServer)
 	f.Server.HTTPServer.Handler = util.RecoveryHTTPMiddleware.Wrap(f.Server.HTTPServer.Handler)
 
 	return s, nil
