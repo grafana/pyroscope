@@ -106,7 +106,7 @@ func (c *shardCache) getForWriteUnsafe(tx *bbolt.Tx, p indexstore.Partition, ten
 	return s, nil
 }
 
-func (c *shardCache) getForRead(tx *bbolt.Tx, p indexstore.Partition, tenant string, shard uint32) (*indexstore.Shard, error) {
+func (c *shardCache) getForReadAtVersion(tx *bbolt.Tx, p indexstore.Partition, tenant string, shard uint32, version uint64) (*indexstore.Shard, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	k := shardCacheKey{
@@ -116,8 +116,17 @@ func (c *shardCache) getForRead(tx *bbolt.Tx, p indexstore.Partition, tenant str
 	}
 	x, found := c.cache.Get(k)
 	if found && x != nil {
-		c.metrics.recordShardReadHit()
-		return x.ShallowCopy(), nil
+		// Write-cached shards are always safe to reuse because writes are
+		// serialized and observe the latest shard state. Read-cached shards are
+		// only safe when the caller has no version information (`version == 0`,
+		// for old on-disk shard indexes) or when the cached version is at least
+		// as new as the caller's transaction snapshot. Otherwise, reload from the
+		// current transaction to avoid mixing new block metadata with a stale
+		// string table loaded by an older read transaction.
+		if !x.readOnly || version == 0 || x.ShardIndex.Version >= version {
+			c.metrics.recordShardReadHit()
+			return x.ShallowCopy(), nil
+		}
 	}
 	c.metrics.recordShardReadMiss()
 	s, err := c.store.LoadShard(tx, p, tenant, shard)

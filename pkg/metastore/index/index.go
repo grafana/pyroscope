@@ -74,6 +74,7 @@ type Store interface {
 	CreateBuckets(*bbolt.Tx) error
 	Partitions(tx *bbolt.Tx) iter.Seq[indexstore.Partition]
 	LoadShard(tx *bbolt.Tx, p indexstore.Partition, tenant string, shard uint32) (*indexstore.Shard, error)
+	LoadShardVersion(tx *bbolt.Tx, p indexstore.Partition, tenant string, shard uint32) (uint64, error)
 	DeleteShard(tx *bbolt.Tx, p indexstore.Partition, tenant string, shard uint32) error
 }
 
@@ -169,7 +170,11 @@ func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBloc
 func (i *Index) GetBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error) {
 	metas := make([]*metastorev1.BlockMeta, 0, len(list.Blocks))
 	for k, partitioned := range i.partitionedList(list) {
-		s, err := i.shards.getForRead(tx, k, partitioned.Tenant, partitioned.Shard)
+		version, err := i.store.LoadShardVersion(tx, k, partitioned.Tenant, partitioned.Shard)
+		if err != nil {
+			return nil, err
+		}
+		s, err := i.shards.getForReadAtVersion(tx, k, partitioned.Tenant, partitioned.Shard, version)
 		if err != nil {
 			return nil, err
 		}
