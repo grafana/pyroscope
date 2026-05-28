@@ -473,14 +473,14 @@ dependencies = [
 
 [[package]]
 name = "framehop"
-version = "0.13.3"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09a5a3f0acb82df800ca3aa50c0d60d286c5d13d4cfc3114b3a9663f13b032fe"
+checksum = "6f54fe4785e899d4d6f43793b151c63c5647240fc630b005509d2614a939f693"
 dependencies = [
  "arrayvec",
  "cfg-if",
  "fallible-iterator",
- "gimli 0.31.1",
+ "gimli 0.33.0",
  "macho-unwind-info",
  "pe-unwind-info",
 ]
@@ -592,19 +592,18 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.31.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
-dependencies = [
- "fallible-iterator",
- "stable_deref_trait",
-]
-
-[[package]]
-name = "gimli"
 version = "0.32.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
+
+[[package]]
+name = "gimli"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0bf7f043f89559805f8c7cacc432749b2fa0d0a0a9ee46ce47164ed5ba7f126c"
+dependencies = [
+ "stable_deref_trait",
+]
 
 [[package]]
 name = "h2"
@@ -1331,9 +1330,9 @@ dependencies = [
 
 [[package]]
 name = "pe-unwind-info"
-version = "0.4.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "500fa4cdeacd98997c5865e3d0d1cb8fe7e9d7d75ecc775e07989a433a9a9a59"
+checksum = "97f6fccfd2d9d2df765ca23ff85fe5cc437fb0e6d3e164e4d3cbe09d14780c93"
 dependencies = [
  "arrayvec",
  "bitflags 2.11.0",
@@ -1385,9 +1384,9 @@ dependencies = [
 
 [[package]]
 name = "pprof-pyroscope-fork"
-version = "0.1500.3"
+version = "0.1500.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79f090659c6f3f8c12785dabca0cb7f40154a40dc254c06848598ff31c3be1d8"
+checksum = "228f0967ab4c785d2daa6afdecd844a85a08227b19bfe14f1cf3f7819bf42f43"
 dependencies = [
  "aligned-vec",
  "backtrace",
@@ -1470,11 +1469,10 @@ dependencies = [
 
 [[package]]
 name = "pyroscope"
-version = "2.0.4"
+version = "2.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "942d4561e34d24ce01820f6e6bdf1dcff292b6f0c03245b0b4e5b4f89dddd85d"
+checksum = "01ebd83db08e07a69b4291e7043f5f2ca964c8869e0bd0b6d09b8b062de775bd"
 dependencies = [
- "framehop",
  "lazy_static",
  "libc",
  "libflate",
