@@ -77,10 +77,10 @@ func (release *releaseArtifact) download(ctx context.Context, logger log.Logger,
 
 	level.Info(logger).Log("msg", "download new release", "url", release.URL)
 	req, err := http.NewRequestWithContext(ctx, "GET", release.URL, nil)
-	req.Header.Set("User-Agent", "pyroscope/embedded-grafana")
 	if err != nil {
 		return "", err
 	}
+	req.Header.Set("User-Agent", "pyroscope/embedded-grafana")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
