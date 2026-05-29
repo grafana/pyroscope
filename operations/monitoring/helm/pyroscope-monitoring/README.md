@@ -15,11 +15,20 @@ This chart provisions the following Grafana dashboards under the "Pyroscope" fol
 - **v2-read-path** - Read path performance dashboard (focusing on v2 storage layer)
 - **v2-write-path** - Write path performance dashboard (focusing on v2 storage layer)
 
+### Native vs classic histograms
+
+Set `dashboards.nativeHistograms` (default: `true`) to control which PromQL query style is used:
+
+- `true` — native histogram functions (`histogram_sum`, `histogram_count`, `histogram_quantile`, `histogram_avg`). Requires `scrape_native_histograms: true` in the Prometheus scrape config for Pyroscope.
+- `false` — classic suffix queries (`_bucket`, `_sum`, `_count`).
+
+The committed JSON files under `operations/monitoring/dashboards/` (native) and `operations/monitoring/dashboards-classic-histogram/` (classic) are **generated** by `make helm/check` and should not be edited directly.
+
 ## Requirements
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://grafana.github.io/helm-charts | monitoring(k8s-monitoring) | 3.7.2 |
+| https://grafana.github.io/helm-charts | monitoring(k8s-monitoring) | 3.8.8 |
 
 ## Values
 
@@ -34,7 +43,9 @@ This chart provisions the following Grafana dashboards under the "Pyroscope" fol
 | dashboards.kubeStateMetricsSelector | string | `"job=~\"(.*/)?kube-state-metrics\""` |  |
 | dashboards.namespace | string | `"default"` |  |
 | dashboards.namespaceRegex | string | `".*"` |  |
-| dashboards.tenantQuery | string | `"sum by (tenant, slug, org_name, environment) (\n  rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval])\n)\n"` |  |
+| dashboards.nativeHistograms | bool | `true` |  |
+| dashboards.tenantQuery | string | `"sum by (tenant, slug, org_name, environment) (\n  histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval]))\n)\n"` |  |
+| dashboards.tenantQueryClassic | string | `"sum by (tenant, slug, org_name, environment) (\n  rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval])\n)\n"` |  |
 | fullnameOverride | string | `""` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"grafana/otel-lgtm"` |  |

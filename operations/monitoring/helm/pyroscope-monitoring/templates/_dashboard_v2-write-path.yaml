@@ -186,8 +186,13 @@ panels:
           uid: ${datasource}
         editorMode: code
         exemplar: false
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: |
           {{ .Values.dashboards.tenantQuery | nindent 10 }}
+        {{- else }}
+        expr: |
+          {{ .Values.dashboards.tenantQueryClassic | nindent 10 }}
+        {{- end }}
         format: table
         instant: true
         legendFormat: __auto

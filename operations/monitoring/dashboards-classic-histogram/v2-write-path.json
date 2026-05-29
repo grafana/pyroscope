@@ -283,7 +283,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "\nsum by (tenant, slug, org_name, environment) (\n  histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval]))\n)\n",
+          "expr": "\nsum by (tenant, slug, org_name, environment) (\n  rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval])\n)\n",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
