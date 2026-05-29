@@ -56,7 +56,7 @@ services:
       - "3000:3000"
 
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.10.5
     command: [ "-config.file=/etc/tempo.yml" ]
     volumes:
       - ./tempo/tempo.yml:/etc/tempo.yml
