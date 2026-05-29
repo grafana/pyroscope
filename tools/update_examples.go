@@ -25,6 +25,7 @@ var python = flag.Bool("python", false, "")
 var dotnet = flag.Bool("dotnet", false, "")
 var node = flag.Bool("node", false, "")
 var rust = flag.Bool("rust", false, "")
+var tempo = flag.Bool("tempo", false, "")
 
 // this program requires ruby, bundle, yarn, go to be installed
 func main() {
@@ -39,6 +40,7 @@ func main() {
 		*dotnet = true
 		*node = true
 		*rust = true
+		*tempo = true
 	}
 
 	if *golang {
@@ -66,6 +68,9 @@ func main() {
 	}
 	if *rust {
 		updateRust()
+	}
+	if *tempo {
+		updateTempo()
 	}
 }
 
@@ -117,21 +122,64 @@ func updateDotnet() {
 	last := tags[len(tags)-1]
 	fmt.Println(last)
 
-	reDockerGlibc := regexp.MustCompile(`pyroscope/pyroscope-dotnet:\d+\.\d+\.\d+-glibc`)
-	replDockerGlibc := fmt.Sprintf("pyroscope/pyroscope-dotnet:%s-glibc", last.version())
+	reDockerGlibc := regexp.MustCompile(`grafana/pyroscope-dotnet:\d+\.\d+\.\d+-glibc`)
+	replDockerGlibc := fmt.Sprintf("grafana/pyroscope-dotnet:%s-glibc", last.version())
 	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/fast-slow/Dockerfile", replDockerGlibc)
 	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/rideshare/Dockerfile", replDockerGlibc)
 	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/web-new/Dockerfile", replDockerGlibc)
 	replaceInplace(reDockerGlibc, "docs/sources/configure-client/language-sdks/dotnet.md", replDockerGlibc)
 
-	reDockerMusl := regexp.MustCompile(`pyroscope/pyroscope-dotnet:\d+\.\d+\.\d+-musl`)
-	replDockerMusl := fmt.Sprintf("pyroscope/pyroscope-dotnet:%s-musl", last.version())
+	reDockerMusl := regexp.MustCompile(`grafana/pyroscope-dotnet:\d+\.\d+\.\d+-musl`)
+	replDockerMusl := fmt.Sprintf("grafana/pyroscope-dotnet:%s-musl", last.version())
 	replaceInplace(reDockerMusl, "examples/language-sdk-instrumentation/dotnet/fast-slow/musl.Dockerfile", replDockerMusl)
 	replaceInplace(reDockerMusl, "examples/language-sdk-instrumentation/dotnet/rideshare/musl.Dockerfile", replDockerMusl)
 
 	reUrl := regexp.MustCompile(`https://github\.com/grafana/pyroscope-dotnet/releases/download/v\d+\.\d+\.\d+-pyroscope/pyroscope.\d+\.\d+\.\d+-glibc-x86_64.tar.gz`)
 	replUrl := fmt.Sprintf("https://github.com/grafana/pyroscope-dotnet/releases/download/v%s-pyroscope/pyroscope.%s-glibc-x86_64.tar.gz", last.version(), last.version())
 	replaceInplace(reUrl, "docs/sources/configure-client/language-sdks/dotnet.md", replUrl)
+}
+
+func updateTempo() {
+	tags := getTagsV("grafana/tempo", extractTempoVersion(2))
+	last := tags[len(tags)-1]
+	fmt.Println("tempo", last)
+
+	reDockerTempo := regexp.MustCompile(`grafana/tempo:\d+\.\d+\.\d+`)
+	replDockerTempo := fmt.Sprintf("grafana/tempo:%s", last.version())
+	for _, f := range []string{
+		"examples/tracing/dotnet/docker-compose.yml",
+		"examples/tracing/golang-push/docker-compose.yml",
+		"examples/tracing/java/docker-compose.yml",
+		"examples/tracing/java-wall/docker-compose.yml",
+		"examples/tracing/python/docker-compose.yaml",
+		"examples/tracing/ruby/docker-compose.yml",
+		"examples/tracing/tempo/docker-compose.yml",
+		"tools/tracing/docker-compose.yml",
+	} {
+		replaceInplace(reDockerTempo, f, replDockerTempo)
+	}
+}
+
+// extractTempoVersion returns a version extractor that only matches tags for the
+// given major version (e.g. 2 for "2.x.y").
+func extractTempoVersion(major int) func(tag Tag) *version {
+	return func(tag Tag) *version {
+		re := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
+		match := re.FindStringSubmatch(tag.Name)
+		if match == nil {
+			return nil
+		}
+		maj, err := strconv.Atoi(match[1])
+		requireNoError(err, "strconv")
+		if maj != major {
+			return nil
+		}
+		minor, err := strconv.Atoi(match[2])
+		requireNoError(err, "strconv")
+		patch, err := strconv.Atoi(match[3])
+		requireNoError(err, "strconv")
+		return &version{major: maj, minor: minor, patch: patch, tag: tag}
+	}
 }
 
 func updatePython() {
