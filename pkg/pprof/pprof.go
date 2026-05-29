@@ -557,6 +557,9 @@ func (p *Profile) clearAddresses() {
 		}
 	}
 	for _, l := range p.Location {
+		if l.MappingId == 0 || int(l.MappingId) > len(p.Mapping) {
+			continue
+		}
 		if p.Mapping[l.MappingId-1].HasFunctions {
 			l.Address = 0
 		}
