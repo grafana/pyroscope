@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/grafana/dskit/user"
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,6 +60,50 @@ func Test_AuthInterceptor(t *testing.T) {
 			require.NoError(t, err)
 			require.Nil(t, resp)
 		},
+		"server: enable, allow multi-tenant header": func(t *testing.T) {
+			i := NewAuthInterceptor(true)
+			// Supply tenants out of order and with a duplicate to verify
+			// that the context receives the canonical (sorted, deduped) form.
+			req := newFakeReqWithHeader("tenant-b|tenant-a|tenant-b")
+			nextCalled := false
+
+			resp, err := i.WrapUnary(func(ctx context.Context, ar connect.AnyRequest) (connect.AnyResponse, error) {
+				nextCalled = true
+				// The context must carry the normalised tenant string.
+				tenantID, tenantErr := ExtractTenantIDFromContext(ctx)
+				require.ErrorContains(t, tenantErr, "multiple org IDs")
+				_ = tenantID
+				// Use the raw org-ID to verify dedup+sort.
+				orgID, orgErr := user.ExtractOrgID(ctx)
+				require.NoError(t, orgErr)
+				require.Equal(t, "tenant-a|tenant-b", orgID, "tenants must be sorted and deduplicated")
+				return nil, nil
+			})(context.Background(), req)
+
+			require.Nil(t, resp)
+			require.NoError(t, err)
+			require.True(t, nextCalled, "multi-tenant request must reach the handler")
+		},
+		"server: enable, reject inherited tenant when header missing": func(t *testing.T) {
+			i := NewAuthInterceptor(true)
+			req := newFakeReq(false)
+			nextCalled := false
+
+			resp, err := i.WrapUnary(func(ctx context.Context, ar connect.AnyRequest) (connect.AnyResponse, error) {
+				nextCalled = true
+
+				tenantID, tenantErr := ExtractTenantIDFromContext(ctx)
+				require.NoError(t, tenantErr)
+				require.Equal(t, "attacker", tenantID)
+
+				return nil, nil
+			})(InjectTenantID(context.Background(), "attacker"), req)
+
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ErrNoTenantID)
+			require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
+			require.False(t, nextCalled, "missing tenant header must stop the request before the handler runs")
+		},
 		"streaming client should forward from context": func(t *testing.T) {
 			i := NewAuthInterceptor(false)
 			inConn := newFakeClientStreamingConn()
@@ -103,6 +148,16 @@ func newFakeReq(isClient bool) fakeReq {
 	return fakeReq{
 		isClient:   isClient,
 		headers:    http.Header{},
+		AnyRequest: connect.NewRequest(&http.Request{}),
+	}
+}
+
+func newFakeReqWithHeader(orgID string) fakeReq {
+	h := http.Header{}
+	h.Set("X-Scope-OrgID", orgID)
+	return fakeReq{
+		isClient:   false,
+		headers:    h,
 		AnyRequest: connect.NewRequest(&http.Request{}),
 	}
 }
