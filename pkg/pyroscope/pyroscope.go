@@ -76,6 +76,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/usagestats"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/util/cli"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
 )
@@ -453,7 +454,7 @@ func New(cfg Config) (*Pyroscope, error) {
 	}
 
 	phlare.auth = connect.WithInterceptors(tenant.NewAuthInterceptor(cfg.MultitenancyEnabled))
-	phlare.Cfg.API.HTTPAuthMiddleware = util.AuthenticateUser(cfg.MultitenancyEnabled)
+	phlare.Cfg.API.HTTPAuthMiddleware = httputil.AuthenticateUser(cfg.MultitenancyEnabled)
 	phlare.Cfg.API.GrpcAuthMiddleware = phlare.auth
 
 	return phlare, nil
@@ -796,7 +797,7 @@ func (f *Pyroscope) readyHandler(sm *services.Manager) http.HandlerFunc {
 			}
 		}
 
-		util.WriteTextResponse(w, "ready")
+		httputil.WriteTextResponse(w, "ready")
 	}
 }
 

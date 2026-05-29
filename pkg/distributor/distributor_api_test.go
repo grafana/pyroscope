@@ -30,7 +30,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/distributor"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
-	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
@@ -46,7 +46,7 @@ func newAPITest(t testing.TB, cfg api.Config, logger log.Logger) *apiTest {
 		GRPCGWMux: grpcgw.NewServeMux(),
 	}
 
-	cfg.HTTPAuthMiddleware = util.AuthenticateUser(true)
+	cfg.HTTPAuthMiddleware = httputil.AuthenticateUser(true)
 	cfg.GrpcAuthMiddleware = connect.WithInterceptors(tenant.NewAuthInterceptor(true))
 
 	serv := &server.Server{

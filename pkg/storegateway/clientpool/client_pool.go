@@ -16,7 +16,7 @@ import (
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
-	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 type BidiClientMergeProfilesStacktraces interface {
@@ -67,7 +67,7 @@ func (f *poolFactory) FromInstance(inst ring.InstanceDesc) (ring_client.PoolClie
 		return nil, err
 	}
 
-	httpClient := util.InstrumentedDefaultHTTPClient(util.WithTracingTransport(), util.WithBaggageTransport())
+	httpClient := httputil.InstrumentedDefaultHTTPClient(httputil.WithTracingTransport(), httputil.WithBaggageTransport())
 	return &storeGatewayPoolClient{
 		StoreGatewayServiceClient: storegatewayv1connect.NewStoreGatewayServiceClient(httpClient, "http://"+inst.Addr, f.options...),
 		HealthClient:              grpc_health_v1.NewHealthClient(conn),
