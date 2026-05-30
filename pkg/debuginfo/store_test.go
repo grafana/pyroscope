@@ -593,6 +593,7 @@ func TestUploadE2E(t *testing.T) {
 		assert.Equal(t, debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED, md.State)
 		assert.NotNil(t, md.StartedAt)
 		assert.NotNil(t, md.FinishedAt)
+		assert.Equal(t, int64(len("chunk-1-chunk-2-chunk-3")), md.SizeBytes)
 	})
 
 	t.Run("already uploaded returns should not initiate", func(t *testing.T) {

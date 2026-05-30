@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
@@ -17,6 +18,7 @@ import (
 	debuginfov1alpha1connect "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
 	"github.com/grafana/pyroscope/v2/pkg/debuginfo"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (c *phlareClient) debuginfoServiceClient() debuginfov1alpha1connect.DebuginfoServiceClient {
@@ -73,10 +75,11 @@ func extractGnuBuildId(path string) (string, error) {
 	return extractGnuBuildIdFromReader(f)
 }
 
-func shouldInitiateUploadCheck(ctx context.Context, client debuginfov1alpha1connect.DebuginfoServiceClient, gnuBuildId string, fileType debuginfov1alpha1.FileMetadata_Type) (bool, string, error) {
+func shouldInitiateUploadCheck(ctx context.Context, client debuginfov1alpha1connect.DebuginfoServiceClient, gnuBuildId string, fileName string, fileType debuginfov1alpha1.FileMetadata_Type) (bool, string, error) {
 	req := &debuginfov1alpha1.ShouldInitiateUploadRequest{
 		File: &debuginfov1alpha1.FileMetadata{
 			GnuBuildId: gnuBuildId,
+			Name:       fileName,
 			Type:       fileType,
 		},
 	}
@@ -114,7 +117,7 @@ func uploadDebuginfo(ctx context.Context, params *debuginfoUploadParams) error {
 		fileType = debuginfov1alpha1.FileMetadata_TYPE_UNSPECIFIED
 	}
 
-	shouldUpload, reason, err := shouldInitiateUploadCheck(ctx, client, gnuBuildId, fileType)
+	shouldUpload, reason, err := shouldInitiateUploadCheck(ctx, client, gnuBuildId, filepath.Base(params.path), fileType)
 	if err != nil {
 		return fmt.Errorf("ShouldInitiateUpload check failed: %w", err)
 	}
@@ -171,4 +174,62 @@ func addDebuginfoUploadParams(cmd commander) *debuginfoUploadParams {
 
 	params.phlareClient = addPhlareClient(cmd)
 	return params
+}
+
+type debuginfoListParams struct {
+	*phlareClient
+}
+
+func addDebuginfoListParams(cmd commander) *debuginfoListParams {
+	params := new(debuginfoListParams)
+	params.phlareClient = addPhlareClient(cmd)
+	return params
+}
+
+func listDebuginfo(ctx context.Context, params *debuginfoListParams) error {
+	client := params.debuginfoServiceClient()
+
+	req := &debuginfov1alpha1.ListDebuginfoRequest{}
+
+	resp, err := client.ListDebuginfo(ctx, connect.NewRequest(req))
+	if err != nil {
+		return fmt.Errorf("failed to list debuginfo: %w", err)
+	}
+
+	for _, object := range resp.Msg.GetObject() {
+		file := object.GetFile()
+		fmt.Printf("build_id=%s name=%s type=%s state=%s size=%s uploaded_at=%s\n",
+			file.GetGnuBuildId(),
+			file.GetName(),
+			file.GetType().String(),
+			object.GetState().String(),
+			humanizeBytes(object.GetSizeBytes()),
+			formatUploadedAt(object.GetFinishedAt()),
+		)
+	}
+
+	return nil
+}
+
+func formatUploadedAt(ts *timestamppb.Timestamp) string {
+	if ts == nil {
+		return "in-progress"
+	}
+	return ts.AsTime().Format("2006-01-02T15:04:05Z")
+}
+
+func humanizeBytes(b int64) string {
+	if b == 0 {
+		return "unknown"
+	}
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
 }

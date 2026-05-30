@@ -113,6 +113,38 @@ func (s *Store) checkShouldInitiateUpload(
 	}
 }
 
+func (s *Store) ListDebuginfo(ctx context.Context, req *connect.Request[debuginfov1alpha1.ListDebuginfoRequest]) (*connect.Response[debuginfov1alpha1.ListDebuginfoResponse], error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	dir := "debug-info/" + tenantID + "/"
+
+	var debugInfos = new(debuginfov1alpha1.ListDebuginfoResponse)
+
+	err = s.bucket.Iter(ctx, dir, func(name string) error {
+		if path.Base(name) == "metadata" {
+			id, err := ValidateGnuBuildID(path.Base(path.Dir(name)))
+			if err != nil {
+				return connect.NewError(connect.CodeInternal, err)
+			}
+			objectMetadata, err := s.fetchMetadata(ctx, tenantID, id)
+			if err != nil {
+				return connect.NewError(connect.CodeInternal, err)
+			}
+			debugInfos.Object = append(debugInfos.Object, objectMetadata)
+		}
+		return nil
+	}, objstore.WithRecursiveIter())
+
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(debugInfos), nil
+}
+
 func (s *Store) ShouldInitiateUpload(
 	ctx context.Context,
 	req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest],
@@ -243,16 +275,17 @@ func (s *Store) UploadFinished(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("upload is not in uploading state"))
 	}
 
-	exists, err := s.bucket.Exists(ctx, ObjectPath(tenantID, id))
+	attrs, err := s.bucket.Attributes(ctx, ObjectPath(tenantID, id))
 	if err != nil {
+		if s.bucket.IsObjNotFoundErr(err) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("no uploaded file found for build ID %s", req.Msg.GnuBuildId))
+		}
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to check uploaded file: %w", err))
-	}
-	if !exists {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("no uploaded file found for build ID %s", req.Msg.GnuBuildId))
 	}
 
 	md.State = debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED
 	md.FinishedAt = timestamppb.New(time.Now())
+	md.SizeBytes = attrs.Size
 	if err := s.writeMetadata(ctx, tenantID, id, md); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to write uploaded metadata: %w", err))
 	}

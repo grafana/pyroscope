@@ -146,6 +146,8 @@ func main() {
 	debuginfoCmd := app.Command("debuginfo", "Operations on debuginfo (experimental).")
 	debuginfoUploadCmd := debuginfoCmd.Command("upload", "Upload debuginfo.")
 	debuginfoUploadParams := addDebuginfoUploadParams(debuginfoUploadCmd)
+	debuginfoListCmd := debuginfoCmd.Command("list", "List debuginfo.")
+	debuginfoListParams := addDebuginfoListParams(debuginfoListCmd)
 
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
@@ -276,6 +278,10 @@ func main() {
 		}
 	case debuginfoUploadCmd.FullCommand():
 		if err := uploadDebuginfo(ctx, debuginfoUploadParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case debuginfoListCmd.FullCommand():
+		if err := listDebuginfo(ctx, debuginfoListParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:
