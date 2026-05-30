@@ -14,11 +14,12 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
 	debuginfov1alpha1connect "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
 	"github.com/grafana/pyroscope/v2/pkg/debuginfo"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (c *phlareClient) debuginfoServiceClient() debuginfov1alpha1connect.DebuginfoServiceClient {
@@ -208,6 +209,32 @@ func listDebuginfo(ctx context.Context, params *debuginfoListParams) error {
 		)
 	}
 
+	return nil
+}
+
+type debuginfoDeleteParams struct {
+	gnuBuildID string
+	*phlareClient
+}
+
+func addDebuginfoDeleteParams(cmd commander) *debuginfoDeleteParams {
+	params := new(debuginfoDeleteParams)
+	cmd.Arg("gnu-build-id", "GNU build ID to delete").Required().StringVar(&params.gnuBuildID)
+	params.phlareClient = addPhlareClient(cmd)
+	return params
+}
+
+func deleteDebuginfo(ctx context.Context, params *debuginfoDeleteParams) error {
+	client := params.debuginfoServiceClient()
+
+	_, err := client.DeleteDebuginfo(ctx, connect.NewRequest(&debuginfov1alpha1.DeleteDebuginfoRequest{
+		GnuBuildId: params.gnuBuildID,
+	}))
+	if err != nil {
+		return fmt.Errorf("failed to delete debuginfo: %w", err)
+	}
+
+	fmt.Printf("deleted debuginfo build_id=%s\n", params.gnuBuildID)
 	return nil
 }
 

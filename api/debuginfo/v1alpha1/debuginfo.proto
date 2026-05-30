@@ -9,6 +9,7 @@ service DebuginfoService {
   rpc ShouldInitiateUpload(ShouldInitiateUploadRequest) returns (ShouldInitiateUploadResponse) {}
   rpc UploadFinished(UploadFinishedRequest) returns (UploadFinishedResponse) {}
   rpc ListDebuginfo(ListDebuginfoRequest) returns (ListDebuginfoResponse) {}
+  rpc DeleteDebuginfo(DeleteDebuginfoRequest) returns (DeleteDebuginfoResponse) {}
 }
 
 message FileMetadata {
@@ -50,6 +51,12 @@ message ListDebuginfoRequest {}
 message ListDebuginfoResponse {
   repeated ObjectMetadata object = 1;
 }
+
+message DeleteDebuginfoRequest {
+  string gnu_build_id = 1;
+}
+
+message DeleteDebuginfoResponse {}
 
 // This is stored in buckets at "debug-info/$tenant/$gnu_build_id/metadata"
 // Along with the actual uploaded file at "debug-info/$tenant/$gnu_build_id/exe"

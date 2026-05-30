@@ -145,6 +145,34 @@ func (s *Store) ListDebuginfo(ctx context.Context, req *connect.Request[debuginf
 	return connect.NewResponse(debugInfos), nil
 }
 
+func (s *Store) DeleteDebuginfo(
+	ctx context.Context,
+	req *connect.Request[debuginfov1alpha1.DeleteDebuginfoRequest],
+) (*connect.Response[debuginfov1alpha1.DeleteDebuginfoResponse], error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	id, err := ValidateGnuBuildID(req.Msg.GetGnuBuildId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid gnu_build_id: %w", err))
+	}
+
+	for _, objectPath := range []string{MetadataObjectPath(tenantID, id), ObjectPath(tenantID, id)} {
+		err = s.bucket.Delete(ctx, objectPath)
+		switch {
+		case err == nil:
+		case s.bucket.IsObjNotFoundErr(err):
+			continue
+		default:
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to delete debuginfo object %q: %w", objectPath, err))
+		}
+	}
+
+	return connect.NewResponse(&debuginfov1alpha1.DeleteDebuginfoResponse{}), nil
+}
+
 func (s *Store) ShouldInitiateUpload(
 	ctx context.Context,
 	req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest],

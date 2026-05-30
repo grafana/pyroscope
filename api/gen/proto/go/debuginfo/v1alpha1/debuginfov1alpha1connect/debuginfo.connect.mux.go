@@ -34,4 +34,9 @@ func RegisterDebuginfoServiceHandler(mux *mux.Router, svc DebuginfoServiceHandle
 		svc.ListDebuginfo,
 		opts...,
 	))
+	mux.Handle("/debuginfo.v1alpha1.DebuginfoService/DeleteDebuginfo", connect.NewUnaryHandler(
+		"/debuginfo.v1alpha1.DebuginfoService/DeleteDebuginfo",
+		svc.DeleteDebuginfo,
+		opts...,
+	))
 }
