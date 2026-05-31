@@ -29,6 +29,7 @@ type StaticExporter struct {
 	wg     sync.WaitGroup
 
 	logger log.Logger
+	url    string
 
 	metrics *clientMetrics
 }
@@ -47,6 +48,7 @@ func NewExporter(remoteWriteAddress string, logger log.Logger, reg prometheus.Re
 		client:  client,
 		wg:      sync.WaitGroup{},
 		logger:  logger,
+		url:     remoteWriteAddress,
 		metrics: metrics,
 	}, nil
 }
@@ -65,7 +67,7 @@ func (e *StaticExporter) Send(tenantId string, data []prompb.TimeSeries) error {
 		ctx := tenant.InjectTenantID(context.Background(), tenantId)
 		_, err := e.client.Store(ctx, snappy.Encode(nil, buf.Bytes()), 0)
 		if err != nil {
-			level.Error(e.logger).Log("msg", "unable to store prompb.WriteRequest", "err", err)
+			level.Error(e.logger).Log("msg", "unable to store prompb.WriteRequest", "url", e.url, "err", err)
 			return
 		}
 		seriesByRuleID := make(map[string]int)
