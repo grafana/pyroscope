@@ -8,12 +8,12 @@ package exporter
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net/http"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
@@ -79,7 +79,7 @@ func NewOverridesExporter(
 	var err error
 	exporter.ring, err = newRing(config.Ring, log, registerer)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create ring/lifecycler")
+		return nil, fmt.Errorf("failed to create ring/lifecycler: %w", err)
 	}
 
 	exporter.Service = services.NewBasicService(exporter.starting, exporter.running, exporter.stopping)

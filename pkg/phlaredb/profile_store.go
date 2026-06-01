@@ -14,7 +14,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
-	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
@@ -256,15 +255,15 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 
 	n, err := parquet.CopyRows(s.writer, schemav1.NewInMemoryProfilesRowReader(s.flushBuffer))
 	if err != nil {
-		return errors.Wrap(err, "write row group segments to disk")
+		return fmt.Errorf("write row group segments to disk: %w", err)
 	}
 
 	if err := s.writer.Close(); err != nil {
-		return errors.Wrap(err, "close row group segment writer")
+		return fmt.Errorf("close row group segment writer: %w", err)
 	}
 
 	if err := f.Close(); err != nil {
-		return errors.Wrap(err, "closing row group segment file")
+		return fmt.Errorf("closing row group segment file: %w", err)
 	}
 	s.metrics.writtenProfileSegments.WithLabelValues("success").Inc()
 
@@ -453,22 +452,22 @@ func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
 	// now open the row group file, so we are able to read the row group back in
 	r.file, err = os.Open(path)
 	if err != nil {
-		return nil, errors.Wrapf(err, "opening row groups segment file %s", path)
+		return nil, fmt.Errorf("opening row groups segment file %s: %w", path, err)
 	}
 
 	stats, err := r.file.Stat()
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting stat of row groups segment file %s", path)
+		return nil, fmt.Errorf("getting stat of row groups segment file %s: %w", path, err)
 	}
 
 	segmentParquet, err := parquet.OpenFile(r.file, stats.Size())
 	if err != nil {
-		return nil, errors.Wrapf(err, "reading parquet of row groups segment file %s", path)
+		return nil, fmt.Errorf("reading parquet of row groups segment file %s: %w", path, err)
 	}
 
 	rowGroups := segmentParquet.RowGroups()
 	if len(rowGroups) != 1 {
-		return nil, errors.Wrapf(err, "segement file expected to have exactly one row group (actual %d)", len(rowGroups))
+		return nil, fmt.Errorf("segement file expected to have exactly one row group (actual %d): %w", len(rowGroups), err)
 	}
 
 	r.RowGroup = rowGroups[0]
@@ -498,7 +497,7 @@ func (r *rowGroupOnDisk) Close() error {
 	}
 
 	if err := os.Remove(r.file.Name()); err != nil {
-		return errors.Wrap(err, "deleting row group segment file")
+		return fmt.Errorf("deleting row group segment file: %w", err)
 	}
 
 	return nil

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/parquet-go/parquet-go"
-	"github.com/pkg/errors"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -56,7 +56,7 @@ func (h *Handlers) CreateDatasetProfilesHandler() func(http.ResponseWriter, *htt
 
 		profiles, totalCount, err := h.readProfilesFromDataset(r.Context(), blockMeta, foundDataset, page, pageSize)
 		if err != nil {
-			httputil.Error(w, errors.Wrap(err, "failed to read profiles from dataset"))
+			httputil.Error(w, fmt.Errorf("failed to read profiles from dataset: %w", err))
 			return
 		}
 
@@ -152,12 +152,12 @@ func (h *Handlers) CreateDatasetProfileDownloadHandler() func(http.ResponseWrite
 
 		rowStr := r.URL.Query().Get("row")
 		if rowStr == "" {
-			httputil.Error(w, errors.New("No row number provided"))
+			httputil.Error(w, errors.New("no row number provided"))
 			return
 		}
 		var rowNum int64
 		if _, err := fmt.Sscanf(rowStr, "%d", &rowNum); err != nil {
-			httputil.Error(w, errors.Wrap(err, "invalid row parameter"))
+			httputil.Error(w, fmt.Errorf("invalid row parameter: %w", err))
 			return
 		}
 
@@ -169,13 +169,13 @@ func (h *Handlers) CreateDatasetProfileDownloadHandler() func(http.ResponseWrite
 
 		_, _, profileMeta, err := h.buildProfileResolver(r.Context(), blockMeta, foundDataset, rowNum)
 		if err != nil {
-			httputil.Error(w, errors.Wrap(err, "failed to get profile metadata"))
+			httputil.Error(w, fmt.Errorf("failed to get profile metadata: %w", err))
 			return
 		}
 
 		profile, err := h.retrieveProfile(r.Context(), blockMeta, foundDataset, rowNum)
 		if err != nil {
-			httputil.Error(w, errors.Wrap(err, "failed to download profile"))
+			httputil.Error(w, fmt.Errorf("failed to download profile: %w", err))
 			return
 		}
 
@@ -216,18 +216,18 @@ func (h *Handlers) retrieveProfile(
 func (h *Handlers) writeProfile(w http.ResponseWriter, profile *googlev1.Profile, filename string) {
 	data, err := profile.MarshalVT()
 	if err != nil {
-		httputil.Error(w, errors.Wrap(err, "failed to marshal profile"))
+		httputil.Error(w, fmt.Errorf("failed to marshal profile: %w", err))
 		return
 	}
 
 	var buf bytes.Buffer
 	gzipWriter := gzip.NewWriter(&buf)
 	if _, err := gzipWriter.Write(data); err != nil {
-		httputil.Error(w, errors.Wrap(err, "failed to compress profile"))
+		httputil.Error(w, fmt.Errorf("failed to compress profile: %w", err))
 		return
 	}
 	if err := gzipWriter.Close(); err != nil {
-		httputil.Error(w, errors.Wrap(err, "failed to close gzip writer"))
+		httputil.Error(w, fmt.Errorf("failed to close gzip writer: %w", err))
 		return
 	}
 
@@ -236,7 +236,7 @@ func (h *Handlers) writeProfile(w http.ResponseWriter, profile *googlev1.Profile
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 
 	if _, err := w.Write(buf.Bytes()); err != nil {
-		httputil.Error(w, errors.Wrap(err, "failed to write profile"))
+		httputil.Error(w, fmt.Errorf("failed to write profile: %w", err))
 		return
 	}
 }
@@ -251,12 +251,12 @@ func (h *Handlers) CreateDatasetProfileCallTreeHandler() func(http.ResponseWrite
 
 		rowStr := r.URL.Query().Get("row")
 		if rowStr == "" {
-			httputil.Error(w, errors.New("No row number provided"))
+			httputil.Error(w, errors.New("no row number provided"))
 			return
 		}
 		var rowNum int64
 		if _, err := fmt.Sscanf(rowStr, "%d", &rowNum); err != nil {
-			httputil.Error(w, errors.Wrap(err, "invalid row parameter"))
+			httputil.Error(w, fmt.Errorf("invalid row parameter: %w", err))
 			return
 		}
 
@@ -270,7 +270,7 @@ func (h *Handlers) CreateDatasetProfileCallTreeHandler() func(http.ResponseWrite
 
 		tree, timestamp, profileMeta, err := h.buildProfileTree(r.Context(), blockMeta, foundDataset, rowNum)
 		if err != nil {
-			httputil.Error(w, errors.Wrap(err, "failed to build profile tree"))
+			httputil.Error(w, fmt.Errorf("failed to build profile tree: %w", err))
 			return
 		}
 

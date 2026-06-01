@@ -29,15 +29,13 @@ import (
 	"sort"
 	"unsafe"
 
-	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
-
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
 	tsdb_enc "github.com/prometheus/prometheus/tsdb/encoding"
 
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/encoding"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 )
 
 const (
@@ -226,7 +224,7 @@ func (w *Writer) ensureStage(s indexWriterStage) error {
 		}
 	}
 	if w.stage > s {
-		return errors.Errorf("invalid stage %q, currently at %q", s, w.stage)
+		return fmt.Errorf("invalid stage %q, currently at %q", s, w.stage)
 	}
 
 	// Mark start of sections in table of contents.
@@ -307,16 +305,16 @@ func (w *Writer) AddSeries(ref storage.SeriesRef, lset phlaremodel.Labels, fp mo
 	labelHash := uint64(fp)
 
 	if ref < w.lastRef && len(w.lastSeries) != 0 {
-		return errors.Errorf("series with reference greater than %d already added", ref)
+		return fmt.Errorf("series with reference greater than %d already added", ref)
 	}
 	// We add padding to 16 bytes to increase the addressable space we get through 4 byte
 	// series references.
 	if err := w.addPadding(16); err != nil {
-		return errors.Errorf("failed to write padding bytes: %v", err)
+		return fmt.Errorf("failed to write padding bytes: %v", err)
 	}
 
 	if w.f.pos%16 != 0 {
-		return errors.Errorf("series write not 16-byte aligned at %d", w.f.pos)
+		return fmt.Errorf("series write not 16-byte aligned at %d", w.f.pos)
 	}
 
 	w.buf2.Reset()
@@ -330,7 +328,7 @@ func (w *Writer) AddSeries(ref storage.SeriesRef, lset phlaremodel.Labels, fp mo
 		if !ok {
 			nameIndex, err = w.symbols.ReverseLookup(l.Name)
 			if err != nil {
-				return errors.Errorf("symbol entry for %q does not exist, %v", l.Name, err)
+				return fmt.Errorf("symbol entry for %q does not exist, %v", l.Name, err)
 			}
 		}
 		w.labelNames[l.Name]++
@@ -340,7 +338,7 @@ func (w *Writer) AddSeries(ref storage.SeriesRef, lset phlaremodel.Labels, fp mo
 		if !ok || cacheEntry.lastValue != l.Value {
 			valueIndex, err = w.symbols.ReverseLookup(l.Value)
 			if err != nil {
-				return errors.Errorf("symbol entry for %q does not exist, %v", l.Value, err)
+				return fmt.Errorf("symbol entry for %q does not exist, %v", l.Value, err)
 			}
 			w.symbolCache[l.Name] = symbolCacheEntry{
 				index:          nameIndex,
@@ -393,7 +391,7 @@ func (w *Writer) AddSeries(ref storage.SeriesRef, lset phlaremodel.Labels, fp mo
 	}
 
 	if err := w.write(w.buf1.Get(), w.buf2.Get()); err != nil {
-		return errors.Wrap(err, "write series data")
+		return fmt.Errorf("write series data: %w", err)
 	}
 
 	return nil
@@ -411,7 +409,7 @@ func (w *Writer) AddSymbol(sym string) error {
 		return err
 	}
 	if w.numSymbols != 0 && sym <= w.lastSymbol {
-		return errors.Errorf("symbol %q out-of-order", sym)
+		return fmt.Errorf("symbol %q out-of-order", sym)
 	}
 	w.lastSymbol = sym
 	w.numSymbols++
@@ -424,7 +422,7 @@ func (w *Writer) finishSymbols() error {
 	symbolTableSize := w.f.pos - w.toc.Symbols - 4
 	// The symbol table's <len> part is 4 bytes. So the total symbol table size must be less than or equal to 2^32-1
 	if symbolTableSize > math.MaxUint32 {
-		return errors.Errorf("symbol table size exceeds 4 bytes: %d", symbolTableSize)
+		return fmt.Errorf("symbol table size exceeds 4 bytes: %d", symbolTableSize)
 	}
 
 	// Write out the length and symbol count.
@@ -461,7 +459,7 @@ func (w *Writer) finishSymbols() error {
 	// Load in the symbol table efficiently for the rest of the index writing.
 	w.symbols, err = NewSymbols(RealByteSlice(buf), int(w.toc.Symbols))
 	if err != nil {
-		return errors.Wrap(err, "read symbols")
+		return fmt.Errorf("read symbols: %w", err)
 	}
 	return nil
 }
@@ -559,7 +557,7 @@ func (w *Writer) writeLabelIndex(name string, values []uint32) error {
 	w.buf1.Reset()
 	l := w.f.pos - startPos - 4
 	if l > math.MaxUint32 {
-		return errors.Errorf("label index size exceeds 4 bytes: %d", l)
+		return fmt.Errorf("label index size exceeds 4 bytes: %d", l)
 	}
 	w.buf1.PutBE32int(int(l))
 	if err := w.writeAt(w.buf1.Get(), startPos); err != nil {
@@ -603,7 +601,7 @@ func (w *Writer) writeLabelIndexesOffsetTable() error {
 	w.buf1.Reset()
 	l := w.f.pos - startPos - 4
 	if l > math.MaxUint32 {
-		return errors.Errorf("label indexes offset table size exceeds 4 bytes: %d", l)
+		return fmt.Errorf("label indexes offset table size exceeds 4 bytes: %d", l)
 	}
 	w.buf1.PutBE32int(int(l))
 	if err := w.writeAt(w.buf1.Get(), startPos); err != nil {
@@ -685,7 +683,7 @@ func (w *Writer) writePostingsOffsetTable() error {
 	w.buf1.Reset()
 	l := w.f.pos - startPos - 4
 	if l > math.MaxUint32 {
-		return errors.Errorf("postings offset table size exceeds 4 bytes: %d", l)
+		return fmt.Errorf("postings offset table size exceeds 4 bytes: %d", l)
 	}
 	w.buf1.PutBE32int(int(l))
 	if err := w.writeAt(w.buf1.Get(), startPos); err != nil {
@@ -714,7 +712,7 @@ func (w *Writer) writeFingerprintOffsetsTable() error {
 	// TODO(owen-d): can remove the uint32 cast in the future
 	// Had to uint32 wrap these for arm32 builds, which we'll remove in the future.
 	if uint32(ln) > uint32(math.MaxUint32) {
-		return errors.Errorf("fingerprint offset size exceeds 4 bytes: %d", ln)
+		return fmt.Errorf("fingerprint offset size exceeds 4 bytes: %d", ln)
 	}
 
 	w.buf2.PutBE32int(ln)
@@ -725,7 +723,7 @@ func (w *Writer) writeFingerprintOffsetsTable() error {
 	// write offsets+checksum
 	w.buf1.PutHash(w.crc32)
 	if err := w.write(w.buf1.Get()); err != nil {
-		return errors.Wrap(err, "failure writing fingerprint offsets")
+		return fmt.Errorf("failure writing fingerprint offsets: %w", err)
 	}
 	return nil
 }
@@ -775,7 +773,7 @@ func (w *Writer) writePostingsToTmpFiles() error {
 		d.ConsumePadding()
 		startPos := w.toc.LabelIndices - uint64(d.Len())
 		if startPos%16 != 0 {
-			return errors.Errorf("series not 16-byte aligned at %d", startPos)
+			return fmt.Errorf("series not 16-byte aligned at %d", startPos)
 		}
 		offsets = append(offsets, uint32(startPos/16))
 		// Skip to next series.
@@ -900,7 +898,7 @@ func (w *Writer) writePosting(name, value string, offs []uint32) error {
 
 	for _, off := range offs {
 		if off > (1<<32)-1 {
-			return errors.Errorf("series offset %d exceeds 4 bytes", off)
+			return fmt.Errorf("series offset %d exceeds 4 bytes", off)
 		}
 		w.buf1.PutBE32(off)
 	}
@@ -909,7 +907,7 @@ func (w *Writer) writePosting(name, value string, offs []uint32) error {
 	l := w.buf1.Len()
 	// We convert to uint to make code compile on 32-bit systems, as math.MaxUint32 doesn't fit into int there.
 	if uint(l) > math.MaxUint32 {
-		return errors.Errorf("posting size exceeds 4 bytes: %d", l)
+		return fmt.Errorf("posting size exceeds 4 bytes: %d", l)
 	}
 	w.buf2.PutBE32int(l)
 	w.buf1.PutHash(w.crc32)
@@ -943,7 +941,7 @@ func (w *Writer) writePostings() error {
 		return err
 	}
 	if uint64(n) != w.fP.pos {
-		return errors.Errorf("wrote %d bytes to posting temporary file, but only read back %d", w.fP.pos, n)
+		return fmt.Errorf("wrote %d bytes to posting temporary file, but only read back %d", w.fP.pos, n)
 	}
 	//w.f.pos += uint64(n)
 
@@ -1073,7 +1071,7 @@ func (s Symbols) Lookup(o uint32) (string, error) {
 	})
 
 	if int(o) >= s.seen {
-		return "", errors.Errorf("unknown symbol offset %d", o)
+		return "", fmt.Errorf("unknown symbol offset %d", o)
 	}
 	d.Skip(s.offsets[int(o/symbolFactor)])
 	// Walk until we find the one we want.
@@ -1089,7 +1087,7 @@ func (s Symbols) Lookup(o uint32) (string, error) {
 
 func (s Symbols) ReverseLookup(sym string) (uint32, error) {
 	if len(s.offsets) == 0 {
-		return 0, errors.Errorf("unknown symbol %q - no symbols", sym)
+		return 0, fmt.Errorf("unknown symbol %q - no symbols", sym)
 	}
 	i := sort.Search(len(s.offsets), func(i int) bool {
 		// Any decoding errors here will be lost, however
@@ -1120,7 +1118,7 @@ func (s Symbols) ReverseLookup(sym string) (uint32, error) {
 		return 0, d.Err()
 	}
 	if lastSymbol != sym {
-		return 0, errors.Errorf("unknown symbol %q", sym)
+		return 0, fmt.Errorf("unknown symbol %q", sym)
 	}
 	return uint32(res), nil
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	gprofile "github.com/google/pprof/profile"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 
 	profilesv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
@@ -322,12 +321,12 @@ func (ce *canaryExporter) testSelectMergeProfile(ctx context.Context, now time.T
 
 	buf, err := respQuery.Msg.MarshalVT()
 	if err != nil {
-		return errors.Wrap(err, "failed to marshal protobuf")
+		return fmt.Errorf("failed to marshal protobuf: %w", err)
 	}
 
 	gp, err := gprofile.Parse(bytes.NewReader(buf))
 	if err != nil {
-		return errors.Wrap(err, "failed to parse profile")
+		return fmt.Errorf("failed to parse profile: %w", err)
 	}
 
 	expected := map[string]int64{
@@ -379,12 +378,12 @@ func (ce *canaryExporter) testSelectMergeOTLPProfile(ctx context.Context, now ti
 
 	buf, err := respQuery.Msg.MarshalVT()
 	if err != nil {
-		return errors.Wrap(err, "failed to marshal protobuf")
+		return fmt.Errorf("failed to marshal protobuf: %w", err)
 	}
 
 	gp, err := gprofile.Parse(bytes.NewReader(buf))
 	if err != nil {
-		return errors.Wrap(err, "failed to parse profile")
+		return fmt.Errorf("failed to parse profile: %w", err)
 	}
 
 	// Verify the expected stacktraces from the OTLP profile

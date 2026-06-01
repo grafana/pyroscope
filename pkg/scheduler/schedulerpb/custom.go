@@ -2,7 +2,7 @@
 
 package schedulerpb
 
-import "github.com/pkg/errors"
+import "errors"
 
 var (
 	ErrSchedulerIsNotRunning = errors.New("scheduler is not running")

@@ -2,6 +2,7 @@ package storegateway
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -14,7 +15,6 @@ import (
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/tenant"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -234,7 +234,7 @@ func (bs *BucketStores) syncUsersBlocks(ctx context.Context, f func(context.Cont
 
 	ownedUserIDs, err := bs.shardingStrategy.FilterUsers(ctx, userIDs)
 	if err != nil {
-		return errors.Wrap(err, "unable to check tenants owned by this store-gateway instance")
+		return fmt.Errorf("unable to check tenants owned by this store-gateway instance: %w", err)
 	}
 
 	includeUserIDs := make(map[string]struct{}, len(ownedUserIDs))
@@ -256,7 +256,7 @@ func (bs *BucketStores) syncUsersBlocks(ctx context.Context, f func(context.Cont
 			for job := range jobs {
 				if err := f(ctx, job.store); err != nil {
 					errsMx.Lock()
-					errs.Add(errors.Wrapf(err, "failed to synchronize Pyroscope blocks for user %s", job.userID))
+					errs.Add(fmt.Errorf("failed to synchronize Pyroscope blocks for user %s: %w", job.userID, err))
 					errsMx.Unlock()
 				}
 			}

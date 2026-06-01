@@ -22,7 +22,6 @@ import (
 	"github.com/grafana/dskit/runutil"
 	"github.com/grafana/dskit/tracing"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/prometheus/model/labels"
@@ -159,7 +158,7 @@ func (s *Syncer) GarbageCollect(ctx context.Context) error {
 		cancel()
 		if err != nil {
 			s.metrics.garbageCollectionFailures.Inc()
-			return errors.Wrapf(err, "mark block %s for deletion", id)
+			return fmt.Errorf("mark block %s for deletion: %w", id, err)
 		}
 
 		// Immediately update our in-memory state so no further call to SyncMetas is needed
@@ -355,7 +354,7 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 		},
 	}, "local-compactor")
 	if err != nil {
-		return nil, errors.Wrap(err, "create local bucket")
+		return nil, fmt.Errorf("create local bucket: %w", err)
 	}
 	defer localBucket.Close()
 
@@ -379,11 +378,11 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 			dir := dirs[idx]
 			meta, err := block.ReadMetaFromDir(dir)
 			if err != nil {
-				return errors.Wrapf(err, "failed to read meta the block dir %s", dir)
+				return fmt.Errorf("failed to read meta the block dir %s: %w", dir, err)
 			}
 			b := phlaredb.NewSingleBlockQuerierFromMeta(ctx, localBucket, meta)
 			if err := b.Open(ctx); err != nil {
-				return errors.Wrapf(err, "open block %s", meta.ULID)
+				return fmt.Errorf("open block %s: %w", meta.ULID, err)
 			}
 			readers[idx] = b
 			return nil
@@ -420,7 +419,7 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 		Logger:             c.logger,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "compact blocks %v", dirs)
+		return nil, fmt.Errorf("compact blocks %v: %w", dirs, err)
 	}
 	for _, m := range metas {
 		c.metrics.Range.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(float64(m.MaxTime-m.MinTime) / 1000)
@@ -461,12 +460,12 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	}()
 
 	if err := os.MkdirAll(subDir, 0o750); err != nil {
-		return false, nil, errors.Wrap(err, "create compaction job dir")
+		return false, nil, fmt.Errorf("create compaction job dir: %w", err)
 	}
 
 	toCompact, err := c.planner.Plan(ctx, job.metasByMinTime)
 	if err != nil {
-		return false, nil, errors.Wrap(err, "plan compaction")
+		return false, nil, fmt.Errorf("plan compaction: %w", err)
 	}
 	if len(toCompact) == 0 {
 		// Nothing to do.
@@ -511,7 +510,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 			// Must be the same as in blocksToCompactDirs.
 			bdir := filepath.Join(subDir, meta.ULID.String())
 			if err := block.Download(ctx, jobLogger, c.bkt, meta.ULID, bdir); err != nil {
-				return errors.Wrapf(err, "download block %s", meta.ULID)
+				return fmt.Errorf("download block %s: %w", meta.ULID, err)
 			}
 
 			return nil
@@ -554,7 +553,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	if err != nil {
 		sp.LogError(err)
 		sp.SetError()
-		return false, nil, errors.Wrapf(err, "compact blocks %v", blocksToCompactDirs)
+		return false, nil, fmt.Errorf("compact blocks %v: %w", blocksToCompactDirs, err)
 	}
 
 	if err = verifyCompactedBlocksTimeRanges(compIDs, toCompactMinTime.UnixMilli(), toCompactMaxTime.UnixMilli(), subDir); err != nil {
@@ -586,17 +585,17 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 
 			newMeta, err := block.ReadMetaFromDir(bdir)
 			if err != nil {
-				return errors.Wrapf(err, "failed to read meta the block dir %s", bdir)
+				return fmt.Errorf("failed to read meta the block dir %s: %w", bdir, err)
 			}
 
 			// Ensure the compacted block is valid.
 			if err := phlaredb.ValidateLocalBlock(ctx, bdir); err != nil {
-				return errors.Wrapf(err, "invalid result block %s", bdir)
+				return fmt.Errorf("invalid result block %s: %w", bdir, err)
 			}
 
 			begin := time.Now()
 			if err := block.Upload(ctx, jobLogger, c.bkt, bdir); err != nil {
-				return errors.Wrapf(err, "upload of %s failed", ulidToUpload)
+				return fmt.Errorf("upload of %s failed: %w", ulidToUpload, err)
 			}
 
 			elapsed := time.Since(begin)
@@ -619,7 +618,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	// Eventually the block we just uploaded should get synced into the job again (including sync-delay).
 	for _, meta := range toCompact {
 		if err := deleteBlock(ctx, c.bkt, meta.ULID, filepath.Join(subDir, meta.ULID.String()), jobLogger, c.metrics.blocksMarkedForDeletion); err != nil {
-			return false, nil, errors.Wrapf(err, "mark old block for deletion from bucket")
+			return false, nil, fmt.Errorf("mark old block for deletion from bucket: %w", err)
 		}
 	}
 
@@ -641,7 +640,7 @@ func verifyCompactedBlocksTimeRanges(compIDs []ulid.ULID, sourceBlocksMinTime, s
 		bdir := filepath.Join(subDir, compID.String())
 		meta, err := block.ReadMetaFromDir(bdir)
 		if err != nil {
-			return errors.Wrapf(err, "failed to read meta.json from %s during block time range verification", bdir)
+			return fmt.Errorf("failed to read meta.json from %s during block time range verification: %w", bdir, err)
 		}
 
 		// Ensure compacted block min/maxTime within source blocks min/maxTime
@@ -673,11 +672,11 @@ func verifyCompactedBlocksTimeRanges(compIDs []ulid.ULID, sourceBlocksMinTime, s
 
 func deleteBlock(ctx context.Context, bkt objstore.Bucket, id ulid.ULID, bdir string, logger log.Logger, blocksMarkedForDeletion prometheus.Counter) error {
 	if err := os.RemoveAll(bdir); err != nil {
-		return errors.Wrapf(err, "remove old block dir %s", id)
+		return fmt.Errorf("remove old block dir %s: %w", id, err)
 	}
 	level.Info(logger).Log("msg", "marking compacted block for deletion", "old_block", id)
 	if err := block.MarkForDeletion(ctx, logger, bkt, id, "source of compacted block", true, blocksMarkedForDeletion); err != nil {
-		return errors.Wrapf(err, "mark block %s for deletion from bucket", id)
+		return fmt.Errorf("mark block %s for deletion from bucket: %w", id, err)
 	}
 	return nil
 }
@@ -775,7 +774,7 @@ func NewBucketCompactor(
 	metrics *BucketCompactorMetrics,
 ) (*BucketCompactor, error) {
 	if concurrency <= 0 {
-		return nil, errors.Errorf("invalid concurrency level (%d), concurrency level must be > 0", concurrency)
+		return nil, fmt.Errorf("invalid concurrency level (%d), concurrency level must be > 0", concurrency)
 	}
 	return &BucketCompactor{
 		logger:               logger,
@@ -868,7 +867,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 					// At this point the compaction has failed.
 					c.metrics.groupCompactionRunsFailed.Inc()
 
-					errChan <- errors.Wrapf(err, "group %s", g.Key())
+					errChan <- fmt.Errorf("group %s: %w", g.Key(), err)
 					return
 				}
 			}()
@@ -878,7 +877,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 		if err := c.sy.SyncMetas(ctx); err != nil {
 			sp.LogError(err)
 			sp.SetError()
-			return errors.Wrap(err, "sync")
+			return fmt.Errorf("sync: %w", err)
 		}
 
 		level.Info(c.logger).Log("msg", "start of GC")
@@ -887,14 +886,14 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 		if err := c.sy.GarbageCollect(ctx); err != nil {
 			sp.LogError(err)
 			sp.SetError()
-			return errors.Wrap(err, "blocks garbage collect")
+			return fmt.Errorf("blocks garbage collect: %w", err)
 		}
 
 		jobs, err := c.grouper.Groups(c.sy.Metas())
 		if err != nil {
 			sp.LogError(err)
 			sp.SetError()
-			return errors.Wrap(err, "build compaction jobs")
+			return fmt.Errorf("build compaction jobs: %w", err)
 		}
 		otelSpan := trace.SpanFromContext(ctx)
 		otelSpan.AddEvent("discovered compaction jobs", trace.WithAttributes(
@@ -1001,7 +1000,7 @@ func (c *BucketCompactor) filterOwnJobs(jobs []*Job) ([]*Job, error) {
 	for ix := 0; ix < len(jobs); {
 		// Skip any job which doesn't belong to this compactor instance.
 		if ok, err := c.ownJob(jobs[ix]); err != nil {
-			return nil, errors.Wrap(err, "ownJob")
+			return nil, fmt.Errorf("ownJob: %w", err)
 		} else if !ok {
 			jobs = append(jobs[:ix], jobs[ix+1:]...)
 		} else {
@@ -1080,7 +1079,7 @@ func (f *NoCompactionMarkFilter) Filter(ctx context.Context, metas map[ulid.ULID
 		return nil
 	})
 	if err != nil {
-		return errors.Wrap(err, "list block no-compact marks")
+		return fmt.Errorf("list block no-compact marks: %w", err)
 	}
 
 	f.noCompactMarkedMap = noCompactMarkedMap

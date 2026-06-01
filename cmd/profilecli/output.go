@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"github.com/grafana/dskit/runutil"
 	"github.com/klauspost/compress/gzip"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -104,12 +104,12 @@ func outputMergeProfile(ctx context.Context, outputFlag string, force bool, prof
 	if outputFlag == outputConsole {
 		buf, err := profile.MarshalVT()
 		if err != nil {
-			return errors.Wrap(err, "failed to marshal protobuf")
+			return fmt.Errorf("failed to marshal protobuf: %w", err)
 		}
 
 		p, err := gprofile.Parse(bytes.NewReader(buf))
 		if err != nil {
-			return errors.Wrap(err, "failed to parse profile")
+			return fmt.Errorf("failed to parse profile: %w", err)
 		}
 
 		fmt.Fprintln(output(ctx), p.String())
@@ -124,7 +124,7 @@ func outputMergeProfile(ctx context.Context, outputFlag string, force bool, prof
 		}
 		buf, err := profile.MarshalVT()
 		if err != nil {
-			return errors.Wrap(err, "failed to marshal protobuf")
+			return fmt.Errorf("failed to marshal protobuf: %w", err)
 		}
 
 		// open new file, fail when the file already exists unless force is set
@@ -136,7 +136,7 @@ func outputMergeProfile(ctx context.Context, outputFlag string, force bool, prof
 		}
 		f, err := os.OpenFile(filePath, flags, 0644)
 		if err != nil {
-			return errors.Wrap(err, "failed to create pprof file")
+			return fmt.Errorf("failed to create pprof file: %w", err)
 		}
 		defer runutil.CloseWithErrCapture(&err, f, "failed to close pprof file")
 
@@ -144,11 +144,11 @@ func outputMergeProfile(ctx context.Context, outputFlag string, force bool, prof
 		defer runutil.CloseWithErrCapture(&err, gzipWriter, "failed to close pprof gzip writer")
 
 		if _, err := io.Copy(gzipWriter, bytes.NewReader(buf)); err != nil {
-			return errors.Wrap(err, "failed to write pprof")
+			return fmt.Errorf("failed to write pprof: %w", err)
 		}
 
 		return nil
 	}
 
-	return errors.Errorf("unknown output %s", outputFlag)
+	return fmt.Errorf("unknown output %s", outputFlag)
 }

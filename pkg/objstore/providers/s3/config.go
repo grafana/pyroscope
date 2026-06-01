@@ -7,6 +7,7 @@ package s3
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/grafana/dskit/flagext"
 	"github.com/minio/minio-go/v7/pkg/encrypt"
-	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"github.com/thanos-io/objstore/providers/s3"
 )
@@ -223,6 +223,9 @@ func parseKMSEncryptionContext(data string) (map[string]string, error) {
 	}
 
 	decoded := map[string]string{}
-	err := errors.Wrap(json.Unmarshal([]byte(data), &decoded), "unable to parse KMS encryption context")
-	return decoded, err
+	err := json.Unmarshal([]byte(data), &decoded)
+	if err != nil {
+		return nil, errors.New("unable to parse KMS encryption context")
+	}
+	return decoded, nil
 }
