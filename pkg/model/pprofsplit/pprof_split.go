@@ -35,7 +35,7 @@ func VisitSampleSeries(
 	}()
 
 	pprof.RenameLabel(profile, pprof.ProfileIDLabelName, pprof.SpanIDLabelName)
-	groups := pprof.GroupSamplesWithoutLabels(profile, pprof.SpanIDLabelName)
+	groups := pprof.GroupSamplesWithoutLabels(profile, pprof.TraceIDLabelName, pprof.SpanIDLabelName)
 	builder := phlaremodel.NewLabelsBuilder(nil)
 
 	if len(groups) == 0 || (len(groups) == 1 && len(groups[0].Labels) == 0) {
@@ -120,15 +120,18 @@ func addSampleLabelsToLabelsBuilder(b *phlaremodel.LabelsBuilder, p *profilev1.P
 
 type sampleKey struct {
 	stacktrace string
-	// note this is an index into the string table, rather than span ID
-	spanIDIdx int64
+	// String table indices, kept so samples are not merged across traces/spans.
+	traceIDIdx int64
+	spanIDIdx  int64
 }
 
 func sampleKeyFromSample(stringTable []string, s *profilev1.Sample) sampleKey {
 	var k sampleKey
-	// populate spanID if present
 	for _, l := range s.Label {
-		if stringTable[int(l.Key)] == pprof.SpanIDLabelName {
+		switch stringTable[int(l.Key)] {
+		case pprof.TraceIDLabelName:
+			k.traceIDIdx = l.Str
+		case pprof.SpanIDLabelName:
 			k.spanIDIdx = l.Str
 		}
 	}
