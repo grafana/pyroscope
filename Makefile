@@ -107,7 +107,7 @@ GOTESTSUM_FORMAT ?= standard-verbose
 .PHONY: examples/test
 examples/test: RUN := .*
 examples/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum --format $(GOTESTSUM_FORMAT) --rerun-fails=2 --packages ./examples -- --count 1 --parallel 2 --timeout 1h --tags examples -run "$(RUN)"
+	$(BIN)/gotestsum --format $(GOTESTSUM_FORMAT) --packages ./examples -- --count 1 --parallel 2 --timeout 1h --tags examples -run "$(RUN)"
 
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
