@@ -32,8 +32,8 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"go.yaml.in/yaml/v3"
 	"golang.org/x/net/http2"
-	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"

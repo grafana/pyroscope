@@ -11,10 +11,10 @@ import (
 
 	"connectrpc.com/connect"
 
+	"go.yaml.in/yaml/v3"
 	"google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/protobuf/encoding/protojson"
-	"gopkg.in/yaml.v3"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
