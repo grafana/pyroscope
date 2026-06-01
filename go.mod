@@ -61,7 +61,6 @@ require (
 	github.com/prometheus/prometheus v0.311.3
 	github.com/samber/lo v1.53.0
 	github.com/simonswine/tempopb v0.2.0
-	github.com/sirupsen/logrus v1.9.4
 	github.com/sony/gobreaker/v2 v2.4.0
 	github.com/spf13/afero v1.15.0
 	github.com/stretchr/testify v1.11.1
