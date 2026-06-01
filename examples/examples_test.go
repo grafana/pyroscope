@@ -612,15 +612,12 @@ func (e *env) profileIDsFromTrace(ctx context.Context, host, traceID string) ([]
 
 // examplesToTest discovers the docker-compose examples and filters them by the
 // PYROSCOPE_TEST_EXAMPLES environment variable (a comma/newline/space separated
-// list of repository-relative example dirs, e.g. "examples/tracing/java"). When
-// the variable is empty, all examples are returned. It fails the test if the
-// variable names an example that does not exist, so a typo cannot silently pass
-// by selecting (and testing) nothing.
+// list of repository-relative paths).
 func examplesToTest(t *testing.T) []*env {
 	out, err := exec.Command("git", "ls-files", "**/docker-compose.yml", "**/docker-compose.yaml").Output()
 	require.NoError(t, err)
 
-	// requested maps each requested dir to whether a matching example was found.
+	// requested maps each requested path to whether it matched an example.
 	var requested map[string]bool
 	if raw := strings.TrimSpace(os.Getenv("PYROSCOPE_TEST_EXAMPLES")); raw != "" {
 		requested = map[string]bool{}
@@ -638,18 +635,24 @@ func examplesToTest(t *testing.T) []*env {
 		}
 		e := &env{dir: filepath.Dir(path), path: path}
 		if requested != nil {
-			if _, ok := requested[e.repoDir()]; !ok {
+			matched := false
+			for p := range requested {
+				if e.repoDir() == p || strings.HasPrefix(e.repoDir(), p+"/") {
+					requested[p] = true
+					matched = true
+				}
+			}
+			if !matched {
 				continue
 			}
-			requested[e.repoDir()] = true
 		}
 		envs = append(envs, e)
 	}
 
 	var unmatched []string
-	for dir, matched := range requested {
+	for p, matched := range requested {
 		if !matched {
-			unmatched = append(unmatched, dir)
+			unmatched = append(unmatched, p)
 		}
 	}
 	if len(unmatched) > 0 {
