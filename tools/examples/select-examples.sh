@@ -17,7 +17,7 @@
 set -euo pipefail
 
 # All example directories (those containing a docker-compose.yml).
-mapfile -t all_dirs < <(git ls-files 'examples/**/docker-compose.yml' | xargs -n1 dirname | sort -u)
+mapfile -t all_dirs < <(git ls-files 'examples/**/docker-compose.yml' 'examples/**/docker-compose.yaml' | xargs -n1 dirname | sort -u)
 
 emit_under_prefix() {
   local prefix="${1%/}"

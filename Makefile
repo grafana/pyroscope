@@ -92,12 +92,13 @@ go/test-integration: $(BIN)/gotestsum
 	$(BIN)/gotestsum --rerun-fails=2 --packages './pkg/test/integration/...' -- $(GO_TEST_FLAGS)
 
 # Run tests on examples. These build and run each example via docker-compose,
-# verify the containers stay up, and query the ingested profiling data back.
+# verify the containers stay up, and query the ingested profiling data back
+# (profiles for every example; the trace-to-profile link for tracing examples).
 #
 # Scope to specific examples with PYROSCOPE_TEST_EXAMPLES (comma-separated,
 # repository-relative dirs), and/or to specific tests with RUN. For example:
 # $ make examples/test PYROSCOPE_TEST_EXAMPLES=examples/tracing/java
-# $ make examples/test RUN=TestExampleProfiles/examples/language-sdk-instrumentation/rust/basic
+# $ make examples/test RUN=TestExamples/examples/language-sdk-instrumentation/rust/basic
 #
 # The default verbose format surfaces what each check verified (discovered
 # services, profile types, point/sample counts). Override with
@@ -107,18 +108,6 @@ GOTESTSUM_FORMAT ?= standard-verbose
 examples/test: RUN := .*
 examples/test: $(BIN)/gotestsum
 	$(BIN)/gotestsum --format $(GOTESTSUM_FORMAT) --rerun-fails=2 --packages ./examples -- --count 1 --parallel 2 --timeout 1h --tags examples -run "$(RUN)"
-
-# Check that profiles can be queried from Pyroscope (Series + SelectSeries) for
-# the selected examples (see PYROSCOPE_TEST_EXAMPLES above).
-.PHONY: examples/test/profiles
-examples/test/profiles:
-	$(MAKE) examples/test RUN=TestExampleProfiles
-
-# Check that the trace-to-profile link works (SelectMergeSpanProfile) for the
-# selected tracing examples.
-.PHONY: examples/test/tracing
-examples/test/tracing:
-	$(MAKE) examples/test RUN=TestExampleTracingSpanProfiles
 
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)

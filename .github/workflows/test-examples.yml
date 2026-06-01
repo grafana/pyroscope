@@ -40,9 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       examples: ${{ steps.select.outputs.examples }}
-      tracing_examples: ${{ steps.select.outputs.tracing_examples }}
       any: ${{ steps.select.outputs.any }}
-      any_tracing: ${{ steps.select.outputs.any_tracing }}
     steps:
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -63,21 +61,20 @@ jobs:
             export TARGET="$TARGET_INPUT"
           fi
           selected="$(bash tools/examples/select-examples.sh)"
-          tracing="$(printf '%s\n' "$selected" | { grep '^examples/tracing/' || true; })"
 
           echo "Selected examples:"
           printf '%s\n' "$selected"
 
           {
             echo "examples=$(printf '%s\n' "$selected" | paste -sd, -)"
-            echo "tracing_examples=$(printf '%s\n' "$tracing" | paste -sd, -)"
             echo "any=$([ -n "$selected" ] && echo true || echo false)"
-            echo "any_tracing=$([ -n "$tracing" ] && echo true || echo false)"
           } >> "$GITHUB_OUTPUT"
 
-  # Check 1: profiles can be queried from Pyroscope (Series + SelectSeries) for
-  # every selected example.
-  profiles:
+  # Bring each selected example up once and verify it: profiles are queried for
+  # every example (Series + SelectSeries); tracing examples additionally get the
+  # trace-to-profile link checked (SelectMergeSpanProfile). The profiles and
+  # trace-link results show up as subtests in this job's output.
+  test:
     needs: detect
     if: needs.detect.outputs.any == 'true'
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
@@ -90,28 +87,7 @@ jobs:
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version: 1.25.10
-      - name: Query profiles for selected examples
+      - name: Query profiles (and span profiles) for selected examples
         env:
           PYROSCOPE_TEST_EXAMPLES: ${{ needs.detect.outputs.examples }}
-        run: make examples/test/profiles
-
-  # Check 2: the trace-to-profile link works (find a trace, find its
-  # pyroscope.profile.id span attribute, query SelectMergeSpanProfile) for every
-  # selected example under examples/tracing.
-  tracing:
-    needs: detect
-    if: needs.detect.outputs.any_tracing == 'true'
-    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          persist-credentials: 'false'
-      - name: Install Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
-        with:
-          go-version: 1.25.10
-      - name: Query span profiles for selected tracing examples
-        env:
-          PYROSCOPE_TEST_EXAMPLES: ${{ needs.detect.outputs.tracing_examples }}
-        run: make examples/test/tracing
+        run: make examples/test

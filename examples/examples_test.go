@@ -240,9 +240,15 @@ func (e *env) hostPort(t testing.TB, ctx context.Context, service, containerPort
 	return line[idx+1:]
 }
 
-// bringUp builds, pulls and starts the example detached. The returned function
-// tears the stack down and must always be called.
-func (e *env) bringUp(t *testing.T, ctx context.Context) func() {
+// bringUp builds, pulls and starts the example detached. Teardown is registered
+// with t.Cleanup before anything is started, so containers are removed even if
+// build or up fails partway through.
+func (e *env) bringUp(t *testing.T, ctx context.Context) {
+	t.Cleanup(func() {
+		if err := e.run(t, context.Background(), "down", "--volumes"); err != nil {
+			t.Logf("cleanup error=%v", err)
+		}
+	})
 	t.Run("build", func(t *testing.T) {
 		require.NoError(t, e.run(t, ctx, "build"))
 	})
@@ -251,12 +257,6 @@ func (e *env) bringUp(t *testing.T, ctx context.Context) func() {
 		require.NoError(t, e.run(t, ctx, "pull"))
 	})
 	require.NoError(t, e.run(t, ctx, "up", "--detach"))
-
-	return func() {
-		if err := e.run(t, context.Background(), "down", "--volumes"); err != nil {
-			t.Logf("cleanup error=%v", err)
-		}
-	}
 }
 
 // waitRunning waits until all containers report a running state, failing the
@@ -582,7 +582,7 @@ func (e *env) profileIDsFromTrace(ctx context.Context, host, traceID string) ([]
 // list of repository-relative example dirs, e.g. "examples/tracing/java"). When
 // the variable is empty, all examples are returned.
 func examplesToTest(t *testing.T) []*env {
-	out, err := exec.Command("git", "ls-files", "**/docker-compose.yml").Output()
+	out, err := exec.Command("git", "ls-files", "**/docker-compose.yml", "**/docker-compose.yaml").Output()
 	require.NoError(t, err)
 
 	var selected map[string]struct{}
@@ -611,10 +611,16 @@ func examplesToTest(t *testing.T) []*env {
 	return envs
 }
 
-// TestExampleProfiles brings up each selected example, verifies all containers
-// stay running, and then verifies that profiles are queryable from Pyroscope via
-// the Series and SelectSeries APIs.
-func TestExampleProfiles(t *testing.T) {
+// isTracing reports whether the example lives under examples/tracing/.
+func (e *env) isTracing() bool {
+	return strings.HasPrefix(e.repoDir(), filepath.Join("examples", "tracing")+string(filepath.Separator))
+}
+
+// TestExamples brings each selected example up once and verifies it: profiles
+// are always checked (Series + SelectSeries); tracing examples additionally get
+// the trace-to-profile link checked (SelectMergeSpanProfile). Bringing the stack
+// up once and branching keeps tracing examples from being built and run twice.
+func TestExamples(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
@@ -627,121 +633,112 @@ func TestExampleProfiles(t *testing.T) {
 			defer cancel()
 
 			e := e.prepareCompose(t)
-			defer e.bringUp(t, ctx)()
+			e.bringUp(t, ctx)
 			e.waitRunning(t, ctx)
 
-			host := "127.0.0.1:" + e.hostPort(t, ctx, pyroscopeService, pyroscopePort)
-			t.Logf("[%s] all containers running; pyroscope on %s, waiting for profiles to be queryable", e.repoDir(), host)
+			pyroHost := "127.0.0.1:" + e.hostPort(t, ctx, pyroscopeService, pyroscopePort)
+			t.Logf("[%s] all containers running; pyroscope on %s", e.repoDir(), pyroHost)
 
-			dir := e.repoDir()
-			var summary string
-			poll(t, ctx, profilesQueryTimeout, func(progress func(string, ...any)) error {
-				progress("[%s] querying Series for ingested profiles...", dir)
-				data, err := e.discoverSeries(ctx, host)
-				if err != nil {
-					return err
-				}
-				progress("[%s] Series found %d service(s): %s; querying SelectSeries...", dir, len(data), strings.Join(sortedKeys(data), ", "))
-				for svc, types := range data {
-					for _, pt := range types {
-						nSeries, nPoints, err := e.selectSeries(ctx, host, svc, pt)
-						if err != nil {
-							return err
-						}
-						if nPoints > 0 {
-							summary = fmt.Sprintf("service=%q profileType=%q -> %d series, %d points (%d service(s) ingesting)",
-								svc, pt, nSeries, nPoints, len(data))
-							return nil
-						}
-						progress("[%s] SelectSeries service=%q type=%q -> 0 points (waiting for data)", dir, svc, pt)
-					}
-				}
-				return fmt.Errorf("no data points for any of %d discovered series yet", len(data))
+			t.Run("profiles", func(t *testing.T) {
+				e.checkProfilesQueryable(t, ctx, pyroHost)
 			})
-			t.Logf("[%s] PASS profiles queryable via Series+SelectSeries: %s", dir, summary)
+
+			if e.isTracing() {
+				tempoHost := "127.0.0.1:" + e.hostPort(t, ctx, tempoService, tempoPort)
+				t.Run("trace-link", func(t *testing.T) {
+					e.checkSpanProfilesQueryable(t, ctx, pyroHost, tempoHost)
+				})
+			}
+
+			// All containers should still be up after the workload, not just at
+			// startup (catches a container that crashed during the run).
+			require.NoError(t, e.containersAllRunning(ctx), "containers must stay running through the run")
 		})
 	}
 }
 
-// TestExampleTracingSpanProfiles brings up each selected tracing example and
-// verifies the trace-to-profile link end to end: a trace is found in Tempo, a
-// span carries a pyroscope.profile.id attribute, and SelectMergeSpanProfile
-// returns span-scoped profiling data for it.
-func TestExampleTracingSpanProfiles(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
-	for _, e := range examplesToTest(t) {
-		e := e
-		if !strings.HasPrefix(e.repoDir(), filepath.Join("examples", "tracing")+string(filepath.Separator)) {
-			continue
+// checkProfilesQueryable verifies profiles are queryable from Pyroscope via the
+// Series and SelectSeries APIs.
+func (e *env) checkProfilesQueryable(t *testing.T, ctx context.Context, host string) {
+	dir := e.repoDir()
+	var summary string
+	poll(t, ctx, profilesQueryTimeout, func(progress func(string, ...any)) error {
+		progress("[%s] querying Series for ingested profiles...", dir)
+		data, err := e.discoverSeries(ctx, host)
+		if err != nil {
+			return err
 		}
-		t.Run(e.repoDir(), func(t *testing.T) {
-			t.Parallel()
-			ctx, cancel := context.WithTimeout(context.Background(), timeoutPerExample)
-			defer cancel()
-
-			e := e.prepareCompose(t)
-			defer e.bringUp(t, ctx)()
-			e.waitRunning(t, ctx)
-
-			pyroHost := "127.0.0.1:" + e.hostPort(t, ctx, pyroscopeService, pyroscopePort)
-			tempoHost := "127.0.0.1:" + e.hostPort(t, ctx, tempoService, tempoPort)
-			t.Logf("[%s] all containers running; pyroscope on %s, tempo on %s, waiting for traces + span profiles", e.repoDir(), pyroHost, tempoHost)
-
-			// Find a trace whose span carries a pyroscope.profile.id, then verify
-			// span-scoped profiling data can be fetched for it. The (service,
-			// profile type) carrying span data is discovered from Pyroscope.
-			dir := e.repoDir()
-			var summary string
-			poll(t, ctx, tracesQueryTimeout, func(progress func(string, ...any)) error {
-				progress("[%s] querying Series for ingested profiles...", dir)
-				data, err := e.discoverSeries(ctx, pyroHost)
+		progress("[%s] Series found %d service(s): %s; querying SelectSeries...", dir, len(data), strings.Join(sortedKeys(data), ", "))
+		for svc, types := range data {
+			for _, pt := range types {
+				nSeries, nPoints, err := e.selectSeries(ctx, host, svc, pt)
 				if err != nil {
 					return err
 				}
-				progress("[%s] Series found %d service(s): %s; searching Tempo for traces...", dir, len(data), strings.Join(sortedKeys(data), ", "))
+				if nPoints > 0 {
+					summary = fmt.Sprintf("service=%q profileType=%q -> %d series, %d points (%d service(s) ingesting)",
+						svc, pt, nSeries, nPoints, len(data))
+					return nil
+				}
+				progress("[%s] SelectSeries service=%q type=%q -> 0 points (waiting for data)", dir, svc, pt)
+			}
+		}
+		return fmt.Errorf("no data points for any of %d discovered series yet", len(data))
+	})
+	t.Logf("[%s] PASS profiles queryable via Series+SelectSeries: %s", dir, summary)
+}
 
-				traceIDs, err := e.tempoSearch(ctx, tempoHost)
+// checkSpanProfilesQueryable verifies the trace-to-profile link end to end: a
+// trace is found in Tempo, a span carries a pyroscope.profile.id attribute, and
+// SelectMergeSpanProfile returns span-scoped profiling data for it.
+func (e *env) checkSpanProfilesQueryable(t *testing.T, ctx context.Context, pyroHost, tempoHost string) {
+	dir := e.repoDir()
+	var summary string
+	poll(t, ctx, tracesQueryTimeout, func(progress func(string, ...any)) error {
+		progress("[%s] querying Series for ingested profiles...", dir)
+		data, err := e.discoverSeries(ctx, pyroHost)
+		if err != nil {
+			return err
+		}
+		progress("[%s] Series found %d service(s): %s; searching Tempo for traces...", dir, len(data), strings.Join(sortedKeys(data), ", "))
+
+		traceIDs, err := e.tempoSearch(ctx, tempoHost)
+		if err != nil {
+			return err
+		}
+		if len(traceIDs) == 0 {
+			return errors.New("no traces found in tempo yet")
+		}
+		progress("[%s] found %d trace(s); scanning spans for %s attribute...", dir, len(traceIDs), pyroscopeProfileIDAttr)
+
+		var spanIDs []string
+		for _, id := range traceIDs {
+			ids, err := e.profileIDsFromTrace(ctx, tempoHost, id)
+			if err != nil {
+				return err
+			}
+			spanIDs = append(spanIDs, ids...)
+		}
+		if len(spanIDs) == 0 {
+			return fmt.Errorf("found %d traces in tempo but no span carried a %s attribute", len(traceIDs), pyroscopeProfileIDAttr)
+		}
+		progress("[%s] found %d span(s) with %s; querying SelectMergeSpanProfile...", dir, len(spanIDs), pyroscopeProfileIDAttr)
+
+		for svc, types := range data {
+			for _, pt := range types {
+				total, err := e.selectMergeSpanProfile(ctx, pyroHost, svc, pt, spanIDs)
 				if err != nil {
 					return err
 				}
-				if len(traceIDs) == 0 {
-					return errors.New("no traces found in tempo yet")
+				if total > 0 {
+					summary = fmt.Sprintf("service=%q profileType=%q -> %d span id(s) from %d trace(s), %d samples",
+						svc, pt, len(spanIDs), len(traceIDs), total)
+					return nil
 				}
-				progress("[%s] found %d trace(s); scanning spans for %s attribute...", dir, len(traceIDs), pyroscopeProfileIDAttr)
-
-				var spanIDs []string
-				for _, id := range traceIDs {
-					ids, err := e.profileIDsFromTrace(ctx, tempoHost, id)
-					if err != nil {
-						return err
-					}
-					spanIDs = append(spanIDs, ids...)
-				}
-				if len(spanIDs) == 0 {
-					return fmt.Errorf("found %d traces in tempo but no span carried a %s attribute", len(traceIDs), pyroscopeProfileIDAttr)
-				}
-				progress("[%s] found %d span(s) with %s; querying SelectMergeSpanProfile...", dir, len(spanIDs), pyroscopeProfileIDAttr)
-
-				for svc, types := range data {
-					for _, pt := range types {
-						total, err := e.selectMergeSpanProfile(ctx, pyroHost, svc, pt, spanIDs)
-						if err != nil {
-							return err
-						}
-						if total > 0 {
-							summary = fmt.Sprintf("service=%q profileType=%q -> %d span id(s) from %d trace(s), %d samples",
-								svc, pt, len(spanIDs), len(traceIDs), total)
-							return nil
-						}
-						progress("[%s] SelectMergeSpanProfile service=%q type=%q -> 0 samples", dir, svc, pt)
-					}
-				}
-				return fmt.Errorf("found %d span ids but SelectMergeSpanProfile returned no samples across %d service(s)", len(spanIDs), len(data))
-			})
-			t.Logf("[%s] PASS trace->profile link via SelectMergeSpanProfile: %s", dir, summary)
-		})
-	}
+				progress("[%s] SelectMergeSpanProfile service=%q type=%q -> 0 samples", dir, svc, pt)
+			}
+		}
+		return fmt.Errorf("found %d span ids but SelectMergeSpanProfile returned no samples across %d service(s)", len(spanIDs), len(data))
+	})
+	t.Logf("[%s] PASS trace->profile link via SelectMergeSpanProfile: %s", dir, summary)
 }
