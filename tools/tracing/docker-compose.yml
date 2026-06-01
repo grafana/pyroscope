@@ -1,6 +1,6 @@
 services:
   tempo:
-    image: grafana/tempo:2.6.1
+    image: grafana/tempo:2.10.5
     volumes:
       - ./tempo.yml:/etc/tempo/config.yml
     command:

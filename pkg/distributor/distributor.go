@@ -53,6 +53,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/usagestats"
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
@@ -1018,7 +1019,7 @@ func (d *Distributor) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					<p>Distributor is not running with global limits enabled</p>
 				</body>
 			</html>`
-		util.WriteHTMLResponse(w, ringNotEnabledPage)
+		httputil.WriteHTMLResponse(w, ringNotEnabledPage)
 	}
 }
 
