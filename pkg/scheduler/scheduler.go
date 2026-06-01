@@ -34,6 +34,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb"
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpcutil"
 	"github.com/grafana/pyroscope/v2/pkg/util/validation"
@@ -653,5 +654,5 @@ func (s *Scheduler) RingHandler(w http.ResponseWriter, req *http.Request) {
 				<p>Query-scheduler hash ring is disabled.</p>
 			</body>
 		</html>`
-	util.WriteHTMLResponse(w, ringDisabledPage)
+	httputil.WriteHTMLResponse(w, ringDisabledPage)
 }

@@ -16,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
@@ -165,7 +165,7 @@ func (oe *OverridesExporter) RingHandler(w http.ResponseWriter, req *http.Reques
 				<p>Overrides-exporter hash ring is disabled.</p>
 			</body>
 		</html>`
-	util.WriteHTMLResponse(w, ringDisabledPage)
+	httputil.WriteHTMLResponse(w, ringDisabledPage)
 }
 
 // isLeader determines whether this overrides-exporter instance is the leader

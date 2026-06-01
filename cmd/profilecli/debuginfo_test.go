@@ -21,7 +21,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/debuginfo"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/memory"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
-	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 // makeTestELF writes a minimal 64-bit ELF with a .note.gnu.build-id section
@@ -106,7 +106,7 @@ func startDebuginfoTestServer(t *testing.T, enabled bool) *httptest.Server {
 	)
 	router.Handle(
 		"/debuginfo.v1alpha1.DebuginfoService/Upload/{gnu_build_id}",
-		util.AuthenticateUser(true).Wrap(store.UploadHTTPHandler()),
+		httputil.AuthenticateUser(true).Wrap(store.UploadHTTPHandler()),
 	).Methods("POST")
 
 	srv := httptest.NewServer(router)

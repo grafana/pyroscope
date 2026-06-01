@@ -511,7 +511,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		return svs
 	}
 
-	httpMetric, err := util.NewHTTPMetricMiddleware(f.Server.HTTP, f.Cfg.Server.MetricsNamespace, f.Cfg.Server.Registerer)
+	httpMetric, err := httputil.NewHTTPMetricMiddleware(f.Server.HTTP, f.Cfg.Server.MetricsNamespace, f.Cfg.Server.Registerer)
 	if err != nil {
 		return nil, err
 	}
@@ -521,7 +521,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		middleware.RouteInjector{
 			RouteMatcher: f.Server.HTTP,
 		},
-		&util.Log{
+		&httputil.Log{
 			Log:                      f.Server.Log,
 			LogRequestAtInfoLevel:    f.Cfg.Server.LogRequestAtInfoLevel,
 			LogRequestHeaders:        f.Cfg.Server.LogRequestHeaders,
