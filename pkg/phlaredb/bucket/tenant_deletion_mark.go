@@ -9,11 +9,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"path"
 	"time"
 
 	"github.com/go-kit/log/level"
-	"github.com/pkg/errors"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	util_log "github.com/grafana/pyroscope/v2/pkg/util"
@@ -47,10 +47,14 @@ func WriteTenantDeletionMark(ctx context.Context, bkt objstore.Bucket, userID st
 
 	data, err := json.Marshal(mark)
 	if err != nil {
-		return errors.Wrap(err, "serialize tenant deletion mark")
+		return fmt.Errorf("serialize tenant deletion mark: %w", err)
 	}
 
-	return errors.Wrap(bkt.Upload(ctx, TenantDeletionMarkPath, bytes.NewReader(data)), "upload tenant deletion mark")
+	err = bkt.Upload(ctx, TenantDeletionMarkPath, bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("upload tenant deletion mark: %w", err)
+	}
+	return nil
 }
 
 // Returns tenant deletion mark for given user, if it exists. If it doesn't exist, returns nil mark, and no error.
@@ -63,7 +67,7 @@ func ReadTenantDeletionMark(ctx context.Context, bkt objstore.BucketReader, user
 			return nil, nil
 		}
 
-		return nil, errors.Wrapf(err, "failed to read deletion mark object: %s", markerFile)
+		return nil, fmt.Errorf("failed to read deletion mark object: %s: %w", markerFile, err)
 	}
 
 	mark := &TenantDeletionMark{}
@@ -75,7 +79,7 @@ func ReadTenantDeletionMark(ctx context.Context, bkt objstore.BucketReader, user
 	}
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to decode deletion mark object: %s", markerFile)
+		return nil, fmt.Errorf("failed to decode deletion mark object: %s: %w", markerFile, err)
 	}
 
 	return mark, nil

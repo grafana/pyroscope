@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/go-kit/log"
 	giturl "github.com/kubescape/go-git-url"
-	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -110,19 +110,19 @@ func loadConfigAndProfile(configPath, profilePath string) (*config.PyroscopeConf
 	fmt.Fprintf(os.Stderr, "Reading configuration from %s...\n", configPath)
 	configData, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "failed to read config file")
+		return nil, nil, nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	cfg, err := config.ParsePyroscopeConfig(configData)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "failed to parse config")
+		return nil, nil, nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 	fmt.Fprintf(os.Stderr, "✓ Loaded configuration with %d mapping(s)\n", len(cfg.SourceCode.Mappings))
 
 	fmt.Fprintf(os.Stderr, "Reading profile from %s...\n", profilePath)
 	profile, err := pprof.OpenFile(profilePath)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "failed to read profile")
+		return nil, nil, nil, fmt.Errorf("failed to read profile: %w", err)
 	}
 
 	return cfg, configData, profile, nil
@@ -138,7 +138,7 @@ func setupVCSClient(ctx context.Context, configData []byte, githubToken string) 
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	ghClient, err := client.GithubClient(ctx, token, httpClient)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to create GitHub client")
+		return nil, nil, fmt.Errorf("failed to create GitHub client: %w", err)
 	}
 	fmt.Fprintf(os.Stderr, "✓ GitHub client ready\n")
 
@@ -450,7 +450,7 @@ func listAllFunctions(profilePath string) error {
 	fmt.Fprintf(os.Stderr, "Reading profile from %s...\n", profilePath)
 	profile, err := pprof.OpenFile(profilePath)
 	if err != nil {
-		return errors.Wrap(err, "failed to read profile")
+		return fmt.Errorf("failed to read profile: %w", err)
 	}
 
 	fmt.Fprintf(os.Stderr, "Extracting functions from profile...\n")

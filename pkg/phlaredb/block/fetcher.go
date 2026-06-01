@@ -8,6 +8,8 @@ package block
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -21,7 +23,6 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"golang.org/x/sync/errgroup"
@@ -235,26 +236,26 @@ func (f *MetaFetcher) LoadMeta(ctx context.Context, id ulid.ULID) (*Meta, error)
 	r, err := f.bkt.Get(ctx, metaFile)
 	if f.bkt.IsObjNotFoundErr(err) {
 		// Meta.json was deleted between bkt.Exists and here.
-		return nil, errors.Wrapf(ErrorSyncMetaNotFound, "%v", err)
+		return nil, fmt.Errorf("%v: %w", err, ErrorSyncMetaNotFound)
 	}
 	if err != nil {
-		return nil, errors.Wrapf(err, "get meta file: %v", metaFile)
+		return nil, fmt.Errorf("get meta file: %v: %w", metaFile, err)
 	}
 
 	defer runutil.CloseWithLogOnErr(f.logger, r, "close bkt meta get")
 
 	metaContent, err := io.ReadAll(r)
 	if err != nil {
-		return nil, errors.Wrapf(err, "read meta file: %v", metaFile)
+		return nil, fmt.Errorf("read meta file: %v: %w", metaFile, err)
 	}
 
 	m := &Meta{}
 	if err := json.Unmarshal(metaContent, m); err != nil {
-		return nil, errors.Wrapf(ErrorSyncMetaCorrupted, "meta.json %v unmarshal: %v", metaFile, err)
+		return nil, fmt.Errorf("meta.json %v unmarshal: %v: %w", metaFile, err, ErrorSyncMetaCorrupted)
 	}
 
 	if !m.Version.IsValid() {
-		return nil, errors.Errorf("unexpected meta file: %s version: %d", metaFile, m.Version)
+		return nil, fmt.Errorf("unexpected meta file: %s version: %d", metaFile, m.Version)
 	}
 
 	// Best effort cache in local dir.
@@ -318,11 +319,11 @@ func (f *MetaFetcher) fetchMetadata(ctx context.Context, excludeMarkedForDeletio
 					continue
 				}
 
-				if errors.Is(errors.Cause(err), ErrorSyncMetaNotFound) {
+				if errors.Is(err, ErrorSyncMetaNotFound) {
 					mtx.Lock()
 					resp.noMetasCount++
 					mtx.Unlock()
-				} else if errors.Is(errors.Cause(err), ErrorSyncMetaCorrupted) {
+				} else if errors.Is(err, ErrorSyncMetaCorrupted) {
 					mtx.Lock()
 					resp.corruptedMetasCount++
 					mtx.Unlock()
@@ -367,7 +368,7 @@ func (f *MetaFetcher) fetchMetadata(ctx context.Context, excludeMarkedForDeletio
 	})
 
 	if err := eg.Wait(); err != nil {
-		return nil, errors.Wrap(err, "MetaFetcher: iter bucket")
+		return nil, fmt.Errorf("MetaFetcher: iter bucket: %w", err)
 	}
 
 	if len(resp.metaErrs) > 0 {
@@ -472,7 +473,7 @@ func (f *MetaFetcher) fetch(ctx context.Context, excludeMarkedForDeletion bool) 
 	for _, filter := range f.filters {
 		// NOTE: filter can update synced metric accordingly to the reason of the exclude.
 		if err := filter.Filter(ctx, metas, f.metrics.Synced); err != nil {
-			return nil, nil, errors.Wrap(err, "filter metas")
+			return nil, nil, fmt.Errorf("filter metas: %w", err)
 		}
 	}
 
@@ -480,7 +481,7 @@ func (f *MetaFetcher) fetch(ctx context.Context, excludeMarkedForDeletion bool) 
 	f.metrics.Submit()
 
 	if len(resp.metaErrs) > 0 {
-		return metas, resp.partial, errors.Wrap(resp.metaErrs.Err(), "incomplete view")
+		return metas, resp.partial, fmt.Errorf("incomplete view: %w", resp.metaErrs.Err())
 	}
 
 	level.Info(f.logger).Log("msg", "successfully synchronized block metadata", "duration", time.Since(start).String(), "duration_ms", time.Since(start).Milliseconds(), "cached", f.countCached(), "returned", len(metas), "partial", len(resp.partial))
@@ -558,10 +559,10 @@ func (f *IgnoreDeletionMarkFilter) Filter(ctx context.Context, metas map[ulid.UL
 			for id := range ch {
 				m := &DeletionMark{}
 				if err := ReadMarker(ctx, f.logger, f.bkt, id.String(), m); err != nil {
-					if errors.Is(errors.Cause(err), ErrorMarkerNotFound) {
+					if errors.Is(err, ErrorMarkerNotFound) {
 						continue
 					}
-					if errors.Is(errors.Cause(err), ErrorUnmarshalMarker) {
+					if errors.Is(err, ErrorUnmarshalMarker) {
 						level.Warn(f.logger).Log("msg", "found partial deletion-mark.json; if we will see it happening often for the same block, consider manually deleting deletion-mark.json from the object storage", "block", id, "err", err)
 						continue
 					}
@@ -602,7 +603,7 @@ func (f *IgnoreDeletionMarkFilter) Filter(ctx context.Context, metas map[ulid.UL
 	})
 
 	if err := eg.Wait(); err != nil {
-		return errors.Wrap(err, "filter blocks marked for deletion")
+		return fmt.Errorf("filter blocks marked for deletion: %w", err)
 	}
 
 	f.mtx.Lock()

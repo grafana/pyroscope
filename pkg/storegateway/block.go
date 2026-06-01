@@ -2,12 +2,13 @@ package storegateway
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 
 	"github.com/go-kit/log"
-	"github.com/pkg/errors"
 
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
@@ -29,7 +30,7 @@ func (bs *BucketStore) createBlock(ctx context.Context, meta *block.Meta) (*Bloc
 	// add the dir if it doesn't exist
 	if _, err := os.Stat(blockLocalPath); errors.Is(err, os.ErrNotExist) {
 		if err := os.MkdirAll(blockLocalPath, 0o750); err != nil {
-			return nil, errors.Wrap(err, "create dir")
+			return nil, fmt.Errorf("create dir: %w", err)
 		}
 	}
 	metaPath := filepath.Join(blockLocalPath, block.MetaFilename)
@@ -38,26 +39,26 @@ func (bs *BucketStore) createBlock(ctx context.Context, meta *block.Meta) (*Bloc
 		// fetch the meta from the bucket
 		r, err := bs.bucket.Get(ctx, path.Join(meta.ULID.String(), block.MetaFilename))
 		if err != nil {
-			return nil, errors.Wrap(err, "get meta")
+			return nil, fmt.Errorf("get meta: %w", err)
 		}
 		meta, err := block.Read(r)
 		if err != nil {
-			return nil, errors.Wrap(err, "read meta")
+			return nil, fmt.Errorf("read meta: %w", err)
 		}
 		// add meta.json if it does not exist
 		if _, err := meta.WriteToFile(bs.logger, blockLocalPath); err != nil {
-			return nil, errors.Wrap(err, "write meta.json")
+			return nil, fmt.Errorf("write meta.json: %w", err)
 		}
 		outMeta = meta.Clone()
 	} else {
 		// read meta.json if it exists and validate it
 		diskMeta, _, err := block.MetaFromDir(blockLocalPath)
 		if err != nil {
-			return nil, errors.Wrap(err, "read meta.json")
+			return nil, fmt.Errorf("read meta.json: %w", err)
 		}
 
 		if meta.ULID.String() != diskMeta.ULID.String() {
-			return nil, errors.Wrap(err, "meta.json does not match")
+			return nil, fmt.Errorf("meta.json does not match: %w", err)
 		}
 		outMeta = diskMeta.Clone()
 
