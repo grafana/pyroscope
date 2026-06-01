@@ -12,10 +12,13 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -36,9 +39,6 @@ const (
 	pollInterval       = 3 * time.Second
 )
 
-// pyroscopeService and tempoService are the docker-compose service names every
-// example uses. We publish their ports on random host ports so the tests can
-// query them directly over localhost.
 const (
 	pyroscopeService = "pyroscope"
 	pyroscopePort    = "4040"
@@ -46,14 +46,49 @@ const (
 	tempoPort        = "3200"
 )
 
+// activeStacks tracks the compose stacks that are currently up, so they can be
+// torn down on an interrupt (where t.Cleanup does not run).
+var (
+	activeMu     sync.Mutex
+	activeStacks = map[string]*env{}
+)
+
+func registerActive(e *env) { activeMu.Lock(); activeStacks[e.projectName()] = e; activeMu.Unlock() }
+func unregisterActive(e *env) {
+	activeMu.Lock()
+	delete(activeStacks, e.projectName())
+	activeMu.Unlock()
+}
+
+// TestMain installs a signal handler so that an interrupted run (Ctrl+C) still
+// tears down the docker-compose stacks it started. t.Cleanup does not run when
+// the test process is killed by a signal, which would otherwise leak containers.
+func TestMain(m *testing.M) {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sig
+		activeMu.Lock()
+		envs := make([]*env, 0, len(activeStacks))
+		for _, e := range activeStacks {
+			envs = append(envs, e)
+		}
+		activeMu.Unlock()
+		for _, e := range envs {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			_ = e.newCmd(ctx, "down", "--volumes").Run()
+			cancel()
+		}
+		os.Exit(1)
+	}()
+	os.Exit(m.Run())
+}
+
 type env struct {
 	dir  string // project dir of docker-compose, relative to the test working directory
 	path string // path to docker-compose file
 }
 
-// repoDir returns the repository-relative path of the example (e.g.
-// "examples/tracing/java"). The test runs with its working directory set to the
-// examples package, so the discovered dir is relative to that.
 func (e *env) repoDir() string {
 	return filepath.Join("examples", e.dir)
 }
@@ -196,8 +231,7 @@ func containerPortOf(p interface{}) int {
 }
 
 // localhostPort is a long-form ports entry that binds the container port to a
-// random host port on the loopback interface only, so the (unauthenticated)
-// test services are never exposed on the runner's external interfaces.
+// random host port on the loopback interface only.
 func localhostPort(containerPort int) map[string]any {
 	return map[string]any{"target": containerPort, "host_ip": "127.0.0.1"}
 }
@@ -240,11 +274,13 @@ func (e *env) hostPort(t testing.TB, ctx context.Context, service, containerPort
 	return line[idx+1:]
 }
 
-// bringUp builds, pulls and starts the example detached. Teardown is registered
-// with t.Cleanup before anything is started, so containers are removed even if
-// build or up fails partway through.
+// bringUp builds, pulls and starts the example detached.
 func (e *env) bringUp(t *testing.T, ctx context.Context) {
+	// Register before starting and tear down on cleanup, so the stack is removed
+	// both on normal completion (t.Cleanup) and on interrupt (see TestMain).
+	registerActive(e)
 	t.Cleanup(func() {
+		unregisterActive(e)
 		if err := e.run(t, context.Background(), "down", "--volumes"); err != nil {
 			t.Logf("cleanup error=%v", err)
 		}
@@ -276,13 +312,8 @@ func (e *env) waitRunning(t testing.TB, ctx context.Context) {
 // Each distinct message is logged once across the whole poll, so steps show up
 // as they are first reached without spamming a line on every retry.
 func poll(t testing.TB, ctx context.Context, timeout time.Duration, fn func(progress func(string, ...any)) error) {
-	seen := map[string]struct{}{}
 	progress := func(format string, args ...any) {
 		msg := fmt.Sprintf(format, args...)
-		if _, ok := seen[msg]; ok {
-			return
-		}
-		seen[msg] = struct{}{}
 		t.Log(msg)
 	}
 	deadline := time.Now().Add(timeout)
@@ -358,8 +389,9 @@ func labelValue(labels []labelPair, name string) string {
 	return ""
 }
 
-// seriesData maps a service name to the profile types ingested for it. CPU-like
-// types (those span profiles are attached to) are ordered first.
+// seriesData maps a service name to its ingested CPU/wall profile types. Those
+// are the types span profiles are attached to; other types (memory, lock, etc.)
+// are not useful for these checks and are dropped.
 type seriesData map[string][]string
 
 func sortedKeys(d seriesData) []string {
@@ -376,8 +408,14 @@ func sortedKeys(d seriesData) []string {
 // the checks validate the example's application rather than the server.
 const selfProfilingService = "pyroscope"
 
+// isCPUOrWallType reports whether a profile type is a CPU or wall-clock type.
+func isCPUOrWallType(profileType string) bool {
+	return strings.HasPrefix(profileType, "process_cpu:") || strings.HasPrefix(profileType, "wall:")
+}
+
 // discoverSeries queries the Series API and returns the application services and
-// their ingested profile types. The self-profiling series are excluded.
+// their ingested CPU/wall profile types. Self-profiling series and non-CPU/wall
+// types are excluded.
 func (e *env) discoverSeries(ctx context.Context, host string) (seriesData, error) {
 	start, end := nowWindowMillis()
 	var resp seriesResponse
@@ -394,18 +432,13 @@ func (e *env) discoverSeries(ctx context.Context, host string) (seriesData, erro
 	for _, ls := range resp.LabelsSet {
 		svc := labelValue(ls.Labels, "service_name")
 		pt := labelValue(ls.Labels, "__profile_type__")
-		if svc == "" || pt == "" || svc == selfProfilingService {
+		if svc == "" || svc == selfProfilingService || !isCPUOrWallType(pt) {
 			continue
 		}
-		// CPU-like types first so callers prefer them.
-		if strings.Contains(pt, ":cpu:") || strings.HasPrefix(pt, "wall:") {
-			data[svc] = append([]string{pt}, data[svc]...)
-		} else {
-			data[svc] = append(data[svc], pt)
-		}
+		data[svc] = append(data[svc], pt)
 	}
 	if len(data) == 0 {
-		return nil, errors.New("no application series ingested yet")
+		return nil, errors.New("no CPU or wall profile series ingested yet")
 	}
 	return data, nil
 }
@@ -618,8 +651,7 @@ func (e *env) isTracing() bool {
 
 // TestExamples brings each selected example up once and verifies it: profiles
 // are always checked (Series + SelectSeries); tracing examples additionally get
-// the trace-to-profile link checked (SelectMergeSpanProfile). Bringing the stack
-// up once and branching keeps tracing examples from being built and run twice.
+// the trace-to-profile link checked (SelectMergeSpanProfile).
 func TestExamples(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
@@ -650,8 +682,6 @@ func TestExamples(t *testing.T) {
 				})
 			}
 
-			// All containers should still be up after the workload, not just at
-			// startup (catches a container that crashed during the run).
 			require.NoError(t, e.containersAllRunning(ctx), "containers must stay running through the run")
 		})
 	}
