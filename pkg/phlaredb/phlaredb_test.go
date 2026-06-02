@@ -2,6 +2,7 @@ package phlaredb
 
 import (
 	"context"
+	"errors"
 	"io"
 	"math"
 	"net/http"
@@ -12,7 +13,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

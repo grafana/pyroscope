@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore/client"
@@ -49,7 +49,7 @@ func compact(ctx context.Context, src, dst string, metas []*block.Meta, shards i
 	// create the destination directory if it doesn't exist
 	if _, err := os.Stat(dst); errors.Is(err, os.ErrNotExist) {
 		if err := os.MkdirAll(dst, 0o755); err != nil {
-			return errors.Wrap(err, "create dir")
+			return fmt.Errorf("create dir: %w", err)
 		}
 	}
 

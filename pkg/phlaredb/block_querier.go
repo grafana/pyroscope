@@ -3,6 +3,7 @@ package phlaredb
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -21,7 +22,6 @@ import (
 	"github.com/grafana/dskit/tracing"
 	"github.com/oklog/ulid/v2"
 	"github.com/parquet-go/parquet-go"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/samber/lo"

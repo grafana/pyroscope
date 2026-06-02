@@ -2,13 +2,14 @@ package phlaredb
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sort"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tracing"
 	"github.com/parquet-go/parquet-go"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -97,7 +98,7 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 		})
 	}
 	if err := pIt.Err(); err != nil {
-		return nil, errors.Wrap(pIt.Err(), "iterator error")
+		return nil, fmt.Errorf("iterator error: %w", pIt.Err())
 	}
 
 	// Sort profiles by time, the slice is already sorted by series order

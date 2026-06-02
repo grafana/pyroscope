@@ -4,6 +4,7 @@ package exporter
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -15,7 +16,6 @@ import (
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/pyroscope/v2/pkg/util"
@@ -131,7 +131,7 @@ func newRing(config RingConfig, logger log.Logger, reg prometheus.Registerer) (*
 		logger,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize overrides-exporter's KV store")
+		return nil, fmt.Errorf("failed to initialize overrides-exporter's KV store: %w", err)
 	}
 
 	delegate := ring.BasicLifecyclerDelegate(ring.NewInstanceRegisterDelegate(ring.ACTIVE, ringNumTokens))
@@ -146,17 +146,17 @@ func newRing(config RingConfig, logger log.Logger, reg prometheus.Registerer) (*
 	const ringName = "overrides-exporter"
 	lifecycler, err := ring.NewBasicLifecycler(lifecyclerConfig, ringName, ringKey, kvStore, delegate, logger, reg)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize overrides-exporter's lifecycler")
+		return nil, fmt.Errorf("failed to initialize overrides-exporter's lifecycler: %w", err)
 	}
 
 	ringClient, err := ring.New(config.ToRingConfig(), ringName, ringKey, logger, reg)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create a overrides-exporter ring client")
+		return nil, fmt.Errorf("failed to create a overrides-exporter ring client: %w", err)
 	}
 
 	manager, err := services.NewManager(lifecycler, ringClient)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create service manager")
+		return nil, fmt.Errorf("failed to create service manager: %w", err)
 	}
 
 	r := &overridesExporterRing{
@@ -186,7 +186,7 @@ func (r *overridesExporterRing) isLeader() (bool, error) {
 func ringLeader(r ring.ReadRing) (*ring.InstanceDesc, error) {
 	rs, err := r.Get(leaderToken, ringOp, nil, nil, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get a healthy instance for token %d", leaderToken)
+		return nil, fmt.Errorf("failed to get a healthy instance for token %d: %w", leaderToken, err)
 	}
 	if len(rs.Instances) != 1 {
 		return nil, fmt.Errorf("got %d instances for token %d (but expected 1)", len(rs.Instances), leaderToken)
@@ -198,12 +198,12 @@ func ringLeader(r ring.ReadRing) (*ring.InstanceDesc, error) {
 func (r *overridesExporterRing) starting(ctx context.Context) error {
 	r.subserviceWatcher.WatchManager(r.subserviceManager)
 	if err := services.StartManagerAndAwaitHealthy(ctx, r.subserviceManager); err != nil {
-		return errors.Wrap(err, "unable to start overrides-exporter ring subservice manager")
+		return fmt.Errorf("unable to start overrides-exporter ring subservice manager: %w", err)
 	}
 
 	level.Info(r.logger).Log("msg", "waiting until overrides-exporter is ACTIVE in the ring")
 	if err := ring.WaitInstanceState(ctx, r.client, r.lifecycler.GetInstanceID(), ring.ACTIVE); err != nil {
-		return errors.Wrap(err, "overrides-exporter failed to become ACTIVE in the ring")
+		return fmt.Errorf("overrides-exporter failed to become ACTIVE in the ring: %w", err)
 	}
 	level.Info(r.logger).Log("msg", "overrides-exporter is ACTIVE in the ring")
 
@@ -230,13 +230,14 @@ func (r *overridesExporterRing) running(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	case err := <-r.subserviceWatcher.Chan():
-		return errors.Wrap(err, "a subservice of overrides-exporter ring has failed")
+		return fmt.Errorf("a subservice of overrides-exporter ring has failed: %w", err)
 	}
 }
 
 func (r *overridesExporterRing) stopping(_ error) error {
-	return errors.Wrap(
-		services.StopManagerAndAwaitStopped(context.Background(), r.subserviceManager),
-		"failed to stop overrides-exporter's ring subservice manager",
-	)
+	err := services.StopManagerAndAwaitStopped(context.Background(), r.subserviceManager)
+	if err != nil {
+		return fmt.Errorf("failed to stop overrides-exporter's ring subservice manager: %w", err)
+	}
+	return nil
 }

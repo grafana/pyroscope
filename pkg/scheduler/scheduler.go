@@ -7,7 +7,9 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -23,7 +25,6 @@ import (
 	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/tracing"
 	"github.com/grafana/dskit/user"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -582,7 +583,7 @@ func (s *Scheduler) starting(ctx context.Context) error {
 	s.subservicesWatcher.WatchManager(s.subservices)
 
 	if err := services.StartManagerAndAwaitHealthy(ctx, s.subservices); err != nil {
-		return errors.Wrap(err, "unable to start scheduler subservices")
+		return fmt.Errorf("unable to start scheduler subservices: %w", err)
 	}
 
 	return nil
@@ -607,7 +608,7 @@ func (s *Scheduler) running(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case err := <-s.subservicesWatcher.Chan():
-			return errors.Wrap(err, "scheduler subservice failed")
+			return fmt.Errorf("scheduler subservice failed: %w", err)
 		}
 	}
 }
