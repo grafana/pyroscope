@@ -425,8 +425,8 @@ github.com/google/gofuzz v1.2.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/
 github.com/google/martian/v3 v3.3.3 h1:DIhPTQrbPkgs2yJYdXU/eNACCG5DVQjySNRNlflZ9Fc=
 github.com/google/martian/v3 v3.3.3/go.mod h1:iEPrYcgCF7jA9OtScMFQyAlZZ4YXTKEtJ1E6RWzmBA0=
 github.com/google/pprof v0.0.0-20240227163752-401108e1b7e7/go.mod h1:czg5+yv1E0ZGTi6S6vVK1mke0fV+FaUhNGcd6VRS9Ik=
-github.com/google/pprof v0.0.0-20260402051712-545e8a4df936 h1:EwtI+Al+DeppwYX2oXJCETMO23COyaKGP6fHVpkpWpg=
-github.com/google/pprof v0.0.0-20260402051712-545e8a4df936/go.mod h1:MxpfABSjhmINe3F1It9d+8exIHFvUqtLIRCdOGNXqiI=
+github.com/google/pprof v0.0.0-20260507013755-92041b743c96 h1:YDDnaZ9afWajDboPMt9Vikqca/yWAX7KAxVzb4lJU1M=
+github.com/google/pprof v0.0.0-20260507013755-92041b743c96/go.mod h1:MxpfABSjhmINe3F1It9d+8exIHFvUqtLIRCdOGNXqiI=
 github.com/google/s2a-go v0.1.9 h1:LGD7gtMgezd8a/Xak7mEWL0PjoTQFvpRudN895yqKW0=
 github.com/google/s2a-go v0.1.9/go.mod h1:YA0Ei2ZQL3acow2O62kdp9UlnvMmU7kA6Eutn0dXayM=
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
@@ -446,8 +446,8 @@ github.com/grafana/alloy/syntax v0.1.0 h1:+1xQakvQPH6N0y9+q2Fu5QePyzrve6i1wMNuXd
 github.com/grafana/alloy/syntax v0.1.0/go.mod h1:8H9ToCc1M8F6A+je4rIH6saIe1MUCmjSk+Uje+LNLEo=
 github.com/grafana/dskit v0.0.0-20260505171221-7f6e6a43e255 h1:ZQ5ziUUTe+i4v5PccDzvRsrVCayCzp79Etbs8KvPh/s=
 github.com/grafana/dskit v0.0.0-20260505171221-7f6e6a43e255/go.mod h1:6zFIzal2FCd0JC1pE0ZTb2ftC0Jr/zsQR4zRNRdDfZA=
-github.com/grafana/jfr-parser v0.17.0 h1:eWmYA4qrRq1wDcguFloOZlBYZiclRhGtOUruG5VCWbE=
-github.com/grafana/jfr-parser v0.17.0/go.mod h1:2vR91w+TYF6Jrw+WJMd/uyAiNxE2BUY5xOsvglXXe78=
+github.com/grafana/jfr-parser v0.17.1 h1:dTECCXL+B9V6qu5x4msSKE9/FJPKeK0jrwLa5fkpkCA=
+github.com/grafana/jfr-parser v0.17.1/go.mod h1:+4zCC+tEWot6oQWjC72bG9TDDBiiiawMprp4EM1BioU=
 github.com/grafana/memberlist v0.0.0-20260410132335-4887d8e8d493 h1:gck0LSDVJ0k5l+G5/wYmJx2GlugUhZ7BaE4F95XuK/o=
 github.com/grafana/memberlist v0.0.0-20260410132335-4887d8e8d493/go.mod h1:h60o12SZn/ua/j0B6iKAZezA4eDaGsIuPO70eOaJ6WE=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=

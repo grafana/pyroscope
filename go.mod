@@ -30,7 +30,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v81 v81.0.0
-	github.com/google/pprof v0.0.0-20260402051712-545e8a4df936
+	github.com/google/pprof v0.0.0-20260507013755-92041b743c96
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy/syntax v0.1.0
@@ -38,7 +38,7 @@ require (
 	github.com/grafana/pyroscope-go v1.2.8
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.11
 	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3
-	github.com/grafana/pyroscope/api v0.4.0
+	github.com/grafana/pyroscope/api v1.5.0
 	github.com/grafana/pyroscope/lidia v0.0.2
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -234,7 +234,7 @@ require (
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.14 // indirect
 	github.com/googleapis/gax-go/v2 v2.18.0 // indirect
-	github.com/grafana/jfr-parser v0.17.0
+	github.com/grafana/jfr-parser v0.17.1
 	github.com/grafana/otel-profiling-go v0.5.1
 	github.com/hashicorp/consul/api v1.33.7 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect

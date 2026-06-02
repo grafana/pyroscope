@@ -2,7 +2,7 @@ FROM sapmachine:11-jdk-headless
 
 WORKDIR /opt/app
 
-ADD https://github.com/grafana/pyroscope-java/releases/download/v2.5.2/pyroscope.jar /opt/app/pyroscope.jar
+ADD https://github.com/grafana/pyroscope-java/releases/download/v2.5.4/pyroscope.jar /opt/app/pyroscope.jar
 
 COPY Main.java ./Main.java
 RUN javac Main.java
