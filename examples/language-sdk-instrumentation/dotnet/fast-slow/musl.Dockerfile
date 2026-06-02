@@ -1,9 +1,26 @@
+ARG PROFILER_VERSION=0.15.0
+
+# Fetch the profiler artifacts from the GitHub release.
+FROM alpine:3 AS sdk
+ARG PROFILER_VERSION
+ARG TARGETARCH
+RUN apk add --no-cache curl tar
+RUN case "$TARGETARCH" in \
+      amd64) PROFILER_ARCH=x86_64 ;; \
+      arm64) PROFILER_ARCH=aarch64 ;; \
+      *) echo "unsupported TARGETARCH: $TARGETARCH" >&2; exit 1 ;; \
+    esac \
+    && curl -fsSL -o /tmp/pyroscope.tar.gz \
+      "https://github.com/grafana/pyroscope-dotnet/releases/download/v${PROFILER_VERSION}-pyroscope/pyroscope.${PROFILER_VERSION}-musl-${PROFILER_ARCH}.tar.gz" \
+    && mkdir -p /pyroscope \
+    && tar -xzf /tmp/pyroscope.tar.gz -C /pyroscope
+
 FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine
 
 WORKDIR /dotnet
 
-COPY --from=grafana/pyroscope-dotnet:0.15.0-musl /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
-COPY --from=grafana/pyroscope-dotnet:0.15.0-musl /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
+COPY --from=sdk /pyroscope/Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
+COPY --from=sdk /pyroscope/Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
 
 ADD example .
 

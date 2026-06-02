@@ -51,11 +51,7 @@ The Pyroscope server can be a local server for development or a remote server fo
 curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.15.0-pyroscope/pyroscope.0.15.0-glibc-x86_64.tar.gz  | tar xvz -C .
 ```
 
-Or copy them from the [latest docker image](https://hub.docker.com/r/pyroscope/pyroscope-dotnet/tags). We have `glibc` and `musl` versions:
-```dockerfile
-COPY --from=pyroscope/pyroscope-dotnet:0.15.0-glibc /Pyroscope.Profiler.Native.so /dotnet/Pyroscope.Profiler.Native.so
-COPY --from=pyroscope/pyroscope-dotnet:0.15.0-glibc /Pyroscope.Linux.ApiWrapper.x64.so /dotnet/Pyroscope.Linux.ApiWrapper.x64.so
-````
+`glibc` and `musl` builds are published for both `x86_64` and `aarch64`; pick the tarball that matches your base image.
 
 2. Set the following required environment variables to enable profiler
 ```shell
