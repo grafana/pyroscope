@@ -240,9 +240,11 @@ func (c *BlocksCleaner) refreshOwnedUsers(ctx context.Context) ([]string, map[st
 func (c *BlocksCleaner) cleanUsers(ctx context.Context, allUsers []string, isDeleted map[string]bool, logger log.Logger) error {
 	return c.singleFlight.ForEachNotInFlight(ctx, allUsers, func(ctx context.Context, userID string) error {
 		own, err := c.ownUser(userID)
-		if err != nil || !own {
-			// This returns error only if err != nil. ForEachUser keeps working for other users.
+		if err != nil {
 			return fmt.Errorf("check own user: %w", err)
+		}
+		if !own {
+			return nil
 		}
 
 		userLogger := util.LoggerWithUserID(userID, logger)

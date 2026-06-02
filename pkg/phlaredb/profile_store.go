@@ -467,7 +467,7 @@ func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
 
 	rowGroups := segmentParquet.RowGroups()
 	if len(rowGroups) != 1 {
-		return nil, fmt.Errorf("segement file expected to have exactly one row group (actual %d): %w", len(rowGroups), err)
+		return nil, fmt.Errorf("segement file expected to have exactly one row group (actual %d)", len(rowGroups))
 	}
 
 	r.RowGroup = rowGroups[0]

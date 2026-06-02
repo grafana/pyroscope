@@ -58,7 +58,7 @@ func (bs *BucketStore) createBlock(ctx context.Context, meta *block.Meta) (*Bloc
 		}
 
 		if meta.ULID.String() != diskMeta.ULID.String() {
-			return nil, fmt.Errorf("meta.json does not match: %w", err)
+			return nil, fmt.Errorf("meta.json does not match")
 		}
 		outMeta = diskMeta.Clone()
 

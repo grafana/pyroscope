@@ -83,6 +83,8 @@ func ListBlockDeletionMarks(ctx context.Context, bkt objstore.BucketReader) (map
 
 		return nil
 	})
-
-	return discovered, fmt.Errorf("list block deletion marks: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("list block deletion marks: %w", err)
+	}
+	return discovered, nil
 }

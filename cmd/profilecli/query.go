@@ -79,7 +79,7 @@ func (p *queryParams) parseFromTo() (from time.Time, to time.Time, err error) {
 	}
 
 	if to.Before(from) {
-		return time.Time{}, time.Time{}, fmt.Errorf("from cannot be after: %w", err)
+		return time.Time{}, time.Time{}, errors.New("from cannot be after")
 	}
 
 	return from, to, nil
@@ -429,7 +429,7 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 		}
 		result = resp.Msg.LabelsSet
 	default:
-		return fmt.Errorf("unknown api type %s: %w", params.APIType, err)
+		return fmt.Errorf("unknown api type %s", params.APIType)
 	}
 
 	return outputSeries(ctx, result, params.Output, from, to)

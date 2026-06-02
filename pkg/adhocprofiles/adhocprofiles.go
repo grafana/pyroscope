@@ -452,7 +452,7 @@ func parse(p *AdHocProfile, profileType *string, limits convert.Limits) (fg *fla
 		return nil, nil, err
 	}
 	if len(profiles) == 0 {
-		return nil, nil, fmt.Errorf("no profiles found after parsing: %w", err)
+		return nil, nil, fmt.Errorf("no profiles found after parsing")
 	}
 
 	profileTypes = make([]string, 0)
