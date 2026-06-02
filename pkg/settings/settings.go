@@ -120,7 +120,7 @@ func (ts *TenantSettings) Set(
 
 	setting, err := ts.store.Set(ctx, tenantID, req.Msg.Setting)
 	if err != nil {
-		if errors.Is(err, ErrOldSetting) {
+		if errors.Is(err, errOldSetting) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, err)
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -144,7 +144,7 @@ func (ts *TenantSettings) Delete(ctx context.Context, req *connect.Request[setti
 	modifiedAt := time.Now().UnixMilli()
 	err = ts.store.Delete(ctx, tenantID, req.Msg.Name, modifiedAt)
 	if err != nil {
-		if errors.Is(err, ErrOldSetting) {
+		if errors.Is(err, errOldSetting) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, err)
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
