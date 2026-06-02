@@ -25,7 +25,10 @@ func JSON(f *string) Source {
 		}
 
 		err = dJSON(j)(dst)
-		return fmt.Errorf("%s: %w", *f, err)
+		if err != nil {
+			return fmt.Errorf("%s: %w", *f, err)
+		}
+		return nil
 	}
 }
 
@@ -62,7 +65,10 @@ func yamlWithKnowFields(f string, expandEnvVars bool, knownFields bool) Source {
 			y = []byte(s)
 		}
 		err = dYAML(y, knownFields)(dst)
-		return fmt.Errorf("%s: %w", f, err)
+		if err != nil {
+			return fmt.Errorf("%s: %w", f, err)
+		}
+		return nil
 	}
 }
 
