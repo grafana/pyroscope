@@ -1,4 +1,4 @@
-FROM sapmachine:11-jdk-headless
+FROM eclipse-temurin:11.0.31_11-jdk-jammy
 
 WORKDIR /opt/app
 
