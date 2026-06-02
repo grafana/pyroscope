@@ -44,7 +44,7 @@ func HTTPResponseFromError(err error) (*HTTPResponse, bool) {
 
 	var resp HTTPResponse
 	if err := anypb.UnmarshalTo(status.Details[0], &resp, proto.UnmarshalOptions{}); err != nil {
-		slog.Error("Got error containin non-response", "err", err)
+		slog.Error("got error containin non-response", "err", err)
 		return nil, false
 	}
 
