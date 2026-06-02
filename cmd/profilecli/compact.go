@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/briandowns/spinner"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/pkg/errors"
@@ -77,9 +76,6 @@ func compact(ctx context.Context, src, dst string, metas []*block.Meta, shards i
 	}
 	fmt.Fprintln(output(ctx), "Found Input blocks:")
 	printMeta(ctx, in)
-	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond, spinner.WithWriter(output(ctx)))
-	s.Suffix = " Loading data..."
-	s.Start()
 	g, groupCtx := errgroup.WithContext(ctx)
 
 	for _, b := range blocks {
@@ -89,12 +85,8 @@ func compact(ctx context.Context, src, dst string, metas []*block.Meta, shards i
 		})
 	}
 	if err := g.Wait(); err != nil {
-		s.Stop()
 		return err
 	}
-
-	s.Suffix = " Compacting data..."
-	s.Restart()
 
 	out, err := phlaredb.CompactWithSplitting(ctx, phlaredb.CompactWithSplittingOpts{
 		Src:                blocks,
@@ -106,11 +98,9 @@ func compact(ctx context.Context, src, dst string, metas []*block.Meta, shards i
 		Logger:             logger,
 	})
 	if err != nil {
-		s.Stop()
 		return err
 	}
 
-	s.Stop()
 	fmt.Fprintln(output(ctx), "Output blocks:")
 	printMeta(ctx, out)
 	return nil

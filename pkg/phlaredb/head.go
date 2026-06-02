@@ -12,7 +12,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/gogo/status"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 	"github.com/pkg/errors"
@@ -22,6 +21,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"

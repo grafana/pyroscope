@@ -13,9 +13,7 @@ import (
 
 	gprofile "github.com/google/pprof/profile"
 	"github.com/grafana/dskit/runutil"
-	"github.com/k0kubun/pp/v3"
 	"github.com/klauspost/compress/gzip"
-	"github.com/mattn/go-isatty"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 
@@ -25,7 +23,6 @@ import (
 
 const (
 	outputConsole = "console"
-	outputRaw     = "raw"
 	outputPprof   = "pprof="
 	outputJSON    = "json"
 )
@@ -104,10 +101,6 @@ func outputSeriesTable(ctx context.Context, result []*typesv1.Labels) error {
 }
 
 func outputMergeProfile(ctx context.Context, outputFlag string, force bool, profile *googlev1.Profile) error {
-	mypp := pp.New()
-	mypp.SetColoringEnabled(isatty.IsTerminal(os.Stdout.Fd()))
-	mypp.SetExportedOnly(true)
-
 	if outputFlag == outputConsole {
 		buf, err := profile.MarshalVT()
 		if err != nil {
@@ -122,11 +115,6 @@ func outputMergeProfile(ctx context.Context, outputFlag string, force bool, prof
 		fmt.Fprintln(output(ctx), p.String())
 		return nil
 
-	}
-
-	if outputFlag == outputRaw {
-		mypp.Print(profile)
-		return nil
 	}
 
 	if strings.HasPrefix(outputFlag, outputPprof) {

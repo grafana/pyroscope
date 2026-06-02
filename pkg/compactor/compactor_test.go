@@ -36,7 +36,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	pyroscope_objstore "github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
