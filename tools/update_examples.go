@@ -122,21 +122,29 @@ func updateDotnet() {
 	last := tags[len(tags)-1]
 	fmt.Println(last)
 
-	reDockerGlibc := regexp.MustCompile(`grafana/pyroscope-dotnet:\d+\.\d+\.\d+-glibc`)
-	replDockerGlibc := fmt.Sprintf("grafana/pyroscope-dotnet:%s-glibc", last.version())
-	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/fast-slow/Dockerfile", replDockerGlibc)
-	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/rideshare/Dockerfile", replDockerGlibc)
-	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/web-new/Dockerfile", replDockerGlibc)
-	replaceInplace(reDockerGlibc, "docs/sources/configure-client/language-sdks/dotnet.md", replDockerGlibc)
-
-	reDockerMusl := regexp.MustCompile(`grafana/pyroscope-dotnet:\d+\.\d+\.\d+-musl`)
-	replDockerMusl := fmt.Sprintf("grafana/pyroscope-dotnet:%s-musl", last.version())
-	replaceInplace(reDockerMusl, "examples/language-sdk-instrumentation/dotnet/fast-slow/musl.Dockerfile", replDockerMusl)
-	replaceInplace(reDockerMusl, "examples/language-sdk-instrumentation/dotnet/rideshare/musl.Dockerfile", replDockerMusl)
+	reArg := regexp.MustCompile(`ARG PROFILER_VERSION=\d+\.\d+\.\d+`)
+	replArg := fmt.Sprintf("ARG PROFILER_VERSION=%s", last.version())
+	for _, f := range []string{
+		"examples/tracing/dotnet/Dockerfile",
+		"examples/language-sdk-instrumentation/dotnet/fast-slow/Dockerfile",
+		"examples/language-sdk-instrumentation/dotnet/fast-slow/musl.Dockerfile",
+		"examples/language-sdk-instrumentation/dotnet/rideshare/Dockerfile",
+		"examples/language-sdk-instrumentation/dotnet/rideshare/musl.Dockerfile",
+		"examples/language-sdk-instrumentation/dotnet/web-new/Dockerfile",
+	} {
+		replaceInplace(reArg, f, replArg)
+	}
 
 	reUrl := regexp.MustCompile(`https://github\.com/grafana/pyroscope-dotnet/releases/download/v\d+\.\d+\.\d+-pyroscope/pyroscope.\d+\.\d+\.\d+-glibc-x86_64.tar.gz`)
 	replUrl := fmt.Sprintf("https://github.com/grafana/pyroscope-dotnet/releases/download/v%s-pyroscope/pyroscope.%s-glibc-x86_64.tar.gz", last.version(), last.version())
 	replaceInplace(reUrl, "docs/sources/configure-client/language-sdks/dotnet.md", replUrl)
+
+	otelTags := getTagsV("grafana/pyroscope-dotnet", extractDotnetOtelVersion())
+	lastOtel := otelTags[len(otelTags)-1]
+	fmt.Println("Pyroscope.OpenTelemetry", lastOtel)
+	reOtelPkg := regexp.MustCompile(`<PackageReference Include="Pyroscope.OpenTelemetry" Version="\d+\.\d+\.\d+" />`)
+	replOtelPkg := fmt.Sprintf(`<PackageReference Include="Pyroscope.OpenTelemetry" Version="%s" />`, lastOtel.version())
+	replaceInplace(reOtelPkg, "examples/tracing/dotnet/example/Example.csproj", replOtelPkg)
 }
 
 func updateTempo() {
@@ -342,6 +350,26 @@ func extractDotnetVersion() func(tag Tag) *version {
 
 		}
 		return nil
+	}
+}
+
+// extractDotnetOtelVersion matches the Pyroscope.OpenTelemetry helper release
+// tags (e.g. "v0.4.0-opentelemetry"), which are versioned independently of the
+// native profiler tags.
+func extractDotnetOtelVersion() func(tag Tag) *version {
+	return func(tag Tag) *version {
+		re := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)-opentelemetry$`)
+		match := re.FindStringSubmatch(tag.Name)
+		if match == nil {
+			return nil
+		}
+		major, err := strconv.Atoi(match[1])
+		requireNoError(err, "strconv")
+		minor, err := strconv.Atoi(match[2])
+		requireNoError(err, "strconv")
+		patch, err := strconv.Atoi(match[3])
+		requireNoError(err, "strconv")
+		return &version{major: major, minor: minor, patch: patch, tag: tag}
 	}
 }
 
