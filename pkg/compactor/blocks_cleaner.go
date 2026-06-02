@@ -362,7 +362,7 @@ func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID 
 		if err != nil {
 			return fmt.Errorf("failed to update tenant deletion mark: %w", err)
 		}
-		return err
+		return nil
 	}
 
 	if time.Since(time.Unix(mark.FinishedTime, 0)) < c.cfg.TenantCleanupDelay {
