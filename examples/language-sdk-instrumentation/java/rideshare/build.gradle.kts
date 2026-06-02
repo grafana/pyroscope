@@ -14,7 +14,7 @@ repositories {
 ext["tomcat.version"] = "10.1.35"
 
 dependencies {
-    implementation("io.pyroscope:agent:2.5.2")
+    implementation("io.pyroscope:agent:2.5.4")
     implementation("org.jetbrains:annotations:26.0.2")
     implementation("org.springframework.boot:spring-boot-starter-web")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
