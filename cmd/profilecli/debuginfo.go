@@ -245,9 +245,11 @@ func formatUploadedAt(ts *timestamppb.Timestamp) string {
 	return ts.AsTime().Format("2006-01-02T15:04:05Z")
 }
 
+const unknownSize = "unknown"
+
 func humanizeBytes(b int64) string {
 	if b == 0 {
-		return "unknown"
+		return unknownSize
 	}
 	const unit = 1024
 	if b < unit {
