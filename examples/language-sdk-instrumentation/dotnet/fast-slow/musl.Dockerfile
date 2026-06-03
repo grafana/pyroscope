@@ -1,4 +1,4 @@
-ARG PROFILER_VERSION=0.15.0
+ARG PROFILER_VERSION=1.0.0
 
 # Fetch the profiler artifacts from the GitHub release.
 FROM alpine:3 AS sdk
@@ -11,7 +11,7 @@ RUN case "$TARGETARCH" in \
       *) echo "unsupported TARGETARCH: $TARGETARCH" >&2; exit 1 ;; \
     esac \
     && curl -fsSL -o /tmp/pyroscope.tar.gz \
-      "https://github.com/grafana/pyroscope-dotnet/releases/download/v${PROFILER_VERSION}-pyroscope/pyroscope.${PROFILER_VERSION}-musl-${PROFILER_ARCH}.tar.gz" \
+      "https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-${PROFILER_VERSION}/pyroscope.${PROFILER_VERSION}-musl-${PROFILER_ARCH}.tar.gz" \
     && mkdir -p /pyroscope \
     && tar -xzf /tmp/pyroscope.tar.gz -C /pyroscope
 

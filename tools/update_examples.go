@@ -118,7 +118,7 @@ func updateRust() {
 }
 
 func updateDotnet() {
-	tags := getTagsV("grafana/pyroscope-dotnet", extractDotnetVersion())
+	tags := getTagsV("grafana/pyroscope-dotnet", extractDotnetComponentVersion("pyroscope"))
 	last := tags[len(tags)-1]
 	fmt.Println(last)
 
@@ -135,11 +135,11 @@ func updateDotnet() {
 		replaceInplace(reArg, f, replArg)
 	}
 
-	reUrl := regexp.MustCompile(`https://github\.com/grafana/pyroscope-dotnet/releases/download/v\d+\.\d+\.\d+-pyroscope/pyroscope.\d+\.\d+\.\d+-glibc-x86_64.tar.gz`)
-	replUrl := fmt.Sprintf("https://github.com/grafana/pyroscope-dotnet/releases/download/v%s-pyroscope/pyroscope.%s-glibc-x86_64.tar.gz", last.version(), last.version())
+	reUrl := regexp.MustCompile(`https://github\.com/grafana/pyroscope-dotnet/releases/download/(?:v\d+\.\d+\.\d+-pyroscope|pyroscope-\d+\.\d+\.\d+)/pyroscope\.\d+\.\d+\.\d+-glibc-x86_64\.tar\.gz`)
+	replUrl := fmt.Sprintf("https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-%s/pyroscope.%s-glibc-x86_64.tar.gz", last.version(), last.version())
 	replaceInplace(reUrl, "docs/sources/configure-client/language-sdks/dotnet.md", replUrl)
 
-	otelTags := getTagsV("grafana/pyroscope-dotnet", extractDotnetOtelVersion())
+	otelTags := getTagsV("grafana/pyroscope-dotnet", extractDotnetComponentVersion("opentelemetry"))
 	lastOtel := otelTags[len(otelTags)-1]
 	fmt.Println("Pyroscope.OpenTelemetry", lastOtel)
 	reOtelPkg := regexp.MustCompile(`<PackageReference Include="Pyroscope.OpenTelemetry" Version="\d+\.\d+\.\d+" />`)
@@ -333,33 +333,21 @@ func updateJfrParser() {
 	s.sh(" go get github.com/grafana/jfr-parser@" + parserVersion.versionV())
 }
 
-func extractDotnetVersion() func(tag Tag) *version {
+// extractDotnetComponentVersion matches release tags for a pyroscope-dotnet
+// component (e.g. "pyroscope" or "opentelemetry"), which are versioned
+// independently of each other. The repo migrated to release-please, which tags
+// releases with a component prefix and no leading "v" (e.g. "pyroscope-1.0.0",
+// "opentelemetry-0.4.1"). Older releases used the opposite convention: a "v"
+// prefix and a component suffix (e.g. "v0.15.0-pyroscope"). Both forms are
+// matched so the script keeps working across the transition.
+func extractDotnetComponentVersion(component string) func(tag Tag) *version {
+	prefix := regexp.MustCompile(`^` + component + `-(\d+)\.(\d+)\.(\d+)$`)
+	suffix := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)-` + component + `$`)
 	return func(tag Tag) *version {
-		re := regexp.MustCompile(`v(\d+).(\d+).(\d+)(-pyroscope)?$`)
-		match := re.FindStringSubmatch(tag.Name)
-		if match != nil {
-			fmt.Println(len(match), match)
-
-			major, err := strconv.Atoi(match[1])
-			requireNoError(err, "strconv")
-			minor, err := strconv.Atoi(match[2])
-			requireNoError(err, "strconv")
-			patch, err := strconv.Atoi(match[3])
-			requireNoError(err, "strconv")
-			return &version{major: major, minor: minor, patch: patch, tag: tag}
-
+		match := prefix.FindStringSubmatch(tag.Name)
+		if match == nil {
+			match = suffix.FindStringSubmatch(tag.Name)
 		}
-		return nil
-	}
-}
-
-// extractDotnetOtelVersion matches the Pyroscope.OpenTelemetry helper release
-// tags (e.g. "v0.4.0-opentelemetry"), which are versioned independently of the
-// native profiler tags.
-func extractDotnetOtelVersion() func(tag Tag) *version {
-	return func(tag Tag) *version {
-		re := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)-opentelemetry$`)
-		match := re.FindStringSubmatch(tag.Name)
 		if match == nil {
 			return nil
 		}

@@ -1,11 +1,11 @@
-ARG PROFILER_VERSION=0.15.0
+ARG PROFILER_VERSION=1.0.0
 
 # Fetch the profiler artifacts from the GitHub release.
 FROM --platform=linux/amd64 alpine:3 AS sdk
 ARG PROFILER_VERSION
 RUN apk add --no-cache curl tar
 RUN curl -fsSL -o /tmp/pyroscope.tar.gz \
-      "https://github.com/grafana/pyroscope-dotnet/releases/download/v${PROFILER_VERSION}-pyroscope/pyroscope.${PROFILER_VERSION}-glibc-x86_64.tar.gz" \
+      "https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-${PROFILER_VERSION}/pyroscope.${PROFILER_VERSION}-glibc-x86_64.tar.gz" \
     && mkdir -p /pyroscope \
     && tar -xzf /tmp/pyroscope.tar.gz -C /pyroscope
 
