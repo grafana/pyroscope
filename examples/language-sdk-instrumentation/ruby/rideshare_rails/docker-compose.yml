@@ -8,7 +8,6 @@ services:
     - 5000
     environment:
     - REGION=us-east
-    - SECRET_KEY_BASE=demo-secret-key-base-not-for-production
     build:
       context: .
     links:
@@ -18,7 +17,6 @@ services:
     - 5000
     environment:
     - REGION=eu-north
-    - SECRET_KEY_BASE=demo-secret-key-base-not-for-production
     build:
       context: .
   ap-south:
@@ -26,7 +24,6 @@ services:
     - 5000
     environment:
     - REGION=ap-south
-    - SECRET_KEY_BASE=demo-secret-key-base-not-for-production
     build:
       context: .
   load-generator:
