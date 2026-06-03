@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"expvar"
 	"flag"
 	"fmt"
@@ -28,7 +29,6 @@ import (
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tracing"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
@@ -53,6 +53,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/usagestats"
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
@@ -216,7 +217,7 @@ func New(
 
 	d.subservices, err = services.NewManager(subservices...)
 	if err != nil {
-		return nil, errors.Wrap(err, "services manager")
+		return nil, fmt.Errorf("services manager: %w", err)
 	}
 	d.subservicesWatcher = services.NewFailureWatcher()
 	d.subservicesWatcher.WatchManager(d.subservices)
@@ -236,7 +237,7 @@ func (d *Distributor) running(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	case err := <-d.subservicesWatcher.Chan():
-		return errors.Wrap(err, "distributor subservice failed")
+		return fmt.Errorf("distributor subservice failed: %w", err)
 	}
 }
 
@@ -1018,7 +1019,7 @@ func (d *Distributor) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					<p>Distributor is not running with global limits enabled</p>
 				</body>
 			</html>`
-		util.WriteHTMLResponse(w, ringNotEnabledPage)
+		httputil.WriteHTMLResponse(w, ringNotEnabledPage)
 	}
 }
 
@@ -1189,12 +1190,12 @@ func newRingAndLifecycler(cfg util.CommonRingConfig, instanceCount *atomic.Uint3
 	reg = prometheus.WrapRegistererWithPrefix("pyroscope_", reg)
 	kvStore, err := kv.NewClient(cfg.KVStore, ring.GetCodec(), kv.RegistererWithKVName(reg, "distributor-lifecycler"), logger)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to initialize distributors' KV store")
+		return nil, nil, fmt.Errorf("failed to initialize distributors' KV store: %w", err)
 	}
 
 	lifecyclerCfg, err := toBasicLifecyclerConfig(cfg, logger)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to build distributors' lifecycler config")
+		return nil, nil, fmt.Errorf("failed to build distributors' lifecycler config: %w", err)
 	}
 
 	var delegate ring.BasicLifecyclerDelegate
@@ -1205,12 +1206,12 @@ func newRingAndLifecycler(cfg util.CommonRingConfig, instanceCount *atomic.Uint3
 
 	distributorsLifecycler, err := ring.NewBasicLifecycler(lifecyclerCfg, "distributor", distributorRingKey, kvStore, delegate, logger, reg)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to initialize distributors' lifecycler")
+		return nil, nil, fmt.Errorf("failed to initialize distributors' lifecycler: %w", err)
 	}
 
 	distributorsRing, err := ring.New(cfg.ToRingConfig(), "distributor", distributorRingKey, logger, reg)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to initialize distributors' ring client")
+		return nil, nil, fmt.Errorf("failed to initialize distributors' ring client: %w", err)
 	}
 
 	return distributorsRing, distributorsLifecycler, nil

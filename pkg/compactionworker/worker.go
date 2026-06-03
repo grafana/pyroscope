@@ -3,6 +3,7 @@ package compactionworker
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -20,7 +21,6 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tracing"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	thanosstore "github.com/thanos-io/objstore"

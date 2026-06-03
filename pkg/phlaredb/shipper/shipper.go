@@ -11,6 +11,7 @@ package shipper
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"path"
@@ -21,7 +22,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
@@ -122,7 +122,7 @@ func (s *Shipper) Timestamps() (minTime, maxSyncTime model.Time, err error) {
 	ctx := context.Background()
 	meta, err := ReadMetaFile(s.blockLister.LocalDataPath())
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "read shipper meta file")
+		return 0, 0, fmt.Errorf("read shipper meta file: %w", err)
 	}
 	// Build a map of blocks we already uploaded.
 	hasUploaded := make(map[ulid.ULID]struct{}, len(meta.Uploaded))
@@ -188,7 +188,7 @@ func (c *lazyOverlapChecker) sync(ctx context.Context) error {
 		return nil
 
 	}); err != nil {
-		return errors.Wrap(err, "get all block meta.")
+		return fmt.Errorf("get all block meta.: %w", err)
 	}
 
 	c.synced = true
@@ -210,7 +210,7 @@ func (c *lazyOverlapChecker) IsOverlapping(ctx context.Context, newMeta tsdb.Blo
 	})
 	if o := tsdb.OverlappingBlocks(metas); len(o) > 0 {
 		// TODO(bwplotka): Consider checking if overlaps relates to block in concern?
-		return errors.Errorf("shipping compacted block %s is blocked; overlap spotted: %s", newMeta.ULID, o.String())
+		return fmt.Errorf("shipping compacted block %s is blocked; overlap spotted: %s", newMeta.ULID, o.String())
 	}
 	return nil
 }
@@ -269,7 +269,7 @@ func (s *Shipper) Sync(ctx context.Context) (uploaded int, err error) {
 		// Check against bucket if the meta file for this block exists.
 		ok, err := s.bucket.Exists(ctx, path.Join(m.ULID.String(), block.MetaFilename))
 		if err != nil {
-			return 0, errors.Wrap(err, "check exists")
+			return 0, fmt.Errorf("check exists: %w", err)
 		}
 		if ok {
 			meta.Uploaded = append(meta.Uploaded, m.ULID)
@@ -279,13 +279,13 @@ func (s *Shipper) Sync(ctx context.Context) (uploaded int, err error) {
 		// Skip overlap check if out of order uploads is enabled.
 		if m.Compaction.Level > 1 && !s.allowOutOfOrderUploads {
 			if err := checker.IsOverlapping(ctx, m.TSDBBlockMeta()); err != nil {
-				return 0, errors.Errorf("Found overlap or error during sync, cannot upload compacted block, details: %v", err)
+				return 0, fmt.Errorf("found overlap or error during sync, cannot upload compacted block, details: %w", err)
 			}
 		}
 
 		if err := s.upload(ctx, m); err != nil {
 			if !s.allowOutOfOrderUploads {
-				return 0, errors.Wrapf(err, "upload %v", m.ULID)
+				return 0, fmt.Errorf("upload %v: %w", m.ULID, err)
 			}
 
 			// No error returned, just log line. This is because we want other blocks to be uploaded even
@@ -305,7 +305,7 @@ func (s *Shipper) Sync(ctx context.Context) (uploaded int, err error) {
 	s.metrics.dirSyncs.Inc()
 	if uploadErrs > 0 {
 		s.metrics.uploadFailures.Add(float64(uploadErrs))
-		return uploaded, errors.Errorf("failed to sync %v blocks", uploadErrs)
+		return uploaded, fmt.Errorf("failed to sync %v blocks", uploadErrs)
 	}
 
 	if s.uploadCompacted {
@@ -323,7 +323,7 @@ func (s *Shipper) upload(ctx context.Context, meta *block.Meta) error {
 
 	meta.Source = s.source
 	if _, err := meta.WriteToFile(s.logger, updir); err != nil {
-		return errors.Wrap(err, "write meta file")
+		return fmt.Errorf("write meta file: %w", err)
 	}
 	return block.Upload(ctx, s.logger, s.bucket, updir)
 }
@@ -378,7 +378,7 @@ func ReadMetaFile(dir string) (*Meta, error) {
 		return nil, err
 	}
 	if m.Version != MetaVersion1 {
-		return nil, errors.Errorf("unexpected meta file version %d", m.Version)
+		return nil, fmt.Errorf("unexpected meta file version %d", m.Version)
 	}
 
 	return &m, nil

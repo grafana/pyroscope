@@ -7,10 +7,8 @@ import (
 	"iter"
 	"time"
 
-	"gopkg.in/yaml.v3"
-
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/grafana/pyroscope/v2/pkg/distributor/ingestlimits"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
@@ -231,10 +229,10 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if defaultLimits != nil {
 		b, err := yaml.Marshal(defaultLimits)
 		if err != nil {
-			return errors.Wrap(err, "cloning limits (marshaling)")
+			return fmt.Errorf("cloning limits (marshaling): %w", err)
 		}
 		if err := yaml.Unmarshal(b, (*plain)(l)); err != nil {
-			return errors.Wrap(err, "cloning limits (unmarshaling)")
+			return fmt.Errorf("cloning limits (unmarshaling): %w", err)
 		}
 	}
 	return unmarshal((*plain)(l))

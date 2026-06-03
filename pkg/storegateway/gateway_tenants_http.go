@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 //go:embed tenants.gohtml
@@ -24,11 +24,11 @@ type tenantsPageContents struct {
 func (s *StoreGateway) TenantsHandler(w http.ResponseWriter, req *http.Request) {
 	tenantIDs, err := s.stores.scanUsers(req.Context())
 	if err != nil {
-		util.WriteTextResponse(w, fmt.Sprintf("Can't read tenants: %s", err))
+		httputil.WriteTextResponse(w, fmt.Sprintf("Can't read tenants: %s", err))
 		return
 	}
 
-	util.RenderHTTPResponse(w, tenantsPageContents{
+	httputil.RenderHTTPResponse(w, tenantsPageContents{
 		Now:     time.Now(),
 		Tenants: tenantIDs,
 	}, tenantsTemplate, req)

@@ -7,6 +7,7 @@ package compactor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -18,7 +19,6 @@ import (
 	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/services"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	thanos_objstore "github.com/thanos-io/objstore"
@@ -214,7 +214,7 @@ func (c *BlocksCleaner) instrumentFinishedCleanupRun(err error, logger log.Logge
 func (c *BlocksCleaner) refreshOwnedUsers(ctx context.Context) ([]string, map[string]bool, error) {
 	users, deleted, err := c.tenantsScanner.ScanTenants(ctx)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to discover users from bucket")
+		return nil, nil, fmt.Errorf("failed to discover users from bucket: %w", err)
 	}
 
 	isActive := util.StringsMap(users)
@@ -240,16 +240,27 @@ func (c *BlocksCleaner) refreshOwnedUsers(ctx context.Context) ([]string, map[st
 func (c *BlocksCleaner) cleanUsers(ctx context.Context, allUsers []string, isDeleted map[string]bool, logger log.Logger) error {
 	return c.singleFlight.ForEachNotInFlight(ctx, allUsers, func(ctx context.Context, userID string) error {
 		own, err := c.ownUser(userID)
-		if err != nil || !own {
-			// This returns error only if err != nil. ForEachUser keeps working for other users.
-			return errors.Wrap(err, "check own user")
+		if err != nil {
+			return fmt.Errorf("check own user: %w", err)
+		}
+		if !own {
+			return nil
 		}
 
 		userLogger := util.LoggerWithUserID(userID, logger)
 		if isDeleted[userID] {
-			return errors.Wrapf(c.deleteUserMarkedForDeletion(ctx, userID, userLogger), "failed to delete user marked for deletion: %s", userID)
+			err = c.deleteUserMarkedForDeletion(ctx, userID, userLogger)
+			if err != nil {
+				return fmt.Errorf("failed to delete user marked for deletion: %s: %w", userID, err)
+			}
+			return nil
 		}
-		return errors.Wrapf(c.cleanUser(ctx, userID, userLogger), "failed to delete blocks for user: %s", userID)
+
+		err = c.cleanUser(ctx, userID, userLogger)
+		if err != nil {
+			return fmt.Errorf("failed to delete blocks for user: %s: %w", userID, err)
+		}
+		return nil
 	})
 }
 
@@ -258,13 +269,13 @@ func (c *BlocksCleaner) cleanUsers(ctx context.Context, allUsers []string, isDel
 func (c *BlocksCleaner) deleteRemainingData(ctx context.Context, userBucket objstore.Bucket, userID string, userLogger log.Logger) error {
 	// Delete bucket index
 	if err := bucketindex.DeleteIndex(ctx, c.bucketClient, userID, c.cfgProvider); err != nil {
-		return errors.Wrap(err, "failed to delete bucket index file")
+		return fmt.Errorf("failed to delete bucket index file: %w", err)
 	}
 	level.Info(userLogger).Log("msg", "deleted bucket index for tenant with no blocks remaining")
 
 	// Delete markers folder
 	if deleted, err := objstore.DeletePrefix(ctx, userBucket, block.MarkersPathname, userLogger); err != nil {
-		return errors.Wrap(err, "failed to delete marker files")
+		return fmt.Errorf("failed to delete marker files: %w", err)
 	} else if deleted > 0 {
 		level.Info(userLogger).Log("msg", "deleted marker files for tenant with no blocks remaining", "count", deleted)
 	}
@@ -321,7 +332,7 @@ func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID 
 		c.tenantMarkedBlocks.WithLabelValues(userID).Set(float64(failed))
 		c.tenantPartialBlocks.WithLabelValues(userID).Set(0)
 
-		return errors.Errorf("failed to delete %d blocks", failed)
+		return fmt.Errorf("failed to delete %d blocks", failed)
 	}
 
 	// Given all blocks have been deleted, we can also remove the metrics.
@@ -335,7 +346,7 @@ func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID 
 
 	mark, err := bucket.ReadTenantDeletionMark(ctx, c.bucketClient, userID)
 	if err != nil {
-		return errors.Wrap(err, "failed to read tenant deletion mark")
+		return fmt.Errorf("failed to read tenant deletion mark: %w", err)
 	}
 	if mark == nil {
 		return fmt.Errorf("cannot find tenant deletion mark anymore")
@@ -347,7 +358,11 @@ func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID 
 	if deletedBlocks > 0 || mark.FinishedTime == 0 {
 		level.Info(userLogger).Log("msg", "updating finished time in tenant deletion mark")
 		mark.FinishedTime = time.Now().Unix()
-		return errors.Wrap(bucket.WriteTenantDeletionMark(ctx, c.bucketClient, userID, c.cfgProvider, mark), "failed to update tenant deletion mark")
+		err = bucket.WriteTenantDeletionMark(ctx, c.bucketClient, userID, c.cfgProvider, mark)
+		if err != nil {
+			return fmt.Errorf("failed to update tenant deletion mark: %w", err)
+		}
+		return nil
 	}
 
 	if time.Since(time.Unix(mark.FinishedTime, 0)) < c.cfg.TenantCleanupDelay {
@@ -358,7 +373,7 @@ func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID 
 
 	// Let's do final cleanup of markers.
 	if deleted, err := objstore.DeletePrefix(ctx, userBucket, block.MarkersPathname, userLogger); err != nil {
-		return errors.Wrap(err, "failed to delete marker files")
+		return fmt.Errorf("failed to delete marker files: %w", err)
 	} else if deleted > 0 {
 		level.Info(userLogger).Log("msg", "deleted marker files for tenant marked for deletion", "count", deleted)
 	}
@@ -617,7 +632,7 @@ func stalePartialBlockLastModifiedTime(ctx context.Context, blockID ulid.ULID, u
 		}
 		attrib, err := userBucket.Attributes(ctx, name)
 		if err != nil {
-			return errors.Wrapf(err, "failed to get attributes for %s", name)
+			return fmt.Errorf("failed to get attributes for %s: %w", name, err)
 		}
 		if attrib.LastModified.After(partialDeletionCutoffTime) {
 			return errStopIter

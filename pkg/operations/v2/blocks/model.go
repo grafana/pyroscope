@@ -2,6 +2,7 @@ package blocks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/operations"
@@ -258,17 +258,17 @@ func parseDatasetRequest(r *http.Request) (*datasetRequest, error) {
 
 	tenantID := vars["tenant"]
 	if tenantID == "" {
-		return nil, errors.New("No tenant id provided")
+		return nil, errors.New("no tenant id provided")
 	}
 
 	blockID := vars["block"]
 	if blockID == "" {
-		return nil, errors.New("No block id provided")
+		return nil, errors.New("no block id provided")
 	}
 
 	datasetName := r.URL.Query().Get("dataset")
 	if datasetName == "" {
-		return nil, errors.New("No dataset name provided")
+		return nil, errors.New("no dataset name provided")
 	}
 	if datasetName == emptyDatasetPlaceholder {
 		datasetName = ""
@@ -276,11 +276,11 @@ func parseDatasetRequest(r *http.Request) (*datasetRequest, error) {
 
 	shardStr := r.URL.Query().Get("shard")
 	if shardStr == "" {
-		return nil, errors.New("No shard provided")
+		return nil, errors.New("no shard provided")
 	}
 	var shard uint32
 	if _, err := fmt.Sscanf(shardStr, "%d", &shard); err != nil {
-		return nil, errors.Wrap(err, "invalid shard parameter")
+		return nil, fmt.Errorf("invalid shard parameter: %w", err)
 	}
 
 	blockTenant := r.URL.Query().Get("block_tenant")
@@ -303,11 +303,11 @@ func (h *Handlers) getDatasetMetadata(ctx context.Context, req *datasetRequest) 
 		},
 	})
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to get block metadata")
+		return nil, nil, fmt.Errorf("failed to get block metadata: %w", err)
 	}
 
 	if len(metadataResp.Blocks) == 0 {
-		return nil, nil, errors.New("Block not found")
+		return nil, nil, errors.New("block not found")
 	}
 
 	blockMeta := metadataResp.Blocks[0]
@@ -322,7 +322,7 @@ func (h *Handlers) getDatasetMetadata(ctx context.Context, req *datasetRequest) 
 	}
 
 	if foundDataset == nil {
-		return nil, nil, errors.New("Dataset not found")
+		return nil, nil, errors.New("dataset not found")
 	}
 
 	return blockMeta, foundDataset, nil

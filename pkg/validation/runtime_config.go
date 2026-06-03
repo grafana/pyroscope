@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/go-kit/log/level"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )

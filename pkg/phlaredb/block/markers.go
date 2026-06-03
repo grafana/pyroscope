@@ -8,6 +8,8 @@ package block
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"path"
 	"time"
@@ -15,7 +17,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 )
@@ -105,26 +106,26 @@ func ReadMarker(ctx context.Context, logger log.Logger, bkt objstore.BucketReade
 		if bkt.IsObjNotFoundErr(err) {
 			return ErrorMarkerNotFound
 		}
-		return errors.Wrapf(err, "get file: %s", markerFile)
+		return fmt.Errorf("get file: %s: %w", markerFile, err)
 	}
 	defer runutil.CloseWithLogOnErr(logger, r, "close bkt marker reader")
 
 	metaContent, err := io.ReadAll(r)
 	if err != nil {
-		return errors.Wrapf(err, "read file: %s", markerFile)
+		return fmt.Errorf("read file: %s: %w", markerFile, err)
 	}
 
 	if err := json.Unmarshal(metaContent, marker); err != nil {
-		return errors.Wrapf(ErrorUnmarshalMarker, "file: %s; err: %v", markerFile, err.Error())
+		return fmt.Errorf("file: %s; err: %v: %w", markerFile, err.Error(), ErrorUnmarshalMarker)
 	}
 	switch marker.markerFilename() {
 	case NoCompactMarkFilename:
 		if version := marker.(*NoCompactMark).Version; version != NoCompactMarkVersion1 {
-			return errors.Errorf("unexpected no-compact-mark file version %d, expected %d", version, NoCompactMarkVersion1)
+			return fmt.Errorf("unexpected no-compact-mark file version %d, expected %d", version, NoCompactMarkVersion1)
 		}
 	case DeletionMarkFilename:
 		if version := marker.(*DeletionMark).Version; version != DeletionMarkVersion1 {
-			return errors.Errorf("unexpected deletion-mark file version %d, expected %d", version, DeletionMarkVersion1)
+			return fmt.Errorf("unexpected deletion-mark file version %d, expected %d", version, DeletionMarkVersion1)
 		}
 	}
 	return nil

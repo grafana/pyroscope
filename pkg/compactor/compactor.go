@@ -6,6 +6,7 @@ package compactor
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"hash/fnv"
@@ -24,7 +25,6 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tracing"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
@@ -165,12 +165,12 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 
 func (cfg *Config) Validate(maxBlockDuration time.Duration) error {
 	if len(cfg.BlockRanges) > 0 && cfg.BlockRanges[0]%maxBlockDuration != 0 {
-		return errors.Errorf(errInvalidBlockDuration, cfg.BlockRanges[0].String(), maxBlockDuration.String())
+		return fmt.Errorf(errInvalidBlockDuration, cfg.BlockRanges[0].String(), maxBlockDuration.String())
 	}
 	// Each block range period should be divisible by the previous one.
 	for i := 1; i < len(cfg.BlockRanges); i++ {
 		if cfg.BlockRanges[i]%cfg.BlockRanges[i-1] != 0 {
-			return errors.Errorf(errInvalidBlockRanges, cfg.BlockRanges[i].String(), cfg.BlockRanges[i-1].String())
+			return fmt.Errorf(errInvalidBlockRanges, cfg.BlockRanges[i].String(), cfg.BlockRanges[i-1].String())
 		}
 	}
 
@@ -294,7 +294,7 @@ func NewMultitenantCompactor(compactorCfg Config, bucketClient objstore.Bucket, 
 
 	c, err := newMultitenantCompactor(compactorCfg, bucketClient, cfgProvider, logger, registerer, blocksGrouperFactory, blocksCompactorFactory, blocksPlannerFactory)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create blocks compactor")
+		return nil, fmt.Errorf("failed to create blocks compactor: %w", err)
 	}
 
 	return c, nil
@@ -429,19 +429,19 @@ func (c *MultitenantCompactor) starting(ctx context.Context) error {
 
 	c.ringSubservices, err = services.NewManager(c.ringLifecycler, c.ring)
 	if err != nil {
-		return errors.Wrap(err, "unable to create compactor ring dependencies")
+		return fmt.Errorf("unable to create compactor ring dependencies: %w", err)
 	}
 
 	c.ringSubservicesWatcher = services.NewFailureWatcher()
 	c.ringSubservicesWatcher.WatchManager(c.ringSubservices)
 	if err = c.ringSubservices.StartAsync(ctx); err != nil {
-		return errors.Wrap(err, "unable to start compactor ring dependencies")
+		return fmt.Errorf("unable to start compactor ring dependencies: %w", err)
 	}
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, c.compactorCfg.ShardingRing.WaitActiveInstanceTimeout)
 	defer cancel()
 	if err = c.ringSubservices.AwaitHealthy(ctxTimeout); err != nil {
-		return errors.Wrap(err, "unable to start compactor ring dependencies")
+		return fmt.Errorf("unable to start compactor ring dependencies: %w", err)
 	}
 
 	// If sharding is enabled we should wait until this instance is ACTIVE within the ring. This
@@ -449,7 +449,7 @@ func (c *MultitenantCompactor) starting(ctx context.Context) error {
 	// the users scanner depends on the ring (to check whether a user belongs to this shard or not).
 	level.Info(c.logger).Log("msg", "waiting until compactor is ACTIVE in the ring")
 	if err = ring.WaitInstanceState(ctxTimeout, c.ring, c.ringLifecycler.GetInstanceID(), ring.ACTIVE); err != nil {
-		return errors.Wrap(err, "compactor failed to become ACTIVE in the ring")
+		return fmt.Errorf("compactor failed to become ACTIVE in the ring: %w", err)
 	}
 
 	level.Info(c.logger).Log("msg", "compactor is ACTIVE in the ring")
@@ -486,7 +486,7 @@ func (c *MultitenantCompactor) starting(ctx context.Context) error {
 	// Start blocks cleaner asynchronously, don't wait until initial cleanup is finished.
 	if err := c.blocksCleaner.StartAsync(ctx); err != nil {
 		c.ringSubservices.StopAsync()
-		return errors.Wrap(err, "failed to start the blocks cleaner")
+		return fmt.Errorf("failed to start the blocks cleaner: %w", err)
 	}
 
 	return nil
@@ -496,12 +496,12 @@ func newRingAndLifecycler(cfg RingConfig, logger log.Logger, reg prometheus.Regi
 	reg = prometheus.WrapRegistererWithPrefix("pyroscope_", reg)
 	kvStore, err := kv.NewClient(cfg.Common.KVStore, ring.GetCodec(), kv.RegistererWithKVName(reg, "compactor-lifecycler"), logger)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to initialize compactors' KV store")
+		return nil, nil, fmt.Errorf("failed to initialize compactors' KV store: %w", err)
 	}
 
 	lifecyclerCfg, err := cfg.ToBasicLifecyclerConfig(logger)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to build compactors' lifecycler config")
+		return nil, nil, fmt.Errorf("failed to build compactors' lifecycler config: %w", err)
 	}
 
 	var delegate ring.BasicLifecyclerDelegate
@@ -511,12 +511,12 @@ func newRingAndLifecycler(cfg RingConfig, logger log.Logger, reg prometheus.Regi
 
 	compactorsLifecycler, err := ring.NewBasicLifecycler(lifecyclerCfg, "compactor", ringKey, kvStore, delegate, logger, reg)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to initialize compactors' lifecycler")
+		return nil, nil, fmt.Errorf("failed to initialize compactors' lifecycler: %w", err)
 	}
 
 	compactorsRing, err := ring.New(cfg.toRingConfig(), "compactor", ringKey, logger, reg)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to initialize compactors' ring client")
+		return nil, nil, fmt.Errorf("failed to initialize compactors' ring client: %w", err)
 	}
 
 	return compactorsRing, compactorsLifecycler, nil
@@ -553,7 +553,7 @@ func (c *MultitenantCompactor) running(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case err := <-c.ringSubservicesWatcher.Chan():
-			return errors.Wrap(err, "compactor subservice failed")
+			return fmt.Errorf("compactor subservice failed: %w", err)
 		}
 	}
 }
@@ -755,13 +755,13 @@ func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) e
 		c.blocksMarkedForDeletion,
 	)
 	if err != nil {
-		return errors.Wrap(err, "failed to create syncer")
+		return fmt.Errorf("failed to create syncer: %w", err)
 	}
 
 	// Create blocks compactor dependencies.
 	blocksCompactor, err := c.blocksCompactorFactory(ctx, c.compactorCfg, c.cfgProvider, userID, c.logger, c.compactorMetrics)
 	if err != nil {
-		return errors.Wrap(err, "failed to initialize compactor dependencies")
+		return fmt.Errorf("failed to initialize compactor dependencies: %w", err)
 	}
 
 	compactor, err := NewBucketCompactor(
@@ -780,11 +780,11 @@ func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) e
 		c.bucketCompactorMetrics,
 	)
 	if err != nil {
-		return errors.Wrap(err, "failed to create bucket compactor")
+		return fmt.Errorf("failed to create bucket compactor: %w", err)
 	}
 
 	if err := compactor.Compact(ctx, c.compactorCfg.MaxCompactionTime); err != nil {
-		return errors.Wrap(err, "compaction")
+		return fmt.Errorf("compaction: %w", err)
 	}
 
 	return nil
