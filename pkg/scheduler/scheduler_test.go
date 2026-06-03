@@ -31,8 +31,6 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
@@ -41,6 +39,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb"
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb/schedulerpbconnect"
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	httpserver "github.com/grafana/pyroscope/v2/pkg/util/http/server"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpcutil"
 )
@@ -64,9 +63,9 @@ func setupScheduler(t *testing.T, args schedulerArgs) (*Scheduler, schedulerpb.S
 
 	require.NoError(t, err)
 
-	server := httptest.NewUnstartedServer(nil)
 	mux := mux.NewRouter()
-	server.Config.Handler = h2c.NewHandler(mux, &http2.Server{})
+	server := httptest.NewUnstartedServer(mux)
+	httpserver.EnableHTTP2(server.Config)
 
 	server.Start()
 	schedulerpbconnect.RegisterSchedulerForFrontendHandler(mux, s, args.handlerOpts...)
