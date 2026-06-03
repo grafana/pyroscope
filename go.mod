@@ -2,7 +2,7 @@ module github.com/grafana/pyroscope/v2
 
 go 1.25.8
 
-toolchain go1.25.10
+toolchain go1.25.11
 
 require (
 	connectrpc.com/connect v1.19.2
