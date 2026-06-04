@@ -3,13 +3,13 @@
 package schedulerdiscovery
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/pyroscope/v2/pkg/util"
@@ -57,12 +57,12 @@ func NewRingLifecycler(cfg util.CommonRingConfig, logger log.Logger, reg prometh
 	reg = prometheus.WrapRegistererWithPrefix("pyroscope_", reg)
 	kvStore, err := kv.NewClient(cfg.KVStore, ring.GetCodec(), kv.RegistererWithKVName(reg, "query-scheduler-lifecycler"), logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize query-schedulers' KV store")
+		return nil, fmt.Errorf("failed to initialize query-schedulers' KV store: %w", err)
 	}
 
 	lifecyclerCfg, err := toBasicLifecyclerConfig(cfg, logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build query-schedulers' lifecycler config")
+		return nil, fmt.Errorf("failed to build query-schedulers' lifecycler config: %w", err)
 	}
 
 	var delegate ring.BasicLifecyclerDelegate
@@ -72,7 +72,7 @@ func NewRingLifecycler(cfg util.CommonRingConfig, logger log.Logger, reg prometh
 
 	lifecycler, err := ring.NewBasicLifecycler(lifecyclerCfg, "query-scheduler", ringKey, kvStore, delegate, logger, reg)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize query-schedulers' lifecycler")
+		return nil, fmt.Errorf("failed to initialize query-schedulers' lifecycler: %w", err)
 	}
 
 	return lifecycler, nil
@@ -82,7 +82,7 @@ func NewRingLifecycler(cfg util.CommonRingConfig, logger log.Logger, reg prometh
 func NewRingClient(cfg util.CommonRingConfig, component string, logger log.Logger, reg prometheus.Registerer) (*ring.Ring, error) {
 	client, err := ring.New(cfg.ToRingConfig(), component, ringKey, logger, prometheus.WrapRegistererWithPrefix("pyroscope_", reg))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize query-schedulers' ring client")
+		return nil, fmt.Errorf("failed to initialize query-schedulers' ring client: %w", err)
 	}
 
 	return client, err

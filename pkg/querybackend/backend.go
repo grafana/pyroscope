@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
@@ -106,7 +107,7 @@ func (q *QueryBackend) Invoke(
 	case queryv1.QueryNode_READ:
 		resp, err = q.read(ctx, req, root.Blocks)
 	default:
-		panic("query plan: unknown node type")
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("query plan: unknown node type %v", nodeType))
 	}
 
 	if err != nil {

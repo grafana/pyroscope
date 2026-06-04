@@ -31,7 +31,7 @@ ENV PYROSCOPE_UPLOAD_INTERVAL=15s
 ENV PYROSCOPE_LOG_LEVEL=debug
 ENV PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
 
-ENV OTEL_JAVAAGENT_EXTENSIONS=./pyroscope-otel.jar
+ENV OTEL_JAVAAGENT_EXTENSIONS=./pyroscope-otel-javaagent-extension.jar
 
 ENV OTEL_PYROSCOPE_ADD_PROFILE_URL=false
 ENV OTEL_PYROSCOPE_ADD_PROFILE_BASELINE_URL=false
@@ -42,9 +42,8 @@ COPY --from=builder /opt/app/build/libs/rideshare-1.0-SNAPSHOT.jar /opt/app/buil
 WORKDIR /opt/app
 
 ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.15.0/opentelemetry-javaagent.jar opentelemetry-javaagent.jar
-ADD https://github.com/grafana/pyroscope-java/releases/download/v2.5.2/pyroscope.jar pyroscope.jar
-ADD https://github.com/grafana/otel-profiling-java/releases/download/v2.0.1/pyroscope-otel.jar pyroscope-otel.jar
+ADD https://github.com/grafana/otel-profiling-java/releases/download/v2.0.5/pyroscope-otel-javaagent-extension.jar pyroscope-otel-javaagent-extension.jar
 
 EXPOSE 5000
 
-CMD ["java", "-Dserver.port=5000", "-javaagent:./pyroscope.jar", "-javaagent:./opentelemetry-javaagent.jar", "-jar", "./build/libs/rideshare-1.0-SNAPSHOT.jar" ]
+CMD ["java", "-Dserver.port=5000", "-javaagent:./opentelemetry-javaagent.jar", "-jar", "./build/libs/rideshare-1.0-SNAPSHOT.jar" ]

@@ -2,11 +2,11 @@ package queryfrontend
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"github.com/pkg/errors"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"

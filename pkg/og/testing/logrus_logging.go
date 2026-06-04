@@ -1,19 +1,13 @@
 package testing
 
 import (
-	"os"
-
-	golog "log"
-
-	"github.com/sirupsen/logrus"
+	"log"
 )
 
 func init() {
-	golog.SetFlags(golog.Lshortfile | golog.Ldate | golog.Ltime)
+	log.SetFlags(log.Lshortfile | log.Ldate | log.Ltime)
 }
 
 func SetupLogging() {
 	// log.SetFormatter(&log.JSONFormatter{})
-	logrus.SetOutput(os.Stdout)
-	logrus.SetLevel(logrus.DebugLevel)
 }

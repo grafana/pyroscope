@@ -16,8 +16,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
+	"go.yaml.in/yaml/v3"
 	"golang.org/x/sync/errgroup"
-	"gopkg.in/yaml.v3"
 )
 
 func mustHexDecode(s string) []byte {

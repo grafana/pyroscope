@@ -2,12 +2,12 @@ package metastore
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"

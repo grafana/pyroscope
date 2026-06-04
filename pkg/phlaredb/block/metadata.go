@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
@@ -268,7 +267,7 @@ func MetaFromDir(dir string) (*Meta, int64, error) {
 	case MetaVersion2:
 	case MetaVersion3:
 	default:
-		return nil, 0, errors.Errorf("unexpected meta file version %d", m.Version)
+		return nil, 0, fmt.Errorf("unexpected meta file version %d", m.Version)
 	}
 
 	return &m, int64(len(b)), nil
@@ -419,7 +418,7 @@ func Read(rc io.ReadCloser) (_ *Meta, err error) {
 	case MetaVersion2:
 	case MetaVersion3:
 	default:
-		return nil, errors.Errorf("unexpected meta file version %d", m.Version)
+		return nil, fmt.Errorf("unexpected meta file version %d", m.Version)
 	}
 
 	return &m, nil

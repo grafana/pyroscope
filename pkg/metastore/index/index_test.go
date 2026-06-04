@@ -94,7 +94,7 @@ func TestIndex_PartitionList(t *testing.T) {
 		assert.Equal(t, newBlockMeta.MaxTime, updated.ShardIndex.MaxTime)
 
 		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-			s, err := idx.shards.getForRead(tx, p, tenant, shardID)
+			s, err := idx.shards.getForReadAtVersion(tx, p, tenant, shardID, updated.ShardIndex.Version)
 			if err != nil {
 				return err
 			}

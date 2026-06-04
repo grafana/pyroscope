@@ -6,6 +6,7 @@ package compactor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"path"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
@@ -183,7 +183,7 @@ func jobWaitPeriodElapsed(ctx context.Context, job *Job, waitPeriod time.Duratio
 
 		attrs, err := userBucket.Attributes(ctx, metaPath)
 		if err != nil {
-			return false, meta, errors.Wrapf(err, "unable to get object attributes for %s", metaPath)
+			return false, meta, fmt.Errorf("unable to get object attributes for %s: %w", metaPath, err)
 		}
 
 		if attrs.LastModified.After(threshold) {

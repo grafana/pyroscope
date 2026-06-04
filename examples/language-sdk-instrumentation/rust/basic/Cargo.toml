@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pyroscope = { version = "^2.0.4", features = ["backend-pprof-rs"] }
+pyroscope = { version = "^2.0.6", features = ["backend-pprof-rs"] }
 pretty_env_logger = "0.5"

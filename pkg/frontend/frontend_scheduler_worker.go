@@ -7,6 +7,8 @@ package frontend
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
@@ -17,7 +19,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/services"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc"
@@ -91,7 +92,7 @@ func (f *frontendSchedulerWorkers) running(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	case err := <-f.schedulerDiscoveryWatcher.Chan():
-		return errors.Wrap(err, "query-frontend workers subservice failed")
+		return fmt.Errorf("query-frontend workers subservice failed: %w", err)
 	}
 }
 
@@ -329,7 +330,7 @@ func (w *frontendSchedulerWorker) schedulerLoop(loop schedulerpb.SchedulerForFro
 		if err != nil {
 			return err
 		}
-		return errors.Errorf("unexpected status received for init: %v", resp.Status)
+		return fmt.Errorf("unexpected status received for init: %v", resp.Status)
 	}
 
 	ctx, cancel := context.WithCancel(loop.Context())
@@ -430,7 +431,7 @@ func (w *frontendSchedulerWorker) schedulerLoop(loop schedulerpb.SchedulerForFro
 
 			// Scheduler may be shutting down, report that.
 			if resp.Status != schedulerpb.SchedulerToFrontendStatus_OK {
-				return errors.Errorf("unexpected status received for cancellation: %v", resp.Status)
+				return fmt.Errorf("unexpected status received for cancellation: %v", resp.Status)
 			}
 		}
 	}

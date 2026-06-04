@@ -9,7 +9,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sirupsen/logrus"
 
 	"github.com/grafana/pyroscope/v2/pkg/og/util/varint"
 )
@@ -55,7 +54,6 @@ var _ = Describe("trie package", func() {
 		trie := New()
 		trie.Insert([]byte("abc"), 1)
 		trie.Insert([]byte("abd"), 2)
-		logrus.Debug("trie abc abd", trie)
 
 		It("returns correct results", func() {
 			var buf bytes.Buffer
@@ -110,12 +108,10 @@ var _ = Describe("trie package", func() {
 				// trie.Insert([]byte("1234567"), []byte{1})
 				// trie.Insert([]byte("1234667"), []byte{2})
 				// trie.Insert([]byte("1234767"), []byte{3})
-				logrus.Debug("a", trie.String())
 				strA := ""
 				trie.Iterate(func(k []byte, v uint64) {
 					strA += fmt.Sprintf("%q %d\n", k, v)
 				})
-				logrus.Debug("strA", strA)
 
 				var buf bytes.Buffer
 				trie.Serialize(&buf)
@@ -126,12 +122,9 @@ var _ = Describe("trie package", func() {
 				t.Iterate(func(k []byte, v uint64) {
 					strB += fmt.Sprintf("%q %d\n", k, v)
 				})
-				logrus.Debug("b", t.String())
-				logrus.Debug("strB", strB)
 				Expect(e).To(BeNil())
 				Expect(trie.String()).To(Equal(t.String()))
 				Expect(strA).To(Equal(strB))
-				logrus.Debug("---/")
 			}
 		})
 	})
@@ -205,12 +198,10 @@ var _ = Describe("trie package", func() {
 		trie := New()
 		trie.Insert([]byte("abc"), 1)
 		trie.Insert([]byte("ab"), 2)
-		logrus.Debug(trie.String())
 
 		It("returns correct results", func() {
 			r := bytes.NewReader(serializationExample)
 			t, e := Deserialize(r)
-			logrus.Debug(t.String())
 			Expect(e).To(BeNil())
 			var buf bytes.Buffer
 			t.Serialize(&buf)

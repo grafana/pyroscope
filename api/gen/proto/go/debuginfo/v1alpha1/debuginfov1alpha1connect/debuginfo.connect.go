@@ -39,12 +39,20 @@ const (
 	// DebuginfoServiceUploadFinishedProcedure is the fully-qualified name of the DebuginfoService's
 	// UploadFinished RPC.
 	DebuginfoServiceUploadFinishedProcedure = "/debuginfo.v1alpha1.DebuginfoService/UploadFinished"
+	// DebuginfoServiceListDebuginfoProcedure is the fully-qualified name of the DebuginfoService's
+	// ListDebuginfo RPC.
+	DebuginfoServiceListDebuginfoProcedure = "/debuginfo.v1alpha1.DebuginfoService/ListDebuginfo"
+	// DebuginfoServiceDeleteDebuginfoProcedure is the fully-qualified name of the DebuginfoService's
+	// DeleteDebuginfo RPC.
+	DebuginfoServiceDeleteDebuginfoProcedure = "/debuginfo.v1alpha1.DebuginfoService/DeleteDebuginfo"
 )
 
 // DebuginfoServiceClient is a client for the debuginfo.v1alpha1.DebuginfoService service.
 type DebuginfoServiceClient interface {
 	ShouldInitiateUpload(context.Context, *connect.Request[v1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[v1alpha1.ShouldInitiateUploadResponse], error)
 	UploadFinished(context.Context, *connect.Request[v1alpha1.UploadFinishedRequest]) (*connect.Response[v1alpha1.UploadFinishedResponse], error)
+	ListDebuginfo(context.Context, *connect.Request[v1alpha1.ListDebuginfoRequest]) (*connect.Response[v1alpha1.ListDebuginfoResponse], error)
+	DeleteDebuginfo(context.Context, *connect.Request[v1alpha1.DeleteDebuginfoRequest]) (*connect.Response[v1alpha1.DeleteDebuginfoResponse], error)
 }
 
 // NewDebuginfoServiceClient constructs a client for the debuginfo.v1alpha1.DebuginfoService
@@ -70,6 +78,18 @@ func NewDebuginfoServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(debuginfoServiceMethods.ByName("UploadFinished")),
 			connect.WithClientOptions(opts...),
 		),
+		listDebuginfo: connect.NewClient[v1alpha1.ListDebuginfoRequest, v1alpha1.ListDebuginfoResponse](
+			httpClient,
+			baseURL+DebuginfoServiceListDebuginfoProcedure,
+			connect.WithSchema(debuginfoServiceMethods.ByName("ListDebuginfo")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteDebuginfo: connect.NewClient[v1alpha1.DeleteDebuginfoRequest, v1alpha1.DeleteDebuginfoResponse](
+			httpClient,
+			baseURL+DebuginfoServiceDeleteDebuginfoProcedure,
+			connect.WithSchema(debuginfoServiceMethods.ByName("DeleteDebuginfo")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -77,6 +97,8 @@ func NewDebuginfoServiceClient(httpClient connect.HTTPClient, baseURL string, op
 type debuginfoServiceClient struct {
 	shouldInitiateUpload *connect.Client[v1alpha1.ShouldInitiateUploadRequest, v1alpha1.ShouldInitiateUploadResponse]
 	uploadFinished       *connect.Client[v1alpha1.UploadFinishedRequest, v1alpha1.UploadFinishedResponse]
+	listDebuginfo        *connect.Client[v1alpha1.ListDebuginfoRequest, v1alpha1.ListDebuginfoResponse]
+	deleteDebuginfo      *connect.Client[v1alpha1.DeleteDebuginfoRequest, v1alpha1.DeleteDebuginfoResponse]
 }
 
 // ShouldInitiateUpload calls debuginfo.v1alpha1.DebuginfoService.ShouldInitiateUpload.
@@ -89,10 +111,22 @@ func (c *debuginfoServiceClient) UploadFinished(ctx context.Context, req *connec
 	return c.uploadFinished.CallUnary(ctx, req)
 }
 
+// ListDebuginfo calls debuginfo.v1alpha1.DebuginfoService.ListDebuginfo.
+func (c *debuginfoServiceClient) ListDebuginfo(ctx context.Context, req *connect.Request[v1alpha1.ListDebuginfoRequest]) (*connect.Response[v1alpha1.ListDebuginfoResponse], error) {
+	return c.listDebuginfo.CallUnary(ctx, req)
+}
+
+// DeleteDebuginfo calls debuginfo.v1alpha1.DebuginfoService.DeleteDebuginfo.
+func (c *debuginfoServiceClient) DeleteDebuginfo(ctx context.Context, req *connect.Request[v1alpha1.DeleteDebuginfoRequest]) (*connect.Response[v1alpha1.DeleteDebuginfoResponse], error) {
+	return c.deleteDebuginfo.CallUnary(ctx, req)
+}
+
 // DebuginfoServiceHandler is an implementation of the debuginfo.v1alpha1.DebuginfoService service.
 type DebuginfoServiceHandler interface {
 	ShouldInitiateUpload(context.Context, *connect.Request[v1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[v1alpha1.ShouldInitiateUploadResponse], error)
 	UploadFinished(context.Context, *connect.Request[v1alpha1.UploadFinishedRequest]) (*connect.Response[v1alpha1.UploadFinishedResponse], error)
+	ListDebuginfo(context.Context, *connect.Request[v1alpha1.ListDebuginfoRequest]) (*connect.Response[v1alpha1.ListDebuginfoResponse], error)
+	DeleteDebuginfo(context.Context, *connect.Request[v1alpha1.DeleteDebuginfoRequest]) (*connect.Response[v1alpha1.DeleteDebuginfoResponse], error)
 }
 
 // NewDebuginfoServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -114,12 +148,28 @@ func NewDebuginfoServiceHandler(svc DebuginfoServiceHandler, opts ...connect.Han
 		connect.WithSchema(debuginfoServiceMethods.ByName("UploadFinished")),
 		connect.WithHandlerOptions(opts...),
 	)
+	debuginfoServiceListDebuginfoHandler := connect.NewUnaryHandler(
+		DebuginfoServiceListDebuginfoProcedure,
+		svc.ListDebuginfo,
+		connect.WithSchema(debuginfoServiceMethods.ByName("ListDebuginfo")),
+		connect.WithHandlerOptions(opts...),
+	)
+	debuginfoServiceDeleteDebuginfoHandler := connect.NewUnaryHandler(
+		DebuginfoServiceDeleteDebuginfoProcedure,
+		svc.DeleteDebuginfo,
+		connect.WithSchema(debuginfoServiceMethods.ByName("DeleteDebuginfo")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/debuginfo.v1alpha1.DebuginfoService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case DebuginfoServiceShouldInitiateUploadProcedure:
 			debuginfoServiceShouldInitiateUploadHandler.ServeHTTP(w, r)
 		case DebuginfoServiceUploadFinishedProcedure:
 			debuginfoServiceUploadFinishedHandler.ServeHTTP(w, r)
+		case DebuginfoServiceListDebuginfoProcedure:
+			debuginfoServiceListDebuginfoHandler.ServeHTTP(w, r)
+		case DebuginfoServiceDeleteDebuginfoProcedure:
+			debuginfoServiceDeleteDebuginfoHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -135,4 +185,12 @@ func (UnimplementedDebuginfoServiceHandler) ShouldInitiateUpload(context.Context
 
 func (UnimplementedDebuginfoServiceHandler) UploadFinished(context.Context, *connect.Request[v1alpha1.UploadFinishedRequest]) (*connect.Response[v1alpha1.UploadFinishedResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("debuginfo.v1alpha1.DebuginfoService.UploadFinished is not implemented"))
+}
+
+func (UnimplementedDebuginfoServiceHandler) ListDebuginfo(context.Context, *connect.Request[v1alpha1.ListDebuginfoRequest]) (*connect.Response[v1alpha1.ListDebuginfoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("debuginfo.v1alpha1.DebuginfoService.ListDebuginfo is not implemented"))
+}
+
+func (UnimplementedDebuginfoServiceHandler) DeleteDebuginfo(context.Context, *connect.Request[v1alpha1.DeleteDebuginfoRequest]) (*connect.Response[v1alpha1.DeleteDebuginfoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("debuginfo.v1alpha1.DebuginfoService.DeleteDebuginfo is not implemented"))
 }

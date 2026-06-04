@@ -2,13 +2,13 @@ package queryfrontend
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
-	"github.com/pkg/errors"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"

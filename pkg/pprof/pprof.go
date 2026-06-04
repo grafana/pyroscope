@@ -18,7 +18,6 @@ import (
 	"github.com/colega/zeropool"
 	"github.com/google/pprof/profile"
 	"github.com/klauspost/compress/gzip"
-	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -72,7 +71,7 @@ func (r *gzipReader) openBytes(input []byte) (io.Reader, error) {
 		r.reader.Reset(input)
 		return r.reader, nil
 	} else if err != nil {
-		return nil, errors.Wrap(err, "gzip reset")
+		return nil, fmt.Errorf("gzip reset: %w", err)
 	}
 
 	return r.gzip, nil
@@ -122,7 +121,7 @@ func RawFromBytesWithLimit(input []byte, maxSize int64) (_ *Profile, err error) 
 	}
 
 	if _, err = io.Copy(buf, r); err != nil {
-		return nil, errors.Wrap(err, "copy to buffer")
+		return nil, fmt.Errorf("copy to buffer: %w", err)
 	}
 
 	// Check if we hit the size limit
@@ -447,10 +446,10 @@ func (p *Profile) WriteTo(w io.Writer) (int64, error) {
 
 	written, err := gzipWriter.Write(data)
 	if err != nil {
-		return 0, errors.Wrap(err, "gzip write")
+		return 0, fmt.Errorf("gzip write: %w", err)
 	}
 	if err := gzipWriter.Close(); err != nil {
-		return 0, errors.Wrap(err, "gzip close")
+		return 0, fmt.Errorf("gzip close: %w", err)
 	}
 	return int64(written), nil
 }
