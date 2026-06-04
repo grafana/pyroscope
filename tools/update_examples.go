@@ -183,21 +183,21 @@ func extractTempoVersion(major int) func(tag Tag) *version {
 }
 
 func updatePython() {
-	tags := getTagsV("grafana/pyroscope-rs", extractRSVersion("python"))
+	tags := getTagsV("grafana/pyroscope-python", extractRSVersion("python"))
 	last := tags[len(tags)-1]
 	fmt.Println(last)
 
 	re := regexp.MustCompile(`pyroscope-io==\d+\.\d+\.\d+`)
 	repl := fmt.Sprintf("pyroscope-io==%s", last.version())
 	replaceInplace(re, "examples/language-sdk-instrumentation/python/simple/requirements.txt", repl)
-	replaceInplace(re, "examples/language-sdk-instrumentation/python/rideshare/flask/Dockerfile", repl)
-	replaceInplace(re, "examples/language-sdk-instrumentation/python/rideshare/fastapi/Dockerfile", repl)
+	replaceInplace(re, "examples/language-sdk-instrumentation/python/rideshare/flask/requirements.txt", repl)
+	replaceInplace(re, "examples/language-sdk-instrumentation/python/rideshare/fastapi/requirements.txt", repl)
 	replaceInplace(re, "examples/language-sdk-instrumentation/python/rideshare/django/app/requirements.txt", repl)
 
 }
 
 func updateRuby() {
-	tags := getTagsV("grafana/pyroscope-rs", extractRSVersion("ruby"))
+	tags := getTagsV("grafana/pyroscope-ruby", extractRSVersion("ruby"))
 	last := tags[len(tags)-1]
 	fmt.Println(last)
 
