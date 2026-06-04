@@ -593,6 +593,7 @@ func TestUploadE2E(t *testing.T) {
 		assert.Equal(t, debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED, md.State)
 		assert.NotNil(t, md.StartedAt)
 		assert.NotNil(t, md.FinishedAt)
+		assert.Equal(t, int64(len("chunk-1-chunk-2-chunk-3")), md.SizeBytes)
 	})
 
 	t.Run("already uploaded returns should not initiate", func(t *testing.T) {
@@ -718,5 +719,57 @@ func TestUploadE2E(t *testing.T) {
 		httpResp := ts.upload(t, "test-tenant", "aabbccdd", []byte("this-is-way-too-large"))
 		assert.NotEqual(t, http.StatusOK, httpResp.StatusCode)
 		httpResp.Body.Close()
+	})
+}
+
+func TestDeleteDebuginfo(t *testing.T) {
+	t.Parallel()
+
+	t.Run("deletes metadata and object", func(t *testing.T) {
+		t.Parallel()
+		store, bucket := newTestStore(t, Config{Enabled: true, UploadStalePeriod: time.Minute})
+		ts := startTestServer(t, store)
+
+		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+
+		id := mustValidateGnuBuildID(t, "aabbccdd")
+		bucket.Set(ObjectPath("test-tenant", id), []byte("payload"))
+
+		md := &debuginfov1alpha1.ObjectMetadata{
+			File: &debuginfov1alpha1.FileMetadata{
+				GnuBuildId: "aabbccdd",
+				Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+			},
+			State:      debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED,
+			StartedAt:  timestamppb.New(time.Now().Add(-time.Minute)),
+			FinishedAt: timestamppb.New(time.Now()),
+		}
+		mdBytes, err := protojson.Marshal(md)
+		require.NoError(t, err)
+		bucket.Set(MetadataObjectPath("test-tenant", id), mdBytes)
+
+		_, err = ts.client.DeleteDebuginfo(ctx, connect.NewRequest(&debuginfov1alpha1.DeleteDebuginfoRequest{
+			GnuBuildId: "aabbccdd",
+		}))
+		require.NoError(t, err)
+
+		objects := bucket.Objects()
+		_, ok := objects[ObjectPath("test-tenant", id)]
+		assert.False(t, ok)
+		_, ok = objects[MetadataObjectPath("test-tenant", id)]
+		assert.False(t, ok)
+	})
+
+	t.Run("returns success when build id does not exist", func(t *testing.T) {
+		t.Parallel()
+		store, _ := newTestStore(t, Config{Enabled: true, UploadStalePeriod: time.Minute})
+		ts := startTestServer(t, store)
+
+		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+		resp, err := ts.client.DeleteDebuginfo(ctx, connect.NewRequest(&debuginfov1alpha1.DeleteDebuginfoRequest{
+			GnuBuildId: "aabbccdd",
+		}))
+		require.NoError(t, err)
+		require.NotNil(t, resp)
 	})
 }
