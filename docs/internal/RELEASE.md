@@ -33,6 +33,10 @@ Keep the generated changelog as is, after the summary sections.
 
 Make sure each release note has full links to the relevant pull requests.
 
+### Homebrew
+
+For releases that publish the `latest` tag (`IMAGE_PUBLISH_LATEST=true`), the release workflow regenerates the Homebrew formulas and opens a pull request against [grafana/homebrew-pyroscope](https://github.com/grafana/homebrew-pyroscope). The tap's `main` branch requires reviewed PRs (org ruleset), so the workflow cannot push to it directly. **A maintainer must review and merge that PR to publish the new version via `brew`.** This step does not block the rest of the release; the binaries, container images, and GitHub release are published regardless.
+
 ### Website Release Notes
 
 The list of changes from the GitHub release forms the basis of the public-facing release notes.
