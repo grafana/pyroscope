@@ -88,12 +88,15 @@ This will Pyroscope on `:4040` and the embedded Grafana on port `:4041`.
 
 #### Frontend development
 
+The frontend application is not in active development. While the UI it provides is usable and stable,
+the recommended way to view and analyze profiling data is to use the
+[Profiles Drilldown](https://grafana.com/docs/grafana/latest/visualizations/simplified-exploration/profiles/) Grafana app (pre-installed in recent Grafana versions).
+
+If you do need to make changes to the frontend code, the following instructions should get you started.
+
 The web UI lives in the `ui/` directory and is a dependency-minimal rewrite (React + Vite + TypeScript)
 of the older `public/app` UI. See [`ui/CLAUDE.md`](../../../ui/CLAUDE.md) and
 [`ui/DESIGN.md`](../../../ui/DESIGN.md) for the authoritative frontend guide.
-
-For end users, the recommended way to view and analyze profiling data is the
-[Profiles Drilldown](https://grafana.com/docs/grafana/latest/visualizations/simplified-exploration/profiles/) Grafana app (pre-installed in recent Grafana versions).
 
 The frontend uses **Yarn 4 (Berry)** and its `package.json` lives in `ui/` (not at the repository root).
 To run it in development mode:

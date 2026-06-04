@@ -100,4 +100,4 @@ Pyroscope uses a **microservices architecture** where a single binary can run di
 3. **Don't** create unbounded goroutines - use worker pools or semaphores
 4. **Don't** log PII or sensitive data
 5. **Don't** commit changes to `node_modules/` or generated code without source changes
-6. **Don't** edit the frontend without reading `ui/CLAUDE.md` first - the UI now lives in `ui/` (a dependency-minimal React+Vite rewrite), not `public/app/`
+6. **Don't** modify frontend code (`ui/`) - the frontend is not actively developed and changes are discouraged; if you do need to change it, read `ui/CLAUDE.md` first
