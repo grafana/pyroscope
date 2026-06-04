@@ -1,6 +1,6 @@
 # Pyroscope UI
 
-React + Vite + TypeScript frontend for Pyroscope. This frontend is a rewrite of the old UI (found in ../public/app). The objective of the app is to provide a single page query UI to query Pyroscope profiling data. The canonical implementation can be found in the old UI. When in doubt, try model behaviors found there.
+React + Vite + TypeScript frontend for Pyroscope. This frontend is a rewrite of the old UI that lived in `public/app` (removed in the ui v2 migration; still available in git history). The objective of the app is to provide a single page query UI to query Pyroscope profiling data. The old UI remains the canonical reference for behavior — when in doubt, check it out from git history and mirror what it did.
 
 ## Philosophy and ethos
 
