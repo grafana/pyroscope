@@ -6,7 +6,7 @@ gunicorn==20.1.0
 psycopg==3.2.9
 psycopg-binary==3.2.9
 pycparser==3.0
-pyroscope-io==1.0.5
+pyroscope-io==1.0.4
 setuptools==82.0.1
 sqlparse==0.5.5
 typing_extensions==4.15.0
