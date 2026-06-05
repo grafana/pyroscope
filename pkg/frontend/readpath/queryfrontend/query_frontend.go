@@ -170,10 +170,8 @@ func (q *QueryFrontend) doQuery(
 
 	// Measure bytes received from the metastore (serialized block metadata).
 	var metastoreBytes uint64
-	var estimatedBytes uint64
 	for _, b := range blocks {
 		metastoreBytes += uint64(b.SizeVT())
-		estimatedBytes += b.Size
 	}
 
 	var weight block.DatasetWeight
@@ -254,7 +252,7 @@ func (q *QueryFrontend) doQuery(
 	objectBytes := resp.GetDiagnostics().GetExecutionNode().GetStats().GetBytesFetched()
 	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "object_storage").Add(float64(objectBytes))
 	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "metastore").Add(float64(metastoreBytes))
-	q.metrics.estimatedBytesTotal.WithLabelValues(tenantLabel, "object_storage").Add(float64(estimatedBytes))
+	q.metrics.estimatedBytesTotal.WithLabelValues(tenantLabel, "object_storage").Add(float64(weight.Total()))
 	q.metrics.estimatedBytesTotal.WithLabelValues(tenantLabel, "metastore").Add(float64(metastoreBytes))
 	if qs := spanlogger.QueryStatsFromContext(ctx); qs != nil {
 		qs.ObjectStorageBytes += objectBytes
