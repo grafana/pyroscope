@@ -63,7 +63,8 @@ type QueryFrontend struct {
 }
 
 type queryFrontendMetrics struct {
-	fetchedBytesTotal *prometheus.CounterVec
+	fetchedBytesTotal   *prometheus.CounterVec
+	estimatedBytesTotal *prometheus.CounterVec
 }
 
 func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
@@ -77,9 +78,19 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 			},
 			[]string{"tenant", "kind"},
 		),
+		estimatedBytesTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Subsystem: "query_frontend",
+				Name:      "estimated_bytes_total",
+				Help:      "Total bytes estimated to fetch per tenant per source (object_storage, metastore).",
+			},
+			[]string{"tenant", "kind"},
+		),
 	}
 	if reg != nil {
 		reg.MustRegister(m.fetchedBytesTotal)
+		reg.MustRegister(m.estimatedBytesTotal)
 	}
 	return m
 }
@@ -111,7 +122,7 @@ func NewQueryFrontend(
 var xrand = rand.New(rand.NewSource(4349676827832284783))
 var xrandMutex = sync.Mutex{} // todo fix the race properly
 
-// backendCreator allows to modify behavior of a query after more about the dataset is learned from the QueryMetadata call.
+// backendWrapper allows to modify behavior of a query after more about the dataset is learned from the QueryMetadata call.
 // We currently use this mainly to change backend query, for symbolizing unsymbolized blocks.
 // TODO: Once symbolization moves to the query-backend, the query-backend plan should incorporate the symbolize step
 type backendWrapper = func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend
@@ -159,8 +170,10 @@ func (q *QueryFrontend) doQuery(
 
 	// Measure bytes received from the metastore (serialized block metadata).
 	var metastoreBytes uint64
+	var estimatedBytes uint64
 	for _, b := range blocks {
 		metastoreBytes += uint64(b.SizeVT())
+		estimatedBytes += b.Size
 	}
 
 	var weight block.DatasetWeight
@@ -241,6 +254,8 @@ func (q *QueryFrontend) doQuery(
 	objectBytes := resp.GetDiagnostics().GetExecutionNode().GetStats().GetBytesFetched()
 	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "object_storage").Add(float64(objectBytes))
 	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "metastore").Add(float64(metastoreBytes))
+	q.metrics.estimatedBytesTotal.WithLabelValues(tenantLabel, "object_storage").Add(float64(estimatedBytes))
+	q.metrics.estimatedBytesTotal.WithLabelValues(tenantLabel, "metastore").Add(float64(metastoreBytes))
 	if qs := spanlogger.QueryStatsFromContext(ctx); qs != nil {
 		qs.ObjectStorageBytes += objectBytes
 		qs.MetastoreBytes += metastoreBytes
