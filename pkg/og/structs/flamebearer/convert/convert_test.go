@@ -1,614 +1,115 @@
 package convert
 
 import (
-	"io/ioutil"
+	"os"
 	"reflect"
+	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )
 
-var _ = Describe("Server", func() {
-	Describe("Detecting format", func() {
-		Context("with a valid pprof type", func() {
-			When("there's only type", func() {
-				var m ProfileFile
+func readFile(path string) []byte {
+	f, err := os.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	return f
+}
 
-				BeforeEach(func() {
-					m = ProfileFile{
-						Type: "pprof",
-					}
-				})
-				It("should return pprof as type is be enough to detect the type", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(PprofToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-			When("there's pprof type and json filename", func() {
-				var m ProfileFile
+func requireConverter(t *testing.T, m ProfileFile, expected any) {
+	t.Helper()
 
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.json",
-						Type: "pprof",
-					}
-				})
-				It("should return pprof as type takes precedence over filename", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(PprofToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
+	f, err := converter(m)
+	require.NoError(t, err)
+	require.NotNil(t, f)
+	require.Equal(t, reflect.ValueOf(expected).Pointer(), reflect.ValueOf(f).Pointer())
+}
 
-			When("there's pprof type and json profile contents", func() {
-				var m ProfileFile
+func TestConverterDetectingFormat(t *testing.T) {
+	perfScriptData := []byte("java 12688 [002] 6544038.708352: cpu-clock:\n\n")
 
-				BeforeEach(func() {
-					m = ProfileFile{
-						Data: []byte(`{"flamebearer":""}`),
-						Type: "pprof",
-					}
-				})
-				It("should return pprof as type takes precedence over profile contents", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(PprofToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
+	tests := []struct {
+		name     string
+		file     ProfileFile
+		expected any
+		wantErr  bool
+	}{
+		// pprof by type
+		{name: "pprof type only", file: ProfileFile{Type: "pprof"}, expected: PprofToProfile},
+		{name: "pprof type over json filename", file: ProfileFile{Name: "profile.json", Type: "pprof"}, expected: PprofToProfile},
+		{name: "pprof type over json content", file: ProfileFile{Data: []byte(`{"flamebearer":""}`), Type: "pprof"}, expected: PprofToProfile},
+		// pprof by filename
+		{name: "pprof filename over json content", file: ProfileFile{Name: "profile.pprof", Data: []byte(`{"flamebearer":""}`)}, expected: PprofToProfile},
+		{name: "pprof filename ignores unsupported type", file: ProfileFile{Name: "profile.pprof", Type: "unsupported"}, expected: PprofToProfile},
+		// pprof by content
+		{name: "pprof uncompressed content", file: ProfileFile{Data: []byte{0x0a, 0x04}}, expected: PprofToProfile},
+		{name: "pprof gzip content", file: ProfileFile{Data: []byte{0x1f, 0x8b}}, expected: PprofToProfile},
+		{name: "pprof gzip ignores unsupported type", file: ProfileFile{Data: []byte{0x1f, 0x8b}, Type: "unsupported"}, expected: PprofToProfile},
+		{name: "pprof gzip ignores unsupported filename", file: ProfileFile{Name: "profile.unsupported", Data: []byte{0x1f, 0x8b}}, expected: PprofToProfile},
+		// json by type
+		{name: "json type only", file: ProfileFile{Type: "json"}, expected: JSONToProfile},
+		{name: "json type over pprof filename", file: ProfileFile{Name: "profile.pprof", Type: "json"}, expected: JSONToProfile},
+		{name: "json type over gzip content", file: ProfileFile{Data: []byte{0x1f, 0x8b}, Type: "json"}, expected: JSONToProfile},
+		// json by filename
+		{name: "json filename over gzip content", file: ProfileFile{Name: "profile.json", Data: []byte{0x1f, 0x8b}}, expected: JSONToProfile},
+		{name: "json filename ignores unsupported type", file: ProfileFile{Name: "profile.json", Type: "unsupported"}, expected: JSONToProfile},
+		// json by content
+		{name: "json content", file: ProfileFile{Data: []byte(`{"flamebearer":""}`)}, expected: JSONToProfile},
+		{name: "json content ignores unsupported type", file: ProfileFile{Data: []byte(`{"flamebearer":""}`), Type: "unsupported"}, expected: JSONToProfile},
+		{name: "json content ignores unsupported filename", file: ProfileFile{Name: "profile.unsupported", Data: []byte(`{"flamebearer":""}`)}, expected: JSONToProfile},
+		// collapsed by type
+		{name: "collapsed type only", file: ProfileFile{Type: "collapsed"}, expected: CollapsedToProfile},
+		{name: "collapsed type over pprof filename", file: ProfileFile{Name: "profile.pprof", Type: "collapsed"}, expected: CollapsedToProfile},
+		{name: "collapsed type over gzip content", file: ProfileFile{Data: []byte{0x1f, 0x8b}, Type: "collapsed"}, expected: CollapsedToProfile},
+		// collapsed by filename
+		{name: "collapsed filename over gzip content", file: ProfileFile{Name: "profile.collapsed", Data: []byte{0x1f, 0x8b}}, expected: CollapsedToProfile},
+		{name: "collapsed filename ignores unsupported type", file: ProfileFile{Name: "profile.collapsed", Type: "unsupported"}, expected: CollapsedToProfile},
+		{name: "collapsed txt filename ignores unsupported type", file: ProfileFile{Name: "profile.collapsed.txt", Type: "unsupported"}, expected: CollapsedToProfile},
+		// collapsed by content
+		{name: "collapsed content", file: ProfileFile{Data: []byte("fn1 1\nfn2 2")}, expected: CollapsedToProfile},
+		{name: "collapsed content ignores unsupported type", file: ProfileFile{Data: []byte("fn1 1\nfn2 2"), Type: "unsupported"}, expected: CollapsedToProfile},
+		{name: "collapsed content ignores unsupported filename", file: ProfileFile{Name: "profile.unsupported", Data: []byte("fn1 1\nfn2 2")}, expected: CollapsedToProfile},
+		// perf script
+		{name: "perf script by content", file: ProfileFile{Data: perfScriptData}, expected: PerfScriptToProfile},
+		{name: "perf script by txt extension", file: ProfileFile{Name: "foo.txt", Data: perfScriptData}, expected: PerfScriptToProfile},
+		{name: "perf script by extension", file: ProfileFile{Name: "foo.perf_script", Data: []byte("foo;bar 239")}, expected: PerfScriptToProfile},
+		// error
+		{name: "empty profile file", file: ProfileFile{}, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.wantErr {
+				_, err := converter(tt.file)
+				require.Error(t, err)
+				return
+			}
+			requireConverter(t, tt.file, tt.expected)
 		})
+	}
+}
 
-		Context("with no (valid) type and a valid pprof filename", func() {
-			When("there's pprof filename and json profile contents", func() {
-				var m ProfileFile
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.pprof",
-						Data: []byte(`{"flamebearer":""}`),
-					}
-				})
-
-				It("should return pprof as filename takes precedence over profile contents", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(PprofToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-			When("there's pprof filename and an unsupported type", func() {
-				var m ProfileFile
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.pprof",
-						Type: "unsupported",
-					}
-				})
-
-				It("should return pprof as unsupported type is ignored", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(PprofToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-		})
-
-		Context("with no (valid) type and filename, a valid pprof profile", func() {
-			When("there's a profile with uncompressed pprof content", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Data: []byte{0x0a, 0x04},
-					}
-				})
-
-				It("should return pprof", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(PprofToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-
-			When("there's a profile with compressed pprof content", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Data: []byte{0x1f, 0x8b},
-					}
-				})
-
-				It("should return pprof", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(PprofToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-
-			When("there's a profile with compressed pprof content and an unsupported type", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Data: []byte{0x1f, 0x8b},
-						Type: "unsupported",
-					}
-				})
-
-				It("should return pprof as unsupported types are ignored", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(PprofToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-
-			When("there's a profile with compressed pprof content and unsupported filename", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.unsupported",
-						Data: []byte{0x1f, 0x8b},
-					}
-				})
-
-				It("should return pprof as unsupported filenames are ignored", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(PprofToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-		})
-
-		Context("with a valid json type", func() {
-			When("there's only type", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Type: "json",
-					}
-				})
-				It("should return json as type is be enough to detect the type", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(JSONToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-			When("there's json type and pprof filename", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.pprof",
-						Type: "json",
-					}
-				})
-				It("should return json as type takes precedence over filename", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(JSONToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-
-			When("there's json type and pprof profile contents", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Data: []byte{0x1f, 0x8b},
-						Type: "json",
-					}
-				})
-				It("should return json as type takes precedence over profile contents", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(JSONToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-		})
-
-		Context("with no (valid) type and a valid json filename", func() {
-			When("there's json filename and pprof profile contents", func() {
-				var m ProfileFile
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.json",
-						Data: []byte{0x1f, 0x8b},
-					}
-				})
-
-				It("should return json as filename takes precedence over profile contents", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(JSONToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-			When("there's json filename and an unsupported type", func() {
-				var m ProfileFile
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.json",
-						Type: "unsupported",
-					}
-				})
-
-				It("should return json as unsupported type is ignored", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(JSONToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-		})
-
-		Context("with no (valid) type and filename, a valid json profile", func() {
-			When("there's a profile with json content", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Data: []byte(`{"flamebearer":""}`),
-					}
-				})
-
-				It("should return json", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(JSONToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-
-			When("there's a profile with json content and an unsupported type", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Data: []byte(`{"flamebearer":""}`),
-						Type: "unsupported",
-					}
-				})
-
-				It("should return json as unsupported types are ignored", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(JSONToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-
-			When("there's a profile with json content and unsupported filename", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.unsupported",
-						Data: []byte(`{"flamebearer":""}`),
-					}
-				})
-
-				It("should return json as unsupported filenames are ignored", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(JSONToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-		})
-
-		Context("with a valid collapsed type", func() {
-			When("there's only type", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Type: "collapsed",
-					}
-				})
-				It("should return collapsed as type is be enough to detect the type", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(CollapsedToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-			When("there's collapsed type and pprof filename", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.pprof",
-						Type: "collapsed",
-					}
-				})
-				It("should return collapsed as type takes precedence over filename", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(CollapsedToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-
-			When("there's json type and pprof profile contents", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Data: []byte{0x1f, 0x8b},
-						Type: "collapsed",
-					}
-				})
-				It("should return collapsed as type takes precedence over profile contents", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(CollapsedToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-		})
-
-		Context("with no (valid) type and a valid collapsed filename", func() {
-			When("there's collapsed filename and pprof profile contents", func() {
-				var m ProfileFile
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.collapsed",
-						Data: []byte{0x1f, 0x8b},
-					}
-				})
-
-				It("should return collapsed as filename takes precedence over profile contents", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(CollapsedToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-			When("there's collapsed filename and an unsupported type", func() {
-				var m ProfileFile
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.collapsed",
-						Type: "unsupported",
-					}
-				})
-
-				It("should return collapsed as unsupported type is ignored", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(CollapsedToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-
-			When("there's collapsed text filename and an unsupported type", func() {
-				var m ProfileFile
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.collapsed.txt",
-						Type: "unsupported",
-					}
-				})
-
-				It("should return collapsed as unsupported type is ignored", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(CollapsedToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-		})
-
-		Context("with no (valid) type and filename, a valid collapsed profile", func() {
-			When("there's a profile with collapsed content", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Data: []byte("fn1 1\nfn2 2"),
-					}
-				})
-
-				It("should return collapsed", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(CollapsedToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-
-			When("there's a profile with collapsed content and an unsupported type", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Data: []byte("fn1 1\nfn2 2"),
-						Type: "unsupported",
-					}
-				})
-
-				It("should return collapsed as unsupported types are ignored", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(CollapsedToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-
-			When("there's a profile with collapsed content and unsupported filename", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "profile.unsupported",
-						Data: []byte("fn1 1\nfn2 2"),
-					}
-				})
-
-				It("should return collapsed as unsupported filenames are ignored", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(CollapsedToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-		})
-
-		Context("perf script", func() {
-			When("detect by content", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Data: []byte("java 12688 [002] 6544038.708352: cpu-clock:\n\n"),
-					}
-				})
-
-				It("should return perf_script", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(PerfScriptToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-			When("detect by .txt extension and content", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "foo.txt",
-						Data: []byte("java 12688 [002] 6544038.708352: cpu-clock:\n\n"),
-					}
-				})
-
-				It("should return perf_script", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(PerfScriptToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-			When("detect by .perf_script extension", func() {
-				var m ProfileFile
-
-				BeforeEach(func() {
-					m = ProfileFile{
-						Name: "foo.perf_script",
-						Data: []byte("foo;bar 239"),
-					}
-				})
-
-				It("should return perf_script", func() {
-					// We want to compare functions, which is not ideal.
-					expected := reflect.ValueOf(PerfScriptToProfile).Pointer()
-					f, err := converter(m)
-					Expect(err).To(BeNil())
-					Expect(f).ToNot(BeNil())
-					Expect(reflect.ValueOf(f).Pointer()).To(Equal(expected))
-				})
-			})
-		})
-
-		Context("with an empty ProfileFile", func() {
-			var m ProfileFile
-			It("should return an error", func() {
-				_, err := converter(m)
-				Expect(err).ToNot(Succeed())
-			})
-		})
-	})
-})
-
-var _ = Describe("Convert", func() {
-	It("converts malformed pprof", func() {
+func TestConvert(t *testing.T) {
+	t.Run("converts malformed pprof", func(t *testing.T) {
 		m := ProfileFile{
 			Type: "pprof",
 			Data: readFile("./testdata/cpu-unknown.pb.gz"),
 		}
 
 		f, err := converter(m)
-		Expect(err).To(BeNil())
-		Expect(f).ToNot(BeNil())
+		require.NoError(t, err)
+		require.NotNil(t, f)
 
 		b, err := f(m.Data, "appname", Limits{MaxNodes: 1024})
-		Expect(err).To(BeNil())
-		Expect(b).ToNot(BeNil())
+		require.NoError(t, err)
+		require.NotNil(t, b)
 	})
 
-	It("handles pprof invalid fields gracefully", func() {
+	t.Run("handles pprof invalid fields gracefully", func(t *testing.T) {
 		p := &profilev1.Profile{
 			SampleType: []*profilev1.ValueType{
 				{Type: 1, Unit: 2},
@@ -623,11 +124,10 @@ var _ = Describe("Convert", func() {
 				{Id: 1, Name: 1},
 			},
 			StringTable: []string{"", "cpu", "count", "main"},
-			PeriodType:  nil, // This is the problematic case
 		}
 
 		data, err := proto.Marshal(p)
-		Expect(err).To(BeNil())
+		require.NoError(t, err)
 
 		m := ProfileFile{
 			Type: "pprof",
@@ -635,40 +135,29 @@ var _ = Describe("Convert", func() {
 		}
 
 		f, err := converter(m)
-		Expect(err).To(BeNil())
-		Expect(f).ToNot(BeNil())
+		require.NoError(t, err)
+		require.NotNil(t, f)
 
 		b, err := f(m.Data, "test-profile", Limits{MaxNodes: 1024})
-		Expect(err).ToNot(BeNil())
-		Expect(err.Error()).To(ContainSubstring("PeriodType is nil"))
-		Expect(b).To(BeNil())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "PeriodType is nil")
+		require.Nil(t, b)
 	})
 
-	Describe("JSON", func() {
-		It("prunes tree", func() {
-			m := ProfileFile{
-				Type: "json",
-				Data: readFile("./testdata/profile.json"),
-			}
+	t.Run("JSON prunes tree", func(t *testing.T) {
+		m := ProfileFile{
+			Type: "json",
+			Data: readFile("./testdata/profile.json"),
+		}
 
-			f, err := converter(m)
-			Expect(err).To(BeNil())
-			Expect(f).ToNot(BeNil())
+		f, err := converter(m)
+		require.NoError(t, err)
+		require.NotNil(t, f)
 
-			b, err := f(m.Data, "appname", Limits{MaxNodes: 1})
-			Expect(err).To(BeNil())
-			Expect(b).ToNot(BeNil())
+		b, err := f(m.Data, "appname", Limits{MaxNodes: 1})
+		require.NoError(t, err)
+		require.NotNil(t, b)
 
-			// 1 + total
-			Expect(len(b[0].FlamebearerProfileV1.Flamebearer.Levels)).To(Equal(2))
-		})
+		require.Len(t, b[0].FlamebearerProfileV1.Flamebearer.Levels, 2)
 	})
-})
-
-func readFile(path string) []byte {
-	f, err := ioutil.ReadFile(path)
-	if err != nil {
-		panic(err)
-	}
-	return f
 }

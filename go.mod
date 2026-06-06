@@ -11,7 +11,6 @@ require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/colega/zeropool v0.0.0-20230505084239-6fb4a4f75381
-	github.com/dennwc/varint v1.0.0
 	github.com/dgraph-io/ristretto/v2 v2.4.0
 	github.com/dgryski/go-groupvarint v0.0.0-20230630160417-2bfb7969fb3c
 	github.com/dolthub/swiss v0.2.1
@@ -49,8 +48,6 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.28.3
-	github.com/onsi/gomega v1.40.0
 	github.com/parquet-go/parquet-go v0.26.4
 	github.com/planetscale/vtprotobuf v0.6.1-0.20250313105119-ba97887b0a25
 	github.com/platinummonkey/go-concurrency-limits v0.10.0
@@ -89,11 +86,11 @@ require (
 )
 
 require (
-	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.8 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/basgys/goxml2json v1.1.1-0.20231018121955-e66ee54ceaad // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
+	github.com/dennwc/varint v1.0.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/go-openapi/swag/cmdutils v0.25.5 // indirect
 	github.com/go-openapi/swag/conv v0.25.5 // indirect
@@ -208,7 +205,6 @@ require (
 	github.com/go-openapi/strfmt v0.26.1 // indirect
 	github.com/go-openapi/swag v0.25.5 // indirect
 	github.com/go-openapi/validate v0.25.1 // indirect
-	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect

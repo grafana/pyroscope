@@ -118,25 +118,33 @@ func updateRust() {
 }
 
 func updateDotnet() {
-	tags := getTagsV("grafana/pyroscope-dotnet", extractDotnetVersion())
+	tags := getTagsV("grafana/pyroscope-dotnet", extractDotnetComponentVersion("pyroscope"))
 	last := tags[len(tags)-1]
 	fmt.Println(last)
 
-	reDockerGlibc := regexp.MustCompile(`grafana/pyroscope-dotnet:\d+\.\d+\.\d+-glibc`)
-	replDockerGlibc := fmt.Sprintf("grafana/pyroscope-dotnet:%s-glibc", last.version())
-	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/fast-slow/Dockerfile", replDockerGlibc)
-	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/rideshare/Dockerfile", replDockerGlibc)
-	replaceInplace(reDockerGlibc, "examples/language-sdk-instrumentation/dotnet/web-new/Dockerfile", replDockerGlibc)
-	replaceInplace(reDockerGlibc, "docs/sources/configure-client/language-sdks/dotnet.md", replDockerGlibc)
+	reArg := regexp.MustCompile(`ARG PROFILER_VERSION=\d+\.\d+\.\d+`)
+	replArg := fmt.Sprintf("ARG PROFILER_VERSION=%s", last.version())
+	for _, f := range []string{
+		"examples/tracing/dotnet/Dockerfile",
+		"examples/language-sdk-instrumentation/dotnet/fast-slow/Dockerfile",
+		"examples/language-sdk-instrumentation/dotnet/fast-slow/musl.Dockerfile",
+		"examples/language-sdk-instrumentation/dotnet/rideshare/Dockerfile",
+		"examples/language-sdk-instrumentation/dotnet/rideshare/musl.Dockerfile",
+		"examples/language-sdk-instrumentation/dotnet/web-new/Dockerfile",
+	} {
+		replaceInplace(reArg, f, replArg)
+	}
 
-	reDockerMusl := regexp.MustCompile(`grafana/pyroscope-dotnet:\d+\.\d+\.\d+-musl`)
-	replDockerMusl := fmt.Sprintf("grafana/pyroscope-dotnet:%s-musl", last.version())
-	replaceInplace(reDockerMusl, "examples/language-sdk-instrumentation/dotnet/fast-slow/musl.Dockerfile", replDockerMusl)
-	replaceInplace(reDockerMusl, "examples/language-sdk-instrumentation/dotnet/rideshare/musl.Dockerfile", replDockerMusl)
-
-	reUrl := regexp.MustCompile(`https://github\.com/grafana/pyroscope-dotnet/releases/download/v\d+\.\d+\.\d+-pyroscope/pyroscope.\d+\.\d+\.\d+-glibc-x86_64.tar.gz`)
-	replUrl := fmt.Sprintf("https://github.com/grafana/pyroscope-dotnet/releases/download/v%s-pyroscope/pyroscope.%s-glibc-x86_64.tar.gz", last.version(), last.version())
+	reUrl := regexp.MustCompile(`https://github\.com/grafana/pyroscope-dotnet/releases/download/(?:v\d+\.\d+\.\d+-pyroscope|pyroscope-\d+\.\d+\.\d+)/pyroscope\.\d+\.\d+\.\d+-glibc-x86_64\.tar\.gz`)
+	replUrl := fmt.Sprintf("https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-%s/pyroscope.%s-glibc-x86_64.tar.gz", last.version(), last.version())
 	replaceInplace(reUrl, "docs/sources/configure-client/language-sdks/dotnet.md", replUrl)
+
+	otelTags := getTagsV("grafana/pyroscope-dotnet", extractDotnetComponentVersion("opentelemetry"))
+	lastOtel := otelTags[len(otelTags)-1]
+	fmt.Println("Pyroscope.OpenTelemetry", lastOtel)
+	reOtelPkg := regexp.MustCompile(`<PackageReference Include="Pyroscope.OpenTelemetry" Version="\d+\.\d+\.\d+" />`)
+	replOtelPkg := fmt.Sprintf(`<PackageReference Include="Pyroscope.OpenTelemetry" Version="%s" />`, lastOtel.version())
+	replaceInplace(reOtelPkg, "examples/tracing/dotnet/example/Example.csproj", replOtelPkg)
 }
 
 func updateTempo() {
@@ -183,21 +191,21 @@ func extractTempoVersion(major int) func(tag Tag) *version {
 }
 
 func updatePython() {
-	tags := getTagsV("grafana/pyroscope-rs", extractRSVersion("python"))
+	tags := getTagsV("grafana/pyroscope-python", extractRSVersion("python"))
 	last := tags[len(tags)-1]
 	fmt.Println(last)
 
 	re := regexp.MustCompile(`pyroscope-io==\d+\.\d+\.\d+`)
 	repl := fmt.Sprintf("pyroscope-io==%s", last.version())
 	replaceInplace(re, "examples/language-sdk-instrumentation/python/simple/requirements.txt", repl)
-	replaceInplace(re, "examples/language-sdk-instrumentation/python/rideshare/flask/Dockerfile", repl)
-	replaceInplace(re, "examples/language-sdk-instrumentation/python/rideshare/fastapi/Dockerfile", repl)
+	replaceInplace(re, "examples/language-sdk-instrumentation/python/rideshare/flask/requirements.txt", repl)
+	replaceInplace(re, "examples/language-sdk-instrumentation/python/rideshare/fastapi/requirements.txt", repl)
 	replaceInplace(re, "examples/language-sdk-instrumentation/python/rideshare/django/app/requirements.txt", repl)
 
 }
 
 func updateRuby() {
-	tags := getTagsV("grafana/pyroscope-rs", extractRSVersion("ruby"))
+	tags := getTagsV("grafana/pyroscope-ruby", extractRSVersion("ruby"))
 	last := tags[len(tags)-1]
 	fmt.Println(last)
 
@@ -325,23 +333,31 @@ func updateJfrParser() {
 	s.sh(" go get github.com/grafana/jfr-parser@" + parserVersion.versionV())
 }
 
-func extractDotnetVersion() func(tag Tag) *version {
+// extractDotnetComponentVersion matches release tags for a pyroscope-dotnet
+// component (e.g. "pyroscope" or "opentelemetry"), which are versioned
+// independently of each other. The repo migrated to release-please, which tags
+// releases with a component prefix and no leading "v" (e.g. "pyroscope-1.0.0",
+// "opentelemetry-0.4.1"). Older releases used the opposite convention: a "v"
+// prefix and a component suffix (e.g. "v0.15.0-pyroscope"). Both forms are
+// matched so the script keeps working across the transition.
+func extractDotnetComponentVersion(component string) func(tag Tag) *version {
+	prefix := regexp.MustCompile(`^` + component + `-(\d+)\.(\d+)\.(\d+)$`)
+	suffix := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)-` + component + `$`)
 	return func(tag Tag) *version {
-		re := regexp.MustCompile(`v(\d+).(\d+).(\d+)(-pyroscope)?$`)
-		match := re.FindStringSubmatch(tag.Name)
-		if match != nil {
-			fmt.Println(len(match), match)
-
-			major, err := strconv.Atoi(match[1])
-			requireNoError(err, "strconv")
-			minor, err := strconv.Atoi(match[2])
-			requireNoError(err, "strconv")
-			patch, err := strconv.Atoi(match[3])
-			requireNoError(err, "strconv")
-			return &version{major: major, minor: minor, patch: patch, tag: tag}
-
+		match := prefix.FindStringSubmatch(tag.Name)
+		if match == nil {
+			match = suffix.FindStringSubmatch(tag.Name)
 		}
-		return nil
+		if match == nil {
+			return nil
+		}
+		major, err := strconv.Atoi(match[1])
+		requireNoError(err, "strconv")
+		minor, err := strconv.Atoi(match[2])
+		requireNoError(err, "strconv")
+		patch, err := strconv.Atoi(match[3])
+		requireNoError(err, "strconv")
+		return &version{major: major, minor: minor, patch: patch, tag: tag}
 	}
 }
 
