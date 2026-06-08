@@ -37,6 +37,20 @@ Pyroscope consists of three main components:
 - **Clients and instrumentation:** Profiling data reaches the server in several ways: the [Pyroscope SDKs](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/) (push), [Grafana Alloy](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/) (pull or push), or OTLP from OpenTelemetry-compatible sources such as the [OpenTelemetry eBPF profiler](https://grafana.com/docs/pyroscope/latest/configure-client/opentelemetry/ebpf-profiler/).
 - **Grafana Profiles Drilldown:** A queryless, intuitive UI for visualizing and analyzing profiling data (formerly Explore Profiles).
 
+Under the hood, Pyroscope v2 writes profiles straight to object storage—no ingesters, no local disk. The animations below trace the three parts of the architecture. For the details behind each component, see the [v2 architecture documentation](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-v2-architecture/).
+
+**Write path** — profiles are routed by service and written straight to object storage:
+
+![Pyroscope v2 write path](images/pyroscope-v2-write-path.gif)
+
+**Compaction** — compaction-workers merge small segments into larger blocks in the background:
+
+![Pyroscope v2 compaction](images/pyroscope-v2-compaction.gif)
+
+**Read path** — queries fan out across object storage to build flame graphs in Grafana Profiles Drilldown:
+
+![Pyroscope v2 read path](images/pyroscope-v2-read-path.gif)
+
 ---
 
 ## [Pyroscope Live Demo](https://play.grafana.org/a/grafana-pyroscope-app/explore)

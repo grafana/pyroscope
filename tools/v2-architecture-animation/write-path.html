@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Pyroscope v2 — write path</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #f7f7f7; }
+  #stage { display: block; }
+  text { font-family: "DejaVu Sans Mono", "Menlo", "Consolas", "Courier New", monospace; }
+</style>
+</head>
+<body>
+<svg id="stage" width="1180" height="528" viewBox="0 0 1180 528" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="1180" height="528" fill="#f7f7f7"/>
+  <g id="static"></g>
+  <g id="dynamic"></g>
+  <g id="markers"></g>
+</svg>
+<script src="lib.js"></script>
+<script>
+const sroot = document.getElementById("static");
+const droot = document.getElementById("dynamic");
+const mroot = document.getElementById("markers");
+
+const boxes = {
+  appA:        { x: 40,  y: 104, w: 184, h: 86,  fill: "#d0ebff" },
+  appB:        { x: 40,  y: 272, w: 184, h: 86,  fill: "#d0ebff" },
+  distributor: { x: 300, y: 172, w: 170, h: 120, fill: "#e5dbff" },
+  segwriter:   { x: 524, y: 172, w: 240, h: 150, fill: "#ffe8cc" },
+  objstore:    { x: 820, y: 96,  w: 330, h: 410, fill: "#ebfbee" },
+  metastore:   { x: 524, y: 362, w: 240, h: 92,  fill: "#ffe3e3" },
+};
+const A = {}; for (const k in boxes) A[k] = anchors(boxes[k]);
+
+// app -> distributor -> segment-writer (markers pass through the distributor box)
+const flowA = [[224, 147], [268, 147], [268, 232], [300, 232], [470, 232], [524, 240], [560, 250]];
+const flowB = [[224, 315], [268, 315], [268, 232], [300, 232], [470, 232], [524, 240], [560, 250]];
+const FLOW = [flowA, flowB];
+
+// ---- static scene ----
+el("text", { x: 40, y: 54, "font-size": 30, "font-weight": 700, fill: INK }, sroot).textContent = "Write path";
+el("text", { x: 40, y: 82, "font-size": 16, "font-weight": 500, fill: MUT }, sroot)
+  .textContent = "many applications push profiles; they are written straight to object storage";
+
+conn(sroot, [[224, 147], [268, 147], [268, 232], [300, 232]]);
+conn(sroot, [[224, 315], [268, 315], [268, 232], [300, 232]]);
+conn(sroot, [[470, 232], [524, 240]]);
+conn(sroot, [[764, 250], [820, 250]]);
+conn(sroot, [[644, 322], [644, 362]], { dash: "5 5" });
+el("text", { x: 654, y: 346, "font-size": 12, fill: MUT }, sroot).textContent = "notify";
+
+drawBox(sroot, boxes.appA, [
+  { t: "Application 1", bold: true, size: 17 },
+  { t: "SDK · Alloy · OTLP", size: 13, fill: SUB },
+], { accent: "#1c7ed6" });
+drawBox(sroot, boxes.appB, [
+  { t: "Application N", bold: true, size: 17 },
+  { t: "SDK · Alloy · OTLP", size: 13, fill: SUB },
+], { accent: "#1c7ed6" });
+// "many more" indicator between the two app boxes
+el("text", { x: 132, y: 226, "text-anchor": "middle", "font-size": 26, "font-weight": 700, fill: MUT }, sroot).textContent = "⋮";
+el("text", { x: 132, y: 250, "text-anchor": "middle", "font-size": 12, fill: MUT }, sroot).textContent = "many apps";
+
+drawBox(sroot, boxes.distributor, [
+  { t: "Distributor", bold: true, size: 18 },
+  { t: "route by", size: 14, fill: SUB, gap: 19 },
+  { t: "service_name", size: 14, fill: SUB },
+], { accent: "#7048e8" });
+drawBox(sroot, boxes.segwriter, [
+  { t: "Segment-Writer", bold: true, size: 18 },
+  { t: "batch flame graphs", size: 13, fill: SUB },
+], { accent: "#e8590c" });
+drawBox(sroot, boxes.objstore, [
+  { t: "Object Storage", bold: true, size: 21 },
+  { t: "S3 · GCS · Azure", size: 15, fill: SUB },
+], { accent: "#37b24d", titleOffset: 34 });
+drawBox(sroot, boxes.metastore, [
+  { t: "Metastore", bold: true, size: 18 },
+  { t: "block index · Raft", size: 14, fill: SUB },
+], { accent: "#e64980" });
+
+// ---- a stored segment: a single labelled box (not a flame graph) ----
+function segBox(parent, x, y, w, h, idx) {
+  const g = el("g", { opacity: 0 }, parent);
+  el("rect", { x, y, width: w, height: h, rx: 7, fill: "#e7f5ff", stroke: INK, "stroke-width": 1.6 }, g);
+  el("rect", { x, y, width: w, height: 5, rx: 2, fill: FLAME[idx % FLAME.length] }, g);
+  el("text", { x: x + w / 2, y: y + h / 2 + 6, "text-anchor": "middle", "font-size": 14, "font-weight": 700, fill: "#1c4b82" }, g)
+    .textContent = "segment";
+  return { setReveal(v) { g.setAttribute("opacity", v); } };
+}
+// a single segment box that travels (centered transform)
+function segGlyph(parent, w, h) {
+  const g = el("g", { opacity: 0 }, parent);
+  el("rect", { x: -w / 2, y: -h / 2, width: w, height: h, rx: 6, fill: "#e7f5ff", stroke: INK, "stroke-width": 1.6 }, g);
+  el("rect", { x: -w / 2, y: -h / 2, width: w, height: 4, rx: 2, fill: "#37b24d" }, g);
+  el("text", { x: 0, y: 4, "text-anchor": "middle", "font-size": 11, "font-weight": 700, fill: "#1c4b82" }, g)
+    .textContent = "segment";
+  return {
+    at(x, y, op = 1) { g.setAttribute("transform", `translate(${x},${y})`); g.setAttribute("opacity", op); },
+    hide() { g.setAttribute("opacity", 0); },
+  };
+}
+
+// ---- dynamic state ----
+// in-flight flame graphs (proper icicle shape), pool reused across the loop
+const POOL = 6;
+const fgPool = Array.from({ length: POOL }, (_, i) => makeIcicle(mroot, 26, 5, i + 1, 4));
+
+// segment-writer buffer: 10 small blocks (5 x 2) — one per flame graph received
+const bufG = el("g", {}, droot);
+const BUF_COLS = 5, BUF_BW = 20, BUF_BH = 12, BUF_GX = 6, BUF_GY = 8;
+const bufW = BUF_COLS * (BUF_BW + BUF_GX) - BUF_GX;
+const bufX = boxes.segwriter.x + (boxes.segwriter.w - bufW) / 2;
+const bufY = 270;
+const bufBlocks = [];
+for (let i = 0; i < 10; i++) {
+  const col = i % BUF_COLS, row = Math.floor(i / BUF_COLS);
+  bufBlocks.push(el("rect", { x: bufX + col * (BUF_BW + BUF_GX), y: bufY + row * (BUF_BH + BUF_GY),
+    width: BUF_BW, height: BUF_BH, rx: 2, fill: FLAME[i % FLAME.length], opacity: 0,
+    stroke: "#00000022", "stroke-width": 0.5 }, bufG));
+}
+const bufCount = el("text", { x: boxes.segwriter.x + boxes.segwriter.w / 2, y: 256,
+  "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#e8590c" }, droot);
+
+// merged segment travelling to object storage
+const mergedSeg = segGlyph(mroot, 120, 30);
+const mNotify = marker(mroot, "#4263eb", 12);
+
+// 5 segments accumulating in object storage (single boxes)
+const SLOTS = 5, segW = 250, segH = 42;
+const segX = boxes.objstore.x + (boxes.objstore.w - segW) / 2;
+const segTop = c => 172 + c * 66;
+const osSeg = Array.from({ length: SLOTS }, (_, c) => segBox(droot, segX, segTop(c), segW, segH, c));
+const flushPath = c => [[700, 286], [segX - 30, segTop(c) + segH / 2], [segX + segW / 2, segTop(c) + segH / 2]];
+
+// ---- timeline ----
+const T0 = 0.05, T1 = 0.90, CYCLES = 5, PER = 10;
+const SPAN = (T1 - T0) / CYCLES, FILL = 0.70, TRAVEL = 0.032;
+
+// precompute flame-graph arrivals
+const fgs = [];
+for (let c = 0; c < CYCLES; c++)
+  for (let k = 0; k < PER; k++) {
+    const arrive = T0 + c * SPAN + ((k + 1) / PER) * FILL * SPAN;
+    fgs.push({ emit: arrive - TRAVEL, arrive, app: k % 2 });
+  }
+
+function seek(t) {
+  t = clamp(t, 0, 1);
+  const fade = t < 0.03 ? seg(t, 0, 0.03, false) : (t > 0.96 ? 1 - seg(t, 0.96, 1, false) : 1);
+  fgPool.forEach(g => g.hide());
+  mergedSeg.hide();
+  mNotify.hide();
+
+  // object-storage segments: count flushes that have landed
+  let osBlocks = 0;
+  for (let c = 0; c < CYCLES; c++) {
+    const land = T0 + c * SPAN + FILL * SPAN + 0.5 * (1 - FILL) * SPAN;
+    if (t >= land) osBlocks = c + 1;
+  }
+  if (t >= T1) osBlocks = CYCLES;
+  osSeg.forEach((b, c) => b.setReveal(c < osBlocks ? 1 : 0));
+
+  // segment-writer buffer fill = arrivals minus already-flushed
+  const arrived = fgs.filter(f => t >= f.arrive).length;
+  let segCount = clamp(arrived - PER * osBlocks, 0, PER);
+
+  // active cycle's merge/flush
+  let bufFade = 1;
+  if (t >= T0 && t < T1) {
+    const c = clamp(Math.floor((t - T0) / SPAN), 0, CYCLES - 1);
+    const mergeStart = T0 + c * SPAN + FILL * SPAN;
+    const mergeEnd = T0 + (c + 1) * SPAN;
+    const land = mergeStart + 0.5 * (mergeEnd - mergeStart);
+    if (t >= mergeStart && t < mergeEnd) {
+      segCount = PER;
+      bufFade = 1 - seg(t, mergeStart + 0.18 * (mergeEnd - mergeStart), land, false);
+      if (t < land) {
+        const p = seg(t, mergeStart, land, false);
+        mergedSeg.at(...pointAt(flushPath(c), p), 1);
+      }
+      if (t >= land - 0.015 && t < land + 0.03) {
+        mNotify.at(...pointAt([[644, 322], [644, 362]], seg(t, land - 0.015, land + 0.03, false)));
+      }
+    }
+  } else if (t >= T1) {
+    segCount = 0;
+  }
+
+  // render buffer
+  bufG.setAttribute("opacity", bufFade);
+  bufBlocks.forEach((r, i) => r.setAttribute("opacity", i < segCount ? 1 : 0));
+  bufCount.textContent = (t >= T0 && t < T1) ? segCount + " / 10" : "";
+
+  // in-flight flame graphs
+  const live = fgs.filter(f => t >= f.emit && t < f.arrive);
+  live.slice(0, POOL).forEach((f, i) => {
+    const p = (t - f.emit) / TRAVEL;
+    fgPool[i].at(...pointAt(FLOW[f.app], clamp(p, 0, 1)), 1);
+  });
+
+  droot.setAttribute("opacity", fade);
+  mroot.setAttribute("opacity", fade);
+}
+
+mount(seek, 13000);
+</script>
+</body>
+</html>
