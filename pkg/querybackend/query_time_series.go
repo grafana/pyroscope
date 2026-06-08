@@ -232,7 +232,7 @@ func (a *timeSeriesAggregator) build() *queryv1.Report {
 	sum := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
 	stepMilli := time.Duration(a.query.GetStep() * float64(time.Second)).Milliseconds()
 	seriesIterator := timeseries.NewTimeSeriesMergeIterator(a.series.TimeSeries())
-	series := timeseries.RangeSeries(seriesIterator, a.startTime, a.endTime, stepMilli, &sum)
+	series := timeseries.RangeSeries(seriesIterator, a.startTime+stepMilli, a.endTime, stepMilli, &sum)
 	return &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
 			Query:      a.query,
@@ -269,7 +269,7 @@ func (a *timeSeriesCompactAggregator) aggregate(report *queryv1.Report) error {
 func (a *timeSeriesCompactAggregator) build() *queryv1.Report {
 	stepMilli := time.Duration(a.query.GetStep() * float64(time.Second)).Milliseconds()
 	seriesIterator := a.merger.Iterator()
-	series := timeseriescompact.RangeSeries(seriesIterator, a.startTime, a.endTime, stepMilli)
+	series := timeseriescompact.RangeSeries(seriesIterator, a.startTime+stepMilli, a.endTime, stepMilli)
 	return &queryv1.Report{
 		TimeSeriesCompact: &queryv1.TimeSeriesCompactReport{
 			Query:          a.query,

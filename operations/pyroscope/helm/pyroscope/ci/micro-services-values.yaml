@@ -2,17 +2,12 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+architecture:
+  microservices:
+    enabled: true
+
 pyroscope:
   components:
-    querier:
-      kind: Deployment
-      replicaCount: 3
-      resources:
-        limits:
-          memory: 1Gi
-        requests:
-          memory: 32Mi
-          cpu: 10m
     query-frontend:
       kind: Deployment
       replicaCount: 2
@@ -22,7 +17,7 @@ pyroscope:
         requests:
           memory: 32Mi
           cpu: 10m
-    query-scheduler:
+    query-backend:
       kind: Deployment
       replicaCount: 2
       resources:
@@ -40,7 +35,7 @@ pyroscope:
         requests:
           memory: 32Mi
           cpu: 50m
-    ingester:
+    segment-writer:
       kind: StatefulSet
       replicaCount: 3
       resources:
@@ -49,19 +44,6 @@ pyroscope:
         requests:
           memory: 256Mi
           cpu: 100m
-    store-gateway:
-      kind: StatefulSet
-      replicaCount: 3
-      persistence:
-      # The store-gateway needs not need persistent storage, but we still run it as a StatefulSet
-      # This is to avoid having blocks of data being
-        enabled: false
-      resources:
-        limits:
-          memory: 4Gi
-        requests:
-          memory: 64Mi
-          cpu: 20m
       initContainers:
         - name: create-bucket
           image: minio/mc:RELEASE.2025-04-08T15-39-49Z
@@ -83,6 +65,24 @@ pyroscope:
                   fieldPath: metadata.namespace
             - name: MINIO_ENDPOINT
               value: $(POD_NAMESPACE)-minio
+    metastore:
+      kind: StatefulSet
+      replicaCount: 3
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 64Mi
+          cpu: 10m
+    compaction-worker:
+      kind: StatefulSet
+      replicaCount: 3
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 64Mi
+          cpu: 10m
 
 minio:
   enabled: true

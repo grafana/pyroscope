@@ -3,8 +3,8 @@ name: pyroscope
 description: horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 home: https://grafana.com/oss/pyroscope/
 type: application
-version: 2.0.1
-appVersion: 2.0.1
+version: 2.0.3
+appVersion: 2.0.3
 dependencies:
   - name: grafana-agent
     alias: agent

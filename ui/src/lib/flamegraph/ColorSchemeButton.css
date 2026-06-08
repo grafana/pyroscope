@@ -1,0 +1,24 @@
+.fg-cs-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 8px;
+  margin-right: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--color-secondary-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.fg-cs-button:hover {
+  background: var(--action-hover);
+}
+
+.fg-cs-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}

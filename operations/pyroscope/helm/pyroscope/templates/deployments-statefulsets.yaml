@@ -279,7 +279,9 @@ spec:
             claimName: {{ $cfg.name }}-data
   {{- else }}
   volumeClaimTemplates:
-  - metadata:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
       name: data
       annotations:
         {{- toYaml $persistence.annotations | nindent 8 }}

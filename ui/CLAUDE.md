@@ -1,6 +1,6 @@
 # Pyroscope UI
 
-React + Vite + TypeScript frontend for Pyroscope. This frontend is a rewrite of the old UI (found in ../public/app). The objective of the app is to provide a single page query UI to query Pyroscope profiling data. The canonical implementation can be found in the old UI. When in doubt, try model behaviors found there.
+React + Vite + TypeScript frontend for Pyroscope. This frontend is a rewrite of the old UI that lived in `public/app` (removed in the ui v2 migration; still available in git history). The objective of the app is to provide a single page query UI to query Pyroscope profiling data. The old UI remains the canonical reference for behavior — when in doubt, check it out from git history and mirror what it did.
 
 ## Philosophy and ethos
 
@@ -58,9 +58,17 @@ The entire design system lives in `src/theme.css`. Read `DESIGN.md` for the full
 
 ```
 src/
-  main.tsx    # Entry point — imports theme.css once here
-  App.tsx     # Current: design system kitchen sink
-  theme.css   # All CSS custom properties (single source of truth)
+  main.tsx        # Entry point — imports theme.css once here
+  App.tsx         # Root component for the query UI
+  App.css         # Layout styles for App.tsx
+  theme.css       # All CSS custom properties (single source of truth)
+  api/            # Pyroscope API client and static metadata
+  hooks/          # Shared React hooks (query, tenant, click-outside)
+  components/     # Feature components (NavBar, QueryBar, TimeSeries, FlameGraph, Panel, …)
+    core/         # Reusable primitives (Button, Dropdown, Select, Icon, Empty, CascadeSelect)
+  lib/            # Vendored third-party code
+    flamegraph/   # Vendored @grafana/flamegraph, stripped to what we use
+  admin/          # Separate admin bundle (loaded from Go-rendered HTML templates)
 ```
 
 ## Linting

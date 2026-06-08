@@ -7,7 +7,9 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -23,7 +25,6 @@ import (
 	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/tracing"
 	"github.com/grafana/dskit/user"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -34,6 +35,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb"
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpcutil"
 	"github.com/grafana/pyroscope/v2/pkg/util/validation"
@@ -581,7 +583,7 @@ func (s *Scheduler) starting(ctx context.Context) error {
 	s.subservicesWatcher.WatchManager(s.subservices)
 
 	if err := services.StartManagerAndAwaitHealthy(ctx, s.subservices); err != nil {
-		return errors.Wrap(err, "unable to start scheduler subservices")
+		return fmt.Errorf("unable to start scheduler subservices: %w", err)
 	}
 
 	return nil
@@ -606,7 +608,7 @@ func (s *Scheduler) running(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case err := <-s.subservicesWatcher.Chan():
-			return errors.Wrap(err, "scheduler subservice failed")
+			return fmt.Errorf("scheduler subservice failed: %w", err)
 		}
 	}
 }
@@ -653,5 +655,5 @@ func (s *Scheduler) RingHandler(w http.ResponseWriter, req *http.Request) {
 				<p>Query-scheduler hash ring is disabled.</p>
 			</body>
 		</html>`
-	util.WriteHTMLResponse(w, ringDisabledPage)
+	httputil.WriteHTMLResponse(w, ringDisabledPage)
 }

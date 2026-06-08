@@ -1,10 +1,10 @@
 package usagestats
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	prom "github.com/prometheus/prometheus/web/api/v1"
 
 	"github.com/grafana/dskit/kv/memberlist"
@@ -72,13 +72,17 @@ type jsonCodec struct{}
 // currently crashing because the in-memory kvstore use a singleton.
 func (jsonCodec) Decode(data []byte) (interface{}, error) {
 	var seed ClusterSeed
-	if err := jsoniter.ConfigFastest.Unmarshal(data, &seed); err != nil {
+	err := json.Unmarshal(data, &seed)
+	if err != nil {
 		return nil, err
 	}
 	return &seed, nil
 }
 
 func (jsonCodec) Encode(obj interface{}) ([]byte, error) {
-	return jsoniter.ConfigFastest.Marshal(obj)
+	return json.Marshal(obj)
 }
-func (jsonCodec) CodecID() string { return "usagestats.jsonCodec" }
+
+func (jsonCodec) CodecID() string {
+	return "usagestats.jsonCodec"
+}

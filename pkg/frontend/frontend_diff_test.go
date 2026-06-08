@@ -2,12 +2,12 @@ package frontend
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/user"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"

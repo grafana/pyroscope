@@ -1,0 +1,42 @@
+.fg-container {
+  overflow: auto;
+  height: 100%;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  gap: 8px;
+}
+
+.fg-body {
+  flex-grow: 1;
+}
+
+.fg-table-container {
+  height: 800px;
+}
+
+.fg-horizontal-container {
+  display: flex;
+  min-height: 0;
+  flex-direction: row;
+  column-gap: 8px;
+  width: 100%;
+}
+
+.fg-horizontal-graph {
+  flex-basis: 50%;
+}
+
+.fg-horizontal-table {
+  flex-basis: 50%;
+  max-height: 800px;
+}
+
+.fg-vertical-graph {
+  margin-bottom: 8px;
+}
+
+.fg-vertical-table {
+  height: 800px;
+}

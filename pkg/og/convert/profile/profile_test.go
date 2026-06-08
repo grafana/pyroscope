@@ -2,9 +2,9 @@ package profile
 
 import (
 	"context"
+	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
@@ -43,48 +43,34 @@ func (m *mockObserver) Observe(k []byte, v int) {
 	m.values = append(m.values, v)
 }
 
-var _ = Describe("metrics exporter", func() {
-	var (
-		exporter *mockExporter
-		ingester *mockIngester
+func runMetricsExporterTest(t *testing.T, observe bool) (*mockExporter, *mockIngester) {
+	t.Helper()
 
-		md ingestion.Metadata
-		p  RawProfile
-	)
-
-	JustBeforeEach(func() {
-		ingester = new(mockIngester)
-		md = ingestion.Metadata{LabelSet: new(labelset.LabelSet)}
-		p = RawProfile{
-			Format:  ingestion.FormatGroups,
-			RawData: []byte("foo;bar 1\nfoo;baz 2\n"),
-		}
-
-		Expect(p.Parse(context.Background(), ingester, exporter, md)).ToNot(HaveOccurred())
-	})
-
-	ItIngestsTree := func() {
-		Expect(ingester.actual[0].Val.Samples()).To(Equal(uint64(3)))
+	exporter := newMockExporter(observe)
+	ingester := new(mockIngester)
+	md := ingestion.Metadata{LabelSet: new(labelset.LabelSet)}
+	p := RawProfile{
+		Format:  ingestion.FormatGroups,
+		RawData: []byte("foo;bar 1\nfoo;baz 2\n"),
 	}
 
-	Context("if evaluation successful", func() {
-		BeforeEach(func() {
-			exporter = newMockExporter(true)
-		})
-		It("ingests the tree", ItIngestsTree)
-		It("observes stack values", func() {
-			Expect(exporter.observer.keys).To(Equal([]string{"foo;bar", "foo;baz"}))
-			Expect(exporter.observer.values).To(Equal([]int{1, 2}))
-		})
+	require.NoError(t, p.Parse(context.Background(), ingester, exporter, md))
+	return exporter, ingester
+}
+
+func TestMetricsExporter(t *testing.T) {
+	t.Run("if evaluation successful", func(t *testing.T) {
+		exporter, ingester := runMetricsExporterTest(t, true)
+
+		require.Equal(t, uint64(3), ingester.actual[0].Val.Samples())
+		require.Equal(t, []string{"foo;bar", "foo;baz"}, exporter.observer.keys)
+		require.Equal(t, []int{1, 2}, exporter.observer.values)
 	})
 
-	Context("if evaluation unsuccessful", func() {
-		BeforeEach(func() {
-			exporter = newMockExporter(false)
-		})
-		It("ingests the tree", ItIngestsTree)
-		It("does not observe stack values", func() {
-			Expect(exporter.observer).To(BeNil())
-		})
+	t.Run("if evaluation unsuccessful", func(t *testing.T) {
+		exporter, ingester := runMetricsExporterTest(t, false)
+
+		require.Equal(t, uint64(3), ingester.actual[0].Val.Samples())
+		require.Nil(t, exporter.observer)
 	})
-})
+}

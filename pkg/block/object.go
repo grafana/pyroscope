@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"

@@ -19,7 +19,7 @@ a piece of work is finished it should:
 
 To be able to run make targets you'll need to install:
 
-- [Go](https://go.dev/doc/install) (>= 1.24)
+- [Go](https://go.dev/doc/install) (>= 1.25, see `go.mod`)
 - [Docker](https://docs.docker.com/engine/install/)
 
 All other required tools will be automatically downloaded `$(pwd)/.tmp/bin`.
@@ -89,45 +89,30 @@ This will Pyroscope on `:4040` and the embedded Grafana on port `:4041`.
 #### Frontend development
 
 The frontend application is not in active development. While the UI it provides is usable and stable,
-the recommended way to view and analyze profiling data is to use the 
+the recommended way to view and analyze profiling data is to use the
 [Profiles Drilldown](https://grafana.com/docs/grafana/latest/visualizations/simplified-exploration/profiles/) Grafana app (pre-installed in recent Grafana versions).
 
 If you do need to make changes to the frontend code, the following instructions should get you started.
 
-**Versions for development tools**:
-- Node v18
-- Yarn v1.22
+The web UI lives in the `ui/` directory and is a dependency-minimal rewrite (React + Vite + TypeScript)
+of the older `public/app` UI. See [`ui/CLAUDE.md`](../../../ui/CLAUDE.md) and
+[`ui/DESIGN.md`](../../../ui/DESIGN.md) for the authoritative frontend guide.
 
-The frontend code is located in the `public/app` directory, although its `package.json` file is at the repository root.
-
-To run the local frontend application in development mode:
+The frontend uses **Yarn 4 (Berry)** and its `package.json` lives in `ui/` (not at the repository root).
+To run it in development mode:
 
 ```sh
+cd ui
 yarn install
 yarn dev
 ```
 
-This will:
-- install and update frontend dependencies
-- launch a process that will build the frontend code
-- serve the built app at `http://localhost:4041`
-- keep the web app updated any time you update the frontend source code
+This serves the app at `http://localhost:5173` and proxies API requests to a Pyroscope server at
+`http://localhost:4040`. In a separate terminal, start a server for it to talk to, for example:
 
-The web app will not initially be connected to a Pyroscope server, so all attempts to fetch data will fail.
-
-To launch a pyroscope server for development purposes:
 ```sh
-yarn backend:dev
+go run ./cmd/pyroscope
 ```
-
-This yarn script actually runs the following:
-```sh
-make build run 'PARAMS=--config.file ./cmd/pyroscope/pyroscope.yaml'
-```
-
-It can take a while for this process to build and start serving pyroscope data, but
-once it is fully active, the pyroscope web app service at `http://localhost:4041`
-will be able to interact with it.
 
 ### Dependency management
 

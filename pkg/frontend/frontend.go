@@ -7,6 +7,7 @@ package frontend
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -23,7 +24,6 @@ import (
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/services"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/otel"
@@ -192,7 +192,11 @@ func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Regis
 func (f *Frontend) starting(ctx context.Context) error {
 	f.schedulerWorkersWatcher.WatchService(f.schedulerWorkers)
 
-	return errors.Wrap(services.StartAndAwaitRunning(ctx, f.schedulerWorkers), "failed to start frontend scheduler workers")
+	err := services.StartAndAwaitRunning(ctx, f.schedulerWorkers)
+	if err != nil {
+		return fmt.Errorf("failed to start frontend scheduler workers: %w", err)
+	}
+	return nil
 }
 
 func (f *Frontend) running(ctx context.Context) error {
@@ -200,12 +204,16 @@ func (f *Frontend) running(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	case err := <-f.schedulerWorkersWatcher.Chan():
-		return errors.Wrap(err, "query-frontend subservice failed")
+		return fmt.Errorf("query-frontend subservice failed: %w", err)
 	}
 }
 
 func (f *Frontend) stopping(_ error) error {
-	return errors.Wrap(services.StopAndAwaitTerminated(context.Background(), f.schedulerWorkers), "failed to stop frontend scheduler workers")
+	err := services.StopAndAwaitTerminated(context.Background(), f.schedulerWorkers)
+	if err != nil {
+		return fmt.Errorf("failed to stop frontend scheduler workers: %w", err)
+	}
+	return nil
 }
 
 // allow to test the frontend without the need of a real roundertripper

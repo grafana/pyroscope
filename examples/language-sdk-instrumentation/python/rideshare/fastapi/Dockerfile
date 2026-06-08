@@ -1,6 +1,7 @@
-FROM python:3.9
+FROM python:3.11
 
-RUN pip3 install fastapi pyroscope-io==0.8.14 uvicorn[standard]
+COPY requirements.txt .
+RUN pip3 install -r requirements.txt
 
 ENV FLASK_ENV=development
 ENV PYTHONUNBUFFERED=1

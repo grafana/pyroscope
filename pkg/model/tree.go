@@ -10,7 +10,6 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 
-	dvarint "github.com/dennwc/varint"
 	"github.com/xlab/treeprint"
 
 	"github.com/grafana/pyroscope/v2/pkg/og/util/varint"
@@ -45,7 +44,7 @@ func (FunctionNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[Function
 }
 
 func (FunctionNameI) unmarshalNode(b []byte, offset int) (FunctionName, int64, int, error) { //nolint:unused
-	nameLen, o := dvarint.Uvarint(b[offset:])
+	nameLen, o := varint.Uvarint(b[offset:])
 	if o < 0 {
 		return "", 0, 0, errMalformedTreeBytes
 	}
@@ -53,7 +52,7 @@ func (FunctionNameI) unmarshalNode(b []byte, offset int) (FunctionName, int64, i
 	// Note that we allocate a string, instead of referencing b's capacity.
 	name := FunctionName(b[offset : offset+int(nameLen)])
 	offset += int(nameLen)
-	value, o := dvarint.Uvarint(b[offset:])
+	value, o := varint.Uvarint(b[offset:])
 	if o < 0 {
 		return "", 0, 0, errMalformedTreeBytes
 	}
@@ -85,13 +84,13 @@ func (LocationRefNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[Locat
 }
 
 func (LocationRefNameI) unmarshalNode(b []byte, offset int) (LocationRefName, int64, int, error) { //nolint:unused
-	name, o := dvarint.Uvarint(b[offset:])
+	name, o := varint.Uvarint(b[offset:])
 	if o < 0 {
 		return 0, 0, 0, errMalformedTreeBytes
 	}
 	offset += o
 
-	value, o := dvarint.Uvarint(b[offset:])
+	value, o := varint.Uvarint(b[offset:])
 	if o < 0 {
 		return 0, 0, 0, errMalformedTreeBytes
 	}
@@ -551,7 +550,7 @@ func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 		offset = o
 
 		// specific end
-		childrenLen, o := dvarint.Uvarint(b[offset:])
+		childrenLen, o := varint.Uvarint(b[offset:])
 		if o < 0 {
 			return nil, errMalformedTreeBytes
 		}
