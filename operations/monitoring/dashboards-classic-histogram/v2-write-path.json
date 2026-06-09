@@ -283,7 +283,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "\nsum by (tenant, slug, org_name, environment) (\n  histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval]))\n)\n",
+          "expr": "\nsum by (tenant, slug, org_name, environment) (\n  rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval])\n)\n",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -419,7 +419,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (tenant) (histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval])))",
+          "expr": "sum by (tenant) (rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval]))",
           "hide": false,
           "legendFormat": "__auto",
           "range": true,
@@ -524,7 +524,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (tenant) (histogram_count(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval])))",
+          "expr": "sum by (tenant) (rate(pyroscope_distributor_received_decompressed_bytes_count{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -800,7 +800,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.99, sum by (pod) (rate(pyroscope_request_duration_seconds{\n    namespace=\"$namespace\",\n    container=\"distributor\",\n    route=~\".*pusher.*|.*ingest.*\",\n    status_code=\"200\",\n}[$__rate_interval])))",
+              "expr": "histogram_quantile(0.99, sum by (le, pod) (rate(pyroscope_request_duration_seconds_bucket{\n    namespace=\"$namespace\",\n    container=\"distributor\",\n    route=~\".*pusher.*|.*ingest.*\",\n    status_code=\"200\",\n}[$__rate_interval])))",
               "hide": false,
               "legendFormat": "__auto",
               "range": true,
@@ -812,7 +812,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds{\n    namespace=\"$namespace\",\n    container=\"distributor\",\n    route=~\".*pusher.*|.*ingest.*\",\n    status_code=\"200\",\n}[$__rate_interval])))",
+              "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds_bucket{\n    namespace=\"$namespace\",\n    container=\"distributor\",\n    route=~\".*pusher.*|.*ingest.*\",\n    status_code=\"200\",\n}[$__rate_interval])) by (le))",
               "hide": true,
               "legendFormat": "p99 overall",
               "range": true,
@@ -1013,7 +1013,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (status_code) (histogram_count(rate(\n    pyroscope_request_duration_seconds{\n        namespace=\"$namespace\",\n        container=\"distributor\",\n        route=~\".*push.*|.*ingest.*\",\n    }[1m]))\n)",
+              "expr": "sum by (status_code) (rate(\n    pyroscope_request_duration_seconds_count{\n        namespace=\"$namespace\",\n        container=\"distributor\",\n        route=~\".*push.*|.*ingest.*\",\n    }[1m])\n)",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -1117,7 +1117,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.99, sum(rate(pyroscope_write_path_downstream_request_duration_seconds{\n    namespace=\"$namespace\",\n    status=\"200\",\n    primary=\"1\",\n}[$__rate_interval])) by (route,pod))",
+              "expr": "histogram_quantile(0.99, sum(rate(pyroscope_write_path_downstream_request_duration_seconds_bucket{\n    namespace=\"$namespace\",\n    status=\"200\",\n    primary=\"1\",\n}[$__rate_interval])) by (le, route,pod))",
               "hide": false,
               "instant": false,
               "legendFormat": "p99 primary {{pod}} =\u003e {{route}}",
@@ -1130,7 +1130,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.99, sum(rate(pyroscope_write_path_downstream_request_duration_seconds{\n    namespace=\"$namespace\",\n    status=\"200\",\n    primary!=\"1\",\n}[$__rate_interval])) by (route,pod))",
+              "expr": "histogram_quantile(0.99, sum(rate(pyroscope_write_path_downstream_request_duration_seconds_bucket{\n    namespace=\"$namespace\",\n    status=\"200\",\n    primary!=\"1\",\n}[$__rate_interval])) by (le, route,pod))",
               "hide": false,
               "instant": false,
               "legendFormat": "p99 secondary {{pod}} =\u003e {{route}}",
@@ -1335,7 +1335,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(histogram_count(irate(pyroscope_write_path_downstream_request_duration_seconds{\n    namespace=\"$namespace\",\n    primary=\"1\",\n}[$__rate_interval]))) by (status,route)",
+              "expr": "sum(irate(pyroscope_write_path_downstream_request_duration_seconds_count{\n    namespace=\"$namespace\",\n    primary=\"1\",\n}[$__rate_interval])) by (status,route)",
               "instant": false,
               "legendFormat": "primary {{route}} {{status}}",
               "range": true,
@@ -1347,7 +1347,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(histogram_count(irate(pyroscope_write_path_downstream_request_duration_seconds{\n    namespace=\"$namespace\",\n    primary=\"0\",\n}[$__rate_interval]))) by (status,route)",
+              "expr": "sum(irate(pyroscope_write_path_downstream_request_duration_seconds_count{\n    namespace=\"$namespace\",\n    primary=\"0\",\n}[$__rate_interval])) by (status,route)",
               "hide": false,
               "instant": false,
               "legendFormat": "secondary {{route}} {{status}}",
@@ -1787,7 +1787,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (histogram_count(rate(\n    pyroscope_request_duration_seconds{\n        namespace=\"$namespace\",\n        container=\"distributor\",\n        route=~\".*push.*|.*ingest.*\",\n    }[1m]))\n)",
+              "expr": "sum by (pod) (rate(\n    pyroscope_request_duration_seconds_count{\n        namespace=\"$namespace\",\n        container=\"distributor\",\n        route=~\".*push.*|.*ingest.*\",\n    }[1m])\n)",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -1931,7 +1931,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  # status_code=\"success\",\n  route=\"/segmentwriter.v1.SegmentWriterService/Push\",\n}[$__rate_interval])) by (pod))",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  # status_code=\"success\",\n  route=\"/segmentwriter.v1.SegmentWriterService/Push\",\n}[$__rate_interval])) by (le, pod))",
           "hide": false,
           "instant": false,
           "legendFormat": "p99 {{pod}}",
@@ -1944,7 +1944,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  # status_code=\"success\",\n  route=\"/segmentwriter.v1.SegmentWriterService/Push\",\n}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  # status_code=\"success\",\n  route=\"/segmentwriter.v1.SegmentWriterService/Push\",\n}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "p99 overall",
@@ -1957,7 +1957,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.90, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  # status_code=\"success\",\n  route=\"/segmentwriter.v1.SegmentWriterService/Push\",\n}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.90, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  # status_code=\"success\",\n  route=\"/segmentwriter.v1.SegmentWriterService/Push\",\n}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "p90 overall",
@@ -1970,7 +1970,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  # status_code=\"success\",\n  route=\"/segmentwriter.v1.SegmentWriterService/Push\",\n}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  # status_code=\"success\",\n  route=\"/segmentwriter.v1.SegmentWriterService/Push\",\n}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "p50 overall",
@@ -2171,7 +2171,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(histogram_count(irate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/segmentwriter.v1.SegmentWriterService/Push\",\n}[$__rate_interval]))) by (status_code)",
+          "expr": "sum(irate(pyroscope_request_duration_seconds_count{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/segmentwriter.v1.SegmentWriterService/Push\",\n}[$__rate_interval])) by (status_code)",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -2298,7 +2298,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_segment_writer_upload_duration_seconds{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])) by (pod))",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_segment_writer_upload_duration_seconds_bucket{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])) by (le, pod))",
           "hide": false,
           "instant": false,
           "legendFormat": "p99 {{pod}}",
@@ -2311,7 +2311,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_segment_writer_upload_duration_seconds{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_segment_writer_upload_duration_seconds_bucket{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "p99 overall",
@@ -2324,7 +2324,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.90, sum(rate(pyroscope_segment_writer_upload_duration_seconds{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.90, sum(rate(pyroscope_segment_writer_upload_duration_seconds_bucket{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "p90 overall",
@@ -2337,7 +2337,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum(rate(pyroscope_segment_writer_upload_duration_seconds{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum(rate(pyroscope_segment_writer_upload_duration_seconds_bucket{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "p50 overall",
@@ -2554,7 +2554,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (status) (histogram_count(rate(pyroscope_segment_writer_upload_duration_seconds{namespace=\"$namespace\"}[$__rate_interval])))",
+          "expr": "sum by (status) (rate(pyroscope_segment_writer_upload_duration_seconds_count{namespace=\"$namespace\"}[$__rate_interval]))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -2567,7 +2567,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (status) (histogram_count(rate(pyroscope_segment_writer_hedged_upload_duration_seconds{namespace=\"$namespace\"}[$__rate_interval])))",
+          "expr": "sum by (status) (rate(pyroscope_segment_writer_hedged_upload_duration_seconds_count{namespace=\"$namespace\"}[$__rate_interval]))",
           "hide": false,
           "instant": false,
           "legendFormat": "{{status}} (hedged)",
@@ -2695,7 +2695,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])) by (pod))",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds_bucket{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])) by (le, pod))",
           "hide": false,
           "instant": false,
           "legendFormat": "p99 {{pod}}",
@@ -2708,7 +2708,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds_bucket{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "p99 overall",
@@ -2721,7 +2721,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.90, sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.90, sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds_bucket{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "p90 overall",
@@ -2734,7 +2734,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum(rate(pyroscope_segment_writer_store_metadata_duration_seconds_bucket{namespace=\"$namespace\",container=\"segment-writer\"}[$__rate_interval])) by (le))",
           "hide": false,
           "instant": false,
           "legendFormat": "p50 overall",
@@ -2958,7 +2958,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (status) (histogram_count(rate(pyroscope_segment_writer_store_metadata_duration_seconds{namespace=\"$namespace\"}[$__rate_interval])))",
+          "expr": "sum by (status) (rate(pyroscope_segment_writer_store_metadata_duration_seconds_count{namespace=\"$namespace\"}[$__rate_interval]))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -3089,7 +3089,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (pod) (histogram_sum(irate(pyroscope_segment_writer_segment_ingest_bytes{namespace=\"$namespace\", container=\"segment-writer\"}[10m]))) /\nsum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", container=\"segment-writer\"}[10m]))",
+          "expr": "sum by (pod) (irate(pyroscope_segment_writer_segment_ingest_bytes_sum{namespace=\"$namespace\", container=\"segment-writer\"}[10m])) /\nsum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", container=\"segment-writer\"}[10m]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -3651,7 +3651,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n  histogram_quantile(0.99,(sum by (pod) (\n    irate(pyroscope_metastore_boltdb_persist_snapshot_duration_seconds{namespace=\"$namespace\"}[$__rate_interval])))\n  ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace=\"$namespace\", state=\"Leader\"} \u003e= 1)\n)",
+              "expr": "(\n  histogram_quantile(0.99,(sum by (le, pod) (\n    irate(pyroscope_metastore_boltdb_persist_snapshot_duration_seconds_bucket{namespace=\"$namespace\"}[$__rate_interval])))\n  ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace=\"$namespace\", state=\"Leader\"} \u003e= 1)\n)",
               "hide": false,
               "instant": false,
               "legendFormat": "Metastore leader snapshot ({{pod}})",
@@ -3664,7 +3664,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.IndexService/AddBlock\",\n}[$__rate_interval])))",
+              "expr": "histogram_quantile(0.99, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.IndexService/AddBlock\",\n}[$__rate_interval])) by (le))",
               "hide": false,
               "instant": false,
               "legendFormat": "p99",
@@ -3677,7 +3677,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.95, sum(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.IndexService/AddBlock\",\n}[$__rate_interval])))",
+              "expr": "histogram_quantile(0.95, sum(rate(pyroscope_request_duration_seconds_bucket{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  route=\"/metastore.v1.IndexService/AddBlock\",\n}[$__rate_interval])) by (le))",
               "hide": false,
               "instant": false,
               "legendFormat": "p95",
@@ -3810,7 +3810,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(histogram_count(rate(pyroscope_request_duration_seconds{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  container=\"metastore\",\n  route=\"/metastore.v1.IndexService/AddBlock\",\n}[$__rate_interval]))) by (status_code)",
+              "expr": "sum(rate(pyroscope_request_duration_seconds_count{\n  namespace=\"$namespace\",\n  method=\"gRPC\",\n  container=\"metastore\",\n  route=\"/metastore.v1.IndexService/AddBlock\",\n}[$__rate_interval])) by (status_code)",
               "hide": false,
               "instant": false,
               "legendFormat": "{{status_code}}",
@@ -4120,7 +4120,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (shard) (histogram_sum(rate(pyroscope_segment_writer_client_sent_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
+              "expr": "sum by (shard) (rate(pyroscope_segment_writer_client_sent_bytes_sum{namespace=\"$namespace\"}[$__rate_interval]))",
               "hide": false,
               "instant": false,
               "legendFormat": "__auto",
@@ -4227,7 +4227,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (shard) (histogram_sum(rate(pyroscope_segment_writer_client_sent_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
+              "expr": "sum by (shard) (rate(pyroscope_segment_writer_client_sent_bytes_sum{namespace=\"$namespace\"}[$__rate_interval]))",
               "hide": false,
               "instant": false,
               "legendFormat": "__auto",
@@ -4333,7 +4333,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (shard) (histogram_sum(rate(pyroscope_segment_writer_client_sent_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
+              "expr": "sum by (shard) (rate(pyroscope_segment_writer_client_sent_bytes_sum{namespace=\"$namespace\"}[$__rate_interval]))",
               "hide": false,
               "instant": false,
               "legendFormat": "__auto",
@@ -4439,7 +4439,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (histogram_sum(rate(pyroscope_segment_writer_segment_ingest_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
+              "expr": "sum by (pod) (rate(pyroscope_segment_writer_segment_ingest_bytes_sum{namespace=\"$namespace\"}[$__rate_interval]))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -4543,7 +4543,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (histogram_sum(rate(pyroscope_segment_writer_segment_ingest_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
+              "expr": "sum by (pod) (rate(pyroscope_segment_writer_segment_ingest_bytes_sum{namespace=\"$namespace\"}[$__rate_interval]))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -4660,7 +4660,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (histogram_count(rate(pyroscope_segment_writer_segment_ingest_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
+              "expr": "sum by (pod) (rate(pyroscope_segment_writer_segment_ingest_bytes_count{namespace=\"$namespace\"}[$__rate_interval]))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -4764,7 +4764,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (histogram_count(rate(pyroscope_segment_writer_segment_ingest_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
+              "expr": "sum by (pod) (rate(pyroscope_segment_writer_segment_ingest_bytes_count{namespace=\"$namespace\"}[$__rate_interval]))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
