@@ -23,8 +23,9 @@ const droot = document.getElementById("dynamic");
 const mroot = document.getElementById("markers");
 
 const boxes = {
-  appA:        { x: 40,  y: 104, w: 184, h: 86,  fill: "#d0ebff" },
-  appB:        { x: 40,  y: 272, w: 184, h: 86,  fill: "#d0ebff" },
+  appA:        { x: 40,  y: 92,  w: 184, h: 78,  fill: "#d0ebff" },
+  appB:        { x: 40,  y: 193, w: 184, h: 78,  fill: "#d0ebff" },
+  appC:        { x: 40,  y: 336, w: 184, h: 78,  fill: "#d0ebff" },
   distributor: { x: 300, y: 172, w: 170, h: 120, fill: "#e5dbff" },
   segwriter:   { x: 524, y: 172, w: 240, h: 150, fill: "#ffe8cc" },
   objstore:    { x: 820, y: 96,  w: 330, h: 410, fill: "#ebfbee" },
@@ -33,17 +34,19 @@ const boxes = {
 const A = {}; for (const k in boxes) A[k] = anchors(boxes[k]);
 
 // app -> distributor -> segment-writer (markers pass through the distributor box)
-const flowA = [[224, 147], [268, 147], [268, 232], [300, 232], [470, 232], [524, 240], [560, 250]];
-const flowB = [[224, 315], [268, 315], [268, 232], [300, 232], [470, 232], [524, 240], [560, 250]];
-const FLOW = [flowA, flowB];
+const flowA = [[224, 131], [268, 131], [268, 232], [300, 232], [470, 232], [524, 240], [560, 250]];
+const flowB = [[224, 232], [300, 232], [470, 232], [524, 240], [560, 250]];
+const flowC = [[224, 375], [268, 375], [268, 232], [300, 232], [470, 232], [524, 240], [560, 250]];
+const FLOW = [flowA, flowB, flowC];
 
 // ---- static scene ----
 el("text", { x: 40, y: 54, "font-size": 30, "font-weight": 700, fill: INK }, sroot).textContent = "Write path";
 el("text", { x: 40, y: 82, "font-size": 16, "font-weight": 500, fill: MUT }, sroot)
   .textContent = "many applications push profiles; they are written straight to object storage";
 
-conn(sroot, [[224, 147], [268, 147], [268, 232], [300, 232]]);
-conn(sroot, [[224, 315], [268, 315], [268, 232], [300, 232]]);
+conn(sroot, [[224, 131], [268, 131], [268, 232], [300, 232]]);
+conn(sroot, [[224, 232], [300, 232]]);
+conn(sroot, [[224, 375], [268, 375], [268, 232], [300, 232]]);
 conn(sroot, [[470, 232], [524, 240]]);
 conn(sroot, [[764, 250], [820, 250]]);
 conn(sroot, [[644, 322], [644, 362]], { dash: "5 5" });
@@ -54,12 +57,15 @@ drawBox(sroot, boxes.appA, [
   { t: "SDK · Alloy · OTLP", size: 13, fill: SUB },
 ], { accent: "#1c7ed6" });
 drawBox(sroot, boxes.appB, [
+  { t: "Application 2", bold: true, size: 17 },
+  { t: "SDK · Alloy · OTLP", size: 13, fill: SUB },
+], { accent: "#1c7ed6" });
+drawBox(sroot, boxes.appC, [
   { t: "Application N", bold: true, size: 17 },
   { t: "SDK · Alloy · OTLP", size: 13, fill: SUB },
 ], { accent: "#1c7ed6" });
-// "many more" indicator between the two app boxes
-el("text", { x: 132, y: 226, "text-anchor": "middle", "font-size": 26, "font-weight": 700, fill: MUT }, sroot).textContent = "⋮";
-el("text", { x: 132, y: 250, "text-anchor": "middle", "font-size": 12, fill: MUT }, sroot).textContent = "many apps";
+// "many more" indicator between Application 2 and Application N
+el("text", { x: 132, y: 314, "text-anchor": "middle", "font-size": 26, "font-weight": 700, fill: MUT }, sroot).textContent = "⋮";
 
 drawBox(sroot, boxes.distributor, [
   { t: "Distributor", bold: true, size: 18 },
@@ -106,21 +112,18 @@ function segGlyph(parent, w, h) {
 const POOL = 6;
 const fgPool = Array.from({ length: POOL }, (_, i) => makeIcicle(mroot, 26, 5, i + 1, 4));
 
-// segment-writer buffer: 10 small blocks (5 x 2) — one per flame graph received
+// segment-writer buffer: received profiles sitting side by side (flame graphs)
 const bufG = el("g", {}, droot);
-const BUF_COLS = 5, BUF_BW = 20, BUF_BH = 12, BUF_GX = 6, BUF_GY = 8;
-const bufW = BUF_COLS * (BUF_BW + BUF_GX) - BUF_GX;
-const bufX = boxes.segwriter.x + (boxes.segwriter.w - bufW) / 2;
-const bufY = 270;
-const bufBlocks = [];
-for (let i = 0; i < 10; i++) {
-  const col = i % BUF_COLS, row = Math.floor(i / BUF_COLS);
-  bufBlocks.push(el("rect", { x: bufX + col * (BUF_BW + BUF_GX), y: bufY + row * (BUF_BH + BUF_GY),
-    width: BUF_BW, height: BUF_BH, rx: 2, fill: FLAME[i % FLAME.length], opacity: 0,
-    stroke: "#00000022", "stroke-width": 0.5 }, bufG));
+const NB = 5, BUF_ICO_W = 38, BUF_GAP = 8;
+const bufTotal = NB * BUF_ICO_W + (NB - 1) * BUF_GAP;
+const bufX0 = boxes.segwriter.x + (boxes.segwriter.w - bufTotal) / 2;
+const bufY = 254;
+const bufIco = [];
+for (let i = 0; i < NB; i++) {
+  const ic = staticIcicle(bufG, bufX0 + i * (BUF_ICO_W + BUF_GAP), bufY, BUF_ICO_W, 3, i * 3 + 2, 4);
+  ic.setReveal(1); ic.setOpacity(0);
+  bufIco.push(ic);
 }
-const bufCount = el("text", { x: boxes.segwriter.x + boxes.segwriter.w / 2, y: 256,
-  "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#e8590c" }, droot);
 
 // merged segment travelling to object storage
 const mergedSeg = segGlyph(mroot, 120, 30);
@@ -134,15 +137,15 @@ const osSeg = Array.from({ length: SLOTS }, (_, c) => segBox(droot, segX, segTop
 const flushPath = c => [[700, 286], [segX - 30, segTop(c) + segH / 2], [segX + segW / 2, segTop(c) + segH / 2]];
 
 // ---- timeline ----
-const T0 = 0.05, T1 = 0.90, CYCLES = 5, PER = 10;
-const SPAN = (T1 - T0) / CYCLES, FILL = 0.70, TRAVEL = 0.032;
+const T0 = 0.05, T1 = 0.90, CYCLES = 5, PER = 5;
+const SPAN = (T1 - T0) / CYCLES, FILL = 0.70, TRAVEL = 0.055;
 
 // precompute flame-graph arrivals
 const fgs = [];
 for (let c = 0; c < CYCLES; c++)
   for (let k = 0; k < PER; k++) {
     const arrive = T0 + c * SPAN + ((k + 1) / PER) * FILL * SPAN;
-    fgs.push({ emit: arrive - TRAVEL, arrive, app: k % 2 });
+    fgs.push({ emit: arrive - TRAVEL, arrive, app: k % 3 });
   }
 
 function seek(t) {
@@ -187,10 +190,9 @@ function seek(t) {
     segCount = 0;
   }
 
-  // render buffer
+  // render buffer (received profiles sitting side by side)
   bufG.setAttribute("opacity", bufFade);
-  bufBlocks.forEach((r, i) => r.setAttribute("opacity", i < segCount ? 1 : 0));
-  bufCount.textContent = (t >= T0 && t < T1) ? segCount + " / 10" : "";
+  bufIco.forEach((ic, i) => ic.setOpacity(i < segCount ? 1 : 0));
 
   // in-flight flame graphs
   const live = fgs.filter(f => t >= f.emit && t < f.arrive);
