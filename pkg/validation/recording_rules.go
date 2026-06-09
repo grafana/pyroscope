@@ -51,3 +51,9 @@ func (o *Overrides) RecordingRules(tenantId string) []*settingsv1.RecordingRule 
 	limits := o.getOverridesForTenant(tenantId)
 	return limits.RecordingRules
 }
+
+// MaxRecordingRules returns the maximum number of recording rules a tenant is
+// allowed to create and store. A value of 0 means no limit.
+func (o *Overrides) MaxRecordingRules(tenantId string) int {
+	return o.getOverridesForTenant(tenantId).MaxRecordingRules
+}
