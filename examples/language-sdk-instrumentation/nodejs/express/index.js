@@ -5,8 +5,8 @@ const port = process.env['RIDESHARE_LISTEN_PORT'] || 5000;
 const region = process.env['REGION'] || 'default';
 const appName = process.env['PYROSCOPE_APPLICATION_NAME'] || 'express';
 const pyroscopeUrl = process.env['PYROSCOPE_SERVER_ADDRESS'] || 'http://pyroscope:4040';
-const pyroscopeUser = process.env['PYROSCOPE_SERVER_USER'] || '';
-const pyroscopePassword = process.env['PYROCOPE_SERVER_PASSWORD'] || '';
+const pyroscopeUser = process.env['PYROSCOPE_BASIC_AUTH_USER'] || '';
+const pyroscopePassword = process.env['PYROSCOPE_BASIC_AUTH_PASSWORD'] || '';
 
 const express = require('express');
 const morgan = require('morgan');
