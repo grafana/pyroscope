@@ -27,8 +27,8 @@ const boxes = {
   frontend:  { x: 232, y: 210, w: 150, h: 120, fill: "#e5dbff" },
   metastore: { x: 232, y: 96,  w: 150, h: 82,  fill: "#ffe3e3" },
   node1:     { x: 432, y: 210, w: 172, h: 120, fill: "#d0ebff" },
-  node2:     { x: 652, y: 86,  w: 178, h: 118, fill: "#d0ebff" },
-  nodeN:     { x: 652, y: 358, w: 178, h: 118, fill: "#d0ebff" },
+  node2:     { x: 652, y: 126,  w: 178, h: 118, fill: "#d0ebff" },
+  nodeN:     { x: 652, y: 328, w: 178, h: 118, fill: "#d0ebff" },
   objstore:  { x: 905, y: 66,  w: 395, h: 452, fill: "#ebfbee" },
 };
 const A = {}; for (const k in boxes) A[k] = anchors(boxes[k]);
@@ -58,10 +58,10 @@ el("text", { x: 40, y: 82, "font-size": 16, "font-weight": 500, fill: MUT }, sro
 conn(sroot, [[307, 210], [307, 178]], { dash: "5 5" });            // frontend <-> metastore
 el("text", { x: 316, y: 200, "font-size": 12, fill: MUT }, sroot).textContent = "plan";
 conn(sroot, [[382, 270], [432, 270]]);                              // frontend -> node1
-conn(sroot, [[604, 264], [652, 150]]);                              // node1 -> node2
-conn(sroot, [[604, 276], [652, 414]]);                              // node1 -> nodeN
-conn(sroot, [[830, 150], [905, 180]]);                              // node2 -> objstore
-conn(sroot, [[830, 414], [905, 360]]);                              // nodeN -> objstore
+conn(sroot, [[604, 264], [652, 180]]);                              // node1 -> node2
+conn(sroot, [[604, 276], [652, 384]]);                              // node1 -> nodeN
+conn(sroot, [[830, 180], [905, 180]]);                              // node2 -> objstore
+conn(sroot, [[830, 384], [905, 360]]);                              // nodeN -> objstore
 
 drawBox(sroot, boxes.drilldown, [
   { t: "Profiles", bold: true, size: 16 },

@@ -55,7 +55,7 @@ function anchors(b) {
 
 function drawBox(parent, b, lines, opts = {}) {
   const g = el("g", {}, parent);
-  el("rect", { x: b.x, y: b.y, width: b.w, height: b.h, rx: 13, ry: 13,
+  el("rect", { x: b.x, y: b.y, width: b.w, height: b.h, rx: 3, ry: 3,
     fill: b.fill, stroke: INK, "stroke-width": 2.5 }, g);
   if (opts.accent) el("rect", { x: b.x, y: b.y, width: b.w, height: 7, rx: 3, ry: 3, fill: opts.accent }, g);
   let ty = b.y + (opts.titleOffset || 34);
