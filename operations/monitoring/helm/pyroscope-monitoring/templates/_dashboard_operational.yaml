@@ -139,9 +139,15 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          sum by (tenant)
+          (histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~"$cluster",namespace=~"$namespace"}[$__rate_interval])))
+        {{- else }}
         expr: >-
           sum by (tenant)
           (rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~"$cluster",namespace=~"$namespace"}[$__rate_interval]))
+        {{- end }}
         hide: false
         legendFormat: __auto
         range: true
@@ -214,9 +220,15 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          sum by (tenant)
+          (histogram_count(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~"$cluster",namespace=~"$namespace"}[$__rate_interval])))
+        {{- else }}
         expr: >-
           sum by (tenant)
           (rate(pyroscope_distributor_received_decompressed_bytes_count{cluster=~"$cluster",namespace=~"$namespace"}[$__rate_interval]))
+        {{- end }}
         legendFormat: __auto
         range: true
         refId: A
@@ -477,8 +489,13 @@ panels:
           uid: ${datasource}
         editorMode: code
         exemplar: false
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: |
           {{ .Values.dashboards.tenantQuery | nindent 10 }}
+        {{- else }}
+        expr: |
+          {{ .Values.dashboards.tenantQueryClassic | nindent 10 }}
+        {{- end }}
         format: table
         instant: true
         legendFormat: __auto
@@ -593,6 +610,16 @@ panels:
       - datasource:
           uid: $datasource
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: |-
+          sum by (status) (
+          label_replace(
+            label_replace(
+                  histogram_count(rate(pyroscope_request_duration_seconds{cluster=~"$cluster", {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace", route=~".*ingest.*|.*pusher.*"}[$__rate_interval])),
+            "status", "${1}xx", "status_code", "([0-9]).."),
+          "status", "${1}", "status_code", "([a-z]+)")
+          )
+        {{- else }}
         expr: |-
           sum by (status) (
           label_replace(
@@ -601,6 +628,7 @@ panels:
             "status", "${1}xx", "status_code", "([0-9]).."),
           "status", "${1}", "status_code", "([a-z]+)")
           )
+        {{- end }}
         legendFormat: '{{"{{status}}"}} '
         range: true
         refId: A
@@ -672,10 +700,17 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.99, sum by (route) (
           rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
           cluster=~"$cluster",route=~".*ingest.*|.*pusher.*"}[$__rate_interval])))
+        {{- else }}
+        expr: >-
+          histogram_quantile(0.99, sum by (le, route) (
+          rate(pyroscope_request_duration_seconds_bucket{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          cluster=~"$cluster",route=~".*ingest.*|.*pusher.*"}[$__rate_interval])))
+        {{- end }}
         legendFormat: .99 {{"{{route}}"}}
         range: true
         refId: A
@@ -683,10 +718,17 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.75, sum by (route) (
           rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
           cluster=~"$cluster",route=~".*ingest.*|.*pusher.*"}[$__rate_interval])))
+        {{- else }}
+        expr: >-
+          histogram_quantile(0.75, sum by (le, route) (
+          rate(pyroscope_request_duration_seconds_bucket{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          cluster=~"$cluster",route=~".*ingest.*|.*pusher.*"}[$__rate_interval])))
+        {{- end }}
         hide: false
         legendFormat: .75 {{"{{route}}"}}
         range: true
@@ -695,10 +737,17 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.5, sum by (route) (
           rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
           cluster=~"$cluster",route=~".*ingest.*|.*pusher.*"}[$__rate_interval])))
+        {{- else }}
+        expr: >-
+          histogram_quantile(0.5, sum by (le, route) (
+          rate(pyroscope_request_duration_seconds_bucket{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          cluster=~"$cluster",route=~".*ingest.*|.*pusher.*"}[$__rate_interval])))
+        {{- end }}
         hide: false
         legendFormat: .5 {{"{{route}}"}}
         range: true
@@ -867,6 +916,16 @@ panels:
       - datasource:
           uid: $datasource
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: |-
+          sum by (status) (
+          label_replace(
+            label_replace(
+                  histogram_count(rate(pyroscope_request_duration_seconds{cluster=~"$cluster", {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace", route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval])),
+            "status", "${1}xx", "status_code", "([0-9]).."),
+          "status", "${1}", "status_code", "([a-z]+)")
+          )
+        {{- else }}
         expr: |-
           sum by (status) (
           label_replace(
@@ -875,6 +934,7 @@ panels:
             "status", "${1}xx", "status_code", "([0-9]).."),
           "status", "${1}", "status_code", "([a-z]+)")
           )
+        {{- end }}
         legendFormat: '{{"{{status}}"}} '
         range: true
         refId: A
@@ -946,10 +1006,17 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.99, sum by (route) (
           rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
           cluster=~"$cluster",route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval])))
+        {{- else }}
+        expr: >-
+          histogram_quantile(0.99, sum by (le, route) (
+          rate(pyroscope_request_duration_seconds_bucket{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          cluster=~"$cluster",route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval])))
+        {{- end }}
         legendFormat: .99 {{"{{route}}"}}
         range: true
         refId: A
@@ -957,10 +1024,17 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.75, sum by (route) (
           rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
           cluster=~"$cluster",route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval])))
+        {{- else }}
+        expr: >-
+          histogram_quantile(0.75, sum by (le, route) (
+          rate(pyroscope_request_duration_seconds_bucket{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          cluster=~"$cluster",route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval])))
+        {{- end }}
         hide: false
         legendFormat: .75 {{"{{route}}"}}
         range: true
@@ -969,10 +1043,17 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.5, sum by (route) (
           rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
           cluster=~"$cluster",route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval])))
+        {{- else }}
+        expr: >-
+          histogram_quantile(0.5, sum by (le, route) (
+          rate(pyroscope_request_duration_seconds_bucket{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          cluster=~"$cluster",route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval])))
+        {{- end }}
         hide: false
         legendFormat: .5 {{"{{route}}"}}
         range: true
@@ -1779,10 +1860,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               histogram_quantile(0.99, sum by (route) (
               rate(pyroscope_request_duration_seconds{job=~"$namespace/ingester",
               cluster=~"$cluster",route=~".*push.*"}[$__rate_interval])))
+            {{- else }}
+            expr: >-
+              histogram_quantile(0.99, sum by (le, route) (
+              rate(pyroscope_request_duration_seconds_bucket{job=~"$namespace/ingester",
+              cluster=~"$cluster",route=~".*push.*"}[$__rate_interval])))
+            {{- end }}
             legendFormat: .99 {{"{{route}}"}}
             range: true
             refId: A
@@ -1790,10 +1878,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               histogram_quantile(0.75, sum by (route) (
               rate(pyroscope_request_duration_seconds{job=~"$namespace/ingester",
               cluster=~"$cluster",route=~".*push.*"}[$__rate_interval])))
+            {{- else }}
+            expr: >-
+              histogram_quantile(0.75, sum by (le, route) (
+              rate(pyroscope_request_duration_seconds_bucket{job=~"$namespace/ingester",
+              cluster=~"$cluster",route=~".*push.*"}[$__rate_interval])))
+            {{- end }}
             hide: false
             legendFormat: .75 {{"{{route}}"}}
             range: true
@@ -1802,10 +1897,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               histogram_quantile(0.5, sum by (route) (
               rate(pyroscope_request_duration_seconds{job=~"$namespace/ingester",
               cluster=~"$cluster",route=~".*push.*"}[$__rate_interval])))
+            {{- else }}
+            expr: >-
+              histogram_quantile(0.5, sum by (le, route) (
+              rate(pyroscope_request_duration_seconds_bucket{job=~"$namespace/ingester",
+              cluster=~"$cluster",route=~".*push.*"}[$__rate_interval])))
+            {{- end }}
             hide: false
             legendFormat: .5 {{"{{route}}"}}
             range: true
@@ -1900,6 +2002,16 @@ panels:
           - datasource:
               uid: $datasource
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
+            expr: |-
+              sum by (status) (
+              label_replace(
+                label_replace(
+                      histogram_count(rate(pyroscope_request_duration_seconds{cluster=~"$cluster", job=~"$namespace/ingester", route=~".*push.*"}[$__rate_interval])),
+                "status", "${1}xx", "status_code", "([0-9]).."),
+              "status", "${1}", "status_code", "([a-z]+)")
+              )
+            {{- else }}
             expr: |-
               sum by (status) (
               label_replace(
@@ -1908,6 +2020,7 @@ panels:
                 "status", "${1}xx", "status_code", "([0-9]).."),
               "status", "${1}", "status_code", "([a-z]+)")
               )
+            {{- end }}
             legendFormat: '{{"{{status}}"}} '
             range: true
             refId: A
@@ -2723,10 +2836,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
+            expr: >-
+              sum by (type)
+              (histogram_count(rate(pyroscope_distributor_received_compressed_bytes{cluster=~"$cluster",
+              namespace=~"$namespace"}[$__rate_interval])))
+            {{- else }}
             expr: >-
               sum by (type)
               (rate(pyroscope_distributor_received_compressed_bytes_count{cluster=~"$cluster",
               namespace=~"$namespace"}[$__rate_interval]))
+            {{- end }}
             legendFormat: __auto
             range: true
             refId: A
@@ -2797,10 +2917,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
+            expr: >-
+              sum by (type)
+              (histogram_sum(rate(pyroscope_distributor_received_samples{cluster=~"$cluster",
+              namespace=~"$namespace"}[$__rate_interval])))
+            {{- else }}
             expr: >-
               sum by (type)
               (rate(pyroscope_distributor_received_samples_sum{cluster=~"$cluster",
               namespace=~"$namespace"}[$__rate_interval]))
+            {{- end }}
             legendFormat: __auto
             range: true
             refId: A
@@ -2872,10 +2999,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
+            expr: >-
+              sum by (type)
+              (histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~"$cluster",
+              namespace=~"$namespace"}[$__rate_interval])))
+            {{- else }}
             expr: >-
               sum by (type)
               (rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~"$cluster",
               namespace=~"$namespace"}[$__rate_interval]))
+            {{- end }}
             legendFormat: __auto
             range: true
             refId: A
@@ -2947,10 +3081,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
+            expr: >-
+              sum by (type)
+              (histogram_sum(rate(pyroscope_distributor_received_samples_bytes{cluster=~"$cluster",
+              namespace=~"$namespace"}[$__rate_interval])))
+            {{- else }}
             expr: >-
               sum by (type)
               (rate(pyroscope_distributor_received_samples_bytes_sum{cluster=~"$cluster",
               namespace=~"$namespace"}[$__rate_interval]))
+            {{- end }}
             legendFormat: __auto
             range: true
             refId: A
@@ -3022,10 +3163,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
+            expr: >-
+              sum by (type)
+              (histogram_sum(rate(pyroscope_distributor_received_symbols_bytes{cluster=~"$cluster",
+              namespace=~"$namespace"}[$__rate_interval])))
+            {{- else }}
             expr: >-
               sum by (type)
               (rate(pyroscope_distributor_received_symbols_bytes_sum{cluster=~"$cluster",
               namespace=~"$namespace"}[$__rate_interval]))
+            {{- end }}
             legendFormat: __auto
             range: true
             refId: A
@@ -3104,10 +3252,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               histogram_quantile(0.99, sum by (route) (
               rate(pyroscope_request_duration_seconds{job=~"$namespace/query-frontend",
               cluster=~"$cluster",route=~".*render.*|.*querier.*"}[$__rate_interval])))
+            {{- else }}
+            expr: >-
+              histogram_quantile(0.99, sum by (le, route) (
+              rate(pyroscope_request_duration_seconds_bucket{job=~"$namespace/query-frontend",
+              cluster=~"$cluster",route=~".*render.*|.*querier.*"}[$__rate_interval])))
+            {{- end }}
             legendFormat: .99 {{"{{route}}"}}
             range: true
             refId: A
@@ -3115,10 +3270,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               histogram_quantile(0.75, sum by (route) (
               rate(pyroscope_request_duration_seconds{job=~"$namespace/query-frontend",
               cluster=~"$cluster",route=~".*render.*|.*querier.*"}[$__rate_interval])))
+            {{- else }}
+            expr: >-
+              histogram_quantile(0.75, sum by (le, route) (
+              rate(pyroscope_request_duration_seconds_bucket{job=~"$namespace/query-frontend",
+              cluster=~"$cluster",route=~".*render.*|.*querier.*"}[$__rate_interval])))
+            {{- end }}
             hide: true
             legendFormat: .75 {{"{{route}}"}}
             range: true
@@ -3127,10 +3289,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               histogram_quantile(0.5, sum by (route) (
               rate(pyroscope_request_duration_seconds{job=~"$namespace/query-frontend",
               cluster=~"$cluster",route=~".*render.*|.*querier.*"}[$__rate_interval])))
+            {{- else }}
+            expr: >-
+              histogram_quantile(0.5, sum by (le, route) (
+              rate(pyroscope_request_duration_seconds_bucket{job=~"$namespace/query-frontend",
+              cluster=~"$cluster",route=~".*render.*|.*querier.*"}[$__rate_interval])))
+            {{- end }}
             hide: true
             legendFormat: .5 {{"{{route}}"}}
             range: true
@@ -3224,6 +3393,16 @@ panels:
           - datasource:
               uid: $datasource
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
+            expr: |-
+              sum by (status,route) (
+              label_replace(
+                label_replace(
+                      histogram_count(rate(pyroscope_request_duration_seconds{cluster=~"$cluster", job=~"$namespace/query-frontend", route=~".*render.*|.*querier.*"}[$__rate_interval])),
+                "status", "${1}xx", "status_code", "([0-9]).."),
+              "status", "${1}", "status_code", "([a-z]+)")
+              )
+            {{- else }}
             expr: |-
               sum by (status,route) (
               label_replace(
@@ -3232,6 +3411,7 @@ panels:
                 "status", "${1}xx", "status_code", "([0-9]).."),
               "status", "${1}", "status_code", "([a-z]+)")
               )
+            {{- end }}
             legendFormat: '{{"{{status}}  {{route}}"}}'
             range: true
             refId: A
@@ -4585,10 +4765,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               histogram_quantile(0.99, sum by (route) (
               rate(pyroscope_request_duration_seconds{job=~"$namespace/store-gateway",
               cluster=~"$cluster",route=~".*store.*"}[$__rate_interval])))
+            {{- else }}
+            expr: >-
+              histogram_quantile(0.99, sum by (le, route) (
+              rate(pyroscope_request_duration_seconds_bucket{job=~"$namespace/store-gateway",
+              cluster=~"$cluster",route=~".*store.*"}[$__rate_interval])))
+            {{- end }}
             legendFormat: .99 {{"{{route}}"}}
             range: true
             refId: A
@@ -4596,10 +4783,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               histogram_quantile(0.75, sum by (route) (
               rate(pyroscope_request_duration_seconds{job=~"$namespace/store-gateway",
               cluster=~"$cluster",route=~".*store.*"}[$__rate_interval])))
+            {{- else }}
+            expr: >-
+              histogram_quantile(0.75, sum by (le, route) (
+              rate(pyroscope_request_duration_seconds_bucket{job=~"$namespace/store-gateway",
+              cluster=~"$cluster",route=~".*store.*"}[$__rate_interval])))
+            {{- end }}
             hide: true
             legendFormat: .75 {{"{{route}}"}}
             range: true
@@ -4608,10 +4802,17 @@ panels:
               type: prometheus
               uid: ${datasource}
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               histogram_quantile(0.5, sum by (route) (
               rate(pyroscope_request_duration_seconds{job=~"$namespace/store-gateway",
               cluster=~"$cluster",route=~".*store.*"}[$__rate_interval])))
+            {{- else }}
+            expr: >-
+              histogram_quantile(0.5, sum by (le, route) (
+              rate(pyroscope_request_duration_seconds_bucket{job=~"$namespace/store-gateway",
+              cluster=~"$cluster",route=~".*store.*"}[$__rate_interval])))
+            {{- end }}
             hide: true
             legendFormat: .5 {{"{{route}}"}}
             range: true
@@ -4705,6 +4906,16 @@ panels:
           - datasource:
               uid: $datasource
             editorMode: code
+            {{- if .Values.dashboards.nativeHistograms }}
+            expr: |-
+              sum by (status,route) (
+              label_replace(
+                label_replace(
+                      histogram_count(rate(pyroscope_request_duration_seconds{cluster=~"$cluster", job=~"$namespace/store-gateway", route=~".*store.*"}[$__rate_interval])),
+                "status", "${1}xx", "status_code", "([0-9]).."),
+              "status", "${1}", "status_code", "([a-z]+)")
+              )
+            {{- else }}
             expr: |-
               sum by (status,route) (
               label_replace(
@@ -4713,6 +4924,7 @@ panels:
                 "status", "${1}xx", "status_code", "([0-9]).."),
               "status", "${1}", "status_code", "([a-z]+)")
               )
+            {{- end }}
             legendFormat: '{{"{{status}}  {{route}}"}}'
             range: true
             refId: A
@@ -5337,8 +5549,8 @@ panels:
             editorMode: code
             expr: >-
               histogram_quantile(0.95,
-              sum(rate(objstore_bucket_operation_duration_seconds_bucket{namespace=~"$namespace",cluster=~"$cluster"}[$__rate_interval]))
-              by (le,operation))
+              sum(rate(objstore_bucket_operation_duration_seconds{namespace=~"$namespace",cluster=~"$cluster"}[$__rate_interval]))
+              by (operation))
             legendFormat: __auto
             range: true
             refId: A
@@ -5425,10 +5637,17 @@ panels:
         disableTextWrap: false
         editorMode: code
         exemplar: false
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          histogram_quantile(0.99, sum by (route)
+          (rate(pyroscope_vcs_github_request_duration{cluster=~"$cluster",
+          namespace=~"$namespace", container="querier"} [$__rate_interval])))
+        {{- else }}
         expr: >-
           histogram_quantile(0.99, sum by (le, route)
           (rate(pyroscope_vcs_github_request_duration_bucket{cluster=~"$cluster",
           namespace=~"$namespace", container="querier"} [$__rate_interval])))
+        {{- end }}
         fullMetaSearch: false
         hide: false
         includeNullMetadata: true
@@ -5508,10 +5727,17 @@ panels:
         disableTextWrap: false
         editorMode: code
         exemplar: false
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
-          sum by (le, route, status_code)
+          sum by (route, status_code)
+          (histogram_count(rate(pyroscope_vcs_github_request_duration{cluster=~"$cluster",
+          namespace=~"$namespace", container="querier"} [$__rate_interval])))
+        {{- else }}
+        expr: >-
+          sum by (route, status_code)
           (rate(pyroscope_vcs_github_request_duration_count{cluster=~"$cluster",
           namespace=~"$namespace", container="querier"} [$__rate_interval]))
+        {{- end }}
         fullMetaSearch: false
         hide: false
         includeNullMetadata: true

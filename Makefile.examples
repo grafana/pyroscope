@@ -18,8 +18,9 @@ tools/update_examples_pr:
 
 
 .PHONY: rideshare/docker/push
+rideshare/docker/push: IMAGE_PLATFORM := linux/amd64
 rideshare/docker/push: IMAGE_PREFIX := us-docker.pkg.dev/grafanalabs-dev/docker-pyroscope-dev/
-rideshare/docker/push: rideshare/docker/push-golang rideshare/docker/push-loadgen rideshare/docker/push-python rideshare/docker/push-ruby rideshare/docker/push-dotnet rideshare/docker/push-java rideshare/docker/push-rust
+rideshare/docker/push: rideshare/docker/push-golang rideshare/docker/push-loadgen rideshare/docker/push-python rideshare/docker/push-ruby rideshare/docker/push-dotnet rideshare/docker/push-java rideshare/docker/push-rust rideshare/docker/push-nodejs
 
 .PHONY: rideshare/docker/push-golang
 rideshare/docker/push-golang:
@@ -48,3 +49,7 @@ rideshare/docker/push-java:
 .PHONY: rideshare/docker/push-rust
 rideshare/docker/push-rust:
 	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-rust -t $(IMAGE_PREFIX)pyroscope-rideshare-rust:$(IMAGE_TAG) examples/language-sdk-instrumentation/rust/rideshare
+
+.PHONY: rideshare/docker/push-nodejs
+rideshare/docker/push-nodejs:
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-nodejs -t $(IMAGE_PREFIX)pyroscope-rideshare-nodejs:$(IMAGE_TAG) examples/language-sdk-instrumentation/nodejs/express

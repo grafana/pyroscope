@@ -14,6 +14,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/tracing"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,6 +29,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
+	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
@@ -56,6 +58,30 @@ type QueryFrontend struct {
 	symbolizer          Symbolizer
 	diagnosticsStore    DiagnosticsStore
 	now                 func() time.Time
+
+	metrics *queryFrontendMetrics
+}
+
+type queryFrontendMetrics struct {
+	fetchedBytesTotal *prometheus.CounterVec
+}
+
+func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
+	m := &queryFrontendMetrics{
+		fetchedBytesTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Subsystem: "query_frontend",
+				Name:      "fetched_bytes_total",
+				Help:      "Total bytes fetched per tenant per source (object_storage, metastore).",
+			},
+			[]string{"tenant", "kind"},
+		),
+	}
+	if reg != nil {
+		reg.MustRegister(m.fetchedBytesTotal)
+	}
+	return m
 }
 
 func NewQueryFrontend(
@@ -66,6 +92,7 @@ func NewQueryFrontend(
 	querybackendClient QueryBackend,
 	sym Symbolizer,
 	diagnosticsStore DiagnosticsStore,
+	reg prometheus.Registerer,
 ) *QueryFrontend {
 	qf := &QueryFrontend{
 		logger:              logger,
@@ -76,6 +103,7 @@ func NewQueryFrontend(
 		symbolizer:          sym,
 		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
+		metrics:             newQueryFrontendMetrics(reg),
 	}
 	return qf
 }
@@ -127,6 +155,12 @@ func (q *QueryFrontend) doQuery(
 	span.SetTag("block_count", len(blocks))
 	if len(blocks) == 0 {
 		return new(queryv1.QueryResponse), nil
+	}
+
+	// Measure bytes received from the metastore (serialized block metadata).
+	var metastoreBytes uint64
+	for _, b := range blocks {
+		metastoreBytes += uint64(b.SizeVT())
 	}
 
 	var weight block.DatasetWeight
@@ -197,6 +231,19 @@ func (q *QueryFrontend) doQuery(
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Emit per-tenant bytes metrics. Object storage bytes come from the
+	// query-backend response; metastore bytes were measured above.
+	// Use dskit's JoinTenantIDs so the label matches the standard |-separated
+	// org ID format used elsewhere in the Grafana stack.
+	tenantLabel := tenant.JoinTenantIDs(tenants)
+	objectBytes := resp.GetDiagnostics().GetExecutionNode().GetStats().GetBytesFetched()
+	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "object_storage").Add(float64(objectBytes))
+	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "metastore").Add(float64(metastoreBytes))
+	if qs := spanlogger.QueryStatsFromContext(ctx); qs != nil {
+		qs.ObjectStorageBytes += objectBytes
+		qs.MetastoreBytes += metastoreBytes
 	}
 
 	if resp.Diagnostics == nil {

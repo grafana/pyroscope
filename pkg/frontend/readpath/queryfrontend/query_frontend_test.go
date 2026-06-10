@@ -191,6 +191,7 @@ func Test_QueryFrontend_LabelNames_WithFiltering(t *testing.T) {
 				mockQueryBackend,
 				nil,
 				nil,
+				nil,
 			)
 
 			ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
@@ -331,6 +332,7 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,
+				nil,
 				nil,
 				nil,
 			)

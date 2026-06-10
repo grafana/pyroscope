@@ -284,6 +284,7 @@ func (m *ExecutionStats) CloneVT() *ExecutionStats {
 	r := new(ExecutionStats)
 	r.BlocksRead = m.BlocksRead
 	r.DatasetsProcessed = m.DatasetsProcessed
+	r.BytesFetched = m.BytesFetched
 	if rhs := m.BlockExecutions; rhs != nil {
 		tmpContainer := make([]*BlockExecution, len(rhs))
 		for k, v := range rhs {
@@ -1362,6 +1363,9 @@ func (this *ExecutionStats) EqualVT(that *ExecutionStats) bool {
 				return false
 			}
 		}
+	}
+	if this.BytesFetched != that.BytesFetched {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -3180,6 +3184,11 @@ func (m *ExecutionStats) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.BytesFetched != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BytesFetched))
+		i--
+		dAtA[i] = 0x20
 	}
 	if len(m.BlockExecutions) > 0 {
 		for iNdEx := len(m.BlockExecutions) - 1; iNdEx >= 0; iNdEx-- {
@@ -5151,6 +5160,9 @@ func (m *ExecutionStats) SizeVT() (n int) {
 			l = e.SizeVT()
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if m.BytesFetched != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.BytesFetched))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -7578,6 +7590,25 @@ func (m *ExecutionStats) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BytesFetched", wireType)
+			}
+			m.BytesFetched = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BytesFetched |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
