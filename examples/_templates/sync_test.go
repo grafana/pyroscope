@@ -19,7 +19,7 @@ const (
 	// templatesDir is the repo-relative path of the templates directory.
 	// It is used solely to build the "generated from" path in file headers;
 	// update it here if the directory is ever moved.
-	templatesDir = "examples/templates"
+	templatesDir = "examples/_templates"
 )
 
 // checkMode returns the value of EXAMPLE_CHECK_MODE ("check" or "update").

@@ -1,5 +1,5 @@
 # This file is generated from the template:
-# examples/templates/grafana/grafana-provisioning/datasources/pyroscope.yml
+# examples/_templates/grafana/grafana-provisioning/datasources/pyroscope.yml
 # Do not edit directly. To update, edit the template and run:
 #   make examples/sync-templates
 ---

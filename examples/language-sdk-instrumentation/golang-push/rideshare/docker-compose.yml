@@ -35,7 +35,7 @@ services:
     build:
       context: .
   pyroscope:
-    # This service is generated from examples/templates/pyroscope/docker-compose.yml
+    # This service is generated from examples/_templates/pyroscope/docker-compose.yml
     # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/pyroscope:latest
     ports:
@@ -49,7 +49,7 @@ services:
     - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
     - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://prometheus:9090/api/v1/otlp/v1/metrics
   grafana:
-    # This service is generated from examples/templates/grafana/docker-compose.yml
+    # This service is generated from examples/_templates/grafana/docker-compose.yml
     # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/grafana:latest
     environment:
@@ -63,7 +63,7 @@ services:
     ports:
     - 3000:3000
   prometheus:
-    # This service is generated from examples/templates/prometheus/docker-compose.yml
+    # This service is generated from examples/_templates/prometheus/docker-compose.yml
     # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: prom/prometheus:v3.1.0
     ports:

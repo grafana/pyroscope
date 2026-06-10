@@ -73,7 +73,7 @@ services:
       - http://rideshare-python-eu-east:5000
 
   grafana:
-    # This service is generated from examples/templates/grafana/docker-compose.yml
+    # This service is generated from examples/_templates/grafana/docker-compose.yml
     # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/grafana:latest
     environment:
@@ -87,7 +87,7 @@ services:
     ports:
     - 3000:3000
   tempo:
-    # This service is generated from examples/templates/tempo/docker-compose.yml
+    # This service is generated from examples/_templates/tempo/docker-compose.yml
     # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/tempo:2.10.5
     command: [ "-config.file=/etc/tempo.yml" ]
@@ -101,7 +101,7 @@ services:
       - "4318:4318"    # otlp http
       - "9411:9411"    # zipkin
   pyroscope:
-    # This service is generated from examples/templates/pyroscope/docker-compose.yml
+    # This service is generated from examples/_templates/pyroscope/docker-compose.yml
     # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/pyroscope:latest
     ports:

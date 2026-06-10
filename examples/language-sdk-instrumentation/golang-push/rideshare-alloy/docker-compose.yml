@@ -39,7 +39,7 @@ services:
       - "12345:12345"
 
   pyroscope:
-    # This service is generated from examples/templates/pyroscope/docker-compose.yml
+    # This service is generated from examples/_templates/pyroscope/docker-compose.yml
     # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/pyroscope:latest
     ports:
@@ -52,7 +52,7 @@ services:
     - PYROSCOPE_SERVER_ADDRESS=http://alloy:9999
 
   grafana:
-    # This service is generated from examples/templates/grafana/docker-compose.yml
+    # This service is generated from examples/_templates/grafana/docker-compose.yml
     # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/grafana:latest
     environment:

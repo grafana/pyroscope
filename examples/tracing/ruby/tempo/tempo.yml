@@ -1,5 +1,5 @@
 # This file is generated from the template:
-# examples/templates/tempo/tempo/tempo.yml
+# examples/_templates/tempo/tempo/tempo.yml
 # Do not edit directly. To update, edit the template and run:
 #   make examples/sync-templates
 server:

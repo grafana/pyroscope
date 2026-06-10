@@ -1,5 +1,5 @@
 # This file is generated from the template:
-# examples/templates/prometheus/grafana-provisioning/datasources/prometheus.yml
+# examples/_templates/prometheus/grafana-provisioning/datasources/prometheus.yml
 # Do not edit directly. To update, edit the template and run:
 #   make examples/sync-templates
 ---
