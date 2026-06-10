@@ -1,7 +1,5 @@
 services:
   prometheus:
-    # This service is generated from examples/templates/prometheus/docker-compose.yml
-    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: prom/prometheus:v3.1.0
     ports:
     - '9099:9090'

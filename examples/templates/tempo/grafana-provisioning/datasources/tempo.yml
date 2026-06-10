@@ -1,7 +1,3 @@
-# This file is generated from the template:
-# examples/templates/tempo/grafana-provisioning/datasources/tempo.yml
-# Do not edit directly. To update, edit the template and run:
-#   make examples/sync-templates
 ---
 apiVersion: 1
 datasources:

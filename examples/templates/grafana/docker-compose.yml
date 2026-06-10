@@ -1,7 +1,5 @@
 services:
   grafana:
-    # This service is generated from examples/templates/grafana/docker-compose.yml
-    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/grafana:latest
     environment:
     - GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app

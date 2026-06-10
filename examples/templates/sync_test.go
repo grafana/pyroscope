@@ -15,11 +15,47 @@ import (
 const (
 	modeCheck  = "check"
 	modeUpdate = "update"
+
+	// templatesDir is the repo-relative path of the templates directory.
+	// It is used solely to build the "generated from" path in file headers;
+	// update it here if the directory is ever moved.
+	templatesDir = "examples/templates"
 )
 
 // checkMode returns the value of EXAMPLE_CHECK_MODE ("check" or "update").
 // Any other value (including unset) causes the test to be skipped.
 func checkMode() string { return os.Getenv("EXAMPLE_CHECK_MODE") }
+
+// fileHeader returns the "do not edit" comment block prepended to every
+// non-docker-compose template file (Style A: #-comments at column 0).
+// tmplName is the template directory name (e.g. "grafana"); rel is the
+// file path relative to that template directory.
+func fileHeader(tmplName, rel string) string {
+	src := templatesDir + "/" + tmplName + "/" + rel
+	return "# This file is generated from the template:\n" +
+		"# " + src + "\n" +
+		"# Do not edit directly. To update, edit the template and run:\n" +
+		"#   make examples/sync-templates\n"
+}
+
+// serviceHeader returns the two-line "do not edit" comment injected inside a
+// docker-compose service block (Style B: 4-space-indented #-comments).
+// tmplName is the template directory name (e.g. "grafana").
+func serviceHeader(tmplName string) string {
+	src := templatesDir + "/" + tmplName + "/docker-compose.yml"
+	return "    # This service is generated from " + src + "\n" +
+		"    # Do not edit directly. To update, edit the template and run: make examples/sync-templates\n"
+}
+
+// injectServiceHeader inserts the Style B header comment on the second line of
+// a service block (right after the "  <service>:" key line).
+func injectServiceHeader(block, tmplName string) string {
+	idx := strings.Index(block, "\n")
+	if idx < 0 {
+		return block
+	}
+	return block[:idx+1] + serviceHeader(tmplName) + block[idx+1:]
+}
 
 // example registers one example directory and which templates apply to it.
 type example struct {
@@ -275,6 +311,8 @@ func TestExamplesConsistency(t *testing.T) {
 						if rel == "docker-compose.yml" {
 							// Service block check: structural YAML comparison.
 							svcName, canonical := loadTemplateService(t, path)
+							// Inject the "do not edit" header comment into the block.
+							canonical = injectServiceHeader(canonical, tmplName)
 							// Apply any per-example extra volume mounts.
 							if extra, ok := ex.serviceVolumes[svcName]; ok {
 								canonical = injectVolumes(t, canonical, extra)
@@ -293,11 +331,13 @@ func TestExamplesConsistency(t *testing.T) {
 									svcName, composePath, path)
 							})
 						} else {
-							// Config file check: byte-identical (plus any per-example append).
+							// Config file check: prepend generated header then byte-identical.
 							dstPath := j(exDir, rel)
 							t.Run(rel, func(t *testing.T) {
-								canonical, err := os.ReadFile(path)
+								body, err := os.ReadFile(path)
 								require.NoError(t, err)
+								canonical := []byte(fileHeader(tmplName, rel))
+								canonical = append(canonical, body...)
 								if checkMode() == modeUpdate {
 									require.NoError(t, os.MkdirAll(filepath.Dir(dstPath), 0o755))
 									require.NoError(t, os.WriteFile(dstPath, canonical, 0o644))

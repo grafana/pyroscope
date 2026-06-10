@@ -1,7 +1,5 @@
 services:
   tempo:
-    # This service is generated from examples/templates/tempo/docker-compose.yml
-    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/tempo:2.10.5
     command: [ "-config.file=/etc/tempo.yml" ]
     volumes:
